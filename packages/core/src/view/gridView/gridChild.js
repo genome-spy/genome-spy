@@ -9,7 +9,7 @@ import AxisView, {
     getExternalAxisOverhang,
 } from "../axisView.js";
 import LayerView from "../layerView.js";
-import Padding from "../layout/padding.js";
+import Padding, { applyOverhangConfig } from "../layout/padding.js";
 import Rectangle from "../layout/rectangle.js";
 import TitleView from "../titleView.js";
 import UnitView from "../unitView.js";
@@ -802,9 +802,26 @@ export default class GridChild {
 
     getOverhang() {
         // Axes and overhang should be mutually exclusive, so we can just add them together
-        return this.#getGuideOverhang()
-            .add(this.#getTitleOverhang())
-            .add(this.view.getOverhang());
+        return applyOverhangConfig(
+            this.#getGuideOverhang()
+                .add(this.#getTitleOverhang())
+                .add(this.view.getOverhang()),
+            this.view.spec.overhang
+        );
+    }
+
+    /**
+     * Returns the view-owned part of overhang after applying the view's
+     * reservation policy. Local guide overhang is placed in separate grid
+     * slots and is therefore not included here.
+     *
+     * @returns {Padding}
+     */
+    getViewOverhang() {
+        return applyOverhangConfig(
+            this.view.getOverhang(),
+            this.view.spec.overhang
+        );
     }
 
     #getGuideOverhang() {

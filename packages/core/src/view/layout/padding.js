@@ -151,5 +151,25 @@ export default class Padding {
     }
 }
 
+/**
+ * Applies a view's external-overhang reservation policy to a measured padding.
+ *
+ * @param {Padding} padding
+ * @param {import("../../spec/view.js").OverhangConfig | undefined} config
+ * @returns {Padding}
+ */
+export function applyOverhangConfig(padding, config) {
+    if (!config) {
+        return padding;
+    }
+
+    return new Padding(
+        config.top === false ? 0 : padding.top,
+        config.right === false ? 0 : padding.right,
+        config.bottom === false ? 0 : padding.bottom,
+        config.left === false ? 0 : padding.left
+    );
+}
+
 const zeroPadding = Padding.createUniformPadding(0);
 Object.freeze(zeroPadding);
