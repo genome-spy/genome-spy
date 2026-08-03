@@ -443,6 +443,11 @@ export const primaryPositionalChannels = ["x", "y"];
 export const secondaryPositionalChannels = ["x2", "y2"];
 
 /**
+ * @type {import("../spec/channel.js").OffsetChannel[]}
+ */
+export const offsetChannels = ["xOffset", "yOffset"];
+
+/**
  * @type {import("../spec/channel.js").PositionalChannel[]}
  */
 export const positionalChannels = [
@@ -466,6 +471,65 @@ export function isPrimaryPositionalChannel(channel) {
 export function isPositionalChannel(channel) {
     // @ts-expect-error
     return positionalChannels.includes(channel);
+}
+
+/**
+ * @param {import("../spec/channel.js").Channel} channel
+ * @returns {channel is import("../spec/channel.js").OffsetChannel}
+ */
+export function isOffsetChannel(channel) {
+    // @ts-expect-error
+    return offsetChannels.includes(channel);
+}
+
+/**
+ * Returns the public primary offset channel for a positional endpoint.
+ * Secondary endpoints use mark properties rather than encoding channels.
+ *
+ * @param {import("../spec/channel.js").PositionalChannel} channel
+ * @returns {import("../spec/channel.js").OffsetChannel}
+ */
+export function getOffsetChannel(channel) {
+    return getPrimaryChannel(channel) == "x" ? "xOffset" : "yOffset";
+}
+
+/**
+ * Returns the offset property matching a positional endpoint.
+ *
+ * @param {import("../spec/channel.js").PositionalChannel} channel
+ * @returns {"xOffset" | "yOffset" | "x2Offset" | "y2Offset"}
+ */
+export function getOffsetProperty(channel) {
+    switch (channel) {
+        case "x":
+            return "xOffset";
+        case "y":
+            return "yOffset";
+        case "x2":
+            return "x2Offset";
+        case "y2":
+            return "y2Offset";
+        default:
+            throw new Error("Not a positional channel: " + channel);
+    }
+}
+
+/**
+ * Resolves the secondary offset fallback without losing the distinction
+ * between an explicit zero and an unspecified property.
+ *
+ * @template T
+ * @param {T} primaryOffset
+ * @param {T | undefined} secondaryOffset
+ * @param {boolean} secondaryPositionExplicit
+ * @returns {T | 0}
+ */
+export function resolveSecondaryOffset(
+    primaryOffset,
+    secondaryOffset,
+    secondaryPositionExplicit
+) {
+    return secondaryOffset ?? (secondaryPositionExplicit ? 0 : primaryOffset);
 }
 
 /**
@@ -556,6 +620,8 @@ export function isChannelWithScale(channel) {
         "y",
         "x2",
         "y2",
+        "xOffset",
+        "yOffset",
         "color",
         "fill",
         "stroke",

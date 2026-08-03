@@ -242,6 +242,13 @@ export default class Mark {
                 : () => /** @type {P} */ ({}),
             () => this.defaultProperties
         );
+
+        this.setupExprRefsNeedingGraphicsUpdate([
+            "xOffset",
+            "yOffset",
+            "x2Offset",
+            "y2Offset",
+        ]);
     }
 
     /**
@@ -1512,8 +1519,10 @@ export default class Mark {
         const pixelOffset = 0.5;
 
         // Note: we also handle xOffset/yOffset mark properties here
-        const xOffset = (props.xOffset ?? 0) + pixelOffset;
-        const yOffset = (props.yOffset ?? 0) + pixelOffset;
+        const xOffset =
+            /** @type {number} */ (props.xOffset ?? 0) + pixelOffset;
+        const yOffset =
+            /** @type {number} */ (props.yOffset ?? 0) + pixelOffset;
 
         /** @type {object} */
         let uniforms;
