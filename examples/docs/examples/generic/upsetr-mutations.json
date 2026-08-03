@@ -185,7 +185,6 @@
       "name": "set-sizes",
       "width": 150,
       "height": { "step": 20 },
-      "overhang": { "top": false },
       "resolve": { "scale": { "x": "excluded" } },
       "scales": {
         "x": {
@@ -230,7 +229,7 @@
               "type": "quantitative",
               "axis": {
                 "title": "Set Size",
-                "orient": "top",
+                "orient": "bottom",
                 "grid": false
               }
             },
