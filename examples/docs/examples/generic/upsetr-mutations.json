@@ -2,15 +2,24 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": [
-    "GenomeSpy version of the five-set mutations example from UpSetR.",
+    "Interactive GenomeSpy version of the five-set mutations example from UpSetR.",
     "Only observed, nonempty intersections are displayed."
   ],
+
+  "name": "upsetr-mutations",
 
   "data": {
     "url": "https://raw.githubusercontent.com/hms-dbmi/UpSetR/master/inst/extdata/mutations.csv",
     "format": { "type": "csv" },
     "description": "Load UpSetR's bundled glioblastoma mutation dataset directly from GitHub."
   },
+
+  "params": [
+    {
+      "name": "setCursor",
+      "description": "The set row currently hovered in the set-size plot or intersection matrix."
+    }
+  ],
 
   "transform": [
     {
@@ -55,7 +64,22 @@
     },
     {
       "type": "collect",
-      "description": "Buffer the static intersection table before deriving presentation-specific ordering."
+      "description": "Buffer the static intersection rows so reactive downstream transforms do not repropagate data from the source."
+    },
+    {
+      "type": "formula",
+      "expr": "isValid(setCursor.values.y) && round(setCursor.values.y) == datum.setOrder && datum.member ? 1 : 0",
+      "as": "hoveredSetMember",
+      "description": "Mark the membership cell belonging to the currently hovered set row."
+    },
+    {
+      "type": "window",
+      "groupby": ["profileKey"],
+      "frame": [null, null],
+      "ops": ["max"],
+      "fields": ["hoveredSetMember"],
+      "as": ["profileContainsHoveredSet"],
+      "description": "Propagate hovered-set membership to every row of each exact profile."
     },
     {
       "type": "window",
@@ -110,6 +134,18 @@
           "domainMin": 0
         }
       },
+      "encoding": {
+        "opacity": {
+          "expr": "!isValid(setCursor.values.y) || datum.profileContainsHoveredSet == 1",
+          "type": "nominal",
+          "scale": {
+            "type": "ordinal",
+            "domain": [false, true],
+            "range": [0.14, 1]
+          },
+          "legend": null
+        }
+      },
       "transform": [
         {
           "type": "filter",
@@ -119,6 +155,7 @@
       ],
       "layer": [
         {
+          "name": "intersection-bars",
           "mark": { "type": "rect", "color": "#3b3b3b" },
           "encoding": {
             "x": {
@@ -138,6 +175,7 @@
           }
         },
         {
+          "name": "intersection-labels",
           "mark": {
             "type": "text",
             "size": 11,
@@ -169,6 +207,23 @@
           "domainMin": 0
         }
       },
+      "params": [
+        {
+          "name": "setCursor",
+          "push": "outer",
+          "persist": false,
+          "ruler": {
+            "encodings": ["y"],
+            "on": "mousemove",
+            "mark": {
+              "stroke": "#555",
+              "strokeDash": [3, 3],
+              "opacity": 0.7
+            }
+          },
+          "description": "Track the set row under the pointer and publish it to the shared outer parameter."
+        }
+      ],
       "transform": [
         {
           "type": "filter",
@@ -178,6 +233,7 @@
       ],
       "layer": [
         {
+          "name": "set-bars",
           "mark": { "type": "rect", "color": "#6f6f6f" },
           "encoding": {
             "x": {
@@ -197,6 +253,7 @@
           }
         },
         {
+          "name": "set-labels",
           "mark": {
             "type": "text",
             "size": 11,
@@ -219,8 +276,40 @@
       "width": { "step": 20 },
       "height": { "step": 20 },
       "padding": { "left": 45 },
+      "encoding": {
+        "color": {
+          "expr": "!isValid(setCursor.values.y) || datum.profileContainsHoveredSet == 1",
+          "type": "nominal",
+          "scale": {
+            "type": "ordinal",
+            "domain": [false, true],
+            "range": ["#ddd", "#3b3b3b"]
+          },
+          "legend": null
+        }
+      },
+
+      "params": [
+        {
+          "name": "setCursor",
+          "push": "outer",
+          "persist": false,
+          "ruler": {
+            "encodings": ["y"],
+            "on": "mousemove",
+            "mark": {
+              "stroke": "#555",
+              "strokeDash": [3, 3],
+              "opacity": 0.7
+            }
+          },
+          "description": "Track hovered matrix rows using the same shared set-row parameter."
+        }
+      ],
+
       "layer": [
         {
+          "name": "set-names",
           "transform": [
             {
               "type": "filter",
@@ -242,6 +331,7 @@
           }
         },
         {
+          "name": "row-backgrounds",
           "transform": [
             {
               "type": "filter",
@@ -249,18 +339,21 @@
               "description": "Draw one alternating background rectangle for every other set row."
             }
           ],
-          "mark": { "type": "rect", "color": "#f1f1f1" },
+          "mark": "rect",
           "encoding": {
             "x": null,
-            "y": { "field": "setOrder", "type": "index" }
+            "y": { "field": "setOrder", "type": "index" },
+            "color": { "value": "#f1f1f1" }
           }
         },
         {
+          "name": "background-points",
           "mark": {
             "type": "point",
             "filled": true,
             "size": 95,
-            "strokeWidth": 0
+            "strokeWidth": 0,
+            "opacity": { "expr": "isValid(setCursor.values.y) ? 0.2 : 1" }
           },
           "encoding": {
             "x": { "field": "profileIndex", "type": "index" },
@@ -269,11 +362,16 @@
           }
         },
         {
+          "name": "connectors",
           "transform": [
             { "type": "filter", "expr": "datum.member" },
             {
               "type": "aggregate",
-              "groupby": ["profileKey", "profileIndex"],
+              "groupby": [
+                "profileKey",
+                "profileIndex",
+                "profileContainsHoveredSet"
+              ],
               "fields": ["setOrder", "setOrder"],
               "ops": ["min", "max"],
               "as": ["firstSetIndex", "lastSetIndex"],
@@ -282,7 +380,6 @@
           ],
           "mark": {
             "type": "rule",
-            "color": "#3b3b3b",
             "size": 2.5,
             "strokeCap": "round"
           },
@@ -293,6 +390,7 @@
           }
         },
         {
+          "name": "members",
           "transform": [{ "type": "filter", "expr": "datum.member" }],
           "mark": {
             "type": "point",
@@ -307,7 +405,6 @@
               "axis": null
             },
             "y": { "field": "setOrder", "type": "index", "axis": null },
-            "color": { "value": "#3b3b3b" },
             "tooltip": [
               {
                 "field": "profileSize",
@@ -331,6 +428,7 @@
       "titleColor": "#333",
       "titleFontWeight": "normal"
     },
-    "scale": { "zoom": false }
+    "scale": { "zoom": false },
+    "mark": { "tooltip": false }
   }
 }
