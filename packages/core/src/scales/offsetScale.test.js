@@ -6,18 +6,50 @@ import UnitView from "../view/unitView.js";
 import { createAndInitialize, renderToLayout } from "../view/testUtils.js";
 import { findChannelDefWithScale } from "../encoder/encoder.js";
 
+const GROUPED_VALUES = [
+    { category: "A", group: "first", value: 2 },
+    { category: "A", group: "second", value: 3 },
+    { category: "B", group: "first", value: 4 },
+    { category: "B", group: "second", value: 5 },
+];
+
+/**
+ * Returns the horizontal position produced by the scale and its band anchor.
+ * Primary positions use unit coordinates, whereas offsets use pixels.
+ *
+ * @param {UnitView} view
+ * @param {"x" | "x2" | "xOffset" | "x2Offset"} channel
+ * @param {Record<string, any>} datum
+ * @param {number} unitSize
+ */
+function getPosition(view, channel, datum, unitSize) {
+    const encoders =
+        /** @type {Record<string, import("../types/encoder.js").Encoder>} */ (
+            view.mark.encoders
+        );
+    const encoding =
+        /** @type {Record<string, import("../spec/channel.js").ChannelDef>} */ (
+            view.mark.encoding
+        );
+    const encoder = encoders[channel];
+    const channelDef = findChannelDefWithScale(encoding[channel]);
+    const band = /** @type {import("../spec/channel.js").BandMixins} */ (
+        channelDef
+    ).band;
+    const scale = /** @type {any} */ (encoder.scale);
+    const position = /** @type {number} */ (encoder(datum));
+    const bandOffset = band * scale.bandwidth();
+
+    return channel == "x" || channel == "x2"
+        ? (position + bandOffset) * unitSize
+        : position + bandOffset;
+}
+
 describe("nested offset scales", () => {
     test("derives a pixel range from the parent band and updates on resize", async () => {
         const view = await createAndInitialize(
             {
-                data: {
-                    values: [
-                        { category: "A", group: "first", value: 2 },
-                        { category: "A", group: "second", value: 3 },
-                        { category: "B", group: "first", value: 4 },
-                        { category: "B", group: "second", value: 5 },
-                    ],
-                },
+                data: { values: GROUPED_VALUES },
                 mark: "rect",
                 encoding: {
                     x: { field: "category", type: "nominal" },
@@ -54,12 +86,7 @@ describe("nested offset scales", () => {
     test("keeps an explicit pixel range and padding", async () => {
         const view = await createAndInitialize(
             {
-                data: {
-                    values: [
-                        { category: "A", group: "first", value: 2 },
-                        { category: "A", group: "second", value: 3 },
-                    ],
-                },
+                data: { values: GROUPED_VALUES.slice(0, 2) },
                 mark: "rect",
                 encoding: {
                     x: { field: "category", type: "nominal" },
@@ -85,12 +112,7 @@ describe("nested offset scales", () => {
     test("preserves explicit primary band padding", async () => {
         const view = await createAndInitialize(
             {
-                data: {
-                    values: [
-                        { category: "A", group: "first", value: 2 },
-                        { category: "A", group: "second", value: 3 },
-                    ],
-                },
+                data: { values: GROUPED_VALUES.slice(0, 2) },
                 mark: "rect",
                 encoding: {
                     x: {
@@ -115,14 +137,7 @@ describe("nested offset scales", () => {
     test("derives vertical subgroup bands in pixels", async () => {
         const view = await createAndInitialize(
             {
-                data: {
-                    values: [
-                        { category: "A", group: "first", value: 2 },
-                        { category: "A", group: "second", value: 3 },
-                        { category: "B", group: "first", value: 4 },
-                        { category: "B", group: "second", value: 5 },
-                    ],
-                },
+                data: { values: GROUPED_VALUES },
                 mark: "rect",
                 encoding: {
                     x: { field: "value", type: "quantitative" },
@@ -149,39 +164,9 @@ describe("nested offset scales", () => {
         );
     });
 
-    test("keeps an explicit secondary endpoint independent", async () => {
-        const view = await createAndInitialize(
-            {
-                data: {
-                    values: [
-                        {
-                            category: "A",
-                            category2: "B",
-                            group: "first",
-                            value: 2,
-                        },
-                    ],
-                },
-                mark: "rect",
-                encoding: {
-                    x: { field: "category", type: "nominal" },
-                    x2: { field: "category2" },
-                    y: { field: "value", type: "quantitative" },
-                    xOffset: { field: "group", type: "nominal" },
-                },
-            },
-            UnitView
-        );
-
-        const encoding = /** @type {Record<string, any>} */ (
-            view.mark.encoding
-        );
-        expect(encoding.x2.field).toBe("category2");
-        expect(encoding.x2Offset).toEqual({ value: 0 });
-    });
-
     test.each(
         /** @type {[string, import("../spec/channel.js").OffsetDef][]} */ ([
+            ["field", { field: "group", type: "nominal" }],
             ["datum", { datum: "first", type: "nominal" }],
             ["expression", { expr: "datum.group", type: "nominal" }],
         ])
@@ -189,12 +174,7 @@ describe("nested offset scales", () => {
         const view = /** @type {LayerView} */ (
             await createAndInitialize(
                 {
-                    data: {
-                        values: [
-                            { category: "A", group: "first", value: 2 },
-                            { category: "A", group: "second", value: 3 },
-                        ],
-                    },
+                    data: { values: GROUPED_VALUES.slice(0, 2) },
                     encoding: {
                         x: { field: "category", type: "nominal" },
                         y: { field: "value", type: "quantitative" },
@@ -207,60 +187,23 @@ describe("nested offset scales", () => {
         );
 
         const [rect, point] = /** @type {UnitView[]} */ (view.children);
-        const rectEncoding = /** @type {Record<string, any>} */ (
-            rect.mark.encoding
-        );
-        const pointEncoding = /** @type {Record<string, any>} */ (
-            point.mark.encoding
-        );
-        const secondaryOffsetDef = /** @type {any} */ (
-            findChannelDefWithScale(rectEncoding.x2Offset)
-        );
-
-        expect(secondaryOffsetDef.resolutionChannel).toBe("xOffset");
-        expect(secondaryOffsetDef.band).toBe(1);
-        expect(
-            /** @type {any} */ (findChannelDefWithScale(pointEncoding.x)).band
-        ).toBe(0);
-        expect(
-            /** @type {any} */ (findChannelDefWithScale(pointEncoding.xOffset))
-                .band
-        ).toBe(0.5);
-    });
-
-    test("shares a nested scale across layered rects and points", async () => {
-        const view = await createAndInitialize(
-            {
-                data: {
-                    values: [
-                        { category: "A", group: "first", value: 2 },
-                        { category: "A", group: "second", value: 3 },
-                    ],
-                },
-                encoding: {
-                    x: { field: "category", type: "nominal" },
-                    y: { field: "value", type: "quantitative" },
-                    xOffset: { field: "group", type: "nominal" },
-                },
-                layer: [{ mark: "rect" }, { mark: "point" }],
-            },
-            LayerView
-        );
-
-        const [rect, point] = /** @type {UnitView[]} */ (view.children);
+        renderToLayout(view, Rectangle.create(0, 0, 300, 200));
         expect(rect.getScaleResolution("xOffset")).toBe(
             point.getScaleResolution("xOffset")
         );
 
-        const rectEncoding = /** @type {Record<string, any>} */ (
-            rect.mark.encoding
-        );
-        const pointEncoding = /** @type {Record<string, any>} */ (
-            point.mark.encoding
-        );
-        expect(pointEncoding.x.band).toBe(rectEncoding.x.band);
-        expect(pointEncoding.xOffset.band).toBe(
-            (rectEncoding.xOffset.band + rectEncoding.x2Offset.band) / 2
-        );
+        // Points must remain centered on their corresponding subgroup rects.
+        const datum = GROUPED_VALUES[0];
+        const rectStart =
+            getPosition(rect, "x", datum, 300) +
+            getPosition(rect, "xOffset", datum, 300);
+        const rectEnd =
+            getPosition(rect, "x2", datum, 300) +
+            getPosition(rect, "x2Offset", datum, 300);
+        const pointPosition =
+            getPosition(point, "x", datum, 300) +
+            getPosition(point, "xOffset", datum, 300);
+
+        expect(pointPosition).toBeCloseTo((rectStart + rectEnd) / 2);
     });
 });

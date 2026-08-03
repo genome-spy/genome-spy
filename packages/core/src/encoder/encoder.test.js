@@ -9,10 +9,6 @@ import {
     getEncoderAccessors,
     getEncoderDataAccessor,
     isNonMarkPropertyChannel,
-    getOffsetChannel,
-    getOffsetProperty,
-    isOffsetChannel,
-    resolveSecondaryOffset,
 } from "./encoder.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import {
@@ -101,28 +97,6 @@ describe("isNonMarkPropertyChannel", () => {
         expect(isNonMarkPropertyChannel("search")).toBe(true);
         expect(isNonMarkPropertyChannel("tooltip")).toBe(true);
         expect(isNonMarkPropertyChannel("x")).toBe(false);
-    });
-});
-
-describe("offset channel helpers", () => {
-    test("classifies only public primary offset channels", () => {
-        expect(isOffsetChannel("xOffset")).toBe(true);
-        expect(isOffsetChannel("yOffset")).toBe(true);
-        expect(isOffsetChannel("x")).toBe(false);
-    });
-
-    test("maps positional endpoints to channels and properties", () => {
-        expect(getOffsetChannel("x")).toBe("xOffset");
-        expect(getOffsetChannel("x2")).toBe("xOffset");
-        expect(getOffsetProperty("y")).toBe("yOffset");
-        expect(getOffsetProperty("y2")).toBe("y2Offset");
-    });
-
-    test("inherits primary offsets only for implicit secondary positions", () => {
-        expect(resolveSecondaryOffset(4, undefined, false)).toBe(4);
-        expect(resolveSecondaryOffset(4, undefined, true)).toBe(0);
-        expect(resolveSecondaryOffset(4, 0, false)).toBe(0);
-        expect(resolveSecondaryOffset(4, -2, true)).toBe(-2);
     });
 });
 

@@ -200,6 +200,43 @@ describe("mark positional offsets", () => {
 });
 
 describe("offset-aware x indexing", () => {
+    /**
+     * @param {import("../types/encoder.js").Encoder} xOffset
+     * @param {{ offset?: number, indexedRange?: [number, number] }} [options]
+     */
+    function createIndexedRenderContext(
+        xOffset,
+        { offset = 0, indexedRange = [2, 5] } = {}
+    ) {
+        const lookup = vi.fn(
+            (/** @type {number} */ _start, /** @type {number} */ _end, arr) => {
+                arr[0] = indexedRange[0];
+                arr[1] = indexedRange[1];
+                return arr;
+            }
+        );
+        const draw = vi.fn();
+        const scale = Object.assign(() => 0, {
+            type: "index",
+            domain: () => [100, 200],
+        });
+        const resolution = {
+            getScale: () => scale,
+            getAxisLength: () => 100,
+        };
+        const rangeEntry = { offset, count: 10, xIndex: lookup };
+        const mark = /** @type {any} */ ({
+            bufferInfo: {},
+            encoders: { xOffset },
+            unitView: { getScaleResolution: () => resolution },
+            rangeMap: { get: () => rangeEntry },
+        });
+
+        Mark.prototype.createRenderCallback.call(mark, draw, {})();
+
+        return { draw, lookup };
+    }
+
     test("uses scaled and constant pixel bounds", () => {
         const scaled = Object.assign(() => 0, {
             scale: { range: () => [-12, 8] },
@@ -217,79 +254,30 @@ describe("offset-aware x indexing", () => {
         ).toBe(20);
     });
 
-    test("disables culling for an unbounded pass-through offset", () => {
-        const unbounded = Object.assign(
-            (/** @type {any} */ datum) => datum.offset,
-            { constant: false, scale: { type: "null" } }
-        );
-
-        expect(
-            getXIndexOffsetBound(/** @type {any} */ ({ xOffset: unbounded }))
-        ).toBeUndefined();
-    });
-
     test("expands an indexed domain by the bounded pixel offset", () => {
-        const lookup = vi.fn(
-            (/** @type {number} */ _start, /** @type {number} */ _end, arr) => {
-                arr[0] = 2;
-                arr[1] = 5;
-                return arr;
-            }
-        );
-        const draw = vi.fn();
-        const scale = Object.assign(() => 0, {
-            type: "index",
-            domain: () => [100, 200],
-        });
-        const resolution = {
-            getScale: () => scale,
-            getAxisLength: () => 100,
-        };
-        const rangeEntry = { offset: 0, count: 10, xIndex: lookup };
-        const mark = /** @type {any} */ ({
-            bufferInfo: {},
-            encoders: {
-                xOffset: Object.assign(() => 0, {
+        const { draw, lookup } = createIndexedRenderContext(
+            /** @type {any} */ (
+                Object.assign(() => 0, {
                     scale: { range: () => [-10, 10] },
                     constant: false,
-                }),
-            },
-            unitView: { getScaleResolution: () => resolution },
-            rangeMap: { get: () => rangeEntry },
-        });
-
-        Mark.prototype.createRenderCallback.call(mark, draw, {})();
+                })
+            )
+        );
 
         expect(lookup).toHaveBeenCalledWith(89, 210, [2, 5]);
         expect(draw).toHaveBeenCalledWith(2, 3);
     });
 
     test("draws the full range when an indexed offset is unbounded", () => {
-        const lookup = vi.fn();
-        const draw = vi.fn();
-        const scale = Object.assign(() => 0, {
-            type: "locus",
-            domain: () => [100, 200],
-        });
-        const rangeEntry = { offset: 4, count: 10, xIndex: lookup };
-        const mark = /** @type {any} */ ({
-            bufferInfo: {},
-            encoders: {
-                xOffset: Object.assign(
-                    (/** @type {any} */ datum) => datum.offset,
-                    { constant: false }
-                ),
-            },
-            unitView: {
-                getScaleResolution: () => ({
-                    getScale: () => scale,
-                    getAxisLength: () => 100,
-                }),
-            },
-            rangeMap: { get: () => rangeEntry },
-        });
-
-        Mark.prototype.createRenderCallback.call(mark, draw, {})();
+        const { draw, lookup } = createIndexedRenderContext(
+            /** @type {any} */ (
+                Object.assign((/** @type {any} */ datum) => datum.offset, {
+                    constant: false,
+                    scale: { type: "null" },
+                })
+            ),
+            { offset: 4 }
+        );
 
         expect(lookup).not.toHaveBeenCalled();
         expect(draw).toHaveBeenCalledWith(4, 10);

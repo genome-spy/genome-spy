@@ -1292,10 +1292,15 @@ describe("Step sizing and domain updates", () => {
         expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
     });
 
-    test("Step size defaults to nested offset groups", async () => {
-        /** @type {import("../spec/view.js").UnitSpec} */
-        const spec = {
-            width: { step: 10 },
+    /**
+     * @param {import("../spec/view.js").Step} width
+     * @param {import("../spec/scale.js").Scale} [xScale]
+     * @param {import("../spec/scale.js").Scale} [offsetScale]
+     * @returns {import("../spec/view.js").UnitSpec}
+     */
+    function createGroupedBarStepSpec(width, xScale, offsetScale) {
+        return {
+            width,
             height: 100,
             data: {
                 values: [
@@ -1310,16 +1315,24 @@ describe("Step sizing and domain updates", () => {
                 x: {
                     field: "category",
                     type: "nominal",
-                    scale: { paddingInner: 0.2, paddingOuter: 0.1 },
+                    scale: xScale,
                 },
                 xOffset: {
                     field: "group",
                     type: "nominal",
-                    scale: { paddingInner: 0.1, paddingOuter: 0.05 },
+                    scale: offsetScale,
                 },
                 y: { field: "value", type: "quantitative" },
             },
         };
+    }
+
+    test("Step size defaults to nested offset groups", async () => {
+        const spec = createGroupedBarStepSpec(
+            { step: 10 },
+            { paddingInner: 0.2, paddingOuter: 0.1 },
+            { paddingInner: 0.1, paddingOuter: 0.05 }
+        );
 
         const { view } = await createHeadlessEngine(spec);
 
@@ -1327,25 +1340,10 @@ describe("Step sizing and domain updates", () => {
     });
 
     test("Step.for position sizes primary categories", async () => {
-        /** @type {import("../spec/view.js").UnitSpec} */
-        const spec = {
-            width: { step: 10, for: "position" },
-            height: 100,
-            data: {
-                values: [
-                    { category: "A", group: "first", value: 1 },
-                    { category: "A", group: "second", value: 2 },
-                    { category: "B", group: "first", value: 3 },
-                    { category: "B", group: "second", value: 4 },
-                ],
-            },
-            mark: "rect",
-            encoding: {
-                x: { field: "category", type: "nominal" },
-                xOffset: { field: "group", type: "nominal" },
-                y: { field: "value", type: "quantitative" },
-            },
-        };
+        const spec = createGroupedBarStepSpec({
+            step: 10,
+            for: "position",
+        });
 
         const { view } = await createHeadlessEngine(spec);
 
