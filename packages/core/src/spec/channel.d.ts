@@ -24,8 +24,7 @@ export type PrimaryPositionalChannel = "x" | "y";
 export type SecondaryPositionalChannel = "x2" | "y2";
 
 export type PositionalChannel =
-    | PrimaryPositionalChannel
-    | SecondaryPositionalChannel;
+    PrimaryPositionalChannel | SecondaryPositionalChannel;
 
 // Remember to updata the type guard when adding channels!
 export type ChannelWithScale =
@@ -129,8 +128,7 @@ export interface FieldDefBase {
 }
 
 export type FieldDef<T extends Type = Type> =
-    | SecondaryFieldDef
-    | TypedFieldDef<T>;
+    SecondaryFieldDef | TypedFieldDef<T>;
 
 export type TypedFieldDef<T extends Type = Type> = FieldDefBase &
     TitleMixins &
@@ -232,7 +230,8 @@ export type MarkPropExprDef<T extends Type = Type> = ExprDef &
     TypeMixins<T> &
     ScaleMixins &
     DomainContributionMixins &
-    TitleMixins;
+    TitleMixins &
+    LegendMixins;
 
 export type MarkPropDatumDef<T extends Type> = LegendMixins &
     ScaleDatumDef &
@@ -258,10 +257,7 @@ export interface LegendMixins {
 }
 
 export type ConditionalTemplate =
-    | FieldDef<any>
-    | DatumDef
-    | ValueDef<any>
-    | ExprRef;
+    FieldDef<any> | DatumDef | ValueDef<any> | ExprRef;
 
 export type Conditional<CD extends ConditionalTemplate> =
     ConditionalParameter<CD>;
@@ -325,13 +321,12 @@ export type ValueDefWithCondition<
 };
 
 export type MarkPropFieldOrDatumOrExprDef<T extends Type = Type> =
-    | MarkPropFieldDef<T>
-    | MarkPropDatumDef<T>
-    | MarkPropExprDef<T>;
+    MarkPropFieldDef<T> | MarkPropDatumDef<T> | MarkPropExprDef<T>;
 
 export type MarkPropDef<V extends Value, T extends Type = Type> =
     | FieldOrDatumDefWithCondition<MarkPropFieldDef<T>, V>
     | FieldOrDatumDefWithCondition<ScaleDatumDef, V>
+    | MarkPropExprDef<T>
     | ValueDefWithCondition<V, T>;
 
 export type ColorDef = MarkPropDef<string | null>;
@@ -440,10 +435,7 @@ export type DirectionDef =
 export type StringFieldDef = FieldDef<Type> & FormatMixins;
 
 export type TextDef =
-    | StringFieldDef
-    | StringDatumDef
-    | ExprDef
-    | ValueDef<string>; // TODO: Conditions
+    StringFieldDef | StringDatumDef | ExprDef | ValueDef<string>; // TODO: Conditions
 
 export type TooltipDef = TextDef | TextDef[] | null;
 
@@ -480,14 +472,14 @@ export interface Encoding {
      *
      * The `value` of this channel can be a number between zero and one.
      */
-    x?: PositionDef & XIndexDef;
+    x?: (PositionDef & XIndexDef) | null;
 
     /**
      * Y coordinates of the marks.
      *
      * The `value` of this channel can be a number between zero and one.
      */
-    y?: PositionDef;
+    y?: PositionDef | null;
 
     /**
      * X2 coordinates of the marks.

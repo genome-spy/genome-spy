@@ -132,6 +132,58 @@ describe("generated core schema", () => {
         expect(selectionFilterParams.properties.description).toBeTruthy();
     });
 
+    test("accepts expression-based scaled mark property encodings", () => {
+        const validate = createCoreValidator();
+        /** @type {import("./coreSchemaRoot.js").CoreRootSpec} */
+        const spec = {
+            data: { values: [{ active: true }] },
+            mark: "point",
+            encoding: {
+                color: {
+                    expr: "datum.active",
+                    type: "nominal",
+                    scale: {
+                        type: "ordinal",
+                        domain: [false, true],
+                        range: ["#ddd", "#333"],
+                    },
+                    legend: null,
+                },
+                opacity: {
+                    expr: "datum.active",
+                    type: "nominal",
+                    scale: {
+                        type: "ordinal",
+                        domain: [false, true],
+                        range: [0.2, 1],
+                    },
+                    legend: null,
+                },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
+
+    test("accepts null primary positional encodings", () => {
+        const validate = createCoreValidator();
+        /** @type {import("./coreSchemaRoot.js").CoreRootSpec} */
+        const spec = {
+            data: { values: [{ category: "A" }] },
+            mark: "rect",
+            encoding: {
+                x: null,
+                y: null,
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
+
     test("includes shared lookup options in concrete transform schemas", () => {
         const schema = createCoreSchema();
         const lookupParams =
