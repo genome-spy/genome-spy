@@ -220,7 +220,7 @@ describe("offset-aware x indexing", () => {
     test("disables culling for an unbounded pass-through offset", () => {
         const unbounded = Object.assign(
             (/** @type {any} */ datum) => datum.offset,
-            { constant: false }
+            { constant: false, scale: { type: "null" } }
         );
 
         expect(

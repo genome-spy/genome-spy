@@ -85,7 +85,13 @@ export function getXIndexOffsetBound(encoders) {
             continue;
         }
 
-        if (encoder.scale) {
+        if (encoder.constant) {
+            const value = encoder(/** @type {any} */ ({}));
+            if (!Number.isFinite(value)) {
+                return undefined;
+            }
+            bound = Math.max(bound, Math.abs(/** @type {number} */ (value)));
+        } else if (encoder.scale && encoder.scale.type !== "null") {
             const range = encoder.scale.range();
             if (!range.every((value) => Number.isFinite(value))) {
                 return undefined;
@@ -94,12 +100,6 @@ export function getXIndexOffsetBound(encoders) {
                 bound,
                 ...range.map((value) => Math.abs(/** @type {number} */ (value)))
             );
-        } else if (encoder.constant) {
-            const value = encoder(/** @type {any} */ ({}));
-            if (!Number.isFinite(value)) {
-                return undefined;
-            }
-            bound = Math.max(bound, Math.abs(/** @type {number} */ (value)));
         } else {
             return undefined;
         }
