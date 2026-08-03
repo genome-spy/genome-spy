@@ -10,6 +10,8 @@ SCHEMA SetIntersectionParams
 
 ## Input forms
 
+Element and set fields must contain scalar strings, Booleans, or finite numbers.
+
 Sparse input contains one row for each active element–set membership. An absent
 pair means non-membership:
 
