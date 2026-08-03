@@ -27,6 +27,10 @@ export default class SetIntersectionTransform extends Transform {
             throw new Error('"element" must contain at least one field.');
         }
 
+        if (params.membership === "") {
+            throw new Error('"membership" must name a non-empty field.');
+        }
+
         this.elementAccessors = elementFields.map((fieldName) =>
             field(fieldName)
         );

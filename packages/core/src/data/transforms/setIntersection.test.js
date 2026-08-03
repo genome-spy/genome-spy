@@ -178,6 +178,20 @@ describe("SetIntersection transform", () => {
         ]);
     });
 
+    test("rejects an empty membership field name", () => {
+        expect(() =>
+            transform(
+                {
+                    type: "setIntersection",
+                    element: "element",
+                    set: "set",
+                    membership: "",
+                },
+                [{ element: "A", set: "S", "": false }]
+            )
+        ).toThrow(/membership.*non-empty field/);
+    });
+
     test("uses collision-free compound element identifiers", () => {
         const input = [
             { first: "x|y", second: "z", set: "A" },
