@@ -51,10 +51,16 @@ Currently, the following scales are **not** supported: `"time"`, `"utc"`,
 
 ## Nested offset scales
 
-A discrete field on `xOffset` or `yOffset` creates a nested band scale when the
-matching primary position uses a band scale. The offset range is measured in
-logical pixels and spans the primary band. Point-like marks use subgroup
-centers, while rectangles cover subgroup band extents.
+A discrete field, datum, or expression on `xOffset` or `yOffset` creates a
+nested band scale when the matching primary position uses a band scale. The
+offset range is measured in logical pixels and spans the primary band.
+Point-like marks use subgroup centers, while rectangles cover subgroup band
+extents.
+
+The primary scale's `paddingInner` and `paddingOuter` control spacing between
+groups and default to `0.2` when a nested offset scale is present. The offset
+scale's padding controls spacing between marks within each group. Explicit
+padding values override the defaults.
 
 ```json title="Nested bands for grouped bars"
 {

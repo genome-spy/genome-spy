@@ -1349,7 +1349,9 @@ describe("Step sizing and domain updates", () => {
 
         const { view } = await createHeadlessEngine(spec);
 
-        expect(view.getSize().width.px).toBeCloseTo(20);
+        // Two 10 px category steps plus the nested-offset primary padding:
+        // 10 * bandspace(2, 0.2, 0.2) = 22.
+        expect(view.getSize().width.px).toBeCloseTo(22);
     });
 
     test("Offset-step size updates when the subgroup domain grows", async () => {
@@ -1378,7 +1380,9 @@ describe("Step sizing and domain updates", () => {
             },
         });
 
-        expect(view.getSize().width.px).toBeCloseTo(20);
+        // Primary padding leaves 2/3 of the view for its only category band,
+        // which must contain two 10 px offset steps: 20 / (2/3) = 30.
+        expect(view.getSize().width.px).toBeCloseTo(30);
         requestLayoutReflow.mockClear();
 
         context.dataFlow
@@ -1388,7 +1392,8 @@ describe("Step sizing and domain updates", () => {
                 { category: "A", group: "third", value: 3 },
             ]);
 
-        expect(view.getSize().width.px).toBeCloseTo(30);
+        // Three offset steps need a 30 px primary band: 30 / (2/3) = 45.
+        expect(view.getSize().width.px).toBeCloseTo(45);
         expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
     });
 

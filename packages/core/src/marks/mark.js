@@ -17,6 +17,7 @@ import createEncoders, {
     isDatumDef,
     isExprDef,
     isFieldDef,
+    isNestedDiscreteOffsetDef,
     isValueDef,
     resolveSecondaryOffset,
 } from "../encoder/encoder.js";
@@ -500,21 +501,66 @@ export default class Mark {
                 encoding
             );
 
+            /**
+             * Copies a channel definition and applies internal properties to
+             * its scale-bearing branch, including a conditional branch.
+             *
+             * @param {import("../spec/channel.js").ChannelDef} channelDef
+             * @param {Record<string, any>} properties
+             */
+            const withScaleProperties = (channelDef, properties) => {
+                const clone = structuredClone(channelDef);
+                const scaleDef = findChannelDefWithScale(clone);
+                if (!scaleDef) {
+                    throw new Error(
+                        "Cannot add scale properties to an unscaled channel definition."
+                    );
+                }
+                Object.assign(scaleDef, properties);
+                return clone;
+            };
+
             for (const primary of /** @type {const} */ (["x", "y"])) {
                 const secondary = primary == "x" ? "x2" : "y2";
                 const primaryOffset = primary + "Offset";
                 const secondaryOffset = secondary + "Offset";
                 const primaryOffsetDef = internalEncoding[primaryOffset];
-                if (
-                    primaryOffsetDef &&
-                    "field" in primaryOffsetDef &&
-                    primaryOffsetDef.type != "quantitative" &&
-                    primaryOffsetDef.band == null
-                ) {
-                    internalEncoding[primaryOffset] = {
-                        ...primaryOffsetDef,
-                        band: this.getOffsetBand(primaryOffset),
-                    };
+                if (isNestedDiscreteOffsetDef(primaryOffsetDef)) {
+                    const primaryDef = internalEncoding[primary];
+                    const primaryScaleDef =
+                        primaryDef && findChannelDefWithScale(primaryDef);
+                    const primaryBandDef =
+                        /** @type {import("../spec/channel.js").BandMixins | undefined} */ (
+                            primaryScaleDef
+                        );
+                    if (
+                        primaryScaleDef &&
+                        primaryBandDef &&
+                        primaryScaleDef.type != "quantitative" &&
+                        primaryBandDef.band == null
+                    ) {
+                        // The offset scale owns placement within the primary
+                        // band, so anchor the primary position at its start.
+                        // Based on Vega-Lite's encoding-driven offset anchor:
+                        // https://github.com/vega/vega-lite/blob/f0e76dfc7efa720817249f612f66599e2ca5ead4/src/compile/mark/encode/position-point.ts
+                        internalEncoding[primary] = withScaleProperties(
+                            primaryDef,
+                            { band: 0 }
+                        );
+                    }
+
+                    const offsetScaleDef =
+                        findChannelDefWithScale(primaryOffsetDef);
+                    const offsetBandDef =
+                        /** @type {import("../spec/channel.js").BandMixins} */ (
+                            offsetScaleDef
+                        );
+                    if (offsetBandDef.band == null) {
+                        internalEncoding[primaryOffset] = withScaleProperties(
+                            primaryOffsetDef,
+                            { band: this.getOffsetBand(primaryOffset) }
+                        );
+                    }
                 }
 
                 const resolved = resolveSecondaryOffset(
@@ -523,16 +569,24 @@ export default class Mark {
                     configured[secondary] != null
                 );
 
-                internalEncoding[secondaryOffset] =
-                    typeof resolved == "number"
-                        ? { value: resolved }
-                        : resolved && "field" in resolved
-                          ? {
-                                ...resolved,
-                                band: this.getOffsetBand(secondaryOffset),
-                                resolutionChannel: primaryOffset,
-                            }
-                          : resolved;
+                if (typeof resolved == "number") {
+                    internalEncoding[secondaryOffset] = { value: resolved };
+                } else if (resolved && findChannelDefWithScale(resolved)) {
+                    /** @type {Record<string, any>} */
+                    const scaleProperties = {
+                        resolutionChannel: primaryOffset,
+                    };
+                    if (isNestedDiscreteOffsetDef(resolved)) {
+                        scaleProperties.band =
+                            this.getOffsetBand(secondaryOffset);
+                    }
+                    internalEncoding[secondaryOffset] = withScaleProperties(
+                        resolved,
+                        scaleProperties
+                    );
+                } else {
+                    internalEncoding[secondaryOffset] = resolved;
+                }
             }
 
             for (const channel of Object.keys(encoding)) {

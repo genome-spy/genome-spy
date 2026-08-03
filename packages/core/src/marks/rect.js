@@ -7,7 +7,11 @@ import { RectVertexBuilder } from "../gl/dataToVertices.js";
 import Mark from "./mark.js";
 import { fixCoveragePositional, fixFill, fixStroke } from "./markUtils.js";
 import { asArray } from "../utils/arrayUtils.js";
-import { getEncoderDataAccessor, isValueDef } from "../encoder/encoder.js";
+import {
+    getEncoderDataAccessor,
+    isNestedDiscreteOffsetDef,
+    isValueDef,
+} from "../encoder/encoder.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import { isDiscrete } from "vega-scale";
 import { cssColorToArray } from "../gl/colorUtils.js";
@@ -109,8 +113,16 @@ export default class RectMark extends Mark {
      */
     fixEncoding(encoding) {
         // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
-        fixCoveragePositional(encoding, "x");
-        fixCoveragePositional(encoding, "y");
+        fixCoveragePositional(
+            encoding,
+            "x",
+            isNestedDiscreteOffsetDef(encoding.xOffset)
+        );
+        fixCoveragePositional(
+            encoding,
+            "y",
+            isNestedDiscreteOffsetDef(encoding.yOffset)
+        );
 
         fixStroke(encoding, this.properties.filled);
         fixFill(encoding, this.properties.filled);

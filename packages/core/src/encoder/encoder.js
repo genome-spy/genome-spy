@@ -372,6 +372,21 @@ export function findChannelDefWithScale(channelDef) {
 }
 
 /**
+ * Returns true when an offset definition creates a discrete nested scale.
+ * The scaled definition may be a field, datum, expression, or condition.
+ *
+ * @param {import("../spec/channel.js").OffsetDef | null | undefined} channelDef
+ */
+export function isNestedDiscreteOffsetDef(channelDef) {
+    const scaleDef = channelDef && findChannelDefWithScale(channelDef);
+    return (
+        scaleDef != null &&
+        scaleDef.type != "quantitative" &&
+        scaleDef.scale !== null
+    );
+}
+
+/**
  * @param {import("../view/unitView.js").default} view
  * @param {import("../spec/channel.js").Channel} channel
  */
