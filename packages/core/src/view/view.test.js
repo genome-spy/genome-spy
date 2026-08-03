@@ -1292,6 +1292,106 @@ describe("Step sizing and domain updates", () => {
         expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
     });
 
+    test("Step size defaults to nested offset groups", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            width: { step: 10 },
+            height: 100,
+            data: {
+                values: [
+                    { category: "A", group: "first", value: 1 },
+                    { category: "A", group: "second", value: 2 },
+                    { category: "B", group: "first", value: 3 },
+                    { category: "B", group: "second", value: 4 },
+                ],
+            },
+            mark: "rect",
+            encoding: {
+                x: {
+                    field: "category",
+                    type: "nominal",
+                    scale: { paddingInner: 0.2, paddingOuter: 0.1 },
+                },
+                xOffset: {
+                    field: "group",
+                    type: "nominal",
+                    scale: { paddingInner: 0.1, paddingOuter: 0.05 },
+                },
+                y: { field: "value", type: "quantitative" },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec);
+
+        expect(view.getSize().width.px).toBeCloseTo(50);
+    });
+
+    test("Step.for position sizes primary categories", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            width: { step: 10, for: "position" },
+            height: 100,
+            data: {
+                values: [
+                    { category: "A", group: "first", value: 1 },
+                    { category: "A", group: "second", value: 2 },
+                    { category: "B", group: "first", value: 3 },
+                    { category: "B", group: "second", value: 4 },
+                ],
+            },
+            mark: "rect",
+            encoding: {
+                x: { field: "category", type: "nominal" },
+                xOffset: { field: "group", type: "nominal" },
+                y: { field: "value", type: "quantitative" },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec);
+
+        expect(view.getSize().width.px).toBeCloseTo(20);
+    });
+
+    test("Offset-step size updates when the subgroup domain grows", async () => {
+        const requestLayoutReflow = vi.fn();
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            width: { step: 10, for: "offset" },
+            height: 100,
+            data: { name: "groups" },
+            mark: "rect",
+            encoding: {
+                x: { field: "category", type: "nominal" },
+                xOffset: { field: "group", type: "nominal" },
+                y: { field: "value", type: "quantitative" },
+            },
+        };
+
+        const initial = [
+            { category: "A", group: "first", value: 1 },
+            { category: "A", group: "second", value: 2 },
+        ];
+        const { view, context } = await createHeadlessEngine(spec, {
+            contextOptions: {
+                getNamedDataFromProvider: () => initial,
+                requestLayoutReflow,
+            },
+        });
+
+        expect(view.getSize().width.px).toBeCloseTo(20);
+        requestLayoutReflow.mockClear();
+
+        context.dataFlow
+            .findNamedDataSource("groups")
+            .dataSource.updateDynamicData([
+                ...initial,
+                { category: "A", group: "third", value: 3 },
+            ]);
+
+        expect(view.getSize().width.px).toBeCloseTo(30);
+        expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+    });
+
     test("Step-sized domain updates propagate size resolution errors", async () => {
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {

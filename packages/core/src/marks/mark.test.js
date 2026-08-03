@@ -1,10 +1,15 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import Rectangle from "../view/layout/rectangle.js";
 import { createSelfClipOptions } from "../view/renderingContext/clipOptions.js";
 import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
-import { createLogicalVisibleRect, createViewportScope } from "./mark.js";
+import Mark from "./mark.js";
+import {
+    createLogicalVisibleRect,
+    createViewportScope,
+    getXIndexOffsetBound,
+} from "./mark.js";
 
 describe("mark factory", () => {
     test("creates arrow marks", async () => {
@@ -191,6 +196,103 @@ describe("mark positional offsets", () => {
             dx: { value: 3 },
             yOffset: { value: 2 },
         });
+    });
+});
+
+describe("offset-aware x indexing", () => {
+    test("uses scaled and constant pixel bounds", () => {
+        const scaled = Object.assign(() => 0, {
+            scale: { range: () => [-12, 8] },
+            constant: false,
+        });
+        const constant = Object.assign(() => -20, { constant: true });
+
+        expect(
+            getXIndexOffsetBound(
+                /** @type {any} */ ({
+                    xOffset: scaled,
+                    x2Offset: constant,
+                })
+            )
+        ).toBe(20);
+    });
+
+    test("disables culling for an unbounded pass-through offset", () => {
+        const unbounded = Object.assign(
+            (/** @type {any} */ datum) => datum.offset,
+            { constant: false }
+        );
+
+        expect(
+            getXIndexOffsetBound(/** @type {any} */ ({ xOffset: unbounded }))
+        ).toBeUndefined();
+    });
+
+    test("expands an indexed domain by the bounded pixel offset", () => {
+        const lookup = vi.fn(
+            (/** @type {number} */ _start, /** @type {number} */ _end, arr) => {
+                arr[0] = 2;
+                arr[1] = 5;
+                return arr;
+            }
+        );
+        const draw = vi.fn();
+        const scale = Object.assign(() => 0, {
+            type: "index",
+            domain: () => [100, 200],
+        });
+        const resolution = {
+            getScale: () => scale,
+            getAxisLength: () => 100,
+        };
+        const rangeEntry = { offset: 0, count: 10, xIndex: lookup };
+        const mark = /** @type {any} */ ({
+            bufferInfo: {},
+            encoders: {
+                xOffset: Object.assign(() => 0, {
+                    scale: { range: () => [-10, 10] },
+                    constant: false,
+                }),
+            },
+            unitView: { getScaleResolution: () => resolution },
+            rangeMap: { get: () => rangeEntry },
+        });
+
+        Mark.prototype.createRenderCallback.call(mark, draw, {})();
+
+        expect(lookup).toHaveBeenCalledWith(89, 210, [2, 5]);
+        expect(draw).toHaveBeenCalledWith(2, 3);
+    });
+
+    test("draws the full range when an indexed offset is unbounded", () => {
+        const lookup = vi.fn();
+        const draw = vi.fn();
+        const scale = Object.assign(() => 0, {
+            type: "locus",
+            domain: () => [100, 200],
+        });
+        const rangeEntry = { offset: 4, count: 10, xIndex: lookup };
+        const mark = /** @type {any} */ ({
+            bufferInfo: {},
+            encoders: {
+                xOffset: Object.assign(
+                    (/** @type {any} */ datum) => datum.offset,
+                    { constant: false }
+                ),
+            },
+            unitView: {
+                getScaleResolution: () => ({
+                    getScale: () => scale,
+                    getAxisLength: () => 100,
+                }),
+            },
+            rangeMap: { get: () => rangeEntry },
+        });
+
+        Mark.prototype.createRenderCallback.call(mark, draw, {})();
+
+        expect(lookup).not.toHaveBeenCalled();
+        expect(draw).toHaveBeenCalledWith(4, 10);
     });
 });
 

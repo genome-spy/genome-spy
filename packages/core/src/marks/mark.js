@@ -69,6 +69,46 @@ export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
 export const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
 
 /**
+ * Returns a conservative horizontal pixel bound for indexed rendering.
+ * Undefined means that a data-dependent pass-through offset is unbounded and
+ * the x index must not be used for culling.
+ *
+ * @param {Partial<Record<string, import("../types/encoder.js").Encoder>>} encoders
+ * @returns {number | undefined}
+ */
+export function getXIndexOffsetBound(encoders) {
+    let bound = 0;
+
+    for (const channel of ["xOffset", "x2Offset", "dx"]) {
+        const encoder = encoders[channel];
+        if (!encoder) {
+            continue;
+        }
+
+        if (encoder.scale) {
+            const range = encoder.scale.range();
+            if (!range.every((value) => Number.isFinite(value))) {
+                return undefined;
+            }
+            bound = Math.max(
+                bound,
+                ...range.map((value) => Math.abs(/** @type {number} */ (value)))
+            );
+        } else if (encoder.constant) {
+            const value = encoder(/** @type {any} */ ({}));
+            if (!Number.isFinite(value)) {
+                return undefined;
+            }
+            bound = Math.max(bound, Math.abs(/** @type {number} */ (value)));
+        } else {
+            return undefined;
+        }
+    }
+
+    return bound;
+}
+
+/**
  * @typedef {import("../types/rendering.js").ClipOptions} ClipOptions
  * @typedef {import("../view/layout/rectangle.js").default} Rectangle
  */
@@ -1506,6 +1546,11 @@ export default class Mark {
 
         const scale = this.unitView.getScaleResolution("x")?.getScale();
         const continuous = scale && isContinuous(scale.type);
+        const offsetBound = getXIndexOffsetBound(
+            /** @type {Partial<Record<string, import("../types/encoder.js").Encoder>>} */ (
+                this.encoders
+            )
+        );
         const domainStartOffset = ["index", "locus"].includes(scale?.type)
             ? -1
             : 0;
@@ -1514,11 +1559,16 @@ export default class Mark {
         const arr = [0, 0];
 
         drawWithRangeEntry = (rangeEntry) => {
-            if (continuous && rangeEntry.xIndex) {
+            if (continuous && rangeEntry.xIndex && offsetBound !== undefined) {
                 const domain = scale.domain();
+                const axisLength =
+                    this.unitView.getScaleResolution("x").getAxisLength() || 1;
+                const offsetDomainMargin =
+                    (Math.abs(domain[1] - domain[0]) / axisLength) *
+                    offsetBound;
                 const vertexIndices = rangeEntry.xIndex(
-                    domain[0] + domainStartOffset,
-                    domain[1],
+                    domain[0] + domainStartOffset - offsetDomainMargin,
+                    domain[1] + offsetDomainMargin,
                     arr
                 );
                 const offset = vertexIndices[0];

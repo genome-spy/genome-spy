@@ -465,7 +465,39 @@ export default class View {
                     _scale.paddingOuter()
                 );
 
-                return { px: steps * stepSize, grow: 0 };
+                const offsetChannel =
+                    dimension == "width" ? "xOffset" : "yOffset";
+                const offsetScale =
+                    this.getScaleResolution(offsetChannel)?.getScale();
+                const stepFor =
+                    value.for ??
+                    (offsetScale && isDiscrete(offsetScale.type)
+                        ? "offset"
+                        : "position");
+
+                let effectiveStepSize = stepSize;
+                if (stepFor == "offset") {
+                    if (!offsetScale || !isDiscrete(offsetScale.type)) {
+                        throw new ViewError(
+                            `Cannot use ${dimension}.step.for = "offset" without a discrete ${offsetChannel} scale!`,
+                            this
+                        );
+                    }
+
+                    const discreteOffsetScale =
+                        /** @type {import("d3-scale").ScaleBand<any>} */ (
+                            offsetScale
+                        );
+                    const offsetSteps = bandSpace(
+                        offsetScale.domain().length,
+                        discreteOffsetScale.paddingInner(),
+                        discreteOffsetScale.paddingOuter()
+                    );
+                    effectiveStepSize *=
+                        offsetSteps / (1 - _scale.paddingInner());
+                }
+
+                return { px: steps * effectiveStepSize, grow: 0 };
             } else if (implicit) {
                 // Vega-Lite treats a missing positional channel as one
                 // discrete step. Keep explicit step sizes strict.
@@ -612,6 +644,20 @@ export default class View {
         this.registerDisposer(() =>
             resolution.removeEventListener("domain", listener)
         );
+
+        if (value.for != "position") {
+            const offsetChannel = dimension == "width" ? "xOffset" : "yOffset";
+            const offsetResolution = this.getScaleResolution(offsetChannel);
+            if (
+                offsetResolution &&
+                isDiscrete(offsetResolution.getResolvedScaleType())
+            ) {
+                offsetResolution.addEventListener("domain", listener);
+                this.registerDisposer(() =>
+                    offsetResolution.removeEventListener("domain", listener)
+                );
+            }
+        }
     }
 
     /**
