@@ -31,9 +31,27 @@ the most common exact mutation profile rather than the largest individual set.
 A dark dot denotes membership in a gene set, and a vertical rule connects the
 outermost memberships when a profile contains mutations in multiple genes.
 
+Move the pointer over a set-size bar or a matrix row to highlight the exact
+intersections that contain that set. A horizontal ruler identifies the hovered
+set. Membership points, connecting rules, and intersection-size bars remain
+dark for matching profiles, while the other profiles are muted.
+
 Only observed profiles with at least one selected mutation are shown. Omitting
 unobserved profiles keeps the matrix compact and avoids enumerating a power set
 whose size grows exponentially with the number of sets.
+
+## Interactive visual search
+
+Without highlighting, finding the sets that intersect with a particular set
+requires scanning its row, tracing every active column, and then reading the
+other memberships in those columns. The hover interaction turns the set into a
+temporary visual query. Muting competing profiles narrows the search while
+keeping the full matrix visible as context.
+
+This linked highlighting makes co-occurring sets easier to spot and lets the
+viewer compare their exact intersection sizes in the aligned bars above. It
+also preserves orientation when moving between sets: columns are emphasized
+rather than removed or reordered.
 
 ## From mutation columns to intersection profiles
 
@@ -74,3 +92,5 @@ sense.
   layout, while selective scale resolution aligns the related panels.
 - Layered point, rule, rect, and text marks construct the traditional UpSet
   matrix and bar-chart appearance.
+- A shared ruler parameter links hover input from the set-size bars and matrix
+  to reactive highlighting of matching profiles.

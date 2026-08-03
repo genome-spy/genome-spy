@@ -3,7 +3,7 @@
 
   "description": [
     "Interactive GenomeSpy version of the five-set mutations example from UpSetR.",
-    "Only observed, nonempty intersections are displayed."
+    "Shows exact mutation intersections among five genes in a glioblastoma cohort using aligned set-size bars, intersection-size bars, and hover-linked matrix highlighting."
   ],
 
   "name": "upsetr-mutations",
@@ -57,18 +57,12 @@
       "description": "Compute the inclusive mutation count for each gene."
     },
     {
-      "type": "formula",
-      "expr": "datum.setIndex",
-      "as": "setOrder",
-      "description": "Preserve the set order requested by the UpSetR example."
-    },
-    {
       "type": "collect",
       "description": "Buffer the static intersection rows so reactive downstream transforms do not repropagate data from the source."
     },
     {
       "type": "formula",
-      "expr": "isValid(setCursor.values.y) && round(setCursor.values.y) == datum.setOrder && datum.member ? 1 : 0",
+      "expr": "isValid(setCursor.values.y) && round(setCursor.values.y) == datum.setIndex && datum.member ? 1 : 0",
       "as": "hoveredSetMember",
       "description": "Mark the membership cell belonging to the currently hovered set row."
     },
@@ -91,12 +85,6 @@
       "fields": [null],
       "as": ["profileNumber"],
       "description": "Order intersections by frequency, using the profile key only as a deterministic tie-breaker."
-    },
-    {
-      "type": "formula",
-      "expr": "datum.profileNumber - 1",
-      "as": "profileIndex",
-      "description": "Convert the one-based profile rank into a zero-based matrix column."
     }
   ],
 
@@ -149,7 +137,7 @@
       "transform": [
         {
           "type": "filter",
-          "expr": "datum.setOrder == 0",
+          "expr": "datum.setIndex == 0",
           "description": "Retain one row per profile because profile statistics repeat for every set."
         }
       ],
@@ -159,7 +147,7 @@
           "mark": { "type": "rect", "color": "#3b3b3b" },
           "encoding": {
             "x": {
-              "field": "profileIndex",
+              "field": "profileNumber",
               "type": "index",
               "axis": null
             },
@@ -184,7 +172,7 @@
             "dy": -5
           },
           "encoding": {
-            "x": { "field": "profileIndex", "type": "index" },
+            "x": { "field": "profileNumber", "type": "index" },
             "y": { "field": "profileSize", "type": "quantitative" },
             "text": { "field": "profileSize", "type": "quantitative" },
             "color": { "value": "#333" }
@@ -227,7 +215,7 @@
       "transform": [
         {
           "type": "filter",
-          "expr": "datum.profileIndex == 0",
+          "expr": "datum.profileNumber == 1",
           "description": "Retain one row per set because set sizes repeat for every profile."
         }
       ],
@@ -246,7 +234,7 @@
               }
             },
             "y": {
-              "field": "setOrder",
+              "field": "setIndex",
               "type": "index",
               "axis": null
             }
@@ -263,7 +251,7 @@
           },
           "encoding": {
             "x": { "field": "setSize", "type": "quantitative" },
-            "y": { "field": "setOrder", "type": "index" },
+            "y": { "field": "setIndex", "type": "index" },
             "text": { "field": "setSize", "type": "quantitative" },
             "color": { "value": "white" }
           }
@@ -313,7 +301,7 @@
           "transform": [
             {
               "type": "filter",
-              "expr": "datum.profileIndex == 0",
+              "expr": "datum.profileNumber == 1",
               "description": "Retain one matrix-axis label row per set."
             }
           ],
@@ -325,7 +313,7 @@
           },
           "encoding": {
             "x": { "value": 0 },
-            "y": { "field": "setOrder", "type": "index" },
+            "y": { "field": "setIndex", "type": "index" },
             "text": { "field": "set" },
             "color": { "value": "#555" }
           }
@@ -335,14 +323,14 @@
           "transform": [
             {
               "type": "filter",
-              "expr": "datum.setOrder % 2 == 0 && datum.profileIndex == 0",
+              "expr": "datum.setIndex % 2 == 0 && datum.profileNumber == 1",
               "description": "Draw one alternating background rectangle for every other set row."
             }
           ],
           "mark": "rect",
           "encoding": {
             "x": null,
-            "y": { "field": "setOrder", "type": "index" },
+            "y": { "field": "setIndex", "type": "index" },
             "color": { "value": "#f1f1f1" }
           }
         },
@@ -356,8 +344,8 @@
             "opacity": { "expr": "isValid(setCursor.values.y) ? 0.2 : 1" }
           },
           "encoding": {
-            "x": { "field": "profileIndex", "type": "index" },
-            "y": { "field": "setOrder", "type": "index" },
+            "x": { "field": "profileNumber", "type": "index" },
+            "y": { "field": "setIndex", "type": "index" },
             "color": { "value": "#d1d1d1" }
           }
         },
@@ -367,12 +355,8 @@
             { "type": "filter", "expr": "datum.member" },
             {
               "type": "aggregate",
-              "groupby": [
-                "profileKey",
-                "profileIndex",
-                "profileContainsHoveredSet"
-              ],
-              "fields": ["setOrder", "setOrder"],
+              "groupby": ["profileNumber", "profileContainsHoveredSet"],
+              "fields": ["setIndex", "setIndex"],
               "ops": ["min", "max"],
               "as": ["firstSetIndex", "lastSetIndex"],
               "description": "Collapse active cells into one connector spanning the first and last set of each profile."
@@ -384,7 +368,7 @@
             "strokeCap": "round"
           },
           "encoding": {
-            "x": { "field": "profileIndex", "type": "index" },
+            "x": { "field": "profileNumber", "type": "index" },
             "y": { "field": "firstSetIndex", "type": "index" },
             "y2": { "field": "lastSetIndex" }
           }
@@ -400,11 +384,11 @@
           },
           "encoding": {
             "x": {
-              "field": "profileIndex",
+              "field": "profileNumber",
               "type": "index",
               "axis": null
             },
-            "y": { "field": "setOrder", "type": "index", "axis": null },
+            "y": { "field": "setIndex", "type": "index", "axis": null },
             "tooltip": [
               {
                 "field": "profileSize",
