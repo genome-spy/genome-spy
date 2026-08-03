@@ -1,7 +1,7 @@
 {
   "name": "@genome-spy/doc-embed",
   "private": true,
-  "version": "0.81.0",
+  "version": "0.82.0",
   "description": "Embeds GenomeSpy to documentation",
   "author": "Kari Lavikka <kari.lavikka@helsinki.fi>",
   "homepage": "",
@@ -11,8 +11,8 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@genome-spy/app": "^0.81.0",
-    "@genome-spy/core": "^0.81.0",
+    "@genome-spy/app": "^0.82.0",
+    "@genome-spy/core": "^0.82.0",
     "lit": "^3.1.0"
   }
 }

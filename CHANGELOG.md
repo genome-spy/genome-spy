@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.82.0](https://github.com/genome-spy/genome-spy/compare/v0.81.0...v0.82.0) (2026-08-03)
+
+### Bug Fixes
+
+* **app:** show root parameters in view settings ([f1aedf9](https://github.com/genome-spy/genome-spy/commit/f1aedf9849a2fd7d141bd91db97008bc19b6044e)) by @tuner
+* **core:** accept reactive and disabled encodings ([541ac80](https://github.com/genome-spy/genome-spy/commit/541ac809d7340537073e0d419735853c23258ee1)) by @tuner
+* **core:** retain all merged data branches ([822a87d](https://github.com/genome-spy/genome-spy/commit/822a87df362be6146379a63fcc85806a2623f2d2)) by @tuner
+* **docs:** resolve gallery thumbnail URLs ([4c37a37](https://github.com/genome-spy/genome-spy/commit/4c37a372b71f520a5807d199f8edcdb43deddb89)) by @tuner
+
+### Features
+
+* **core:** add Arrow IPC data loading ([b39a905](https://github.com/genome-spy/genome-spy/commit/b39a90547bb39479f4617b175af340ce6ed93fdf)), closes [#445](https://github.com/genome-spy/genome-spy/issues/445) by @tuner
+* **core:** add cross transform ([#443](https://github.com/genome-spy/genome-spy/issues/443)) ([968b8e6](https://github.com/genome-spy/genome-spy/commit/968b8e62dad73fb93ce9148672dad869f79f2bd5)) by @tuner
+* **core:** add setIntersection transform and UpSet example ([#449](https://github.com/genome-spy/genome-spy/issues/449)) ([e9708eb](https://github.com/genome-spy/genome-spy/commit/e9708eba19d5e039b5f4fb9f2f0aa3effeab8241)) by @tuner
+* **core:** add view-level overhang reservation ([#450](https://github.com/genome-spy/genome-spy/issues/450)) ([f761eff](https://github.com/genome-spy/genome-spy/commit/f761eff02cd9bdefe6ce498800b31c1ca1ec6e2b)) by @tuner
+* **docs:** add interactive ASCAT fitting example ([#444](https://github.com/genome-spy/genome-spy/issues/444)) ([9eaba00](https://github.com/genome-spy/genome-spy/commit/9eaba00bbe0dd9173aac65018fc53cb3c4262369)) by @tuner
+
 # [0.81.0](https://github.com/genome-spy/genome-spy/compare/v0.80.0...v0.81.0) (2026-07-27)
 
 ### Bug Fixes
