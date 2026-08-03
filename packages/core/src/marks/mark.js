@@ -366,6 +366,18 @@ export default class Mark {
     }
 
     /**
+     * Returns the relative position within a discrete offset band.
+     * Point-like marks use subgroup centers by default.
+     *
+     * @param {string} channel
+     * @returns {number}
+     * @protected
+     */
+    getOffsetBand(channel) {
+        return 0.5;
+    }
+
+    /**
      * Handles dynamic properties that are not bound to uniforms but need
      * to trigger a graphics update, i.e., rebuild the vertex buffer.
      *
@@ -452,6 +464,19 @@ export default class Mark {
                 const secondary = primary == "x" ? "x2" : "y2";
                 const primaryOffset = primary + "Offset";
                 const secondaryOffset = secondary + "Offset";
+                const primaryOffsetDef = internalEncoding[primaryOffset];
+                if (
+                    primaryOffsetDef &&
+                    "field" in primaryOffsetDef &&
+                    primaryOffsetDef.type != "quantitative" &&
+                    primaryOffsetDef.band == null
+                ) {
+                    internalEncoding[primaryOffset] = {
+                        ...primaryOffsetDef,
+                        band: this.getOffsetBand(primaryOffset),
+                    };
+                }
+
                 const resolved = resolveSecondaryOffset(
                     internalEncoding[primaryOffset],
                     propertyValues[secondaryOffset],
@@ -462,7 +487,11 @@ export default class Mark {
                     typeof resolved == "number"
                         ? { value: resolved }
                         : resolved && "field" in resolved
-                          ? { ...resolved, resolutionChannel: primaryOffset }
+                          ? {
+                                ...resolved,
+                                band: this.getOffsetBand(secondaryOffset),
+                                resolutionChannel: primaryOffset,
+                            }
                           : resolved;
             }
 

@@ -75,6 +75,18 @@ export default class RectMark extends Mark {
         ];
     }
 
+    /**
+     * Rectangles span the full subgroup band when the secondary positional
+     * endpoint is implicit.
+     *
+     * @param {string} channel
+     * @returns {number}
+     * @protected
+     */
+    getOffsetBand(channel) {
+        return channel == "x2Offset" || channel == "y2Offset" ? 1 : 0;
+    }
+
     get opaque() {
         return (
             getCachedOrCall(

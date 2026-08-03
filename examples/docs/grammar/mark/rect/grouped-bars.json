@@ -1,0 +1,29 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Grouped bar chart using a nested xOffset scale.",
+
+  "data": {
+    "values": [
+      { "category": "A", "group": "First", "value": 28 },
+      { "category": "A", "group": "Second", "value": 42 },
+      { "category": "B", "group": "First", "value": 55 },
+      { "category": "B", "group": "Second", "value": 31 },
+      { "category": "C", "group": "First", "value": 38 },
+      { "category": "C", "group": "Second", "value": 49 }
+    ]
+  },
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": { "field": "category", "type": "nominal" },
+    "xOffset": {
+      "field": "group",
+      "type": "nominal",
+      "scale": { "paddingInner": 0.15 }
+    },
+    "y": { "field": "value", "type": "quantitative" },
+    "color": { "field": "group", "type": "nominal" }
+  }
+}

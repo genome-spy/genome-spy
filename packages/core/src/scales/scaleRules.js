@@ -54,6 +54,8 @@ export function getDefaultScaleType(channel, dataType) {
     const defaults = {
         x: ["band", "band", "linear"],
         y: ["band", "band", "linear"],
+        xOffset: ["band", "band", "linear"],
+        yOffset: ["band", "band", "linear"],
         size: [undefined, "point", "linear"],
         opacity: [undefined, "point", "linear"],
         fillOpacity: [undefined, "point", "linear"],

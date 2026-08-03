@@ -112,6 +112,7 @@ describe("mark positional offsets", () => {
         );
         expect(encoding.x2Offset).toEqual({
             ...encoding.xOffset,
+            band: 1,
             resolutionChannel: "xOffset",
         });
     });

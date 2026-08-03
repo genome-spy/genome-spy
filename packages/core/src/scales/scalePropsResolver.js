@@ -1,5 +1,5 @@
 import { isDiscrete } from "vega-scale";
-import { isColorChannel } from "../encoder/encoder.js";
+import { isColorChannel, isOffsetChannel } from "../encoder/encoder.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 import mergeObjects from "../utils/mergeObjects.js";
@@ -140,6 +140,26 @@ export function resolveScalePropsBase({
         props.reverse == undefined
     ) {
         props.reverse = true;
+    }
+
+    if (isOffsetChannel(channel) && isDiscrete(props.type) && !props.range) {
+        const positionChannel = channel == "xOffset" ? "x" : "y";
+        const rangeOwner = memberList[0]?.view;
+        const positionResolution =
+            rangeOwner?.getScaleResolution(positionChannel);
+
+        if (positionResolution?.getResolvedScaleType() == "band") {
+            // Initialize the dependency before binding the reactive range.
+            // Otherwise its first range notification can re-enter bandwidth()
+            // while the offset scale itself is being initialized.
+            positionResolution.getScale();
+            const size = positionChannel == "x" ? "width" : "height";
+            props.range = [
+                0,
+                { expr: `bandwidth("${positionChannel}") * ${size}` },
+            ];
+            /** @type {any} */ (props).__rangeExprScope = rangeOwner;
+        }
     }
 
     if (props.range && props.scheme) {
