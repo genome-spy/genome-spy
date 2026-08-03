@@ -194,6 +194,72 @@ describe("layout snapshot helper", () => {
         );
     });
 
+    test("collapsed top overhang keeps a lower row adjacent to the upper row", async () => {
+        const layout = await specToLayout(
+            {
+                spacing: 0,
+                vconcat: [
+                    {
+                        name: "upper",
+                        height: 40,
+                        data: { values: [{ x: 1, y: 2 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                    {
+                        name: "lower",
+                        height: 40,
+                        overhang: { top: false },
+                        data: { values: [{ x: 1, y: 2 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: { orient: "top" },
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            {},
+            Rectangle.create(0, 0, 200, 100)
+        );
+
+        const upper = findLayoutNode(layout, "upper");
+        const lower = findLayoutNode(layout, "lower");
+        const axis = findLayoutNode(layout, "axis_top");
+
+        if (!upper || !lower || !axis) {
+            throw new Error(
+                "Expected upper, lower, and top-axis layout nodes."
+            );
+        }
+
+        expect(getRectProp(lower.coords, "y")).toBe(
+            getRectProp(upper.coords, "y") + getRectProp(upper.coords, "height")
+        );
+        expect(getRectProp(axis.coords, "y")).toBeLessThan(
+            getRectProp(lower.coords, "y")
+        );
+    });
+
     test("captures a shared-axis concat layout", async () => {
         expect(
             await specToLayout({
