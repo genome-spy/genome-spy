@@ -46,7 +46,7 @@ export default class SetIntersectionTransform extends Transform {
         /** @type {Map<string | number | boolean | symbol, any>} */
         this.elementRoot = new Map();
 
-        /** @type {{ memberships: Map<number, boolean> }[]} */
+        /** @type {Map<number, boolean>[]} */
         this.elements = [];
 
         /** @type {Map<string | number | boolean, number>} */
@@ -101,7 +101,7 @@ export default class SetIntersectionTransform extends Transform {
     /**
      * @param {(string | number | boolean)[]} elementKey
      */
-    #getElement(elementKey) {
+    #getMemberships(elementKey) {
         let node = this.elementRoot;
 
         for (const value of elementKey) {
@@ -113,14 +113,14 @@ export default class SetIntersectionTransform extends Transform {
             node = child;
         }
 
-        let element = node.get(ELEMENT_STATE);
-        if (!element) {
-            element = { memberships: new Map() };
-            node.set(ELEMENT_STATE, element);
-            this.elements.push(element);
+        let memberships = node.get(ELEMENT_STATE);
+        if (!memberships) {
+            memberships = new Map();
+            node.set(ELEMENT_STATE, memberships);
+            this.elements.push(memberships);
         }
 
-        return /** @type {{ memberships: Map<number, boolean> }} */ (element);
+        return /** @type {Map<number, boolean>} */ (memberships);
     }
 
     /**
@@ -145,18 +145,18 @@ export default class SetIntersectionTransform extends Transform {
         const membership = this.membershipAccessor
             ? this.#normalizeMembership(this.membershipAccessor(datum))
             : true;
-        const element = this.#getElement(elementKey);
+        const memberships = this.#getMemberships(elementKey);
 
         if (
-            element.memberships.has(setIndex) &&
-            element.memberships.get(setIndex) !== membership
+            memberships.has(setIndex) &&
+            memberships.get(setIndex) !== membership
         ) {
             throw new Error(
                 "Conflicting membership values for the same element and set."
             );
         }
 
-        element.memberships.set(setIndex, membership);
+        memberships.set(setIndex, membership);
     }
 
     #flush() {
@@ -174,9 +174,9 @@ export default class SetIntersectionTransform extends Transform {
          */
         const profiles = new Map();
 
-        for (const element of elements) {
+        for (const elementMemberships of elements) {
             const memberships = sets.map(
-                (_, setIndex) => element.memberships.get(setIndex) === true
+                (_, setIndex) => elementMemberships.get(setIndex) === true
             );
             const profileKey = memberships
                 .map((membership) => (membership ? "1" : "0"))
