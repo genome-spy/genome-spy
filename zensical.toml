@@ -40,6 +40,7 @@ nav = [
             { "RegexExtract" = "grammar/transform/regex-extract.md" },
             { "RegexFold" = "grammar/transform/regex-fold.md" },
             "grammar/transform/sample.md",
+            { "SetIntersection" = "grammar/transform/set-intersection.md" },
             "grammar/transform/stack.md",
             "grammar/transform/window.md",
         ] },
@@ -106,6 +107,7 @@ nav = [
         "examples/genomic-data/bam-read-alignments.md",
         "examples/genomic-data/multiple-sequence-alignment.md",
         "examples/genomic-data/genome-browser.md",
+        "examples/generic/upsetr-mutations.md",
     ] },
     "license.md",
 ]

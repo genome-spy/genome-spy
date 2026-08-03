@@ -1,0 +1,91 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Exact co-mutation profiles across samples.",
+
+  "data": {
+    "values": [
+      { "sample": "S1", "gene": "TP53" },
+      { "sample": "S1", "gene": "KRAS" },
+      { "sample": "S2", "gene": "TP53" },
+      { "sample": "S3", "gene": "PIK3CA" },
+      { "sample": "S3", "gene": "PTEN" },
+      { "sample": "S4", "gene": "TP53" },
+      { "sample": "S4", "gene": "PIK3CA" },
+      { "sample": "S5", "gene": "KRAS" },
+      { "sample": "S6", "gene": "TP53" },
+      { "sample": "S6", "gene": "KRAS" },
+      { "sample": "S7", "gene": "PTEN" },
+      { "sample": "S8", "gene": "TP53" },
+      { "sample": "S8", "gene": "PIK3CA" }
+    ]
+  },
+
+  "transform": [
+    { "type": "setIntersection", "element": "sample", "set": "gene" }
+  ],
+
+  "spacing": 12,
+  "resolve": { "scale": { "y": "shared" } },
+
+  "hconcat": [
+    {
+      "width": { "step": 70 },
+      "height": { "step": 32 },
+      "title": "Mutated genes",
+      "mark": { "type": "rect", "stroke": "white", "strokeWidth": 2 },
+      "encoding": {
+        "x": {
+          "field": "set",
+          "type": "nominal",
+          "axis": { "title": "Gene", "labelAngle": 0 }
+        },
+        "y": {
+          "field": "profileKey",
+          "type": "nominal",
+          "axis": { "title": "Exact profile" }
+        },
+        "color": {
+          "field": "member",
+          "type": "nominal",
+          "scale": {
+            "type": "ordinal",
+            "domain": [false, true],
+            "range": ["#eeeeee", "#333333"]
+          },
+          "legend": null
+        },
+        "tooltip": [
+          { "field": "profileKey", "title": "Profile" },
+          { "field": "profileSize", "title": "Samples" },
+          { "field": "profileDegree", "title": "Mutated genes" },
+          { "field": "set", "title": "Gene" },
+          { "field": "member", "title": "Member" }
+        ]
+      },
+      "name": "profile-memberships"
+    },
+
+    {
+      "width": 40,
+      "height": { "step": 32 },
+      "title": "Samples",
+      "transform": [{ "type": "filter", "expr": "datum.setIndex == 0" }],
+      "mark": { "type": "text", "fontWeight": "bold", "color": "#555" },
+      "encoding": {
+        "x": { "value": 0.5 },
+        "y": { "field": "profileKey", "type": "nominal", "axis": null },
+        "text": { "field": "profileSize", "type": "quantitative" }
+      },
+      "name": "profile-counts"
+    }
+  ],
+
+  "config": {
+    "axis": {
+      "labelColor": "#555",
+      "titleColor": "#333",
+      "titleFontWeight": "normal"
+    }
+  }
+}

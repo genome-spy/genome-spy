@@ -19,6 +19,7 @@ import ProjectTransform from "./project.js";
 import RegexExtractTransform from "./regexExtract.js";
 import RegexFoldTransform from "./regexFold.js";
 import SampleTransform from "./sample.js";
+import SetIntersectionTransform from "./setIntersection.js";
 import StackTransform from "./stack.js";
 import FlattenSequenceTransform from "./flattenSequence.js";
 import AggregateTransform from "./aggregate.js";
@@ -53,6 +54,7 @@ export const transforms = {
     regexExtract: RegexExtractTransform,
     regexFold: RegexFoldTransform,
     sample: SampleTransform,
+    setIntersection: SetIntersectionTransform,
     truncateText: TruncateTextTransform,
     window: WindowTransform,
     stack: StackTransform,

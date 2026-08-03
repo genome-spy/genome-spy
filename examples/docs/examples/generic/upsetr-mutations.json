@@ -1,0 +1,418 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Interactive GenomeSpy version of the five-set mutations example from UpSetR.",
+    "Shows exact mutation intersections among five genes in a glioblastoma cohort using aligned set-size bars, intersection-size bars, and hover-linked matrix highlighting."
+  ],
+
+  "name": "upsetr-mutations",
+
+  "data": {
+    "url": "https://raw.githubusercontent.com/hms-dbmi/UpSetR/master/inst/extdata/mutations.csv",
+    "format": { "type": "csv" },
+    "description": "Load UpSetR's bundled glioblastoma mutation dataset directly from GitHub."
+  },
+
+  "params": [
+    {
+      "name": "setCursor",
+      "description": "The set row currently hovered in the set-size plot or intersection matrix."
+    }
+  ],
+
+  "transform": [
+    {
+      "type": "regexFold",
+      "columnRegex": "^(PTEN|TP53|EGFR|PIK3R1|RB1)$",
+      "asKey": "set",
+      "asValue": "membership",
+      "description": "Normalize the five gene columns selected in the UpSetR example into patient-gene membership rows."
+    },
+    {
+      "type": "setIntersection",
+      "element": "Identifier",
+      "set": "set",
+      "membership": "membership",
+      "description": "Group patients by their exact mutation profiles and expand each observed profile across the five genes."
+    },
+    {
+      "type": "filter",
+      "expr": "datum.profileDegree > 0",
+      "description": "Match UpSetR by excluding patients with no mutation in any of the selected genes."
+    },
+    {
+      "type": "formula",
+      "expr": "datum.member ? datum.profileSize : 0",
+      "as": "memberSize",
+      "description": "Contribute each profile's patient count to every set included in that profile."
+    },
+    {
+      "type": "window",
+      "groupby": ["set"],
+      "frame": [null, null],
+      "ops": ["sum"],
+      "fields": ["memberSize"],
+      "as": ["setSize"],
+      "description": "Compute the inclusive mutation count for each gene."
+    },
+    {
+      "type": "collect",
+      "description": "Buffer the static intersection rows so reactive downstream transforms do not repropagate data from the source."
+    },
+    {
+      "type": "formula",
+      "expr": "isValid(setCursor.values.y) && round(setCursor.values.y) == datum.setIndex && datum.member ? 1 : 0",
+      "as": "hoveredSetMember",
+      "description": "Mark the membership cell belonging to the currently hovered set row."
+    },
+    {
+      "type": "window",
+      "groupby": ["profileKey"],
+      "frame": [null, null],
+      "ops": ["max"],
+      "fields": ["hoveredSetMember"],
+      "as": ["profileContainsHoveredSet"],
+      "description": "Propagate hovered-set membership to every row of each exact profile."
+    },
+    {
+      "type": "window",
+      "sort": {
+        "field": ["profileSize", "profileKey"],
+        "order": ["descending", "ascending"]
+      },
+      "ops": ["dense_rank"],
+      "fields": [null],
+      "as": ["profileNumber"],
+      "description": "Order intersections by frequency, using the profile key only as a deterministic tie-breaker."
+    }
+  ],
+
+  "columns": 2,
+  "spacing": 3,
+
+  "resolve": {
+    "scale": { "x": "shared", "y": "shared" }
+  },
+
+  "scales": {
+    "x": { "paddingInner": 0.22, "paddingOuter": 0.12 },
+    "y": { "paddingInner": 0.16, "paddingOuter": 0.08 }
+  },
+
+  "concat": [
+    {
+      "width": 0,
+      "height": 0,
+      "name": "empty-space",
+      "data": { "values": [] },
+      "mark": "point"
+    },
+
+    {
+      "name": "intersection-sizes",
+      "width": { "step": 20 },
+      "height": 210,
+      "resolve": { "scale": { "y": "excluded" } },
+      "scales": {
+        "y": {
+          "zero": true,
+          "nice": true,
+          "padding": 0.12,
+          "domainMin": 0
+        }
+      },
+      "encoding": {
+        "opacity": {
+          "expr": "!isValid(setCursor.values.y) || datum.profileContainsHoveredSet == 1",
+          "type": "nominal",
+          "scale": {
+            "type": "ordinal",
+            "domain": [false, true],
+            "range": [0.14, 1]
+          },
+          "legend": null
+        }
+      },
+      "transform": [
+        {
+          "type": "filter",
+          "expr": "datum.setIndex == 0",
+          "description": "Retain one row per profile because profile statistics repeat for every set."
+        }
+      ],
+      "layer": [
+        {
+          "name": "intersection-bars",
+          "mark": { "type": "rect", "color": "#3b3b3b" },
+          "encoding": {
+            "x": {
+              "field": "profileNumber",
+              "type": "index",
+              "axis": null
+            },
+            "y": {
+              "field": "profileSize",
+              "type": "quantitative",
+              "axis": {
+                "title": "Intersection Size",
+                "grid": true,
+                "tickCount": 5
+              }
+            }
+          }
+        },
+        {
+          "name": "intersection-labels",
+          "mark": {
+            "type": "text",
+            "size": 11,
+            "fontWeight": "bold",
+            "baseline": "bottom",
+            "dy": -5
+          },
+          "encoding": {
+            "x": { "field": "profileNumber", "type": "index" },
+            "y": { "field": "profileSize", "type": "quantitative" },
+            "text": { "field": "profileSize", "type": "quantitative" },
+            "color": { "value": "#333" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "set-sizes",
+      "width": 150,
+      "height": { "step": 20 },
+      "resolve": { "scale": { "x": "excluded" } },
+      "scales": {
+        "x": {
+          "zero": true,
+          "nice": true,
+          "reverse": true,
+          "padding": 0.08,
+          "domainMin": 0
+        }
+      },
+      "params": [
+        {
+          "name": "setCursor",
+          "push": "outer",
+          "persist": false,
+          "ruler": {
+            "encodings": ["y"],
+            "on": "mousemove",
+            "mark": {
+              "stroke": "#555",
+              "strokeDash": [3, 3],
+              "opacity": 0.7
+            }
+          },
+          "description": "Track the set row under the pointer and publish it to the shared outer parameter."
+        }
+      ],
+      "transform": [
+        {
+          "type": "filter",
+          "expr": "datum.profileNumber == 1",
+          "description": "Retain one row per set because set sizes repeat for every profile."
+        }
+      ],
+      "layer": [
+        {
+          "name": "set-bars",
+          "mark": { "type": "rect", "color": "#6f6f6f" },
+          "encoding": {
+            "x": {
+              "field": "setSize",
+              "type": "quantitative",
+              "axis": {
+                "title": "Set Size",
+                "orient": "bottom",
+                "grid": false
+              }
+            },
+            "y": {
+              "field": "setIndex",
+              "type": "index",
+              "axis": null
+            }
+          }
+        },
+        {
+          "name": "set-labels",
+          "mark": {
+            "type": "text",
+            "size": 11,
+            "fontWeight": "bold",
+            "align": "left",
+            "dx": 5
+          },
+          "encoding": {
+            "x": { "field": "setSize", "type": "quantitative" },
+            "y": { "field": "setIndex", "type": "index" },
+            "text": { "field": "setSize", "type": "quantitative" },
+            "color": { "value": "white" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "combination-matrix",
+      "width": { "step": 20 },
+      "height": { "step": 20 },
+      "padding": { "left": 45 },
+      "encoding": {
+        "color": {
+          "expr": "!isValid(setCursor.values.y) || datum.profileContainsHoveredSet == 1",
+          "type": "nominal",
+          "scale": {
+            "type": "ordinal",
+            "domain": [false, true],
+            "range": ["#ddd", "#3b3b3b"]
+          },
+          "legend": null
+        }
+      },
+
+      "params": [
+        {
+          "name": "setCursor",
+          "push": "outer",
+          "persist": false,
+          "ruler": {
+            "encodings": ["y"],
+            "on": "mousemove",
+            "mark": {
+              "stroke": "#555",
+              "strokeDash": [3, 3],
+              "opacity": 0.7
+            }
+          },
+          "description": "Track hovered matrix rows using the same shared set-row parameter."
+        }
+      ],
+
+      "layer": [
+        {
+          "name": "set-names",
+          "transform": [
+            {
+              "type": "filter",
+              "expr": "datum.profileNumber == 1",
+              "description": "Retain one matrix-axis label row per set."
+            }
+          ],
+          "mark": {
+            "type": "text",
+            "align": "right",
+            "dx": -3,
+            "clip": "never"
+          },
+          "encoding": {
+            "x": { "value": 0 },
+            "y": { "field": "setIndex", "type": "index" },
+            "text": { "field": "set" },
+            "color": { "value": "#555" }
+          }
+        },
+        {
+          "name": "row-backgrounds",
+          "transform": [
+            {
+              "type": "filter",
+              "expr": "datum.setIndex % 2 == 0 && datum.profileNumber == 1",
+              "description": "Draw one alternating background rectangle for every other set row."
+            }
+          ],
+          "mark": "rect",
+          "encoding": {
+            "x": null,
+            "y": { "field": "setIndex", "type": "index" },
+            "color": { "value": "#f1f1f1" }
+          }
+        },
+        {
+          "name": "background-points",
+          "mark": {
+            "type": "point",
+            "filled": true,
+            "size": 95,
+            "strokeWidth": 0,
+            "opacity": { "expr": "isValid(setCursor.values.y) ? 0.2 : 1" }
+          },
+          "encoding": {
+            "x": { "field": "profileNumber", "type": "index" },
+            "y": { "field": "setIndex", "type": "index" },
+            "color": { "value": "#d1d1d1" }
+          }
+        },
+        {
+          "name": "connectors",
+          "transform": [
+            { "type": "filter", "expr": "datum.member" },
+            {
+              "type": "aggregate",
+              "groupby": ["profileNumber", "profileContainsHoveredSet"],
+              "fields": ["setIndex", "setIndex"],
+              "ops": ["min", "max"],
+              "as": ["firstSetIndex", "lastSetIndex"],
+              "description": "Collapse active cells into one connector spanning the first and last set of each profile."
+            }
+          ],
+          "mark": {
+            "type": "rule",
+            "size": 2.5,
+            "strokeCap": "round"
+          },
+          "encoding": {
+            "x": { "field": "profileNumber", "type": "index" },
+            "y": { "field": "firstSetIndex", "type": "index" },
+            "y2": { "field": "lastSetIndex" }
+          }
+        },
+        {
+          "name": "members",
+          "transform": [{ "type": "filter", "expr": "datum.member" }],
+          "mark": {
+            "type": "point",
+            "filled": true,
+            "size": 115,
+            "strokeWidth": 0
+          },
+          "encoding": {
+            "x": {
+              "field": "profileNumber",
+              "type": "index",
+              "axis": null
+            },
+            "y": { "field": "setIndex", "type": "index", "axis": null },
+            "tooltip": [
+              {
+                "field": "profileSize",
+                "type": "quantitative",
+                "title": "Intersection size"
+              },
+              { "field": "profileDegree", "title": "Degree" },
+              { "field": "profileKey", "title": "Profile" }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+
+  "config": {
+    "axis": {
+      "domainColor": "#999",
+      "gridColor": "#e6e6e6",
+      "labelColor": "#555",
+      "titleColor": "#333",
+      "titleFontWeight": "normal"
+    },
+    "scale": { "zoom": false },
+    "mark": { "tooltip": false }
+  }
+}

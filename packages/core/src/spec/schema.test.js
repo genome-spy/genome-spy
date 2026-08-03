@@ -184,6 +184,28 @@ describe("generated core schema", () => {
         );
     });
 
+    test("accepts setIntersection transform parameters", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            data: { values: [{ element: "A", set: "S" }] },
+            transform: [
+                {
+                    type: "setIntersection",
+                    element: "element",
+                    set: "set",
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: { field: "profileSize", type: "quantitative" },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
+
     test("includes shared lookup options in concrete transform schemas", () => {
         const schema = createCoreSchema();
         const lookupParams =
