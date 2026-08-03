@@ -352,6 +352,14 @@ SCHEMA NumericStopDef
 
 SCHEMA NumericValueDef
 
+## OffsetChannel
+
+SCHEMA OffsetChannel
+
+## OffsetDef
+
+SCHEMA OffsetDef
+
 ## OtherDataFormat
 
 SCHEMA OtherDataFormat

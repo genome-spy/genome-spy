@@ -49,6 +49,32 @@ scale is supported on quantitative channels such as `x` and `opacity`.
 Currently, the following scales are **not** supported: `"time"`, `"utc"`,
 `"quantile"`, `"bin-linear"`, `"bin-ordinal"`.
 
+## Nested offset scales
+
+A discrete field on `xOffset` or `yOffset` creates a nested band scale when the
+matching primary position uses a band scale. The offset range is measured in
+logical pixels and spans the primary band. Point-like marks use subgroup
+centers, while rectangles cover subgroup band extents.
+
+```json title="Nested bands for grouped bars"
+{
+  "width": { "step": 12 },
+  "encoding": {
+    "x": { "field": "category", "type": "nominal" },
+    "xOffset": {
+      "field": "group",
+      "type": "nominal",
+      "scale": { "paddingInner": 0.15 }
+    }
+  }
+}
+```
+
+When a discrete offset scale is present, a step-based width or height describes
+each offset step by default. Use `{ "step": 12, "for": "position" }` to make
+the step describe each primary category instead. An explicit offset-scale
+`range` remains a pixel range and is not replaced by nested-band inference.
+
 !!! note "Relation to Vega scales"
 
     In fact, GenomeSpy uses [Vega

@@ -8,9 +8,15 @@ EXAMPLE examples/docs/grammar/mark/point/point-mark.json height=200
 
 ## Channels
 
-In addition to standard [position](./index.md#channels) channels and
-`color`, `opacity`, and `strokeWidth` channels, point mark has the following
-channels: `size`, `shape`, `dx`, and `dy`.
+In addition to standard [position and offset](./index.md#channels) channels and
+`color`, `opacity`, and `strokeWidth` channels, point mark has the `size` and
+`shape` channels.
+
+The legacy point `dx` and `dy` channels remain supported for compatibility.
+New specifications should use `xOffset` and `yOffset`. Unlike `yOffset`, where
+positive values move down, positive legacy `dy` values move up. Do not specify
+both forms on the same axis. Text-mark `dx` and `dy` properties are unrelated:
+they remain glyph offsets applied after text rotation.
 
 ## Properties
 

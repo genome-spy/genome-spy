@@ -97,6 +97,28 @@ cover in the visualization.
 `y2`
 : The secondary position on the _y_ axis
 
+##### Offset channels
+
+`xOffset` and `yOffset` displace encoded positions in logical pixels. Positive
+`xOffset` values move right, and positive `yOffset` values move down. Offset
+channels accept constants, expressions, and scale-backed field or datum
+definitions.
+
+`xOffset`
+: Horizontal displacement from `x`
+
+`yOffset`
+: Vertical displacement from `y`
+
+For ranged marks, an implicit `x2` or `y2` endpoint inherits the corresponding
+primary offset. An explicitly encoded secondary endpoint is independent and
+has no offset by default. Set the `x2Offset` or `y2Offset` mark property to
+displace an explicit secondary endpoint. These secondary offsets are mark
+properties, not encoding channels.
+
+Discrete offset fields can create nested bands for grouped marks. See
+[Nested offset scales](../scale.md#nested-offset-scales).
+
 #### Other channels
 
 `color`
