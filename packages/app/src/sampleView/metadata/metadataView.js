@@ -844,6 +844,8 @@ function createAttributeSpec(attributeName, attributeDef, metadataDef) {
         throw new Error("No attribute definition for " + attributeName);
     }
 
+    const titleReserve = metadataDef?.titleReserve ?? false;
+
     const escapedEncodingField = escapeFieldName(attributeName);
     const escapedField = `datum[${JSON.stringify(attributeName)}]`;
 
@@ -881,6 +883,7 @@ function createAttributeSpec(attributeName, attributeDef, metadataDef) {
 
     /** @type {import("@genome-spy/core/spec/view.js").LayerSpec} */
     const attributeSpec = {
+        overhang: { bottom: titleReserve },
         name: `attribute-${attributeName}`,
         title: {
             text: attributeDef.title ?? attributeName,
@@ -888,7 +891,7 @@ function createAttributeSpec(attributeName, attributeDef, metadataDef) {
             align: "right",
             baseline: "middle",
             offset: 5,
-            reserve: metadataDef?.titleReserve ?? false,
+            reserve: titleReserve,
             angle: metadataDef?.labelAngle ?? -90,
             dy: -0.5,
 
@@ -984,9 +987,11 @@ function formatAttributeName(attributeName) {
     const parts = splitPath(attributeName, METADATA_PATH_SEPARATOR);
     return html`${parts.map(
         (part, index) =>
-            html`${index > 0
-                ? html` <span style="color: gray;">&rsaquo;</span> `
-                : ""}${part}`
+            html`${
+                index > 0
+                    ? html` <span style="color: gray;">&rsaquo;</span> `
+                    : ""
+            }${part}`
     )}`;
 }
 

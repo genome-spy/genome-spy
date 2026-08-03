@@ -323,6 +323,7 @@ describe("MetadataView", () => {
             text: "foo",
             reserve: false,
         });
+        expect(attributeViews.foo.spec.overhang).toEqual({ bottom: false });
     });
 
     it("can reserve space for metadata attribute titles", async () => {
@@ -334,6 +335,7 @@ describe("MetadataView", () => {
             text: "foo",
             reserve: true,
         });
+        expect(attributeViews.foo.spec.overhang).toEqual({ bottom: true });
     });
 
     it("uses the default metadata title", async () => {
