@@ -92,6 +92,14 @@ export interface Step {
 
 export type Side = "top" | "right" | "bottom" | "left";
 
+/**
+ * Controls which edges reserve external overhang during layout.
+ *
+ * Set an edge to false to let overhanging elements overlap adjacent content.
+ * The elements remain visible, and explicit view padding is still reserved.
+ */
+export type OverhangConfig = Partial<Record<Side, boolean>>;
+
 export type Paddings = Partial<Record<Side, number>>;
 
 export type PaddingConfig = Paddings | number;
@@ -229,6 +237,15 @@ export interface ViewSpecBase extends ResolveSpec {
      * **Default value:** `0`
      */
     padding?: PaddingConfig;
+
+    /**
+     * Controls whether external overhang on each edge reserves layout space.
+     * Setting an edge to false lets axes, titles, legends, or custom view
+     * overhang overlap nearby content while remaining visible.
+     *
+     * **Default value:** all edges reserve overhang
+     */
+    overhang?: OverhangConfig;
 
     /**
      * Dynamic variables that [parameterize](https://genomespy.app/docs/grammar/parameters/)
@@ -453,8 +470,7 @@ export interface TransitionedMultiscaleStops extends MultiscaleStopsBase {
 }
 
 export type MultiscaleStops =
-    | FadedMultiscaleStops
-    | TransitionedMultiscaleStops;
+    FadedMultiscaleStops | TransitionedMultiscaleStops;
 
 export type MultiscaleStopsDef = NumericStopDef[] | MultiscaleStops;
 
@@ -492,10 +508,7 @@ export type ResolutionTarget = "scale" | "axis" | "legend";
  * if the parent has `"independent"` behavior.
  */
 export type ResolutionBehavior =
-    | "independent"
-    | "shared"
-    | "excluded"
-    | "forced";
+    "independent" | "shared" | "excluded" | "forced";
 
 export interface ResolveSpec {
     /**

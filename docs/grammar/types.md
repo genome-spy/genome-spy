@@ -356,6 +356,10 @@ SCHEMA NumericValueDef
 
 SCHEMA OtherDataFormat
 
+## OverhangConfig
+
+SCHEMA OverhangConfig
+
 ## PackLegendLabelsParams
 
 SCHEMA PackLegendLabelsParams

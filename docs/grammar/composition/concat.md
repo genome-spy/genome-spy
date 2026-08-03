@@ -89,6 +89,22 @@ do not support zooming and panning.
 
 EXAMPLE examples/docs/grammar/composition/concat/scrollable-viewports.json height=200
 
+## Collapsed overhang
+
+Axes, titles, and legends normally reserve space outside the plot area. A view
+can disable reservation on selected edges with the "overhang" property:
+
+```json
+{
+  "overhang": { "top": false }
+}
+```
+
+The element remains visible, but may overlap adjacent content. This is useful
+for dense composed layouts where the author controls the overlap. Missing edges
+retain the default reservation behavior. Explicit "padding" remains reserved
+and can be used to add a deliberate safety margin.
+
 ## Resolve
 
 By default, all channels have `"independent"` scales and axes. However, because

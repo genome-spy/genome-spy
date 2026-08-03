@@ -794,6 +794,23 @@ describe("GridChild title layout", () => {
     });
 });
 
+describe("GridChild overhang layout", () => {
+    test("collapses configured edges while retaining explicit padding", () => {
+        const child = createMinimalGridChild();
+        child.view.spec.overhang = { top: false, left: false };
+        child.view.getOverhang = () => new Padding(3, 4, 5, 6);
+        child.view.getPadding = () => new Padding(2, 0, 0, 7);
+        child.axes.top = /** @type {any} */ ({
+            axisProps: { placement: "outside" },
+            getPerpendicularSize: () => 10,
+        });
+
+        expect(child.getViewOverhang()).toEqual(new Padding(0, 4, 5, 0));
+        expect(child.getOverhang()).toEqual(new Padding(0, 4, 5, 0));
+        expect(child.getOverhangAndPadding()).toEqual(new Padding(2, 4, 5, 7));
+    });
+});
+
 describe("resolveIntervalZoomEventConfig", () => {
     test("defaults to disabled on zoomable channels", () => {
         const config = resolveIntervalZoomEventConfig(undefined, true, "brush");

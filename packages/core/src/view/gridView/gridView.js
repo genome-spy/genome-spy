@@ -658,7 +658,7 @@ export default class GridView extends ContainerView {
             // External overhang is represented by axis/padding slots. The
             // growable view slot should contain only the child's plot area.
             const size = child.view.getViewportSize()[dim];
-            const overhang = child.view.getOverhang();
+            const overhang = child.getViewOverhang();
             const overhangSize =
                 direction == "column" ? overhang.width : overhang.height;
 
@@ -1052,7 +1052,7 @@ export default class GridView extends ContainerView {
             const viewportSize = view.getViewportSize();
             const viewSize = view.getSize();
 
-            const overhang = view.getOverhang();
+            const overhang = gridChild.getViewOverhang();
 
             const x = colLocSize.location - overhang.left;
             const y = rowLocSize.location - overhang.top;
@@ -1427,7 +1427,7 @@ export default class GridView extends ContainerView {
                                 context,
                                 translateAxisCoords(
                                     viewportCoords.shrink(
-                                        gridChild.view.getOverhang()
+                                        gridChild.getViewOverhang()
                                     ),
                                     orient,
                                     axisView
