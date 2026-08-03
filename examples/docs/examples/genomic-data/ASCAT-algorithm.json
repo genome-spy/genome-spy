@@ -11,6 +11,61 @@
 
   "assembly": "hg19",
 
+  "params": [
+    { "name": "minLength", "value": 1 },
+    { "name": "selectedFit" },
+    {
+      "name": "sample",
+      "value": "S96",
+      "bind": {
+        "input": "select",
+        "options": [
+          "S17",
+          "S36",
+          "S54",
+          "S64",
+          "S77",
+          "S84",
+          "S96",
+          "S97",
+          "S100"
+        ],
+        "name": "Sample"
+      }
+    },
+    {
+      "name": "gamma",
+      "value": 0.55,
+      "bind": {
+        "input": "range",
+        "min": 0.2,
+        "max": 1.2,
+        "step": 0.05,
+        "name": "LogR decompaction (gamma)",
+        "debounce": 100,
+        "description": "Controls LogR decompaction in the ASCAT copy-number equations."
+      }
+    },
+    {
+      "name": "downweightBalanced",
+      "value": true,
+      "bind": {
+        "input": "checkbox",
+        "name": "Downweight balanced segments",
+        "description": "Multiply the heterozygous-probe-count weight of exactly balanced segments by 0.05, as in ASCAT R v3.2.0."
+      }
+    },
+    {
+      "name": "fitBothAlleles",
+      "value": false,
+      "bind": {
+        "input": "checkbox",
+        "name": "Include both alleles in fit",
+        "description": "Include major-allele rounding error alongside minor-allele rounding error in the sunrise and selected-fit score."
+      }
+    }
+  ],
+
   "data": {
     "url": {
       "expr": "'https://data.genomespy.app/sample-data/ASCAT/ascat_fit_segments_' + sample + '.tsv.gz'"
@@ -69,52 +124,6 @@
     },
     {
       "type": "identifier"
-    }
-  ],
-
-  "params": [
-    { "name": "minLength", "value": 1 },
-    { "name": "selectedFit" },
-    {
-      "name": "sample",
-      "value": "S96",
-      "bind": {
-        "input": "select",
-        "options": [
-          "S17",
-          "S36",
-          "S54",
-          "S64",
-          "S77",
-          "S84",
-          "S96",
-          "S97",
-          "S100"
-        ],
-        "name": "Sample"
-      }
-    },
-    {
-      "name": "gamma",
-      "value": 0.55,
-      "bind": {
-        "input": "range",
-        "min": 0.2,
-        "max": 1.2,
-        "step": 0.05,
-        "name": "LogR decompaction (gamma)",
-        "debounce": 100,
-        "description": "Controls LogR decompaction in the ASCAT copy-number equations."
-      }
-    },
-    {
-      "name": "downweightBalanced",
-      "value": true,
-      "bind": {
-        "input": "checkbox",
-        "name": "Downweight balanced segments",
-        "description": "Multiply the heterozygous-probe-count weight of exactly balanced segments by 0.05, as in ASCAT R v3.2.0."
-      }
     }
   ],
 
@@ -224,15 +233,27 @@
         },
         {
           "type": "formula",
+          "expr": "(datum.rhoCandidate - 1 + pow(2, datum.logRMean / gamma) * (1 - datum.bafMean) * (2 * (1 - datum.rhoCandidate) + datum.rhoCandidate * datum.psiCandidate)) / datum.rhoCandidate",
+          "as": "aRawCandidate",
+          "description": "Apply ASCAT Supporting Information Eq. S7 to estimate major-allele copy number when both alleles are included in the fit."
+        },
+        {
+          "type": "formula",
           "expr": "max(0, round(datum.bRawCandidate))",
           "as": "nMinorCandidate",
           "description": "Round each candidate's raw minor-allele estimate to a nonnegative integer copy number."
         },
         {
           "type": "formula",
-          "expr": "pow(datum.bRawCandidate - datum.nMinorCandidate, 2) * datum.fitWeight",
+          "expr": "max(0, round(datum.aRawCandidate))",
+          "as": "nMajorCandidate",
+          "description": "Round each candidate's raw major-allele estimate to a nonnegative integer copy number."
+        },
+        {
+          "type": "formula",
+          "expr": "(pow(datum.bRawCandidate - datum.nMinorCandidate, 2) + (fitBothAlleles ? pow(datum.aRawCandidate - datum.nMajorCandidate, 2) : 0)) * datum.fitWeight",
           "as": "errorSquaredWeighted",
-          "description": "Evaluate the minor-allele counterpart of paper Eq. 3: uncapped squared distance to a nonnegative integer, weighted by ASCAT's probe-based run weight."
+          "description": "Evaluate uncapped squared distance to nonnegative integers using the minor allele alone or both alleles, weighted by ASCAT's probe-based run weight."
         },
         {
           "type": "aggregate",
@@ -240,13 +261,13 @@
           "fields": ["fitWeight", "errorSquaredWeighted"],
           "ops": ["sum", "sum"],
           "as": ["totalWeight", "distanceSum"],
-          "description": "Aggregate the minor-allele integer-fit distance for each purity and tumor-ploidy candidate."
+          "description": "Aggregate the selected allele-specific integer-fit distance for each purity and tumor-ploidy candidate."
         },
         {
           "type": "formula",
-          "expr": "datum.distanceSum / datum.totalWeight",
+          "expr": "datum.distanceSum / (datum.totalWeight * (fitBothAlleles ? 2 : 1))",
           "as": "meanRoundingError",
-          "description": "Normalize the summed error into the mean integer-fit distance displayed by the sunrise plot."
+          "description": "Normalize the summed error over the included alleles into the mean integer-fit distance displayed by the sunrise plot."
         },
         {
           "type": "formula",
@@ -333,7 +354,7 @@
             },
             {
               "type": "project",
-              "fields": ["bafMean", "bError", "nProbes"]
+              "fields": ["bafMean", "aError", "bError", "nProbes"]
             },
             {
               "type": "formula",
@@ -343,20 +364,20 @@
             },
             {
               "type": "formula",
-              "expr": "datum.bError * datum.bError * datum.fitWeight",
+              "expr": "(datum.bError * datum.bError + (fitBothAlleles ? datum.aError * datum.aError : 0)) * datum.fitWeight",
               "as": "errorSquaredWeighted",
-              "description": "Evaluate the selected fit with the same weighted minor-allele error as the sunrise."
+              "description": "Evaluate the selected fit with the same weighted allele-specific error as the sunrise."
             },
             {
               "type": "aggregate",
               "fields": ["fitWeight", "errorSquaredWeighted"],
               "ops": ["sum", "sum"],
               "as": ["totalWeight", "distanceSum"],
-              "description": "Aggregate the selected fit's minor-allele error over all autosomal joint runs."
+              "description": "Aggregate the selected fit's allele-specific error over all autosomal joint runs."
             },
             {
               "type": "formula",
-              "expr": "100 - datum.distanceSum / (datum.totalWeight * 0.25) * 100",
+              "expr": "100 - datum.distanceSum / (datum.totalWeight * (fitBothAlleles ? 2 : 1) * 0.25) * 100",
               "as": "goodnessOfFit",
               "description": "Convert the selected mean distance to an ASCAT-like goodness score; the publication defines the original rescaling after Eq. 3."
             }
