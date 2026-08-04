@@ -1040,25 +1040,27 @@ export interface FilterScoredLabelsParams extends TransformParamsBase {
 export interface Displace1DParams extends TransformParamsBase {
     type: "displace1d";
 
-    /** The field containing the original position on the scale domain. */
+    /** The field containing the original position. */
     pos: Field;
 
     /**
-     * The full collision length in logical pixels, including any desired
-     * spacing, or a field containing that length.
+     * The full collision length, including any desired spacing, or a field
+     * containing that length. The value uses the same units as the scaled
+     * positions and output displacement.
      */
     length: number | Field;
 
     /**
-     * The primary positional channel whose scale and axis length determine
-     * screen positions.
+     * A multiplier applied to `pos` before placement. An expression can
+     * convert position units to logical pixels and react to zoom or layout
+     * changes.
      *
-     * __Default value:__ `"x"`
+     * __Default value:__ `1`
      */
-    channel?: PrimaryPositionalChannel;
+    positionFactor?: number | ExprRef;
 
     /**
-     * The output field for signed displacement in logical pixels.
+     * The output field for signed displacement.
      *
      * __Default value:__ `"displacement"`
      */

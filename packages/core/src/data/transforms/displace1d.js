@@ -1,4 +1,5 @@
 import { BEHAVIOR_CLONES, BEHAVIOR_COLLECTS } from "../flowNode.js";
+import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
 import {
@@ -7,8 +8,8 @@ import {
 } from "./displace1dSolver.js";
 
 /**
- * Computes non-overlapping one-dimensional placements in screen coordinates.
- * The emitted objects are retained and reused when zoom or layout changes.
+ * Computes non-overlapping one-dimensional placements. The emitted objects are
+ * retained and reused when the reactive position factor changes.
  */
 export default class Displace1DTransform extends Transform {
     get behavior() {
@@ -17,17 +18,12 @@ export default class Displace1DTransform extends Transform {
 
     /**
      * @param {import("../../spec/transform.js").Displace1DParams} params
-     * @param {import("../../view/view.js").default} view
+     * @param {import("../flowNode.js").ParamRuntimeProvider} paramRuntimeProvider
      */
-    constructor(params, view) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
         this.params = params;
-        this.channel = params.channel ?? "x";
-        if (this.channel != "x" && this.channel != "y") {
-            throw new Error("Invalid channel: " + this.channel);
-        }
-
         this.as = params.as ?? "displacement";
         this.positionAccessor = field(params.pos);
         /** @type {(datum: import("../flowNode.js").Datum) => number} */
@@ -39,6 +35,25 @@ export default class Displace1DTransform extends Transform {
             lengthAccessor = field(params.length);
         }
         this.lengthAccessor = lengthAccessor;
+
+        this.positionFactor = 1;
+        if (isExprRef(params.positionFactor)) {
+            const positionFactorExpr = this.paramRuntime.watchExpression(
+                params.positionFactor.expr,
+                () => {
+                    this.positionFactor = positionFactorExpr();
+                    this._updateAndPropagate();
+                },
+                {
+                    scopeOwned: false,
+                    registerDisposer: (disposer) =>
+                        this.registerDisposer(disposer),
+                }
+            );
+            this.positionFactor = positionFactorExpr();
+        } else {
+            this.positionFactor = params.positionFactor ?? 1;
+        }
 
         /** @type {import("../flowNode.js").Datum[]} */
         this._inputData = [];
@@ -57,29 +72,9 @@ export default class Displace1DTransform extends Transform {
         this._workspace = createDisplace1DWorkspace();
         this._ready = false;
 
-        /** @type {(value: any) => number} */
-        this._scale = () => NaN;
-        this._axisLength = 0;
-        this._screenPositionAccessor = (
+        this._scaledPositionAccessor = (
             /** @type {import("../flowNode.js").Datum} */ datum
-        ) => this._scale(this.positionAccessor(datum)) * this._axisLength;
-
-        this.resolution = view.getScaleResolution(this.channel);
-
-        const callback = () => this._updateAndPropagate();
-        this.schedule = () => view.context.animator.requestTransition(callback);
-
-        const domainListener = () => this._updateAndPropagate();
-        this.resolution.addEventListener("domain", domainListener);
-        this.registerDisposer(() =>
-            this.resolution.removeEventListener("domain", domainListener)
-        );
-
-        const removeLayoutListener = view._addBroadcastHandler(
-            "layoutComputed",
-            () => this.schedule()
-        );
-        this.registerDisposer(removeLayoutListener);
+        ) => this.positionAccessor(datum) * this.positionFactor;
     }
 
     complete() {
@@ -128,31 +123,33 @@ export default class Displace1DTransform extends Transform {
 
         this._ready = true;
         super.complete();
-        this.schedule();
+        this._updateAndPropagate();
     }
 
     _updateAndPropagate() {
-        const axisLength = this.resolution.getAxisLength();
-        if (!this._ready || !axisLength) {
+        if (!this._ready) {
             return;
         }
 
-        this._scale = this.resolution.getScale();
-        this._axisLength = axisLength;
+        if (!Number.isFinite(this.positionFactor)) {
+            throw new Error(
+                "displace1d positionFactor must be a finite number."
+            );
+        }
 
         const first = this._orderedData[0];
         const last = this._orderedData.at(-1);
         const orderedData =
             first &&
             last &&
-            this._screenPositionAccessor(first) >
-                this._screenPositionAccessor(last)
+            this._scaledPositionAccessor(first) >
+                this._scaledPositionAccessor(last)
                 ? this._reverseOrderedData
                 : this._orderedData;
 
         solveDisplacement(
             orderedData,
-            this._screenPositionAccessor,
+            this._scaledPositionAccessor,
             this.lengthAccessor,
             this._displacements,
             this._workspace

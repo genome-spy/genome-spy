@@ -2,12 +2,11 @@
 
 ## Summary
 
-Add a scale-aware `displace1d` data transform that preserves every input item
-and computes the minimum horizontal or vertical pixel displacement needed to
-prevent overlaps. The transform will solve the one-dimensional placement
-problem with pool-adjacent violators (PAVA), emit the displacement as a numeric
-field, and recompute it from the current primary scale when the view is zoomed
-or resized.
+Add a scale-independent `displace1d` data transform that preserves every input
+item and computes the minimum one-dimensional displacement needed to prevent
+overlaps. The transform will solve the placement problem with pool-adjacent
+violators (PAVA), emit the displacement as a numeric field, and accept a
+reactive position multiplier that callers can couple to zoom and layout.
 
 The first consumer will be `private/protein-lollipop-sketch.json`, using
 `plans/displace1d/lolliplot.xaxis-1.png` from the trackViewer vignette as a
@@ -53,11 +52,9 @@ GenomeSpy already has the required architectural pieces:
   `packages/core/src/spec/transform.d.ts` and registered in
   `packages/core/src/data/transforms/transformFactory.js`.
 - `measureText` produces pixel widths for downstream layout transforms.
-- `filterScoredLabels` demonstrates how a collecting transform can subscribe
-  to a scale domain and the `layoutComputed` broadcast, then repropagate data
-  in synchronization with rendering.
-- `ScaleResolution.getAxisLength()` converts the primary positional scale's
-  unit range into logical pixels.
+- Expression references can react to scale and layout parameters. GenomeSpy's
+  positional scales use unit ranges, while `width` and `height` expose viewport
+  dimensions in logical pixels.
 - `xOffset` and `yOffset` accept unscaled numeric fields in logical pixels when
   `scale` is `null`.
 - The sashimi example demonstrates reactive coupling between scales through
@@ -72,8 +69,7 @@ GenomeSpy already has the required architectural pieces:
 - Minimize total squared displacement from primary-scale positions.
 - Produce a pixel displacement suitable for direct `xOffset` or `yOffset`
   encoding.
-- Recompute placement when the selected primary scale domain or the axis length
-  changes.
+- Recompute placement when a reactive position multiplier changes.
 - Let displacement naturally diminish during zoom and reach zero when the
   undisplaced items fit.
 - Keep input data branches isolated by emitting owned output objects.
@@ -81,7 +77,7 @@ GenomeSpy already has the required architectural pieces:
   keeping the implementation straightforward for datasets of at most a few
   hundred items.
 - Demonstrate the transform in the private protein lollipop visualization.
-- Document the public transform contract and its scale requirements.
+- Document the public transform contract and scale-coupling recipe.
 
 ## Non-goals
 
@@ -136,11 +132,21 @@ values through ordinary GenomeSpy field accessors. A few reusable numeric arrays
 may hold the algorithm's block starts, counts, means, and results; these are
 solver scratch state, not a columnar representation of the input data.
 
-### Recompute from the current scale instead of scaling a fixed solution
+### Recompute from reactively scaled positions instead of scaling a fixed solution
 
-At each layout update, the transform will map the original domain coordinate
-through the current primary scale and multiply by the current axis length. It
-will then solve the placement problem in logical pixels.
+Before solving, the transform multiplies every original position by a numeric
+`positionFactor`. The factor may be an expression reference, allowing the spec
+to provide the coordinate conversion without hardwiring the transform to a
+particular scale or view:
+
+```json
+"positionFactor": {
+  "expr": "width * (scale('x', 1) - scale('x', 0))"
+}
+```
+
+For an affine x scale, the expression is the signed number of logical pixels
+per position unit. It reacts to both the x scale and the viewport width.
 
 This provides the desired zoom behavior without coupling the `xOffset` scale's
 domain or range to the primary scale:
@@ -158,10 +164,10 @@ A fixed expression such as
 example, would be simpler but could reintroduce overlap before the primary
 positions have separated. It is therefore rejected for the correctness path.
 
-### Emit logical-pixel displacement and disable the offset scale
+### Emit displacement in scaled-position units and disable the offset scale
 
-The output field will contain a signed logical-pixel displacement. Consumers
-must encode it without a scale:
+The output field uses the same units as `pos * positionFactor` and `length`.
+When those units are logical pixels, consumers must encode it without a scale:
 
 ```json
 "xOffset": {
@@ -173,7 +179,8 @@ must encode it without a scale:
 
 The transform will not change the original primary-position field or filter
 rows. Consequently, downstream primary-position domains remain based on the
-original data. Only the output offset field depends on the current scale.
+original data. Only the factor expression and output offset depend on the
+current scale.
 
 ### Keep the transform independent from `filterScoredLabels`
 
@@ -198,47 +205,44 @@ Add `Displace1DParams` to `packages/core/src/spec/transform.d.ts` and the
 export interface Displace1DParams extends TransformParamsBase {
   type: "displace1d";
 
-  /** Field containing the primary-scale coordinate. */
+  /** Field containing the original position. */
   pos: Field;
 
-  /** Constant or field containing the item's full length in logical pixels. */
+  /** Constant or field containing the item's full collision length. */
   length: number | Field;
 
-  /** Primary positional scale used to map coordinates into pixels. */
-  channel?: "x" | "y";
+  /** Multiplier that converts positions into collision-space units. */
+  positionFactor?: number | ExprRef;
 
-  /** Output field for the signed logical-pixel displacement. */
+  /** Output field for the signed displacement. */
   as?: string;
 }
 ```
 
 Defaults:
 
-- `channel`: `"x"`
+- `positionFactor`: `1`
 - `as`: `"displacement"`
 
 Contract and validation:
 
-- `pos` values must be finite numbers accepted by the selected continuous or
-  index scale.
+- `pos` values must be finite numbers.
 - A constant `length`, or values read from a `length` field, must be finite and
   non-negative.
-- The selected scale must be monotonic and have an axis length. The first
-  implementation targets quantitative and index scales. Locus coordinates that
-  require separate chromosome and position fields are deferred.
+- `positionFactor` must evaluate to a finite number. A single factor describes
+  affine mappings, including linear quantitative and index scales. Nonlinear
+  and locus-scale mappings are not supported directly.
 - Equal positions are ordered stably by input order.
 - The transform preserves all rows and their propagation order.
 - `as` is overwritten on transform-owned output rows.
-- The output is intended for the offset channel matching `channel`, with
-  `scale: null`.
+- Pixel-valued output is intended for an offset channel with `scale: null`.
 
 Allowing a constant `length` keeps simple cases declarative without requiring a
 formula-generated field. A field remains available for variable-width items,
 including horizontally oriented labels measured with `measureText`.
 
-`channel` retains a one-dimensional, axis-neutral contract while the initial
-visualization exercises only `"x"`. Vertical offset direction must be covered
-by a focused test so the signed result agrees with `yOffset` semantics.
+The transform itself is axis-neutral. A y-oriented caller can provide an
+equivalent expression using `height` and the y scale.
 
 ## Transform implementation
 
@@ -258,8 +262,7 @@ Retained state should include:
   `length` is numeric.
 - Minimal reusable numeric scratch arrays needed by PAVA, such as its block
   stack and displacement results.
-- The selected `ScaleResolution` and last usable axis length.
-- Registered domain and layout listeners with disposers.
+- The current position factor and its expression subscription, when reactive.
 
 Do not copy input fields into a general columnar layout. Follow the established
 transform pattern by applying `field(params.pos)` and, for a field-valued
@@ -271,48 +274,43 @@ introduced only later if profiling demonstrates a concrete benefit.
 ### Lifecycle
 
 1. The constructor validates static parameters, creates field accessors, and
-   resolves the selected primary scale.
+   activates a reactive `positionFactor` expression when provided.
 2. `handle` buffers input rows without solving.
 3. On initial `complete`, the transform:
    - validates values;
    - creates reusable output rows;
    - builds the stable position order;
    - sizes or clears the small reusable solver workspace;
-   - emits an initial batch, using zero displacement if layout is not yet
-     available, so downstream collectors can establish the primary domain;
-   - schedules an exact solve through the animator.
-4. A primary-scale `domain` listener recomputes immediately so zoom animation
-   frames render current offsets.
-5. A `layoutComputed` listener schedules recomputation because axis length may
-   have changed.
-6. Recompute resets only descendants, updates the retained output rows,
+   - evaluates the exact placement using the current factor;
+   - emits the reusable output rows.
+4. An expression update recomputes immediately so zoom animation frames render
+   current offsets.
+5. Recompute resets only descendants, updates the retained output rows,
    propagates them, and completes descendants. It must not discard retained
    input or solver state.
-7. An upstream `reset` clears retained data and prepares for a genuinely new
+6. An upstream `reset` clears retained data and prepares for a genuinely new
    batch.
-8. `dispose` removes all domain and layout listeners.
+7. `dispose` removes the expression subscription.
 
-The implementation should follow the proven scheduling and disposal patterns
-in `filterScoredLabels`, without adopting its visible-range, top-k, or
-reservation behavior.
+The expression runtime provides dependency tracking and disposal; the
+transform does not know which scale or layout parameters the expression uses.
 
 ### Scale and domain behavior
 
 The solver operates on screen positions derived from:
 
 ```text
-primaryScale(pos) * axisLength
+pos * positionFactor
 ```
 
-with the appropriate sign convention for the chosen offset channel. Because
-the transform neither filters rows nor modifies `pos`, its output does not
-change the primary data domain. The implementation should verify that adding
-the transform does not create a scale-domain feedback loop.
+The sign of the factor captures reversed affine scales. Because the transform
+neither filters rows nor modifies `pos`, its output does not change the primary
+data domain. The implementation should verify that adding the transform does
+not create a scale-domain feedback loop.
 
-For the first version, every domain event may run the solver. The expected item
-count makes this acceptable. A later optimization may skip pan-only updates for
-unbounded placement on affine scales because translating all original centers
-does not change their optimal displacements.
+Every factor update may run the solver. The expected item count makes this
+acceptable. Translation is intentionally absent from the factor because it
+does not change optimal displacements for unbounded affine placement.
 
 ### Solver placement and provenance
 
@@ -348,10 +346,11 @@ Build the visualization primarily from existing declarative grammar features:
 - Constant normalized positions, mark offsets, or data-domain values where the
   grammar already defines their meaning.
 
-Expressions are not prohibited. However, the specification should not need a
-bespoke expression helper, duplicate the primary scale's coordinate conversion,
-or calculate exact connector pixel coordinates. The finished spec should give
-the impression that this chart is a natural composition of GenomeSpy's grammar.
+Expressions are not prohibited. The scale coupling should use only built-in
+`scale` and `width` expression parameters; it must not need a bespoke coordinate
+helper or calculate exact connector pixel coordinates. The finished spec should
+give the impression that this chart is a natural composition of GenomeSpy's
+grammar.
 
 ### Data preparation
 
@@ -361,6 +360,10 @@ vertical label glyph width, including the desired separation padding. Do not
 measure or otherwise incorporate mutation-label string length: vertical labels
 extend primarily in the y direction and their text length is not part of this
 plot's horizontal placement model.
+
+Set `positionFactor` to
+`width * (scale('x', 1) - scale('x', 0))` so the collision space follows the
+shared x scale and mutation-view width.
 
 If the labels are given a slight angle instead of exactly `-90` degrees, retain
 the same constant collision length. The angled variant is an aesthetic option,
@@ -416,8 +419,9 @@ The private visualization should clearly demonstrate:
 Although the first lollipop visualization remains private, `displace1d` is a
 public grammar feature and needs concise user-facing documentation:
 
-- Add `docs/grammar/transform/displace1d.md` with behavior, the pixel-unit
-  contract, `scale: null` offset encoding, zoom semantics, and the schema macro.
+- Add `docs/grammar/transform/displace1d.md` with behavior, the
+  `positionFactor` contract, `scale: null` offset encoding, zoom semantics, and
+  the schema macro.
 - Add the page to the transform navigation in `zensical.toml`.
 - Update `docs/grammar/transform/measure-text.md` to mention `displace1d` as a
   downstream consumer of measured widths.
@@ -450,23 +454,22 @@ constraints rather than exhaustively pinning internal PAVA block state.
 Add tests near `displace1d.js` covering:
 
 - Grammar parameters and defaults.
-- Correct pixel displacement from an initialized x scale and axis length.
+- Correct pixel displacement from a scale- and width-dependent factor.
 - `scale: null` offset consumption without changing the primary x domain.
-- Domain changes recompute displacement.
+- Expression dependency changes recompute displacement.
 - Zooming in reduces displacement and eventually produces zero for distinct
   positions.
 - Coincident positions remain displaced after zoom.
-- Layout width changes recompute displacement.
+- Width-dependent expressions recompute after layout changes.
 - Output propagation order matches input order.
 - Upstream rows are not mutated.
 - Output row objects and solver storage are reused across zoom recomputations,
   making the low-allocation behavior an intentional contract.
-- Scale and layout listeners are removed on disposal.
-- Vertical channel sign behavior if `channel: "y"` is retained in the first
-  implementation.
+- Expression subscriptions are removed on disposal.
+- A negative factor preserves stable ordering for reversed affine scales.
 
-Use fake scale resolutions for focused lifecycle tests and one initialized-view
-integration test for actual scale/layout wiring.
+Use a fake expression runtime for focused lifecycle tests and one
+initialized-view integration test for actual scale/layout wiring.
 
 ### Visualization verification
 
@@ -519,8 +522,8 @@ mathematical note. No migration.
 
 ### Step 2: Integrate `displace1d` with the grammar and dataflow
 
-**Outcome:** Specs can apply the transform and receive a logical-pixel
-displacement field that updates on zoom and resize.
+**Outcome:** Specs can apply the transform and receive a displacement field
+that updates when a reactive position factor changes.
 
 **Affected areas:**
 
@@ -530,18 +533,18 @@ displacement field that updates on zoom and resize.
 - Transform lifecycle and initialized-view tests
 
 **Verification:** Focused Vitest suites, TypeScript checks, schema generation,
-domain-stability checks, zoom/layout recomputation tests, object-reuse checks,
+domain-stability checks, expression recomputation tests, object-reuse checks,
 and disposal tests.
 
 **Documentation or migration:** No existing specs change. The new transform is
 additive.
 
-**Tentative commit:** `feat(core): add scale-aware displace1d transform`
+**Tentative commit:** `feat(core): add reactive displace1d transform`
 
 ### Step 3: Document the transform contract
 
-**Outcome:** Users can understand pixel lengths, scale-less offset encoding,
-and zoom behavior without reading implementation details.
+**Outcome:** Users can understand position conversion, scale-less offset
+encoding, and zoom behavior without reading implementation details.
 
 **Affected areas:**
 
@@ -602,10 +605,9 @@ zoom factor or current-domain-span ratio.
 proportional to inverse zoom, cluster membership changes as gaps open, and
 coincident positions never separate through zoom.
 
-### Add a channel-specific `zoomLevel("x")` expression helper
+### Add a dedicated zoom expression helper
 
-Use a new expression helper to control the `xOffset` range or a channel
-expression.
+Use a new expression helper to control an offset range or expression.
 
 **Deferred:** It may be useful for cosmetic scale coupling, but exact
 recomputation already provides the required behavior and does not need new
@@ -642,20 +644,20 @@ few hundred rows.
 
 ### Initialization and scale-domain cycles
 
-The transform needs the primary scale to compute offsets, while the same rows
-may establish that scale's data domain.
+The factor expression may read the primary scale while the same rows establish
+that scale's data domain.
 
-**Mitigation:** Preserve original primary coordinates and all rows, emit zero
-offsets when layout is not ready, and schedule the exact solve after domain and
-layout initialization. Add a domain-stability integration test.
+**Mitigation:** Preserve original primary coordinates and all rows. The
+expression runtime reevaluates after scale and layout initialization. Add a
+domain-stability integration test.
 
-### Reentrant domain or layout notifications
+### Reentrant expression notifications
 
-Repropagation can notify collectors and scale resolutions while a solve is in
+Repropagation can notify collectors while an expression-driven solve is in
 progress.
 
-**Mitigation:** Follow the existing animator scheduling pattern, guard or
-coalesce scheduled layout recomputations, and test repeated domain events.
+**Mitigation:** Keep the output field out of the primary scale's domain and test
+repeated factor updates.
 
 ### Incorrect secondary endpoint offset
 
@@ -698,15 +700,15 @@ None of these blocks the initial implementation:
 - Should a future bounded mode solve only visible items, include buffered
   offscreen items, or keep every item within the viewport? This needs an
   explicit pan/zoom contract.
-- Should locus scales receive a `chrom` plus `pos` grammar variant, or should
-  callers linearize genomic coordinates before displacement?
+- Should a future mapping expression support nonlinear or locus scales, or
+  should callers linearize genomic coordinates before displacement?
 - Should later versions support independent `groupby` layouts for multiple
   one-dimensional lanes?
 - After the private visualization stabilizes, should it be promoted to a
   public genomic-data example and used as the transform's interactive docs
   example?
 - If other features need cosmetic zoom attenuation, should GenomeSpy add a
-  channel-specific `zoomLevel(channel)` expression helper?
+  dedicated zoom expression helper?
 
 ## Acceptance criteria
 
@@ -715,7 +717,7 @@ None of these blocks the initial implementation:
 - At the full protein domain, mutation collision intervals do not overlap.
 - The computed layout is deterministic, order-preserving, and minimizes the
   stated squared-displacement objective.
-- Zooming or resizing recomputes offsets from current screen positions.
+- Zooming or resizing recomputes offsets through a reactive position factor.
 - Offsets become zero when distinct primary positions have enough pixel
   separation.
 - Coincident positions remain separated at every zoom level.
@@ -729,7 +731,7 @@ None of these blocks the initial implementation:
   not reconstruct the primary scale or hand-compute mark pixel geometry.
 - The transform preserves input rows and propagation order.
 - Zoom-driven recomputation reuses output rows and solver storage.
-- Domain and layout listeners are removed when the transform is disposed.
+- The expression subscription is removed when the transform is disposed.
 - Existing `filterScoredLabels` behavior and performance-sensitive code remain
   unchanged.
 - The new visualization remains under `private/`.
