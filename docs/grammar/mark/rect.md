@@ -28,6 +28,15 @@ EXAMPLE examples/docs/grammar/mark/rect/heatmap.json
 
 EXAMPLE examples/docs/grammar/mark/rect/bars.json
 
+### Grouped bars
+
+Map the subgroup field to `xOffset` or `yOffset` to create grouped bars. The
+nested band scale spans one band of the corresponding primary position scale.
+Its `paddingInner` controls spacing between subgroups. See
+[nested offset scales](index.md#nested-offset-scales) for details.
+
+EXAMPLE examples/docs/grammar/mark/rect/grouped-bars.json
+
 ### Hatch Patterns
 
 Rect marks can be filled with hatch patterns using the `hatch` property. The

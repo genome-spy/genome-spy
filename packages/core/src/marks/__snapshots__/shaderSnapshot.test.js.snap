@@ -85,6 +85,11 @@ vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
 }
 
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
+}
+
 bool isOutsideVisibleRange(vec2 pos) {
     return (uCullByVisibleRange.x > 0.5 &&
                 (pos.x < uLogicalVisibleRect.x ||
@@ -443,6 +448,11 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
 }
 
 bool isOutsideVisibleRange(vec2 pos) {
@@ -724,6 +734,30 @@ return accessor_uniqueId_0();
 #define uniqueId_DEFINED
 
 
+float accessor_xOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_xOffset() {
+return accessor_xOffset_0();
+}
+
+#define xOffset_DEFINED
+
+
+float accessor_yOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_yOffset() {
+return accessor_yOffset_0();
+}
+
+#define yOffset_DEFINED
+
+
 vec3 accessor_fill_0() {
     // Constant value
     return vec3(0.3568627450980392, 0.5529411764705883, 0.9372549019607843);
@@ -916,6 +950,30 @@ return accessor_fillOpacity_0();
 }
 
 #define fillOpacity_DEFINED
+
+
+float accessor_x2Offset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_x2Offset() {
+return accessor_x2Offset_0();
+}
+
+#define x2Offset_DEFINED
+
+
+float accessor_y2Offset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_y2Offset() {
+return accessor_y2Offset_0();
+}
+
+#define y2Offset_DEFINED
 
 bool isPointSelected() {
     return false;
@@ -1238,8 +1296,14 @@ vec2 getOutsideHeadExpansion(float outsideHeadOffset, float direction) {
 }
 
 void main(void) {
-    vec2 a = applySampleFacet(vec2(getScaled_x(), getScaled_y()));
-    vec2 b = applySampleFacet(vec2(getScaled_x2(), getScaled_y2()));
+    vec2 a = applyOffset(
+        applySampleFacet(vec2(getScaled_x(), getScaled_y())),
+        vec2(getScaled_xOffset(), getScaled_yOffset())
+    );
+    vec2 b = applyOffset(
+        applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
+        vec2(getScaled_x2Offset(), getScaled_y2Offset())
+    );
     float direction = getScaled_direction();
 
     vec2 segmentInPixels = (b - a) * uViewportSize;
@@ -1431,6 +1495,11 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
 }
 
 bool isOutsideVisibleRange(vec2 pos) {
@@ -1795,6 +1864,11 @@ vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
 }
 
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
+}
+
 bool isOutsideVisibleRange(vec2 pos) {
     return (uCullByVisibleRange.x > 0.5 &&
                 (pos.x < uLogicalVisibleRect.x ||
@@ -2073,6 +2147,30 @@ return accessor_uniqueId_0();
 #define uniqueId_DEFINED
 
 
+float accessor_xOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_xOffset() {
+return accessor_xOffset_0();
+}
+
+#define xOffset_DEFINED
+
+
+float accessor_yOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_yOffset() {
+return accessor_yOffset_0();
+}
+
+#define yOffset_DEFINED
+
+
 vec3 accessor_fill_0() {
     // Constant value
     return vec3(0.3568627450980392, 0.5529411764705883, 0.9372549019607843);
@@ -2253,6 +2351,30 @@ return accessor_fillOpacity_0();
 }
 
 #define fillOpacity_DEFINED
+
+
+float accessor_x2Offset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_x2Offset() {
+return accessor_x2Offset_0();
+}
+
+#define x2Offset_DEFINED
+
+
+float accessor_y2Offset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_y2Offset() {
+return accessor_y2Offset_0();
+}
+
+#define y2Offset_DEFINED
 
 bool isPointSelected() {
     return false;
@@ -2575,8 +2697,14 @@ vec2 getOutsideHeadExpansion(float outsideHeadOffset, float direction) {
 }
 
 void main(void) {
-    vec2 a = applySampleFacet(vec2(getScaled_x(), getScaled_y()));
-    vec2 b = applySampleFacet(vec2(getScaled_x2(), getScaled_y2()));
+    vec2 a = applyOffset(
+        applySampleFacet(vec2(getScaled_x(), getScaled_y())),
+        vec2(getScaled_xOffset(), getScaled_yOffset())
+    );
+    vec2 b = applyOffset(
+        applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
+        vec2(getScaled_x2Offset(), getScaled_y2Offset())
+    );
     float direction = getScaled_direction();
 
     vec2 segmentInPixels = (b - a) * uViewportSize;
@@ -2754,6 +2882,11 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
 }
 
 bool isOutsideVisibleRange(vec2 pos) {
@@ -3031,6 +3164,11 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
 }
 
 bool isOutsideVisibleRange(vec2 pos) {
@@ -3311,6 +3449,30 @@ return accessor_uniqueId_0();
 }
 
 #define uniqueId_DEFINED
+
+
+float accessor_xOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_xOffset() {
+return accessor_xOffset_0();
+}
+
+#define xOffset_DEFINED
+
+
+float accessor_yOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_yOffset() {
+return accessor_yOffset_0();
+}
+
+#define yOffset_DEFINED
 
 
 float accessor_x_0() {
@@ -3701,7 +3863,10 @@ void main(void) {
 
     float size = getScaled_size();
     vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
-    vec2 facetedPos = applySampleFacet(pos);
+    vec2 facetedPos = applyOffset(
+        applySampleFacet(pos),
+        vec2(getScaled_xOffset(), getScaled_yOffset())
+    );
 
 #ifdef VISIBLE_RANGE_CULLING
     if (isOutsideVisibleRange(facetedPos)) {
@@ -3857,6 +4022,11 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
 }
 
 bool isOutsideVisibleRange(vec2 pos) {
@@ -4046,6 +4216,11 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
 }
 
 bool isOutsideVisibleRange(vec2 pos) {
@@ -4325,6 +4500,30 @@ return accessor_uniqueId_0();
 #define uniqueId_DEFINED
 
 
+float accessor_xOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_xOffset() {
+return accessor_xOffset_0();
+}
+
+#define xOffset_DEFINED
+
+
+float accessor_yOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_yOffset() {
+return accessor_yOffset_0();
+}
+
+#define yOffset_DEFINED
+
+
 float accessor_x_0() {
     return attr_x;
 }
@@ -4445,6 +4644,30 @@ return scale_y2(accessor_y2_0());
 }
 
 #define y2_DEFINED
+
+
+float accessor_x2Offset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_x2Offset() {
+return accessor_x2Offset_0();
+}
+
+#define x2Offset_DEFINED
+
+
+float accessor_y2Offset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_y2Offset() {
+return accessor_y2Offset_0();
+}
+
+#define y2Offset_DEFINED
 
 bool isPointSelected() {
     return false;
@@ -4723,8 +4946,14 @@ void main(void) {
     // The bezier's control points
     vec2 p1, p2, p3, p4;
 
-    vec2 a = applySampleFacet(vec2(getScaled_x(), getScaled_y())) * uViewportSize;
-    vec2 b = applySampleFacet(vec2(getScaled_x2(), getScaled_y2())) * uViewportSize;
+    vec2 a = applyOffset(
+        applySampleFacet(vec2(getScaled_x(), getScaled_y())),
+        vec2(getScaled_xOffset(), getScaled_yOffset())
+    ) * uViewportSize;
+    vec2 b = applyOffset(
+        applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
+        vec2(getScaled_x2Offset(), getScaled_y2Offset())
+    ) * uViewportSize;
 
     if (uShape <= SHAPE_DOME) {
         if (uShape == SHAPE_DOME) {
@@ -4963,6 +5192,11 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
 }
 
 bool isOutsideVisibleRange(vec2 pos) {
@@ -5248,6 +5482,11 @@ vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
 }
 
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
+}
+
 bool isOutsideVisibleRange(vec2 pos) {
     return (uCullByVisibleRange.x > 0.5 &&
                 (pos.x < uLogicalVisibleRect.x ||
@@ -5528,6 +5767,30 @@ return accessor_uniqueId_0();
 }
 
 #define uniqueId_DEFINED
+
+
+float accessor_xOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_xOffset() {
+return accessor_xOffset_0();
+}
+
+#define xOffset_DEFINED
+
+
+float accessor_yOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_yOffset() {
+return accessor_yOffset_0();
+}
+
+#define yOffset_DEFINED
 
 
 float accessor_x_0() {
@@ -5953,7 +6216,10 @@ void main(void) {
 
     float size = getScaled_size();
     vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
-    vec2 facetedPos = applySampleFacet(pos);
+    vec2 facetedPos = applyOffset(
+        applySampleFacet(pos),
+        vec2(getScaled_xOffset(), getScaled_yOffset())
+    );
 
 #ifdef VISIBLE_RANGE_CULLING
     if (isOutsideVisibleRange(facetedPos)) {
@@ -6105,6 +6371,11 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
 }
 
 bool isOutsideVisibleRange(vec2 pos) {
@@ -6384,6 +6655,11 @@ vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
 }
 
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
+}
+
 bool isOutsideVisibleRange(vec2 pos) {
     return (uCullByVisibleRange.x > 0.5 &&
                 (pos.x < uLogicalVisibleRect.x ||
@@ -6659,6 +6935,30 @@ return accessor_uniqueId_0();
 }
 
 #define uniqueId_DEFINED
+
+
+float accessor_xOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_xOffset() {
+return accessor_xOffset_0();
+}
+
+#define xOffset_DEFINED
+
+
+float accessor_yOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_yOffset() {
+return accessor_yOffset_0();
+}
+
+#define yOffset_DEFINED
 
 
 float accessor_x_0() {
@@ -7050,7 +7350,10 @@ void main(void) {
 
     float size = getScaled_size();
     vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
-    vec2 facetedPos = applySampleFacet(pos);
+    vec2 facetedPos = applyOffset(
+        applySampleFacet(pos),
+        vec2(getScaled_xOffset(), getScaled_yOffset())
+    );
 
 #ifdef VISIBLE_RANGE_CULLING
     if (isOutsideVisibleRange(facetedPos)) {
@@ -7211,6 +7514,11 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
 }
 
 bool isOutsideVisibleRange(vec2 pos) {
@@ -7609,6 +7917,11 @@ vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
 }
 
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
+}
+
 bool isOutsideVisibleRange(vec2 pos) {
     return (uCullByVisibleRange.x > 0.5 &&
                 (pos.x < uLogicalVisibleRect.x ||
@@ -7897,6 +8210,30 @@ return accessor_uniqueId_0();
 #define uniqueId_DEFINED
 
 
+float accessor_xOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_xOffset() {
+return accessor_xOffset_0();
+}
+
+#define xOffset_DEFINED
+
+
+float accessor_yOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_yOffset() {
+return accessor_yOffset_0();
+}
+
+#define yOffset_DEFINED
+
+
 vec3 accessor_fill_0() {
     // Constant value
     return vec3(0.2980392156862745, 0.47058823529411764, 0.6588235294117647);
@@ -8084,6 +8421,30 @@ return accessor_strokeOpacity_0();
 }
 
 #define strokeOpacity_DEFINED
+
+
+float accessor_x2Offset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_x2Offset() {
+return accessor_x2Offset_0();
+}
+
+#define x2Offset_DEFINED
+
+
+float accessor_y2Offset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_y2Offset() {
+return accessor_y2Offset_0();
+}
+
+#define y2Offset_DEFINED
 
 bool isPointSelected() {
     return checkSelection_select(false) || checkSelection_highlight(false);
@@ -8292,19 +8653,23 @@ void main(void) {
         uCornerRadiusBottomLeft
     );
 
-    float x = getScaled_x();
-    float x2 = getScaled_x2();
-    float y = getScaled_y();
-    float y2 = getScaled_y2();
+    vec2 pos1 = applyOffset(
+        applySampleFacet(vec2(getScaled_x(), getScaled_y())),
+        vec2(getScaled_xOffset(), getScaled_yOffset())
+    );
+    vec2 pos2 = applyOffset(
+        applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
+        vec2(getScaled_x2Offset(), getScaled_y2Offset())
+    );
 
-    sort(x, x2);
-    sort(y, y2);
+    sort(pos1.x, pos2.x);
+    sort(pos1.y, pos2.y);
 
     // Clamp x to prevent precision artifacts when the scale is zoomed very close.
 	// TODO: clamp y as well
 	float clampMargin = 1.0;
-    vec2 pos1 = vec2(clamp(x, 0.0 - clampMargin, 1.0 + clampMargin), y);
-    vec2 pos2 = vec2(clamp(x2, 0.0 - clampMargin, 1.0 + clampMargin), y2);
+    pos1.x = clamp(pos1.x, 0.0 - clampMargin, 1.0 + clampMargin);
+    pos2.x = clamp(pos2.x, 0.0 - clampMargin, 1.0 + clampMargin);
 
     vec2 size = pos2 - pos1;
 
@@ -8316,16 +8681,12 @@ void main(void) {
 
     vec2 pos = pos1 + frac * size;
 
-    size.y *= getSampleFacetHeight(pos);
-
     // Clamp to minimum size, optionally compensate with opacity
     float opaFactor = uViewOpacity * max(uMinOpacity,
         clampMinSize(pos.x, frac.x, size.x, normalizedMinSize.x) *
         clampMinSize(pos.y, frac.y, size.y, normalizedMinSize.y));
 
     size = max(size, normalizedMinSize);
-
-    pos = applySampleFacet(pos);
 
 #if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
     // Add an extra pixel to the stroke width to accommodate edge antialiasing

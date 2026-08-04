@@ -4,13 +4,7 @@ import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 import { Tooltip } from "./tooltip.js";
 
 export type MarkType =
-    | "rect"
-    | "point"
-    | "rule"
-    | "tick"
-    | "text"
-    | "link"
-    | "arrow";
+    "rect" | "point" | "rule" | "tick" | "text" | "link" | "arrow";
 
 export interface MarkPropsBase {
     type: MarkType;
@@ -62,20 +56,36 @@ export interface MarkPropsBase {
     clip?: boolean | "x" | "y" | "never";
 
     /**
-     * Offsets of the `x` and `x2` coordinates in pixels. The offset is applied
-     * after the viewport scaling and translation.
+     * Offset of the `x` coordinate in logical pixels.
      *
      * **Default value:** `0`
      */
-    xOffset?: number;
+    xOffset?: number | ExprRef;
 
     /**
-     * Offsets of the `y` and `y2` coordinates in pixels. The offset is applied
-     * after the viewport scaling and translation.
+     * Offset of the `y` coordinate in logical pixels.
      *
      * **Default value:** `0`
      */
-    yOffset?: number;
+    yOffset?: number | ExprRef;
+
+    /**
+     * Offset of the `x2` coordinate in logical pixels. When `x2` is implicit,
+     * it inherits `xOffset` unless this property is specified.
+     *
+     * **Default value:** inherited from `xOffset` for an implicit `x2`,
+     * otherwise `0`
+     */
+    x2Offset?: number | ExprRef;
+
+    /**
+     * Offset of the `y2` coordinate in logical pixels. When `y2` is implicit,
+     * it inherits `yOffset` unless this property is specified.
+     *
+     * **Default value:** inherited from `yOffset` for an implicit `y2`,
+     * otherwise `0`
+     */
+    y2Offset?: number | ExprRef;
 
     /**
      * Minimum size for WebGL buffers (number of data items).
@@ -694,6 +704,8 @@ export interface PointProps
      * Horizontal offset in pixels.
      *
      * **Default value:** `0`
+     *
+     * @deprecated Use `xOffset` instead.
      */
     dx?: number | ExprRef;
 
@@ -701,6 +713,9 @@ export interface PointProps
      * Vertical offset in pixels.
      *
      * **Default value:** `0`
+     *
+     * @deprecated Use `yOffset` instead. Note that positive `yOffset` values
+     * move down, while positive `dy` values move up.
      */
     dy?: number | ExprRef;
 

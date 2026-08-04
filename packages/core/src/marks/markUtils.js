@@ -47,8 +47,15 @@ export function validatePositionalEndpointCoordinateSpaces(encoding) {
  *
  * @param {Encoding} encoding
  * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+ * @param {boolean} [offsetDefinesCoverage] Whether an implicit secondary
+ * endpoint must share the primary endpoint's band anchor so that the offset
+ * scale alone determines the covered subgroup band.
  */
-export function fixCoveragePositional(encoding, channel) {
+export function fixCoveragePositional(
+    encoding,
+    channel,
+    offsetDefinesCoverage = false
+) {
     const secondaryChannel = getSecondaryChannel(channel);
 
     // Must make copies because the definition may be shared with other views/marks
@@ -80,7 +87,9 @@ export function fixCoveragePositional(encoding, channel) {
                 // the band property works differently on rectangular marks, i.e., it adjusts the band coverage.
                 const adjustment = (1 - (primary.band ?? 1)) / 2;
                 primary.band = 0 + adjustment;
-                secondary.band = 1 - adjustment;
+                secondary.band = offsetDefinesCoverage
+                    ? primary.band
+                    : 1 - adjustment;
             }
         } else if (primary.type != "quantitative") {
             const adjustment = (1 - (primary.band || 1)) / 2;

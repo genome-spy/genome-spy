@@ -28,6 +28,41 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
+    test("accepts primary offset channels and secondary offset properties", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            data: {
+                values: [
+                    { x: 1, y: 2, group: "a" },
+                    { x: 2, y: 3, group: "b" },
+                ],
+            },
+            mark: {
+                type: "rule",
+                x2Offset: 0,
+                y2Offset: { expr: "offset" },
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+                xOffset: {
+                    field: "group",
+                    type: "nominal",
+                    scale: {
+                        type: "ordinal",
+                        domain: ["a", "b"],
+                        range: [-4, 4],
+                    },
+                },
+                yOffset: { value: 3 },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
+
     test("accepts conditional mark-property branches with their own scale", () => {
         const schema = createCoreSchema();
         const spec = JSON.parse(

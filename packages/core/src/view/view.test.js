@@ -1292,6 +1292,109 @@ describe("Step sizing and domain updates", () => {
         expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
     });
 
+    /**
+     * @param {import("../spec/view.js").Step} width
+     * @param {import("../spec/scale.js").Scale} [xScale]
+     * @param {import("../spec/scale.js").Scale} [offsetScale]
+     * @returns {import("../spec/view.js").UnitSpec}
+     */
+    function createGroupedBarStepSpec(width, xScale, offsetScale) {
+        return {
+            width,
+            height: 100,
+            data: {
+                values: [
+                    { category: "A", group: "first", value: 1 },
+                    { category: "A", group: "second", value: 2 },
+                    { category: "B", group: "first", value: 3 },
+                    { category: "B", group: "second", value: 4 },
+                ],
+            },
+            mark: "rect",
+            encoding: {
+                x: {
+                    field: "category",
+                    type: "nominal",
+                    scale: xScale,
+                },
+                xOffset: {
+                    field: "group",
+                    type: "nominal",
+                    scale: offsetScale,
+                },
+                y: { field: "value", type: "quantitative" },
+            },
+        };
+    }
+
+    test("Step size defaults to nested offset groups", async () => {
+        const spec = createGroupedBarStepSpec(
+            { step: 10 },
+            { paddingInner: 0.2, paddingOuter: 0.1 },
+            { paddingInner: 0.1, paddingOuter: 0.05 }
+        );
+
+        const { view } = await createHeadlessEngine(spec);
+
+        expect(view.getSize().width.px).toBeCloseTo(50);
+    });
+
+    test("Step.for position sizes primary categories", async () => {
+        const spec = createGroupedBarStepSpec({
+            step: 10,
+            for: "position",
+        });
+
+        const { view } = await createHeadlessEngine(spec);
+
+        // Two 10 px category steps plus the nested-offset primary padding:
+        // 10 * bandspace(2, 0.2, 0.2) = 22.
+        expect(view.getSize().width.px).toBeCloseTo(22);
+    });
+
+    test("Offset-step size updates when the subgroup domain grows", async () => {
+        const requestLayoutReflow = vi.fn();
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            width: { step: 10, for: "offset" },
+            height: 100,
+            data: { name: "groups" },
+            mark: "rect",
+            encoding: {
+                x: { field: "category", type: "nominal" },
+                xOffset: { field: "group", type: "nominal" },
+                y: { field: "value", type: "quantitative" },
+            },
+        };
+
+        const initial = [
+            { category: "A", group: "first", value: 1 },
+            { category: "A", group: "second", value: 2 },
+        ];
+        const { view, context } = await createHeadlessEngine(spec, {
+            contextOptions: {
+                getNamedDataFromProvider: () => initial,
+                requestLayoutReflow,
+            },
+        });
+
+        // Primary padding leaves 2/3 of the view for its only category band,
+        // which must contain two 10 px offset steps: 20 / (2/3) = 30.
+        expect(view.getSize().width.px).toBeCloseTo(30);
+        requestLayoutReflow.mockClear();
+
+        context.dataFlow
+            .findNamedDataSource("groups")
+            .dataSource.updateDynamicData([
+                ...initial,
+                { category: "A", group: "third", value: 3 },
+            ]);
+
+        // Three offset steps need a 30 px primary band: 30 / (2/3) = 45.
+        expect(view.getSize().width.px).toBeCloseTo(45);
+        expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+    });
+
     test("Step-sized domain updates propagate size resolution errors", async () => {
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {

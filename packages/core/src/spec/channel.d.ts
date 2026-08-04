@@ -26,9 +26,13 @@ export type SecondaryPositionalChannel = "x2" | "y2";
 export type PositionalChannel =
     PrimaryPositionalChannel | SecondaryPositionalChannel;
 
+export type OffsetChannel = "xOffset" | "yOffset";
+export type SecondaryOffsetChannel = "x2Offset" | "y2Offset";
+
 // Remember to updata the type guard when adding channels!
 export type ChannelWithScale =
     | PositionalChannel
+    | OffsetChannel
     | "color"
     | "fill"
     | "stroke"
@@ -423,6 +427,11 @@ export type Position2Def =
 
 export type NumericMarkPropDef = MarkPropDef<number>;
 
+/**
+ * A pixel-valued offset of a primary positional channel.
+ */
+export type OffsetDef = NumericMarkPropDef | MarkPropExprDef;
+
 export type ShapeDef = MarkPropDef<string | null, TypeForShape>;
 
 export type ArrowDirection = "forward" | "reverse";
@@ -495,7 +504,29 @@ export interface Encoding {
      */
     y2?: Position2Def | null;
 
-    dx?: NumericMarkPropDef | MarkPropExprDef; // TODO: Not a mark property. Fix types.
+    /**
+     * Horizontal offset from the encoded x position, in logical pixels.
+     */
+    xOffset?: OffsetDef | null;
+
+    /**
+     * Vertical offset from the encoded y position, in logical pixels.
+     */
+    yOffset?: OffsetDef | null;
+
+    /**
+     * Legacy horizontal pixel offset for point marks.
+     *
+     * @deprecated Use `xOffset` instead.
+     */
+    dx?: NumericMarkPropDef | MarkPropExprDef;
+
+    /**
+     * Legacy vertical pixel offset for point marks. Positive values move in
+     * the opposite direction from `yOffset`.
+     *
+     * @deprecated Use `yOffset` instead.
+     */
     dy?: NumericMarkPropDef | MarkPropExprDef;
 
     /**

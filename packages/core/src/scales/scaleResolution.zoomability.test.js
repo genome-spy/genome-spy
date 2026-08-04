@@ -15,10 +15,11 @@ import ScaleResolution from "./scaleResolution.js";
 function createMember({ path, channel = "x", type = "index", zoom }) {
     return /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
         channel,
-        // Minimal fake view: `isZoomable()` only needs config scopes and a stable path.
+        // Minimal fake view for resolving scale properties and zoomability.
         view: /** @type {any} */ ({
             getBaseUrl: () => "",
             getConfigScopes: () => [INTERNAL_DEFAULT_CONFIG],
+            getEncoding: () => ({}),
             getPathString: () => path,
             isConfiguredVisible: () => true,
             isDataInitialized: () => true,

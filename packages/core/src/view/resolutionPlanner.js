@@ -7,6 +7,7 @@ import {
     getPrimaryChannel,
     isChannelWithScale,
     isPrimaryPositionalChannel,
+    isOffsetChannel,
 } from "../encoder/encoder.js";
 
 /**
@@ -103,7 +104,10 @@ const getResolutionMember = (view, type, channel, channelDef) => {
     if (type == "axis" && !isPositionalChannel(targetChannel)) {
         return undefined;
     }
-    if (type == "legend" && isPositionalChannel(targetChannel)) {
+    if (
+        type == "legend" &&
+        (isPositionalChannel(targetChannel) || isOffsetChannel(targetChannel))
+    ) {
         return undefined;
     }
     if (

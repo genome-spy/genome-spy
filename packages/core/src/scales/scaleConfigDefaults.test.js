@@ -12,6 +12,7 @@ function createMember(channel = "color", scale, markType = "point") {
     return /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
         channel,
         view: /** @type {any} */ ({
+            getEncoding: () => ({}),
             getMarkType: () => markType,
         }),
         channelDef: scale ? { scale } : {},

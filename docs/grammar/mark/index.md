@@ -97,6 +97,61 @@ cover in the visualization.
 `y2`
 : The secondary position on the _y_ axis
 
+##### Offset channels
+
+`xOffset` and `yOffset` displace encoded positions in logical pixels. Positive
+`xOffset` values move right, and positive `yOffset` values move down. Offset
+channels accept constants, expressions, and scale-backed field or datum
+definitions.
+
+`xOffset`
+: Horizontal displacement from `x`
+
+`yOffset`
+: Vertical displacement from `y`
+
+For ranged marks, an implicit `x2` or `y2` endpoint inherits the corresponding
+primary offset. An explicitly encoded secondary endpoint is independent and
+has no offset by default. Set the `x2Offset` or `y2Offset` mark property to
+displace an explicit secondary endpoint. These secondary offsets are mark
+properties, not encoding channels.
+
+###### Nested offset scales
+
+A discrete field, datum, or expression on `xOffset` or `yOffset` creates a
+nested band scale when the matching primary position uses a band scale. The
+offset range is measured in logical pixels and spans the primary band.
+Point-like marks use subgroup centers, while rectangles cover subgroup band
+extents.
+
+The primary scale's `paddingInner` and `paddingOuter` control spacing between
+groups and default to `0.2` when a nested offset scale is present. The offset
+scale's padding controls spacing between marks within each group. Explicit
+padding values override the defaults.
+
+See the [grouped bar example](rect.md#grouped-bars).
+
+```json title="Nested bands for grouped bars"
+{
+  "width": { "step": 12 },
+  "encoding": {
+    "x": { "field": "category", "type": "nominal" },
+    "xOffset": {
+      "field": "group",
+      "type": "nominal",
+      "scale": { "paddingInner": 0.15 }
+    }
+  }
+}
+```
+
+As described in [Step sizing](../composition/concat.md#step-sizing), a
+step-based width or height normally describes a positional scale step. When a
+discrete offset scale is present, it describes each offset step by default. Use
+`{ "step": 12, "for": "position" }` to make the step describe each primary
+category instead. An explicit offset-scale `range` remains a pixel range and is
+not replaced by nested-band inference.
+
 #### Other channels
 
 `color`

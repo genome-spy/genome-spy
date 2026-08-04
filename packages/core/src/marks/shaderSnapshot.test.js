@@ -170,6 +170,49 @@ async function captureShaderSources(spec, unitName) {
 }
 
 describe("generated shader snapshots", () => {
+    test("scaled offset channels generate both endpoint accessors", async () => {
+        const sources = await captureShaderSources({
+            data: {
+                values: [
+                    { category: "A", group: "first", value: 2 },
+                    { category: "A", group: "second", value: 3 },
+                ],
+            },
+            mark: "rect",
+            encoding: {
+                x: { field: "category", type: "nominal" },
+                y: { field: "value", type: "quantitative" },
+                xOffset: {
+                    field: "group",
+                    type: "nominal",
+                    scale: { range: [-8, 8] },
+                },
+            },
+        });
+
+        expect(sources.vertex).toContain("getScaled_xOffset()");
+        expect(sources.vertex).toContain("getScaled_x2Offset()");
+        expect(sources.vertex).toContain("scale_xOffset");
+    });
+
+    test("legacy point dx and dy retain their pre-facet direction", async () => {
+        const sources = await captureShaderSources({
+            data: { values: [{}] },
+            mark: "point",
+            encoding: {
+                dx: { value: 4 },
+                dy: { value: -3 },
+            },
+        });
+
+        expect(sources.vertex).toContain(
+            "return vec2(getScaled_dx(), getScaled_dy()) / uViewportSize;"
+        );
+        expect(sources.vertex.indexOf("+ getDxDy()")).toBeLessThan(
+            sources.vertex.indexOf("applySampleFacet(pos)")
+        );
+    });
+
     test("point mark control spec", async () => {
         const sources = await captureShaderSources({
             data: {

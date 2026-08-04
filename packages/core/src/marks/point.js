@@ -61,6 +61,8 @@ export default class PointMark extends Mark {
             "facetIndex",
             "x",
             "y",
+            "xOffset",
+            "yOffset",
             "size",
             "semanticScore",
             "shape",
@@ -104,6 +106,26 @@ export default class PointMark extends Mark {
      * @returns {import("../spec/channel.js").Encoding}
      */
     fixEncoding(encoding) {
+        const configured = this.unitView.getEncoding();
+        const mark =
+            typeof this.unitView.spec.mark == "object"
+                ? this.unitView.spec.mark
+                : {};
+
+        for (const [legacy, offset] of /** @type {const} */ ([
+            ["dx", "xOffset"],
+            ["dy", "yOffset"],
+        ])) {
+            const legacyExplicit = configured[legacy] != null || legacy in mark;
+            const offsetExplicit = configured[offset] != null || offset in mark;
+
+            if (legacyExplicit && offsetExplicit) {
+                throw new Error(
+                    `Point marks cannot combine legacy ${legacy} with ${offset}. Use only ${offset}.`
+                );
+            }
+        }
+
         fixStroke(encoding, this.properties.filled);
         fixFill(encoding, this.properties.filled);
 

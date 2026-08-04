@@ -1,5 +1,11 @@
 import { isDiscrete } from "vega-scale";
-import { isColorChannel } from "../encoder/encoder.js";
+import {
+    getOffsetChannel,
+    isColorChannel,
+    isNestedDiscreteOffsetDef,
+    isOffsetChannel,
+    isPrimaryPositionalChannel,
+} from "../encoder/encoder.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 import mergeObjects from "../utils/mergeObjects.js";
@@ -85,6 +91,27 @@ export function resolveScalePropsBase({
         props.type = getDefaultScaleType(channel, dataType);
     }
 
+    const hasNestedOffset =
+        isPrimaryPositionalChannel(channel) &&
+        memberList.some((member) =>
+            isNestedDiscreteOffsetDef(
+                member.view.getEncoding()[getOffsetChannel(channel)]
+            )
+        );
+
+    if (
+        hasNestedOffset &&
+        props.type == "band" &&
+        props.padding === undefined
+    ) {
+        // Primary padding separates groups; offset-scale padding separates
+        // marks within each group. Based on Vega-Lite's group-level defaults:
+        // https://github.com/vega/vega-lite/blob/f0e76dfc7efa720817249f612f66599e2ca5ead4/src/scale.ts
+        // Explicit values win, and the padding shortcut controls both values.
+        props.paddingInner ??= 0.2;
+        props.paddingOuter ??= 0.2;
+    }
+
     validateScaleTypeCompatibility(
         channel,
         dataType,
@@ -140,6 +167,26 @@ export function resolveScalePropsBase({
         props.reverse == undefined
     ) {
         props.reverse = true;
+    }
+
+    if (isOffsetChannel(channel) && isDiscrete(props.type) && !props.range) {
+        const positionChannel = channel == "xOffset" ? "x" : "y";
+        const rangeOwner = memberList[0]?.view;
+        const positionResolution =
+            rangeOwner?.getScaleResolution(positionChannel);
+
+        if (positionResolution?.getResolvedScaleType() == "band") {
+            // Initialize the dependency before binding the reactive range.
+            // Otherwise its first range notification can re-enter bandwidth()
+            // while the offset scale itself is being initialized.
+            positionResolution.getScale();
+            const size = positionChannel == "x" ? "width" : "height";
+            props.range = [
+                0,
+                { expr: `bandwidth("${positionChannel}") * ${size}` },
+            ];
+            /** @type {any} */ (props).__rangeExprScope = rangeOwner;
+        }
     }
 
     if (props.range && props.scheme) {

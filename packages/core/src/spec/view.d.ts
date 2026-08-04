@@ -88,6 +88,16 @@ export interface Step {
      * Step size in pixels.
      */
     step: number | ExprRef;
+
+    /**
+     * Selects which discrete scale the step describes when a positional scale
+     * has a nested offset scale. `"offset"` sizes each subgroup step;
+     * `"position"` sizes each primary category step.
+     *
+     * __Default value:__ `"offset"` when a discrete nested offset scale is
+     * present, otherwise `"position"`.
+     */
+    for?: "position" | "offset";
 }
 
 export type Side = "top" | "right" | "bottom" | "left";

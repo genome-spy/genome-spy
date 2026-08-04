@@ -1,10 +1,15 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import Rectangle from "../view/layout/rectangle.js";
 import { createSelfClipOptions } from "../view/renderingContext/clipOptions.js";
 import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
-import { createLogicalVisibleRect, createViewportScope } from "./mark.js";
+import Mark from "./mark.js";
+import {
+    createLogicalVisibleRect,
+    createViewportScope,
+    getXIndexOffsetBound,
+} from "./mark.js";
 
 describe("mark factory", () => {
     test("creates arrow marks", async () => {
@@ -85,6 +90,197 @@ describe("mark positional endpoints", () => {
         );
 
         expect(() => view.mark.encoding).not.toThrow();
+    });
+});
+
+describe("mark positional offsets", () => {
+    test("inherits the primary offset for an implicit secondary endpoint", async () => {
+        const view = await create(
+            {
+                data: { values: [{ category: "A", value: 3 }] },
+                mark: "rect",
+                encoding: {
+                    x: { field: "category", type: "nominal" },
+                    y: { field: "value", type: "quantitative" },
+                    xOffset: {
+                        field: "category",
+                        type: "nominal",
+                        scale: { range: [-6, 6] },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const encoding = /** @type {Record<string, any>} */ (
+            view.mark.encoding
+        );
+        expect(encoding.x2Offset).toEqual({
+            ...encoding.xOffset,
+            band: 1,
+            resolutionChannel: "xOffset",
+        });
+    });
+
+    test("defaults the secondary offset to zero for an explicit endpoint", async () => {
+        const view = await create(
+            {
+                data: { values: [{ start: 1, end: 2 }] },
+                mark: "rule",
+                encoding: {
+                    x: { field: "start", type: "quantitative" },
+                    x2: { field: "end" },
+                    xOffset: { value: 7 },
+                },
+            },
+            UnitView
+        );
+
+        const encoding = /** @type {Record<string, any>} */ (
+            view.mark.encoding
+        );
+        expect(encoding.x2Offset).toEqual({ value: 0 });
+    });
+
+    test("honors an explicit zero secondary offset property", async () => {
+        const view = await create(
+            {
+                data: { values: [{ category: "A", value: 3 }] },
+                mark: { type: "rect", xOffset: 8, x2Offset: 0 },
+                encoding: {
+                    x: { field: "category", type: "nominal" },
+                    y: { field: "value", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        const encoding = /** @type {Record<string, any>} */ (
+            view.mark.encoding
+        );
+        expect(encoding.xOffset).toEqual({ value: 8 });
+        expect(encoding.x2Offset).toEqual({ value: 0 });
+    });
+
+    test.each([
+        ["dx", "xOffset"],
+        ["dy", "yOffset"],
+    ])("rejects legacy point %s with %s", async (legacy, offset) => {
+        await expect(
+            create(
+                {
+                    mark: { type: "point", [offset]: 2 },
+                    encoding: {
+                        [legacy]: { value: 3 },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow(
+            `Point marks cannot combine legacy ${legacy} with ${offset}`
+        );
+    });
+
+    test("allows legacy and new offsets on different axes", async () => {
+        const view = await create(
+            {
+                mark: { type: "point", yOffset: 2 },
+                encoding: {
+                    dx: { value: 3 },
+                },
+            },
+            UnitView
+        );
+
+        expect(view.mark.encoding).toMatchObject({
+            dx: { value: 3 },
+            yOffset: { value: 2 },
+        });
+    });
+});
+
+describe("offset-aware x indexing", () => {
+    /**
+     * @param {import("../types/encoder.js").Encoder} xOffset
+     * @param {{ offset?: number, indexedRange?: [number, number] }} [options]
+     */
+    function createIndexedRenderContext(
+        xOffset,
+        { offset = 0, indexedRange = [2, 5] } = {}
+    ) {
+        const lookup = vi.fn(
+            (/** @type {number} */ _start, /** @type {number} */ _end, arr) => {
+                arr[0] = indexedRange[0];
+                arr[1] = indexedRange[1];
+                return arr;
+            }
+        );
+        const draw = vi.fn();
+        const scale = Object.assign(() => 0, {
+            type: "index",
+            domain: () => [100, 200],
+        });
+        const resolution = {
+            getScale: () => scale,
+            getAxisLength: () => 100,
+        };
+        const rangeEntry = { offset, count: 10, xIndex: lookup };
+        const mark = /** @type {any} */ ({
+            bufferInfo: {},
+            encoders: { xOffset },
+            unitView: { getScaleResolution: () => resolution },
+            rangeMap: { get: () => rangeEntry },
+        });
+
+        Mark.prototype.createRenderCallback.call(mark, draw, {})();
+
+        return { draw, lookup };
+    }
+
+    test("uses scaled and constant pixel bounds", () => {
+        const scaled = Object.assign(() => 0, {
+            scale: { range: () => [-12, 8] },
+            constant: false,
+        });
+        const constant = Object.assign(() => -20, { constant: true });
+
+        expect(
+            getXIndexOffsetBound(
+                /** @type {any} */ ({
+                    xOffset: scaled,
+                    x2Offset: constant,
+                })
+            )
+        ).toBe(20);
+    });
+
+    test("expands an indexed domain by the bounded pixel offset", () => {
+        const { draw, lookup } = createIndexedRenderContext(
+            /** @type {any} */ (
+                Object.assign(() => 0, {
+                    scale: { range: () => [-10, 10] },
+                    constant: false,
+                })
+            )
+        );
+
+        expect(lookup).toHaveBeenCalledWith(89, 210, [2, 5]);
+        expect(draw).toHaveBeenCalledWith(2, 3);
+    });
+
+    test("draws the full range when an indexed offset is unbounded", () => {
+        const { draw, lookup } = createIndexedRenderContext(
+            /** @type {any} */ (
+                Object.assign((/** @type {any} */ datum) => datum.offset, {
+                    constant: false,
+                    scale: { type: "null" },
+                })
+            ),
+            { offset: 4 }
+        );
+
+        expect(lookup).not.toHaveBeenCalled();
+        expect(draw).toHaveBeenCalledWith(4, 10);
     });
 });
 

@@ -17,7 +17,9 @@ import createEncoders, {
     isDatumDef,
     isExprDef,
     isFieldDef,
+    isNestedDiscreteOffsetDef,
     isValueDef,
+    resolveSecondaryOffset,
 } from "../encoder/encoder.js";
 import {
     generateConstantValueGlsl,
@@ -66,6 +68,46 @@ export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
 
 export const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
+
+/**
+ * Returns a conservative horizontal pixel bound for indexed rendering.
+ * Undefined means that a data-dependent pass-through offset is unbounded and
+ * the x index must not be used for culling.
+ *
+ * @param {Partial<Record<string, import("../types/encoder.js").Encoder>>} encoders
+ * @returns {number | undefined}
+ */
+export function getXIndexOffsetBound(encoders) {
+    let bound = 0;
+
+    for (const channel of ["xOffset", "x2Offset", "dx"]) {
+        const encoder = encoders[channel];
+        if (!encoder) {
+            continue;
+        }
+
+        if (encoder.constant) {
+            const value = encoder(/** @type {any} */ ({}));
+            if (!Number.isFinite(value)) {
+                return undefined;
+            }
+            bound = Math.max(bound, Math.abs(/** @type {number} */ (value)));
+        } else if (encoder.scale && encoder.scale.type !== "null") {
+            const range = encoder.scale.range();
+            if (!range.every((value) => Number.isFinite(value))) {
+                return undefined;
+            }
+            bound = Math.max(
+                bound,
+                ...range.map((value) => Math.abs(/** @type {number} */ (value)))
+            );
+        } else {
+            return undefined;
+        }
+    }
+
+    return bound;
+}
 
 /**
  * @typedef {import("../types/rendering.js").ClipOptions} ClipOptions
@@ -242,6 +284,13 @@ export default class Mark {
                 : () => /** @type {P} */ ({}),
             () => this.defaultProperties
         );
+
+        this.setupExprRefsNeedingGraphicsUpdate([
+            "xOffset",
+            "yOffset",
+            "x2Offset",
+            "y2Offset",
+        ]);
     }
 
     /**
@@ -314,6 +363,10 @@ export default class Mark {
             "facetIndex",
             "x",
             "y",
+            "xOffset",
+            "yOffset",
+            /** @type {Channel} */ ("x2Offset"),
+            /** @type {Channel} */ ("y2Offset"),
             "color",
             "opacity",
             "search",
@@ -330,6 +383,8 @@ export default class Mark {
         const encoding = {
             sample: undefined,
             uniqueId: undefined,
+            xOffset: { value: 0 },
+            yOffset: { value: 0 },
         };
 
         if (this.isPickingParticipant()) {
@@ -349,6 +404,18 @@ export default class Mark {
      */
     fixEncoding(encoding) {
         return encoding;
+    }
+
+    /**
+     * Returns the relative position within a discrete offset band.
+     * Point-like marks use subgroup centers by default.
+     *
+     * @param {string} channel
+     * @returns {number}
+     * @protected
+     */
+    getOffsetBand(channel) {
+        return 0.5;
     }
 
     /**
@@ -430,6 +497,97 @@ export default class Mark {
                 ...propertyValues,
                 ...configured,
             });
+            const internalEncoding = /** @type {Record<string, any>} */ (
+                encoding
+            );
+
+            /**
+             * Copies a channel definition and applies internal properties to
+             * its scale-bearing branch, including a conditional branch.
+             *
+             * @param {import("../spec/channel.js").ChannelDef} channelDef
+             * @param {Record<string, any>} properties
+             */
+            const withScaleProperties = (channelDef, properties) => {
+                const clone = structuredClone(channelDef);
+                const scaleDef = findChannelDefWithScale(clone);
+                if (!scaleDef) {
+                    throw new Error(
+                        "Cannot add scale properties to an unscaled channel definition."
+                    );
+                }
+                Object.assign(scaleDef, properties);
+                return clone;
+            };
+
+            for (const primary of /** @type {const} */ (["x", "y"])) {
+                const secondary = primary == "x" ? "x2" : "y2";
+                const primaryOffset = primary + "Offset";
+                const secondaryOffset = secondary + "Offset";
+                const primaryOffsetDef = internalEncoding[primaryOffset];
+                if (isNestedDiscreteOffsetDef(primaryOffsetDef)) {
+                    const primaryDef = internalEncoding[primary];
+                    const primaryScaleDef =
+                        primaryDef && findChannelDefWithScale(primaryDef);
+                    const primaryBandDef =
+                        /** @type {import("../spec/channel.js").BandMixins | undefined} */ (
+                            primaryScaleDef
+                        );
+                    if (
+                        primaryScaleDef &&
+                        primaryBandDef &&
+                        primaryScaleDef.type != "quantitative" &&
+                        primaryBandDef.band == null
+                    ) {
+                        // The offset scale owns placement within the primary
+                        // band, so anchor the primary position at its start.
+                        // Based on Vega-Lite's encoding-driven offset anchor:
+                        // https://github.com/vega/vega-lite/blob/f0e76dfc7efa720817249f612f66599e2ca5ead4/src/compile/mark/encode/position-point.ts
+                        internalEncoding[primary] = withScaleProperties(
+                            primaryDef,
+                            { band: 0 }
+                        );
+                    }
+
+                    const offsetScaleDef =
+                        findChannelDefWithScale(primaryOffsetDef);
+                    const offsetBandDef =
+                        /** @type {import("../spec/channel.js").BandMixins} */ (
+                            offsetScaleDef
+                        );
+                    if (offsetBandDef.band == null) {
+                        internalEncoding[primaryOffset] = withScaleProperties(
+                            primaryOffsetDef,
+                            { band: this.getOffsetBand(primaryOffset) }
+                        );
+                    }
+                }
+
+                const resolved = resolveSecondaryOffset(
+                    internalEncoding[primaryOffset],
+                    propertyValues[secondaryOffset],
+                    configured[secondary] != null
+                );
+
+                if (typeof resolved == "number") {
+                    internalEncoding[secondaryOffset] = { value: resolved };
+                } else if (resolved && findChannelDefWithScale(resolved)) {
+                    /** @type {Record<string, any>} */
+                    const scaleProperties = {
+                        resolutionChannel: primaryOffset,
+                    };
+                    if (isNestedDiscreteOffsetDef(resolved)) {
+                        scaleProperties.band =
+                            this.getOffsetBand(secondaryOffset);
+                    }
+                    internalEncoding[secondaryOffset] = withScaleProperties(
+                        resolved,
+                        scaleProperties
+                    );
+                } else {
+                    internalEncoding[secondaryOffset] = resolved;
+                }
+            }
 
             for (const channel of Object.keys(encoding)) {
                 if (!this.getSupportedChannels().includes(channel)) {
@@ -1442,6 +1600,11 @@ export default class Mark {
 
         const scale = this.unitView.getScaleResolution("x")?.getScale();
         const continuous = scale && isContinuous(scale.type);
+        const offsetBound = getXIndexOffsetBound(
+            /** @type {Partial<Record<string, import("../types/encoder.js").Encoder>>} */ (
+                this.encoders
+            )
+        );
         const domainStartOffset = ["index", "locus"].includes(scale?.type)
             ? -1
             : 0;
@@ -1450,11 +1613,16 @@ export default class Mark {
         const arr = [0, 0];
 
         drawWithRangeEntry = (rangeEntry) => {
-            if (continuous && rangeEntry.xIndex) {
+            if (continuous && rangeEntry.xIndex && offsetBound !== undefined) {
                 const domain = scale.domain();
+                const axisLength =
+                    this.unitView.getScaleResolution("x").getAxisLength() || 1;
+                const offsetDomainMargin =
+                    (Math.abs(domain[1] - domain[0]) / axisLength) *
+                    offsetBound;
                 const vertexIndices = rangeEntry.xIndex(
-                    domain[0] + domainStartOffset,
-                    domain[1],
+                    domain[0] + domainStartOffset - offsetDomainMargin,
+                    domain[1] + offsetDomainMargin,
                     arr
                 );
                 const offset = vertexIndices[0];
@@ -1511,9 +1679,8 @@ export default class Mark {
         // rules inside pixels, not between pixels.
         const pixelOffset = 0.5;
 
-        // Note: we also handle xOffset/yOffset mark properties here
-        const xOffset = (props.xOffset ?? 0) + pixelOffset;
-        const yOffset = (props.yOffset ?? 0) + pixelOffset;
+        const xOffset = pixelOffset;
+        const yOffset = pixelOffset;
 
         /** @type {object} */
         let uniforms;

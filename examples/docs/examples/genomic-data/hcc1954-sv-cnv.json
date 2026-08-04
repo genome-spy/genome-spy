@@ -20,7 +20,7 @@
 
   "resolve": { "scale": { "x": "shared" }, "axis": { "x": "shared" } },
 
-  "spacing": 1,
+  "spacing": 2,
 
   "vconcat": [
     {
@@ -91,6 +91,9 @@
           "type": "formula",
           "expr": "datum.INFO.STRANDS[0][1]",
           "as": "strand2"
+        },
+        {
+          "type": "identifier"
         }
       ],
       "encoding": {
@@ -120,11 +123,10 @@
             }
           ],
           "mark": {
-            "type": "point",
-            "size": 100,
+            "type": "rule",
             "tooltip": null,
             "y": 0,
-            "dy": 0.5,
+            "yOffset": -0.5,
             "opacity": 0.5
           },
           "encoding": {
@@ -134,13 +136,20 @@
               "type": "locus",
               "band": 0
             },
-            "shape": {
+            "x2": { "chrom": "chrom", "pos": "pos", "band": 0 },
+            "xOffset": {
               "field": "strand",
               "type": "nominal",
               "scale": {
                 "domain": ["-", "+"],
-                "range": ["tick-right", "tick-left"]
+                "range": [10, -10]
               },
+              "legend": null
+            },
+            "size": {
+              "field": "SAMPLES.wakhan_haplotagged.VAF[0]",
+              "type": "quantitative",
+              "scale": { "range": [0.5, 2.5], "type": "pow" },
               "legend": null
             }
           }

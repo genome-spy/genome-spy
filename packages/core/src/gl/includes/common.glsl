@@ -36,6 +36,11 @@ vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
 }
 
+/** Applies logical pixel offsets to a position in unit coordinates. */
+vec2 applyOffset(vec2 pos, vec2 offset) {
+    return pos + vec2(offset.x, -offset.y) / uViewportSize;
+}
+
 bool isOutsideVisibleRange(vec2 pos) {
     return (uCullByVisibleRange.x > 0.5 &&
                 (pos.x < uLogicalVisibleRect.x ||

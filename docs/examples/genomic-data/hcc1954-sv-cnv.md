@@ -30,10 +30,12 @@ EXAMPLE examples/docs/examples/genomic-data/hcc1954-sv-cnv.json height=320 spech
 
 The upper track shows paired Severus breakends, deletions, and duplications.
 Arc stroke width encodes variant allele frequency. Hovering an arc emphasizes
-it by increasing its stroke width and opacity. The lower track shows Wakhan
-copy-number segments colored by their total copy number divided by the selected
-ploidy estimate: pale grey represents copy number near the genome-wide ploidy,
-while blue and red indicate lower and higher relative copy number.
+it by increasing its stroke width and opacity. Short feet at the arc endpoints
+point in the breakend strand direction and use the same variant-allele-frequency
+stroke-width scale. The lower track shows Wakhan copy-number segments colored by
+their total copy number divided by the selected ploidy estimate: pale grey
+represents copy number near the genome-wide ploidy, while blue and red indicate
+lower and higher relative copy number.
 
 The initial view covers a dense chromosome 21-22 region with a
 chromothripsis-like pattern of structural variants. Pan and zoom to inspect other
@@ -52,6 +54,9 @@ This example combines:
 - [`link`](../../grammar/mark/link.md) marks for intra- and interchromosomal SV arcs.
 - [`regexFold`](../../grammar/transform/regex-fold.md) to generate endpoint paws
   from paired breakpoint columns.
+- [`rule`](../../grammar/mark/rule.md) marks with a pixel-valued
+  [`xOffset`](../../grammar/mark/index.md#offset-channels) scale for
+  strand-directed endpoint feet.
 - A shared [`locus`](../../grammar/scale.md#locus-scale) x-scale to keep SV and
   CN positions aligned across vertically concatenated tracks.
 - Conditional encodings and a point selection to emphasize the hovered arc.

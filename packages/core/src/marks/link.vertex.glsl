@@ -134,8 +134,14 @@ void main(void) {
     // The bezier's control points
     vec2 p1, p2, p3, p4;
 
-    vec2 a = applySampleFacet(vec2(getScaled_x(), getScaled_y())) * uViewportSize;
-    vec2 b = applySampleFacet(vec2(getScaled_x2(), getScaled_y2())) * uViewportSize;
+    vec2 a = applyOffset(
+        applySampleFacet(vec2(getScaled_x(), getScaled_y())),
+        vec2(getScaled_xOffset(), getScaled_yOffset())
+    ) * uViewportSize;
+    vec2 b = applyOffset(
+        applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
+        vec2(getScaled_x2Offset(), getScaled_y2Offset())
+    ) * uViewportSize;
 
     if (uShape <= SHAPE_DOME) {
         if (uShape == SHAPE_DOME) {

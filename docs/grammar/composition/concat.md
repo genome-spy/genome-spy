@@ -70,12 +70,30 @@ Numbers are interpreted as absolute sizes, and `"container"` is the same as
 `{ grow: 1 }`. A SizeDef with only `minPx` or `maxPx` also uses `{ grow: 1 }`.
 Undefined sizes generally default to `"container"`.
 Expression references may be used where the resolved value is a number or
-`"container"`. Step sizes may also be expression references.
+`"container"`.
 
 Concatenation operators can nested flexibly to build complex layouts as in the
 following example.
 
 EXAMPLE examples/docs/grammar/composition/concat/sizedef-layout.json height=150
+
+### Step sizing
+
+For a view with a discrete positional scale, `width` or `height` can specify a
+step size instead of a fixed total size. The view derives its size from the
+scale's domain and reserves the specified number of logical pixels for each
+discrete step. The step may also be an expression reference.
+
+```json
+{
+  "width": { "step": 20 }
+}
+```
+
+SCHEMA Step
+
+Discrete [offset channels](../mark/index.md#nested-offset-scales) can introduce
+a second scale whose steps determine the view size.
 
 ### Scrollable viewports
 
