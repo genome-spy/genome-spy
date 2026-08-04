@@ -1,24 +1,4 @@
 /**
- * Reusable workspace for one-dimensional displacement.
- *
- * @typedef {object} Displace1DWorkspace
- * @prop {number[]} blockCounts
- * @prop {number[]} blockMeans
- */
-
-/**
- * Creates reusable storage for `solveDisplacement`.
- *
- * @returns {Displace1DWorkspace}
- */
-export function createDisplace1DWorkspace() {
-    return {
-        blockCounts: [],
-        blockMeans: [],
-    };
-}
-
-/**
  * Finds the minimum-squared-displacement placement for ordered items with
  * non-overlapping one-dimensional collision intervals.
  *
@@ -29,35 +9,31 @@ export function createDisplace1DWorkspace() {
  * description of linear-time PAVA implementations, see
  * https://doi.org/10.18637/jss.v102.c01.
  *
- * @template T
- * @param {T[]} items Items ordered by ascending original center position.
- * @param {(item: T) => number} getPosition Original center position accessor.
- * @param {(item: T) => number} getLength Full collision length accessor.
- * @param {number[]} output Reusable output array for signed displacements.
- * @param {Displace1DWorkspace} workspace Reusable PAVA block storage.
- * @returns {number[]} The `output` array.
+ * @param {number[]} positions Original centers in ascending order.
+ * @param {number[]} lengths Full collision lengths.
+ * @param {number[]} [output] Reusable output array for signed displacements.
+ * @returns {number[]} The output array.
  */
-export function solveDisplacement(
-    items,
-    getPosition,
-    getLength,
-    output,
-    workspace
-) {
-    const blockCounts = workspace.blockCounts;
-    const blockMeans = workspace.blockMeans;
-    blockCounts.length = 0;
-    blockMeans.length = 0;
-    output.length = items.length;
+export function solveDisplacement(positions, lengths, output = []) {
+    if (positions.length != lengths.length) {
+        throw new Error(
+            "displace1d positions and lengths must have the same number of values."
+        );
+    }
+
+    /** @type {number[]} */
+    const blockCounts = [];
+    /** @type {number[]} */
+    const blockMeans = [];
+    output.length = positions.length;
 
     let cumulativeSeparation = 0;
     let previousLength = 0;
     let previousPosition = -Infinity;
 
-    for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        const position = getPosition(item);
-        const length = getLength(item);
+    for (let i = 0; i < positions.length; i++) {
+        const position = positions[i];
+        const length = lengths[i];
 
         if (!Number.isFinite(position)) {
             throw new Error("displace1d positions must be finite numbers.");
@@ -100,10 +76,9 @@ export function solveDisplacement(
     let blockIndex = 0;
     let remainingInBlock = blockCounts[0] ?? 0;
 
-    for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        const position = getPosition(item);
-        const length = getLength(item);
+    for (let i = 0; i < positions.length; i++) {
+        const position = positions[i];
+        const length = lengths[i];
 
         if (i > 0) {
             cumulativeSeparation += (previousLength + length) / 2;

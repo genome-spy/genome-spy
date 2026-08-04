@@ -126,10 +126,12 @@ p[i] = q[i] + c[i]
 displacement[i] = p[i] - o[i]
 ```
 
-PAVA is deterministic and linear for ordered input. The transform will read
-values through ordinary GenomeSpy field accessors. Sorting is an explicit
-upstream concern; a `collect` transform can both sort the batch and serve as its
-reactive replay boundary.
+PAVA is deterministic and linear for ordered input. The transform reads values
+through ordinary GenomeSpy field accessors and materializes numeric position and
+length arrays for the solver. The solver itself operates only on arrays and has
+no knowledge of data objects or accessors. Sorting is an explicit upstream
+concern; a `collect` transform can both sort the batch and serve as its reactive
+replay boundary.
 
 ### Recompute from reactively scaled positions instead of scaling a fixed solution
 
@@ -272,9 +274,9 @@ batch without rerunning earlier transforms or the data source.
    - emits zero-displacement clones when a scale-dependent factor has not yet
      been evaluated, allowing the original positions to establish domains;
    - evaluates the factor and requests one upstream replay.
-4. On a normal `complete`, the transform validates the ordered scaled
-   positions and lengths, solves the batch, emits owned rows, and releases the
-   buffered input.
+4. On a normal `complete`, the transform materializes scaled-position and
+   length arrays, asks the solver to validate and solve them, emits owned rows,
+   and releases the buffered input.
 5. An expression update requests standard `FlowNode.repropagate()`. The nearest
    upstream collector supplies the sorted batch again.
 6. `dispose` removes the expression subscription.
@@ -302,10 +304,13 @@ does not change optimal displacements for unbounded affine placement.
 
 ### Solver placement and provenance
 
-Keep the mathematical solver independently testable, either as named exports
-from `displace1d.js` or as a small adjacent utility if the transform module
-would otherwise become difficult to read. Implement it directly from the
-isotonic-regression formulation; do not adapt trackViewer source code.
+Keep the mathematical solver independently testable as a small adjacent
+utility. Its public contract is two equal-length numeric arrays: ordered
+positions and collision lengths. It accepts an optional reusable displacement
+array, creating one when omitted. PAVA workspace remains internal. Data objects,
+field accessors, stream buffering, and reactive state belong to the transform.
+Implement the solver directly from the isotonic-regression formulation; do not
+adapt trackViewer source code.
 
 Add an attribution comment near the solver describing it as a PAVA-based
 isotonic-regression formulation and linking to a durable source. Also reference
@@ -503,7 +508,7 @@ displacement for ordered variable-length items.
 - Focused solver tests
 
 **Verification:** Solver unit tests for optimality examples, separation,
-variable lengths, stable ties, invalid inputs, and reusable workspace.
+variable lengths, stable ties, invalid inputs, and mismatched array lengths.
 
 **Documentation or migration:** Add source attribution and reference the local
 mathematical note. No migration.

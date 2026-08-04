@@ -2,10 +2,7 @@ import { BEHAVIOR_CLONES, BEHAVIOR_COLLECTS } from "../flowNode.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
-import {
-    createDisplace1DWorkspace,
-    solveDisplacement,
-} from "./displace1dSolver.js";
+import { solveDisplacement } from "./displace1dSolver.js";
 
 /**
  * Computes non-overlapping placements for an ordered one-dimensional batch.
@@ -62,10 +59,6 @@ export default class Displace1DTransform extends Transform {
 
         /** @type {import("../flowNode.js").Datum[]} */
         this._data = [];
-
-        this._scaledPositionAccessor = (
-            /** @type {import("../flowNode.js").Datum} */ datum
-        ) => this.positionAccessor(datum) * this.positionFactor;
     }
 
     complete() {
@@ -90,13 +83,13 @@ export default class Displace1DTransform extends Transform {
         }
 
         this._validatePositionFactor();
-        const displacements = solveDisplacement(
-            data,
-            this._scaledPositionAccessor,
-            this.lengthAccessor,
-            [],
-            createDisplace1DWorkspace()
-        );
+        const positions = new Array(data.length);
+        const lengths = new Array(data.length);
+        for (let i = 0; i < data.length; i++) {
+            positions[i] = this.positionAccessor(data[i]) * this.positionFactor;
+            lengths[i] = this.lengthAccessor(data[i]);
+        }
+        const displacements = solveDisplacement(positions, lengths);
 
         for (let i = 0; i < data.length; i++) {
             const output = Object.assign({}, data[i]);
