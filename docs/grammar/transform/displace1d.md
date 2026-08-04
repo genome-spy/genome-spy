@@ -3,6 +3,9 @@
 The `"displace1d"` transform separates overlapping items along a positional
 axis while keeping them as close as possible to their original positions. It
 preserves every input row and writes the signed displacement to a new field.
+Input rows must be ordered by ascending scaled position. Use an upstream
+`collect` transform to establish that order and provide the replay buffer needed
+for reactive updates.
 
 The `positionFactor` multiplier converts `pos` values into the units used by
 `length` and the output displacement. It can be a reactive expression. For
@@ -17,6 +20,10 @@ logical pixels and disable the offset scale:
 ```json
 {
   "transform": [
+    {
+      "type": "collect",
+      "sort": { "field": "position", "order": "ascending" }
+    },
     {
       "type": "displace1d",
       "pos": "position",
@@ -45,12 +52,16 @@ pixels. The expression reacts to both zoom and layout changes. For values that
 are already in collision-space units, omit `positionFactor`; its default is
 `1`.
 
+For a positive `positionFactor`, sort `pos` in ascending order as above. For a
+negative factor, sort it in descending order. Unsorted scaled positions cause
+an error. Equal positions preserve their incoming order.
+
 ## Placement method
 
-The transform minimizes the total squared displacement while preserving item
-order and preventing overlaps. After the items have been ordered, this is
-solved in linear time using equal-weight least-squares isotonic regression and
-the pool-adjacent-violators algorithm (PAVA). See Busing,
+The transform minimizes the total squared displacement while preserving the
+incoming item order and preventing overlaps. For ordered input, this is solved
+in linear time using equal-weight least-squares isotonic regression and the
+pool-adjacent-violators algorithm (PAVA). See Busing,
 [_Monotone Regression: A Simple and Fast O(n) PAVA Implementation_](https://doi.org/10.18637/jss.v102.c01).
 
 The transform accepts numeric positions and does not constrain displaced items

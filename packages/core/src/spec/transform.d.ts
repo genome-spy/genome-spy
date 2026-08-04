@@ -1040,7 +1040,10 @@ export interface FilterScoredLabelsParams extends TransformParamsBase {
 export interface Displace1DParams extends TransformParamsBase {
     type: "displace1d";
 
-    /** The field containing the original position. */
+    /**
+     * The field containing the original position. Input rows must be ordered by
+     * ascending `pos * positionFactor`.
+     */
     pos: Field;
 
     /**
@@ -1053,7 +1056,9 @@ export interface Displace1DParams extends TransformParamsBase {
     /**
      * A multiplier applied to `pos` before placement. An expression can
      * convert position units to logical pixels and react to zoom or layout
-     * changes.
+     * changes. Use an ascending `pos` sort for a positive factor and a
+     * descending sort for a negative factor. Place a `collect` transform before
+     * this transform to buffer input for expression-driven updates.
      *
      * __Default value:__ `1`
      */

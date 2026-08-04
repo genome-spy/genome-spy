@@ -63,8 +63,8 @@ GenomeSpy already has the required architectural pieces:
 
 ## Goals
 
-- Provide a deterministic, order-preserving transform for non-overlapping
-  one-dimensional placement.
+- Provide a deterministic transform for non-overlapping one-dimensional
+  placement of explicitly ordered input.
 - Support variable item lengths measured in logical pixels.
 - Minimize total squared displacement from primary-scale positions.
 - Produce a pixel displacement suitable for direct `xOffset` or `yOffset`
@@ -73,9 +73,8 @@ GenomeSpy already has the required architectural pieces:
 - Let displacement naturally diminish during zoom and reach zero when the
   undisplaced items fit.
 - Keep input data branches isolated by emitting owned output objects.
-- Avoid disposable per-item objects during zoom-driven recomputation, while
-  keeping the implementation straightforward for datasets of at most a few
-  hundred items.
+- Keep the transform's scope and retained state small, accepting modest
+  per-update allocation for datasets of at most a few hundred items.
 - Demonstrate the transform in the private protein lollipop visualization.
 - Document the public transform contract and scale-coupling recipe.
 
@@ -127,10 +126,10 @@ p[i] = q[i] + c[i]
 displacement[i] = p[i] - o[i]
 ```
 
-PAVA is deterministic and linear after ordering. The transform will read input
-values through ordinary GenomeSpy field accessors. A few reusable numeric arrays
-may hold the algorithm's block starts, counts, means, and results; these are
-solver scratch state, not a columnar representation of the input data.
+PAVA is deterministic and linear for ordered input. The transform will read
+values through ordinary GenomeSpy field accessors. Sorting is an explicit
+upstream concern; a `collect` transform can both sort the batch and serve as its
+reactive replay boundary.
 
 ### Recompute from reactively scaled positions instead of scaling a fixed solution
 
@@ -232,7 +231,9 @@ Contract and validation:
 - `positionFactor` must evaluate to a finite number. A single factor describes
   affine mappings, including linear quantitative and index scales. Nonlinear
   and locus-scale mappings are not supported directly.
-- Equal positions are ordered stably by input order.
+- Input must be ordered by ascending `pos * positionFactor`. Sort `pos`
+  ascending for a positive factor and descending for a negative factor.
+- Equal positions preserve their incoming order.
 - The transform preserves all rows and their propagation order.
 - `as` is overwritten on transform-owned output rows.
 - Pixel-valued output is intended for an offset channel with `scale: null`.
@@ -248,28 +249,19 @@ equivalent expression using `height` and the y scale.
 
 ### Data ownership and retained state
 
-Implement `Displace1DTransform` as a collecting and cloning flow node. On an
-upstream data batch it will retain input row references, then create one output
-row per input row. The output rows will be reused for zoom- and layout-driven
-repropagation; only the numeric displacement field changes.
+Implement `Displace1DTransform` as a conventional collecting and cloning flow
+node. It buffers only the current batch, solves it during `complete`, emits
+owned output rows in incoming order, and releases the batch. It does not retain
+output rows or act as its own replay source.
 
-Retained state should include:
+The persistent state is limited to field accessors, the current position
+factor, and its expression subscription. PAVA arrays and output clones are
+batch-local. This accepts modest allocation in exchange for a smaller transform
+with clearer ownership.
 
-- Input rows in propagation order.
-- Output rows in propagation order.
-- Stable indices ordered by the original position.
-- Field accessors for position and variable length, or a constant accessor when
-  `length` is numeric.
-- Minimal reusable numeric scratch arrays needed by PAVA, such as its block
-  stack and displacement results.
-- The current position factor and its expression subscription, when reactive.
-
-Do not copy input fields into a general columnar layout. Follow the established
-transform pattern by applying `field(params.pos)` and, for a field-valued
-`length`, `field(params.length)` to retained data objects. Ordinary reusable
-arrays are sufficient for the small solver workspace. Per-item block objects
-and per-frame datum cloning should still be avoided; typed arrays should be
-introduced only later if profiling demonstrates a concrete benefit.
+Place a sorting `collect` immediately upstream in reactive specifications. The
+collector materializes and sorts the input once, then replays the already-sorted
+batch without rerunning earlier transforms or the data source.
 
 ### Lifecycle
 
@@ -277,22 +269,15 @@ introduced only later if profiling demonstrates a concrete benefit.
    activates a reactive `positionFactor` expression when provided.
 2. `handle` buffers input rows without solving.
 3. On initial `complete`, the transform:
-   - validates values;
-   - creates reusable output rows;
-   - builds the stable position order;
-   - sizes or clears the small reusable solver workspace;
-   - emits the reusable output rows with zero displacement so the original
-     positions can establish data-driven scale domains;
-   - evaluates the factor expression and exact placement after initial
-     propagation.
-4. An expression update recomputes immediately so zoom animation frames render
-   current offsets.
-5. Recompute resets only descendants, updates the retained output rows,
-   propagates them, and completes descendants. It must not discard retained
-   input or solver state.
-6. An upstream `reset` clears retained data and prepares for a genuinely new
-   batch.
-7. `dispose` removes the expression subscription.
+   - emits zero-displacement clones when a scale-dependent factor has not yet
+     been evaluated, allowing the original positions to establish domains;
+   - evaluates the factor and requests one upstream replay.
+4. On a normal `complete`, the transform validates the ordered scaled
+   positions and lengths, solves the batch, emits owned rows, and releases the
+   buffered input.
+5. An expression update requests standard `FlowNode.repropagate()`. The nearest
+   upstream collector supplies the sorted batch again.
+6. `dispose` removes the expression subscription.
 
 The expression runtime provides dependency tracking and disposal; the
 transform does not know which scale or layout parameters the expression uses.
@@ -310,7 +295,8 @@ neither filters rows nor modifies `pos`, its output does not change the primary
 data domain. The implementation should verify that adding the transform does
 not create a scale-domain feedback loop.
 
-Every factor update may run the solver. The expected item count makes this
+Every factor update replays the sorted collector and runs the linear solver.
+The expected item count makes batch-local cloning and scratch allocation
 acceptable. Translation is intentionally absent from the factor because it
 does not change optimal displacements for unbounded affine placement.
 
@@ -356,12 +342,13 @@ grammar.
 
 ### Data preparation
 
-On the mutation view, apply `displace1d` before the child layers. Use a constant
-collision length based on the horizontal footprint of the lollipop head and
-vertical label glyph width, including the desired separation padding. Do not
-measure or otherwise incorporate mutation-label string length: vertical labels
-extend primarily in the y direction and their text length is not part of this
-plot's horizontal placement model.
+On the mutation view, sort positions with `collect`, then apply `displace1d`
+before the child layers. The collector is both the ordering step and the replay
+boundary. Use a constant collision length based on the horizontal footprint of
+the lollipop head and vertical label glyph width, including the desired
+separation padding. Do not measure or otherwise incorporate mutation-label
+string length: vertical labels extend primarily in the y direction and their
+text length is not part of this plot's horizontal placement model.
 
 Set `positionFactor` to
 `width * (scale('x', 1) - scale('x', 0))` so the collision space follows the
@@ -465,10 +452,11 @@ Add tests near `displace1d.js` covering:
 - Width-dependent expressions recompute after layout changes.
 - Output propagation order matches input order.
 - Upstream rows are not mutated.
-- Output row objects and solver storage are reused across zoom recomputations,
-  making the low-allocation behavior an intentional contract.
+- A sorted upstream collector supplies reactive replays.
+- Unsorted scaled positions fail with a clear error.
+- Reactive replays produce fresh owned output rows.
 - Expression subscriptions are removed on disposal.
-- A negative factor preserves stable ordering for reversed affine scales.
+- A negative factor accepts raw positions sorted in descending order.
 
 Use a fake expression runtime for focused lifecycle tests and one
 initialized-view integration test for actual scale/layout wiring.
@@ -535,8 +523,8 @@ that updates when a reactive position factor changes.
 - Transform lifecycle and initialized-view tests
 
 **Verification:** Focused Vitest suites, TypeScript checks, schema generation,
-domain-stability checks, expression recomputation tests, object-reuse checks,
-and disposal tests.
+domain-stability checks, sorted-input validation, collector replay checks, and
+disposal tests.
 
 **Documentation or migration:** No existing specs change. The new transform is
 additive.
@@ -689,11 +677,12 @@ viewport bounds are deferred. Do not silently distort or drop items.
 
 ### Excessive per-frame allocation
 
-Although the protein dataset is small, avoid generating short-lived datum or
-PAVA block objects at animation frequency.
+Collector-driven replay creates short-lived output rows and solver arrays at
+animation frequency.
 
-**Mitigation:** Retain output rows and solver workspace across recomputations
-and add an object-identity test for zoom-driven repropagation.
+**Mitigation:** The target dataset contains at most a few hundred rows. Keep the
+implementation simple and profile representative 120 Hz updates before adding
+retained state or generic replay optimizations.
 
 ## Unresolved questions and deferred extensions
 
@@ -732,7 +721,9 @@ None of these blocks the initial implementation:
   constructs. Expressions may support ordinary data or styling logic, but do
   not reconstruct the primary scale or hand-compute mark pixel geometry.
 - The transform preserves input rows and propagation order.
-- Zoom-driven recomputation reuses output rows and solver storage.
+- The private specification explicitly sorts and buffers input with `collect`.
+- Unsorted scaled positions are rejected.
+- Zoom-driven recomputation uses standard upstream repropagation.
 - The expression subscription is removed when the transform is disposed.
 - Existing `filterScoredLabels` behavior and performance-sensitive code remain
   unchanged.
