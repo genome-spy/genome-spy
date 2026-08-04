@@ -281,8 +281,10 @@ introduced only later if profiling demonstrates a concrete benefit.
    - creates reusable output rows;
    - builds the stable position order;
    - sizes or clears the small reusable solver workspace;
-   - evaluates the exact placement using the current factor;
-   - emits the reusable output rows.
+   - emits the reusable output rows with zero displacement so the original
+     positions can establish data-driven scale domains;
+   - evaluates the factor expression and exact placement after initial
+     propagation.
 4. An expression update recomputes immediately so zoom animation frames render
    current offsets.
 5. Recompute resets only descendants, updates the retained output rows,

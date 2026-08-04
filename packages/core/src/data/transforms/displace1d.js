@@ -37,6 +37,8 @@ export default class Displace1DTransform extends Transform {
         this.lengthAccessor = lengthAccessor;
 
         this.positionFactor = 1;
+        /** @type {(() => number) | undefined} */
+        this._positionFactorExpr = undefined;
         if (isExprRef(params.positionFactor)) {
             const positionFactorExpr = this.paramRuntime.watchExpression(
                 params.positionFactor.expr,
@@ -50,7 +52,7 @@ export default class Displace1DTransform extends Transform {
                         this.registerDisposer(disposer),
                 }
             );
-            this.positionFactor = positionFactorExpr();
+            this._positionFactorExpr = positionFactorExpr;
         } else {
             this.positionFactor = params.positionFactor ?? 1;
         }
@@ -122,7 +124,12 @@ export default class Displace1DTransform extends Transform {
         }
 
         this._ready = true;
+        // Let the original positions establish data-driven scale domains before
+        // evaluating an expression that may call scale().
         super.complete();
+        if (this._positionFactorExpr) {
+            this.positionFactor = this._positionFactorExpr();
+        }
         this._updateAndPropagate();
     }
 

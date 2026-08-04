@@ -52,7 +52,7 @@ describe("Displace1DTransform", () => {
         const spec = {
             width: 200,
             height: 100,
-            data: { values: [{ pos: 10 }, { pos: 11 }] },
+            data: { values: [{ pos: 10 }, { pos: 11 }, { pos: 100 }] },
             transform: [
                 {
                     type: "displace1d",
@@ -69,7 +69,7 @@ describe("Displace1DTransform", () => {
                 x: {
                     field: "pos",
                     type: "quantitative",
-                    scale: { domain: [0, 100], zoom: true },
+                    scale: { zoom: true },
                 },
                 xOffset: {
                     field: "offset",
@@ -82,17 +82,18 @@ describe("Displace1DTransform", () => {
         renderToLayout(view, Rectangle.create(0, 0, 200, 100));
 
         const resolution = view.getScaleResolution("x");
-        expect(resolution.getScale().domain()).toEqual([0, 100]);
+        const initialDomain = resolution.getScale().domain();
+        expect(initialDomain[0]).toBeLessThanOrEqual(10);
+        expect(initialDomain[1]).toBeGreaterThanOrEqual(100);
         const initialPlacement = [...view.flowHandle.collector.getData()];
-        expect(initialPlacement.map((datum) => datum.offset)).not.toEqual([
-            0, 0,
-        ]);
+        expect(initialPlacement.some((datum) => datum.offset != 0)).toBe(true);
 
         await resolution.zoomTo([0, 10], false);
         const zoomedPlacement = [...view.flowHandle.collector.getData()];
-        expect(zoomedPlacement.map((datum) => datum.offset)).toEqual([0, 0]);
+        expect(zoomedPlacement.map((datum) => datum.offset)).toEqual([0, 0, 0]);
         expect(zoomedPlacement[0]).toBe(initialPlacement[0]);
         expect(zoomedPlacement[1]).toBe(initialPlacement[1]);
+        expect(zoomedPlacement[2]).toBe(initialPlacement[2]);
     });
 
     test("emits reusable clones in input order when the factor changes", () => {
