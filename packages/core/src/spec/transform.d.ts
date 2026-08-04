@@ -1037,6 +1037,34 @@ export interface FilterScoredLabelsParams extends TransformParamsBase {
     channel?: "x" | "y";
 }
 
+export interface Displace1DParams extends TransformParamsBase {
+    type: "displace1d";
+
+    /** The field containing the original position on the scale domain. */
+    pos: Field;
+
+    /**
+     * The full collision length in logical pixels, including any desired
+     * spacing, or a field containing that length.
+     */
+    length: number | Field;
+
+    /**
+     * The primary positional channel whose scale and axis length determine
+     * screen positions.
+     *
+     * __Default value:__ `"x"`
+     */
+    channel?: PrimaryPositionalChannel;
+
+    /**
+     * The output field for signed displacement in logical pixels.
+     *
+     * __Default value:__ `"displacement"`
+     */
+    as?: string;
+}
+
 export interface FlattenCompressedExonsParams extends TransformParamsBase {
     type: "flattenCompressedExons";
 
@@ -1069,6 +1097,7 @@ export type TransformParams =
     | CoverageParams
     | CoordinateLookupParams
     | CrossParams
+    | Displace1DParams
     | FlattenDelimitedParams
     | FormulaParams
     | LookupParams
