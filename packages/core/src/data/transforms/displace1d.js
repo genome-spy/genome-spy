@@ -41,9 +41,12 @@ export default class Displace1DTransform extends Transform {
             const positionFactorExpr = this.paramRuntime.watchExpression(
                 params.positionFactor.expr,
                 () => {
-                    this.positionFactor = positionFactorExpr();
-                    if (this._positionFactorReady && this.completed) {
-                        this.repropagate();
+                    const positionFactor = positionFactorExpr();
+                    if (positionFactor != this.positionFactor) {
+                        this.positionFactor = positionFactor;
+                        if (this._positionFactorReady && this.completed) {
+                            this.repropagate();
+                        }
                     }
                 },
                 {

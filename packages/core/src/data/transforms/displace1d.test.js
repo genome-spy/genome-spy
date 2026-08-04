@@ -183,8 +183,13 @@ describe("Displace1DTransform", () => {
         const initialPlacement = [...output.getData()];
         expect(initialPlacement.map((datum) => datum.offset)).toEqual([-5, 5]);
 
+        const repropagate = vi.spyOn(source, "repropagate");
+        listener();
+        expect(repropagate).not.toHaveBeenCalled();
+
         factor = 300;
         listener();
+        expect(repropagate).toHaveBeenCalledOnce();
         const expandedPlacement = [...output.getData()];
         expect(expandedPlacement.map((datum) => datum.offset)).toEqual([0, 0]);
         expect(expandedPlacement[0]).not.toBe(initialPlacement[0]);
