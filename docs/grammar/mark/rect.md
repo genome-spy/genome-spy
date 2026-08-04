@@ -32,7 +32,8 @@ EXAMPLE examples/docs/grammar/mark/rect/bars.json
 
 Map the subgroup field to `xOffset` or `yOffset` to create grouped bars. The
 nested band scale spans one band of the corresponding primary position scale.
-Its `paddingInner` controls spacing between subgroups.
+Its `paddingInner` controls spacing between subgroups. See
+[nested offset scales](index.md#nested-offset-scales) for details.
 
 EXAMPLE examples/docs/grammar/mark/rect/grouped-bars.json
 

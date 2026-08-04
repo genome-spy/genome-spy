@@ -129,6 +129,8 @@ groups and default to `0.2` when a nested offset scale is present. The offset
 scale's padding controls spacing between marks within each group. Explicit
 padding values override the defaults.
 
+See the [grouped bar example](rect.md#grouped-bars).
+
 ```json title="Nested bands for grouped bars"
 {
   "width": { "step": 12 },
