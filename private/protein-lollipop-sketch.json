@@ -35,6 +35,10 @@
       },
       "transform": [
         {
+          "type": "collect",
+          "sort": { "field": "position", "order": "ascending" }
+        },
+        {
           "type": "displace1d",
           "pos": "position",
           "length": 16,
