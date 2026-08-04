@@ -3,14 +3,15 @@
 
   "description": "Protein mutation lollipop plot with scale-aware displaced labels",
 
-  "padding": 12,
-  "spacing": 0,
+  "padding": 10,
   "resolve": { "scale": { "x": "shared" } },
+
+  "spacing": 0,
 
   "vconcat": [
     {
-      "name": "mutations",
-      "height": 300,
+      "spacing": 0,
+
       "data": {
         "values": [
           { "position": 61, "count": 2.1, "label": "C61G" },
@@ -36,7 +37,10 @@
         {
           "type": "displace1d",
           "pos": "position",
-          "length": 22,
+          "length": 16,
+          "positionFactor": {
+            "expr": "width * (scale('x', 1) - scale('x', 0))"
+          },
           "as": "xDisplacement"
         }
       ],
@@ -55,120 +59,134 @@
         "y": {
           "field": "count",
           "type": "quantitative",
-          "scale": { "domain": [0, 7], "nice": false },
+          "scale": { "domainMin": 1, "nice": false },
           "axis": {
             "title": "Mutation count",
-            "grid": false,
-            "values": [0, 1, 2, 3, 4, 5]
+            "grid": false
           }
         }
       },
-      "layer": [
+
+      "vconcat": [
         {
-          "name": "lower-connectors",
-          "mark": {
-            "type": "link",
-            "linkShape": "diagonal",
-            "orient": "vertical",
-            "x2Offset": 0,
-            "size": 1,
-            "color": "#707070",
-            "tooltip": null
-          },
-          "encoding": {
-            "x2": { "field": "position" },
-            "y": { "datum": 0.35, "type": "quantitative" },
-            "y2": { "datum": 0, "type": "quantitative" }
-          }
+          "name": "mutations",
+
+          "padding": { "top": 70 },
+
+          "layer": [
+            {
+              "name": "stems",
+              "mark": {
+                "type": "rule",
+                "size": 1,
+                "color": "#707070",
+                "tooltip": null
+              },
+              "encoding": {
+                "y2": { "value": 0 }
+              }
+            },
+            {
+              "name": "upper-guides",
+              "mark": {
+                "type": "rule",
+                "size": 1,
+                "color": "#9a9a9a",
+                "strokeDash": [3, 3],
+                "tooltip": null
+              },
+              "encoding": {
+                "y2": { "datum": 5.25, "type": "quantitative" }
+              }
+            },
+            {
+              "name": "lollipops",
+              "mark": {
+                "type": "point",
+                "size": 240,
+                "filled": true,
+                "color": "#3767b1",
+                "stroke": "white",
+                "strokeWidth": 1.5
+              },
+              "encoding": {
+                "tooltip": [
+                  { "field": "label", "title": "Mutation" },
+                  { "field": "position", "title": "Residue" },
+                  { "field": "count", "title": "Count" }
+                ]
+              }
+            },
+            {
+              "name": "point-values",
+              "mark": {
+                "type": "text",
+                "size": 8,
+                "align": "center",
+                "baseline": "middle",
+                "color": "white",
+                "tooltip": null
+              },
+              "encoding": {
+                "text": { "field": "count", "type": "quantitative" }
+              }
+            },
+            {
+              "name": "mutation-labels",
+              "mark": {
+                "type": "text",
+                "angle": -60,
+                "dx": 4,
+                "size": 10,
+                "align": "left",
+                "baseline": "middle",
+                "color": "#303030",
+                "tooltip": null
+              },
+              "encoding": {
+                "y": { "datum": 5.25, "type": "quantitative" },
+                "text": { "field": "label" }
+              }
+            }
+          ]
         },
         {
-          "name": "true-position-anchors",
-          "mark": {
-            "type": "rule",
-            "size": 1,
-            "color": "#707070",
-            "tooltip": null
-          },
-          "encoding": {
-            "xOffset": { "value": 0 },
-            "y": { "datum": 0, "type": "quantitative" },
-            "y2": { "datum": 0.16, "type": "quantitative" }
-          }
-        },
-        {
-          "name": "stems",
-          "mark": {
-            "type": "rule",
-            "size": 1.25,
-            "color": "#707070",
-            "tooltip": null
-          },
-          "encoding": {
-            "y2": { "datum": 0.35, "type": "quantitative" }
-          }
-        },
-        {
-          "name": "upper-guides",
-          "mark": {
-            "type": "rule",
-            "size": 1,
-            "color": "#9a9a9a",
-            "strokeDash": [3, 3],
-            "tooltip": null
-          },
-          "encoding": {
-            "y2": { "datum": 5.25, "type": "quantitative" }
-          }
-        },
-        {
-          "name": "lollipops",
-          "mark": {
-            "type": "point",
-            "size": 240,
-            "filled": true,
-            "color": "#3767b1",
-            "stroke": "white",
-            "strokeWidth": 1.5
-          },
-          "encoding": {
-            "tooltip": [
-              { "field": "label", "title": "Mutation" },
-              { "field": "position", "title": "Residue" },
-              { "field": "count", "title": "Count" }
-            ]
-          }
-        },
-        {
-          "name": "point-values",
-          "mark": {
-            "type": "text",
-            "size": 10,
-            "fontWeight": "bold",
-            "align": "center",
-            "baseline": "middle",
-            "color": "white",
-            "tooltip": null
-          },
-          "encoding": {
-            "text": { "field": "count", "type": "quantitative" }
-          }
-        },
-        {
-          "name": "mutation-labels",
-          "mark": {
-            "type": "text",
-            "angle": -90,
-            "dx": 4,
-            "size": 11,
-            "align": "left",
-            "baseline": "middle",
-            "color": "#303030",
-            "tooltip": null
-          },
-          "encoding": {
-            "y": { "datum": 5.25, "type": "quantitative" },
-            "text": { "field": "label" }
-          }
+          "height": 20,
+          "layer": [
+            {
+              "name": "lower-connectors",
+
+              "mark": {
+                "type": "link",
+                "linkShape": "diagonal",
+                "orient": "vertical",
+                "x2Offset": 0,
+                "size": 1,
+                "color": "#707070",
+                "tooltip": null
+              },
+              "encoding": {
+                "x2": { "field": "position" },
+                "y": { "value": 1 },
+                "y2": { "value": 0 }
+              }
+            },
+            {
+              "name": "true-position-anchors",
+              "mark": {
+                "type": "rule",
+                "size": 1,
+                "color": "#707070",
+                "tooltip": null,
+                "y2Offset": 20
+              },
+              "encoding": {
+                "xOffset": { "value": 0 },
+                "y": { "value": 0 },
+                "y2": { "value": 0 }
+              }
+            }
+          ]
         }
       ]
     },
@@ -176,6 +194,7 @@
     {
       "name": "protein",
       "height": 48,
+      "padding": { "top": -5 },
       "data": {
         "values": [
           { "start": 25, "end": 72, "name": "RING" },
@@ -211,8 +230,12 @@
             "type": "rect",
             "y": 0.18,
             "y2": 0.82,
-            "cornerRadius": 2,
-            "color": "#6359e8"
+            "cornerRadius": 3,
+            "color": "#6359e8",
+            "shadowColor": "black",
+            "shadowOpacity": 0.2,
+            "shadowBlur": 4,
+            "shadowOffsetY": 2
           },
           "encoding": {
             "tooltip": [
