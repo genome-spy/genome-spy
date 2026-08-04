@@ -145,7 +145,7 @@ describe("Displace1DTransform", () => {
         );
     });
 
-    test("replays an upstream collector when the position factor changes", () => {
+    test("replays an upstream collector when the position factor changes", async () => {
         let factor = 100;
         /** @type {() => void} */
         let listener;
@@ -178,12 +178,18 @@ describe("Displace1DTransform", () => {
         transform.addChild(output);
         source.handle({ pos: 0 });
         source.handle({ pos: 0.1 });
+
+        const repropagate = vi.spyOn(source, "repropagate");
         source.complete();
+        expect(repropagate).not.toHaveBeenCalled();
+
+        await Promise.resolve();
+        expect(repropagate).toHaveBeenCalledOnce();
+        repropagate.mockClear();
 
         const initialPlacement = [...output.getData()];
         expect(initialPlacement.map((datum) => datum.offset)).toEqual([-5, 5]);
 
-        const repropagate = vi.spyOn(source, "repropagate");
         listener();
         expect(repropagate).not.toHaveBeenCalled();
 

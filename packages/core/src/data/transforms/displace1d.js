@@ -81,7 +81,9 @@ export default class Displace1DTransform extends Transform {
             this.positionFactor = this._positionFactorExpr();
             this._validatePositionFactor();
             this._positionFactorReady = true;
-            this.repropagate();
+            // Let the bootstrap propagation unwind before replaying the
+            // upstream collector with the now-established scale domain.
+            queueMicrotask(() => this.repropagate());
             return;
         }
 
