@@ -22,10 +22,12 @@ export function createDisplace1DWorkspace() {
  * Finds the minimum-squared-displacement placement for ordered items with
  * non-overlapping one-dimensional collision intervals.
  *
- * The separation constraints are reduced to least-squares isotonic regression
- * and solved using the pool-adjacent-violators algorithm. Based on the
- * formulation in plans/displace1d/one-dimensional-item-placement.md and the
- * PAVA review in https://pmc.ncbi.nlm.nih.gov/articles/PMC5815842/.
+ * The separation constraints are reduced to equal-weight least-squares
+ * isotonic regression and solved using the pool-adjacent-violators algorithm.
+ * Based on the formulation in
+ * plans/displace1d/one-dimensional-item-placement.md. For a practical
+ * description of linear-time PAVA implementations, see
+ * https://doi.org/10.18637/jss.v102.c01.
  *
  * @template T
  * @param {T[]} items Items ordered by ascending original center position.

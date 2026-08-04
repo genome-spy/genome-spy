@@ -7,7 +7,9 @@ Implement a layout helper for marks such as lollipops, labels, or other one-dime
 Each input item has:
 
 ```ts
-{ pos, length }
+{
+  (pos, length);
+}
 ```
 
 - `pos` is the original center coordinate.
@@ -18,7 +20,9 @@ Each input item has:
 - The output should contain the adjusted center position and displacement:
 
 ```ts
-{ pos, length, displacement }
+{
+  (pos, length, displacement);
+}
 ```
 
 The goal is to remove overlaps while moving the items as little as possible. An optional minimum gap and optional outer bounds may be supported.
@@ -39,7 +43,7 @@ Minimize the total squared displacement from the original coordinates:
 sum((p[i] - originalPos[i])^2)
 ```
 
-Convert the variable separation constraints into ordinary monotonic constraints using cumulative offsets. The transformed problem is weighted isotonic regression and can be solved with the pool-adjacent-violators algorithm (PAVA).
+Convert the variable separation constraints into ordinary monotonic constraints using cumulative offsets. The transformed problem is equal-weight least-squares isotonic regression and can be solved with the pool-adjacent-violators algorithm (PAVA). For a practical description of linear-time implementations, see Busing, [_Monotone Regression: A Simple and Fast O(n) PAVA Implementation_](https://doi.org/10.18637/jss.v102.c01).
 
 This approach is:
 

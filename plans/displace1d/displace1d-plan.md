@@ -196,19 +196,19 @@ Add `Displace1DParams` to `packages/core/src/spec/transform.d.ts` and the
 
 ```ts
 export interface Displace1DParams extends TransformParamsBase {
-    type: "displace1d";
+  type: "displace1d";
 
-    /** Field containing the primary-scale coordinate. */
-    pos: Field;
+  /** Field containing the primary-scale coordinate. */
+  pos: Field;
 
-    /** Constant or field containing the item's full length in logical pixels. */
-    length: number | Field;
+  /** Constant or field containing the item's full length in logical pixels. */
+  length: number | Field;
 
-    /** Primary positional scale used to map coordinates into pixels. */
-    channel?: "x" | "y";
+  /** Primary positional scale used to map coordinates into pixels. */
+  channel?: "x" | "y";
 
-    /** Output field for the signed logical-pixel displacement. */
-    as?: string;
+  /** Output field for the signed logical-pixel displacement. */
+  as?: string;
 }
 ```
 
@@ -741,8 +741,8 @@ None of these blocks the initial implementation:
 - The separation-to-isotonic formulation is described in the local
   [`one-dimensional-item-placement.md`](./one-dimensional-item-placement.md).
 - PAVA is an established linear-time method for ordered least-squares isotonic
-  regression. See: Yeganova and Wilbur,
-  [*Isotonic Regression under Lipschitz Constraint*](https://pmc.ncbi.nlm.nih.gov/articles/PMC5815842/).
+  regression. See: Busing,
+  [_Monotone Regression: A Simple and Fast O(n) PAVA Implementation_](https://doi.org/10.18637/jss.v102.c01).
 - trackViewer's lollipop implementation provides the visual precedent and uses
   recursive heuristic jittering for crowded labels. It is comparison material
   only; no code will be copied:
