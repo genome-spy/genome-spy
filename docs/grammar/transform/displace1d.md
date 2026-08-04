@@ -34,6 +34,14 @@ because the output is already in logical pixels:
 }
 ```
 
+## Placement method
+
+The transform minimizes the total squared displacement while preserving item
+order and preventing overlaps. After the items have been ordered, this is
+solved in linear time using equal-weight least-squares isotonic regression and
+the pool-adjacent-violators algorithm (PAVA). See Busing,
+[_Monotone Regression: A Simple and Fast O(n) PAVA Implementation_](https://doi.org/10.18637/jss.v102.c01).
+
 The transform supports numeric positions on quantitative and index scales. It
 does not constrain displaced items to the viewport, and chromosome-position
 field pairs used by locus scales are not supported.
