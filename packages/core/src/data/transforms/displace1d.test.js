@@ -106,14 +106,14 @@ describe("Displace1DTransform", () => {
         expect(zoomedPlacement[0]).not.toBe(initialPlacement[0]);
     });
 
-    test("preserves sorted input order and clones rows", () => {
+    test("preserves sorted input order and adds the displacement field", () => {
         const input = [{ pos: 0 }, { pos: 0.1 }];
         const { output } = createFlow(input, 20);
         const placed = [...output.getData()];
 
         expect(placed.map((datum) => datum.offset)).toEqual([-5, 5]);
-        expect(placed[0]).not.toBe(input[0]);
-        expect(placed[1]).not.toBe(input[1]);
+        expect(placed[0]).toBe(input[0]);
+        expect(placed[1]).toBe(input[1]);
     });
 
     test("reads collision lengths from a field", () => {
@@ -227,7 +227,6 @@ describe("Displace1DTransform", () => {
         expect(repropagate).toHaveBeenCalledOnce();
         const expandedPlacement = [...output.getData()];
         expect(expandedPlacement.map((datum) => datum.offset)).toEqual([0, 0]);
-        expect(expandedPlacement[0]).not.toBe(initialPlacement[0]);
 
         transform.dispose();
         expect(disposer).toHaveBeenCalledOnce();

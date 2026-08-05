@@ -1,4 +1,4 @@
-import { BEHAVIOR_CLONES, BEHAVIOR_COLLECTS } from "../flowNode.js";
+import { BEHAVIOR_COLLECTS, BEHAVIOR_MODIFIES } from "../flowNode.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
@@ -26,7 +26,7 @@ export default class Displace1DTransform extends Transform {
     #data = [];
 
     get behavior() {
-        return BEHAVIOR_COLLECTS | BEHAVIOR_CLONES;
+        return BEHAVIOR_COLLECTS | BEHAVIOR_MODIFIES;
     }
 
     /**
@@ -112,9 +112,8 @@ export default class Displace1DTransform extends Transform {
             // Establish data-driven scale domains before evaluating an
             // expression that may call scale().
             for (const datum of data) {
-                const output = Object.assign({}, datum);
-                output[this.as] = 0;
-                this._propagate(output);
+                datum[this.as] = 0;
+                this._propagate(datum);
             }
             super.complete();
             data.length = 0;
@@ -147,9 +146,8 @@ export default class Displace1DTransform extends Transform {
         );
 
         for (let i = 0; i < data.length; i++) {
-            const output = Object.assign({}, data[i]);
-            output[this.as] = displacements[i];
-            this._propagate(output);
+            data[i][this.as] = displacements[i];
+            this._propagate(data[i]);
         }
 
         super.complete();

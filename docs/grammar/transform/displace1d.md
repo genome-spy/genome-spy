@@ -7,12 +7,11 @@ Input rows must be ordered by ascending scaled position. Use an upstream
 `collect` transform to establish that order and provide the replay buffer needed
 for reactive updates.
 
-The `positionFactor` multiplier converts `pos` values into the units used by
-`length` and the output displacement. It can be a reactive expression. For
-example, an expression can convert an affine positional scale's unit range into
-logical pixels. As the view is zoomed in and the scaled positions spread apart,
-the transform recomputes the placement and the displacements naturally decrease
-to zero. Items at the same position remain separated.
+## Parameters
+
+SCHEMA Displace1DParams
+
+## Example
 
 When using the output with an offset channel, make `positionFactor` produce
 logical pixels and disable the offset scale:
@@ -46,12 +45,23 @@ logical pixels and disable the offset scale:
 }
 ```
 
+## Pixel-space placement
+
 GenomeSpy positional scales use a unit range. In the expression above, the
 difference between two scaled values gives the signed unit-range distance for
 one position unit. Multiplication by `width` converts that distance to logical
-pixels. The expression reacts to both zoom and layout changes. For values that
-are already in collision-space units, omit `positionFactor`; its default is
-`1`.
+pixels. Thus, `positionFactor` converts the positions to the pixel units used by
+`length` and the resulting displacement.
+
+The expression reacts to zoom and layout changes. As zoom spreads the positions
+apart, the displacements decrease naturally to zero; items at the same position
+remain separated. Setting `scale` to `null` on `xOffset` applies the resulting
+pixel offsets directly.
+
+This conversion assumes an affine mapping, such as a linear quantitative,
+index, or locus scale. Nonlinear mappings are not supported directly.
+
+## Bounds
 
 Use `extent` to keep collision intervals inside preferred outer bounds. The
 bounds use the original `pos` coordinate system and are multiplied by
@@ -66,24 +76,12 @@ the preferred bounds at the edges of the currently visible x domain:
 "extent": { "expr": "[invert('x', 0), invert('x', 1)]" }
 ```
 
-As with an expression-backed `positionFactor`, place a `collect` transform
-upstream so that changes can replay the input data.
-
-`length` can likewise be a reactive expression when all items use the same
-collision length. For example, `{"expr": "labelSpacing"}` updates placement
-when the `labelSpacing` parameter changes. Use a field instead when collision
-lengths vary by row.
-
 When all collision intervals fit, the extent acts as a hard bound. If their
 combined length exceeds the available extent, items remain non-overlapping and
 extend outside it by the minimum necessary amount. Among placements with the
 same minimum overflow, the transform minimizes squared displacement. Placement
 changes continuously as `positionFactor` changes; active constraints may
 change the rate of movement but do not introduce jumps.
-
-For a positive `positionFactor`, sort `pos` in ascending order as above. For a
-negative factor, sort it in descending order. Unsorted scaled positions cause
-an error. Equal positions preserve their incoming order.
 
 ## Placement method
 
@@ -92,13 +90,3 @@ incoming item order and preventing overlaps. For ordered input, this is solved
 in linear time using equal-weight least-squares isotonic regression and the
 pool-adjacent-violators algorithm (PAVA). See Busing,
 [_Monotone Regression: A Simple and Fast O(n) PAVA Implementation_](https://doi.org/10.18637/jss.v102.c01).
-
-The transform accepts numeric positions. `extent` is expressed in position
-coordinates rather than viewport coordinates, so the transform remains
-independent of scales and view layout. A single `positionFactor` describes
-affine mappings such as linear quantitative and index scales. Nonlinear and
-locus-scale mappings are not supported directly.
-
-## Parameters
-
-SCHEMA Displace1DParams
