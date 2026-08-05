@@ -1,3 +1,30 @@
 {% extends "base.html" %} {% block extrahead %} {{ super() }}
 <meta name="base_url" content="{{ base_url }}" />
+
+{% if page.meta and page.meta.title %}
+  {% set og_title = page.meta.title %}
+{% elif page.title %}
+  {% set og_title = page.title | striptags %}
+{% else %}
+  {% set og_title = config.site_name %}
+{% endif %}
+{% set og_type = page.meta.og_type if page.meta and page.meta.og_type else ('website' if page.is_homepage else 'article') %}
+<meta property="og:title" content="{{ og_title | e }}" />
+<meta property="og:type" content="{{ og_type | e }}" />
+{% if page.canonical_url %}
+<meta property="og:url" content="{{ page.canonical_url | e }}" />
+{% endif %}
+{% if page.meta and page.meta.og_description %}
+<meta property="og:description" content="{{ page.meta.og_description | e }}" />
+{% elif page.meta and page.meta.description %}
+<meta property="og:description" content="{{ page.meta.description | e }}" />
+{% elif config.site_description %}
+<meta property="og:description" content="{{ config.site_description | e }}" />
+{% endif %}
+<meta property="og:site_name" content="{{ config.site_name | e }}" />
+{% if page.meta and page.meta.og_image %}
+<meta property="og:image" content="{{ page.meta.og_image | e }}" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:alt" content="{{ page.meta.og_image_alt | default(og_title, true) | e }}" />
+{% endif %}
 {% endblock %}

@@ -1,5 +1,6 @@
 import json
 import tempfile
+from types import SimpleNamespace
 import unittest
 from pathlib import Path
 
@@ -56,6 +57,74 @@ class ExampleMacroTest(unittest.TestCase):
             html,
         )
         self.assertIn('playground-url=', html)
+
+    def test_first_example_screenshot_is_recorded_in_page_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            preprocessor = self.create_preprocessor(repo_root)
+            page = SimpleNamespace(meta={})
+            preprocessor.md = SimpleNamespace(
+                preprocessors={
+                    'rendering_context': SimpleNamespace(page=page),
+                }
+            )
+            screenshot_path = repo_root / 'examples' / 'docs' / 'demo' / 'track.png'
+            screenshot_path.write_bytes(b'not a real image')
+
+            preprocessor.getExample('examples/docs/demo/track.json')
+            preprocessor.getExample('examples/docs/demo/track.json')
+
+        self.assertEqual(
+            page.meta['og_image'],
+            'https://genomespy.app/docs/example-specs/docs/demo/track.png',
+        )
+        self.assertEqual(
+            page.meta['og_image_alt'], 'GenomeSpy example visualization'
+        )
+
+    def test_page_description_comes_from_first_prose_paragraph(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            preprocessor = self.create_preprocessor(repo_root)
+            page = SimpleNamespace(meta={})
+            preprocessor.md = SimpleNamespace(
+                preprocessors={
+                    'rendering_context': SimpleNamespace(page=page),
+                }
+            )
+
+            preprocessor.run(
+                [
+                    '# Demo',
+                    '',
+                    '![Logo](logo.svg){ align=right }',
+                    '',
+                    'This is the **page** description with a [link](https://example.com).',
+                    'It continues on the next line.',
+                    '',
+                    'EXAMPLE examples/docs/demo/track.json',
+                ]
+            )
+
+        self.assertEqual(
+            page.meta['og_description'],
+            'This is the page description with a link. It continues on the next line.',
+        )
+
+    def test_example_without_screenshot_does_not_set_page_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            preprocessor = self.create_preprocessor(repo_root)
+            page = SimpleNamespace(meta={})
+            preprocessor.md = SimpleNamespace(
+                preprocessors={
+                    'rendering_context': SimpleNamespace(page=page),
+                }
+            )
+
+            preprocessor.getExample('examples/docs/demo/track.json')
+
+        self.assertEqual(page.meta, {})
 
     def test_rejects_app_example_without_app_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

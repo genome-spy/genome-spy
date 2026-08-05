@@ -8,7 +8,7 @@ from urllib.parse import unquote
 from markdown.preprocessors import Preprocessor
 from markdown.extensions import Extension
 
-from .example_gallery import render_example_gallery
+from .example_gallery import get_description, render_example_gallery
 
 # TODO: Don't use absolute URLs. Instead generate relative links.
 docs_baseurl = 'https://genomespy.app/docs'
@@ -82,6 +82,8 @@ class MyPreprocessor(Preprocessor):
         self.snippet_pattern = re.compile(r'^SNIPPET\s+(.+)$')
 
     def run(self, lines):
+        self.setOpenGraphDescription(lines)
+
         new_lines = []
         index = 0
         while index < len(lines):
@@ -122,6 +124,57 @@ class MyPreprocessor(Preprocessor):
             index += 1
 
         return new_lines
+
+    def setOpenGraphDescription(self, lines: list[str]) -> None:
+        """Use the page's first prose paragraph as its social description."""
+        page_meta = self.getPageMeta()
+        if page_meta is None or page_meta.get('og_description') or page_meta.get(
+            'description'
+        ):
+            return
+
+        description = self.getFirstParagraph(lines)
+        if description:
+            page_meta['og_description'] = description
+
+    def getPageMeta(self) -> dict | None:
+        if self.md is None or not hasattr(self.md, 'preprocessors'):
+            return None
+
+        if 'rendering_context' not in self.md.preprocessors:
+            return None
+
+        context = self.md.preprocessors['rendering_context']
+        page = getattr(context, 'page', None)
+        return getattr(page, 'meta', None)
+
+    def getFirstParagraph(self, lines: list[str]) -> str | None:
+        paragraph = []
+        for line in lines:
+            stripped_line = line.strip()
+            if not stripped_line:
+                if paragraph:
+                    break
+                continue
+
+            if not paragraph and (
+                stripped_line.startswith(
+                    ('#', '![', 'EXAMPLE ', 'EXAMPLE_GALLERY', '!!! ')
+                )
+                or line.startswith('    ')
+            ):
+                continue
+
+            paragraph.append(stripped_line)
+
+        if not paragraph:
+            return None
+
+        description = ' '.join(paragraph)
+        description = re.sub(r'!\[([^]]*)\]\([^)]*\)', r'\1', description)
+        description = re.sub(r'\[([^]]+)\]\([^)]*\)', r'\1', description)
+        description = re.sub(r'[`*_~]', '', description)
+        return re.sub(r'\s+', ' ', description).strip()
 
     def getExample(self, argument_string):
         try:
@@ -175,9 +228,11 @@ class MyPreprocessor(Preprocessor):
             return ['Cannot open example file: {}'.format(example_path)]
 
         try:
-            json.loads(spec_text)
+            spec = json.loads(spec_text)
         except ValueError as exc:
             return ['Cannot parse example file {}: {}'.format(example_path, exc)]
+
+        self.setOpenGraphMetadata(example_path, source_path, spec)
 
         try:
             spec_text = self.stripSchemaLine(spec_text)
@@ -217,6 +272,32 @@ class MyPreprocessor(Preprocessor):
         )
 
         return lines
+
+    def setOpenGraphMetadata(
+        self, example_path: str, source_path: str, spec: dict
+    ) -> None:
+        """Record the first available example screenshot for the page."""
+        page_meta = self.getPageMeta()
+        if page_meta is None or page_meta.get('og_image'):
+            return
+
+        screenshot_source_path = os.path.splitext(source_path)[0] + '.png'
+        if not os.path.isfile(screenshot_source_path):
+            return
+
+        screenshot_path = os.path.splitext(example_path)[0] + '.png'
+        description = get_description(spec)
+        title = spec.get('title')
+        image_alt = description or (
+            'GenomeSpy example: {}'.format(title)
+            if isinstance(title, str) and title.strip()
+            else 'GenomeSpy example visualization'
+        )
+
+        page_meta['og_image'] = docs_baseurl + '/example-specs/' + get_public_example_path(
+            screenshot_path
+        )
+        page_meta['og_image_alt'] = image_alt
 
     def getSnippet(self, argument_string):
         try:
