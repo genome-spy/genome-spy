@@ -14,7 +14,8 @@ Vega-Lite and is mostly compatible, but the sections below describe GenomeSpy's
 behavior directly.
 
 GenomeSpy can read eager data as `"csv"`, `"tsv"`, `"dsv"`, and `"json"`, as
-well as additional URL-based formats such as [`"bed"`](#bed),
+well as additional URL-based formats such as [`"wig"`](#wig),
+[`"bed"`](#bed),
 [`"bedpe"`](#bedpe), [`"fasta"`](#fasta), [`"arrow"`](#arrow), and
 [`"parquet"`](#parquet). Whatever the source, the data is treated as a table of
 records that can be further processed with [transforms](../transform/index.md).
@@ -338,6 +339,29 @@ also use expression references.
 
 The following additional formats are supported by the eager `url` data source.
 Most bioinformatic data formats are supported through [lazy](lazy.md) data.
+
+### WIG
+
+[WIG](https://www.genome.ucsc.edu/goldenPath/help/wiggle.html) parsing supports
+`fixedStep` and `variableStep` records. The parser outputs objects with the
+normalized fields `chrom`, `start`, `end`, and `score`.
+WIG's 1-based, fully closed coordinates are converted to GenomeSpy's 0-based,
+half-open intervals.
+
+WIG is an eager format, so the complete file is downloaded and parsed. For
+large signal tracks, use the lazy [BigWig data source](lazy.md#bigwig) instead.
+
+```json
+{
+  "data": {
+    "url": "scores.wig",
+    "format": { "type": "wig" }
+  }
+}
+```
+
+The format is inferred for URLs ending in `.wig`, including compressed suffixes
+such as `.wig.gz`.
 
 ### BED
 

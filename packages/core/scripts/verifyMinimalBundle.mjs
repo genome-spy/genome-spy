@@ -15,6 +15,7 @@ const forbiddenSources = [
     "src/data/formats/bed.js",
     "src/data/formats/bedpe.js",
     "src/data/formats/fasta.js",
+    "src/data/formats/wig.js",
     "src/data/formats/vcf.js",
     "src/data/sources/lazy/registerBuiltInLazySources.js",
     "src/data/sources/lazy/indexedFastaSource.js",

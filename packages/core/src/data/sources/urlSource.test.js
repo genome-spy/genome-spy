@@ -6,6 +6,7 @@ import { makeParamRuntimeProvider } from "../flowTestUtils.js";
 import "../formats/arrow.js";
 import bed from "../formats/bed.js";
 import bedpe from "../formats/bedpe.js";
+import "../formats/wig.js";
 import "../formats/vcf.js";
 import UrlSource from "./urlSource.js";
 
@@ -129,6 +130,28 @@ test("UrlSource reads BEDPE using format.type bedpe", async () => {
             strand1: 1,
             strand2: -1,
         },
+    ]);
+});
+
+test("UrlSource infers and reads WIG data", async () => {
+    const text = `fixedStep chrom=chr1 start=10 step=5 span=2
+1.5
+-2`;
+
+    global.fetch = /** @type {any} */ (
+        vi.fn(async () => new Response(text, { status: 200 }))
+    );
+
+    const source = new UrlSource(
+        {
+            url: "example.wig",
+        },
+        createViewStub()
+    );
+
+    expect(await collectSource(source)).toEqual([
+        { chrom: "chr1", start: 9, end: 11, score: 1.5 },
+        { chrom: "chr1", start: 14, end: 16, score: -2 },
     ]);
 });
 

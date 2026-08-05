@@ -109,6 +109,13 @@ export interface BedpeDataFormat extends DataFormatBase {
     columns?: string[];
 }
 
+export interface WigDataFormat extends DataFormatBase {
+    /**
+     * Parses fixedStep and variableStep WIG records into genomic intervals.
+     */
+    type: "wig";
+}
+
 export interface VcfDataFormat extends DataFormatBase {
     /**
      * Parses Variant Call Format records and materializes sample columns in
@@ -130,6 +137,7 @@ export type DataFormat =
     | JsonDataFormat
     | BedDataFormat
     | BedpeDataFormat
+    | WigDataFormat
     | VcfDataFormat
     | OtherDataFormat;
 

@@ -8,6 +8,7 @@ import "./data/formats/arrow.js";
 import "./data/formats/bed.js";
 import "./data/formats/bedpe.js";
 import "./data/formats/fasta.js";
+import "./data/formats/wig.js";
 import "./data/formats/vcf.js";
 // These side-effect imports make the default runtime fat for convenience.
 import "./data/sources/lazy/registerBuiltInLazySources.js";
