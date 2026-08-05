@@ -233,18 +233,45 @@ export default class Toolbar extends LitElement {
     /** @returns {Promise<void>} */
     async #downloadSvg() {
         try {
+            const pickerWindow = /** @type {Window & {
+                showSaveFilePicker?: (options: object) => Promise<{
+                    createWritable: () => Promise<{
+                        write: (data: Blob) => Promise<void>,
+                        close: () => Promise<void>
+                    }>
+                }>
+            }} */ (window);
+
+            if (pickerWindow.showSaveFilePicker) {
+                const fileHandle = await pickerWindow.showSaveFilePicker({
+                    suggestedName: "genomespy-visualization.svg",
+                    types: [
+                        {
+                            description: "SVG image",
+                            accept: { "image/svg+xml": [".svg"] },
+                        },
+                    ],
+                });
+                const blob = await this.app.genomeSpy.exportSvg();
+                const writable = await fileHandle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                return;
+            }
+
             const blob = await this.app.genomeSpy.exportSvg();
-            const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
-            link.href = url;
+            link.href =
+                "data:image/svg+xml;charset=utf-8," +
+                encodeURIComponent(await blob.text());
             link.download = "genomespy-visualization.svg";
             document.body.appendChild(link);
             link.click();
-            window.setTimeout(() => {
-                link.remove();
-                URL.revokeObjectURL(url);
-            }, 1000);
+            link.remove();
         } catch (error) {
+            if (error instanceof DOMException && error.name == "AbortError") {
+                return;
+            }
             await showMessageDialog(
                 `SVG export failed: ${
                     error instanceof Error ? error.message : String(error)
