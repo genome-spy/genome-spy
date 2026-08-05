@@ -1,5 +1,5 @@
 {
-  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": "Testing a very large genome where 32 bit integers are insufficient.",
 

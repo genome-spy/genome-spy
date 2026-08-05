@@ -1,5 +1,5 @@
 {
-  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": [
     "Demonstrates explicit width on a vconcat.",
     "The width describes the child plot area. The composed view becomes wider when y-axis chrome needs additional space."

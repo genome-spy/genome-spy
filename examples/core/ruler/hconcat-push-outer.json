@@ -1,5 +1,5 @@
 {
-  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": "A child ruler pushes a coordinate to an outer parameter used by a sibling view.",
 

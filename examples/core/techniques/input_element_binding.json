@@ -1,5 +1,5 @@
 {
-  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": "Adapted from: https://vega.github.io/vega-lite/docs/bind.html#input-element-binding",
 

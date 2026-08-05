@@ -1,0 +1,120 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Independent legends collected at the root",
+    "A matrix-like composition collects four legends without merging their color mappings."
+  ],
+
+  "columns": 2,
+
+  "config": {
+    "legend": {
+      "disable": false,
+      "placement": "root",
+      "orient": "right",
+      "layout": { "right": { "anchor": "middle" } },
+      "gradientLength": 40,
+      "gradientThickness": 10,
+      "tickCount": 3
+    }
+  },
+
+  "resolve": {
+    "scale": { "color": "independent" },
+    "legend": { "color": "independent" }
+  },
+
+  "data": {
+    "values": [
+      {
+        "column": "A",
+        "row": "1",
+        "copyNumber": -1.0,
+        "expression": 2.1,
+        "methylation": 0.2,
+        "score": 6
+      },
+      {
+        "column": "B",
+        "row": "1",
+        "copyNumber": 0.1,
+        "expression": 4.8,
+        "methylation": 0.8,
+        "score": 3
+      },
+      {
+        "column": "A",
+        "row": "2",
+        "copyNumber": 1.3,
+        "expression": 1.5,
+        "methylation": 0.5,
+        "score": 9
+      },
+      {
+        "column": "B",
+        "row": "2",
+        "copyNumber": 0.5,
+        "expression": 3.2,
+        "methylation": 0.1,
+        "score": 5
+      }
+    ]
+  },
+
+  "encoding": {
+    "x": { "field": "column", "type": "nominal", "axis": null },
+    "y": { "field": "row", "type": "nominal", "axis": null }
+  },
+
+  "concat": [
+    {
+      "title": "Copy number",
+      "mark": "rect",
+      "encoding": {
+        "color": {
+          "field": "copyNumber",
+          "type": "quantitative",
+          "scale": { "scheme": "blueOrange", "domainMid": 0 },
+          "legend": { "title": "Copy number" }
+        }
+      }
+    },
+    {
+      "title": "Expression",
+      "mark": "rect",
+      "encoding": {
+        "color": {
+          "field": "expression",
+          "type": "quantitative",
+          "scale": { "scheme": "viridis" },
+          "legend": { "title": "Expression" }
+        }
+      }
+    },
+    {
+      "title": "Methylation",
+      "mark": "rect",
+      "encoding": {
+        "color": {
+          "field": "methylation",
+          "type": "quantitative",
+          "scale": { "domain": [0, 1], "scheme": "yellowGreenBlue" },
+          "legend": { "title": "Methylation" }
+        }
+      }
+    },
+    {
+      "title": "Score",
+      "mark": "rect",
+      "encoding": {
+        "color": {
+          "field": "score",
+          "type": "quantitative",
+          "scale": { "scheme": "plasma" },
+          "legend": { "title": "Score" }
+        }
+      }
+    }
+  ]
+}

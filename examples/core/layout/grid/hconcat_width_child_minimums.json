@@ -1,5 +1,5 @@
 {
-  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": [
     "Demonstrates explicit width on an hconcat.",
     "The hconcat width is preferred available space, but fixed child widths define the minimum outer width."

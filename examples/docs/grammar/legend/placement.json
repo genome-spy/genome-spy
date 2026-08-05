@@ -1,0 +1,60 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Local and root legend placement",
+    "One legend stays below its view while another is collected to the right of the root view."
+  ],
+
+  "data": {
+    "values": [
+      { "x": 1, "group": "A", "status": "pass" },
+      { "x": 2, "group": "B", "status": "review" },
+      { "x": 3, "group": "A", "status": "fail" }
+    ]
+  },
+
+  "resolve": { "scale": { "x": "shared" } },
+
+  "vconcat": [
+    {
+      "mark": { "type": "rect" },
+      "encoding": {
+        "x": { "field": "x", "type": "ordinal", "axis": null },
+        "color": {
+          "field": "group",
+          "type": "nominal",
+          "legend": {
+            "offset": 5,
+            "placement": "local",
+            "orient": "bottom",
+            "direction": "horizontal",
+            "title": "Local"
+          }
+        }
+      }
+    },
+
+    {
+      "mark": { "type": "rect" },
+      "encoding": {
+        "x": { "field": "x", "type": "ordinal" },
+        "color": {
+          "field": "status",
+          "type": "nominal",
+          "legend": {
+            "placement": "root",
+            "orient": "right",
+            "title": "Root"
+          }
+        }
+      }
+    }
+  ],
+
+  "config": {
+    "view": { "stroke": "lightgray" },
+    "legend": { "layout": { "right": { "anchor": "middle" } } }
+  },
+  "background": "#f8f8f8"
+}
