@@ -64,6 +64,72 @@ class ExampleGalleryPreprocessorTest(unittest.TestCase):
         self.assertLess(first_definition_start, description_start)
         self.assertLess(description_start, first_definition_end)
 
+    def test_schema_macro_links_types_to_specialized_pages_or_type_sections(self):
+        # Use property references to exercise the links emitted in schema docs.
+        schema = {
+            "definitions": {
+                "Example": {
+                    "properties": {
+                        "axis": {"$ref": "#/definitions/Axis"},
+                        "url": {"$ref": "#/definitions/UrlTemplate"},
+                        "indexUrl": {"$ref": "#/definitions/IndexUrlTemplate"},
+                        "faded": {"$ref": "#/definitions/FadedMultiscaleStops"},
+                        "transitioned": {
+                            "$ref": "#/definitions/TransitionedMultiscaleStops"
+                        },
+                        "fallback": {"$ref": "#/definitions/ExampleType"},
+                    },
+                    "type": "object",
+                },
+                "Axis": {},
+                "UrlTemplate": {},
+                "IndexUrlTemplate": {},
+                "FadedMultiscaleStops": {},
+                "TransitionedMultiscaleStops": {},
+                "ExampleType": {},
+            }
+        }
+        type_links = {
+            "Axis": "/grammar/axis/#properties",
+            "UrlTemplate": "/grammar/data/multi-url/#url-templates",
+            "IndexUrlTemplate": "/grammar/data/multi-url/#indexed-files",
+            "FadedMultiscaleStops": (
+                "/grammar/composition/multiscale/#fadedmultiscalestops"
+            ),
+            "TransitionedMultiscaleStops": (
+                "/grammar/composition/multiscale/#transitionedmultiscalestops"
+            ),
+            "ExampleType": "/grammar/types/#exampletype",
+        }
+        preprocessor = MyPreprocessor(None, schema, {}, "", type_links)
+
+        lines = preprocessor.getType("Example")
+
+        self.assertIn(
+            ":   Type: [Axis](https://genomespy.app/docs/grammar/axis/#properties)",
+            lines,
+        )
+        self.assertIn(
+            ":   Type: [UrlTemplate](https://genomespy.app/docs/grammar/data/multi-url/#url-templates)",
+            lines,
+        )
+        self.assertIn(
+            ":   Type: [IndexUrlTemplate](https://genomespy.app/docs/grammar/data/multi-url/#indexed-files)",
+            lines,
+        )
+        self.assertIn(
+            ":   Type: [FadedMultiscaleStops](https://genomespy.app/docs/grammar/composition/multiscale/#fadedmultiscalestops)",
+            lines,
+        )
+        self.assertIn(
+            ":   Type: [TransitionedMultiscaleStops](https://genomespy.app/docs/grammar/composition/multiscale/#transitionedmultiscalestops)",
+            lines,
+        )
+        self.assertIn(
+            ":   Type: [ExampleType](https://genomespy.app/docs/grammar/types/#exampletype)",
+            lines,
+        )
+
     def test_gallery_accepts_blank_line_after_macro(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir)

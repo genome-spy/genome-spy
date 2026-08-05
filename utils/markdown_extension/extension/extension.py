@@ -17,43 +17,6 @@ DOCS_EXAMPLE_SOURCE_PREFIX = 'examples/docs/'
 APP_EXAMPLE_SOURCE_PREFIX = 'examples/app/'
 DOCS_EXAMPLE_PUBLIC_PREFIX = '/docs/example-specs/'
 
-types_with_links = {
-    'Encoding': '/grammar/mark/#encoding',
-    'ExprRef': '/grammar/expressions/',
-    'SizeDef': '/grammar/composition/concat/#sizedef',
-    'Step': '/grammar/composition/concat/#child-sizing',
-    'VariableParameter': '/grammar/parameters/',
-    'SelectionParameter': '/grammar/parameters/',
-    'UrlImport': '/grammar/import/#urlimport',
-    'TemplateImport': '/grammar/import/#templateimport',
-    'MarkConfig': '/grammar/mark/#properties',
-    'PointConfig': '/grammar/mark/point/#properties',
-    'RectConfig': '/grammar/mark/rect/#properties',
-    'RuleConfig': '/grammar/mark/rule/#properties',
-    'TickConfig': '/grammar/mark/tick/#properties',
-    'TextConfig': '/grammar/mark/text/#properties',
-    'LinkConfig': '/grammar/mark/link/#properties',
-    'LinkProps': '/grammar/mark/link/#properties',
-    'PointProps': '/grammar/mark/point/#properties',
-    'RectProps': '/grammar/mark/rect/#properties',
-    'RuleProps': '/grammar/mark/rule/#properties',
-    'TickProps': '/grammar/mark/tick/#properties',
-    'TextProps': '/grammar/mark/text/#properties',
-    'AxisConfig': '/grammar/scale/#axes',
-    'ScaleConfig': '/grammar/scale/#scale-defaults',
-    'RangeConfig': '/grammar/scale/#scale-defaults',
-    'TitleConfig': '/grammar/config/#title-and-view-defaults',
-    'ViewConfig': '/grammar/config/#title-and-view-defaults',
-    'StyleConfig': '/grammar/config/#theme-config-and-style',
-    'GenomeSpyConfig': '/grammar/config/#properties',
-    'UrlData': '/grammar/data/eager/',
-    'InlineData': '/grammar/data/eager/',
-    'NamedData': '/grammar/data/eager/',
-    'Generator': '/grammar/data/eager/',
-    'LazyData': '/grammar/data/lazy/',
-    'default': '/grammar/types/',
-}
-
 types_with_descriptions = {
     'Field': 'string (field name)',
 }
@@ -71,11 +34,12 @@ refPattern = re.compile('^#/definitions/(.+)$')
 schemaLinePattern = re.compile(r'^\s*"\$schema"\s*:\s*".*",?\s*$')
 
 class MyPreprocessor(Preprocessor):
-    def __init__(self, md, schema, app_schema, repo_root):
+    def __init__(self, md, schema, app_schema, repo_root, type_links=None):
         super().__init__(md)
         self.schema = schema
         self.app_schema = app_schema
         self.repo_root = repo_root
+        self.type_links = type_links or {}
         self.schema_pattern = re.compile(r'^(SCHEMA|APP_SCHEMA)\s+(\w+)(?:\s+(.+))?$')
         self.example_pattern = re.compile(r'^EXAMPLE\s+(.+)$')
         self.example_gallery_pattern = re.compile(r'^EXAMPLE_GALLERY(?:\s+(.+))?$')
@@ -398,10 +362,10 @@ class MyPreprocessor(Preprocessor):
                     return ' | '.join(['`{}`'.format(e) for e in enum])
             if type_name in types_with_descriptions:
                 return types_with_descriptions[type_name]
-            if type_name in types_with_links:
-                return '[{}]({})'.format(type_name, docs_baseurl + types_with_links[type_name])
-            else:
-                return '[{}]({})'.format(type_name, docs_baseurl + types_with_links['default'])
+            link = self.type_links.get(type_name)
+            if link is None:
+                return type_name
+            return '[{}]({})'.format(type_name, docs_baseurl + link)
         return ref
 
     def propTypeToString(self, prop_type, schema):
@@ -545,6 +509,7 @@ class GenomeSpyExtension(Extension):
         self.config = {
             'schemaPath' : [ 'docs/schema.json', 'Path to core schema'],
             'appSchemaPath' : [ 'docs/app-schema.json', 'Path to app schema'],
+            'typeLinksPath' : [ 'docs/type-links.json', 'Generated schema type links'],
             'repoRootPath' : [ '.', 'Path to repository root'],
         }
         super(GenomeSpyExtension, self).__init__(**kwargs)
@@ -567,10 +532,23 @@ class GenomeSpyExtension(Extension):
             )
             app_schema = schema
 
+        try:
+            with open(self.getConfig('typeLinksPath'), 'r') as f:
+                type_links = json.load(f)
+        except IOError:
+            logging.error('Cannot open ' + self.getConfig('typeLinksPath'))
+            raise
+
+        if not isinstance(type_links, dict) or not all(
+            isinstance(type_name, str) and isinstance(link, str)
+            for type_name, link in type_links.items()
+        ):
+            raise ValueError('Type links must be a JSON object mapping names to URLs')
+
         repo_root = os.path.abspath(self.getConfig('repoRootPath'))
 
         md.preprocessors.register(
-            MyPreprocessor(md, schema, app_schema, repo_root),
+            MyPreprocessor(md, schema, app_schema, repo_root, type_links),
             'GenomeSpy',
             175,
         )

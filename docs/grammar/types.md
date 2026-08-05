@@ -236,10 +236,6 @@ SCHEMA IdentifierParams
 
 SCHEMA IndexUrlSourceRef
 
-## IndexUrlTemplate
-
-SCHEMA IndexUrlTemplate
-
 ## InlineDataset
 
 SCHEMA InlineDataset
@@ -319,10 +315,6 @@ SCHEMA MergeFacetsParams
 ## MultiUrlSourceRef
 
 SCHEMA MultiUrlSourceRef
-
-## MultiscaleSpec
-
-SCHEMA MultiscaleSpec
 
 ## MultiscaleStops
 
