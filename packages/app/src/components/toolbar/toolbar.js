@@ -240,8 +240,10 @@ export default class Toolbar extends LitElement {
             link.download = "genomespy-visualization.svg";
             document.body.appendChild(link);
             link.click();
-            link.remove();
-            URL.revokeObjectURL(url);
+            window.setTimeout(() => {
+                link.remove();
+                URL.revokeObjectURL(url);
+            }, 1000);
         } catch (error) {
             await showMessageDialog(
                 `SVG export failed: ${
