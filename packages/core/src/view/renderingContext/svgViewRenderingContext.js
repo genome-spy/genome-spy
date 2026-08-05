@@ -1,4 +1,8 @@
 import { peek } from "../../utils/arrayUtils.js";
+import {
+    normalizeClipOptions,
+    prepareMarkClipOptionsFromClip,
+} from "./clipOptions.js";
 import ViewRenderingContext from "./viewRenderingContext.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -15,6 +19,14 @@ const SVG_NS = "http://www.w3.org/2000/svg";
  * @prop {import("../view.js").default} view
  * @prop {SVGGElement} node
  * @prop {import("../layout/rectangle.js").default} coords
+ */
+
+/**
+ * @typedef {object} SvgMarkRenderingOptions
+ * @prop {import("../layout/rectangle.js").default} coords
+ * @prop {object[]} data
+ * @prop {SVGGElement} group
+ * @prop {number} viewOpacity
  */
 
 /**
@@ -103,9 +115,31 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     renderMark(mark, options) {
-        throw new Error(
-            `SVG rendering is not implemented for mark type "${mark.getType()}". View: ${mark.unitView.getPathString()}`
+        if (mark.unitView.getEffectiveOpacity() <= 0) {
+            return;
+        }
+
+        const inheritedClip = normalizeClipOptions(options);
+        const markClip = prepareMarkClipOptionsFromClip(
+            inheritedClip,
+            mark.properties.clip,
+            this.currentCoords
         );
+        const group = createSvgElement("g", {
+            "data-mark-type": mark.getType(),
+        });
+        const clipPathUrl = this.getClipPathUrl(markClip);
+        if (clipPathUrl) {
+            group.setAttribute("clip-path", clipPathUrl);
+        }
+
+        mark.renderSvg(this, {
+            coords: this.currentCoords,
+            data: mark.getSvgData(options),
+            group,
+            viewOpacity: mark.unitView.getEffectiveOpacity(),
+        });
+        this.currentNode.appendChild(group);
     }
 
     /**

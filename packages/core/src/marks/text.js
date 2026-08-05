@@ -15,6 +15,8 @@ import Mark from "./mark.js";
 import { fixCoveragePositional, fixHalfOpenRangedText } from "./markUtils.js";
 import { primaryPositionalChannels } from "../encoder/encoder.js";
 import { requestFont } from "../fonts/textMetrics.js";
+import { createSvgElement } from "../view/renderingContext/svgViewRenderingContext.js";
+import { encodeNumber, projectX, projectY } from "./svgMarkUtils.js";
 
 /** For GLSL uniforms */
 const alignments = {
@@ -256,4 +258,108 @@ export default class TextMark extends Mark {
             options
         );
     }
+
+    /**
+     * @param {import("../view/renderingContext/svgViewRenderingContext.js").default} context
+     * @param {import("../view/renderingContext/svgViewRenderingContext.js").SvgMarkRenderingOptions} options
+     */
+    renderSvg(context, options) {
+        if (this.properties.logoLetters || this.properties.fitToBand) {
+            throw new Error(
+                "SVG export does not support fitted or logo-letter text yet."
+            );
+        }
+
+        const { coords, data, group, viewOpacity } = options;
+        const encoders =
+            /** @type {Record<string, import("../types/encoder.js").Encoder>} */ (
+                this.encoders
+            );
+        const channelDef = this.encoding.text;
+        const numberFormat =
+            "format" in channelDef
+                ? format(channelDef.format)
+                : (/** @type {any} */ d) => d;
+
+        for (const datum of data) {
+            const value = numberFormat(encoders.text(datum));
+            const stringValue = isString(value)
+                ? value
+                : value === null
+                  ? ""
+                  : "" + value;
+            if (!stringValue) {
+                continue;
+            }
+
+            const x = projectX(
+                coords,
+                encodeNumber(encoders.x, datum),
+                encodeNumber(encoders.xOffset, datum)
+            );
+            const y = projectY(
+                coords,
+                encodeNumber(encoders.y, datum),
+                encodeNumber(encoders.yOffset, datum)
+            );
+            const size = encodeNumber(encoders.size, datum);
+            const angle = encodeNumber(encoders.angle, datum);
+            const text = createSvgElement("text", {
+                x,
+                y,
+                fill: /** @type {string} */ (encoders.color(datum)),
+                "fill-opacity":
+                    encodeNumber(encoders.opacity, datum) * viewOpacity,
+                "font-family": "sans-serif",
+                "font-size": size,
+                "font-style": this.properties.fontStyle ?? "normal",
+                "font-weight": normalizeFontWeight(
+                    this.properties.fontWeight ?? "normal"
+                ),
+                "text-anchor": textAnchors[this.properties.align],
+                "dominant-baseline":
+                    dominantBaselines[this.properties.baseline],
+                dx: this.properties.dx,
+                dy: this.properties.dy,
+                lengthAdjust: "spacingAndGlyphs",
+                textLength: this.font.metrics.measureWidth(stringValue, size),
+            });
+            text.textContent = stringValue;
+            if (angle) {
+                text.setAttribute("transform", `rotate(${angle} ${x} ${y})`);
+            }
+            group.appendChild(text);
+        }
+    }
+}
+
+const textAnchors = {
+    left: "start",
+    center: "middle",
+    right: "end",
+};
+
+const dominantBaselines = {
+    top: "text-before-edge",
+    middle: "central",
+    bottom: "text-after-edge",
+    alphabetic: "alphabetic",
+    baseline: "alphabetic",
+};
+
+const fontWeights = {
+    thin: 100,
+    light: 300,
+    regular: 400,
+    normal: 400,
+    medium: 500,
+    bold: 700,
+    black: 900,
+};
+
+/** @param {string | number} weight */
+function normalizeFontWeight(weight) {
+    return typeof weight == "number"
+        ? weight
+        : fontWeights[/** @type {keyof typeof fontWeights} */ (weight)];
 }
