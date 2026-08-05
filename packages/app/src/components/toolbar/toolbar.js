@@ -4,6 +4,7 @@ import {
     faInfoCircle,
     faQuestionCircle,
     faExpandArrowsAlt,
+    faFileCode,
     faFileImage,
     faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
@@ -128,11 +129,13 @@ export default class Toolbar extends LitElement {
                 >${renderVersionLink(packageJson.version)}</span
             >
 
-            ${this.app.ui.toolbarButtons.size
-                ? Array.from(this.app.ui.toolbarButtons).map((button) =>
-                      this.#createToolbarButton(button)
-                  )
-                : nothing}
+            ${
+                this.app.ui.toolbarButtons.size
+                    ? Array.from(this.app.ui.toolbarButtons).map((button) =>
+                          this.#createToolbarButton(button)
+                      )
+                    : nothing
+            }
 
             <div class="dropdown bookmark-dropdown">
                 <button
@@ -186,6 +189,14 @@ export default class Toolbar extends LitElement {
                 ),
         });
 
+        items.push({
+            label: "Save SVG (experimental)",
+            icon: faFileCode,
+            callback: () => {
+                void this.#downloadSvg();
+            },
+        });
+
         items.push(...this.app.ui.toolbarMenuItems);
 
         if (this.app.appContainer.requestFullscreen) {
@@ -219,6 +230,28 @@ export default class Toolbar extends LitElement {
         showDialog("gs-about-dialog");
     }
 
+    /** @returns {Promise<void>} */
+    async #downloadSvg() {
+        try {
+            const blob = await this.app.genomeSpy.exportSvg();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "genomespy-visualization.svg";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            await showMessageDialog(
+                `SVG export failed: ${
+                    error instanceof Error ? error.message : String(error)
+                }`,
+                { title: "SVG export", type: "error" }
+            );
+        }
+    }
+
     render() {
         const genomeSpy = this.app.genomeSpy;
 
@@ -231,14 +264,16 @@ export default class Toolbar extends LitElement {
                     <img title="GenomeSpy" alt="GenomeSpy" src="${bowtie}" />
                 </a>
 
-                ${appInitialized &&
-                findGenomeScaleResolution(genomeSpy.viewRoot)
-                    ? html`
-                          <genome-spy-search-field
-                              .app=${this.app}
-                          ></genome-spy-search-field>
-                      `
-                    : nothing}
+                ${
+                    appInitialized &&
+                    findGenomeScaleResolution(genomeSpy.viewRoot)
+                        ? html`
+                              <genome-spy-search-field
+                                  .app=${this.app}
+                              ></genome-spy-search-field>
+                          `
+                        : nothing
+                }
                 ${this._getToolButtons()}
             </nav>
         `;
