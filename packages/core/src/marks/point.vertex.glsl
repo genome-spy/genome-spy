@@ -19,6 +19,8 @@ const float TICK_UP = 8.0;
 const float TICK_RIGHT = 9.0;
 const float TICK_DOWN = 10.0;
 const float TICK_LEFT = 11.0;
+const float X = 12.0;
+const float PLUS = 13.0;
 
 float computeSemanticThresholdFactor() {
     // TODO: add smooth transition
@@ -101,6 +103,9 @@ void main(void) {
     } else if (vShape > TRIANGLE_UP && vShape <= TRIANGLE_LEFT) {
         shapeAngle = (vShape - TRIANGLE_UP) * 90.0;
         vShape = TRIANGLE_UP;
+    } else if (vShape == X) {
+        // The x shape reuses the perpendicular stroke geometry of plus.
+        shapeAngle = -45.0;
     }
 
 	float angleInDegrees = getScaled_angle();

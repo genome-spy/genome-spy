@@ -233,6 +233,29 @@ describe("generated shader snapshots", () => {
         expect(sources.vertex).not.toContain("#define VISIBLE_RANGE_CULLING");
     });
 
+    test("point mark includes the stroke-only x shape", async () => {
+        const sources = await captureShaderSources({
+            data: { values: [{}] },
+            mark: {
+                type: "point",
+                shape: "x",
+                filled: false,
+                strokeWidth: 1.5,
+            },
+        });
+
+        expect(sources.vertex).toContain("const float X = 12.0;");
+        expect(sources.vertex).toContain("const float PLUS = 13.0;");
+        expect(sources.vertex).toContain("shapeAngle = -45.0;");
+        expect(sources.fragment).toContain(
+            "float crossShape(vec2 p, float r, float armHalfWidth)"
+        );
+        expect(sources.fragment).toContain(
+            "float lineLength = vShape == X ? r * sqrt(2.0) : r;"
+        );
+        expect(sources.fragment).toContain("vStrokeColor.a > 0.0");
+    });
+
     test("quantize color scale generates discretizing shader", async () => {
         const sources = await captureShaderSources({
             data: {

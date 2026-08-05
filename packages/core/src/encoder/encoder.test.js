@@ -6,6 +6,8 @@ import {
     createEncoder,
     createConditionalBranches,
     createSimpleOrConditionalEncoder,
+    getDiscreteRange,
+    getDiscreteRangeMapper,
     getEncoderAccessors,
     getEncoderDataAccessor,
     isNonMarkPropertyChannel,
@@ -97,6 +99,14 @@ describe("isNonMarkPropertyChannel", () => {
         expect(isNonMarkPropertyChannel("search")).toBe(true);
         expect(isNonMarkPropertyChannel("tooltip")).toBe(true);
         expect(isNonMarkPropertyChannel("x")).toBe(false);
+    });
+});
+
+describe("shape channel", () => {
+    test("supports the stroke-only x shape", () => {
+        expect(getDiscreteRange("shape")).toContain("x");
+        expect(getDiscreteRangeMapper("shape")("x")).toBe(12);
+        expect(getDiscreteRangeMapper("shape")("+")).toBe(13);
     });
 });
 

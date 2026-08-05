@@ -10,7 +10,7 @@ import FRAGMENT_SHADER from "./point.fragment.glsl";
 import COMMON_SHADER from "./point.common.glsl";
 
 import Mark from "./mark.js";
-import { getEncoderDataAccessor } from "../encoder/encoder.js";
+import { getEncoderDataAccessor, isValueDef } from "../encoder/encoder.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { sampleIterable } from "../data/transforms/sample.js";
 import { fixFill, fixStroke } from "./markUtils.js";
@@ -111,6 +111,10 @@ export default class PointMark extends Mark {
             typeof this.unitView.spec.mark == "object"
                 ? this.unitView.spec.mark
                 : {};
+        const lineShape =
+            isValueDef(encoding.shape) &&
+            (encoding.shape.value === "x" || encoding.shape.value === "+");
+        const configuredStrokeWidth = encoding.strokeWidth;
 
         for (const [legacy, offset] of /** @type {const} */ ([
             ["dx", "xOffset"],
@@ -128,6 +132,20 @@ export default class PointMark extends Mark {
 
         fixStroke(encoding, this.properties.filled);
         fixFill(encoding, this.properties.filled);
+
+        // A stroke-less point normally uses zero stroke width because its fill
+        // is the visible geometry. Line-only shapes are line geometry, so
+        // retain their configured width when they fall back to fill color.
+        if (
+            lineShape &&
+            isValueDef(encoding.stroke) &&
+            encoding.stroke.value === null
+        ) {
+            encoding.strokeOpacity = { value: 0 };
+            if (configuredStrokeWidth) {
+                encoding.strokeWidth = configuredStrokeWidth;
+            }
+        }
 
         // TODO: Function for getting rid of extras. Also should validate that all attributes are defined
         delete encoding.color;

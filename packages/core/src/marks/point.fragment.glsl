@@ -20,6 +20,8 @@ const float CROSS = 2.0;
 const float DIAMOND = 3.0;
 const float TRIANGLE_UP = 4.0;
 const float TICK_UP = 8.0;
+const float X = 12.0;
+const float PLUS = 13.0;
 
 // The distance functions are inspired by:
 // http://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
@@ -49,10 +51,10 @@ float equilateralTriangle(vec2 p, float r) {
     return max((abs(p.x) * k + p.y) / 2.0, -p.y - kr);
 }
 
-float crossShape(vec2 p, float r) {
+float crossShape(vec2 p, float r, float armHalfWidth) {
     p = abs(p);
 
-	vec2 b = vec2(0.4, 1.0) * r;
+    vec2 b = vec2(armHalfWidth, r);
     vec2 v = abs(p) - b.xy;
     vec2 h = abs(p) - b.yx;
     return min(max(v.x, v.y), max(h.x, h.y));
@@ -65,10 +67,11 @@ float diamond(vec2 p, float r) {
 
 void main() {
     float d;
+    bool lineShape = false;
 
 	/** Normalized point coord */
     vec2 p = vRotationMatrix * (2.0 * gl_PointCoord - 1.0) * vRadiusWithPadding;
-	float r = vRadius;
+    float r = vRadius;
 
     // We could also use textures here. Could even be faster, because we have plenty of branching here.
     if (vShape == CIRCLE) {
@@ -78,7 +81,7 @@ void main() {
         d = square(p, r);
 
     } else if (vShape == CROSS) {
-        d = crossShape(p, r);
+        d = crossShape(p, r, r * 0.4);
 
     } else if (vShape == DIAMOND) {
         d = diamond(p, r);
@@ -89,25 +92,31 @@ void main() {
     } else if (vShape == TICK_UP) {
         d = tickUp(p, r);
 
+    } else if (vShape == X || vShape == PLUS) {
+        float lineLength = vShape == X ? r * sqrt(2.0) : r;
+        d = crossShape(p, lineLength, vHalfStrokeWidth);
+        lineShape = true;
+
     } else {
         d = 0.0;
     }
 
 	if (!uPickingEnabled) {
-		lowp vec4 fillColor = mix(vFillColor, white, -d * uGradientStrength / vRadius);
+		lowp vec4 fillColor = lineShape
+            ? (vStrokeColor.a > 0.0 ? vStrokeColor : vFillColor)
+            : mix(vFillColor, white, -d * uGradientStrength / vRadius);
 
 		fragColor = distanceToColor(
-			d + (uInwardStroke ? vHalfStrokeWidth : 0.0),
+			d + (!lineShape && uInwardStroke ? vHalfStrokeWidth : 0.0),
 			fillColor,
 			vStrokeColor,
             vec4(0.0),
-			vHalfStrokeWidth);
+			lineShape ? 0.0 : vHalfStrokeWidth);
 
-	} else if (d - vHalfStrokeWidth <= 0.0) {
+	} else if (d - (lineShape ? 0.0 : vHalfStrokeWidth) <= 0.0) {
         fragColor = vPickingColor;
 
 	} else {
 		discard;
     }
 }
-

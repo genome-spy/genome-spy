@@ -677,6 +677,8 @@ export function getDiscreteRange(channel) {
                 "tick-right",
                 "tick-down",
                 "tick-left",
+                "x",
+                "+",
             ];
         case "direction":
             return ["forward", "reverse"];

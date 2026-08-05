@@ -683,9 +683,10 @@ export interface PointProps
     type: "point";
 
     /**
-     * One of `"circle"`, `"square"`, `"cross"`, `"diamond"`, `"triangle-up"`,
+     * One of `"circle"`, `"square"`, `"cross"`, `"x"`, `"+"`, `"diamond"`, `"triangle-up"`,
      * `"triangle-down"`, `"triangle-right"`, `"triangle-left"`, `"tick-up"`,
-     * `"tick-down"`, `"tick-right"`, or `"tick-left"`
+     * `"tick-down"`, `"tick-right"`, or `"tick-left"`. The `"x"` and `"+"`
+     * shapes are stroke-only and use `strokeWidth` for their line thickness.
      *
      * **Default value:** `"circle"`
      */

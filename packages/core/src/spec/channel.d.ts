@@ -591,6 +591,7 @@ export interface Encoding {
      *
      * For `point` marks the supported values include:
      * - plotting shapes: `"circle"`, `"square"`, `"cross"`, `"diamond"`, `"triangle-up"`, `"triangle-down"`, `"triangle-right"`, or `"triangle-left"`.
+     * - stroke-only `"x"` and `"+"` shapes, whose line thickness is controlled by `strokeWidth`
      * - centered directional shape `"triangle"`
      */
     shape?: ShapeDef;
