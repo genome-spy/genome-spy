@@ -1,0 +1,506 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Recurrent protein-altering PIK3CA mutations in TCGA-BRCA.",
+    "Heights and circle labels show distinct tumor sample counts.",
+    "Mutation data are open GDC masked somatic MAFs; domains are from UniProt P42336."
+  ],
+
+  "title": "PIK3CA mutations in TCGA-BRCA",
+
+  "resolve": { "scale": { "x": "shared" } },
+
+  "params": [
+    { "name": "proteinLength", "value": 1068 },
+    { "name": "lineWidth", "value": 1 },
+    {
+      "name": "pixelsPerResidue",
+      "expr": "width * (scale('x', 1) - scale('x', 0))",
+      "description": "Current horizontal distance between adjacent protein residues in pixels."
+    }
+  ],
+
+  "padding": 10,
+  "spacing": 0,
+
+  "vconcat": [
+    {
+      "spacing": 0,
+
+      "resolve": {
+        "scale": { "color": "shared" },
+        "legend": { "color": "shared" }
+      },
+
+      "data": { "name": "mutations" },
+      "transform": [
+        {
+          "type": "collect",
+          "sort": { "field": "position", "order": "ascending" }
+        },
+        {
+          "type": "displace1d",
+          "pos": "position",
+          "length": 18,
+          "positionFactor": { "expr": "pixelsPerResidue" },
+          "extent": {
+            "expr": "[0.5, proteinLength + 0.5 - 25 / max(1, pixelsPerResidue)]"
+          },
+          "as": "xDisplacement",
+          "description": "Displace overlapping mutations in pixel space: positionFactor converts residue positions to pixels, so length 18 reserves 18 px per mutation and xDisplacement is in pixels. extent keeps placements within the protein while reserving up to 25 px at the right edge; it may overflow if needed."
+        }
+      ],
+      "encoding": {
+        "x": {
+          "field": "position",
+          "type": "index",
+          "scale": {
+            "domainMin": 1,
+            "nice": false,
+            "zoom": { "extent": "data" }
+          },
+          "axis": null
+        },
+        "xOffset": {
+          "field": "xDisplacement",
+          "type": "quantitative",
+          "scale": null
+        },
+        "y": {
+          "field": "sampleCount",
+          "type": "quantitative",
+          "scale": {
+            "type": "log",
+            "domainMin": 1,
+            "nice": false,
+            "padding": 0.08
+          },
+          "axis": {
+            "title": "Distinct tumor samples",
+            "grid": false
+          }
+        }
+      },
+
+      "vconcat": [
+        {
+          "name": "mutation-labels",
+          "height": 65,
+          "mark": {
+            "type": "text",
+            "angle": -55,
+            "dx": 4,
+            "size": 10,
+            "align": "left",
+            "baseline": "middle",
+            "color": "#303030",
+            "tooltip": null
+          },
+          "encoding": {
+            "y": { "value": 0 },
+            "text": { "field": "mutation" }
+          }
+        },
+        {
+          "name": "mutations",
+          "layer": [
+            {
+              "name": "stems",
+              "mark": {
+                "type": "rule",
+                "size": { "expr": "lineWidth" },
+                "color": "#707070",
+                "tooltip": null
+              },
+              "encoding": { "y2": { "value": 0 } }
+            },
+            {
+              "name": "upper-guides",
+              "mark": {
+                "type": "rule",
+                "size": { "expr": "lineWidth" },
+                "color": "#bbb",
+                "strokeDash": [3, 3],
+                "tooltip": null
+              },
+              "encoding": { "y2": { "value": 1 } }
+            },
+            {
+              "name": "lollipops",
+              "mark": {
+                "type": "point",
+                "size": 260,
+                "filled": true,
+                "stroke": "white",
+                "strokeWidth": 1.5
+              },
+              "encoding": {
+                "color": {
+                  "field": "variantClass",
+                  "type": "nominal",
+                  "legend": {
+                    "title": "Variant class",
+                    "orient": "top"
+                  }
+                },
+                "tooltip": [
+                  { "field": "mutation", "title": "Mutation" },
+                  { "field": "position", "title": "Residue" },
+                  {
+                    "field": "sampleCount",
+                    "title": "Distinct tumor samples"
+                  },
+                  { "field": "variantClass", "title": "Variant class" },
+                  {
+                    "field": "sourceProteinPosition",
+                    "title": "GDC protein position"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "sample-counts",
+              "mark": {
+                "type": "text",
+                "size": 8,
+                "align": "center",
+                "baseline": "middle",
+                "color": "white",
+                "tooltip": null
+              },
+              "encoding": {
+                "text": { "field": "sampleCount", "type": "quantitative" }
+              }
+            }
+          ]
+        },
+        {
+          "height": 20,
+          "layer": [
+            {
+              "name": "lower-connectors",
+              "mark": {
+                "type": "link",
+                "linkShape": "diagonal",
+                "orient": "vertical",
+                "x2Offset": 0,
+                "size": { "expr": "lineWidth" },
+                "color": "#707070",
+                "tooltip": null
+              },
+              "encoding": {
+                "x2": { "field": "position" },
+                "y": { "value": 1 },
+                "y2": { "value": 0 }
+              }
+            },
+            {
+              "name": "true-position-anchors",
+              "mark": {
+                "type": "rule",
+                "size": { "expr": "lineWidth" },
+                "color": "#707070",
+                "tooltip": null,
+                "y2Offset": 20
+              },
+              "encoding": {
+                "xOffset": { "value": 0 },
+                "y": { "value": 0 },
+                "y2": { "value": 0 }
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "protein",
+      "height": 50,
+      "padding": { "top": -5 },
+      "data": { "name": "domains" },
+      "encoding": {
+        "x": {
+          "field": "start",
+          "type": "index",
+          "axis": {
+            "title": "PIK3CA protein position (aa)",
+            "tickCount": 10,
+            "extraValues": [1]
+          }
+        },
+        "x2": { "field": "end" }
+      },
+      "layer": [
+        {
+          "name": "protein-backbone",
+          "data": { "values": [{ "start": 1 }] },
+          "transform": [
+            {
+              "type": "formula",
+              "expr": "proteinLength",
+              "as": "end"
+            }
+          ],
+          "mark": {
+            "type": "rect",
+            "y": 0.36,
+            "y2": 0.64,
+            "color": "#b9bdb8",
+            "tooltip": null
+          }
+        },
+        {
+          "name": "domains",
+          "mark": {
+            "type": "rect",
+            "y": 0.18,
+            "y2": 0.82,
+            "cornerRadius": 3,
+            "shadowColor": "black",
+            "shadowOpacity": 0.2,
+            "shadowBlur": 4,
+            "shadowOffsetY": 2
+          },
+          "encoding": {
+            "color": {
+              "field": "label",
+              "type": "nominal",
+              "scale": {
+                "domain": ["ABD", "RBD", "C2", "Helical", "Kinase"],
+                "range": ["#6f5bd3", "#4e79a7", "#59a14f", "#f28e2b", "#e15759"]
+              },
+              "legend": null
+            },
+            "tooltip": [
+              { "field": "description", "title": "Domain" },
+              { "field": "start", "title": "Start" },
+              { "field": "end", "title": "End" },
+              { "value": "UniProt P42336", "title": "Source" }
+            ]
+          }
+        },
+        {
+          "name": "domain-labels",
+          "mark": {
+            "type": "text",
+            "color": "white",
+            "paddingX": 3,
+            "tooltip": null
+          },
+          "encoding": { "text": { "field": "label" } }
+        }
+      ]
+    }
+  ],
+
+  "datasets": {
+    "mutations": [
+      {
+        "position": 81,
+        "mutation": "E81K",
+        "sampleCount": 2,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "81/1068"
+      },
+      {
+        "position": 88,
+        "mutation": "R88Q",
+        "sampleCount": 2,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "88/1068"
+      },
+      {
+        "position": 108,
+        "mutation": "R108H",
+        "sampleCount": 2,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "108/1068"
+      },
+      {
+        "position": 110,
+        "mutation": "E110del",
+        "sampleCount": 2,
+        "variantClass": "In_Frame_Del",
+        "sourceProteinPosition": "109/1068"
+      },
+      {
+        "position": 111,
+        "mutation": "K111del",
+        "sampleCount": 2,
+        "variantClass": "In_Frame_Del",
+        "sourceProteinPosition": "111/1068"
+      },
+      {
+        "position": 118,
+        "mutation": "G118D",
+        "sampleCount": 5,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "118/1068"
+      },
+      {
+        "position": 345,
+        "mutation": "N345K",
+        "sampleCount": 17,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "345/1068"
+      },
+      {
+        "position": 366,
+        "mutation": "P366R",
+        "sampleCount": 2,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "366/1068"
+      },
+      {
+        "position": 420,
+        "mutation": "C420R",
+        "sampleCount": 4,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "420/1068"
+      },
+      {
+        "position": 447,
+        "mutation": "P447_L455del",
+        "sampleCount": 3,
+        "variantClass": "In_Frame_Del",
+        "sourceProteinPosition": "446-455/1068"
+      },
+      {
+        "position": 453,
+        "mutation": "E453K",
+        "sampleCount": 7,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "453/1068"
+      },
+      {
+        "position": 542,
+        "mutation": "E542K",
+        "sampleCount": 41,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "542/1068"
+      },
+      {
+        "position": 545,
+        "mutation": "E545A",
+        "sampleCount": 5,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "545/1068"
+      },
+      {
+        "position": 545,
+        "mutation": "E545K",
+        "sampleCount": 67,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "545/1068"
+      },
+      {
+        "position": 546,
+        "mutation": "Q546K",
+        "sampleCount": 4,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "546/1068"
+      },
+      {
+        "position": 546,
+        "mutation": "Q546R",
+        "sampleCount": 6,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "546/1068"
+      },
+      {
+        "position": 726,
+        "mutation": "E726K",
+        "sampleCount": 8,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "726/1068"
+      },
+      {
+        "position": 939,
+        "mutation": "D939G",
+        "sampleCount": 2,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "939/1068"
+      },
+      {
+        "position": 1004,
+        "mutation": "M1004I",
+        "sampleCount": 3,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "1004/1068"
+      },
+      {
+        "position": 1007,
+        "mutation": "G1007R",
+        "sampleCount": 2,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "1007/1068"
+      },
+      {
+        "position": 1043,
+        "mutation": "M1043I",
+        "sampleCount": 2,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "1043/1068"
+      },
+      {
+        "position": 1044,
+        "mutation": "N1044Y",
+        "sampleCount": 2,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "1044/1068"
+      },
+      {
+        "position": 1047,
+        "mutation": "H1047L",
+        "sampleCount": 13,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "1047/1068"
+      },
+      {
+        "position": 1047,
+        "mutation": "H1047R",
+        "sampleCount": 120,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "1047/1068"
+      },
+      {
+        "position": 1047,
+        "mutation": "H1047Y",
+        "sampleCount": 2,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "1047/1068"
+      },
+      {
+        "position": 1049,
+        "mutation": "G1049R",
+        "sampleCount": 2,
+        "variantClass": "Missense_Mutation",
+        "sourceProteinPosition": "1049/1068"
+      }
+    ],
+    "domains": [
+      { "start": 16, "end": 105, "label": "ABD", "description": "PI3K-ABD" },
+      { "start": 187, "end": 289, "label": "RBD", "description": "PI3K-RBD" },
+      {
+        "start": 330,
+        "end": 487,
+        "label": "C2",
+        "description": "C2 PI3K-type"
+      },
+      {
+        "start": 517,
+        "end": 694,
+        "label": "Helical",
+        "description": "PIK helical"
+      },
+      {
+        "start": 765,
+        "end": 1051,
+        "label": "Kinase",
+        "description": "PI3K/PI4K catalytic"
+      }
+    ]
+  }
+}

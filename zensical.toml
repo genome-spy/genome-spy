@@ -103,6 +103,7 @@ nav = [
         "examples/genomic-data/hcc1954-sv-cnv.md",
         "examples/genomic-data/tcga-ov-gistic.md",
         "examples/genomic-data/sashimi-plot.md",
+        "examples/genomic-data/pik3ca-tcga-brca-lollipop.md",
         "examples/genomic-data/dynseq-spi1-bqtl.md",
         "examples/genomic-data/clinvar-variants.md",
         "examples/genomic-data/bam-read-alignments.md",
