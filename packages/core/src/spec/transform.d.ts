@@ -1037,6 +1037,51 @@ export interface FilterScoredLabelsParams extends TransformParamsBase {
     channel?: "x" | "y";
 }
 
+export interface Displace1DParams extends TransformParamsBase {
+    type: "displace1d";
+
+    /**
+     * The field containing the original position. Input rows must be ordered by
+     * ascending `pos * positionFactor`.
+     */
+    pos: Field;
+
+    /**
+     * The full collision length, including any desired spacing, or a field
+     * containing that length. The value uses the same units as the scaled
+     * positions and output displacement. An expression provides a reactive
+     * scalar length shared by all rows.
+     */
+    length: number | Field | ExprRef;
+
+    /**
+     * A multiplier applied to `pos` before placement. An expression can
+     * convert position units to logical pixels and react to zoom or layout
+     * changes. Use an ascending `pos` sort for a positive factor and a
+     * descending sort for a negative factor. Place a `collect` transform before
+     * this transform to buffer input for expression-driven updates.
+     *
+     * __Default value:__ `1`
+     */
+    positionFactor?: number | ExprRef;
+
+    /**
+     * Preferred outer bounds for the placed collision intervals, expressed in
+     * the original `pos` coordinate system. The bounds are multiplied by
+     * `positionFactor` together with the item positions. When all items cannot
+     * fit, they remain non-overlapping and extend beyond the bounds by the
+     * minimum necessary amount. An expression can update the bounds reactively.
+     */
+    extent?: [number, number] | ExprRef;
+
+    /**
+     * The output field for signed displacement.
+     *
+     * __Default value:__ `"displacement"`
+     */
+    as?: string;
+}
+
 export interface FlattenCompressedExonsParams extends TransformParamsBase {
     type: "flattenCompressedExons";
 
@@ -1069,6 +1114,7 @@ export type TransformParams =
     | CoverageParams
     | CoordinateLookupParams
     | CrossParams
+    | Displace1DParams
     | FlattenDelimitedParams
     | FormulaParams
     | LookupParams

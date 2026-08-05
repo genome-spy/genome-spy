@@ -1,8 +1,9 @@
 # Measure Text
 
-The `"measureText"` transforms measures the length of a string in pixels. The
+The `"measureText"` transform measures the length of a string in pixels. The
 measurement can be used in downstream layout computations with the
-[filterScoredLabels](./filter-scored-labels.md) transform.
+[filterScoredLabels](./filter-scored-labels.md) transform or as a variable
+collision length for the [displace1d](./displace1d.md) transform.
 
 Custom fonts can be configured with the same `font`, `fontStyle`, and
 `fontWeight` properties as the [`text`](../mark/text.md) mark.

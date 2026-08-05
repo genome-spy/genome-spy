@@ -3,6 +3,7 @@ import AlignmentMismatchesTransform from "./alignmentMismatches.js";
 import CoordinateLookupTransform from "./coordinateLookup.js";
 import CrossTransform from "./cross.js";
 import CoverageTransform from "./coverage.js";
+import Displace1DTransform from "./displace1d.js";
 import FilterScoredLabelsTransform from "./filterScoredLabels.js";
 import FilterTransform from "./filter.js";
 import FlattenTransform from "./flatten.js";
@@ -37,6 +38,7 @@ export const transforms = {
     alignmentMismatches: AlignmentMismatchesTransform,
     collect: Collector,
     coverage: CoverageTransform,
+    displace1d: Displace1DTransform,
     filterScoredLabels: FilterScoredLabelsTransform,
     filter: FilterTransform,
     flatten: FlattenTransform,
