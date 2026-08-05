@@ -269,6 +269,11 @@ describe("Displace1DTransform", () => {
         source.handle({ pos: 0.9 });
 
         const repropagate = vi.spyOn(source, "repropagate");
+        extent = [1, 0];
+        expect(() =>
+            /** @type {() => void} */ (listeners.get("extent"))()
+        ).not.toThrow();
+        extent = [0, 1];
         source.complete();
         await Promise.resolve();
 

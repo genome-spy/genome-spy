@@ -55,8 +55,12 @@ export default class Displace1DTransform extends Transform {
         this._extentExpr = undefined;
 
         const updatePlacementParameters = () => {
+            if (!this._placementParametersReady) {
+                return;
+            }
+
             const changed = this._refreshPlacementParameters();
-            if (changed && this._placementParametersReady && this.completed) {
+            if (changed && this.completed) {
                 this.repropagate();
             }
         };
