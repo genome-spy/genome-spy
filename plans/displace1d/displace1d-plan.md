@@ -72,6 +72,8 @@ GenomeSpy already has the required architectural pieces:
 - Recompute placement when a reactive position multiplier changes.
 - Let displacement naturally diminish during zoom and reach zero when the
   undisplaced items fit.
+- Support preferred outer bounds without dropping items or introducing
+  discontinuities when the available extent is too small.
 - Keep input data branches isolated by emitting owned output objects.
 - Keep the transform's scope and retained state small, accepting modest
   per-update allocation for datasets of at most a few hundred items.
@@ -85,9 +87,8 @@ GenomeSpy already has the required architectural pieces:
   annotation tracks.
 - General two-dimensional label placement or arbitrary mark avoidance.
 - Hiding lower-priority items when all items cannot be shown.
-- Supporting outer viewport bounds in the first version. Bounds require a
-  policy for offscreen items during pan and zoom and can make a layout
-  infeasible.
+- Deriving bounds implicitly from a viewport or scale. Optional bounds remain
+  explicit in the source position coordinate system.
 - Weighted displacement objectives, preferred movement directions, or
   user-selectable solvers in the first version.
 - Promoting the protein lollipop visualization into the public examples or
@@ -550,8 +551,8 @@ encoding, and zoom behavior without reading implementation details.
 **Verification:** Schema-derived docs generation and documentation build or
 serve smoke test.
 
-**Documentation or migration:** Document that viewport bounds and locus
-coordinate pairs are not supported initially. No migration.
+**Documentation or migration:** Document explicit source-coordinate bounds and
+that locus coordinate pairs are not supported initially. No migration.
 
 **Tentative commit:** `docs(core): document the displace1d transform`
 
@@ -584,8 +585,8 @@ new production abstractions should be introduced solely for this step.
 build, and a browser smoke test of both the protein prototype and an existing
 `filterScoredLabels` RefSeq example.
 
-**Documentation or migration:** Record any deferred bounds, locus, or public
-example work in follow-up notes rather than expanding this implementation.
+**Documentation or migration:** Record any deferred locus or public example
+work in follow-up notes rather than expanding this implementation.
 
 **Tentative commit:** `test(core): cover displace1d zoom integration`
 
@@ -674,11 +675,13 @@ Projected text-bounds computation is unnecessary for this prototype.
 
 ### Edge overhang
 
-Unbounded minimum-displacement placement may move the first or last label past
-the view edge.
+Minimum-displacement placement may move the first or last label past the view
+edge, and collision intervals may not fit inside a requested extent.
 
-**Mitigation:** Use view padding in the private prototype and document that
-viewport bounds are deferred. Do not silently distort or drop items.
+**Mitigation:** Let callers provide an explicit source-coordinate extent. Keep
+collision intervals within it when feasible. Otherwise, preserve non-overlap
+and use the least-displacing placement with minimum unavoidable overflow. The
+feasible and infeasible solutions must meet continuously as zoom changes.
 
 ### Excessive per-frame allocation
 
@@ -693,9 +696,9 @@ retained state or generic replay optimizations.
 
 None of these blocks the initial implementation:
 
-- Should a future bounded mode solve only visible items, include buffered
-  offscreen items, or keep every item within the viewport? This needs an
-  explicit pan/zoom contract.
+- Should a future viewport-derived mode solve only visible items, include
+  buffered offscreen items, or keep every item within the viewport? Explicit
+  source-coordinate extents avoid choosing this policy for callers.
 - Should a future mapping expression support nonlinear or locus scales, or
   should callers linearize genomic coordinates before displacement?
 - Should later versions support independent `groupby` layouts for multiple

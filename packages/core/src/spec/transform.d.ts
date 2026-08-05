@@ -1065,6 +1065,15 @@ export interface Displace1DParams extends TransformParamsBase {
     positionFactor?: number | ExprRef;
 
     /**
+     * Preferred outer bounds for the placed collision intervals, expressed in
+     * the original `pos` coordinate system. The bounds are multiplied by
+     * `positionFactor` together with the item positions. When all items cannot
+     * fit, they remain non-overlapping and extend beyond the bounds by the
+     * minimum necessary amount.
+     */
+    extent?: [number, number];
+
+    /**
      * The output field for signed displacement.
      *
      * __Default value:__ `"displacement"`

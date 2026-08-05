@@ -31,6 +31,7 @@ logical pixels and disable the offset scale:
       "positionFactor": {
         "expr": "width * (scale('x', 1) - scale('x', 0))"
       },
+      "extent": [0.5, 1068.5],
       "as": "xDisplacement"
     }
   ],
@@ -52,6 +53,19 @@ pixels. The expression reacts to both zoom and layout changes. For values that
 are already in collision-space units, omit `positionFactor`; its default is
 `1`.
 
+Use `extent` to keep collision intervals inside preferred outer bounds. The
+bounds use the original `pos` coordinate system and are multiplied by
+`positionFactor` together with the item positions. For a one-based index scale
+covering protein residues 1 through 1068, `[0.5, 1068.5]` represents the outer
+edges of the first and last residue bands.
+
+When all collision intervals fit, the extent acts as a hard bound. If their
+combined length exceeds the available extent, items remain non-overlapping and
+extend outside it by the minimum necessary amount. Among placements with the
+same minimum overflow, the transform minimizes squared displacement. Placement
+changes continuously as `positionFactor` changes; active constraints may
+change the rate of movement but do not introduce jumps.
+
 For a positive `positionFactor`, sort `pos` in ascending order as above. For a
 negative factor, sort it in descending order. Unsorted scaled positions cause
 an error. Equal positions preserve their incoming order.
@@ -64,10 +78,11 @@ in linear time using equal-weight least-squares isotonic regression and the
 pool-adjacent-violators algorithm (PAVA). See Busing,
 [_Monotone Regression: A Simple and Fast O(n) PAVA Implementation_](https://doi.org/10.18637/jss.v102.c01).
 
-The transform accepts numeric positions and does not constrain displaced items
-to the viewport. A single `positionFactor` describes affine mappings such as
-linear quantitative and index scales. Nonlinear and locus-scale mappings are
-not supported directly.
+The transform accepts numeric positions. `extent` is expressed in position
+coordinates rather than viewport coordinates, so the transform remains
+independent of scales and view layout. A single `positionFactor` describes
+affine mappings such as linear quantitative and index scales. Nonlinear and
+locus-scale mappings are not supported directly.
 
 ## Parameters
 

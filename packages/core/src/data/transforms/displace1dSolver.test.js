@@ -61,6 +61,70 @@ describe("solveDisplacement", () => {
         expect(output).toEqual([-1, 1]);
     });
 
+    test("keeps collision intervals inside a feasible extent", () => {
+        const positions = [80, 90];
+        const lengths = [20, 20];
+        const displacements = solveDisplacement(
+            positions,
+            lengths,
+            undefined,
+            [0, 100]
+        );
+
+        expect(displacements).toEqual([-10, 0]);
+        expectNoOverlap(positions, lengths, displacements);
+        expect(positions[0] + displacements[0] - lengths[0] / 2).toBe(60);
+        expect(positions[1] + displacements[1] + lengths[1] / 2).toBe(100);
+    });
+
+    test("constrains separated edge items without moving interior items", () => {
+        const positions = [-10, 5, 20];
+        const lengths = [2, 2, 2];
+        const displacements = solveDisplacement(
+            positions,
+            lengths,
+            undefined,
+            [0, 10]
+        );
+
+        expect(displacements).toEqual([11, 0, -11]);
+        expectNoOverlap(positions, lengths, displacements);
+    });
+
+    test("uses the minimum-overflow placement when the extent is infeasible", () => {
+        const positions = [8, 9];
+        const lengths = [6, 6];
+        const displacements = solveDisplacement(
+            positions,
+            lengths,
+            undefined,
+            [0, 10]
+        );
+
+        expect(displacements).toEqual([-5, 0]);
+        expectNoOverlap(positions, lengths, displacements);
+        expect(positions[0] + displacements[0] - lengths[0] / 2).toBe(0);
+        expect(positions[1] + displacements[1] + lengths[1] / 2).toBe(12);
+    });
+
+    test("is continuous at extent feasibility and collision transitions", () => {
+        const solveAtFactor = (/** @type {number} */ factor) =>
+            solveDisplacement(
+                [0, 0.1].map((position) => position * factor),
+                [20, 20],
+                undefined,
+                [-0.1 * factor, 0.2 * factor]
+            );
+        const epsilon = 1e-6;
+
+        for (const transition of [400 / 3, 200]) {
+            const before = solveAtFactor(transition - epsilon);
+            const after = solveAtFactor(transition + epsilon);
+            expect(Math.abs(before[0] - after[0])).toBeLessThan(1e-5);
+            expect(Math.abs(before[1] - after[1])).toBeLessThan(1e-5);
+        }
+    });
+
     test.each([
         [[], [], []],
         [[3], [2], [0]],
@@ -76,5 +140,15 @@ describe("solveDisplacement", () => {
         [[0, 1], [1], "same number"],
     ])("rejects invalid input %#", (positions, lengths, message) => {
         expect(() => solveDisplacement(positions, lengths)).toThrow(message);
+    });
+
+    test.each([
+        [NaN, 1],
+        [0, Infinity],
+        [1, 0],
+    ])("rejects invalid extent %#", (start, end) => {
+        expect(() =>
+            solveDisplacement([0], [1], undefined, [start, end])
+        ).toThrow("finite ascending bounds");
     });
 });

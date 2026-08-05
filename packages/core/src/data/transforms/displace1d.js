@@ -32,6 +32,20 @@ export default class Displace1DTransform extends Transform {
         }
         this.lengthAccessor = lengthAccessor;
 
+        if (
+            params.extent &&
+            (!Number.isFinite(params.extent[0]) ||
+                !Number.isFinite(params.extent[1]) ||
+                params.extent[0] > params.extent[1])
+        ) {
+            throw new Error(
+                "displace1d extent must contain finite ascending bounds."
+            );
+        }
+        this.extent = params.extent;
+        /** @type {[number, number] | undefined} */
+        this._scaledExtent = params.extent ? [0, 0] : undefined;
+
         this.positionFactor = 1;
         this._positionFactorReady = !isExprRef(params.positionFactor);
         /** @type {(() => number) | undefined} */
@@ -94,7 +108,18 @@ export default class Displace1DTransform extends Transform {
             positions[i] = this.positionAccessor(data[i]) * this.positionFactor;
             lengths[i] = this.lengthAccessor(data[i]);
         }
-        const displacements = solveDisplacement(positions, lengths);
+        if (this.extent) {
+            const first = this.extent[0] * this.positionFactor;
+            const second = this.extent[1] * this.positionFactor;
+            this._scaledExtent[0] = Math.min(first, second);
+            this._scaledExtent[1] = Math.max(first, second);
+        }
+        const displacements = solveDisplacement(
+            positions,
+            lengths,
+            undefined,
+            this._scaledExtent
+        );
 
         for (let i = 0; i < data.length; i++) {
             const output = Object.assign({}, data[i]);

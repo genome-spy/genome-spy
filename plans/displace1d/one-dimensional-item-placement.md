@@ -53,4 +53,9 @@ This approach is:
 - order-preserving
 - linear-time, `O(n)`, when the input is already sorted
 
-Simple outer bounds can be handled in the transformed space without changing the asymptotic complexity. The implementation should detect and report infeasible cases where the items cannot fit within the available interval.
+Simple outer bounds can be handled in the transformed space without changing
+the asymptotic complexity. When the items cannot fit, preserve non-overlap and
+use the minimum-overflow packed placement. Translate that placement to minimize
+squared displacement among solutions with the same unavoidable overflow. This
+connects continuously to the bounded solution as the available interval
+changes.

@@ -9,8 +9,9 @@ import Displace1DTransform from "./displace1d.js";
  * @param {{ pos: number, length?: number }[]} data
  * @param {number | string} length
  * @param {number} [positionFactor]
+ * @param {[number, number]} [extent]
  */
-function createFlow(data, length, positionFactor = 100) {
+function createFlow(data, length, positionFactor = 100, extent) {
     const source = new Collector();
     const transform = new Displace1DTransform(
         {
@@ -18,6 +19,7 @@ function createFlow(data, length, positionFactor = 100) {
             pos: "pos",
             length,
             positionFactor,
+            extent,
             as: "offset",
         },
         /** @type {any} */ ({})
@@ -67,6 +69,7 @@ describe("Displace1DTransform", () => {
                     positionFactor: {
                         expr: "width * (scale('x', 1) - scale('x', 0))",
                     },
+                    extent: [9.5, 100.5],
                     as: "offset",
                 },
             ],
@@ -145,6 +148,32 @@ describe("Displace1DTransform", () => {
         );
     });
 
+    test("scales a source-coordinate extent with the positions", () => {
+        const { output } = createFlow(
+            [{ pos: 0.8 }, { pos: 0.9 }],
+            20,
+            100,
+            [0, 1]
+        );
+
+        expect([...output.getData()].map((datum) => datum.offset)).toEqual([
+            -10, 0,
+        ]);
+    });
+
+    test("normalizes a scaled extent for a negative position factor", () => {
+        const { output } = createFlow(
+            [{ pos: 0.1 }, { pos: 0 }],
+            20,
+            -100,
+            [0, 1]
+        );
+
+        expect([...output.getData()].map((datum) => datum.offset)).toEqual([
+            -20, -10,
+        ]);
+    });
+
     test("replays an upstream collector when the position factor changes", async () => {
         let factor = 100;
         /** @type {() => void} */
@@ -207,6 +236,12 @@ describe("Displace1DTransform", () => {
     test("rejects a non-finite position factor", () => {
         expect(() => createFlow([{ pos: 0 }], 10, Infinity)).toThrowError(
             "displace1d positionFactor must be a finite number."
+        );
+    });
+
+    test("rejects invalid source-coordinate extents", () => {
+        expect(() => createFlow([{ pos: 0 }], 10, 1, [1, 0])).toThrowError(
+            "displace1d extent must contain finite ascending bounds."
         );
     });
 });

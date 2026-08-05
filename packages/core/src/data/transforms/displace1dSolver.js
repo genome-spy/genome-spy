@@ -12,12 +12,23 @@
  * @param {number[]} positions Original centers in ascending order.
  * @param {number[]} lengths Full collision lengths.
  * @param {number[]} [output] Reusable output array for signed displacements.
+ * @param {[number, number]} [extent] Preferred outer bounds for collision intervals.
  * @returns {number[]} The output array.
  */
-export function solveDisplacement(positions, lengths, output = []) {
+export function solveDisplacement(positions, lengths, output = [], extent) {
     if (positions.length != lengths.length) {
         throw new Error(
             "displace1d positions and lengths must have the same number of values."
+        );
+    }
+    if (
+        extent &&
+        (!Number.isFinite(extent[0]) ||
+            !Number.isFinite(extent[1]) ||
+            extent[0] > extent[1])
+    ) {
+        throw new Error(
+            "displace1d extent must contain finite ascending bounds."
         );
     }
 
@@ -30,6 +41,7 @@ export function solveDisplacement(positions, lengths, output = []) {
     let cumulativeSeparation = 0;
     let previousLength = 0;
     let previousPosition = -Infinity;
+    let transformedPositionSum = 0;
 
     for (let i = 0; i < positions.length; i++) {
         const position = positions[i];
@@ -51,8 +63,10 @@ export function solveDisplacement(positions, lengths, output = []) {
             cumulativeSeparation += (previousLength + length) / 2;
         }
 
+        const transformedPosition = position - cumulativeSeparation;
+        transformedPositionSum += transformedPosition;
         blockCounts.push(1);
-        blockMeans.push(position - cumulativeSeparation);
+        blockMeans.push(transformedPosition);
 
         while (blockMeans.length > 1 && blockMeans.at(-2) > blockMeans.at(-1)) {
             const upperCount = blockCounts.pop();
@@ -71,6 +85,24 @@ export function solveDisplacement(positions, lengths, output = []) {
         previousPosition = position;
     }
 
+    let lowerBound = -Infinity;
+    let upperBound = Infinity;
+    let packedMean;
+    if (extent && positions.length > 0) {
+        lowerBound = extent[0] + lengths[0] / 2;
+        upperBound = extent[1] - lengths.at(-1) / 2 - cumulativeSeparation;
+
+        if (lowerBound > upperBound) {
+            // Minimum overflow forces every transformed position into one
+            // packed block. Translate it as little as the reversed bounds
+            // permit so that the feasible/infeasible transition is continuous.
+            packedMean = Math.max(
+                upperBound,
+                Math.min(lowerBound, transformedPositionSum / positions.length)
+            );
+        }
+    }
+
     cumulativeSeparation = 0;
     previousLength = 0;
     let blockIndex = 0;
@@ -84,7 +116,12 @@ export function solveDisplacement(positions, lengths, output = []) {
             cumulativeSeparation += (previousLength + length) / 2;
         }
 
-        output[i] = blockMeans[blockIndex] + cumulativeSeparation - position;
+        const blockMean = packedMean ?? blockMeans[blockIndex];
+        const boundedMean = Math.max(
+            lowerBound,
+            Math.min(upperBound, blockMean)
+        );
+        output[i] = boundedMean + cumulativeSeparation - position;
 
         remainingInBlock--;
         if (remainingInBlock == 0) {
