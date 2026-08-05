@@ -648,6 +648,10 @@ SCHEMA ViewOpacityDef
 
 SCHEMA ViewSpec
 
+## WigDataFormat
+
+SCHEMA WigDataFormat
+
 ## WindowOnlyOp
 
 SCHEMA WindowOnlyOp
