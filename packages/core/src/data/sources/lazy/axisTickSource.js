@@ -1,5 +1,6 @@
 import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
 import { isExprRef } from "../../../paramRuntime/paramUtils.js";
+import { isContinuous } from "vega-scale";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
 import {
     validTicks,
@@ -93,9 +94,19 @@ export default class AxisTickSource extends SingleAxisLazySource {
 
         const count = tickCount(scale, requestedCount, axisParams.tickMinStep);
 
-        const ticks = axisParams.values
+        const generatedTicks = axisParams.values
             ? validTicks(scale, axisParams.values, count)
             : tickValues(scale, count);
+        const ticks =
+            !axisParams.values &&
+            axisParams.extraValues &&
+            isContinuous(scale.type)
+                ? mergeExtraValues(
+                      scale,
+                      generatedTicks,
+                      axisParams.extraValues
+                  )
+                : generatedTicks;
 
         if (this.ticks == null || !shallowArrayEquals(ticks, this.ticks)) {
             this.ticks = ticks;
@@ -106,6 +117,18 @@ export default class AxisTickSource extends SingleAxisLazySource {
             ]);
         }
     }
+}
+
+/**
+ * @param {import("../../../types/encoder.js").VegaScale} scale
+ * @param {number[]} ticks
+ * @param {number[]} extraValues
+ * @returns {number[]}
+ */
+function mergeExtraValues(scale, ticks, extraValues) {
+    const merged = new Set(ticks);
+    validTicks(scale, extraValues).forEach((value) => merged.add(value));
+    return Array.from(merged).sort((a, b) => a - b);
 }
 
 /**

@@ -95,8 +95,13 @@ can also be an expression reference. In tick-count expressions, `axisLength` is
 the current length of the axis in pixels. Use `tickMinStep` to set the minimum
 step between ticks in domain units.
 
-Use `values` to set explicit tick and label values. Use `format` to format
-numeric labels with a
+Use `values` to replace the automatically generated ticks with explicit tick
+and label values. On continuous scales, use `extraValues` to add values while
+retaining the automatically generated ticks. Invisible and duplicate extra
+values are omitted. `extraValues` is ignored on discrete scales and when
+`values` is set.
+
+Use `format` to format numeric labels with a
 [d3-format](https://github.com/d3/d3-format#locale_format) specifier.
 
 Set `ticks` or `labels` to `false` to hide tick marks or labels while keeping

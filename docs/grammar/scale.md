@@ -70,9 +70,10 @@ continuous `"linear"` and the discrete `"band"` scale. It is linear and zoomable
 but maps indices to the range like the band scale does – each index has its own
 band. Properties such as `padding` work just as in the band scale.
 
-The indices must be zero-based, i.e., the counting must start from zero. The
-numbering of the axis labels can be adjusted to give an impression of, for
-example, one-based indexing.
+Indices can be zero-based or one-based. Configure the scale domain to match the
+index values in the data. The numbering of axis labels can also be
+[adjusted](#adjusting-the-indexing-of-axis-labels) without transforming the
+data values.
 
 The index scale is used by default when the _field_ type is `"index"`.
 
@@ -107,11 +108,23 @@ EXAMPLE examples/docs/grammar/scale/range-indices.json height=100 spechidden
 
 #### Adjusting the indexing of axis labels
 
-The index scale expects zero-based indexing. However, it may be desirable to display
-the axis labels using one-based indexing. Use the `numberingOffset` property adjust
-the label indices.
+When data values are zero-based but axis labels should use one-based numbering,
+set `numberingOffset` to `1`. The offset does not transform the data values, but
+tick generation takes it into account so labels fall on nice round values.
+Consequently, it may change which data indices receive ticks.
 
 EXAMPLE examples/docs/grammar/scale/numbering-offset.json height=100 spechidden
+
+#### Including the first index as a tick
+
+Use `axis.extraValues` to add specified values while retaining automatically
+generated ticks. Extra values outside the visible domain are omitted. This is
+useful for one-based protein residue positions, where automatic tick generation
+may start at a round value such as 100; adding 1 identifies the first residue.
+`extraValues` applies only to continuous scales and is ignored on discrete
+scales.
+
+EXAMPLE examples/docs/grammar/scale/extra-axis-values.json height=100 spechidden
 
 ### Locus scale
 

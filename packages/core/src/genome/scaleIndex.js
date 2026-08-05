@@ -18,7 +18,7 @@ export default function scaleIndex() {
     let paddingOuter = 0;
     let align = 0.5;
 
-    /** The number of the first element. This affects the generated ticks and their labels. */
+    /** The offset added when formatting tick labels. */
     let numberingOffset = 0;
 
     const scaleFunction = (/** @type {number} */ x) =>

@@ -257,7 +257,8 @@ export interface Scale {
     zoom?: boolean | ZoomParams;
 
     /**
-     * The numbering offset used when formatting tick labels on index and locus scales.
+     * The offset added to data values when formatting tick labels on index and
+     * locus scales. This property does not transform data values.
      *
      * __Default value:__ `0`
      */

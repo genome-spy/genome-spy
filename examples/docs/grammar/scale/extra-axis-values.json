@@ -1,0 +1,28 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "A one-based index scale that identifies the first residue.",
+
+  "data": {
+    "values": [
+      { "position": 1, "label": "First residue" },
+      { "position": 100, "label": "Residue 100" },
+      { "position": 1000, "label": "Residue 1000" }
+    ]
+  },
+
+  "mark": { "type": "point", "clip": false, "size": 200 },
+
+  "encoding": {
+    "x": {
+      "field": "position",
+      "type": "index",
+      "scale": { "domain": [1, 1068] },
+      "axis": {
+        "title": "Protein position (aa)",
+        "tickCount": 10,
+        "extraValues": [1]
+      }
+    }
+  }
+}

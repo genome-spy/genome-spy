@@ -256,6 +256,15 @@ export interface Axis extends BaseAxis, ZIndexProps {
     values?: any[];
 
     /**
+     * Additional tick and label values to include alongside automatically
+     * generated ticks on continuous scales. Values outside the visible scale
+     * range are omitted and duplicates are removed.
+     *
+     * This property is ignored on discrete scales and when `values` is set.
+     */
+    extraValues?: number[];
+
+    /**
      * Z-order of the axis relative to the view content.
      *
      * Values greater than `0` render after the view marks. Values less than or

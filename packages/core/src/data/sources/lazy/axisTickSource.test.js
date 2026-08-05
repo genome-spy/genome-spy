@@ -7,13 +7,14 @@ import AxisTickSource from "./axisTickSource.js";
 /**
  * @param {object} options
  * @param {number} options.axisLength
+ * @param {string} [options.scaleType]
  */
-function createViewStub({ axisLength }) {
+function createViewStub({ axisLength, scaleType = "linear" }) {
     /** @type {(() => void) | undefined} */
     let lastDomainListener;
 
     const scale = /** @type {any} */ ((/** @type {number} */ value) => value);
-    scale.type = "linear";
+    scale.type = scaleType;
     scale.domain = () => [0, 100];
     scale.range = () => [0, axisLength];
     scale.ticks = (/** @type {number | undefined} */ count) =>
@@ -110,6 +111,69 @@ describe("AxisTickSource", () => {
 
         expect([...collector.getData()].map((datum) => datum.value)).toEqual([
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+        ]);
+    });
+
+    test("adds visible extraValues to continuous scale ticks", async () => {
+        const { view } = createViewStub({ axisLength: 100 });
+        const source = new AxisTickSource(
+            {
+                type: "axisTicks",
+                channel: "x",
+                axis: { tickCount: 5, extraValues: [2, 50, 101] },
+            },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await source.load();
+
+        expect([...collector.getData()].map((datum) => datum.value)).toEqual([
+            0, 1, 2, 3, 4, 50,
+        ]);
+    });
+
+    test("ignores extraValues on discrete scales", async () => {
+        const { view } = createViewStub({
+            axisLength: 100,
+            scaleType: "band",
+        });
+        const source = new AxisTickSource(
+            {
+                type: "axisTicks",
+                channel: "x",
+                axis: { tickCount: 5, extraValues: [50] },
+            },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await source.load();
+
+        expect([...collector.getData()].map((datum) => datum.value)).toEqual([
+            0, 1, 2, 3, 4,
+        ]);
+    });
+
+    test("values take precedence over extraValues", async () => {
+        const { view } = createViewStub({ axisLength: 100 });
+        const source = new AxisTickSource(
+            {
+                type: "axisTicks",
+                channel: "x",
+                axis: { values: [10, 20], extraValues: [50] },
+            },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await source.load();
+
+        expect([...collector.getData()].map((datum) => datum.value)).toEqual([
+            10, 20,
         ]);
     });
 
