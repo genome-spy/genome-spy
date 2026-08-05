@@ -141,7 +141,6 @@ export default class Displace1DTransform extends Transform {
         const displacements = solveDisplacement(
             positions,
             lengths,
-            undefined,
             this.#scaledExtent
         );
 

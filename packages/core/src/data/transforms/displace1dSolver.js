@@ -11,11 +11,11 @@
  *
  * @param {number[]} positions Original centers in ascending order.
  * @param {number[]} lengths Full collision lengths.
- * @param {number[]} [output] Reusable output array for signed displacements.
  * @param {[number, number]} [extent] Preferred outer bounds for collision intervals.
+ * @param {number[]} [output] Reusable output array for signed displacements.
  * @returns {number[]} The output array.
  */
-export function solveDisplacement(positions, lengths, output = [], extent) {
+export function solveDisplacement(positions, lengths, extent, output = []) {
     if (positions.length != lengths.length) {
         throw new Error(
             "displace1d positions and lengths must have the same number of values."

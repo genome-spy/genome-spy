@@ -57,19 +57,16 @@ describe("solveDisplacement", () => {
     test("optionally reuses the output array", () => {
         const output = [NaN, NaN, NaN];
 
-        expect(solveDisplacement([0, 0], [2, 2], output)).toBe(output);
+        expect(solveDisplacement([0, 0], [2, 2], undefined, output)).toBe(
+            output
+        );
         expect(output).toEqual([-1, 1]);
     });
 
     test("keeps collision intervals inside a feasible extent", () => {
         const positions = [80, 90];
         const lengths = [20, 20];
-        const displacements = solveDisplacement(
-            positions,
-            lengths,
-            undefined,
-            [0, 100]
-        );
+        const displacements = solveDisplacement(positions, lengths, [0, 100]);
 
         expect(displacements).toEqual([-10, 0]);
         expectNoOverlap(positions, lengths, displacements);
@@ -80,12 +77,7 @@ describe("solveDisplacement", () => {
     test("constrains separated edge items without moving interior items", () => {
         const positions = [-10, 5, 20];
         const lengths = [2, 2, 2];
-        const displacements = solveDisplacement(
-            positions,
-            lengths,
-            undefined,
-            [0, 10]
-        );
+        const displacements = solveDisplacement(positions, lengths, [0, 10]);
 
         expect(displacements).toEqual([11, 0, -11]);
         expectNoOverlap(positions, lengths, displacements);
@@ -94,12 +86,7 @@ describe("solveDisplacement", () => {
     test("uses the minimum-overflow placement when the extent is infeasible", () => {
         const positions = [8, 9];
         const lengths = [6, 6];
-        const displacements = solveDisplacement(
-            positions,
-            lengths,
-            undefined,
-            [0, 10]
-        );
+        const displacements = solveDisplacement(positions, lengths, [0, 10]);
 
         expect(displacements).toEqual([-5, 0]);
         expectNoOverlap(positions, lengths, displacements);
@@ -112,7 +99,6 @@ describe("solveDisplacement", () => {
             solveDisplacement(
                 [0, 0.1].map((position) => position * factor),
                 [20, 20],
-                undefined,
                 [-0.1 * factor, 0.2 * factor]
             );
         const epsilon = 1e-6;
@@ -147,8 +133,8 @@ describe("solveDisplacement", () => {
         [0, Infinity],
         [1, 0],
     ])("rejects invalid extent %#", (start, end) => {
-        expect(() =>
-            solveDisplacement([0], [1], undefined, [start, end])
-        ).toThrow("finite ascending bounds");
+        expect(() => solveDisplacement([0], [1], [start, end])).toThrow(
+            "finite ascending bounds"
+        );
     });
 });
