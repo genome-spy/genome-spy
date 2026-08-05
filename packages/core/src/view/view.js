@@ -1111,8 +1111,19 @@ export default class View {
             clipCoords(coords, normalizeClipOptions(options))
         );
 
-        this.#widthSetter?.(coords.width);
-        this.#heightSetter?.(coords.height);
+        if (this.#widthSetter || this.#heightSetter) {
+            const overhang = this.getOverhang();
+            const rootPadding = this.layoutParent
+                ? Padding.zero()
+                : this.getPadding();
+
+            this.#widthSetter?.(
+                coords.width - overhang.width - rootPadding.width
+            );
+            this.#heightSetter?.(
+                coords.height - overhang.height - rootPadding.height
+            );
+        }
 
         this.#hasLaidOut = true;
         this.#finalizePostScaleParams();

@@ -273,3 +273,24 @@ EXAMPLE examples/docs/grammar/parameters/ruler-push-outer.json height=240
 `ruler` supports the following properties:
 
 SCHEMA RulerConfig
+
+## Implicit Parameters
+
+GenomeSpy provides implicit parameters for values determined at runtime. An
+explicitly configured parameter with the same name takes precedence.
+
+### View Size
+
+The implicit `width` and `height` parameters contain the current view's inner
+content dimensions in logical pixels. They update when the view is laid out and
+can be used in expressions without being declared in `params`.
+
+For unit and layer views, these dimensions match the plot area used to render
+marks. Layer children inherit the layer's dimensions. For concatenated views,
+they describe the inner grid span. This span includes spacing and internal
+guides between child plots, but excludes external overhang from axes, legends,
+and titles. At the root, it also excludes root padding.
+
+These parameters are distinct from the authored `width` and `height` sizing
+properties, which control layout. Declaring a parameter named `width` or
+`height` overrides the corresponding implicit parameter in its scope.

@@ -348,6 +348,12 @@ describe("GridView separators", () => {
             heightDependentChild.coords.x +
                 heightDependentChild.getOverhang().left
         ).toBe(30);
+        expect(
+            heightDependentChild.paramRuntime.createExpression("width")()
+        ).toBe(
+            heightDependentChild.coords.width -
+                heightDependentChild.getOverhang().width
+        );
 
         renderForLayoutHeight(view, 80);
 
@@ -387,6 +393,90 @@ describe("GridView separators", () => {
         );
         expect(secondChild.paramRuntime.createExpression("width")()).toBe(
             secondChild.coords.width
+        );
+    });
+
+    test("concat width excludes left axis overhang", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        ...makeUnitSpec(),
+                        encoding: {
+                            ...makeUnitSpec().encoding,
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        renderForLayout(view);
+
+        const [child] = view.children;
+        expect(view.getOverhang().left).toBeGreaterThan(0);
+        expect(view.paramRuntime.createExpression("width")()).toBe(
+            child.coords.width
+        );
+        expect(view.paramRuntime.createExpression("width")()).toBeLessThan(
+            view.coords.width
+        );
+    });
+
+    test("root automatic size params exclude root padding", async () => {
+        const view = await createAndInitialize(
+            {
+                padding: { top: 11, right: 13, bottom: 17, left: 19 },
+                vconcat: [makeUnitSpecWithoutAxes()],
+            },
+            ConcatView
+        );
+
+        renderForLayout(view);
+
+        const [child] = view.children;
+        expect(view.paramRuntime.createExpression("width")()).toBe(168);
+        expect(view.paramRuntime.createExpression("height")()).toBe(172);
+        expect(child.coords.width).toBe(168);
+        expect(child.coords.height).toBe(172);
+        expect(view.coords.width).toBe(200);
+        expect(view.coords.height).toBe(200);
+    });
+
+    test("concat height excludes bottom axis overhang", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        ...makeUnitSpec(),
+                        encoding: {
+                            ...makeUnitSpec().encoding,
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        renderForLayout(view);
+
+        const [child] = view.children;
+        expect(view.getOverhang().bottom).toBeGreaterThan(0);
+        expect(view.paramRuntime.createExpression("height")()).toBe(
+            child.coords.height
+        );
+        expect(view.paramRuntime.createExpression("height")()).toBeLessThan(
+            view.coords.height
         );
     });
 
@@ -623,10 +713,13 @@ describe("GridView separators", () => {
         expect(secondChild.mark.encoders.text(secondDatum)).toBe("333 x 444");
     });
 
-    test("configured height params shadow descendant auto-size params", async () => {
+    test("configured size params shadow automatic size params", async () => {
         const view = await createAndInitialize(
             {
-                params: [{ name: "height", value: 123 }],
+                params: [
+                    { name: "width", value: 456 },
+                    { name: "height", value: 123 },
+                ],
                 hconcat: [makeUnitSpec()],
             },
             ConcatView
@@ -635,7 +728,11 @@ describe("GridView separators", () => {
         renderForLayout(view);
 
         const [child] = view.children;
+        expect(view.paramRuntime.createExpression("width")()).toBe(456);
+        expect(view.paramRuntime.createExpression("height")()).toBe(123);
+        expect(child.coords.width).not.toBe(456);
         expect(child.coords.height).not.toBe(123);
+        expect(child.paramRuntime.createExpression("width")()).toBe(456);
         expect(child.paramRuntime.createExpression("height")()).toBe(123);
     });
 
