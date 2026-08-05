@@ -24,6 +24,7 @@ const { AppMock } = vi.hoisted(() => ({
             updateNamedData: vi.fn(),
             getLogicalCanvasSize: vi.fn(),
             exportCanvas: vi.fn(),
+            exportSvg: vi.fn(),
         };
         this.launch = vi.fn(async () => true);
         this.finalize = vi.fn();
@@ -87,5 +88,17 @@ describe("embed", () => {
         await embed(element, {}, { embedMode: "embedded" });
 
         expect(AppMock.mock.instances[0].options.embedMode).toBe("embedded");
+    });
+
+    it("forwards SVG export", async () => {
+        const element = document.createElement("div");
+        document.body.appendChild(element);
+        const handle = await embed(element, {});
+        const svgBlob = new Blob([], { type: "image/svg+xml" });
+        const exportSvg = AppMock.mock.instances[0].genomeSpy.exportSvg;
+        exportSvg.mockResolvedValue(svgBlob);
+
+        await expect(handle.exportSvg()).resolves.toBe(svgBlob);
+        expect(exportSvg).toHaveBeenCalledOnce();
     });
 });
