@@ -689,8 +689,8 @@ export default class GenomeSpy {
      * Exports the current visualization as an SVG Blob.
      *
      * This experimental proof-of-concept supports basic rules, text, circular
-     * points, and axis-aligned rectangles. Text layout uses GenomeSpy's SDF
-     * metrics while the exported elements use a plain sans-serif font.
+     * points, axis-aligned rectangles, and links. Text layout uses GenomeSpy's
+     * SDF metrics while the exported elements use a plain sans-serif font.
      *
      * @param {object} [options]
      * @param {number} [options.logicalWidth] Defaults to canvas width.

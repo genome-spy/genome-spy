@@ -21,7 +21,8 @@ The proof of concept adds:
 - A standalone SVG document with nested, named view groups and rectangular
   clip paths.
 - Mark-level SVG emission for rules/ticks, text, circle points, and
-  axis-aligned rectangles.
+  axis-aligned rectangles. Link marks were added as a follow-up using native
+  cubic SVG paths.
 - An asynchronous `exportSvg(options)` API on Core and App embed results. It
   returns an `image/svg+xml` `Blob` and restores the ordinary canvas layout and
   rendering in a `finally` block.
@@ -79,7 +80,8 @@ elements are emitted by the proof of concept.
   non-circle shapes, and zoom-dependent geometry are rejected.
 - Rectangle minimum-size compensation, per-corner radii, hatching, and shadows
   are unsupported.
-- Link, arrow, and other mark types are unsupported.
+- Link arc fading is unsupported. Arrow and other mark types remain
+  unsupported.
 - General and sample faceting are not validated.
 - The proof of concept emits every datum as an SVG element and has no dense-view
   rasterization policy.

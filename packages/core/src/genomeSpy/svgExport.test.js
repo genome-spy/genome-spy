@@ -2,6 +2,7 @@
 
 import { describe, expect, test } from "vitest";
 import barAndLabelSpec from "../../../../examples/docs/grammar/composition/layer/bar-and-label-layer.json" with { type: "json" };
+import linkShapesSpec from "../../../../examples/docs/grammar/mark/link/link-shapes-and-orientations.json" with { type: "json" };
 import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
 import { resolveBaseConfig } from "../config/resolveConfig.js";
 import { DEFAULT_THEME_NAME, resolveThemeSelection } from "../config/themes.js";
@@ -222,5 +223,60 @@ describe("SVG export", () => {
         expect(svg.querySelector('[data-view-name="Bar"]')).not.toBeNull();
         expect(svg.querySelector('[data-view-name="Label"]')).not.toBeNull();
         expect(svg.querySelector("image")).toBeNull();
+    });
+
+    test("exports all link shapes as native paths", async () => {
+        const { view } = await createHeadlessEngine(
+            /** @type {import("../spec/root.js").RootSpec} */ (
+                structuredClone(linkShapesSpec)
+            ),
+            {
+                contextOptions: {
+                    baseConfig,
+                    viewFactoryOptions: { wrapRoot: true },
+                },
+            }
+        );
+
+        const svg = createSvg({
+            viewRoot: view,
+            logicalWidth: 800,
+            logicalHeight: 400,
+        });
+        const paths = svg.querySelectorAll('[data-mark-type="link"] path');
+
+        expect(paths).toHaveLength(8);
+        expect(
+            Array.from(paths).every((path) =>
+                /^M .* C /.test(path.getAttribute("d"))
+            )
+        ).toBe(true);
+        expect(svg.querySelector("image")).toBeNull();
+    });
+
+    test("rejects link arc fading", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "link",
+                linkShape: "arc",
+                arcFadingDistance: [10, 20],
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.5 },
+                y2: { value: 0.5 },
+                color: { value: "black" },
+            },
+        });
+
+        expect(() =>
+            createSvg({
+                viewRoot: view,
+                logicalWidth: 200,
+                logicalHeight: 100,
+            })
+        ).toThrow("SVG export does not support link arc fading yet");
     });
 });

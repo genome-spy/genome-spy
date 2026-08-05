@@ -531,8 +531,8 @@ export interface EmbedResult {
      * Exports the current visualization as SVG.
      *
      * This experimental proof-of-concept supports basic rules, text, circular
-     * points, and axis-aligned rectangles. Text is laid out using GenomeSpy's
-     * SDF metrics but emitted using a plain sans-serif font.
+     * points, axis-aligned rectangles, and links. Text is laid out using
+     * GenomeSpy's SDF metrics but emitted using a plain sans-serif font.
      */
     exportSvg: (options?: {
         /** Custom width in CSS pixels. Defaults to canvas width. */
