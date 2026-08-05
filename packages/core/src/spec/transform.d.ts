@@ -1049,9 +1049,10 @@ export interface Displace1DParams extends TransformParamsBase {
     /**
      * The full collision length, including any desired spacing, or a field
      * containing that length. The value uses the same units as the scaled
-     * positions and output displacement.
+     * positions and output displacement. An expression provides a reactive
+     * scalar length shared by all rows.
      */
-    length: number | Field;
+    length: number | Field | ExprRef;
 
     /**
      * A multiplier applied to `pos` before placement. An expression can
@@ -1069,9 +1070,9 @@ export interface Displace1DParams extends TransformParamsBase {
      * the original `pos` coordinate system. The bounds are multiplied by
      * `positionFactor` together with the item positions. When all items cannot
      * fit, they remain non-overlapping and extend beyond the bounds by the
-     * minimum necessary amount.
+     * minimum necessary amount. An expression can update the bounds reactively.
      */
-    extent?: [number, number];
+    extent?: [number, number] | ExprRef;
 
     /**
      * The output field for signed displacement.

@@ -59,6 +59,21 @@ bounds use the original `pos` coordinate system and are multiplied by
 covering protein residues 1 through 1068, `[0.5, 1068.5]` represents the outer
 edges of the first and last residue bands.
 
+`extent` can also be a reactive expression. For example, the following keeps
+the preferred bounds at the edges of the currently visible x domain:
+
+```json
+"extent": { "expr": "[invert('x', 0), invert('x', 1)]" }
+```
+
+As with an expression-backed `positionFactor`, place a `collect` transform
+upstream so that changes can replay the input data.
+
+`length` can likewise be a reactive expression when all items use the same
+collision length. For example, `{"expr": "labelSpacing"}` updates placement
+when the `labelSpacing` parameter changes. Use a field instead when collision
+lengths vary by row.
+
 When all collision intervals fit, the extent acts as a hard bound. If their
 combined length exceeds the available extent, items remain non-overlapping and
 extend outside it by the minimum necessary amount. Among placements with the

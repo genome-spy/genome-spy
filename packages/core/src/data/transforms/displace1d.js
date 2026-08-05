@@ -22,57 +22,68 @@ export default class Displace1DTransform extends Transform {
         this.params = params;
         this.as = params.as ?? "displacement";
         this.positionAccessor = field(params.pos);
+        this.length = typeof params.length == "number" ? params.length : 0;
         /** @type {(datum: import("../flowNode.js").Datum) => number} */
         let lengthAccessor;
         if (typeof params.length == "number") {
             const collisionLength = params.length;
             lengthAccessor = () => collisionLength;
+        } else if (isExprRef(params.length)) {
+            lengthAccessor = () => this.length;
         } else {
             lengthAccessor = field(params.length);
         }
         this.lengthAccessor = lengthAccessor;
 
-        if (
-            params.extent &&
-            (!Number.isFinite(params.extent[0]) ||
-                !Number.isFinite(params.extent[1]) ||
-                params.extent[0] > params.extent[1])
-        ) {
-            throw new Error(
-                "displace1d extent must contain finite ascending bounds."
-            );
-        }
-        this.extent = params.extent;
+        this.extent = isExprRef(params.extent) ? undefined : params.extent;
+        this._validateExtent();
         /** @type {[number, number] | undefined} */
         this._scaledExtent = params.extent ? [0, 0] : undefined;
 
-        this.positionFactor = 1;
-        this._positionFactorReady = !isExprRef(params.positionFactor);
+        this.positionFactor = isExprRef(params.positionFactor)
+            ? 1
+            : (params.positionFactor ?? 1);
+        this._placementParametersReady =
+            !isExprRef(params.length) &&
+            !isExprRef(params.positionFactor) &&
+            !isExprRef(params.extent);
+        /** @type {(() => number) | undefined} */
+        this._lengthExpr = undefined;
         /** @type {(() => number) | undefined} */
         this._positionFactorExpr = undefined;
+        /** @type {(() => [number, number]) | undefined} */
+        this._extentExpr = undefined;
 
-        if (isExprRef(params.positionFactor)) {
-            const positionFactorExpr = this.paramRuntime.watchExpression(
-                params.positionFactor.expr,
-                () => {
-                    const positionFactor = positionFactorExpr();
-                    if (positionFactor != this.positionFactor) {
-                        this.positionFactor = positionFactor;
-                        if (this._positionFactorReady && this.completed) {
-                            this.repropagate();
-                        }
-                    }
-                },
+        const updatePlacementParameters = () => {
+            const changed = this._refreshPlacementParameters();
+            if (changed && this._placementParametersReady && this.completed) {
+                this.repropagate();
+            }
+        };
+
+        /**
+         * @param {import("../../spec/parameter.js").ExprRef} exprRef
+         */
+        const watchExpression = (exprRef) =>
+            this.paramRuntime.watchExpression(
+                exprRef.expr,
+                updatePlacementParameters,
                 {
                     scopeOwned: false,
                     registerDisposer: (disposer) =>
                         this.registerDisposer(disposer),
                 }
             );
-            this._positionFactorExpr = positionFactorExpr;
-        } else {
-            this.positionFactor = params.positionFactor ?? 1;
-        }
+
+        this._lengthExpr = isExprRef(params.length)
+            ? watchExpression(params.length)
+            : undefined;
+        this._positionFactorExpr = isExprRef(params.positionFactor)
+            ? watchExpression(params.positionFactor)
+            : undefined;
+        this._extentExpr = isExprRef(params.extent)
+            ? watchExpression(params.extent)
+            : undefined;
 
         /** @type {import("../flowNode.js").Datum[]} */
         this._data = [];
@@ -81,7 +92,7 @@ export default class Displace1DTransform extends Transform {
     complete() {
         const data = this._data;
 
-        if (!this._positionFactorReady) {
+        if (!this._placementParametersReady) {
             // Establish data-driven scale domains before evaluating an
             // expression that may call scale().
             for (const datum of data) {
@@ -92,9 +103,8 @@ export default class Displace1DTransform extends Transform {
             super.complete();
             data.length = 0;
 
-            this.positionFactor = this._positionFactorExpr();
-            this._validatePositionFactor();
-            this._positionFactorReady = true;
+            this._refreshPlacementParameters();
+            this._placementParametersReady = true;
             // Let the bootstrap propagation unwind before replaying the
             // upstream collector with the now-established scale domain.
             queueMicrotask(() => this.repropagate());
@@ -102,6 +112,10 @@ export default class Displace1DTransform extends Transform {
         }
 
         this._validatePositionFactor();
+        if (this._lengthExpr) {
+            this._validateLength();
+        }
+        this._validateExtent();
         const positions = new Array(data.length);
         const lengths = new Array(data.length);
         for (let i = 0; i < data.length; i++) {
@@ -137,6 +151,61 @@ export default class Displace1DTransform extends Transform {
                 "displace1d positionFactor must be a finite number."
             );
         }
+    }
+
+    _validateLength() {
+        if (!Number.isFinite(this.length) || this.length < 0) {
+            throw new Error(
+                "displace1d expression-backed length must be a finite non-negative number."
+            );
+        }
+    }
+
+    _validateExtent() {
+        if (
+            this.extent &&
+            (!Number.isFinite(this.extent[0]) ||
+                !Number.isFinite(this.extent[1]) ||
+                this.extent[0] > this.extent[1])
+        ) {
+            throw new Error(
+                "displace1d extent must contain finite ascending bounds."
+            );
+        }
+    }
+
+    _refreshPlacementParameters() {
+        const length = this._lengthExpr ? this._lengthExpr() : this.length;
+        const positionFactor = this._positionFactorExpr
+            ? this._positionFactorExpr()
+            : this.positionFactor;
+        const extent = this._extentExpr ? this._extentExpr() : this.extent;
+
+        if (
+            this._extentExpr &&
+            (!Array.isArray(extent) || extent.length != 2)
+        ) {
+            throw new Error(
+                "displace1d extent must contain finite ascending bounds."
+            );
+        }
+
+        const changed =
+            length != this.length ||
+            positionFactor != this.positionFactor ||
+            extent?.[0] != this.extent?.[0] ||
+            extent?.[1] != this.extent?.[1];
+
+        this.length = length;
+        this.positionFactor = positionFactor;
+        this.extent = extent
+            ? /** @type {[number, number]} */ ([extent[0], extent[1]])
+            : undefined;
+        this._validateLength();
+        this._validatePositionFactor();
+        this._validateExtent();
+
+        return changed;
     }
 
     reset() {

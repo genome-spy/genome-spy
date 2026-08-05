@@ -233,6 +233,103 @@ describe("Displace1DTransform", () => {
         expect(disposer).toHaveBeenCalledOnce();
     });
 
+    test("reacts to expression-backed length and extent", async () => {
+        let length = 20;
+        let extent = [0, 1];
+        /** @type {Map<string, () => void>} */
+        const listeners = new Map();
+        const disposer = vi.fn();
+        const paramRuntime = {
+            watchExpression: (
+                /** @type {string} */ expression,
+                /** @type {() => void} */ callback,
+                /** @type {{ registerDisposer: (disposer: () => void) => void }} */ options
+            ) => {
+                listeners.set(expression, callback);
+                options.registerDisposer(disposer);
+                return expression == "length" ? () => length : () => extent;
+            },
+        };
+        const source = new Collector();
+        const transform = new Displace1DTransform(
+            {
+                type: "displace1d",
+                pos: "pos",
+                length: { expr: "length" },
+                positionFactor: 100,
+                extent: { expr: "extent" },
+                as: "offset",
+            },
+            /** @type {any} */ ({ paramRuntime })
+        );
+        const output = new Collector();
+        source.addChild(transform);
+        transform.addChild(output);
+        source.handle({ pos: 0.8 });
+        source.handle({ pos: 0.9 });
+
+        const repropagate = vi.spyOn(source, "repropagate");
+        source.complete();
+        await Promise.resolve();
+
+        expect(repropagate).toHaveBeenCalledOnce();
+        expect([...output.getData()].map((datum) => datum.offset)).toEqual([
+            -10, 0,
+        ]);
+        repropagate.mockClear();
+
+        length = 10;
+        extent = [0, 2];
+        /** @type {() => void} */ (listeners.get("length"))();
+        /** @type {() => void} */ (listeners.get("extent"))();
+
+        expect(repropagate).toHaveBeenCalledOnce();
+        expect([...output.getData()].map((datum) => datum.offset)).toEqual([
+            0, 0,
+        ]);
+
+        transform.dispose();
+        expect(disposer).toHaveBeenCalledTimes(2);
+    });
+
+    test("rejects invalid expression-backed placement parameters", () => {
+        /**
+         * @param {"length" | "extent"} expression
+         * @param {unknown} value
+         */
+        const createTransform = (expression, value) => {
+            const paramRuntime = {
+                watchExpression: () => () => value,
+            };
+            const transform = new Displace1DTransform(
+                {
+                    type: "displace1d",
+                    pos: "pos",
+                    length: expression == "length" ? { expr: expression } : 10,
+                    extent:
+                        expression == "extent"
+                            ? { expr: expression }
+                            : undefined,
+                },
+                /** @type {any} */ ({ paramRuntime })
+            );
+            transform.handle({ pos: 0 });
+            return transform;
+        };
+
+        expect(() => createTransform("length", -1).complete()).toThrowError(
+            "displace1d expression-backed length must be a finite non-negative number."
+        );
+        expect(() => createTransform("extent", [1, 0]).complete()).toThrowError(
+            "displace1d extent must contain finite ascending bounds."
+        );
+        expect(() =>
+            createTransform("extent", [0, 1, 2]).complete()
+        ).toThrowError(
+            "displace1d extent must contain finite ascending bounds."
+        );
+    });
+
     test("rejects a non-finite position factor", () => {
         expect(() => createFlow([{ pos: 0 }], 10, Infinity)).toThrowError(
             "displace1d positionFactor must be a finite number."
