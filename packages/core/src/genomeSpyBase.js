@@ -30,6 +30,7 @@ import RenderCoordinator from "./genomeSpy/renderCoordinator.js";
 import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
 import { exportCanvas } from "./genomeSpy/canvasExport.js";
+import { createSvg } from "./genomeSpy/svgExport.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
 import SingleAxisWindowedSource from "./data/sources/lazy/singleAxisWindowedSource.js";
@@ -682,6 +683,43 @@ export default class GenomeSpy {
         this.renderAll();
 
         return pngUrl;
+    }
+
+    /**
+     * Exports the current visualization as an SVG Blob.
+     *
+     * This experimental proof-of-concept supports basic rules, text, circular
+     * points, and axis-aligned rectangles. Text layout uses GenomeSpy's SDF
+     * metrics while the exported elements use a plain sans-serif font.
+     *
+     * @param {object} [options]
+     * @param {number} [options.logicalWidth] Defaults to canvas width.
+     * @param {number} [options.logicalHeight] Defaults to canvas height.
+     * @param {string | null} [options.background] Defaults to white. Null is transparent.
+     * @returns {Promise<Blob>}
+     */
+    async exportSvg(options = {}) {
+        const canvasSize = this.#glHelper.getLogicalCanvasSize();
+        const logicalWidth = options.logicalWidth ?? canvasSize.width;
+        const logicalHeight = options.logicalHeight ?? canvasSize.height;
+        const background = Object.hasOwn(options, "background")
+            ? options.background
+            : "white";
+
+        try {
+            const svg = createSvg({
+                viewRoot: this.viewRoot,
+                logicalWidth,
+                logicalHeight,
+                background,
+            });
+            return new Blob([new XMLSerializer().serializeToString(svg)], {
+                type: "image/svg+xml",
+            });
+        } finally {
+            this.computeLayout();
+            this.renderAll();
+        }
     }
 
     getLogicalCanvasSize() {

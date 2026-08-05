@@ -1,8 +1,17 @@
 // @vitest-environment jsdom
 
 import { describe, expect, test } from "vitest";
+import barAndLabelSpec from "../../../../examples/docs/grammar/composition/layer/bar-and-label-layer.json" with { type: "json" };
+import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
+import { resolveBaseConfig } from "../config/resolveConfig.js";
+import { DEFAULT_THEME_NAME, resolveThemeSelection } from "../config/themes.js";
 import { createHeadlessEngine } from "./headlessBootstrap.js";
 import { createSvg } from "./svgExport.js";
+
+const baseConfig = resolveBaseConfig({
+    defaultConfig: INTERNAL_DEFAULT_CONFIG,
+    builtInTheme: resolveThemeSelection(DEFAULT_THEME_NAME),
+});
 
 describe("SVG export", () => {
     test("emits scaled rule and plain text elements", async () => {
@@ -134,5 +143,84 @@ describe("SVG export", () => {
         expect(circle?.getAttribute("cy")).toBe("53");
         expect(circle?.getAttribute("r")).toBe("5");
         expect(circle?.getAttribute("fill")).toBe("#fedcba");
+    });
+
+    test("exports a titled point plot with generated axes", async () => {
+        const { view } = await createHeadlessEngine(
+            {
+                config: {
+                    mark: { color: "black" },
+                    title: { color: "black", subtitleColor: "gray" },
+                },
+                title: {
+                    text: "Point plot",
+                    subtitle: "SVG proof of concept",
+                    anchor: "start",
+                },
+                data: {
+                    values: [
+                        { x: 0, y: 0 },
+                        { x: 1, y: 1 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            {
+                contextOptions: {
+                    baseConfig,
+                    viewFactoryOptions: { wrapRoot: true },
+                },
+            }
+        );
+
+        const svg = createSvg({
+            viewRoot: view,
+            logicalWidth: 320,
+            logicalHeight: 200,
+        });
+        const textValues = Array.from(svg.querySelectorAll("text"), (element) =>
+            element.textContent.trim()
+        );
+
+        expect(svg.querySelectorAll("circle")).toHaveLength(2);
+        expect(svg.querySelectorAll("line").length).toBeGreaterThanOrEqual(2);
+        expect(textValues).toContain("Point plot");
+        expect(textValues).toContain("SVG proof of concept");
+        expect(svg.querySelector("image")).toBeNull();
+    });
+
+    test("exports the layered bar-and-label example as editable elements", async () => {
+        const { view } = await createHeadlessEngine(
+            /** @type {import("../spec/root.js").RootSpec} */ (
+                structuredClone(barAndLabelSpec)
+            ),
+            {
+                contextOptions: {
+                    baseConfig,
+                    viewFactoryOptions: { wrapRoot: true },
+                },
+            }
+        );
+
+        const svg = createSvg({
+            viewRoot: view,
+            logicalWidth: 320,
+            logicalHeight: 200,
+        });
+        const textValues = Array.from(svg.querySelectorAll("text"), (element) =>
+            element.textContent.trim()
+        );
+
+        expect(
+            svg.querySelectorAll('[data-mark-type="rect"] rect')
+        ).toHaveLength(9);
+        expect(textValues).toEqual(expect.arrayContaining(["28", "55", "91"]));
+        expect(svg.querySelector('[data-view-name="Bar"]')).not.toBeNull();
+        expect(svg.querySelector('[data-view-name="Label"]')).not.toBeNull();
+        expect(svg.querySelector("image")).toBeNull();
     });
 });
