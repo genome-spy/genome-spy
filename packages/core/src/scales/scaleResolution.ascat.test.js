@@ -111,7 +111,7 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
         }
     });
 
-    test("gamma changes recompute the ASCAT sunrise surface", async () => {
+    test("gamma changes recompute the ASCAT sunrise grid", async () => {
         const spec = createTrimmedAscatSpec();
         const crossSpy = vi.spyOn(CrossTransform.prototype, "handle");
 
@@ -124,7 +124,7 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
                 );
             const sunrise = view
                 .getDescendants()
-                .find((descendant) => descendant.name === "sunrise");
+                .find((descendant) => descendant.name === "sunrise-rects");
 
             if (!target || !sunrise?.flowHandle?.collector) {
                 throw new Error(
@@ -145,7 +145,7 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
         }
     });
 
-    test("balanced-run weighting recomputes the ASCAT sunrise surface", async () => {
+    test("balanced-segment weighting recomputes the ASCAT sunrise grid", async () => {
         const spec = createTrimmedAscatSpec();
         const crossSpy = vi.spyOn(CrossTransform.prototype, "handle");
 
@@ -158,7 +158,7 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
                 );
             const sunrise = view
                 .getDescendants()
-                .find((descendant) => descendant.name === "sunrise");
+                .find((descendant) => descendant.name === "sunrise-rects");
 
             if (!target || !sunrise?.flowHandle?.collector) {
                 throw new Error(

@@ -11,6 +11,20 @@
 
   "assembly": "hg19",
 
+  "datasets": {
+    "ascat-solutions": [
+      { "sample": "S17", "rho": 0.25, "psi": 3.15 },
+      { "sample": "S36", "rho": 0.25, "psi": 1.9 },
+      { "sample": "S54", "rho": 1, "psi": 2.15 },
+      { "sample": "S64", "rho": 1, "psi": 2.15 },
+      { "sample": "S77", "rho": 0.53, "psi": 1.85 },
+      { "sample": "S84", "rho": 0.24, "psi": 1.9 },
+      { "sample": "S96", "rho": 0.55, "psi": 2.75 },
+      { "sample": "S97", "rho": 0.41, "psi": 1.7 },
+      { "sample": "S100", "rho": 0.65, "psi": 3.4 }
+    ]
+  },
+
   "params": [
     { "name": "minLength", "value": 1 },
     { "name": "selectedFit" },
@@ -146,7 +160,7 @@
 
   "vconcat": [
     {
-      "name": "sunrise",
+      "name": "sunrise-plot",
 
       "title": {
         "text": {
@@ -296,36 +310,66 @@
         "axis": { "x": "excluded" }
       },
 
-      "mark": {
-        "type": "rect",
-        "tooltip": null
-      },
+      "layer": [
+        {
+          "name": "sunrise-rects",
 
-      "encoding": {
-        "x": {
-          "field": "psiStart",
-          "type": "quantitative",
-          "scale": { "domain": [1, 6] },
-          "axis": { "title": "Tumor ploidy (psi)", "format": ".1f" }
+          "encoding": {
+            "x": {
+              "field": "psiStart",
+              "type": "quantitative",
+              "scale": { "domain": [1, 6] },
+              "axis": { "title": "Tumor ploidy (psi)", "format": ".1f" }
+            },
+            "x2": { "field": "psiEnd" },
+            "y": {
+              "field": "rhoStart",
+              "type": "quantitative",
+              "scale": { "domain": [0.1, 1.05] },
+              "axis": { "title": "Tumor purity (rho)", "format": ".2f" }
+            },
+            "y2": { "field": "rhoEnd" },
+            "color": {
+              "field": "meanRoundingError",
+              "type": "quantitative",
+              "scale": {
+                "scheme": "redblue",
+                "type": "log",
+                "reverse": true
+              }
+            }
+          },
+          "mark": {
+            "type": "rect",
+            "tooltip": null
+          }
         },
-        "x2": { "field": "psiEnd" },
-        "y": {
-          "field": "rhoStart",
-          "type": "quantitative",
-          "scale": { "domain": [0.1, 1.05] },
-          "axis": { "title": "Tumor purity (rho)", "format": ".2f" }
-        },
-        "y2": { "field": "rhoEnd" },
-        "color": {
-          "field": "meanRoundingError",
-          "type": "quantitative",
-          "scale": {
-            "scheme": "redblue",
-            "type": "log",
-            "reverse": true
+        {
+          "title": "ascat-solution",
+
+          "data": { "name": "ascat-solutions" },
+          "transform": [
+            { "type": "filter", "expr": "datum.sample === sample" }
+          ],
+          "mark": {
+            "type": "point",
+            "shape": "x",
+            "angle": 0,
+            "size": 180,
+            "strokeWidth": 2,
+            "color": "#00d000"
+          },
+          "encoding": {
+            "x": { "field": "psi", "type": "quantitative" },
+            "y": { "field": "rho", "type": "quantitative" },
+            "tooltip": [
+              { "field": "sample", "title": "ASCAT-selected solution" },
+              { "field": "rho", "title": "Tumor purity (rho)" },
+              { "field": "psi", "title": "Tumor ploidy (psi)" }
+            ]
           }
         }
-      }
+      ]
     },
 
     {

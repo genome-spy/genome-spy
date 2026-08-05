@@ -18,7 +18,9 @@ allele-specific estimates are closer to integer copy numbers.
 
 Click or drag anywhere on the sunrise plot to choose a fit. The readout below
 the heatmap evaluates the exact chosen coordinates, and the other panels update
-the allele-specific copy numbers and fitted LogR and BAF overlays.
+the allele-specific copy numbers and fitted LogR and BAF overlays. The green
+cross marks the solution selected by the original ASCAT run for the sample; it
+remains fixed when the experimental fitting options change.
 
 The sample dropdown below the visualization switches between several simulated
 tumors. Its selection reloads the segment and raw-probe data and recomputes the
