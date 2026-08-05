@@ -1,124 +1,184 @@
 import { peek } from "../../utils/arrayUtils.js";
 import ViewRenderingContext from "./viewRenderingContext.js";
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
 /**
- * A trivial proof-of-concept SVG rendering context. Doesn't render any
- * marks at this point, only placeholders.
- *
- * @typedef {import("../view.js").default} View
+ * @typedef {object} SvgRenderingOptions
+ * @prop {number} width Logical export width.
+ * @prop {number} height Logical export height.
+ * @prop {string | null} [background] Export background. Null is transparent.
+ */
+
+/**
+ * @typedef {object} ViewStackEntry
+ * @prop {import("../view.js").default} view
+ * @prop {SVGGElement} node
+ * @prop {import("../layout/rectangle.js").default} coords
+ */
+
+/**
+ * Rendering context for constructing a hierarchical SVG document.
  */
 export default class SvgViewRenderingContext extends ViewRenderingContext {
+    /** @type {SVGSVGElement} */
+    #svg;
+
+    /** @type {SVGDefsElement} */
+    #defs;
+
+    /** @type {ViewStackEntry[]} */
+    #viewStack = [];
+
+    /** @type {Map<string, string>} */
+    #clipPaths = new Map();
+
+    #nextViewId = 0;
+    #nextClipId = 0;
+
     /**
-     *
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
+     * @param {SvgRenderingOptions} options
      */
-    constructor(globalOptions) {
+    constructor(globalOptions, options) {
         super(globalOptions);
 
-        /** @type {import("../layout/rectangle.js").default} */
-        this.coords = undefined;
+        this.width = options.width;
+        this.height = options.height;
 
-        this.svg = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "svg"
-        );
+        this.#svg = createSvgElement("svg", {
+            xmlns: SVG_NS,
+            width: options.width,
+            height: options.height,
+            viewBox: `0 0 ${options.width} ${options.height}`,
+        });
+        this.#defs = createSvgElement("defs");
+        this.#svg.appendChild(this.#defs);
 
-        /** @type {SVGElement[]} */
-        this.nodeStack = [this.svg];
-    }
-
-    /**
-     * Must be called when a view's render() method is entered
-     *
-     * @param {View} view
-     * @param {import("../layout/rectangle.js").default} coords View coordinates
-     *      inside the padding.
-     */
-    pushView(view, coords) {
-        view.onBeforeRender();
-        this.coords = coords;
-
-        if (this._currentNode === this.svg) {
-            const viewBox = coords.expand(view.getPadding());
-            this.svg.setAttributeNS(
-                null,
-                "viewBox",
-                [viewBox.x, viewBox.y, viewBox.width, viewBox.height].join(" ")
+        if (options.background != null) {
+            this.#svg.appendChild(
+                createSvgElement("rect", {
+                    width: options.width,
+                    height: options.height,
+                    fill: options.background,
+                    "data-export-background": "",
+                })
             );
         }
-
-        const group = createNode("g");
-        const title = createNode("title");
-        title.textContent = view.name;
-        group.appendChild(title);
-
-        this._currentNode.appendChild(group);
-        this.nodeStack.push(group);
     }
 
     /**
-     * Must be called when a view's render() method is being exited
-     *
-     * @param {View} view
+     * @param {import("../view.js").default} view
+     * @param {import("../layout/rectangle.js").default} coords
+     * @override
+     */
+    pushView(view, coords) {
+        const path = view.getPathString();
+        const group = createSvgElement("g", {
+            id: "view-" + this.#nextViewId++,
+            "data-view-name": view.name,
+            "data-view-path": path,
+        });
+        const title = createSvgElement("title");
+        title.textContent = path;
+        group.appendChild(title);
+        this.currentNode.appendChild(group);
+        this.#viewStack.push({ view, node: group, coords });
+    }
+
+    /**
+     * @param {import("../view.js").default} view
+     * @override
      */
     popView(view) {
-        this.nodeStack.pop();
+        const entry = this.#viewStack.pop();
+        if (entry?.view !== view) {
+            throw new Error("Unbalanced SVG view rendering context stack.");
+        }
     }
 
     /**
-     *
      * @param {import("../../marks/mark.js").default} mark
      * @param {import("../../types/rendering.js").RenderingOptions} options
+     * @override
      */
     renderMark(mark, options) {
-        const current = this._currentNode;
-
-        const rect = createNode("rect", {
-            x: this.coords.x,
-            y: this.coords.y,
-            width: this.coords.width,
-            height: this.coords.height,
-            fill: "transparent",
-            stroke: "black",
-            "stroke-width": 1,
-        });
-
-        const name = createNode("text", {
-            x: this.coords.x + this.coords.width / 2,
-            y: this.coords.y + this.coords.height / 2,
-            "dominant-baseline": "middle",
-            "text-anchor": "middle",
-        });
-
-        name.textContent = mark.getType();
-
-        current.appendChild(rect);
-        current.appendChild(name);
+        throw new Error(
+            `SVG rendering is not implemented for mark type "${mark.getType()}". View: ${mark.unitView.getPathString()}`
+        );
     }
 
+    /**
+     * Returns a reusable SVG clip-path reference.
+     *
+     * @param {import("../../types/rendering.js").ClipOptions | undefined} clip
+     * @returns {string | undefined}
+     */
+    getClipPathUrl(clip) {
+        if (!clip) {
+            return undefined;
+        }
+
+        const rect = clip.rect.flatten();
+        const x = clip.clipX ? rect.x : 0;
+        const y = clip.clipY ? rect.y : 0;
+        const width = clip.clipX ? rect.width : this.width;
+        const height = clip.clipY ? rect.height : this.height;
+        const key = [x, y, width, height].join(",");
+        let id = this.#clipPaths.get(key);
+
+        if (!id) {
+            id = "clip-" + this.#nextClipId++;
+            const clipPath = createSvgElement("clipPath", {
+                id,
+                clipPathUnits: "userSpaceOnUse",
+            });
+            clipPath.appendChild(
+                createSvgElement("rect", { x, y, width, height })
+            );
+            this.#defs.appendChild(clipPath);
+            this.#clipPaths.set(key, id);
+        }
+
+        return `url(#${id})`;
+    }
+
+    /** @returns {SVGSVGElement} */
     getSvg() {
-        return this.svg;
+        return this.#svg;
     }
 
-    get _currentNode() {
-        return peek(this.nodeStack);
+    /** @returns {string} */
+    serialize() {
+        return new XMLSerializer().serializeToString(this.#svg);
+    }
+
+    /** @returns {SVGElement} */
+    get currentNode() {
+        return peek(this.#viewStack)?.node ?? this.#svg;
+    }
+
+    /** @returns {import("../layout/rectangle.js").default} */
+    get currentCoords() {
+        const entry = peek(this.#viewStack);
+        if (!entry) {
+            throw new Error("No current view in SVG rendering context.");
+        }
+        return entry.coords;
     }
 }
 
 /**
- * Adapted from: https://stackoverflow.com/a/37411738/1547896
- *
- * @param {string} name
- * @param {Record<string, any>} [attributes]
+ * @template {keyof SVGElementTagNameMap} K
+ * @param {K} name
+ * @param {Record<string, string | number>} [attributes]
+ * @returns {SVGElementTagNameMap[K]}
  */
-function createNode(name, attributes) {
-    const element = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        name
-    );
+export function createSvgElement(name, attributes) {
+    const element = document.createElementNS(SVG_NS, name);
     if (attributes) {
-        for (const [k, v] of Object.entries(attributes)) {
-            element.setAttributeNS(null, k, v);
+        for (const [key, value] of Object.entries(attributes)) {
+            element.setAttribute(key, "" + value);
         }
     }
     return element;
