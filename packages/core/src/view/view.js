@@ -28,6 +28,7 @@ import {
 } from "./renderingContext/clipOptions.js";
 import { isInChromeSubtree } from "./viewChrome.js";
 import { getPostScaleParams } from "./postScaleParams.js";
+import { analyzeExpression } from "../utils/expression.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
@@ -133,6 +134,9 @@ export default class View {
     #postScaleParamDataReady = undefined;
 
     #postScaleParamsConfigured = false;
+
+    /** @type {import("../spec/parameter.js").Parameter[]} */
+    #scaleDependentParams = [];
 
     /**
      * @type {function(number):number}
@@ -246,8 +250,26 @@ export default class View {
         );
 
         if (spec.params) {
+            const deferredParamNames = new Set();
             for (const param of spec.params) {
                 // TODO: If interval selection, validate `encodings` or provides defaults
+                if ("expr" in param) {
+                    const { usesScaleHelper, globals } = analyzeExpression(
+                        param.expr
+                    );
+                    const dependsOnDeferredParam = globals.some((name) =>
+                        deferredParamNames.has(name)
+                    );
+
+                    if (usesScaleHelper || dependsOnDeferredParam) {
+                        // Scale resolutions are established by descendant
+                        // views, after ordinary params are registered.
+                        deferredParamNames.add(param.name);
+                        this.#scaleDependentParams.push(param);
+                        continue;
+                    }
+                }
+
                 this.paramRuntime.registerParam(param);
             }
         }
@@ -1035,8 +1057,11 @@ export default class View {
      * detail level, but their child views create the x resolution later.
      */
     configurePostScaleParams() {
-        const postScaleParams = getPostScaleParams(this.spec);
-        if (postScaleParams && !this.#postScaleParamsConfigured) {
+        const postScaleParams = [
+            ...this.#scaleDependentParams,
+            ...(getPostScaleParams(this.spec) ?? []),
+        ];
+        if (postScaleParams.length && !this.#postScaleParamsConfigured) {
             this.#postScaleParamsConfigured = true;
             this.#postScaleParamDataReady = false;
 

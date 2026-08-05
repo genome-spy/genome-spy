@@ -142,6 +142,47 @@ describe("Trivial creations and initializations", () => {
         expect(view.getCursor()).toBe("grabbing");
     });
 
+    test("initializes scale-dependent params after scale resolution", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [
+                {
+                    name: "pixelsPerUnit",
+                    expr: "scale('x', 1) - scale('x', 0)",
+                },
+                {
+                    name: "twoPixelsPerUnit",
+                    expr: "pixelsPerUnit * 2",
+                },
+            ],
+            vconcat: [
+                {
+                    data: { values: [{ x: 0 }, { x: 10 }] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: {
+                                domain: [0, 10],
+                                nice: false,
+                                zoom: true,
+                            },
+                        },
+                    },
+                },
+            ],
+        });
+
+        expect(view.paramRuntime.getValue("pixelsPerUnit")).toBeCloseTo(0.1);
+        expect(view.paramRuntime.getValue("twoPixelsPerUnit")).toBeCloseTo(0.2);
+
+        await view.getScaleResolution("x").zoomTo([0, 5], 0);
+        await view.paramRuntime.whenPropagated();
+
+        expect(view.paramRuntime.getValue("pixelsPerUnit")).toBeCloseTo(0.2);
+        expect(view.paramRuntime.getValue("twoPixelsPerUnit")).toBeCloseTo(0.4);
+    });
+
     test("evaluates ExprRef-backed mark cursor", async () => {
         const view = await create(
             {

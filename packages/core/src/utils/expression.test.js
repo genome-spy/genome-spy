@@ -1,9 +1,24 @@
 // @ts-check
 import { describe, expect, test } from "vitest";
-import createFunction from "./expression.js";
+import createFunction, { analyzeExpression } from "./expression.js";
 import { bindExpression } from "../paramRuntime/expressionRef.js";
 
 describe("expression helpers", () => {
+    test("analyzes scale helpers and referenced globals", () => {
+        expect(analyzeExpression("width * scale('x', step)")).toEqual({
+            usesScaleHelper: true,
+            globals: ["width", "step"],
+        });
+        expect(analyzeExpression("domain('y')[offset]")).toEqual({
+            usesScaleHelper: true,
+            globals: ["offset"],
+        });
+        expect(analyzeExpression("datum.value + scaleFactor")).toEqual({
+            usesScaleHelper: false,
+            globals: ["scaleFactor"],
+        });
+    });
+
     test("supports Vega sequence helpers missing from vega-expression", () => {
         // These expressions exercise helpers that the installed dependency
         // does not expose directly.

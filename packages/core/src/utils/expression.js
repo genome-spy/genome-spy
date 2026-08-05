@@ -118,6 +118,31 @@ const functionContext = {
 };
 
 /**
+ * Finds scale helper calls and referenced globals without binding the
+ * expression to a parameter scope or scale resolution.
+ *
+ * @param {string} expr
+ * @returns {{ usesScaleHelper: boolean, globals: string[] }}
+ */
+export function analyzeExpression(expr) {
+    let usesScaleHelper = false;
+    const fn = createFunction(
+        expr,
+        {},
+        {
+            resolveScaleResolution: () => {
+                usesScaleHelper = true;
+                // The compiler only captures this object in helper closures. The
+                // analysis never evaluates or subscribes to them.
+                return /** @type {any} */ ({ channel: "analysis" });
+            },
+        }
+    );
+
+    return { usesScaleHelper, globals: fn.globals };
+}
+
+/**
  * @param {typeof codegenExpression} codegen
  * @param {ScaleHelperCompileContext} context
  */
