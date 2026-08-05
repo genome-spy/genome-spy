@@ -31,6 +31,8 @@ class ExampleGalleryTest(unittest.TestCase):
             'src="/docs/example-specs/docs/demo/track.png"',
             html,
         )
+        self.assertIn('alt="Demo track description."', html)
+        self.assertIn('title="GenomeSpy example: Demo Track"', html)
         self.assertIn("Demo Track", html)
         self.assertIn("Demo track description.", html)
 

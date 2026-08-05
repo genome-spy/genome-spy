@@ -118,12 +118,17 @@ def normalize_markdown_href(href: str) -> str:
 
 
 def render_gallery_card(card: GalleryCard) -> list[str]:
+    image_title = 'GenomeSpy example: {}'.format(card['title'])
+    image_alt = card['description'] or image_title
+
     return [
         '  <a class="example-gallery-card" href="{}">'.format(
             html.escape(card['href'], quote=True)
         ),
-        '    <img src="{}" alt="" loading="lazy" decoding="async" />'.format(
-            html.escape(card['thumbnail'], quote=True)
+        '    <img src="{}" alt="{}" title="{}" loading="lazy" decoding="async" />'.format(
+            html.escape(card['thumbnail'], quote=True),
+            html.escape(image_alt, quote=True),
+            html.escape(image_title, quote=True),
         ),
         '    <span class="example-gallery-title">{}</span>'.format(
             html.escape(card['title'])
