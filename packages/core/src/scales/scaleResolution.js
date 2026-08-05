@@ -852,6 +852,10 @@ export default class ScaleResolution {
      * @param {ScaleResolutionMember} member
      */
     #hasInitialDomainDataCoverage(member) {
+        if (!member.view.mark.encoders?.[member.channel]) {
+            return false;
+        }
+
         const accessors = getScaleMemberAccessors(member).filter(
             (accessor) => !accessor.constant && !accessor.channelDef.domainInert
         );
@@ -1331,6 +1335,7 @@ export default class ScaleResolution {
         const initialDomainDataBecameReady = this.#markInitialDomainDataReady();
 
         if (
+            this.#initialDomainDataReady &&
             this.#domainAggregator.captureInitialDomain(
                 scale,
                 domainWasInitialized,
@@ -1342,9 +1347,9 @@ export default class ScaleResolution {
             return;
         }
 
-        if (initialDomainDataBecameReady) {
-            // Apply the complete initial domain directly. Subsequent updates
-            // use the normal transition path below.
+        if (!this.#initialDomainDataReady || initialDomainDataBecameReady) {
+            // Apply partial and complete initial domains directly. Subsequent
+            // updates use the normal transition path below.
             this.#notifyListeners("domain");
             return;
         }

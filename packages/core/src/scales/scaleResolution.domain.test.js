@@ -66,6 +66,49 @@ describe("Scale resolution domain handling", () => {
         expect(resolution.zoomExtent).toEqual([0, 11]);
     });
 
+    test("default zoom extent includes every initial shared-scale contributor", async () => {
+        const { view } = await createHeadlessEngine({
+            resolve: { scale: { x: "shared" } },
+            vconcat: [
+                {
+                    data: { values: [{ position: 100 }] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "position",
+                            type: "index",
+                            scale: { domainMin: 1, zoom: true },
+                        },
+                    },
+                },
+                {
+                    data: {
+                        values: [{ start: 850, end: 1050 }],
+                    },
+                    encoding: {
+                        x: { field: "start", type: "index" },
+                        x2: { field: "end" },
+                    },
+                    layer: [
+                        {
+                            // This constant endpoint is encoded after the first
+                            // layer has already supplied a valid partial domain.
+                            data: { values: [{ start: 1 }] },
+                            mark: "rect",
+                            encoding: { x2: { datum: 1068 } },
+                        },
+                        { mark: "rect" },
+                    ],
+                },
+            ],
+        });
+
+        const resolution = getRequiredScaleResolution(view, "x");
+
+        expect(resolution.scale.domain()).toEqual([1, 1069]);
+        expect(resolution.zoomExtent).toEqual([1, 1069]);
+    });
+
     test("Scales are shared and explicit domains merged properly", async () => {
         const view = await initView(
             {

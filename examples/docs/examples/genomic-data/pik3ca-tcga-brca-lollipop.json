@@ -57,8 +57,7 @@
           "type": "index",
           "scale": {
             "domainMin": 1,
-            "nice": false,
-            "zoom": { "extent": "data" }
+            "nice": false
           },
           "axis": null
         },
