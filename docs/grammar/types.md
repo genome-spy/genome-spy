@@ -284,9 +284,25 @@ SCHEMA LazyDataParams
 
 SCHEMA LegendDirection
 
+## LegendLayout
+
+SCHEMA LegendLayout
+
 ## LegendOrient
 
 SCHEMA LegendOrient
+
+## LegendPlacement
+
+SCHEMA LegendPlacement
+
+## LegendRegionAnchor
+
+SCHEMA LegendRegionAnchor
+
+## LegendRegionLayout
+
+SCHEMA LegendRegionLayout
 
 ## LegendTitleOrient
 

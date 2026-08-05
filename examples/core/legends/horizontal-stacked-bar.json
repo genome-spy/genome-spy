@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Legend test case adapted from Vega-Lite's horizontal stacked barley bar chart.",
+  "description": [
+    "Legend for a horizontal stacked bar chart",
+    "Adapted from Vega-Lite's stacked barley example."
+  ],
 
   "background": "#fafafa",
 

@@ -162,8 +162,7 @@ export type TitleConfig = Partial<Omit<Title, "text">>;
 
 type MergeProps<A, B> = {
     [K in keyof A | keyof B]:
-        | (K extends keyof A ? A[K] : never)
-        | (K extends keyof B ? B[K] : never);
+        (K extends keyof A ? A[K] : never) | (K extends keyof B ? B[K] : never);
 };
 
 type CombinedStyleConfig = MergeProps<
@@ -249,7 +248,7 @@ export interface GenomeSpyConfig {
      * Defaults for legends of track-like views that use `index` or `locus`
      * scales on the x channel.
      *
-     * __Default value:__ `{ "style": "track-bottom" }`
+     * __Default value:__ `{ "style": "track-bottom-legend" }`
      */
     legendTrack?: LegendConfig;
 

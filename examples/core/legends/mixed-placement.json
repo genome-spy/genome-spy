@@ -1,0 +1,74 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Mixed local and root legend placement",
+    "Independent color mappings remain separate when their legends use different placement."
+  ],
+
+  "background": "#fafafa",
+  "width": 520,
+  "height": 130,
+
+  "config": { "legend": { "disable": false } },
+
+  "resolve": {
+    "scale": { "color": "independent" },
+    "legend": { "color": "independent" }
+  },
+
+  "vconcat": [
+    {
+      "title": "Legend kept with its track",
+      "data": {
+        "values": [
+          { "x": 1, "y": 2, "group": "control" },
+          { "x": 2, "y": 5, "group": "case" },
+          { "x": 3, "y": 3, "group": "control" },
+          { "x": 4, "y": 7, "group": "case" }
+        ]
+      },
+      "mark": { "type": "point", "filled": true, "size": 65 },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative", "axis": null },
+        "y": { "field": "y", "type": "quantitative" },
+        "color": {
+          "field": "group",
+          "type": "nominal",
+          "legend": {
+            "placement": "local",
+            "orient": "bottom",
+            "direction": "horizontal",
+            "title": "Cohort"
+          }
+        }
+      }
+    },
+
+    {
+      "title": "Legend collected at the root",
+      "data": {
+        "values": [
+          { "x": 1, "y": 4, "status": "pass" },
+          { "x": 2, "y": 2, "status": "review" },
+          { "x": 3, "y": 6, "status": "fail" },
+          { "x": 4, "y": 5, "status": "pass" }
+        ]
+      },
+      "mark": { "type": "point", "filled": true, "size": 65 },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" },
+        "color": {
+          "field": "status",
+          "type": "nominal",
+          "legend": {
+            "placement": "root",
+            "orient": "right",
+            "title": "QC status"
+          }
+        }
+      }
+    }
+  ]
+}

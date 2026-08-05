@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
   "description": [
-    "Legend test case for a quantize color scale.",
+    "Quantize color scale legend",
     "GPU-side quantize scale rendering is incomplete; see GitHub issue #408."
   ],
 
@@ -74,7 +74,11 @@
             "domain": [0, 120],
             "scheme": { "name": "turbo", "count": 5 }
           },
-          "legend": { "title": "Bottom", "orient": "bottom" }
+          "legend": {
+            "title": "Bottom",
+            "orient": "bottom",
+            "direction": "horizontal"
+          }
         }
       }
     }

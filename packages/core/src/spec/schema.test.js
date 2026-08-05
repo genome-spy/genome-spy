@@ -311,7 +311,7 @@ describe("generated core schema", () => {
                     labelLimit: 160,
                 },
                 legendTrack: {
-                    style: "track-bottom",
+                    style: "track-bottom-legend",
                 },
             },
             mark: "point",

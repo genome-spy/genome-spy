@@ -1,7 +1,10 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "description": "Legend test case for layered plots with inside-corner and outside-side legend regions.",
+  "description": [
+    "Inside and outside legend regions",
+    "Layered plots place legends in inside-corner and outside-side regions."
+  ],
 
   "background": "#fafafa",
 

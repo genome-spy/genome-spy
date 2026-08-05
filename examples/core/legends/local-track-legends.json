@@ -1,0 +1,99 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Local legends below stacked tracks",
+    "Each independent legend stays directly below the track that owns it."
+  ],
+
+  "background": "#fafafa",
+  "width": 650,
+  "height": 75,
+
+  "config": { "legend": { "disable": false, "placement": "local" } },
+
+  "resolve": {
+    "scale": { "color": "independent" },
+    "legend": { "color": "independent" }
+  },
+
+  "vconcat": [
+    {
+      "title": "Copy-number state",
+      "data": {
+        "values": [
+          { "start": 0, "end": 20, "state": "loss" },
+          { "start": 20, "end": 55, "state": "neutral" },
+          { "start": 55, "end": 80, "state": "gain" },
+          { "start": 80, "end": 100, "state": "neutral" }
+        ]
+      },
+      "mark": "rect",
+      "encoding": {
+        "x": { "field": "start", "type": "quantitative", "axis": null },
+        "x2": { "field": "end" },
+        "color": {
+          "field": "state",
+          "type": "nominal",
+          "legend": {
+            "orient": "bottom",
+            "direction": "horizontal",
+            "title": null
+          }
+        }
+      }
+    },
+
+    {
+      "title": "Variant consequence",
+      "data": {
+        "values": [
+          { "position": 12, "consequence": "missense" },
+          { "position": 37, "consequence": "synonymous" },
+          { "position": 64, "consequence": "frameshift" },
+          { "position": 89, "consequence": "missense" }
+        ]
+      },
+      "mark": { "type": "point", "filled": true, "size": 70 },
+      "encoding": {
+        "x": { "field": "position", "type": "quantitative", "axis": null },
+        "color": {
+          "field": "consequence",
+          "type": "nominal",
+          "legend": {
+            "orient": "bottom",
+            "direction": "horizontal",
+            "title": null
+          }
+        }
+      }
+    },
+
+    {
+      "title": "Quality",
+      "data": {
+        "values": [
+          { "position": 5, "quality": 12 },
+          { "position": 28, "quality": 35 },
+          { "position": 52, "quality": 22 },
+          { "position": 76, "quality": 48 },
+          { "position": 96, "quality": 31 }
+        ]
+      },
+      "mark": { "type": "point", "filled": true, "size": 70 },
+      "encoding": {
+        "x": { "field": "position", "type": "quantitative", "axis": null },
+        "color": {
+          "field": "quality",
+          "type": "quantitative",
+          "legend": {
+            "orient": "bottom",
+            "direction": "horizontal",
+            "title": null,
+            "gradientLength": 180
+          }
+        }
+      }
+    }
+  ]
+}

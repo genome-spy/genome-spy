@@ -32,10 +32,12 @@ import {
     createGridChildLegend,
     disposeLegendViews,
     getLegendOverhang,
+    getHierarchyLegendOwners,
     getOrderedLegendEntries,
+    isRootPlacedLegend,
     iterateLegendViews,
-    isActiveLegendRegion,
 } from "./gridChildLegends.js";
+import { isInChromeSubtree } from "../viewChrome.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 import { getZoomableResolutions } from "./zoomNavigationUtils.js";
 import { moveArrayItem } from "../../utils/arrayUtils.js";
@@ -78,40 +80,6 @@ const DECORATION_ORDER = Object.freeze({
 // scrollable. This keeps guides above content-edge artifacts while still
 // letting an explicit user zindex override the default.
 const CLIPPED_DECORATION_ZINDEX = 10;
-
-/**
- * Legends are rendered as guide regions, not grid children. Their thickness is
- * handled as overhang, but their parallel min/max constraints still affect the
- * grid dimension that the parent concat sees.
- *
- * @param {import("./gridChildLegends.js").GridChildLegends} legends
- * @returns {FlexDimensions}
- */
-function getLegendParallelSizeConstraints(legends) {
-    /** @type {import("../layout/flexLayout.js").SizeDef[]} */
-    const widths = [];
-    /** @type {import("../layout/flexLayout.js").SizeDef[]} */
-    const heights = [];
-
-    for (const [orient, region] of Object.entries(legends)) {
-        if (!isActiveLegendRegion(region)) {
-            continue;
-        }
-
-        const size = region.legendView.getSize();
-        if (orient == "top" || orient == "bottom") {
-            widths.push(size.width);
-        } else {
-            // Side gradients can fill the available viewport height, but that
-            // available height must be determined by the real grid children and
-            // top/bottom chrome. Otherwise a shared right/left legend can make
-            // the grid grow to the browser height and then fill that height.
-            heights.push({ px: getSizeDefMinPx(size.height), grow: 0 });
-        }
-    }
-
-    return new FlexDimensions(getLargestSize(widths), getLargestSize(heights));
-}
 
 /**
  * Treat an explicit concat/grid size as preferred available space while still
@@ -402,7 +370,7 @@ export default class GridView extends ContainerView {
      * Shared guides always depend on the whole container. Grid-child guides can
      * be limited to newly inserted children during mutations.
      *
-     * @param {{ gridChildren?: GridChild[] }} [options]
+     * @param {{ gridChildren?: GridChild[], bubbleRootLegends?: boolean }} [options]
      */
     async syncGuideViews(options = {}) {
         const gridChildren = options.gridChildren ?? this.#children;
@@ -416,6 +384,25 @@ export default class GridView extends ContainerView {
             gridChildren.map((gridChild) => gridChild.syncGuideViews())
         );
         this.invalidateSizeCache();
+
+        const rootCollector = this.#getEffectiveRootLegendCollector();
+        if (
+            (options.bubbleRootLegends ?? true) &&
+            rootCollector &&
+            rootCollector !== this &&
+            !isInChromeSubtree(this)
+        ) {
+            await rootCollector.#syncSharedLegends();
+            rootCollector.invalidateSizeCache();
+        }
+    }
+
+    /**
+     * @returns {GridView | undefined}
+     */
+    #getEffectiveRootLegendCollector() {
+        const root = this.getLayoutAncestors().at(-1);
+        return root instanceof GridView ? root : undefined;
     }
 
     /**
@@ -473,9 +460,18 @@ export default class GridView extends ContainerView {
         disposeLegendViews(this.#sharedLegends);
         this.#sharedLegends = {};
 
-        for (const { definition, resolution } of getOrderedLegendEntries([
-            this,
-        ])) {
+        const isRootCollector = this.layoutParent === null;
+        const owners = isRootCollector
+            ? getHierarchyLegendOwners(this)
+            : [this];
+        const entries = getOrderedLegendEntries(owners).filter(
+            ({ owner, definition }) =>
+                isRootCollector
+                    ? owner === this || isRootPlacedLegend(definition)
+                    : !isRootPlacedLegend(definition)
+        );
+
+        for (const { definition, resolution } of entries) {
             const legend = await createGridChildLegend(definition, this);
             await addLegendView(this.#sharedLegends, legend, resolution);
         }
@@ -675,13 +671,7 @@ export default class GridView extends ContainerView {
                         : Math.max(size.maxPx - overhangSize, 0),
             };
 
-            const legendSize = getLegendParallelSizeConstraints(child.legends);
-            // Side legends constrain row height, while top/bottom legends
-            // constrain column width. Their perpendicular size is overhang.
-            return getLargestSize([
-                plotSize,
-                direction == "column" ? legendSize.width : legendSize.height,
-            ]);
+            return plotSize;
         };
 
         return this._cache(`size/directionSizes/${direction}`, () =>
@@ -934,22 +924,9 @@ export default class GridView extends ContainerView {
      */
     getSize() {
         return this._cache("size", () => {
-            const parallelLegendSize = getLegendParallelSizeConstraints(
-                this.#sharedLegends
-            );
-
-            // Shared legends are placed around the whole grid, so combine their
-            // parallel constraints with the child-grid size before adding
-            // guide overhang.
             return new FlexDimensions(
-                getLargestSize([
-                    this.#getFlexSize("column"),
-                    parallelLegendSize.width,
-                ]),
-                getLargestSize([
-                    this.#getFlexSize("row"),
-                    parallelLegendSize.height,
-                ])
+                this.#getFlexSize("column"),
+                this.#getFlexSize("row")
             ).addPadding(this.#getSharedGuideOverhang());
         });
     }

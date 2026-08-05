@@ -1,4 +1,5 @@
 import { findChannelDefWithScale, isValueDef } from "../../encoder/encoder.js";
+import { getConfiguredLegendRegionLayout } from "../../config/legendConfig.js";
 import {
     activateExprRefProps,
     resolveInitOnlyExprRef,
@@ -7,6 +8,7 @@ import LegendView, {
     LegendRegionView,
     getExternalLegendOverhang,
 } from "../legendView.js";
+import { isInChromeSubtree } from "../viewChrome.js";
 
 /**
  * @typedef {{
@@ -15,6 +17,7 @@ import LegendView, {
  * }} GridChildLegendEntry
  *
  * @typedef {{
+ *     owner: import("../view.js").default,
  *     definition: import("../../scales/legendResolution.js").LegendDefinition,
  *     resolution: import("../../scales/legendResolution.js").default,
  * }} OrderedLegendEntry
@@ -91,13 +94,24 @@ export function getOrderedLegendEntries(legendOwners) {
     const viewOrder = getDepthFirstViewOrder(legendOwners);
     /** @type {OrderedLegendEntry[]} */
     const entries = [];
+    /** @type {Set<import("../../scales/legendResolution.js").default>} */
+    const seenResolutions = new Set();
 
     for (const legendOwner of legendOwners) {
         for (const resolution of Object.values(
             legendOwner.resolutions.legend
         )) {
+            if (seenResolutions.has(resolution)) {
+                continue;
+            }
+            seenResolutions.add(resolution);
+
             for (const definition of resolution.getLegendDefs()) {
-                entries.push({ definition, resolution });
+                entries.push({
+                    owner: legendOwner,
+                    definition,
+                    resolution,
+                });
             }
         }
     }
@@ -121,6 +135,29 @@ export function getOrderedLegendEntries(legendOwners) {
     });
 
     return entries;
+}
+
+/**
+ * Returns non-chrome legend resolution owners in depth-first hierarchy order.
+ *
+ * @param {import("../view.js").default} viewRoot
+ * @returns {import("../view.js").default[]}
+ */
+export function getHierarchyLegendOwners(viewRoot) {
+    return viewRoot
+        .getDescendants()
+        .filter(
+            (view) =>
+                !isInChromeSubtree(view) &&
+                Object.keys(view.resolutions.legend).length > 0
+        );
+}
+
+/**
+ * @param {import("../../scales/legendResolution.js").LegendDefinition} definition
+ */
+export function isRootPlacedLegend(definition) {
+    return definition.legend.placement === "root";
 }
 
 /**
@@ -438,8 +475,14 @@ export async function addLegendView(legends, legend, resolution) {
     let region = legends[orient];
 
     if (!region) {
+        const { anchor, direction } = getConfiguredLegendRegionLayout(
+            legend.layoutParent.getConfigScopes(),
+            orient
+        );
         const regionView = new LegendRegionView(
             orient,
+            anchor,
+            direction,
             legend.legendProps.spacing ?? 0,
             legend.context,
             legend.layoutParent,

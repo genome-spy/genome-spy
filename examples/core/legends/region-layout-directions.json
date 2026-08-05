@@ -1,0 +1,130 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Legend region and entry directions",
+    "Side legends stack vertically, top legends horizontally, and the corner region is explicitly overridden to vertical. The right stack is centered, while entry direction is configured independently."
+  ],
+
+  "config": {
+    "legend": {
+      "disable": false,
+      "backgroundFill": "white",
+      "backgroundFillOpacity": 0.85,
+      "layout": { "top-right": { "direction": "vertical" } }
+    }
+  },
+
+  "data": {
+    "values": [
+      { "x": 1, "y": 2, "group": "A", "kind": "one" },
+      { "x": 2, "y": 4, "group": "B", "kind": "two" },
+      { "x": 3, "y": 3, "group": "C", "kind": "one" },
+      { "x": 4, "y": 6, "group": "A", "kind": "two" }
+    ]
+  },
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "y", "type": "quantitative" }
+  },
+
+  "hconcat": [
+    {
+      "title": "Top: horizontal",
+      "config": { "legend": { "direction": "horizontal" } },
+      "resolve": {
+        "scale": { "color": "independent", "shape": "independent" },
+        "legend": { "color": "independent", "shape": "independent" }
+      },
+      "layer": [
+        {
+          "mark": { "type": "point", "filled": true },
+          "encoding": {
+            "color": {
+              "field": "group",
+              "type": "nominal",
+              "legend": { "orient": "top", "title": "Group" }
+            }
+          }
+        },
+        {
+          "mark": { "type": "point", "filled": false, "size": 70 },
+          "encoding": {
+            "shape": {
+              "field": "kind",
+              "type": "nominal",
+              "legend": { "orient": "top", "title": "Kind" }
+            },
+            "color": { "value": "#333" }
+          }
+        }
+      ]
+    },
+
+    {
+      "title": "Right: centered",
+      "config": {
+        "legend": { "layout": { "right": { "anchor": "middle" } } }
+      },
+      "resolve": {
+        "scale": { "color": "independent", "shape": "independent" },
+        "legend": { "color": "independent", "shape": "independent" }
+      },
+      "layer": [
+        {
+          "mark": { "type": "point", "filled": true },
+          "encoding": {
+            "color": {
+              "field": "group",
+              "type": "nominal",
+              "legend": { "orient": "right", "title": "Group" }
+            }
+          }
+        },
+        {
+          "mark": { "type": "point", "filled": false, "size": 70 },
+          "encoding": {
+            "shape": {
+              "field": "kind",
+              "type": "nominal",
+              "legend": { "orient": "right", "title": "Kind" }
+            },
+            "color": { "value": "#333" }
+          }
+        }
+      ]
+    },
+
+    {
+      "title": "Corner: vertical",
+      "resolve": {
+        "scale": { "color": "independent", "shape": "independent" },
+        "legend": { "color": "independent", "shape": "independent" }
+      },
+      "layer": [
+        {
+          "mark": { "type": "point", "filled": true },
+          "encoding": {
+            "color": {
+              "field": "group",
+              "type": "nominal",
+              "legend": { "orient": "top-right", "title": "Group" }
+            }
+          }
+        },
+        {
+          "mark": { "type": "point", "filled": false, "size": 70 },
+          "encoding": {
+            "shape": {
+              "field": "kind",
+              "type": "nominal",
+              "legend": { "orient": "top-right", "title": "Kind" }
+            },
+            "color": { "value": "#333" }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -63,7 +63,11 @@
           "type": "quantitative",
           "title": "Linear color",
           "scale": { "type": "linear", "zero": false },
-          "legend": { "title": "Bottom", "orient": "bottom" }
+          "legend": {
+            "title": "Bottom",
+            "orient": "bottom",
+            "direction": "horizontal"
+          }
         }
       }
     }

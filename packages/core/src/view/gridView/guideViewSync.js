@@ -1,4 +1,9 @@
 import GridView from "./gridView.js";
+import {
+    getHierarchyLegendOwners,
+    getOrderedLegendEntries,
+    isRootPlacedLegend,
+} from "./gridChildLegends.js";
 
 /**
  * Recreates guide views after resolution-level properties have been attached.
@@ -11,11 +16,22 @@ import GridView from "./gridView.js";
  * @param {import("../view.js").default} viewRoot
  */
 export async function syncViewGuideViews(viewRoot) {
+    const requestsRootPlacement = getOrderedLegendEntries(
+        getHierarchyLegendOwners(viewRoot)
+    ).some(({ definition }) => isRootPlacedLegend(definition));
+    if (requestsRootPlacement && !(viewRoot instanceof GridView)) {
+        throw new Error(
+            'Legend placement "root" requires an effective root GridView. Enable implicit root wrapping or use a concat root.'
+        );
+    }
+
     const gridViews = viewRoot
         .getDescendants()
         .filter((view) => view instanceof GridView);
 
     for (const gridView of gridViews) {
-        await gridView.syncGuideViews();
+        // The root collector is included in gridViews and synchronizes its
+        // legends once. Nested grids must not repeatedly rebuild it.
+        await gridView.syncGuideViews({ bubbleRootLegends: false });
     }
 }
