@@ -5,6 +5,7 @@
  *   name: string,
  *   kind: "base" | "derived" | "selection",
  *   rank?: number,
+ *   propagation?: "sync",
  *   get: () => T,
  *   subscribe: (listener: () => void) => () => void
  * }} ParamRef

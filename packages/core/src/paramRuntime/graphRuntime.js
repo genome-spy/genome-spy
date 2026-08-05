@@ -289,6 +289,8 @@ export default class GraphRuntime {
      * 1. Initial value is computed eagerly at registration time.
      * 2. On dependency changes, recomputation is queued (deduplicated per flush).
      * 3. Downstream listeners are notified only if computed value identity changes.
+     * 4. Dependencies marked for synchronous propagation flush the queue before
+     *    their notification returns.
      *
      * Lifecycle:
      * 1. Dependency subscriptions are created immediately.
@@ -328,14 +330,17 @@ export default class GraphRuntime {
             },
         });
 
-        const onDependencyChange = () => {
-            if (!node.disposed) {
-                this.#enqueueComputed(node);
-            }
-        };
-
         const unsubscribers = deps.map((dep) =>
-            dep.subscribe(onDependencyChange)
+            dep.subscribe(() => {
+                if (!node.disposed) {
+                    this.#enqueueComputed(node);
+                    if (dep.propagation === "sync") {
+                        // Scale changes are synchronous and happen before
+                        // rendering, so their derived values must not lag.
+                        this.flushNow();
+                    }
+                }
+            })
         );
         const dispose = () => {
             if (node.disposed) {

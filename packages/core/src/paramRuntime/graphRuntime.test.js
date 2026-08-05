@@ -60,6 +60,29 @@ describe("GraphRuntime", () => {
         expect(calls).toBe(2);
     });
 
+    test("synchronously propagates dependencies that require it", () => {
+        const runtime = new GraphRuntime();
+        // Scale-backed dependencies use this mode to prevent stale derived
+        // parameters from reaching the next render.
+        const source = runtime.createWritable(
+            "scope:test",
+            "source",
+            "base",
+            1
+        );
+        source.propagation = "sync";
+        const doubled = runtime.computed(
+            "scope:test",
+            "doubled",
+            [source],
+            () => source.get() * 2
+        );
+
+        source.set(2);
+
+        expect(doubled.get()).toBe(4);
+    });
+
     test("whenPropagated resolves after effects run", async () => {
         const runtime = new GraphRuntime();
         const source = runtime.createWritable("scope:test", "a", "base", 1);

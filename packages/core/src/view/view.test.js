@@ -176,11 +176,12 @@ describe("Trivial creations and initializations", () => {
         expect(view.paramRuntime.getValue("pixelsPerUnit")).toBeCloseTo(0.1);
         expect(view.paramRuntime.getValue("twoPixelsPerUnit")).toBeCloseTo(0.2);
 
-        await view.getScaleResolution("x").zoomTo([0, 5], 0);
-        await view.paramRuntime.whenPropagated();
+        const zoomPromise = view.getScaleResolution("x").zoomTo([0, 5], 0);
 
         expect(view.paramRuntime.getValue("pixelsPerUnit")).toBeCloseTo(0.2);
         expect(view.paramRuntime.getValue("twoPixelsPerUnit")).toBeCloseTo(0.4);
+
+        await zoomPromise;
     });
 
     test("evaluates ExprRef-backed mark cursor", async () => {

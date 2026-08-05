@@ -375,6 +375,10 @@ function createScaleDependency(kind, channel, resolution, codeName) {
         name: `scale(${channel})`,
         kind: "derived",
         rank: 0,
+        // Scale notifications run synchronously before rendering. Propagate
+        // derived parameters in the same turn so consumers never see a stale
+        // scale-derived value for one frame.
+        propagation: "sync",
         get() {
             return resolution.getScale();
         },
