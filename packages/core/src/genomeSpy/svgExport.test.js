@@ -79,4 +79,60 @@ describe("SVG export", () => {
         expect(svg.querySelectorAll('[data-mark-type="rule"]')).toHaveLength(1);
         expect(svg.querySelectorAll('[data-mark-type="text"]')).toHaveLength(1);
     });
+
+    test("emits circle points and axis-aligned rectangles", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ x: 0.5, y: 0.5 }] },
+            layer: [
+                {
+                    mark: "rect",
+                    encoding: {
+                        x: { value: 0.1 },
+                        x2: { value: 0.4 },
+                        y: { value: 0.2 },
+                        y2: { value: 0.7 },
+                        fill: { value: "#abcdef" },
+                    },
+                },
+                {
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: { domain: [0, 1] },
+                        },
+                        y: {
+                            field: "y",
+                            type: "quantitative",
+                            scale: { domain: [0, 1] },
+                        },
+                        xOffset: { value: 4 },
+                        yOffset: { value: 3 },
+                        size: { value: 100 },
+                        fill: { value: "#fedcba" },
+                    },
+                },
+            ],
+        });
+
+        const svg = createSvg({
+            viewRoot: view,
+            logicalWidth: 200,
+            logicalHeight: 100,
+            background: null,
+        });
+        const rect = svg.querySelector('[data-mark-type="rect"] rect');
+        const circle = svg.querySelector("circle");
+
+        expect(rect?.getAttribute("x")).toBe("20");
+        expect(Number(rect?.getAttribute("y"))).toBeCloseTo(30);
+        expect(rect?.getAttribute("width")).toBe("60");
+        expect(rect?.getAttribute("height")).toBe("50");
+        expect(rect?.getAttribute("fill")).toBe("#abcdef");
+        expect(circle?.getAttribute("cx")).toBe("104");
+        expect(circle?.getAttribute("cy")).toBe("53");
+        expect(circle?.getAttribute("r")).toBe("5");
+        expect(circle?.getAttribute("fill")).toBe("#fedcba");
+    });
 });

@@ -15,6 +15,13 @@ import {
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import { isDiscrete } from "vega-scale";
 import { cssColorToArray } from "../gl/colorUtils.js";
+import { createSvgElement } from "../view/renderingContext/svgViewRenderingContext.js";
+import {
+    encodeNumber,
+    encodeString,
+    projectX,
+    projectY,
+} from "./svgMarkUtils.js";
 
 const hatchPatterns = [
     "none",
@@ -278,6 +285,73 @@ export default class RectMark extends Mark {
                 offset
             );
         }, options);
+    }
+
+    /**
+     * @param {import("../view/renderingContext/svgViewRenderingContext.js").default} context
+     * @param {import("../view/renderingContext/svgViewRenderingContext.js").SvgMarkRenderingOptions} options
+     */
+    renderSvg(context, options) {
+        if (
+            this.#isRoundedCorners() ||
+            (this.properties.hatch ?? "none") != "none" ||
+            this.properties.shadowOpacity
+        ) {
+            throw new Error(
+                "SVG export does not support rounded, hatched, or shadowed rectangles yet."
+            );
+        }
+
+        const { coords, data, group, viewOpacity } = options;
+        const encoders =
+            /** @type {Record<string, import("../types/encoder.js").Encoder>} */ (
+                this.encoders
+            );
+
+        for (const datum of data) {
+            const xOffset = encodeNumber(encoders.xOffset, datum);
+            const yOffset = encodeNumber(encoders.yOffset, datum);
+            const x2Offset = encoders.x2Offset
+                ? encodeNumber(encoders.x2Offset, datum)
+                : xOffset;
+            const y2Offset = encoders.y2Offset
+                ? encodeNumber(encoders.y2Offset, datum)
+                : yOffset;
+            const x1 = projectX(
+                coords,
+                encodeNumber(encoders.x, datum),
+                xOffset
+            );
+            const x2 = projectX(
+                coords,
+                encodeNumber(encoders.x2, datum),
+                x2Offset
+            );
+            const y1 = projectY(
+                coords,
+                encodeNumber(encoders.y, datum),
+                yOffset
+            );
+            const y2 = projectY(
+                coords,
+                encodeNumber(encoders.y2, datum),
+                y2Offset
+            );
+            const rect = createSvgElement("rect", {
+                x: Math.min(x1, x2),
+                y: Math.min(y1, y2),
+                width: Math.abs(x2 - x1),
+                height: Math.abs(y2 - y1),
+                fill: encodeString(encoders.fill, datum),
+                "fill-opacity":
+                    encodeNumber(encoders.fillOpacity, datum) * viewOpacity,
+                stroke: encodeString(encoders.stroke, datum),
+                "stroke-opacity":
+                    encodeNumber(encoders.strokeOpacity, datum) * viewOpacity,
+                "stroke-width": encodeNumber(encoders.strokeWidth, datum),
+            });
+            group.appendChild(rect);
+        }
     }
 
     /**

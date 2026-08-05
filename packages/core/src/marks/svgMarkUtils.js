@@ -29,5 +29,6 @@ export function encodeNumber(encoder, datum) {
  * @param {object} datum
  */
 export function encodeString(encoder, datum) {
-    return /** @type {string} */ (encoder(datum));
+    const value = encoder(datum);
+    return value == null ? "none" : "" + value;
 }

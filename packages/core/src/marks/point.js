@@ -14,6 +14,13 @@ import { getEncoderDataAccessor, isValueDef } from "../encoder/encoder.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { sampleIterable } from "../data/transforms/sample.js";
 import { fixFill, fixStroke } from "./markUtils.js";
+import { createSvgElement } from "../view/renderingContext/svgViewRenderingContext.js";
+import {
+    encodeNumber,
+    encodeString,
+    projectX,
+    projectY,
+} from "./svgMarkUtils.js";
 
 /** @type {Record<string, import("../spec/channel.js").ChannelDef>} */
 const defaultEncoding = {};
@@ -308,5 +315,66 @@ export default class PointMark extends Mark {
                 );
             }
         }, options);
+    }
+
+    /**
+     * @param {import("../view/renderingContext/svgViewRenderingContext.js").default} context
+     * @param {import("../view/renderingContext/svgViewRenderingContext.js").SvgMarkRenderingOptions} options
+     */
+    renderSvg(context, options) {
+        if (
+            this.properties.inwardStroke ||
+            this.properties.fillGradientStrength ||
+            this.properties.geometricZoomBound
+        ) {
+            throw new Error(
+                "SVG export does not support point gradients or zoom-dependent geometry yet."
+            );
+        }
+
+        const { coords, data, group, viewOpacity } = options;
+        const encoders =
+            /** @type {Record<string, import("../types/encoder.js").Encoder>} */ (
+                this.encoders
+            );
+        const semanticThreshold = this.getSemanticThreshold();
+
+        for (const datum of data) {
+            const shape = encodeString(encoders.shape, datum);
+            if (shape != "circle") {
+                throw new Error(
+                    `SVG export only supports circle points in the proof of concept. Received: ${shape}`
+                );
+            }
+            if (
+                encodeNumber(encoders.semanticScore, datum) < semanticThreshold
+            ) {
+                continue;
+            }
+
+            const circle = createSvgElement("circle", {
+                cx: projectX(
+                    coords,
+                    encodeNumber(encoders.x, datum),
+                    encodeNumber(encoders.xOffset, datum) +
+                        encodeNumber(encoders.dx, datum)
+                ),
+                cy: projectY(
+                    coords,
+                    encodeNumber(encoders.y, datum),
+                    encodeNumber(encoders.yOffset, datum) -
+                        encodeNumber(encoders.dy, datum)
+                ),
+                r: Math.sqrt(encodeNumber(encoders.size, datum)) / 2,
+                fill: encodeString(encoders.fill, datum),
+                "fill-opacity":
+                    encodeNumber(encoders.fillOpacity, datum) * viewOpacity,
+                stroke: encodeString(encoders.stroke, datum),
+                "stroke-opacity":
+                    encodeNumber(encoders.strokeOpacity, datum) * viewOpacity,
+                "stroke-width": encodeNumber(encoders.strokeWidth, datum),
+            });
+            group.appendChild(circle);
+        }
     }
 }
