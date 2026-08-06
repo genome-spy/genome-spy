@@ -173,19 +173,26 @@ export function renderArrowSvg(baseMark, options) {
             );
         }
 
-        const polygons = stem
-            ? [
-                  createStemPolygon(
-                      tail,
-                      tip,
-                      tangent,
-                      normal,
-                      stemHalfWidth,
-                      rHeadSlope,
-                      startNotch
-                  ),
-              ]
-            : [];
+        const stemPolygon = stem
+            ? createStemPolygon(
+                  tail,
+                  tip,
+                  tangent,
+                  normal,
+                  stemHalfWidth,
+                  rHeadSlope,
+                  startNotch
+              )
+            : null;
+        const polygons = stemPolygon ? [stemPolygon] : [];
+        // A single triangular head no wider than the stem is already contained
+        // in the tapered end of the stem polygon. This includes the block and
+        // block-notch styles, whose effective slope also preserves minStemLength.
+        const stemContainsHead =
+            stemPolygon &&
+            renderedHeadShape == "triangle" &&
+            !repeatHeads &&
+            headHalfWidth <= stemHalfWidth;
         // The repeat footprint includes the head's axial extent, the thickness
         // of an open head projected onto the axis, and the SVG stroke. Taking
         // the maximum with configured spacing prevents neighboring heads from
@@ -200,7 +207,7 @@ export function renderArrowSvg(baseMark, options) {
         const geometryLength = Math.hypot(tip.x - tail.x, tip.y - tail.y);
         // Start at the active tip and walk toward the tail. A final head is
         // omitted if its complete stroked footprint would cross the tail end.
-        for (let distance = 0; ; distance += repeatSpacing) {
+        for (let distance = 0; !stemContainsHead; distance += repeatSpacing) {
             if (
                 distance > 0 &&
                 distance + headRepeatFootprint - strokeWidth / 2 >
@@ -237,8 +244,10 @@ export function renderArrowSvg(baseMark, options) {
         // Heads overlap the stem. Concatenating their subpaths would leave
         // visible internal stroke seams, so merge the polygons first and emit
         // only the union boundary as one editable SVG path.
+        const boundaryLoops =
+            polygons.length == 1 ? polygons : unionPolygons(polygons);
         const path = createSvgElement("path", {
-            d: unionPolygons(polygons).map(polygon).join(" "),
+            d: boundaryLoops.map(polygon).join(" "),
             "data-arrow-part":
                 renderedHeadShape == "open" && !stem ? "head" : "body",
         });

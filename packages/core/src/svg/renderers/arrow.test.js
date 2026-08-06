@@ -211,6 +211,35 @@ describe("SVG arrow renderer", () => {
         expect(warnings).toEqual([]);
     });
 
+    test("preserves minimum stem length in block-notch arrows", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "arrow",
+                style: "arrow-block-notch",
+                size: 10,
+                fill: "black",
+                stroke: null,
+            },
+            encoding: {
+                x: { value: 0.4 },
+                x2: { value: 0.58 },
+                y: { value: 0.5 },
+            },
+        });
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const body = svg.querySelector('[data-arrow-part="body"]');
+
+        // The start notch is shortened to leave the configured 15-pixel stem.
+        expect(body?.getAttribute("d")).toContain("43 50");
+        expect(warnings).toEqual([]);
+    });
+
     test.each(["triangle", "open"])(
         "merges repeated %s heads and the stem into one path",
         async (headShape) => {
