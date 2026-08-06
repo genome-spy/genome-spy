@@ -210,4 +210,43 @@ describe("SVG arrow renderer", () => {
         ).toContain("55 65");
         expect(warnings).toEqual([]);
     });
+
+    test.each(["triangle", "open"])(
+        "merges repeated %s heads and the stem into one path",
+        async (headShape) => {
+            const { view } = await createHeadlessEngine({
+                data: { values: [{}] },
+                mark: {
+                    type: "arrow",
+                    headShape: /** @type {"triangle" | "open"} */ (headShape),
+                    headSpacing: 3,
+                    size: 4,
+                    fill: "#5b8def",
+                    stroke: "black",
+                    strokeWidth: 1,
+                },
+                encoding: {
+                    x: { value: 0.2 },
+                    x2: { value: 0.8 },
+                    y: { value: 0.5 },
+                },
+            });
+
+            const { svg, warnings } = createSvg({
+                viewRoot: view,
+                logicalWidth: 100,
+                logicalHeight: 100,
+                background: null,
+            });
+            const instance = svg.querySelector('[data-mark-type="arrow"] > g');
+            const path = instance?.querySelector("path");
+            const pathData = path?.getAttribute("d") ?? "";
+
+            expect(instance?.querySelectorAll("path")).toHaveLength(1);
+            expect(pathData.match(/\bM /g)).toHaveLength(1);
+            expect(pathData).toContain("80 50");
+            expect(pathData).toContain("62 56");
+            expect(warnings).toEqual([]);
+        }
+    );
 });

@@ -1,5 +1,6 @@
 import { createSvgElement } from "../svgElement.js";
 import { intersectsSvgBounds } from "../svgBounds.js";
+import { unionPolygons } from "../polygonUnion.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
@@ -34,13 +35,8 @@ export function renderArrowSvg(baseMark, options) {
     const startNotch = resolveSvgProperty(mark, props.startNotch);
     const minStemLength = resolveSvgProperty(mark, props.minStemLength);
     const headSpacing = resolveSvgProperty(mark, props.headSpacing);
+    const repeatHeads = headSpacing != null && headSpacing >= 0;
     const headPlacement = resolveSvgProperty(mark, props.headPlacement);
-
-    if (headSpacing != null) {
-        options.warn(
-            "SVG export rendered one arrowhead and ignored unsupported repeated heads."
-        );
-    }
 
     const { coords, data, group, viewOpacity, visibleBounds } = options;
     const encoders =
@@ -108,7 +104,7 @@ export function renderArrowSvg(baseMark, options) {
             stemHalfWidth: stem ? stemHalfWidth : -stemHalfWidth,
             configuredRHeadSlope,
             configuredRHeadNotchSlope,
-            headRepeat: headSpacing != null,
+            headRepeat: repeatHeads,
             headPlacement,
             startNotch,
             minStemLength,
@@ -157,81 +153,78 @@ export function renderArrowSvg(baseMark, options) {
         ) {
             continue;
         }
-        const instance = createSvgElement("g", encodeStyles(datum));
-
-        if (headShape == "triangle") {
-            instance.appendChild(
-                createSvgElement("path", {
-                    d: createTriangleArrowPath(
-                        tail,
-                        tip,
-                        tangent,
-                        normal,
-                        stemHalfWidth,
-                        headHalfWidth,
-                        rHeadSlope,
-                        rHeadNotchSlope,
-                        stem,
-                        startNotch
-                    ),
-                    "data-arrow-part": "body",
-                })
-            );
-        } else if (headShape == "open") {
-            if (stem) {
-                instance.appendChild(
-                    createSvgElement("path", {
-                        d: polygon(
-                            createStemPolygon(
-                                tail,
-                                tip,
-                                tangent,
-                                normal,
-                                stemHalfWidth,
-                                rHeadSlope,
-                                startNotch
-                            )
-                        ),
-                        "data-arrow-part": "stem",
-                    })
-                );
-            }
-            instance.appendChild(
-                createSvgElement("path", {
-                    d: createOpenHeadPath(
-                        tip,
-                        tangent,
-                        normal,
-                        headHalfWidth,
-                        rHeadSlope,
-                        rHeadNotchSlope,
-                        size
-                    ),
-                    "data-arrow-part": "head",
-                })
-            );
-        } else {
+        const renderedHeadShape =
+            headShape == "triangle" || headShape == "open"
+                ? headShape
+                : "triangle";
+        if (renderedHeadShape != headShape) {
             options.warn(
                 `SVG export rendered unsupported arrow headShape "${headShape}" as a triangle.`
             );
-            instance.appendChild(
-                createSvgElement("path", {
-                    d: createTriangleArrowPath(
-                        tail,
-                        tip,
-                        tangent,
-                        normal,
-                        stemHalfWidth,
-                        headHalfWidth,
-                        rHeadSlope,
-                        rHeadNotchSlope,
-                        stem,
-                        startNotch
-                    ),
-                    "data-arrow-part": "body",
-                })
-            );
         }
+
+        const polygons = stem
+            ? [
+                  createStemPolygon(
+                      tail,
+                      tip,
+                      tangent,
+                      normal,
+                      stemHalfWidth,
+                      rHeadSlope,
+                      startNotch
+                  ),
+              ]
+            : [];
+        const headRepeatFootprint =
+            headAxisLength +
+            headStrokeWidth / Math.hypot(rHeadSlope, 1) +
+            strokeWidth;
+        const repeatSpacing = !repeatHeads
+            ? Infinity
+            : Math.max((headSpacing ?? 0) * size, headRepeatFootprint);
+        const geometryLength = Math.hypot(tip.x - tail.x, tip.y - tail.y);
+        for (let distance = 0; ; distance += repeatSpacing) {
+            if (
+                distance > 0 &&
+                distance + headRepeatFootprint - strokeWidth / 2 >
+                    geometryLength
+            ) {
+                break;
+            }
+            const repeatedTip = add(tip, scale(tangent, -distance));
+            polygons.push(
+                renderedHeadShape == "open"
+                    ? createOpenHeadPolygon(
+                          repeatedTip,
+                          tangent,
+                          normal,
+                          headHalfWidth,
+                          rHeadSlope,
+                          rHeadNotchSlope,
+                          size
+                      )
+                    : createTriangleHeadPolygon(
+                          repeatedTip,
+                          tangent,
+                          normal,
+                          headHalfWidth,
+                          rHeadSlope,
+                          rHeadNotchSlope
+                      )
+            );
+            if (!repeatHeads || repeatSpacing <= 0) {
+                break;
+            }
+        }
+
+        const path = createSvgElement("path", {
+            d: unionPolygons(polygons).map(polygon).join(" "),
+            "data-arrow-part":
+                renderedHeadShape == "open" && !stem ? "head" : "body",
+        });
+        const instance = createSvgElement("g", encodeStyles(datum));
+        instance.appendChild(path);
         group.appendChild(instance);
     }
 }
@@ -241,28 +234,21 @@ export function renderArrowSvg(baseMark, options) {
  */
 
 /**
- * @param {Point} tail
  * @param {Point} tip
  * @param {Point} tangent
  * @param {Point} normal
- * @param {number} stemHalfWidth
  * @param {number} headHalfWidth
  * @param {number} rHeadSlope
  * @param {number} rHeadNotchSlope
- * @param {boolean} stem
- * @param {boolean} startNotch
+ * @returns {Point[]}
  */
-function createTriangleArrowPath(
-    tail,
+function createTriangleHeadPolygon(
     tip,
     tangent,
     normal,
-    stemHalfWidth,
     headHalfWidth,
     rHeadSlope,
-    rHeadNotchSlope,
-    stem,
-    startNotch
+    rHeadNotchSlope
 ) {
     const headAxisLength = headHalfWidth * rHeadSlope;
     const notchLength = headAxisLength - headHalfWidth * rHeadNotchSlope;
@@ -275,42 +261,7 @@ function createTriangleArrowPath(
         scale(normal, -headHalfWidth)
     );
     const headNotch = add(tip, scale(tangent, -notchLength));
-    if (!stem) {
-        return polygon([tip, headTop, headNotch, headBottom]);
-    }
-
-    const stemJoinLength = triangleHeadStemJoinLength(
-        stemHalfWidth,
-        headHalfWidth,
-        rHeadSlope,
-        rHeadNotchSlope
-    );
-    const stemTop = add(
-        add(tip, scale(tangent, -stemJoinLength)),
-        scale(normal, stemHalfWidth)
-    );
-    const stemBottom = add(
-        add(tip, scale(tangent, -stemJoinLength)),
-        scale(normal, -stemHalfWidth)
-    );
-    const tailTop = add(tail, scale(normal, stemHalfWidth));
-    const tailBottom = add(tail, scale(normal, -stemHalfWidth));
-    const tailPoints = startNotch
-        ? [
-              tailBottom,
-              add(tail, scale(tangent, stemHalfWidth * rHeadSlope)),
-              tailTop,
-          ]
-        : [tailBottom, tailTop];
-
-    return polygon([
-        ...tailPoints,
-        stemTop,
-        headTop,
-        tip,
-        headBottom,
-        stemBottom,
-    ]);
+    return [tip, headTop, headNotch, headBottom];
 }
 
 /**
@@ -359,7 +310,7 @@ function createStemPolygon(
  * @param {number} rHeadNotchSlope
  * @param {number} thickness
  */
-function createOpenHeadPath(
+function createOpenHeadPolygon(
     tip,
     tangent,
     normal,
@@ -391,7 +342,7 @@ function createOpenHeadPath(
     const notchLength =
         headLength + axisInset - (headHalfWidth - sideInset) * rHeadNotchSlope;
     const notch = add(tip, scale(tangent, -notchLength));
-    return polygon([tip, outerTop, innerTop, notch, innerBottom, outerBottom]);
+    return [tip, outerTop, innerTop, notch, innerBottom, outerBottom];
 }
 
 /**

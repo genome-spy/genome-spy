@@ -67,16 +67,17 @@ The following features are working:
   expression-valued geometry properties.
 - Arrows with triangle or open heads, optional stems, forward/reverse
   direction, inside/outside placement, diagonal endpoints, encoded size and
-  direction, start and head notches, and minimum-stem blunting.
+  direction, start and head notches, minimum-stem blunting, and repeated heads
+  merged with the stem into a single editable path.
 - Conservative instance culling against the effective directional clip and
   root SVG viewport. Partially visible geometry is retained and clipped.
 - App download through the **Save SVG** toolbar action.
 
 Unsupported point effects, rectangle hatches and shadows, text viewport-edge
-fading and sequence-logo stretching, repeated arrowheads, and link arc fading
-are ignored when basic geometry can still be emitted, and the export result
-includes view-qualified warnings. Unsupported mark types and sample facets
-remain errors because export cannot yet meaningfully continue past them.
+fading and sequence-logo stretching, and link arc fading are ignored when basic
+geometry can still be emitted, and the export result includes view-qualified
+warnings. Unsupported mark types and sample facets remain errors because export
+cannot yet meaningfully continue past them.
 
 ## Implementation principles
 
@@ -98,7 +99,6 @@ These features remain desirable but are not the next low-hanging increments:
 
 - Rectangle hatches using reusable SVG `<pattern>` definitions.
 - Rectangle shadows using SVG filters.
-- Repeated arrowheads.
 - Link arc fading using SVG masks or gradients.
 - Point gradients and inward strokes.
 - Text viewport-edge fading and sequence-logo letters.
