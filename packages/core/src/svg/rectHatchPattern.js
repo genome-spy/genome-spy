@@ -41,8 +41,9 @@ export function createRectHatchPattern(id, hatch) {
         stroke: hatch.stroke,
         "stroke-opacity": formatSvgNumber(hatch.strokeOpacity),
         "stroke-width": formatSvgNumber(strokeWidth),
+        "stroke-linecap": "square",
     });
-    appendHatchGeometry(foreground, hatch.type, spacing);
+    appendHatchGeometry(foreground, hatch.type, spacing, strokeWidth);
     pattern.appendChild(foreground);
     return pattern;
 }
@@ -51,17 +52,20 @@ export function createRectHatchPattern(id, hatch) {
  * @param {SVGGElement} group
  * @param {string} type
  * @param {number} spacing
+ * @param {number} strokeWidth
  */
-function appendHatchGeometry(group, type, spacing) {
+function appendHatchGeometry(group, type, spacing, strokeWidth) {
     const line = (/** @type {string} */ d) =>
         group.appendChild(createSvgElement("path", { d }));
     const point = (/** @type {number} */ value) => formatSvgNumber(value);
     const diagonal = (/** @type {boolean} */ downward) => {
         // SVG screen coordinates grow downward. The shader's "diagonal"
-        // pattern therefore runs from top-left to bottom-right.
+        // pattern therefore runs from top-left to bottom-right. Extend each
+        // segment beyond the tile so rasterizers cannot expose antialiased
+        // gaps where neighboring pattern cells meet.
         for (const offset of [-spacing, 0, spacing]) {
             line(
-                `M ${point(offset)} ${point(downward ? 0 : spacing)} L ${point(offset + spacing)} ${point(downward ? spacing : 0)}`
+                `M ${point(offset - strokeWidth)} ${point(downward ? -strokeWidth : spacing + strokeWidth)} L ${point(offset + spacing + strokeWidth)} ${point(downward ? spacing + strokeWidth : -strokeWidth)}`
             );
         }
     };
@@ -78,13 +82,19 @@ function appendHatchGeometry(group, type, spacing) {
             diagonal(false);
             break;
         case "vertical":
-            line(`M 0 0 V ${point(spacing)}`);
+            line(
+                `M 0 ${point(-strokeWidth)} V ${point(spacing + strokeWidth)}`
+            );
             break;
         case "horizontal":
-            line(`M 0 0 H ${point(spacing)}`);
+            line(
+                `M ${point(-strokeWidth)} 0 H ${point(spacing + strokeWidth)}`
+            );
             break;
         case "grid":
-            line(`M 0 0 V ${point(spacing)} M 0 0 H ${point(spacing)}`);
+            line(
+                `M 0 ${point(-strokeWidth)} V ${point(spacing + strokeWidth)} M ${point(-strokeWidth)} 0 H ${point(spacing + strokeWidth)}`
+            );
             break;
         case "dots":
         case "rings":

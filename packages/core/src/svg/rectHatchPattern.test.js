@@ -30,8 +30,8 @@ describe("SVG rectangle hatch patterns", () => {
     });
 
     test.each([
-        ["diagonal", "M 0 0 L 12 12"],
-        ["antiDiagonal", "M 0 12 L 12 0"],
+        ["diagonal", "M -2 -2 L 14 14"],
+        ["antiDiagonal", "M -2 14 L 14 -2"],
     ])("matches the shader orientation for %s", (type, expectedPath) => {
         const pattern = createRectHatchPattern("hatch", {
             type,
@@ -44,5 +44,8 @@ describe("SVG rectangle hatch patterns", () => {
         const centralPath = pattern.querySelectorAll("path")[1];
 
         expect(centralPath.getAttribute("d")).toBe(expectedPath);
+        expect(
+            pattern.querySelector(":scope > g")?.getAttribute("stroke-linecap")
+        ).toBe("square");
     });
 });
