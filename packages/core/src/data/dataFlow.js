@@ -139,13 +139,9 @@ export default class DataFlow {
      *
      * @param {import("./namedDataScope.js").NamedDataBinding} binding
      * @param {import("./flowNode.js").Datum[]} [data]
-     * @param {number} [generation]
-     * @returns {boolean} True if the update was applied.
      */
-    updateNamedDataBinding(binding, data, generation = binding.beginUpdate()) {
-        if (!binding.isCurrentUpdate(generation)) {
-            return false;
-        }
+    updateNamedDataBinding(binding, data) {
+        binding.beginUpdate();
 
         if (data === undefined) {
             binding.resetData();
@@ -161,8 +157,6 @@ export default class DataFlow {
                 dataSource.loadSynchronously();
             }
         }
-
-        return true;
     }
 
     // Initialization is handled by subtree helpers to avoid global init order.

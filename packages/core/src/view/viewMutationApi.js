@@ -114,7 +114,7 @@ function createViewDatasetApi(
                 return;
             }
 
-            updateNamedDataBinding(owner, binding, rows, generation);
+            updateNamedDataBinding(owner, binding, rows);
         },
 
         reset(name) {
@@ -223,14 +223,10 @@ function getOwnedNamedDataBinding(view, name, getRootView) {
  * @param {import("./view.js").default} view
  * @param {import("../data/namedDataScope.js").NamedDataBinding} binding
  * @param {import("../data/flowNode.js").Datum[]} [data]
- * @param {number} [generation]
  */
-function updateNamedDataBinding(view, binding, data, generation) {
-    if (
-        view.context.dataFlow.updateNamedDataBinding(binding, data, generation)
-    ) {
-        view.context.animator.requestRender();
-    }
+function updateNamedDataBinding(view, binding, data) {
+    view.context.dataFlow.updateNamedDataBinding(binding, data);
+    view.context.animator.requestRender();
 }
 
 /**
