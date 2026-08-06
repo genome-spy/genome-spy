@@ -109,6 +109,46 @@ describe("Scale resolution domain handling", () => {
         expect(resolution.zoomExtent).toEqual([1, 1069]);
     });
 
+    test("does not notify for an unchanged partial initial domain", async () => {
+        const view = await create(
+            {
+                data: { values: [{ x: 0 }] },
+                resolve: { scale: { x: "shared" } },
+                layer: [
+                    {
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                scale: { domain: [0, 1] },
+                            },
+                        },
+                    },
+                    {
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+        // Initialize encoders and collectors, but leave their data unloaded so
+        // the shared scale still has only a partial initial domain.
+        initializeViewSubtree(view, view.context.dataFlow);
+
+        const resolution = getRequiredScaleResolution(view, "x");
+        const notify = vi.fn();
+        resolution.addEventListener("domain", notify);
+
+        resolution.reconfigureDomain();
+
+        expect(resolution.scale.domain()).toEqual([0, 1]);
+        expect(notify).not.toHaveBeenCalled();
+    });
+
     test("Scales are shared and explicit domains merged properly", async () => {
         const view = await initView(
             {

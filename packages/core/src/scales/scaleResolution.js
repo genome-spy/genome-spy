@@ -1350,7 +1350,12 @@ export default class ScaleResolution {
         if (!this.#initialDomainDataReady || initialDomainDataBecameReady) {
             // Apply partial and complete initial domains directly. Subsequent
             // updates use the normal transition path below.
-            this.#notifyListeners("domain");
+            if (
+                !domainWasInitialized ||
+                !shallowArrayEquals(previousDomain, scale.domain())
+            ) {
+                this.#notifyListeners("domain");
+            }
             return;
         }
 
