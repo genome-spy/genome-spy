@@ -1,10 +1,10 @@
-import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import { createSvgElement } from "../svgElement.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
     encodePosition,
     formatSvgNumber,
+    resolveSvgProperty,
     toSvgString,
 } from "../svgMarkUtils.js";
 
@@ -17,12 +17,7 @@ export function renderLinkSvg(baseMark, options) {
         baseMark
     );
     const props = mark.properties;
-    const arcFadingDistance = getConstantProperty(
-        props.arcFadingDistance,
-        "arcFadingDistance",
-        false,
-        options.warn
-    );
+    const arcFadingDistance = resolveSvgProperty(mark, props.arcFadingDistance);
     if (
         arcFadingDistance !== false &&
         arcFadingDistance[0] > 0 &&
@@ -31,45 +26,15 @@ export function renderLinkSvg(baseMark, options) {
         options.warn("SVG export ignored unsupported link arc fading.");
     }
 
-    const shape = getConstantProperty(
-        props.linkShape,
-        "linkShape",
-        DEFAULT_GEOMETRY_OPTIONS.shape,
-        options.warn
-    );
-    const orient = getConstantProperty(
-        props.orient,
-        "orient",
-        DEFAULT_GEOMETRY_OPTIONS.orient,
-        options.warn
-    );
+    const shape = resolveSvgProperty(mark, props.linkShape);
+    const orient = resolveSvgProperty(mark, props.orient);
     const geometryOptions = {
         shape,
         orient,
-        arcHeightFactor: getConstantProperty(
-            props.arcHeightFactor,
-            "arcHeightFactor",
-            DEFAULT_GEOMETRY_OPTIONS.arcHeightFactor,
-            options.warn
-        ),
-        minArcHeight: getConstantProperty(
-            props.minArcHeight,
-            "minArcHeight",
-            DEFAULT_GEOMETRY_OPTIONS.minArcHeight,
-            options.warn
-        ),
-        maxChordLength: getConstantProperty(
-            props.maxChordLength,
-            "maxChordLength",
-            DEFAULT_GEOMETRY_OPTIONS.maxChordLength,
-            options.warn
-        ),
-        clampApex: getConstantProperty(
-            props.clampApex,
-            "clampApex",
-            DEFAULT_GEOMETRY_OPTIONS.clampApex,
-            options.warn
-        ),
+        arcHeightFactor: resolveSvgProperty(mark, props.arcHeightFactor),
+        minArcHeight: resolveSvgProperty(mark, props.minArcHeight),
+        maxChordLength: resolveSvgProperty(mark, props.maxChordLength),
+        clampApex: resolveSvgProperty(mark, props.clampApex),
     };
     const { coords, data, group, viewOpacity } = options;
     const encoders =
@@ -137,16 +102,6 @@ function formatSvgPoint(point) {
  * @prop {number} maxChordLength
  * @prop {boolean} clampApex
  */
-
-/** @type {LinkGeometryOptions} */
-const DEFAULT_GEOMETRY_OPTIONS = {
-    shape: "arc",
-    orient: "vertical",
-    arcHeightFactor: 1,
-    minArcHeight: 1.5,
-    maxChordLength: 50000,
-    clampApex: false,
-};
 
 /**
  * Computes the same cubic Bézier control points as the link vertex shader.
@@ -230,24 +185,6 @@ export function getBezierPoints(a, b, viewport, options) {
     } else {
         throw new Error(`Unsupported link shape: ${options.shape}`);
     }
-}
-
-/**
- * @template T
- * @param {T | import("../../spec/parameter.js").ExprRef} value
- * @param {string} name
- * @param {T} fallback
- * @param {(message: string) => void} warn
- * @returns {T}
- */
-function getConstantProperty(value, name, fallback, warn) {
-    if (isExprRef(value)) {
-        warn(
-            `SVG export ignored expression-valued link property "${name}" and used its default.`
-        );
-        return fallback;
-    }
-    return value;
 }
 
 /**

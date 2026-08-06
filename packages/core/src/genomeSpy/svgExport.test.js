@@ -699,6 +699,40 @@ describe("SVG export", () => {
         expect(svg.querySelector("image")).toBeNull();
     });
 
+    test("resolves expression-valued link properties", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "link",
+                linkShape: { expr: "'line'" },
+                orient: { expr: "'horizontal'" },
+                arcHeightFactor: { expr: "2" },
+                minArcHeight: { expr: "3" },
+                maxChordLength: { expr: "100" },
+                clampApex: { expr: "true" },
+                arcFadingDistance: { expr: "false" },
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.5 },
+                y2: { value: 0.5 },
+                color: { value: "black" },
+            },
+        });
+
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 200,
+            logicalHeight: 100,
+            background: null,
+        });
+        const path = svg.querySelector('[data-mark-type="link"] path');
+
+        expect(path?.getAttribute("d")).toBe("M 40 50 C 100 50 100 50 160 50");
+        expect(warnings).toEqual([]);
+    });
+
     test("exports basic forward and reverse arrows as paths", async () => {
         const { view } = await createHeadlessEngine({
             data: {
