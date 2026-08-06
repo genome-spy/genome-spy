@@ -105,10 +105,52 @@ describe("SVG text renderer", () => {
         expect(text?.textContent).toBe("A");
         expect(text?.getAttribute("font-size")).toBe("1");
         expect(text?.getAttribute("text-anchor")).toBe("middle");
-        expect(text?.getAttribute("dominant-baseline")).toBe("central");
+        expect(text?.getAttribute("dy")).toBe("0.3");
         expect(text?.getAttribute("transform")).toBe(
             "translate(60 50) translate(2 -3) scale(40 77.7)"
         );
+        expect(warnings).toEqual([]);
+    });
+
+    test("uses portable numeric baseline offsets", async () => {
+        const baselines = ["top", "middle", "baseline", "bottom"];
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ label: "Text" }] },
+            layer: baselines.map((baseline) => ({
+                mark: {
+                    type: "text",
+                    baseline:
+                        /** @type {"top" | "middle" | "baseline" | "bottom"} */ (
+                            baseline
+                        ),
+                    size: 20,
+                },
+                encoding: {
+                    x: { value: 0.5 },
+                    y: { value: 0.5 },
+                    text: { field: "label" },
+                    color: { value: "black" },
+                },
+            })),
+        });
+
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const texts = Array.from(
+            svg.querySelectorAll('[data-mark-type="text"] text')
+        );
+
+        expect(texts.map((text) => text.getAttribute("dy"))).toEqual([
+            "15.8",
+            "6",
+            "0",
+            "-4.2",
+        ]);
+        expect(svg.querySelector("[dominant-baseline]")).toBeNull();
         expect(warnings).toEqual([]);
     });
 

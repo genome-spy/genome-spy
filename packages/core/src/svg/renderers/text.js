@@ -68,7 +68,9 @@ export function renderTextSvg(baseMark, options) {
         "" + normalizeFontWeight(props.fontWeight ?? "normal")
     );
     group.setAttribute("text-anchor", textAnchors[props.align]);
-    group.setAttribute("dominant-baseline", dominantBaselines[props.baseline]);
+    // Do not use SVG dominant-baseline here. Safari and several vector editors
+    // ignore it (especially when inherited from a group), so each text element
+    // receives an explicit font-size-based dy below.
     const edgeFade = {
         top: {
             width: resolveSvgProperty(mark, props.viewportEdgeFadeWidthTop),
@@ -195,8 +197,8 @@ export function renderTextSvg(baseMark, options) {
             const text = createSvgElement("text", {
                 x: 0,
                 y: 0,
+                dy: getBaselineOffset("middle", 1),
                 "text-anchor": "middle",
-                "dominant-baseline": "central",
                 lengthAdjust: "spacingAndGlyphs",
                 textLength: 1,
                 transform: transforms.join(" "),
@@ -287,7 +289,9 @@ export function renderTextSvg(baseMark, options) {
             x: svgX,
             y: svgY,
             dx: formatSvgNumber(dx),
-            dy: formatSvgNumber(dy),
+            dy: formatSvgNumber(
+                dy + getBaselineOffset(props.baseline, scaledSize)
+            ),
             lengthAdjust: "spacingAndGlyphs",
             textLength: formatSvgNumber(scaledWidth),
             ...encodeStyles(datum),
@@ -495,13 +499,30 @@ const textAnchors = {
     right: "end",
 };
 
-const dominantBaselines = {
-    top: "text-before-edge",
-    middle: "central",
-    bottom: "text-after-edge",
-    alphabetic: "alphabetic",
-    baseline: "alphabetic",
-};
+/**
+ * Approximates Canvas text baselines using only the exported font size. Numeric
+ * offsets are more interoperable than SVG `dominant-baseline`, particularly in
+ * Safari and vector editors. Based on Vega's SVG text offset strategy:
+ * https://github.com/vega/vega/blob/main/packages/vega-scenegraph/src/util/text.js
+ *
+ * @param {keyof typeof baselineValues} baseline
+ * @param {number} fontSize
+ */
+function getBaselineOffset(baseline, fontSize) {
+    switch (baseline) {
+        case "top":
+            return 0.79 * fontSize;
+        case "middle":
+            return 0.3 * fontSize;
+        case "bottom":
+            return -0.21 * fontSize;
+        case "alphabetic":
+        case "baseline":
+            return 0;
+        default:
+            throw new Error(`Unknown text baseline: ${baseline}`);
+    }
+}
 
 const fontWeights = {
     thin: 100,
