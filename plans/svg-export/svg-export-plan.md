@@ -56,10 +56,12 @@ The following features are working:
 - Rules and ticks, including line caps, dash patterns, and minimum lengths.
 - Plain text used by axes, titles, subtitles, and ordinary labels, including
   ranged placement, viewport flushing, padding, squeezing, and `fitToBand`.
-  This includes chromosome labels on locus axes.
+  This includes chromosome labels on locus axes and viewport-edge fading.
 - Rectangles with minimum-size and opacity compensation plus uniform or
   independently rounded corners, including current expression-valued
-  properties and shader-compatible radius clamping.
+  properties, shader-compatible radius clamping, and drop shadows.
+- View background fills, shadows, and strokes, including their configured
+  opacity and z-order relative to view content.
 - All point symbols, including encoded shape, size, angle, and semantic-score
   filtering. Circles and squares use native elements; the other symbols use
   editable paths.
@@ -73,11 +75,11 @@ The following features are working:
   root SVG viewport. Partially visible geometry is retained and clipped.
 - App download through the **Save SVG** toolbar action.
 
-Unsupported point effects, rectangle hatches and shadows, text viewport-edge
-fading and sequence-logo stretching, and link arc fading are ignored when basic
-geometry can still be emitted, and the export result includes view-qualified
-warnings. Unsupported mark types and sample facets remain errors because export
-cannot yet meaningfully continue past them.
+Unsupported point effects, rectangle hatches, sequence-logo stretching, and
+link arc fading are ignored when basic geometry can still be emitted, and the
+export result includes view-qualified warnings. Unsupported mark types and
+sample facets remain errors because export cannot yet meaningfully continue
+past them.
 
 ## Implementation principles
 
@@ -98,10 +100,9 @@ cannot yet meaningfully continue past them.
 These features remain desirable but are not the next low-hanging increments:
 
 - Rectangle hatches using reusable SVG `<pattern>` definitions.
-- Rectangle shadows using SVG filters.
 - Link arc fading using SVG masks or gradients.
 - Point gradients and inward strokes.
-- Text viewport-edge fading and sequence-logo letters.
+- Sequence-logo letters.
 - Sample-facet placement.
 - SVG size and export-time diagnostics for very dense vector output.
 
