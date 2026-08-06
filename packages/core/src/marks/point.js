@@ -17,6 +17,7 @@ import { fixFill, fixStroke } from "./markUtils.js";
 import { createSvgElement } from "../view/renderingContext/svgViewRenderingContext.js";
 import {
     encodeNumber,
+    encodePosition,
     encodeString,
     projectX,
     projectY,
@@ -355,13 +356,13 @@ export default class PointMark extends Mark {
             const circle = createSvgElement("circle", {
                 cx: projectX(
                     coords,
-                    encodeNumber(encoders.x, datum),
+                    encodePosition(encoders.x, datum),
                     encodeNumber(encoders.xOffset, datum) +
                         encodeNumber(encoders.dx, datum)
                 ),
                 cy: projectY(
                     coords,
-                    encodeNumber(encoders.y, datum),
+                    encodePosition(encoders.y, datum),
                     encodeNumber(encoders.yOffset, datum) -
                         encodeNumber(encoders.dy, datum)
                 ),

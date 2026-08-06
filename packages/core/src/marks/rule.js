@@ -15,6 +15,7 @@ import { fixRuleLikeEncoding } from "./ruleLikeEncoding.js";
 import { createSvgElement } from "../view/renderingContext/svgViewRenderingContext.js";
 import {
     encodeNumber,
+    encodePosition,
     encodeString,
     projectX,
     projectY,
@@ -232,16 +233,24 @@ export default class RuleMark extends Mark {
                 ? encodeNumber(encoders.y2Offset, datum)
                 : yOffset;
             const attributes = {
-                x1: projectX(coords, encodeNumber(encoders.x, datum), xOffset),
-                y1: projectY(coords, encodeNumber(encoders.y, datum), yOffset),
+                x1: projectX(
+                    coords,
+                    encodePosition(encoders.x, datum),
+                    xOffset
+                ),
+                y1: projectY(
+                    coords,
+                    encodePosition(encoders.y, datum),
+                    yOffset
+                ),
                 x2: projectX(
                     coords,
-                    encodeNumber(encoders.x2, datum),
+                    encodePosition(encoders.x2, datum),
                     x2Offset
                 ),
                 y2: projectY(
                     coords,
-                    encodeNumber(encoders.y2, datum),
+                    encodePosition(encoders.y2, datum),
                     y2Offset
                 ),
                 stroke: encodeString(encoders.color, datum),

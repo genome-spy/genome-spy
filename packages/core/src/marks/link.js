@@ -7,7 +7,7 @@ import { LinkVertexBuilder } from "../gl/dataToVertices.js";
 import Mark from "./mark.js";
 import { isChannelDefWithScale } from "../encoder/encoder.js";
 import { createSvgElement } from "../view/renderingContext/svgViewRenderingContext.js";
-import { encodeNumber, encodeString } from "./svgMarkUtils.js";
+import { encodeNumber, encodePosition, encodeString } from "./svgMarkUtils.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 const LINK_SHAPES = ["arc", "dome", "diagonal", "line"];
@@ -307,15 +307,15 @@ export default class LinkMark extends Mark {
             const xOffset = encodeNumber(encoders.xOffset, datum);
             const yOffset = encodeNumber(encoders.yOffset, datum);
             const a = [
-                encodeNumber(encoders.x, datum) * coords.width + xOffset,
-                encodeNumber(encoders.y, datum) * coords.height - yOffset,
+                encodePosition(encoders.x, datum) * coords.width + xOffset,
+                encodePosition(encoders.y, datum) * coords.height - yOffset,
             ];
             const b = [
-                encodeNumber(encoders.x2, datum) * coords.width +
+                encodePosition(encoders.x2, datum) * coords.width +
                     (encoders.x2Offset
                         ? encodeNumber(encoders.x2Offset, datum)
                         : xOffset),
-                encodeNumber(encoders.y2, datum) * coords.height -
+                encodePosition(encoders.y2, datum) * coords.height -
                     (encoders.y2Offset
                         ? encodeNumber(encoders.y2Offset, datum)
                         : yOffset),

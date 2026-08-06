@@ -16,7 +16,12 @@ import { fixCoveragePositional, fixHalfOpenRangedText } from "./markUtils.js";
 import { primaryPositionalChannels } from "../encoder/encoder.js";
 import { requestFont } from "../fonts/textMetrics.js";
 import { createSvgElement } from "../view/renderingContext/svgViewRenderingContext.js";
-import { encodeNumber, projectX, projectY } from "./svgMarkUtils.js";
+import {
+    encodeNumber,
+    encodePosition,
+    projectX,
+    projectY,
+} from "./svgMarkUtils.js";
 
 /** For GLSL uniforms */
 const alignments = {
@@ -294,12 +299,12 @@ export default class TextMark extends Mark {
 
             const x = projectX(
                 coords,
-                encodeNumber(encoders.x, datum),
+                encodePosition(encoders.x, datum),
                 encodeNumber(encoders.xOffset, datum)
             );
             const y = projectY(
                 coords,
-                encodeNumber(encoders.y, datum),
+                encodePosition(encoders.y, datum),
                 encodeNumber(encoders.yOffset, datum)
             );
             const size = encodeNumber(encoders.size, datum);

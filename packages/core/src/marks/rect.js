@@ -18,6 +18,7 @@ import { cssColorToArray } from "../gl/colorUtils.js";
 import { createSvgElement } from "../view/renderingContext/svgViewRenderingContext.js";
 import {
     encodeNumber,
+    encodePosition,
     encodeString,
     projectX,
     projectY,
@@ -319,22 +320,22 @@ export default class RectMark extends Mark {
                 : yOffset;
             const x1 = projectX(
                 coords,
-                encodeNumber(encoders.x, datum),
+                encodePosition(encoders.x, datum),
                 xOffset
             );
             const x2 = projectX(
                 coords,
-                encodeNumber(encoders.x2, datum),
+                encodePosition(encoders.x2, datum),
                 x2Offset
             );
             const y1 = projectY(
                 coords,
-                encodeNumber(encoders.y, datum),
+                encodePosition(encoders.y, datum),
                 yOffset
             );
             const y2 = projectY(
                 coords,
-                encodeNumber(encoders.y2, datum),
+                encodePosition(encoders.y2, datum),
                 y2Offset
             );
             const rect = createSvgElement("rect", {

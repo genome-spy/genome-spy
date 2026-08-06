@@ -219,6 +219,25 @@ describe("SVG export", () => {
         expect(
             svg.querySelectorAll('[data-mark-type="rect"] rect')
         ).toHaveLength(9);
+        const rects = Array.from(
+            svg.querySelectorAll('[data-mark-type="rect"] rect')
+        );
+        const labels = Array.from(
+            svg
+                .querySelector('[data-view-name="Label"]')
+                .querySelectorAll('[data-mark-type="text"] text')
+        );
+        // Rect coverage uses the band edges while point-like text uses its center.
+        expect(rects.every((rect) => +rect.getAttribute("width") > 0)).toBe(
+            true
+        );
+        expect(labels).toHaveLength(rects.length);
+        for (let i = 0; i < rects.length; i++) {
+            const rect = rects[i];
+            const expectedCenter =
+                +rect.getAttribute("x") + +rect.getAttribute("width") / 2;
+            expect(+labels[i].getAttribute("x")).toBeCloseTo(expectedCenter);
+        }
         expect(textValues).toEqual(expect.arrayContaining(["28", "55", "91"]));
         expect(svg.querySelector('[data-view-name="Bar"]')).not.toBeNull();
         expect(svg.querySelector('[data-view-name="Label"]')).not.toBeNull();
