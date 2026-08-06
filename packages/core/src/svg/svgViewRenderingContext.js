@@ -31,7 +31,13 @@ import { formatSvgNumber } from "./svgNumber.js";
  * @prop {SVGGElement} group
  * @prop {import("./svgBounds.js").SvgBounds} visibleBounds
  * @prop {number} viewOpacity
+ * @prop {(fade: SvgViewportEdgeFade) => string | undefined} getViewportEdgeFadeMaskUrl
  * @prop {(message: string) => void} warn
+ */
+
+/**
+ * @typedef {{width: number, distance: number}} SvgViewportEdgeFadeSide
+ * @typedef {{top: SvgViewportEdgeFadeSide, right: SvgViewportEdgeFadeSide, bottom: SvgViewportEdgeFadeSide, left: SvgViewportEdgeFadeSide}} SvgViewportEdgeFade
  */
 
 /**
@@ -50,11 +56,15 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     /** @type {Map<string, string>} */
     #clipPaths = new Map();
 
+    /** @type {WeakMap<import("../view/view.js").default, string>} */
+    #edgeFadeMasks = new WeakMap();
+
     /** @type {Set<string>} */
     #warnings = new Set();
 
     #nextViewId = 0;
     #nextClipId = 0;
+    #nextMaskId = 0;
 
     /**
      * @param {import("../types/rendering.js").GlobalRenderingOptions} globalOptions
@@ -154,6 +164,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             group,
             visibleBounds,
             viewOpacity: mark.unitView.getEffectiveOpacity(),
+            getViewportEdgeFadeMaskUrl: (fade) =>
+                this.getViewportEdgeFadeMaskUrl(fade),
             warn: (message) =>
                 this.#warnings.add(
                     `${message} View: ${mark.unitView.getPathString()}`
@@ -206,6 +218,74 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         return `url(#${id})`;
     }
 
+    /**
+     * Returns a mask that applies the text mark's viewport-edge fades. The mask
+     * is cached by view because its geometry is independent of mark instances.
+     *
+     * @param {SvgViewportEdgeFade} fade
+     * @returns {string | undefined}
+     */
+    getViewportEdgeFadeMaskUrl(fade) {
+        const activeEdges = Object.entries(fade).filter(
+            ([, side]) => side.width > 0 && Number.isFinite(side.distance)
+        );
+        if (!activeEdges.length) {
+            return undefined;
+        }
+
+        const entry = peek(this.#viewStack);
+        if (!entry) {
+            throw new Error("No current view in SVG rendering context.");
+        }
+
+        let id = this.#edgeFadeMasks.get(entry.view);
+        if (!id) {
+            id = "edge-fade-" + this.#nextMaskId++;
+            const width = formatSvgNumber(this.width);
+            const height = formatSvgNumber(this.height);
+            const mask = createSvgElement("mask", {
+                id,
+                x: 0,
+                y: 0,
+                width,
+                height,
+                maskUnits: "userSpaceOnUse",
+                maskContentUnits: "userSpaceOnUse",
+                "mask-type": "luminance",
+            });
+            mask.appendChild(
+                createSvgElement("rect", {
+                    width,
+                    height,
+                    fill: "white",
+                })
+            );
+
+            for (const [edge, side] of activeEdges) {
+                const gradientId = id + "-" + edge;
+                const gradient = createEdgeFadeGradient(
+                    gradientId,
+                    /** @type {"top" | "right" | "bottom" | "left"} */ (edge),
+                    side,
+                    entry.coords
+                );
+                this.#defs.appendChild(gradient);
+                mask.appendChild(
+                    createSvgElement("rect", {
+                        width,
+                        height,
+                        fill: `url(#${gradientId})`,
+                    })
+                );
+            }
+
+            this.#defs.appendChild(mask);
+            this.#edgeFadeMasks.set(entry.view, id);
+        }
+
+        return `url(#${id})`;
+    }
+
     /** @returns {SVGSVGElement} */
     getSvg() {
         return this.#svg;
@@ -234,4 +314,51 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         }
         return entry.coords;
     }
+}
+
+/**
+ * The opaque black end of the gradient erases the white mask, while the
+ * transparent end leaves it unchanged. Gradient padding extends the fade
+ * beyond the viewport edge when a negative distance is configured.
+ *
+ * @param {string} id
+ * @param {"top" | "right" | "bottom" | "left"} edge
+ * @param {SvgViewportEdgeFadeSide} side
+ * @param {import("../view/layout/rectangle.js").default} coords
+ */
+function createEdgeFadeGradient(id, edge, side, coords) {
+    const zero =
+        edge == "top"
+            ? coords.y + side.distance
+            : edge == "right"
+              ? coords.x2 - side.distance
+              : edge == "bottom"
+                ? coords.y2 - side.distance
+                : coords.x + side.distance;
+    const horizontal = edge == "left" || edge == "right";
+    const direction = edge == "top" || edge == "left" ? 1 : -1;
+    const one = zero + direction * side.width;
+    const gradient = createSvgElement("linearGradient", {
+        id,
+        gradientUnits: "userSpaceOnUse",
+        x1: formatSvgNumber(horizontal ? zero : 0),
+        y1: formatSvgNumber(horizontal ? 0 : zero),
+        x2: formatSvgNumber(horizontal ? one : 0),
+        y2: formatSvgNumber(horizontal ? 0 : one),
+    });
+    gradient.appendChild(
+        createSvgElement("stop", {
+            offset: 0,
+            "stop-color": "black",
+            "stop-opacity": 1,
+        })
+    );
+    gradient.appendChild(
+        createSvgElement("stop", {
+            offset: 1,
+            "stop-color": "black",
+            "stop-opacity": 0,
+        })
+    );
+    return gradient;
 }

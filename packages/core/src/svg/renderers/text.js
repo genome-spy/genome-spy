@@ -27,11 +27,6 @@ export function renderTextSvg(baseMark, options) {
             "SVG export ignored unsupported sequence-logo text stretching."
         );
     }
-    if (hasViewportEdgeFade(mark)) {
-        options.warn(
-            "SVG export ignored unsupported text viewport-edge fading."
-        );
-    }
 
     const paddingX = resolveSvgProperty(mark, props.paddingX);
     const paddingY = resolveSvgProperty(mark, props.paddingY);
@@ -70,6 +65,36 @@ export function renderTextSvg(baseMark, options) {
     );
     group.setAttribute("text-anchor", textAnchors[props.align]);
     group.setAttribute("dominant-baseline", dominantBaselines[props.baseline]);
+    const edgeFade = {
+        top: {
+            width: resolveSvgProperty(mark, props.viewportEdgeFadeWidthTop),
+            distance: resolveSvgProperty(
+                mark,
+                props.viewportEdgeFadeDistanceTop
+            ),
+        },
+        right: {
+            width: resolveSvgProperty(mark, props.viewportEdgeFadeWidthRight),
+            distance: resolveSvgProperty(
+                mark,
+                props.viewportEdgeFadeDistanceRight
+            ),
+        },
+        bottom: {
+            width: resolveSvgProperty(mark, props.viewportEdgeFadeWidthBottom),
+            distance: resolveSvgProperty(
+                mark,
+                props.viewportEdgeFadeDistanceBottom
+            ),
+        },
+        left: {
+            width: resolveSvgProperty(mark, props.viewportEdgeFadeWidthLeft),
+            distance: resolveSvgProperty(
+                mark,
+                props.viewportEdgeFadeDistanceLeft
+            ),
+        },
+    };
 
     for (const datum of data) {
         const value = numberFormat(encoders.text(datum));
@@ -194,6 +219,13 @@ export function renderTextSvg(baseMark, options) {
             );
         }
         group.appendChild(text);
+    }
+
+    if (group.childElementCount > 0) {
+        const edgeFadeMaskUrl = options.getViewportEdgeFadeMaskUrl(edgeFade);
+        if (edgeFadeMaskUrl) {
+            group.setAttribute("mask", edgeFadeMaskUrl);
+        }
     }
 }
 
@@ -356,17 +388,6 @@ function fixRangeAlign(align, baseline, angle) {
 /** @param {number} edge0 @param {number} edge1 @param {number} value */
 function linearstep(edge0, edge1, value) {
     return Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
-}
-
-/** @param {import("../../marks/text.js").default} mark */
-function hasViewportEdgeFade(mark) {
-    const p = mark.properties;
-    return [
-        p.viewportEdgeFadeWidthTop,
-        p.viewportEdgeFadeWidthRight,
-        p.viewportEdgeFadeWidthBottom,
-        p.viewportEdgeFadeWidthLeft,
-    ].some((value) => resolveSvgProperty(mark, value) > 0);
 }
 
 const alignmentValues = {

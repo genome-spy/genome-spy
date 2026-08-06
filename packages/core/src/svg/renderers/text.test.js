@@ -71,4 +71,57 @@ describe("SVG text renderer", () => {
         ]);
         expect(warnings).toEqual([]);
     });
+
+    test("reuses one viewport-edge fade mask for all text in a view", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: 0.1, label: "Left" },
+                    { x: 0.9, label: "Right" },
+                ],
+            },
+            mark: {
+                type: "text",
+                viewportEdgeFadeWidthLeft: 20,
+                viewportEdgeFadeDistanceLeft: -5,
+                viewportEdgeFadeWidthRight: 20,
+                viewportEdgeFadeDistanceRight: -10,
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                y: { value: 0.5 },
+                text: { field: "label" },
+                color: { value: "black" },
+            },
+        });
+
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 50,
+            background: null,
+        });
+        const textGroup = svg.querySelector('[data-mark-type="text"]');
+        const mask = svg.querySelector("mask");
+        const gradients = Array.from(svg.querySelectorAll("linearGradient"));
+
+        expect(
+            svg.querySelectorAll('[data-mark-type="text"] text')
+        ).toHaveLength(2);
+        expect(svg.querySelectorAll("mask")).toHaveLength(1);
+        expect(textGroup?.getAttribute("mask")).toBe(
+            `url(#${mask?.getAttribute("id")})`
+        );
+        expect(gradients).toHaveLength(2);
+        expect(
+            gradients.map((gradient) => [
+                gradient.getAttribute("x1"),
+                gradient.getAttribute("x2"),
+            ])
+        ).toEqual([
+            ["110", "90"],
+            ["-5", "15"],
+        ]);
+        expect(warnings).toEqual([]);
+    });
 });

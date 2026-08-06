@@ -53,7 +53,12 @@ describe("SVG example exports", () => {
         expect(+chromosomeLabels[1].getAttribute("x")).toBeGreaterThan(
             +chromosomeLabels[0].getAttribute("x")
         );
-        expect(warnings.join(" ")).toContain("viewport-edge fading");
+        expect(
+            chromosomeLabels[0]
+                .closest('[data-mark-type="text"]')
+                ?.getAttribute("mask")
+        ).toMatch(/^url\(#edge-fade-\d+\)$/);
+        expect(warnings).toEqual([]);
     });
 
     test("exports a titled point plot with generated axes", async () => {
