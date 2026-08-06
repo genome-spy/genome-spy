@@ -55,6 +55,7 @@
     "lint": "eslint packages/*/src/",
     "test": "vitest run",
     "start": "npm -w @genome-spy/app run dev",
+    "smoke:examples": "npm -w @genome-spy/core run smoke:examples",
     "pretty-quick": "pretty-quick",
     "prepare": "husky install",
     "pre-commit": "lint-staged",

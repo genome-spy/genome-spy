@@ -3,7 +3,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { spawn } from "child_process";
 
-const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const scriptPath = fileURLToPath(import.meta.url);
+const scriptDir = path.dirname(scriptPath);
 const packageDir = path.resolve(scriptDir, "..");
 const repoRoot = path.resolve(packageDir, "..", "..");
 const examplesDir = path.join(repoRoot, "examples");
@@ -13,9 +14,7 @@ const healthCheckPath = "/__health";
 const defaultLazyDataTimeoutMs = 30_000;
 const screenshotHarnessTimeoutPaddingMs = 60_000;
 
-const excludedExamples = new Set([
-    "examples/core/app/samples.json",
-]);
+const excludedExamples = new Set(["examples/core/app/samples.json"]);
 
 const helpText = `Usage:
   node packages/core/scripts/captureScreenshots.mjs [examples/...json ...]
@@ -23,6 +22,7 @@ const helpText = `Usage:
 
 Options:
   --all                 Capture all curated examples under examples/core and examples/docs.
+  --check               Initialize and render examples without writing screenshots.
   --server-url URL      Use an already running server instead of launching packages/core/dev-server.mjs.
   --timeout-ms NUMBER   Max time to wait for visible lazy data before failing the example.
   --overwrite           Overwrite existing sibling .png files.
@@ -30,13 +30,14 @@ Options:
 
 Notes:
   - Screenshots are written next to their source specs as sibling .png files.
+  - Check mode visits examples even when a sibling screenshot already exists.
   - The script excludes app-only examples for now.
   - Remote lazy-data examples require network access during capture.
   - Explicitly listed examples overwrite by default. Batch runs skip existing screenshots unless --overwrite is provided.
 `;
 
-async function main() {
-    const options = parseArgs(process.argv.slice(2));
+export async function main(args = process.argv.slice(2)) {
+    const options = parseArgs(args);
 
     if (options.help) {
         console.log(helpText);
@@ -75,43 +76,55 @@ async function main() {
         try {
             const page = await browser.newPage();
             let currentExamplePath = "";
+            /** @type {string[]} */
+            let browserFailures = [];
             page.on("console", (message) => {
                 const type = message.type();
                 if (type === "error" || type === "warning") {
-                    console.error(
-                        `[${currentExamplePath}] [browser:${type}] ${message.text()}`
-                    );
+                    const detail = `[browser:${type}] ${message.text()}`;
+                    console.error(`[${currentExamplePath}] ${detail}`);
+                    if (type === "error") {
+                        browserFailures.push(detail);
+                    }
                 }
             });
             page.on("response", (response) => {
                 if (response.status() >= 400) {
-                    console.error(
-                        `[${currentExamplePath}] [browser:http ${response.status()}] ${response.url()}`
-                    );
+                    const detail = `[browser:http ${response.status()}] ${response.url()}`;
+                    console.error(`[${currentExamplePath}] ${detail}`);
+                    browserFailures.push(detail);
                 }
             });
             page.on("pageerror", (error) => {
-                console.error(
-                    `[${currentExamplePath}] [browser:pageerror] ${error.message}`
-                );
+                const detail = `[browser:pageerror] ${error.message}`;
+                console.error(`[${currentExamplePath}] ${detail}`);
+                browserFailures.push(detail);
             });
 
             /** @type {{ examplePath: string, message: string }[]} */
             const failures = [];
             let writtenCount = 0;
+            let checkedCount = 0;
             let skippedExistingCount = 0;
             for (const examplePath of examplePaths) {
                 currentExamplePath = examplePath;
+                browserFailures = [];
                 try {
                     const result = await captureExample(
                         page,
                         serverOrigin,
                         examplePath,
                         options.timeoutMs,
-                        overwrite
+                        overwrite,
+                        options.check
                     );
+                    if (browserFailures.length) {
+                        throw new Error(browserFailures.join("\n"));
+                    }
                     if (result === "written") {
                         writtenCount += 1;
+                    } else if (result === "checked") {
+                        checkedCount += 1;
                     } else if (result === "skipped") {
                         skippedExistingCount += 1;
                     }
@@ -123,6 +136,12 @@ async function main() {
                 }
             }
 
+            if (options.check && !failures.length) {
+                console.log(
+                    `Smoke-checked ${checkedCount} example${checkedCount === 1 ? "" : "s"}.`
+                );
+            }
+
             if (!writtenCount && skippedExistingCount) {
                 console.log(
                     "No screenshots were written because all selected outputs already exist. " +
@@ -131,7 +150,9 @@ async function main() {
             }
 
             if (failures.length) {
-                console.error("\nScreenshot capture failures:");
+                console.error(
+                    `\n${options.check ? "Example smoke-check" : "Screenshot capture"} failures:`
+                );
                 for (const failure of failures) {
                     console.error(
                         `- ${failure.examplePath}: ${failure.message}`
@@ -155,7 +176,9 @@ function normalizeRequestedPaths(examplePaths) {
     return examplePaths
         .map((examplePath) => examplePath.replace(/\\/g, "/"))
         .map((examplePath) =>
-            examplePath.startsWith("examples/") ? examplePath : `examples/${examplePath}`
+            examplePath.startsWith("examples/")
+                ? examplePath
+                : `examples/${examplePath}`
         )
         .filter((examplePath) => {
             if (excludedExamples.has(examplePath)) {
@@ -216,17 +239,19 @@ function visit(dir, visitor) {
  * @param {string} examplePath
  * @param {number} timeoutMs
  * @param {boolean} overwrite
- * @returns {Promise<"written" | "skipped">}
+ * @param {boolean} check
+ * @returns {Promise<"checked" | "written" | "skipped">}
  */
 async function captureExample(
     page,
     serverOrigin,
     examplePath,
     timeoutMs,
-    overwrite
+    overwrite,
+    check
 ) {
     const outputPath = getOutputPath(examplePath);
-    if (!overwrite && fs.existsSync(outputPath)) {
+    if (!check && !overwrite && fs.existsSync(outputPath)) {
         console.log(`Skipping existing ${examplePath}`);
         return "skipped";
     }
@@ -236,7 +261,7 @@ async function captureExample(
     harnessUrl.searchParams.set("spec", specUrl);
     harnessUrl.searchParams.set("lazy-timeout-ms", String(timeoutMs));
 
-    console.log(`Capturing ${examplePath}`);
+    console.log(`${check ? "Checking" : "Capturing"} ${examplePath}`);
     await page.goto(harnessUrl.toString(), { waitUntil: "load" });
     try {
         await page.waitForFunction(
@@ -278,6 +303,10 @@ async function captureExample(
                 state.error || state.detail
             }`
         );
+    }
+
+    if (check) {
+        return "checked";
     }
 
     const capture = await page.evaluate(async () => {
@@ -394,8 +423,9 @@ async function loadPlaywright() {
 /**
  * @param {string[]} args
  */
-function parseArgs(args) {
+export function parseArgs(args) {
     const options = {
+        check: false,
         help: false,
         examplePaths: [],
         serverUrl: undefined,
@@ -409,6 +439,8 @@ function parseArgs(args) {
             options.help = true;
         } else if (arg === "--all") {
             // `--all` is implicit when no positional paths are provided.
+        } else if (arg === "--check") {
+            options.check = true;
         } else if (arg === "--overwrite") {
             options.overwrite = true;
         } else if (arg === "--server-url") {
@@ -436,10 +468,18 @@ function parseArgs(args) {
         }
     }
 
+    if (options.check && options.overwrite) {
+        throw new Error(
+            'Options "--check" and "--overwrite" cannot be combined.'
+        );
+    }
+
     return options;
 }
 
-await main().catch((error) => {
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exitCode = 1;
-});
+if (path.resolve(process.argv[1] ?? "") === scriptPath) {
+    await main().catch((error) => {
+        console.error(error instanceof Error ? error.message : String(error));
+        process.exitCode = 1;
+    });
+}

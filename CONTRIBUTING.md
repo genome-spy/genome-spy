@@ -76,6 +76,16 @@ are especially welcome and needed. Tests can be run with:
 npm run test
 ```
 
+Before a release, smoke-test all curated examples in headless Chromium:
+
+```sh
+npm run smoke:examples
+```
+
+The check resolves imports, loads data, and waits for rendering to settle. It
+does not write screenshots. Network access is required by examples that use
+remote data.
+
 ## How to Contribute
 
 Before making contributions, please familiarize yourself with the following
