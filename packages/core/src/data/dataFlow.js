@@ -141,6 +141,8 @@ export default class DataFlow {
      * @param {import("./flowNode.js").Datum[]} [data]
      */
     updateNamedDataBinding(binding, data) {
+        binding.beginUpdate();
+
         if (data === undefined) {
             binding.resetData();
         } else {

@@ -189,6 +189,11 @@ export interface MoveViewOptions {
  *
  * The dataset must be declared in the owner's `datasets` property.
  */
+export interface BinaryDatasetFormat {
+    /** Binary serialization format. */
+    type: "arrow" | "parquet";
+}
+
 export interface DatasetApi {
     /**
      * Replaces a named dataset declared by the associated owner.
@@ -196,6 +201,20 @@ export interface DatasetApi {
      * Descendant views that resolve the declaration receive the updated data.
      */
     set: <T = unknown>(name: string, data: T[]) => void;
+
+    /**
+     * Decodes an in-memory binary payload and replaces a named dataset declared
+     * by the associated owner.
+     *
+     * If loads overlap, only the most recently started dataset operation is
+     * applied. The promise resolves after dataflow propagation and render
+     * scheduling, but does not wait for the next animation frame.
+     */
+    load: (
+        name: string,
+        data: ArrayBuffer | ArrayBufferView,
+        format: BinaryDatasetFormat
+    ) => Promise<void>;
 
     /**
      * Restores a named dataset declared by the associated owner to its configured

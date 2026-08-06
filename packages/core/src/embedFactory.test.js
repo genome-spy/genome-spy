@@ -88,8 +88,43 @@ describe("embed factory", () => {
         expect(api.views.root().name).toBe("root");
         expect(api.datasets).toMatchObject({
             set: expect.any(Function),
+            load: expect.any(Function),
             reset: expect.any(Function),
         });
+    });
+
+    test("invalidates dataset operations when finalized", async () => {
+        /** @type {any} */
+        const viewRoot = {
+            explicitName: "root",
+            name: "root",
+            layoutParent: undefined,
+            getDescendants: () => [viewRoot],
+            children: [],
+        };
+
+        class ViewGenomeSpy extends MockGenomeSpy {
+            /**
+             * @param {HTMLElement} element
+             * @param {any} spec
+             */
+            constructor(element, spec) {
+                super(element, spec);
+                this.viewRoot = viewRoot;
+            }
+        }
+
+        const embed = createEmbed(/** @type {any} */ (ViewGenomeSpy));
+        const element = document.createElement("div");
+        const api = await embed(element, /** @type {any} */ ({}));
+
+        api.finalize();
+
+        await expect(
+            api.datasets.load("values", new ArrayBuffer(0), {
+                type: "arrow",
+            })
+        ).rejects.toMatchObject({ code: "staleEmbed" });
     });
 
     test("exposes debug hooks for developer tooling", async () => {

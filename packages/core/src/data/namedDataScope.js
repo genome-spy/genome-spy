@@ -16,6 +16,7 @@ export class NamedDataBinding {
     #override;
 
     #hasOverride = false;
+    #updateGeneration = 0;
     #disposed = false;
 
     /**
@@ -31,6 +32,23 @@ export class NamedDataBinding {
 
     get disposed() {
         return this.#disposed;
+    }
+
+    /**
+     * Claims the next runtime update generation.
+     */
+    beginUpdate() {
+        if (this.#disposed) {
+            throw new Error(`Named dataset "${this.name}" has been disposed.`);
+        }
+        return ++this.#updateGeneration;
+    }
+
+    /**
+     * @param {number} generation
+     */
+    isCurrentUpdate(generation) {
+        return !this.#disposed && generation === this.#updateGeneration;
     }
 
     /**
@@ -73,6 +91,7 @@ export class NamedDataBinding {
     dispose() {
         this.#override = undefined;
         this.#hasOverride = false;
+        this.#updateGeneration++;
         this.#disposed = true;
     }
 }

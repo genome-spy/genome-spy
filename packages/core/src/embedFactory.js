@@ -21,6 +21,9 @@ export function createEmbed(GenomeSpy) {
      * @returns {Promise<import("./types/embedApi.js").EmbedResult>}
      */
     return async function embed(el, spec, options = {}) {
+        let active = true;
+        const isActive = () => active;
+
         /** @type {HTMLElement} */
         let element;
 
@@ -63,10 +66,11 @@ export function createEmbed(GenomeSpy) {
         }
 
         return {
-            views: createViewMutationApi(genomeSpy),
-            datasets: createTopLevelDatasetApi(genomeSpy),
+            views: createViewMutationApi(genomeSpy, isActive),
+            datasets: createTopLevelDatasetApi(genomeSpy, isActive),
 
             finalize() {
+                active = false;
                 genomeSpy.destroy();
                 while (element.firstChild) {
                     element.firstChild.remove();

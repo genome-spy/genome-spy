@@ -20,12 +20,29 @@ async function loadParquetReadObjects() {
  */
 export default async function parquet(data) {
     const parquetReadObjects = await loadParquetReadObjects();
-    const buffer =
-        data instanceof Uint8Array
-            ? /** @type {ArrayBuffer} */ (data.buffer)
-            : data;
+    const buffer = data instanceof Uint8Array ? getExactBuffer(data) : data;
 
     return await parquetReadObjects({ file: buffer });
+}
+
+/**
+ * Returns an ArrayBuffer containing exactly the bytes addressed by the view.
+ *
+ * @param {Uint8Array} data
+ * @returns {ArrayBuffer}
+ */
+function getExactBuffer(data) {
+    if (
+        data.buffer instanceof ArrayBuffer &&
+        data.byteOffset === 0 &&
+        data.byteLength === data.buffer.byteLength
+    ) {
+        return data.buffer;
+    } else {
+        const copy = new Uint8Array(data.byteLength);
+        copy.set(data);
+        return copy.buffer;
+    }
 }
 
 parquet.responseType = "arrayBuffer";

@@ -13,6 +13,7 @@ import {
 } from "./viewSelectors.js";
 import { getViewIdentityRegistry } from "./viewIdentityRegistry.js";
 import { getTopLevelSpecView } from "./viewFactory.js";
+import { readBinaryData } from "../data/formats/readBinary.js";
 
 /**
  * Error thrown by the public view mutation API.
@@ -21,9 +22,10 @@ export class ViewMutationError extends Error {
     /**
      * @param {string} code
      * @param {string} message
+     * @param {ErrorOptions} [options]
      */
-    constructor(code, message) {
-        super(message);
+    constructor(code, message, options) {
+        super(message, options);
         this.name = "ViewMutationError";
 
         /**
@@ -38,35 +40,103 @@ export class ViewMutationError extends Error {
  * specification.
  *
  * @param {{ viewRoot: import("./view.js").default }} genomeSpy
+ * @param {() => boolean} [isActive]
  * @returns {import("../types/embedApi.js").DatasetApi}
  */
-export function createTopLevelDatasetApi(genomeSpy) {
+export function createTopLevelDatasetApi(genomeSpy, isActive) {
     const getRootView = () => genomeSpy.viewRoot;
     return createViewDatasetApi(
         () => getTopLevelSpecView(getRootView()),
-        getRootView
+        getRootView,
+        isActive
     );
 }
 
 /**
  * @param {() => import("./view.js").default} getOwnerView
  * @param {() => import("./view.js").default} getRootView
+ * @param {() => boolean} [isActive]
  * @returns {import("../types/embedApi.js").DatasetApi}
  */
-function createViewDatasetApi(getOwnerView, getRootView) {
+function createViewDatasetApi(
+    getOwnerView,
+    getRootView,
+    isActive = () => true
+) {
     return {
         set(name, data) {
+            ensureDatasetApiIsActive(isActive);
             const owner = getOwnerView();
             const binding = getOwnedNamedDataBinding(owner, name, getRootView);
             updateNamedDataBinding(owner, binding, data);
         },
 
+        async load(name, data, format) {
+            ensureDatasetApiIsActive(isActive);
+            const owner = getOwnerView();
+            const binding = getOwnedNamedDataBinding(owner, name, getRootView);
+            const generation = binding.beginUpdate();
+            const formatType = format?.type ?? "unknown";
+            const checkCurrentLoad = () => {
+                ensureDatasetApiIsActive(isActive);
+                const currentBinding = getOwnedNamedDataBinding(
+                    owner,
+                    name,
+                    getRootView
+                );
+                return (
+                    currentBinding === binding &&
+                    binding.isCurrentUpdate(generation)
+                );
+            };
+
+            let rows;
+            try {
+                rows = await readBinaryData(data, format);
+            } catch (error) {
+                if (!checkCurrentLoad()) {
+                    return;
+                }
+                throw new ViewMutationError(
+                    "datasetLoadFailed",
+                    `Cannot load named dataset "${name}" as ${formatType}: ${getErrorMessage(error)}`,
+                    { cause: error }
+                );
+            }
+
+            if (!checkCurrentLoad()) {
+                return;
+            }
+
+            updateNamedDataBinding(owner, binding, rows);
+        },
+
         reset(name) {
+            ensureDatasetApiIsActive(isActive);
             const owner = getOwnerView();
             const binding = getOwnedNamedDataBinding(owner, name, getRootView);
             updateNamedDataBinding(owner, binding);
         },
     };
+}
+
+/**
+ * @param {() => boolean} isActive
+ */
+function ensureDatasetApiIsActive(isActive) {
+    if (!isActive()) {
+        throw new ViewMutationError(
+            "staleEmbed",
+            "Cannot update named data through a finalized embed."
+        );
+    }
+}
+
+/**
+ * @param {unknown} error
+ */
+function getErrorMessage(error) {
+    return error instanceof Error ? error.message : String(error);
 }
 
 /**
@@ -146,9 +216,10 @@ function updateNamedDataBinding(view, binding, data) {
  * Creates the public view hierarchy API for a GenomeSpy instance.
  *
  * @param {{ viewRoot: import("./view.js").default }} genomeSpy
+ * @param {() => boolean} [isActive]
  * @returns {import("../types/embedApi.js").ViewApi}
  */
-export function createViewMutationApi(genomeSpy) {
+export function createViewMutationApi(genomeSpy, isActive) {
     /**
      * @typedef {import("../types/embedApi.js").ViewAddress} ViewAddress
      * @typedef {import("../types/embedApi.js").ViewHandle} ViewHandle
@@ -253,7 +324,7 @@ export function createViewMutationApi(genomeSpy) {
                 return children.map((child) => getHandle(child));
             },
 
-            datasets: createViewDatasetApi(() => view, getRootView),
+            datasets: createViewDatasetApi(() => view, getRootView, isActive),
         };
 
         handlesByView.set(view, handle);

@@ -24,6 +24,9 @@ export { BaseDialog, showDialog, showMessageDialog } from "./dialog/index.js";
  * @type {import("./embedTypes.js").AppEmbedFunction}
  */
 export async function embed(el, spec, options = {}) {
+    let active = true;
+    const isActive = () => active;
+
     /** @type {HTMLElement} */
     let element;
 
@@ -73,12 +76,13 @@ export async function embed(el, spec, options = {}) {
     }
 
     return {
-        views: createViewMutationApi(genomeSpy),
-        datasets: createTopLevelDatasetApi(genomeSpy),
+        views: createViewMutationApi(genomeSpy, isActive),
+        datasets: createTopLevelDatasetApi(genomeSpy, isActive),
 
         debug: app.debug,
 
         finalize() {
+            active = false;
             const disposers = pluginDisposers;
             pluginDisposers = [];
 
