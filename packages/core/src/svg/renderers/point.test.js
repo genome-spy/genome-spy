@@ -185,4 +185,58 @@ describe("SVG point renderer", () => {
         expect(circles[0].getAttribute("cx")).toBe("10");
         expect(circles[0].getAttribute("cy")).toBe("50");
     });
+
+    test("keeps inward strokes within the encoded point diameter", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: 0.2, shape: "circle", size: 400, strokeWidth: 4 },
+                    { x: 0.5, shape: "circle", size: 100, strokeWidth: 8 },
+                    { x: 0.8, shape: "x", size: 400, strokeWidth: 8 },
+                    { x: 0.9, shape: "circle", size: 0, strokeWidth: 8 },
+                ],
+            },
+            mark: {
+                type: "point",
+                inwardStroke: { expr: "true" },
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                y: { value: 0.5 },
+                shape: { field: "shape", type: "nominal", scale: null },
+                size: { field: "size", type: "quantitative", scale: null },
+                fill: { value: "#abcdef" },
+                stroke: { value: "#123456" },
+                strokeWidth: {
+                    field: "strokeWidth",
+                    type: "quantitative",
+                    scale: null,
+                },
+            },
+        });
+
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const pointGroup = svg.querySelector('[data-mark-type="point"]');
+        const circles = Array.from(pointGroup.querySelectorAll("circle"));
+        const line = pointGroup.querySelector("path");
+
+        expect(pointGroup.children).toHaveLength(3);
+        expect(
+            circles.map((circle) => [
+                circle.getAttribute("r"),
+                circle.getAttribute("stroke-width"),
+            ])
+        ).toEqual([
+            ["8", "4"],
+            ["2.5", "5"],
+        ]);
+        expect(line?.getAttribute("d")).toBe("M 70 40 L 90 60 M 90 40 L 70 60");
+        expect(line?.getAttribute("stroke-width")).toBe("8");
+        expect(warnings).toEqual([]);
+    });
 });

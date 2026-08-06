@@ -8,6 +8,7 @@ import {
     formatSvgNumber,
     projectX,
     projectY,
+    resolveSvgProperty,
     toSvgString,
 } from "../svgMarkUtils.js";
 
@@ -20,7 +21,6 @@ export function renderPointSvg(baseMark, options) {
         baseMark
     );
     if (
-        mark.properties.inwardStroke ||
         mark.properties.fillGradientStrength ||
         mark.properties.geometricZoomBound
     ) {
@@ -28,6 +28,7 @@ export function renderPointSvg(baseMark, options) {
             "SVG export ignored unsupported point gradients or zoom-dependent geometry."
         );
     }
+    const inwardStroke = resolveSvgProperty(mark, mark.properties.inwardStroke);
 
     const {
         coords,
@@ -81,8 +82,26 @@ export function renderPointSvg(baseMark, options) {
             continue;
         }
         const radius = Math.sqrt(encodeNumber(encoders.size, datum)) / 2;
+        if (inwardStroke && radius <= 0) {
+            continue;
+        }
         const angle = encodeNumber(encoders.angle, datum);
-        const strokePadding = encodeNumber(encoders.strokeWidth, datum) / 2;
+        const strokeWidth = encodeNumber(encoders.strokeWidth, datum);
+        const lineShape = shape == "x" || shape == "+";
+        // SVG strokes are centered on the geometry. Shrinking the path
+        // diameter by the stroke width keeps the outer diameter unchanged.
+        // Once the stroke consumes the whole fill, cap it at the radius to
+        // avoid negative or degenerate geometry. This is exact for circles
+        // and a close approximation for the other filled symbols.
+        const adjustedStrokeWidth =
+            inwardStroke && !lineShape
+                ? Math.min(strokeWidth, radius)
+                : strokeWidth;
+        const geometryRadius =
+            inwardStroke && !lineShape
+                ? radius - adjustedStrokeWidth / 2
+                : radius;
+        const strokePadding = inwardStroke ? 0 : strokeWidth / 2;
         const conservativeRadius = radius * Math.SQRT2 + strokePadding;
         if (
             !intersectsSvgBounds(
@@ -95,12 +114,16 @@ export function renderPointSvg(baseMark, options) {
         ) {
             continue;
         }
-        const element = createPointElement(shape, x, y, radius, {
+        const styles = {
             ...encodeStyles(datum),
-            ...(shape == "x" || shape == "+"
+            ...(inwardStroke && !lineShape
+                ? { "stroke-width": formatSvgNumber(adjustedStrokeWidth) }
+                : {}),
+            ...(lineShape
                 ? getLineShapeStyles(encoders, datum, viewOpacity)
                 : {}),
-        });
+        };
+        const element = createPointElement(shape, x, y, geometryRadius, styles);
         if (!element) {
             options.warn(
                 `SVG export rendered unsupported point shape "${shape}" as a circle.`
@@ -109,8 +132,8 @@ export function renderPointSvg(baseMark, options) {
                 createSvgElement("circle", {
                     cx: formatSvgNumber(x),
                     cy: formatSvgNumber(y),
-                    r: formatSvgNumber(radius),
-                    ...encodeStyles(datum),
+                    r: formatSvgNumber(geometryRadius),
+                    ...styles,
                 })
             );
         } else {

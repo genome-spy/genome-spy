@@ -67,9 +67,9 @@ The following features are working:
   opacity and z-order relative to view content.
 - The visualization-level canvas background from the root specification or
   selected built-in theme, with explicit export overrides and transparency.
-- All point symbols, including encoded shape, size, angle, and semantic-score
-  filtering. Circles and squares use native elements; the other symbols use
-  editable paths.
+- All point symbols, including encoded shape, size, angle, semantic-score
+  filtering, and inward strokes that shrink cleanly to zero. Circles and
+  squares use native elements; the other symbols use editable paths.
 - Link marks as SVG paths for the supported link shapes and current
   expression-valued geometry properties, including arc-distance fading with
   masks shared by collinear chords.
@@ -87,10 +87,10 @@ The following features are working:
   sample rows retain the shared SampleView GridChild clip.
 - App download through the **Save SVG** toolbar action.
 
-Unsupported point effects and sequence-logo stretching are ignored when basic
-geometry can still be emitted, and the export result includes view-qualified
-warnings. Unsupported mark types remain errors because export cannot yet
-meaningfully continue past them.
+Unsupported point gradients are ignored when basic geometry can still be
+emitted, and the export result includes view-qualified warnings. Unsupported
+mark types remain errors because export cannot yet meaningfully continue past
+them.
 
 ## Implementation principles
 
@@ -110,7 +110,7 @@ meaningfully continue past them.
 
 These features remain desirable but are not the next low-hanging increments:
 
-- Point gradients and inward strokes.
+- Point gradients.
 - SVG size and export-time diagnostics for very dense vector output.
 
 Ordinary grammar faceting is not used by the project and should not be worked on
