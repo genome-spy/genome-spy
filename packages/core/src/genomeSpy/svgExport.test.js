@@ -839,6 +839,106 @@ describe("SVG export", () => {
         expect(body?.getAttribute("d")).toContain("80 20");
     });
 
+    test("exports arrow start and head notches", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ y: 0.35 }, { y: 0.65 }] },
+            mark: {
+                type: "arrow",
+                size: 10,
+                headWidth: 3,
+                headAngle: 45,
+                headNotchAngle: 60,
+                startNotch: true,
+                fill: "black",
+                stroke: null,
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { field: "y", type: "quantitative", scale: null },
+            },
+        });
+
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const bodies = Array.from(
+            svg.querySelectorAll('[data-arrow-part="body"]')
+        );
+
+        // The start notch is five pixels deep for a 45-degree, 10-pixel stem.
+        expect(bodies[0].getAttribute("d")).toContain("25 65");
+        expect(warnings).toEqual([]);
+    });
+
+    test("exports notched standalone heads and short-arrow blunting", async () => {
+        const { view: notchedView } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "arrow",
+                stem: false,
+                size: 10,
+                headWidth: 3,
+                headAngle: 45,
+                headNotchAngle: 60,
+                fill: "black",
+                stroke: null,
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.5 },
+            },
+        });
+        const { svg: notchedSvg } = createSvg({
+            viewRoot: notchedView,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+
+        expect(
+            notchedSvg
+                .querySelector('[data-arrow-part="body"]')
+                ?.getAttribute("d")
+        ).toContain("73.7 50");
+
+        const { view: shortView } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "arrow",
+                size: 10,
+                headWidth: 3,
+                headAngle: 45,
+                minStemLength: 15,
+                fill: "black",
+                stroke: null,
+            },
+            encoding: {
+                x: { value: 0.4 },
+                x2: { value: 0.6 },
+                y: { value: 0.5 },
+            },
+        });
+        const { svg: shortSvg, warnings } = createSvg({
+            viewRoot: shortView,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+
+        // The configured 15-pixel head is blunted to preserve 15 pixels of stem.
+        expect(
+            shortSvg
+                .querySelector('[data-arrow-part="body"]')
+                ?.getAttribute("d")
+        ).toContain("55 65");
+        expect(warnings).toEqual([]);
+    });
+
     test("warns and exports when a property is unsupported", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },

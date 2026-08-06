@@ -20,36 +20,24 @@ export function renderArrowSvg(baseMark, options) {
         baseMark
     );
     const props = mark.properties;
-    const headAngle = clamp(resolveSvgProperty(mark, props.headAngle), 1, 90);
+    const configuredRHeadSlope = reciprocalSlope(
+        resolveSvgProperty(mark, props.headAngle)
+    );
+    const configuredRHeadNotchSlope = reciprocalSlope(
+        resolveSvgProperty(mark, props.headNotchAngle)
+    );
     const headShape = resolveSvgProperty(mark, props.headShape);
     const headWidth = resolveSvgProperty(mark, props.headWidth);
     const minSize = resolveSvgProperty(mark, props.minSize);
     const stem = resolveSvgProperty(mark, props.stem);
+    const startNotch = resolveSvgProperty(mark, props.startNotch);
+    const minStemLength = resolveSvgProperty(mark, props.minStemLength);
+    const headSpacing = resolveSvgProperty(mark, props.headSpacing);
     const headPlacement = resolveSvgProperty(mark, props.headPlacement);
 
-    if (resolveSvgProperty(mark, props.headSpacing) != null) {
+    if (headSpacing != null) {
         options.warn(
             "SVG export rendered one arrowhead and ignored unsupported repeated heads."
-        );
-    }
-    if (stem && resolveSvgProperty(mark, props.startNotch)) {
-        options.warn("SVG export ignored an unsupported arrow start notch.");
-    }
-    if (
-        stem &&
-        resolveSvgProperty(mark, props.headSpacing) == null &&
-        resolveSvgProperty(mark, props.minStemLength) > 0
-    ) {
-        options.warn(
-            "SVG export ignored unsupported short-arrow head blunting."
-        );
-    }
-    if (
-        headShape == "triangle" &&
-        resolveSvgProperty(mark, props.headNotchAngle) != 90
-    ) {
-        options.warn(
-            "SVG export used an unnotched triangle for an unsupported arrow headNotchAngle."
         );
     }
 
@@ -113,18 +101,36 @@ export function renderArrowSvg(baseMark, options) {
         const size = Math.max(encodeNumber(encoders.size, datum), minSize);
         const stemHalfWidth = size / 2;
         const headHalfWidth = Math.max(headWidth * size, 0) / 2;
-        const configuredHeadLength =
-            headHalfWidth / Math.tan((headAngle * Math.PI) / 180);
-        const headLength =
+        const rHeadSlope = effectiveHeadSlope({
+            segmentLength,
+            headHalfWidth,
+            stemHalfWidth: stem ? stemHalfWidth : -stemHalfWidth,
+            configuredRHeadSlope,
+            configuredRHeadNotchSlope,
+            headRepeat: headSpacing != null,
+            headPlacement,
+            startNotch,
+            minStemLength,
+            headShape,
+        });
+        const rHeadNotchSlope =
+            headShape == "open"
+                ? rHeadSlope
+                : Math.min(configuredRHeadNotchSlope, rHeadSlope);
+        const headStrokeWidth = headShape == "open" ? size : 0;
+        const outsideHeadOffset =
             headPlacement == "outside"
-                ? configuredHeadLength
-                : Math.min(configuredHeadLength, segmentLength);
-        const join = add(endpoint, scale(tangent, -headLength));
+                ? headNotchOffset(
+                      headHalfWidth,
+                      rHeadSlope,
+                      rHeadNotchSlope,
+                      headStrokeWidth
+                  )
+                : 0;
         const tip =
             headPlacement == "outside"
-                ? add(endpoint, scale(tangent, headLength))
+                ? add(endpoint, scale(tangent, outsideHeadOffset))
                 : endpoint;
-        const headBase = headPlacement == "outside" ? endpoint : join;
         const instance = createSvgElement("g", encodeStyles(datum));
 
         if (headShape == "triangle") {
@@ -133,11 +139,14 @@ export function renderArrowSvg(baseMark, options) {
                     d: createTriangleArrowPath(
                         tail,
                         tip,
-                        headBase,
+                        tangent,
                         normal,
                         stemHalfWidth,
                         headHalfWidth,
-                        stem
+                        rHeadSlope,
+                        rHeadNotchSlope,
+                        stem,
+                        startNotch
                     ),
                     "data-arrow-part": "body",
                 })
@@ -146,12 +155,17 @@ export function renderArrowSvg(baseMark, options) {
             if (stem) {
                 instance.appendChild(
                     createSvgElement("path", {
-                        d: polygon([
-                            add(tail, scale(normal, stemHalfWidth)),
-                            add(headBase, scale(normal, stemHalfWidth)),
-                            add(headBase, scale(normal, -stemHalfWidth)),
-                            add(tail, scale(normal, -stemHalfWidth)),
-                        ]),
+                        d: polygon(
+                            createStemPolygon(
+                                tail,
+                                tip,
+                                tangent,
+                                normal,
+                                stemHalfWidth,
+                                rHeadSlope,
+                                startNotch
+                            )
+                        ),
                         "data-arrow-part": "stem",
                     })
                 );
@@ -162,8 +176,9 @@ export function renderArrowSvg(baseMark, options) {
                         tip,
                         tangent,
                         normal,
-                        headLength,
                         headHalfWidth,
+                        rHeadSlope,
+                        rHeadNotchSlope,
                         size
                     ),
                     "data-arrow-part": "head",
@@ -178,11 +193,14 @@ export function renderArrowSvg(baseMark, options) {
                     d: createTriangleArrowPath(
                         tail,
                         tip,
-                        headBase,
+                        tangent,
                         normal,
                         stemHalfWidth,
                         headHalfWidth,
-                        stem
+                        rHeadSlope,
+                        rHeadNotchSlope,
+                        stem,
+                        startNotch
                     ),
                     "data-arrow-part": "body",
                 })
@@ -199,53 +217,132 @@ export function renderArrowSvg(baseMark, options) {
 /**
  * @param {Point} tail
  * @param {Point} tip
- * @param {Point} base
+ * @param {Point} tangent
  * @param {Point} normal
  * @param {number} stemHalfWidth
  * @param {number} headHalfWidth
+ * @param {number} rHeadSlope
+ * @param {number} rHeadNotchSlope
  * @param {boolean} stem
+ * @param {boolean} startNotch
  */
 function createTriangleArrowPath(
     tail,
     tip,
-    base,
+    tangent,
     normal,
     stemHalfWidth,
     headHalfWidth,
-    stem
+    rHeadSlope,
+    rHeadNotchSlope,
+    stem,
+    startNotch
 ) {
-    const headTop = add(base, scale(normal, headHalfWidth));
-    const headBottom = add(base, scale(normal, -headHalfWidth));
+    const headAxisLength = headHalfWidth * rHeadSlope;
+    const notchLength = headAxisLength - headHalfWidth * rHeadNotchSlope;
+    const headTop = add(
+        add(tip, scale(tangent, -headAxisLength)),
+        scale(normal, headHalfWidth)
+    );
+    const headBottom = add(
+        add(tip, scale(tangent, -headAxisLength)),
+        scale(normal, -headHalfWidth)
+    );
+    const headNotch = add(tip, scale(tangent, -notchLength));
     if (!stem) {
-        return polygon([headTop, tip, headBottom]);
+        return polygon([tip, headTop, headNotch, headBottom]);
     }
+
+    const stemJoinLength = triangleHeadStemJoinLength(
+        stemHalfWidth,
+        headHalfWidth,
+        rHeadSlope,
+        rHeadNotchSlope
+    );
+    const stemTop = add(
+        add(tip, scale(tangent, -stemJoinLength)),
+        scale(normal, stemHalfWidth)
+    );
+    const stemBottom = add(
+        add(tip, scale(tangent, -stemJoinLength)),
+        scale(normal, -stemHalfWidth)
+    );
+    const tailTop = add(tail, scale(normal, stemHalfWidth));
+    const tailBottom = add(tail, scale(normal, -stemHalfWidth));
+    const tailPoints = startNotch
+        ? [
+              tailBottom,
+              add(tail, scale(tangent, stemHalfWidth * rHeadSlope)),
+              tailTop,
+          ]
+        : [tailBottom, tailTop];
+
     return polygon([
-        add(tail, scale(normal, stemHalfWidth)),
-        add(base, scale(normal, stemHalfWidth)),
+        ...tailPoints,
+        stemTop,
         headTop,
         tip,
         headBottom,
-        add(base, scale(normal, -stemHalfWidth)),
-        add(tail, scale(normal, -stemHalfWidth)),
+        stemBottom,
     ]);
+}
+
+/**
+ * @param {Point} tail
+ * @param {Point} tip
+ * @param {Point} tangent
+ * @param {Point} normal
+ * @param {number} halfWidth
+ * @param {number} rHeadSlope
+ * @param {boolean} startNotch
+ * @returns {Point[]}
+ */
+function createStemPolygon(
+    tail,
+    tip,
+    tangent,
+    normal,
+    halfWidth,
+    rHeadSlope,
+    startNotch
+) {
+    const headSideLength = halfWidth * rHeadSlope;
+    const headTop = add(
+        add(tip, scale(tangent, -headSideLength)),
+        scale(normal, halfWidth)
+    );
+    const headBottom = add(
+        add(tip, scale(tangent, -headSideLength)),
+        scale(normal, -halfWidth)
+    );
+    const tailTop = add(tail, scale(normal, halfWidth));
+    const tailBottom = add(tail, scale(normal, -halfWidth));
+    const tailNotch = startNotch
+        ? [add(tail, scale(tangent, halfWidth * rHeadSlope))]
+        : [];
+
+    return [tip, headTop, tailTop, ...tailNotch, tailBottom, headBottom];
 }
 
 /**
  * @param {Point} tip
  * @param {Point} tangent
  * @param {Point} normal
- * @param {number} headLength
  * @param {number} headHalfWidth
+ * @param {number} rHeadSlope
+ * @param {number} rHeadNotchSlope
  * @param {number} thickness
  */
 function createOpenHeadPath(
     tip,
     tangent,
     normal,
-    headLength,
     headHalfWidth,
+    rHeadSlope,
+    rHeadNotchSlope,
     thickness
 ) {
+    const headLength = headHalfWidth * rHeadSlope;
     const outerTop = add(
         add(tip, scale(tangent, -headLength)),
         scale(normal, headHalfWidth)
@@ -265,8 +362,130 @@ function createOpenHeadPath(
         add(outerBottom, scale(tangent, -axisInset)),
         scale(normal, sideInset)
     );
-    const notch = add(tip, scale(tangent, -headLength));
+    const notchLength =
+        headLength + axisInset - (headHalfWidth - sideInset) * rHeadNotchSlope;
+    const notch = add(tip, scale(tangent, -notchLength));
     return polygon([tip, outerTop, innerTop, notch, innerBottom, outerBottom]);
+}
+
+/**
+ * Ports the arrow vertex shader's short-arrow blunting calculation.
+ *
+ * @param {object} options
+ * @param {number} options.segmentLength
+ * @param {number} options.headHalfWidth
+ * @param {number} options.stemHalfWidth Negative when the stem is hidden.
+ * @param {number} options.configuredRHeadSlope
+ * @param {number} options.configuredRHeadNotchSlope
+ * @param {boolean} options.headRepeat
+ * @param {"inside" | "outside"} options.headPlacement
+ * @param {boolean} options.startNotch
+ * @param {number} options.minStemLength
+ * @param {"triangle" | "open"} options.headShape
+ */
+function effectiveHeadSlope({
+    segmentLength,
+    headHalfWidth,
+    stemHalfWidth,
+    configuredRHeadSlope,
+    configuredRHeadNotchSlope,
+    headRepeat,
+    headPlacement,
+    startNotch,
+    minStemLength,
+    headShape,
+}) {
+    if (headRepeat || stemHalfWidth < 0) {
+        return configuredRHeadSlope;
+    } else if (headPlacement == "outside") {
+        if (!startNotch || stemHalfWidth <= 0) {
+            return configuredRHeadSlope;
+        }
+
+        const maxStartNotchLength = Math.max(segmentLength - minStemLength, 0);
+        return Math.min(
+            configuredRHeadSlope,
+            maxStartNotchLength / stemHalfWidth
+        );
+    } else if (headShape != "triangle") {
+        return configuredRHeadSlope;
+    }
+
+    const maxJoinLength = Math.max(segmentLength - minStemLength, 0);
+    const configuredJoinLength = triangleHeadStemJoinLength(
+        stemHalfWidth,
+        headHalfWidth,
+        configuredRHeadSlope,
+        configuredRHeadNotchSlope
+    );
+    if (configuredJoinLength <= maxJoinLength) {
+        return configuredRHeadSlope;
+    }
+
+    const boundaryJoinLength = stemHalfWidth * configuredRHeadNotchSlope;
+    if (maxJoinLength < boundaryJoinLength) {
+        return stemHalfWidth > 0
+            ? clamp(maxJoinLength / stemHalfWidth, 0, configuredRHeadSlope)
+            : 0;
+    }
+
+    return clamp(
+        (maxJoinLength +
+            (headHalfWidth - stemHalfWidth) * configuredRHeadNotchSlope) /
+            headHalfWidth,
+        0,
+        configuredRHeadSlope
+    );
+}
+
+/**
+ * @param {number} stemHalfWidth
+ * @param {number} headHalfWidth
+ * @param {number} rHeadSlope
+ * @param {number} rHeadNotchSlope
+ */
+function triangleHeadStemJoinLength(
+    stemHalfWidth,
+    headHalfWidth,
+    rHeadSlope,
+    rHeadNotchSlope
+) {
+    const clampedRHeadNotchSlope = Math.min(rHeadNotchSlope, rHeadSlope);
+    return (
+        headHalfWidth * rHeadSlope -
+        (headHalfWidth - stemHalfWidth) * clampedRHeadNotchSlope
+    );
+}
+
+/**
+ * @param {number} headHalfWidth
+ * @param {number} rHeadSlope
+ * @param {number} rHeadNotchSlope
+ * @param {number} headStrokeWidth
+ */
+function headNotchOffset(
+    headHalfWidth,
+    rHeadSlope,
+    rHeadNotchSlope,
+    headStrokeWidth
+) {
+    if (headHalfWidth <= 0) {
+        return 0;
+    }
+
+    const headAxisLength = headHalfWidth * rHeadSlope;
+    const normalLength = Math.hypot(headHalfWidth, headAxisLength);
+    const innerX =
+        headAxisLength + (headStrokeWidth * headHalfWidth) / normalLength;
+    const innerY =
+        headHalfWidth - (headStrokeWidth * headAxisLength) / normalLength;
+    return innerX - innerY * rHeadNotchSlope;
+}
+
+/** @param {number} angle */
+function reciprocalSlope(angle) {
+    const radians = (clamp(angle, 1, 90) * Math.PI) / 180;
+    return 1 / Math.max(Math.tan(radians), 1e-6);
 }
 
 /** @param {Point[]} points */

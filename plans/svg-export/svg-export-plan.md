@@ -64,16 +64,16 @@ The following features are working:
   editable paths.
 - Link marks as SVG paths for the supported link shapes and current
   expression-valued geometry properties.
-- Basic arrows with triangle or open heads, optional stems, forward/reverse
-  direction, inside/outside placement, diagonal endpoints, and encoded size and
-  direction.
+- Arrows with triangle or open heads, optional stems, forward/reverse
+  direction, inside/outside placement, diagonal endpoints, encoded size and
+  direction, start and head notches, and minimum-stem blunting.
 - App download through the **Save SVG** toolbar action.
 
 Unsupported point effects, rectangle hatches and shadows, text viewport-edge
-fading and sequence-logo stretching, advanced arrow geometry, and link arc
-fading are ignored when basic geometry can still be emitted, and the export
-result includes view-qualified warnings. Unsupported mark types and sample
-facets remain errors because export cannot yet meaningfully continue past them.
+fading and sequence-logo stretching, repeated arrowheads, and link arc fading
+are ignored when basic geometry can still be emitted, and the export result
+includes view-qualified warnings. Unsupported mark types and sample facets
+remain errors because export cannot yet meaningfully continue past them.
 
 ## Implementation principles
 
@@ -95,8 +95,7 @@ These features remain desirable but are not the next low-hanging increments:
 
 - Rectangle hatches using reusable SVG `<pattern>` definitions.
 - Rectangle shadows using SVG filters.
-- Arrow start notches, repeated heads, non-right head notches, and short-arrow
-  blunting.
+- Repeated arrowheads.
 - Link arc fading using SVG masks or gradients.
 - Point gradients and inward strokes.
 - Text viewport-edge fading and sequence-logo letters.
