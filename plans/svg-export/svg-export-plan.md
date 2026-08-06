@@ -121,7 +121,8 @@ export cannot yet meaningfully continue past them.
 
 Ordinary grammar faceting is not used by the project and should not be worked on
 as part of SVG export. Rasterization and hybrid vector/raster output will be
-designed separately if they become requirements.
+designed separately if they become requirements. See the
+[selective WebGL rasterization plan](selective-rasterization-plan.md).
 
 ## Verification and completion criteria
 
