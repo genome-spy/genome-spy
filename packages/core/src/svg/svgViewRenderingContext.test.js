@@ -126,4 +126,48 @@ describe("SvgViewRenderingContext", () => {
             clipRect?.getAttribute("height"),
         ]).toEqual(["10", "80"]);
     });
+
+    test("projects texture-indexed sample facets using CPU positions", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { facet: 0, x: 0.25 },
+                    { facet: 1, x: 0.75 },
+                ],
+            },
+            mark: "point",
+            encoding: {
+                facetIndex: { field: "facet" },
+                x: { field: "x", type: "quantitative", scale: null },
+                y: { value: 0.5 },
+                size: { value: 100 },
+                fill: { value: "#123456" },
+            },
+        });
+        const originalGetLayoutAncestors = view.getLayoutAncestors.bind(view);
+        view.getLayoutAncestors = () => [
+            ...originalGetLayoutAncestors(),
+            /** @type {import("../view/view.js").default} */ (
+                /** @type {unknown} */ ({
+                    /** @param {number} index */
+                    getSampleFacetPosition: (index) =>
+                        index == 0
+                            ? { location: 0, size: 0.4 }
+                            : { location: 0.6, size: 0.4 },
+                })
+            ),
+        ];
+        const context = new SvgViewRenderingContext(
+            { picking: false },
+            { width: 100, height: 100 }
+        );
+
+        view.render(context, Rectangle.create(0, 0, 100, 100));
+
+        expect(
+            Array.from(context.getSvg().querySelectorAll("circle"), (circle) =>
+                circle.getAttribute("cy")
+            )
+        ).toEqual(["20", "80"]);
+    });
 });

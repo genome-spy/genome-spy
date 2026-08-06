@@ -75,13 +75,16 @@ The following features are working:
   merged with the stem into a single editable path.
 - Conservative instance culling against the effective directional clip and
   root SVG viewport. Partially visible geometry is retained and clipped.
+- SampleView faceting in both rendering modes: repeated plot marks use the
+  per-sample uniform transform, while labels and metadata using `facetIndex`
+  resolve the same CPU-side positions that back the GPU facet texture. All
+  sample rows retain the shared SampleView GridChild clip.
 - App download through the **Save SVG** toolbar action.
 
 Unsupported point effects, rectangle hatches, sequence-logo stretching, and
 link arc fading are ignored when basic geometry can still be emitted, and the
-export result includes view-qualified warnings. Unsupported mark types and
-sample facets remain errors because export cannot yet meaningfully continue
-past them.
+export result includes view-qualified warnings. Unsupported mark types remain
+errors because export cannot yet meaningfully continue past them.
 
 ## Implementation principles
 
@@ -105,7 +108,6 @@ These features remain desirable but are not the next low-hanging increments:
 - Link arc fading using SVG masks or gradients.
 - Point gradients and inward strokes.
 - Sequence-logo letters.
-- Sample-facet placement.
 - SVG size and export-time diagnostics for very dense vector output.
 
 Ordinary grammar faceting is not used by the project and should not be worked on

@@ -1242,6 +1242,17 @@ export default class View {
     }
 
     /**
+     * Returns the normalized location of a sample facet. This CPU-side
+     * counterpart of getSampleFacetTexture is used by non-GPU renderers.
+     *
+     * @param {number} index
+     * @returns {import("./layout/flexLayout.js").LocSize | undefined}
+     */
+    getSampleFacetPosition(index) {
+        return undefined;
+    }
+
+    /**
      * Controls which decorations the parent GridView draws around this view.
      *
      * @returns {ParentGridChromePolicy}

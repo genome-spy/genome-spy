@@ -164,25 +164,58 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             "data-mark-type": mark.getType(),
         });
 
-        const coords = getSampleFacetCoords(
-            this.currentCoords,
-            options.sampleFacetRenderingOptions
-        );
+        const data = getSvgData(mark, options);
+        /**
+         * @param {import("../view/layout/rectangle.js").default} coords
+         * @param {object[]} facetData
+         */
+        const render = (coords, facetData) =>
+            renderMarkSvg(mark, {
+                coords,
+                data: facetData,
+                group,
+                visibleBounds,
+                viewOpacity: mark.unitView.getEffectiveOpacity(),
+                getViewportEdgeFadeMaskUrl: (fade) =>
+                    this.getViewportEdgeFadeMaskUrl(fade),
+                getShadowFilterUrl: (shadow) => this.getShadowFilterUrl(shadow),
+                warn: (message) =>
+                    this.#warnings.add(
+                        `${message} View: ${mark.unitView.getPathString()}`
+                    ),
+            });
 
-        renderMarkSvg(mark, {
-            coords,
-            data: getSvgData(mark, options),
-            group,
-            visibleBounds,
-            viewOpacity: mark.unitView.getEffectiveOpacity(),
-            getViewportEdgeFadeMaskUrl: (fade) =>
-                this.getViewportEdgeFadeMaskUrl(fade),
-            getShadowFilterUrl: (shadow) => this.getShadowFilterUrl(shadow),
-            warn: (message) =>
-                this.#warnings.add(
-                    `${message} View: ${mark.unitView.getPathString()}`
+        if (options.sampleFacetRenderingOptions) {
+            render(
+                getSampleFacetCoords(
+                    this.currentCoords,
+                    options.sampleFacetRenderingOptions
                 ),
-        });
+                data
+            );
+        } else if (mark.encoders.facetIndex) {
+            for (const [facetIndex, facetData] of groupDataByFacetIndex(
+                mark.encoders.facetIndex,
+                data
+            )) {
+                const locSize = this.#getSampleFacetPosition(mark, facetIndex);
+                if (locSize) {
+                    render(
+                        getSampleFacetCoords(this.currentCoords, {
+                            locSize,
+                            pixelToUnit: 1,
+                        }),
+                        facetData
+                    );
+                } else {
+                    this.#warnings.add(
+                        `SVG export could not resolve sample facet index ${facetIndex}. View: ${mark.unitView.getPathString()}`
+                    );
+                }
+            }
+        } else {
+            render(this.currentCoords, data);
+        }
         if (group.childElementCount > 0) {
             const clipPathUrl = this.getClipPathUrl(markClip);
             if (clipPathUrl) {
@@ -228,6 +261,21 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         }
 
         return `url(#${id})`;
+    }
+
+    /**
+     * @param {import("../marks/mark.js").default} mark
+     * @param {number} index
+     * @returns {import("../view/layout/flexLayout.js").LocSize | undefined}
+     */
+    #getSampleFacetPosition(mark, index) {
+        for (const view of mark.unitView.getLayoutAncestors()) {
+            const position = view.getSampleFacetPosition(index);
+            if (position) {
+                return position;
+            }
+        }
+        return undefined;
     }
 
     /**
@@ -387,6 +435,26 @@ function getSampleFacetCoords(coords, facet) {
         y: () => coords.y + location * coords.height,
         height: () => size * coords.height,
     });
+}
+
+/**
+ * @param {import("../types/encoder.js").Encoder} facetIndexEncoder
+ * @param {object[]} data
+ * @returns {Map<number, object[]>}
+ */
+function groupDataByFacetIndex(facetIndexEncoder, data) {
+    /** @type {Map<number, object[]>} */
+    const facets = new Map();
+    for (const datum of data) {
+        const index = +facetIndexEncoder(datum);
+        let facet = facets.get(index);
+        if (!facet) {
+            facet = [];
+            facets.set(index, facet);
+        }
+        facet.push(datum);
+    }
+    return facets;
 }
 
 /**

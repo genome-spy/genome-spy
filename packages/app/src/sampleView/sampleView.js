@@ -1241,6 +1241,13 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * @param {number} index
+     */
+    getSampleFacetPosition(index) {
+        return this.locationManager.getSampleFacetPosition(index);
+    }
+
+    /**
      * @param {number} [mouseY]
      * @param {string} [sampleId]
      *
