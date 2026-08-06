@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.83.0](https://github.com/genome-spy/genome-spy/compare/v0.82.0...v0.83.0) (2026-08-06)
+
+### Features
+
+* **core:** load binary named datasets without rebuilding views ([#456](https://github.com/genome-spy/genome-spy/issues/456)) ([5f2f8a0](https://github.com/genome-spy/genome-spy/commit/5f2f8a0a04ab4d4b1f53d99552d23df7b670cb10)) by @tuner
+
 # [0.82.0](https://github.com/genome-spy/genome-spy/compare/v0.81.0...v0.82.0) (2026-08-03)
 
 ### Bug Fixes

@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.83.0](https://github.com/genome-spy/genome-spy/compare/v0.82.0...v0.83.0) (2026-08-06)
+
+### Bug Fixes
+
+* **core:** align implicit size params with plot viewport ([10fa47f](https://github.com/genome-spy/genome-spy/commit/10fa47fc423768717d9083d7e0b220990b44c8f2)) by @tuner
+* **core:** harden FASTA parsing ([995c3c7](https://github.com/genome-spy/genome-spy/commit/995c3c75102e54d07a294831100ea86adae51af7)) by @tuner
+* **core:** propagate scale-derived parameters synchronously ([4636247](https://github.com/genome-spy/genome-spy/commit/463624733a0f670d852db4d36bd32daa0303db83)) by @tuner
+* **core:** wait for complete initial scale domain ([5694b2c](https://github.com/genome-spy/genome-spy/commit/5694b2c53777159920506cc9b695a7b88fc34f92)) by @tuner
+
+### Features
+
+* **core:** add eager WIG data support ([607761b](https://github.com/genome-spy/genome-spy/commit/607761bc7869ed51f904e706a84ac1f344d0f6b1)) by @tuner
+* **core:** add one-dimensional displacement transform ([#454](https://github.com/genome-spy/genome-spy/issues/454)) ([afb3132](https://github.com/genome-spy/genome-spy/commit/afb3132faecd9148245ca5288f21939609dacbb3)) by @tuner
+* **core:** add positional offset channels ([#451](https://github.com/genome-spy/genome-spy/issues/451)) ([63c7e57](https://github.com/genome-spy/genome-spy/commit/63c7e57c3ed489373beb424242c3f9b6bf8b3cf7)) by @tuner
+* **core:** add stroke-only x and plus point shapes ([1d4a1f8](https://github.com/genome-spy/genome-spy/commit/1d4a1f8d713e0246d9f503f5c6948c29f1cf47a6)) by @tuner
+* **core:** add supplementary axis tick values ([5f731b9](https://github.com/genome-spy/genome-spy/commit/5f731b9c5f46b582cf36d49ba7bcb1f842293e70)) by @tuner
+* **core:** load binary named datasets without rebuilding views ([#456](https://github.com/genome-spy/genome-spy/issues/456)) ([5f2f8a0](https://github.com/genome-spy/genome-spy/commit/5f2f8a0a04ab4d4b1f53d99552d23df7b670cb10)) by @tuner
+* **core:** support scale helpers in expression parameters ([2fe0e8b](https://github.com/genome-spy/genome-spy/commit/2fe0e8ba6dc678fc6e7343971aa240ea5d7b76ee)) by @tuner
+* **docs:** show selected solution in ASCAT example ([ea3f0f8](https://github.com/genome-spy/genome-spy/commit/ea3f0f86eea3525ceb100e083c7043aaffbfdd51)) by @tuner
+
 # [0.82.0](https://github.com/genome-spy/genome-spy/compare/v0.81.0...v0.82.0) (2026-08-03)
 
 ### Bug Fixes
