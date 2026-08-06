@@ -2,8 +2,8 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": [
-    "Local and root legend placement",
-    "One legend stays below its view while another is collected to the right of the root view."
+    "Local legend placement",
+    "Each legend stays next to its view."
   ],
 
   "data": {
@@ -26,7 +26,6 @@
           "type": "nominal",
           "legend": {
             "offset": 5,
-            "placement": "local",
             "orient": "bottom",
             "direction": "horizontal",
             "title": "Local"
@@ -43,9 +42,8 @@
           "field": "status",
           "type": "nominal",
           "legend": {
-            "placement": "root",
             "orient": "right",
-            "title": "Root"
+            "title": "Right"
           }
         }
       }
@@ -53,8 +51,7 @@
   ],
 
   "config": {
-    "view": { "stroke": "lightgray" },
-    "legend": { "layout": { "right": { "anchor": "middle" } } }
+    "view": { "stroke": "lightgray" }
   },
   "background": "#f8f8f8"
 }

@@ -3,7 +3,7 @@
 
   "description": [
     "Independent legends collected at the root",
-    "A matrix-like composition collects four legends without merging their color mappings."
+    "A matrix-like composition shows four independent color mappings."
   ],
 
   "columns": 2,
@@ -11,12 +11,7 @@
   "config": {
     "legend": {
       "disable": false,
-      "placement": "root",
-      "orient": "right",
-      "layout": { "right": { "anchor": "middle" } },
-      "gradientLength": 40,
-      "gradientThickness": 10,
-      "tickCount": 3
+      "orient": "right"
     }
   },
 
