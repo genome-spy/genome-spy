@@ -191,6 +191,38 @@ function deferred() {
     return { promise, resolve };
 }
 
+/**
+ * @param {Record<string, any>[]} rows
+ */
+function createNamedDatasetEngine(rows) {
+    return createHeadlessEngine({
+        datasets: { results: rows },
+        data: { name: "results" },
+        mark: "point",
+        encoding: {
+            x: { field: "value", type: "quantitative" },
+        },
+    });
+}
+
+/**
+ * @param {(...args: any[]) => any} reader
+ * @param {() => Promise<void>} callback
+ */
+async function withArrowReader(reader, callback) {
+    const originalReader = formats("arrow");
+    if (!originalReader) {
+        throw new Error("Expected registered Arrow reader.");
+    }
+
+    formats("arrow", reader);
+    try {
+        await callback();
+    } finally {
+        formats("arrow", originalReader);
+    }
+}
+
 describe("ViewMutationApi", () => {
     test("returns handles for the root and layout children", async () => {
         const { view } = await createHeadlessViewHierarchy({
@@ -316,16 +348,9 @@ describe("ViewMutationApi", () => {
     ])(
         "loads top-level $type data from memory",
         async ({ type, data, rows }) => {
-            const { view } = await createHeadlessEngine({
-                datasets: {
-                    results: [{ sample: "initial", value: 1 }],
-                },
-                data: { name: "results" },
-                mark: "point",
-                encoding: {
-                    x: { field: "value", type: "quantitative" },
-                },
-            });
+            const { view } = await createNamedDatasetEngine([
+                { sample: "initial", value: 1 },
+            ]);
             const datasets = createTopLevelDatasetApi({ viewRoot: view });
 
             await datasets.load(
@@ -379,16 +404,7 @@ describe("ViewMutationApi", () => {
     });
 
     test("keeps the previous rows when decoding fails", async () => {
-        const { view } = await createHeadlessEngine({
-            datasets: {
-                results: [{ value: 1 }],
-            },
-            data: { name: "results" },
-            mark: "point",
-            encoding: {
-                x: { field: "value", type: "quantitative" },
-            },
-        });
+        const { view } = await createNamedDatasetEngine([{ value: 1 }]);
         const datasets = createTopLevelDatasetApi({ viewRoot: view });
 
         await expect(
@@ -407,31 +423,17 @@ describe("ViewMutationApi", () => {
     });
 
     test("applies only the latest overlapping load across API aliases", async () => {
-        const { view } = await createHeadlessEngine({
-            datasets: {
-                results: [{ value: 0 }],
-            },
-            data: { name: "results" },
-            mark: "point",
-            encoding: {
-                x: { field: "value", type: "quantitative" },
-            },
-        });
+        const { view } = await createNamedDatasetEngine([{ value: 0 }]);
         const datasets = createTopLevelDatasetApi({ viewRoot: view });
         const views = createViewMutationApi({ viewRoot: view });
         const first = deferred();
         const second = deferred();
-        const originalReader = formats("arrow");
-        if (!originalReader) {
-            throw new Error("Expected registered Arrow reader.");
-        }
-
         const reader = vi
             .fn()
             .mockReturnValueOnce(first.promise)
             .mockReturnValueOnce(second.promise);
-        formats("arrow", reader);
-        try {
+
+        await withArrowReader(reader, async () => {
             const firstLoad = datasets.load("results", new ArrayBuffer(0), {
                 type: "arrow",
             });
@@ -447,36 +449,20 @@ describe("ViewMutationApi", () => {
             await firstLoad;
 
             expect(getCollectorValues(view)).toEqual([2]);
-        } finally {
-            formats("arrow", originalReader);
-        }
+        });
     });
 
     test("set and reset supersede pending loads", async () => {
-        const { view } = await createHeadlessEngine({
-            datasets: {
-                results: [{ value: 1 }],
-            },
-            data: { name: "results" },
-            mark: "point",
-            encoding: {
-                x: { field: "value", type: "quantitative" },
-            },
-        });
+        const { view } = await createNamedDatasetEngine([{ value: 1 }]);
         const datasets = createTopLevelDatasetApi({ viewRoot: view });
         const first = deferred();
         const second = deferred();
-        const originalReader = formats("arrow");
-        if (!originalReader) {
-            throw new Error("Expected registered Arrow reader.");
-        }
-
         const reader = vi
             .fn()
             .mockReturnValueOnce(first.promise)
             .mockReturnValueOnce(second.promise);
-        formats("arrow", reader);
-        try {
+
+        await withArrowReader(reader, async () => {
             const beforeSet = datasets.load("results", new ArrayBuffer(0), {
                 type: "arrow",
             });
@@ -492,9 +478,7 @@ describe("ViewMutationApi", () => {
             second.resolve([{ value: 3 }]);
             await beforeReset;
             expect(getCollectorValues(view)).toEqual([1]);
-        } finally {
-            formats("arrow", originalReader);
-        }
+        });
     });
 
     test("rejects a load whose owner is removed while decoding", async () => {
@@ -517,13 +501,9 @@ describe("ViewMutationApi", () => {
         const api = createViewMutationApi({ viewRoot: view });
         const owner = api.get({ scope: [], view: "owner" });
         const pending = deferred();
-        const originalReader = formats("arrow");
-        if (!originalReader) {
-            throw new Error("Expected registered Arrow reader.");
-        }
+        const reader = () => pending.promise;
 
-        formats("arrow", () => pending.promise);
-        try {
+        await withArrowReader(reader, async () => {
             const load = owner.datasets.load("results", new ArrayBuffer(0), {
                 type: "arrow",
             });
@@ -533,35 +513,20 @@ describe("ViewMutationApi", () => {
             await expect(load).rejects.toMatchObject({
                 code: "staleHandle",
             });
-        } finally {
-            formats("arrow", originalReader);
-        }
+        });
     });
 
     test("rejects a pending load when the embed lifecycle ends", async () => {
-        const { view } = await createHeadlessEngine({
-            datasets: {
-                results: [{ value: 1 }],
-            },
-            data: { name: "results" },
-            mark: "point",
-            encoding: {
-                x: { field: "value", type: "quantitative" },
-            },
-        });
+        const { view } = await createNamedDatasetEngine([{ value: 1 }]);
         let active = true;
         const datasets = createTopLevelDatasetApi(
             { viewRoot: view },
             () => active
         );
         const pending = deferred();
-        const originalReader = formats("arrow");
-        if (!originalReader) {
-            throw new Error("Expected registered Arrow reader.");
-        }
+        const reader = () => pending.promise;
 
-        formats("arrow", () => pending.promise);
-        try {
+        await withArrowReader(reader, async () => {
             const load = datasets.load("results", new ArrayBuffer(0), {
                 type: "arrow",
             });
@@ -572,9 +537,7 @@ describe("ViewMutationApi", () => {
                 code: "staleEmbed",
             });
             expect(getCollectorValues(view)).toEqual([1]);
-        } finally {
-            formats("arrow", originalReader);
-        }
+        });
     });
 
     test("requires named data updates to target the exact owner", async () => {
