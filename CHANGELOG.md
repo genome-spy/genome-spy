@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.83.1](https://github.com/genome-spy/genome-spy/compare/v0.83.0...v0.83.1) (2026-08-06)
+
+### Bug Fixes
+
+* **core:** avoid recursive initial domain notifications ([70c72b4](https://github.com/genome-spy/genome-spy/commit/70c72b49f52cc5c4392b9f6a0ffa61c7b8079144)) by @tuner
+
 # [0.83.0](https://github.com/genome-spy/genome-spy/compare/v0.82.0...v0.83.0) (2026-08-06)
 
 ### Bug Fixes
