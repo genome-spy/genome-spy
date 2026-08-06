@@ -206,7 +206,7 @@ function createNamedDatasetEngine(rows) {
 }
 
 /**
- * @param {(...args: any[]) => any} reader
+ * @param {((...args: any[]) => any) | null} reader
  * @param {() => Promise<void>} callback
  */
 async function withArrowReader(reader, callback) {
@@ -419,6 +419,25 @@ describe("ViewMutationApi", () => {
                 /** @type {any} */ (undefined)
             )
         ).rejects.toMatchObject({ code: "datasetLoadFailed" });
+        expect(getCollectorValues(view)).toEqual([1]);
+    });
+
+    test("rejects when the requested binary reader is not registered", async () => {
+        const { view } = await createNamedDatasetEngine([{ value: 1 }]);
+        const datasets = createTopLevelDatasetApi({ viewRoot: view });
+
+        await withArrowReader(null, async () => {
+            await expect(
+                datasets.load("results", new ArrayBuffer(0), {
+                    type: "arrow",
+                })
+            ).rejects.toMatchObject({
+                code: "datasetLoadFailed",
+                message: expect.stringContaining(
+                    "Data format is not registered: arrow"
+                ),
+            });
+        });
         expect(getCollectorValues(view)).toEqual([1]);
     });
 
