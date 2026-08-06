@@ -1,4 +1,4 @@
-import { formatSvgNumber } from "../view/renderingContext/svgNumber.js";
+import { formatSvgNumber } from "./svgNumber.js";
 
 /**
  * @param {import("../view/layout/rectangle.js").default} coords
@@ -72,9 +72,7 @@ export function encodeString(encoder, datum) {
     return toSvgString(encoder(datum));
 }
 
-/**
- * @param {import("../spec/channel.js").Scalar} value
- */
+/** @param {import("../spec/channel.js").Scalar} value */
 export function toSvgString(value) {
     return value == null ? "none" : "" + value;
 }

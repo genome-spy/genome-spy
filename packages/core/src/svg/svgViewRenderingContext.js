@@ -1,12 +1,13 @@
-import { peek } from "../../utils/arrayUtils.js";
+import { peek } from "../utils/arrayUtils.js";
 import {
     normalizeClipOptions,
     prepareMarkClipOptionsFromClip,
-} from "./clipOptions.js";
-import ViewRenderingContext from "./viewRenderingContext.js";
+} from "../view/renderingContext/clipOptions.js";
+import ViewRenderingContext from "../view/renderingContext/viewRenderingContext.js";
+import { getSvgData } from "./markData.js";
+import { renderMarkSvg } from "./renderers/index.js";
+import { createSvgElement, SVG_NS } from "./svgElement.js";
 import { formatSvgNumber } from "./svgNumber.js";
-
-const SVG_NS = "http://www.w3.org/2000/svg";
 
 /**
  * @typedef {object} SvgRenderingOptions
@@ -17,14 +18,14 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 /**
  * @typedef {object} ViewStackEntry
- * @prop {import("../view.js").default} view
+ * @prop {import("../view/view.js").default} view
  * @prop {SVGGElement} node
- * @prop {import("../layout/rectangle.js").default} coords
+ * @prop {import("../view/layout/rectangle.js").default} coords
  */
 
 /**
  * @typedef {object} SvgMarkRenderingOptions
- * @prop {import("../layout/rectangle.js").default} coords
+ * @prop {import("../view/layout/rectangle.js").default} coords
  * @prop {object[]} data
  * @prop {SVGGElement} group
  * @prop {number} viewOpacity
@@ -50,7 +51,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     #nextClipId = 0;
 
     /**
-     * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
+     * @param {import("../types/rendering.js").GlobalRenderingOptions} globalOptions
      * @param {SvgRenderingOptions} options
      */
     constructor(globalOptions, options) {
@@ -83,8 +84,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     }
 
     /**
-     * @param {import("../view.js").default} view
-     * @param {import("../layout/rectangle.js").default} coords
+     * @param {import("../view/view.js").default} view
+     * @param {import("../view/layout/rectangle.js").default} coords
      * @override
      */
     pushView(view, coords) {
@@ -102,7 +103,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     }
 
     /**
-     * @param {import("../view.js").default} view
+     * @param {import("../view/view.js").default} view
      * @override
      */
     popView(view) {
@@ -113,8 +114,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     }
 
     /**
-     * @param {import("../../marks/mark.js").default} mark
-     * @param {import("../../types/rendering.js").RenderingOptions} options
+     * @param {import("../marks/mark.js").default} mark
+     * @param {import("../types/rendering.js").RenderingOptions} options
      * @override
      */
     renderMark(mark, options) {
@@ -136,9 +137,9 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             group.setAttribute("clip-path", clipPathUrl);
         }
 
-        mark.renderSvg(this, {
+        renderMarkSvg(mark, {
             coords: this.currentCoords,
-            data: mark.getSvgData(options),
+            data: getSvgData(mark, options),
             group,
             viewOpacity: mark.unitView.getEffectiveOpacity(),
         });
@@ -146,9 +147,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     }
 
     /**
-     * Returns a reusable SVG clip-path reference.
-     *
-     * @param {import("../../types/rendering.js").ClipOptions | undefined} clip
+     * @param {import("../types/rendering.js").ClipOptions | undefined} clip
      * @returns {string | undefined}
      */
     getClipPathUrl(clip) {
@@ -200,7 +199,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         return peek(this.#viewStack)?.node ?? this.#svg;
     }
 
-    /** @returns {import("../layout/rectangle.js").default} */
+    /** @returns {import("../view/layout/rectangle.js").default} */
     get currentCoords() {
         const entry = peek(this.#viewStack);
         if (!entry) {
@@ -208,20 +207,4 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         }
         return entry.coords;
     }
-}
-
-/**
- * @template {keyof SVGElementTagNameMap} K
- * @param {K} name
- * @param {Record<string, string | number>} [attributes]
- * @returns {SVGElementTagNameMap[K]}
- */
-export function createSvgElement(name, attributes) {
-    const element = document.createElementNS(SVG_NS, name);
-    if (attributes) {
-        for (const [key, value] of Object.entries(attributes)) {
-            element.setAttribute(key, "" + value);
-        }
-    }
-    return element;
 }

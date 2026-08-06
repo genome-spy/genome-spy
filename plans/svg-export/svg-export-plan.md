@@ -20,8 +20,8 @@ Provide publication-quality SVG export that preserves GenomeSpy's layout,
 scales, axes, titles, view hierarchy, and editable graphical elements. The SVG
 renderer should reuse the existing view traversal, CPU encoders, and resolved
 Vega/D3 scales so that it follows the same visualization state as WebGL. Mark
-classes remain responsible for translating their own geometry and presentation
-semantics into SVG.
+renderers remain responsible for translating each mark's geometry and
+presentation semantics into SVG.
 
 Exact glyph-outline parity is not currently a goal. Text placement uses the SDF
 font metrics used by WebGL, while the SVG contains editable plain
@@ -31,16 +31,18 @@ font metrics used by WebGL, while the SVG contains editable plain
 
 The main implementation points are:
 
-- [`svgViewRenderingContext.js`](../../packages/core/src/view/renderingContext/svgViewRenderingContext.js)
+- [`svgViewRenderingContext.js`](../../packages/core/src/svg/svgViewRenderingContext.js)
   constructs the SVG document, maintains the view-group stack, and creates
   reusable clip paths.
-- [`mark.js`](../../packages/core/src/marks/mark.js) selects the data batch for
-  SVG rendering and provides the fail-fast base implementation.
-- [`svgMarkUtils.js`](../../packages/core/src/marks/svgMarkUtils.js) contains
+- [`markData.js`](../../packages/core/src/svg/markData.js) selects the collector
+  batch for the rendered occurrence.
+- [`svgMarkUtils.js`](../../packages/core/src/svg/svgMarkUtils.js) contains
   shared encoder and coordinate-projection helpers.
-- Individual mark classes implement `renderSvg()`.
-- [`svgExport.js`](../../packages/core/src/genomeSpy/svgExport.js) drives the
-  export traversal. The public Core/embed APIs return an SVG Blob.
+- [`renderers/`](../../packages/core/src/svg/renderers/) contains the
+  export-specific mark renderers and their fail-fast registry.
+- [`index.js`](../../packages/core/src/svg/index.js) drives the export traversal.
+  `GenomeSpy.exportSvg()` loads this subsystem dynamically, and the public
+  Core/embed APIs return an SVG Blob.
 - Focused coverage lives in
   [`svgExport.test.js`](../../packages/core/src/genomeSpy/svgExport.test.js) and
   [`svgViewRenderingContext.test.js`](../../packages/core/src/view/renderingContext/svgViewRenderingContext.test.js).
@@ -64,7 +66,7 @@ expression-valued link properties, and sample facets.
 
 - Reuse the normal render traversal; do not build a second view-tree walker.
 - Reuse mark encoders and resolved scales rather than duplicating scale logic.
-- Keep SVG emission in the corresponding mark class.
+- Keep SVG emission in the corresponding lazy renderer under `src/svg/`.
 - Port shader calculations to JavaScript only when they define visible mark
   semantics required for parity.
 - Preserve draw order and the nested view-group structure.
@@ -203,7 +205,9 @@ For each increment:
 3. Confirm that unsupported variants fail with an actionable error.
 4. Confirm that the SVG contains no raster `<image>` elements.
 5. Run the focused SVG tests, workspace TypeScript checks, and lint.
-6. Commit the completed increment before starting the next one.
+6. After changing the import boundary, build Core and confirm that the ESM
+   entry loads a separate SVG chunk.
+7. Commit the completed increment before starting the next one.
 
 The vector-only phase is complete when all fundamental mark types have a useful
 SVG representation, common axes/titles/labels and mark properties match WebGL,

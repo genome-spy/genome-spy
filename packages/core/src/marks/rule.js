@@ -12,16 +12,6 @@ import COMMON_SHADER from "./rule.common.glsl";
 import { RuleVertexBuilder } from "../gl/dataToVertices.js";
 import { isChannelDefWithScale } from "../encoder/encoder.js";
 import { fixRuleLikeEncoding } from "./ruleLikeEncoding.js";
-import { createSvgElement } from "../view/renderingContext/svgViewRenderingContext.js";
-import {
-    createSvgAttributeEncoder,
-    encodeNumber,
-    encodePosition,
-    formatSvgNumber,
-    projectX,
-    projectY,
-    toSvgString,
-} from "./svgMarkUtils.js";
 
 const HORIZONTAL = "horizontal";
 const VERTICAL = "vertical";
@@ -211,80 +201,6 @@ export default class RuleMark extends Mark {
                 ),
             options
         );
-    }
-
-    /**
-     * @param {import("../view/renderingContext/svgViewRenderingContext.js").default} context
-     * @param {import("../view/renderingContext/svgViewRenderingContext.js").SvgMarkRenderingOptions} options
-     */
-    renderSvg(context, options) {
-        const { coords, data, group, viewOpacity } = options;
-        const encoders =
-            /** @type {Record<string, import("../types/encoder.js").Encoder>} */ (
-                this.encoders
-            );
-        const strokeDash = this.properties.strokeDash;
-        const encodeStyles = createSvgAttributeEncoder(group, {
-            stroke: { encoder: encoders.color, transform: toSvgString },
-            "stroke-opacity": {
-                encoder: encoders.opacity,
-                transform: (value) => +value * viewOpacity,
-            },
-            "stroke-width": {
-                encoder: encoders.size,
-                transform: (value) => formatSvgNumber(+value),
-            },
-        });
-        group.setAttribute(
-            "stroke-linecap",
-            /** @type {string} */ (this.properties.strokeCap)
-        );
-        if (strokeDash) {
-            group.setAttribute(
-                "stroke-dasharray",
-                strokeDash.map(formatSvgNumber).join(" ")
-            );
-            group.setAttribute(
-                "stroke-dashoffset",
-                "" + formatSvgNumber(this.properties.strokeDashOffset)
-            );
-        }
-
-        for (const datum of data) {
-            const xOffset = encodeNumber(encoders.xOffset, datum);
-            const yOffset = encodeNumber(encoders.yOffset, datum);
-            const x2Offset = encoders.x2Offset
-                ? encodeNumber(encoders.x2Offset, datum)
-                : xOffset;
-            const y2Offset = encoders.y2Offset
-                ? encodeNumber(encoders.y2Offset, datum)
-                : yOffset;
-            const attributes = {
-                x1: formatSvgNumber(
-                    projectX(coords, encodePosition(encoders.x, datum), xOffset)
-                ),
-                y1: formatSvgNumber(
-                    projectY(coords, encodePosition(encoders.y, datum), yOffset)
-                ),
-                x2: formatSvgNumber(
-                    projectX(
-                        coords,
-                        encodePosition(encoders.x2, datum),
-                        x2Offset
-                    )
-                ),
-                y2: formatSvgNumber(
-                    projectY(
-                        coords,
-                        encodePosition(encoders.y2, datum),
-                        y2Offset
-                    )
-                ),
-                ...encodeStyles(datum),
-            };
-            const line = createSvgElement("line", attributes);
-            group.appendChild(line);
-        }
     }
 }
 

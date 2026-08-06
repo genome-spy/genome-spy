@@ -1,5 +1,5 @@
 import Rectangle from "../view/layout/rectangle.js";
-import SvgViewRenderingContext from "../view/renderingContext/svgViewRenderingContext.js";
+import SvgViewRenderingContext from "./svgViewRenderingContext.js";
 
 /**
  * Creates an SVG document by traversing a prepared view hierarchy.

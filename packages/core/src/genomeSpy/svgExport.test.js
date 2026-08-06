@@ -7,7 +7,7 @@ import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
 import { resolveBaseConfig } from "../config/resolveConfig.js";
 import { DEFAULT_THEME_NAME, resolveThemeSelection } from "../config/themes.js";
 import { createHeadlessEngine } from "./headlessBootstrap.js";
-import { createSvg } from "./svgExport.js";
+import { createSvg } from "../svg/index.js";
 
 const baseConfig = resolveBaseConfig({
     defaultConfig: INTERNAL_DEFAULT_CONFIG,

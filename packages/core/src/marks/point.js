@@ -14,17 +14,6 @@ import { getEncoderDataAccessor, isValueDef } from "../encoder/encoder.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { sampleIterable } from "../data/transforms/sample.js";
 import { fixFill, fixStroke } from "./markUtils.js";
-import { createSvgElement } from "../view/renderingContext/svgViewRenderingContext.js";
-import {
-    createSvgAttributeEncoder,
-    encodeNumber,
-    encodePosition,
-    encodeString,
-    formatSvgNumber,
-    projectX,
-    projectY,
-    toSvgString,
-} from "./svgMarkUtils.js";
 
 /** @type {Record<string, import("../spec/channel.js").ChannelDef>} */
 const defaultEncoding = {};
@@ -319,82 +308,5 @@ export default class PointMark extends Mark {
                 );
             }
         }, options);
-    }
-
-    /**
-     * @param {import("../view/renderingContext/svgViewRenderingContext.js").default} context
-     * @param {import("../view/renderingContext/svgViewRenderingContext.js").SvgMarkRenderingOptions} options
-     */
-    renderSvg(context, options) {
-        if (
-            this.properties.inwardStroke ||
-            this.properties.fillGradientStrength ||
-            this.properties.geometricZoomBound
-        ) {
-            throw new Error(
-                "SVG export does not support point gradients or zoom-dependent geometry yet."
-            );
-        }
-
-        const { coords, data, group, viewOpacity } = options;
-        const encoders =
-            /** @type {Record<string, import("../types/encoder.js").Encoder>} */ (
-                this.encoders
-            );
-        const semanticThreshold = this.getSemanticThreshold();
-        const encodeStyles = createSvgAttributeEncoder(group, {
-            fill: { encoder: encoders.fill, transform: toSvgString },
-            "fill-opacity": {
-                encoder: encoders.fillOpacity,
-                transform: (value) => +value * viewOpacity,
-            },
-            stroke: { encoder: encoders.stroke, transform: toSvgString },
-            "stroke-opacity": {
-                encoder: encoders.strokeOpacity,
-                transform: (value) => +value * viewOpacity,
-            },
-            "stroke-width": {
-                encoder: encoders.strokeWidth,
-                transform: (value) => formatSvgNumber(+value),
-            },
-        });
-
-        for (const datum of data) {
-            const shape = encodeString(encoders.shape, datum);
-            if (shape != "circle") {
-                throw new Error(
-                    `SVG export only supports circle points in the proof of concept. Received: ${shape}`
-                );
-            }
-            if (
-                encodeNumber(encoders.semanticScore, datum) < semanticThreshold
-            ) {
-                continue;
-            }
-
-            const circle = createSvgElement("circle", {
-                cx: formatSvgNumber(
-                    projectX(
-                        coords,
-                        encodePosition(encoders.x, datum),
-                        encodeNumber(encoders.xOffset, datum) +
-                            encodeNumber(encoders.dx, datum)
-                    )
-                ),
-                cy: formatSvgNumber(
-                    projectY(
-                        coords,
-                        encodePosition(encoders.y, datum),
-                        encodeNumber(encoders.yOffset, datum) -
-                            encodeNumber(encoders.dy, datum)
-                    )
-                ),
-                r: formatSvgNumber(
-                    Math.sqrt(encodeNumber(encoders.size, datum)) / 2
-                ),
-                ...encodeStyles(datum),
-            });
-            group.appendChild(circle);
-        }
     }
 }

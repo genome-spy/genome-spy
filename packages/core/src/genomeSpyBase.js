@@ -30,7 +30,6 @@ import RenderCoordinator from "./genomeSpy/renderCoordinator.js";
 import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
 import { exportCanvas } from "./genomeSpy/canvasExport.js";
-import { createSvg } from "./genomeSpy/svgExport.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
 import SingleAxisWindowedSource from "./data/sources/lazy/singleAxisWindowedSource.js";
@@ -707,6 +706,7 @@ export default class GenomeSpy {
             : "white";
 
         try {
+            const { createSvg } = await import("./svg/index.js");
             const svg = createSvg({
                 viewRoot: this.viewRoot,
                 logicalWidth,

@@ -2,8 +2,8 @@
 
 import { describe, expect, test } from "vitest";
 import Rectangle from "../layout/rectangle.js";
-import { formatSvgNumber } from "./svgNumber.js";
-import SvgViewRenderingContext from "./svgViewRenderingContext.js";
+import { formatSvgNumber } from "../../svg/svgNumber.js";
+import SvgViewRenderingContext from "../../svg/svgViewRenderingContext.js";
 
 /**
  * @param {string} name

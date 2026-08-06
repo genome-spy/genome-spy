@@ -1584,50 +1584,6 @@ export default class Mark {
     }
 
     /**
-     * Emits this mark as SVG elements.
-     *
-     * @param {import("../view/renderingContext/svgViewRenderingContext.js").default} context
-     * @param {import("../view/renderingContext/svgViewRenderingContext.js").SvgMarkRenderingOptions} options
-     */
-    renderSvg(context, options) {
-        throw new Error(
-            `SVG rendering is not implemented for mark type "${this.getType()}". View: ${this.unitView.getPathString()}`
-        );
-    }
-
-    /**
-     * Selects the collector batch that corresponds to the rendered facet.
-     *
-     * @param {RenderingOptions} options
-     * @returns {object[]}
-     */
-    getSvgData(options) {
-        if (options.sampleFacetRenderingOptions) {
-            throw new Error("SVG export does not support sample facets yet.");
-        }
-
-        const collector = this.unitView.getCollector();
-        if (!collector) {
-            throw new Error(
-                `Cannot export an uninitialized mark as SVG. View: ${this.unitView.getPathString()}`
-            );
-        }
-
-        const unFacetedData = collector.facetBatches.get(undefined);
-        if (unFacetedData) {
-            return unFacetedData;
-        }
-
-        const data = collector.facetBatches.get(options.facetId);
-        if (!data) {
-            throw new Error(
-                `Cannot find SVG export data for facet ${JSON.stringify(options.facetId)}. View: ${this.unitView.getPathString()}`
-            );
-        }
-        return data;
-    }
-
-    /**
      * @param {DrawFunction} draw A function that draws a range of vertices
      * @param {import("./mark.js").MarkRenderingOptions} options
      * @returns {function():void}
