@@ -513,7 +513,7 @@ function getBaselineOffset(baseline, fontSize) {
         case "top":
             return 0.79 * fontSize;
         case "middle":
-            return 0.3 * fontSize;
+            return 0.35 * fontSize;
         case "bottom":
             return -0.21 * fontSize;
         case "alphabetic":

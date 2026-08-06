@@ -78,7 +78,7 @@ describe("SVG export", () => {
         expect(textGroup?.getAttribute("font-size")).toBe("12");
         expect(Number(text?.getAttribute("textLength"))).toBeGreaterThan(0);
         expect(text?.getAttribute("dx")).toBe("3");
-        expect(text?.getAttribute("dy")).toBe("1.6");
+        expect(text?.getAttribute("dy")).toBe("2.2");
         expect(text?.hasAttribute("transform")).toBe(false);
         expect(svg.querySelectorAll('[data-mark-type="rule"]')).toHaveLength(1);
         expect(svg.querySelectorAll('[data-mark-type="text"]')).toHaveLength(1);

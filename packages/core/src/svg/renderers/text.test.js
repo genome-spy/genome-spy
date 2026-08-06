@@ -105,7 +105,7 @@ describe("SVG text renderer", () => {
         expect(text?.textContent).toBe("A");
         expect(text?.getAttribute("font-size")).toBe("1");
         expect(text?.getAttribute("text-anchor")).toBe("middle");
-        expect(text?.getAttribute("dy")).toBe("0.3");
+        expect(text?.getAttribute("dy")).toBe("0.35");
         expect(text?.getAttribute("transform")).toBe(
             "translate(60 50) translate(2 -3) scale(40 77.7)"
         );
@@ -146,7 +146,7 @@ describe("SVG text renderer", () => {
 
         expect(texts.map((text) => text.getAttribute("dy"))).toEqual([
             "15.8",
-            "6",
+            "7",
             "0",
             "-4.2",
         ]);
