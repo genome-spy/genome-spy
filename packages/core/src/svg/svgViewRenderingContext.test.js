@@ -72,6 +72,12 @@ describe("SvgViewRenderingContext", () => {
 
         expect(context.getClipPathUrl(clip)).toBe("url(#clip-0)");
         expect(context.getClipPathUrl(clip)).toBe("url(#clip-0)");
+        expect(
+            context.getClipPathUrl({
+                ...clip,
+                rect: Rectangle.create(20.01, 10.01, 100.01, 50.01),
+            })
+        ).toBe("url(#clip-0)");
 
         const rect = context.getSvg().querySelector("clipPath rect");
         expect(rect?.getAttribute("x")).toBe("20");
@@ -79,6 +85,42 @@ describe("SvgViewRenderingContext", () => {
         expect(rect?.getAttribute("width")).toBe("100");
         expect(rect?.getAttribute("height")).toBe("180");
         expect(context.getSvg().querySelectorAll("clipPath")).toHaveLength(1);
+    });
+
+    test("deduplicates filters and patterns at serialized precision", () => {
+        const context = new SvgViewRenderingContext(
+            { picking: false },
+            { width: 100, height: 100 }
+        );
+
+        expect(
+            context.getShadowFilterUrl({ blur: 10, offsetX: 2, offsetY: 3 })
+        ).toBe(
+            context.getShadowFilterUrl({
+                blur: 10.01,
+                offsetX: 2.01,
+                offsetY: 3.01,
+            })
+        );
+        const hatch = {
+            type: "diagonal",
+            fill: "white",
+            fillOpacity: 0.75,
+            stroke: "black",
+            strokeOpacity: 0.5,
+            strokeWidth: 2,
+        };
+        expect(context.getRectHatchPatternUrl(hatch)).toBe(
+            context.getRectHatchPatternUrl({
+                ...hatch,
+                fillOpacity: 0.7501,
+                strokeOpacity: 0.5001,
+                strokeWidth: 2.0001,
+            })
+        );
+
+        expect(context.getSvg().querySelectorAll("filter")).toHaveLength(1);
+        expect(context.getSvg().querySelectorAll("pattern")).toHaveLength(1);
     });
 
     test("fails on an unbalanced view stack", () => {

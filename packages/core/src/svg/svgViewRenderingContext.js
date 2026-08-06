@@ -12,7 +12,7 @@ import {
 import { getSvgData } from "./markData.js";
 import { renderMarkSvg } from "./renderers/index.js";
 import { createSvgElement, SVG_NS } from "./svgElement.js";
-import { formatSvgNumber } from "./svgNumber.js";
+import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
 import { createRectHatchPattern } from "./rectHatchPattern.js";
 import {
     createLinkArcFadeMask,
@@ -270,7 +270,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         const y = clip.clipY ? rect.y : 0;
         const width = clip.clipX ? rect.width : this.width;
         const height = clip.clipY ? rect.height : this.height;
-        const key = [x, y, width, height].join(",");
+        const formatted = [x, y, width, height].map(formatSvgNumber);
+        const key = formatted.join(",");
         let id = this.#clipPaths.get(key);
 
         if (!id) {
@@ -281,10 +282,10 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             });
             clipPath.appendChild(
                 createSvgElement("rect", {
-                    x: formatSvgNumber(x),
-                    y: formatSvgNumber(y),
-                    width: formatSvgNumber(width),
-                    height: formatSvgNumber(height),
+                    x: formatted[0],
+                    y: formatted[1],
+                    width: formatted[2],
+                    height: formatted[3],
                 })
             );
             this.#defs.appendChild(clipPath);
@@ -314,7 +315,10 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
      * @returns {string}
      */
     getShadowFilterUrl(shadow) {
-        const key = [shadow.blur, shadow.offsetX, shadow.offsetY].join(",");
+        const stdDeviation = formatSvgNumber(Math.max(shadow.blur / 2.5, 0.25));
+        const dx = formatSvgNumber(shadow.offsetX);
+        const dy = formatSvgNumber(shadow.offsetY);
+        const key = [stdDeviation, dx, dy].join(",");
         let id = this.#shadowFilters.get(key);
         if (!id) {
             id = "shadow-" + this.#nextFilterId++;
@@ -330,15 +334,13 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             });
             filter.appendChild(
                 createSvgElement("feGaussianBlur", {
-                    stdDeviation: formatSvgNumber(
-                        Math.max(shadow.blur / 2.5, 0.25)
-                    ),
+                    stdDeviation,
                 })
             );
             filter.appendChild(
                 createSvgElement("feOffset", {
-                    dx: formatSvgNumber(shadow.offsetX),
-                    dy: formatSvgNumber(shadow.offsetY),
+                    dx,
+                    dy,
                 })
             );
             this.#defs.appendChild(filter);
@@ -356,10 +358,10 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         const key = JSON.stringify([
             hatch.type,
             hatch.fill,
-            hatch.fillOpacity,
+            formatSvgUnitless(hatch.fillOpacity),
             hatch.stroke,
-            hatch.strokeOpacity,
-            hatch.strokeWidth,
+            formatSvgUnitless(hatch.strokeOpacity),
+            formatSvgUnitless(hatch.strokeWidth),
         ]);
         let id = this.#rectHatchPatterns.get(key);
         if (!id) {
