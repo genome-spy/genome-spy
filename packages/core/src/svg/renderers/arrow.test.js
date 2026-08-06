@@ -40,9 +40,7 @@ describe("SVG arrow renderer", () => {
             background: null,
         });
         const arrows = Array.from(
-            svg.querySelectorAll(
-                '[data-mark-type="arrow"] [data-arrow-part="body"]'
-            )
+            svg.querySelectorAll('[data-mark-type="arrow"] path')
         );
 
         expect(arrows).toHaveLength(2);
@@ -77,9 +75,8 @@ describe("SVG arrow renderer", () => {
         });
 
         expect(
-            svg.querySelectorAll('[data-mark-type="arrow"] [data-arrow-part]')
+            svg.querySelectorAll('[data-mark-type="arrow"] path')
         ).toHaveLength(1);
-        expect(svg.querySelector('[data-arrow-part="head"]')).not.toBeNull();
         expect(warnings).toEqual([]);
     });
 
@@ -106,7 +103,7 @@ describe("SVG arrow renderer", () => {
             logicalHeight: 100,
             background: null,
         });
-        const body = svg.querySelector('[data-arrow-part="body"]');
+        const body = svg.querySelector('[data-mark-type="arrow"] path');
 
         expect(body?.getAttribute("d")).toContain("80 20");
     });
@@ -138,7 +135,7 @@ describe("SVG arrow renderer", () => {
             background: null,
         });
         const bodies = Array.from(
-            svg.querySelectorAll('[data-arrow-part="body"]')
+            svg.querySelectorAll('[data-mark-type="arrow"] path')
         );
 
         // The start notch is five pixels deep for a 45-degree, 10-pixel stem.
@@ -174,7 +171,7 @@ describe("SVG arrow renderer", () => {
 
         expect(
             notchedSvg
-                .querySelector('[data-arrow-part="body"]')
+                .querySelector('[data-mark-type="arrow"] path')
                 ?.getAttribute("d")
         ).toContain("73.7 50");
 
@@ -205,7 +202,7 @@ describe("SVG arrow renderer", () => {
         // The configured 15-pixel head is blunted to preserve 15 pixels of stem.
         expect(
             shortSvg
-                .querySelector('[data-arrow-part="body"]')
+                .querySelector('[data-mark-type="arrow"] path')
                 ?.getAttribute("d")
         ).toContain("55 65");
         expect(warnings).toEqual([]);
@@ -233,7 +230,7 @@ describe("SVG arrow renderer", () => {
             logicalHeight: 100,
             background: null,
         });
-        const body = svg.querySelector('[data-arrow-part="body"]');
+        const body = svg.querySelector('[data-mark-type="arrow"] path');
 
         // The start notch is shortened to leave the configured 15-pixel stem.
         expect(body?.getAttribute("d")).toContain("43 50");

@@ -248,8 +248,6 @@ export function renderArrowSvg(baseMark, options) {
             polygons.length == 1 ? polygons : unionPolygons(polygons);
         const path = createSvgElement("path", {
             d: boundaryLoops.map(polygon).join(" "),
-            "data-arrow-part":
-                renderedHeadShape == "open" && !stem ? "head" : "body",
         });
         const instance = createSvgElement("g", encodeStyles(datum));
         instance.appendChild(path);
