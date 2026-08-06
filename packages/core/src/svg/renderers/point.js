@@ -20,12 +20,18 @@ export function renderPointSvg(baseMark, options) {
     const mark = /** @type {import("../../marks/point.js").default} */ (
         baseMark
     );
-    if (
-        mark.properties.fillGradientStrength ||
-        mark.properties.geometricZoomBound
-    ) {
+    const fillGradientStrength = resolveSvgProperty(
+        mark,
+        mark.properties.fillGradientStrength
+    );
+    if (fillGradientStrength) {
         options.warn(
-            "SVG export ignored unsupported point gradients or zoom-dependent geometry."
+            "SVG export ignored unsupported point property fillGradientStrength."
+        );
+    }
+    if (mark.properties.geometricZoomBound) {
+        options.warn(
+            "SVG export ignored unsupported point property geometricZoomBound."
         );
     }
     const inwardStroke = resolveSvgProperty(mark, mark.properties.inwardStroke);

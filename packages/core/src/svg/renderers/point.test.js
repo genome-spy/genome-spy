@@ -239,4 +239,57 @@ describe("SVG point renderer", () => {
         expect(line?.getAttribute("stroke-width")).toBe("8");
         expect(warnings).toEqual([]);
     });
+
+    test("reports resolved unsupported properties separately", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "gradient", value: 0.25 }],
+            data: { values: [{}] },
+            mark: {
+                type: "point",
+                fillGradientStrength: { expr: "gradient" },
+                geometricZoomBound: 2,
+            },
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                fill: { value: "black" },
+            },
+        });
+
+        const { warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+
+        expect(warnings).toHaveLength(2);
+        expect(warnings[0]).toContain("fillGradientStrength");
+        expect(warnings[1]).toContain("geometricZoomBound");
+    });
+
+    test("does not warn for a disabled expression-valued gradient", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "gradient", value: 0 }],
+            data: { values: [{}] },
+            mark: {
+                type: "point",
+                fillGradientStrength: { expr: "gradient" },
+            },
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                fill: { value: "black" },
+            },
+        });
+
+        const { warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+
+        expect(warnings).toEqual([]);
+    });
 });
