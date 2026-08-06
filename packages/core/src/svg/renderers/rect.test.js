@@ -197,13 +197,17 @@ describe("SVG rectangle renderer", () => {
         expect(rect?.getAttribute("opacity")).toBe("0.5");
     });
 
-    test("warns about rectangle effects without preventing export", async () => {
+    test("exports rectangle shadows and warns about unsupported hatches", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },
             mark: {
                 type: "rect",
                 cornerRadius: 5,
                 hatch: "diagonal",
+                shadowBlur: 10,
+                shadowColor: "#abcdef",
+                shadowOffsetX: 2,
+                shadowOffsetY: 3,
                 shadowOpacity: 0.5,
             },
             encoding: {
@@ -222,13 +226,26 @@ describe("SVG rectangle renderer", () => {
             background: null,
         });
 
+        const markGroup = svg.querySelector('[data-mark-type="rect"]');
+        const shadowGroup = markGroup?.querySelector(":scope > g");
+        const filter = svg.querySelector("filter");
+
         expect(
-            svg
-                .querySelector('[data-mark-type="rect"] rect')
-                ?.getAttribute("rx")
+            markGroup?.querySelector(":scope > rect")?.getAttribute("rx")
         ).toBe("5");
-        expect(warnings).toHaveLength(2);
+        expect(shadowGroup?.getAttribute("fill")).toBe("#abcdef");
+        expect(shadowGroup?.getAttribute("opacity")).toBe("0.5");
+        expect(shadowGroup?.getAttribute("filter")).toBe(
+            `url(#${filter?.getAttribute("id")})`
+        );
+        expect(
+            filter
+                ?.querySelector("feGaussianBlur")
+                ?.getAttribute("stdDeviation")
+        ).toBe("4");
+        expect(filter?.querySelector("feOffset")?.getAttribute("dx")).toBe("2");
+        expect(filter?.querySelector("feOffset")?.getAttribute("dy")).toBe("3");
+        expect(warnings).toHaveLength(1);
         expect(warnings.join(" ")).toContain("rectangle hatch");
-        expect(warnings.join(" ")).toContain("rectangle shadow");
     });
 });

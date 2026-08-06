@@ -42,13 +42,15 @@ export function renderRectSvg(baseMark, options) {
     const minWidth = resolveSvgProperty(mark, p.minWidth);
     const minHeight = resolveSvgProperty(mark, p.minHeight);
     const minOpacity = resolveSvgProperty(mark, p.minOpacity);
+    const shadow = {
+        blur: resolveSvgProperty(mark, p.shadowBlur ?? 0),
+        color: resolveSvgProperty(mark, p.shadowColor ?? "black"),
+        offsetX: resolveSvgProperty(mark, p.shadowOffsetX ?? 0),
+        offsetY: resolveSvgProperty(mark, p.shadowOffsetY ?? 0),
+        opacity: resolveSvgProperty(mark, p.shadowOpacity ?? 0),
+    };
     if (resolveSvgProperty(mark, p.hatch ?? "none") != "none") {
         options.warn("SVG export ignored an unsupported rectangle hatch.");
-    }
-    if (resolveSvgProperty(mark, p.shadowOpacity ?? 0) > 0) {
-        options.warn(
-            "SVG export ignored unsupported rectangle shadow properties."
-        );
     }
 
     const { coords, data, group, viewOpacity, visibleBounds } = options;
@@ -72,6 +74,7 @@ export function renderRectSvg(baseMark, options) {
             transform: (value) => formatSvgNumber(+value),
         },
     });
+    const shadowGroup = createSvgElement("g");
 
     for (const datum of data) {
         const xOffset = encodeNumber(encoders.xOffset, datum);
@@ -109,7 +112,13 @@ export function renderRectSvg(baseMark, options) {
             y -= (minHeight - height) / 2;
             height = minHeight;
         }
-        const strokePadding = encodeNumber(encoders.strokeWidth, datum) / 2;
+        const strokeWidth = encodeNumber(encoders.strokeWidth, datum);
+        const strokePadding = strokeWidth / 2;
+        const shadowPadding =
+            shadow.opacity > 0
+                ? shadow.blur +
+                  Math.max(Math.abs(shadow.offsetX), Math.abs(shadow.offsetY))
+                : 0;
         if (
             !intersectsSvgBounds(
                 visibleBounds,
@@ -117,7 +126,7 @@ export function renderRectSvg(baseMark, options) {
                 y,
                 x + width,
                 y + height,
-                strokePadding
+                strokePadding + shadowPadding
             )
         ) {
             continue;
@@ -130,31 +139,59 @@ export function renderRectSvg(baseMark, options) {
                 : { opacity: formatSvgNumber(opacityFactor) }),
         };
 
-        if (hasEqualCornerRadii(radii)) {
-            const radius = radii.topLeft;
-            group.appendChild(
-                createSvgElement("rect", {
-                    x: formatSvgNumber(x),
-                    y: formatSvgNumber(y),
-                    width: formatSvgNumber(width),
-                    height: formatSvgNumber(height),
-                    ...(radius
-                        ? {
-                              rx: formatSvgNumber(radius),
-                              ry: formatSvgNumber(radius),
-                          }
-                        : {}),
-                    ...styles,
-                })
-            );
-        } else {
-            group.appendChild(
-                createSvgElement("path", {
-                    d: createRoundedRectPath(x, y, width, height, radii),
-                    ...styles,
+        if (shadow.opacity > 0) {
+            shadowGroup.appendChild(
+                createRectElement(x, y, width, height, radii, {
+                    "stroke-width": formatSvgNumber(strokeWidth),
                 })
             );
         }
+        group.appendChild(
+            createRectElement(x, y, width, height, radii, styles)
+        );
+    }
+
+    if (shadowGroup.childElementCount > 0) {
+        shadowGroup.setAttribute("fill", shadow.color);
+        shadowGroup.setAttribute("stroke", shadow.color);
+        shadowGroup.setAttribute(
+            "opacity",
+            "" + formatSvgNumber(shadow.opacity * viewOpacity)
+        );
+        shadowGroup.setAttribute("filter", options.getShadowFilterUrl(shadow));
+        group.insertBefore(shadowGroup, group.firstChild);
+    }
+}
+
+/**
+ * @param {number} x
+ * @param {number} y
+ * @param {number} width
+ * @param {number} height
+ * @param {CornerRadii} radii
+ * @param {Record<string, string | number>} styles
+ */
+function createRectElement(x, y, width, height, radii, styles) {
+    if (hasEqualCornerRadii(radii)) {
+        const radius = radii.topLeft;
+        return createSvgElement("rect", {
+            x: formatSvgNumber(x),
+            y: formatSvgNumber(y),
+            width: formatSvgNumber(width),
+            height: formatSvgNumber(height),
+            ...(radius
+                ? {
+                      rx: formatSvgNumber(radius),
+                      ry: formatSvgNumber(radius),
+                  }
+                : {}),
+            ...styles,
+        });
+    } else {
+        return createSvgElement("path", {
+            d: createRoundedRectPath(x, y, width, height, radii),
+            ...styles,
+        });
     }
 }
 

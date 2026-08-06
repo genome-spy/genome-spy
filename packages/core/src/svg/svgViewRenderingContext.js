@@ -32,12 +32,14 @@ import { formatSvgNumber } from "./svgNumber.js";
  * @prop {import("./svgBounds.js").SvgBounds} visibleBounds
  * @prop {number} viewOpacity
  * @prop {(fade: SvgViewportEdgeFade) => string | undefined} getViewportEdgeFadeMaskUrl
+ * @prop {(shadow: SvgShadow) => string} getShadowFilterUrl
  * @prop {(message: string) => void} warn
  */
 
 /**
  * @typedef {{width: number, distance: number}} SvgViewportEdgeFadeSide
  * @typedef {{top: SvgViewportEdgeFadeSide, right: SvgViewportEdgeFadeSide, bottom: SvgViewportEdgeFadeSide, left: SvgViewportEdgeFadeSide}} SvgViewportEdgeFade
+ * @typedef {{blur: number, offsetX: number, offsetY: number}} SvgShadow
  */
 
 /**
@@ -59,12 +61,16 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     /** @type {WeakMap<import("../view/view.js").default, string>} */
     #edgeFadeMasks = new WeakMap();
 
+    /** @type {Map<string, string>} */
+    #shadowFilters = new Map();
+
     /** @type {Set<string>} */
     #warnings = new Set();
 
     #nextViewId = 0;
     #nextClipId = 0;
     #nextMaskId = 0;
+    #nextFilterId = 0;
 
     /**
      * @param {import("../types/rendering.js").GlobalRenderingOptions} globalOptions
@@ -166,6 +172,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             viewOpacity: mark.unitView.getEffectiveOpacity(),
             getViewportEdgeFadeMaskUrl: (fade) =>
                 this.getViewportEdgeFadeMaskUrl(fade),
+            getShadowFilterUrl: (shadow) => this.getShadowFilterUrl(shadow),
             warn: (message) =>
                 this.#warnings.add(
                     `${message} View: ${mark.unitView.getPathString()}`
@@ -213,6 +220,45 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             );
             this.#defs.appendChild(clipPath);
             this.#clipPaths.set(key, id);
+        }
+
+        return `url(#${id})`;
+    }
+
+    /**
+     * @param {SvgShadow} shadow
+     * @returns {string}
+     */
+    getShadowFilterUrl(shadow) {
+        const key = [shadow.blur, shadow.offsetX, shadow.offsetY].join(",");
+        let id = this.#shadowFilters.get(key);
+        if (!id) {
+            id = "shadow-" + this.#nextFilterId++;
+            const filter = createSvgElement("filter", {
+                id,
+                x: 0,
+                y: 0,
+                width: formatSvgNumber(this.width),
+                height: formatSvgNumber(this.height),
+                filterUnits: "userSpaceOnUse",
+                primitiveUnits: "userSpaceOnUse",
+                "color-interpolation-filters": "sRGB",
+            });
+            filter.appendChild(
+                createSvgElement("feGaussianBlur", {
+                    stdDeviation: formatSvgNumber(
+                        Math.max(shadow.blur / 2.5, 0.25)
+                    ),
+                })
+            );
+            filter.appendChild(
+                createSvgElement("feOffset", {
+                    dx: formatSvgNumber(shadow.offsetX),
+                    dy: formatSvgNumber(shadow.offsetY),
+                })
+            );
+            this.#defs.appendChild(filter);
+            this.#shadowFilters.set(key, id);
         }
 
         return `url(#${id})`;
