@@ -9,7 +9,9 @@ import {
     resolveThemeSelection,
 } from "../../config/themes.js";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
+import Rectangle from "../../view/layout/rectangle.js";
 import { createSvg } from "../index.js";
+import SvgViewRenderingContext from "../svgViewRenderingContext.js";
 
 const baseConfig = resolveBaseConfig({
     defaultConfig: INTERNAL_DEFAULT_CONFIG,
@@ -80,19 +82,25 @@ describe("SVG link renderer", () => {
         expect(warnings).toEqual([]);
     });
 
-    test("warns and exports when a property is unsupported", async () => {
+    test("shares arc fade masks by chord line", async () => {
         const { view } = await createHeadlessEngine({
-            data: { values: [{}] },
+            data: {
+                values: [
+                    { x: 0.1, x2: 0.4, y: 0.5 },
+                    { x: 0.6, x2: 0.9, y: 0.5 },
+                    { x: 0.2, x2: 0.8, y: 0.7 },
+                ],
+            },
             mark: {
                 type: "link",
                 linkShape: "arc",
                 arcFadingDistance: [10, 20],
             },
             encoding: {
-                x: { value: 0.2 },
-                x2: { value: 0.8 },
-                y: { value: 0.5 },
-                y2: { value: 0.5 },
+                x: { field: "x", type: "quantitative", scale: null },
+                x2: { field: "x2" },
+                y: { field: "y", type: "quantitative", scale: null },
+                y2: { field: "y" },
                 color: { value: "black" },
             },
         });
@@ -103,11 +111,76 @@ describe("SVG link renderer", () => {
             logicalHeight: 100,
         });
 
+        const paths = Array.from(
+            svg.querySelectorAll('[data-mark-type="link"] path')
+        );
+        expect(paths).toHaveLength(3);
+        expect(svg.querySelectorAll('mask[id^="link-arc-fade-"]')).toHaveLength(
+            2
+        );
+        expect(paths[0].getAttribute("mask")).toBe(
+            paths[1].getAttribute("mask")
+        );
+        expect(paths[2].getAttribute("mask")).not.toBe(
+            paths[0].getAttribute("mask")
+        );
+        expect(warnings).toEqual([]);
+    });
+
+    test("positions arc fade masks after sample facet projection", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "link",
+                linkShape: "arc",
+                arcFadingDistance: [5, 10],
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.5 },
+                y2: { value: 0.5 },
+                color: { value: "black" },
+            },
+        });
+        const context = new SvgViewRenderingContext(
+            { picking: false },
+            { width: 200, height: 100 }
+        );
+        const coords = Rectangle.create(0, 0, 200, 100);
+
+        view.render(context, coords, {
+            sampleFacetRenderingOptions: {
+                locSize: { location: 10, size: 30 },
+                pixelToUnit: 0.01,
+            },
+        });
+        view.render(context, coords, {
+            sampleFacetRenderingOptions: {
+                locSize: { location: 60, size: 20 },
+                pixelToUnit: 0.01,
+            },
+        });
+
+        const svg = context.getSvg();
+        const paths = Array.from(
+            svg.querySelectorAll('[data-mark-type="link"] path')
+        );
+        expect(paths.map((path) => path.getAttribute("mask"))).toEqual([
+            "url(#link-arc-fade-0)",
+            "url(#link-arc-fade-1)",
+        ]);
         expect(
-            svg.querySelector('[data-mark-type="link"] path')
-        ).not.toBeNull();
-        expect(warnings).toHaveLength(1);
-        expect(warnings[0]).toContain("ignored unsupported link arc fading");
-        expect(warnings[0]).toContain("View:");
+            Array.from(
+                svg.querySelectorAll('linearGradient[id$="-gradient"]'),
+                (gradient) => [
+                    gradient.getAttribute("y1"),
+                    gradient.getAttribute("y2"),
+                ]
+            )
+        ).toEqual([
+            ["15", "35"],
+            ["60", "80"],
+        ]);
     });
 });

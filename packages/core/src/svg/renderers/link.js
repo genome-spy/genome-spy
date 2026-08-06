@@ -8,6 +8,11 @@ import {
     resolveSvgProperty,
     toSvgString,
 } from "../svgMarkUtils.js";
+import { UNIQUE_ID_KEY } from "../../data/transforms/identifier.js";
+import {
+    isMultiPointSelection,
+    isSinglePointSelection,
+} from "../../selection/selection.js";
 
 /**
  * @param {import("../../marks/mark.js").default} baseMark
@@ -19,14 +24,6 @@ export function renderLinkSvg(baseMark, options) {
     );
     const props = mark.properties;
     const arcFadingDistance = resolveSvgProperty(mark, props.arcFadingDistance);
-    if (
-        arcFadingDistance !== false &&
-        arcFadingDistance[0] > 0 &&
-        arcFadingDistance[1] > 0
-    ) {
-        options.warn("SVG export ignored unsupported link arc fading.");
-    }
-
     const shape = resolveSvgProperty(mark, props.linkShape);
     const orient = resolveSvgProperty(mark, props.orient);
     const geometryOptions = {
@@ -42,6 +39,13 @@ export function renderLinkSvg(baseMark, options) {
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    const noFadingOnPointSelection = resolveSvgProperty(
+        mark,
+        props.noFadingOnPointSelection
+    );
+    const pointSelections = noFadingOnPointSelection
+        ? getPointSelections(mark, encoders)
+        : [];
     const encodeStyles = createSvgAttributeEncoder(group, {
         stroke: { encoder: encoders.color, transform: toSvgString },
         "stroke-opacity": {
@@ -93,13 +97,68 @@ export function renderLinkSvg(baseMark, options) {
         ) {
             continue;
         }
+        /** @type {Record<string, string | number>} */
+        const styles = encodeStyles(datum);
+        if (
+            shape == "arc" &&
+            arcFadingDistance !== false &&
+            arcFadingDistance[0] > 0 &&
+            arcFadingDistance[1] > 0 &&
+            !isDatumSelected(datum, pointSelections)
+        ) {
+            const mask = options.getLinkArcFadeMaskUrl({
+                p1: /** @type {[number, number]} */ (p1),
+                p4: /** @type {[number, number]} */ (p4),
+                distances: arcFadingDistance,
+            });
+            if (mask) {
+                styles.mask = mask;
+            }
+        }
         group.appendChild(
             createSvgElement("path", {
                 d: `M ${formatSvgPoint(p1)} C ${formatSvgPoint(p2)} ${formatSvgPoint(p3)} ${formatSvgPoint(p4)}`,
-                ...encodeStyles(datum),
+                ...styles,
             })
         );
     }
+}
+
+/**
+ * Resolves only point selections referenced by the mark's conditional
+ * encoders, matching the set used by the shader's isPointSelected().
+ *
+ * @param {import("../../marks/link.js").default} mark
+ * @param {Record<string, import("../../types/encoder.js").Encoder>} encoders
+ */
+function getPointSelections(mark, encoders) {
+    const paramNames = new Set(
+        Object.values(encoders)
+            .flatMap((encoder) => encoder.branches)
+            .map((branch) => branch.predicate?.param)
+            .filter((param) => param)
+    );
+    return Array.from(paramNames)
+        .map((param) => mark.unitView.paramRuntime.findValue(param))
+        .filter(
+            (selection) =>
+                selection &&
+                (isSinglePointSelection(selection) ||
+                    isMultiPointSelection(selection))
+        );
+}
+
+/**
+ * @param {import("../../data/flowNode.js").Datum} datum
+ * @param {(import("../../types/selectionTypes.js").SinglePointSelection | import("../../types/selectionTypes.js").MultiPointSelection)[]} selections
+ */
+function isDatumSelected(datum, selections) {
+    const id = datum[UNIQUE_ID_KEY];
+    return selections.some((selection) =>
+        isSinglePointSelection(selection)
+            ? selection.uniqueId != null && selection.uniqueId == id
+            : selection.data.has(id)
+    );
 }
 
 /** @param {number[]} point */

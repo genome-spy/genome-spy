@@ -10,6 +10,10 @@ import { renderMarkSvg } from "./renderers/index.js";
 import { createSvgElement, SVG_NS } from "./svgElement.js";
 import { formatSvgNumber } from "./svgNumber.js";
 import { createRectHatchPattern } from "./rectHatchPattern.js";
+import {
+    createLinkArcFadeMask,
+    normalizeLinkArcFade,
+} from "./linkArcFadeMask.js";
 
 /**
  * @typedef {object} SvgRenderingOptions
@@ -35,6 +39,7 @@ import { createRectHatchPattern } from "./rectHatchPattern.js";
  * @prop {(fade: SvgViewportEdgeFade) => string | undefined} getViewportEdgeFadeMaskUrl
  * @prop {(shadow: SvgShadow) => string} getShadowFilterUrl
  * @prop {(hatch: SvgRectHatch) => string} getRectHatchPatternUrl
+ * @prop {(fade: SvgLinkArcFade) => string | undefined} getLinkArcFadeMaskUrl
  * @prop {(message: string) => void} warn
  */
 
@@ -43,6 +48,7 @@ import { createRectHatchPattern } from "./rectHatchPattern.js";
  * @typedef {{top: SvgViewportEdgeFadeSide, right: SvgViewportEdgeFadeSide, bottom: SvgViewportEdgeFadeSide, left: SvgViewportEdgeFadeSide}} SvgViewportEdgeFade
  * @typedef {{blur: number, offsetX: number, offsetY: number}} SvgShadow
  * @typedef {{type: string, fill: string, fillOpacity: number, stroke: string, strokeOpacity: number, strokeWidth: number}} SvgRectHatch
+ * @typedef {{p1: [number, number], p4: [number, number], distances: [number, number]}} SvgLinkArcFade
  */
 
 /**
@@ -69,6 +75,9 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
 
     /** @type {Map<string, string>} */
     #rectHatchPatterns = new Map();
+
+    /** @type {Map<string, string>} */
+    #linkArcFadeMasks = new Map();
 
     /** @type {Set<string>} */
     #warnings = new Set();
@@ -188,6 +197,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                 getShadowFilterUrl: (shadow) => this.getShadowFilterUrl(shadow),
                 getRectHatchPatternUrl: (hatch) =>
                     this.getRectHatchPatternUrl(hatch),
+                getLinkArcFadeMaskUrl: (fade) =>
+                    this.getLinkArcFadeMaskUrl(fade),
                 warn: (message) =>
                     this.#warnings.add(
                         `${message} View: ${mark.unitView.getPathString()}`
@@ -344,6 +355,36 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             id = "rect-hatch-" + this.#nextPatternId++;
             this.#defs.appendChild(createRectHatchPattern(id, hatch));
             this.#rectHatchPatterns.set(key, id);
+        }
+        return `url(#${id})`;
+    }
+
+    /**
+     * @param {SvgLinkArcFade} options
+     * @returns {string | undefined}
+     */
+    getLinkArcFadeMaskUrl(options) {
+        const fade = normalizeLinkArcFade(
+            options.p1,
+            options.p4,
+            options.distances
+        );
+        if (!fade) {
+            return undefined;
+        }
+
+        let id = this.#linkArcFadeMasks.get(fade.key);
+        if (!id) {
+            id = "link-arc-fade-" + this.#nextMaskId++;
+            const { gradient, mask } = createLinkArcFadeMask(
+                id,
+                this.width,
+                this.height,
+                fade
+            );
+            this.#defs.appendChild(gradient);
+            this.#defs.appendChild(mask);
+            this.#linkArcFadeMasks.set(fade.key, id);
         }
         return `url(#${id})`;
     }

@@ -69,7 +69,8 @@ The following features are working:
   filtering. Circles and squares use native elements; the other symbols use
   editable paths.
 - Link marks as SVG paths for the supported link shapes and current
-  expression-valued geometry properties.
+  expression-valued geometry properties, including arc-distance fading with
+  masks shared by collinear chords.
 - Arrows with triangle or open heads, optional stems, forward/reverse
   direction, inside/outside placement, diagonal endpoints, encoded size and
   direction, start and head notches, minimum-stem blunting, and repeated heads
@@ -82,10 +83,10 @@ The following features are working:
   sample rows retain the shared SampleView GridChild clip.
 - App download through the **Save SVG** toolbar action.
 
-Unsupported point effects, sequence-logo stretching, and link arc fading are
-ignored when basic geometry can still be emitted, and the export result
-includes view-qualified warnings. Unsupported mark types remain errors because
-export cannot yet meaningfully continue past them.
+Unsupported point effects and sequence-logo stretching are ignored when basic
+geometry can still be emitted, and the export result includes view-qualified
+warnings. Unsupported mark types remain errors because export cannot yet
+meaningfully continue past them.
 
 ## Implementation principles
 
@@ -105,7 +106,6 @@ export cannot yet meaningfully continue past them.
 
 These features remain desirable but are not the next low-hanging increments:
 
-- Link arc fading using SVG masks or gradients.
 - Point gradients and inward strokes.
 - Sequence-logo letters.
 - SVG size and export-time diagnostics for very dense vector output.
