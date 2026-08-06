@@ -304,7 +304,7 @@ describe("SVG rectangle renderer", () => {
         );
         expect(
             pattern?.querySelector("g")?.getAttribute("stroke-opacity")
-        ).toBe("0.8");
+        ).toBe("0.75");
         expect(
             new Set(rects.map((rect) => rect.getAttribute("fill"))).size
         ).toBe(1);

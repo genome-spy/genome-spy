@@ -1,5 +1,5 @@
 import { createSvgElement } from "./svgElement.js";
-import { formatSvgNumber } from "./svgNumber.js";
+import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
 
 /**
  * Creates a screen-aligned paint server that mirrors the rect shader's hatch
@@ -36,14 +36,14 @@ export function createRectHatchPattern(id, hatch) {
             width: formatSvgNumber(width),
             height: formatSvgNumber(height),
             fill: hatch.fill,
-            "fill-opacity": formatSvgNumber(hatch.fillOpacity),
+            "fill-opacity": formatSvgUnitless(hatch.fillOpacity),
         })
     );
 
     const foreground = createSvgElement("g", {
         fill: "none",
         stroke: hatch.stroke,
-        "stroke-opacity": formatSvgNumber(hatch.strokeOpacity),
+        "stroke-opacity": formatSvgUnitless(hatch.strokeOpacity),
         "stroke-width": formatSvgNumber(patternStrokeWidth),
         "stroke-linecap": "square",
     });

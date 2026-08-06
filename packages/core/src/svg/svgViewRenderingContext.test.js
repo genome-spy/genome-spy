@@ -3,7 +3,7 @@
 import { describe, expect, test } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import Rectangle from "../view/layout/rectangle.js";
-import { formatSvgNumber } from "./svgNumber.js";
+import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
 import SvgViewRenderingContext from "./svgViewRenderingContext.js";
 
 /**
@@ -24,6 +24,12 @@ describe("SvgViewRenderingContext", () => {
         expect(formatSvgNumber(59.60439560439557)).toBe(59.6);
         expect(formatSvgNumber(86.43956043956044)).toBe(86.4);
         expect(formatSvgNumber(-0.01)).toBe(0);
+    });
+
+    test("retains extra precision for unitless values", () => {
+        expect(formatSvgUnitless(0.7496)).toBe(0.75);
+        expect(formatSvgUnitless(0.1234)).toBe(0.123);
+        expect(formatSvgUnitless(-0.0001)).toBe(0);
     });
 
     test("creates a standalone document with nested view groups", () => {

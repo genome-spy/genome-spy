@@ -10,6 +10,7 @@ import {
     resolveSvgProperty,
     toSvgString,
 } from "../svgMarkUtils.js";
+import { formatSvgUnitless } from "../svgNumber.js";
 
 /**
  * @param {import("../../marks/mark.js").default} baseMark
@@ -135,7 +136,7 @@ export function renderRectSvg(baseMark, options) {
             ...encodeStyles(datum),
             ...(opacityFactor == 1
                 ? {}
-                : { opacity: formatSvgNumber(opacityFactor) }),
+                : { opacity: formatSvgUnitless(opacityFactor) }),
         };
         if (hatch != "none" && strokeWidth > 0) {
             styles.fill = options.getRectHatchPatternUrl({
@@ -170,7 +171,7 @@ export function renderRectSvg(baseMark, options) {
         shadowGroup.setAttribute("stroke", shadow.color);
         shadowGroup.setAttribute(
             "opacity",
-            "" + formatSvgNumber(shadow.opacity * viewOpacity)
+            "" + formatSvgUnitless(shadow.opacity * viewOpacity)
         );
         shadowGroup.setAttribute("filter", options.getShadowFilterUrl(shadow));
         group.insertBefore(shadowGroup, group.firstChild);

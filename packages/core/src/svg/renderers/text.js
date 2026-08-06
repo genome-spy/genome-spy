@@ -13,6 +13,7 @@ import {
     resolveSvgProperty,
     toSvgString,
 } from "../svgMarkUtils.js";
+import { formatSvgUnitless } from "../svgNumber.js";
 
 /**
  * @param {import("../../marks/mark.js").default} baseMark
@@ -324,7 +325,7 @@ export function renderTextSvg(baseMark, options) {
             ...(scale == 1 ? {} : { "font-size": formatSvgNumber(scaledSize) }),
             ...(fadeOpacity == 1
                 ? {}
-                : { opacity: formatSvgNumber(fadeOpacity) }),
+                : { opacity: formatSvgUnitless(fadeOpacity) }),
         });
         text.textContent = stringValue;
         if (angle) {
