@@ -164,8 +164,13 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             "data-mark-type": mark.getType(),
         });
 
+        const coords = getSampleFacetCoords(
+            this.currentCoords,
+            options.sampleFacetRenderingOptions
+        );
+
         renderMarkSvg(mark, {
-            coords: this.currentCoords,
+            coords,
             data: getSvgData(mark, options),
             group,
             visibleBounds,
@@ -360,6 +365,28 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         }
         return entry.coords;
     }
+}
+
+/**
+ * Reproduces the uniform sample-facet transform from sampleFacet.glsl using
+ * SVG view coordinates. The inherited clip intentionally remains tied to the
+ * original view: SampleView clips all samples at its GridChild boundary, not
+ * at the boundary of each sample row.
+ *
+ * @param {import("../view/layout/rectangle.js").default} coords
+ * @param {import("../types/rendering.js").SampleFacetRenderingOptions | undefined} facet
+ */
+function getSampleFacetCoords(coords, facet) {
+    if (!facet) {
+        return coords;
+    }
+
+    const location = facet.locSize.location * facet.pixelToUnit;
+    const size = facet.locSize.size * facet.pixelToUnit;
+    return coords.modify({
+        y: () => coords.y + location * coords.height,
+        height: () => size * coords.height,
+    });
 }
 
 /**

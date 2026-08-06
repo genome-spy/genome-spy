@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, test } from "vitest";
+import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import Rectangle from "../view/layout/rectangle.js";
 import { formatSvgNumber } from "./svgNumber.js";
 import SvgViewRenderingContext from "./svgViewRenderingContext.js";
@@ -86,5 +87,43 @@ describe("SvgViewRenderingContext", () => {
         expect(() => context.popView(createView("other", "other"))).toThrow(
             "Unbalanced SVG view rendering context stack"
         );
+    });
+
+    test("projects sample facets while retaining the shared view clip", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: "point",
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                size: { value: 100 },
+                fill: { value: "#123456" },
+            },
+        });
+        const context = new SvgViewRenderingContext(
+            { picking: false },
+            { width: 100, height: 100 }
+        );
+
+        view.render(context, Rectangle.create(0, 0, 100, 100), {
+            sampleFacetRenderingOptions: {
+                locSize: { location: 20, size: 40 },
+                pixelToUnit: 0.01,
+            },
+            clip: {
+                rect: Rectangle.create(0, 10, 100, 80),
+                clipX: true,
+                clipY: true,
+            },
+        });
+
+        expect(
+            context.getSvg().querySelector("circle")?.getAttribute("cy")
+        ).toBe("40");
+        const clipRect = context.getSvg().querySelector("clipPath rect");
+        expect([
+            clipRect?.getAttribute("y"),
+            clipRect?.getAttribute("height"),
+        ]).toEqual(["10", "80"]);
     });
 });

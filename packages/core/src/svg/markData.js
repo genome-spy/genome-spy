@@ -6,10 +6,6 @@
  * @returns {object[]}
  */
 export function getSvgData(mark, options) {
-    if (options.sampleFacetRenderingOptions) {
-        throw new Error("SVG export does not support sample facets yet.");
-    }
-
     const collector = mark.unitView.getCollector();
     if (!collector) {
         throw new Error(
@@ -18,7 +14,7 @@ export function getSvgData(mark, options) {
     }
 
     const unFacetedData = collector.facetBatches.get(undefined);
-    if (unFacetedData) {
+    if (unFacetedData?.length) {
         return unFacetedData;
     }
 
