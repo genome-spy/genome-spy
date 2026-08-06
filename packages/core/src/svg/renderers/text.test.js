@@ -107,7 +107,7 @@ describe("SVG text renderer", () => {
         expect(text?.getAttribute("text-anchor")).toBe("middle");
         expect(text?.getAttribute("dominant-baseline")).toBe("central");
         expect(text?.getAttribute("transform")).toBe(
-            "translate(60 50) translate(2 -3) scale(40 60)"
+            "translate(60 50) translate(2 -3) scale(40 77.7)"
         );
         expect(warnings).toEqual([]);
     });
@@ -148,8 +148,8 @@ describe("SVG text renderer", () => {
                 (text) => text.getAttribute("transform")
             )
         ).toEqual([
-            "translate(50 50) scale(100 50)",
-            "translate(150 50) scale(100 50)",
+            "translate(50 50) scale(100 64.8)",
+            "translate(150 50) scale(100 62.9)",
         ]);
         expect(warnings).toEqual([]);
     });
@@ -177,7 +177,7 @@ describe("SVG text renderer", () => {
         const text = svg.querySelector('[data-mark-type="text"] text');
 
         expect(text?.getAttribute("transform")).toBe(
-            "translate(100 50) scale(-120 -60)"
+            "translate(100 50) scale(-120 -77.7)"
         );
         expect(warnings).toEqual([]);
     });
@@ -211,7 +211,7 @@ describe("SVG text renderer", () => {
             .getSvg()
             .querySelector('[data-mark-type="text"] text');
         expect(text?.getAttribute("transform")).toBe(
-            "translate(60 40) scale(40 20)"
+            "translate(60 40) scale(40 25.2)"
         );
     });
 

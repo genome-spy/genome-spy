@@ -1,5 +1,6 @@
 import { format } from "d3-format";
 import { isString } from "vega-util";
+import { SDF_PADDING } from "../../fonts/bmFontMetrics.js";
 import { createSvgElement } from "../svgElement.js";
 import { intersectsSvgBounds } from "../svgBounds.js";
 import {
@@ -146,6 +147,25 @@ export function renderTextSvg(baseMark, options) {
                 y = (y + y2) / 2;
             }
 
+            // SVG font-size describes the em box, whose visible glyph is
+            // substantially shorter. WebGL expands the SDF glyph quad beyond
+            // its bitmap by SDF_PADDING on both sides. Reproduce that expanded
+            // height using the same per-glyph metrics while keeping the SVG
+            // text plain. Scaling the ink itself to the full range would make
+            // adjacent stacked letters overlap.
+            //
+            // This is only an approximation because the exported sans-serif
+            // glyph does not have the same metrics as the SDF BMFont glyph;
+            // some overlap or padding may remain. Revisit this when the SDF
+            // BMFont text implementation is replaced with a less approximate
+            // font-rendering and measurement path.
+            const glyph = mark.font.metrics.getChar(stringValue[0]);
+            const glyphHeightScale =
+                (height *
+                    mark.font.metrics.common.base *
+                    (glyph.height + 2 * SDF_PADDING)) /
+                (glyph.height * glyph.height);
+
             if (
                 !width ||
                 !height ||
@@ -177,7 +197,7 @@ export function renderTextSvg(baseMark, options) {
                 );
             }
             transforms.push(
-                `scale(${formatSvgNumber(width)} ${formatSvgNumber(height)})`
+                `scale(${formatSvgNumber(width)} ${formatSvgNumber(glyphHeightScale)})`
             );
 
             const text = createSvgElement("text", {
