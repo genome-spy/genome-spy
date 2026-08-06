@@ -14,9 +14,13 @@ export function createRectHatchPattern(id, hatch) {
     const strokeWidth = hatch.strokeWidth;
     const circular = ["dots", "rings", "ringsLarge"].includes(hatch.type);
     const diagonal = ["diagonal", "antiDiagonal", "cross"].includes(hatch.type);
+    const axial = ["vertical", "horizontal", "grid"].includes(hatch.type);
     const spacing = circular
         ? strokeWidth * 7
         : strokeWidth * (diagonal ? 6 : 4);
+    // verticalPattern() and horizontalPattern() divide the axis distance by
+    // two in the shader, making their visible band twice the nominal stroke.
+    const patternStrokeWidth = axial ? strokeWidth * 2 : strokeWidth;
     const width = spacing;
     const height = circular ? spacing * 2 : spacing;
     const pattern = createSvgElement("pattern", {
@@ -40,10 +44,10 @@ export function createRectHatchPattern(id, hatch) {
         fill: "none",
         stroke: hatch.stroke,
         "stroke-opacity": formatSvgNumber(hatch.strokeOpacity),
-        "stroke-width": formatSvgNumber(strokeWidth),
+        "stroke-width": formatSvgNumber(patternStrokeWidth),
         "stroke-linecap": "square",
     });
-    appendHatchGeometry(foreground, hatch.type, spacing, strokeWidth);
+    appendHatchGeometry(foreground, hatch.type, spacing, patternStrokeWidth);
     pattern.appendChild(foreground);
     return pattern;
 }

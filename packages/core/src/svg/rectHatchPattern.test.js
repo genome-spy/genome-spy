@@ -48,4 +48,25 @@ describe("SVG rectangle hatch patterns", () => {
             pattern.querySelector(":scope > g")?.getAttribute("stroke-linecap")
         ).toBe("square");
     });
+
+    test.each([
+        ["diagonal", "2"],
+        ["vertical", "4"],
+        ["horizontal", "4"],
+        ["grid", "4"],
+        ["dots", "2"],
+    ])("matches the shader line width for %s", (type, expectedWidth) => {
+        const pattern = createRectHatchPattern("hatch", {
+            type,
+            fill: "white",
+            fillOpacity: 1,
+            stroke: "black",
+            strokeOpacity: 1,
+            strokeWidth: 2,
+        });
+
+        expect(
+            pattern.querySelector(":scope > g")?.getAttribute("stroke-width")
+        ).toBe(expectedWidth);
+    });
 });
