@@ -52,7 +52,7 @@ The following features are working:
 
 - Nested, editor-friendly view groups with view names and paths.
 - Rectangular and directional clipping.
-- Rules and ticks, including line caps and dash patterns.
+- Rules and ticks, including line caps, dash patterns, and minimum lengths.
 - Plain text used by axes, titles, subtitles, and ordinary labels, including
   ranged placement, viewport flushing, padding, squeezing, and `fitToBand`.
   This includes chromosome labels on locus axes.
@@ -87,21 +87,7 @@ cannot yet meaningfully continue past them.
 
 ## Next increments
 
-### 1. Match minimum rule lengths
-
-SVG currently ignores rule `minLength`. Port the corresponding small
-vertex-shader calculation so that short rules remain visible.
-
-This is primarily a correctness increment: these properties must not produce a
-plausible but geometrically different export.
-
-Testing material:
-
-- [`examples/core/marks/rule/rule_test.json`](../../examples/core/marks/rule/rule_test.json)
-
-Tentative commit: `feat(core): preserve minimum rule lengths in SVG exports`
-
-### 2. Add a basic arrow-mark subset
+### 1. Add a basic arrow-mark subset
 
 Arrow is the only fundamental mark type with no SVG implementation. Start with
 one straight stem and one non-repeated triangle or open head. Support forward

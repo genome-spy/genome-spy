@@ -6,6 +6,7 @@ import {
     formatSvgNumber,
     projectX,
     projectY,
+    resolveSvgProperty,
     toSvgString,
 } from "../svgMarkUtils.js";
 
@@ -17,6 +18,7 @@ export function renderRuleSvg(baseMark, options) {
     const mark = /** @type {import("../../marks/rule.js").default} */ (
         baseMark
     );
+    const minLength = resolveSvgProperty(mark, mark.properties.minLength);
     const { coords, data, group, viewOpacity } = options;
     const encoders =
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
@@ -55,28 +57,28 @@ export function renderRuleSvg(baseMark, options) {
         const y2Offset = encoders.y2Offset
             ? encodeNumber(encoders.y2Offset, datum)
             : yOffset;
+        let x1 = projectX(coords, encodePosition(encoders.x, datum), xOffset);
+        let y1 = projectY(coords, encodePosition(encoders.y, datum), yOffset);
+        let x2 = projectX(coords, encodePosition(encoders.x2, datum), x2Offset);
+        let y2 = projectY(coords, encodePosition(encoders.y2, datum), y2Offset);
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const length = Math.hypot(dx, dy);
+        if (length > 0 && length < minLength) {
+            const expansion = (minLength - length) / 2;
+            const ux = dx / length;
+            const uy = dy / length;
+            x1 -= ux * expansion;
+            y1 -= uy * expansion;
+            x2 += ux * expansion;
+            y2 += uy * expansion;
+        }
         group.appendChild(
             createSvgElement("line", {
-                x1: formatSvgNumber(
-                    projectX(coords, encodePosition(encoders.x, datum), xOffset)
-                ),
-                y1: formatSvgNumber(
-                    projectY(coords, encodePosition(encoders.y, datum), yOffset)
-                ),
-                x2: formatSvgNumber(
-                    projectX(
-                        coords,
-                        encodePosition(encoders.x2, datum),
-                        x2Offset
-                    )
-                ),
-                y2: formatSvgNumber(
-                    projectY(
-                        coords,
-                        encodePosition(encoders.y2, datum),
-                        y2Offset
-                    )
-                ),
+                x1: formatSvgNumber(x1),
+                y1: formatSvgNumber(y1),
+                x2: formatSvgNumber(x2),
+                y2: formatSvgNumber(y2),
                 ...encodeStyles(datum),
             })
         );
