@@ -53,7 +53,9 @@ The following features are working:
 - Nested, editor-friendly view groups with view names and paths.
 - Rectangular and directional clipping.
 - Rules and ticks, including line caps and dash patterns.
-- Plain text used by axes, titles, subtitles, and ordinary labels.
+- Plain text used by axes, titles, subtitles, and ordinary labels, including
+  ranged placement, viewport flushing, padding, squeezing, and `fitToBand`.
+  This includes chromosome labels on locus axes.
 - Rectangles with minimum-size and opacity compensation plus uniform or
   independently rounded corners, including current expression-valued
   properties and shader-compatible radius clamping.
@@ -63,11 +65,11 @@ The following features are working:
 - Link marks as SVG paths for the supported link shapes.
 - App download through the **Save SVG** toolbar action.
 
-Unsupported point effects, rectangle hatches and shadows, text properties, and
-link properties are ignored when basic geometry can still be emitted, and the
-export result includes view-qualified warnings. Unsupported mark types and
-sample facets remain errors because export cannot yet meaningfully continue
-past them.
+Unsupported point effects, rectangle hatches and shadows, text viewport-edge
+fading and sequence-logo stretching, and link properties are ignored when basic
+geometry can still be emitted, and the export result includes view-qualified
+warnings. Unsupported mark types and sample facets remain errors because export
+cannot yet meaningfully continue past them.
 
 ## Implementation principles
 
@@ -96,28 +98,10 @@ plausible but geometrically different export.
 Testing material:
 
 - [`examples/core/marks/rule/rule_test.json`](../../examples/core/marks/rule/rule_test.json)
+
 Tentative commit: `feat(core): preserve minimum rule lengths in SVG exports`
 
-### 2. Add basic ranged and fit-to-band text
-
-Support ordinary text positioned within `x`/`x2` and `y`/`y2` ranges, followed
-by `fitToBand`. Reuse the existing SDF measurements when determining fitting and
-emit editable SVG text using `textLength` and `lengthAdjust` where appropriate.
-The initial implementation should cover common heatmap labels and annotations.
-
-Defer sequence-logo stretching, viewport-edge fading, and any behavior that
-requires individual glyph geometry. Treat `squeeze`, flushing, and padding as
-follow-up parity work if they cannot be implemented without substantially
-expanding this increment.
-
-Testing material:
-
-- [`examples/core/layout/layer/heatmap_with_text.json`](../../examples/core/layout/layer/heatmap_with_text.json)
-- A small inline ranged-text fixture
-
-Tentative commit: `feat(core): export fitted text as SVG`
-
-### 3. Add a basic arrow-mark subset
+### 2. Add a basic arrow-mark subset
 
 Arrow is the only fundamental mark type with no SVG implementation. Start with
 one straight stem and one non-repeated triangle or open head. Support forward
@@ -145,8 +129,7 @@ These features remain desirable but are not the next low-hanging increments:
 - Full arrow geometry and repeated arrowheads.
 - Link arc fading using SVG masks or gradients.
 - Point gradients and inward strokes.
-- Text squeezing, flushing, viewport-edge fading, and sequence-logo letters.
-- A consistent way to resolve expression-valued mark properties for SVG.
+- Text viewport-edge fading and sequence-logo letters.
 - Sample-facet placement.
 - SVG size and export-time diagnostics for very dense vector output.
 

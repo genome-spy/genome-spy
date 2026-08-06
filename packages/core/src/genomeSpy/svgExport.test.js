@@ -95,6 +95,115 @@ describe("SVG export", () => {
         expect(warnings).toEqual([]);
     });
 
+    test("positions and squeezes text inside an encoded range", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ label: "A fitted label" }] },
+            mark: {
+                type: "text",
+                size: 20,
+                paddingX: 2,
+                squeeze: true,
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.4 },
+                y: { value: 0.5 },
+                text: { field: "label" },
+                color: { value: "black" },
+            },
+        });
+
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 200,
+            logicalHeight: 100,
+            background: null,
+        });
+        const text = svg.querySelector('[data-mark-type="text"] text');
+
+        expect(text?.getAttribute("x")).toBe("60");
+        expect(+text?.getAttribute("font-size")).toBeLessThan(20);
+        expect(+text?.getAttribute("textLength")).toBeLessThanOrEqual(40);
+        expect(warnings).toEqual([]);
+    });
+
+    test("fits text to discrete scale bands", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { category: "A", label: "Alpha" },
+                    { category: "B", label: "Beta" },
+                ],
+            },
+            mark: { type: "text", fitToBand: true, size: 12 },
+            encoding: {
+                x: { field: "category", type: "nominal" },
+                y: { value: 0.5 },
+                text: { field: "label" },
+                color: { value: "black" },
+            },
+        });
+
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 200,
+            logicalHeight: 100,
+            background: null,
+        });
+        const labels = Array.from(
+            svg.querySelectorAll('[data-mark-type="text"] text')
+        );
+
+        expect(labels).toHaveLength(2);
+        expect(labels.map((label) => label.getAttribute("x"))).toEqual([
+            "50",
+            "150",
+        ]);
+        expect(warnings).toEqual([]);
+    });
+
+    test("exports ranged chromosome labels on a locus axis", async () => {
+        const { view } = await createHeadlessEngine(
+            {
+                assembly: "hg38",
+                data: { values: [] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        chrom: "chrom",
+                        pos: "pos",
+                        type: "locus",
+                        axis: { chromLabels: true },
+                    },
+                },
+            },
+            {
+                contextOptions: {
+                    baseConfig,
+                    viewFactoryOptions: { wrapRoot: true },
+                },
+            }
+        );
+
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 400,
+            logicalHeight: 160,
+        });
+        const chromosomeLabels = Array.from(
+            svg.querySelectorAll('[data-view-name="chromosome_labels"] text')
+        );
+
+        expect(
+            chromosomeLabels.slice(0, 2).map((element) => element.textContent)
+        ).toEqual(["chr1", "chr2"]);
+        expect(chromosomeLabels[0].getAttribute("x")).toBe("4");
+        expect(+chromosomeLabels[1].getAttribute("x")).toBeGreaterThan(
+            +chromosomeLabels[0].getAttribute("x")
+        );
+        expect(warnings.join(" ")).toContain("viewport-edge fading");
+    });
+
     test("emits circle points and axis-aligned rectangles", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{ x: 0.5, y: 0.5 }] },

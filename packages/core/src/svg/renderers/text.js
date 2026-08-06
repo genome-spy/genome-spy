@@ -8,6 +8,7 @@ import {
     formatSvgNumber,
     projectX,
     projectY,
+    resolveSvgProperty,
     toSvgString,
 } from "../svgMarkUtils.js";
 
@@ -19,11 +20,23 @@ export function renderTextSvg(baseMark, options) {
     const mark = /** @type {import("../../marks/text.js").default} */ (
         baseMark
     );
-    if (mark.properties.logoLetters || mark.properties.fitToBand) {
+    const props = mark.properties;
+    if (resolveSvgProperty(mark, props.logoLetters)) {
         options.warn(
-            "SVG export ignored unsupported fitted or logo-letter text properties."
+            "SVG export ignored unsupported sequence-logo text stretching."
         );
     }
+    if (hasViewportEdgeFade(mark)) {
+        options.warn(
+            "SVG export ignored unsupported text viewport-edge fading."
+        );
+    }
+
+    const paddingX = resolveSvgProperty(mark, props.paddingX);
+    const paddingY = resolveSvgProperty(mark, props.paddingY);
+    const flushX = resolveSvgProperty(mark, props.flushX);
+    const flushY = resolveSvgProperty(mark, props.flushY);
+    const squeeze = resolveSvgProperty(mark, props.squeeze);
 
     const { coords, data, group, viewOpacity } = options;
     const encoders =
@@ -47,16 +60,13 @@ export function renderTextSvg(baseMark, options) {
         },
     });
     group.setAttribute("font-family", "sans-serif");
-    group.setAttribute("font-style", mark.properties.fontStyle ?? "normal");
+    group.setAttribute("font-style", props.fontStyle ?? "normal");
     group.setAttribute(
         "font-weight",
-        "" + normalizeFontWeight(mark.properties.fontWeight ?? "normal")
+        "" + normalizeFontWeight(props.fontWeight ?? "normal")
     );
-    group.setAttribute("text-anchor", textAnchors[mark.properties.align]);
-    group.setAttribute(
-        "dominant-baseline",
-        dominantBaselines[mark.properties.baseline]
-    );
+    group.setAttribute("text-anchor", textAnchors[props.align]);
+    group.setAttribute("dominant-baseline", dominantBaselines[props.baseline]);
 
     for (const datum of data) {
         const value = numberFormat(encoders.text(datum));
@@ -69,30 +79,92 @@ export function renderTextSvg(baseMark, options) {
             continue;
         }
 
-        const x = projectX(
-            coords,
-            encodePosition(encoders.x, datum),
-            encodeNumber(encoders.xOffset, datum)
-        );
-        const y = projectY(
-            coords,
-            encodePosition(encoders.y, datum),
-            encodeNumber(encoders.yOffset, datum)
-        );
+        const xOffset = encodeNumber(encoders.xOffset, datum);
+        const yOffset = encodeNumber(encoders.yOffset, datum);
+        let x = projectX(coords, encodePosition(encoders.x, datum), xOffset);
+        let y = projectY(coords, encodePosition(encoders.y, datum), yOffset);
         const size = encodeNumber(encoders.size, datum);
         const angle = encodeNumber(encoders.angle, datum);
+        const measuredWidth = mark.font.metrics.measureWidth(stringValue, size);
+        const rotatedSize = getRotatedSize(measuredWidth, size, angle);
+        const hasX2 = !!encoders.x2;
+        const hasY2 = !!encoders.y2;
+        const rangeAlign =
+            hasX2 || hasY2
+                ? fixRangeAlign(props.align, props.baseline, angle)
+                : {
+                      x: alignmentValues[props.align],
+                      y: baselineValues[props.baseline],
+                  };
+        let scale = 1;
+
+        if (hasX2) {
+            const x2 = projectX(
+                coords,
+                encodePosition(encoders.x2, datum),
+                encoders.x2Offset
+                    ? encodeNumber(encoders.x2Offset, datum)
+                    : xOffset
+            );
+            const result = positionInsideRange(
+                Math.min(x, x2),
+                Math.max(x, x2),
+                rotatedSize.width,
+                paddingX,
+                rangeAlign.x,
+                flushX,
+                coords.x,
+                coords.x2
+            );
+            x = result.position;
+            scale *= result.scale;
+        }
+
+        if (hasY2) {
+            const y2 = projectY(
+                coords,
+                encodePosition(encoders.y2, datum),
+                encoders.y2Offset
+                    ? encodeNumber(encoders.y2Offset, datum)
+                    : yOffset
+            );
+            const result = positionInsideRange(
+                Math.min(y, y2),
+                Math.max(y, y2),
+                rotatedSize.height * scale,
+                paddingY,
+                rangeAlign.y,
+                flushY,
+                coords.y,
+                coords.y2
+            );
+            y = result.position;
+            scale *= result.scale;
+        }
+
+        let fadeOpacity = 1;
+        if (scale < 1) {
+            if (!squeeze || scale < 3 / size) {
+                continue;
+            }
+            fadeOpacity = linearstep(3 / size, 6 / size, scale);
+        }
+
+        const scaledSize = size * scale;
         const svgX = formatSvgNumber(x);
         const svgY = formatSvgNumber(y);
         const text = createSvgElement("text", {
             x: svgX,
             y: svgY,
-            dx: formatSvgNumber(mark.properties.dx),
-            dy: formatSvgNumber(mark.properties.dy),
+            dx: formatSvgNumber(props.dx),
+            dy: formatSvgNumber(props.dy),
             lengthAdjust: "spacingAndGlyphs",
-            textLength: formatSvgNumber(
-                mark.font.metrics.measureWidth(stringValue, size)
-            ),
+            textLength: formatSvgNumber(measuredWidth * scale),
             ...encodeStyles(datum),
+            ...(scale == 1 ? {} : { "font-size": formatSvgNumber(scaledSize) }),
+            ...(fadeOpacity == 1
+                ? {}
+                : { opacity: formatSvgNumber(fadeOpacity) }),
         });
         text.textContent = stringValue;
         if (angle) {
@@ -104,6 +176,139 @@ export function renderTextSvg(baseMark, options) {
         group.appendChild(text);
     }
 }
+
+/**
+ * @param {number} width
+ * @param {number} height
+ * @param {number} angleInDegrees
+ */
+function getRotatedSize(width, height, angleInDegrees) {
+    const angle = (angleInDegrees * Math.PI) / 180;
+    const sin = Math.abs(Math.sin(angle));
+    const cos = Math.abs(Math.cos(angle));
+    return {
+        width: width * cos + height * sin,
+        height: width * sin + height * cos,
+    };
+}
+
+/**
+ * @param {number} start
+ * @param {number} end
+ * @param {number} contentSpan
+ * @param {number} padding
+ * @param {number} align
+ * @param {boolean} flush
+ * @param {number} viewportStart
+ * @param {number} viewportEnd
+ */
+function positionInsideRange(
+    start,
+    end,
+    contentSpan,
+    padding,
+    align,
+    flush,
+    viewportStart,
+    viewportEnd
+) {
+    const span = end - start;
+    const paddedSpan = contentSpan + 2 * padding;
+    if (start > viewportEnd || end < viewportStart) {
+        return { position: 0, scale: 0 };
+    }
+
+    const extra = Math.max(0, span - paddedSpan);
+    let position;
+    if (align == 0) {
+        let center = start + end;
+        if (flush) {
+            const startOver = Math.max(
+                0,
+                2 * viewportStart + paddedSpan - center
+            );
+            center += Math.min(startOver, extra);
+
+            const endOver = Math.max(0, paddedSpan + center - 2 * viewportEnd);
+            center -= Math.min(endOver, extra);
+        }
+        position = center / 2;
+    } else if (align < 0) {
+        let edge = start;
+        if (flush) {
+            edge += Math.min(Math.max(0, viewportStart - edge), extra);
+        }
+        position = edge + padding;
+    } else {
+        let edge = end;
+        if (flush) {
+            edge -= Math.min(Math.max(0, edge - viewportEnd), extra);
+        }
+        position = edge - padding;
+    }
+
+    return {
+        position,
+        scale: Math.max(0, Math.min(1, (span - padding) / paddedSpan)),
+    };
+}
+
+/**
+ * @param {keyof typeof alignmentValues} align
+ * @param {keyof typeof baselineValues} baseline
+ * @param {number} angle
+ */
+function fixRangeAlign(align, baseline, angle) {
+    const x = alignmentValues[align];
+    const y = -baselineValues[baseline];
+    const quadrantAngle = (((angle + 45) % 360) + 360) % 360;
+    let rangeX;
+    let rangeY;
+    if (quadrantAngle < 90) {
+        rangeX = x;
+        rangeY = y;
+    } else if (quadrantAngle < 180) {
+        rangeX = y;
+        rangeY = -x;
+    } else if (quadrantAngle < 270) {
+        rangeX = -x;
+        rangeY = y;
+    } else {
+        rangeX = -y;
+        rangeY = x;
+    }
+    return { x: rangeX, y: -rangeY };
+}
+
+/** @param {number} edge0 @param {number} edge1 @param {number} value */
+function linearstep(edge0, edge1, value) {
+    return Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
+}
+
+/** @param {import("../../marks/text.js").default} mark */
+function hasViewportEdgeFade(mark) {
+    const p = mark.properties;
+    return [
+        p.viewportEdgeFadeWidthTop,
+        p.viewportEdgeFadeWidthRight,
+        p.viewportEdgeFadeWidthBottom,
+        p.viewportEdgeFadeWidthLeft,
+    ].some((value) => resolveSvgProperty(mark, value) > 0);
+}
+
+const alignmentValues = {
+    left: -1,
+    center: 0,
+    right: 1,
+};
+
+const baselineValues = {
+    top: -1,
+    middle: 0,
+    bottom: 1,
+    alphabetic: 1,
+    baseline: 1,
+};
 
 const textAnchors = {
     left: "start",
