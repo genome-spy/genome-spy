@@ -56,11 +56,12 @@ function appendHatchGeometry(group, type, spacing) {
     const line = (/** @type {string} */ d) =>
         group.appendChild(createSvgElement("path", { d }));
     const point = (/** @type {number} */ value) => formatSvgNumber(value);
-    const diagonal = (/** @type {boolean} */ rising) => {
-        const direction = rising ? -1 : 1;
+    const diagonal = (/** @type {boolean} */ downward) => {
+        // SVG screen coordinates grow downward. The shader's "diagonal"
+        // pattern therefore runs from top-left to bottom-right.
         for (const offset of [-spacing, 0, spacing]) {
             line(
-                `M ${point(offset)} ${point(direction < 0 ? spacing : 0)} L ${point(offset + spacing)} ${point(direction < 0 ? 0 : spacing)}`
+                `M ${point(offset)} ${point(downward ? 0 : spacing)} L ${point(offset + spacing)} ${point(downward ? spacing : 0)}`
             );
         }
     };

@@ -28,4 +28,21 @@ describe("SVG rectangle hatch patterns", () => {
             pattern.querySelector(":scope > g")?.childElementCount
         ).toBeGreaterThan(0);
     });
+
+    test.each([
+        ["diagonal", "M 0 0 L 12 12"],
+        ["antiDiagonal", "M 0 12 L 12 0"],
+    ])("matches the shader orientation for %s", (type, expectedPath) => {
+        const pattern = createRectHatchPattern("hatch", {
+            type,
+            fill: "white",
+            fillOpacity: 1,
+            stroke: "black",
+            strokeOpacity: 1,
+            strokeWidth: 2,
+        });
+        const centralPath = pattern.querySelectorAll("path")[1];
+
+        expect(centralPath.getAttribute("d")).toBe(expectedPath);
+    });
 });
