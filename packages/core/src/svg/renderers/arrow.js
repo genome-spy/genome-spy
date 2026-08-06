@@ -93,11 +93,18 @@ export function renderArrowSvg(baseMark, options) {
             continue;
         }
 
+        // Build every shape in a local orthonormal frame. `tangent` points
+        // from the tail toward the active head, while `normal` points across
+        // the arrow. This keeps the polygon formulas identical for horizontal,
+        // vertical, diagonal, forward, and reverse arrows.
         const tangent = scale(segment, 1 / segmentLength);
         const normal = { x: -tangent.y, y: tangent.x };
         const size = Math.max(encodeNumber(encoders.size, datum), minSize);
         const stemHalfWidth = size / 2;
         const headHalfWidth = Math.max(headWidth * size, 0) / 2;
+        // The shaders express head angles as a reciprocal slope: axial length
+        // per one pixel of transverse width. Short non-repeated arrows may
+        // reduce this value to preserve the requested visible stem length.
         const rHeadSlope = effectiveHeadSlope({
             segmentLength,
             headHalfWidth,
@@ -124,6 +131,9 @@ export function renderArrowSvg(baseMark, options) {
                       headStrokeWidth
                   )
                 : 0;
+        // Inside heads place their tip at the encoded endpoint. Outside heads
+        // move the tip forward so the head's notch/join remains on that
+        // endpoint, matching the vertex shader's geometry expansion.
         const tip =
             headPlacement == "outside"
                 ? add(endpoint, scale(tangent, outsideHeadOffset))
@@ -176,6 +186,10 @@ export function renderArrowSvg(baseMark, options) {
                   ),
               ]
             : [];
+        // The repeat footprint includes the head's axial extent, the thickness
+        // of an open head projected onto the axis, and the SVG stroke. Taking
+        // the maximum with configured spacing prevents neighboring heads from
+        // colliding, just like the fragment shader's repeat window.
         const headRepeatFootprint =
             headAxisLength +
             headStrokeWidth / Math.hypot(rHeadSlope, 1) +
@@ -184,6 +198,8 @@ export function renderArrowSvg(baseMark, options) {
             ? Infinity
             : Math.max((headSpacing ?? 0) * size, headRepeatFootprint);
         const geometryLength = Math.hypot(tip.x - tail.x, tip.y - tail.y);
+        // Start at the active tip and walk toward the tail. A final head is
+        // omitted if its complete stroked footprint would cross the tail end.
         for (let distance = 0; ; distance += repeatSpacing) {
             if (
                 distance > 0 &&
@@ -218,6 +234,9 @@ export function renderArrowSvg(baseMark, options) {
             }
         }
 
+        // Heads overlap the stem. Concatenating their subpaths would leave
+        // visible internal stroke seams, so merge the polygons first and emit
+        // only the union boundary as one editable SVG path.
         const path = createSvgElement("path", {
             d: unionPolygons(polygons).map(polygon).join(" "),
             "data-arrow-part":
@@ -234,6 +253,10 @@ export function renderArrowSvg(baseMark, options) {
  */
 
 /**
+ * Creates a filled head as a four-vertex polygon. At 90 degrees the notch lies
+ * on the base edge and the result is an ordinary triangle; smaller notch
+ * angles pull it toward the tip and produce a concave head.
+ *
  * @param {Point} tip
  * @param {Point} tangent
  * @param {Point} normal
@@ -265,6 +288,10 @@ function createTriangleHeadPolygon(
 }
 
 /**
+ * Creates the central stem polygon. Its head-side corners taper toward the
+ * active tip using the same outer slope as the head. An optional tail-side
+ * center vertex cuts the matching start notch into the opposite end.
+ *
  * @param {Point} tail
  * @param {Point} tip
  * @param {Point} tangent
@@ -302,6 +329,10 @@ function createStemPolygon(
 }
 
 /**
+ * Creates an open head as a filled chevron. The inner corners are obtained by
+ * moving one stem thickness perpendicular to the outer head edges; their
+ * intersection with the notch slope determines the inner center vertex.
+ *
  * @param {Point} tip
  * @param {Point} tangent
  * @param {Point} normal
