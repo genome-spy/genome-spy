@@ -1,4 +1,5 @@
 import { formatSvgNumber } from "./svgNumber.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 /**
  * @param {import("../view/layout/rectangle.js").default} coords
@@ -70,6 +71,20 @@ export function encodePosition(encoder, datum) {
  */
 export function encodeString(encoder, datum) {
     return toSvgString(encoder(datum));
+}
+
+/**
+ * Resolves the current value of an expression-valued mark property.
+ *
+ * @template T
+ * @param {import("../marks/mark.js").default} mark
+ * @param {T | import("../spec/parameter.js").ExprRef} value
+ * @returns {T}
+ */
+export function resolveSvgProperty(mark, value) {
+    return isExprRef(value)
+        ? mark.unitView.paramRuntime.evaluateAndGet(value.expr)
+        : value;
 }
 
 /** @param {import("../spec/channel.js").Scalar} value */

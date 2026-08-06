@@ -54,17 +54,20 @@ The following features are working:
 - Rectangular and directional clipping.
 - Rules and ticks, including line caps and dash patterns.
 - Plain text used by axes, titles, subtitles, and ordinary labels.
-- Basic rectangles.
+- Rectangles with minimum-size and opacity compensation plus uniform or
+  independently rounded corners, including current expression-valued
+  properties and shader-compatible radius clamping.
 - All point symbols, including encoded shape, size, angle, and semantic-score
   filtering. Circles and squares use native elements; the other symbols use
   editable paths.
 - Link marks as SVG paths for the supported link shapes.
 - App download through the **Save SVG** toolbar action.
 
-Unsupported point, rectangle, text, and link properties are ignored when basic
-geometry can still be emitted, and the export result includes view-qualified
-warnings. Unsupported mark types and sample facets remain errors because export
-cannot yet meaningfully continue past them.
+Unsupported point effects, rectangle hatches and shadows, text properties, and
+link properties are ignored when basic geometry can still be emitted, and the
+export result includes view-qualified warnings. Unsupported mark types and
+sample facets remain errors because export cannot yet meaningfully continue
+past them.
 
 ## Implementation principles
 
@@ -82,12 +85,10 @@ cannot yet meaningfully continue past them.
 
 ## Next increments
 
-### 1. Match minimum-size geometry
+### 1. Match minimum rule lengths
 
-SVG currently ignores rule `minLength` and rectangle `minWidth`, `minHeight`,
-and `minOpacity`. Port the corresponding small vertex-shader calculations so
-that short rules remain visible and narrow rectangles use the same centered
-size expansion and opacity compensation as WebGL.
+SVG currently ignores rule `minLength`. Port the corresponding small
+vertex-shader calculation so that short rules remain visible.
 
 This is primarily a correctness increment: these properties must not produce a
 plausible but geometrically different export.
@@ -95,33 +96,9 @@ plausible but geometrically different export.
 Testing material:
 
 - [`examples/core/marks/rule/rule_test.json`](../../examples/core/marks/rule/rule_test.json)
-- A focused inline rectangle fixture exercising width, height, and opacity
-  compensation
+Tentative commit: `feat(core): preserve minimum rule lengths in SVG exports`
 
-Tentative commit: `feat(core): preserve minimum mark sizes in SVG exports`
-
-### 2. Add rounded rectangles
-
-Support a constant uniform `cornerRadius` first using `<rect rx ry>`. Then add
-the four independently configured corner radii using an SVG path. Clamp radii
-the same way as the WebGL implementation when a rectangle is too small.
-
-Mark properties may be expression-valued. If resolved expression values cannot
-yet be obtained through a shared mechanism, land constant radii first and keep
-expression-valued radii as an explicit rejection rather than embedding an
-object as an SVG attribute.
-
-Testing material:
-
-- [`examples/core/layout/layer/rect.json`](../../examples/core/layout/layer/rect.json)
-- [`examples/core/marks/rect/rect_with_params.json`](../../examples/core/marks/rect/rect_with_params.json)
-
-Tentative commits:
-
-- `feat(core): export uniformly rounded SVG rectangles`
-- `feat(core): export per-corner rectangle radii as SVG paths`
-
-### 3. Add basic ranged and fit-to-band text
+### 2. Add basic ranged and fit-to-band text
 
 Support ordinary text positioned within `x`/`x2` and `y`/`y2` ranges, followed
 by `fitToBand`. Reuse the existing SDF measurements when determining fitting and
@@ -140,7 +117,7 @@ Testing material:
 
 Tentative commit: `feat(core): export fitted text as SVG`
 
-### 4. Add a basic arrow-mark subset
+### 3. Add a basic arrow-mark subset
 
 Arrow is the only fundamental mark type with no SVG implementation. Start with
 one straight stem and one non-repeated triangle or open head. Support forward
