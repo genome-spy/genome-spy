@@ -1,4 +1,5 @@
 import { createSvgElement } from "../svgElement.js";
+import { intersectsSvgBounds } from "../svgBounds.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
@@ -36,7 +37,7 @@ export function renderLinkSvg(baseMark, options) {
         maxChordLength: resolveSvgProperty(mark, props.maxChordLength),
         clampApex: resolveSvgProperty(mark, props.clampApex),
     };
-    const { coords, data, group, viewOpacity } = options;
+    const { coords, data, group, viewOpacity, visibleBounds } = options;
     const encoders =
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -79,6 +80,19 @@ export function renderLinkSvg(baseMark, options) {
             geometryOptions
         ).map(([x, y]) => [coords.x + x, coords.y + coords.height - y]);
         const [p1, p2, p3, p4] = points;
+        const strokePadding = encodeNumber(encoders.size, datum) / 2;
+        if (
+            !intersectsSvgBounds(
+                visibleBounds,
+                Math.min(p1[0], p2[0], p3[0], p4[0]),
+                Math.min(p1[1], p2[1], p3[1], p4[1]),
+                Math.max(p1[0], p2[0], p3[0], p4[0]),
+                Math.max(p1[1], p2[1], p3[1], p4[1]),
+                strokePadding
+            )
+        ) {
+            continue;
+        }
         group.appendChild(
             createSvgElement("path", {
                 d: `M ${formatSvgPoint(p1)} C ${formatSvgPoint(p2)} ${formatSvgPoint(p3)} ${formatSvgPoint(p4)}`,

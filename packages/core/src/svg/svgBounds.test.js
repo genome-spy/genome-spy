@@ -1,0 +1,40 @@
+import { describe, expect, test } from "vitest";
+import Rectangle from "../view/layout/rectangle.js";
+import {
+    createSvgVisibleBounds,
+    hasVisibleArea,
+    intersectsSvgBounds,
+} from "./svgBounds.js";
+
+describe("SVG visible bounds", () => {
+    test("combines directional clips with the root viewport", () => {
+        expect(
+            createSvgVisibleBounds(100, 80, {
+                rect: Rectangle.create(20, -50, 40, 200),
+                clipX: true,
+                clipY: false,
+            })
+        ).toEqual({ x1: 20, y1: 0, x2: 60, y2: 80 });
+
+        expect(
+            createSvgVisibleBounds(100, 80, {
+                rect: Rectangle.create(-50, 10, 200, 30),
+                clipX: false,
+                clipY: true,
+            })
+        ).toEqual({ x1: 0, y1: 10, x2: 100, y2: 40 });
+    });
+
+    test("detects empty clips and conservatively retains stroked edges", () => {
+        const outside = createSvgVisibleBounds(100, 80, {
+            rect: Rectangle.create(120, 0, 20, 20),
+            clipX: true,
+            clipY: true,
+        });
+        expect(hasVisibleArea(outside)).toBe(false);
+
+        const visible = { x1: 0, y1: 0, x2: 100, y2: 80 };
+        expect(intersectsSvgBounds(visible, -3, 20, -2, 30)).toBe(false);
+        expect(intersectsSvgBounds(visible, -3, 20, -2, 30, 2)).toBe(true);
+    });
+});

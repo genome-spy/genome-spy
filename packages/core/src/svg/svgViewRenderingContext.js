@@ -4,6 +4,7 @@ import {
     prepareMarkClipOptionsFromClip,
 } from "../view/renderingContext/clipOptions.js";
 import ViewRenderingContext from "../view/renderingContext/viewRenderingContext.js";
+import { createSvgVisibleBounds, hasVisibleArea } from "./svgBounds.js";
 import { getSvgData } from "./markData.js";
 import { renderMarkSvg } from "./renderers/index.js";
 import { createSvgElement, SVG_NS } from "./svgElement.js";
@@ -28,6 +29,7 @@ import { formatSvgNumber } from "./svgNumber.js";
  * @prop {import("../view/layout/rectangle.js").default} coords
  * @prop {object[]} data
  * @prop {SVGGElement} group
+ * @prop {import("./svgBounds.js").SvgBounds} visibleBounds
  * @prop {number} viewOpacity
  * @prop {(message: string) => void} warn
  */
@@ -133,25 +135,37 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             mark.properties.clip,
             this.currentCoords
         );
+        const visibleBounds = createSvgVisibleBounds(
+            this.width,
+            this.height,
+            markClip
+        );
+        if (!hasVisibleArea(visibleBounds)) {
+            return;
+        }
+
         const group = createSvgElement("g", {
             "data-mark-type": mark.getType(),
         });
-        const clipPathUrl = this.getClipPathUrl(markClip);
-        if (clipPathUrl) {
-            group.setAttribute("clip-path", clipPathUrl);
-        }
 
         renderMarkSvg(mark, {
             coords: this.currentCoords,
             data: getSvgData(mark, options),
             group,
+            visibleBounds,
             viewOpacity: mark.unitView.getEffectiveOpacity(),
             warn: (message) =>
                 this.#warnings.add(
                     `${message} View: ${mark.unitView.getPathString()}`
                 ),
         });
-        this.currentNode.appendChild(group);
+        if (group.childElementCount > 0) {
+            const clipPathUrl = this.getClipPathUrl(markClip);
+            if (clipPathUrl) {
+                group.setAttribute("clip-path", clipPathUrl);
+            }
+            this.currentNode.appendChild(group);
+        }
     }
 
     /**

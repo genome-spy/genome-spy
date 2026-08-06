@@ -1,4 +1,5 @@
 import { createSvgElement } from "../svgElement.js";
+import { intersectsSvgBounds } from "../svgBounds.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
@@ -28,7 +29,7 @@ export function renderPointSvg(baseMark, options) {
         );
     }
 
-    const { coords, data, group, viewOpacity } = options;
+    const { coords, data, group, viewOpacity, visibleBounds } = options;
     const encoders =
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -71,6 +72,19 @@ export function renderPointSvg(baseMark, options) {
         );
         const radius = Math.sqrt(encodeNumber(encoders.size, datum)) / 2;
         const angle = encodeNumber(encoders.angle, datum);
+        const strokePadding = encodeNumber(encoders.strokeWidth, datum) / 2;
+        const conservativeRadius = radius * Math.SQRT2 + strokePadding;
+        if (
+            !intersectsSvgBounds(
+                visibleBounds,
+                x - conservativeRadius,
+                y - conservativeRadius,
+                x + conservativeRadius,
+                y + conservativeRadius
+            )
+        ) {
+            continue;
+        }
         const element = createPointElement(shape, x, y, radius, {
             ...encodeStyles(datum),
             ...(shape == "x" || shape == "+"

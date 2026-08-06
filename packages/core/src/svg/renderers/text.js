@@ -1,6 +1,7 @@
 import { format } from "d3-format";
 import { isString } from "vega-util";
 import { createSvgElement } from "../svgElement.js";
+import { intersectsSvgBounds } from "../svgBounds.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
@@ -37,8 +38,10 @@ export function renderTextSvg(baseMark, options) {
     const flushX = resolveSvgProperty(mark, props.flushX);
     const flushY = resolveSvgProperty(mark, props.flushY);
     const squeeze = resolveSvgProperty(mark, props.squeeze);
+    const dx = resolveSvgProperty(mark, props.dx);
+    const dy = resolveSvgProperty(mark, props.dy);
 
-    const { coords, data, group, viewOpacity } = options;
+    const { coords, data, group, viewOpacity, visibleBounds } = options;
     const encoders =
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -151,15 +154,32 @@ export function renderTextSvg(baseMark, options) {
         }
 
         const scaledSize = size * scale;
+        const scaledWidth = measuredWidth * scale;
+        if (
+            !textIntersectsVisibleBounds(
+                visibleBounds,
+                x,
+                y,
+                scaledWidth,
+                scaledSize,
+                props.align,
+                props.baseline,
+                angle,
+                dx,
+                dy
+            )
+        ) {
+            continue;
+        }
         const svgX = formatSvgNumber(x);
         const svgY = formatSvgNumber(y);
         const text = createSvgElement("text", {
             x: svgX,
             y: svgY,
-            dx: formatSvgNumber(props.dx),
-            dy: formatSvgNumber(props.dy),
+            dx: formatSvgNumber(dx),
+            dy: formatSvgNumber(dy),
             lengthAdjust: "spacingAndGlyphs",
-            textLength: formatSvgNumber(measuredWidth * scale),
+            textLength: formatSvgNumber(scaledWidth),
             ...encodeStyles(datum),
             ...(scale == 1 ? {} : { "font-size": formatSvgNumber(scaledSize) }),
             ...(fadeOpacity == 1
@@ -175,6 +195,59 @@ export function renderTextSvg(baseMark, options) {
         }
         group.appendChild(text);
     }
+}
+
+/**
+ * @param {import("../svgBounds.js").SvgBounds} visibleBounds
+ * @param {number} x
+ * @param {number} y
+ * @param {number} width
+ * @param {number} height
+ * @param {keyof typeof alignmentValues} align
+ * @param {keyof typeof baselineValues} baseline
+ * @param {number} angleInDegrees
+ * @param {number} dx
+ * @param {number} dy
+ */
+function textIntersectsVisibleBounds(
+    visibleBounds,
+    x,
+    y,
+    width,
+    height,
+    align,
+    baseline,
+    angleInDegrees,
+    dx,
+    dy
+) {
+    const x1 = x + dx - ((alignmentValues[align] + 1) / 2) * width;
+    const y1 = y + dy - ((baselineValues[baseline] + 1) / 2) * height;
+    const x2 = x1 + width;
+    const y2 = y1 + height;
+    if (!angleInDegrees) {
+        return intersectsSvgBounds(visibleBounds, x1, y1, x2, y2, 1);
+    }
+
+    const angle = (angleInDegrees * Math.PI) / 180;
+    const sin = Math.sin(angle);
+    const cos = Math.cos(angle);
+    const ax = x + (x1 - x) * cos - (y1 - y) * sin;
+    const ay = y + (x1 - x) * sin + (y1 - y) * cos;
+    const bx = x + (x2 - x) * cos - (y1 - y) * sin;
+    const by = y + (x2 - x) * sin + (y1 - y) * cos;
+    const cx = x + (x2 - x) * cos - (y2 - y) * sin;
+    const cy = y + (x2 - x) * sin + (y2 - y) * cos;
+    const dx2 = x + (x1 - x) * cos - (y2 - y) * sin;
+    const dy2 = y + (x1 - x) * sin + (y2 - y) * cos;
+    return intersectsSvgBounds(
+        visibleBounds,
+        Math.min(ax, bx, cx, dx2),
+        Math.min(ay, by, cy, dy2),
+        Math.max(ax, bx, cx, dx2),
+        Math.max(ay, by, cy, dy2),
+        1
+    );
 }
 
 /**

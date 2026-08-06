@@ -1,4 +1,5 @@
 import { createSvgElement } from "../svgElement.js";
+import { intersectsSvgBounds } from "../svgBounds.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
@@ -50,7 +51,7 @@ export function renderRectSvg(baseMark, options) {
         );
     }
 
-    const { coords, data, group, viewOpacity } = options;
+    const { coords, data, group, viewOpacity, visibleBounds } = options;
     const encoders =
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -107,6 +108,19 @@ export function renderRectSvg(baseMark, options) {
         if (height < minHeight) {
             y -= (minHeight - height) / 2;
             height = minHeight;
+        }
+        const strokePadding = encodeNumber(encoders.strokeWidth, datum) / 2;
+        if (
+            !intersectsSvgBounds(
+                visibleBounds,
+                x,
+                y,
+                x + width,
+                y + height,
+                strokePadding
+            )
+        ) {
+            continue;
         }
         const radii = clampCornerRadii(cornerRadii, width, height);
         const styles = {

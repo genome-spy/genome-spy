@@ -1,4 +1,5 @@
 import { createSvgElement } from "../svgElement.js";
+import { intersectsSvgBounds } from "../svgBounds.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
@@ -19,7 +20,7 @@ export function renderRuleSvg(baseMark, options) {
         baseMark
     );
     const minLength = resolveSvgProperty(mark, mark.properties.minLength);
-    const { coords, data, group, viewOpacity } = options;
+    const { coords, data, group, viewOpacity, visibleBounds } = options;
     const encoders =
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -72,6 +73,12 @@ export function renderRuleSvg(baseMark, options) {
             y1 -= uy * expansion;
             x2 += ux * expansion;
             y2 += uy * expansion;
+        }
+        const strokePadding = encodeNumber(encoders.size, datum) / 2;
+        if (
+            !intersectsSvgBounds(visibleBounds, x1, y1, x2, y2, strokePadding)
+        ) {
+            continue;
         }
         group.appendChild(
             createSvgElement("line", {

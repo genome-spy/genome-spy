@@ -68,6 +68,8 @@ The following features are working:
 - Arrows with triangle or open heads, optional stems, forward/reverse
   direction, inside/outside placement, diagonal endpoints, encoded size and
   direction, start and head notches, and minimum-stem blunting.
+- Conservative instance culling against the effective directional clip and
+  root SVG viewport. Partially visible geometry is retained and clipped.
 - App download through the **Save SVG** toolbar action.
 
 Unsupported point effects, rectangle hatches and shadows, text viewport-edge

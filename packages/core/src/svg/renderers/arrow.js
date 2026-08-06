@@ -1,4 +1,5 @@
 import { createSvgElement } from "../svgElement.js";
+import { intersectsSvgBounds } from "../svgBounds.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
@@ -41,7 +42,7 @@ export function renderArrowSvg(baseMark, options) {
         );
     }
 
-    const { coords, data, group, viewOpacity } = options;
+    const { coords, data, group, viewOpacity, visibleBounds } = options;
     const encoders =
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -131,6 +132,31 @@ export function renderArrowSvg(baseMark, options) {
             headPlacement == "outside"
                 ? add(endpoint, scale(tangent, outsideHeadOffset))
                 : endpoint;
+        const headAxisLength = headHalfWidth * rHeadSlope;
+        const headNormalLength = Math.hypot(headHalfWidth, headAxisLength);
+        const openHeadAxisInset =
+            headShape == "open" && headNormalLength > 0
+                ? (size * headHalfWidth) / headNormalLength
+                : 0;
+        const headBack = add(
+            tip,
+            scale(tangent, -headAxisLength - openHeadAxisInset)
+        );
+        const strokeWidth = encodeNumber(encoders.strokeWidth, datum);
+        const transversePadding =
+            Math.max(stem ? stemHalfWidth : 0, headHalfWidth) + strokeWidth * 2;
+        if (
+            !intersectsSvgBounds(
+                visibleBounds,
+                Math.min(tail.x, tip.x, headBack.x),
+                Math.min(tail.y, tip.y, headBack.y),
+                Math.max(tail.x, tip.x, headBack.x),
+                Math.max(tail.y, tip.y, headBack.y),
+                transversePadding
+            )
+        ) {
+            continue;
+        }
         const instance = createSvgElement("g", encodeStyles(datum));
 
         if (headShape == "triangle") {
