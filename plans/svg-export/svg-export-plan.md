@@ -87,10 +87,10 @@ The following features are working:
   sample rows retain the shared SampleView GridChild clip.
 - App download through the **Save SVG** toolbar action.
 
-Unsupported point gradients are ignored when basic geometry can still be
-emitted, and the export result includes view-qualified warnings. Unsupported
-mark types remain errors because export cannot yet meaningfully continue past
-them.
+Unsupported point gradients and the deprecated `geometricZoomBound` property
+are ignored when basic geometry can still be emitted, and the export result
+includes view-qualified warnings. Unsupported mark types remain errors because
+export cannot yet meaningfully continue past them.
 
 ## Implementation principles
 
@@ -108,10 +108,16 @@ them.
 
 ## Later vector-only work
 
-These features remain desirable but are not the next low-hanging increments:
-
-- Point gradients.
 - SVG size and export-time diagnostics for very dense vector output.
+
+## Intentional non-goals
+
+- Point fill gradients are decorative, uncommon, and could require many SVG
+  gradient definitions when colors are data-dependent. Points use their flat
+  fill color instead and the exporter returns a warning.
+- The deprecated point property `geometricZoomBound` will not be implemented.
+  Zoom-dependent point sizes should use expression-valued encodings, whose
+  current encoded values are already exported.
 
 Ordinary grammar faceting is not used by the project and should not be worked on
 as part of SVG export. Rasterization and hybrid vector/raster output will be
