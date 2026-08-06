@@ -73,7 +73,15 @@ export function renderRectSvg(baseMark, options) {
             transform: (value) => formatSvgNumber(+value),
         },
     });
-    const shadowGroup = createSvgElement("g");
+    const shadowStyles =
+        shadow.opacity > 0
+            ? {
+                  fill: shadow.color,
+                  stroke: shadow.color,
+                  opacity: formatSvgUnitless(shadow.opacity * viewOpacity),
+                  filter: options.getShadowFilterUrl(shadow),
+              }
+            : null;
 
     for (const datum of data) {
         const xOffset = encodeNumber(encoders.xOffset, datum);
@@ -154,9 +162,10 @@ export function renderRectSvg(baseMark, options) {
             styles["fill-opacity"] = 1;
         }
 
-        if (shadow.opacity > 0) {
-            shadowGroup.appendChild(
+        if (shadowStyles) {
+            group.appendChild(
                 createRectElement(x, y, width, height, radii, {
+                    ...shadowStyles,
                     "stroke-width": formatSvgNumber(strokeWidth),
                 })
             );
@@ -164,17 +173,6 @@ export function renderRectSvg(baseMark, options) {
         group.appendChild(
             createRectElement(x, y, width, height, radii, styles)
         );
-    }
-
-    if (shadowGroup.childElementCount > 0) {
-        shadowGroup.setAttribute("fill", shadow.color);
-        shadowGroup.setAttribute("stroke", shadow.color);
-        shadowGroup.setAttribute(
-            "opacity",
-            "" + formatSvgUnitless(shadow.opacity * viewOpacity)
-        );
-        shadowGroup.setAttribute("filter", options.getShadowFilterUrl(shadow));
-        group.insertBefore(shadowGroup, group.firstChild);
     }
 }
 

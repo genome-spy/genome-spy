@@ -229,16 +229,16 @@ describe("SVG rectangle renderer", () => {
         });
 
         const markGroup = svg.querySelector('[data-mark-type="rect"]');
-        const shadowGroup = markGroup?.querySelector(":scope > g");
+        const shadowRect = markGroup?.querySelector(":scope > [filter]");
         const filter = svg.querySelector("filter");
         const pattern = svg.querySelector("pattern");
 
         expect(
             markGroup?.querySelector(":scope > rect")?.getAttribute("rx")
         ).toBe("5");
-        expect(shadowGroup?.getAttribute("fill")).toBe("#abcdef");
-        expect(shadowGroup?.getAttribute("opacity")).toBe("0.5");
-        expect(shadowGroup?.getAttribute("filter")).toBe(
+        expect(shadowRect?.getAttribute("fill")).toBe("#abcdef");
+        expect(shadowRect?.getAttribute("opacity")).toBe("0.5");
+        expect(shadowRect?.getAttribute("filter")).toBe(
             `url(#${filter?.getAttribute("id")})`
         );
         expect(
@@ -249,10 +249,49 @@ describe("SVG rectangle renderer", () => {
         expect(filter?.querySelector("feOffset")?.getAttribute("dx")).toBe("2");
         expect(filter?.querySelector("feOffset")?.getAttribute("dy")).toBe("3");
         expect(
-            markGroup?.querySelector(":scope > rect")?.getAttribute("fill")
+            markGroup
+                ?.querySelector(":scope > rect:not([filter])")
+                ?.getAttribute("fill")
         ).toBe(`url(#${pattern?.getAttribute("id")})`);
         expect(pattern?.getAttribute("patternUnits")).toBe("userSpaceOnUse");
         expect(warnings).toEqual([]);
+    });
+
+    test("interleaves shadows with their rectangle instances", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: 0.1, x2: 0.6 },
+                    { x: 0.4, x2: 0.9 },
+                ],
+            },
+            mark: {
+                type: "rect",
+                shadowBlur: 5,
+                shadowOpacity: 0.5,
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                x2: { field: "x2" },
+                y: { value: 0.2 },
+                y2: { value: 0.8 },
+                fill: { value: "#123456" },
+            },
+        });
+
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const children = Array.from(
+            svg.querySelector('[data-mark-type="rect"]')?.children ?? []
+        );
+
+        expect(
+            children.map((element) => element.hasAttribute("filter"))
+        ).toEqual([true, false, true, false]);
     });
 
     test("deduplicates screen-aligned hatch patterns", async () => {

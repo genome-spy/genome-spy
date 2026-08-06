@@ -51,8 +51,8 @@ describe("SVG view backgrounds", () => {
         });
         const fillView = svg.querySelector('[data-view-name^="background"]');
         const fillMark = fillView?.querySelector('[data-mark-type="rect"]');
-        const fill = fillMark?.querySelector(":scope > rect");
-        const shadow = fillMark?.querySelector(":scope > g");
+        const fill = fillMark?.querySelector(":scope > rect:not([filter])");
+        const shadow = fillMark?.querySelector(":scope > [filter]");
         const strokeView = svg.querySelector(
             '[data-view-name^="backgroundStroke"]'
         );
