@@ -64,6 +64,52 @@ the declaration:
 api.datasets.reset("myResults");
 ```
 
+### Loading binary data
+
+Use `datasets.load()` to replace a declared dataset directly from Arrow IPC or
+Parquet data in memory:
+
+```js
+await api.datasets.load("myResults", arrowData, { type: "arrow" });
+await api.datasets.load("myResults", parquetData, { type: "parquet" });
+```
+
+The binary input can be an `ArrayBuffer` or any `ArrayBufferView`, including a
+`Uint8Array` or the `DataView` received from an AnyWidget binary trait. Arrow
+IPC files and streams are both supported.
+
+The same exact-owner rule applies to binary data. Load a nested declaration
+through the declaring view's handle:
+
+```js
+const owner = api.views.get({
+  scope: ["translationA"],
+  view: "translationA",
+});
+
+await owner.datasets.load("geneticCode", arrowData, { type: "arrow" });
+```
+
+`load()` resolves after decoding, dataflow propagation, and render scheduling.
+It does not wait for the next animation frame. The existing visualization,
+canvas, parameters, and event listeners remain live; scales, selections, and
+other state derived from the replaced rows may react to the new data.
+
+Dataset operations use latest-operation-wins ordering. If loads overlap, only
+the most recently started `load()`, `set()`, or `reset()` can update the
+dataset. A decoding failure from the current operation rejects the promise and
+leaves the previous rows unchanged.
+
+The default and full entry points register both binary readers. With the
+[minimal entry point](embedding.md#entry-points), import each reader that the
+host uses:
+
+```js
+import { embed } from "@genome-spy/core/minimal";
+import "@genome-spy/core/data/formats/arrow.js";
+import "@genome-spy/core/data/formats/parquet.js";
+```
+
 To avoid an initially empty dataset, a host can place initial rows in the
 JavaScript specification before embedding:
 
