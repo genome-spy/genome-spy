@@ -41,6 +41,21 @@ test("materializes mutable, enumerable row objects", async () => {
     });
 });
 
+test("reads only the addressed bytes of an offset view", async () => {
+    const ipc = tableToIPC(tableFromArrays(columns), { format: "file" });
+    const padding = 13;
+    const padded = new Uint8Array(padding + ipc.byteLength + padding);
+    padded.set(ipc, padding);
+
+    expect(
+        await arrow(new Uint8Array(padded.buffer, padding, ipc.byteLength))
+    ).toEqual([
+        { sample: "S1", value: 1.5, selected: true },
+        { sample: "S2", value: null, selected: false },
+        { sample: "S3", value: 3.5, selected: true },
+    ]);
+});
+
 test("requests binary response data", () => {
     expect(arrow.responseType).toBe("arrayBuffer");
 });
