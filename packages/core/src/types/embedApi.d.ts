@@ -539,7 +539,7 @@ export interface EmbedResult {
         logicalWidth?: number;
         /** Custom height in CSS pixels. Defaults to canvas height. */
         logicalHeight?: number;
-        /** Background CSS color. Defaults to white. Null is transparent. */
+        /** Overrides the visualization background. Null is transparent. */
         background?: string | null;
     }) => Promise<{
         /** The exported SVG document. */

@@ -62,6 +62,8 @@ The following features are working:
   properties, shader-compatible radius clamping, and drop shadows.
 - View background fills, shadows, and strokes, including their configured
   opacity and z-order relative to view content.
+- The visualization-level canvas background from the root specification or
+  selected built-in theme, with explicit export overrides and transparency.
 - All point symbols, including encoded shape, size, angle, and semantic-score
   filtering. Circles and squares use native elements; the other symbols use
   editable paths.

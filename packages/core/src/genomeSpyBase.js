@@ -48,12 +48,12 @@ import {
 import { INTERNAL_DEFAULT_CONFIG } from "./config/defaultConfig.js";
 import { mergeConfigScopes } from "./config/mergeConfig.js";
 import { resolveBaseConfig } from "./config/resolveConfig.js";
-import {
-    DEFAULT_THEME_NAME,
-    getBuiltInThemeBackground,
-    resolveThemeSelection,
-} from "./config/themes.js";
+import { DEFAULT_THEME_NAME, resolveThemeSelection } from "./config/themes.js";
 import { warnOnce } from "./utils/warning.js";
+import {
+    getCanvasBackground,
+    getSvgBackground,
+} from "./genomeSpy/canvasBackground.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -484,29 +484,10 @@ export default class GenomeSpy {
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
         this.#glHelper.invalidateSize();
-        const selectedThemes = this.spec.theme
-            ? Array.isArray(this.spec.theme)
-                ? this.spec.theme
-                : [this.spec.theme]
-            : [];
         this.#renderCoordinator = new RenderCoordinator({
             viewRoot: this.viewRoot,
             glHelper: this.#glHelper,
-            getBackground: () => {
-                if (this.spec.background !== undefined) {
-                    return this.spec.background;
-                }
-
-                let background;
-                for (const themeName of selectedThemes) {
-                    const value = getBuiltInThemeBackground(themeName);
-                    if (value !== undefined) {
-                        background = value;
-                    }
-                }
-
-                return background;
-            },
+            getBackground: () => getCanvasBackground(this.spec),
             broadcast: this.broadcast.bind(this),
             onLayoutComputed: () =>
                 this.#loadingIndicatorManager.updateLayout(),
@@ -695,16 +676,14 @@ export default class GenomeSpy {
      * @param {object} [options]
      * @param {number} [options.logicalWidth] Defaults to canvas width.
      * @param {number} [options.logicalHeight] Defaults to canvas height.
-     * @param {string | null} [options.background] Defaults to white. Null is transparent.
+     * @param {string | null} [options.background] Overrides the visualization background. Null is transparent.
      * @returns {Promise<{blob: Blob, warnings: string[]}>}
      */
     async exportSvg(options = {}) {
         const canvasSize = this.#glHelper.getLogicalCanvasSize();
         const logicalWidth = options.logicalWidth ?? canvasSize.width;
         const logicalHeight = options.logicalHeight ?? canvasSize.height;
-        const background = Object.hasOwn(options, "background")
-            ? options.background
-            : "white";
+        const background = getSvgBackground(this.spec, options);
 
         try {
             const { createSvg } = await import("./svg/index.js");
