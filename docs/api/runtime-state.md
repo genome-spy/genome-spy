@@ -64,7 +64,20 @@ the declaration:
 api.datasets.reset("myResults");
 ```
 
-### Loading binary data
+To avoid an initially empty dataset, a host can place initial rows in the
+JavaScript specification before embedding:
+
+```js
+spec.datasets.myResults = initialRows;
+const api = await embed("#container", spec);
+```
+
+Named data can be updated dynamically, but it does not automatically react to
+user interactions. For practical examples, see the
+[embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
+package.
+
+#### Loading binary data
 
 Use `datasets.load()` to replace a declared dataset directly from Arrow IPC or
 Parquet data in memory:
@@ -109,19 +122,6 @@ import { embed } from "@genome-spy/core/minimal";
 import "@genome-spy/core/data/formats/arrow.js";
 import "@genome-spy/core/data/formats/parquet.js";
 ```
-
-To avoid an initially empty dataset, a host can place initial rows in the
-JavaScript specification before embedding:
-
-```js
-spec.datasets.myResults = initialRows;
-const api = await embed("#container", spec);
-```
-
-Named data can be updated dynamically, but it does not automatically react to
-user interactions. For practical examples, see the
-[embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
-package.
 
 ### Deprecated global APIs
 
