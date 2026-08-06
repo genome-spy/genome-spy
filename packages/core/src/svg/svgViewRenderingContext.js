@@ -9,6 +9,7 @@ import { getSvgData } from "./markData.js";
 import { renderMarkSvg } from "./renderers/index.js";
 import { createSvgElement, SVG_NS } from "./svgElement.js";
 import { formatSvgNumber } from "./svgNumber.js";
+import { createRectHatchPattern } from "./rectHatchPattern.js";
 
 /**
  * @typedef {object} SvgRenderingOptions
@@ -33,6 +34,7 @@ import { formatSvgNumber } from "./svgNumber.js";
  * @prop {number} viewOpacity
  * @prop {(fade: SvgViewportEdgeFade) => string | undefined} getViewportEdgeFadeMaskUrl
  * @prop {(shadow: SvgShadow) => string} getShadowFilterUrl
+ * @prop {(hatch: SvgRectHatch) => string} getRectHatchPatternUrl
  * @prop {(message: string) => void} warn
  */
 
@@ -40,6 +42,7 @@ import { formatSvgNumber } from "./svgNumber.js";
  * @typedef {{width: number, distance: number}} SvgViewportEdgeFadeSide
  * @typedef {{top: SvgViewportEdgeFadeSide, right: SvgViewportEdgeFadeSide, bottom: SvgViewportEdgeFadeSide, left: SvgViewportEdgeFadeSide}} SvgViewportEdgeFade
  * @typedef {{blur: number, offsetX: number, offsetY: number}} SvgShadow
+ * @typedef {{type: string, fill: string, fillOpacity: number, stroke: string, strokeOpacity: number, strokeWidth: number}} SvgRectHatch
  */
 
 /**
@@ -64,6 +67,9 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     /** @type {Map<string, string>} */
     #shadowFilters = new Map();
 
+    /** @type {Map<string, string>} */
+    #rectHatchPatterns = new Map();
+
     /** @type {Set<string>} */
     #warnings = new Set();
 
@@ -71,6 +77,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     #nextClipId = 0;
     #nextMaskId = 0;
     #nextFilterId = 0;
+    #nextPatternId = 0;
 
     /**
      * @param {import("../types/rendering.js").GlobalRenderingOptions} globalOptions
@@ -179,6 +186,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                 getViewportEdgeFadeMaskUrl: (fade) =>
                     this.getViewportEdgeFadeMaskUrl(fade),
                 getShadowFilterUrl: (shadow) => this.getShadowFilterUrl(shadow),
+                getRectHatchPatternUrl: (hatch) =>
+                    this.getRectHatchPatternUrl(hatch),
                 warn: (message) =>
                     this.#warnings.add(
                         `${message} View: ${mark.unitView.getPathString()}`
@@ -314,6 +323,28 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             this.#shadowFilters.set(key, id);
         }
 
+        return `url(#${id})`;
+    }
+
+    /**
+     * @param {SvgRectHatch} hatch
+     * @returns {string}
+     */
+    getRectHatchPatternUrl(hatch) {
+        const key = JSON.stringify([
+            hatch.type,
+            hatch.fill,
+            hatch.fillOpacity,
+            hatch.stroke,
+            hatch.strokeOpacity,
+            hatch.strokeWidth,
+        ]);
+        let id = this.#rectHatchPatterns.get(key);
+        if (!id) {
+            id = "rect-hatch-" + this.#nextPatternId++;
+            this.#defs.appendChild(createRectHatchPattern(id, hatch));
+            this.#rectHatchPatterns.set(key, id);
+        }
         return `url(#${id})`;
     }
 

@@ -49,9 +49,7 @@ export function renderRectSvg(baseMark, options) {
         offsetY: resolveSvgProperty(mark, p.shadowOffsetY ?? 0),
         opacity: resolveSvgProperty(mark, p.shadowOpacity ?? 0),
     };
-    if (resolveSvgProperty(mark, p.hatch ?? "none") != "none") {
-        options.warn("SVG export ignored an unsupported rectangle hatch.");
-    }
+    const hatch = resolveSvgProperty(mark, p.hatch ?? "none");
 
     const { coords, data, group, viewOpacity, visibleBounds } = options;
     const encoders =
@@ -132,12 +130,28 @@ export function renderRectSvg(baseMark, options) {
             continue;
         }
         const radii = clampCornerRadii(cornerRadii, width, height);
+        /** @type {Record<string, string | number>} */
         const styles = {
             ...encodeStyles(datum),
             ...(opacityFactor == 1
                 ? {}
                 : { opacity: formatSvgNumber(opacityFactor) }),
         };
+        if (hatch != "none" && strokeWidth > 0) {
+            styles.fill = options.getRectHatchPatternUrl({
+                type: hatch,
+                fill: toSvgString(encoders.fill(datum)),
+                fillOpacity:
+                    encodeNumber(encoders.fillOpacity, datum) * viewOpacity,
+                stroke: toSvgString(encoders.stroke(datum)),
+                strokeOpacity:
+                    encodeNumber(encoders.strokeOpacity, datum) * viewOpacity,
+                strokeWidth,
+            });
+            // Override a constant fill opacity inherited from the mark group;
+            // the pattern definition already contains both paint opacities.
+            styles["fill-opacity"] = 1;
+        }
 
         if (shadow.opacity > 0) {
             shadowGroup.appendChild(

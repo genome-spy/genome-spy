@@ -197,13 +197,15 @@ describe("SVG rectangle renderer", () => {
         expect(rect?.getAttribute("opacity")).toBe("0.5");
     });
 
-    test("exports rectangle shadows and warns about unsupported hatches", async () => {
+    test("exports rectangle shadows and hatches", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },
             mark: {
                 type: "rect",
                 cornerRadius: 5,
                 hatch: "diagonal",
+                stroke: "black",
+                strokeWidth: 2,
                 shadowBlur: 10,
                 shadowColor: "#abcdef",
                 shadowOffsetX: 2,
@@ -229,6 +231,7 @@ describe("SVG rectangle renderer", () => {
         const markGroup = svg.querySelector('[data-mark-type="rect"]');
         const shadowGroup = markGroup?.querySelector(":scope > g");
         const filter = svg.querySelector("filter");
+        const pattern = svg.querySelector("pattern");
 
         expect(
             markGroup?.querySelector(":scope > rect")?.getAttribute("rx")
@@ -245,7 +248,105 @@ describe("SVG rectangle renderer", () => {
         ).toBe("4");
         expect(filter?.querySelector("feOffset")?.getAttribute("dx")).toBe("2");
         expect(filter?.querySelector("feOffset")?.getAttribute("dy")).toBe("3");
-        expect(warnings).toHaveLength(1);
-        expect(warnings.join(" ")).toContain("rectangle hatch");
+        expect(
+            markGroup?.querySelector(":scope > rect")?.getAttribute("fill")
+        ).toBe(`url(#${pattern?.getAttribute("id")})`);
+        expect(pattern?.getAttribute("patternUnits")).toBe("userSpaceOnUse");
+        expect(warnings).toEqual([]);
+    });
+
+    test("deduplicates screen-aligned hatch patterns", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: 0.1, x2: 0.4 },
+                    { x: 0.6, x2: 0.9 },
+                ],
+            },
+            mark: {
+                type: "rect",
+                hatch: "diagonal",
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                x2: { field: "x2" },
+                y: { value: 0.2 },
+                y2: { value: 0.8 },
+                fill: { value: "#123456" },
+                fillOpacity: { value: 0.5 },
+                stroke: { value: "#abcdef" },
+                strokeOpacity: { value: 0.75 },
+                strokeWidth: { value: 2 },
+            },
+        });
+
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const pattern = svg.querySelector("pattern");
+        const rects = Array.from(
+            svg.querySelectorAll('[data-mark-type="rect"] > rect')
+        );
+
+        expect(svg.querySelectorAll("pattern")).toHaveLength(1);
+        expect(pattern?.getAttribute("width")).toBe("12");
+        expect(pattern?.querySelector("rect")?.getAttribute("fill")).toBe(
+            "#123456"
+        );
+        expect(
+            pattern?.querySelector("rect")?.getAttribute("fill-opacity")
+        ).toBe("0.5");
+        expect(pattern?.querySelector("g")?.getAttribute("stroke")).toBe(
+            "#abcdef"
+        );
+        expect(
+            pattern?.querySelector("g")?.getAttribute("stroke-opacity")
+        ).toBe("0.8");
+        expect(
+            new Set(rects.map((rect) => rect.getAttribute("fill"))).size
+        ).toBe(1);
+        expect(
+            rects.every((rect) => rect.getAttribute("fill-opacity") == "1")
+        ).toBe(true);
+        expect(warnings).toEqual([]);
+    });
+
+    test("resolves expression-valued hatch properties", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [
+                { name: "hatch", value: "ringsLarge" },
+                { name: "hatchWidth", value: 2 },
+            ],
+            data: { values: [{}] },
+            mark: {
+                type: "rect",
+                hatch: { expr: "hatch" },
+                stroke: "black",
+                strokeWidth: { expr: "hatchWidth" },
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.2 },
+                y2: { value: 0.8 },
+                fill: { value: "white" },
+            },
+        });
+
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+
+        expect(svg.querySelectorAll("pattern circle")).toHaveLength(2);
+        expect(svg.querySelector("pattern circle")?.getAttribute("r")).toBe(
+            "4.9"
+        );
+        expect(warnings).toEqual([]);
     });
 });

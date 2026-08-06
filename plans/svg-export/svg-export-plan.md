@@ -59,7 +59,8 @@ The following features are working:
   This includes chromosome labels on locus axes and viewport-edge fading.
 - Rectangles with minimum-size and opacity compensation plus uniform or
   independently rounded corners, including current expression-valued
-  properties, shader-compatible radius clamping, and drop shadows.
+  properties, shader-compatible radius clamping, drop shadows, and reusable
+  screen-aligned hatch patterns.
 - View background fills, shadows, and strokes, including their configured
   opacity and z-order relative to view content.
 - The visualization-level canvas background from the root specification or
@@ -81,10 +82,10 @@ The following features are working:
   sample rows retain the shared SampleView GridChild clip.
 - App download through the **Save SVG** toolbar action.
 
-Unsupported point effects, rectangle hatches, sequence-logo stretching, and
-link arc fading are ignored when basic geometry can still be emitted, and the
-export result includes view-qualified warnings. Unsupported mark types remain
-errors because export cannot yet meaningfully continue past them.
+Unsupported point effects, sequence-logo stretching, and link arc fading are
+ignored when basic geometry can still be emitted, and the export result
+includes view-qualified warnings. Unsupported mark types remain errors because
+export cannot yet meaningfully continue past them.
 
 ## Implementation principles
 
@@ -104,7 +105,6 @@ errors because export cannot yet meaningfully continue past them.
 
 These features remain desirable but are not the next low-hanging increments:
 
-- Rectangle hatches using reusable SVG `<pattern>` definitions.
 - Link arc fading using SVG masks or gradients.
 - Point gradients and inward strokes.
 - Sequence-logo letters.
