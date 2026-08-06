@@ -114,7 +114,7 @@ describe("SVG instance culling", () => {
                     fill: { value: "black" },
                 },
             },
-            '[data-mark-type="arrow"] > g',
+            '[data-mark-type="arrow"] > path',
         ],
     ])("culls off-canvas %s instances", async (_name, spec, selector) => {
         const { view } = await createHeadlessEngine(

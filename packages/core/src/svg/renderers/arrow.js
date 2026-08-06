@@ -241,17 +241,23 @@ export function renderArrowSvg(baseMark, options) {
             }
         }
 
-        // Heads overlap the stem. Concatenating their subpaths would leave
-        // visible internal stroke seams, so merge the polygons first and emit
-        // only the union boundary as one editable SVG path.
+        // Heads overlap the stem. A visible stroke would expose their internal
+        // seams, so merge those polygons before emitting the path. With fill
+        // alone, overlapping subpaths render identically and avoid the more
+        // expensive polygon union.
+        const hasVisibleStroke =
+            toSvgString(encoders.stroke(datum)) != "none" &&
+            encodeNumber(encoders.strokeOpacity, datum) * viewOpacity > 0 &&
+            strokeWidth > 0;
         const boundaryLoops =
-            polygons.length == 1 ? polygons : unionPolygons(polygons);
+            polygons.length == 1 || !hasVisibleStroke
+                ? polygons
+                : unionPolygons(polygons);
         const path = createSvgElement("path", {
             d: boundaryLoops.map(polygon).join(" "),
+            ...encodeStyles(datum),
         });
-        const instance = createSvgElement("g", encodeStyles(datum));
-        instance.appendChild(path);
-        group.appendChild(instance);
+        group.appendChild(path);
     }
 }
 

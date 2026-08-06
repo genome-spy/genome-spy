@@ -9,15 +9,14 @@ describe("SVG arrow renderer", () => {
         const { view } = await createHeadlessEngine({
             data: {
                 values: [
-                    { y: 0.3, direction: "forward" },
-                    { y: 0.7, direction: "reverse" },
+                    { y: 0.3, direction: "forward", color: "#5b8def" },
+                    { y: 0.7, direction: "reverse", color: "#ef5b8d" },
                 ],
             },
             mark: {
                 type: "arrow",
                 size: 10,
                 headWidth: 2,
-                fill: "#5b8def",
                 stroke: "black",
                 strokeWidth: 1,
             },
@@ -30,6 +29,7 @@ describe("SVG arrow renderer", () => {
                     type: "nominal",
                     scale: null,
                 },
+                fill: { field: "color", type: "nominal", scale: null },
             },
         });
 
@@ -44,6 +44,11 @@ describe("SVG arrow renderer", () => {
         );
 
         expect(arrows).toHaveLength(2);
+        expect(arrows.map((arrow) => arrow.getAttribute("fill"))).toEqual([
+            "#5b8def",
+            "#ef5b8d",
+        ]);
+        expect(svg.querySelector('[data-mark-type="arrow"] > g')).toBeNull();
         expect(arrows[0].getAttribute("d")).toContain("80 70");
         expect(arrows[1].getAttribute("d")).toContain("20 30");
         expect(warnings).toEqual([]);
@@ -264,15 +269,47 @@ describe("SVG arrow renderer", () => {
                 logicalHeight: 100,
                 background: null,
             });
-            const instance = svg.querySelector('[data-mark-type="arrow"] > g');
-            const path = instance?.querySelector("path");
+            const path = svg.querySelector('[data-mark-type="arrow"] > path');
             const pathData = path?.getAttribute("d") ?? "";
 
-            expect(instance?.querySelectorAll("path")).toHaveLength(1);
+            expect(
+                svg.querySelectorAll('[data-mark-type="arrow"] > path')
+            ).toHaveLength(1);
             expect(pathData.match(/\bM /g)).toHaveLength(1);
             expect(pathData).toContain("80 50");
             expect(pathData).toContain("62 56");
             expect(warnings).toEqual([]);
         }
     );
+
+    test("skips polygon union for fill-only repeated heads", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "arrow",
+                headSpacing: 3,
+                size: 4,
+                fill: "black",
+                stroke: null,
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.5 },
+            },
+        });
+
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const pathData =
+            svg
+                .querySelector('[data-mark-type="arrow"] > path')
+                ?.getAttribute("d") ?? "";
+
+        expect(pathData.match(/\bM /g)?.length).toBeGreaterThan(1);
+    });
 });
