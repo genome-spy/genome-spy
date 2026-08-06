@@ -5,6 +5,102 @@ import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { createSvg } from "../index.js";
 
 describe("SVG rectangle renderer", () => {
+    test("uses padded index bandwidth for vertical and horizontal bars", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [{ index: 0 }, { index: 1 }],
+            },
+            layer: [
+                {
+                    mark: "rect",
+                    encoding: {
+                        x: {
+                            field: "index",
+                            type: "index",
+                            scale: {
+                                paddingInner: 0.2,
+                                paddingOuter: 0.1,
+                            },
+                        },
+                        y: { value: 0.2 },
+                        y2: { value: 0.8 },
+                        fill: { value: "#123456" },
+                    },
+                },
+                {
+                    mark: "rect",
+                    encoding: {
+                        x: { value: 0.2 },
+                        x2: { value: 0.8 },
+                        y: {
+                            field: "index",
+                            type: "index",
+                            scale: {
+                                paddingInner: 0.2,
+                                paddingOuter: 0.1,
+                            },
+                        },
+                        fill: { value: "#654321" },
+                    },
+                },
+            ],
+        });
+
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const groups = Array.from(
+            svg.querySelectorAll('[data-mark-type="rect"]')
+        );
+        const verticalBars = Array.from(groups[0].querySelectorAll("rect"));
+        const horizontalBars = Array.from(groups[1].querySelectorAll("rect"));
+
+        expect(verticalBars.map((rect) => rect.getAttribute("width"))).toEqual([
+            "40",
+            "40",
+        ]);
+        expect(
+            horizontalBars.map((rect) => rect.getAttribute("height"))
+        ).toEqual(["40", "40"]);
+    });
+
+    test("applies rect band coverage within padded index bandwidth", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ index: 0 }, { index: 1 }] },
+            mark: "rect",
+            encoding: {
+                x: {
+                    field: "index",
+                    type: "index",
+                    band: 0.5,
+                    scale: {
+                        paddingInner: 0.2,
+                        paddingOuter: 0.1,
+                    },
+                },
+                y: { value: 0.2 },
+                y2: { value: 0.8 },
+                fill: { value: "#123456" },
+            },
+        });
+
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const rect = svg.querySelector('[data-mark-type="rect"] rect');
+
+        expect([rect?.getAttribute("x"), rect?.getAttribute("width")]).toEqual([
+            "15",
+            "20",
+        ]);
+    });
+
     test("exports expression-valued uniform rectangle radii", async () => {
         const { view } = await createHeadlessEngine({
             params: [{ name: "radius", value: 12 }],

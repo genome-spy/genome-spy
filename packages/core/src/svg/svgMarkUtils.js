@@ -54,12 +54,14 @@ export function encodePosition(encoder, datum) {
         return basePosition + discreteScale.bandwidth() * band;
     } else if (scale.type == "index" || scale.type == "locus") {
         const genomicScale =
-            /** @type {{ step: () => number, align: () => number }} */ (
-                /** @type {unknown} */ (scale)
-            );
-        return (
-            basePosition + genomicScale.step() * (band - genomicScale.align())
-        );
+            /** @type {{
+             *     step: () => number,
+             *     bandwidth: () => number,
+             *     align: () => number
+             * }} */ (/** @type {unknown} */ (scale));
+        const signedBandwidth =
+            Math.sign(genomicScale.step()) * genomicScale.bandwidth();
+        return basePosition + signedBandwidth * (band - genomicScale.align());
     } else {
         return basePosition;
     }
