@@ -44,9 +44,10 @@ The main implementation points are:
   `GenomeSpy.exportSvg()` loads this subsystem dynamically. The public
   Core/embed APIs return an SVG Blob together with deduplicated warnings for
   unsupported properties that were ignored.
-- Focused coverage lives in
-  [`svgExport.test.js`](../../packages/core/src/genomeSpy/svgExport.test.js) and
-  [`svgViewRenderingContext.test.js`](../../packages/core/src/view/renderingContext/svgViewRenderingContext.test.js).
+- Integration and example coverage lives beside the SVG entry point in
+  [`src/svg/`](../../packages/core/src/svg/). Each mark renderer has a focused
+  test file beside its implementation under
+  [`src/svg/renderers/`](../../packages/core/src/svg/renderers/).
 
 The following features are working:
 

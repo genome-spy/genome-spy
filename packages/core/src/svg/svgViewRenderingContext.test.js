@@ -1,16 +1,16 @@
 // @vitest-environment jsdom
 
 import { describe, expect, test } from "vitest";
-import Rectangle from "../layout/rectangle.js";
-import { formatSvgNumber } from "../../svg/svgNumber.js";
-import SvgViewRenderingContext from "../../svg/svgViewRenderingContext.js";
+import Rectangle from "../view/layout/rectangle.js";
+import { formatSvgNumber } from "./svgNumber.js";
+import SvgViewRenderingContext from "./svgViewRenderingContext.js";
 
 /**
  * @param {string} name
  * @param {string} path
  */
 function createView(name, path) {
-    return /** @type {import("../view.js").default} */ (
+    return /** @type {import("../view/view.js").default} */ (
         /** @type {unknown} */ ({
             name,
             getPathString: () => path,

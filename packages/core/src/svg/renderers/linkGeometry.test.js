@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { getBezierPoints } from "../svg/renderers/link.js";
+import { getBezierPoints } from "./link.js";
 
 const viewport = { width: 100, height: 100 };
 const defaults = {
