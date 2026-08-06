@@ -343,7 +343,7 @@ describe("SVG rectangle renderer", () => {
             background: null,
         });
 
-        expect(svg.querySelectorAll("pattern circle")).toHaveLength(2);
+        expect(svg.querySelectorAll("pattern circle")).toHaveLength(4);
         expect(svg.querySelector("pattern circle")?.getAttribute("r")).toBe(
             "4.9"
         );

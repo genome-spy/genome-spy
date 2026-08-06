@@ -106,20 +106,23 @@ function appendHatchGeometry(group, type, spacing, strokeWidth) {
             const radiusFactor =
                 type == "dots" ? 0.07 : type == "rings" ? 0.2 : 0.35;
             const radius = spacing * radiusFactor;
-            group.appendChild(
-                createSvgElement("circle", {
-                    cx: 0,
-                    cy: formatSvgNumber(spacing / 2),
-                    r: formatSvgNumber(radius),
-                })
-            );
-            group.appendChild(
-                createSvgElement("circle", {
-                    cx: formatSvgNumber(spacing / 2),
-                    cy: formatSvgNumber(spacing * 1.5),
-                    r: formatSvgNumber(radius),
-                })
-            );
+            const circle = (/** @type {number} */ x, /** @type {number} */ y) =>
+                group.appendChild(
+                    createSvgElement("circle", {
+                        cx: formatSvgNumber(x),
+                        cy: formatSvgNumber(y),
+                        r: formatSvgNumber(radius),
+                    })
+                );
+
+            // The shader uses a masonry lattice with centers on alternating
+            // tile boundaries. SVG clips pattern cells, so each boundary
+            // circle needs a copy on the opposite edge to supply its other
+            // half from the neighboring tile.
+            circle(spacing / 2, 0);
+            circle(spacing / 2, spacing * 2);
+            circle(0, spacing);
+            circle(spacing, spacing);
             break;
         }
         default:

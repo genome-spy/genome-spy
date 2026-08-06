@@ -69,4 +69,30 @@ describe("SVG rectangle hatch patterns", () => {
             pattern.querySelector(":scope > g")?.getAttribute("stroke-width")
         ).toBe(expectedWidth);
     });
+
+    test.each(["dots", "rings", "ringsLarge"])(
+        "duplicates %s geometry across circular tile boundaries",
+        (type) => {
+            const pattern = createRectHatchPattern("hatch", {
+                type,
+                fill: "white",
+                fillOpacity: 1,
+                stroke: "black",
+                strokeOpacity: 1,
+                strokeWidth: 2,
+            });
+
+            expect(
+                Array.from(pattern.querySelectorAll("circle"), (circle) => [
+                    circle.getAttribute("cx"),
+                    circle.getAttribute("cy"),
+                ])
+            ).toEqual([
+                ["7", "0"],
+                ["7", "28"],
+                ["0", "14"],
+                ["14", "14"],
+            ]);
+        }
+    );
 });
