@@ -57,6 +57,8 @@ The following features are working:
 - Plain text used by axes, titles, subtitles, and ordinary labels, including
   ranged placement, viewport flushing, padding, squeezing, and `fitToBand`.
   This includes chromosome labels on locus axes and viewport-edge fading.
+- Sequence-logo letters stretched into their encoded `x`/`x2` and `y`/`y2`
+  ranges while remaining editable text.
 - Rectangles with minimum-size and opacity compensation plus uniform or
   independently rounded corners, including current expression-valued
   properties, shader-compatible radius clamping, drop shadows, and reusable
@@ -107,7 +109,6 @@ meaningfully continue past them.
 These features remain desirable but are not the next low-hanging increments:
 
 - Point gradients and inward strokes.
-- Sequence-logo letters.
 - SVG size and export-time diagnostics for very dense vector output.
 
 Ordinary grammar faceting is not used by the project and should not be worked on

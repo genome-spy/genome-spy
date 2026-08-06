@@ -22,11 +22,7 @@ export function renderTextSvg(baseMark, options) {
         baseMark
     );
     const props = mark.properties;
-    if (resolveSvgProperty(mark, props.logoLetters)) {
-        options.warn(
-            "SVG export ignored unsupported sequence-logo text stretching."
-        );
-    }
+    const logoLetters = resolveSvgProperty(mark, props.logoLetters);
 
     const paddingX = resolveSvgProperty(mark, props.paddingX);
     const paddingY = resolveSvgProperty(mark, props.paddingY);
@@ -113,10 +109,97 @@ export function renderTextSvg(baseMark, options) {
         let y = projectY(coords, encodePosition(encoders.y, datum), yOffset);
         const size = encodeNumber(encoders.size, datum);
         const angle = encodeNumber(encoders.angle, datum);
-        const measuredWidth = mark.font.metrics.measureWidth(stringValue, size);
-        const rotatedSize = getRotatedSize(measuredWidth, size, angle);
         const hasX2 = !!encoders.x2;
         const hasY2 = !!encoders.y2;
+
+        if (logoLetters) {
+            if (stringValue.length > 1) {
+                options.warn(
+                    "SVG export stretches multi-character logo text as a single glyph cell."
+                );
+            }
+
+            let width = size;
+            let height = size;
+            if (hasX2) {
+                const x2 = projectX(
+                    coords,
+                    encodePosition(encoders.x2, datum),
+                    encoders.x2Offset
+                        ? encodeNumber(encoders.x2Offset, datum)
+                        : xOffset
+                );
+                width = x2 - x;
+                x = (x + x2) / 2;
+            }
+            if (hasY2) {
+                const y2 = projectY(
+                    coords,
+                    encodePosition(encoders.y2, datum),
+                    encoders.y2Offset
+                        ? encodeNumber(encoders.y2Offset, datum)
+                        : yOffset
+                );
+                // SVG's y axis points down, unlike the unit coordinates used
+                // by the shader, so the normal y..y2 range has this sign.
+                height = y - y2;
+                y = (y + y2) / 2;
+            }
+
+            if (
+                !width ||
+                !height ||
+                !textIntersectsVisibleBounds(
+                    visibleBounds,
+                    x,
+                    y,
+                    Math.abs(width),
+                    Math.abs(height),
+                    "center",
+                    "middle",
+                    angle,
+                    dx,
+                    dy
+                )
+            ) {
+                continue;
+            }
+
+            const transforms = [
+                `translate(${formatSvgNumber(x)} ${formatSvgNumber(y)})`,
+            ];
+            if (angle) {
+                transforms.push(`rotate(${formatSvgNumber(angle)})`);
+            }
+            if (dx || dy) {
+                transforms.push(
+                    `translate(${formatSvgNumber(dx)} ${formatSvgNumber(dy)})`
+                );
+            }
+            transforms.push(
+                `scale(${formatSvgNumber(width)} ${formatSvgNumber(height)})`
+            );
+
+            const text = createSvgElement("text", {
+                x: 0,
+                y: 0,
+                "text-anchor": "middle",
+                "dominant-baseline": "central",
+                lengthAdjust: "spacingAndGlyphs",
+                textLength: 1,
+                transform: transforms.join(" "),
+                ...encodeStyles(datum),
+                // The normalized unit-square geometry must override an
+                // encoded font size emitted by encodeStyles.
+                "font-size": 1,
+            });
+            text.textContent = stringValue;
+            group.appendChild(text);
+            continue;
+        }
+
+        const measuredWidth = mark.font.metrics.measureWidth(stringValue, size);
+        const rotatedSize = getRotatedSize(measuredWidth, size, angle);
         const rangeAlign =
             hasX2 || hasY2
                 ? fixRangeAlign(props.align, props.baseline, angle)
