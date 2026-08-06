@@ -20,8 +20,8 @@ export function renderTextSvg(baseMark, options) {
         baseMark
     );
     if (mark.properties.logoLetters || mark.properties.fitToBand) {
-        throw new Error(
-            "SVG export does not support fitted or logo-letter text yet."
+        options.warn(
+            "SVG export ignored unsupported fitted or logo-letter text properties."
         );
     }
 

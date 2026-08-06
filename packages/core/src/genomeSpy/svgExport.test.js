@@ -65,7 +65,7 @@ describe("SVG export", () => {
             ],
         });
 
-        const svg = createSvg({
+        const { svg, warnings } = createSvg({
             viewRoot: view,
             logicalWidth: 200,
             logicalHeight: 100,
@@ -92,6 +92,7 @@ describe("SVG export", () => {
         expect(text?.hasAttribute("transform")).toBe(false);
         expect(svg.querySelectorAll('[data-mark-type="rule"]')).toHaveLength(1);
         expect(svg.querySelectorAll('[data-mark-type="text"]')).toHaveLength(1);
+        expect(warnings).toEqual([]);
     });
 
     test("emits circle points and axis-aligned rectangles", async () => {
@@ -130,7 +131,7 @@ describe("SVG export", () => {
             ],
         });
 
-        const svg = createSvg({
+        const { svg } = createSvg({
             viewRoot: view,
             logicalWidth: 200,
             logicalHeight: 100,
@@ -175,7 +176,7 @@ describe("SVG export", () => {
             },
         });
 
-        const svg = createSvg({
+        const { svg } = createSvg({
             viewRoot: view,
             logicalWidth: 200,
             logicalHeight: 100,
@@ -227,7 +228,7 @@ describe("SVG export", () => {
             }
         );
 
-        const svg = createSvg({
+        const { svg } = createSvg({
             viewRoot: view,
             logicalWidth: 320,
             logicalHeight: 200,
@@ -256,7 +257,7 @@ describe("SVG export", () => {
             }
         );
 
-        const svg = createSvg({
+        const { svg } = createSvg({
             viewRoot: view,
             logicalWidth: 320,
             logicalHeight: 200,
@@ -313,7 +314,7 @@ describe("SVG export", () => {
             }
         );
 
-        const svg = createSvg({
+        const { svg } = createSvg({
             viewRoot: view,
             logicalWidth: 800,
             logicalHeight: 400,
@@ -329,7 +330,7 @@ describe("SVG export", () => {
         expect(svg.querySelector("image")).toBeNull();
     });
 
-    test("rejects link arc fading", async () => {
+    test("warns and exports when a property is unsupported", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },
             mark: {
@@ -346,12 +347,17 @@ describe("SVG export", () => {
             },
         });
 
-        expect(() =>
-            createSvg({
-                viewRoot: view,
-                logicalWidth: 200,
-                logicalHeight: 100,
-            })
-        ).toThrow("SVG export does not support link arc fading yet");
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 200,
+            logicalHeight: 100,
+        });
+
+        expect(
+            svg.querySelector('[data-mark-type="link"] path')
+        ).not.toBeNull();
+        expect(warnings).toHaveLength(1);
+        expect(warnings[0]).toContain("ignored unsupported link arc fading");
+        expect(warnings[0]).toContain("View:");
     });
 });

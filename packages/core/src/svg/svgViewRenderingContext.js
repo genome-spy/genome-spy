@@ -29,6 +29,7 @@ import { formatSvgNumber } from "./svgNumber.js";
  * @prop {object[]} data
  * @prop {SVGGElement} group
  * @prop {number} viewOpacity
+ * @prop {(message: string) => void} warn
  */
 
 /**
@@ -46,6 +47,9 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
 
     /** @type {Map<string, string>} */
     #clipPaths = new Map();
+
+    /** @type {Set<string>} */
+    #warnings = new Set();
 
     #nextViewId = 0;
     #nextClipId = 0;
@@ -142,6 +146,10 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             data: getSvgData(mark, options),
             group,
             viewOpacity: mark.unitView.getEffectiveOpacity(),
+            warn: (message) =>
+                this.#warnings.add(
+                    `${message} View: ${mark.unitView.getPathString()}`
+                ),
         });
         this.currentNode.appendChild(group);
     }
@@ -187,6 +195,11 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     /** @returns {SVGSVGElement} */
     getSvg() {
         return this.#svg;
+    }
+
+    /** @returns {string[]} */
+    getWarnings() {
+        return Array.from(this.#warnings);
     }
 
     /** @returns {string} */

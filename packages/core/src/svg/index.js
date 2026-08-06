@@ -9,7 +9,7 @@ import SvgViewRenderingContext from "./svgViewRenderingContext.js";
  * @param {number} options.logicalWidth
  * @param {number} options.logicalHeight
  * @param {string | null} [options.background]
- * @returns {SVGSVGElement}
+ * @returns {{svg: SVGSVGElement, warnings: string[]}}
  */
 export function createSvg({
     viewRoot,
@@ -32,5 +32,8 @@ export function createSvg({
         { firstFacet: true }
     );
 
-    return renderingContext.getSvg();
+    return {
+        svg: renderingContext.getSvg(),
+        warnings: renderingContext.getWarnings(),
+    };
 }

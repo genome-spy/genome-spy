@@ -17,36 +17,59 @@ export function renderLinkSvg(baseMark, options) {
         baseMark
     );
     const props = mark.properties;
-    const arcFadingDistance = requireConstantProperty(
+    const arcFadingDistance = getConstantProperty(
         props.arcFadingDistance,
-        "arcFadingDistance"
+        "arcFadingDistance",
+        false,
+        options.warn
     );
     if (
         arcFadingDistance !== false &&
         arcFadingDistance[0] > 0 &&
         arcFadingDistance[1] > 0
     ) {
-        throw new Error("SVG export does not support link arc fading yet.");
+        options.warn("SVG export ignored unsupported link arc fading.");
     }
 
-    const shape = requireConstantProperty(props.linkShape, "linkShape");
-    const orient = requireConstantProperty(props.orient, "orient");
+    const shape = getConstantProperty(
+        props.linkShape,
+        "linkShape",
+        DEFAULT_GEOMETRY_OPTIONS.shape,
+        options.warn
+    );
+    const orient = getConstantProperty(
+        props.orient,
+        "orient",
+        DEFAULT_GEOMETRY_OPTIONS.orient,
+        options.warn
+    );
     const geometryOptions = {
         shape,
         orient,
-        arcHeightFactor: requireConstantProperty(
+        arcHeightFactor: getConstantProperty(
             props.arcHeightFactor,
-            "arcHeightFactor"
+            "arcHeightFactor",
+            DEFAULT_GEOMETRY_OPTIONS.arcHeightFactor,
+            options.warn
         ),
-        minArcHeight: requireConstantProperty(
+        minArcHeight: getConstantProperty(
             props.minArcHeight,
-            "minArcHeight"
+            "minArcHeight",
+            DEFAULT_GEOMETRY_OPTIONS.minArcHeight,
+            options.warn
         ),
-        maxChordLength: requireConstantProperty(
+        maxChordLength: getConstantProperty(
             props.maxChordLength,
-            "maxChordLength"
+            "maxChordLength",
+            DEFAULT_GEOMETRY_OPTIONS.maxChordLength,
+            options.warn
         ),
-        clampApex: requireConstantProperty(props.clampApex, "clampApex"),
+        clampApex: getConstantProperty(
+            props.clampApex,
+            "clampApex",
+            DEFAULT_GEOMETRY_OPTIONS.clampApex,
+            options.warn
+        ),
     };
     const { coords, data, group, viewOpacity } = options;
     const encoders =
@@ -114,6 +137,16 @@ function formatSvgPoint(point) {
  * @prop {number} maxChordLength
  * @prop {boolean} clampApex
  */
+
+/** @type {LinkGeometryOptions} */
+const DEFAULT_GEOMETRY_OPTIONS = {
+    shape: "arc",
+    orient: "vertical",
+    arcHeightFactor: 1,
+    minArcHeight: 1.5,
+    maxChordLength: 50000,
+    clampApex: false,
+};
 
 /**
  * Computes the same cubic Bézier control points as the link vertex shader.
@@ -203,13 +236,16 @@ export function getBezierPoints(a, b, viewport, options) {
  * @template T
  * @param {T | import("../../spec/parameter.js").ExprRef} value
  * @param {string} name
+ * @param {T} fallback
+ * @param {(message: string) => void} warn
  * @returns {T}
  */
-function requireConstantProperty(value, name) {
+function getConstantProperty(value, name, fallback, warn) {
     if (isExprRef(value)) {
-        throw new Error(
-            `SVG export does not support expression-valued link property "${name}" yet.`
+        warn(
+            `SVG export ignored expression-valued link property "${name}" and used its default.`
         );
+        return fallback;
     }
     return value;
 }

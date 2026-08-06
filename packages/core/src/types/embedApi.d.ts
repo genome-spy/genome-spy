@@ -541,5 +541,10 @@ export interface EmbedResult {
         logicalHeight?: number;
         /** Background CSS color. Defaults to white. Null is transparent. */
         background?: string | null;
-    }) => Promise<Blob>;
+    }) => Promise<{
+        /** The exported SVG document. */
+        blob: Blob;
+        /** Unsupported properties that were ignored during export. */
+        warnings: string[];
+    }>;
 }

@@ -95,10 +95,11 @@ describe("embed", () => {
         document.body.appendChild(element);
         const handle = await embed(element, {});
         const svgBlob = new Blob([], { type: "image/svg+xml" });
+        const svgResult = { blob: svgBlob, warnings: [] };
         const exportSvg = AppMock.mock.instances[0].genomeSpy.exportSvg;
-        exportSvg.mockResolvedValue(svgBlob);
+        exportSvg.mockResolvedValue(svgResult);
 
-        await expect(handle.exportSvg()).resolves.toBe(svgBlob);
+        await expect(handle.exportSvg()).resolves.toBe(svgResult);
         expect(exportSvg).toHaveBeenCalledOnce();
     });
 });

@@ -23,8 +23,8 @@ export function renderPointSvg(baseMark, options) {
         mark.properties.fillGradientStrength ||
         mark.properties.geometricZoomBound
     ) {
-        throw new Error(
-            "SVG export does not support point gradients or zoom-dependent geometry yet."
+        options.warn(
+            "SVG export ignored unsupported point gradients or zoom-dependent geometry."
         );
     }
 
@@ -54,8 +54,8 @@ export function renderPointSvg(baseMark, options) {
     for (const datum of data) {
         const shape = encodeString(encoders.shape, datum);
         if (shape != "circle") {
-            throw new Error(
-                `SVG export only supports circle points in the proof of concept. Received: ${shape}`
+            options.warn(
+                `SVG export rendered unsupported point shape "${shape}" as a circle.`
             );
         }
         if (encodeNumber(encoders.semanticScore, datum) < semanticThreshold) {

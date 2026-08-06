@@ -39,10 +39,11 @@ The main implementation points are:
 - [`svgMarkUtils.js`](../../packages/core/src/svg/svgMarkUtils.js) contains
   shared encoder and coordinate-projection helpers.
 - [`renderers/`](../../packages/core/src/svg/renderers/) contains the
-  export-specific mark renderers and their fail-fast registry.
+  export-specific mark renderers and their registry.
 - [`index.js`](../../packages/core/src/svg/index.js) drives the export traversal.
-  `GenomeSpy.exportSvg()` loads this subsystem dynamically, and the public
-  Core/embed APIs return an SVG Blob.
+  `GenomeSpy.exportSvg()` loads this subsystem dynamically. The public
+  Core/embed APIs return an SVG Blob together with deduplicated warnings for
+  unsupported properties that were ignored.
 - Focused coverage lives in
   [`svgExport.test.js`](../../packages/core/src/genomeSpy/svgExport.test.js) and
   [`svgViewRenderingContext.test.js`](../../packages/core/src/view/renderingContext/svgViewRenderingContext.test.js).
@@ -58,9 +59,10 @@ The following features are working:
 - Link marks as SVG paths for the supported link shapes.
 - App download through the **Save SVG** toolbar action.
 
-Known explicit rejections include non-circular point shapes, rounded/hatched/
-shadowed rectangles, fitted and logo-letter text, arrow marks, link arc fading,
-expression-valued link properties, and sample facets.
+Unsupported point, rectangle, text, and link properties are ignored when basic
+geometry can still be emitted, and the export result includes view-qualified
+warnings. Unsupported mark types and sample facets remain errors because export
+cannot yet meaningfully continue past them.
 
 ## Implementation principles
 
@@ -70,7 +72,8 @@ expression-valued link properties, and sample facets.
 - Port shader calculations to JavaScript only when they define visible mark
   semantics required for parity.
 - Preserve draw order and the nested view-group structure.
-- Fail fast with the mark type and view path when a feature is unsupported.
+- Return view-qualified warnings when unsupported properties are ignored. Fail
+  with the mark type and view path only when export cannot continue.
 - Add focused structural and geometry tests for each increment, followed by a
   browser comparison against WebGL using a small existing example.
 - Keep every increment independently reviewable and commit it separately.
@@ -202,7 +205,8 @@ For each increment:
 1. Add focused Vitest assertions for element structure and representative
    geometry. Avoid exhaustive snapshots of incidental attributes.
 2. Export at least one listed example and compare mark placement with WebGL.
-3. Confirm that unsupported variants fail with an actionable error.
+3. Confirm that unsupported properties produce actionable warnings while basic
+   mark geometry is still exported.
 4. Confirm that the SVG contains no raster `<image>` elements.
 5. Run the focused SVG tests, workspace TypeScript checks, and lint.
 6. After changing the import boundary, build Core and confirm that the ESM

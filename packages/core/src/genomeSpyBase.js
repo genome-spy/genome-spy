@@ -685,7 +685,8 @@ export default class GenomeSpy {
     }
 
     /**
-     * Exports the current visualization as an SVG Blob.
+     * Exports the current visualization as an SVG Blob and any warnings caused
+     * by unsupported properties.
      *
      * This experimental proof-of-concept supports basic rules, text, circular
      * points, axis-aligned rectangles, and links. Text layout uses GenomeSpy's
@@ -695,7 +696,7 @@ export default class GenomeSpy {
      * @param {number} [options.logicalWidth] Defaults to canvas width.
      * @param {number} [options.logicalHeight] Defaults to canvas height.
      * @param {string | null} [options.background] Defaults to white. Null is transparent.
-     * @returns {Promise<Blob>}
+     * @returns {Promise<{blob: Blob, warnings: string[]}>}
      */
     async exportSvg(options = {}) {
         const canvasSize = this.#glHelper.getLogicalCanvasSize();
@@ -707,15 +708,18 @@ export default class GenomeSpy {
 
         try {
             const { createSvg } = await import("./svg/index.js");
-            const svg = createSvg({
+            const { svg, warnings } = createSvg({
                 viewRoot: this.viewRoot,
                 logicalWidth,
                 logicalHeight,
                 background,
             });
-            return new Blob([new XMLSerializer().serializeToString(svg)], {
-                type: "image/svg+xml",
-            });
+            return {
+                blob: new Blob([new XMLSerializer().serializeToString(svg)], {
+                    type: "image/svg+xml",
+                }),
+                warnings,
+            };
         } finally {
             this.computeLayout();
             this.renderAll();

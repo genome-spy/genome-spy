@@ -25,8 +25,8 @@ export function renderRectSvg(baseMark, options) {
         p.cornerRadiusTopLeft ||
         p.cornerRadiusTopRight;
     if (rounded || (p.hatch ?? "none") != "none" || p.shadowOpacity) {
-        throw new Error(
-            "SVG export does not support rounded, hatched, or shadowed rectangles yet."
+        options.warn(
+            "SVG export ignored unsupported rounded, hatched, or shadowed rectangle properties."
         );
     }
 

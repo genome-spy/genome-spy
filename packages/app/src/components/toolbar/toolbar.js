@@ -252,14 +252,16 @@ export default class Toolbar extends LitElement {
                         },
                     ],
                 });
-                const blob = await this.app.genomeSpy.exportSvg();
+                const { blob, warnings } = await this.app.genomeSpy.exportSvg();
+                warnings.forEach((warning) => console.warn(warning));
                 const writable = await fileHandle.createWritable();
                 await writable.write(blob);
                 await writable.close();
                 return;
             }
 
-            const blob = await this.app.genomeSpy.exportSvg();
+            const { blob, warnings } = await this.app.genomeSpy.exportSvg();
+            warnings.forEach((warning) => console.warn(warning));
             const link = document.createElement("a");
             link.href =
                 "data:image/svg+xml;charset=utf-8," +

@@ -24,9 +24,10 @@ The proof of concept adds:
   axis-aligned rectangles. Link marks were added as a follow-up using native
   cubic SVG paths.
 - An asynchronous `exportSvg(options)` API on Core and App embed results. It
-  returns an `image/svg+xml` `Blob` and restores the ordinary canvas layout and
-  rendering in a `finally` block.
-- Explicit errors for unsupported mark types and advanced mark features.
+  returns an `image/svg+xml` `Blob` together with export warnings and restores
+  the ordinary canvas layout and rendering in a `finally` block.
+- Explicit errors for unsupported mark types and warnings for ignored advanced
+  mark properties.
 
 The current renderer uses GLSL, not WGSL. SVG placement reuses the resolved CPU
 encoders and D3 scales rather than attempting to translate shader code.

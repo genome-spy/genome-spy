@@ -63,6 +63,10 @@ describe("embed factory", () => {
 
     test("forwards SVG export from the GenomeSpy instance", async () => {
         const svgBlob = new Blob([], { type: "image/svg+xml" });
+        const svgResult = {
+            blob: svgBlob,
+            warnings: /** @type {string[]} */ ([]),
+        };
 
         class SvgGenomeSpy extends MockGenomeSpy {
             /**
@@ -71,7 +75,7 @@ describe("embed factory", () => {
              */
             constructor(element, spec) {
                 super(element, spec);
-                this.exportSvg = vi.fn(async () => svgBlob);
+                this.exportSvg = vi.fn(async () => svgResult);
             }
         }
 
@@ -81,7 +85,7 @@ describe("embed factory", () => {
             /** @type {any} */ ({})
         );
 
-        await expect(api.exportSvg()).resolves.toBe(svgBlob);
+        await expect(api.exportSvg()).resolves.toBe(svgResult);
     });
 
     test("exposes the view mutation API", async () => {
