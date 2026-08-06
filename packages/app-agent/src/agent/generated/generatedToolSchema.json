@@ -1786,7 +1786,7 @@
           "description": "Extending the domain so that it starts and ends on nice round values. This method typically modifies the scale’s domain, and may only extend the bounds to the nearest round value. Nicing is useful if the domain is computed from data and may be irregular. For example, for a domain of _[0.201479…, 0.996679…]_, a nice domain might be _[0.2, 1.0]_.\n\nFor quantitative scales such as linear, `nice` can be either a boolean flag or a number. If `nice` is a number, it will represent a desired tick count. This allows greater control over the step size used to extend the bounds, guaranteeing that the returned ticks will exactly cover the domain.\n\n__Default value:__ `true` for unbinned _quantitative_ fields; `false` otherwise."
         },
         "numberingOffset": {
-          "description": "The numbering offset used when formatting tick labels on index and locus scales.\n\n__Default value:__ `0`",
+          "description": "The offset added to data values when formatting tick labels on index and locus scales. This property does not transform data values.\n\n__Default value:__ `0`",
           "type": "number"
         },
         "padding": {
@@ -2392,9 +2392,17 @@
             },
             {
               "$ref": "#/definitions/ComplexDomain"
+            },
+            {
+              "const": "data",
+              "type": "string"
+            },
+            {
+              "const": "unbounded",
+              "type": "string"
             }
           ],
-          "description": "The boundaries that limit the zoom and pan interactions."
+          "description": "The boundaries that limit zoom and pan interactions.\n\nA domain array sets explicit boundaries. `\"data\"` derives the boundaries from the data that contributes to the scale domain. For index and quantitative scales, `\"unbounded\"` allows zooming and panning without fixed boundaries. Locus scales do not support unbounded zoom.\n\nWith an unbounded extent, the initial scale domain is used as the reference for the `zoomLevel` expression parameter.\n\n__Default value:__ The initial scale domain, except the whole genome for locus scales."
         }
       },
       "type": "object"
