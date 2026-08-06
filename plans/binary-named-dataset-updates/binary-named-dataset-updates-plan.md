@@ -119,17 +119,17 @@ Add a runtime-only format type and method in
 
 ```ts
 export interface BinaryDatasetFormat {
-    type: "arrow" | "parquet";
+  type: "arrow" | "parquet";
 }
 
 export interface DatasetApi {
-    set: <T = unknown>(name: string, data: T[]) => void;
-    load: (
-        name: string,
-        data: ArrayBuffer | ArrayBufferView,
-        format: BinaryDatasetFormat
-    ) => Promise<void>;
-    reset: (name: string) => void;
+  set: <T = unknown>(name: string, data: T[]) => void;
+  load: (
+    name: string,
+    data: ArrayBuffer | ArrayBufferView,
+    format: BinaryDatasetFormat
+  ) => Promise<void>;
+  reset: (name: string) => void;
 }
 ```
 
@@ -177,13 +177,17 @@ adapter or copy only the addressed range. Prefer the adapter if it remains
 simple and works with GenomeSpy's existing `parquetReadObjects()` path; a
 single bounded copy is acceptable if that path is clearer and more reliable.
 
-Arrow should retain the zero-copy bounded `Uint8Array` view passed to
-Flechette. Row materialization remains an intentional downstream allocation.
+Arrow retains the bounded `Uint8Array` view when it is 8-byte aligned. An
+arbitrarily offset view requires one bounded copy because Flechette creates
+aligned typed-array views over its input. Row materialization remains an
+intentional downstream allocation.
 
 ## Update ordering
 
-Each exact-owner `DatasetApi` instance maintains a monotonically increasing
-generation per local dataset name.
+Each `NamedDataBinding` maintains a monotonically increasing generation. The
+generation belongs to the binding rather than one `DatasetApi` object because
+the same declaration can be reached through capability aliases and deprecated
+update paths.
 
 - `set()`, `reset()`, and `load()` all claim a new generation.
 - `load()` validates the owner and declaration before claiming its generation
@@ -194,9 +198,8 @@ generation per local dataset name.
 - A current decode failure rejects and leaves the prior binding untouched.
 - A synchronous `set()` or `reset()` invalidates an earlier pending `load()`.
 
-The generation map belongs to the stable dataset capability returned on the
-`EmbedResult` or cached `ViewHandle`. It does not belong to a reader or data
-source because ordering is a public mutation concern, not a parsing concern.
+Keeping the generation on the binding gives every update route one ordering
+sequence while keeping it independent of readers and data sources.
 
 Before committing, `load()` revalidates that the owner is live and still owns
 the same binding. Removing a nested owner therefore prevents a late commit and
@@ -314,9 +317,9 @@ transforms, scales, layout, and rendering across Core.
   the existing minimal bundle verifier runs in CI.
 - **Offset buffer corruption:** normalize every view with its explicit offset
   and length and test both decoders with padded backing buffers.
-- **Peak memory use:** Arrow avoids an input copy; Parquet may require one
-  bounded copy. Both formats still materialize row objects because that is the
-  current dataflow contract.
+- **Peak memory use:** Arrow avoids an input copy for aligned views; Arrow and
+  Parquet may each require one bounded copy for an offset view. Both formats
+  still materialize row objects because that is the current dataflow contract.
 - **Global reader registry interference in tests:** restore any temporarily
   replaced readers after each test and avoid concurrent mutation of the same
   registry entry.

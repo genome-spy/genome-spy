@@ -1,5 +1,11 @@
+import { tableFromArrays, tableToIPC } from "@uwdata/flechette";
+import { formats } from "vega-loader";
 import { describe, expect, test, vi } from "vitest";
 
+import {
+    parquetExpectedRows,
+    parquetFixture,
+} from "../data/formats/parquetTestData.js";
 import {
     createHeadlessEngine,
     createHeadlessViewHierarchy,
@@ -173,6 +179,18 @@ function getCollectorValues(view) {
     );
 }
 
+/**
+ * @template T
+ */
+function deferred() {
+    /** @type {(value: T) => void} */
+    let resolve;
+    const promise = new Promise((resolvePromise) => {
+        resolve = resolvePromise;
+    });
+    return { promise, resolve };
+}
+
 describe("ViewMutationApi", () => {
     test("returns handles for the root and layout children", async () => {
         const { view } = await createHeadlessViewHierarchy({
@@ -276,6 +294,280 @@ describe("ViewMutationApi", () => {
 
         owner.datasets.reset("results");
         expect(getCollectorValues(consumerView)).toEqual([1]);
+    });
+
+    test.each([
+        {
+            type: "arrow",
+            data: tableToIPC(
+                tableFromArrays({
+                    sample: ["S1", "S2"],
+                    value: [10, 20],
+                }),
+                { format: "stream" }
+            ),
+            rows: parquetExpectedRows,
+        },
+        {
+            type: "parquet",
+            data: parquetFixture,
+            rows: parquetExpectedRows,
+        },
+    ])(
+        "loads top-level $type data from memory",
+        async ({ type, data, rows }) => {
+            const { view } = await createHeadlessEngine({
+                datasets: {
+                    results: [{ sample: "initial", value: 1 }],
+                },
+                data: { name: "results" },
+                mark: "point",
+                encoding: {
+                    x: { field: "value", type: "quantitative" },
+                },
+            });
+            const datasets = createTopLevelDatasetApi({ viewRoot: view });
+
+            await datasets.load(
+                "results",
+                data,
+                /** @type {import("../types/embedApi.js").BinaryDatasetFormat} */ ({
+                    type,
+                })
+            );
+
+            expect(
+                Array.from(view.flowHandle.collector.getData(), (datum) => ({
+                    sample: datum.sample,
+                    value: datum.value,
+                }))
+            ).toEqual(rows);
+        }
+    );
+
+    test("loads a nested dataset through its exact owner", async () => {
+        const { view } = await createHeadlessEngine({
+            vconcat: [
+                {
+                    name: "owner",
+                    datasets: {
+                        results: [{ value: 1 }],
+                    },
+                    data: { name: "results" },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "value", type: "quantitative" },
+                    },
+                },
+            ],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+        const owner = api.get({ scope: [], view: "owner" });
+        const ipc = tableToIPC(tableFromArrays({ value: [2, 3] }), {
+            format: "file",
+        });
+
+        await owner.datasets.load("results", ipc, { type: "arrow" });
+
+        const ownerView = view
+            .getDescendants()
+            .find((candidate) => candidate.explicitName === "owner");
+        if (!ownerView) {
+            throw new Error("Expected dataset owner.");
+        }
+        expect(getCollectorValues(ownerView)).toEqual([2, 3]);
+    });
+
+    test("keeps the previous rows when decoding fails", async () => {
+        const { view } = await createHeadlessEngine({
+            datasets: {
+                results: [{ value: 1 }],
+            },
+            data: { name: "results" },
+            mark: "point",
+            encoding: {
+                x: { field: "value", type: "quantitative" },
+            },
+        });
+        const datasets = createTopLevelDatasetApi({ viewRoot: view });
+
+        await expect(
+            datasets.load("results", new Uint8Array([1, 2, 3]), {
+                type: "arrow",
+            })
+        ).rejects.toMatchObject({ code: "datasetLoadFailed" });
+        expect(getCollectorValues(view)).toEqual([1]);
+    });
+
+    test("applies only the latest overlapping load across API aliases", async () => {
+        const { view } = await createHeadlessEngine({
+            datasets: {
+                results: [{ value: 0 }],
+            },
+            data: { name: "results" },
+            mark: "point",
+            encoding: {
+                x: { field: "value", type: "quantitative" },
+            },
+        });
+        const datasets = createTopLevelDatasetApi({ viewRoot: view });
+        const views = createViewMutationApi({ viewRoot: view });
+        const first = deferred();
+        const second = deferred();
+        const originalReader = formats("arrow");
+        if (!originalReader) {
+            throw new Error("Expected registered Arrow reader.");
+        }
+
+        const reader = vi
+            .fn()
+            .mockReturnValueOnce(first.promise)
+            .mockReturnValueOnce(second.promise);
+        formats("arrow", reader);
+        try {
+            const firstLoad = datasets.load("results", new ArrayBuffer(0), {
+                type: "arrow",
+            });
+            const secondLoad = views
+                .root()
+                .datasets.load("results", new ArrayBuffer(0), {
+                    type: "arrow",
+                });
+
+            second.resolve([{ value: 2 }]);
+            await secondLoad;
+            first.resolve([{ value: 1 }]);
+            await firstLoad;
+
+            expect(getCollectorValues(view)).toEqual([2]);
+        } finally {
+            formats("arrow", originalReader);
+        }
+    });
+
+    test("set and reset supersede pending loads", async () => {
+        const { view } = await createHeadlessEngine({
+            datasets: {
+                results: [{ value: 1 }],
+            },
+            data: { name: "results" },
+            mark: "point",
+            encoding: {
+                x: { field: "value", type: "quantitative" },
+            },
+        });
+        const datasets = createTopLevelDatasetApi({ viewRoot: view });
+        const first = deferred();
+        const second = deferred();
+        const originalReader = formats("arrow");
+        if (!originalReader) {
+            throw new Error("Expected registered Arrow reader.");
+        }
+
+        const reader = vi
+            .fn()
+            .mockReturnValueOnce(first.promise)
+            .mockReturnValueOnce(second.promise);
+        formats("arrow", reader);
+        try {
+            const beforeSet = datasets.load("results", new ArrayBuffer(0), {
+                type: "arrow",
+            });
+            datasets.set("results", [{ value: 7 }]);
+            first.resolve([{ value: 2 }]);
+            await beforeSet;
+            expect(getCollectorValues(view)).toEqual([7]);
+
+            const beforeReset = datasets.load("results", new ArrayBuffer(0), {
+                type: "arrow",
+            });
+            datasets.reset("results");
+            second.resolve([{ value: 3 }]);
+            await beforeReset;
+            expect(getCollectorValues(view)).toEqual([1]);
+        } finally {
+            formats("arrow", originalReader);
+        }
+    });
+
+    test("rejects a load whose owner is removed while decoding", async () => {
+        const { view } = await createHeadlessEngine({
+            name: "root",
+            vconcat: [
+                {
+                    name: "owner",
+                    datasets: {
+                        results: [{ value: 1 }],
+                    },
+                    data: { name: "results" },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "value", type: "quantitative" },
+                    },
+                },
+            ],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+        const owner = api.get({ scope: [], view: "owner" });
+        const pending = deferred();
+        const originalReader = formats("arrow");
+        if (!originalReader) {
+            throw new Error("Expected registered Arrow reader.");
+        }
+
+        formats("arrow", () => pending.promise);
+        try {
+            const load = owner.datasets.load("results", new ArrayBuffer(0), {
+                type: "arrow",
+            });
+            await api.remove(owner);
+            pending.resolve([{ value: 2 }]);
+
+            await expect(load).rejects.toMatchObject({
+                code: "staleHandle",
+            });
+        } finally {
+            formats("arrow", originalReader);
+        }
+    });
+
+    test("rejects a pending load when the embed lifecycle ends", async () => {
+        const { view } = await createHeadlessEngine({
+            datasets: {
+                results: [{ value: 1 }],
+            },
+            data: { name: "results" },
+            mark: "point",
+            encoding: {
+                x: { field: "value", type: "quantitative" },
+            },
+        });
+        let active = true;
+        const datasets = createTopLevelDatasetApi(
+            { viewRoot: view },
+            () => active
+        );
+        const pending = deferred();
+        const originalReader = formats("arrow");
+        if (!originalReader) {
+            throw new Error("Expected registered Arrow reader.");
+        }
+
+        formats("arrow", () => pending.promise);
+        try {
+            const load = datasets.load("results", new ArrayBuffer(0), {
+                type: "arrow",
+            });
+            active = false;
+            pending.resolve([{ value: 2 }]);
+
+            await expect(load).rejects.toMatchObject({
+                code: "staleEmbed",
+            });
+            expect(getCollectorValues(view)).toEqual([1]);
+        } finally {
+            formats("arrow", originalReader);
+        }
     });
 
     test("requires named data updates to target the exact owner", async () => {
