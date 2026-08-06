@@ -11,6 +11,7 @@ import {
     createSvgAttributeEncoder,
     encodeNumber,
     encodePosition,
+    formatSvgNumber,
     toSvgString,
 } from "./svgMarkUtils.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
@@ -313,7 +314,10 @@ export default class LinkMark extends Mark {
                 encoder: encoders.opacity,
                 transform: (value) => +value * viewOpacity,
             },
-            "stroke-width": { encoder: encoders.size },
+            "stroke-width": {
+                encoder: encoders.size,
+                transform: (value) => formatSvgNumber(+value),
+            },
         });
         group.setAttribute("fill", "none");
         group.setAttribute("stroke-linecap", "butt");
@@ -343,12 +347,17 @@ export default class LinkMark extends Mark {
             ).map(([x, y]) => [coords.x + x, coords.y + coords.height - y]);
             const [p1, p2, p3, p4] = points;
             const path = createSvgElement("path", {
-                d: `M ${p1.join(" ")} C ${p2.join(" ")} ${p3.join(" ")} ${p4.join(" ")}`,
+                d: `M ${formatSvgPoint(p1)} C ${formatSvgPoint(p2)} ${formatSvgPoint(p3)} ${formatSvgPoint(p4)}`,
                 ...encodeStyles(datum),
             });
             group.appendChild(path);
         }
     }
+}
+
+/** @param {number[]} point */
+function formatSvgPoint(point) {
+    return point.map(formatSvgNumber).join(" ");
 }
 
 /**

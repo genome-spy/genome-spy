@@ -1,3 +1,5 @@
+import { formatSvgNumber } from "../view/renderingContext/svgNumber.js";
+
 /**
  * @param {import("../view/layout/rectangle.js").default} coords
  * @param {number} value
@@ -123,3 +125,5 @@ function encodeAttributeValue(definition, datum) {
     const value = definition.encoder(datum);
     return definition.transform ? definition.transform(value) : "" + value;
 }
+
+export { formatSvgNumber };

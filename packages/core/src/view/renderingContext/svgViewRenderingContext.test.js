@@ -2,6 +2,7 @@
 
 import { describe, expect, test } from "vitest";
 import Rectangle from "../layout/rectangle.js";
+import { formatSvgNumber } from "./svgNumber.js";
 import SvgViewRenderingContext from "./svgViewRenderingContext.js";
 
 /**
@@ -18,6 +19,12 @@ function createView(name, path) {
 }
 
 describe("SvgViewRenderingContext", () => {
+    test("rounds CSS-pixel values to one decimal place", () => {
+        expect(formatSvgNumber(59.60439560439557)).toBe(59.6);
+        expect(formatSvgNumber(86.43956043956044)).toBe(86.4);
+        expect(formatSvgNumber(-0.01)).toBe(0);
+    });
+
     test("creates a standalone document with nested view groups", () => {
         const context = new SvgViewRenderingContext(
             { picking: false },

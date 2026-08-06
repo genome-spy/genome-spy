@@ -20,6 +20,7 @@ import {
     createSvgAttributeEncoder,
     encodeNumber,
     encodePosition,
+    formatSvgNumber,
     projectX,
     projectY,
     toSvgString,
@@ -320,7 +321,10 @@ export default class RectMark extends Mark {
                 encoder: encoders.strokeOpacity,
                 transform: (value) => +value * viewOpacity,
             },
-            "stroke-width": { encoder: encoders.strokeWidth },
+            "stroke-width": {
+                encoder: encoders.strokeWidth,
+                transform: (value) => formatSvgNumber(+value),
+            },
         });
 
         for (const datum of data) {
@@ -353,10 +357,10 @@ export default class RectMark extends Mark {
                 y2Offset
             );
             const rect = createSvgElement("rect", {
-                x: Math.min(x1, x2),
-                y: Math.min(y1, y2),
-                width: Math.abs(x2 - x1),
-                height: Math.abs(y2 - y1),
+                x: formatSvgNumber(Math.min(x1, x2)),
+                y: formatSvgNumber(Math.min(y1, y2)),
+                width: formatSvgNumber(Math.abs(x2 - x1)),
+                height: formatSvgNumber(Math.abs(y2 - y1)),
                 ...encodeStyles(datum),
             });
             group.appendChild(rect);

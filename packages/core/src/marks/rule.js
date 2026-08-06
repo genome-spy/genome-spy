@@ -17,6 +17,7 @@ import {
     createSvgAttributeEncoder,
     encodeNumber,
     encodePosition,
+    formatSvgNumber,
     projectX,
     projectY,
     toSvgString,
@@ -229,17 +230,23 @@ export default class RuleMark extends Mark {
                 encoder: encoders.opacity,
                 transform: (value) => +value * viewOpacity,
             },
-            "stroke-width": { encoder: encoders.size },
+            "stroke-width": {
+                encoder: encoders.size,
+                transform: (value) => formatSvgNumber(+value),
+            },
         });
         group.setAttribute(
             "stroke-linecap",
             /** @type {string} */ (this.properties.strokeCap)
         );
         if (strokeDash) {
-            group.setAttribute("stroke-dasharray", strokeDash.join(" "));
+            group.setAttribute(
+                "stroke-dasharray",
+                strokeDash.map(formatSvgNumber).join(" ")
+            );
             group.setAttribute(
                 "stroke-dashoffset",
-                "" + this.properties.strokeDashOffset
+                "" + formatSvgNumber(this.properties.strokeDashOffset)
             );
         }
 
@@ -253,25 +260,25 @@ export default class RuleMark extends Mark {
                 ? encodeNumber(encoders.y2Offset, datum)
                 : yOffset;
             const attributes = {
-                x1: projectX(
-                    coords,
-                    encodePosition(encoders.x, datum),
-                    xOffset
+                x1: formatSvgNumber(
+                    projectX(coords, encodePosition(encoders.x, datum), xOffset)
                 ),
-                y1: projectY(
-                    coords,
-                    encodePosition(encoders.y, datum),
-                    yOffset
+                y1: formatSvgNumber(
+                    projectY(coords, encodePosition(encoders.y, datum), yOffset)
                 ),
-                x2: projectX(
-                    coords,
-                    encodePosition(encoders.x2, datum),
-                    x2Offset
+                x2: formatSvgNumber(
+                    projectX(
+                        coords,
+                        encodePosition(encoders.x2, datum),
+                        x2Offset
+                    )
                 ),
-                y2: projectY(
-                    coords,
-                    encodePosition(encoders.y2, datum),
-                    y2Offset
+                y2: formatSvgNumber(
+                    projectY(
+                        coords,
+                        encodePosition(encoders.y2, datum),
+                        y2Offset
+                    )
                 ),
                 ...encodeStyles(datum),
             };

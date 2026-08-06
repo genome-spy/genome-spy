@@ -4,6 +4,7 @@ import {
     prepareMarkClipOptionsFromClip,
 } from "./clipOptions.js";
 import ViewRenderingContext from "./viewRenderingContext.js";
+import { formatSvgNumber } from "./svgNumber.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -57,12 +58,14 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
 
         this.width = options.width;
         this.height = options.height;
+        const width = formatSvgNumber(options.width);
+        const height = formatSvgNumber(options.height);
 
         this.#svg = createSvgElement("svg", {
             xmlns: SVG_NS,
-            width: options.width,
-            height: options.height,
-            viewBox: `0 0 ${options.width} ${options.height}`,
+            width,
+            height,
+            viewBox: `0 0 ${width} ${height}`,
         });
         this.#defs = createSvgElement("defs");
         this.#svg.appendChild(this.#defs);
@@ -70,8 +73,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         if (options.background != null) {
             this.#svg.appendChild(
                 createSvgElement("rect", {
-                    width: options.width,
-                    height: options.height,
+                    width,
+                    height,
                     fill: options.background,
                     "data-export-background": "",
                 })
@@ -168,7 +171,12 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                 clipPathUnits: "userSpaceOnUse",
             });
             clipPath.appendChild(
-                createSvgElement("rect", { x, y, width, height })
+                createSvgElement("rect", {
+                    x: formatSvgNumber(x),
+                    y: formatSvgNumber(y),
+                    width: formatSvgNumber(width),
+                    height: formatSvgNumber(height),
+                })
             );
             this.#defs.appendChild(clipPath);
             this.#clipPaths.set(key, id);

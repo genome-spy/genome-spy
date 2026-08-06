@@ -20,6 +20,7 @@ import {
     createSvgAttributeEncoder,
     encodeNumber,
     encodePosition,
+    formatSvgNumber,
     projectX,
     projectY,
     toSvgString,
@@ -293,7 +294,10 @@ export default class TextMark extends Mark {
                 encoder: encoders.opacity,
                 transform: (value) => +value * viewOpacity,
             },
-            "font-size": { encoder: encoders.size },
+            "font-size": {
+                encoder: encoders.size,
+                transform: (value) => formatSvgNumber(+value),
+            },
         });
         group.setAttribute("font-family", "sans-serif");
         group.setAttribute("font-style", this.properties.fontStyle ?? "normal");
@@ -330,18 +334,25 @@ export default class TextMark extends Mark {
             );
             const size = encodeNumber(encoders.size, datum);
             const angle = encodeNumber(encoders.angle, datum);
+            const svgX = formatSvgNumber(x);
+            const svgY = formatSvgNumber(y);
             const text = createSvgElement("text", {
-                x,
-                y,
-                dx: this.properties.dx,
-                dy: this.properties.dy,
+                x: svgX,
+                y: svgY,
+                dx: formatSvgNumber(this.properties.dx),
+                dy: formatSvgNumber(this.properties.dy),
                 lengthAdjust: "spacingAndGlyphs",
-                textLength: this.font.metrics.measureWidth(stringValue, size),
+                textLength: formatSvgNumber(
+                    this.font.metrics.measureWidth(stringValue, size)
+                ),
                 ...encodeStyles(datum),
             });
             text.textContent = stringValue;
             if (angle) {
-                text.setAttribute("transform", `rotate(${angle} ${x} ${y})`);
+                text.setAttribute(
+                    "transform",
+                    `rotate(${formatSvgNumber(angle)} ${svgX} ${svgY})`
+                );
             }
             group.appendChild(text);
         }

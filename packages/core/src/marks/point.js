@@ -20,6 +20,7 @@ import {
     encodeNumber,
     encodePosition,
     encodeString,
+    formatSvgNumber,
     projectX,
     projectY,
     toSvgString,
@@ -352,7 +353,10 @@ export default class PointMark extends Mark {
                 encoder: encoders.strokeOpacity,
                 transform: (value) => +value * viewOpacity,
             },
-            "stroke-width": { encoder: encoders.strokeWidth },
+            "stroke-width": {
+                encoder: encoders.strokeWidth,
+                transform: (value) => formatSvgNumber(+value),
+            },
         });
 
         for (const datum of data) {
@@ -369,19 +373,25 @@ export default class PointMark extends Mark {
             }
 
             const circle = createSvgElement("circle", {
-                cx: projectX(
-                    coords,
-                    encodePosition(encoders.x, datum),
-                    encodeNumber(encoders.xOffset, datum) +
-                        encodeNumber(encoders.dx, datum)
+                cx: formatSvgNumber(
+                    projectX(
+                        coords,
+                        encodePosition(encoders.x, datum),
+                        encodeNumber(encoders.xOffset, datum) +
+                            encodeNumber(encoders.dx, datum)
+                    )
                 ),
-                cy: projectY(
-                    coords,
-                    encodePosition(encoders.y, datum),
-                    encodeNumber(encoders.yOffset, datum) -
-                        encodeNumber(encoders.dy, datum)
+                cy: formatSvgNumber(
+                    projectY(
+                        coords,
+                        encodePosition(encoders.y, datum),
+                        encodeNumber(encoders.yOffset, datum) -
+                            encodeNumber(encoders.dy, datum)
+                    )
                 ),
-                r: Math.sqrt(encodeNumber(encoders.size, datum)) / 2,
+                r: formatSvgNumber(
+                    Math.sqrt(encodeNumber(encoders.size, datum)) / 2
+                ),
                 ...encodeStyles(datum),
             });
             group.appendChild(circle);

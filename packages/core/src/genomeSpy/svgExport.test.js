@@ -171,6 +171,7 @@ describe("SVG export", () => {
                 },
                 y: { value: 0.5 },
                 fill: { field: "color", type: "nominal", scale: null },
+                fillOpacity: { value: 0.35 },
             },
         });
 
@@ -191,6 +192,7 @@ describe("SVG export", () => {
             true
         );
         expect(pointGroup.getAttribute("stroke")).toBe("none");
+        expect(pointGroup.getAttribute("fill-opacity")).toBe("0.35");
     });
 
     test("exports a titled point plot with generated axes", async () => {
@@ -279,11 +281,17 @@ describe("SVG export", () => {
             true
         );
         expect(labels).toHaveLength(rects.length);
+        const compactPixel = /^-?\d+(?:\.\d)?$/;
         for (let i = 0; i < rects.length; i++) {
             const rect = rects[i];
+            for (const attribute of ["x", "y", "width", "height"]) {
+                expect(rect.getAttribute(attribute)).toMatch(compactPixel);
+            }
             const expectedCenter =
                 +rect.getAttribute("x") + +rect.getAttribute("width") / 2;
-            expect(+labels[i].getAttribute("x")).toBeCloseTo(expectedCenter);
+            expect(
+                Math.abs(+labels[i].getAttribute("x") - expectedCenter)
+            ).toBeLessThanOrEqual(0.1);
         }
         expect(textValues).toEqual(expect.arrayContaining(["28", "55", "91"]));
         expect(svg.querySelector('[data-view-name="Bar"]')).not.toBeNull();
