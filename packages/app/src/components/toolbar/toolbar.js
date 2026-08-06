@@ -190,7 +190,7 @@ export default class Toolbar extends LitElement {
         });
 
         items.push({
-            label: "Save SVG (experimental)",
+            label: "Save SVG",
             icon: faFileCode,
             callback: () => {
                 void this.#downloadSvg();

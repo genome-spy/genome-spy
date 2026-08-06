@@ -480,11 +480,6 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         return Array.from(this.#warnings);
     }
 
-    /** @returns {string} */
-    serialize() {
-        return new XMLSerializer().serializeToString(this.#svg);
-    }
-
     /** @returns {SVGElement} */
     get currentNode() {
         return peek(this.#viewStack)?.node ?? this.#svg;

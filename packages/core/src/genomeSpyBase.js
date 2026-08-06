@@ -669,15 +669,12 @@ export default class GenomeSpy {
      * Exports the current visualization as an SVG Blob and any warnings caused
      * by unsupported properties.
      *
-     * This experimental proof-of-concept supports basic rules, text, circular
-     * points, axis-aligned rectangles, and links. Text layout uses GenomeSpy's
+     * Vector-representable marks and decorations are emitted as editable
+     * elements arranged in the view hierarchy. Text layout uses GenomeSpy's
      * SDF metrics while the exported elements use a plain sans-serif font.
      *
-     * @param {object} [options]
-     * @param {number} [options.logicalWidth] Defaults to canvas width.
-     * @param {number} [options.logicalHeight] Defaults to canvas height.
-     * @param {string | null} [options.background] Overrides the visualization background. Null is transparent.
-     * @returns {Promise<{blob: Blob, warnings: string[]}>}
+     * @param {import("./types/embedApi.js").SvgExportOptions} [options]
+     * @returns {Promise<import("./types/embedApi.js").SvgExportResult>}
      */
     async exportSvg(options = {}) {
         const canvasSize = this.#glHelper.getLogicalCanvasSize();

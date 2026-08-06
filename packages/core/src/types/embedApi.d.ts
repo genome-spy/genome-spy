@@ -421,6 +421,25 @@ export interface EmbedDebugApi {
 // split is intended to extend to parameters when they gain a view-scoped API;
 // the existing flat getParam() lookup remains separate for compatibility.
 
+export interface SvgExportOptions {
+    /** Custom width in CSS pixels. Defaults to canvas width. */
+    logicalWidth?: number;
+
+    /** Custom height in CSS pixels. Defaults to canvas height. */
+    logicalHeight?: number;
+
+    /** Overrides the visualization background. Null is transparent. */
+    background?: string | null;
+}
+
+export interface SvgExportResult {
+    /** The exported SVG document. */
+    blob: Blob;
+
+    /** Unsupported properties that were ignored during export. */
+    warnings: string[];
+}
+
 /**
  * An API for controlling the embedded GenomeSpy instance.
  */
@@ -528,23 +547,12 @@ export interface EmbedResult {
     ) => string;
 
     /**
-     * Exports the current visualization as SVG.
+     * Exports the current visualization as editable SVG elements arranged in
+     * the view hierarchy.
      *
-     * This experimental proof-of-concept supports basic rules, text, circular
-     * points, axis-aligned rectangles, and links. Text is laid out using
-     * GenomeSpy's SDF metrics but emitted using a plain sans-serif font.
+     * Text uses GenomeSpy's SDF metrics for layout and a plain sans-serif font
+     * for the exported glyphs. Unsupported visual properties are reported in
+     * the result without preventing export.
      */
-    exportSvg: (options?: {
-        /** Custom width in CSS pixels. Defaults to canvas width. */
-        logicalWidth?: number;
-        /** Custom height in CSS pixels. Defaults to canvas height. */
-        logicalHeight?: number;
-        /** Overrides the visualization background. Null is transparent. */
-        background?: string | null;
-    }) => Promise<{
-        /** The exported SVG document. */
-        blob: Blob;
-        /** Unsupported properties that were ignored during export. */
-        warnings: string[];
-    }>;
+    exportSvg: (options?: SvgExportOptions) => Promise<SvgExportResult>;
 }

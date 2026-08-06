@@ -54,9 +54,7 @@ describe("SvgViewRenderingContext", () => {
             svg.querySelector('[data-view-path="root/points"] > title')
                 ?.textContent
         ).toBe("root/points");
-        expect(context.serialize()).toContain(
-            'xmlns="http://www.w3.org/2000/svg"'
-        );
+        expect(svg.getAttribute("xmlns")).toBe("http://www.w3.org/2000/svg");
     });
 
     test("deduplicates directional clip paths", () => {
