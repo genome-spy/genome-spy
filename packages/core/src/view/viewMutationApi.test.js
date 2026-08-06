@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from "vitest";
 import {
     parquetExpectedRows,
     parquetFixture,
-} from "../data/formats/parquetTestData.js";
+} from "../data/formats/parquet.test.fixture.js";
 import {
     createHeadlessEngine,
     createHeadlessViewHierarchy,

@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import parquet from "./parquet.js";
-import { parquetExpectedRows, parquetFixture } from "./parquetTestData.js";
+import { parquetExpectedRows, parquetFixture } from "./parquet.test.fixture.js";
 
 test("parses an in-memory Parquet file", async () => {
     expect(await parquet(parquetFixture)).toEqual(parquetExpectedRows);
