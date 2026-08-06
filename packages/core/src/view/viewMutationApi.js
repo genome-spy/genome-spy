@@ -76,6 +76,7 @@ function createViewDatasetApi(
             const owner = getOwnerView();
             const binding = getOwnedNamedDataBinding(owner, name, getRootView);
             const generation = binding.beginUpdate();
+            const formatType = format?.type ?? "unknown";
 
             let rows;
             try {
@@ -95,7 +96,7 @@ function createViewDatasetApi(
                 }
                 throw new ViewMutationError(
                     "datasetLoadFailed",
-                    `Cannot load named dataset "${name}" as ${format.type}: ${getErrorMessage(error)}`,
+                    `Cannot load named dataset "${name}" as ${formatType}: ${getErrorMessage(error)}`,
                     { cause: error }
                 );
             }

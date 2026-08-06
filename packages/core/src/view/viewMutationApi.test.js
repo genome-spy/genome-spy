@@ -396,6 +396,13 @@ describe("ViewMutationApi", () => {
                 type: "arrow",
             })
         ).rejects.toMatchObject({ code: "datasetLoadFailed" });
+        await expect(
+            datasets.load(
+                "results",
+                new ArrayBuffer(0),
+                /** @type {any} */ (undefined)
+            )
+        ).rejects.toMatchObject({ code: "datasetLoadFailed" });
         expect(getCollectorValues(view)).toEqual([1]);
     });
 

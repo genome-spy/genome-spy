@@ -1,7 +1,5 @@
 import { formats } from "vega-loader";
 
-const supportedFormats = new Set(["arrow", "parquet"]);
-
 /**
  * Reads an in-memory binary dataset through a registered format reader.
  *
@@ -10,22 +8,22 @@ const supportedFormats = new Set(["arrow", "parquet"]);
  * @returns {Promise<Record<string, any>[]>}
  */
 export async function readBinaryData(data, format) {
-    if (!supportedFormats.has(format.type)) {
-        throw new Error("Unsupported binary data format: " + format.type);
+    const type = format?.type;
+
+    if (type !== "arrow" && type !== "parquet") {
+        throw new Error("Unsupported binary data format: " + String(type));
     }
 
-    const reader = formats(format.type);
+    const reader = formats(type);
     if (!reader) {
-        throw new Error("Data format is not registered: " + format.type);
+        throw new Error("Data format is not registered: " + type);
     }
 
     const bytes = toUint8Array(data);
     const rows = await reader(bytes, format);
 
     if (!Array.isArray(rows)) {
-        throw new Error(
-            `The ${format.type} data reader did not return an array.`
-        );
+        throw new Error(`The ${type} data reader did not return an array.`);
     }
 
     return rows;
