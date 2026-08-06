@@ -1,5 +1,5 @@
 import { createSvgElement } from "../svgElement.js";
-import { intersectsSvgBounds } from "../svgBounds.js";
+import { intersectsSvgBounds, isOutsideSvgBounds } from "../svgBounds.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
@@ -29,7 +29,14 @@ export function renderPointSvg(baseMark, options) {
         );
     }
 
-    const { coords, data, group, viewOpacity, visibleBounds } = options;
+    const {
+        coords,
+        data,
+        group,
+        viewOpacity,
+        visibleBounds,
+        anchorCullBounds,
+    } = options;
     const encoders =
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -70,6 +77,9 @@ export function renderPointSvg(baseMark, options) {
             encodeNumber(encoders.yOffset, datum) -
                 encodeNumber(encoders.dy, datum)
         );
+        if (isOutsideSvgBounds(anchorCullBounds, x, y)) {
+            continue;
+        }
         const radius = Math.sqrt(encodeNumber(encoders.size, datum)) / 2;
         const angle = encodeNumber(encoders.angle, datum);
         const strokePadding = encodeNumber(encoders.strokeWidth, datum) / 2;

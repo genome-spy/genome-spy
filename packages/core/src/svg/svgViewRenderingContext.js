@@ -4,7 +4,11 @@ import {
     prepareMarkClipOptionsFromClip,
 } from "../view/renderingContext/clipOptions.js";
 import ViewRenderingContext from "../view/renderingContext/viewRenderingContext.js";
-import { createSvgVisibleBounds, hasVisibleArea } from "./svgBounds.js";
+import {
+    createSvgAnchorCullBounds,
+    createSvgVisibleBounds,
+    hasVisibleArea,
+} from "./svgBounds.js";
 import { getSvgData } from "./markData.js";
 import { renderMarkSvg } from "./renderers/index.js";
 import { createSvgElement, SVG_NS } from "./svgElement.js";
@@ -35,6 +39,7 @@ import {
  * @prop {object[]} data
  * @prop {SVGGElement} group
  * @prop {import("./svgBounds.js").SvgBounds} visibleBounds
+ * @prop {import("./svgBounds.js").SvgBounds} anchorCullBounds
  * @prop {number} viewOpacity
  * @prop {(fade: SvgViewportEdgeFade) => string | undefined} getViewportEdgeFadeMaskUrl
  * @prop {(shadow: SvgShadow) => string} getShadowFilterUrl
@@ -175,6 +180,11 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         if (!hasVisibleArea(visibleBounds)) {
             return;
         }
+        const anchorCullBounds = createSvgAnchorCullBounds(
+            this.currentCoords,
+            inheritedClip,
+            mark.properties.cullByVisibleRange
+        );
 
         const group = createSvgElement("g", {
             "data-mark-type": mark.getType(),
@@ -191,6 +201,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                 data: facetData,
                 group,
                 visibleBounds,
+                anchorCullBounds,
                 viewOpacity: mark.unitView.getEffectiveOpacity(),
                 getViewportEdgeFadeMaskUrl: (fade) =>
                     this.getViewportEdgeFadeMaskUrl(fade),

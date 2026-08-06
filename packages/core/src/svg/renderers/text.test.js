@@ -215,6 +215,106 @@ describe("SVG text renderer", () => {
         );
     });
 
+    test("anchor-culls unclipped text in the configured direction", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: 0.5, y: 0.9, label: "Above" },
+                    { x: 0.1, y: 0.5, label: "Inside" },
+                    { x: 0.5, y: 0.1, label: "Below" },
+                ],
+            },
+            mark: {
+                type: "text",
+                clip: "never",
+                cullByVisibleRange: "y",
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                y: { field: "y", type: "quantitative", scale: null },
+                text: { field: "label" },
+                color: { value: "black" },
+            },
+        });
+        const context = new SvgViewRenderingContext(
+            { picking: false },
+            { width: 100, height: 100 }
+        );
+
+        view.render(context, Rectangle.create(0, 0, 100, 100), {
+            clip: {
+                rect: Rectangle.create(25, 25, 50, 50),
+                clipX: true,
+                clipY: true,
+            },
+        });
+
+        const svg = context.getSvg();
+        expect(
+            Array.from(
+                svg.querySelectorAll('[data-mark-type="text"] text'),
+                (text) => text.textContent
+            )
+        ).toEqual(["Inside"]);
+        expect(
+            svg
+                .querySelector('[data-mark-type="text"]')
+                ?.hasAttribute("clip-path")
+        ).toBe(false);
+    });
+
+    test("anchor-culls text after SampleView facet projection", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ label: "Sample" }] },
+            mark: {
+                type: "text",
+                clip: "never",
+                cullByVisibleRange: "y",
+            },
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                text: { field: "label" },
+                color: { value: "black" },
+            },
+        });
+        const context = new SvgViewRenderingContext(
+            { picking: false },
+            { width: 100, height: 100 }
+        );
+        const coords = Rectangle.create(0, 0, 100, 100);
+        const clip = {
+            rect: Rectangle.create(0, 25, 100, 50),
+            clipX: false,
+            clipY: true,
+        };
+
+        view.render(context, coords, {
+            clip,
+            sampleFacetRenderingOptions: {
+                locSize: { location: 0, size: 20 },
+                pixelToUnit: 0.01,
+            },
+        });
+        view.render(context, coords, {
+            clip,
+            sampleFacetRenderingOptions: {
+                locSize: { location: 40, size: 20 },
+                pixelToUnit: 0.01,
+            },
+        });
+
+        expect(
+            context.getSvg().querySelectorAll('[data-mark-type="text"] text')
+        ).toHaveLength(1);
+        expect(
+            context
+                .getSvg()
+                .querySelector('[data-mark-type="text"] text')
+                ?.getAttribute("y")
+        ).toBe("50");
+    });
+
     test("reuses one viewport-edge fade mask for all text in a view", async () => {
         const { view } = await createHeadlessEngine({
             data: {

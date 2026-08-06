@@ -78,7 +78,9 @@ The following features are working:
   direction, start and head notches, minimum-stem blunting, and repeated heads
   merged with the stem into a single editable path.
 - Conservative instance culling against the effective directional clip and
-  root SVG viewport. Partially visible geometry is retained and clipped.
+  root SVG viewport. Partially visible geometry is retained and clipped. Text
+  and point marks also support directional `cullByVisibleRange` anchor culling,
+  including unclipped labels in scrollable axes.
 - SampleView faceting in both rendering modes: repeated plot marks use the
   per-sample uniform transform, while labels and metadata using `facetIndex`
   resolve the same CPU-side positions that back the GPU facet texture. All

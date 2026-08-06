@@ -2,7 +2,7 @@ import { format } from "d3-format";
 import { isString } from "vega-util";
 import { SDF_PADDING } from "../../fonts/bmFontMetrics.js";
 import { createSvgElement } from "../svgElement.js";
-import { intersectsSvgBounds } from "../svgBounds.js";
+import { intersectsSvgBounds, isOutsideSvgBounds } from "../svgBounds.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
@@ -33,7 +33,14 @@ export function renderTextSvg(baseMark, options) {
     const dx = resolveSvgProperty(mark, props.dx);
     const dy = resolveSvgProperty(mark, props.dy);
 
-    const { coords, data, group, viewOpacity, visibleBounds } = options;
+    const {
+        coords,
+        data,
+        group,
+        viewOpacity,
+        visibleBounds,
+        anchorCullBounds,
+    } = options;
     const encoders =
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -169,6 +176,7 @@ export function renderTextSvg(baseMark, options) {
             if (
                 !width ||
                 !height ||
+                isOutsideSvgBounds(anchorCullBounds, x, y) ||
                 !textIntersectsVisibleBounds(
                     visibleBounds,
                     x,
@@ -271,6 +279,10 @@ export function renderTextSvg(baseMark, options) {
             );
             y = result.position;
             scale *= result.scale;
+        }
+
+        if (isOutsideSvgBounds(anchorCullBounds, x, y)) {
+            continue;
         }
 
         let fadeOpacity = 1;

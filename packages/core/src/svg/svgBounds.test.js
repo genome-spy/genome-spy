@@ -1,9 +1,11 @@
 import { describe, expect, test } from "vitest";
 import Rectangle from "../view/layout/rectangle.js";
 import {
+    createSvgAnchorCullBounds,
     createSvgVisibleBounds,
     hasVisibleArea,
     intersectsSvgBounds,
+    isOutsideSvgBounds,
 } from "./svgBounds.js";
 
 describe("SVG visible bounds", () => {
@@ -36,5 +38,28 @@ describe("SVG visible bounds", () => {
         const visible = { x1: 0, y1: 0, x2: 100, y2: 80 };
         expect(intersectsSvgBounds(visible, -3, 20, -2, 30)).toBe(false);
         expect(intersectsSvgBounds(visible, -3, 20, -2, 30, 2)).toBe(true);
+    });
+
+    test("creates directional anchor bounds from the inherited clip", () => {
+        const bounds = createSvgAnchorCullBounds(
+            Rectangle.create(10, 20, 100, 80),
+            {
+                rect: Rectangle.create(30, 40, 50, 30),
+                clipX: true,
+                clipY: true,
+            },
+            "y"
+        );
+
+        expect(bounds).toEqual({
+            x1: -Infinity,
+            y1: 40,
+            x2: Infinity,
+            y2: 70,
+        });
+        expect(isOutsideSvgBounds(bounds, -1000, 39)).toBe(true);
+        expect(isOutsideSvgBounds(bounds, -1000, 40)).toBe(false);
+        expect(isOutsideSvgBounds(bounds, 1000, 70)).toBe(false);
+        expect(isOutsideSvgBounds(bounds, 1000, 71)).toBe(true);
     });
 });

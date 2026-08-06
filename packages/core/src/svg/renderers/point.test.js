@@ -2,7 +2,9 @@
 
 import { describe, expect, test } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
+import Rectangle from "../../view/layout/rectangle.js";
 import { createSvg } from "../index.js";
+import SvgViewRenderingContext from "../svgViewRenderingContext.js";
 
 describe("SVG point renderer", () => {
     test("exports every point shape with encoded rotation", async () => {
@@ -140,5 +142,47 @@ describe("SVG point renderer", () => {
         );
         expect(pointGroup.getAttribute("stroke")).toBe("none");
         expect(pointGroup.getAttribute("fill-opacity")).toBe("0.35");
+    });
+
+    test("anchor-culls unclipped points in the configured direction", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: 0.5, y: 0.9 },
+                    { x: 0.1, y: 0.5 },
+                    { x: 0.5, y: 0.1 },
+                ],
+            },
+            mark: {
+                type: "point",
+                clip: "never",
+                cullByVisibleRange: "y",
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                y: { field: "y", type: "quantitative", scale: null },
+                size: { value: 100 },
+                fill: { value: "black" },
+            },
+        });
+        const context = new SvgViewRenderingContext(
+            { picking: false },
+            { width: 100, height: 100 }
+        );
+
+        view.render(context, Rectangle.create(0, 0, 100, 100), {
+            clip: {
+                rect: Rectangle.create(25, 25, 50, 50),
+                clipX: true,
+                clipY: true,
+            },
+        });
+
+        const circles = context
+            .getSvg()
+            .querySelectorAll('[data-mark-type="point"] circle');
+        expect(circles).toHaveLength(1);
+        expect(circles[0].getAttribute("cx")).toBe("10");
+        expect(circles[0].getAttribute("cy")).toBe("50");
     });
 });
