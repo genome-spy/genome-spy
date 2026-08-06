@@ -3,10 +3,9 @@ import { intersectsSvgBounds } from "../svgBounds.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
-    encodePosition,
     formatSvgNumber,
-    projectX,
-    projectY,
+    projectXRange,
+    projectYRange,
     resolveSvgProperty,
     toSvgString,
 } from "../svgMarkUtils.js";
@@ -50,18 +49,8 @@ export function renderRuleSvg(baseMark, options) {
     }
 
     for (const datum of data) {
-        const xOffset = encodeNumber(encoders.xOffset, datum);
-        const yOffset = encodeNumber(encoders.yOffset, datum);
-        const x2Offset = encoders.x2Offset
-            ? encodeNumber(encoders.x2Offset, datum)
-            : xOffset;
-        const y2Offset = encoders.y2Offset
-            ? encodeNumber(encoders.y2Offset, datum)
-            : yOffset;
-        let x1 = projectX(coords, encodePosition(encoders.x, datum), xOffset);
-        let y1 = projectY(coords, encodePosition(encoders.y, datum), yOffset);
-        let x2 = projectX(coords, encodePosition(encoders.x2, datum), x2Offset);
-        let y2 = projectY(coords, encodePosition(encoders.y2, datum), y2Offset);
+        let [x1, x2] = projectXRange(coords, encoders, datum);
+        let [y1, y2] = projectYRange(coords, encoders, datum);
         const dx = x2 - x1;
         const dy = y2 - y1;
         const length = Math.hypot(dx, dy);

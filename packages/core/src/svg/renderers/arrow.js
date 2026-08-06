@@ -4,11 +4,10 @@ import { unionPolygons } from "../polygonUnion.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
-    encodePosition,
     encodeString,
     formatSvgNumber,
-    projectX,
-    projectY,
+    projectXRange,
+    projectYRange,
     resolveSvgProperty,
     toSvgString,
 } from "../svgMarkUtils.js";
@@ -62,28 +61,10 @@ export function renderArrowSvg(baseMark, options) {
     group.setAttribute("stroke-linejoin", "miter");
 
     for (const datum of data) {
-        const xOffset = encodeNumber(encoders.xOffset, datum);
-        const yOffset = encodeNumber(encoders.yOffset, datum);
-        const a = {
-            x: projectX(coords, encodePosition(encoders.x, datum), xOffset),
-            y: projectY(coords, encodePosition(encoders.y, datum), yOffset),
-        };
-        const b = {
-            x: projectX(
-                coords,
-                encodePosition(encoders.x2, datum),
-                encoders.x2Offset
-                    ? encodeNumber(encoders.x2Offset, datum)
-                    : xOffset
-            ),
-            y: projectY(
-                coords,
-                encodePosition(encoders.y2, datum),
-                encoders.y2Offset
-                    ? encodeNumber(encoders.y2Offset, datum)
-                    : yOffset
-            ),
-        };
+        const [x, x2] = projectXRange(coords, encoders, datum);
+        const [y, y2] = projectYRange(coords, encoders, datum);
+        const a = { x, y };
+        const b = { x: x2, y: y2 };
         const direction = encodeString(encoders.direction, datum);
         const tail = direction == "reverse" ? b : a;
         const endpoint = direction == "reverse" ? a : b;

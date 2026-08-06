@@ -6,10 +6,9 @@ import { intersectsSvgBounds, isOutsideSvgBounds } from "../svgBounds.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
-    encodePosition,
     formatSvgNumber,
-    projectX,
-    projectY,
+    projectXRange,
+    projectYRange,
     resolveSvgProperty,
     toSvgString,
 } from "../svgMarkUtils.js";
@@ -112,10 +111,8 @@ export function renderTextSvg(baseMark, options) {
             continue;
         }
 
-        const xOffset = encodeNumber(encoders.xOffset, datum);
-        const yOffset = encodeNumber(encoders.yOffset, datum);
-        let x = projectX(coords, encodePosition(encoders.x, datum), xOffset);
-        let y = projectY(coords, encodePosition(encoders.y, datum), yOffset);
+        let [x, x2] = projectXRange(coords, encoders, datum);
+        let [y, y2] = projectYRange(coords, encoders, datum);
         const size = encodeNumber(encoders.size, datum);
         const angle = encodeNumber(encoders.angle, datum);
         const hasX2 = !!encoders.x2;
@@ -131,24 +128,10 @@ export function renderTextSvg(baseMark, options) {
             let width = size;
             let height = size;
             if (hasX2) {
-                const x2 = projectX(
-                    coords,
-                    encodePosition(encoders.x2, datum),
-                    encoders.x2Offset
-                        ? encodeNumber(encoders.x2Offset, datum)
-                        : xOffset
-                );
                 width = x2 - x;
                 x = (x + x2) / 2;
             }
             if (hasY2) {
-                const y2 = projectY(
-                    coords,
-                    encodePosition(encoders.y2, datum),
-                    encoders.y2Offset
-                        ? encodeNumber(encoders.y2Offset, datum)
-                        : yOffset
-                );
                 // SVG's y axis points down, unlike the unit coordinates used
                 // by the shader, so the normal y..y2 range has this sign.
                 height = y - y2;
@@ -239,13 +222,6 @@ export function renderTextSvg(baseMark, options) {
         let scale = 1;
 
         if (hasX2) {
-            const x2 = projectX(
-                coords,
-                encodePosition(encoders.x2, datum),
-                encoders.x2Offset
-                    ? encodeNumber(encoders.x2Offset, datum)
-                    : xOffset
-            );
             const result = positionInsideRange(
                 Math.min(x, x2),
                 Math.max(x, x2),
@@ -261,13 +237,6 @@ export function renderTextSvg(baseMark, options) {
         }
 
         if (hasY2) {
-            const y2 = projectY(
-                coords,
-                encodePosition(encoders.y2, datum),
-                encoders.y2Offset
-                    ? encodeNumber(encoders.y2Offset, datum)
-                    : yOffset
-            );
             const result = positionInsideRange(
                 Math.min(y, y2),
                 Math.max(y, y2),

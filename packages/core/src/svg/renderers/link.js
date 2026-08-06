@@ -3,8 +3,9 @@ import { intersectsSvgBounds } from "../svgBounds.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
-    encodePosition,
     formatSvgNumber,
+    projectXRange,
+    projectYRange,
     resolveSvgProperty,
     toSvgString,
 } from "../svgMarkUtils.js";
@@ -61,22 +62,10 @@ export function renderLinkSvg(baseMark, options) {
     group.setAttribute("stroke-linecap", "butt");
 
     for (const datum of data) {
-        const xOffset = encodeNumber(encoders.xOffset, datum);
-        const yOffset = encodeNumber(encoders.yOffset, datum);
-        const a = [
-            encodePosition(encoders.x, datum) * coords.width + xOffset,
-            encodePosition(encoders.y, datum) * coords.height - yOffset,
-        ];
-        const b = [
-            encodePosition(encoders.x2, datum) * coords.width +
-                (encoders.x2Offset
-                    ? encodeNumber(encoders.x2Offset, datum)
-                    : xOffset),
-            encodePosition(encoders.y2, datum) * coords.height -
-                (encoders.y2Offset
-                    ? encodeNumber(encoders.y2Offset, datum)
-                    : yOffset),
-        ];
+        const [x, x2] = projectXRange(coords, encoders, datum);
+        const [y, y2] = projectYRange(coords, encoders, datum);
+        const a = [x - coords.x, coords.y2 - y];
+        const b = [x2 - coords.x, coords.y2 - y2];
         const points = getBezierPoints(
             /** @type {[number, number]} */ (a),
             /** @type {[number, number]} */ (b),

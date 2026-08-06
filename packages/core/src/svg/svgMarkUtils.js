@@ -20,6 +20,79 @@ export function projectY(coords, value, offset) {
 }
 
 /**
+ * Projects the primary and optional secondary x positions of a mark. The
+ * secondary offset inherits the primary offset when it has no encoder.
+ *
+ * @param {import("../view/layout/rectangle.js").default} coords
+ * @param {Record<string, import("../types/encoder.js").Encoder>} encoders
+ * @param {object} datum
+ * @returns {[number, number]}
+ */
+export function projectXRange(coords, encoders, datum) {
+    return projectRange(
+        coords,
+        encoders.x,
+        encoders.x2,
+        encoders.xOffset,
+        encoders.x2Offset,
+        datum,
+        projectX
+    );
+}
+
+/**
+ * Projects the primary and optional secondary y positions of a mark. The
+ * secondary offset inherits the primary offset when it has no encoder.
+ *
+ * @param {import("../view/layout/rectangle.js").default} coords
+ * @param {Record<string, import("../types/encoder.js").Encoder>} encoders
+ * @param {object} datum
+ * @returns {[number, number]}
+ */
+export function projectYRange(coords, encoders, datum) {
+    return projectRange(
+        coords,
+        encoders.y,
+        encoders.y2,
+        encoders.yOffset,
+        encoders.y2Offset,
+        datum,
+        projectY
+    );
+}
+
+/**
+ * @param {import("../view/layout/rectangle.js").default} coords
+ * @param {import("../types/encoder.js").Encoder} primary
+ * @param {import("../types/encoder.js").Encoder | undefined} secondary
+ * @param {import("../types/encoder.js").Encoder} primaryOffset
+ * @param {import("../types/encoder.js").Encoder | undefined} secondaryOffset
+ * @param {object} datum
+ * @param {(coords: import("../view/layout/rectangle.js").default, value: number, offset: number) => number} project
+ * @returns {[number, number]}
+ */
+function projectRange(
+    coords,
+    primary,
+    secondary,
+    primaryOffset,
+    secondaryOffset,
+    datum,
+    project
+) {
+    const offset = encodeNumber(primaryOffset, datum);
+    const first = project(coords, encodePosition(primary, datum), offset);
+    const second = secondary
+        ? project(
+              coords,
+              encodePosition(secondary, datum),
+              secondaryOffset ? encodeNumber(secondaryOffset, datum) : offset
+          )
+        : first;
+    return [first, second];
+}
+
+/**
  * @param {import("../types/encoder.js").Encoder} encoder
  * @param {object} datum
  */

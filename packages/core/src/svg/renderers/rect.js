@@ -3,10 +3,9 @@ import { intersectsSvgBounds } from "../svgBounds.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
-    encodePosition,
     formatSvgNumber,
-    projectX,
-    projectY,
+    projectXRange,
+    projectYRange,
     resolveSvgProperty,
     toSvgString,
 } from "../svgMarkUtils.js";
@@ -84,26 +83,8 @@ export function renderRectSvg(baseMark, options) {
             : null;
 
     for (const datum of data) {
-        const xOffset = encodeNumber(encoders.xOffset, datum);
-        const yOffset = encodeNumber(encoders.yOffset, datum);
-        const x2Offset = encoders.x2Offset
-            ? encodeNumber(encoders.x2Offset, datum)
-            : xOffset;
-        const y2Offset = encoders.y2Offset
-            ? encodeNumber(encoders.y2Offset, datum)
-            : yOffset;
-        const x1 = projectX(coords, encodePosition(encoders.x, datum), xOffset);
-        const x2 = projectX(
-            coords,
-            encodePosition(encoders.x2, datum),
-            x2Offset
-        );
-        const y1 = projectY(coords, encodePosition(encoders.y, datum), yOffset);
-        const y2 = projectY(
-            coords,
-            encodePosition(encoders.y2, datum),
-            y2Offset
-        );
+        const [x1, x2] = projectXRange(coords, encoders, datum);
+        const [y1, y2] = projectYRange(coords, encoders, datum);
         let x = Math.min(x1, x2);
         let y = Math.min(y1, y2);
         let width = Math.abs(x2 - x1);
