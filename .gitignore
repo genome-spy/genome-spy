@@ -13,6 +13,7 @@ tmp/
 node_modules/
 .venv/
 .env.local
+.playwright-cli/
 
 **/*.local
 **/static/private/
