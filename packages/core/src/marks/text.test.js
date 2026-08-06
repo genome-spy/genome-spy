@@ -1,5 +1,7 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
+import { initializeViewSubtree } from "../data/flowInit.js";
 import LayerView from "../view/layerView.js";
+import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
 
 /** @typedef {import("../view/unitView.js").default} UnitView */
@@ -13,6 +15,35 @@ function getBand(channelDef) {
 }
 
 describe("TextMark", () => {
+    test("defers expression updates until data propagation completes", async () => {
+        const view = await create(
+            {
+                data: { values: [{ label: "text" }] },
+                mark: {
+                    type: "text",
+                    text: { expr: "width" },
+                },
+            },
+            UnitView
+        );
+
+        view.mark.initializeEncoders();
+        initializeViewSubtree(view, view.context.dataFlow);
+
+        const updateGraphicsData = vi
+            .spyOn(view.mark, "updateGraphicsData")
+            .mockImplementation(() => undefined);
+
+        // Layout expressions can update before the source has completed.
+        view.paramRuntime.setValue("width", 100);
+        expect(updateGraphicsData).not.toHaveBeenCalled();
+
+        view.getCollector().complete();
+        view.paramRuntime.setValue("width", 200);
+
+        expect(updateGraphicsData).toHaveBeenCalledTimes(1);
+    });
+
     test("requests configured weight from the default font family", async () => {
         const view = await create(
             {

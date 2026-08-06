@@ -435,6 +435,11 @@ export default class Mark {
                 const fn = this.unitView.paramRuntime.watchExpression(
                     prop.expr,
                     () => {
+                        const collector = this.unitView.getCollector();
+                        if (!collector?.completed) {
+                            return;
+                        }
+
                         this.updateGraphicsData();
                         this.unitView.context.animator.requestRender();
                     }
