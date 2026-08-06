@@ -55,7 +55,9 @@ The following features are working:
 - Rules and ticks, including line caps and dash patterns.
 - Plain text used by axes, titles, subtitles, and ordinary labels.
 - Basic rectangles.
-- Circular points, including encoded size and semantic-score filtering.
+- All point symbols, including encoded shape, size, angle, and semantic-score
+  filtering. Circles and squares use native elements; the other symbols use
+  editable paths.
 - Link marks as SVG paths for the supported link shapes.
 - App download through the **Save SVG** toolbar action.
 
@@ -80,30 +82,7 @@ cannot yet meaningfully continue past them.
 
 ## Next increments
 
-### 1. Complete point-symbol support
-
-Add square, diamond, triangles, ticks, cross, `x`, and `+`, including the
-existing `angle` encoding. The supported shape vocabulary is centralized in
-[`encoder.js`](../../packages/core/src/encoder/encoder.js). Emit circles and
-squares using native elements where practical and use `<path>` for the remaining
-symbols. Match the size conventions and geometry in `point.fragment.glsl`.
-
-Keep point gradients, `inwardStroke`, and geometric-zoom-dependent geometry
-out of this increment. Continue to apply semantic-score filtering as the current
-circle exporter does.
-
-Testing material:
-
-- [`examples/core/marks/point/point.json`](../../examples/core/marks/point/point.json)
-- [`examples/core/scales/parameterized_range_test.json`](../../examples/core/scales/parameterized_range_test.json)
-- Shape legends under `examples/core/legends/`
-
-Verification should cover every shape, rotation, encoded shape, and the
-stroke-only behavior of `x` and `+`.
-
-Tentative commit: `feat(core): export point symbols as SVG`
-
-### 2. Match minimum-size geometry
+### 1. Match minimum-size geometry
 
 SVG currently ignores rule `minLength` and rectangle `minWidth`, `minHeight`,
 and `minOpacity`. Port the corresponding small vertex-shader calculations so
@@ -121,7 +100,7 @@ Testing material:
 
 Tentative commit: `feat(core): preserve minimum mark sizes in SVG exports`
 
-### 3. Add rounded rectangles
+### 2. Add rounded rectangles
 
 Support a constant uniform `cornerRadius` first using `<rect rx ry>`. Then add
 the four independently configured corner radii using an SVG path. Clamp radii
@@ -142,7 +121,7 @@ Tentative commits:
 - `feat(core): export uniformly rounded SVG rectangles`
 - `feat(core): export per-corner rectangle radii as SVG paths`
 
-### 4. Add basic ranged and fit-to-band text
+### 3. Add basic ranged and fit-to-band text
 
 Support ordinary text positioned within `x`/`x2` and `y`/`y2` ranges, followed
 by `fitToBand`. Reuse the existing SDF measurements when determining fitting and
@@ -161,7 +140,7 @@ Testing material:
 
 Tentative commit: `feat(core): export fitted text as SVG`
 
-### 5. Add a basic arrow-mark subset
+### 4. Add a basic arrow-mark subset
 
 Arrow is the only fundamental mark type with no SVG implementation. Start with
 one straight stem and one non-repeated triangle or open head. Support forward

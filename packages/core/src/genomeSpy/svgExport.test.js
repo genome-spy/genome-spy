@@ -155,6 +155,102 @@ describe("SVG export", () => {
         expect(pointGroup?.getAttribute("fill")).toBe("#fedcba");
     });
 
+    test("exports every point shape with encoded rotation", async () => {
+        const shapes = [
+            "circle",
+            "square",
+            "cross",
+            "diamond",
+            "triangle-up",
+            "triangle-right",
+            "triangle-down",
+            "triangle-left",
+            "tick-up",
+            "tick-right",
+            "tick-down",
+            "tick-left",
+            "x",
+            "+",
+        ];
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: shapes.map((shape, index) => ({
+                    shape,
+                    x: (index + 1) / (shapes.length + 1),
+                    angle: 15,
+                })),
+            },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                y: { value: 0.5 },
+                shape: { field: "shape", type: "nominal", scale: null },
+                angle: { field: "angle", type: "quantitative", scale: null },
+                size: { value: 400 },
+                fill: { value: "#123456" },
+                stroke: { value: "#654321" },
+                strokeWidth: { value: 2 },
+            },
+        });
+
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 300,
+            logicalHeight: 100,
+            background: null,
+        });
+        const pointGroup = svg.querySelector('[data-mark-type="point"]');
+        const symbols = Array.from(pointGroup.children);
+
+        expect(symbols).toHaveLength(shapes.length);
+        expect(symbols.map((symbol) => symbol.tagName)).toEqual([
+            "circle",
+            "rect",
+            ...Array(12).fill("path"),
+        ]);
+        expect(
+            symbols.every((symbol) =>
+                symbol.getAttribute("transform")?.startsWith("rotate(15 ")
+            )
+        ).toBe(true);
+        for (const symbol of symbols.slice(-2)) {
+            expect(symbol.getAttribute("fill")).toBe("none");
+            expect(symbol.getAttribute("stroke")).toBe("#654321");
+            expect(symbol.getAttribute("stroke-width")).toBe("2");
+        }
+        expect(warnings).toEqual([]);
+    });
+
+    test("uses fill color as the stroke of line-only point shapes", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "point",
+                shape: "+",
+                fill: "#123456",
+                stroke: null,
+                strokeWidth: 4,
+            },
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                size: { value: 400 },
+            },
+        });
+
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const symbol = svg.querySelector('[data-mark-type="point"] path');
+
+        expect(symbol?.getAttribute("fill")).toBe("none");
+        expect(symbol?.getAttribute("stroke")).toBe("#123456");
+        expect(symbol?.getAttribute("stroke-width")).toBe("4");
+    });
+
     test("keeps data-dependent presentation attributes on mark elements", async () => {
         const { view } = await createHeadlessEngine({
             data: {
