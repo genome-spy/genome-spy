@@ -63,13 +63,16 @@ The following features are working:
   filtering. Circles and squares use native elements; the other symbols use
   editable paths.
 - Link marks as SVG paths for the supported link shapes.
+- Basic arrows with triangle or open heads, optional stems, forward/reverse
+  direction, inside/outside placement, diagonal endpoints, and encoded size and
+  direction.
 - App download through the **Save SVG** toolbar action.
 
 Unsupported point effects, rectangle hatches and shadows, text viewport-edge
-fading and sequence-logo stretching, and link properties are ignored when basic
-geometry can still be emitted, and the export result includes view-qualified
-warnings. Unsupported mark types and sample facets remain errors because export
-cannot yet meaningfully continue past them.
+fading and sequence-logo stretching, advanced arrow geometry, and link
+properties are ignored when basic geometry can still be emitted, and the export
+result includes view-qualified warnings. Unsupported mark types and sample
+facets remain errors because export cannot yet meaningfully continue past them.
 
 ## Implementation principles
 
@@ -85,34 +88,14 @@ cannot yet meaningfully continue past them.
   browser comparison against WebGL using a small existing example.
 - Keep every increment independently reviewable and commit it separately.
 
-## Next increments
-
-### 1. Add a basic arrow-mark subset
-
-Arrow is the only fundamental mark type with no SVG implementation. Start with
-one straight stem and one non-repeated triangle or open head. Support forward
-and reverse directions, diagonal segments, fill/stroke styling, and constant
-mark properties.
-
-Do not initially attempt full shader parity. The WebGL arrow implementation also
-handles short-arrow blunting, head notches, inside/outside placement, repeated
-heads, band-relative sizing, and stemless heads. Add these in later commits once
-the basic geometry has a stable test representation.
-
-Testing material:
-
-- [`examples/docs/grammar/mark/arrow/arrow-mark.json`](../../examples/docs/grammar/mark/arrow/arrow-mark.json)
-- Focused fixtures from `examples/core/marks/arrow/`
-
-Tentative commit: `feat(core): export basic arrow marks as SVG`
-
 ## Later vector-only work
 
 These features remain desirable but are not the next low-hanging increments:
 
 - Rectangle hatches using reusable SVG `<pattern>` definitions.
 - Rectangle shadows using SVG filters.
-- Full arrow geometry and repeated arrowheads.
+- Arrow start notches, repeated heads, non-right head notches, and short-arrow
+  blunting.
 - Link arc fading using SVG masks or gradients.
 - Point gradients and inward strokes.
 - Text viewport-edge fading and sequence-logo letters.

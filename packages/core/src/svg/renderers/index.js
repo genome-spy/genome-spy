@@ -1,3 +1,4 @@
+import { renderArrowSvg } from "./arrow.js";
 import { renderLinkSvg } from "./link.js";
 import { renderPointSvg } from "./point.js";
 import { renderRectSvg } from "./rect.js";
@@ -5,6 +6,7 @@ import { renderRuleSvg } from "./rule.js";
 import { renderTextSvg } from "./text.js";
 
 const renderers = new Map([
+    ["arrow", renderArrowSvg],
     ["link", renderLinkSvg],
     ["point", renderPointSvg],
     ["rect", renderRectSvg],
