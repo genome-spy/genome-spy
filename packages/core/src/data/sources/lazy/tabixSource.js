@@ -282,8 +282,8 @@ export default class TabixSource extends SingleAxisWindowedSource {
             }
         }
 
-        this.complete();
         this.#descriptorState.markLoaded();
+        this.complete();
     }
 
     /**

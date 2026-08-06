@@ -181,6 +181,13 @@ describe("BigBedSource", () => {
         );
         const collector = new Collector();
         source.addChild(collector);
+        /** Collector observers must see descriptor readiness at completion time. */
+        const readinessAtCompletion = [];
+        collector.observe(() =>
+            readinessAtCompletion.push(
+                source.isDataReadyForDomain({ x: [0, 100] })
+            )
+        );
 
         await /** @type {any} */ (source).initializedPromise;
         await source.loadInterval([0, 100]);
@@ -205,6 +212,7 @@ describe("BigBedSource", () => {
                 name: "feature B",
             },
         ]);
+        expect(readinessAtCompletion).toEqual([true]);
     });
 
     it("skips failed template URLs when configured", async () => {

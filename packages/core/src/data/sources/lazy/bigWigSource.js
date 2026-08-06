@@ -208,8 +208,8 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         });
 
         if (featureChunks) {
-            this.publishData(featureChunks);
             this.#descriptorState.markLoaded();
+            this.publishData(featureChunks);
         }
     }
 

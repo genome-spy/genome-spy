@@ -174,8 +174,8 @@ export default class BigBedSource extends SingleAxisWindowedSource {
         );
 
         if (features) {
-            this.publishData(features);
             this.#descriptorState.markLoaded();
+            this.publishData(features);
         }
     }
 
