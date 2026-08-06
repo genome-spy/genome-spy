@@ -129,9 +129,7 @@ export function awaitSubtreeLazyReady(
     signal,
     viewFilter
 ) {
-    const shouldConsiderView =
-        viewFilter ??
-        ((/** @type {View} */ view) => view.isConfiguredVisible());
+    const shouldConsiderView = viewFilter ?? isEffectivelyVisible;
 
     return new Promise((resolve, reject) => {
         /** @type {Set<() => void>} */
@@ -223,9 +221,7 @@ export function awaitSubtreeLazyReady(
  * @returns {Set<SingleAxisLazySource>}
  */
 function collectLazyDataSources(subtreeRoot, viewFilter) {
-    const shouldConsiderView =
-        viewFilter ??
-        ((/** @type {View} */ view) => view.isConfiguredVisible());
+    const shouldConsiderView = viewFilter ?? isEffectivelyVisible;
 
     /** @type {Set<SingleAxisLazySource>} */
     const dataSources = new Set();
@@ -260,6 +256,16 @@ function collectLazyDataSources(subtreeRoot, viewFilter) {
     });
 
     return dataSources;
+}
+
+/**
+ * Returns whether a view contributes visible pixels to the current render.
+ *
+ * @param {View} view
+ * @returns {boolean}
+ */
+export function isEffectivelyVisible(view) {
+    return view.isConfiguredVisible() && view.getEffectiveOpacity() > 0;
 }
 
 /**

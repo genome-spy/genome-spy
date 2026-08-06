@@ -41,7 +41,10 @@ import {
 } from "./scales/viewLevelGuideProps.js";
 import { syncViewGuideViews } from "./view/gridView/guideViewSync.js";
 import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
-import { awaitSubtreeLazyReady } from "./view/dataReadiness.js";
+import {
+    awaitSubtreeLazyReady,
+    isEffectivelyVisible,
+} from "./view/dataReadiness.js";
 import { INTERNAL_DEFAULT_CONFIG } from "./config/defaultConfig.js";
 import { mergeConfigScopes } from "./config/mergeConfig.js";
 import { resolveBaseConfig } from "./config/resolveConfig.js";
@@ -634,7 +637,7 @@ export default class GenomeSpy {
             undefined,
             signal,
             (view) =>
-                view.isConfiguredVisible() && hasWindowedLazyDataSource(view)
+                isEffectivelyVisible(view) && hasWindowedLazyDataSource(view)
         );
     }
 

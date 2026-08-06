@@ -43,11 +43,12 @@ function createReadySubtree(options = {}) {
 }
 
 /**
- * @param {{ready?: boolean, visible?: boolean}} [options]
+ * @param {{ready?: boolean, visible?: boolean, opacity?: number}} [options]
  */
 function createLazySubtree(options = {}) {
     const ready = options.ready ?? true;
     const visible = options.visible ?? true;
+    const opacity = options.opacity ?? 1;
     const readyState = { value: ready };
     /** @type {number[][]} */
     const requests = [];
@@ -55,6 +56,7 @@ function createLazySubtree(options = {}) {
     // Non-obvious: use UnitView's prototype so instanceof checks pass without full init.
     const unitView = Object.create(UnitView.prototype);
     unitView.isConfiguredVisible = () => visible;
+    unitView.getEffectiveOpacity = () => opacity;
 
     const dataSource = Object.create(SingleAxisLazySource.prototype);
     dataSource.channel = "x";
@@ -151,6 +153,7 @@ describe("dataReadiness", () => {
         // Non-obvious: dataSource lacks isDataReadyForDomain and should be ignored.
         const unitView = Object.create(UnitView.prototype);
         unitView.isConfiguredVisible = () => true;
+        unitView.getEffectiveOpacity = () => 1;
         unitView.flowHandle = {
             dataSource: new DataSource(
                 /** @type {import("./view.js").default} */ (
@@ -187,6 +190,15 @@ describe("dataReadiness", () => {
 
         readyState.value = true;
         expect(isSubtreeLazyReady(subtreeRoot, { x: [0, 10] })).toBe(true);
+    });
+
+    it("ignores lazy views with zero effective opacity", () => {
+        const { subtreeRoot } = createLazySubtree({
+            ready: false,
+            opacity: 0,
+        });
+
+        expect(isSubtreeLazyReady(subtreeRoot, undefined)).toBe(true);
     });
 
     it("awaits lazy readiness after collector completion", async () => {
