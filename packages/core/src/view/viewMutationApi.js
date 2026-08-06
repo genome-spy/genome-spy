@@ -77,21 +77,24 @@ function createViewDatasetApi(
             const binding = getOwnedNamedDataBinding(owner, name, getRootView);
             const generation = binding.beginUpdate();
             const formatType = format?.type ?? "unknown";
+            const checkCurrentLoad = () => {
+                ensureDatasetApiIsActive(isActive);
+                const currentBinding = getOwnedNamedDataBinding(
+                    owner,
+                    name,
+                    getRootView
+                );
+                return (
+                    currentBinding === binding &&
+                    binding.isCurrentUpdate(generation)
+                );
+            };
 
             let rows;
             try {
                 rows = await readBinaryData(data, format);
             } catch (error) {
-                if (
-                    !ensureDatasetLoadIsCurrent(
-                        owner,
-                        binding,
-                        generation,
-                        name,
-                        getRootView,
-                        isActive
-                    )
-                ) {
+                if (!checkCurrentLoad()) {
                     return;
                 }
                 throw new ViewMutationError(
@@ -101,16 +104,7 @@ function createViewDatasetApi(
                 );
             }
 
-            if (
-                !ensureDatasetLoadIsCurrent(
-                    owner,
-                    binding,
-                    generation,
-                    name,
-                    getRootView,
-                    isActive
-                )
-            ) {
+            if (!checkCurrentLoad()) {
                 return;
             }
 
@@ -136,28 +130,6 @@ function ensureDatasetApiIsActive(isActive) {
             "Cannot update named data through a finalized embed."
         );
     }
-}
-
-/**
- * @param {import("./view.js").default} owner
- * @param {import("../data/namedDataScope.js").NamedDataBinding} binding
- * @param {number} generation
- * @param {string} name
- * @param {() => import("./view.js").default} getRootView
- * @param {() => boolean} isActive
- * @returns {boolean}
- */
-function ensureDatasetLoadIsCurrent(
-    owner,
-    binding,
-    generation,
-    name,
-    getRootView,
-    isActive
-) {
-    ensureDatasetApiIsActive(isActive);
-    const currentBinding = getOwnedNamedDataBinding(owner, name, getRootView);
-    return currentBinding === binding && binding.isCurrentUpdate(generation);
 }
 
 /**
