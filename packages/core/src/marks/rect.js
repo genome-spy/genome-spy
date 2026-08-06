@@ -17,11 +17,12 @@ import { isDiscrete } from "vega-scale";
 import { cssColorToArray } from "../gl/colorUtils.js";
 import { createSvgElement } from "../view/renderingContext/svgViewRenderingContext.js";
 import {
+    createSvgAttributeEncoder,
     encodeNumber,
     encodePosition,
-    encodeString,
     projectX,
     projectY,
+    toSvgString,
 } from "./svgMarkUtils.js";
 
 const hatchPatterns = [
@@ -308,6 +309,19 @@ export default class RectMark extends Mark {
             /** @type {Record<string, import("../types/encoder.js").Encoder>} */ (
                 this.encoders
             );
+        const encodeStyles = createSvgAttributeEncoder(group, {
+            fill: { encoder: encoders.fill, transform: toSvgString },
+            "fill-opacity": {
+                encoder: encoders.fillOpacity,
+                transform: (value) => +value * viewOpacity,
+            },
+            stroke: { encoder: encoders.stroke, transform: toSvgString },
+            "stroke-opacity": {
+                encoder: encoders.strokeOpacity,
+                transform: (value) => +value * viewOpacity,
+            },
+            "stroke-width": { encoder: encoders.strokeWidth },
+        });
 
         for (const datum of data) {
             const xOffset = encodeNumber(encoders.xOffset, datum);
@@ -343,13 +357,7 @@ export default class RectMark extends Mark {
                 y: Math.min(y1, y2),
                 width: Math.abs(x2 - x1),
                 height: Math.abs(y2 - y1),
-                fill: encodeString(encoders.fill, datum),
-                "fill-opacity":
-                    encodeNumber(encoders.fillOpacity, datum) * viewOpacity,
-                stroke: encodeString(encoders.stroke, datum),
-                "stroke-opacity":
-                    encodeNumber(encoders.strokeOpacity, datum) * viewOpacity,
-                "stroke-width": encodeNumber(encoders.strokeWidth, datum),
+                ...encodeStyles(datum),
             });
             group.appendChild(rect);
         }

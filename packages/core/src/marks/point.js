@@ -16,11 +16,13 @@ import { sampleIterable } from "../data/transforms/sample.js";
 import { fixFill, fixStroke } from "./markUtils.js";
 import { createSvgElement } from "../view/renderingContext/svgViewRenderingContext.js";
 import {
+    createSvgAttributeEncoder,
     encodeNumber,
     encodePosition,
     encodeString,
     projectX,
     projectY,
+    toSvgString,
 } from "./svgMarkUtils.js";
 
 /** @type {Record<string, import("../spec/channel.js").ChannelDef>} */
@@ -339,6 +341,19 @@ export default class PointMark extends Mark {
                 this.encoders
             );
         const semanticThreshold = this.getSemanticThreshold();
+        const encodeStyles = createSvgAttributeEncoder(group, {
+            fill: { encoder: encoders.fill, transform: toSvgString },
+            "fill-opacity": {
+                encoder: encoders.fillOpacity,
+                transform: (value) => +value * viewOpacity,
+            },
+            stroke: { encoder: encoders.stroke, transform: toSvgString },
+            "stroke-opacity": {
+                encoder: encoders.strokeOpacity,
+                transform: (value) => +value * viewOpacity,
+            },
+            "stroke-width": { encoder: encoders.strokeWidth },
+        });
 
         for (const datum of data) {
             const shape = encodeString(encoders.shape, datum);
@@ -367,13 +382,7 @@ export default class PointMark extends Mark {
                         encodeNumber(encoders.dy, datum)
                 ),
                 r: Math.sqrt(encodeNumber(encoders.size, datum)) / 2,
-                fill: encodeString(encoders.fill, datum),
-                "fill-opacity":
-                    encodeNumber(encoders.fillOpacity, datum) * viewOpacity,
-                stroke: encodeString(encoders.stroke, datum),
-                "stroke-opacity":
-                    encodeNumber(encoders.strokeOpacity, datum) * viewOpacity,
-                "stroke-width": encodeNumber(encoders.strokeWidth, datum),
+                ...encodeStyles(datum),
             });
             group.appendChild(circle);
         }

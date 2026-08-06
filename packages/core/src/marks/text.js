@@ -17,10 +17,12 @@ import { primaryPositionalChannels } from "../encoder/encoder.js";
 import { requestFont } from "../fonts/textMetrics.js";
 import { createSvgElement } from "../view/renderingContext/svgViewRenderingContext.js";
 import {
+    createSvgAttributeEncoder,
     encodeNumber,
     encodePosition,
     projectX,
     projectY,
+    toSvgString,
 } from "./svgMarkUtils.js";
 
 /** For GLSL uniforms */
@@ -285,6 +287,25 @@ export default class TextMark extends Mark {
             "format" in channelDef
                 ? format(channelDef.format)
                 : (/** @type {any} */ d) => d;
+        const encodeStyles = createSvgAttributeEncoder(group, {
+            fill: { encoder: encoders.color, transform: toSvgString },
+            "fill-opacity": {
+                encoder: encoders.opacity,
+                transform: (value) => +value * viewOpacity,
+            },
+            "font-size": { encoder: encoders.size },
+        });
+        group.setAttribute("font-family", "sans-serif");
+        group.setAttribute("font-style", this.properties.fontStyle ?? "normal");
+        group.setAttribute(
+            "font-weight",
+            "" + normalizeFontWeight(this.properties.fontWeight ?? "normal")
+        );
+        group.setAttribute("text-anchor", textAnchors[this.properties.align]);
+        group.setAttribute(
+            "dominant-baseline",
+            dominantBaselines[this.properties.baseline]
+        );
 
         for (const datum of data) {
             const value = numberFormat(encoders.text(datum));
@@ -312,22 +333,11 @@ export default class TextMark extends Mark {
             const text = createSvgElement("text", {
                 x,
                 y,
-                fill: /** @type {string} */ (encoders.color(datum)),
-                "fill-opacity":
-                    encodeNumber(encoders.opacity, datum) * viewOpacity,
-                "font-family": "sans-serif",
-                "font-size": size,
-                "font-style": this.properties.fontStyle ?? "normal",
-                "font-weight": normalizeFontWeight(
-                    this.properties.fontWeight ?? "normal"
-                ),
-                "text-anchor": textAnchors[this.properties.align],
-                "dominant-baseline":
-                    dominantBaselines[this.properties.baseline],
                 dx: this.properties.dx,
                 dy: this.properties.dy,
                 lengthAdjust: "spacingAndGlyphs",
                 textLength: this.font.metrics.measureWidth(stringValue, size),
+                ...encodeStyles(datum),
             });
             text.textContent = stringValue;
             if (angle) {

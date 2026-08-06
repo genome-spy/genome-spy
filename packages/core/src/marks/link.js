@@ -7,7 +7,12 @@ import { LinkVertexBuilder } from "../gl/dataToVertices.js";
 import Mark from "./mark.js";
 import { isChannelDefWithScale } from "../encoder/encoder.js";
 import { createSvgElement } from "../view/renderingContext/svgViewRenderingContext.js";
-import { encodeNumber, encodePosition, encodeString } from "./svgMarkUtils.js";
+import {
+    createSvgAttributeEncoder,
+    encodeNumber,
+    encodePosition,
+    toSvgString,
+} from "./svgMarkUtils.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 const LINK_SHAPES = ["arc", "dome", "diagonal", "line"];
@@ -302,6 +307,16 @@ export default class LinkMark extends Mark {
             /** @type {Record<string, import("../types/encoder.js").Encoder>} */ (
                 this.encoders
             );
+        const encodeStyles = createSvgAttributeEncoder(group, {
+            stroke: { encoder: encoders.color, transform: toSvgString },
+            "stroke-opacity": {
+                encoder: encoders.opacity,
+                transform: (value) => +value * viewOpacity,
+            },
+            "stroke-width": { encoder: encoders.size },
+        });
+        group.setAttribute("fill", "none");
+        group.setAttribute("stroke-linecap", "butt");
 
         for (const datum of data) {
             const xOffset = encodeNumber(encoders.xOffset, datum);
@@ -329,12 +344,7 @@ export default class LinkMark extends Mark {
             const [p1, p2, p3, p4] = points;
             const path = createSvgElement("path", {
                 d: `M ${p1.join(" ")} C ${p2.join(" ")} ${p3.join(" ")} ${p4.join(" ")}`,
-                fill: "none",
-                stroke: encodeString(encoders.color, datum),
-                "stroke-opacity":
-                    encodeNumber(encoders.opacity, datum) * viewOpacity,
-                "stroke-width": encodeNumber(encoders.size, datum),
-                "stroke-linecap": "butt",
+                ...encodeStyles(datum),
             });
             group.appendChild(path);
         }

@@ -73,15 +73,19 @@ describe("SVG export", () => {
         });
         const line = svg.querySelector("line");
         const text = svg.querySelector("text");
+        const ruleGroup = line.closest('[data-mark-type="rule"]');
+        const textGroup = text.closest('[data-mark-type="text"]');
 
         expect(line?.getAttribute("x1")).toBe("40");
         expect(line?.getAttribute("x2")).toBe("160");
         expect(line?.getAttribute("y1")).toBe("75");
-        expect(line?.getAttribute("stroke")).toBe("#123456");
-        expect(line?.getAttribute("stroke-dasharray")).toBe("2 3");
+        expect(line?.hasAttribute("stroke")).toBe(false);
+        expect(ruleGroup?.getAttribute("stroke")).toBe("#123456");
+        expect(ruleGroup?.getAttribute("stroke-dasharray")).toBe("2 3");
         expect(text?.getAttribute("x")).toBe("160");
-        expect(text?.getAttribute("font-family")).toBe("sans-serif");
-        expect(text?.getAttribute("font-size")).toBe("12");
+        expect(text?.hasAttribute("font-family")).toBe(false);
+        expect(textGroup?.getAttribute("font-family")).toBe("sans-serif");
+        expect(textGroup?.getAttribute("font-size")).toBe("12");
         expect(Number(text?.getAttribute("textLength"))).toBeGreaterThan(0);
         expect(text?.getAttribute("dx")).toBe("3");
         expect(text?.getAttribute("dy")).toBe("-2");
@@ -134,16 +138,59 @@ describe("SVG export", () => {
         });
         const rect = svg.querySelector('[data-mark-type="rect"] rect');
         const circle = svg.querySelector("circle");
+        const rectGroup = rect.closest('[data-mark-type="rect"]');
+        const pointGroup = circle.closest('[data-mark-type="point"]');
 
         expect(rect?.getAttribute("x")).toBe("20");
         expect(Number(rect?.getAttribute("y"))).toBeCloseTo(30);
         expect(rect?.getAttribute("width")).toBe("60");
         expect(rect?.getAttribute("height")).toBe("50");
-        expect(rect?.getAttribute("fill")).toBe("#abcdef");
+        expect(rect?.hasAttribute("fill")).toBe(false);
+        expect(rectGroup?.getAttribute("fill")).toBe("#abcdef");
         expect(circle?.getAttribute("cx")).toBe("104");
         expect(circle?.getAttribute("cy")).toBe("53");
         expect(circle?.getAttribute("r")).toBe("5");
-        expect(circle?.getAttribute("fill")).toBe("#fedcba");
+        expect(circle?.hasAttribute("fill")).toBe(false);
+        expect(pointGroup?.getAttribute("fill")).toBe("#fedcba");
+    });
+
+    test("keeps data-dependent presentation attributes on mark elements", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: 0.25, color: "#123456" },
+                    { x: 0.75, color: "#abcdef" },
+                ],
+            },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 1] },
+                },
+                y: { value: 0.5 },
+                fill: { field: "color", type: "nominal", scale: null },
+            },
+        });
+
+        const svg = createSvg({
+            viewRoot: view,
+            logicalWidth: 200,
+            logicalHeight: 100,
+        });
+        const pointGroup = svg.querySelector('[data-mark-type="point"]');
+        const circles = Array.from(pointGroup.querySelectorAll("circle"));
+
+        expect(pointGroup.hasAttribute("fill")).toBe(false);
+        expect(circles.map((circle) => circle.getAttribute("fill"))).toEqual([
+            "#123456",
+            "#abcdef",
+        ]);
+        expect(circles.every((circle) => !circle.hasAttribute("stroke"))).toBe(
+            true
+        );
+        expect(pointGroup.getAttribute("stroke")).toBe("none");
     });
 
     test("exports a titled point plot with generated axes", async () => {
@@ -241,6 +288,7 @@ describe("SVG export", () => {
         expect(textValues).toEqual(expect.arrayContaining(["28", "55", "91"]));
         expect(svg.querySelector('[data-view-name="Bar"]')).not.toBeNull();
         expect(svg.querySelector('[data-view-name="Label"]')).not.toBeNull();
+        expect(svg.querySelector("style")).toBeNull();
         expect(svg.querySelector("image")).toBeNull();
     });
 
