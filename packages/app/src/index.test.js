@@ -65,6 +65,7 @@ describe("embed", () => {
         expect(AppMock).toHaveBeenCalledTimes(1);
         expect(handle.datasets).toMatchObject({
             set: expect.any(Function),
+            load: expect.any(Function),
             reset: expect.any(Function),
         });
 
@@ -72,6 +73,11 @@ describe("embed", () => {
 
         expect(pluginDispose).toHaveBeenCalledTimes(1);
         expect(AppMock.mock.instances[0].finalize).toHaveBeenCalledTimes(1);
+        await expect(
+            handle.datasets.load("values", new ArrayBuffer(0), {
+                type: "arrow",
+            })
+        ).rejects.toMatchObject({ code: "staleEmbed" });
     });
 
     it("passes embedded mode to App", async () => {
