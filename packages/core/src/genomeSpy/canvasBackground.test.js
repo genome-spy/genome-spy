@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { getCanvasBackground, getSvgBackground } from "./canvasBackground.js";
+import {
+    getCanvasBackground,
+    getExportBackground,
+} from "./canvasBackground.js";
 
 describe("canvas background", () => {
     test("prefers the explicit visualization background over its theme", () => {
@@ -23,16 +26,18 @@ describe("canvas background", () => {
         ).toBe("#f9f9f9");
     });
 
-    test("uses the visualization background for SVG unless overridden", () => {
+    test("uses the visualization background for exports unless overridden", () => {
         const spec = /** @type {import("../spec/root.js").RootSpec} */ ({
             background: "lavender",
         });
 
-        expect(getSvgBackground(spec, {})).toBe("lavender");
-        expect(getSvgBackground(spec, { background: "ivory" })).toBe("ivory");
-        expect(getSvgBackground(spec, { background: null })).toBeNull();
+        expect(getExportBackground(spec, {})).toBe("lavender");
+        expect(getExportBackground(spec, { background: "ivory" })).toBe(
+            "ivory"
+        );
+        expect(getExportBackground(spec, { background: null })).toBeNull();
         expect(
-            getSvgBackground(
+            getExportBackground(
                 /** @type {import("../spec/root.js").RootSpec} */ ({}),
                 {}
             )

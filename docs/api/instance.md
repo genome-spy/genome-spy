@@ -39,38 +39,45 @@ api.addEventListener("click", listener);
 api.removeEventListener("click", listener);
 ```
 
-## Exporting the canvas
+## Exporting raster images
 
-`exportCanvas()` renders the current visualization into a PNG data URL.
-
-```js
-const dataUrl = api.exportCanvas();
-```
-
-Optional arguments control the exported logical size, device pixel ratio, and
-background color:
+`imageExport.raster()` exports the current visualization as a PNG `Blob`.
 
 ```js
-const dataUrl = api.exportCanvas(
-  1200, // logical width in CSS pixels
-  600, // logical height in CSS pixels
-  2, // device pixel ratio
-  "white" // background color
-);
+const { blob } = await api.imageExport.raster();
 ```
 
-If omitted, the logical size defaults to the current canvas size and the device
-pixel ratio defaults to `window.devicePixelRatio`. The default background color
-is `"white"`.
+The default logical dimensions match the current canvas, and `pixelRatio`
+defaults to `window.devicePixelRatio`. The visualization background is used
+when configured; otherwise it defaults to white. Pass `null` for a transparent
+background:
+
+```js
+const { blob } = await api.imageExport.raster({
+  logicalWidth: 1200,
+  logicalHeight: 600,
+  pixelRatio: 2,
+  background: null,
+  mimeType: "image/png",
+});
+```
+
+`image/png` is currently the only supported MIME type.
+
+!!! warning "Deprecated canvas export"
+
+    `exportCanvas(width, height, devicePixelRatio, background)` remains
+    available for compatibility and returns a PNG data URL. Use
+    `imageExport.raster()` for new code.
 
 ## Exporting SVG
 
-`exportSvg()` exports the current visualization as an SVG `Blob`. Views become
-nested SVG groups, and supported marks, axes, legends, and titles remain
+`imageExport.svg()` exports the current visualization as an SVG `Blob`. Views
+become nested SVG groups, and supported marks, axes, legends, and titles remain
 editable vector elements.
 
 ```js
-const { blob, warnings, rasterized } = await api.exportSvg();
+const { blob, warnings, rasterized } = await api.imageExport.svg();
 ```
 
 The default dimensions match the current canvas. The visualization background
@@ -78,7 +85,7 @@ is used when configured; otherwise it defaults to white. Pass `null` for a
 transparent background:
 
 ```js
-const result = await api.exportSvg({
+const result = await api.imageExport.svg({
   logicalWidth: 1200,
   logicalHeight: 600,
   background: null,
@@ -102,7 +109,7 @@ Use the returned `Blob` with the browser's download APIs or pass it directly to
 another file or upload API:
 
 ```js
-const { blob, warnings } = await api.exportSvg();
+const { blob, warnings } = await api.imageExport.svg();
 warnings.forEach((warning) => console.warn(warning));
 
 const url = URL.createObjectURL(blob);
@@ -126,7 +133,7 @@ layers are combined into the same image when possible, while axes, labels, and
 other layers remain vectors.
 
 ```js
-const result = await api.exportSvg({
+const result = await api.imageExport.svg({
   rasterization: {
     maxVectorInstances: 5000,
     pixelRatio: 2,
@@ -145,12 +152,12 @@ require WebGL.
 
 ### Previewing rasterization
 
-`analyzeSvgExport()` reports the visible instance count of each mark layer
+`imageExport.analyzeSvg()` reports the visible instance count of each mark layer
 without creating an SVG or using WebGL. It can be used to preview which layers
 would cross a rasterization threshold:
 
 ```js
-const { layers } = await api.analyzeSvgExport();
+const { layers } = await api.imageExport.analyzeSvg();
 const threshold = 5000;
 
 const rasterizedLayers = layers.filter(
@@ -160,4 +167,4 @@ const rasterizedLayers = layers.filter(
 
 Each layer reports its view name, optional resolved view title, hierarchy path,
 mark type, and instance count. The optional `logicalWidth` and `logicalHeight`
-settings use the same CSS-pixel coordinate system as `exportSvg()`.
+settings use the same CSS-pixel coordinate system as `imageExport.svg()`.

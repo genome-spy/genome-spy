@@ -29,7 +29,10 @@ import InteractionController from "./genomeSpy/interactionController.js";
 import RenderCoordinator from "./genomeSpy/renderCoordinator.js";
 import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
-import { exportCanvas } from "./genomeSpy/canvasExport.js";
+import {
+    exportCanvas,
+    exportRaster as renderRasterExport,
+} from "./genomeSpy/canvasExport.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
 import SingleAxisWindowedSource from "./data/sources/lazy/singleAxisWindowedSource.js";
@@ -52,7 +55,7 @@ import { DEFAULT_THEME_NAME, resolveThemeSelection } from "./config/themes.js";
 import { warnOnce } from "./utils/warning.js";
 import {
     getCanvasBackground,
-    getSvgBackground,
+    getExportBackground,
 } from "./genomeSpy/canvasBackground.js";
 
 /**
@@ -640,8 +643,9 @@ export default class GenomeSpy {
      * @param {number} [logicalWidth] defaults to canvas width
      * @param {number} [logicalHeight] defaults to canvas height
      * @param {number} [devicePixelRatio] defaults to window.devicePixelRatio
-     * @param {string} [clearColor] null for transparent
+     * @param {string | null} [clearColor] null for transparent
      * @returns A PNG data Url
+     * @deprecated Use exportRaster instead.
      */
     exportCanvas(
         logicalWidth,
@@ -649,20 +653,45 @@ export default class GenomeSpy {
         devicePixelRatio,
         clearColor = "white"
     ) {
-        const pngUrl = exportCanvas({
-            glHelper: this.#glHelper,
-            viewRoot: this.viewRoot,
-            logicalWidth,
-            logicalHeight,
-            devicePixelRatio,
-            clearColor,
-        });
+        try {
+            return exportCanvas({
+                glHelper: this.#glHelper,
+                viewRoot: this.viewRoot,
+                logicalWidth,
+                logicalHeight,
+                devicePixelRatio,
+                clearColor,
+            });
+        } finally {
+            this.computeLayout();
+            this.renderAll();
+        }
+    }
 
-        // Clean up
-        this.computeLayout();
-        this.renderAll();
+    /**
+     * Exports the current visualization as a raster image Blob.
+     *
+     * @param {import("./types/embedApi.js").RasterExportOptions} [options]
+     * @returns {Promise<import("./types/embedApi.js").RasterExportResult>}
+     */
+    async exportRaster(options = {}) {
+        const background = getExportBackground(this.spec, options);
 
-        return pngUrl;
+        try {
+            const blob = await renderRasterExport({
+                glHelper: this.#glHelper,
+                viewRoot: this.viewRoot,
+                logicalWidth: options.logicalWidth,
+                logicalHeight: options.logicalHeight,
+                pixelRatio: options.pixelRatio,
+                clearColor: background,
+                mimeType: options.mimeType,
+            });
+            return { blob };
+        } finally {
+            this.computeLayout();
+            this.renderAll();
+        }
     }
 
     /**
@@ -680,7 +709,7 @@ export default class GenomeSpy {
         const canvasSize = this.#glHelper.getLogicalCanvasSize();
         const logicalWidth = options.logicalWidth ?? canvasSize.width;
         const logicalHeight = options.logicalHeight ?? canvasSize.height;
-        const background = getSvgBackground(this.spec, options);
+        const background = getExportBackground(this.spec, options);
 
         try {
             const { createSvgExport } = await import("./svg/index.js");

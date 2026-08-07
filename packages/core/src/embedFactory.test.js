@@ -24,6 +24,7 @@ describe("embed factory", () => {
             this.updateNamedData = vi.fn();
             this.getLogicalCanvasSize = vi.fn();
             this.exportCanvas = vi.fn();
+            this.exportRaster = vi.fn();
             this.exportSvg = vi.fn();
             this.analyzeSvgExport = vi.fn();
         }
@@ -86,7 +87,32 @@ describe("embed factory", () => {
             /** @type {any} */ ({})
         );
 
-        await expect(api.exportSvg()).resolves.toBe(svgResult);
+        await expect(api.imageExport.svg()).resolves.toBe(svgResult);
+    });
+
+    test("forwards raster export from the GenomeSpy instance", async () => {
+        const rasterResult = {
+            blob: new Blob([], { type: "image/png" }),
+        };
+
+        class RasterGenomeSpy extends MockGenomeSpy {
+            /**
+             * @param {HTMLElement} element
+             * @param {any} spec
+             */
+            constructor(element, spec) {
+                super(element, spec);
+                this.exportRaster = vi.fn(async () => rasterResult);
+            }
+        }
+
+        const embed = createEmbed(/** @type {any} */ (RasterGenomeSpy));
+        const api = await embed(
+            document.createElement("div"),
+            /** @type {any} */ ({})
+        );
+
+        await expect(api.imageExport.raster()).resolves.toBe(rasterResult);
     });
 
     test("forwards SVG export analysis from the GenomeSpy instance", async () => {
@@ -110,7 +136,7 @@ describe("embed factory", () => {
             /** @type {any} */ ({})
         );
 
-        await expect(api.analyzeSvgExport()).resolves.toBe(analysis);
+        await expect(api.imageExport.analyzeSvg()).resolves.toBe(analysis);
     });
 
     test("exposes the view mutation API", async () => {

@@ -65,6 +65,43 @@ export function framebufferToDataUrl(
     type = "image/png",
     options = {}
 ) {
+    return framebufferToCanvas(gl, framebufferInfo, options).toDataURL(type);
+}
+
+/**
+ * Encodes a framebuffer rectangle as a Blob.
+ *
+ * @param {WebGL2RenderingContext} gl
+ * @param {import("twgl.js").FramebufferInfo} framebufferInfo
+ * @param {string} [type]
+ * @param {FramebufferReadbackOptions} [options]
+ * @returns {Promise<Blob>}
+ */
+export function framebufferToBlob(
+    gl,
+    framebufferInfo,
+    type = "image/png",
+    options = {}
+) {
+    const canvas = framebufferToCanvas(gl, framebufferInfo, options);
+
+    return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+            if (blob) {
+                resolve(blob);
+            } else {
+                reject(new Error(`Could not encode framebuffer as ${type}.`));
+            }
+        }, type);
+    });
+}
+
+/**
+ * @param {WebGL2RenderingContext} gl
+ * @param {import("twgl.js").FramebufferInfo} framebufferInfo
+ * @param {FramebufferReadbackOptions} options
+ */
+function framebufferToCanvas(gl, framebufferInfo, options) {
     const { pixels, width, height } = readFramebufferPixels(
         gl,
         framebufferInfo,
@@ -80,7 +117,7 @@ export function framebufferToDataUrl(
     imageData.data.set(pixels);
     ctx.putImageData(imageData, 0, 0);
 
-    return exportCanvas.toDataURL(type);
+    return exportCanvas;
 }
 
 /**

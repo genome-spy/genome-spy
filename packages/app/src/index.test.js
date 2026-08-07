@@ -24,6 +24,7 @@ const { AppMock } = vi.hoisted(() => ({
             updateNamedData: vi.fn(),
             getLogicalCanvasSize: vi.fn(),
             exportCanvas: vi.fn(),
+            exportRaster: vi.fn(),
             exportSvg: vi.fn(),
             analyzeSvgExport: vi.fn(),
         };
@@ -100,7 +101,19 @@ describe("embed", () => {
         const exportSvg = AppMock.mock.instances[0].genomeSpy.exportSvg;
         exportSvg.mockResolvedValue(svgResult);
 
-        await expect(handle.exportSvg()).resolves.toBe(svgResult);
+        await expect(handle.imageExport.svg()).resolves.toBe(svgResult);
         expect(exportSvg).toHaveBeenCalledOnce();
+    });
+
+    it("forwards raster export", async () => {
+        const element = document.createElement("div");
+        document.body.appendChild(element);
+        const handle = await embed(element, {});
+        const rasterResult = { blob: new Blob([], { type: "image/png" }) };
+        const exportRaster = AppMock.mock.instances[0].genomeSpy.exportRaster;
+        exportRaster.mockResolvedValue(rasterResult);
+
+        await expect(handle.imageExport.raster()).resolves.toBe(rasterResult);
+        expect(exportRaster).toHaveBeenCalledOnce();
     });
 });

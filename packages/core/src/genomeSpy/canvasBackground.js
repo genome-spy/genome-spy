@@ -33,7 +33,7 @@ export function getCanvasBackground(spec) {
  * @param {{background?: string | null}} options
  * @returns {string | null}
  */
-export function getSvgBackground(spec, options) {
+export function getExportBackground(spec, options) {
     return options.background !== undefined
         ? options.background
         : (getCanvasBackground(spec) ?? "white");

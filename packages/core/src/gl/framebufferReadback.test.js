@@ -1,6 +1,9 @@
+// @vitest-environment jsdom
+
 import { describe, expect, test, vi } from "vitest";
 
 import {
+    framebufferToBlob,
     flipRgbaPixels,
     readFramebufferPixels,
 } from "./framebufferReadback.js";
@@ -78,5 +81,50 @@ describe("readFramebufferPixels", () => {
                 height: 1,
             })
         ).toThrow("out of range");
+    });
+});
+
+describe("framebufferToBlob", () => {
+    test("encodes readback pixels using the requested MIME type", async () => {
+        const blob = new Blob(["png"], { type: "image/png" });
+        const canvas = {
+            width: 0,
+            height: 0,
+            getContext: vi.fn(() => ({
+                createImageData: vi.fn(() => ({
+                    data: new Uint8ClampedArray(4),
+                })),
+                putImageData: vi.fn(),
+            })),
+            toBlob: vi.fn((callback, type) => callback(blob, type)),
+        };
+        const createElement = vi
+            .spyOn(document, "createElement")
+            .mockReturnValue(/** @type {any} */ (canvas));
+        const gl = {
+            FRAMEBUFFER: 1,
+            RGBA: 2,
+            UNSIGNED_BYTE: 3,
+            bindFramebuffer: vi.fn(),
+            readPixels: vi.fn(),
+        };
+
+        await expect(
+            framebufferToBlob(
+                /** @type {any} */ (gl),
+                /** @type {any} */ ({
+                    framebuffer: {},
+                    width: 1,
+                    height: 1,
+                }),
+                "image/png"
+            )
+        ).resolves.toBe(blob);
+        expect(canvas.toBlob).toHaveBeenCalledWith(
+            expect.any(Function),
+            "image/png"
+        );
+
+        createElement.mockRestore();
     });
 });
