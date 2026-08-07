@@ -38,4 +38,20 @@ describe("SVG mark data", () => {
 
         expect(getSvgData(mark, { facetId: ["sample-1"] })).toBe(data);
     });
+
+    test("treats a missing sample facet as empty", () => {
+        const mark = createMark(
+            new InternMap(
+                [
+                    [undefined, []],
+                    [["sample-1"], [{ value: 1 }]],
+                ],
+                JSON.stringify
+            )
+        );
+
+        expect(getSvgData(mark, { facetId: ["sample-without-data"] })).toEqual(
+            []
+        );
+    });
 });

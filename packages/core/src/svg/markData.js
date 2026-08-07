@@ -1,3 +1,6 @@
+/** @type {object[]} */
+const EMPTY_DATA = [];
+
 /**
  * Selects the collector batch that corresponds to the rendered occurrence.
  *
@@ -18,11 +21,5 @@ export function getSvgData(mark, options) {
         return unFacetedData;
     }
 
-    const data = collector.facetBatches.get(options.facetId);
-    if (!data) {
-        throw new Error(
-            `Cannot find SVG export data for facet ${JSON.stringify(options.facetId)}. View: ${mark.unitView.getPathString()}`
-        );
-    }
-    return data;
+    return collector.facetBatches.get(options.facetId) ?? EMPTY_DATA;
 }
