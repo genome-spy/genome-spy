@@ -44,13 +44,12 @@ describe("SaveSvgDialog", () => {
     });
 
     test("passes rasterization options to SVG export", async () => {
-        const blob = new Blob(["<svg/>"]);
-        const write = vi.fn();
-        const close = vi.fn();
-        const showSaveFilePicker = vi.fn(async () => ({
-            createWritable: async () => ({ write, close }),
-        }));
-        vi.stubGlobal("showSaveFilePicker", showSaveFilePicker);
+        const click = vi
+            .spyOn(HTMLAnchorElement.prototype, "click")
+            .mockImplementation(() => undefined);
+        const blob = /** @type {Blob} */ (
+            /** @type {unknown} */ ({ text: async () => "<svg/>" })
+        );
 
         const dialog = createDialog();
         dialog.rasterizeDenseMarks = true;
@@ -73,8 +72,8 @@ describe("SaveSvgDialog", () => {
                     pixelRatio: 3,
                 },
             });
-            expect(write).toHaveBeenCalledWith(blob);
-            expect(close).toHaveBeenCalledOnce();
+            expect(click).toHaveBeenCalledOnce();
+            expect(document.querySelector("a[download]")).toBeNull();
         });
     });
 

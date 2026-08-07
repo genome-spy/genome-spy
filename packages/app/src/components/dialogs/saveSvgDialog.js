@@ -379,51 +379,22 @@ export default class SaveSvgDialog extends BaseDialog {
     async #downloadSvg() {
         this.saving = true;
         try {
-            const pickerWindow = /** @type {Window & {
-                showSaveFilePicker?: (options: object) => Promise<{
-                    createWritable: () => Promise<{
-                        write: (data: Blob) => Promise<void>,
-                        close: () => Promise<void>
-                    }>
-                }>
-            }} */ (window);
-            const fileHandle = pickerWindow.showSaveFilePicker
-                ? await pickerWindow.showSaveFilePicker({
-                      suggestedName: "genomespy-visualization.svg",
-                      types: [
-                          {
-                              description: "SVG image",
-                              accept: { "image/svg+xml": [".svg"] },
-                          },
-                      ],
-                  })
-                : undefined;
-
             const { blob, warnings, rasterized } =
                 await this.genomeSpy.exportSvg(this.getExportOptions());
             warnings.forEach((warning) => console.warn(warning));
 
-            if (fileHandle) {
-                const writable = await fileHandle.createWritable();
-                await writable.write(blob);
-                await writable.close();
-            } else {
-                const link = document.createElement("a");
-                link.href =
-                    "data:image/svg+xml;charset=utf-8," +
-                    encodeURIComponent(await blob.text());
-                link.download = "genomespy-visualization.svg";
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-            }
+            const link = document.createElement("a");
+            link.href =
+                "data:image/svg+xml;charset=utf-8," +
+                encodeURIComponent(await blob.text());
+            link.download = "genomespy-visualization.svg";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
 
             this.finish({ ok: true, data: { warnings, rasterized } });
             return false;
         } catch (error) {
-            if (error instanceof DOMException && error.name == "AbortError") {
-                return true;
-            }
             await showMessageDialog(
                 `SVG export failed: ${
                     error instanceof Error ? error.message : String(error)
