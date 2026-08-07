@@ -71,6 +71,7 @@ import {
  * @prop {boolean} [countOnly]
  * @prop {(fade: SvgViewportEdgeFade) => string | undefined} getViewportEdgeFadeMaskUrl
  * @prop {(shadow: SvgShadow) => string} getShadowFilterUrl
+ * @prop {(cutoutPath: string) => string} getShadowClipPathUrl
  * @prop {(hatch: SvgRectHatch) => string} getRectHatchPatternUrl
  * @prop {(fade: SvgLinkArcFade) => string | undefined} getLinkArcFadeMaskUrl
  * @prop {(gradient: SvgLegendGradient) => string} getLegendGradientUrl
@@ -108,6 +109,9 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
 
     /** @type {Map<string, string>} */
     #shadowFilters = new Map();
+
+    /** @type {Map<string, string>} */
+    #shadowClipPaths = new Map();
 
     /** @type {Map<string, string>} */
     #rectHatchPatterns = new Map();
@@ -417,6 +421,10 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                     this.#countingInstances
                         ? ""
                         : this.getShadowFilterUrl(shadow),
+                getShadowClipPathUrl: (cutoutPath) =>
+                    this.#countingInstances
+                        ? ""
+                        : this.getShadowClipPathUrl(cutoutPath),
                 getRectHatchPatternUrl: (hatch) =>
                     this.#countingInstances
                         ? ""
@@ -690,17 +698,50 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             });
             filter.appendChild(
                 createSvgElement("feGaussianBlur", {
+                    in: "SourceGraphic",
                     stdDeviation,
+                    result: "blur",
                 })
             );
             filter.appendChild(
                 createSvgElement("feOffset", {
+                    in: "blur",
                     dx,
                     dy,
+                    result: "offsetBlur",
                 })
             );
             this.#defs.appendChild(filter);
             this.#shadowFilters.set(key, id);
+        }
+
+        return `url(#${id})`;
+    }
+
+    /**
+     * Clips a shadow to the area outside its source shape. The opposite winding
+     * directions preserve the hole in importers that ignore `clip-rule`.
+     *
+     * @param {string} cutoutPath
+     * @returns {string}
+     */
+    getShadowClipPathUrl(cutoutPath) {
+        let id = this.#shadowClipPaths.get(cutoutPath);
+        if (!id) {
+            id = "shadow-clip-" + this.#nextClipId++;
+            const clipPath = createSvgElement("clipPath", {
+                id,
+                clipPathUnits: "userSpaceOnUse",
+            });
+            clipPath.appendChild(
+                createSvgElement("path", {
+                    d: `M 0 0 V ${formatSvgNumber(this.height)} H ${formatSvgNumber(this.width)} V 0 Z ${cutoutPath}`,
+                    "clip-rule": "evenodd",
+                    "fill-rule": "evenodd",
+                })
+            );
+            this.#defs.appendChild(clipPath);
+            this.#shadowClipPaths.set(cutoutPath, id);
         }
 
         return `url(#${id})`;

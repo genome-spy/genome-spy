@@ -312,7 +312,8 @@ describe("SVG rectangle renderer", () => {
         });
 
         const markGroup = svg.querySelector('[data-mark-type="rect"]');
-        const shadowRect = markGroup?.querySelector(":scope > [filter]");
+        const shadowGroup = markGroup?.querySelector(":scope > g[clip-path]");
+        const shadowRect = shadowGroup?.querySelector(":scope > [filter]");
         const filter = svg.querySelector("filter");
         const pattern = svg.querySelector("pattern");
 
@@ -320,17 +321,29 @@ describe("SVG rectangle renderer", () => {
             markGroup?.querySelector(":scope > rect")?.getAttribute("rx")
         ).toBe("5");
         expect(shadowRect?.getAttribute("fill")).toBe("#abcdef");
+        expect(shadowRect?.getAttribute("fill-opacity")).toBe("1");
+        expect(shadowRect?.getAttribute("stroke-opacity")).toBe("1");
         expect(shadowRect?.getAttribute("opacity")).toBe("0.5");
         expect(shadowRect?.getAttribute("filter")).toBe(
             `url(#${filter?.getAttribute("id")})`
         );
+        const blur = filter?.querySelector("feGaussianBlur");
+        expect(blur?.getAttribute("in")).toBe("SourceGraphic");
+        expect(blur?.getAttribute("stdDeviation")).toBe("4");
+        expect(blur?.getAttribute("result")).toBe("blur");
+        const offset = filter?.querySelector("feOffset");
+        expect(offset?.getAttribute("in")).toBe("blur");
+        expect(offset?.getAttribute("dx")).toBe("2");
+        expect(offset?.getAttribute("dy")).toBe("3");
+        expect(offset?.getAttribute("result")).toBe("offsetBlur");
+        expect(filter?.querySelector("feComposite")).toBeNull();
+        const shadowClip = svg.querySelector("clipPath[id^=shadow-clip-]");
+        expect(shadowGroup?.getAttribute("clip-path")).toBe(
+            `url(#${shadowClip?.getAttribute("id")})`
+        );
         expect(
-            filter
-                ?.querySelector("feGaussianBlur")
-                ?.getAttribute("stdDeviation")
-        ).toBe("4");
-        expect(filter?.querySelector("feOffset")?.getAttribute("dx")).toBe("2");
-        expect(filter?.querySelector("feOffset")?.getAttribute("dy")).toBe("3");
+            shadowClip?.querySelector("path")?.getAttribute("clip-rule")
+        ).toBe("evenodd");
         expect(
             markGroup
                 ?.querySelector(":scope > rect:not([filter])")
@@ -340,12 +353,12 @@ describe("SVG rectangle renderer", () => {
         expect(warnings).toEqual([]);
     });
 
-    test("interleaves shadows with their rectangle instances", async () => {
+    test("uses direct shadows only when the foreground fill is opaque", async () => {
         const { view } = await createHeadlessEngine({
             data: {
                 values: [
-                    { x: 0.1, x2: 0.6 },
-                    { x: 0.4, x2: 0.9 },
+                    { x: 0.1, x2: 0.6, opacity: 1 },
+                    { x: 0.4, x2: 0.9, opacity: 0.5 },
                 ],
             },
             mark: {
@@ -359,6 +372,11 @@ describe("SVG rectangle renderer", () => {
                 y: { value: 0.2 },
                 y2: { value: 0.8 },
                 fill: { value: "#123456" },
+                fillOpacity: {
+                    field: "opacity",
+                    type: "quantitative",
+                    scale: null,
+                },
             },
         });
 
@@ -372,9 +390,22 @@ describe("SVG rectangle renderer", () => {
             svg.querySelector('[data-mark-type="rect"]')?.children ?? []
         );
 
+        expect(children.map((element) => element.tagName)).toEqual([
+            "rect",
+            "rect",
+            "g",
+            "rect",
+        ]);
         expect(
-            children.map((element) => element.hasAttribute("filter"))
-        ).toEqual([true, false, true, false]);
+            children.map(
+                (element) =>
+                    element.querySelectorAll(":scope > [filter]").length
+            )
+        ).toEqual([0, 0, 1, 0]);
+        expect(children[0].hasAttribute("filter")).toBe(true);
+        expect(svg.querySelectorAll("clipPath[id^=shadow-clip-]")).toHaveLength(
+            1
+        );
     });
 
     test("deduplicates screen-aligned hatch patterns", async () => {

@@ -85,7 +85,9 @@ export function renderRectSvg(baseMark, options) {
         shadow.opacity > 0
             ? {
                   fill: shadow.color,
+                  "fill-opacity": 1,
                   stroke: shadow.color,
+                  "stroke-opacity": 1,
                   opacity: formatSvgUnitless(shadow.opacity * viewOpacity),
                   filter: options.getShadowFilterUrl(shadow),
               }
@@ -111,6 +113,7 @@ export function renderRectSvg(baseMark, options) {
             height = minHeight;
         }
         const strokeWidth = encodeNumber(encoders.strokeWidth, datum);
+        const fill = toSvgString(encoders.fill(datum));
         const fillOpacity =
             encodeNumber(encoders.fillOpacity, datum) * viewOpacity;
         const seamPadding =
@@ -118,7 +121,7 @@ export function renderRectSvg(baseMark, options) {
             fillOpacity == 1 &&
             opacityFactor == 1 &&
             canPadSeams &&
-            toSvgString(encoders.fill(datum)) != "none"
+            fill != "none"
                 ? RECT_SEAM_PADDING
                 : 0;
         if (seamPadding) {
@@ -174,12 +177,54 @@ export function renderRectSvg(baseMark, options) {
         }
 
         if (shadowStyles) {
-            group.appendChild(
-                createRectElement(x, y, width, height, radii, {
+            const shadowElement = createRectElement(
+                x,
+                y,
+                width,
+                height,
+                radii,
+                {
                     ...shadowStyles,
                     "stroke-width": formatSvgNumber(strokeWidth),
-                })
+                }
             );
+
+            // An opaque foreground rect covers the interior half of the blur,
+            // so the direct sibling is both sufficient and the most portable
+            // representation for vector editors.
+            const hasOpaqueFill =
+                hatch == "none" &&
+                fill != "none" &&
+                fillOpacity == 1 &&
+                opacityFactor == 1;
+            if (hasOpaqueFill) {
+                group.appendChild(shadowElement);
+            } else {
+                // Translucent fills would reveal the blurred source inside the
+                // rect. Clip a parent group so the child filter is evaluated
+                // before the exterior cutout in standards-compliant renderers.
+                const cutoutPadding = strokeWidth / 2;
+                const cutoutRadii = /** @type {CornerRadii} */ (
+                    Object.fromEntries(
+                        Object.entries(radii).map(([corner, radius]) => [
+                            corner,
+                            radius + cutoutPadding,
+                        ])
+                    )
+                );
+                const cutoutPath = createRoundedRectPath(
+                    x - cutoutPadding,
+                    y - cutoutPadding,
+                    width + cutoutPadding * 2,
+                    height + cutoutPadding * 2,
+                    cutoutRadii
+                );
+                const shadowGroup = createSvgElement("g", {
+                    "clip-path": options.getShadowClipPathUrl(cutoutPath),
+                });
+                shadowGroup.appendChild(shadowElement);
+                group.appendChild(shadowGroup);
+            }
         }
         group.appendChild(
             createRectElement(x, y, width, height, radii, styles)
