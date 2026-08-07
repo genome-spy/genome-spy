@@ -33,6 +33,9 @@ export class LocationManager {
     /** @type {Float32Array} */
     #facetTextureData = undefined;
 
+    #facetCount = 0;
+    #facetTextureDirty = true;
+
     /** @type {import("./sampleViewTypes.js").Locations} */
     #locations = undefined;
 
@@ -333,11 +336,12 @@ export class LocationManager {
         });
     }
 
-    updateFacetTexture() {
+    #updateFacetTextureData() {
         const sampleData =
             this.#locationContext.getSampleHierarchy().sampleData;
 
         const sampleCount = sampleData?.ids?.length ?? 0;
+        this.#facetCount = sampleCount;
         const requiredLength = Math.max(
             4,
             Math.ceil((sampleCount * 2) / 4) * 4
@@ -378,6 +382,21 @@ export class LocationManager {
             }
         }
 
+        this.#facetTextureDirty = true;
+
+        this.#facetTextureInputs.baseVersion = this.#baseLayoutVersion;
+        this.#facetTextureInputs.height = height;
+        this.#facetTextureInputs.peekState = this.#peekState;
+        this.#facetTextureInputs.scrollOffset = this.#scrollOffset;
+        this.#facetTextureInputs.sampleCount = sampleCount;
+    }
+
+    updateFacetTexture() {
+        this.#updateFacetTextureData();
+        if (!this.#facetTextureDirty && this.#facetTexture) {
+            return;
+        }
+
         const gl = this.#locationContext.viewContext.glHelper.gl;
 
         this.#facetTexture = createOrUpdateTexture(
@@ -387,19 +406,37 @@ export class LocationManager {
                 format: gl.RG,
                 height: 1,
             },
-            arr,
+            this.#facetTextureData,
             this.#facetTexture
         );
-
-        this.#facetTextureInputs.baseVersion = this.#baseLayoutVersion;
-        this.#facetTextureInputs.height = height;
-        this.#facetTextureInputs.peekState = this.#peekState;
-        this.#facetTextureInputs.scrollOffset = this.#scrollOffset;
-        this.#facetTextureInputs.sampleCount = sampleCount;
+        this.#facetTextureDirty = false;
     }
 
     getFacetTexture() {
         return this.#facetTexture;
+    }
+
+    /**
+     * Returns the same normalized sample position that is uploaded into the
+     * facet texture, without requiring a WebGL operation.
+     *
+     * @param {number} index
+     * @returns {LocSize | undefined}
+     */
+    getSampleFacetPosition(index) {
+        this.#updateFacetTextureData();
+        if (
+            !Number.isInteger(index) ||
+            index < 0 ||
+            index >= this.#facetCount
+        ) {
+            return undefined;
+        }
+
+        return {
+            location: this.#facetTextureData[index * 2],
+            size: this.#facetTextureData[index * 2 + 1],
+        };
     }
 
     /**

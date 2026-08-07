@@ -11,6 +11,19 @@ export default class ViewRenderingContext {
     }
 
     /**
+     * Opens a scope containing repeated renders of the same view hierarchy for
+     * SampleView facets. Rendering contexts may use the scope for batching.
+     */
+    beginSampleFacetBatch() {
+        //
+    }
+
+    /** Closes a scope opened by beginSampleFacetBatch(). */
+    endSampleFacetBatch() {
+        //
+    }
+
+    /**
      * Must be called when a view's render() method is entered
      *
      * @param {View} view

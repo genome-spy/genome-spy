@@ -4,6 +4,7 @@ import {
     faInfoCircle,
     faQuestionCircle,
     faExpandArrowsAlt,
+    faFileCode,
     faFileImage,
     faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
@@ -20,6 +21,7 @@ import { subscribeTo } from "../../state/subscribeTo.js";
 import { showDialog } from "../generic/baseDialog.js";
 import "../dialogs/aboutDialog.js";
 import "../dialogs/saveImageDialog.js";
+import "../dialogs/saveSvgDialog.js";
 import { showMessageDialog } from "../generic/messageDialog.js";
 
 export default class Toolbar extends LitElement {
@@ -128,11 +130,13 @@ export default class Toolbar extends LitElement {
                 >${renderVersionLink(packageJson.version)}</span
             >
 
-            ${this.app.ui.toolbarButtons.size
-                ? Array.from(this.app.ui.toolbarButtons).map((button) =>
-                      this.#createToolbarButton(button)
-                  )
-                : nothing}
+            ${
+                this.app.ui.toolbarButtons.size
+                    ? Array.from(this.app.ui.toolbarButtons).map((button) =>
+                          this.#createToolbarButton(button)
+                      )
+                    : nothing
+            }
 
             <div class="dropdown bookmark-dropdown">
                 <button
@@ -186,6 +190,18 @@ export default class Toolbar extends LitElement {
                 ),
         });
 
+        items.push({
+            label: "Save SVG",
+            icon: faFileCode,
+            callback: () =>
+                showDialog(
+                    "gs-save-svg-dialog",
+                    (/** @type {any} */ saveSvgDialog) => {
+                        saveSvgDialog.genomeSpy = this.app.genomeSpy;
+                    }
+                ),
+        });
+
         items.push(...this.app.ui.toolbarMenuItems);
 
         if (this.app.appContainer.requestFullscreen) {
@@ -231,14 +247,16 @@ export default class Toolbar extends LitElement {
                     <img title="GenomeSpy" alt="GenomeSpy" src="${bowtie}" />
                 </a>
 
-                ${appInitialized &&
-                findGenomeScaleResolution(genomeSpy.viewRoot)
-                    ? html`
-                          <genome-spy-search-field
-                              .app=${this.app}
-                          ></genome-spy-search-field>
-                      `
-                    : nothing}
+                ${
+                    appInitialized &&
+                    findGenomeScaleResolution(genomeSpy.viewRoot)
+                        ? html`
+                              <genome-spy-search-field
+                                  .app=${this.app}
+                              ></genome-spy-search-field>
+                          `
+                        : nothing
+                }
                 ${this._getToolButtons()}
             </nav>
         `;

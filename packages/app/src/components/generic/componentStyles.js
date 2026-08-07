@@ -167,10 +167,14 @@ export const formStyles = css`
             appearance: none;
         }
 
-        :is(input, select, textarea, div) + small {
+        :is(input, select, textarea, div, label) + small {
             display: block;
             margin-top: 0.3em;
             color: #606060;
+        }
+
+        label + small {
+            margin-top: -0.3em;
         }
 
         :is(input, select, textarea).is-invalid,

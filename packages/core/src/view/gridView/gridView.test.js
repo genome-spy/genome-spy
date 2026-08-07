@@ -11,6 +11,7 @@ import UnitView from "../unitView.js";
 import AxisView from "../axisView.js";
 import { createAndInitialize, createTestViewContext } from "../testUtils.js";
 import { createLogicalVisibleRect } from "../../marks/mark.js";
+import { isChromeView } from "../viewSelectors.js";
 
 // Minimal context for layout-driven render calls without WebGL.
 class NoOpRenderingContext extends ViewRenderingContext {
@@ -652,6 +653,7 @@ describe("GridView separators", () => {
         if (!verticalScrollbar) {
             throw new Error("Expected vertical scrollbar!");
         }
+        expect(isChromeView(verticalScrollbar)).toBe(true);
 
         verticalScrollbar.setViewportOffset(Number.POSITIVE_INFINITY);
         renderForLayout(view);

@@ -379,7 +379,7 @@ export default class BaseDialog extends LitElement {
      * The dialog is closed automatically unless the callback returns a truthy value.
      *
      * @param {string} title
-     * @param {(() => boolean) | (() => void)} callback If returns truthy value, dialog closing is canceled
+     * @param {() => boolean | void | Promise<boolean | void>} callback If returns truthy value, dialog closing is canceled
      * @param {{
      *  iconDef?: import("@fortawesome/fontawesome-svg-core").IconDefinition,
      *  disabled?: boolean,
@@ -410,9 +410,12 @@ export default class BaseDialog extends LitElement {
             title=${title}
             ?disabled=${disabled}
             ?data-primary=${isPrimary}
-            @mousedown=${preventMouseDown
-                ? (/** @type {MouseEvent} */ event) => event.preventDefault()
-                : undefined}
+            @mousedown=${
+                preventMouseDown
+                    ? (/** @type {MouseEvent} */ event) =>
+                          event.preventDefault()
+                    : undefined
+            }
             @click=${async () => {
                 const cancelClose = !!(await callback());
                 if (!cancelClose) {
@@ -438,9 +441,11 @@ export default class BaseDialog extends LitElement {
         const footer = this.renderFooter();
 
         return html`
-            ${!this.modal
-                ? html`<div class="non-modal-backdrop"></div>`
-                : nothing}
+            ${
+                !this.modal
+                    ? html`<div class="non-modal-backdrop"></div>`
+                    : nothing
+            }
             <dialog
                 @cancel=${(/** @type {UIEvent} */ e) => this.#onDialogCancel(e)}
             >

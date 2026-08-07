@@ -421,6 +421,120 @@ export interface EmbedDebugApi {
 // split is intended to extend to parameters when they gain a view-scoped API;
 // the existing flat getParam() lookup remains separate for compatibility.
 
+export interface ImageExportOptions {
+    /** Custom width in CSS pixels. Defaults to canvas width. */
+    logicalWidth?: number;
+
+    /** Custom height in CSS pixels. Defaults to canvas height. */
+    logicalHeight?: number;
+
+    /** Overrides the visualization background. Null is transparent. */
+    background?: string | null;
+}
+
+export interface RasterExportOptions extends ImageExportOptions {
+    /** Output MIME type. __Default value:__ `"image/png"` */
+    mimeType?: "image/png";
+
+    /** Physical image pixels per logical CSS pixel. Defaults to the device pixel ratio. */
+    pixelRatio?: number;
+}
+
+export interface RasterExportResult {
+    /** The exported raster image. */
+    blob: Blob;
+}
+
+export interface SvgExportOptions extends ImageExportOptions {
+    /** Rasterizes dense mark layers using the existing WebGL context. */
+    rasterization?: SvgRasterizationOptions;
+}
+
+export interface SvgRasterizationOptions {
+    /** Rasterize a mark when its visible instance count is larger than this. */
+    maxVectorInstances: number;
+
+    /** Physical raster pixels per logical SVG pixel. __Default value:__ `2` */
+    pixelRatio?: number;
+}
+
+export interface SvgRasterizationTargetInfo {
+    /** Mark type included in the raster image. */
+    markType: string;
+
+    /** Number of visible instances across all rendered facets. */
+    instanceCount: number;
+}
+
+export interface SvgRasterizationInfo {
+    /** Contiguous mark layers combined into this raster image. */
+    targets: SvgRasterizationTargetInfo[];
+
+    /** Why the layers were rasterized. */
+    reason: "instance-threshold";
+
+    /** Threshold used for this export. */
+    maxVectorInstances: number;
+
+    /** Physical raster pixels per logical SVG pixel. */
+    pixelRatio: number;
+}
+
+export interface SvgExportResult {
+    /** The exported SVG document. */
+    blob: Blob;
+
+    /** Unsupported properties that were ignored during export. */
+    warnings: string[];
+
+    /** Raster images embedded in the SVG, in paint order. */
+    rasterized: SvgRasterizationInfo[];
+}
+
+export interface SvgExportAnalysisOptions {
+    /** Custom width in CSS pixels. Defaults to canvas width. */
+    logicalWidth?: number;
+
+    /** Custom height in CSS pixels. Defaults to canvas height. */
+    logicalHeight?: number;
+}
+
+export interface SvgExportLayerInfo {
+    /** Name of the UnitView that owns the mark. */
+    viewName: string;
+
+    /** Resolved title of the UnitView, when available. */
+    viewTitle?: string;
+
+    /** Current path of the UnitView, for display and diagnostics only. */
+    viewPath: string;
+
+    /** Mark type rendered by the layer. */
+    markType: string;
+
+    /** Number of instances that SVG export would emit after culling. */
+    instanceCount: number;
+}
+
+export interface SvgExportAnalysis {
+    /** Visible mark layers in their first-seen rendering order. */
+    layers: SvgExportLayerInfo[];
+}
+
+/** Exports the current visualization as raster or vector images. */
+export interface ImageExportApi {
+    /** Exports a raster image. PNG is currently the only supported format. */
+    raster: (options?: RasterExportOptions) => Promise<RasterExportResult>;
+
+    /** Exports editable SVG arranged according to the view hierarchy. */
+    svg: (options?: SvgExportOptions) => Promise<SvgExportResult>;
+
+    /** Counts visible SVG mark instances without creating an image. */
+    analyzeSvg: (
+        options?: SvgExportAnalysisOptions
+    ) => Promise<SvgExportAnalysis>;
+}
+
 /**
  * An API for controlling the embedded GenomeSpy instance.
  */
@@ -440,6 +554,11 @@ export interface EmbedResult {
      * search nested views.
      */
     readonly datasets: DatasetApi;
+
+    /**
+     * Exports the current visualization as raster or vector images.
+     */
+    readonly imageExport: ImageExportApi;
 
     /**
      * Developer-only hooks for optional runtime inspection tools.
@@ -517,13 +636,14 @@ export interface EmbedResult {
      * @param {number} [logicalWidth] Custom width, defaults to canvas width
      * @param {number} [logicalHeight] Custom height, defaults to canvas height
      * @param {number} [devicePixelRatio] Defaults to window.devicePixelRatio
-     * @param {string} [clearColor] Background color. A CSS color, null for transparent
+     * @param {string | null} [clearColor] Background color. A CSS color, null for transparent
      * @returns A PNG data URL
+     * @deprecated Use `imageExport.raster()` instead.
      */
     exportCanvas: (
         logicalWidth?: number,
         logicalHeight?: number,
         devicePixelRatio?: number,
-        clearColor?: string
+        clearColor?: string | null
     ) => string;
 }

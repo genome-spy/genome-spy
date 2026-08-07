@@ -47,6 +47,7 @@ import GLSL_PICKING_VERTEX from "../gl/includes/picking.vertex.glsl";
 import GLSL_PICKING_FRAGMENT from "../gl/includes/picking.fragment.glsl";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import { createProgram } from "../gl/webGLHelper.js";
+import { WEBGL_COORDINATE_OFFSET } from "../gl/renderingConstants.js";
 import coalesceProperties from "../utils/propertyCoalescer.js";
 import { isScalar } from "../utils/variableTools.js";
 import { InternMap } from "internmap";
@@ -1672,17 +1673,21 @@ export default class Mark {
      * @param {import("../view/layout/rectangle.js").default} coords
      * @param {ClipOptions} [clip]
      * @param {ClipOptions} [cullClip]
+     * @param {number} [pixelOffset]
      * @returns {boolean} true if the viewport is renderable (size > 0)
      */
-    setViewport(canvasSize, dpr, coords, clip, cullClip) {
+    setViewport(
+        canvasSize,
+        dpr,
+        coords,
+        clip,
+        cullClip,
+        pixelOffset = WEBGL_COORDINATE_OFFSET
+    ) {
         coords = coords.flatten();
 
         const gl = this.gl;
         const props = this.properties;
-
-        // Translate by half a pixel to place vertical / horizontal
-        // rules inside pixels, not between pixels.
-        const pixelOffset = 0.5;
 
         const xOffset = pixelOffset;
         const yOffset = pixelOffset;

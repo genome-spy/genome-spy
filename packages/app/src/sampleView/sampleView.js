@@ -1063,17 +1063,24 @@ export default class SampleView extends ContainerView {
         const hasPassThroughOptions =
             Object.keys(passThroughOptions).length > 0;
 
-        // Render the view for each sample, pass location and facet id as options
-        // TODO: Support facet texture as an alternative to multiple draw calls
-        for (const opt of sampleOptions) {
-            if (hasPassThroughOptions) {
-                Object.assign(opt, passThroughOptions);
-            }
-            opt.clip = clip;
+        // Rendering contexts can batch the repeated hierarchy by logical mark,
+        // as the buffered WebGL renderer already does for draw requests.
+        context.beginSampleFacetBatch();
+        try {
+            // Render the view for each sample, pass location and facet id as options
+            // TODO: Support facet texture as an alternative to multiple draw calls
+            for (const opt of sampleOptions) {
+                if (hasPassThroughOptions) {
+                    Object.assign(opt, passThroughOptions);
+                }
+                opt.clip = clip;
 
-            gridChild.background?.render(context, coords, opt);
-            gridChild.view.render(context, coords, opt);
-            gridChild.backgroundStroke?.render(context, coords, opt);
+                gridChild.background?.render(context, coords, opt);
+                gridChild.view.render(context, coords, opt);
+                gridChild.backgroundStroke?.render(context, coords, opt);
+            }
+        } finally {
+            context.endSampleFacetBatch();
         }
 
         // Background stroke and axis rendering --------
@@ -1238,6 +1245,13 @@ export default class SampleView extends ContainerView {
 
     getSampleFacetTexture() {
         return this.locationManager.getFacetTexture();
+    }
+
+    /**
+     * @param {number} index
+     */
+    getSampleFacetPosition(index) {
+        return this.locationManager.getSampleFacetPosition(index);
     }
 
     /**

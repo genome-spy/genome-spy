@@ -1,9 +1,33 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import Rectangle from "../layout/rectangle.js";
 import BufferedViewRenderingContext from "./bufferedViewRenderingContext.js";
 
 describe("BufferedViewRenderingContext", () => {
+    test("does not render marks rejected by the mark predicate", () => {
+        const markPredicate = vi.fn(() => false);
+        const context = new BufferedViewRenderingContext(
+            { picking: false },
+            {
+                webGLHelper:
+                    /** @type {import("../../gl/webGLHelper.js").default} */ (
+                        /** @type {unknown} */ ({ gl: {} })
+                    ),
+                canvasSize: { width: 100, height: 100 },
+                devicePixelRatio: 1,
+                markPredicate,
+            }
+        );
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({})
+        );
+
+        context.renderMark(mark, {});
+        context.render();
+
+        expect(markPredicate).toHaveBeenCalledWith(mark);
+    });
+
     test("reuses viewport setup for value-equal mark clips", () => {
         const coords = Rectangle.create(0, 0, 20, 10);
         const gl = /** @type {WebGL2RenderingContext} */ (
@@ -22,7 +46,6 @@ describe("BufferedViewRenderingContext", () => {
                 clear: () => undefined,
             })
         );
-        let viewportSetups = 0;
         let draws = 0;
 
         /** @returns {void} */
@@ -43,10 +66,11 @@ describe("BufferedViewRenderingContext", () => {
         /**
          * @returns {boolean}
          */
-        const setViewport = () => {
-            viewportSetups++;
-            return true;
-        };
+        const setViewport = vi.fn(
+            /** @type {import("../../marks/mark.js").default["setViewport"]} */ (
+                () => true
+            )
+        );
 
         /** @returns {() => void} */
         const render = () => () => {
@@ -76,6 +100,7 @@ describe("BufferedViewRenderingContext", () => {
                     ),
                 canvasSize: { width: 100, height: 100 },
                 devicePixelRatio: 1,
+                pixelOffset: 0,
             }
         );
 
@@ -88,6 +113,7 @@ describe("BufferedViewRenderingContext", () => {
         context.render();
 
         expect(draws).toBe(2);
-        expect(viewportSetups).toBe(1);
+        expect(setViewport).toHaveBeenCalledOnce();
+        expect(setViewport.mock.calls[0][5]).toBe(0);
     });
 });

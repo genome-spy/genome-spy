@@ -6,6 +6,7 @@ import {
     faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog from "../generic/baseDialog.js";
+import { showMessageDialog } from "../generic/messageDialog.js";
 
 const instructions = html`
     <div class="gs-alert info">
@@ -52,6 +53,7 @@ export default class SaveImageDialog extends BaseDialog {
         imageHeight: { type: Number },
         transparentBackground: { type: Boolean },
         backgroundColor: { type: String },
+        saving: { type: Boolean },
     };
 
     static styles = [
@@ -78,6 +80,7 @@ export default class SaveImageDialog extends BaseDialog {
         this.imageHeight = 0;
         this.transparentBackground = false; // Default to opaque background
         this.backgroundColor = "#ffffff"; // Default background color
+        this.saving = false;
     }
 
     connectedCallback() {
@@ -161,17 +164,19 @@ export default class SaveImageDialog extends BaseDialog {
                         />
                         Transparent</label
                     >
-                    ${!this.transparentBackground
-                        ? html`<input
-                              type="color"
-                              id="pngBackground"
-                              style="margin-left: 1em"
-                              .value=${this.backgroundColor}
-                              @change=${createInputListener((input) => {
+                    ${
+                        !this.transparentBackground
+                            ? html`<input
+                                  type="color"
+                                  id="pngBackground"
+                                  style="margin-left: 1em"
+                                  .value=${this.backgroundColor}
+                                  @change=${createInputListener((input) => {
                                   this.backgroundColor = input.value;
                               })}
-                          />`
-                        : nothing}
+                              />`
+                            : nothing
+                    }
                 </div>
             </div>
         `;
@@ -180,31 +185,47 @@ export default class SaveImageDialog extends BaseDialog {
     renderButtons() {
         return [
             this.makeCloseButton("Cancel"),
-            this.makeButton(
-                "Save PNG",
-                () => {
-                    this.#downloadImage();
-                    this.finish({ ok: true });
-                    this.triggerClose();
-                },
-                { iconDef: faDownload, isPrimary: true }
-            ),
+            this.makeButton("Save PNG", () => this.#downloadImage(), {
+                iconDef: faDownload,
+                isPrimary: true,
+                disabled: this.saving,
+            }),
         ];
     }
 
-    #downloadImage() {
-        const dataURL = this.genomeSpy.exportCanvas(
-            this.logicalWidth,
-            this.logicalHeight,
-            this.devicePixelRatio,
-            this.transparentBackground ? null : this.backgroundColor
-        );
-        const link = document.createElement("a");
-        link.href = dataURL;
-        link.download = "genomespy-visualization.png";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    /** @returns {Promise<boolean>} */
+    async #downloadImage() {
+        this.saving = true;
+        try {
+            const { blob } = await this.genomeSpy.exportRaster({
+                logicalWidth: this.logicalWidth,
+                logicalHeight: this.logicalHeight,
+                pixelRatio: this.devicePixelRatio,
+                background: this.transparentBackground
+                    ? null
+                    : this.backgroundColor,
+                mimeType: "image/png",
+            });
+            const link = document.createElement("a");
+            link.href = await blobToDataUrl(blob);
+            link.download = "genomespy-visualization.png";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            this.finish({ ok: true });
+            return false;
+        } catch (error) {
+            await showMessageDialog(
+                `PNG export failed: ${
+                    error instanceof Error ? error.message : String(error)
+                }`,
+                { title: "PNG export", type: "error" }
+            );
+            return true;
+        } finally {
+            this.saving = false;
+        }
     }
 }
 
@@ -221,6 +242,22 @@ function roundToEven(num) {
  */
 export function getInputElement(event) {
     return /** @type {HTMLInputElement} */ (event.target);
+}
+
+/**
+ * Data URLs work more reliably than object URLs as download targets in the
+ * browsers supported by the App.
+ *
+ * @param {Blob} blob
+ * @returns {Promise<string>}
+ */
+function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.addEventListener("load", () => resolve(String(reader.result)));
+        reader.addEventListener("error", () => reject(reader.error));
+        reader.readAsDataURL(blob);
+    });
 }
 
 /**

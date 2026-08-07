@@ -29,7 +29,10 @@ import InteractionController from "./genomeSpy/interactionController.js";
 import RenderCoordinator from "./genomeSpy/renderCoordinator.js";
 import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
-import { exportCanvas } from "./genomeSpy/canvasExport.js";
+import {
+    exportCanvas,
+    exportRaster as renderRasterExport,
+} from "./genomeSpy/canvasExport.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
 import SingleAxisWindowedSource from "./data/sources/lazy/singleAxisWindowedSource.js";
@@ -48,12 +51,12 @@ import {
 import { INTERNAL_DEFAULT_CONFIG } from "./config/defaultConfig.js";
 import { mergeConfigScopes } from "./config/mergeConfig.js";
 import { resolveBaseConfig } from "./config/resolveConfig.js";
-import {
-    DEFAULT_THEME_NAME,
-    getBuiltInThemeBackground,
-    resolveThemeSelection,
-} from "./config/themes.js";
+import { DEFAULT_THEME_NAME, resolveThemeSelection } from "./config/themes.js";
 import { warnOnce } from "./utils/warning.js";
+import {
+    getCanvasBackground,
+    getExportBackground,
+} from "./genomeSpy/canvasBackground.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -484,29 +487,10 @@ export default class GenomeSpy {
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
         this.#glHelper.invalidateSize();
-        const selectedThemes = this.spec.theme
-            ? Array.isArray(this.spec.theme)
-                ? this.spec.theme
-                : [this.spec.theme]
-            : [];
         this.#renderCoordinator = new RenderCoordinator({
             viewRoot: this.viewRoot,
             glHelper: this.#glHelper,
-            getBackground: () => {
-                if (this.spec.background !== undefined) {
-                    return this.spec.background;
-                }
-
-                let background;
-                for (const themeName of selectedThemes) {
-                    const value = getBuiltInThemeBackground(themeName);
-                    if (value !== undefined) {
-                        background = value;
-                    }
-                }
-
-                return background;
-            },
+            getBackground: () => getCanvasBackground(this.spec),
             broadcast: this.broadcast.bind(this),
             onLayoutComputed: () =>
                 this.#loadingIndicatorManager.updateLayout(),
@@ -659,8 +643,9 @@ export default class GenomeSpy {
      * @param {number} [logicalWidth] defaults to canvas width
      * @param {number} [logicalHeight] defaults to canvas height
      * @param {number} [devicePixelRatio] defaults to window.devicePixelRatio
-     * @param {string} [clearColor] null for transparent
+     * @param {string | null} [clearColor] null for transparent
      * @returns A PNG data Url
+     * @deprecated Use exportRaster instead.
      */
     exportCanvas(
         logicalWidth,
@@ -668,20 +653,104 @@ export default class GenomeSpy {
         devicePixelRatio,
         clearColor = "white"
     ) {
-        const pngUrl = exportCanvas({
-            glHelper: this.#glHelper,
+        try {
+            return exportCanvas({
+                glHelper: this.#glHelper,
+                viewRoot: this.viewRoot,
+                logicalWidth,
+                logicalHeight,
+                devicePixelRatio,
+                clearColor,
+            });
+        } finally {
+            this.computeLayout();
+            this.renderAll();
+        }
+    }
+
+    /**
+     * Exports the current visualization as a raster image Blob.
+     *
+     * @param {import("./types/embedApi.js").RasterExportOptions} [options]
+     * @returns {Promise<import("./types/embedApi.js").RasterExportResult>}
+     */
+    async exportRaster(options = {}) {
+        const background = getExportBackground(this.spec, options);
+
+        try {
+            const blob = await renderRasterExport({
+                glHelper: this.#glHelper,
+                viewRoot: this.viewRoot,
+                logicalWidth: options.logicalWidth,
+                logicalHeight: options.logicalHeight,
+                pixelRatio: options.pixelRatio,
+                clearColor: background,
+                mimeType: options.mimeType,
+            });
+            return { blob };
+        } finally {
+            this.computeLayout();
+            this.renderAll();
+        }
+    }
+
+    /**
+     * Exports the current visualization as an SVG Blob and any warnings caused
+     * by unsupported properties.
+     *
+     * Vector-representable marks and decorations are emitted as editable
+     * elements arranged in the view hierarchy. Text uses the configured font
+     * followed by system-font fallbacks.
+     *
+     * @param {import("./types/embedApi.js").SvgExportOptions} [options]
+     * @returns {Promise<import("./types/embedApi.js").SvgExportResult>}
+     */
+    async exportSvg(options = {}) {
+        const canvasSize = this.#glHelper.getLogicalCanvasSize();
+        const logicalWidth = options.logicalWidth ?? canvasSize.width;
+        const logicalHeight = options.logicalHeight ?? canvasSize.height;
+        const background = getExportBackground(this.spec, options);
+
+        try {
+            const { createSvgExport } = await import("./svg/index.js");
+            const { svg, warnings, rasterized } = await createSvgExport({
+                viewRoot: this.viewRoot,
+                webGLHelper: this.#glHelper,
+                logicalWidth,
+                logicalHeight,
+                background,
+                rasterization: options.rasterization,
+            });
+            return {
+                blob: new Blob([new XMLSerializer().serializeToString(svg)], {
+                    type: "image/svg+xml",
+                }),
+                warnings,
+                rasterized,
+            };
+        } finally {
+            this.computeLayout();
+            this.renderAll();
+        }
+    }
+
+    /**
+     * Counts visible mark instances using the SVG export traversal without
+     * emitting SVG elements or requiring WebGL rasterization.
+     *
+     * @param {import("./types/embedApi.js").SvgExportAnalysisOptions} [options]
+     * @returns {Promise<import("./types/embedApi.js").SvgExportAnalysis>}
+     */
+    async analyzeSvgExport(options = {}) {
+        const canvasSize = this.#glHelper.getLogicalCanvasSize();
+        const logicalWidth = options.logicalWidth ?? canvasSize.width;
+        const logicalHeight = options.logicalHeight ?? canvasSize.height;
+        const svgModule = await import("./svg/index.js");
+        return svgModule.analyzeSvgExport({
             viewRoot: this.viewRoot,
             logicalWidth,
             logicalHeight,
-            devicePixelRatio,
-            clearColor,
         });
-
-        // Clean up
-        this.computeLayout();
-        this.renderAll();
-
-        return pngUrl;
     }
 
     getLogicalCanvasSize() {
