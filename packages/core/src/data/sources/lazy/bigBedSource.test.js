@@ -181,7 +181,10 @@ describe("BigBedSource", () => {
         );
         const collector = new Collector();
         source.addChild(collector);
-        /** Collector observers must see descriptor readiness at completion time. */
+        /**
+         * Collector observers must see descriptor readiness at completion time.
+         * @type {boolean[]}
+         */
         const readinessAtCompletion = [];
         collector.observe(() =>
             readinessAtCompletion.push(
