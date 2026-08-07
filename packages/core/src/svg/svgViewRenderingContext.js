@@ -45,6 +45,7 @@ import {
  * @prop {(shadow: SvgShadow) => string} getShadowFilterUrl
  * @prop {(hatch: SvgRectHatch) => string} getRectHatchPatternUrl
  * @prop {(fade: SvgLinkArcFade) => string | undefined} getLinkArcFadeMaskUrl
+ * @prop {(gradient: SvgLegendGradient) => string} getLegendGradientUrl
  * @prop {(message: string) => void} warn
  */
 
@@ -54,6 +55,8 @@ import {
  * @typedef {{blur: number, offsetX: number, offsetY: number}} SvgShadow
  * @typedef {{type: string, fill: string, fillOpacity: number, stroke: string, strokeOpacity: number, strokeWidth: number}} SvgRectHatch
  * @typedef {{p1: [number, number], p4: [number, number], distances: [number, number]}} SvgLinkArcFade
+ * @typedef {{offset: number, color: string}} SvgGradientStop
+ * @typedef {{x1: number, y1: number, x2: number, y2: number, stops: SvgGradientStop[]}} SvgLegendGradient
  */
 
 /**
@@ -92,6 +95,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     #nextMaskId = 0;
     #nextFilterId = 0;
     #nextPatternId = 0;
+    #nextGradientId = 0;
 
     /**
      * @param {import("../types/rendering.js").GlobalRenderingOptions} globalOptions
@@ -210,6 +214,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                     this.getRectHatchPatternUrl(hatch),
                 getLinkArcFadeMaskUrl: (fade) =>
                     this.getLinkArcFadeMaskUrl(fade),
+                getLegendGradientUrl: (gradient) =>
+                    this.getLegendGradientUrl(gradient),
                 warn: (message) =>
                     this.#warnings.add(
                         `${message} View: ${mark.unitView.getPathString()}`
@@ -369,6 +375,32 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             this.#defs.appendChild(createRectHatchPattern(id, hatch));
             this.#rectHatchPatterns.set(key, id);
         }
+        return `url(#${id})`;
+    }
+
+    /**
+     * @param {SvgLegendGradient} options
+     * @returns {string}
+     */
+    getLegendGradientUrl(options) {
+        const id = "legend-gradient-" + this.#nextGradientId++;
+        const gradient = createSvgElement("linearGradient", {
+            id,
+            gradientUnits: "userSpaceOnUse",
+            x1: formatSvgNumber(options.x1),
+            y1: formatSvgNumber(options.y1),
+            x2: formatSvgNumber(options.x2),
+            y2: formatSvgNumber(options.y2),
+        });
+        for (const stop of options.stops) {
+            gradient.appendChild(
+                createSvgElement("stop", {
+                    offset: formatSvgUnitless(stop.offset),
+                    "stop-color": stop.color,
+                })
+            );
+        }
+        this.#defs.appendChild(gradient);
         return `url(#${id})`;
     }
 
