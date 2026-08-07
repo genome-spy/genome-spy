@@ -115,6 +115,7 @@ export function renderTextSvg(baseMark, options) {
         },
     };
 
+    let instanceCount = 0;
     for (const datum of data) {
         const value = numberFormat(encoders.text(datum));
         const stringValue = isString(value)
@@ -189,6 +190,10 @@ export function renderTextSvg(baseMark, options) {
                     dy
                 )
             ) {
+                continue;
+            }
+            instanceCount++;
+            if (options.countOnly) {
                 continue;
             }
 
@@ -296,6 +301,10 @@ export function renderTextSvg(baseMark, options) {
         ) {
             continue;
         }
+        instanceCount++;
+        if (options.countOnly) {
+            continue;
+        }
         const svgX = formatSvgNumber(x);
         const svgY = formatSvgNumber(y);
         const text = createSvgElement("text", {
@@ -323,12 +332,13 @@ export function renderTextSvg(baseMark, options) {
         group.appendChild(text);
     }
 
-    if (group.childElementCount > 0) {
+    if (!options.countOnly && group.childElementCount > 0) {
         const edgeFadeMaskUrl = options.getViewportEdgeFadeMaskUrl(edgeFade);
         if (edgeFadeMaskUrl) {
             group.setAttribute("mask", edgeFadeMaskUrl);
         }
     }
+    return instanceCount;
 }
 
 /**

@@ -60,6 +60,7 @@ export function renderLinkSvg(baseMark, options) {
     });
     group.setAttribute("fill", "none");
     group.setAttribute("stroke-linecap", "butt");
+    let instanceCount = 0;
 
     for (const datum of data) {
         const [x, x2] = projectXRange(coords, encoders, datum);
@@ -84,6 +85,10 @@ export function renderLinkSvg(baseMark, options) {
                 strokePadding
             )
         ) {
+            continue;
+        }
+        instanceCount++;
+        if (options.countOnly) {
             continue;
         }
         /** @type {Record<string, string | number>} */
@@ -111,6 +116,7 @@ export function renderLinkSvg(baseMark, options) {
             })
         );
     }
+    return instanceCount;
 }
 
 /**

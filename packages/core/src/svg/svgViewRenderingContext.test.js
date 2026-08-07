@@ -198,33 +198,45 @@ describe("SvgViewRenderingContext", () => {
             { width: 100, height: 100 }
         );
 
-        context.beginSampleFacetBatch();
-        try {
-            view.render(context, Rectangle.create(0, 0, 100, 100), {
-                sampleFacetRenderingOptions: {
-                    locSize: { location: 20, size: 40 },
-                    pixelToUnit: 0.01,
-                },
-                clip: {
-                    rect: Rectangle.create(0, 10, 100, 80),
-                    clipX: true,
-                    clipY: true,
-                },
-            });
-            view.render(context, Rectangle.create(0, 0, 100, 100), {
-                sampleFacetRenderingOptions: {
-                    locSize: { location: 60, size: 20 },
-                    pixelToUnit: 0.01,
-                },
-                clip: {
-                    rect: Rectangle.create(0, 10, 100, 80),
-                    clipX: true,
-                    clipY: true,
-                },
-            });
-        } finally {
-            context.endSampleFacetBatch();
-        }
+        const renderFacets = () => {
+            context.beginSampleFacetBatch();
+            try {
+                view.render(context, Rectangle.create(0, 0, 100, 100), {
+                    sampleFacetRenderingOptions: {
+                        locSize: { location: 20, size: 40 },
+                        pixelToUnit: 0.01,
+                    },
+                    clip: {
+                        rect: Rectangle.create(0, 10, 100, 80),
+                        clipX: true,
+                        clipY: true,
+                    },
+                });
+                view.render(context, Rectangle.create(0, 0, 100, 100), {
+                    sampleFacetRenderingOptions: {
+                        locSize: { location: 60, size: 20 },
+                        pixelToUnit: 0.01,
+                    },
+                    clip: {
+                        rect: Rectangle.create(0, 10, 100, 80),
+                        clipX: true,
+                        clipY: true,
+                    },
+                });
+            } finally {
+                context.endSampleFacetBatch();
+            }
+        };
+
+        context.beginInstanceCounting();
+        renderFacets();
+        context.endInstanceCounting();
+        const mark = /** @type {import("../view/unitView.js").default} */ (view)
+            .mark;
+        expect(context.getVisibleInstanceCount(mark)).toBe(2);
+        expect(context.getSvg().querySelector("[data-mark-type]")).toBeNull();
+
+        renderFacets();
 
         expect(
             Array.from(context.getSvg().querySelectorAll("circle"), (circle) =>

@@ -30,7 +30,7 @@ import {
 /**
  * @typedef {object} ViewStackEntry
  * @prop {import("../view/view.js").default} view
- * @prop {SVGGElement} node
+ * @prop {SVGElement} node
  * @prop {import("../view/layout/rectangle.js").default} coords
  * @prop {boolean} exportExcluded
  */
@@ -50,6 +50,7 @@ import {
  * @prop {import("./svgBounds.js").SvgBounds} visibleBounds
  * @prop {import("./svgBounds.js").SvgBounds} anchorCullBounds
  * @prop {number} viewOpacity
+ * @prop {boolean} [countOnly]
  * @prop {(fade: SvgViewportEdgeFade) => string | undefined} getViewportEdgeFadeMaskUrl
  * @prop {(shadow: SvgShadow) => string} getShadowFilterUrl
  * @prop {(hatch: SvgRectHatch) => string} getRectHatchPatternUrl
@@ -99,6 +100,14 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     /** @type {Set<string>} */
     #warnings = new Set();
 
+    #countingInstances = false;
+
+    /** @type {WeakMap<import("../marks/mark.js").default, number>} */
+    #instanceCounts = new WeakMap();
+
+    /** @type {SVGGElement} */
+    #countingGroup = createSvgElement("g");
+
     /** @type {SvgSampleFacetBatch | undefined} */
     #sampleFacetBatch;
 
@@ -140,6 +149,36 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                 })
             );
         }
+    }
+
+    /**
+     * Starts a DOM-free traversal that counts instances using the mark
+     * renderers' normal geometry and culling paths.
+     */
+    beginInstanceCounting() {
+        if (this.#viewStack.length || this.#countingInstances) {
+            throw new Error(
+                "Cannot start SVG instance counting during traversal."
+            );
+        }
+        this.#instanceCounts = new WeakMap();
+        this.#countingInstances = true;
+    }
+
+    endInstanceCounting() {
+        if (this.#viewStack.length || !this.#countingInstances) {
+            throw new Error(
+                "SVG instance counting is not active or traversal is incomplete."
+            );
+        }
+        this.#countingInstances = false;
+    }
+
+    /**
+     * @param {import("../marks/mark.js").default} mark
+     */
+    getVisibleInstanceCount(mark) {
+        return this.#instanceCounts.get(mark) ?? 0;
     }
 
     /** @override */
@@ -185,6 +224,16 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                 node: this.currentNode,
                 coords,
                 exportExcluded: true,
+            });
+            return;
+        }
+
+        if (this.#countingInstances) {
+            this.#viewStack.push({
+                view,
+                node: this.currentNode,
+                coords,
+                exportExcluded: false,
             });
             return;
         }
@@ -248,11 +297,14 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             mark.properties.clip,
             this.currentCoords
         );
-        const batched = this.#sampleFacetBatch != null;
+        const batched =
+            !this.#countingInstances && this.#sampleFacetBatch != null;
         const batchClipPathUrl = batched
             ? this.getClipPathUrl(markClip)
             : undefined;
-        const group = this.#getMarkGroup(mark, batchClipPathUrl);
+        const group = this.#countingInstances
+            ? this.#countingGroup
+            : this.#getMarkGroup(mark, batchClipPathUrl);
         const visibleBounds = createSvgVisibleBounds(
             this.width,
             this.height,
@@ -272,28 +324,50 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
          * @param {import("../view/layout/rectangle.js").default} coords
          * @param {object[]} facetData
          */
-        const render = (coords, facetData) =>
-            renderMarkSvg(mark, {
+        const render = (coords, facetData) => {
+            const instanceCount = renderMarkSvg(mark, {
                 coords,
                 data: facetData,
                 group,
                 visibleBounds,
                 anchorCullBounds,
                 viewOpacity: mark.unitView.getEffectiveOpacity(),
+                countOnly: this.#countingInstances,
                 getViewportEdgeFadeMaskUrl: (fade) =>
-                    this.getViewportEdgeFadeMaskUrl(fade),
-                getShadowFilterUrl: (shadow) => this.getShadowFilterUrl(shadow),
+                    this.#countingInstances
+                        ? undefined
+                        : this.getViewportEdgeFadeMaskUrl(fade),
+                getShadowFilterUrl: (shadow) =>
+                    this.#countingInstances
+                        ? ""
+                        : this.getShadowFilterUrl(shadow),
                 getRectHatchPatternUrl: (hatch) =>
-                    this.getRectHatchPatternUrl(hatch),
+                    this.#countingInstances
+                        ? ""
+                        : this.getRectHatchPatternUrl(hatch),
                 getLinkArcFadeMaskUrl: (fade) =>
-                    this.getLinkArcFadeMaskUrl(fade),
+                    this.#countingInstances
+                        ? undefined
+                        : this.getLinkArcFadeMaskUrl(fade),
                 getLegendGradientUrl: (gradient) =>
-                    this.getLegendGradientUrl(gradient),
-                warn: (message) =>
-                    this.#warnings.add(
-                        `${message} View: ${mark.unitView.getPathString()}`
-                    ),
+                    this.#countingInstances
+                        ? ""
+                        : this.getLegendGradientUrl(gradient),
+                warn: (message) => {
+                    if (!this.#countingInstances) {
+                        this.#warnings.add(
+                            `${message} View: ${mark.unitView.getPathString()}`
+                        );
+                    }
+                },
             });
+            if (this.#countingInstances) {
+                this.#instanceCounts.set(
+                    mark,
+                    this.getVisibleInstanceCount(mark) + instanceCount
+                );
+            }
+        };
 
         if (options.sampleFacetRenderingOptions) {
             render(
@@ -326,7 +400,11 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         } else {
             render(this.currentCoords, data);
         }
-        if (!batched && group.childElementCount > 0) {
+        if (
+            !this.#countingInstances &&
+            !batched &&
+            group.childElementCount > 0
+        ) {
             const clipPathUrl = this.getClipPathUrl(markClip);
             if (clipPathUrl) {
                 group.setAttribute("clip-path", clipPathUrl);

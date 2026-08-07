@@ -47,6 +47,7 @@ export function renderRuleSvg(baseMark, options) {
             "" + formatSvgNumber(mark.properties.strokeDashOffset)
         );
     }
+    let instanceCount = 0;
 
     for (const datum of data) {
         let [x1, x2] = projectXRange(coords, encoders, datum);
@@ -69,6 +70,10 @@ export function renderRuleSvg(baseMark, options) {
         ) {
             continue;
         }
+        instanceCount++;
+        if (options.countOnly) {
+            continue;
+        }
         group.appendChild(
             createSvgElement("line", {
                 x1: formatSvgNumber(x1),
@@ -79,4 +84,5 @@ export function renderRuleSvg(baseMark, options) {
             })
         );
     }
+    return instanceCount;
 }

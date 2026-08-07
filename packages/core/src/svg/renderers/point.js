@@ -65,6 +65,7 @@ export function renderPointSvg(baseMark, options) {
             transform: (value) => formatSvgNumber(+value),
         },
     });
+    let instanceCount = 0;
 
     for (const datum of data) {
         const shape = encodeString(encoders.shape, datum);
@@ -120,6 +121,10 @@ export function renderPointSvg(baseMark, options) {
         ) {
             continue;
         }
+        instanceCount++;
+        if (options.countOnly) {
+            continue;
+        }
         const styles = {
             ...encodeStyles(datum),
             ...(inwardStroke && !lineShape
@@ -152,6 +157,7 @@ export function renderPointSvg(baseMark, options) {
             group.appendChild(element);
         }
     }
+    return instanceCount;
 }
 
 /**

@@ -59,6 +59,7 @@ export function renderArrowSvg(baseMark, options) {
         },
     });
     group.setAttribute("stroke-linejoin", "miter");
+    let instanceCount = 0;
 
     for (const datum of data) {
         const [x, x2] = projectXRange(coords, encoders, datum);
@@ -142,6 +143,10 @@ export function renderArrowSvg(baseMark, options) {
                 transversePadding
             )
         ) {
+            continue;
+        }
+        instanceCount++;
+        if (options.countOnly) {
             continue;
         }
         const renderedHeadShape =
@@ -240,6 +245,7 @@ export function renderArrowSvg(baseMark, options) {
         });
         group.appendChild(path);
     }
+    return instanceCount;
 }
 
 /**

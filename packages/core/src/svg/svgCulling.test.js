@@ -2,7 +2,9 @@
 
 import { describe, expect, test } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
+import Rectangle from "../view/layout/rectangle.js";
 import { createSvg } from "./index.js";
+import SvgViewRenderingContext from "./svgViewRenderingContext.js";
 
 describe("SVG instance culling", () => {
     test.each([
@@ -128,6 +130,23 @@ describe("SVG instance culling", () => {
         });
 
         expect(svg.querySelectorAll(selector)).toHaveLength(1);
+
+        // Counting must use the same visibility decisions without emitting
+        // instance elements during its preliminary traversal.
+        const countingContext = new SvgViewRenderingContext(
+            { picking: false },
+            { width: 100, height: 100, background: null }
+        );
+        countingContext.beginInstanceCounting();
+        view.render(countingContext, Rectangle.create(0, 0, 100, 100));
+        countingContext.endInstanceCounting();
+
+        const mark = /** @type {import("../view/unitView.js").default} */ (view)
+            .mark;
+        expect(countingContext.getVisibleInstanceCount(mark)).toBe(1);
+        expect(
+            countingContext.getSvg().querySelector("[data-mark-type]")
+        ).toBeNull();
     });
 
     test("retains partially visible instances and omits empty mark groups", async () => {

@@ -21,8 +21,11 @@ const renderers = new Map([
  * @param {import("../svgViewRenderingContext.js").SvgMarkRenderingOptions} options
  */
 export function renderMarkSvg(mark, options) {
-    if (mark.getType() == "rect" && renderLegendGradientSvg(mark, options)) {
-        return;
+    if (mark.getType() == "rect") {
+        const gradientInstanceCount = renderLegendGradientSvg(mark, options);
+        if (gradientInstanceCount !== undefined) {
+            return gradientInstanceCount;
+        }
     }
 
     const renderer = renderers.get(mark.getType());
@@ -31,5 +34,5 @@ export function renderMarkSvg(mark, options) {
             `SVG rendering is not implemented for mark type "${mark.getType()}". View: ${mark.unitView.getPathString()}`
         );
     }
-    renderer(mark, options);
+    return renderer(mark, options);
 }

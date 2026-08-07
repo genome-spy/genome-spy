@@ -90,6 +90,7 @@ export function renderRectSvg(baseMark, options) {
                   filter: options.getShadowFilterUrl(shadow),
               }
             : null;
+    let instanceCount = 0;
 
     for (const datum of data) {
         const [x1, x2] = projectXRange(coords, encoders, datum);
@@ -144,6 +145,10 @@ export function renderRectSvg(baseMark, options) {
         ) {
             continue;
         }
+        instanceCount++;
+        if (options.countOnly) {
+            continue;
+        }
         const radii = clampCornerRadii(cornerRadii, width, height);
         /** @type {Record<string, string | number>} */
         const styles = {
@@ -180,6 +185,7 @@ export function renderRectSvg(baseMark, options) {
             createRectElement(x, y, width, height, radii, styles)
         );
     }
+    return instanceCount;
 }
 
 /**

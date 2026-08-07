@@ -18,22 +18,23 @@ const MAX_GRADIENT_STOP_COUNT = 64;
  *
  * @param {import("../marks/mark.js").default} mark
  * @param {import("./svgViewRenderingContext.js").SvgMarkRenderingOptions} options
- * @returns {boolean} Whether the mark was recognized and rendered as a gradient.
+ * @returns {number | undefined} Visible source instance count, or undefined
+ *      when the mark is not a continuous legend ramp.
  */
 export function renderLegendGradientSvg(mark, options) {
     const params = findLegendGradientParams(mark.unitView);
     if (!params) {
-        return false;
+        return undefined;
     }
 
     const scale = mark.unitView.getScaleResolution(params.channel)?.getScale();
     if (!scale || !isContinuous(scale.type)) {
-        return false;
+        return undefined;
     }
 
     const { coords, data, group, viewOpacity, visibleBounds } = options;
     if (!data.length) {
-        return true;
+        return 0;
     }
 
     const encoders =
@@ -67,7 +68,10 @@ export function renderLegendGradientSvg(mark, options) {
         .sort((a, b) => a.offset - b.offset);
 
     if (!intersectsSvgBounds(visibleBounds, minX, minY, maxX, maxY)) {
-        return true;
+        return 0;
+    }
+    if (options.countOnly) {
+        return data.length;
     }
 
     const sampledStops = sampleGradientStops(stops);
@@ -99,7 +103,7 @@ export function renderLegendGradientSvg(mark, options) {
             stroke: "none",
         })
     );
-    return true;
+    return data.length;
 }
 
 /**
