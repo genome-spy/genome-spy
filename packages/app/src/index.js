@@ -117,6 +117,7 @@ export async function embed(el, spec, options = {}) {
         getLogicalCanvasSize: genomeSpy.getLogicalCanvasSize.bind(genomeSpy),
         exportCanvas: genomeSpy.exportCanvas.bind(genomeSpy),
         exportSvg: genomeSpy.exportSvg.bind(genomeSpy),
+        analyzeSvgExport: genomeSpy.analyzeSvgExport.bind(genomeSpy),
     };
 }
 

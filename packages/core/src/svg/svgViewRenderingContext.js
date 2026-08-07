@@ -120,8 +120,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
 
     #countingInstances = false;
 
-    /** @type {WeakMap<import("../marks/mark.js").default, number>} */
-    #instanceCounts = new WeakMap();
+    /** @type {Map<import("../marks/mark.js").default, number>} */
+    #instanceCounts = new Map();
 
     /** @type {SVGGElement} */
     #countingGroup = createSvgElement("g");
@@ -190,7 +190,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                 "Cannot start SVG instance counting during traversal."
             );
         }
-        this.#instanceCounts = new WeakMap();
+        this.#instanceCounts = new Map();
         this.#countingInstances = true;
     }
 
@@ -208,6 +208,15 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
      */
     getVisibleInstanceCount(mark) {
         return this.#instanceCounts.get(mark) ?? 0;
+    }
+
+    /**
+     * Returns marks in their first-seen traversal order.
+     *
+     * @returns {Map<import("../marks/mark.js").default, number>}
+     */
+    getVisibleInstanceCounts() {
+        return new Map(this.#instanceCounts);
     }
 
     /** @returns {SvgRasterRun[]} */

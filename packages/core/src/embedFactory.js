@@ -99,6 +99,7 @@ export function createEmbed(GenomeSpy) {
                 genomeSpy.getLogicalCanvasSize.bind(genomeSpy),
             exportCanvas: genomeSpy.exportCanvas.bind(genomeSpy),
             exportSvg: genomeSpy.exportSvg.bind(genomeSpy),
+            analyzeSvgExport: genomeSpy.analyzeSvgExport.bind(genomeSpy),
             debug: {
                 getViewRoot() {
                     return genomeSpy ? genomeSpy.viewRoot : undefined;

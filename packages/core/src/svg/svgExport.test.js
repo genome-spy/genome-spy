@@ -2,7 +2,7 @@
 
 import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
-import { createSvg, createSvgExport } from "./index.js";
+import { analyzeSvgExport, createSvg, createSvgExport } from "./index.js";
 
 const { rasterizeSvgRuns } = vi.hoisted(() => ({
     rasterizeSvgRuns: vi.fn(
@@ -20,6 +20,60 @@ const { rasterizeSvgRuns } = vi.hoisted(() => ({
 vi.mock("./raster/index.js", () => ({ rasterizeSvgRuns }));
 
 describe("SVG export", () => {
+    test("analyzes visible layers without emitting mark elements", async () => {
+        const { view } = await createHeadlessEngine(
+            /** @type {import("../spec/root.js").RootSpec} */ ({
+                layer: [
+                    {
+                        name: "points",
+                        title: "Point observations",
+                        data: { values: [{}, {}] },
+                        mark: "point",
+                        encoding: {
+                            x: { value: 0.5 },
+                            y: { value: 0.5 },
+                            size: { value: 100 },
+                            fill: { value: "black" },
+                        },
+                    },
+                    {
+                        name: "empty-points",
+                        data: { values: [] },
+                        mark: "point",
+                        encoding: {
+                            x: { value: 0.5 },
+                            y: { value: 0.5 },
+                            size: { value: 100 },
+                            fill: { value: "black" },
+                        },
+                    },
+                ],
+            })
+        );
+
+        const analysis = analyzeSvgExport({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+        });
+
+        const pointLayer = analysis.layers.find(
+            (layer) => layer.viewName == "points"
+        );
+        expect(pointLayer).toEqual(
+            expect.objectContaining({
+                viewName: "points",
+                viewTitle: "Point observations",
+                markType: "point",
+                instanceCount: 2,
+            })
+        );
+        expect(pointLayer.viewPath).toContain("points");
+        expect(analysis.layers).not.toContainEqual(
+            expect.objectContaining({ viewName: "empty-points" })
+        );
+    });
+
     test("falls back to vectors when rasterization has no WebGL context", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}, {}] },

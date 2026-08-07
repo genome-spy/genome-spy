@@ -705,6 +705,25 @@ export default class GenomeSpy {
         }
     }
 
+    /**
+     * Counts visible mark instances using the SVG export traversal without
+     * emitting SVG elements or requiring WebGL rasterization.
+     *
+     * @param {import("./types/embedApi.js").SvgExportAnalysisOptions} [options]
+     * @returns {Promise<import("./types/embedApi.js").SvgExportAnalysis>}
+     */
+    async analyzeSvgExport(options = {}) {
+        const canvasSize = this.#glHelper.getLogicalCanvasSize();
+        const logicalWidth = options.logicalWidth ?? canvasSize.width;
+        const logicalHeight = options.logicalHeight ?? canvasSize.height;
+        const svgModule = await import("./svg/index.js");
+        return svgModule.analyzeSvgExport({
+            viewRoot: this.viewRoot,
+            logicalWidth,
+            logicalHeight,
+        });
+    }
+
     getLogicalCanvasSize() {
         return this.#glHelper.getLogicalCanvasSize();
     }

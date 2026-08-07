@@ -39,6 +39,48 @@ export function createSvg({
 }
 
 /**
+ * Counts the visible instances of every SVG-exportable mark without emitting
+ * instance elements or requiring WebGL.
+ *
+ * @param {object} options
+ * @param {import("../view/view.js").default} options.viewRoot
+ * @param {number} options.logicalWidth
+ * @param {number} options.logicalHeight
+ * @returns {import("../types/embedApi.js").SvgExportAnalysis}
+ */
+export function analyzeSvgExport({ viewRoot, logicalWidth, logicalHeight }) {
+    const renderingContext = new SvgViewRenderingContext(
+        { picking: false },
+        {
+            width: logicalWidth,
+            height: logicalHeight,
+            background: null,
+        }
+    );
+
+    renderingContext.beginInstanceCounting();
+    viewRoot.render(
+        renderingContext,
+        Rectangle.create(0, 0, logicalWidth, logicalHeight),
+        { firstFacet: true }
+    );
+    renderingContext.endInstanceCounting();
+
+    return {
+        layers: Array.from(
+            renderingContext.getVisibleInstanceCounts(),
+            ([mark, instanceCount]) => ({
+                viewName: mark.unitView.name,
+                viewTitle: mark.unitView.getTitleText(),
+                viewPath: mark.unitView.getPathString(),
+                markType: mark.getType(),
+                instanceCount,
+            })
+        ).filter((layer) => layer.instanceCount > 0),
+    };
+}
+
+/**
  * Creates either a vector-only or hybrid SVG without requiring WebGL for the
  * vector path.
  *

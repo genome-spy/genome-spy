@@ -476,6 +476,36 @@ export interface SvgExportResult {
     rasterized: SvgRasterizationInfo[];
 }
 
+export interface SvgExportAnalysisOptions {
+    /** Custom width in CSS pixels. Defaults to canvas width. */
+    logicalWidth?: number;
+
+    /** Custom height in CSS pixels. Defaults to canvas height. */
+    logicalHeight?: number;
+}
+
+export interface SvgExportLayerInfo {
+    /** Name of the UnitView that owns the mark. */
+    viewName: string;
+
+    /** Resolved title of the UnitView, when available. */
+    viewTitle?: string;
+
+    /** Current path of the UnitView, for display and diagnostics only. */
+    viewPath: string;
+
+    /** Mark type rendered by the layer. */
+    markType: string;
+
+    /** Number of instances that SVG export would emit after culling. */
+    instanceCount: number;
+}
+
+export interface SvgExportAnalysis {
+    /** Visible mark layers in their first-seen rendering order. */
+    layers: SvgExportLayerInfo[];
+}
+
 /**
  * An API for controlling the embedded GenomeSpy instance.
  */
@@ -591,4 +621,12 @@ export interface EmbedResult {
      * the result without preventing export.
      */
     exportSvg: (options?: SvgExportOptions) => Promise<SvgExportResult>;
+
+    /**
+     * Counts visible SVG mark instances without emitting the SVG. The result
+     * can be used to preview threshold-based rasterization.
+     */
+    analyzeSvgExport: (
+        options?: SvgExportAnalysisOptions
+    ) => Promise<SvgExportAnalysis>;
 }

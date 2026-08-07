@@ -25,6 +25,7 @@ describe("embed factory", () => {
             this.getLogicalCanvasSize = vi.fn();
             this.exportCanvas = vi.fn();
             this.exportSvg = vi.fn();
+            this.analyzeSvgExport = vi.fn();
         }
     }
 
@@ -86,6 +87,30 @@ describe("embed factory", () => {
         );
 
         await expect(api.exportSvg()).resolves.toBe(svgResult);
+    });
+
+    test("forwards SVG export analysis from the GenomeSpy instance", async () => {
+        /** @type {import("./types/embedApi.js").SvgExportAnalysis} */
+        const analysis = { layers: [] };
+
+        class SvgGenomeSpy extends MockGenomeSpy {
+            /**
+             * @param {HTMLElement} element
+             * @param {any} spec
+             */
+            constructor(element, spec) {
+                super(element, spec);
+                this.analyzeSvgExport = vi.fn(async () => analysis);
+            }
+        }
+
+        const embed = createEmbed(/** @type {any} */ (SvgGenomeSpy));
+        const api = await embed(
+            document.createElement("div"),
+            /** @type {any} */ ({})
+        );
+
+        await expect(api.analyzeSvgExport()).resolves.toBe(analysis);
     });
 
     test("exposes the view mutation API", async () => {

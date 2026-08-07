@@ -25,6 +25,7 @@ const { AppMock } = vi.hoisted(() => ({
             getLogicalCanvasSize: vi.fn(),
             exportCanvas: vi.fn(),
             exportSvg: vi.fn(),
+            analyzeSvgExport: vi.fn(),
         };
         this.launch = vi.fn(async () => true);
         this.finalize = vi.fn();

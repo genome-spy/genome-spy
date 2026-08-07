@@ -54,6 +54,11 @@ gradients are intentionally flattened, and the deprecated
 `geometricZoomBound` property is not supported. Ordinary grammar faceting is
 also out of scope; SampleView faceting is supported.
 
+`analyzeSvgExport()` performs only the count traversal and reports visible
+layers with their post-culling instance counts. It does not emit mark elements
+or require WebGL. The App uses one cached analysis to preview threshold changes
+in the Save SVG dialog.
+
 ## Extending and testing
 
 Add mark behavior to its renderer and keep focused tests beside it. Tests should
