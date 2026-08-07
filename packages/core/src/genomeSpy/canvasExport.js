@@ -2,7 +2,7 @@ import { createFramebufferInfo } from "twgl.js";
 
 import BufferedViewRenderingContext from "../view/renderingContext/bufferedViewRenderingContext.js";
 import Rectangle from "../view/layout/rectangle.js";
-import { framebufferToDataUrl } from "../gl/webGLHelper.js";
+import { framebufferToDataUrl } from "../gl/framebufferReadback.js";
 
 /**
  * @param {object} options
