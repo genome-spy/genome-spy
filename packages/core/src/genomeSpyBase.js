@@ -670,8 +670,8 @@ export default class GenomeSpy {
      * by unsupported properties.
      *
      * Vector-representable marks and decorations are emitted as editable
-     * elements arranged in the view hierarchy. Text layout uses GenomeSpy's
-     * SDF metrics while the exported elements use a plain sans-serif font.
+     * elements arranged in the view hierarchy. Text uses the configured font
+     * followed by system-font fallbacks.
      *
      * @param {import("./types/embedApi.js").SvgExportOptions} [options]
      * @returns {Promise<import("./types/embedApi.js").SvgExportResult>}

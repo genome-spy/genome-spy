@@ -616,9 +616,9 @@ export interface EmbedResult {
      * Exports the current visualization as editable SVG elements arranged in
      * the view hierarchy.
      *
-     * Text uses GenomeSpy's SDF metrics for layout and a plain sans-serif font
-     * for the exported glyphs. Unsupported visual properties are reported in
-     * the result without preventing export.
+     * Text uses the configured font followed by system-font fallbacks.
+     * Unsupported visual properties are reported in the result without
+     * preventing export.
      */
     exportSvg: (options?: SvgExportOptions) => Promise<SvgExportResult>;
 
