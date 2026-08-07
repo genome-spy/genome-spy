@@ -4,6 +4,7 @@ import {
     prepareMarkClipOptionsFromClip,
 } from "../view/renderingContext/clipOptions.js";
 import ViewRenderingContext from "../view/renderingContext/viewRenderingContext.js";
+import { isChromeView } from "../view/viewSelectors.js";
 import {
     createSvgAnchorCullBounds,
     createSvgVisibleBounds,
@@ -31,6 +32,7 @@ import {
  * @prop {import("../view/view.js").default} view
  * @prop {SVGGElement} node
  * @prop {import("../view/layout/rectangle.js").default} coords
+ * @prop {boolean} exportExcluded
  */
 
 /**
@@ -173,6 +175,20 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
      */
     pushView(view, coords) {
         const path = view.getPathString();
+        const parentEntry = peek(this.#viewStack);
+        const exportExcluded =
+            parentEntry?.exportExcluded ||
+            (isChromeView(view) && view.name.startsWith("scrollbar-"));
+        if (exportExcluded) {
+            this.#viewStack.push({
+                view,
+                node: this.currentNode,
+                coords,
+                exportExcluded: true,
+            });
+            return;
+        }
+
         const batch = this.#sampleFacetBatch;
         let group = batch?.viewGroups.get(view);
         if (group) {
@@ -193,7 +209,12 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             this.currentNode.appendChild(group);
             batch?.viewGroups.set(view, group);
         }
-        this.#viewStack.push({ view, node: group, coords });
+        this.#viewStack.push({
+            view,
+            node: group,
+            coords,
+            exportExcluded: false,
+        });
     }
 
     /**
@@ -213,6 +234,10 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     renderMark(mark, options) {
+        if (peek(this.#viewStack)?.exportExcluded) {
+            return;
+        }
+
         if (mark.unitView.getEffectiveOpacity() <= 0) {
             return;
         }

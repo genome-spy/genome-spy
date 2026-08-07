@@ -3,6 +3,7 @@
 import { describe, expect, test } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import Rectangle from "../view/layout/rectangle.js";
+import { markViewAsChrome } from "../view/viewSelectors.js";
 import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
 import SvgViewRenderingContext from "./svgViewRenderingContext.js";
 
@@ -65,6 +66,42 @@ describe("SvgViewRenderingContext", () => {
                 ?.getAttribute("id")
         ).toBe("Copy-number-points-1");
         expect(svg.getAttribute("xmlns")).toBe("http://www.w3.org/2000/svg");
+    });
+
+    test("omits scrollbar chrome without omitting other similarly named views", () => {
+        const context = new SvgViewRenderingContext(
+            { picking: false },
+            { width: 100, height: 100 }
+        );
+        const root = createView("root", "root");
+        const scrollbar = createView("scrollbar-vertical", "root/scrollbar");
+        const authoredNamesake = createView(
+            "scrollbar-horizontal",
+            "root/authored-scrollbar"
+        );
+        const otherChrome = createView("axis", "root/axis");
+        markViewAsChrome(scrollbar, { skipSubtree: true });
+        markViewAsChrome(otherChrome, { skipSubtree: true });
+
+        context.pushView(root, Rectangle.create(0, 0, 100, 100));
+        context.pushView(scrollbar, Rectangle.create(90, 0, 10, 100));
+        // A suppressed subtree must not leak marks into its visible parent.
+        context.renderMark(/** @type {any} */ ({}), {});
+        context.popView(scrollbar);
+        context.pushView(authoredNamesake, Rectangle.create(0, 0, 100, 100));
+        context.popView(authoredNamesake);
+        context.pushView(otherChrome, Rectangle.create(0, 0, 100, 100));
+        context.popView(otherChrome);
+        context.popView(root);
+
+        const svg = context.getSvg();
+        expect(
+            svg.querySelector('[data-name="scrollbar-horizontal"]')
+        ).not.toBeNull();
+        expect(
+            svg.querySelector('[data-view-path="root/scrollbar"]')
+        ).toBeNull();
+        expect(svg.querySelector('[data-name="axis"]')).not.toBeNull();
     });
 
     test("deduplicates directional clip paths", () => {
