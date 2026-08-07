@@ -14,6 +14,20 @@ export default class CompositeViewRenderingContext extends ViewRenderingContext 
         this.contexts = contexts;
     }
 
+    /** @override */
+    beginSampleFacetBatch() {
+        for (const context of this.contexts) {
+            context.beginSampleFacetBatch();
+        }
+    }
+
+    /** @override */
+    endSampleFacetBatch() {
+        for (const context of this.contexts) {
+            context.endSampleFacetBatch();
+        }
+    }
+
     /**
      * Must be called when a view's render() method is entered
      *

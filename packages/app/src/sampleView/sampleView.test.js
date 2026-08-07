@@ -50,6 +50,9 @@ class NoOpRenderingContext extends ViewRenderingContext {
 class InspectRenderingContext extends ViewRenderingContext {
     #coordsStack = [];
 
+    sampleFacetBatchStarts = 0;
+    sampleFacetBatchEnds = 0;
+
     /** @type {{ clip: import("@genome-spy/core/spec/mark.js").MarkProps["clip"], cullByVisibleRange: import("@genome-spy/core/spec/mark.js").MarkProps["cullByVisibleRange"], logicalVisibleRect: [number, number, number, number] }[]} */
     axisLabels = [];
 
@@ -79,6 +82,14 @@ class InspectRenderingContext extends ViewRenderingContext {
 
     /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
     titleOptions = [];
+
+    beginSampleFacetBatch() {
+        this.sampleFacetBatchStarts++;
+    }
+
+    endSampleFacetBatch() {
+        this.sampleFacetBatchEnds++;
+    }
 
     pushView(view, coords) {
         if (view instanceof LegendView) {
@@ -862,6 +873,39 @@ describe("sample label column", () => {
 });
 
 describe("layout and group column", () => {
+    test("wraps repeated sample rendering in one facet batch", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [
+                        { sample: "A", x: 1 },
+                        { sample: "B", x: 2 },
+                    ],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            axis: null,
+                        },
+                    },
+                },
+            },
+        });
+        const renderContext = new InspectRenderingContext({ picking: false });
+
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(renderContext.sampleFacetBatchStarts).toBe(1);
+        expect(renderContext.sampleFacetBatchEnds).toBe(1);
+    });
+
     test("reserves sidebar padding when computing main pane coordinates", async () => {
         const { view } = await createSampleViewForTest({
             spec: {

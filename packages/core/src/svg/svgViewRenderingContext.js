@@ -34,6 +34,13 @@ import {
  */
 
 /**
+ * @typedef {object} SvgSampleFacetBatch
+ * @prop {WeakMap<import("../view/view.js").default, SVGGElement>} viewGroups
+ * @prop {WeakMap<import("../marks/mark.js").default, Map<string, SVGGElement>>} markGroups
+ * @prop {Set<SVGGElement>} markGroupElements
+ */
+
+/**
  * @typedef {object} SvgMarkRenderingOptions
  * @prop {import("../view/layout/rectangle.js").default} coords
  * @prop {object[]} data
@@ -90,6 +97,9 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     /** @type {Set<string>} */
     #warnings = new Set();
 
+    /** @type {SvgSampleFacetBatch | undefined} */
+    #sampleFacetBatch;
+
     #nextViewId = 0;
     #nextClipId = 0;
     #nextMaskId = 0;
@@ -130,6 +140,32 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         }
     }
 
+    /** @override */
+    beginSampleFacetBatch() {
+        if (this.#sampleFacetBatch) {
+            throw new Error("Nested sample facet batches are not supported.");
+        }
+        this.#sampleFacetBatch = {
+            viewGroups: new WeakMap(),
+            markGroups: new WeakMap(),
+            markGroupElements: new Set(),
+        };
+    }
+
+    /** @override */
+    endSampleFacetBatch() {
+        const batch = this.#sampleFacetBatch;
+        if (!batch) {
+            throw new Error("No sample facet batch is active.");
+        }
+        for (const group of batch.markGroupElements) {
+            if (!group.childElementCount) {
+                group.remove();
+            }
+        }
+        this.#sampleFacetBatch = undefined;
+    }
+
     /**
      * @param {import("../view/view.js").default} view
      * @param {import("../view/layout/rectangle.js").default} coords
@@ -137,15 +173,26 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
      */
     pushView(view, coords) {
         const path = view.getPathString();
-        const group = createSvgElement("g", {
-            id: createViewGroupId(view.name, this.#nextViewId++),
-            "data-name": view.name,
-            "data-view-path": path,
-        });
-        const title = createSvgElement("title");
-        title.textContent = path;
-        group.appendChild(title);
-        this.currentNode.appendChild(group);
+        const batch = this.#sampleFacetBatch;
+        let group = batch?.viewGroups.get(view);
+        if (group) {
+            if (group.parentNode !== this.currentNode) {
+                throw new Error(
+                    `Sample-faceted view was rendered under multiple parents: ${path}`
+                );
+            }
+        } else {
+            group = createSvgElement("g", {
+                id: createViewGroupId(view.name, this.#nextViewId++),
+                "data-name": view.name,
+                "data-view-path": path,
+            });
+            const title = createSvgElement("title");
+            title.textContent = path;
+            group.appendChild(title);
+            this.currentNode.appendChild(group);
+            batch?.viewGroups.set(view, group);
+        }
         this.#viewStack.push({ view, node: group, coords });
     }
 
@@ -176,6 +223,11 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             mark.properties.clip,
             this.currentCoords
         );
+        const batched = this.#sampleFacetBatch != null;
+        const batchClipPathUrl = batched
+            ? this.getClipPathUrl(markClip)
+            : undefined;
+        const group = this.#getMarkGroup(mark, batchClipPathUrl);
         const visibleBounds = createSvgVisibleBounds(
             this.width,
             this.height,
@@ -189,10 +241,6 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             inheritedClip,
             mark.properties.cullByVisibleRange
         );
-
-        const group = createSvgElement("g", {
-            "data-mark-type": mark.getType(),
-        });
 
         const data = getSvgData(mark, options);
         /**
@@ -253,13 +301,56 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         } else {
             render(this.currentCoords, data);
         }
-        if (group.childElementCount > 0) {
+        if (!batched && group.childElementCount > 0) {
             const clipPathUrl = this.getClipPathUrl(markClip);
             if (clipPathUrl) {
                 group.setAttribute("clip-path", clipPathUrl);
             }
             this.currentNode.appendChild(group);
         }
+    }
+
+    /**
+     * Returns a shared mark group while a sample-facet batch is active. The
+     * first occurrence establishes its position in the logical view hierarchy.
+     *
+     * @param {import("../marks/mark.js").default} mark
+     * @param {string | undefined} clipPathUrl
+     */
+    #getMarkGroup(mark, clipPathUrl) {
+        const batch = this.#sampleFacetBatch;
+        if (!batch) {
+            return createSvgElement("g", {
+                "data-mark-type": mark.getType(),
+            });
+        }
+
+        let groupsByClip = batch.markGroups.get(mark);
+        if (!groupsByClip) {
+            groupsByClip = new Map();
+            batch.markGroups.set(mark, groupsByClip);
+        }
+
+        const clipKey = clipPathUrl ?? "";
+        let group = groupsByClip.get(clipKey);
+        if (group) {
+            if (group.parentNode !== this.currentNode) {
+                throw new Error(
+                    `Sample-faceted mark was rendered under multiple parents: ${mark.unitView.getPathString()}`
+                );
+            }
+        } else {
+            group = createSvgElement("g", {
+                "data-mark-type": mark.getType(),
+            });
+            if (clipPathUrl) {
+                group.setAttribute("clip-path", clipPathUrl);
+            }
+            this.currentNode.appendChild(group);
+            groupsByClip.set(clipKey, group);
+            batch.markGroupElements.add(group);
+        }
+        return group;
     }
 
     /**

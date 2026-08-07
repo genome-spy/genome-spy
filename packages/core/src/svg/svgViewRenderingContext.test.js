@@ -145,7 +145,7 @@ describe("SvgViewRenderingContext", () => {
         );
     });
 
-    test("projects sample facets while retaining the shared view clip", async () => {
+    test("flattens repeated sample facets while retaining their shared clip", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },
             mark: "point",
@@ -161,26 +161,94 @@ describe("SvgViewRenderingContext", () => {
             { width: 100, height: 100 }
         );
 
-        view.render(context, Rectangle.create(0, 0, 100, 100), {
-            sampleFacetRenderingOptions: {
-                locSize: { location: 20, size: 40 },
-                pixelToUnit: 0.01,
-            },
-            clip: {
-                rect: Rectangle.create(0, 10, 100, 80),
-                clipX: true,
-                clipY: true,
-            },
-        });
+        context.beginSampleFacetBatch();
+        try {
+            view.render(context, Rectangle.create(0, 0, 100, 100), {
+                sampleFacetRenderingOptions: {
+                    locSize: { location: 20, size: 40 },
+                    pixelToUnit: 0.01,
+                },
+                clip: {
+                    rect: Rectangle.create(0, 10, 100, 80),
+                    clipX: true,
+                    clipY: true,
+                },
+            });
+            view.render(context, Rectangle.create(0, 0, 100, 100), {
+                sampleFacetRenderingOptions: {
+                    locSize: { location: 60, size: 20 },
+                    pixelToUnit: 0.01,
+                },
+                clip: {
+                    rect: Rectangle.create(0, 10, 100, 80),
+                    clipX: true,
+                    clipY: true,
+                },
+            });
+        } finally {
+            context.endSampleFacetBatch();
+        }
 
         expect(
-            context.getSvg().querySelector("circle")?.getAttribute("cy")
-        ).toBe("40");
+            Array.from(context.getSvg().querySelectorAll("circle"), (circle) =>
+                circle.getAttribute("cy")
+            )
+        ).toEqual(["40", "70"]);
+        expect(
+            context.getSvg().querySelectorAll("g[data-view-path]")
+        ).toHaveLength(1);
+        expect(
+            context.getSvg().querySelectorAll('[data-mark-type="point"]')
+        ).toHaveLength(1);
         const clipRect = context.getSvg().querySelector("clipPath rect");
         expect([
             clipRect?.getAttribute("y"),
             clipRect?.getAttribute("height"),
         ]).toEqual(["10", "80"]);
+    });
+
+    test("keeps different sample-facet clips in separate mark groups", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: "point",
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                size: { value: 100 },
+                fill: { value: "#123456" },
+            },
+        });
+        const context = new SvgViewRenderingContext(
+            { picking: false },
+            { width: 100, height: 100 }
+        );
+
+        context.beginSampleFacetBatch();
+        try {
+            for (const y of [10, 20]) {
+                view.render(context, Rectangle.create(0, 0, 100, 100), {
+                    sampleFacetRenderingOptions: {
+                        locSize: { location: y, size: 20 },
+                        pixelToUnit: 0.01,
+                    },
+                    clip: {
+                        rect: Rectangle.create(0, y, 100, 20),
+                        clipX: true,
+                        clipY: true,
+                    },
+                });
+            }
+        } finally {
+            context.endSampleFacetBatch();
+        }
+
+        expect(
+            context.getSvg().querySelectorAll("g[data-view-path]")
+        ).toHaveLength(1);
+        expect(
+            context.getSvg().querySelectorAll('[data-mark-type="point"]')
+        ).toHaveLength(2);
+        expect(context.getSvg().querySelectorAll("clipPath")).toHaveLength(2);
     });
 
     test("projects texture-indexed sample facets using CPU positions", async () => {
