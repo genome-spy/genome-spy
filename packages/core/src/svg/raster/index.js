@@ -78,9 +78,15 @@ export function rasterizeSvgRuns({
             if (!image) {
                 throw new Error("Raster run has no SVG image placeholder.");
             }
-            image.setAttribute("x", "" + formatSvgNumber(crop.x / pixelRatio));
-            // Undo the vertical half-logical-pixel offset applied by WebGL when
+            // Undo the half-logical-pixel offset applied by WebGL when
             // compositing the pixels with SVG geometry.
+            image.setAttribute(
+                "x",
+                "" +
+                    formatSvgNumber(
+                        crop.x / pixelRatio - WEBGL_COORDINATE_OFFSET
+                    )
+            );
             image.setAttribute(
                 "y",
                 "" +
