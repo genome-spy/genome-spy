@@ -341,6 +341,7 @@
           },
           "mark": {
             "type": "rect",
+            "clip": true,
             "tooltip": null
           }
         },
@@ -434,6 +435,7 @@
               "mark": {
                 "type": "rect",
                 "color": "#a0e7e5",
+                "clip": true,
                 "tooltip": null
               },
 
