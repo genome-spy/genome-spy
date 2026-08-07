@@ -168,11 +168,15 @@ export function renderRectSvg(baseMark, options) {
 function createRectElement(x, y, width, height, radii, styles) {
     if (hasEqualCornerRadii(radii)) {
         const radius = radii.topLeft;
+        const roundedX = formatSvgNumber(x);
+        const roundedY = formatSvgNumber(y);
+        const roundedX2 = formatSvgNumber(x + width);
+        const roundedY2 = formatSvgNumber(y + height);
         return createSvgElement("rect", {
-            x: formatSvgNumber(x),
-            y: formatSvgNumber(y),
-            width: formatSvgNumber(width),
-            height: formatSvgNumber(height),
+            x: roundedX,
+            y: roundedY,
+            width: formatSvgNumber(roundedX2 - roundedX),
+            height: formatSvgNumber(roundedY2 - roundedY),
             ...(radius
                 ? {
                       rx: formatSvgNumber(radius),

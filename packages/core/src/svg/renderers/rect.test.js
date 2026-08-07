@@ -101,6 +101,47 @@ describe("SVG rectangle renderer", () => {
         ]);
     });
 
+    test("preserves shared boundaries when rounding adjacent rectangles", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: 0, x2: 1 / 3 },
+                    { x: 1 / 3, x2: 2 / 3 },
+                    { x: 2 / 3, x2: 1 },
+                ],
+            },
+            mark: "rect",
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                x2: { field: "x2" },
+                y: { value: 0 },
+                y2: { value: 1 },
+                fill: { value: "black" },
+            },
+        });
+
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const rects = Array.from(
+            svg.querySelectorAll('[data-mark-type="rect"] rect')
+        );
+        // Quantized endpoints must remain identical instead of opening 0.1 px gaps.
+        expect(
+            rects.map((rect) => [
+                rect.getAttribute("x"),
+                rect.getAttribute("width"),
+            ])
+        ).toEqual([
+            ["0", "33.3"],
+            ["33.3", "33.4"],
+            ["66.7", "33.3"],
+        ]);
+    });
+
     test("exports expression-valued uniform rectangle radii", async () => {
         const { view } = await createHeadlessEngine({
             params: [{ name: "radius", value: 12 }],
