@@ -21,18 +21,23 @@ and rendering options.
 
 ## Goals
 
-- Render selected mark layers with the existing WebGL programs, buffers,
+- Render over-threshold mark layers with the existing WebGL programs, buffers,
   textures, scales, clipping, and facet logic.
-- Embed each rasterized result as a transparent PNG `<image>` in the
-  corresponding SVG mark/view group.
-- Emit one image per rasterized SampleView mark and GridChild clip, regardless
-  of the number of sample facets.
+- Combine maximal contiguous runs of over-threshold mark layers into transparent
+  PNG `<image>` elements. Adjacent rasterized layers should not create separate
+  images merely because they are separate marks.
+- Include all SampleView facets and all adjacent over-threshold marks in the run
+  in one image, regardless of the number of samples.
 - Preserve sibling draw order and keep non-rasterized axes, titles, labels, and
   marks as native SVG.
 - Support a configurable raster pixel ratio independently of SVG logical size.
 - Avoid generating a large vector DOM before deciding to rasterize.
-- Return enough export information to identify content that was rasterized and
-  why.
+- Return enough export information to summarize the rasterized mark types,
+  instance counts, and threshold.
+- Keep ordinary SVG export fully functional when no WebGL context is available,
+  including in headless and batched processing environments.
+- Let App users configure optional rasterization in a Save SVG dialog rather
+  than hard-coding export options in the toolbar action.
 - Keep all rasterization implementation in the dynamically imported SVG export
   subsystem except for small reusable framebuffer utilities.
 
@@ -45,13 +50,16 @@ and rendering options.
   appropriate.
 - Supporting arbitrary partial overlap reordering in the first increment.
 - Solving general grammar faceting, which remains outside the SVG export scope.
-- Choosing final automatic thresholds before export-size measurements exist.
+- Selecting individual views for rasterization by name, path, selector, or
+  callback.
 
 ## Terminology
 
-- **Raster target:** A logical mark/UnitView, including all of its repeated
-  rendering requests that share a compatible capture clip, or a contiguous
-  view subtree selected for WebGL rasterization.
+- **Raster target:** A logical mark/UnitView whose visible-instance count is
+  above the threshold, including all of its repeated SampleView rendering
+  requests.
+- **Raster run:** A maximal contiguous paint-order sequence of compatible
+  raster targets. One raster run is emitted as one embedded image.
 - **Capture bounds:** The logical CSS-pixel rectangle covered by the embedded
   image.
 - **Raster pixel ratio:** Physical PNG pixels per logical SVG pixel.
@@ -72,26 +80,52 @@ Canvas2D may receive the completed RGBA pixels through `putImageData()` solely
 to use the browser's PNG encoder. A dedicated PNG encoder is an alternative,
 but it adds complexity without improving mark fidelity.
 
-### Start at mark/UnitView granularity
+### Rasterization is an optional capability
 
-A UnitView is the safest initial raster boundary:
+The vector SVG exporter must not require a WebGL context, GPU resources, canvas
+readback, or PNG encoding support. Rasterization is an optional acceleration
+and file-size feature layered on top of vector export, not a prerequisite for
+it. This preserves reliable headless and batched SVG generation.
+
+The raster implementation should sit behind a second dynamic import inside the
+SVG subsystem. It is loaded only when `maxVectorInstances` is configured, at
+least one mark exceeds the threshold, and a usable existing WebGL context is
+available. The normal SVG module graph must not statically import framebuffer,
+readback, or browser PNG-encoding code.
+
+If rasterization is requested but no WebGL context is available, export
+continues as an all-vector SVG and returns one structured warning that the
+rasterization option was ignored. It must not fail, silently omit marks, or emit
+placeholder images. Unsupported SVG properties continue to use their existing
+warnings.
+
+### Select marks, but emit contiguous raster runs
+
+A UnitView is the safest initial selection boundary:
 
 - It naturally represents one graphical layer.
-- The SVG context can insert the `<image>` exactly where the mark group would
-  have appeared.
 - Layered plots retain vector siblings in the correct order.
 - Instance count and mark type are available before SVG elements are emitted.
 - Axes, titles, and legends remain vector without special handling.
 
-Rasterizing an arbitrary composite subtree is useful later for combining
-several dense layers, but requires capture scopes spanning multiple marks.
+Selection granularity must not dictate image granularity. After selection, the
+exporter combines the maximal contiguous run of compatible raster targets and
+inserts one image at that run's paint-order position. A vector mark, axis,
+title, background, or other painted SVG content closes the pending run. Thus
+two rasterized layers separated by vector content remain separate images.
+
+Combining a run intentionally gives up the individual SVG groups of its marks.
+The image should be placed in a named raster-run group under the nearest common
+SVG parent of the participating views. Empty per-mark and per-UnitView groups
+should be omitted. This keeps files small while retaining meaningful hierarchy
+around the hybrid content.
 
 ### Use an export-sized framebuffer first
 
 The first implementation should reuse one transparent framebuffer sized to the
 full SVG export at the configured raster pixel ratio. Each capture clears and
-renders only its selected mark, then reads only the physical-pixel rectangle
-corresponding to its capture bounds.
+renders one raster run, then reads only the physical-pixel rectangle
+corresponding to the run's capture bounds.
 
 This is deliberately conservative: existing absolute viewport, half-pixel,
 scissor, and culling calculations remain unchanged. The allocation is no larger
@@ -106,18 +140,19 @@ the saved SVG must remain portable after the browser session ends. Its `x`,
 `y`, `width`, and `height` use logical SVG pixels; the PNG dimensions include
 the raster pixel ratio.
 
-The image remains inside a named mark/view `<g>` and receives the same effective
-SVG clip path as the vector mark group. WebGL clipping already removes pixels,
-but retaining the SVG clip guards against interpolation at cropped edges and
-keeps the hierarchy understandable in editors.
+The image remains inside a named raster-run `<g>`. If every target has the same
+effective SVG clip, the group receives that clip as an additional edge guard.
+Different clips do not prevent batching: WebGL applies each target's own
+scissor/clip while drawing, and pixels outside those clips stay transparent.
 
 ## Proposed architecture
 
 ### Public entry point
 
-`GenomeSpy.exportSvg()` passes the existing `WebGLHelper` and rasterization
-options into the dynamically imported SVG module. This does not create another
-WebGL context; mark GPU resources belong to the existing context and are reused.
+`GenomeSpy.exportSvg()` passes rasterization options and the existing
+`WebGLHelper`, if available, into the dynamically imported SVG module. It does
+not create a WebGL context for export. When a helper is supplied, mark GPU
+resources belong to its existing context and are reused.
 
 A tentative option shape is:
 
@@ -125,14 +160,38 @@ A tentative option shape is:
 await genomeSpy.exportSvg({
   rasterization: {
     pixelRatio: 3,
-    maxVectorElements: 10_000,
+    maxVectorInstances: 10_000,
   },
 });
 ```
 
-The exact selection API is unresolved. The implementation should internally
-support an explicit predicate or selected-view set before exposing automatic
-thresholds publicly.
+`maxVectorInstances` is the only selection control. A mark remains vector when
+its non-culled instance count is at most the threshold and is rasterized when
+the count is larger. Omitting the option disables rasterization. This keeps the
+behavior predictable and avoids relying on view paths, which are not stable
+identifiers. Supplying the option without an available WebGL context produces
+an all-vector export with a warning.
+
+### App export dialog
+
+The App's **Save SVG** menu item should open a dedicated dialog modeled on
+`saveImageDialog.js`. The dialog displays the current logical visualization
+dimensions and offers:
+
+- A **Rasterize dense marks** checkbox. It is off by default so SVG export
+  remains purely vector unless the user opts in.
+- A positive integer **Maximum vector instances** input, enabled only when
+  rasterization is selected. Start with 10,000 as a practical editable default;
+  this is a UI convenience, not a Core default.
+- A **Raster scale factor** control, enabled only when rasterization is
+  selected. It controls `pixelRatio` and should use the same clear scale-factor
+  language as the PNG dialog.
+
+The dialog passes `maxVectorInstances` and `pixelRatio` to `exportSvg()`, owns
+the existing file-picker/download flow, and reports returned warnings through
+the App's dialog UI or existing warning mechanism. No per-view controls are
+provided. The toolbar should only open the dialog; export and download logic
+should not remain duplicated in `toolbar.js`.
 
 ### SVG rendering context
 
@@ -140,31 +199,45 @@ thresholds publicly.
 and asks a rasterization policy whether the logical mark should remain vector.
 
 - Vector: call the existing SVG mark renderer.
-- Raster: create one normal mark group and `<image>` placeholder, then buffer
-  every rendering request for that mark together with its coordinates,
-  rendering options, effective clip, and diagnostic metadata.
+- Raster: append a target record to the pending raster run and buffer every
+  rendering request for that mark together with its coordinates, rendering
+  options, effective clip, and diagnostic metadata.
 
 The decision must happen before invoking the SVG renderer so dense instance
 elements are never constructed and discarded. Repeated SampleView callbacks
-must find the existing raster target rather than creating additional groups or
-images.
+must find the existing raster target rather than creating additional targets.
+
+The context needs a flattened paint-operation stream in addition to the view
+hierarchy. A pending run is extended only while raster targets are consecutive
+and compatible. Emitting any vector paint operation flushes it. Entering or
+leaving structural groups alone does not split a run; the exporter computes the
+nearest common parent for the final run and omits empty groups. This permits
+stacked sibling UnitViews to share an image without combining noncontiguous
+content.
+
+Targets are compatible when they use the same WebGL context, export pixel
+ratio, compositing surface, and raster capture lifecycle. Capture rectangles
+and WebGL clips may differ because the run uses their union for readback and
+retains each draw request's own clip. Future blend modes or isolated compositing
+groups may introduce additional run boundaries.
 
 ### WebGL rasterizer
 
 A new module under `packages/core/src/svg/raster/` should own:
 
 - Creation and deletion of the reusable RGBA framebuffer.
-- Collection and execution of selected mark callbacks using the same mark-wise
+- Collection and execution of raster-target callbacks using the same mark-wise
   batching model as `BufferedViewRenderingContext`.
-- Rendering all callbacks for one raster target with transparent clear color.
+- Rendering all targets in one raster run, in paint order, after one transparent
+  clear.
 - DPR-aware capture-bound rounding.
 - Cropped `readPixels()` and WebGL-to-SVG Y-axis conversion.
 - Unpremultiplication of transparent pixel colors.
 - PNG encoding and assignment to the `<image>` placeholder.
 
 The rasterizer should be export-scoped and finalized in a `finally` block so
-framebuffers and attachments cannot leak if a capture fails. Each raster target
-is cleared, rendered, read back, and encoded once after traversal has collected
+framebuffers and attachments cannot leak if a capture fails. Each raster run is
+cleared, rendered, read back, and encoded once after traversal has collected
 all of its callbacks.
 
 ### Capture bounds
@@ -182,10 +255,11 @@ The embedded logical rectangle is derived back from these physical bounds.
 This preserves fractional placement while guaranteeing that edge pixels are
 not omitted.
 
-For a mark clipped in both directions, the effective clip rectangle is the
+For a mark clipped in both directions, the effective clip rectangle is its
 natural capture bound. A one-directional clip uses the full export extent in
-the other direction. An unclipped mark initially uses the full export bounds;
-geometry-aware bounds and effect padding can be added later.
+the other direction. An unclipped mark initially uses the full export bounds.
+A run's capture bounds are the union of its targets' bounds; geometry-aware
+bounds and effect padding can be added later.
 
 ### Transparency
 
@@ -204,28 +278,32 @@ transparent full-canvas PNG export if tests confirm the same issue there.
 
 ### Draw order and opacity
 
-The `<image>` replaces its mark group at the same traversal position, so vector
-siblings before and after it retain their SVG paint order. Effective view and
-mark opacity is already applied by WebGL and must not be applied again to the
-SVG image.
+The `<image>` replaces the whole raster run at the position of its first paint
+operation, so vector siblings before and after it retain their SVG paint order.
+Effective view and mark opacity is already applied by WebGL and must not be
+applied again to the SVG image.
 
-Rasterizing multiple marks into one image is allowed only when they form a
-contiguous draw-order range. Combining noncontiguous layers would change
-compositing relative to intervening vector marks.
+Rasterizing multiple marks into one image is required when they form a maximal
+compatible contiguous draw-order range. Combining noncontiguous layers is
+forbidden because it would change compositing relative to intervening vector
+marks. Ordinary source-over compositing needs no special handling because the
+targets are replayed in their original order into the same transparent buffer.
 
 ### SampleView
 
 The normal WebGL renderer already batches requests by mark. Its callbacks
 consume `facetId`, `sampleFacetRenderingOptions`, SampleView facet
 textures/uniforms, and the shared GridChild clip. Raster export must retain this
-boundary: all sample facets of a selected mark are rendered into the same
-framebuffer capture and become one embedded image.
+boundary: all sample facets of a raster target are rendered into the same
+framebuffer capture. When adjacent SampleView marks exceed the threshold, all
+facets of all those marks become one embedded image.
 
-One image per sample is not an acceptable fallback. A visualization may have
-thousands of samples, and per-facet images would make both the SVG DOM and PNG
-encoding cost unreasonable. The raster target must therefore be keyed by mark
-identity and compatible effective clip, not by an individual `renderMark()`
-callback.
+One image per sample or per adjacent raster target is not an acceptable
+fallback. A visualization may have thousands of samples and several stacked
+dense layers; fragmenting those into images would make both the SVG DOM and PNG
+encoding cost unreasonable. A raster target is therefore keyed by mark
+identity, while the emitted image is keyed by raster run, not by an individual
+`renderMark()` callback.
 
 The callbacks must execute in the same order as the existing buffered WebGL
 renderer. If the SVG traversal cannot infer the complete repeated-mark scope,
@@ -234,27 +312,47 @@ loop rather than relying on class-name detection.
 
 ## Rasterization policy
 
-The policy should be developed in this order:
+Rasterization uses one user-supplied maximum vector-instance count. The count
+must include only instances that the SVG renderer would actually emit after
+viewport, clip-region, `cullByVisibleRange`, and invalid-value culling. An
+instance is counted once even if its renderer emits several SVG elements, such
+as a rectangle with a shadow.
 
-1. Internal explicit selection used by tests and development.
-2. Public explicit selection by view selector or export-only mark predicate.
-3. Automatic selection using an estimated SVG element count.
-4. Optional export-size and elapsed-time diagnostics for tuning defaults.
+For SampleView, the count is the sum of visible instances across all sample
+facets rendered for the logical mark. This prevents a mark with few instances
+per sample but thousands of samples from accidentally remaining vector.
 
-Raw datum count is only an approximation. A renderer-specific estimator may
-account for cases such as rectangle shadows, while most point, rule, link,
-arrow, and text instances contribute one primary element. The estimator should
-remain conservative and inexpensive.
+Counting must reuse the SVG renderer's instance traversal and culling logic.
+Renderers should expose a shared visible-instance iterator or visitor that can
+either count instances or emit elements; a separate approximate estimator
+would eventually drift from actual export behavior. Counting may traverse the
+data once before rendering, but it must not construct SVG elements.
+
+The comparison is deliberately simple:
+
+```text
+visibleInstanceCount > maxVectorInstances => raster
+visibleInstanceCount <= maxVectorInstances => vector
+```
+
+There is no view selector, path override, per-mark callback, or automatic
+default. Tests select rasterized content by choosing a threshold around known
+fixture counts.
+
+Unsupported SVG properties remain warnings and do not independently trigger
+rasterization. This keeps fallback behavior separate from the density policy.
 
 Rasterization should be reported as export metadata, not as an unsupported
 property warning. A tentative result extension is:
 
 ```ts
 interface SvgRasterizationInfo {
-  viewPath: string;
-  markType: string;
-  instanceCount: number;
-  reason: "explicit" | "element-limit" | "unsupported-vector-feature";
+  targets: Array<{
+    markType: string;
+    instanceCount: number;
+  }>;
+  reason: "instance-threshold";
+  maxVectorInstances: number;
   pixelRatio: number;
 }
 ```
@@ -290,8 +388,31 @@ first.
 
 ### Rasterize complete view subtrees only
 
-Deferred. It can reduce image count and is useful for SampleView, but loses more
-editability and requires a capture scope spanning nested and repeated views.
+Rejected as the primary batching rule. It loses more editability than necessary
+and cannot combine adjacent selected layers cleanly when their nearest useful
+boundary is a layered parent. Paint-order runs provide the same image-count
+benefit without forcing all content in a subtree to be rasterized.
+
+### Emit one image per selected mark
+
+Rejected. It is straightforward, but needlessly repeats PNG, `<image>`, clip,
+and group overhead for stacked rasterized layers. It is especially poor for
+SampleView, where many samples and several adjacent dense marks should still
+produce one image.
+
+### Select individual views
+
+Rejected. View paths are not reliable identifiers, and a selector or callback
+API adds configuration and testing surface for a feature with little expected
+use. A global visible-instance threshold addresses the practical file-size
+problem without making specifications export-aware.
+
+### Create a WebGL context during SVG export
+
+Rejected. Context creation is not reliable in headless environments and the
+marks' buffers, textures, and programs belong to the context used during normal
+rendering. Without an existing compatible context, the exporter keeps the
+content vector and reports that rasterization was unavailable.
 
 ## Risks and mitigations
 
@@ -308,12 +429,24 @@ editability and requires a capture scope spanning nested and repeated views.
 - **GL state is changed during export:** Perform captures synchronously within
   export and rely on the existing `exportSvg()` cleanup render to restore the
   visible canvas. Ensure every framebuffer path unbinds in `finally`.
-- **Large embedded data URLs:** Crop readback, compress as PNG, and capture all
-  SampleView facets of a selected mark in one image.
-- **Changed draw order:** Rasterize only one mark or a contiguous subtree per
-  image and retain its exact SVG insertion point.
+- **Large embedded data URLs:** Crop readback, compress as PNG, and combine each
+  maximal contiguous run, including all of its SampleView facets, into one
+  image.
+- **Changed draw order:** End a run at every intervening vector paint operation,
+  replay raster targets in their original order, and insert the image at the
+  run's first paint position.
+- **Lost editor hierarchy:** Name the raster-run group, place it under the
+  nearest common SVG parent, include every target in diagnostics, and omit only
+  groups that would otherwise be empty.
+- **Incorrect cross-clip batching:** Preserve the clip/scissor on each WebGL
+  draw request. Apply a shared outer SVG clip only when every target has the
+  same effective clip.
 - **Mutable rendering options:** Snapshot clip and facet options when a capture
   is deferred rather than retaining objects that SampleView may reuse.
+- **Optional WebGL becomes an accidental dependency:** Keep raster code behind
+  its own dynamic import and test SVG export in an environment with no WebGL or
+  canvas PNG encoder. Fall back to vector output with one warning when a
+  threshold was supplied.
 
 ## Implementation plan
 
@@ -334,32 +467,65 @@ bounds, and opaque output compatibility.
 
 **Tentative commit:** `fix(core): support transparent cropped WebGL readback`
 
-### 2. Add an explicit mark-batched raster capture
+### 2. Add shared visible-instance counting
 
-**Outcome:** The SVG subsystem can replace one explicitly selected UnitView
-mark with a WebGL-rendered `<image>` while preserving vector siblings. All
-SampleView facets of that mark are included in the same image from the outset.
+**Outcome:** Each supported SVG mark renderer can count the instances it would
+emit without constructing SVG elements, using the same traversal and culling
+logic as vector emission. SampleView counts are aggregated across facets.
+
+**Affected areas:**
+
+- SVG renderer helpers and mark renderers under
+  `packages/core/src/svg/renderers/`.
+- `packages/core/src/svg/svgViewRenderingContext.js` for SampleView aggregation.
+
+**Verification:** For representative point, rect, text, rule, link, and arrow
+marks, compare the reported count with the emitted primary instance count.
+Cover viewport clipping, `cullByVisibleRange`, invalid values, and several
+SampleView facets.
+
+**Documentation/migration:** None; this is an internal counting contract.
+
+**Tentative commit:** `refactor(core): share SVG instance culling with raster policy`
+
+### 3. Add threshold-based contiguous-run raster capture
+
+**Outcome:** When `maxVectorInstances` is supplied, the SVG subsystem replaces
+marks above the threshold with WebGL-rendered `<image>` elements while
+preserving vector siblings. Maximal compatible contiguous runs produce one
+image. All SampleView facets of every mark in a run are included in that image
+from the outset.
 
 **Affected areas:**
 
 - New `packages/core/src/svg/raster/` modules.
 - `packages/core/src/svg/index.js`.
 - `packages/core/src/svg/svgViewRenderingContext.js`.
-- `packages/core/src/genomeSpyBase.js` for passing `WebGLHelper` internally.
+- `packages/core/src/genomeSpyBase.js` for passing an optional `WebGLHelper`
+  internally.
 - `packages/app/src/sampleView/sampleView.js` only if an explicit capture scope
   is required.
 
-**Verification:** A browser integration fixture with vector rules/text around a
-rasterized point layer; assert SVG hierarchy and compare the hybrid rendering
-against ordinary WebGL. Add a SampleView case with many facets and assert that
-the selected mark emits exactly one `<image>` with correct y positions and the
-shared GridChild clip.
+**Verification:** Use a layered browser integration fixture containing two
+adjacent over-threshold layers surrounded by under-threshold vector rules/text.
+Assert that the two layers emit one image and preserve the rendering of the
+ordinary WebGL output. Insert an under-threshold vector layer between the dense
+layers and assert that two images are emitted. Add a SampleView case whose
+aggregate count exceeds the threshold; assert that multiple adjacent dense
+marks emit exactly one `<image>` with correct sample y positions and
+per-request GridChild clipping. Confirm that equality with the threshold stays
+vector and that omitting the option produces an all-vector export.
+Run the same export without a WebGL context, assert complete vector output and
+one rasterization-unavailable warning, and verify that the raster submodule was
+not loaded.
 
-**Documentation/migration:** Keep the selection hook internal at this step.
+**Documentation/migration:** Document the threshold as an opt-in SVG export
+size control and state that it counts visible instances, not source rows or SVG
+elements.
 
-**Tentative commit:** `feat(core): rasterize selected SVG mark layers with WebGL`
+**Tentative commit:** `feat(core): rasterize dense SVG layer runs with WebGL`
 
-### 3. Add pixel-ratio, limits, diagnostics, and cleanup
+### 4. Add pixel-ratio, limits, diagnostics, and cleanup
 
 **Outcome:** Captures have configurable resolution, validate GPU limits, report
 rasterization metadata, and release all framebuffer resources on success and
@@ -371,51 +537,36 @@ failure.
 - Rasterizer lifecycle and error handling.
 - Core API tests.
 
-**Verification:** Test multiple sequential captures, oversized requests,
-resource cleanup, custom logical export size, and pixel ratios above one.
+**Verification:** Test multiple separated runs, unioned capture bounds,
+oversized requests, resource cleanup, custom logical export size, and pixel
+ratios above one. Diagnostics must list every target in each run.
 
 **Documentation/migration:** Document that raster resolution remains fixed when
 the SVG is scaled for print.
 
 **Tentative commit:** `feat(core): configure SVG raster layer resolution`
 
-### 4. Add explicit public selection
+### 5. Add the App Save SVG dialog
 
-**Outcome:** Callers can select raster targets using a stable export-only API,
-preferably based on existing view selectors rather than implementation classes.
-
-**Affected areas:**
-
-- `SvgExportOptions` and related public types.
-- View selection/validation helpers.
-- API documentation and App export UI only if a control is desired.
-
-**Verification:** Select one layer in a multi-layer example, reject ambiguous or
-invalid selectors clearly, and confirm unspecified layers remain vector.
-
-**Documentation/migration:** Add a concise hybrid-export example. No default
-behavior changes yet.
-
-**Tentative commit:** `feat(core): select raster layers in SVG exports`
-
-### 5. Add automatic dense-layer selection
-
-**Outcome:** Export can rasterize marks whose estimated SVG complexity exceeds
-a configured limit without first constructing their elements.
+**Outcome:** **Save SVG** opens a dialog where users can opt into dense-mark
+rasterization, set `maxVectorInstances`, and choose the raster pixel ratio. The
+dialog performs the export and download using the selected options.
 
 **Affected areas:**
 
-- Renderer complexity estimators.
-- Rasterization policy and diagnostics.
-- Dense synthetic fixtures.
+- A new dialog under `packages/app/src/components/dialogs/`.
+- `packages/app/src/components/toolbar/toolbar.js`.
+- Focused App component tests.
 
-**Verification:** Confirm boundary behavior around the threshold, vector axes
-and titles, reduced SVG element count/file size, and deterministic diagnostics.
+**Verification:** Test the default all-vector submission, enabled threshold and
+pixel-ratio values, control enablement, file-picker and anchor-download paths,
+cancel behavior, and surfaced export failures. Confirm that the toolbar has no
+remaining SVG download implementation.
 
-**Documentation/migration:** Automatic rasterization should initially be opt-in.
-Document the fidelity/file-size tradeoff.
+**Documentation/migration:** Keep the dialog copy concise and explain that only
+dense mark layers become pixels while axes and labels stay vector.
 
-**Tentative commit:** `feat(core): rasterize dense SVG mark layers automatically`
+**Tentative commit:** `feat(app): configure rasterization when saving SVG`
 
 ### 6. Evaluate smaller or multisampled framebuffers
 
@@ -434,10 +585,11 @@ representative dense examples and high-DPI exports.
 
 ## Initial testing material
 
-- A small layered point/rule/text spec to verify exact sibling ordering.
+- A small layered point/rect/rule/text spec to verify adjacent-run merging and
+  exact sibling ordering around intervening vector content.
 - `examples/docs/examples/generic/upsetr-mutations.json` to keep axes, labels,
-  and sparse matrix structure vector while selectively rasterizing a chosen
-  mark layer.
+  and sparse matrix structure vector while a low test threshold rasterizes its
+  denser mark layers.
 - A dense point or rect fixture generated in a test rather than committed as a
   huge JSON file.
 - `packages/app/src/sampleView/sampleView.js` examples for mark-batched facet
@@ -447,10 +599,22 @@ representative dense examples and high-DPI exports.
 
 ## Acceptance criteria
 
-- At least one selected dense mark is rendered exclusively by WebGL and appears
-  as one embedded PNG `<image>` in the correct SVG group.
-- Every rasterized SampleView mark emits one image containing all of its sample
-  facets for the shared GridChild clip, even with thousands of samples.
+- A maximal contiguous run of over-threshold marks is rendered exclusively by
+  WebGL and appears as one embedded PNG `<image>` under their nearest common
+  SVG parent.
+- Two over-threshold marks separated by painted vector content emit two images
+  and preserve the intervening content's compositing order.
+- Every rasterized SampleView run emits one image containing all sample facets
+  of all adjacent over-threshold marks, even with thousands of samples.
+- Rasterization decisions use the exact post-culling instance count, aggregate
+  repeated SampleView facets, and rasterize only when the count is strictly
+  greater than `maxVectorInstances`.
+- Omitting `maxVectorInstances` produces no density-based rasterization.
+- SVG export succeeds without a WebGL context and without loading raster-module
+  dependencies. When `maxVectorInstances` is supplied in that environment, all
+  marks remain vector and one actionable warning is returned.
+- The App's **Save SVG** action opens a dialog that defaults to vector output
+  and passes the enabled instance threshold and raster scale factor to Core.
 - Vector siblings before and after the image preserve their draw order and
   remain editable.
 - The hybrid rendering matches the ordinary WebGL rendering at the configured
@@ -460,21 +624,13 @@ representative dense examples and high-DPI exports.
 - Custom logical export dimensions and raster pixel ratios work together.
 - Rasterization is reported through structured export information.
 - GPU resources are released after both successful and failed exports.
-- Automatic rasterization does not occur silently until its policy and default
-  threshold are explicitly approved.
+- Unsupported SVG properties continue to produce warnings rather than silently
+  requesting rasterization.
 
 ## Unresolved questions
 
-- Should explicit selection use existing view selectors, a callback available
-  only to JavaScript callers, or an export-only property in the specification?
 - Should rasterization diagnostics extend the result with a `rasterized` field
   or use a more general structured diagnostics collection?
 - What raster pixel ratio should the App offer by default for publication use?
-- Should unsupported vector-only features automatically request WebGL fallback,
-  or should that remain separate from density-based rasterization?
-- What complexity estimator and default threshold give useful file-size savings
-  without surprising users?
-- Should contiguous rasterized marks be combined into one image, or should each
-  independently named mark remain a separate editor object?
 - When should tiled or multisampled rendering be introduced, based on measured
   GPU limits and visual quality?
