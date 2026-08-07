@@ -71,6 +71,3 @@ Run the SVG suite from the repository root:
 ```sh
 npx vitest run packages/core/src/svg
 ```
-
-The broader implementation status and remaining work are tracked in the
-[SVG export plan](../../../../plans/svg-export/svg-export-plan.md).
