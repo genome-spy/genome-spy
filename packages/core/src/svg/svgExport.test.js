@@ -1,10 +1,97 @@
 // @vitest-environment jsdom
 
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
-import { createSvg } from "./index.js";
+import { createSvg, createSvgExport } from "./index.js";
+
+const { rasterizeSvgRuns } = vi.hoisted(() => ({
+    rasterizeSvgRuns: vi.fn(
+        (
+            /** @type {{runs: import("./svgViewRenderingContext.js").SvgRasterRun[]}} */ options
+        ) => {
+            for (const run of options.runs) {
+                const image = /** @type {SVGImageElement} */ (run.image);
+                image.setAttribute("href", "data:image/png;base64,stub");
+            }
+        }
+    ),
+}));
+
+vi.mock("./raster/index.js", () => ({ rasterizeSvgRuns }));
 
 describe("SVG export", () => {
+    test("falls back to vectors when rasterization has no WebGL context", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}, {}] },
+            mark: "point",
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                size: { value: 100 },
+                fill: { value: "black" },
+            },
+        });
+
+        const { svg, warnings, rasterized } = await createSvgExport({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+            rasterization: { maxVectorInstances: 1 },
+        });
+
+        expect(svg.querySelectorAll("circle")).toHaveLength(2);
+        expect(svg.querySelector("image")).toBeNull();
+        expect(warnings).toContainEqual(
+            expect.stringContaining("no WebGL context")
+        );
+        expect(rasterized).toEqual([]);
+    });
+
+    test("rasterizes adjacent over-threshold layers as one run", async () => {
+        const { view } = await createHeadlessEngine(
+            /** @type {import("../spec/root.js").RootSpec} */ ({
+                layer: ["point", "rect"].map((mark) => ({
+                    data: { values: [{}, {}] },
+                    mark,
+                    encoding: {
+                        x: { value: 0.25 },
+                        x2: { value: 0.75 },
+                        y: { value: 0.25 },
+                        y2: { value: 0.75 },
+                        fill: { value: "black" },
+                    },
+                })),
+            })
+        );
+
+        const result = await createSvgExport({
+            viewRoot: view,
+            webGLHelper: /** @type {any} */ ({}),
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+            rasterization: { maxVectorInstances: 1, pixelRatio: 3 },
+        });
+
+        expect(result.svg.querySelectorAll("image")).toHaveLength(1);
+        expect(result.svg.querySelector("image").getAttribute("href")).toBe(
+            "data:image/png;base64,stub"
+        );
+        expect(result.rasterized).toEqual([
+            {
+                targets: [
+                    { markType: "point", instanceCount: 2 },
+                    { markType: "rect", instanceCount: 2 },
+                ],
+                reason: "instance-threshold",
+                maxVectorInstances: 1,
+                pixelRatio: 3,
+            },
+        ]);
+        expect(rasterizeSvgRuns).toHaveBeenCalledOnce();
+    });
+
     test("emits scaled rule and plain text elements", async () => {
         const { view } = await createHeadlessEngine({
             data: {

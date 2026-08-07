@@ -300,6 +300,67 @@ describe("SvgViewRenderingContext", () => {
         expect(context.getSvg().querySelectorAll("clipPath")).toHaveLength(2);
     });
 
+    test.each([
+        ["combines adjacent dense layers", ["point", "rect", "text"], 1],
+        [
+            "keeps dense layers separated by a vector layer in separate runs",
+            ["point", "text", "rect"],
+            2,
+        ],
+    ])("%s", async (_name, markTypes, expectedRunCount) => {
+        const layer = markTypes.map((markType) => ({
+            data: {
+                values: markType == "text" ? [{ label: "vector" }] : [{}, {}],
+            },
+            mark: markType,
+            encoding: {
+                x: { value: 0.25 },
+                x2: { value: 0.75 },
+                y: { value: 0.25 },
+                y2: { value: 0.75 },
+                text: { field: "label" },
+                fill: { value: "black" },
+                color: { value: "black" },
+            },
+        }));
+        const { view } = await createHeadlessEngine(
+            /** @type {import("../spec/root.js").RootSpec} */ ({ layer })
+        );
+        const context = new SvgViewRenderingContext(
+            { picking: false },
+            {
+                width: 100,
+                height: 100,
+                background: null,
+                maxVectorInstances: 1,
+            }
+        );
+        const coords = Rectangle.create(0, 0, 100, 100);
+
+        context.beginInstanceCounting();
+        view.render(context, coords);
+        context.endInstanceCounting();
+        view.render(context, coords);
+
+        const runs = context.getRasterRuns();
+        expect(runs).toHaveLength(expectedRunCount);
+        expect(context.getSvg().querySelectorAll("image")).toHaveLength(
+            expectedRunCount
+        );
+        expect(
+            context.getSvg().querySelectorAll("text").length
+        ).toBeGreaterThan(0);
+        expect(context.getSvg().querySelector("circle")).toBeNull();
+        expect(
+            context.getSvg().querySelector('[data-mark-type="rect"]')
+        ).toBeNull();
+        expect(
+            runs.flatMap((run) =>
+                run.targets.map((target) => target.mark.getType())
+            )
+        ).toEqual(markTypes.filter((markType) => markType != "text"));
+    });
+
     test("projects texture-indexed sample facets using CPU positions", async () => {
         const { view } = await createHeadlessEngine({
             data: {

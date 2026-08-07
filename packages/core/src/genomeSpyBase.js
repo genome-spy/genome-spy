@@ -683,18 +683,21 @@ export default class GenomeSpy {
         const background = getSvgBackground(this.spec, options);
 
         try {
-            const { createSvg } = await import("./svg/index.js");
-            const { svg, warnings } = createSvg({
+            const { createSvgExport } = await import("./svg/index.js");
+            const { svg, warnings, rasterized } = await createSvgExport({
                 viewRoot: this.viewRoot,
+                webGLHelper: this.#glHelper,
                 logicalWidth,
                 logicalHeight,
                 background,
+                rasterization: options.rasterization,
             });
             return {
                 blob: new Blob([new XMLSerializer().serializeToString(svg)], {
                     type: "image/svg+xml",
                 }),
                 warnings,
+                rasterized,
             };
         } finally {
             this.computeLayout();

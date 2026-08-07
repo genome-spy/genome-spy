@@ -1,9 +1,33 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import Rectangle from "../layout/rectangle.js";
 import BufferedViewRenderingContext from "./bufferedViewRenderingContext.js";
 
 describe("BufferedViewRenderingContext", () => {
+    test("does not render marks rejected by the mark predicate", () => {
+        const markPredicate = vi.fn(() => false);
+        const context = new BufferedViewRenderingContext(
+            { picking: false },
+            {
+                webGLHelper:
+                    /** @type {import("../../gl/webGLHelper.js").default} */ (
+                        /** @type {unknown} */ ({ gl: {} })
+                    ),
+                canvasSize: { width: 100, height: 100 },
+                devicePixelRatio: 1,
+                markPredicate,
+            }
+        );
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({})
+        );
+
+        context.renderMark(mark, {});
+        context.render();
+
+        expect(markPredicate).toHaveBeenCalledWith(mark);
+    });
+
     test("reuses viewport setup for value-equal mark clips", () => {
         const coords = Rectangle.create(0, 0, 20, 10);
         const gl = /** @type {WebGL2RenderingContext} */ (

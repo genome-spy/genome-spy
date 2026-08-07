@@ -37,3 +37,130 @@ export function createSvg({
         warnings: renderingContext.getWarnings(),
     };
 }
+
+/**
+ * Creates either a vector-only or hybrid SVG without requiring WebGL for the
+ * vector path.
+ *
+ * @param {object} options
+ * @param {import("../view/view.js").default} options.viewRoot
+ * @param {import("../gl/webGLHelper.js").default} [options.webGLHelper]
+ * @param {number} options.logicalWidth
+ * @param {number} options.logicalHeight
+ * @param {string | null} [options.background]
+ * @param {{maxVectorInstances: number, pixelRatio?: number}} [options.rasterization]
+ */
+export async function createSvgExport(options) {
+    const rasterization = options.rasterization;
+    if (!rasterization) {
+        return { ...createSvg(options), rasterized: [] };
+    }
+
+    validateRasterizationOptions(rasterization);
+    if (!options.webGLHelper) {
+        const result = createSvg(options);
+        return {
+            ...result,
+            warnings: [
+                ...result.warnings,
+                "SVG rasterization was requested but no WebGL context is available; exported all marks as vectors.",
+            ],
+            rasterized: [],
+        };
+    }
+
+    return createRasterizedSvg({
+        ...options,
+        webGLHelper: options.webGLHelper,
+        maxVectorInstances: rasterization.maxVectorInstances,
+        pixelRatio: rasterization.pixelRatio,
+    });
+}
+
+/**
+ * Creates a hybrid SVG using the existing WebGL context for marks whose exact
+ * post-culling instance count exceeds the supplied threshold.
+ *
+ * @param {object} options
+ * @param {import("../view/view.js").default} options.viewRoot
+ * @param {import("../gl/webGLHelper.js").default} options.webGLHelper
+ * @param {number} options.logicalWidth
+ * @param {number} options.logicalHeight
+ * @param {string | null} [options.background]
+ * @param {number} options.maxVectorInstances
+ * @param {number} [options.pixelRatio]
+ */
+export async function createRasterizedSvg({
+    viewRoot,
+    webGLHelper,
+    logicalWidth,
+    logicalHeight,
+    background = "white",
+    maxVectorInstances,
+    pixelRatio = 2,
+}) {
+    validateRasterizationOptions({ maxVectorInstances, pixelRatio });
+
+    const renderingContext = new SvgViewRenderingContext(
+        { picking: false },
+        {
+            width: logicalWidth,
+            height: logicalHeight,
+            background,
+            maxVectorInstances,
+        }
+    );
+    const coords = Rectangle.create(0, 0, logicalWidth, logicalHeight);
+
+    renderingContext.beginInstanceCounting();
+    viewRoot.render(renderingContext, coords, { firstFacet: true });
+    renderingContext.endInstanceCounting();
+
+    viewRoot.render(renderingContext, coords, { firstFacet: true });
+    const runs = renderingContext.getRasterRuns();
+    if (runs.length) {
+        const { rasterizeSvgRuns } = await import("./raster/index.js");
+        rasterizeSvgRuns({
+            runs,
+            viewRoot,
+            webGLHelper,
+            logicalWidth,
+            logicalHeight,
+            pixelRatio,
+        });
+    }
+
+    return {
+        svg: renderingContext.getSvg(),
+        warnings: renderingContext.getWarnings(),
+        rasterized: runs.map((run) => ({
+            targets: run.targets.map((target) => ({
+                markType: target.mark.getType(),
+                instanceCount: target.instanceCount,
+            })),
+            reason: /** @type {const} */ ("instance-threshold"),
+            maxVectorInstances,
+            pixelRatio,
+        })),
+    };
+}
+
+/**
+ * @param {{maxVectorInstances: number, pixelRatio?: number}} options
+ */
+function validateRasterizationOptions(options) {
+    if (
+        !Number.isInteger(options.maxVectorInstances) ||
+        options.maxVectorInstances < 0
+    ) {
+        throw new RangeError(
+            "maxVectorInstances must be a non-negative integer."
+        );
+    }
+    if (
+        options.pixelRatio != null &&
+        (!Number.isFinite(options.pixelRatio) || options.pixelRatio <= 0)
+    ) {
+        throw new RangeError("SVG raster pixelRatio must be positive.");
+    }
+}

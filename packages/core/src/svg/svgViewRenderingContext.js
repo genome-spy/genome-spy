@@ -25,6 +25,7 @@ import {
  * @prop {number} width Logical export width.
  * @prop {number} height Logical export height.
  * @prop {string | null} [background] Export background. Null is transparent.
+ * @prop {number} [maxVectorInstances]
  */
 
 /**
@@ -40,6 +41,23 @@ import {
  * @prop {WeakMap<import("../view/view.js").default, SVGGElement>} viewGroups
  * @prop {WeakMap<import("../marks/mark.js").default, Map<string, SVGGElement>>} markGroups
  * @prop {Set<SVGGElement>} markGroupElements
+ * @prop {WeakMap<import("../marks/mark.js").default, SvgRasterRun>} rasterRuns
+ */
+
+/**
+ * @typedef {object} SvgRasterTarget
+ * @prop {import("../marks/mark.js").default} mark
+ * @prop {number} instanceCount
+ */
+
+/**
+ * @typedef {object} SvgRasterRun
+ * @prop {Set<import("../marks/mark.js").default>} marks
+ * @prop {SvgRasterTarget[]} targets
+ * @prop {Set<SVGElement>} viewNodes
+ * @prop {Comment} anchor
+ * @prop {import("./svgBounds.js").SvgBounds} bounds
+ * @prop {SVGImageElement | undefined} image
  */
 
 /**
@@ -111,12 +129,22 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     /** @type {SvgSampleFacetBatch | undefined} */
     #sampleFacetBatch;
 
+    /** @type {number | undefined} */
+    #maxVectorInstances;
+
+    /** @type {SvgRasterRun[]} */
+    #rasterRuns = [];
+
+    /** @type {SvgRasterRun | undefined} */
+    #pendingRasterRun;
+
     #nextViewId = 0;
     #nextClipId = 0;
     #nextMaskId = 0;
     #nextFilterId = 0;
     #nextPatternId = 0;
     #nextGradientId = 0;
+    #nextRasterRunId = 0;
 
     /**
      * @param {import("../types/rendering.js").GlobalRenderingOptions} globalOptions
@@ -127,6 +155,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
 
         this.width = options.width;
         this.height = options.height;
+        this.#maxVectorInstances = options.maxVectorInstances;
         const width = formatSvgNumber(options.width);
         const height = formatSvgNumber(options.height);
 
@@ -181,6 +210,17 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         return this.#instanceCounts.get(mark) ?? 0;
     }
 
+    /** @returns {SvgRasterRun[]} */
+    getRasterRuns() {
+        this.#flushRasterRun();
+        for (const run of this.#rasterRuns) {
+            if (!run.image) {
+                this.#createRasterPlaceholder(run);
+            }
+        }
+        return this.#rasterRuns;
+    }
+
     /** @override */
     beginSampleFacetBatch() {
         if (this.#sampleFacetBatch) {
@@ -190,6 +230,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             viewGroups: new WeakMap(),
             markGroups: new WeakMap(),
             markGroupElements: new Set(),
+            rasterRuns: new WeakMap(),
         };
     }
 
@@ -297,14 +338,6 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             mark.properties.clip,
             this.currentCoords
         );
-        const batched =
-            !this.#countingInstances && this.#sampleFacetBatch != null;
-        const batchClipPathUrl = batched
-            ? this.getClipPathUrl(markClip)
-            : undefined;
-        const group = this.#countingInstances
-            ? this.#countingGroup
-            : this.#getMarkGroup(mark, batchClipPathUrl);
         const visibleBounds = createSvgVisibleBounds(
             this.width,
             this.height,
@@ -313,6 +346,40 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         if (!hasVisibleArea(visibleBounds)) {
             return;
         }
+
+        const visibleInstanceCount = this.getVisibleInstanceCount(mark);
+        if (
+            !this.#countingInstances &&
+            this.#maxVectorInstances != null &&
+            visibleInstanceCount == 0
+        ) {
+            return;
+        }
+        if (
+            !this.#countingInstances &&
+            this.#maxVectorInstances != null &&
+            visibleInstanceCount > this.#maxVectorInstances
+        ) {
+            this.#recordRasterTarget(mark, visibleBounds);
+            return;
+        }
+
+        const batched =
+            !this.#countingInstances && this.#sampleFacetBatch != null;
+        const batchClipPathUrl = batched
+            ? this.getClipPathUrl(markClip)
+            : undefined;
+        const existingBatchGroup = batched
+            ? this.#sampleFacetBatch.markGroups
+                  .get(mark)
+                  ?.get(batchClipPathUrl ?? "")
+            : undefined;
+        if (!this.#countingInstances && !existingBatchGroup) {
+            this.#flushRasterRun();
+        }
+        const group = this.#countingInstances
+            ? this.#countingGroup
+            : this.#getMarkGroup(mark, batchClipPathUrl);
         const anchorCullBounds = createSvgAnchorCullBounds(
             this.currentCoords,
             inheritedClip,
@@ -411,6 +478,86 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             }
             this.currentNode.appendChild(group);
         }
+    }
+
+    /**
+     * @param {import("../marks/mark.js").default} mark
+     * @param {import("./svgBounds.js").SvgBounds} visibleBounds
+     */
+    #recordRasterTarget(mark, visibleBounds) {
+        const batchRun = this.#sampleFacetBatch?.rasterRuns.get(mark);
+        if (batchRun) {
+            extendBounds(batchRun.bounds, visibleBounds);
+            batchRun.viewNodes.add(this.currentNode);
+            return;
+        }
+
+        let run = this.#pendingRasterRun;
+        if (!run) {
+            const anchor = document.createComment("raster-run");
+            this.currentNode.appendChild(anchor);
+            run = {
+                marks: new Set(),
+                targets: [],
+                viewNodes: new Set(),
+                anchor,
+                bounds: { ...visibleBounds },
+                image: undefined,
+            };
+            this.#pendingRasterRun = run;
+        } else {
+            extendBounds(run.bounds, visibleBounds);
+        }
+
+        run.marks.add(mark);
+        run.targets.push({
+            mark,
+            instanceCount: this.getVisibleInstanceCount(mark),
+        });
+        run.viewNodes.add(this.currentNode);
+        this.#sampleFacetBatch?.rasterRuns.set(mark, run);
+    }
+
+    #flushRasterRun() {
+        const run = this.#pendingRasterRun;
+        if (!run) {
+            return;
+        }
+
+        this.#rasterRuns.push(run);
+        this.#pendingRasterRun = undefined;
+    }
+
+    /** @param {SvgRasterRun} run */
+    #createRasterPlaceholder(run) {
+        const commonParent = findNearestCommonParent(run.viewNodes);
+        const rasterTypes = run.targets.map((target) => target.mark.getType());
+        const group = createSvgElement("g", {
+            id: `rasterized-${rasterTypes.join("-")}-${this.#nextRasterRunId++}`,
+            "data-name": `Rasterized ${rasterTypes.join(", ")}`,
+            "data-rasterized": "",
+        });
+        const image = /** @type {SVGImageElement} */ (
+            createSvgElement("image", { preserveAspectRatio: "none" })
+        );
+        group.appendChild(image);
+
+        const anchorParent = /** @type {SVGElement} */ (run.anchor.parentNode);
+        if (commonParent == anchorParent) {
+            commonParent.insertBefore(group, run.anchor);
+        } else {
+            commonParent.insertBefore(
+                group,
+                findChildUnderParent(anchorParent, commonParent)
+            );
+        }
+        run.anchor.remove();
+
+        for (const viewNode of run.viewNodes) {
+            removeEmptyViewBranch(viewNode, commonParent);
+        }
+
+        run.image = image;
     }
 
     /**
@@ -782,6 +929,67 @@ function groupDataByFacetIndex(facetIndexEncoder, data) {
         facet.push(datum);
     }
     return facets;
+}
+
+/**
+ * @param {import("./svgBounds.js").SvgBounds} target
+ * @param {import("./svgBounds.js").SvgBounds} source
+ */
+function extendBounds(target, source) {
+    target.x1 = Math.min(target.x1, source.x1);
+    target.y1 = Math.min(target.y1, source.y1);
+    target.x2 = Math.max(target.x2, source.x2);
+    target.y2 = Math.max(target.y2, source.y2);
+}
+
+/**
+ * @param {Set<SVGElement>} nodes
+ * @returns {SVGElement}
+ */
+function findNearestCommonParent(nodes) {
+    const [first, ...rest] = Array.from(nodes);
+    let candidate = first;
+    while (rest.some((node) => !candidate.contains(node))) {
+        candidate = /** @type {SVGElement} */ (
+            /** @type {unknown} */ (candidate.parentNode)
+        );
+    }
+    return candidate;
+}
+
+/**
+ * @param {SVGElement} node
+ * @param {SVGElement} parent
+ */
+function findChildUnderParent(node, parent) {
+    let child = node;
+    while (child.parentNode != parent) {
+        child = /** @type {SVGElement} */ (
+            /** @type {unknown} */ (child.parentNode)
+        );
+    }
+    return child;
+}
+
+/**
+ * Removes view groups whose only child is their editor-facing title.
+ *
+ * @param {SVGElement} node
+ * @param {SVGElement} stop
+ */
+function removeEmptyViewBranch(node, stop) {
+    let current = node;
+    while (
+        current != stop &&
+        current.matches("g[data-view-path]") &&
+        Array.from(current.children).every((child) => child.tagName == "title")
+    ) {
+        const parent = /** @type {SVGElement} */ (
+            /** @type {unknown} */ (current.parentNode)
+        );
+        current.remove();
+        current = parent;
+    }
 }
 
 /**

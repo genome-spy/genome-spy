@@ -16,6 +16,7 @@ import {
  * @prop {import("twgl.js").FramebufferInfo} [framebufferInfo]
  * @prop {string} [clearColor] Clear color for the  WebGL context,
  *      defaults to transparent black.
+ * @prop {(mark: import("../../marks/mark.js").default) => boolean} [markPredicate]
  */
 
 /**
@@ -43,6 +44,9 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
     /** @type {Set<import("../view.js").default>} */
     #views = new Set();
 
+    /** @type {(mark: import("../../marks/mark.js").default) => boolean} */
+    #markPredicate;
+
     /** @type {import("../layout/rectangle.js").default} */
     #coords = undefined;
 
@@ -60,6 +64,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
         this.#framebufferInfo = bufferedOptions.framebufferInfo;
         this.#dpr = bufferedOptions.devicePixelRatio;
         this.#canvasSize = bufferedOptions.canvasSize;
+        this.#markPredicate = bufferedOptions.markPredicate ?? (() => true);
 
         if (bufferedOptions.clearColor) {
             const c = color(bufferedOptions.clearColor).rgb();
@@ -91,6 +96,9 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     renderMark(mark, options) {
+        if (!this.#markPredicate(mark)) {
+            return;
+        }
         if (this.globalOptions.picking && !mark.isPickingParticipant()) {
             return;
         }

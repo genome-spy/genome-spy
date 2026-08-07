@@ -430,6 +430,39 @@ export interface SvgExportOptions {
 
     /** Overrides the visualization background. Null is transparent. */
     background?: string | null;
+
+    /** Rasterizes dense mark layers using the existing WebGL context. */
+    rasterization?: SvgRasterizationOptions;
+}
+
+export interface SvgRasterizationOptions {
+    /** Rasterize a mark when its visible instance count is larger than this. */
+    maxVectorInstances: number;
+
+    /** Physical raster pixels per logical SVG pixel. __Default value:__ `2` */
+    pixelRatio?: number;
+}
+
+export interface SvgRasterizationTargetInfo {
+    /** Mark type included in the raster image. */
+    markType: string;
+
+    /** Number of visible instances across all rendered facets. */
+    instanceCount: number;
+}
+
+export interface SvgRasterizationInfo {
+    /** Contiguous mark layers combined into this raster image. */
+    targets: SvgRasterizationTargetInfo[];
+
+    /** Why the layers were rasterized. */
+    reason: "instance-threshold";
+
+    /** Threshold used for this export. */
+    maxVectorInstances: number;
+
+    /** Physical raster pixels per logical SVG pixel. */
+    pixelRatio: number;
 }
 
 export interface SvgExportResult {
@@ -438,6 +471,9 @@ export interface SvgExportResult {
 
     /** Unsupported properties that were ignored during export. */
     warnings: string[];
+
+    /** Raster images embedded in the SVG, in paint order. */
+    rasterized: SvgRasterizationInfo[];
 }
 
 /**
