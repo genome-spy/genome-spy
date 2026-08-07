@@ -25,6 +25,8 @@ and rendering options.
   textures, scales, clipping, and facet logic.
 - Embed each rasterized result as a transparent PNG `<image>` in the
   corresponding SVG mark/view group.
+- Emit one image per rasterized SampleView mark and GridChild clip, regardless
+  of the number of sample facets.
 - Preserve sibling draw order and keep non-rasterized axes, titles, labels, and
   marks as native SVG.
 - Support a configurable raster pixel ratio independently of SVG logical size.
@@ -47,8 +49,9 @@ and rendering options.
 
 ## Terminology
 
-- **Raster target:** A mark occurrence or contiguous view subtree selected for
-  WebGL rasterization.
+- **Raster target:** A logical mark/UnitView, including all of its repeated
+  rendering requests that share a compatible capture clip, or a contiguous
+  view subtree selected for WebGL rasterization.
 - **Capture bounds:** The logical CSS-pixel rectangle covered by the embedded
   image.
 - **Raster pixel ratio:** Physical PNG pixels per logical SVG pixel.
@@ -80,9 +83,8 @@ A UnitView is the safest initial raster boundary:
 - Instance count and mark type are available before SVG elements are emitted.
 - Axes, titles, and legends remain vector without special handling.
 
-Rasterizing an arbitrary composite subtree is useful later, particularly for
-SampleView aggregation, but requires capture scopes spanning multiple
-`renderMark()` calls.
+Rasterizing an arbitrary composite subtree is useful later for combining
+several dense layers, but requires capture scopes spanning multiple marks.
 
 ### Use an export-sized framebuffer first
 
@@ -135,30 +137,35 @@ thresholds publicly.
 ### SVG rendering context
 
 `SvgViewRenderingContext.renderMark()` obtains the mark data before emission
-and asks a rasterization policy whether the occurrence should remain vector.
+and asks a rasterization policy whether the logical mark should remain vector.
 
 - Vector: call the existing SVG mark renderer.
-- Raster: create the normal mark group, append an `<image>` placeholder, and
-  give the WebGL rasterizer the mark, current coordinates, rendering options,
-  effective clip, placeholder, and diagnostic metadata.
+- Raster: create one normal mark group and `<image>` placeholder, then buffer
+  every rendering request for that mark together with its coordinates,
+  rendering options, effective clip, and diagnostic metadata.
 
 The decision must happen before invoking the SVG renderer so dense instance
-elements are never constructed and discarded.
+elements are never constructed and discarded. Repeated SampleView callbacks
+must find the existing raster target rather than creating additional groups or
+images.
 
 ### WebGL rasterizer
 
 A new module under `packages/core/src/svg/raster/` should own:
 
 - Creation and deletion of the reusable RGBA framebuffer.
-- Construction of a `BufferedViewRenderingContext` for a capture.
-- Rendering the selected mark callbacks with transparent clear color.
+- Collection and execution of selected mark callbacks using the same mark-wise
+  batching model as `BufferedViewRenderingContext`.
+- Rendering all callbacks for one raster target with transparent clear color.
 - DPR-aware capture-bound rounding.
 - Cropped `readPixels()` and WebGL-to-SVG Y-axis conversion.
 - Unpremultiplication of transparent pixel colors.
 - PNG encoding and assignment to the `<image>` placeholder.
 
 The rasterizer should be export-scoped and finalized in a `finally` block so
-framebuffers and attachments cannot leak if a capture fails.
+framebuffers and attachments cannot leak if a capture fails. Each raster target
+is cleared, rendered, read back, and encoded once after traversal has collected
+all of its callbacks.
 
 ### Capture bounds
 
@@ -208,22 +215,22 @@ compositing relative to intervening vector marks.
 
 ### SampleView
 
-The normal WebGL path already consumes `facetId`,
-`sampleFacetRenderingOptions`, SampleView facet textures/uniforms, and the
-GridChild clip. Rendering a single occurrence into a framebuffer should
-therefore be correct without special shaders.
+The normal WebGL renderer already batches requests by mark. Its callbacks
+consume `facetId`, `sampleFacetRenderingOptions`, SampleView facet
+textures/uniforms, and the shared GridChild clip. Raster export must retain this
+boundary: all sample facets of a selected mark are rendered into the same
+framebuffer capture and become one embedded image.
 
-However, SampleView currently invokes its child view once per visible sample.
-A naïve mark-level implementation may create one PNG per sample. This is a
-correct fallback but not an acceptable final optimization for thousands of
-samples.
+One image per sample is not an acceptable fallback. A visualization may have
+thousands of samples, and per-facet images would make both the SVG DOM and PNG
+encoding cost unreasonable. The raster target must therefore be keyed by mark
+identity and compatible effective clip, not by an individual `renderMark()`
+callback.
 
-A later capture-scope increment should aggregate repeated callbacks that share
-the same raster target and GridChild clip into one image. This must preserve
-sample transition ordering when facets overlap. If a safe aggregation boundary
-cannot be identified through existing `pushView()`/`popView()` calls,
-SampleView should expose an explicit rendering-context capture scope around its
-repeated sample loop rather than relying on class-name detection.
+The callbacks must execute in the same order as the existing buffered WebGL
+renderer. If the SVG traversal cannot infer the complete repeated-mark scope,
+SampleView should expose an explicit rendering-context scope around its sample
+loop rather than relying on class-name detection.
 
 ## Rasterization policy
 
@@ -301,8 +308,8 @@ editability and requires a capture scope spanning nested and repeated views.
 - **GL state is changed during export:** Perform captures synchronously within
   export and rely on the existing `exportSvg()` cleanup render to restore the
   visible canvas. Ensure every framebuffer path unbinds in `finally`.
-- **Large embedded data URLs:** Crop readback, compress as PNG, and avoid many
-  repeated SampleView images through later aggregation.
+- **Large embedded data URLs:** Crop readback, compress as PNG, and capture all
+  SampleView facets of a selected mark in one image.
 - **Changed draw order:** Rasterize only one mark or a contiguous subtree per
   image and retain its exact SVG insertion point.
 - **Mutable rendering options:** Snapshot clip and facet options when a capture
@@ -327,10 +334,11 @@ bounds, and opaque output compatibility.
 
 **Tentative commit:** `fix(core): support transparent cropped WebGL readback`
 
-### 2. Add an explicit single-mark raster capture
+### 2. Add an explicit mark-batched raster capture
 
 **Outcome:** The SVG subsystem can replace one explicitly selected UnitView
-mark with a WebGL-rendered `<image>` while preserving vector siblings.
+mark with a WebGL-rendered `<image>` while preserving vector siblings. All
+SampleView facets of that mark are included in the same image from the outset.
 
 **Affected areas:**
 
@@ -338,10 +346,14 @@ mark with a WebGL-rendered `<image>` while preserving vector siblings.
 - `packages/core/src/svg/index.js`.
 - `packages/core/src/svg/svgViewRenderingContext.js`.
 - `packages/core/src/genomeSpyBase.js` for passing `WebGLHelper` internally.
+- `packages/app/src/sampleView/sampleView.js` only if an explicit capture scope
+  is required.
 
 **Verification:** A browser integration fixture with vector rules/text around a
 rasterized point layer; assert SVG hierarchy and compare the hybrid rendering
-against ordinary WebGL.
+against ordinary WebGL. Add a SampleView case with many facets and assert that
+the selected mark emits exactly one `<image>` with correct y positions and the
+shared GridChild clip.
 
 **Documentation/migration:** Keep the selection hook internal at this step.
 
@@ -405,27 +417,7 @@ Document the fidelity/file-size tradeoff.
 
 **Tentative commit:** `feat(core): rasterize dense SVG mark layers automatically`
 
-### 6. Aggregate SampleView captures
-
-**Outcome:** Repeated sample facets belonging to the same selected layer and
-GridChild clip are rendered into one image rather than one image per sample.
-
-**Affected areas:**
-
-- Raster capture scopes in the rendering-context API.
-- `packages/app/src/sampleView/sampleView.js` if an explicit GridChild scope is
-  required.
-- SampleView SVG/browser tests.
-
-**Verification:** Expanded, collapsed, scrolled, sticky-summary, and transition
-states; ensure y positions, clipping, draw order, and image count are correct.
-
-**Documentation/migration:** Internal optimization; document only observable
-limitations if any remain.
-
-**Tentative commit:** `perf(app): aggregate SampleView SVG raster captures`
-
-### 7. Evaluate smaller or multisampled framebuffers
+### 6. Evaluate smaller or multisampled framebuffers
 
 **Outcome:** Decide from measurements whether translated cropped framebuffers,
 MSAA resolve, or tiled rendering are justified.
@@ -448,7 +440,8 @@ representative dense examples and high-DPI exports.
   mark layer.
 - A dense point or rect fixture generated in a test rather than committed as a
   huge JSON file.
-- `packages/app/src/sampleView/sampleView.js` examples for the aggregation step.
+- `packages/app/src/sampleView/sampleView.js` examples for mark-batched facet
+  capture.
 - A transparent-shadow fixture placed over differently colored SVG backgrounds
   to expose premultiplied-alpha errors.
 
@@ -456,6 +449,8 @@ representative dense examples and high-DPI exports.
 
 - At least one selected dense mark is rendered exclusively by WebGL and appears
   as one embedded PNG `<image>` in the correct SVG group.
+- Every rasterized SampleView mark emits one image containing all of its sample
+  facets for the shared GridChild clip, even with thousands of samples.
 - Vector siblings before and after the image preserve their draw order and
   remain editable.
 - The hybrid rendering matches the ordinary WebGL rendering at the configured
@@ -467,8 +462,6 @@ representative dense examples and high-DPI exports.
 - GPU resources are released after both successful and failed exports.
 - Automatic rasterization does not occur silently until its policy and default
   threshold are explicitly approved.
-- SampleView either aggregates repeated captures correctly or remains excluded
-  from automatic rasterization with a clear documented limitation.
 
 ## Unresolved questions
 
@@ -481,7 +474,7 @@ representative dense examples and high-DPI exports.
   or should that remain separate from density-based rasterization?
 - What complexity estimator and default threshold give useful file-size savings
   without surprising users?
-- Is one image per SampleView GridChild sufficient, or must independently named
-  sample layers remain separate for editor workflows?
+- Should contiguous rasterized marks be combined into one image, or should each
+  independently named mark remain a separate editor object?
 - When should tiled or multisampled rendering be introduced, based on measured
   GPU limits and visual quality?
