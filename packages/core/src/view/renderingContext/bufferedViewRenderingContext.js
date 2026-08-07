@@ -17,6 +17,7 @@ import {
  * @prop {string} [clearColor] Clear color for the  WebGL context,
  *      defaults to transparent black.
  * @prop {(mark: import("../../marks/mark.js").default) => boolean} [markPredicate]
+ * @prop {number} [pixelOffset] Logical-pixel offset applied to WebGL marks.
  */
 
 /**
@@ -53,6 +54,9 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
     #dpr = 1;
     #canvasSize = { width: 0, height: 0 };
 
+    /** @type {number | undefined} */
+    #pixelOffset;
+
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
      * @param {BufferedViewRenderingOptions} bufferedOptions
@@ -65,6 +69,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
         this.#dpr = bufferedOptions.devicePixelRatio;
         this.#canvasSize = bufferedOptions.canvasSize;
         this.#markPredicate = bufferedOptions.markPredicate ?? (() => true);
+        this.#pixelOffset = bufferedOptions.pixelOffset;
 
         if (bufferedOptions.clearColor) {
             const c = color(bufferedOptions.clearColor).rgb();
@@ -234,7 +239,8 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                                 this.#dpr,
                                 coords,
                                 request.clip,
-                                request.cullClip
+                                request.cullClip,
+                                this.#pixelOffset
                             );
                         })
                     );

@@ -1673,17 +1673,21 @@ export default class Mark {
      * @param {import("../view/layout/rectangle.js").default} coords
      * @param {ClipOptions} [clip]
      * @param {ClipOptions} [cullClip]
+     * @param {number} [pixelOffset]
      * @returns {boolean} true if the viewport is renderable (size > 0)
      */
-    setViewport(canvasSize, dpr, coords, clip, cullClip) {
+    setViewport(
+        canvasSize,
+        dpr,
+        coords,
+        clip,
+        cullClip,
+        pixelOffset = WEBGL_COORDINATE_OFFSET
+    ) {
         coords = coords.flatten();
 
         const gl = this.gl;
         const props = this.properties;
-
-        // Translate by half a pixel to place vertical / horizontal
-        // rules inside pixels, not between pixels.
-        const pixelOffset = WEBGL_COORDINATE_OFFSET;
 
         const xOffset = pixelOffset;
         const yOffset = pixelOffset;

@@ -46,7 +46,6 @@ describe("BufferedViewRenderingContext", () => {
                 clear: () => undefined,
             })
         );
-        let viewportSetups = 0;
         let draws = 0;
 
         /** @returns {void} */
@@ -67,10 +66,11 @@ describe("BufferedViewRenderingContext", () => {
         /**
          * @returns {boolean}
          */
-        const setViewport = () => {
-            viewportSetups++;
-            return true;
-        };
+        const setViewport = vi.fn(
+            /** @type {import("../../marks/mark.js").default["setViewport"]} */ (
+                () => true
+            )
+        );
 
         /** @returns {() => void} */
         const render = () => () => {
@@ -100,6 +100,7 @@ describe("BufferedViewRenderingContext", () => {
                     ),
                 canvasSize: { width: 100, height: 100 },
                 devicePixelRatio: 1,
+                pixelOffset: 0,
             }
         );
 
@@ -112,6 +113,7 @@ describe("BufferedViewRenderingContext", () => {
         context.render();
 
         expect(draws).toBe(2);
-        expect(viewportSetups).toBe(1);
+        expect(setViewport).toHaveBeenCalledOnce();
+        expect(setViewport.mock.calls[0][5]).toBe(0);
     });
 });

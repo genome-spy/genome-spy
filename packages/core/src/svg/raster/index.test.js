@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
-    const contexts = /** @type {object[]} */ ([]);
+    const contexts = /** @type {{options: any}[]} */ ([]);
     return {
         createFramebufferInfo: vi.fn(),
         framebufferToDataUrl: vi.fn(),
@@ -68,6 +68,7 @@ describe("rasterizeSvgRuns", () => {
             160
         );
         expect(mocks.contexts).toHaveLength(2);
+        expect(mocks.contexts[0].options).toMatchObject({ pixelOffset: 0 });
         expect(fixture.viewRoot.render).toHaveBeenCalledTimes(2);
         expect(mocks.framebufferToDataUrl).toHaveBeenNthCalledWith(
             1,
@@ -82,8 +83,8 @@ describe("rasterizeSvgRuns", () => {
                 unpremultiplyAlpha: true,
             }
         );
-        expect(runs[0].image.getAttribute("x")).toBe("0.5");
-        expect(runs[0].image.getAttribute("y")).toBe("1.5");
+        expect(runs[0].image.getAttribute("x")).toBe("1");
+        expect(runs[0].image.getAttribute("y")).toBe("2");
         expect(runs[0].image.getAttribute("width")).toBe("9.5");
         expect(runs[0].image.getAttribute("height")).toBe("11");
         expect(runs[0].image.getAttribute("href")).toBe(
