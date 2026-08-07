@@ -138,8 +138,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     pushView(view, coords) {
         const path = view.getPathString();
         const group = createSvgElement("g", {
-            id: "view-" + this.#nextViewId++,
-            "data-view-name": view.name,
+            id: createViewGroupId(view.name, this.#nextViewId++),
+            "data-name": view.name,
             "data-view-path": path,
         });
         const title = createSvgElement("title");
@@ -525,6 +525,27 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         }
         return entry.coords;
     }
+}
+
+/**
+ * Produces unique XML-safe identifiers that vector editors can also use as
+ * recognizable group names.
+ *
+ * @param {string} name
+ * @param {number} index
+ */
+function createViewGroupId(name, index) {
+    const slug = name
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^A-Za-z0-9_-]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    const safeName = /^[A-Za-z_]/.test(slug)
+        ? slug
+        : slug
+          ? "view-" + slug
+          : "view";
+    return `${safeName}-${index}`;
 }
 
 /**

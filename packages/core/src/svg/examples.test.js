@@ -43,7 +43,7 @@ describe("SVG example exports", () => {
             logicalHeight: 160,
         });
         const chromosomeLabels = Array.from(
-            svg.querySelectorAll('[data-view-name="chromosome_labels"] text')
+            svg.querySelectorAll('[data-name="chromosome_labels"] text')
         );
 
         expect(
@@ -139,7 +139,7 @@ describe("SVG example exports", () => {
         );
         const labels = Array.from(
             svg
-                .querySelector('[data-view-name="Label"]')
+                .querySelector('[data-name="Label"]')
                 .querySelectorAll('[data-mark-type="text"] text')
         );
         // Rect coverage uses the band edges while point-like text uses its center.
@@ -160,8 +160,8 @@ describe("SVG example exports", () => {
             ).toBeLessThanOrEqual(0.1);
         }
         expect(textValues).toEqual(expect.arrayContaining(["28", "55", "91"]));
-        expect(svg.querySelector('[data-view-name="Bar"]')).not.toBeNull();
-        expect(svg.querySelector('[data-view-name="Label"]')).not.toBeNull();
+        expect(svg.querySelector('[data-name="Bar"]')).not.toBeNull();
+        expect(svg.querySelector('[data-name="Label"]')).not.toBeNull();
         expect(svg.querySelector("style")).toBeNull();
         expect(svg.querySelector("image")).toBeNull();
     });

@@ -49,14 +49,12 @@ describe("SVG view backgrounds", () => {
             logicalHeight: 80,
             background: null,
         });
-        const fillView = svg.querySelector('[data-view-name^="background"]');
+        const fillView = svg.querySelector('[data-name^="background"]');
         const fillMark = fillView?.querySelector('[data-mark-type="rect"]');
         const fill = fillMark?.querySelector(":scope > rect:not([filter])");
         const shadow = fillMark?.querySelector(":scope > [filter]");
-        const strokeView = svg.querySelector(
-            '[data-view-name^="backgroundStroke"]'
-        );
-        const plot = svg.querySelector('[data-view-name="plot"]');
+        const strokeView = svg.querySelector('[data-name^="backgroundStroke"]');
+        const plot = svg.querySelector('[data-name="plot"]');
 
         expect(fill).not.toBeNull();
         expect(fillMark?.getAttribute("fill")).toBe("#f0f4f8");

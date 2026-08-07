@@ -38,7 +38,7 @@ describe("SvgViewRenderingContext", () => {
             { width: 320, height: 180, background: "white" }
         );
         const root = createView("root", "root");
-        const child = createView("points", "root/points");
+        const child = createView("Copy number / points", "root/points");
 
         context.pushView(root, Rectangle.create(0, 0, 320, 180));
         context.pushView(child, Rectangle.create(20, 10, 280, 150));
@@ -54,6 +54,16 @@ describe("SvgViewRenderingContext", () => {
             svg.querySelector('[data-view-path="root/points"] > title')
                 ?.textContent
         ).toBe("root/points");
+        expect(
+            svg
+                .querySelector('[data-view-path="root/points"]')
+                ?.getAttribute("data-name")
+        ).toBe("Copy number / points");
+        expect(
+            svg
+                .querySelector('[data-view-path="root/points"]')
+                ?.getAttribute("id")
+        ).toBe("Copy-number-points-1");
         expect(svg.getAttribute("xmlns")).toBe("http://www.w3.org/2000/svg");
     });
 

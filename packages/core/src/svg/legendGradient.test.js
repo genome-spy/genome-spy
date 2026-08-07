@@ -23,7 +23,7 @@ describe("SVG gradient legends", () => {
         "uses one gradient-filled rect for a %s legend",
         async (orient, horizontal) => {
             const svg = await createLegendSvg({ orient });
-            const ramp = svg.querySelector('[data-view-name="gradientRamp"]');
+            const ramp = svg.querySelector('[data-name="gradientRamp"]');
             const rects = ramp.querySelectorAll('[data-mark-type="rect"] rect');
             const gradient = svg.querySelector(
                 'linearGradient[id^="legend-gradient-"]'
@@ -61,7 +61,7 @@ describe("SVG gradient legends", () => {
                 scheme: { name: "viridis", count: 4 },
             },
         });
-        const ramp = svg.querySelector('[data-view-name="gradientRamp"]');
+        const ramp = svg.querySelector('[data-name="gradientRamp"]');
 
         expect(
             svg.querySelector('linearGradient[id^="legend-gradient-"]')
@@ -80,7 +80,7 @@ describe("SVG gradient legends", () => {
                 range: ["#1060f8", "#f6f6f6", "#ff4000", "#801800"],
             },
         });
-        const ramp = svg.querySelector('[data-view-name="gradientRamp"]');
+        const ramp = svg.querySelector('[data-name="gradientRamp"]');
 
         expect(
             ramp.querySelectorAll('[data-mark-type="rect"] rect')
