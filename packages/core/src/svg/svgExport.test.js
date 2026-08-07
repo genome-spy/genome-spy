@@ -74,7 +74,9 @@ describe("SVG export", () => {
         expect(ruleGroup?.getAttribute("stroke-dasharray")).toBe("2 3");
         expect(text?.getAttribute("x")).toBe("160");
         expect(text?.hasAttribute("font-family")).toBe(false);
-        expect(textGroup?.getAttribute("font-family")).toBe("sans-serif");
+        expect(textGroup?.getAttribute("font-family")).toBe(
+            "'Lato', 'Avenir Next', 'Avenir', 'Segoe UI', 'Ubuntu', 'Noto Sans', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif"
+        );
         expect(textGroup?.getAttribute("font-size")).toBe("12");
         expect(Number(text?.getAttribute("textLength"))).toBeGreaterThan(0);
         expect(text?.getAttribute("dx")).toBe("3");

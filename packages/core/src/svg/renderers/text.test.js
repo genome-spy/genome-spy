@@ -32,11 +32,41 @@ describe("SVG text renderer", () => {
             background: null,
         });
         const text = svg.querySelector('[data-mark-type="text"] text');
+        const textGroup = svg.querySelector('[data-mark-type="text"]');
 
         expect(text?.getAttribute("x")).toBe("60");
         expect(+text?.getAttribute("font-size")).toBeLessThan(20);
         expect(+text?.getAttribute("textLength")).toBeLessThanOrEqual(40);
+        expect(textGroup?.getAttribute("font-family")).toBe(
+            "'Lato', 'Avenir Next', 'Avenir', 'Segoe UI', 'Ubuntu', 'Noto Sans', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif"
+        );
         expect(warnings).toEqual([]);
+    });
+
+    test("prefers the configured font before portable fallbacks", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ label: "Text" }] },
+            mark: { type: "text", font: "Open Sans" },
+            encoding: {
+                text: { field: "label" },
+                color: { value: "black" },
+            },
+        });
+
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 50,
+            background: null,
+        });
+
+        expect(
+            svg
+                .querySelector('[data-mark-type="text"]')
+                ?.getAttribute("font-family")
+        ).toBe(
+            "'Open Sans', 'Lato', 'Avenir Next', 'Avenir', 'Segoe UI', 'Ubuntu', 'Noto Sans', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif"
+        );
     });
 
     test("fits text to discrete scale bands", async () => {

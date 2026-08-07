@@ -14,6 +14,19 @@ import {
 } from "../svgMarkUtils.js";
 import { formatSvgUnitless } from "../svgNumber.js";
 
+const SVG_FONT_FALLBACKS = [
+    "Lato",
+    "Avenir Next",
+    "Avenir",
+    "Segoe UI",
+    "Ubuntu",
+    "Noto Sans",
+    "Helvetica Neue",
+    "Helvetica",
+    "Arial",
+    "sans-serif",
+];
+
 /**
  * @param {import("../../marks/mark.js").default} baseMark
  * @param {import("../svgViewRenderingContext.js").SvgMarkRenderingOptions} options
@@ -61,7 +74,7 @@ export function renderTextSvg(baseMark, options) {
             transform: (value) => formatSvgNumber(+value),
         },
     });
-    group.setAttribute("font-family", "sans-serif");
+    group.setAttribute("font-family", createSvgFontFamily(props.font));
     group.setAttribute("font-style", props.fontStyle ?? "normal");
     group.setAttribute(
         "font-weight",
@@ -316,6 +329,31 @@ export function renderTextSvg(baseMark, options) {
             group.setAttribute("mask", edgeFadeMaskUrl);
         }
     }
+}
+
+/**
+ * Keeps the SDF font as the preferred family and adds system fonts with a
+ * broadly similar humanist character for standalone SVG viewers.
+ *
+ * @param {string | undefined} font
+ */
+function createSvgFontFamily(font) {
+    const preferredFont = font ?? "Lato";
+    return [
+        preferredFont,
+        ...SVG_FONT_FALLBACKS.filter(
+            (fallback) => fallback.toLowerCase() != preferredFont.toLowerCase()
+        ),
+    ]
+        .map(formatFontFamily)
+        .join(", ");
+}
+
+/** @param {string} family */
+function formatFontFamily(family) {
+    return family == "sans-serif"
+        ? family
+        : `'${family.replaceAll("\\", "\\\\").replaceAll("'", "\\'")}'`;
 }
 
 /**
