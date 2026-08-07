@@ -93,14 +93,17 @@ decisions. All non-trivial code has been reviewed by a human developer.
 
 ## About
 
-Copyright (c) 2019-2026 Kari Lavikka. See [LICENSE](LICENSE) for details.
+Copyright (c) 2019-2026 Kari Lavikka and contributors. See [LICENSE](LICENSE)
+for details.
 
-GenomeSpy was originally developed in [The Systems Biology of Drug Resistance in
+GenomeSpy was created by Kari Lavikka as an MSc student at the [University of
+Helsinki](https://www.helsinki.fi/en) and was subsequently developed further in
+the [Systems Biology of Drug Resistance in
 Cancer](https://www.helsinki.fi/en/researchgroups/systems-biology-of-drug-resistance-in-cancer)
-group at the [University of Helsinki](https://www.helsinki.fi/en).
+group.
 
-This project has received funding from the European Union's Horizon 2020
-research and innovation programme under grant agreement No. 965193
+Development of GenomeSpy has been supported by funding from the European Union's
+Horizon 2020 research and innovation programme under grant agreement No. 965193
 ([DECIDER](https://www.deciderproject.eu/)) and No. 847912
 ([RESCUER](https://www.rescuer.uio.no/)), as well as from the Biomedicum
 Helsinki Foundation, the Sigrid Jusélius Foundation, the Cancer Foundation
