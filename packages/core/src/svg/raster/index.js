@@ -1,6 +1,7 @@
 import { createFramebufferInfo } from "twgl.js";
 
 import { framebufferToDataUrl } from "../../gl/framebufferReadback.js";
+import { WEBGL_COORDINATE_OFFSET } from "../../gl/renderingConstants.js";
 import BufferedViewRenderingContext from "../../view/renderingContext/bufferedViewRenderingContext.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import { formatSvgNumber } from "../svgNumber.js";
@@ -78,7 +79,15 @@ export function rasterizeSvgRuns({
                 throw new Error("Raster run has no SVG image placeholder.");
             }
             image.setAttribute("x", "" + formatSvgNumber(crop.x / pixelRatio));
-            image.setAttribute("y", "" + formatSvgNumber(crop.y / pixelRatio));
+            // Undo the vertical half-logical-pixel offset applied by WebGL when
+            // compositing the pixels with SVG geometry.
+            image.setAttribute(
+                "y",
+                "" +
+                    formatSvgNumber(
+                        crop.y / pixelRatio - WEBGL_COORDINATE_OFFSET
+                    )
+            );
             image.setAttribute(
                 "width",
                 "" + formatSvgNumber(crop.width / pixelRatio)

@@ -83,7 +83,7 @@ describe("rasterizeSvgRuns", () => {
             }
         );
         expect(runs[0].image.getAttribute("x")).toBe("1");
-        expect(runs[0].image.getAttribute("y")).toBe("2");
+        expect(runs[0].image.getAttribute("y")).toBe("1.5");
         expect(runs[0].image.getAttribute("width")).toBe("9.5");
         expect(runs[0].image.getAttribute("height")).toBe("11");
         expect(runs[0].image.getAttribute("href")).toBe(

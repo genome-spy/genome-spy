@@ -47,6 +47,7 @@ import GLSL_PICKING_VERTEX from "../gl/includes/picking.vertex.glsl";
 import GLSL_PICKING_FRAGMENT from "../gl/includes/picking.fragment.glsl";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import { createProgram } from "../gl/webGLHelper.js";
+import { WEBGL_COORDINATE_OFFSET } from "../gl/renderingConstants.js";
 import coalesceProperties from "../utils/propertyCoalescer.js";
 import { isScalar } from "../utils/variableTools.js";
 import { InternMap } from "internmap";
@@ -1682,7 +1683,7 @@ export default class Mark {
 
         // Translate by half a pixel to place vertical / horizontal
         // rules inside pixels, not between pixels.
-        const pixelOffset = 0.5;
+        const pixelOffset = WEBGL_COORDINATE_OFFSET;
 
         const xOffset = pixelOffset;
         const yOffset = pixelOffset;
