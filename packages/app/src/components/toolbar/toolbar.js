@@ -21,6 +21,7 @@ import { subscribeTo } from "../../state/subscribeTo.js";
 import { showDialog } from "../generic/baseDialog.js";
 import "../dialogs/aboutDialog.js";
 import "../dialogs/saveImageDialog.js";
+import "../dialogs/saveSvgDialog.js";
 import { showMessageDialog } from "../generic/messageDialog.js";
 
 export default class Toolbar extends LitElement {
@@ -192,9 +193,13 @@ export default class Toolbar extends LitElement {
         items.push({
             label: "Save SVG",
             icon: faFileCode,
-            callback: () => {
-                void this.#downloadSvg();
-            },
+            callback: () =>
+                showDialog(
+                    "gs-save-svg-dialog",
+                    (/** @type {any} */ saveSvgDialog) => {
+                        saveSvgDialog.genomeSpy = this.app.genomeSpy;
+                    }
+                ),
         });
 
         items.push(...this.app.ui.toolbarMenuItems);
@@ -228,59 +233,6 @@ export default class Toolbar extends LitElement {
 
     #showAboutDialog() {
         showDialog("gs-about-dialog");
-    }
-
-    /** @returns {Promise<void>} */
-    async #downloadSvg() {
-        try {
-            const pickerWindow = /** @type {Window & {
-                showSaveFilePicker?: (options: object) => Promise<{
-                    createWritable: () => Promise<{
-                        write: (data: Blob) => Promise<void>,
-                        close: () => Promise<void>
-                    }>
-                }>
-            }} */ (window);
-
-            if (pickerWindow.showSaveFilePicker) {
-                const fileHandle = await pickerWindow.showSaveFilePicker({
-                    suggestedName: "genomespy-visualization.svg",
-                    types: [
-                        {
-                            description: "SVG image",
-                            accept: { "image/svg+xml": [".svg"] },
-                        },
-                    ],
-                });
-                const { blob, warnings } = await this.app.genomeSpy.exportSvg();
-                warnings.forEach((warning) => console.warn(warning));
-                const writable = await fileHandle.createWritable();
-                await writable.write(blob);
-                await writable.close();
-                return;
-            }
-
-            const { blob, warnings } = await this.app.genomeSpy.exportSvg();
-            warnings.forEach((warning) => console.warn(warning));
-            const link = document.createElement("a");
-            link.href =
-                "data:image/svg+xml;charset=utf-8," +
-                encodeURIComponent(await blob.text());
-            link.download = "genomespy-visualization.svg";
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-        } catch (error) {
-            if (error instanceof DOMException && error.name == "AbortError") {
-                return;
-            }
-            await showMessageDialog(
-                `SVG export failed: ${
-                    error instanceof Error ? error.message : String(error)
-                }`,
-                { title: "SVG export", type: "error" }
-            );
-        }
     }
 
     render() {
