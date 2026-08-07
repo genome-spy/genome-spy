@@ -132,10 +132,10 @@ describe("SVG export", () => {
         const rectGroup = rect.closest('[data-mark-type="rect"]');
         const pointGroup = circle.closest('[data-mark-type="point"]');
 
-        expect(rect?.getAttribute("x")).toBe("20");
-        expect(Number(rect?.getAttribute("y"))).toBeCloseTo(30);
-        expect(rect?.getAttribute("width")).toBe("60");
-        expect(rect?.getAttribute("height")).toBe("50");
+        expect(rect?.getAttribute("x")).toBe("19.9");
+        expect(Number(rect?.getAttribute("y"))).toBeCloseTo(29.9);
+        expect(rect?.getAttribute("width")).toBe("60.2");
+        expect(rect?.getAttribute("height")).toBe("50.2");
         expect(rect?.hasAttribute("fill")).toBe(false);
         expect(rectGroup?.getAttribute("fill")).toBe("#abcdef");
         expect(circle?.getAttribute("cx")).toBe("104");

@@ -11,6 +11,11 @@ import {
 } from "../svgMarkUtils.js";
 import { formatSvgUnitless } from "../svgNumber.js";
 
+// Adjacent SVG fills can expose hairline seams when viewers or SVG-to-PDF
+// converters antialias each rectangle separately. Small symmetric padding
+// covers shared boundaries while preserving the center of each tile.
+const RECT_SEAM_PADDING = 0.1;
+
 /**
  * @param {import("../../marks/mark.js").default} baseMark
  * @param {import("../svgViewRenderingContext.js").SvgMarkRenderingOptions} options
@@ -50,6 +55,10 @@ export function renderRectSvg(baseMark, options) {
         opacity: resolveSvgProperty(mark, p.shadowOpacity ?? 0),
     };
     const hatch = resolveSvgProperty(mark, p.hatch ?? "none");
+    const canPadSeams =
+        hatch == "none" &&
+        shadow.opacity == 0 &&
+        hasZeroCornerRadii(cornerRadii);
 
     const { coords, data, group, viewOpacity, visibleBounds } = options;
     const encoders =
@@ -101,6 +110,22 @@ export function renderRectSvg(baseMark, options) {
             height = minHeight;
         }
         const strokeWidth = encodeNumber(encoders.strokeWidth, datum);
+        const fillOpacity =
+            encodeNumber(encoders.fillOpacity, datum) * viewOpacity;
+        const seamPadding =
+            strokeWidth == 0 &&
+            fillOpacity == 1 &&
+            opacityFactor == 1 &&
+            canPadSeams &&
+            toSvgString(encoders.fill(datum)) != "none"
+                ? RECT_SEAM_PADDING
+                : 0;
+        if (seamPadding) {
+            x -= seamPadding;
+            y -= seamPadding;
+            width += seamPadding * 2;
+            height += seamPadding * 2;
+        }
         const strokePadding = strokeWidth / 2;
         const shadowPadding =
             shadow.opacity > 0
@@ -227,6 +252,11 @@ function clampCornerRadii(radii, width, height) {
 /** @param {CornerRadii} radii */
 function hasEqualCornerRadii(radii) {
     return Object.values(radii).every((radius) => radius == radii.topLeft);
+}
+
+/** @param {CornerRadii} radii */
+function hasZeroCornerRadii(radii) {
+    return Object.values(radii).every((radius) => radius == 0);
 }
 
 /**

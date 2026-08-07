@@ -59,12 +59,12 @@ describe("SVG rectangle renderer", () => {
         const horizontalBars = Array.from(groups[1].querySelectorAll("rect"));
 
         expect(verticalBars.map((rect) => rect.getAttribute("width"))).toEqual([
-            "40",
-            "40",
+            "40.2",
+            "40.2",
         ]);
         expect(
             horizontalBars.map((rect) => rect.getAttribute("height"))
-        ).toEqual(["40", "40"]);
+        ).toEqual(["40.2", "40.2"]);
     });
 
     test("applies rect band coverage within padded index bandwidth", async () => {
@@ -96,8 +96,8 @@ describe("SVG rectangle renderer", () => {
         const rect = svg.querySelector('[data-mark-type="rect"] rect');
 
         expect([rect?.getAttribute("x"), rect?.getAttribute("width")]).toEqual([
-            "15",
-            "20",
+            "14.9",
+            "20.2",
         ]);
     });
 
@@ -117,6 +117,7 @@ describe("SVG rectangle renderer", () => {
                 y: { value: 0 },
                 y2: { value: 1 },
                 fill: { value: "black" },
+                fillOpacity: { value: 0.5 },
             },
         });
 
@@ -139,6 +140,47 @@ describe("SVG rectangle renderer", () => {
             ["0", "33.3"],
             ["33.3", "33.4"],
             ["66.7", "33.3"],
+        ]);
+    });
+
+    test("slightly overlaps adjacent opaque rectangles", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: 0, x2: 0.5 },
+                    { x: 0.5, x2: 1 },
+                ],
+            },
+            mark: "rect",
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                x2: { field: "x2" },
+                y: { value: 0 },
+                y2: { value: 1 },
+                fill: { value: "black" },
+            },
+        });
+
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const rects = Array.from(
+            svg.querySelectorAll('[data-mark-type="rect"] rect')
+        );
+
+        // The overlap suppresses antialiasing seams in SVG and PDF viewers.
+        expect(
+            rects.map((rect) => [
+                rect.getAttribute("x"),
+                rect.getAttribute("width"),
+                rect.getAttribute("height"),
+            ])
+        ).toEqual([
+            ["-0.1", "50.2", "100.2"],
+            ["49.9", "50.2", "100.2"],
         ]);
     });
 
