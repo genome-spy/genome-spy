@@ -10,6 +10,7 @@ beforeAll(() => {
 
 afterEach(() => {
     document.body.replaceChildren();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
 });
 
@@ -71,6 +72,34 @@ describe("SaveSvgDialog", () => {
             });
             expect(write).toHaveBeenCalledWith(blob);
             expect(close).toHaveBeenCalledOnce();
+        });
+    });
+
+    test("downloads vector SVG without rasterization by default", async () => {
+        const click = vi
+            .spyOn(HTMLAnchorElement.prototype, "click")
+            .mockImplementation(() => undefined);
+        const dialog = createDialog();
+        const exportSvg = vi.mocked(dialog.genomeSpy.exportSvg);
+        exportSvg.mockResolvedValue({
+            blob: /** @type {Blob} */ (
+                /** @type {unknown} */ ({ text: async () => "<svg/>" })
+            ),
+            warnings: [],
+            rasterized: [],
+        });
+        document.body.appendChild(dialog);
+        await dialog.updateComplete;
+
+        const saveButton = /** @type {HTMLButtonElement} */ (
+            dialog.renderRoot.querySelector("footer button[data-primary]")
+        );
+        saveButton.click();
+
+        await vi.waitFor(() => {
+            expect(exportSvg).toHaveBeenCalledWith({});
+            expect(click).toHaveBeenCalledOnce();
+            expect(document.querySelector("a[download]")).toBeNull();
         });
     });
 });
