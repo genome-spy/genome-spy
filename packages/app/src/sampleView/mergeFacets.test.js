@@ -364,7 +364,7 @@ describe("MergeSampleFacets visibility", () => {
             expect(collector).toBeDefined();
             expect(collector?.completed).toBe(true);
             const summaryData = Array.from(collector?.getData() ?? []).map(
-                ({ _uniqueId, ...datum }) => datum
+                ({ __uniqueId, ...datum }) => datum
             );
             expect(summaryData).toEqual([
                 { sample: "A", total: 3 },

@@ -8,11 +8,11 @@ import {
 
 describe("key-based selection helpers", () => {
     it("serializes point selections to key tuples", () => {
-        const datum = { id: "a", sampleId: "S1", chrom: "chr1", _uniqueId: 1 };
+        const datum = { id: "a", sampleId: "S1", chrom: "chr1", __uniqueId: 1 };
         const single = createSinglePointSelection(datum);
         const multi = createMultiPointSelection([
             datum,
-            { id: "b", sampleId: "S2", chrom: "chr2", _uniqueId: 2 },
+            { id: "b", sampleId: "S2", chrom: "chr2", __uniqueId: 2 },
         ]);
 
         expect(getPointSelectionKeyTuples(single, ["id"])).toEqual([["a"]]);
@@ -35,7 +35,7 @@ describe("key-based selection helpers", () => {
     });
 
     it("resolves key tuples back to point selections", () => {
-        const datum = { id: "a", _uniqueId: 1 };
+        const datum = { id: "a", __uniqueId: 1 };
         /** @type {Map<import("../spec/channel.js").Scalar, typeof datum>} */
         const byKey = new Map([["a", datum]]);
         /** @type {(fields: string[], tuple: import("../spec/channel.js").Scalar[]) => any} */
@@ -66,8 +66,8 @@ describe("key-based selection helpers", () => {
     });
 
     it("resolves multi-field key tuples back to point selections", () => {
-        const datumA = { sampleId: "S1", chrom: "chr1", _uniqueId: 1 };
-        const datumB = { sampleId: "S2", chrom: "chr2", _uniqueId: 2 };
+        const datumA = { sampleId: "S1", chrom: "chr1", __uniqueId: 1 };
+        const datumB = { sampleId: "S2", chrom: "chr2", __uniqueId: 2 };
         const index = new Map([
             [JSON.stringify(["S1", "chr1"]), datumA],
             [JSON.stringify(["S2", "chr2"]), datumB],

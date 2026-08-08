@@ -1,7 +1,7 @@
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import Transform from "./transform.js";
 
-export const UNIQUE_ID_KEY = "_uniqueId";
+export const UNIQUE_ID_KEY = "__uniqueId";
 
 export const BLOCK_SIZE = 10000;
 
@@ -25,6 +25,7 @@ const reservationMap = [null];
  * quick lookup of the IdentifierTransform instance that assigned the id.
  * This is mainly used for creating ids that can be used for picking, i.e.,
  * selecting rendered data items by hovering or clicking.
+ *
  */
 export default class IdentifierTransform extends Transform {
     get behavior() {
@@ -38,8 +39,6 @@ export default class IdentifierTransform extends Transform {
     constructor(params) {
         super(params);
         this.params = params;
-
-        this.as = params.as ?? UNIQUE_ID_KEY;
 
         /**
          * The block indexes reserved by this transform instance.
@@ -74,29 +73,29 @@ export default class IdentifierTransform extends Transform {
      * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
-        datum[this.as] = this._nextId();
+        datum[UNIQUE_ID_KEY] = this.#nextId();
         this._propagate(datum);
     }
 
     /**
      * @returns {number}
      */
-    _nextId() {
+    #nextId() {
         if (++this._id % BLOCK_SIZE == 0) {
-            this._id = this._getBlock() * BLOCK_SIZE;
+            this._id = this.#getBlock() * BLOCK_SIZE;
         }
         return this._id;
     }
 
-    _getBlock() {
+    #getBlock() {
         if (this._usedBlocks < this._blocks.length) {
             return this._blocks[this._usedBlocks++];
         }
 
-        return this._reserveBlock();
+        return this.#reserveBlock();
     }
 
-    _reserveBlock() {
+    #reserveBlock() {
         const blockId = reservationMap.length;
         reservationMap[blockId] = this;
         this._blocks.push(blockId);

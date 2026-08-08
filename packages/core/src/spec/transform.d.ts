@@ -66,7 +66,9 @@ export interface IdentifierParams extends TransformParamsBase {
     type: "identifier";
 
     /**
-     * **Default:** `"_uniqueId"`
+     * The field where the identifier is stored.
+     *
+     * __Default value:__ `"_uniqueId"`
      */
     as?: string;
 }

@@ -32,6 +32,7 @@ nav = [
             { "FlattenDelimited" = "grammar/transform/flatten-delimited.md" },
             { "FlattenSequence" = "grammar/transform/flatten-sequence.md" },
             "grammar/transform/formula.md",
+            "grammar/transform/identifier.md",
             { "LinearizeGenomicCoordinate" = "grammar/transform/linearize-genomic-coordinate.md" },
             "grammar/transform/lookup.md",
             { "CoordinateLookup" = "grammar/transform/coordinate-lookup.md" },

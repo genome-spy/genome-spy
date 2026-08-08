@@ -369,7 +369,7 @@ describe("ParamProvenanceBridge", () => {
         const intentExecutor = new IntentExecutor(store);
         createBridge(view, store, intentExecutor);
 
-        const datum = { id: "A", _uniqueId: 1 };
+        const datum = { id: "A", __uniqueId: 1 };
         setter(createMultiPointSelection([datum]));
 
         const key = makeParamSelectorKey({ scope: [], param: "selection" });
@@ -400,8 +400,8 @@ describe("ParamProvenanceBridge", () => {
 
         setter(
             createMultiPointSelection([
-                { sampleId: "S1", chrom: "chr1", pos: 10, _uniqueId: 1 },
-                { sampleId: "S2", chrom: "chr2", pos: 20, _uniqueId: 2 },
+                { sampleId: "S1", chrom: "chr1", pos: 10, __uniqueId: 1 },
+                { sampleId: "S2", chrom: "chr2", pos: 20, __uniqueId: 2 },
             ])
         );
 
@@ -431,7 +431,7 @@ describe("ParamProvenanceBridge", () => {
         const intentExecutor = new IntentExecutor(store);
         createBridge(view, store, intentExecutor);
 
-        setter(createMultiPointSelection([{ id: "A", _uniqueId: 1 }]));
+        setter(createMultiPointSelection([{ id: "A", __uniqueId: 1 }]));
         await flushMicrotasks();
 
         expect(showMessageDialog).toHaveBeenCalled();
@@ -465,7 +465,7 @@ describe("ParamProvenanceBridge", () => {
         createBridge(view, store, intentExecutor);
 
         setter(
-            createMultiPointSelection([{ name: "duplicate-id", _uniqueId: 1 }])
+            createMultiPointSelection([{ name: "duplicate-id", __uniqueId: 1 }])
         );
         await flushMicrotasks();
 
@@ -491,7 +491,7 @@ describe("ParamProvenanceBridge", () => {
 
         const collector = new FakeCollector((fields, tuple) => {
             if (tuple[0] === "A") {
-                return { id: "A", _uniqueId: 1 };
+                return { id: "A", __uniqueId: 1 };
             }
             return undefined;
         });
@@ -528,10 +528,10 @@ describe("ParamProvenanceBridge", () => {
         });
 
         const datums = [
-            { id: "seed", clusterId: "C1", patientId: "P1", _uniqueId: 1 },
-            { id: "A", clusterId: "C1", patientId: "P1", _uniqueId: 2 },
-            { id: "B", clusterId: "C1", patientId: "P2", _uniqueId: 3 },
-            { id: "C", clusterId: "C2", patientId: "P1", _uniqueId: 4 },
+            { id: "seed", clusterId: "C1", patientId: "P1", __uniqueId: 1 },
+            { id: "A", clusterId: "C1", patientId: "P1", __uniqueId: 2 },
+            { id: "B", clusterId: "C1", patientId: "P2", __uniqueId: 3 },
+            { id: "C", clusterId: "C2", patientId: "P1", __uniqueId: 4 },
         ];
         const byId = new Map(datums.map((datum) => [datum.id, datum]));
         view.getCollector = () =>
@@ -582,21 +582,21 @@ describe("ParamProvenanceBridge", () => {
                 CHROM: "chr1",
                 POS: 100,
                 Func: "missense",
-                _uniqueId: 1,
+                __uniqueId: 1,
             },
             {
                 sample: "S1",
                 CHROM: "chr2",
                 POS: 200,
                 Func: "missense",
-                _uniqueId: 2,
+                __uniqueId: 2,
             },
             {
                 sample: "S2",
                 CHROM: "chr3",
                 POS: 300,
                 Func: "missense",
-                _uniqueId: 3,
+                __uniqueId: 3,
             },
         ];
 
@@ -650,9 +650,9 @@ describe("ParamProvenanceBridge", () => {
         });
 
         const datums = [
-            { id: "seed", "Gene.refGene": "GRM8", _uniqueId: 1 },
-            { id: "A", "Gene.refGene": "GRM8", _uniqueId: 2 },
-            { id: "B", "Gene.refGene": "TP53", _uniqueId: 3 },
+            { id: "seed", "Gene.refGene": "GRM8", __uniqueId: 1 },
+            { id: "A", "Gene.refGene": "GRM8", __uniqueId: 2 },
+            { id: "B", "Gene.refGene": "TP53", __uniqueId: 3 },
         ];
         const byId = new Map(datums.map((datum) => [datum.id, datum]));
         view.getCollector = () =>
@@ -698,7 +698,7 @@ describe("ParamProvenanceBridge", () => {
         });
 
         const datums = [
-            { id: "seed", clusterId: "C1", patientId: "P1", _uniqueId: 1 },
+            { id: "seed", clusterId: "C1", patientId: "P1", __uniqueId: 1 },
         ];
         const byId = new Map(datums.map((datum) => [datum.id, datum]));
         view.getCollector = () =>
@@ -882,7 +882,7 @@ describe("ParamProvenanceBridge", () => {
         otherSetter(2);
         await flushMicrotasks();
 
-        setter(createMultiPointSelection([{ id: "A", _uniqueId: 1 }]));
+        setter(createMultiPointSelection([{ id: "A", __uniqueId: 1 }]));
         await flushMicrotasks();
 
         setter(createMultiPointSelection());
@@ -915,7 +915,7 @@ describe("ParamProvenanceBridge", () => {
             const intentExecutor = new IntentExecutor(store);
             createBridge(view, store, intentExecutor);
 
-            setter(createMultiPointSelection([{ id: "A", _uniqueId: 1 }]));
+            setter(createMultiPointSelection([{ id: "A", __uniqueId: 1 }]));
             await flushMicrotasks();
 
             store.dispatch(
@@ -926,7 +926,7 @@ describe("ParamProvenanceBridge", () => {
             );
             await flushMicrotasks();
 
-            setter(createMultiPointSelection([{ id: "B", _uniqueId: 2 }]));
+            setter(createMultiPointSelection([{ id: "B", __uniqueId: 2 }]));
             await flushMicrotasks();
 
             setter(createMultiPointSelection());
@@ -957,7 +957,7 @@ describe("ParamProvenanceBridge", () => {
             select: { type: "point" },
         });
 
-        const datum = { id: "A", _uniqueId: 1 };
+        const datum = { id: "A", __uniqueId: 1 };
         const collector = new FakeCollector((fields, tuple) =>
             tuple[0] === "A" ? datum : undefined
         );
