@@ -4,6 +4,7 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faBug,
     faColumns,
+    faDownload,
     faFolderOpen,
     faQuestionCircle,
     faIndent,
@@ -27,6 +28,7 @@ import "./baseUrlNotice.js";
 import "./codeEditor.js";
 import "./examplePicker.js";
 import "./filePane.js";
+import "./imageExportDialog.js";
 import "./playground.scss";
 import addMarkdownProps from "./markdownProps.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
@@ -42,6 +44,9 @@ const STORAGE_KEY = "playgroundSpec";
 const EXAMPLE_CATALOG_URL = "example-catalog.json";
 const genomeSpyContainerRef = createRef();
 const inspectorPaneRef = createRef();
+
+/** @type {import("lit/directives/ref.js").Ref<import("./imageExportDialog.js").default>} */
+const imageExportDialogRef = createRef();
 
 /** @type {import("lit/directives/ref.js").Ref<import("./codeEditor.js").default>} */
 const editorRef = createRef();
@@ -568,10 +573,22 @@ const toolbarTemplate = () => html`
             <span>Format code</span>
         </button>
         <button
+            @click=${() => {
+                void imageExportDialogRef.value?.show();
+            }}
+            class="tool-button"
+            ?disabled=${!embedResult}
+        >
+            ${icon(faDownload).node[0]}
+            <span>Export image</span>
+        </button>
+        <button
             @click=${toggleInspector}
-            class=${sidePane === "inspector"
-                ? "tool-button selected"
-                : "tool-button"}
+            class=${
+                sidePane === "inspector"
+                    ? "tool-button selected"
+                    : "tool-button"
+            }
         >
             ${icon(faBug).node[0]}
             <span>Inspector</span>
@@ -622,6 +639,10 @@ const layoutTemplate = () => html`
                 /** @type {CustomEvent<{ entry: ExampleCatalogEntry }>} */ event
             ) => openCatalogEntry(event.detail.entry)}
         ></gs-example-picker>
+        <gs-playground-image-export-dialog
+            ${ref(imageExportDialogRef)}
+            .api=${embedResult}
+        ></gs-playground-image-export-dialog>
         ${toolbarTemplate()}
         <split-panel
             .orientation=${layout}
@@ -633,46 +654,52 @@ const layoutTemplate = () => html`
                 ${ref(genomeSpyContainerRef)}
                 slot="1"
             ></div>
-            ${sidePane === "inspector"
-                ? html`
-                      <section
-                          id="inspector-pane"
-                          ${ref(inspectorPaneRef)}
-                          slot="2"
-                      ></section>
-                  `
-                : html`
-                      <split-panel
-                          .orientation=${layout == "vertical"
-                              ? "horizontal"
-                              : "vertical"}
-                          slot="2"
-                          id="editor-and-others"
-                      >
-                          <section id="editor-pane" slot="1">
-                              ${effectiveBaseUrlInfo
-                                  ? html`
-                                        <base-url-notice
-                                            .info=${effectiveBaseUrlInfo}
-                                            @clear=${clearBaseUrl}
-                                        ></base-url-notice>
-                                    `
-                                  : null}
-                              <code-editor
-                                  ${ref(editorRef)}
-                                  .value=${editorState.get()}
-                                  @change=${handleEditorChange}
-                              ></code-editor>
-                          </section>
-                          <section id="file-pane" slot="2">
-                              <file-pane
-                                  @upload=${() => update(true)}
-                                  .files=${files}
-                                  .missingFiles=${missingFiles}
-                              ></file-pane>
-                          </section>
-                      </split-panel>
-                  `}
+            ${
+                sidePane === "inspector"
+                    ? html`
+                          <section
+                              id="inspector-pane"
+                              ${ref(inspectorPaneRef)}
+                              slot="2"
+                          ></section>
+                      `
+                    : html`
+                          <split-panel
+                              .orientation=${
+                                  layout == "vertical"
+                                      ? "horizontal"
+                                      : "vertical"
+                              }
+                              slot="2"
+                              id="editor-and-others"
+                          >
+                              <section id="editor-pane" slot="1">
+                                  ${
+                                      effectiveBaseUrlInfo
+                                          ? html`
+                                                <base-url-notice
+                                                    .info=${effectiveBaseUrlInfo}
+                                                    @clear=${clearBaseUrl}
+                                                ></base-url-notice>
+                                            `
+                                          : null
+                                  }
+                                  <code-editor
+                                      ${ref(editorRef)}
+                                      .value=${editorState.get()}
+                                      @change=${handleEditorChange}
+                                  ></code-editor>
+                              </section>
+                              <section id="file-pane" slot="2">
+                                  <file-pane
+                                      @upload=${() => update(true)}
+                                      .files=${files}
+                                      .missingFiles=${missingFiles}
+                                  ></file-pane>
+                              </section>
+                          </split-panel>
+                      `
+            }
         </split-panel>
     </section>
 `;
