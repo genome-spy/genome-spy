@@ -13,14 +13,14 @@ export default class Displace1DTransform extends Transform {
 
     #placementBootstrapped = false;
 
-    /** @type {(() => number) | undefined} */
-    #lengthExpr = undefined;
+    /** @type {() => number} */
+    #lengthReader = () => 0;
 
-    /** @type {(() => number) | undefined} */
-    #positionFactorExpr = undefined;
+    /** @type {() => number} */
+    #positionFactorReader = () => 1;
 
-    /** @type {(() => [number, number]) | undefined} */
-    #extentExpr = undefined;
+    /** @type {() => [number, number] | undefined} */
+    #extentReader = () => undefined;
 
     /** @type {import("../flowNode.js").Datum[]} */
     #data = [];
@@ -75,29 +75,20 @@ export default class Displace1DTransform extends Transform {
             }
         };
 
-        /**
-         * @param {import("../../spec/parameter.js").ExprRef} exprRef
-         */
-        const watchExpression = (exprRef) =>
-            this.paramRuntime.watchExpression(
-                exprRef.expr,
-                updatePlacementParameters,
-                {
-                    scopeOwned: false,
-                    registerDisposer: (disposer) =>
-                        this.registerDisposer(disposer),
-                }
-            );
-
-        this.#lengthExpr = isExprRef(params.length)
-            ? watchExpression(params.length)
-            : undefined;
-        this.#positionFactorExpr = isExprRef(params.positionFactor)
-            ? watchExpression(params.positionFactor)
-            : undefined;
-        this.#extentExpr = isExprRef(params.extent)
-            ? watchExpression(params.extent)
-            : undefined;
+        // A string length names a datum field, so use the scalar fallback for
+        // the placement-parameter reader instead of exposing the field name.
+        this.#lengthReader = this.watchExprRef(
+            isExprRef(params.length) ? params.length : this.length,
+            updatePlacementParameters
+        );
+        this.#positionFactorReader = this.watchExprRef(
+            params.positionFactor ?? 1,
+            updatePlacementParameters
+        );
+        this.#extentReader = this.watchExprRef(
+            params.extent,
+            updatePlacementParameters
+        );
         this.#validatePlacementParameters(
             this.length,
             this.positionFactor,
@@ -166,7 +157,7 @@ export default class Displace1DTransform extends Transform {
         }
         if (!Number.isFinite(length) || length < 0) {
             throw new Error(
-                `displace1d ${this.#lengthExpr ? "expression-backed length" : "length"} must be a finite non-negative number.`
+                "displace1d length must be a finite non-negative number."
             );
         }
         if (
@@ -184,11 +175,9 @@ export default class Displace1DTransform extends Transform {
     }
 
     #refreshPlacementParameters() {
-        const length = this.#lengthExpr ? this.#lengthExpr() : this.length;
-        const positionFactor = this.#positionFactorExpr
-            ? this.#positionFactorExpr()
-            : this.positionFactor;
-        const extent = this.#extentExpr ? this.#extentExpr() : this.extent;
+        const length = this.#lengthReader();
+        const positionFactor = this.#positionFactorReader();
+        const extent = this.#extentReader();
         this.#validatePlacementParameters(length, positionFactor, extent);
 
         const placementChanged =

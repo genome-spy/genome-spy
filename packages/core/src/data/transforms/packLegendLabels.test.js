@@ -1,5 +1,6 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { makeParamRuntimeProvider, processData } from "../flowTestUtils.js";
+import Collector from "../collector.js";
 import PackLegendLabelsTransform from "./packLegendLabels.js";
 
 test("PackLegendLabelsTransform stacks vertical legend entries using max column width", () => {
@@ -182,6 +183,51 @@ test("PackLegendLabelsTransform accepts expression-backed y extent", () => {
     ]);
 
     expect(data[0]).toMatchObject({
+        entryY2: 100,
+        labelY2: 94,
+    });
+});
+
+test("PackLegendLabelsTransform reacts to changed expression-backed y extent", () => {
+    const provider = makeParamRuntimeProvider();
+    const setHeight = provider.paramRuntime.allocateSetter("height", 80);
+    const source = new Collector();
+    const transform = new PackLegendLabelsTransform(
+        {
+            type: "packLegendLabels",
+            labelWidth: "_labelWidth",
+            symbolSize: 100,
+            labelOffset: 4,
+            fontSize: 12,
+            yOffset: 20,
+            yExtent: { expr: "height == 180 ? 80 : height" },
+        },
+        provider
+    );
+    const output = new Collector();
+    source.addChild(transform);
+    transform.addChild(output);
+    source.handle({ label: "USA", _labelWidth: 18 });
+    source.complete();
+
+    expect([...output.getData()][0]).toMatchObject({
+        entryY2: 60,
+        labelY2: 54,
+    });
+
+    const repropagate = vi.spyOn(source, "repropagate");
+    setHeight(180);
+
+    expect(repropagate).not.toHaveBeenCalled();
+    expect([...output.getData()][0]).toMatchObject({
+        entryY2: 60,
+        labelY2: 54,
+    });
+
+    setHeight(120);
+
+    expect(repropagate).toHaveBeenCalledOnce();
+    expect([...output.getData()][0]).toMatchObject({
         entryY2: 100,
         labelY2: 94,
     });

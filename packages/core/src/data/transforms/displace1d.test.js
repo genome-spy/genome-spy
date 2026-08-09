@@ -100,10 +100,11 @@ describe("Displace1DTransform", () => {
         ]);
         expect(initialPlacement.some((datum) => datum.offset != 0)).toBe(true);
 
-        await resolution.zoomTo([0, 10], false);
+        const zoomPromise = resolution.zoomTo([0, 10], false);
         const zoomedPlacement = [...view.flowHandle.collector.getData()];
         expect(zoomedPlacement.map((datum) => datum.offset)).toEqual([0, 0, 0]);
         expect(zoomedPlacement[0]).not.toBe(initialPlacement[0]);
+        await zoomPromise;
     });
 
     test("preserves sorted input order and adds the displacement field", () => {
@@ -322,7 +323,7 @@ describe("Displace1DTransform", () => {
         };
 
         expect(() => createTransform("length", -1).complete()).toThrowError(
-            "displace1d expression-backed length must be a finite non-negative number."
+            "displace1d length must be a finite non-negative number."
         );
         expect(() => createTransform("extent", [1, 0]).complete()).toThrowError(
             "displace1d extent must contain finite ascending bounds."

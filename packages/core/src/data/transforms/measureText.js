@@ -1,7 +1,6 @@
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
-import { isExprRef } from "../../paramRuntime/paramUtils.js";
 
 /**
  * Measures text length. This is mainly intended for strand arrows in gene annotations.
@@ -25,25 +24,14 @@ export default class MeasureTextTransform extends Transform {
         const as = params.as;
 
         let size = 0;
-
-        // TODO: Refactor this into reusable code.
-        if (isExprRef(params.fontSize)) {
-            const sizeExpr = paramRuntimeProvider.paramRuntime.watchExpression(
-                params.fontSize.expr,
-                () => {
-                    size = sizeExpr();
-                    this.repropagate();
-                },
-                {
-                    scopeOwned: false,
-                    registerDisposer: (disposer) =>
-                        this.registerDisposer(disposer),
-                }
-            );
-            size = sizeExpr();
-        } else {
-            size = params.fontSize;
-        }
+        const readSize = this.watchExprRef(params.fontSize, () => {
+            const nextSize = readSize();
+            if (nextSize != size) {
+                size = nextSize;
+                this.repropagate();
+            }
+        });
+        size = readSize();
 
         /**
          *

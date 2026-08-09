@@ -1,7 +1,6 @@
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
-import { isExprRef } from "../../paramRuntime/paramUtils.js";
 
 /**
  * @param {unknown} symbolSize
@@ -39,23 +38,14 @@ export default class PackLegendLabelsTransform extends Transform {
         /** @type {number | undefined} */
         this.yExtent = undefined;
 
-        if (isExprRef(params.yExtent)) {
-            const yExtentExpr = this.paramRuntime.watchExpression(
-                params.yExtent.expr,
-                () => {
-                    this.yExtent = yExtentExpr();
-                    this.repropagate();
-                },
-                {
-                    scopeOwned: false,
-                    registerDisposer: (disposer) =>
-                        this.registerDisposer(disposer),
-                }
-            );
-            this.yExtent = yExtentExpr();
-        } else {
-            this.yExtent = params.yExtent;
-        }
+        const readYExtent = this.watchExprRef(params.yExtent, () => {
+            const nextYExtent = readYExtent();
+            if (nextYExtent != this.yExtent) {
+                this.yExtent = nextYExtent;
+                this.repropagate();
+            }
+        });
+        this.yExtent = readYExtent();
 
         /** @type {any[]} */
         this.buffer = [];
