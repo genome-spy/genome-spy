@@ -95,10 +95,47 @@ describe("SVG rectangle renderer", () => {
         });
         const rect = svg.querySelector('[data-mark-type="rect"] rect');
 
+        // The padded index scale must use the same step and band placement as
+        // the WebGL shader, including its outer-padding contribution.
         expect([rect?.getAttribute("x"), rect?.getAttribute("width")]).toEqual([
             "14.9",
             "20.2",
         ]);
+    });
+
+    test("matches WebGL placement on a reversed padded index scale", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ index: 0 }] },
+            mark: "rect",
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: {
+                    field: "index",
+                    type: "index",
+                    scale: {
+                        domain: [0, 40],
+                        reverse: true,
+                        padding: 0.5,
+                    },
+                },
+                fill: { value: "#123456" },
+            },
+        });
+
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const rect = svg.querySelector('[data-mark-type="rect"] rect');
+
+        // Regression for hybrid exports: vector and raster layers must use the
+        // same padded step when the index scale is reversed.
+        expect([rect?.getAttribute("y"), rect?.getAttribute("height")]).toEqual(
+            ["1.1", "1.4"]
+        );
     });
 
     test("preserves shared boundaries when rounding adjacent rectangles", async () => {

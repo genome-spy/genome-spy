@@ -21,8 +21,22 @@ export default function scaleIndex() {
     /** The offset added when formatting tick labels. */
     let numberingOffset = 0;
 
+    // Keep this calculation in sync with scaleBandHp in scales.glsl so that
+    // CPU-side scaling and inversion match WebGL mark placement.
+    const getStep = () =>
+        rangeSpan / Math.max(1, domainSpan - paddingInner + paddingOuter * 2);
+
+    const getStart = () => {
+        const step = getStep();
+        return (
+            range[0] + (rangeSpan - step * (domainSpan - paddingInner)) * align
+        );
+    };
+
+    const getSignedBandwidth = () => getStep() * (1 - paddingInner);
+
     const scaleFunction = (/** @type {number} */ x) =>
-        ((x + align - domain[0]) / domainSpan) * rangeSpan + range[0];
+        getStart() + (x - domain[0]) * getStep() + getSignedBandwidth() * align;
 
     /**
      * In principle, the domain consists of integer indices. However,
@@ -33,7 +47,7 @@ export default function scaleIndex() {
     const scale = /** @type {any} */ (scaleFunction);
 
     scale.invert = (y) =>
-        ((y - range[0]) / rangeSpan) * domainSpan + domain[0] - align;
+        (y - getStart() - getSignedBandwidth() * align) / getStep() + domain[0];
 
     // @ts-expect-error
     scale.domain = function (_) {
@@ -117,9 +131,9 @@ export default function scaleIndex() {
         }
     };
 
-    scale.step = () => rangeSpan / domainSpan;
+    scale.step = getStep;
 
-    scale.bandwidth = () => Math.abs(scale.step()) * (1 - paddingInner);
+    scale.bandwidth = () => Math.abs(getSignedBandwidth());
 
     scale.ticks = (count) => {
         const align = /** @type {number} */ (scale.align());
@@ -159,6 +173,7 @@ export default function scaleIndex() {
             .range(range)
             .paddingInner(paddingInner)
             .paddingOuter(paddingOuter)
+            .align(align)
             .numberingOffset(numberingOffset);
 
     return scale;

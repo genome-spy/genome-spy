@@ -57,7 +57,34 @@ test("domain() clamps the minimum domain span to one", () => {
 test("bandwidth() is positive and respects inner padding", () => {
     const scale = scaleIndex().domain([0, 50]).range([1, 0]).paddingInner(0.3);
 
-    expect(scale.bandwidth()).toBeCloseTo(0.014);
+    expect(scale.bandwidth()).toBeCloseTo(0.7 / 49.7);
+});
+
+test("padding affects step, placement, and inversion like the WebGL scale", () => {
+    const scale = scaleIndex().domain([0, 40]).range([1, 0]).padding(0.5);
+
+    expect(scale.step()).toBeCloseTo(-1 / 40.5);
+    expect(scale.bandwidth()).toBeCloseTo(0.5 / 40.5);
+    expect(scale(0)).toBeCloseTo(0.9814814815);
+    expect(scale(40)).toBeCloseTo(-0.0061728395);
+    expect(scale.invert(scale(0))).toBeCloseTo(0);
+    expect(scale.invert(scale(17))).toBeCloseTo(17);
+    expect(scale.invert(scale(40))).toBeCloseTo(40);
+});
+
+test("copy preserves padding and alignment", () => {
+    const scale = scaleIndex()
+        .domain([0, 10])
+        .range([100, 200])
+        .paddingInner(0.2)
+        .paddingOuter(0.4)
+        .align(0.25);
+    const copy = scale.copy();
+
+    expect(copy.paddingInner()).toBe(0.2);
+    expect(copy.paddingOuter()).toBe(0.4);
+    expect(copy.align()).toBe(0.25);
+    expect(copy(3)).toBeCloseTo(scale(3));
 });
 
 test("ticks() produces integer values", () => {
