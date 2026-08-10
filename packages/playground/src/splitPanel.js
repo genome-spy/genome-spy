@@ -6,13 +6,47 @@ import { LitElement, html, css } from "lit";
 class SplitPanel extends LitElement {
     static properties = {
         orientation: { type: String, reflect: true },
-        inverse: { type: Boolean, reflect: true },
+        reverse: { type: Boolean, reflect: true },
+        // A non-negative index makes that pane content-sized; -1 keeps equal panes.
+        fitIndex: { type: Number, attribute: "fit-index", reflect: true },
     };
+
+    /** @type {MutationObserver | undefined} */
+    #childrenObserver;
+
+    /** @type {ResizeObserver | undefined} */
+    #fitContentObserver;
+
+    /** @type {Element | undefined} */
+    #fitContentElement;
 
     constructor() {
         super();
         this.orientation = "horizontal";
         this.reverse = false;
+        this.fitIndex = -1;
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+
+        this.#childrenObserver = new MutationObserver(() =>
+            this.requestUpdate()
+        );
+        this.#childrenObserver.observe(this, { childList: true });
+    }
+
+    disconnectedCallback() {
+        this.#childrenObserver?.disconnect();
+        this.#childrenObserver = undefined;
+        this.#fitContentObserver?.disconnect();
+        this.#fitContentObserver = undefined;
+        this.#fitContentElement = undefined;
+        super.disconnectedCallback();
+    }
+
+    updated() {
+        this.#updateFitContentObserver();
     }
 
     static styles = css`
@@ -31,6 +65,7 @@ class SplitPanel extends LitElement {
         .resizable {
             position: relative;
             overflow: visible;
+            box-sizing: border-box;
         }
         .resizable-slot {
             position: absolute;
@@ -86,28 +121,77 @@ class SplitPanel extends LitElement {
 
     #renderChildren() {
         const children = Array.from(this.children);
-        return Array.from(this.reverse ? children.reverse() : children).map(
-            (child, index) => {
-                return html`
-                    <div
-                        class="resizable"
-                        style="flex-basis: ${100 / children.length}%"
-                    >
-                        <slot
-                            class="resizable-slot"
-                            name=${child.getAttribute("slot")}
-                        ></slot>
-                        ${index < children.length - 1
+        const orderedChildren = this.reverse ? children.reverse() : children;
+        // The fitted pane keeps its measured size while the other panes share the remainder.
+        const fitContentSize = this.#getFitContentSize(
+            orderedChildren[this.fitIndex]
+        );
+
+        return orderedChildren.map((child, index) => {
+            const style =
+                this.fitIndex >= 0
+                    ? index === this.fitIndex
+                        ? `flex: 0 0 ${fitContentSize ?? 0}px`
+                        : "flex: 1 1 0"
+                    : `flex-basis: ${100 / children.length}%`;
+
+            return html`
+                <div class="resizable" style=${style}>
+                    <slot
+                        class="resizable-slot"
+                        name=${child.getAttribute("slot")}
+                    ></slot>
+                    ${
+                        index < children.length - 1
                             ? html`<div
                                   class="resizable-handle"
                                   @mousedown=${(/** @type {MouseEvent} */ e) =>
                                       this.#startResize(e, index)}
                               ></div>`
-                            : ""}
-                    </div>
-                `;
-            }
-        );
+                            : ""
+                    }
+                </div>
+            `;
+        });
+    }
+
+    /**
+     * @param {Element | undefined} child
+     * @returns {number | undefined}
+     */
+    #getFitContentSize(child) {
+        // Bindings are moved into the pane after the visualization has been embedded.
+        return child
+            ?.querySelector(".gs-input-bindings")
+            ?.getBoundingClientRect().height;
+    }
+
+    #updateFitContentObserver() {
+        if (this.fitIndex < 0) {
+            this.#fitContentObserver?.disconnect();
+            this.#fitContentObserver = undefined;
+            this.#fitContentElement = undefined;
+            return;
+        }
+
+        const children = Array.from(this.children);
+        const orderedChildren = this.reverse ? children.reverse() : children;
+        const content =
+            orderedChildren[this.fitIndex]?.querySelector(".gs-input-bindings");
+        if (content === this.#fitContentElement) {
+            return;
+        }
+
+        this.#fitContentObserver?.disconnect();
+        this.#fitContentObserver = undefined;
+        this.#fitContentElement = content;
+
+        if (content && typeof ResizeObserver !== "undefined") {
+            this.#fitContentObserver = new ResizeObserver(() =>
+                this.requestUpdate()
+            );
+            this.#fitContentObserver.observe(content);
+        }
     }
 
     /**
@@ -122,25 +206,30 @@ class SplitPanel extends LitElement {
         const current = /** @type {HTMLElement} */ (resizables[index]);
         const next = /** @type {HTMLElement} */ (resizables[index + 1]);
 
-        const startX = event.clientX;
-        const startY = event.clientY;
-        const currentStartWidth = current.getBoundingClientRect().width;
-        const currentStartHeight = current.getBoundingClientRect().height;
-        const nextStartWidth = next.getBoundingClientRect().width;
-        const nextStartHeight = next.getBoundingClientRect().height;
+        const isHorizontal = this.orientation === "horizontal";
+        const startPosition = isHorizontal ? event.clientX : event.clientY;
+        const currentStartSize = isHorizontal
+            ? current.getBoundingClientRect().width
+            : current.getBoundingClientRect().height;
+        const nextStartSize = isHorizontal
+            ? next.getBoundingClientRect().width
+            : next.getBoundingClientRect().height;
 
         this.classList.add("resizing");
 
         const onMouseMove = (/** @type {MouseEvent} */ event) => {
-            if (this.orientation === "horizontal") {
-                const dx = event.clientX - startX;
-                current.style.flexBasis = `${((currentStartWidth + dx) / this.clientWidth) * 100}%`;
-                next.style.flexBasis = `${((nextStartWidth - dx) / this.clientWidth) * 100}%`;
-            } else {
-                const dy = event.clientY - startY;
-                current.style.flexBasis = `${((currentStartHeight + dy) / this.clientHeight) * 100}%`;
-                next.style.flexBasis = `${((nextStartHeight - dy) / this.clientHeight) * 100}%`;
-            }
+            const position = isHorizontal ? event.clientX : event.clientY;
+            const delta = position - startPosition;
+            const pairSize = currentStartSize + nextStartSize;
+            // Pixel flex sizes avoid border rounding and flex-grow redistribution offsets.
+            const currentSize = Math.max(
+                0,
+                Math.min(currentStartSize + delta, pairSize)
+            );
+            const nextSize = pairSize - currentSize;
+
+            current.style.flex = `0 0 ${currentSize}px`;
+            next.style.flex = `0 0 ${nextSize}px`;
             event.stopPropagation();
         };
 

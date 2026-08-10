@@ -44,6 +44,10 @@ const STORAGE_KEY = "playgroundSpec";
 const EXAMPLE_CATALOG_URL = "example-catalog.json";
 const genomeSpyContainerRef = createRef();
 const inspectorPaneRef = createRef();
+const inputBindingsHostRef = createRef();
+const inputBindingsPaneRef = createRef();
+const inputAndFilesRef = createRef();
+const editorAndOthersRef = createRef();
 
 /** @type {import("lit/directives/ref.js").Ref<import("./imageExportDialog.js").default>} */
 const imageExportDialogRef = createRef();
@@ -77,6 +81,7 @@ let inspectorHandle;
 let inheritedBaseUrl;
 
 let visTitle = "";
+let hasInputBindings = false;
 /** @type {{ summary: string, detail: string, canClear: boolean } | null} */
 let effectiveBaseUrlInfo = null;
 let isExamplePickerOpen = false;
@@ -535,8 +540,14 @@ async function update(force = false) {
             /** @type {HTMLElement} */ (genomeSpyContainerRef.value),
             parsedSpec,
             {
+                inputBindingContainer: /** @type {HTMLElement} */ (
+                    inputBindingsHostRef.value
+                ),
                 powerPreference: "high-performance",
             }
+        );
+        hasInputBindings = Boolean(
+            document.querySelector(".gs-input-bindings")
         );
         if (inspectorHandle) {
             await inspectorHandle.session.refresh();
@@ -627,8 +638,89 @@ function handleEditorChange() {
     debouncedUpdate();
 }
 
+const editorPaneTemplate = () => html`
+    <section id="editor-pane" slot="1">
+        ${
+            effectiveBaseUrlInfo
+                ? html`
+                      <base-url-notice
+                          .info=${effectiveBaseUrlInfo}
+                          @clear=${clearBaseUrl}
+                      ></base-url-notice>
+                  `
+                : null
+        }
+        <code-editor
+            ${ref(editorRef)}
+            .value=${editorState.get()}
+            @change=${handleEditorChange}
+        ></code-editor>
+    </section>
+`;
+
+/** @param {string} slot */
+const inputBindingsPaneTemplate = (slot) =>
+    hasInputBindings
+        ? html`
+              <section
+                  id="input-bindings-pane"
+                  ${ref(inputBindingsPaneRef)}
+                  slot=${slot}
+              ></section>
+          `
+        : null;
+
+/** @param {string} slot */
+const filePaneTemplate = (slot) => html`
+    <section id="file-pane" slot=${slot}>
+        <file-pane
+            @upload=${() => update(true)}
+            .files=${files}
+            .missingFiles=${missingFiles}
+        ></file-pane>
+    </section>
+`;
+
+const editorAndOthersTemplate = () => {
+    if (layout === "vertical" && hasInputBindings) {
+        return html`
+            <split-panel
+                .orientation=${"horizontal"}
+                ${ref(editorAndOthersRef)}
+                slot="2"
+                id="editor-and-others"
+            >
+                ${editorPaneTemplate()}
+                <split-panel
+                    .orientation=${"vertical"}
+                    .fitIndex=${0}
+                    ${ref(inputAndFilesRef)}
+                    slot="2"
+                    id="input-and-files"
+                >
+                    ${inputBindingsPaneTemplate("1")} ${filePaneTemplate("2")}
+                </split-panel>
+            </split-panel>
+        `;
+    }
+
+    return html`
+        <split-panel
+            .orientation=${layout == "vertical" ? "horizontal" : "vertical"}
+            .fitIndex=${layout == "horizontal" && hasInputBindings ? 1 : -1}
+            ${ref(editorAndOthersRef)}
+            slot="2"
+            id="editor-and-others"
+        >
+            ${editorPaneTemplate()} ${inputBindingsPaneTemplate("2")}
+            ${filePaneTemplate(hasInputBindings ? "3" : "2")}
+        </split-panel>
+    `;
+};
+
 const layoutTemplate = () => html`
     <section id="playground-layout" class="${layout}">
+        <div id="input-bindings-host" ${ref(inputBindingsHostRef)}></div>
         <gs-example-picker
             ?open=${isExamplePickerOpen}
             .loading=${isExampleCatalogLoading}
@@ -663,50 +755,47 @@ const layoutTemplate = () => html`
                               slot="2"
                           ></section>
                       `
-                    : html`
-                          <split-panel
-                              .orientation=${
-                                  layout == "vertical"
-                                      ? "horizontal"
-                                      : "vertical"
-                              }
-                              slot="2"
-                              id="editor-and-others"
-                          >
-                              <section id="editor-pane" slot="1">
-                                  ${
-                                      effectiveBaseUrlInfo
-                                          ? html`
-                                                <base-url-notice
-                                                    .info=${effectiveBaseUrlInfo}
-                                                    @clear=${clearBaseUrl}
-                                                ></base-url-notice>
-                                            `
-                                          : null
-                                  }
-                                  <code-editor
-                                      ${ref(editorRef)}
-                                      .value=${editorState.get()}
-                                      @change=${handleEditorChange}
-                                  ></code-editor>
-                              </section>
-                              <section id="file-pane" slot="2">
-                                  <file-pane
-                                      @upload=${() => update(true)}
-                                      .files=${files}
-                                      .missingFiles=${missingFiles}
-                                  ></file-pane>
-                              </section>
-                          </split-panel>
-                      `
+                    : editorAndOthersTemplate()
             }
         </split-panel>
     </section>
 `;
 
 function renderLayout() {
+    moveInputBindingsToHost();
     render(layoutTemplate(), document.body);
+    placeInputBindings();
     void ensureInspectorPanel();
+}
+
+function moveInputBindingsToHost() {
+    const inputBindings = document.querySelector(".gs-input-bindings");
+    const host = inputBindingsHostRef.value;
+
+    if (inputBindings && host && inputBindings.parentElement !== host) {
+        host.append(inputBindings);
+    }
+}
+
+function placeInputBindings() {
+    const inputBindings = document.querySelector(".gs-input-bindings");
+    const destination = hasInputBindings
+        ? inputBindingsPaneRef.value
+        : inputBindingsHostRef.value;
+
+    if (inputBindings && destination) {
+        destination.append(inputBindings);
+        const inputAndFiles =
+            /** @type {import("lit").LitElement | undefined} */ (
+                inputAndFilesRef.value
+            );
+        inputAndFiles?.requestUpdate();
+        const editorAndOthers =
+            /** @type {import("lit").LitElement | undefined} */ (
+                editorAndOthersRef.value
+            );
+        editorAndOthers?.requestUpdate();
+    }
 }
 
 function syncExamplePickerFromUrl() {

@@ -69,12 +69,18 @@ split-panel {
 #genome-spy-container,
 #editor-and-others,
 #editor-pane,
+#input-and-files,
+#input-bindings-pane,
 #inspector-pane,
 code-editor,
 file-pane {
     position: absolute;
     inset: 0;
     overflow: hidden;
+}
+
+#input-bindings-host {
+    display: none;
 }
 
 .toolbar {
@@ -224,6 +230,55 @@ base-url-notice {
 
 file-pane {
     position: absolute;
+}
+
+#input-bindings-pane {
+    overflow: auto;
+
+    // The core stylesheet is scoped to the GenomeSpy container. These rules
+    // keep bindings mounted in this external pane visually consistent.
+    .gs-input-bindings {
+        font-size: 0.85rem;
+        padding: $basic-spacing;
+    }
+
+    .gs-input-binding {
+        display: grid;
+        grid-template-columns: max-content max-content;
+        column-gap: 1em;
+        row-gap: 0.3em;
+        justify-items: start;
+
+        > select,
+        > input:not([type="checkbox"]) {
+            width: 100%;
+        }
+
+        input[type="range"] + span {
+            display: inline-block;
+            margin-left: 0.3em;
+            min-width: 2.2em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        input[type="range"],
+        input[type="radio"] {
+            vertical-align: text-bottom;
+        }
+
+        .radio-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .description {
+            max-width: 26em;
+            grid-column: 1 / -1;
+            color: #777;
+            font-size: 90%;
+            margin-top: -0.5em;
+        }
+    }
 }
 
 #inspector-pane {
