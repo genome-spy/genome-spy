@@ -1440,16 +1440,8 @@
           "type": "number"
         },
         "domainTransition": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "additionalProperties": {},
-              "type": "object"
-            }
-          ],
-          "description": "Controls whether domain updates are applied immediately or with a smooth transition.\n\nSet this to `false` to apply domain updates immediately. The default is `true`, except for domains that include `ExprRef`s, which default to `false` unless overridden.\n\n__Default value:__ `true`, except `false` for `ExprRef`-driven domains."
+          "description": "Controls whether domain updates are applied immediately or with a smooth transition.\n\nSet this to `false` to apply domain updates immediately. The default is `true`, except for domains that include `ExprRef`s, which default to `false` unless overridden.\n\n__Default value:__ `true`, except `false` for `ExprRef`-driven domains.",
+          "type": "boolean"
         },
         "exponent": {
           "description": "The exponent of the `pow` scale.",

@@ -111,7 +111,7 @@ export interface Scale {
      *
      * __Default value:__ `true`, except `false` for `ExprRef`-driven domains.
      */
-    domainTransition?: boolean | Record<string, unknown>;
+    domainTransition?: boolean;
 
     /**
      * The range of the scale. One of:
