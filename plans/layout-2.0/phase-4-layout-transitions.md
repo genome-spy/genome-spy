@@ -1,0 +1,144 @@
+# Phase 4: Separate Target and Presented Geometry
+
+Status: Early draft; revise after the Phase 3 review
+
+Tentative PR title: `feat(core): animate persistent layout geometry`
+
+## Purpose
+
+Animate non-structural layout changes for instances that exist before and after
+the change. Layout computes canonical targets once; animation changes only the
+coordinates used for presentation.
+
+## Findings to preserve
+
+One mutable `coords` value is insufficient for transitions. Logical layout must
+not read intermediate animation frames as input to the next layout, while
+drawing and interaction must follow what the user currently sees.
+
+At minimum, a transitioning instance needs:
+
+- its current presented geometry when a transition begins or is interrupted;
+- its newly computed target geometry;
+- enough timing/easing state to derive the next presented geometry.
+
+A permanently stored `from` rectangle may not be necessary if it can be captured
+by the transition coordinator. The representation should be chosen only after
+Phase 3 establishes how render commands access geometry.
+
+If Phase 2/3 adopts flat numeric instance geometry, transitions can update
+presented scalar fields directly and calculate dependent clips in an explicit
+commit order. This may remove the need for closure-backed dynamic `Rectangle`
+chains in rendering while retaining `Rectangle` as a temporary layout
+calculation/value API where it remains convenient.
+
+App `SampleView` already has an independent, working presentation transition:
+`LocationManager` interpolates fitted and scrollable sample locations during
+peek, mutates stable location records, updates facet texture and CPU positions,
+drives sample-height-dependent state, and requests drawing. Layout 2.0 must
+initially preserve and coexist with that mechanism. The first general transition
+PR should not route peek through full view layout or apply a second
+target/presented interpolation to sample facets.
+
+## Intended coordinate semantics
+
+- **Target geometry** drives subsequent layout, layout-driven width/height
+  parameters, scale and axis lengths, lazy-data sizing, and target canvas size.
+- **Presented geometry** drives WebGL viewports, clipping, picking, hit testing,
+  rulers, loading indicators, and other visible interaction bounds.
+- Outside a transition the two are equal.
+- Headless, export, reduced-motion, and transitions-disabled paths snap
+  presented geometry to target deterministically.
+
+All consumers of `view.coords`, `facetCoords`, and `GridChild.coords` must be
+classified. Ambiguous access should be replaced by clearly named internal
+target/presented accessors rather than relying on timing.
+
+## Provisional approach
+
+Use the existing animation scheduler to interpolate persistent layout instances
+matched by Phase 2 identity:
+
+1. Capture their current presented geometry.
+2. Run one full layout and commit new targets.
+3. On animation frames, interpolate presentation and request drawing only.
+4. On interruption, begin again from the current presentation, not the previous
+   target or original start.
+5. At completion, snap exactly to target and release transient transition state.
+
+Clipping should be derived from presented parent/viewport geometry. Pixel
+rounding should occur when applying WebGL viewport/scissor state rather than in
+canonical targets, avoiding accumulated snapping and jitter. Resize the WebGL
+backing store for the target result, not on every interpolated frame; DOM wrapper
+animation, if wanted, is a separate concern.
+
+## Possible later SampleView migration
+
+Peek should be treated as a working specialized implementation and benchmark,
+not discarded during the Core transition refactor. Once the general model is
+stable, evaluate a separate App PR that maps sample keys to stable layout-instance
+indices and represents fitted, scrollable/target, and presented location/size in
+flat numeric storage.
+
+Potential benefits include fewer accessor closures, less pointer chasing, tight
+interpolation loops, shared target/presented storage for CPU consumers, and a
+more direct facet-texture upload. For texture-faceted marks, storing old and new
+locations and interpolating in the shader could avoid rewriting all presented
+sample coordinates on the CPU each frame; CPU picking and interaction would
+still need an efficient consistent presented view.
+
+Migration must not simply move the same work behind a generic abstraction. It
+needs profiles at representative sample counts, including roughly 2,000 samples,
+and must account for summaries, group backgrounds, sticky behavior, scrolling,
+repeated axes/chrome, filtering, SVG, and non-texture facet rendering. It is not
+required for Phase 4 acceptance.
+
+## Verification
+
+- Deterministic clock tests cover start, midpoint, completion, cancellation, and
+  reversal of a persistent resize/reposition.
+- Transition frames perform no layout, measurement, command collection, or batch
+  construction.
+- Picking, clipping, and hit testing follow midpoint presentation geometry.
+- Axis/scale sizing and a subsequent interrupted layout use target geometry.
+- Nested expansion and contraction maintain valid clipping.
+- SampleView peek continues to interpolate each sample exactly once. Its sample
+  facet texture and CPU/SVG position path, sticky summaries, group backgrounds,
+  repeated axes, scrollbar, clipping, picking, and pointer-to-sample lookup agree
+  at intermediate frames.
+- Starting a general layout transition while SampleView peek is active has a
+  defined composition or cancellation behavior and never feeds animated sample
+  coordinates back into canonical view layout.
+- Headless, SVG/export, reduced-motion, and disabled paths produce final target
+  geometry immediately.
+
+## Non-goals
+
+- Entering or exiting layout instances.
+- Visibility thresholds or semantic zoom.
+- Animating data, mark encodings, scale domains, or arbitrary GPU attributes.
+- Public transition syntax unless an internal control is required for testing.
+
+## Risks and open questions
+
+- Which public bounds APIs mean last presented bounds versus canonical targets?
+- Should interaction remain active throughout a transition, and how should
+  rapidly moving small targets behave?
+- How are nested clips combined when both parent and child interpolate?
+- What minimal state supports interruption without allocating on every frame?
+- Should the first implementation be opt-in and use a fixed internal duration
+  and easing?
+- Which parts of SampleView peek should eventually use general layout-instance
+  storage, and which group/scroll semantics should remain specialized?
+
+## Phase acceptance and review gate
+
+Proceed to semantic visibility only if target/presented semantics are explicit,
+transition frames are layout-free, and the added per-instance state is justified
+by working persistent-view transitions.
+
+Tentative commit sequence:
+
+1. `refactor(core): distinguish target and presented geometry`
+2. `feat(core): animate persistent layout instances`
+3. `test(core): verify layout transition interruption`
