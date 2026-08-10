@@ -179,6 +179,37 @@ describe("ScaleInteractionController", () => {
         );
     });
 
+    test("zoomTo does not commit a superseded transition target", async () => {
+        const scale = createLinearScale([0, 10]);
+        /** @type {{ options: any, resolve: () => void }[]} */
+        const transitions = [];
+        const animator = /** @type {any} */ ({
+            transition: vi.fn(
+                (/** @type {any} */ options) =>
+                    new Promise((resolve) => {
+                        transitions.push({ options, resolve: () => resolve() });
+                    })
+            ),
+            requestRender: vi.fn(),
+        });
+        const controller = createController({ scale, animator });
+
+        const firstTransition = controller.zoomTo([2, 8], 500);
+        transitions[0].options.onUpdate(0.25);
+        const handoffDomain = scale.domain().slice();
+        const secondTransition = controller.zoomTo([4, 6], 500);
+
+        transitions[0].resolve();
+        await firstTransition;
+
+        expect(scale.domain()).toEqual(handoffDomain);
+
+        transitions[1].resolve();
+        await secondTransition;
+
+        expect(scale.domain()).toEqual([4, 6]);
+    });
+
     test("zoomTo can render immediately without requesting animation frame", async () => {
         const scale = createLinearScale([0, 10]);
         const animator = createAnimator();

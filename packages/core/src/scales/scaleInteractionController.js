@@ -251,9 +251,11 @@ export default class ScaleInteractionController {
                 },
             });
 
-            if (this.#zoomTransitionToken === cancelToken) {
-                this.#zoomTransitionToken = null;
+            if (this.#zoomTransitionToken !== cancelToken) {
+                return;
             }
+
+            this.#zoomTransitionToken = null;
             scale.domain(to);
         } else {
             this.#cancelZoomTransition();
