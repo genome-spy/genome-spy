@@ -61,8 +61,17 @@ const files = {};
 /** @type {Set<string>} */
 let missingFiles = new Set();
 
-/** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult} */
+/** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult | undefined} */
 let embedResult;
+
+/**
+ * Returns the active embed API for browser automation and developer tooling.
+ *
+ * @returns {import("@genome-spy/core/types/embedApi.js").EmbedResult | undefined}
+ */
+export function getCurrentEmbedResult() {
+    return embedResult;
+}
 
 let previousStringifiedSpec = "";
 let suppressNextEditorChange = false;
