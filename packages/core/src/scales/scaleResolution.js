@@ -101,9 +101,9 @@ export default class ScaleResolution {
     /** @type {Set<ScaleResolutionMember>} */
     #dataDomainMembers = new Set();
 
-    // Suppress distracting transitions through partial domains while initial
-    // lazy data sources load. Later dynamic domain updates still animate.
-    #initialDomainDataReady = false;
+    // Suppress transitions through partial domains until initial data is ready
+    // or an interaction makes the current domain authoritative.
+    #initialDomainFinalized = false;
 
     /** @type {ScaleResolutionMember[] | undefined} */
     #orderedMembers;
@@ -533,7 +533,6 @@ export default class ScaleResolution {
         this.#members.add(member);
         if (member.contributesToDomain) {
             this.#dataDomainMembers.add(member);
-            this.#initialDomainDataReady = false;
         }
         return member;
     }
@@ -817,14 +816,14 @@ export default class ScaleResolution {
     }
 
     /**
-     * Marks initial data as ready after every visible non-constant domain
-     * contributor has produced a value. Until then, apply partial initial
-     * domains directly instead of visibly transitioning between them.
+     * Finalizes the initial domain after every visible non-constant domain
+     * contributor has produced a value. Until then, apply partial domains
+     * directly instead of visibly transitioning between them.
      *
-     * @returns {boolean} whether initial data became ready now
+     * @returns {boolean} whether the initial domain was finalized now
      */
-    #markInitialDomainDataReady() {
-        if (this.#initialDomainDataReady) {
+    #finalizeInitialDomainFromData() {
+        if (this.#initialDomainFinalized) {
             return false;
         }
 
@@ -844,7 +843,7 @@ export default class ScaleResolution {
             }
         }
 
-        this.#initialDomainDataReady = true;
+        this.#initialDomainFinalized = true;
         return true;
     }
 
@@ -875,6 +874,28 @@ export default class ScaleResolution {
                     this.type,
                     accessor
                 ).length > 0
+        );
+    }
+
+    /**
+     * Ends initial-domain collection before an interaction changes the scale.
+     * Late data updates must preserve the domain the user interacted with even
+     * when an initially empty contributor cannot prove domain coverage.
+     */
+    #finalizeInitialDomainForInteraction() {
+        if (this.#initialDomainFinalized) {
+            return;
+        }
+
+        const scale = this.getScale();
+        const snapshot = this.#domainAggregator.hasSelectionConfiguredDomain()
+            ? this.#domainAggregator.getDefaultDomain(true)
+            : undefined;
+        this.#initialDomainFinalized = true;
+        this.#domainAggregator.captureInitialDomain(
+            scale,
+            this.isDomainInitialized(),
+            snapshot
         );
     }
 
@@ -1332,10 +1353,11 @@ export default class ScaleResolution {
         const initialDomainSnapshot = hasSelectionConfiguredDomain
             ? this.#domainAggregator.getDefaultDomain(true)
             : undefined;
-        const initialDomainDataBecameReady = this.#markInitialDomainDataReady();
+        const initialDomainFinalizedFromData =
+            this.#finalizeInitialDomainFromData();
 
         if (
-            this.#initialDomainDataReady &&
+            this.#initialDomainFinalized &&
             this.#domainAggregator.captureInitialDomain(
                 scale,
                 domainWasInitialized,
@@ -1347,7 +1369,7 @@ export default class ScaleResolution {
             return;
         }
 
-        if (!this.#initialDomainDataReady || initialDomainDataBecameReady) {
+        if (!this.#initialDomainFinalized || initialDomainFinalizedFromData) {
             // Apply partial and complete initial domains directly. Subsequent
             // updates use the normal transition path below.
             if (
@@ -1540,6 +1562,9 @@ export default class ScaleResolution {
      * @returns {boolean} true if the scale was zoomed
      */
     zoom(scaleFactor, scaleAnchor, pan) {
+        if (this.#interactionController.isZoomingSupported()) {
+            this.#finalizeInitialDomainForInteraction();
+        }
         return this.#interactionController.zoom(scaleFactor, scaleAnchor, pan);
     }
 
@@ -1551,6 +1576,9 @@ export default class ScaleResolution {
      *      Zoom options. Passing the duration directly as a boolean or number is deprecated.
      */
     async zoomTo(domain, options = false) {
+        if (this.#interactionController.isZoomingSupported()) {
+            this.#finalizeInitialDomainForInteraction();
+        }
         return this.#interactionController.zoomTo(domain, options);
     }
 

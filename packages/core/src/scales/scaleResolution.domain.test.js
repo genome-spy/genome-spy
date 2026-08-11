@@ -979,6 +979,71 @@ describe("Scale resolution domain handling", () => {
         }
     });
 
+    test("lazy reload preserves a zoomed domain when a contributor is empty", async () => {
+        const unregister = registerLazyDataSource(
+            (params) => /** @type {any} */ (params).type == "mockLazy",
+            MockLazySource
+        );
+
+        try {
+            const view = await create(
+                {
+                    data: {
+                        lazy: /** @type {any} */ ({
+                            type: "mockLazy",
+                            channel: "x",
+                            data: [{ x: 0 }, { x: 1 }],
+                        }),
+                    },
+                    resolve: { scale: { x: "shared" } },
+                    layer: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: {
+                                    field: "x",
+                                    type: "quantitative",
+                                    scale: { zoom: true },
+                                },
+                            },
+                        },
+                        {
+                            transform: [{ type: "filter", expr: "false" }],
+                            mark: "point",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+                LayerView
+            );
+            initializeViewSubtree(view, view.context.dataFlow);
+
+            const resolution = getRequiredScaleResolution(view, "x");
+            const source = /** @type {MockLazySource} */ (
+                view.flowHandle.dataSource
+            );
+
+            source.requestDataForDomain([0, 10]);
+            await vi.waitFor(() =>
+                expect(resolution.scale.domain()).toEqual([0, 1])
+            );
+
+            await resolution.zoomTo([4, 5], 0);
+            source.params.data = [{ x: 6 }, { x: 7 }];
+            source.requestDataForDomain([4, 5]);
+            await vi.waitFor(() =>
+                expect(view.children[0].getCollector().getData()[0].x).toBe(6)
+            );
+
+            expect(resolution.scale.domain()).toEqual([4, 5]);
+            expect(resolution.zoomExtent).toEqual([0, 1]);
+        } finally {
+            unregister();
+        }
+    });
+
     test("reconfigureDomain skips zoom animation for non-zoomable index scales", async () => {
         const view = await initView(
             {
