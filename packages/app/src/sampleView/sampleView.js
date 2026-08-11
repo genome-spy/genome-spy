@@ -779,20 +779,26 @@ export default class SampleView extends ContainerView {
      * so relying on the previous render's child coordinates would make y-axis
      * overhang stale after resize.
      *
-     * @param {number} _width
+     * @param {number} width
      * @param {number} height
-     * @returns {boolean} `true` when size-dependent horizontal overhang changed.
+     * @returns {boolean} `true` when size-dependent chrome or legend layout changed.
      */
-    prepareLayoutSize(_width, height) {
+    prepareLayoutSize(width, height) {
         const previousLocations = this.locationManager.getLocations();
 
         this.#preparedLayoutHeight = height;
 
         const nextLocations = this.locationManager.getLocations();
-        return this.#gridChild.sampleChromeLayout.hasHorizontalReserveChanged(
-            previousLocations,
-            nextLocations
+        const chromeChanged =
+            this.#gridChild.sampleChromeLayout.hasHorizontalReserveChanged(
+                previousLocations,
+                nextLocations
+            );
+        const legendLayoutChanged = this.#gridChild.prepareLegendLayoutSize(
+            width,
+            height
         );
+        return chromeChanged || legendLayoutChanged;
     }
 
     /**

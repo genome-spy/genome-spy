@@ -80,6 +80,17 @@ const DECORATION_ORDER = Object.freeze({
 
 const MAX_CONSTRAINT_LAYOUT_PASSES = 10;
 
+/**
+ * Returns the part of an allocated flex slot that fits in the layout extent.
+ * Flex minimums may otherwise report more room than a constrained canvas has.
+ *
+ * @param {import("../layout/flexLayout.js").LocSize} locSize
+ * @param {number} extent
+ */
+function getVisibleSlotSize(locSize, extent) {
+    return Math.max(0, Math.min(locSize.size, extent - locSize.location));
+}
+
 // Default z-index for axes and view strokes when the content is clipped or
 // scrollable. This keeps guides above content-edge artifacts while still
 // letting an explicit user zindex override the default.
@@ -1027,6 +1038,14 @@ export default class GridView extends ContainerView {
                 const colLocSize =
                     columnFlexCoords[this.#getViewSlot("column", col)];
                 const rowLocSize = rowFlexCoords[this.#getViewSlot("row", row)];
+                const availableWidth = getVisibleSlotSize(
+                    colLocSize,
+                    coords.width
+                );
+                const availableHeight = getVisibleSlotSize(
+                    rowLocSize,
+                    coords.height
+                );
 
                 // Some child chrome depends on the final plot allocation.
                 // Repeating both dimensions lets external legend rows and
@@ -1034,11 +1053,11 @@ export default class GridView extends ContainerView {
                 const viewLayoutChanged =
                     /** @type {{ prepareLayoutSize?: (width: number, height: number) => boolean }} */ (
                         gridChild.view
-                    ).prepareLayoutSize?.(colLocSize.size, rowLocSize.size) ===
+                    ).prepareLayoutSize?.(availableWidth, availableHeight) ===
                     true;
                 const legendLayoutChanged = gridChild.prepareLegendLayoutSize(
-                    colLocSize.size,
-                    rowLocSize.size
+                    availableWidth,
+                    availableHeight
                 );
                 layoutChanged ||= viewLayoutChanged || legendLayoutChanged;
             }
