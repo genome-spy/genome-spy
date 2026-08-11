@@ -4,6 +4,7 @@ import ConcatView from "../concatView.js";
 import AxisView from "../axisView.js";
 import AxisGridView from "../axisGridView.js";
 import LegendView, { LegendRegionView } from "../legendView.js";
+import { getSizeDefMinPx } from "../layout/flexLayout.js";
 import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
@@ -163,6 +164,28 @@ describe("legend layout helpers", () => {
             expect(coords.y).toBe(32);
             expect(coords.width).toBe(180);
             expect(coords.height).toBe(24);
+        });
+
+        test.each([
+            ["start", 10],
+            ["middle", 110],
+            ["end", 210],
+        ])("anchors a top legend at %s", (anchor, expectedX) => {
+            const legendView = /** @type {any} */ ({
+                getPerpendicularSize: () => 24,
+                getParallelSize: () => 100,
+                getOffset: () => 0,
+                getAnchor: () => anchor,
+            });
+
+            const coords = translateLegendCoords(
+                Rectangle.create(10, 20, 300, 200),
+                "top",
+                legendView
+            );
+
+            expect(coords.x).toBe(expectedX);
+            expect(coords.width).toBe(100);
         });
     });
 });
@@ -1226,7 +1249,7 @@ describe("GridView legends", () => {
             expect(legendHeights.at(-1)).toBeGreaterThan(100);
         });
 
-        test("includes stack spacing in top and bottom legend overhang", async () => {
+        test("packs top and bottom legend regions horizontally by default", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },
                 vconcat: [
@@ -1286,13 +1309,31 @@ describe("GridView legends", () => {
                 ],
             });
             const [region] = getLegendRegions(view);
-            const legendHeights = getLegends(view).map((legend) =>
-                legend.getPerpendicularSize()
+            const legends = getLegends(view);
+            const legendHeights = legends.map((legend) =>
+                getSizeDefMinPx(legend.getSize().height)
+            );
+            const legendWidths = legends.map((legend) =>
+                getSizeDefMinPx(legend.getSize().width)
             );
 
             expect(region.getPerpendicularSize()).toBe(
-                legendHeights.reduce((sum, height) => sum + height, 0) + 10
+                Math.max(...legendHeights)
             );
+            expect(region.getWidth()).toBe(
+                legendWidths.reduce((sum, width) => sum + width, 0) + 10
+            );
+
+            const context = new LegendRecordingRenderingContext({
+                picking: false,
+            });
+            region.render(context, Rectangle.create(0, 0, 300, 80));
+            const coords = Array.from(context.legendCoords.values());
+
+            expect(coords).toHaveLength(2);
+            expect(coords[0].x).toBe(0);
+            expect(coords[1].x - coords[0].x - coords[0].width).toBe(10);
+            expect(coords[0].y).toBe(coords[1].y);
         });
 
         test("stacks local bottom legends outside shared bottom axes", async () => {
