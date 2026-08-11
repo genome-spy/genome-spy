@@ -28,6 +28,40 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
+    test("accepts collected only as a legend resolution behavior", () => {
+        const validate = createCoreValidator();
+        const baseSpec = {
+            data: { values: [{ group: "A" }] },
+            mark: /** @type {const} */ ("point"),
+            encoding: {
+                color: {
+                    field: "group",
+                    type: /** @type {const} */ ("nominal"),
+                },
+            },
+        };
+
+        expect(
+            validate({
+                ...baseSpec,
+                resolve: { legend: { color: "collected" } },
+            }),
+            JSON.stringify(validate.errors, null, 2)
+        ).toBe(true);
+        expect(
+            validate({
+                ...baseSpec,
+                resolve: { scale: { color: "collected" } },
+            })
+        ).toBe(false);
+        expect(
+            validate({
+                ...baseSpec,
+                resolve: { axis: { x: "collected" } },
+            })
+        ).toBe(false);
+    });
+
     test("accepts primary offset channels and secondary offset properties", () => {
         const validate = createCoreValidator();
         const spec = {

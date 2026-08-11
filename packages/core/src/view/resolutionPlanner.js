@@ -9,6 +9,7 @@ import {
     isPrimaryPositionalChannel,
     isOffsetChannel,
 } from "../encoder/encoder.js";
+import { isInChromeSubtree } from "./viewChrome.js";
 
 /**
  * @typedef {object} ResolutionMember
@@ -32,17 +33,17 @@ import {
 const getResolutionView = (view, type, targetChannel) => {
     let resolutionView = view;
     while (
-        (resolutionView.getConfiguredOrDefaultResolution(targetChannel, type) ==
+        (getResolutionBehavior(resolutionView, type, targetChannel) ==
             "forced" ||
             (resolutionView.dataParent &&
                 ["shared", "excluded", "forced"].includes(
-                    resolutionView.dataParent.getConfiguredOrDefaultResolution(
-                        targetChannel,
-                        type
+                    getResolutionBehavior(
+                        resolutionView.dataParent,
+                        type,
+                        targetChannel
                     )
                 ))) &&
-        resolutionView.getConfiguredOrDefaultResolution(targetChannel, type) !=
-            "excluded"
+        getResolutionBehavior(resolutionView, type, targetChannel) != "excluded"
     ) {
         // @ts-ignore
         resolutionView = resolutionView.dataParent;
@@ -50,6 +51,34 @@ const getResolutionView = (view, type, targetChannel) => {
 
     return resolutionView;
 };
+
+/**
+ * @param {import("./view.js").default} view
+ * @param {ResolutionPlannerTarget} type
+ * @param {import("../spec/channel.js").ChannelWithScale} channel
+ * @returns {import("../spec/view.js").LegendResolutionBehavior | import("../spec/view.js").ResolutionBehavior}
+ */
+function getResolutionBehavior(view, type, channel) {
+    const behavior = view.getConfiguredOrDefaultResolution(channel, type);
+
+    switch (behavior) {
+        case "independent":
+        case "shared":
+        case "excluded":
+        case "forced":
+            return behavior;
+        case "collected":
+            if (type == "legend") {
+                return behavior;
+            } else {
+                throw new Error(
+                    `Resolution behavior "collected" is only supported for legends, not ${type}s.`
+                );
+            }
+        default:
+            throw new Error(`Unknown ${type} resolution behavior: ${behavior}`);
+    }
+}
 
 /**
  * @param {import("./unitView.js").default} ownerView
@@ -112,10 +141,8 @@ const getResolutionMember = (view, type, channel, channelDef) => {
     }
     if (
         type == "legend" &&
-        view.getConfiguredOrDefaultResolution(
-            targetChannel,
-            /** @type {any} */ (type)
-        ) == "excluded"
+        getResolutionBehavior(view, type, targetChannel) == "excluded" &&
+        isInChromeSubtree(view)
     ) {
         return undefined;
     }

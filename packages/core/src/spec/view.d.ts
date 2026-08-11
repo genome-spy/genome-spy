@@ -520,6 +520,15 @@ export type ResolutionTarget = "scale" | "axis" | "legend";
 export type ResolutionBehavior =
     "independent" | "shared" | "excluded" | "forced";
 
+/**
+ * Legend resolution behavior. `"collected"` keeps legend resolutions
+ * independent at the declaring view but lays out their complete legends at
+ * that view's composition-level collector.
+ */
+export type LegendResolutionBehavior = ResolutionBehavior | "collected";
+
+type ResolutionMap<T> = Partial<Record<Channel | "default", T>>;
+
 export interface ResolveSpec {
     /**
      * Specifies how scales, axes, and legends are
@@ -529,12 +538,11 @@ export interface ResolveSpec {
      * If legend resolution is not configured explicitly, it follows the
      * corresponding scale resolution.
      */
-    resolve?: Partial<
-        Record<
-            ResolutionTarget,
-            Partial<Record<Channel | "default", ResolutionBehavior>>
-        >
-    >;
+    resolve?: {
+        scale?: ResolutionMap<ResolutionBehavior>;
+        axis?: ResolutionMap<ResolutionBehavior>;
+        legend?: ResolutionMap<LegendResolutionBehavior>;
+    };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
