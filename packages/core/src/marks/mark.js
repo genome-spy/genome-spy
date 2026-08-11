@@ -1220,9 +1220,7 @@ export default class Mark {
         this.gl.useProgram(this.programInfo.program);
 
         setUniforms(this.programInfo, {
-            // left pos, left height, right pos, right height
-            uSampleFacet: [0, 1, 0, 1],
-            uTransitionOffset: 0.0,
+            uSampleFacet: [0, 1],
             uZero: 0.0,
         });
 
@@ -1553,16 +1551,12 @@ export default class Mark {
                 return false;
             }
 
-            // No target locSize in the current API. Keep a consistent shader path
-            // by repeating the current position/height.
-            // Use WebGL directly, because twgl uses gl.uniform4fv, which has an
+            // Use WebGL directly, because twgl uses gl.uniform2fv, which has an
             // inferior performance. Based on profiling, this optimization gives
             // a significant performance boost.
-            this.gl.uniform4f(
+            this.gl.uniform2f(
                 // @ts-expect-error
                 locationSetter.location, // TODO: Make a twgl pull request to fix typing
-                pos,
-                height,
                 pos,
                 height
             );

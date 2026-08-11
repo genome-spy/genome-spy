@@ -205,7 +205,7 @@ describe("generated shader snapshots", () => {
         });
 
         const cullIndex = sources.vertex.indexOf(
-            "sampleFacetPos.height == 0.0 && sampleFacetPos.targetHeight == 0.0"
+            "sampleFacetPos.height == 0.0"
         );
         const minSizeIndex = sources.vertex.indexOf(
             "clampMinSize(pos.y, frac.y, size.y, normalizedMinSize.y)"
