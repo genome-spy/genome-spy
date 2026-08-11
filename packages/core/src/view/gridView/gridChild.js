@@ -29,6 +29,7 @@ import {
     getOrderedLegendEntries,
     iterateLegendViews,
 } from "./gridChildLegends.js";
+import { findLegendCollectionTarget } from "./legendCollection.js";
 import { RulerMouseEventController } from "../../ruler/rulerMouseEventController.js";
 import { RulerViewportController } from "../../ruler/rulerViewportController.js";
 import { createConfiguredRulerOverlayView } from "./rulerOverlay.js";
@@ -683,9 +684,16 @@ export default class GridChild {
             }
         }
 
-        for (const { definition, resolution } of getOrderedLegendEntries(
+        for (const { definition, resolution, owner } of getOrderedLegendEntries(
             getLegendOwners(view)
         )) {
+            if (
+                findLegendCollectionTarget(owner, resolution.channel) !==
+                undefined
+            ) {
+                continue;
+            }
+
             const legend = await createGridChildLegend(
                 definition,
                 this.layoutParent

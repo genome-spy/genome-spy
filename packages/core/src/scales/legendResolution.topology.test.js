@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import LayerView from "../view/layerView.js";
 import UnitView from "../view/unitView.js";
+import ConcatView from "../view/concatView.js";
 import { initView } from "./scaleResolutionTestUtils.js";
 
 /**
@@ -18,16 +18,23 @@ function colorUnit() {
 
 describe("Legend resolution topology", () => {
     test("collected keeps legend resolutions independent without changing scales", async () => {
-        const view = /** @type {LayerView} */ (
+        const root = /** @type {ConcatView} */ (
             await initView(
                 {
                     config: { legend: { disable: true } },
                     data: { values: [{ group: "A" }] },
-                    resolve: { legend: { color: "collected" } },
-                    layer: [colorUnit(), colorUnit()],
+                    vconcat: [
+                        {
+                            resolve: { legend: { color: "collected" } },
+                            layer: [colorUnit(), colorUnit()],
+                        },
+                    ],
                 },
-                LayerView
+                ConcatView
             )
+        );
+        const view = /** @type {import("../view/layerView.js").default} */ (
+            root.children[0]
         );
         const [first, second] = view.children;
 

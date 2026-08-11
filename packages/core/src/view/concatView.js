@@ -114,7 +114,7 @@ export default class ConcatView extends GridView {
         super.moveChildAt(fromIndex, index);
         // Reordering can move shared guide ownership without changing existing
         // child-local guides.
-        await this.syncGuideViews({ gridChildren: [] });
+        await this.#syncMutationGuideViews([]);
         await mutationHelper.initializeUninitializedChromeViews();
         this.context.requestLayoutReflow();
     }
@@ -191,13 +191,25 @@ export default class ConcatView extends GridView {
             insertView: (view, index) => this.insertChildViewAt(view, index),
             removeView: (index) => super.removeChildAt(index),
             syncMutationGuideViews: (_view, _index, gridChild) =>
-                this.syncGuideViews({
-                    // Only inserted grid children need new local guides. Shared
-                    // guides are synced by GridView regardless of this filter.
-                    gridChildren: gridChild ? [gridChild] : [],
-                }),
+                this.#syncMutationGuideViews(gridChild ? [gridChild] : []),
             defaultName: () => this.getNextAutoName("grid"),
             createViewOptions,
         });
+    }
+
+    /**
+     * Refreshes this grid and ancestor grid-owned guides. An outer grid may
+     * collect legends from a dynamically changed nested composition.
+     *
+     * @param {import("./gridView/gridChild.js").default[]} gridChildren
+     */
+    async #syncMutationGuideViews(gridChildren) {
+        await this.syncGuideViews({ gridChildren });
+
+        for (const ancestor of this.getLayoutAncestors().slice(1)) {
+            if (ancestor instanceof GridView) {
+                await ancestor.syncGuideViews({ gridChildren: [] });
+            }
+        }
     }
 }

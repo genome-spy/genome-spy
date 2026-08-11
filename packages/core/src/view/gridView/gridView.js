@@ -36,6 +36,10 @@ import {
     iterateLegendViews,
     isActiveLegendRegion,
 } from "./gridChildLegends.js";
+import {
+    findLegendCollectionTarget,
+    getLegendResolutionOwners,
+} from "./legendCollection.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 import { getZoomableResolutions } from "./zoomNavigationUtils.js";
 import { moveArrayItem } from "../../utils/arrayUtils.js";
@@ -473,9 +477,20 @@ export default class GridView extends ContainerView {
         disposeLegendViews(this.#sharedLegends);
         this.#sharedLegends = {};
 
-        for (const { definition, resolution } of getOrderedLegendEntries([
-            this,
-        ])) {
+        for (const { definition, resolution, owner } of getOrderedLegendEntries(
+            getLegendResolutionOwners(this)
+        )) {
+            const collectionTarget = findLegendCollectionTarget(
+                owner,
+                resolution.channel
+            );
+            if (
+                collectionTarget !== this &&
+                !(collectionTarget === undefined && owner === this)
+            ) {
+                continue;
+            }
+
             const legend = await createGridChildLegend(definition, this);
             await addLegendView(this.#sharedLegends, legend, resolution);
         }

@@ -263,7 +263,8 @@ function collectMutationInitializedViews(
  * @returns {Set<import("./view.js").default>}
  */
 function collectUninitializedChromeViews(container, views = new Set()) {
-    for (const view of container.getDescendants()) {
+    const layoutRoot = container.getLayoutAncestors().at(-1);
+    for (const view of layoutRoot.getDescendants()) {
         if (
             isChromeView(view) &&
             view.getDataInitializationState() === "none"
