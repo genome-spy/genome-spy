@@ -145,16 +145,26 @@ describe("legendConfig", () => {
     test("uses orientation-dependent region defaults", () => {
         expect(
             getConfiguredLegendRegionLayout([INTERNAL_DEFAULT_CONFIG], "left")
-        ).toEqual({ anchor: "start", direction: "vertical" });
+        ).toEqual({ anchor: "start", direction: "vertical", wrap: true });
         expect(
             getConfiguredLegendRegionLayout([INTERNAL_DEFAULT_CONFIG], "top")
-        ).toEqual({ anchor: "start", direction: "horizontal" });
+        ).toEqual({ anchor: "start", direction: "horizontal", wrap: true });
         expect(
             getConfiguredLegendRegionLayout(
-                [INTERNAL_DEFAULT_CONFIG],
+                [
+                    INTERNAL_DEFAULT_CONFIG,
+                    {
+                        legend: {
+                            layout: {
+                                wrap: true,
+                                "bottom-right": { wrap: true },
+                            },
+                        },
+                    },
+                ],
                 "bottom-right"
             )
-        ).toEqual({ anchor: "start", direction: "horizontal" });
+        ).toEqual({ anchor: "start", direction: "horizontal", wrap: false });
     });
 
     test("orientation-specific region layout overrides general layout", () => {
@@ -166,7 +176,12 @@ describe("legendConfig", () => {
                     layout: {
                         anchor: "middle",
                         direction: "vertical",
-                        top: { anchor: "end", direction: "horizontal" },
+                        wrap: false,
+                        top: {
+                            anchor: "end",
+                            direction: "horizontal",
+                            wrap: true,
+                        },
                     },
                 },
             },
@@ -175,10 +190,12 @@ describe("legendConfig", () => {
         expect(getConfiguredLegendRegionLayout(scopes, "right")).toEqual({
             anchor: "middle",
             direction: "vertical",
+            wrap: false,
         });
         expect(getConfiguredLegendRegionLayout(scopes, "top")).toEqual({
             anchor: "end",
             direction: "horizontal",
+            wrap: true,
         });
     });
 
@@ -193,6 +210,7 @@ describe("legendConfig", () => {
         expect(getConfiguredLegendRegionLayout(scopes, "top")).toEqual({
             anchor: "end",
             direction: "horizontal",
+            wrap: true,
         });
     });
 

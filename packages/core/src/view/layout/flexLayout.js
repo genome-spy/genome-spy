@@ -146,6 +146,47 @@ export function getMinimumSize(items, { spacing } = { spacing: 0 }) {
 }
 
 /**
+ * Greedily assigns flex items to lines using their minimum sizes. Flexible
+ * growth is resolved separately within each resulting line.
+ *
+ * @param {SizeDef[]} items
+ * @param {number} containerSize
+ * @param {FlexOptions} [options]
+ * @returns {number[][]} Item indices grouped into lines
+ */
+export function wrapFlexItems(items, containerSize, { spacing = 0 } = {}) {
+    /** @type {number[][]} */
+    const lines = [];
+    /** @type {number[]} */
+    let line = [];
+    let lineSize = 0;
+    let nonZeroCount = 0;
+
+    for (const [index, item] of items.entries()) {
+        const itemSize = getSizeDefMinPx(item);
+        const nonZero = !isZeroSizeDef(item);
+        const gap = nonZeroCount && nonZero ? spacing : 0;
+
+        if (line.length && lineSize + gap + itemSize > containerSize) {
+            lines.push(line);
+            line = [];
+            lineSize = 0;
+            nonZeroCount = 0;
+        }
+
+        line.push(index);
+        lineSize += (nonZeroCount && nonZero ? spacing : 0) + itemSize;
+        nonZeroCount += nonZero ? 1 : 0;
+    }
+
+    if (line.length) {
+        lines.push(line);
+    }
+
+    return lines;
+}
+
+/**
  * @param {Iterable<SizeDef>} items
  * @returns {SizeDef}
  */

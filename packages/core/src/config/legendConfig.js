@@ -16,12 +16,15 @@ export function getConfiguredLegendRegionLayout(scopes, orient) {
     );
     const orientLayout = layout[orient];
 
+    const external = ["left", "right", "top", "bottom"].includes(orient);
+
     return {
         anchor: orientLayout?.anchor ?? layout.anchor ?? "start",
         direction:
             orientLayout?.direction ??
             layout.direction ??
             (orient == "left" || orient == "right" ? "vertical" : "horizontal"),
+        wrap: external && (orientLayout?.wrap ?? layout.wrap ?? true),
     };
 }
 

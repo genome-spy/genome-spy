@@ -123,6 +123,11 @@ For external orientations, `anchor` positions the complete stack along the
 plot edge using `"start"` (the default), `"middle"`, or `"end"`. Corner legends
 remain anchored to their specified corner.
 
+External regions wrap complete legends by default when their minimum sizes do
+not fit beside the plot. A horizontal region fills rows from left to right; a
+vertical region fills columns from top to bottom. Set `wrap` to `false` in the
+region layout to keep a single row or column. Inside-corner regions do not wrap.
+
 ## Resolution
 
 Legends participate in view

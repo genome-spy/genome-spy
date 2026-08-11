@@ -364,6 +364,32 @@ describe("GridView separators", () => {
         ).toBe(0);
     });
 
+    test("prepares child layout against constrained visible space", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        ...makeUnitSpecWithoutAxes(),
+                        height: 300,
+                    },
+                ],
+            },
+            ConcatView
+        );
+        const child = /** @type {UnitView & {
+            prepareLayoutSize: (width: number, height: number) => boolean
+        }} */ (view.children[0]);
+        let preparedHeight = Infinity;
+        child.prepareLayoutSize = (_width, height) => {
+            preparedHeight = height;
+            return false;
+        };
+
+        renderForLayoutHeight(view, 100);
+
+        expect(preparedHeight).toBeLessThanOrEqual(100);
+    });
+
     test("child width params shadow the parent width in hconcat layouts", async () => {
         const view = await createAndInitialize(
             {

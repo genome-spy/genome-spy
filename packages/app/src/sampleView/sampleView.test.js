@@ -1263,11 +1263,22 @@ describe("layout and group column", () => {
         expect(legendA.getSize().height.px).toBeGreaterThan(0);
         expect(legendB.getSize().height.px).toBeGreaterThan(0);
 
+        expect(view.prepareLayoutSize(360, 40)).toBe(true);
+        const wrappedContext = new InspectRenderingContext({ picking: false });
+        view.render(wrappedContext, Rectangle.create(0, 0, 360, 220), {
+            firstFacet: true,
+        });
+        expect(wrappedContext.legendCoords).toHaveLength(2);
+        expect(wrappedContext.legendCoords[0].coords.y).toBe(
+            wrappedContext.legendCoords[1].coords.y
+        );
+
         hiddenLayerName = "signal-a";
 
         expect(legendA.getSize().width.px).toBe(0);
         expect(legendA.getSize().height.px).toBe(0);
         expect(legendB.getSize().height.px).toBeGreaterThan(0);
+        view.prepareLayoutSize(360, 220);
 
         const renderContext = new InspectRenderingContext({ picking: false });
         view.render(renderContext, Rectangle.create(0, 0, 360, 220), {

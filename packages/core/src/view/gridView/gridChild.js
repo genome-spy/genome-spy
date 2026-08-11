@@ -28,6 +28,7 @@ import {
     getLegendOverhang,
     getOrderedLegendEntries,
     iterateLegendViews,
+    prepareLegendLayoutSize,
 } from "./gridChildLegends.js";
 import { findLegendCollectionDeclaration } from "./legendCollection.js";
 import { RulerMouseEventController } from "../../ruler/rulerMouseEventController.js";
@@ -825,6 +826,17 @@ export default class GridChild {
                 .add(this.view.getOverhang()),
             this.view.spec.overhang
         );
+    }
+
+    /**
+     * Resolves width- or height-constrained legend wrapping.
+     *
+     * @param {number} width
+     * @param {number} height
+     * @returns {boolean}
+     */
+    prepareLegendLayoutSize(width, height) {
+        return prepareLegendLayoutSize(this.legends, width, height);
     }
 
     /**
