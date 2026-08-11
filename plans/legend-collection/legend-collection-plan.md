@@ -270,8 +270,9 @@ Implement collection as a small extension of existing legend discovery and
 synchronization:
 
 1. Add one pure helper that walks from a semantic legend owner toward the root
-   and returns the nearest collected layout host, stops at `"excluded"`, or
-   returns no override.
+   and returns the nearest collection declaration, stops at `"excluded"`, or
+   returns no override. Resolve its `GridView` host in the grid-layout module
+   to keep routing independent of the concrete collector class.
 2. Have existing local and shared legend synchronization call that helper when
    deciding whether they own a definition.
 3. Let a collecting `GridView` reuse the existing descendant legend discovery

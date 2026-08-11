@@ -3,7 +3,7 @@ import { create, createAndInitialize, specToLayout } from "../testUtils.js";
 import ConcatView from "../concatView.js";
 import UnitView from "../unitView.js";
 import LegendView, { LegendRegionView } from "../legendView.js";
-import { findLegendCollectionTarget } from "./legendCollection.js";
+import { findLegendCollectionDeclaration } from "./legendCollection.js";
 import { syncViewGuideViews } from "./guideViewSync.js";
 import Rectangle from "../layout/rectangle.js";
 
@@ -158,19 +158,19 @@ describe("collected legend routing", () => {
         const outer = root.findDescendantByName("outer");
 
         expect(
-            findLegendCollectionTarget(
+            findLegendCollectionDeclaration(
                 nested,
                 nested.getLegendResolution("color").channel
             )
         ).toBe(nearest);
         expect(
-            findLegendCollectionTarget(
+            findLegendCollectionDeclaration(
                 shielded,
                 shielded.getLegendResolution("color").channel
             )
         ).toBeUndefined();
         expect(
-            findLegendCollectionTarget(
+            findLegendCollectionDeclaration(
                 outer,
                 outer.getLegendResolution("color").channel
             )

@@ -1,6 +1,6 @@
-import GridView from "./gridView.js";
+import GridView, { getLegendCollectionLayoutHost } from "./gridView.js";
 import {
-    findLegendCollectionTarget,
+    findLegendCollectionDeclaration,
     getLegendResolutionOwners,
 } from "./legendCollection.js";
 
@@ -19,7 +19,13 @@ export async function syncViewGuideViews(viewRoot) {
     // intentionally disabled the implicit root grid.
     for (const owner of getLegendResolutionOwners(viewRoot)) {
         for (const resolution of Object.values(owner.resolutions.legend)) {
-            findLegendCollectionTarget(owner, resolution.channel);
+            const declaration = findLegendCollectionDeclaration(
+                owner,
+                resolution.channel
+            );
+            if (declaration) {
+                getLegendCollectionLayoutHost(declaration, resolution.channel);
+            }
         }
     }
 

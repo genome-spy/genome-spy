@@ -1,4 +1,3 @@
-import GridView from "./gridView.js";
 import { hasChromeAncestor } from "../viewSelectors.js";
 
 /**
@@ -18,15 +17,15 @@ export function getLegendResolutionOwners(viewRoot) {
 }
 
 /**
- * Finds the grid that collects a legend while leaving its semantic resolution
- * at the original owner. The nearest explicit collection declaration wins and
- * an excluded declaration blocks collection by outer ancestors.
+ * Finds the view that declares collection while leaving semantic resolution at
+ * the original owner. The nearest explicit declaration wins and an excluded
+ * declaration blocks collection by outer ancestors.
  *
  * @param {import("../view.js").default} resolutionOwner
  * @param {import("../../spec/channel.js").ChannelWithScale} channel
- * @returns {GridView | undefined}
+ * @returns {import("../view.js").default | undefined}
  */
-export function findLegendCollectionTarget(resolutionOwner, channel) {
+export function findLegendCollectionDeclaration(resolutionOwner, channel) {
     for (const view of resolutionOwner.getDataAncestors()) {
         const behavior =
             view.getConfiguredResolution(channel, "legend") ??
@@ -35,15 +34,7 @@ export function findLegendCollectionTarget(resolutionOwner, channel) {
         if (behavior == "excluded") {
             return undefined;
         } else if (behavior == "collected") {
-            const host = view
-                .getLayoutAncestors()
-                .find((ancestor) => ancestor instanceof GridView);
-            if (!host) {
-                throw new Error(
-                    `Legend collection for channel "${channel}" declared at view "${view.name}" requires a GridView layout host.`
-                );
-            }
-            return host;
+            return view;
         }
     }
 

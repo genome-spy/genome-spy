@@ -37,7 +37,7 @@ import {
     isActiveLegendRegion,
 } from "./gridChildLegends.js";
 import {
-    findLegendCollectionTarget,
+    findLegendCollectionDeclaration,
     getLegendResolutionOwners,
 } from "./legendCollection.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
@@ -480,10 +480,13 @@ export default class GridView extends ContainerView {
         for (const { definition, resolution, owner } of getOrderedLegendEntries(
             getLegendResolutionOwners(this)
         )) {
-            const collectionTarget = findLegendCollectionTarget(
+            const declaration = findLegendCollectionDeclaration(
                 owner,
                 resolution.channel
             );
+            const collectionTarget = declaration
+                ? getLegendCollectionLayoutHost(declaration, resolution.channel)
+                : undefined;
             if (
                 collectionTarget !== this &&
                 !(collectionTarget === undefined && owner === this)
@@ -1777,6 +1780,27 @@ export default class GridView extends ContainerView {
     getDefaultResolution(channel, resolutionType) {
         return "independent";
     }
+}
+
+/**
+ * Resolves the physical grid host separately from semantic collection routing.
+ * Keeping this GridView-specific operation here avoids a module cycle with the
+ * routing helper.
+ *
+ * @param {View} declaration
+ * @param {import("../../spec/channel.js").ChannelWithScale} channel
+ * @returns {GridView}
+ */
+export function getLegendCollectionLayoutHost(declaration, channel) {
+    const host = declaration
+        .getLayoutAncestors()
+        .find((ancestor) => ancestor instanceof GridView);
+    if (!host) {
+        throw new Error(
+            `Legend collection for channel "${channel}" declared at view "${declaration.name}" requires a GridView layout host.`
+        );
+    }
+    return host;
 }
 
 /**

@@ -29,7 +29,7 @@ import {
     getOrderedLegendEntries,
     iterateLegendViews,
 } from "./gridChildLegends.js";
-import { findLegendCollectionTarget } from "./legendCollection.js";
+import { findLegendCollectionDeclaration } from "./legendCollection.js";
 import { RulerMouseEventController } from "../../ruler/rulerMouseEventController.js";
 import { RulerViewportController } from "../../ruler/rulerViewportController.js";
 import { createConfiguredRulerOverlayView } from "./rulerOverlay.js";
@@ -688,7 +688,7 @@ export default class GridChild {
             getLegendOwners(view)
         )) {
             if (
-                findLegendCollectionTarget(owner, resolution.channel) !==
+                findLegendCollectionDeclaration(owner, resolution.channel) !==
                 undefined
             ) {
                 continue;
