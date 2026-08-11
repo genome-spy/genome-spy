@@ -195,6 +195,27 @@ describe("generated shader snapshots", () => {
         expect(sources.vertex).toContain("scale_xOffset");
     });
 
+    test("rect culls hidden sample facets before minimum-size clamping", async () => {
+        const sources = await captureShaderSources({
+            data: { values: [{ facetIndex: 0 }] },
+            mark: "rect",
+            encoding: {
+                facetIndex: { field: "facetIndex" },
+            },
+        });
+
+        const cullIndex = sources.vertex.indexOf(
+            "sampleFacetPos.height == 0.0 && sampleFacetPos.targetHeight == 0.0"
+        );
+        const minSizeIndex = sources.vertex.indexOf(
+            "clampMinSize(pos.y, frac.y, size.y, normalizedMinSize.y)"
+        );
+
+        expect(sources.vertex).toContain("#define SAMPLE_FACET_TEXTURE");
+        expect(cullIndex).toBeGreaterThan(-1);
+        expect(cullIndex).toBeLessThan(minSizeIndex);
+    });
+
     test("legacy point dx and dy retain their pre-facet direction", async () => {
         const sources = await captureShaderSources({
             data: { values: [{}] },

@@ -64,6 +64,14 @@ void main(void) {
         uCornerRadiusBottomLeft
     );
 
+    SampleFacetPosition sampleFacetPos = getSampleFacetPos();
+    if (sampleFacetPos.height == 0.0 && sampleFacetPos.targetHeight == 0.0) {
+        // Filtered samples have no facet height. Cull them before minimum-size
+        // clamping can expand their rectangles at the viewport boundary.
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        return;
+    }
+
     vec2 pos1 = applyOffset(
         applySampleFacet(vec2(getScaled_x(), getScaled_y())),
         vec2(getScaled_xOffset(), getScaled_yOffset())
