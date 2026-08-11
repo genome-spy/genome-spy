@@ -963,7 +963,7 @@ describe("GridView legends", () => {
 
             expect(legend.legendProps.orient).toBe("bottom");
             expect(legend.legendProps.titleOrient).toBe("left");
-            expect(legend.legendProps.spacing).toBe(3);
+            expect(legend.legendProps.spacing).toBe(15);
             expect(legend.legendProps.offset).toBe(3);
         });
 

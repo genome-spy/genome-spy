@@ -42,7 +42,7 @@ const TRACK_BOTTOM_LEGEND_STYLE = {
     orient: "bottom",
     direction: "horizontal",
     titleOrient: "left",
-    spacing: 3,
+    spacing: 15,
     offset: 3,
 };
 

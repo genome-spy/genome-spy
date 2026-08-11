@@ -76,7 +76,7 @@ describe("legendConfig", () => {
         expect(defaults.orient).toBe("bottom");
         expect(defaults.direction).toBe("horizontal");
         expect(defaults.titleOrient).toBe("left");
-        expect(defaults.spacing).toBe(3);
+        expect(defaults.spacing).toBe(15);
         expect(defaults.offset).toBe(3);
     });
 
@@ -88,7 +88,7 @@ describe("legendConfig", () => {
 
         expect(defaults.orient).toBe("bottom");
         expect(defaults.titleOrient).toBe("left");
-        expect(defaults.spacing).toBe(3);
+        expect(defaults.spacing).toBe(15);
         expect(defaults.offset).toBe(3);
     });
 
