@@ -3,8 +3,6 @@
 
   "description": "Collect independent legends around a composition",
 
-  "config": { "legend": { "disable": false } },
-
   "resolve": {
     "scale": { "color": "independent" },
     "legend": { "color": "collected" }

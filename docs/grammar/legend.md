@@ -154,7 +154,7 @@ The nearest ancestor that declares `"collected"` lays out the legends. Use
 `"excluded"` on a view or composition to keep that legend at its normal local
 or shared owner and prevent collection by outer ancestors.
 
-EXAMPLE examples/docs/grammar/legend/collected-legends.json height=320
+EXAMPLE examples/docs/grammar/legend/collected-legends.json height=200
 
 ## Titles
 
