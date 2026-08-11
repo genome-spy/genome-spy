@@ -1,0 +1,36 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Responsive legend region wrapping",
+    "Resize the window to wrap complete bottom legends into rows."
+  ],
+
+  "width": "container",
+  "height": 180,
+
+  "config": {
+    "legend": {
+      "disable": false,
+      "style": "track-bottom-legend"
+    }
+  },
+
+  "data": {
+    "values": [
+      { "x": 1, "y": 2, "group": "Alpha", "kind": "Gain", "score": 2 },
+      { "x": 2, "y": 4, "group": "Beta", "kind": "Loss", "score": 4 },
+      { "x": 3, "y": 3, "group": "Gamma", "kind": "Gain", "score": 7 },
+      { "x": 4, "y": 6, "group": "Alpha", "kind": "Loss", "score": 10 }
+    ]
+  },
+
+  "mark": { "type": "point", "filled": true },
+  "encoding": {
+    "x": { "field": "x", "type": "index" },
+    "y": { "field": "y", "type": "quantitative" },
+    "color": { "field": "group", "type": "nominal", "title": "Group" },
+    "shape": { "field": "kind", "type": "nominal", "title": "Event" },
+    "size": { "field": "score", "type": "quantitative", "title": "Score" }
+  }
+}
