@@ -521,9 +521,9 @@ export type ResolutionBehavior =
     "independent" | "shared" | "excluded" | "forced";
 
 /**
- * Legend resolution behavior. `"collected"` keeps legend resolutions
- * independent at the declaring view but lays out their complete legends at
- * that view's composition-level collector.
+ * Legend resolution behavior. `"collected"` preserves the corresponding
+ * scale-driven legend resolution while laying out complete legends at the
+ * declaring view's composition-level collector.
  */
 export type LegendResolutionBehavior = ResolutionBehavior | "collected";
 

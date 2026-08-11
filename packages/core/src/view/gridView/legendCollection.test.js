@@ -103,6 +103,32 @@ describe("collected legend routing", () => {
         ).toEqual(["First", "Second"]);
     });
 
+    test("collects one legend when the scale is shared", async () => {
+        const root = await createAndInitialize(
+            {
+                config: { legend: { disable: false } },
+                resolve: {
+                    scale: { color: "shared" },
+                    legend: { color: "collected" },
+                },
+                hconcat: [
+                    makeColorUnit("first", "Shared"),
+                    makeColorUnit("second", "Shared"),
+                ],
+            },
+            ConcatView
+        );
+        const first = root.findDescendantByName("first");
+        const second = root.findDescendantByName("second");
+
+        expect(first.getLegendResolution("color")).toBe(
+            second.getLegendResolution("color")
+        );
+        const [region] = getDirectLegendRegions(root);
+        expect(getDirectLegendRegions(root)).toHaveLength(1);
+        expect(getLegendViews(region)).toHaveLength(1);
+    });
+
     test("uses the nearest collector and respects excluded barriers", async () => {
         const root = await createAndInitialize(
             {

@@ -56,7 +56,7 @@ const getResolutionView = (view, type, targetChannel) => {
  * @param {import("./view.js").default} view
  * @param {ResolutionPlannerTarget} type
  * @param {import("../spec/channel.js").ChannelWithScale} channel
- * @returns {import("../spec/view.js").LegendResolutionBehavior | import("../spec/view.js").ResolutionBehavior}
+ * @returns {import("../spec/view.js").ResolutionBehavior}
  */
 function getResolutionBehavior(view, type, channel) {
     const behavior = view.getConfiguredOrDefaultResolution(channel, type);
@@ -69,7 +69,9 @@ function getResolutionBehavior(view, type, channel) {
             return behavior;
         case "collected":
             if (type == "legend") {
-                return behavior;
+                // Collection controls physical placement only. Preserve the
+                // normal legend topology by following the scale resolution.
+                return getResolutionBehavior(view, "scale", channel);
             } else {
                 throw new Error(
                     `Resolution behavior "collected" is only supported for legends, not ${type}s.`
