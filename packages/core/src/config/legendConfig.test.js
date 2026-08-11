@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { INTERNAL_DEFAULT_CONFIG } from "./defaultConfig.js";
-import { getConfiguredLegendDefaults } from "./legendConfig.js";
+import {
+    getConfiguredLegendDefaults,
+    getConfiguredLegendRegionLayout,
+} from "./legendConfig.js";
 
 describe("legendConfig", () => {
     test("internal defaults keep legends visible", () => {
@@ -133,5 +136,68 @@ describe("legendConfig", () => {
         expect(defaults.orient).toBe("bottom");
         expect(defaults.direction).toBe("horizontal");
         expect(defaults.titleOrient).toBe("left");
+    });
+
+    test("uses orientation-dependent region defaults", () => {
+        expect(
+            getConfiguredLegendRegionLayout([INTERNAL_DEFAULT_CONFIG], "left")
+        ).toEqual({ anchor: "start", direction: "vertical" });
+        expect(
+            getConfiguredLegendRegionLayout([INTERNAL_DEFAULT_CONFIG], "top")
+        ).toEqual({ anchor: "start", direction: "horizontal" });
+        expect(
+            getConfiguredLegendRegionLayout(
+                [INTERNAL_DEFAULT_CONFIG],
+                "bottom-right"
+            )
+        ).toEqual({ anchor: "start", direction: "horizontal" });
+    });
+
+    test("orientation-specific region layout overrides general layout", () => {
+        /** @type {import("../spec/config.js").GenomeSpyConfig[]} */
+        const scopes = [
+            INTERNAL_DEFAULT_CONFIG,
+            {
+                legend: {
+                    layout: {
+                        anchor: "middle",
+                        direction: "vertical",
+                        top: { anchor: "end", direction: "horizontal" },
+                    },
+                },
+            },
+        ];
+
+        expect(getConfiguredLegendRegionLayout(scopes, "right")).toEqual({
+            anchor: "middle",
+            direction: "vertical",
+        });
+        expect(getConfiguredLegendRegionLayout(scopes, "top")).toEqual({
+            anchor: "end",
+            direction: "horizontal",
+        });
+    });
+
+    test("closest region layout scope wins", () => {
+        /** @type {import("../spec/config.js").GenomeSpyConfig[]} */
+        const scopes = [
+            INTERNAL_DEFAULT_CONFIG,
+            { legend: { layout: { top: { anchor: "middle" } } } },
+            { legend: { layout: { top: { anchor: "end" } } } },
+        ];
+
+        expect(getConfiguredLegendRegionLayout(scopes, "top")).toEqual({
+            anchor: "end",
+            direction: "horizontal",
+        });
+    });
+
+    test("region layout does not leak into individual legend defaults", () => {
+        const defaults = getConfiguredLegendDefaults([
+            INTERNAL_DEFAULT_CONFIG,
+            { legend: { layout: { direction: "horizontal" } } },
+        ]);
+
+        expect(defaults).not.toHaveProperty("layout");
     });
 });

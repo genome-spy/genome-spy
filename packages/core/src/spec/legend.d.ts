@@ -13,7 +13,35 @@ export type LegendOrient =
 
 export type LegendDirection = "vertical" | "horizontal";
 
+export type LegendRegionAnchor = "start" | "middle" | "end";
+
 export type LegendTitleOrient = "top" | "bottom" | "left" | "right";
+
+export interface LegendRegionLayout {
+    /**
+     * Position of the complete legend stack along the plot edge. This property
+     * applies to external orientations; corner legends remain corner-anchored.
+     *
+     * __Default value:__ `"start"`
+     */
+    anchor?: LegendRegionAnchor;
+
+    /**
+     * Direction in which complete legends are arranged within a legend region.
+     */
+    direction?: LegendDirection;
+}
+
+export interface LegendLayout extends LegendRegionLayout {
+    left?: LegendRegionLayout;
+    right?: LegendRegionLayout;
+    top?: LegendRegionLayout;
+    bottom?: LegendRegionLayout;
+    "top-left"?: LegendRegionLayout;
+    "top-right"?: LegendRegionLayout;
+    "bottom-left"?: LegendRegionLayout;
+    "bottom-right"?: LegendRegionLayout;
+}
 
 // TODO: Consider adding more Vega/Vega-Lite legend properties when concrete
 // use cases appear. Known gaps include tick controls (`tickCount`,
@@ -136,6 +164,13 @@ export interface LegendConfig extends Legend {
      * __Default value:__ `false`
      */
     disable?: boolean | ExprRef;
+
+    /**
+     * Layout of complete legends within each orientation region. A general
+     * direction or anchor applies to every region unless the orientation has
+     * its own override.
+     */
+    layout?: LegendLayout;
 
     /**
      * Spacing in pixels between legends collected into the same legend region.

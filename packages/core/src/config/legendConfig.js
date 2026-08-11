@@ -1,4 +1,29 @@
 import { createConfigLayerStack } from "./configLayers.js";
+import { mergeConfigScopes } from "./mergeConfig.js";
+
+/**
+ * Resolves complete-legend region layout from the destination collector.
+ * Based on Vega's orientation-specific legend layout precedence:
+ * https://github.com/vega/vega/blob/master/packages/vega-view-transforms/src/layout/legend.js
+ *
+ * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes
+ * @param {import("../spec/legend.js").LegendOrient} orient
+ * @returns {Required<import("../spec/legend.js").LegendRegionLayout>}
+ */
+export function getConfiguredLegendRegionLayout(scopes, orient) {
+    const layout = /** @type {import("../spec/legend.js").LegendLayout} */ (
+        mergeConfigScopes(scopes.map((scope) => scope.legend?.layout))
+    );
+    const orientLayout = layout[orient];
+
+    return {
+        anchor: orientLayout?.anchor ?? layout.anchor ?? "start",
+        direction:
+            orientLayout?.direction ??
+            layout.direction ??
+            (orient == "left" || orient == "right" ? "vertical" : "horizontal"),
+    };
+}
 
 /**
  * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes
@@ -22,8 +47,11 @@ export function getConfiguredLegendDefaults(scopes, legend, options = {}) {
 
     appendLegendConfigLayer(layers, scopes, legend);
 
+    const legendDefaults = layers.merge();
+    delete legendDefaults.layout;
+
     return /** @type {import("../spec/legend.js").LegendConfig} */ (
-        layers.merge()
+        legendDefaults
     );
 }
 

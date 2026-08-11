@@ -343,6 +343,10 @@ describe("generated core schema", () => {
                     disable: false,
                     orient: "right",
                     labelLimit: 160,
+                    layout: {
+                        anchor: "middle",
+                        top: { direction: "horizontal" },
+                    },
                 },
                 legendTrack: {
                     style: "track-bottom-legend",
