@@ -1608,6 +1608,7 @@ describe("GridView legends", () => {
                                 type: "nominal",
                                 legend: {
                                     orient: "bottom",
+                                    direction: "horizontal",
                                     title: "Origin",
                                     titleOrient: "left",
                                 },
@@ -3105,7 +3106,10 @@ describe("GridView legends", () => {
                             color: {
                                 field: "measurement",
                                 type: "quantitative",
-                                legend: { orient: "bottom" },
+                                legend: {
+                                    orient: "bottom",
+                                    direction: "horizontal",
+                                },
                             },
                         },
                     },

@@ -28,19 +28,25 @@ export const LEGEND_DEFAULTS = {
     titlePadding: 5,
 };
 
+/** @type {import("../../spec/config.js").StyleConfig} */
+const TRACK_BOTTOM_LEGEND_STYLE = {
+    orient: "bottom",
+    direction: "horizontal",
+    titleOrient: "left",
+    spacing: 3,
+    offset: 3,
+};
+
 /** @type {Record<string, import("../../spec/config.js").StyleConfig>} */
 export const LEGEND_STYLE_DEFAULTS = {
-    "track-bottom": {
-        orient: "bottom",
-        titleOrient: "left",
-        spacing: 3,
-        offset: 3,
-    },
+    "track-bottom-legend": TRACK_BOTTOM_LEGEND_STYLE,
+    // Deprecated compatibility alias. TODO: Remove "track-bottom" in the next breaking release.
+    "track-bottom": TRACK_BOTTOM_LEGEND_STYLE,
 };
 
 /**
  * @type {import("../../spec/legend.js").LegendConfig}
  */
 export const LEGEND_TRACK_DEFAULTS = {
-    style: "track-bottom",
+    style: "track-bottom-legend",
 };

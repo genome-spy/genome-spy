@@ -227,15 +227,15 @@ function createLegendRootSpec(legend, body, context, forcedScaleChannels = []) {
 /**
  * @param {LegendConfig} legend
  */
-function isTopBottomLegend(legend) {
-    return legend.orient == "top" || legend.orient == "bottom";
+function isHorizontalLegend(legend) {
+    return legend.direction == "horizontal";
 }
 
 /**
  * @param {LegendConfig} legend
  */
-function isHorizontalLegend(legend) {
-    return isTopBottomLegend(legend) || legend.direction == "horizontal";
+function hasHorizontalRegionAxis(legend) {
+    return legend.orient == "top" || legend.orient == "bottom";
 }
 
 /**
@@ -373,7 +373,6 @@ export function createSymbolLegendSpec({
     context,
 }) {
     const strokeSymbol = symbolGeometry == "stroke";
-    const horizontalLegend = isHorizontalLegend(legend);
     const labelAlign = legend.labelAlign ?? "left";
     const labelBaseline = legend.labelBaseline ?? "middle";
     const labelFontSize = legend.labelFontSize ?? 10;
@@ -556,9 +555,7 @@ export function createSymbolLegendSpec({
                     symbolOffset: legend.symbolOffset,
                     yOffset: 0,
                     yExtent: { expr: "height" },
-                    direction: horizontalLegend
-                        ? "horizontal"
-                        : (legend.direction ?? "vertical"),
+                    direction: legend.direction ?? "vertical",
                 },
             ],
             layer,
@@ -1215,15 +1212,12 @@ export default class LegendView extends ContainerView {
         }
 
         const contentHorizontal = isHorizontalLegend(this.legendProps);
-        const mainSize = { grow: 1 };
         const perpendicularSize = { px: this.getPerpendicularSize() };
         const parallelSize = this.#hasFlexibleParallelSize()
             ? this.#getFlexibleStackedParallelSize()
             : { px: this.getStackedParallelSize() };
 
-        if (isTopBottomLegend(this.legendProps)) {
-            return new FlexDimensions(mainSize, perpendicularSize);
-        } else if (contentHorizontal) {
+        if (contentHorizontal) {
             return new FlexDimensions(parallelSize, perpendicularSize);
         } else {
             return new FlexDimensions(perpendicularSize, parallelSize);
@@ -1248,7 +1242,9 @@ export default class LegendView extends ContainerView {
 
     #hasFlexibleParallelSize() {
         return (
-            this.#type == "gradient" && !isHorizontalLegend(this.legendProps)
+            this.#type == "gradient" &&
+            isHorizontalLegend(this.legendProps) ==
+                hasHorizontalRegionAxis(this.legendProps)
         );
     }
 

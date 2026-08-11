@@ -46,7 +46,11 @@
         "color": {
           "field": "status",
           "type": "nominal",
-          "legend": { "title": "Local", "orient": "bottom" }
+          "legend": {
+            "title": "Local",
+            "orient": "bottom",
+            "direction": "horizontal"
+          }
         }
       }
     }

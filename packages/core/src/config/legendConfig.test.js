@@ -54,18 +54,20 @@ describe("legendConfig", () => {
         );
 
         expect(trackDefaults.orient).toBe("bottom");
+        expect(trackDefaults.direction).toBe("horizontal");
         expect(trackDefaults.titleOrient).toBe("left");
         expect(userDefaults.orient).toBe("left");
         expect(userDefaults.titleOrient).toBe("left");
     });
 
-    test("built-in track-bottom style configures compact bottom legends", () => {
+    test("built-in track-bottom-legend style configures compact bottom legends", () => {
         const defaults = getConfiguredLegendDefaults(
             [INTERNAL_DEFAULT_CONFIG],
-            { style: "track-bottom" }
+            { style: "track-bottom-legend" }
         );
 
         expect(defaults.orient).toBe("bottom");
+        expect(defaults.direction).toBe("horizontal");
         expect(defaults.titleOrient).toBe("left");
         expect(defaults.spacing).toBe(3);
         expect(defaults.offset).toBe(3);
@@ -74,7 +76,7 @@ describe("legendConfig", () => {
     test("config legend style resolves inherited style buckets", () => {
         const defaults = getConfiguredLegendDefaults([
             INTERNAL_DEFAULT_CONFIG,
-            { legend: { style: "track-bottom" } },
+            { legend: { style: "track-bottom-legend" } },
         ]);
 
         expect(defaults.orient).toBe("bottom");
@@ -86,7 +88,7 @@ describe("legendConfig", () => {
     test("null config legend style resets inherited style defaults", () => {
         const defaults = getConfiguredLegendDefaults([
             INTERNAL_DEFAULT_CONFIG,
-            { legend: { style: "track-bottom" } },
+            { legend: { style: "track-bottom-legend" } },
             { legend: { style: null } },
         ]);
 
@@ -100,9 +102,9 @@ describe("legendConfig", () => {
         const defaults = getConfiguredLegendDefaults([
             INTERNAL_DEFAULT_CONFIG,
             {
-                legend: { style: "track-bottom" },
+                legend: { style: "track-bottom-legend" },
                 style: {
-                    "track-bottom": { orient: "left", spacing: 7 },
+                    "track-bottom-legend": { orient: "left", spacing: 7 },
                 },
             },
         ]);
@@ -115,10 +117,21 @@ describe("legendConfig", () => {
     test("explicit legend properties override style defaults", () => {
         const defaults = getConfiguredLegendDefaults(
             [INTERNAL_DEFAULT_CONFIG],
-            { style: "track-bottom", orient: "right" }
+            { style: "track-bottom-legend", orient: "right" }
         );
 
         expect(defaults.orient).toBe("right");
+        expect(defaults.titleOrient).toBe("left");
+    });
+
+    test("retains track-bottom as a compatibility alias", () => {
+        const defaults = getConfiguredLegendDefaults(
+            [INTERNAL_DEFAULT_CONFIG],
+            { style: "track-bottom" }
+        );
+
+        expect(defaults.orient).toBe("bottom");
+        expect(defaults.direction).toBe("horizontal");
         expect(defaults.titleOrient).toBe("left");
     });
 });

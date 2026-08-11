@@ -63,7 +63,11 @@
           "type": "quantitative",
           "title": "Log color",
           "scale": { "type": "log", "domain": [1, 10000], "zero": false },
-          "legend": { "title": "Bottom", "orient": "bottom" }
+          "legend": {
+            "title": "Bottom",
+            "orient": "bottom",
+            "direction": "horizontal"
+          }
         }
       }
     }

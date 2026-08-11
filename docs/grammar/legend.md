@@ -46,6 +46,8 @@ In composed views with shared legend resolution, view-level
 
 The `orient` property controls where the legend is placed. Side legends are
 placed outside the plot area. Corner legends are placed inside the plot area.
+It does not change how entries are arranged. Set `direction` to `"horizontal"`
+when horizontal entries are wanted.
 
 Supported orientations:
 
@@ -231,13 +233,13 @@ object overrides the configured defaults for that legend.
 ### Track-like legends
 
 Named styles from `config.style` can also be referenced with `legend.style`.
-GenomeSpy includes a built-in `track-bottom` legend style for compact
+GenomeSpy includes a built-in `track-bottom-legend` style for compact
 track-like layouts.
 
 ```json
 {
   "legend": {
-    "style": "track-bottom"
+    "style": "track-bottom-legend"
   }
 }
 ```
@@ -246,8 +248,9 @@ Views with an `index` or `locus` x scale use `config.legendTrack` as an
 intermediate default. These views usually form genome-browser-like horizontal
 tracks where there is more room below each track than to the side of a dense
 track stack. The default `config.legendTrack` style is therefore
-`track-bottom`. Use `config.legend` to override those defaults globally, or a
-channel-level `legend` object to override a single legend.
+`track-bottom-legend`. Use `config.legend` to override those defaults globally,
+or a channel-level `legend` object to override a single legend. The old
+`track-bottom` name remains as a compatibility alias.
 
 Clear this track-specific style at the root or in a subtree by setting
 `config.legendTrack.style` to `null`:

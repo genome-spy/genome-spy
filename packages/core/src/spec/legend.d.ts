@@ -48,7 +48,10 @@ export interface Legend {
     orient?: LegendOrient | ExprRef;
 
     /**
-     * The direction in which legend entries are laid out.
+     * The direction in which legend entries are laid out. This is independent
+     * of `orient`, which selects the legend region.
+     *
+     * __Default value:__ `"vertical"`
      */
     direction?: LegendDirection;
 
