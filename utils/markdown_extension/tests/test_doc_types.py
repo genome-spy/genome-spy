@@ -1,6 +1,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import re
 import unittest
 
 
@@ -30,13 +31,33 @@ class DocumentationTypesTest(unittest.TestCase):
             links["BigWigData"], "/grammar/data/lazy/#parameters_1"
         )
 
-    def test_type_index_contains_only_undocumented_core_types(self):
+    def test_type_index_contains_all_core_types_and_links_documented_types(self):
         rendered_types, _ = generate_doc_types.generate()
 
+        schema = json.loads(generate_doc_types.SCHEMA_PATH.read_text(encoding="utf8"))
+        expected_types = {
+            type_name
+            for type_name in schema["definitions"]
+            if generate_doc_types.TYPE_NAME_PATTERN.fullmatch(type_name)
+        }
+        rendered_headings = set(
+            re.findall(r"^## (\w+)$", rendered_types, re.MULTILINE)
+        )
+        self.assertEqual(rendered_headings, expected_types)
+
         self.assertIn("## AggregateOp", rendered_types)
-        self.assertNotIn("## MultiscaleSpec", rendered_types)
-        self.assertNotIn("## FadedMultiscaleStops", rendered_types)
-        self.assertNotIn("## IndexUrlTemplate", rendered_types)
+        self.assertIn("SCHEMA AggregateOp", rendered_types)
+        self.assertIn("## MultiscaleSpec", rendered_types)
+        self.assertIn(
+            "[MultiscaleSpec documentation](composition/multiscale.md#properties)",
+            rendered_types,
+        )
+        self.assertIn("## IndexUrlTemplate", rendered_types)
+        self.assertIn(
+            "[IndexUrlTemplate documentation](data/multi-url.md#indexed-files)",
+            rendered_types,
+        )
+        self.assertNotIn("SCHEMA MultiscaleSpec", rendered_types)
 
 
 if __name__ == "__main__":
