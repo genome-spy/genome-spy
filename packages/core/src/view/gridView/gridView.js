@@ -36,6 +36,10 @@ import {
     iterateLegendViews,
     isActiveLegendRegion,
 } from "./gridChildLegends.js";
+import {
+    findLegendCollectionDeclaration,
+    getLegendResolutionOwners,
+} from "./legendCollection.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 import { getZoomableResolutions } from "./zoomNavigationUtils.js";
 import { moveArrayItem } from "../../utils/arrayUtils.js";
@@ -402,19 +406,30 @@ export default class GridView extends ContainerView {
      * Shared guides always depend on the whole container. Grid-child guides can
      * be limited to newly inserted children during mutations.
      *
-     * @param {{ gridChildren?: GridChild[] }} [options]
+     * @param {{
+     *   gridChildren?: GridChild[],
+     *   legendOwners?: import("../view.js").default[]
+     * }} [options]
      */
     async syncGuideViews(options = {}) {
         const gridChildren = options.gridChildren ?? this.#children;
 
         await Promise.all([
             this.#syncSharedAxes(),
-            this.#syncSharedLegends(),
+            this.#syncSharedLegends(options.legendOwners),
             this.#syncContainerOverlays(),
         ]);
         await Promise.all(
             gridChildren.map((gridChild) => gridChild.syncGuideViews())
         );
+        this.invalidateSizeCache();
+    }
+
+    /**
+     * Recreates only GridView-owned legends.
+     */
+    async syncLegendViews() {
+        await this.#syncSharedLegends(getLegendResolutionOwners(this));
         this.invalidateSizeCache();
     }
 
@@ -468,14 +483,33 @@ export default class GridView extends ContainerView {
      * Shared legends are GridView-owned for the same reason as shared axes:
      * their placement is relative to the whole child grid, not any individual
      * GridChild.
+     *
+     * @param {import("../view.js").default[]} [owners]
      */
-    async #syncSharedLegends() {
+    async #syncSharedLegends(owners) {
         disposeLegendViews(this.#sharedLegends);
         this.#sharedLegends = {};
+        const legendOwners =
+            owners ??
+            (Object.keys(this.resolutions.legend).length > 0 ? [this] : []);
 
-        for (const { definition, resolution } of getOrderedLegendEntries([
-            this,
-        ])) {
+        for (const { definition, resolution, owner } of getOrderedLegendEntries(
+            legendOwners
+        )) {
+            const declaration = findLegendCollectionDeclaration(
+                owner,
+                resolution.channel
+            );
+            const collectionTarget = declaration
+                ? getLegendCollectionLayoutHost(declaration, resolution.channel)
+                : undefined;
+            if (
+                collectionTarget !== this &&
+                !(collectionTarget === undefined && owner === this)
+            ) {
+                continue;
+            }
+
             const legend = await createGridChildLegend(definition, this);
             await addLegendView(this.#sharedLegends, legend, resolution);
         }
@@ -1762,6 +1796,27 @@ export default class GridView extends ContainerView {
     getDefaultResolution(channel, resolutionType) {
         return "independent";
     }
+}
+
+/**
+ * Resolves the physical grid host separately from semantic collection routing.
+ * Keeping this GridView-specific operation here avoids a module cycle with the
+ * routing helper.
+ *
+ * @param {View} declaration
+ * @param {import("../../spec/channel.js").ChannelWithScale} channel
+ * @returns {GridView}
+ */
+export function getLegendCollectionLayoutHost(declaration, channel) {
+    const host = declaration
+        .getLayoutAncestors()
+        .find((ancestor) => ancestor instanceof GridView);
+    if (!host) {
+        throw new Error(
+            `Legend collection for channel "${channel}" declared at view "${declaration.name}" requires a GridView layout host.`
+        );
+    }
+    return host;
 }
 
 /**

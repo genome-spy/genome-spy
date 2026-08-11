@@ -52,7 +52,7 @@ export default class ContainerMutationHelper {
      *     view: View | undefined,
      *     index: number | undefined,
      *     insertionResult: any
-     *   ) => Promise<void>,
+     *   ) => Promise<Iterable<View> | undefined>,
      *   defaultName?: (index: number, spec: ViewSpec | ImportSpec) => string,
      *   createViewOptions?: import("../types/viewContext.js").CreateViewOptions,
      *   requestLayout?: boolean
@@ -123,18 +123,19 @@ export default class ContainerMutationHelper {
 
             // Guide views are container-specific. Sync them after configs and
             // assemblies are ready so generated guide marks can initialize.
-            if (this.options.syncMutationGuideViews) {
-                await this.options.syncMutationGuideViews(
-                    childView,
-                    insertIndex,
-                    insertionResult
-                );
-            }
+            const guideRoots = this.options.syncMutationGuideViews
+                ? await this.options.syncMutationGuideViews(
+                      childView,
+                      insertIndex,
+                      insertionResult
+                  )
+                : undefined;
 
             const viewsToInitialize = collectMutationInitializedViews(
                 this.container,
                 childView,
-                insertionResult
+                insertionResult,
+                guideRoots
             );
             configureViewsAfterScaleResolution(viewsToInitialize);
 
@@ -195,15 +196,15 @@ export default class ContainerMutationHelper {
         attachViewLevelLegendProps(this.container);
 
         // Removed children may change shared guide ownership and visibility.
-        if (this.options.syncMutationGuideViews) {
-            await this.options.syncMutationGuideViews(
-                undefined,
-                undefined,
-                undefined
-            );
-        }
+        const guideRoots = this.options.syncMutationGuideViews
+            ? await this.options.syncMutationGuideViews(
+                  undefined,
+                  undefined,
+                  undefined
+              )
+            : undefined;
 
-        await this.initializeUninitializedChromeViews();
+        await this.initializeUninitializedChromeViews(guideRoots);
 
         if (
             this.options.requestLayout !== false &&
@@ -220,15 +221,18 @@ export default class ContainerMutationHelper {
      * Reorder operations can recreate shared axes or legends without touching
      * normal child dataflow. This keeps those regenerated chrome views renderable
      * without reloading or rebuilding existing track data.
+     *
+     * @param {Iterable<View>} [roots]
      */
-    async initializeUninitializedChromeViews() {
+    async initializeUninitializedChromeViews(roots = [this.container]) {
         if (this.container.getDataInitializationState() === "none") {
             return;
         }
 
-        const viewsToInitialize = collectUninitializedChromeViews(
-            this.container
-        );
+        const viewsToInitialize = new Set();
+        for (const root of roots) {
+            collectUninitializedChromeViews(root, viewsToInitialize);
+        }
         configureViewsAfterScaleResolution(viewsToInitialize);
 
         await initializeViewDataForViews(
@@ -244,26 +248,30 @@ export default class ContainerMutationHelper {
  * @param {import("./containerView.js").default} container
  * @param {import("./view.js").default} childView
  * @param {unknown} insertionResult
+ * @param {Iterable<import("./view.js").default> | undefined} guideRoots
  * @returns {Set<import("./view.js").default>}
  */
 function collectMutationInitializedViews(
     container,
     childView,
-    insertionResult
+    insertionResult,
+    guideRoots
 ) {
     const views = collectInsertedViews(childView, insertionResult);
-    collectUninitializedChromeViews(container, views);
+    for (const root of guideRoots ?? [container]) {
+        collectUninitializedChromeViews(root, views);
+    }
 
     return views;
 }
 
 /**
- * @param {import("./containerView.js").default} container
+ * @param {import("./view.js").default} root
  * @param {Set<import("./view.js").default>} [views]
  * @returns {Set<import("./view.js").default>}
  */
-function collectUninitializedChromeViews(container, views = new Set()) {
-    for (const view of container.getDescendants()) {
+function collectUninitializedChromeViews(root, views = new Set()) {
+    for (const view of root.getDescendants()) {
         if (
             isChromeView(view) &&
             view.getDataInitializationState() === "none"

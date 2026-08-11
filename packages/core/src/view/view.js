@@ -1309,7 +1309,7 @@ export default class View {
     /**
      * @param {import("../spec/channel.js").Channel | "default"} channel
      * @param {import("../spec/view.js").ResolutionTarget} resolutionType
-     * @returns {import("../spec/view.js").ResolutionBehavior}
+     * @returns {import("../spec/view.js").LegendResolutionBehavior | import("../spec/view.js").ResolutionBehavior | undefined}
      */
     getConfiguredResolution(channel, resolutionType) {
         return this.spec.resolve?.[resolutionType]?.[channel];
@@ -1318,7 +1318,7 @@ export default class View {
     /**
      * @param {import("../spec/channel.js").Channel} channel
      * @param {import("../spec/view.js").ResolutionTarget} resolutionType
-     * @returns {import("../spec/view.js").ResolutionBehavior}
+     * @returns {import("../spec/view.js").LegendResolutionBehavior | import("../spec/view.js").ResolutionBehavior}
      */
     getConfiguredOrDefaultResolution(channel, resolutionType) {
         const configuredResolution =

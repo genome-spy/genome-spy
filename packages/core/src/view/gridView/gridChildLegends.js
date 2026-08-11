@@ -17,6 +17,7 @@ import LegendView, {
  * @typedef {{
  *     definition: import("../../scales/legendResolution.js").LegendDefinition,
  *     resolution: import("../../scales/legendResolution.js").default,
+ *     owner: import("../view.js").default,
  * }} OrderedLegendEntry
  *
  * @typedef {{
@@ -97,7 +98,7 @@ export function getOrderedLegendEntries(legendOwners) {
             legendOwner.resolutions.legend
         )) {
             for (const definition of resolution.getLegendDefs()) {
-                entries.push({ definition, resolution });
+                entries.push({ definition, resolution, owner: legendOwner });
             }
         }
     }

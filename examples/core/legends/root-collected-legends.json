@@ -17,7 +17,7 @@
 
   "resolve": {
     "scale": { "color": "independent" },
-    "legend": { "color": "independent" }
+    "legend": { "default": "collected" }
   },
 
   "data": {

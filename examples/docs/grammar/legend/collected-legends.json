@@ -1,0 +1,48 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Collect independent legends around a composition",
+
+  "resolve": {
+    "scale": { "color": "independent" },
+    "legend": { "color": "collected" }
+  },
+
+  "hconcat": [
+    {
+      "data": {
+        "values": [
+          { "x": "A", "group": "Control" },
+          { "x": "B", "group": "Treatment" }
+        ]
+      },
+      "mark": "rect",
+      "encoding": {
+        "x": { "field": "x", "type": "nominal", "axis": null },
+        "color": {
+          "field": "group",
+          "type": "nominal",
+          "legend": { "title": "Group" }
+        }
+      }
+    },
+
+    {
+      "data": {
+        "values": [
+          { "x": "A", "score": 2 },
+          { "x": "B", "score": 8 }
+        ]
+      },
+      "mark": "rect",
+      "encoding": {
+        "x": { "field": "x", "type": "nominal", "axis": null },
+        "color": {
+          "field": "score",
+          "type": "quantitative",
+          "legend": { "title": "Score" }
+        }
+      }
+    }
+  ]
+}

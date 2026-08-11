@@ -64,3 +64,12 @@ both layers get their own scales and axes. Obviously, such a configuration makes
 no sense with these data.
 
 EXAMPLE examples/docs/grammar/composition/index/independent-resolution.json spechidden
+
+### Collected legends
+
+Legend resolution also supports `"collected"`. Descendant legends remain
+laid out together around the composition that declares collection while their
+resolution follows the corresponding scales. A shared scale produces one
+legend; independent scales produce separate legends. Collection does not merge
+or deduplicate independent legends. See [Legend
+resolution](../legend.md#resolution) for an example and exclusion behavior.
