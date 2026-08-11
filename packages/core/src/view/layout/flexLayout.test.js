@@ -7,7 +7,39 @@ import {
     parseSizeDef,
     concreteSizeDefEquals,
     sumSizeDefs,
+    wrapFlexItems,
 } from "./flexLayout.js";
+
+describe("wrapping flex items", () => {
+    test("packs by minimum size and preserves order", () => {
+        const items = [{ px: 60 }, { grow: 1, minPx: 30 }, { px: 40 }];
+
+        expect(wrapFlexItems(items, 105, { spacing: 10 })).toEqual([
+            [0, 1],
+            [2],
+        ]);
+    });
+
+    test("keeps an oversized item on its own line", () => {
+        expect(
+            wrapFlexItems([{ px: 120 }, { px: 20 }], 100, { spacing: 10 })
+        ).toEqual([[0], [1]]);
+    });
+
+    test("leaves unconstrained growing items on the same line", () => {
+        expect(
+            wrapFlexItems([{ grow: 1 }, { grow: 2 }], 10, { spacing: 5 })
+        ).toEqual([[0, 1]]);
+    });
+
+    test("collapses gaps around zero-sized items", () => {
+        expect(
+            wrapFlexItems([{ px: 40 }, { px: 0 }, { px: 40 }], 90, {
+                spacing: 10,
+            })
+        ).toEqual([[0, 1, 2]]);
+    });
+});
 
 test("parseSize", () => {
     expect(parseSizeDef(10)).toEqual({ px: 10, grow: 0 });

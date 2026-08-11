@@ -30,6 +30,15 @@ export interface LegendRegionLayout {
      * Direction in which complete legends are arranged within a legend region.
      */
     direction?: LegendDirection;
+
+    /**
+     * Whether complete legends wrap into additional rows or columns when they
+     * do not fit in the available region. Wrapping applies to external legend
+     * regions only.
+     *
+     * __Default value:__ `true` for external regions, `false` for inside corners
+     */
+    wrap?: boolean;
 }
 
 export interface LegendLayout extends LegendRegionLayout {
