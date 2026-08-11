@@ -24,7 +24,7 @@ export function getConfiguredLegendRegionLayout(scopes, orient) {
             orientLayout?.direction ??
             layout.direction ??
             (orient == "left" || orient == "right" ? "vertical" : "horizontal"),
-        wrap: orientLayout?.wrap ?? layout.wrap ?? external,
+        wrap: external && (orientLayout?.wrap ?? layout.wrap ?? true),
     };
 }
 
