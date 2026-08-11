@@ -49,7 +49,7 @@ export type ValueParameter = PlainValueParameter | TransitionedValueParameter;
 
 export interface PlainValueParameter extends ParameterBase, PersistedParameter {
     /**
-     * The [initial value](http://vega.github.io/vega-lite/docs/value.html) of the parameter.
+     * The [initial value](https://genomespy.app/docs/grammar/parameters/) of the parameter.
      *
      * __Default value:__ `undefined`
      */
@@ -439,7 +439,7 @@ export interface BrushConfig extends ShadowProps, ZIndexProps {
 export interface SelectionParameter<T extends SelectionType = SelectionType>
     extends ParameterBase, PersistedParameter {
     /**
-     * Determines the default event processing and data query for the selection. Vega-Lite currently supports two selection types:
+     * Determines the default event processing and data query for the selection. GenomeSpy supports two selection types, following the Vega-Lite model:
      *
      * - `"point"` -- to select multiple discrete data values; the first value is selected on `click` and additional values toggled on shift-click.
      * - `"interval"` -- to select a continuous range of data values on `drag`.

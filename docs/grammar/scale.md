@@ -42,9 +42,11 @@ replicate their behavior identically (unless stated otherwise) in GenomeSpy.
 Although that has yet to fully materialize, Vega-Lite's scale documentation
 generally applies to GenomeSpy as well.
 
-The supported scales are: `"linear"`, `"pow"`, `"sqrt"`, `"symlog"`, `"log"`,
-`"ordinal"`, `"band"`, `"point"`, `"quantize"`, and `"threshold"`. Disabled
-scale is supported on quantitative channels such as `x` and `opacity`.
+The supported scales are: `"identity"`, `"linear"`, `"pow"`, `"sqrt"`,
+`"symlog"`, `"log"`, `"ordinal"`, `"band"`, `"point"`, `"quantize"`,
+`"threshold"`, and `"sequential"`. The `"sequential"` type is retained for
+backwards compatibility. Disabled scale is supported on quantitative channels
+such as `x` and `opacity`.
 
 Currently, the following scales are **not** supported: `"time"`, `"utc"`,
 `"quantile"`, `"bin-linear"`, `"bin-ordinal"`.

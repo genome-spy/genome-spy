@@ -94,7 +94,7 @@ export interface FormatMixins {
      *
      * - If the format type is `"number"` (e.g., for quantitative fields), this is D3's [number format pattern](https://github.com/d3/d3-format#locale_format).
      *
-     * See the [format documentation](https://vega.github.io/vega-lite/docs/format.html) for more examples.
+     * See the [Vega-Lite format documentation](https://vega.github.io/vega-lite/docs/format.html) for more examples.
      */
     format?: string;
 }
@@ -117,16 +117,14 @@ export interface FieldDefBase {
     description?: string;
 
     /**
-     * __Required.__ A string defining the name of the field from which to pull a data value
-     * or an object defining iterated values from the [`repeat`](https://vega.github.io/vega-lite/docs/repeat.html) operator.
+     * __Required.__ A string defining the name of the field from which to pull a data value.
      *
-     * __See also:__ [`field`](https://vega.github.io/vega-lite/docs/field.html) documentation.
+     * __See also:__ [`field`](https://genomespy.app/docs/grammar/mark/#field) documentation.
      *
      * __Notes:__
      * 1)  Dots (`.`) and brackets (`[` and `]`) can be used to access nested objects (e.g., `"field": "foo.bar"` and `"field": "foo['bar']"`).
      * If field names contain dots or brackets but are not nested, you can use `\\` to escape dots and brackets (e.g., `"a\\.b"` and `"a\\[0\\]"`).
-     * See more details about escaping in the [field documentation](https://vega.github.io/vega-lite/docs/field.html).
-     * 2) `field` is not required if `aggregate` is `count`.
+     * See more details about escaping in the [Vega-Lite field documentation](https://vega.github.io/vega-lite/docs/field.html).
      */
     field?: string;
 }
@@ -150,11 +148,11 @@ export interface ScaleMixins {
     /**
      * An object defining properties of the channel's scale, which is the function that transforms values in the data domain (numbers, dates, strings, etc) to visual values (pixels, colors, sizes) of the encoding channels.
      *
-     * If `null`, the scale will be [disabled and the data value will be directly encoded](https://vega.github.io/vega-lite/docs/scale.html#disable).
+     * If `null`, the scale will be [disabled and the data value will be directly encoded](https://genomespy.app/docs/grammar/scale/).
      *
-     * __Default value:__ If undefined, default [scale properties](https://vega.github.io/vega-lite/docs/scale.html) are applied.
+     * __Default value:__ If undefined, default [scale properties](https://genomespy.app/docs/grammar/scale/) are applied.
      *
-     * __See also:__ [`scale`](https://vega.github.io/vega-lite/docs/scale.html) documentation.
+     * __See also:__ [`scale`](https://genomespy.app/docs/grammar/scale/) documentation.
      */
     scale?: Scale | null;
 
@@ -245,9 +243,9 @@ export type MarkPropDatumDef<T extends Type> = LegendMixins &
  * An object defining properties of the legend.
  * If `null`, the legend for the encoding channel will be removed.
  *
- * __Default value:__ If undefined, default [legend properties](https://vega.github.io/vega-lite/docs/legend.html) are applied.
+ * __Default value:__ If undefined, default [legend properties](https://genomespy.app/docs/grammar/legend/#properties) are applied.
  *
- * __See also:__ [`legend`](https://vega.github.io/vega-lite/docs/legend.html) documentation.
+ * __See also:__ [`legend`](https://genomespy.app/docs/grammar/legend/) documentation.
  */
 export interface LegendMixins {
     /**
@@ -285,10 +283,10 @@ export type ConditionalParameter<CD extends ConditionalTemplate> =
 
 export interface ConditionValueDefMixins<V extends Value = Value> {
     /**
-     * One or more value definition(s) with [a parameter or a test predicate](https://vega.github.io/vega-lite/docs/condition.html).
+     * One or more value definition(s) with [a parameter](https://genomespy.app/docs/grammar/conditional-encoding/).
      *
-     * __Note:__ A field definition's `condition` property can only contain [conditional value definitions](https://vega.github.io/vega-lite/docs/condition.html#value)
-     * since Vega-Lite only allows at most one encoded field per encoding channel.
+     * __Note:__ A field definition's `condition` property can only contain [conditional value definitions](https://genomespy.app/docs/grammar/conditional-encoding/)
+     * since GenomeSpy only allows at most one encoded field per encoding channel.
      */
     condition?: Conditional<ValueDef<V>> | Conditional<ValueDef<V>>[];
 }
@@ -362,9 +360,9 @@ export interface PositionMixins extends BandMixins {
      * An object defining properties of axis's gridlines, ticks and labels.
      * If `null`, the axis for the encoding channel will be removed.
      *
-     * __Default value:__ If undefined, default [axis properties](https://vega.github.io/vega-lite/docs/axis.html) are applied.
+     * __Default value:__ If undefined, default [axis properties](https://genomespy.app/docs/grammar/axis/#properties) are applied.
      *
-     * __See also:__ [`axis`](https://vega.github.io/vega-lite/docs/axis.html) documentation.
+     * __See also:__ [`axis`](https://genomespy.app/docs/grammar/axis/) documentation.
      */
     axis?: GenomeAxis | null;
 }
@@ -534,7 +532,7 @@ export interface Encoding {
      *
      * _Note:_
      * 1) For fine-grained control over both fill and stroke colors of the marks, please use the `fill` and `stroke` channels. The `fill` or `stroke` encodings have higher precedence than `color`, thus may override the `color` encoding if conflicting encodings are specified.
-     * 2) See the scale documentation for more information about customizing [color scheme](https://vega.github.io/vega-lite/docs/scale.html#scheme).
+     * 2) See the [GenomeSpy scale documentation](https://genomespy.app/docs/grammar/scale/) for more information about customizing color schemes.
      */
     color?: ColorDef;
 
