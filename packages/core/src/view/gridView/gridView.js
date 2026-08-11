@@ -406,19 +406,30 @@ export default class GridView extends ContainerView {
      * Shared guides always depend on the whole container. Grid-child guides can
      * be limited to newly inserted children during mutations.
      *
-     * @param {{ gridChildren?: GridChild[] }} [options]
+     * @param {{
+     *   gridChildren?: GridChild[],
+     *   legendOwners?: import("../view.js").default[]
+     * }} [options]
      */
     async syncGuideViews(options = {}) {
         const gridChildren = options.gridChildren ?? this.#children;
 
         await Promise.all([
             this.#syncSharedAxes(),
-            this.#syncSharedLegends(),
+            this.#syncSharedLegends(options.legendOwners),
             this.#syncContainerOverlays(),
         ]);
         await Promise.all(
             gridChildren.map((gridChild) => gridChild.syncGuideViews())
         );
+        this.invalidateSizeCache();
+    }
+
+    /**
+     * Recreates only GridView-owned legends.
+     */
+    async syncLegendViews() {
+        await this.#syncSharedLegends(getLegendResolutionOwners(this));
         this.invalidateSizeCache();
     }
 
@@ -472,13 +483,18 @@ export default class GridView extends ContainerView {
      * Shared legends are GridView-owned for the same reason as shared axes:
      * their placement is relative to the whole child grid, not any individual
      * GridChild.
+     *
+     * @param {import("../view.js").default[]} [owners]
      */
-    async #syncSharedLegends() {
+    async #syncSharedLegends(owners) {
         disposeLegendViews(this.#sharedLegends);
         this.#sharedLegends = {};
+        const legendOwners =
+            owners ??
+            (Object.keys(this.resolutions.legend).length > 0 ? [this] : []);
 
         for (const { definition, resolution, owner } of getOrderedLegendEntries(
-            getLegendResolutionOwners(this)
+            legendOwners
         )) {
             const declaration = findLegendCollectionDeclaration(
                 owner,

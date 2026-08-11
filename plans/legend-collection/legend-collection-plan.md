@@ -280,6 +280,12 @@ synchronization:
 4. Reuse current initialization, mutation, visibility, disposal, and layout
    invalidation hooks.
 
+During regular synchronization, only grids that host an explicit collection
+declaration inspect descendant legend owners. Ordinary grids retain their
+existing owner-local lookup. A dynamic mutation refreshes the mutated grid and
+the ancestor grids that host applicable collection declarations; it does not
+rebuild guides on every layout ancestor.
+
 Do not add a new semantic resolution object, generalized guide scheduler,
 named collector abstraction, or persistent routing map. Collection targets are
 cheap derived state and should be recomputed from the view hierarchy when

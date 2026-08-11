@@ -7,13 +7,18 @@ import { hasChromeAncestor } from "../viewSelectors.js";
  * @param {import("../view.js").default} viewRoot
  */
 export function getLegendResolutionOwners(viewRoot) {
-    return viewRoot
-        .getDescendants()
-        .filter(
-            (view) =>
-                !hasChromeAncestor(view) &&
-                Object.keys(view.resolutions.legend).length > 0
-        );
+    return filterLegendResolutionOwners(viewRoot.getDescendants());
+}
+
+/**
+ * @param {import("../view.js").default[]} views
+ */
+export function filterLegendResolutionOwners(views) {
+    return views.filter(
+        (view) =>
+            !hasChromeAncestor(view) &&
+            Object.keys(view.resolutions.legend).length > 0
+    );
 }
 
 /**

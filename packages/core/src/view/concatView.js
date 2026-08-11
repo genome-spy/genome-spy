@@ -4,6 +4,7 @@ import {
     isVConcatSpec,
 } from "./viewSpecGuards.js";
 import GridView from "./gridView/gridView.js";
+import { getLegendResolutionOwners } from "./gridView/legendCollection.js";
 import ContainerMutationHelper from "./containerMutationHelper.js";
 import { moveArrayItem } from "../utils/arrayUtils.js";
 
@@ -74,7 +75,14 @@ export default class ConcatView extends GridView {
             )
         );
 
-        await this.syncGuideViews();
+        const collectsLegends = Object.values(
+            this.spec.resolve?.legend ?? {}
+        ).includes("collected");
+        await this.syncGuideViews({
+            legendOwners: collectsLegends
+                ? getLegendResolutionOwners(this)
+                : undefined,
+        });
     }
 
     /**
@@ -114,8 +122,8 @@ export default class ConcatView extends GridView {
         super.moveChildAt(fromIndex, index);
         // Reordering can move shared guide ownership without changing existing
         // child-local guides.
-        await this.#syncMutationGuideViews([]);
-        await mutationHelper.initializeUninitializedChromeViews();
+        const guideRoots = await this.#syncMutationGuideViews([]);
+        await mutationHelper.initializeUninitializedChromeViews(guideRoots);
         this.context.requestLayoutReflow();
     }
 
@@ -202,14 +210,32 @@ export default class ConcatView extends GridView {
      * collect legends from a dynamically changed nested composition.
      *
      * @param {import("./gridView/gridChild.js").default[]} gridChildren
+     * @returns {Promise<Set<GridView>>}
      */
     async #syncMutationGuideViews(gridChildren) {
-        await this.syncGuideViews({ gridChildren });
+        await this.syncGuideViews({
+            gridChildren,
+            legendOwners: getLegendResolutionOwners(this),
+        });
+        /** @type {Set<GridView>} */
+        const guideRoots = new Set([this]);
 
-        for (const ancestor of this.getLayoutAncestors().slice(1)) {
-            if (ancestor instanceof GridView) {
-                await ancestor.syncGuideViews({ gridChildren: [] });
+        for (const ancestor of this.getDataAncestors()) {
+            if (
+                Object.values(ancestor.spec.resolve?.legend ?? {}).includes(
+                    "collected"
+                )
+            ) {
+                const host = ancestor
+                    .getLayoutAncestors()
+                    .find((view) => view instanceof GridView);
+                if (host && !guideRoots.has(host)) {
+                    await host.syncLegendViews();
+                    guideRoots.add(host);
+                }
             }
         }
+
+        return guideRoots;
     }
 }
