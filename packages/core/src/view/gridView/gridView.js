@@ -178,6 +178,9 @@ export default class GridView extends ContainerView {
     /** @type {import("./gridChildLegends.js").GridChildLegends} */
     #sharedLegends = {};
 
+    /** @type {((legend: import("../legendView.js").default, owner: View) => boolean) | undefined} */
+    #legendFilter;
+
     #childSerial = 0;
 
     /** @type {Partial<Record<"horizontal" | "vertical", SeparatorView>>} */
@@ -367,6 +370,16 @@ export default class GridView extends ContainerView {
     }
 
     /**
+     * Restricts which legends this grid and its children physically host.
+     * Semantic legend ownership and scale resolution remain unchanged.
+     *
+     * @param {((legend: import("../legendView.js").default, owner: View) => boolean) | undefined} filter
+     */
+    setLegendFilter(filter) {
+        this.#legendFilter = filter;
+    }
+
+    /**
      * Recreates guide and chrome views that depend on the child hierarchy.
      * Shared guides always depend on the whole container. Grid-child guides can
      * be limited to newly inserted children during mutations.
@@ -385,7 +398,9 @@ export default class GridView extends ContainerView {
             this.#syncContainerOverlays(),
         ]);
         await Promise.all(
-            gridChildren.map((gridChild) => gridChild.syncGuideViews())
+            gridChildren.map((gridChild) =>
+                gridChild.syncGuideViews({ legendFilter: this.#legendFilter })
+            )
         );
         this.invalidateSizeCache();
     }
@@ -476,6 +491,10 @@ export default class GridView extends ContainerView {
             }
 
             const legend = await createGridChildLegend(definition, this);
+            if (this.#legendFilter && !this.#legendFilter(legend, owner)) {
+                legend.disposeSubtree();
+                continue;
+            }
             await addLegendView(this.#sharedLegends, legend, resolution);
         }
     }

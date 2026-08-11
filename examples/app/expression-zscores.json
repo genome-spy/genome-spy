@@ -70,6 +70,8 @@
   "spec": {
     "name": "expression-zscores",
 
+    "resolve": { "scale": { "fill": "shared" } },
+
     "view": { "fill": "#f4f4f4" },
     "mark": {
       "type": "rect",
@@ -141,13 +143,7 @@
           "y2": { "datum": 0, "type": "quantitative" },
           "fill": {
             "field": "meanZScore",
-            "type": "quantitative",
-            "scale": {
-              "domain": [-2.5, 0, 2.5],
-              "range": ["#2166ac", "#f7f7f7", "#b2182b"],
-              "clamp": true
-            },
-            "legend": null
+            "type": "quantitative"
           }
         }
       }

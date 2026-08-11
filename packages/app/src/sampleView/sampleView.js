@@ -45,6 +45,8 @@ import { isAggregateSamplesSpec } from "./specGuards.js";
 import getViewAttributeInfo from "./viewAttributeInfoSource.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 import { renderLocalLegends } from "@genome-spy/core/view/gridView/legendLayout.js";
+import { getLegendResolutionOwners } from "@genome-spy/core/view/gridView/legendCollection.js";
+import { isInsideLegend } from "@genome-spy/core/view/gridView/gridChildLegends.js";
 import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
 import { SampleLabelView } from "./sampleLabelView.js";
 import {
@@ -92,6 +94,7 @@ import SampleChromeLayout from "./sampleChromeLayout.js";
 
 /** @type {import("./types.js").AttributeIdentifierType} */
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
+
 /**
  * Implements faceting of multiple samples. The samples are displayed
  * as tracks and optional metadata.
@@ -626,6 +629,7 @@ export default class SampleView extends ContainerView {
                 "sampleSummaries"
             )
         );
+        summaryViews.setLegendFilter((legend) => isInsideLegend(legend));
 
         const sampleFacetsView = await this.context.createOrImportView(
             childSpec,
@@ -741,6 +745,7 @@ export default class SampleView extends ContainerView {
         attachViewLevelAxisProps(this);
         attachViewLevelLegendProps(this);
         await this.#gridChild.summaryViews.syncGuideViews();
+        await this.#gridChild.syncGuideViews();
 
         await this.sampleGroupView.initializeChildren();
         await this.metadataView.initializeChildren();
@@ -2003,7 +2008,19 @@ class SampleGridChild extends GridChild {
      * valid because they are placed over the plot area.
      */
     async syncGuideViews() {
-        await super.syncGuideViews();
+        const summaryLegendOwners = getLegendResolutionOwners(
+            this.summaryViews
+        );
+        const summaryLegendOwnerSet = new Set(summaryLegendOwners);
+
+        await super.syncGuideViews({
+            legendOwners: [
+                ...getLegendResolutionOwners(this.view),
+                ...summaryLegendOwners,
+            ],
+            legendFilter: (legend, owner) =>
+                !summaryLegendOwnerSet.has(owner) || !isInsideLegend(legend),
+        });
 
         if (this.legends.left) {
             throw new Error(

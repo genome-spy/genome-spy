@@ -43,18 +43,32 @@ const INHERITED_SYMBOL_ENCODING_CHANNELS = /** @type {const} */ ([
     "shape",
 ]);
 
-const LEGEND_ORIENTS = new Set(
-    /** @type {const} */ ([
-        "left",
-        "right",
-        "top",
-        "bottom",
+const INSIDE_LEGEND_ORIENTS = new Set(
+    /** @type {import("../../spec/legend.js").LegendOrient[]} */ ([
         "top-left",
         "top-right",
         "bottom-left",
         "bottom-right",
     ])
 );
+
+const LEGEND_ORIENTS = new Set([
+    "left",
+    "right",
+    "top",
+    "bottom",
+    ...INSIDE_LEGEND_ORIENTS,
+]);
+
+/**
+ * @param {LegendView} legend
+ */
+export function isInsideLegend(legend) {
+    const orient = /** @type {import("../../spec/legend.js").LegendOrient} */ (
+        legend.legendProps.orient ?? "right"
+    );
+    return INSIDE_LEGEND_ORIENTS.has(orient);
+}
 
 /**
  * @param {import("../view.js").default[]} legendOwners

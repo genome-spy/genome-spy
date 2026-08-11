@@ -487,8 +487,13 @@ export default class GridChild {
 
     /**
      * Recreates GridChild-owned guide and generated chrome views.
+     *
+     * @param {{
+     *     legendOwners?: import("../view.js").default[],
+     *     legendFilter?: (legend: import("../legendView.js").default, owner: import("../view.js").default) => boolean
+     * }} [options]
      */
-    async syncGuideViews() {
+    async syncGuideViews(options = {}) {
         this.#disposeAxisViews();
         await this.#initializeGeneratedOverlays();
 
@@ -685,7 +690,7 @@ export default class GridChild {
         }
 
         for (const { definition, resolution, owner } of getOrderedLegendEntries(
-            getLegendOwners(view)
+            options.legendOwners ?? getLegendOwners(view)
         )) {
             if (
                 findLegendCollectionDeclaration(owner, resolution.channel) !==
@@ -698,6 +703,10 @@ export default class GridChild {
                 definition,
                 this.layoutParent
             );
+            if (options.legendFilter && !options.legendFilter(legend, owner)) {
+                legend.disposeSubtree();
+                continue;
+            }
             await addLegendView(this.legends, legend, resolution);
         }
 

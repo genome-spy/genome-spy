@@ -333,6 +333,17 @@ describe("GridView legends", () => {
             expect(getLegends(view)).toHaveLength(1);
         });
 
+        test("filters legends hosted by a grid", async () => {
+            const view = await createLegendTestView();
+
+            view.setLegendFilter(
+                (legend) => legend.legendProps.orient === "top-right"
+            );
+            await view.syncGuideViews();
+
+            expect(getLegends(view)).toHaveLength(0);
+        });
+
         test("creates a right legend for a nominal color scale", async () => {
             const view = await createLegendTestView();
             const legends = getLegends(view);

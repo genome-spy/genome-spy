@@ -206,6 +206,26 @@ async function getSampleLabelWidth(spec, samples) {
     return view.sampleLabelView.getSize().width.px;
 }
 
+/**
+ * @param {string} title
+ * @param {import("@genome-spy/core/spec/legend.js").LegendOrient} orient
+ * @returns {import("@genome-spy/app/spec/view.js").AppUnitSpec}
+ */
+function createSummaryLegendSpec(title, orient) {
+    return {
+        mark: { type: "point", filled: true },
+        encoding: {
+            x: { field: "x", type: "nominal" },
+            y: { field: "meanValue", type: "quantitative" },
+            fill: {
+                field: "meanValue",
+                type: "quantitative",
+                legend: { title, orient },
+            },
+        },
+    };
+}
+
 describe("parent grid chrome ownership", () => {
     test("SampleView owns its own axes and plot background", async () => {
         const { view } = await createSampleViewForTest({
@@ -1078,6 +1098,91 @@ describe("layout and group column", () => {
         expect(legendBody.paramRuntime.createExpression("height")()).toBe(
             legendBody.coords.height
         );
+    });
+
+    test("hosts external summary legends in the sample pane", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                config: { legend: { disable: false } },
+                data: {
+                    values: [
+                        { sample: "A", x: "one", value: 1 },
+                        { sample: "B", x: "one", value: 2 },
+                        { sample: "A", x: "two", value: 3 },
+                        { sample: "B", x: "two", value: 4 },
+                    ],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "nominal" },
+                        fill: {
+                            field: "value",
+                            type: "quantitative",
+                            legend: null,
+                        },
+                    },
+                    aggregateSamples: [
+                        {
+                            height: 40,
+                            transform: [
+                                {
+                                    type: "aggregate",
+                                    groupby: ["x"],
+                                    ops: ["mean"],
+                                    fields: ["value"],
+                                    as: ["meanValue"],
+                                },
+                            ],
+                            resolve: {
+                                scale: { fill: "independent" },
+                                legend: { fill: "independent" },
+                            },
+                            layer: [
+                                createSummaryLegendSpec("External", "right"),
+                                createSummaryLegendSpec("Inside", "top-right"),
+                            ],
+                        },
+                    ],
+                },
+            },
+        });
+        const summaryContainer = view
+            .getDescendants()
+            .find((candidate) => candidate.name === "sampleSummaries");
+        const legends = /** @type {LegendView[]} */ (
+            view
+                .getDescendants()
+                .filter((candidate) => candidate instanceof LegendView)
+        );
+        const external = legends.find(
+            (legend) => legend.legendProps.title === "External"
+        );
+        const inside = legends.find(
+            (legend) => legend.legendProps.title === "Inside"
+        );
+        if (!summaryContainer || !external || !inside) {
+            throw new Error("Expected both summary legends");
+        }
+
+        // Only the physical host changes; the summary remains the data parent.
+        expect(external.getLayoutAncestors()).not.toContain(summaryContainer);
+        expect(external.dataParent.getLayoutAncestors()).toContain(
+            summaryContainer
+        );
+        expect(inside.getLayoutAncestors()).toContain(summaryContainer);
+
+        const renderContext = new InspectRenderingContext({ picking: false });
+        view.render(renderContext, Rectangle.create(0, 0, 360, 240), {
+            firstFacet: true,
+        });
+        expect(
+            renderContext.legendCoords.filter(
+                ({ title }) => title === "External"
+            )
+        ).toHaveLength(1);
     });
 
     test("collapses hidden child legends in the sample pane legend stack", async () => {
