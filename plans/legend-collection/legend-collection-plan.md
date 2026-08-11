@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposal for discussion. No implementation has started on this branch.
+Implemented on `feature/legend-collection`.
 
 ## Summary
 
@@ -18,10 +18,11 @@ Add `"collected"` as a legend-only resolution behavior:
 }
 ```
 
-The mode keeps descendant legend and scale resolutions semantically separate,
-but lays out their complete legend views at the composition that declares the
-mode. It does not merge domains, scales, legend entries, or legend
-resolutions.
+The mode preserves normal scale-driven legend resolution but lays out complete
+legend views at the composition that declares the mode. Shared scales produce
+one shared legend, while independent scales produce separate collected
+legends. It does not merge domains, scales, legend entries, or independent
+legend resolutions.
 
 Normal legend placement remains resolution-owner based. Independent legends
 stay with their source grid children, and shared legends stay with the
@@ -66,7 +67,7 @@ support this distinction.
 
 - Keep resolution-owner placement as the default.
 - Collect complete, unrelated legends at an explicitly selected composition.
-- Preserve independent scale and legend resolutions during collection.
+- Preserve normal scale-driven legend sharing during collection.
 - Support collection by one legend channel or by all legend channels.
 - Allow `"excluded"` to keep a channel or subtree out of an outer collection.
 - Reuse existing legend regions, ordering, measurement, and layout behavior.
@@ -185,21 +186,18 @@ resulting legend cannot be collected by an outer ancestor.
 
 ### Semantic resolution
 
-At the view that declares it, `"collected"` acts as an independent boundary
-for legend resolution:
+At the view that declares it, `"collected"` controls layout while semantic
+legend resolution follows the corresponding scale resolution:
 
-- Legend members from separate child branches are not registered into one
-  shared `LegendResolution` at that view.
-- Existing shared legend resolutions inside a child subtree remain shared
-  inside that subtree.
-- Scale resolution is unaffected. Authors may independently configure scales
-  as shared or independent.
-- No legend deduplication is performed, even when two collected legends happen
-  to reference the same shared scale resolution.
+- A shared scale produces one shared `LegendResolution` and one legend.
+- Independent scales produce separate `LegendResolution` instances and
+  separate collected legends.
+- Existing shared legend resolutions inside a child subtree remain shared.
+- Collection never merges or deduplicates independent legends.
 
-The resolution planner must treat `"collected"` explicitly. It must not add it
-to the set of behaviors that hoist resolution membership toward an ancestor.
-Unknown resolution modes must continue to fail loudly.
+The resolution planner must treat `"collected"` explicitly by delegating its
+semantic behavior to the corresponding scale resolution. Unknown resolution
+modes must continue to fail loudly.
 
 ### Layout collection
 
@@ -373,15 +371,14 @@ instead of the composition that requests it.
 
 Rejected in favor of a composition-scoped resolution declaration.
 
-### Shared legend resolution with independent scales
+### Merging legends with independent scales
 
-GenomeSpy can technically associate multiple scale-backed definitions with a
-legend resolution, but using shared resolution for collection gives one object
-two meanings: semantic guide sharing and physical packing of unrelated guides.
-It also complicates view-level legend properties, lifecycle ownership, and
-introspection.
+GenomeSpy could synthesize one legend from multiple independent scales, but it
+would need rules for reconciling domains, ranges, titles, formatting, and
+interactions. It would also blur semantic ownership.
 
-Rejected. `"collected"` leaves semantic legend resolutions independent.
+Rejected. Shared scales already produce one legend naturally; independent
+scales remain separate and are only packed together.
 
 ### Global figure-level legends by default
 
@@ -399,8 +396,8 @@ Deferred. The collected-resolution design does not preclude them later.
 
 ## Risks
 
-- Resolution code may accidentally treat `"collected"` as shared and move
-  semantic ownership.
+- Resolution code may accidentally treat `"collected"` as unconditionally
+  shared instead of following scale resolution.
 - Collection traversal may accidentally cross an `"excluded"` boundary and
   violate its existing no-pull contract.
 - Nested collection can duplicate legends unless nearest-target routing is
@@ -419,14 +416,15 @@ Deferred. The collected-resolution design does not preclude them later.
 ### 1. Define collected legend resolution
 
 **Outcome:** Add the legend-specific resolution behavior and schema contract.
-Treat it as an independent semantic boundary in resolution planning.
+Preserve scale-driven semantic legend resolution in the resolution planner.
 
 **Affected areas:** `spec/view.d.ts`, resolution-mode branching,
 `resolutionPlanner.js`, schema tests, and focused resolution tests.
 
 **Verification:** Accept `resolve.legend.color: "collected"` and
 `resolve.legend.default: "collected"`; reject the mode for scales and axes;
-verify that descendant `LegendResolution` instances remain distinct.
+verify shared scales produce one legend resolution and independent scales
+produce distinct legend resolutions.
 
 **Documentation and migration:** Add concise schema documentation. Existing
 specifications are unaffected because defaults do not change.
@@ -501,7 +499,8 @@ gallery.
 - Existing specifications retain resolution-owner legend placement by default.
 - `threshold-gradient.json` retains its Vega-Lite-like child legend layout.
 - `"collected"` is accepted only for legend resolution.
-- Collected legends retain independent scale and legend resolutions.
+- Collected legends follow scale resolution: shared scales produce one legend,
+  while independent scales produce separate legends.
 - A declaring composition lays out collected legends in its own regions.
 - `default: "collected"` collects all eligible legend channels.
 - Nested collection routes each legend to exactly one nearest collector.

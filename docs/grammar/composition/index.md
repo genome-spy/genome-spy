@@ -68,7 +68,8 @@ EXAMPLE examples/docs/grammar/composition/index/independent-resolution.json spec
 ### Collected legends
 
 Legend resolution also supports `"collected"`. Descendant legends remain
-semantically independent but are laid out together around the composition that
-declares collection. This does not share scales, merge legend entries, or
-deduplicate legends. See [Legend resolution](../legend.md#resolution) for an
-example and exclusion behavior.
+laid out together around the composition that declares collection while their
+resolution follows the corresponding scales. A shared scale produces one
+legend; independent scales produce separate legends. Collection does not merge
+or deduplicate independent legends. See [Legend
+resolution](../legend.md#resolution) for an example and exclusion behavior.

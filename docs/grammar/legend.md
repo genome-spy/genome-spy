@@ -131,9 +131,12 @@ ambiguous and cause an error.
 ### `collected` legends
 
 Use `"collected"` to place complete descendant legends around a composition.
-Collection changes only layout and preserves each legend resolution, whether
-independent or already shared. It does not share scales, merge domains, combine
-legend entries, or deduplicate similar legends.
+Collection changes only layout. Legend resolution continues to follow the
+corresponding scale resolution:
+
+- Children with a shared scale produce one shared legend at the collector.
+- Children with independent scales produce separate legends at the collector.
+- Independent legends are not merged or deduplicated.
 
 ```json
 {
