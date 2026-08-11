@@ -1060,7 +1060,7 @@ export class LegendRegionView extends ContainerView {
                 },
             ]);
 
-        if (this.#wrap && this.#lines) {
+        if (this.#wrap && this.#lines && this.#lines.length > 1) {
             const lineCrossSizes = this.#lines.map((line) =>
                 getLargestSize(
                     line.map((index) =>
@@ -1124,7 +1124,7 @@ export class LegendRegionView extends ContainerView {
             return 0;
         }
 
-        if (this.#wrap && this.#lines) {
+        if (this.#wrap && this.#lines && this.#lines.length > 1) {
             return undefined;
         }
 
