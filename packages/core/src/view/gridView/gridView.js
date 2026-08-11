@@ -991,6 +991,7 @@ export default class GridView extends ContainerView {
             if (!remainingSharedLayoutPasses) {
                 throw new Error("Shared legend layout did not settle.");
             }
+            this.invalidateSizeCache();
             sharedGuideOverhang = this.#getSharedGuideOverhang();
         }
 
@@ -1051,7 +1052,7 @@ export default class GridView extends ContainerView {
                 throw new Error("Legend layout did not settle.");
             }
 
-            this._invalidateCacheByPrefix("size/directionSizes");
+            this.invalidateSizeCache();
             columnFlexCoords = mapToPixelCoords(
                 this.#makeFlexItems("column"),
                 coords.width,

@@ -1400,6 +1400,65 @@ describe("GridView legends", () => {
             expect(layoutCoords[1].y).toBeGreaterThan(layoutCoords[0].y);
         });
 
+        test("keeps all legends when a region wraps after resize", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                {
+                                    x: 1,
+                                    y: 2,
+                                    group: "alpha",
+                                    kind: "gain",
+                                    score: 1,
+                                },
+                                {
+                                    x: 2,
+                                    y: 3,
+                                    group: "beta",
+                                    kind: "loss",
+                                    score: 10,
+                                },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "index" },
+                            y: { field: "y", type: "quantitative" },
+                            color: { field: "group", type: "nominal" },
+                            shape: { field: "kind", type: "nominal" },
+                            size: { field: "score", type: "quantitative" },
+                        },
+                    },
+                ],
+            });
+            const wideContext = new LegendRecordingRenderingContext({
+                picking: false,
+            });
+            view.render(wideContext, Rectangle.create(0, 0, 1000, 400));
+            expect(wideContext.legendCoords).toHaveLength(3);
+            const wideMinimumHeight = getSizeDefMinPx(view.getSize().height);
+
+            const narrowContext = new LegendRecordingRenderingContext({
+                picking: false,
+            });
+            view.render(narrowContext, Rectangle.create(0, 0, 360, 400));
+
+            expect(narrowContext.legendCoords).toHaveLength(3);
+            const narrowCoords = Array.from(
+                narrowContext.legendCoords.values()
+            );
+            expect(
+                new Set(narrowCoords.map((coords) => coords.y)).size
+            ).toBeGreaterThan(1);
+            expect(narrowCoords.every((coords) => coords.x2 <= 360)).toBe(true);
+            expect(getSizeDefMinPx(view.getSize().height)).toBeGreaterThan(
+                wideMinimumHeight
+            );
+        });
+
         test("stacks local bottom legends outside shared bottom axes", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },
