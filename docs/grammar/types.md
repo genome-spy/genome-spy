@@ -228,6 +228,10 @@ SCHEMA HConcatSpec
 
 SCHEMA HandledTooltip
 
+## IdentifierParams
+
+SCHEMA IdentifierParams
+
 ## IndexUrlSourceRef
 
 SCHEMA IndexUrlSourceRef
@@ -279,6 +283,10 @@ SCHEMA LegendDirection
 ## LegendOrient
 
 SCHEMA LegendOrient
+
+## LegendResolutionBehavior
+
+SCHEMA LegendResolutionBehavior
 
 ## LegendTitleOrient
 

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Exclude a legend from collection",
+    "The bottom legend remains next to its source view."
+  ],
+
+  "config": { "legend": { "disable": false } },
+
+  "resolve": {
+    "scale": { "color": "independent" },
+    "legend": { "default": "collected" }
+  },
+
+  "hconcat": [
+    {
+      "data": {
+        "values": [
+          { "x": "A", "group": "Control" },
+          { "x": "B", "group": "Treatment" }
+        ]
+      },
+      "mark": "rect",
+      "encoding": {
+        "x": { "field": "x", "type": "nominal", "axis": null },
+        "color": {
+          "field": "group",
+          "type": "nominal",
+          "legend": { "title": "Collected" }
+        }
+      }
+    },
+
+    {
+      "resolve": { "legend": { "color": "excluded" } },
+      "data": {
+        "values": [
+          { "x": "A", "status": "Pass" },
+          { "x": "B", "status": "Review" }
+        ]
+      },
+      "mark": "rect",
+      "encoding": {
+        "x": { "field": "x", "type": "nominal", "axis": null },
+        "color": {
+          "field": "status",
+          "type": "nominal",
+          "legend": { "title": "Local", "orient": "bottom" }
+        }
+      }
+    }
+  ]
+}

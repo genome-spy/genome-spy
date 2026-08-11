@@ -95,7 +95,7 @@ corresponding scale resolution.
 ```
 
 Shared legend resolution is most useful when sibling views encode the same field
-with a shared scale and should show a single collected legend.
+with a shared scale and should show a single legend.
 
 EXAMPLE examples/docs/grammar/legend/shared-hconcat-legend.json height=360
 
@@ -127,6 +127,29 @@ When nested view-level legend declarations target the same resolution, the
 ancestor declaration shadows the whole descendant declaration; their
 properties are not merged. Declarations in separate sibling subtrees remain
 ambiguous and cause an error.
+
+### `collected` legends
+
+Use `"collected"` to place complete descendant legends around a composition.
+Collection changes only layout and preserves each legend resolution, whether
+independent or already shared. It does not share scales, merge domains, combine
+legend entries, or deduplicate similar legends.
+
+```json
+{
+  "resolve": {
+    "scale": { "color": "independent" },
+    "legend": { "color": "collected" }
+  }
+}
+```
+
+The nearest ancestor that declares `"collected"` lays out the legends. Use
+`"default": "collected"` to collect every legend channel. Set a channel to
+`"excluded"` on a view or composition to keep that legend at its normal local
+or shared owner and prevent collection by outer ancestors.
+
+EXAMPLE examples/docs/grammar/legend/collected-legends.json height=320
 
 ## Titles
 
