@@ -263,14 +263,17 @@ export class ViewFactory {
                     asSelectionConfig(param.select).type == "interval"
             );
 
-        // Wrap a unit spec at root into a grid view to get axes, etc.
+        // A non-grid root needs a grid parent to host layout chrome such as
+        // axes and legends. This also covers view types registered by clients.
         let isImplicitRoot = false;
         if (
             !dataParent &&
             this.options.wrapRoot &&
-            (isUnitSpec(viewSpec) ||
-                isLayerSpec(viewSpec) ||
-                isMultiscaleSpec(viewSpec) ||
+            (!(
+                isVConcatSpec(viewSpec) ||
+                isHConcatSpec(viewSpec) ||
+                isConcatSpec(viewSpec)
+            ) ||
                 hasIntervalSelection(viewSpec)) &&
             defaultName === VIEW_ROOT_NAME
         ) {
@@ -305,10 +308,8 @@ export class ViewFactory {
         }
 
         if (isImplicitRoot) {
-            topLevelSpecViews.set(
-                view,
-                /** @type {ConcatView} */ (view).children[0]
-            );
+            const implicitRoot = /** @type {ConcatView} */ (view);
+            topLevelSpecViews.set(view, implicitRoot.children[0]);
         }
 
         view.registerSizeInvalidation();

@@ -1,6 +1,12 @@
 import { expect, test } from "vitest";
-import { ViewFactory } from "./viewFactory.js";
+import {
+    getTopLevelSpecView,
+    ViewFactory,
+    VIEW_ROOT_NAME,
+} from "./viewFactory.js";
 import { createTestViewContext } from "./testUtils.js";
+import UnitView from "./unitView.js";
+import ConcatView from "./concatView.js";
 
 test("isViewSpec", () => {
     const factory = new ViewFactory();
@@ -137,4 +143,67 @@ test("throws if theme is used in a non-root subtree", async () => {
             "root"
         )
     ).rejects.toThrow('"theme" is only supported at the root specification');
+});
+
+test("wraps a registered custom root in an implicit grid", async () => {
+    const factory = new ViewFactory();
+    factory.addViewType(
+        (spec) => "customRoot" in spec,
+        (spec, context, layoutParent, dataParent, defaultName, options) =>
+            new UnitView(
+                { ...spec, mark: "point" },
+                context,
+                layoutParent,
+                dataParent,
+                defaultName,
+                options
+            )
+    );
+
+    const context = createTestViewContext();
+    context.createOrImportView = (
+        spec,
+        layoutParent,
+        dataParent,
+        defaultName,
+        validator,
+        options
+    ) =>
+        factory.createOrImportView(
+            spec,
+            context,
+            layoutParent,
+            dataParent,
+            defaultName,
+            validator,
+            options
+        );
+
+    const root = await context.createOrImportView(
+        // @ts-expect-error Custom view specs are registered at runtime.
+        { customRoot: true },
+        null,
+        null,
+        VIEW_ROOT_NAME
+    );
+
+    const implicitRoot = /** @type {ConcatView} */ (root);
+    expect(root).toBeInstanceOf(ConcatView);
+    expect(root.name).toBe("implicitRoot");
+    expect(getTopLevelSpecView(root)).toBe(implicitRoot.children[0]);
+    expect(getTopLevelSpecView(root)).toBeInstanceOf(UnitView);
+});
+
+test("does not wrap an authored concat root", async () => {
+    const context = createTestViewContext({ wrapRoot: true });
+    const root = await context.createOrImportView(
+        { vconcat: [] },
+        null,
+        null,
+        VIEW_ROOT_NAME
+    );
+
+    expect(root).toBeInstanceOf(ConcatView);
+    expect(root.name).toBe(VIEW_ROOT_NAME);
+    expect(getTopLevelSpecView(root)).toBe(root);
 });
