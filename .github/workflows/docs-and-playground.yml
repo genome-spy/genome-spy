@@ -5,6 +5,9 @@ on:
         types: [released]
     workflow_dispatch:
 
+permissions:
+    contents: read
+
 concurrency:
     group: docs-and-playground-deploy
     cancel-in-progress: true
@@ -12,25 +15,28 @@ concurrency:
 jobs:
     build:
         runs-on: ubuntu-latest
+        timeout-minutes: 45
         env:
             DEPLOY_REF: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
 
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
               with:
                   fetch-depth: 0
 
             - name: Set up Python 3.12
-              uses: actions/setup-python@v5
+              uses: actions/setup-python@v6
               with:
                   python-version: "3.12"
 
             - name: Set up uv
-              uses: astral-sh/setup-uv@v5
-
-            - uses: actions/setup-node@v4
+              uses: astral-sh/setup-uv@v9.0.0
               with:
-                  node-version: 22
+                  prune-cache: true
+
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: 24
                   cache: "npm"
 
             - name: Install npm dependencies
@@ -49,7 +55,7 @@ jobs:
               run: npm -w @genome-spy/playground run build
 
             - name: Check out site repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   repository: genome-spy/genome-spy.github.io
                   ref: master
