@@ -22,7 +22,10 @@ describe("SVG gradient legends", () => {
     test.each(orientations)(
         "uses one gradient-filled rect for a %s legend",
         async (orient, horizontal) => {
-            const svg = await createLegendSvg({ orient });
+            const svg = await createLegendSvg({
+                orient,
+                direction: horizontal ? "horizontal" : "vertical",
+            });
             const ramp = svg.querySelector('[data-name="gradientRamp"]');
             const rects = ramp.querySelectorAll('[data-mark-type="rect"] rect');
             const gradient = svg.querySelector(
@@ -55,6 +58,7 @@ describe("SVG gradient legends", () => {
     test("keeps discrete gradient legends as color buckets", async () => {
         const svg = await createLegendSvg({
             orient: "bottom",
+            direction: "horizontal",
             scale: {
                 type: "quantize",
                 domain: [0, 100],
@@ -94,9 +98,14 @@ describe("SVG gradient legends", () => {
 /**
  * @param {object} options
  * @param {import("../spec/legend.js").LegendOrient} options.orient
+ * @param {import("../spec/legend.js").LegendDirection} [options.direction]
  * @param {import("../spec/scale.js").Scale} [options.scale]
  */
-async function createLegendSvg({ orient, scale = { scheme: "turbo" } }) {
+async function createLegendSvg({
+    orient,
+    direction,
+    scale = { scheme: "turbo" },
+}) {
     const { view } = await createHeadlessEngine(
         {
             config: { legend: { disable: false } },
@@ -114,7 +123,7 @@ async function createLegendSvg({ orient, scale = { scheme: "turbo" } }) {
                     field: "value",
                     type: "quantitative",
                     scale,
-                    legend: { orient },
+                    legend: { orient, direction },
                 },
             },
         },

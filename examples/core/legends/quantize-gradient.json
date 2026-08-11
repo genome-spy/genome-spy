@@ -74,7 +74,11 @@
             "domain": [0, 120],
             "scheme": { "name": "turbo", "count": 5 }
           },
-          "legend": { "title": "Bottom", "orient": "bottom" }
+          "legend": {
+            "title": "Bottom",
+            "orient": "bottom",
+            "direction": "horizontal"
+          }
         }
       }
     }

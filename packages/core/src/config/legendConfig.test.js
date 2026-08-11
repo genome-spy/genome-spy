@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { INTERNAL_DEFAULT_CONFIG } from "./defaultConfig.js";
-import { getConfiguredLegendDefaults } from "./legendConfig.js";
+import {
+    getConfiguredLegendDefaults,
+    getConfiguredLegendRegionLayout,
+} from "./legendConfig.js";
 
 describe("legendConfig", () => {
     test("internal defaults keep legends visible", () => {
@@ -13,6 +16,10 @@ describe("legendConfig", () => {
         expect(defaults.orient).toBe("right");
         expect(defaults.direction).toBe("vertical");
         expect(defaults.labelOffset).toBe(4);
+        expect(defaults.gradientThickness).toBe(12);
+        expect(defaults.gradientOpacity).toBe(1);
+        expect(defaults.gradientStrokeWidth).toBe(0);
+        expect(defaults.tickCount).toBe(5);
         expect(defaults.symbolType).toBe("circle");
         expect(defaults.titleOrient).toBe("top");
     });
@@ -54,18 +61,20 @@ describe("legendConfig", () => {
         );
 
         expect(trackDefaults.orient).toBe("bottom");
+        expect(trackDefaults.direction).toBe("horizontal");
         expect(trackDefaults.titleOrient).toBe("left");
         expect(userDefaults.orient).toBe("left");
         expect(userDefaults.titleOrient).toBe("left");
     });
 
-    test("built-in track-bottom style configures compact bottom legends", () => {
+    test("built-in track-bottom-legend style configures compact bottom legends", () => {
         const defaults = getConfiguredLegendDefaults(
             [INTERNAL_DEFAULT_CONFIG],
-            { style: "track-bottom" }
+            { style: "track-bottom-legend" }
         );
 
         expect(defaults.orient).toBe("bottom");
+        expect(defaults.direction).toBe("horizontal");
         expect(defaults.titleOrient).toBe("left");
         expect(defaults.spacing).toBe(3);
         expect(defaults.offset).toBe(3);
@@ -74,7 +83,7 @@ describe("legendConfig", () => {
     test("config legend style resolves inherited style buckets", () => {
         const defaults = getConfiguredLegendDefaults([
             INTERNAL_DEFAULT_CONFIG,
-            { legend: { style: "track-bottom" } },
+            { legend: { style: "track-bottom-legend" } },
         ]);
 
         expect(defaults.orient).toBe("bottom");
@@ -86,7 +95,7 @@ describe("legendConfig", () => {
     test("null config legend style resets inherited style defaults", () => {
         const defaults = getConfiguredLegendDefaults([
             INTERNAL_DEFAULT_CONFIG,
-            { legend: { style: "track-bottom" } },
+            { legend: { style: "track-bottom-legend" } },
             { legend: { style: null } },
         ]);
 
@@ -100,9 +109,9 @@ describe("legendConfig", () => {
         const defaults = getConfiguredLegendDefaults([
             INTERNAL_DEFAULT_CONFIG,
             {
-                legend: { style: "track-bottom" },
+                legend: { style: "track-bottom-legend" },
                 style: {
-                    "track-bottom": { orient: "left", spacing: 7 },
+                    "track-bottom-legend": { orient: "left", spacing: 7 },
                 },
             },
         ]);
@@ -115,10 +124,84 @@ describe("legendConfig", () => {
     test("explicit legend properties override style defaults", () => {
         const defaults = getConfiguredLegendDefaults(
             [INTERNAL_DEFAULT_CONFIG],
-            { style: "track-bottom", orient: "right" }
+            { style: "track-bottom-legend", orient: "right" }
         );
 
         expect(defaults.orient).toBe("right");
         expect(defaults.titleOrient).toBe("left");
+    });
+
+    test("retains track-bottom as a compatibility alias", () => {
+        const defaults = getConfiguredLegendDefaults(
+            [INTERNAL_DEFAULT_CONFIG],
+            { style: "track-bottom" }
+        );
+
+        expect(defaults.orient).toBe("bottom");
+        expect(defaults.direction).toBe("horizontal");
+        expect(defaults.titleOrient).toBe("left");
+    });
+
+    test("uses orientation-dependent region defaults", () => {
+        expect(
+            getConfiguredLegendRegionLayout([INTERNAL_DEFAULT_CONFIG], "left")
+        ).toEqual({ anchor: "start", direction: "vertical" });
+        expect(
+            getConfiguredLegendRegionLayout([INTERNAL_DEFAULT_CONFIG], "top")
+        ).toEqual({ anchor: "start", direction: "horizontal" });
+        expect(
+            getConfiguredLegendRegionLayout(
+                [INTERNAL_DEFAULT_CONFIG],
+                "bottom-right"
+            )
+        ).toEqual({ anchor: "start", direction: "horizontal" });
+    });
+
+    test("orientation-specific region layout overrides general layout", () => {
+        /** @type {import("../spec/config.js").GenomeSpyConfig[]} */
+        const scopes = [
+            INTERNAL_DEFAULT_CONFIG,
+            {
+                legend: {
+                    layout: {
+                        anchor: "middle",
+                        direction: "vertical",
+                        top: { anchor: "end", direction: "horizontal" },
+                    },
+                },
+            },
+        ];
+
+        expect(getConfiguredLegendRegionLayout(scopes, "right")).toEqual({
+            anchor: "middle",
+            direction: "vertical",
+        });
+        expect(getConfiguredLegendRegionLayout(scopes, "top")).toEqual({
+            anchor: "end",
+            direction: "horizontal",
+        });
+    });
+
+    test("closest region layout scope wins", () => {
+        /** @type {import("../spec/config.js").GenomeSpyConfig[]} */
+        const scopes = [
+            INTERNAL_DEFAULT_CONFIG,
+            { legend: { layout: { top: { anchor: "middle" } } } },
+            { legend: { layout: { top: { anchor: "end" } } } },
+        ];
+
+        expect(getConfiguredLegendRegionLayout(scopes, "top")).toEqual({
+            anchor: "end",
+            direction: "horizontal",
+        });
+    });
+
+    test("region layout does not leak into individual legend defaults", () => {
+        const defaults = getConfiguredLegendDefaults([
+            INTERNAL_DEFAULT_CONFIG,
+            { legend: { layout: { direction: "horizontal" } } },
+        ]);
+
+        expect(defaults).not.toHaveProperty("layout");
     });
 });

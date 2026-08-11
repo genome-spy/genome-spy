@@ -721,7 +721,7 @@ describe("layout snapshot helper", () => {
         });
     });
 
-    test("includes local legends in nested concat minimum size", async () => {
+    test("does not include local legend parallel size in nested concat minimum size", async () => {
         const layout = await specToLayout(
             {
                 spacing: 0,
@@ -779,17 +779,80 @@ describe("layout snapshot helper", () => {
             Rectangle.create(0, 0, 200, 20)
         );
 
-        // The nested vconcat's local vertical gradient legend has a minimum
-        // height that includes the title and body before laying out siblings.
+        // The side legend affects width as overhang, but its natural height
+        // must not change how the parent distributes height between siblings.
         expect(
             layout.children.find((child) => child.viewName == "grid0")
         ).toMatchObject({
-            coords: "Rectangle: x: 0, y: 0, width: 200, height: 56",
+            coords: "Rectangle: x: 0, y: 0, width: 200, height: 10",
         });
         expect(
             layout.children.find((child) => child.viewName == "grid1")
         ).toMatchObject({
-            coords: "Rectangle: x: 0, y: 56, width: 182, height: 0",
+            coords: "Rectangle: x: 0, y: 10, width: 182, height: 10",
         });
+    });
+
+    test("top legends do not change sibling plot widths", async () => {
+        const layout = await specToLayout(
+            {
+                spacing: 0,
+                hconcat: [
+                    {
+                        name: "withLegend",
+                        data: {
+                            values: [{ x: 1, y: 2, category: "Long category" }],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            color: {
+                                field: "category",
+                                type: "nominal",
+                                legend: { orient: "top" },
+                            },
+                        },
+                    },
+                    {
+                        name: "withoutLegend",
+                        data: { values: [{ x: 1, y: 2 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            {},
+            Rectangle.create(0, 0, 600, 200)
+        );
+
+        const withLegend = findLayoutNode(layout, "withLegend");
+        const withoutLegend = findLayoutNode(layout, "withoutLegend");
+        if (!withLegend || !withoutLegend) {
+            throw new Error("Expected both sibling plots in the layout");
+        }
+
+        expect(getRectProp(withLegend.coords, "width")).toBe(
+            getRectProp(withoutLegend.coords, "width")
+        );
     });
 });

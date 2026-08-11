@@ -4,6 +4,7 @@ import ConcatView from "../concatView.js";
 import AxisView from "../axisView.js";
 import AxisGridView from "../axisGridView.js";
 import LegendView, { LegendRegionView } from "../legendView.js";
+import { getSizeDefMinPx } from "../layout/flexLayout.js";
 import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
@@ -163,6 +164,28 @@ describe("legend layout helpers", () => {
             expect(coords.y).toBe(32);
             expect(coords.width).toBe(180);
             expect(coords.height).toBe(24);
+        });
+
+        test.each([
+            ["start", 10],
+            ["middle", 110],
+            ["end", 210],
+        ])("anchors a top legend at %s", (anchor, expectedX) => {
+            const legendView = /** @type {any} */ ({
+                getPerpendicularSize: () => 24,
+                getParallelSize: () => 100,
+                getOffset: () => 0,
+                getAnchor: () => anchor,
+            });
+
+            const coords = translateLegendCoords(
+                Rectangle.create(10, 20, 300, 200),
+                "top",
+                legendView
+            );
+
+            expect(coords.x).toBe(expectedX);
+            expect(coords.width).toBe(100);
         });
     });
 });
@@ -1226,7 +1249,7 @@ describe("GridView legends", () => {
             expect(legendHeights.at(-1)).toBeGreaterThan(100);
         });
 
-        test("includes stack spacing in top and bottom legend overhang", async () => {
+        test("packs top and bottom legend regions horizontally by default", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },
                 vconcat: [
@@ -1286,13 +1309,31 @@ describe("GridView legends", () => {
                 ],
             });
             const [region] = getLegendRegions(view);
-            const legendHeights = getLegends(view).map((legend) =>
-                legend.getPerpendicularSize()
+            const legends = getLegends(view);
+            const legendHeights = legends.map((legend) =>
+                getSizeDefMinPx(legend.getSize().height)
+            );
+            const legendWidths = legends.map((legend) =>
+                getSizeDefMinPx(legend.getSize().width)
             );
 
             expect(region.getPerpendicularSize()).toBe(
-                legendHeights.reduce((sum, height) => sum + height, 0) + 10
+                Math.max(...legendHeights)
             );
+            expect(region.getWidth()).toBe(
+                legendWidths.reduce((sum, width) => sum + width, 0) + 10
+            );
+
+            const context = new LegendRecordingRenderingContext({
+                picking: false,
+            });
+            region.render(context, Rectangle.create(0, 0, 300, 80));
+            const coords = Array.from(context.legendCoords.values());
+
+            expect(coords).toHaveLength(2);
+            expect(coords[0].x).toBe(0);
+            expect(coords[1].x - coords[0].x - coords[0].width).toBe(10);
+            expect(coords[0].y).toBe(coords[1].y);
         });
 
         test("stacks local bottom legends outside shared bottom axes", async () => {
@@ -1608,6 +1649,7 @@ describe("GridView legends", () => {
                                 type: "nominal",
                                 legend: {
                                     orient: "bottom",
+                                    direction: "horizontal",
                                     title: "Origin",
                                     titleOrient: "left",
                                 },
@@ -3105,7 +3147,10 @@ describe("GridView legends", () => {
                             color: {
                                 field: "measurement",
                                 type: "quantitative",
-                                legend: { orient: "bottom" },
+                                legend: {
+                                    orient: "bottom",
+                                    direction: "horizontal",
+                                },
                             },
                         },
                     },
@@ -3115,6 +3160,67 @@ describe("GridView legends", () => {
 
             expect(body.getSize().width).toEqual({ grow: 1, minPx: 40 });
             expect(body.getSize().height).toEqual({ grow: 1 });
+        });
+
+        test("applies gradient geometry, appearance, and tick controls", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 1, measurement: 0 },
+                                { x: 2, y: 2, measurement: 100 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "measurement",
+                                type: "quantitative",
+                                scale: { domain: [0, 100] },
+                                legend: {
+                                    gradientLength: 120,
+                                    gradientThickness: 18,
+                                    gradientOpacity: 0.4,
+                                    gradientStrokeColor: "#456",
+                                    gradientStrokeWidth: 2,
+                                    tickCount: 2,
+                                },
+                            },
+                        },
+                    },
+                ],
+            });
+            const legend = getLegends(view)[0];
+            const body = getLegendChild(legend, "gradientBody");
+            const ramp = getLegendUnitChild(legend, "gradientRamp");
+            const border = getLegendUnitChild(legend, "gradientBorder");
+            const labelData = getLegendData(legend, "gradientLabels");
+
+            // The body reserves half the centered border stroke on every edge.
+            expect(body.getSize().height).toEqual({ px: 122, grow: 0 });
+            expect(legend.getSize().height.grow).toBeUndefined();
+            expect(legend.getPerpendicularSize()).toBeGreaterThanOrEqual(24);
+            expect(ramp.mark.properties.opacity).toBe(0.4);
+            expect(border.spec.mark).toEqual(
+                expect.objectContaining({
+                    fillOpacity: 0,
+                    stroke: "#456",
+                    strokeWidth: 2,
+                })
+            );
+            expect(getUnitData(border)).toEqual([
+                expect.objectContaining({
+                    position0: 0,
+                    position1: 1,
+                    _legendGradientBandStart: 0,
+                    _legendGradientBandStop: 18,
+                }),
+            ]);
+            expect(labelData.map(({ value }) => value)).toEqual([0, 50, 100]);
         });
 
         test("gradient legends use source color scale and log tick positions", async () => {

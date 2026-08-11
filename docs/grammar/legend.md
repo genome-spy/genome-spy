@@ -19,6 +19,27 @@ uses the same scale as the plotted data.
 
 EXAMPLE examples/docs/grammar/legend/gradient-legend.json height=300
 
+The ramp fills available space when its direction is parallel to its legend
+region. Otherwise it uses a natural length of 200 pixels. Set
+`gradientLength` for a fixed ramp. The other gradient properties adjust its
+appearance and desired tick density:
+
+```json
+{
+  "legend": {
+    "gradientLength": 160,
+    "gradientThickness": 16,
+    "gradientOpacity": 0.8,
+    "gradientStrokeColor": "#666",
+    "gradientStrokeWidth": 1,
+    "tickCount": 4
+  }
+}
+```
+
+Explicit `values` determine the ticks when provided and take precedence over
+`tickCount`.
+
 ## Configuration
 
 Legend properties are usually placed in the encoding channel that creates the
@@ -46,6 +67,8 @@ In composed views with shared legend resolution, view-level
 
 The `orient` property controls where the legend is placed. Side legends are
 placed outside the plot area. Corner legends are placed inside the plot area.
+It does not change how entries are arranged. Set `direction` to `"horizontal"`
+when horizontal entries are wanted.
 
 Supported orientations:
 
@@ -72,6 +95,33 @@ background improves readability.
   }
 }
 ```
+
+### Multiple legends in a region
+
+When several complete legends share an orientation, left and right regions
+stack them vertically by default. Top, bottom, and corner regions arrange them
+horizontally. Configure all regions or one orientation with
+`config.legend.layout`:
+
+```json
+{
+  "config": {
+    "legend": {
+      "layout": {
+        "direction": "vertical",
+        "top": { "direction": "horizontal" },
+        "right": { "anchor": "middle" }
+      }
+    }
+  }
+}
+```
+
+Region layout is separate from `legend.direction`: region `direction` arranges
+complete legends, while `legend.direction` arranges entries within one legend.
+For external orientations, `anchor` positions the complete stack along the
+plot edge using `"start"` (the default), `"middle"`, or `"end"`. Corner legends
+remain anchored to their specified corner.
 
 ## Resolution
 
@@ -231,13 +281,14 @@ object overrides the configured defaults for that legend.
 ### Track-like legends
 
 Named styles from `config.style` can also be referenced with `legend.style`.
-GenomeSpy includes a built-in `track-bottom` legend style for compact
-track-like layouts.
+GenomeSpy includes a built-in `track-bottom-legend` style for compact
+track-like layouts. It places the title to the left of horizontally arranged
+entries.
 
 ```json
 {
   "legend": {
-    "style": "track-bottom"
+    "style": "track-bottom-legend"
   }
 }
 ```
@@ -246,8 +297,9 @@ Views with an `index` or `locus` x scale use `config.legendTrack` as an
 intermediate default. These views usually form genome-browser-like horizontal
 tracks where there is more room below each track than to the side of a dense
 track stack. The default `config.legendTrack` style is therefore
-`track-bottom`. Use `config.legend` to override those defaults globally, or a
-channel-level `legend` object to override a single legend.
+`track-bottom-legend`. Use `config.legend` to override those defaults globally,
+or a channel-level `legend` object to override a single legend. The old
+`track-bottom` name remains as a compatibility alias.
 
 Clear this track-specific style at the root or in a subtree by setting
 `config.legendTrack.style` to `null`:

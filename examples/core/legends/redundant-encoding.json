@@ -45,12 +45,20 @@
         "color": {
           "field": "Origin",
           "type": "nominal",
-          "legend": { "title": "Bottom", "orient": "bottom" }
+          "legend": {
+            "title": "Bottom",
+            "orient": "bottom",
+            "direction": "horizontal"
+          }
         },
         "shape": {
           "field": "Origin",
           "type": "nominal",
-          "legend": { "title": "Bottom", "orient": "bottom" }
+          "legend": {
+            "title": "Bottom",
+            "orient": "bottom",
+            "direction": "horizontal"
+          }
         }
       }
     }

@@ -78,13 +78,25 @@ describe("collected legend routing", () => {
     test("collects independent legends without merging their resolutions", async () => {
         const root = await createAndInitialize(
             {
-                config: { legend: { disable: false } },
+                config: {
+                    legend: {
+                        disable: false,
+                        layout: { right: { anchor: "end" } },
+                    },
+                },
                 resolve: {
                     scale: { color: "independent" },
                     legend: { color: "collected" },
                 },
                 hconcat: [
-                    makeColorUnit("first", "First"),
+                    {
+                        ...makeColorUnit("first", "First"),
+                        config: {
+                            legend: {
+                                layout: { right: { anchor: "middle" } },
+                            },
+                        },
+                    },
                     makeColorUnit("second", "Second"),
                 ],
             },
@@ -101,6 +113,7 @@ describe("collected legend routing", () => {
         expect(
             getLegendViews(region).map((legend) => legend.legendProps.title)
         ).toEqual(["First", "Second"]);
+        expect(region.getAnchor()).toBe("end");
     });
 
     test("collects one legend when the scale is shared", async () => {
@@ -269,7 +282,11 @@ describe("collected legend routing", () => {
                     color: {
                         field: "value",
                         type: "quantitative",
-                        legend: { title: name, orient: "bottom" },
+                        legend: {
+                            title: name,
+                            orient: "bottom",
+                            direction: "horizontal",
+                        },
                     },
                 },
             };
