@@ -31,14 +31,17 @@ import UnitView from "./unitView.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { truncateText } from "../data/transforms/truncateText.js";
 import { measureText, requestFont } from "../fonts/textMetrics.js";
+import {
+    DEFAULT_GRADIENT_STROKE_WIDTH,
+    DEFAULT_GRADIENT_THICKNESS,
+    DEFAULT_GRADIENT_TICK_COUNT,
+} from "../config/defaults/legendDefaults.js";
 
 const LABEL_WIDTH_FIELD = "_legendLabelWidth";
 const SYMBOL_SIZE_FIELD = "_legendSymbolSize";
 const SYMBOL_STROKE_WIDTH_FIELD = "_legendStrokeWidth";
 const DEFAULT_GRADIENT_LEGEND_LENGTH = 200;
 const DEFAULT_GRADIENT_SAMPLE_COUNT = 256;
-const DEFAULT_GRADIENT_TICK_COUNT = 5;
-const DEFAULT_GRADIENT_THICKNESS = 12;
 const DEFAULT_GRADIENT_TICK_SIZE = 4;
 const MIN_GRADIENT_LEGEND_LENGTH = 40;
 const AUTO_EXTENT_GROW_THRESHOLD_PX = 2;
@@ -253,6 +256,17 @@ function isSideTitle(legend) {
     const titleOrient = getTitleOrient(legend);
 
     return titleOrient == "left" || titleOrient == "right";
+}
+
+/**
+ * Returns the total space needed for a centered gradient border stroke.
+ *
+ * @param {LegendConfig} legend
+ */
+function getGradientBorderOutset(legend) {
+    return legend.gradientStrokeColor !== undefined
+        ? (legend.gradientStrokeWidth ?? DEFAULT_GRADIENT_STROKE_WIDTH)
+        : 0;
 }
 
 /**
@@ -575,6 +589,19 @@ export function createSymbolLegendSpec({
  */
 export function createGradientLegendSpec({ channel, legend, format, context }) {
     const h = isHorizontalLegend(legend);
+    const gradientThickness =
+        legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS;
+    const gradientStrokeWidth =
+        legend.gradientStrokeWidth ?? DEFAULT_GRADIENT_STROKE_WIDTH;
+    const gradientBorderOutset = getGradientBorderOutset(legend);
+    const hasGradientBorder = gradientBorderOutset > 0;
+    const gradientLength =
+        legend.gradientLength === undefined
+            ? {
+                  grow: 1,
+                  minPx: MIN_GRADIENT_LEGEND_LENGTH + gradientBorderOutset,
+              }
+            : legend.gradientLength + gradientBorderOutset;
     const labelAlign = h ? "center" : (legend.labelAlign ?? "left");
     const labelBaseline = h ? "top" : (legend.labelBaseline ?? "middle");
     const labelFontSize = legend.labelFontSize ?? 10;
@@ -599,9 +626,9 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
     const tickY = labelY + labelOffset;
     const tickY2 = tickY + DEFAULT_GRADIENT_TICK_SIZE;
     const gradientY = tickY2;
-    const gradientY2 = gradientY + DEFAULT_GRADIENT_THICKNESS;
-    const tickX = DEFAULT_GRADIENT_THICKNESS;
-    const tickX2 = DEFAULT_GRADIENT_THICKNESS + DEFAULT_GRADIENT_TICK_SIZE;
+    const gradientY2 = gradientY + gradientThickness;
+    const tickX = gradientThickness;
+    const tickX2 = gradientThickness + DEFAULT_GRADIENT_TICK_SIZE;
     const labelX = tickX2 + labelOffset;
     // p is the gradient axis; q is the cross axis.
     const p = h ? "x" : "y";
@@ -633,7 +660,7 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
         lazy: {
             type: "legendGradientTicks",
             channel,
-            count: DEFAULT_GRADIENT_TICK_COUNT,
+            count: legend.tickCount ?? DEFAULT_GRADIENT_TICK_COUNT,
             format,
             values: legend.values,
         },
@@ -665,7 +692,7 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
         },
         {
             type: "formula",
-            expr: "" + (h ? gradientY2 : DEFAULT_GRADIENT_THICKNESS),
+            expr: "" + (h ? gradientY2 : gradientThickness),
             as: band1,
         },
     ];
@@ -678,6 +705,7 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
             mark: {
                 type: "rect",
                 clip: false,
+                opacity: legend.gradientOpacity,
             },
             encoding: {
                 [p]: enc(h ? "position0" : "position1", ps, p == "x"),
@@ -768,16 +796,50 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
         },
     ];
 
+    if (hasGradientBorder) {
+        bodyLayer.push({
+            name: "gradientBorder",
+            data: {
+                values: [
+                    {
+                        position0: 0,
+                        position1: 1,
+                        [band0]: h ? gradientY : 0,
+                        [band1]: h ? gradientY2 : gradientThickness,
+                    },
+                ],
+            },
+            mark: {
+                type: "rect",
+                clip: false,
+                fillOpacity: 0,
+                stroke: legend.gradientStrokeColor,
+                strokeWidth: gradientStrokeWidth,
+            },
+            encoding: {
+                [p]: enc("position0", ps, p == "x"),
+                [p2]: {
+                    field: "position1",
+                    type: "quantitative",
+                    scale: ps,
+                },
+                [q]: enc(band0, qs, q == "x"),
+                [q2]: {
+                    field: band1,
+                    type: "quantitative",
+                    scale: qs,
+                },
+            },
+        });
+    }
+
     return createLegendRootSpec(
         legend,
         {
             name: "gradientBody",
-            width: h
-                ? { grow: 1, minPx: MIN_GRADIENT_LEGEND_LENGTH }
-                : undefined,
-            height: h
-                ? { grow: 1 }
-                : { grow: 1, minPx: MIN_GRADIENT_LEGEND_LENGTH },
+            padding: gradientBorderOutset / 2,
+            width: h ? gradientLength : undefined,
+            height: h ? { grow: 1 } : gradientLength,
             view: LEGEND_VIEW_BACKGROUND,
             resolve: {
                 scale: { x: "excluded", y: "excluded" },
@@ -1274,10 +1336,19 @@ export default class LegendView extends ContainerView {
     }
 
     #hasFlexibleParallelSize() {
+        // An adaptive ramp can fill the region only when its axis is parallel
+        // to the region. Otherwise it would make the chrome thickness flexible.
         return (
-            this.#type == "gradient" &&
+            this.#hasAdaptiveGradientLength() &&
             isHorizontalLegend(this.legendProps) ==
                 hasHorizontalRegionAxis(this.legendProps)
+        );
+    }
+
+    #hasAdaptiveGradientLength() {
+        return (
+            this.#type == "gradient" &&
+            this.legendProps.gradientLength === undefined
         );
     }
 
@@ -1519,7 +1590,8 @@ function getLegendExtent(legend, type, measuredLabels, context) {
     const labelOffset = legend.labelOffset ?? 4;
     const labelExtent =
         type == "gradient"
-            ? DEFAULT_GRADIENT_THICKNESS +
+            ? (legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS) +
+              getGradientBorderOutset(legend) +
               DEFAULT_GRADIENT_TICK_SIZE +
               labelOffset +
               measuredLabels.maxWidth
@@ -1544,7 +1616,14 @@ function getLegendExtent(legend, type, measuredLabels, context) {
  */
 function getMinimumLegendExtent(type, legend) {
     if (isHorizontalLegend(legend)) {
-        return type == "gradient" ? 32 : 0;
+        return type == "gradient"
+            ? (legend.labelFontSize ?? 10) +
+                  (legend.labelOffset ?? 4) +
+                  DEFAULT_GRADIENT_TICK_SIZE +
+                  (legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS) +
+                  getGradientBorderOutset(legend) +
+                  2
+            : 0;
     } else {
         return 0;
     }
@@ -1565,7 +1644,10 @@ function getStackedLegendParallelSize(legend, type, measuredLabels, context) {
             : Math.ceil(Math.max(titleExtent, bodyExtent));
 
     if (type == "gradient") {
-        return combine(DEFAULT_GRADIENT_LEGEND_LENGTH);
+        return combine(
+            (legend.gradientLength ?? DEFAULT_GRADIENT_LEGEND_LENGTH) +
+                getGradientBorderOutset(legend)
+        );
     } else if (measuredLabels) {
         const labelFontSize = legend.labelFontSize ?? 10;
         const bodyExtent = isHorizontalLegend(legend)
@@ -1595,7 +1677,8 @@ function getHorizontalLegendExtent(legend, type, measuredLabels) {
             ? labelFontSize +
               labelOffset +
               DEFAULT_GRADIENT_TICK_SIZE +
-              DEFAULT_GRADIENT_THICKNESS +
+              (legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS) +
+              getGradientBorderOutset(legend) +
               2
             : measuredLabels.maxY + labelFontSize / 2;
 

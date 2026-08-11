@@ -3162,6 +3162,67 @@ describe("GridView legends", () => {
             expect(body.getSize().height).toEqual({ grow: 1 });
         });
 
+        test("applies gradient geometry, appearance, and tick controls", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 1, measurement: 0 },
+                                { x: 2, y: 2, measurement: 100 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "measurement",
+                                type: "quantitative",
+                                scale: { domain: [0, 100] },
+                                legend: {
+                                    gradientLength: 120,
+                                    gradientThickness: 18,
+                                    gradientOpacity: 0.4,
+                                    gradientStrokeColor: "#456",
+                                    gradientStrokeWidth: 2,
+                                    tickCount: 2,
+                                },
+                            },
+                        },
+                    },
+                ],
+            });
+            const legend = getLegends(view)[0];
+            const body = getLegendChild(legend, "gradientBody");
+            const ramp = getLegendUnitChild(legend, "gradientRamp");
+            const border = getLegendUnitChild(legend, "gradientBorder");
+            const labelData = getLegendData(legend, "gradientLabels");
+
+            // The body reserves half the centered border stroke on every edge.
+            expect(body.getSize().height).toEqual({ px: 122, grow: 0 });
+            expect(legend.getSize().height.grow).toBeUndefined();
+            expect(legend.getPerpendicularSize()).toBeGreaterThanOrEqual(24);
+            expect(ramp.mark.properties.opacity).toBe(0.4);
+            expect(border.spec.mark).toEqual(
+                expect.objectContaining({
+                    fillOpacity: 0,
+                    stroke: "#456",
+                    strokeWidth: 2,
+                })
+            );
+            expect(getUnitData(border)).toEqual([
+                expect.objectContaining({
+                    position0: 0,
+                    position1: 1,
+                    _legendGradientBandStart: 0,
+                    _legendGradientBandStop: 18,
+                }),
+            ]);
+            expect(labelData.map(({ value }) => value)).toEqual([0, 50, 100]);
+        });
+
         test("gradient legends use source color scale and log tick positions", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },
