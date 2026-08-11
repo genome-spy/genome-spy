@@ -18,27 +18,20 @@ import inferSpecBaseUrl, {
 } from "@genome-spy/core/utils/inferSpecBaseUrl.js";
 import defaultSpec from "./defaultspec.json?raw";
 
-import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
-// Available after the core package has been built
-import schema from "@genome-spy/core/schema.json";
-
 import packageJson from "../package.json";
 import "./splitPanel.js";
 import "./baseUrlNotice.js";
-import "./codeEditor.js";
+import "./editor/codeEditor.js";
 import "./examplePicker.js";
 import "./filePane.js";
 import "./imageExportDialog.js";
 import "./playground.scss";
-import addMarkdownProps from "./markdownProps.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createEditorState } from "./editorState.js";
 import {
     addUploadedDatasets,
     findMissingNamedData,
 } from "./uploadedDatasets.js";
-
-registerJsonSchema();
 
 const STORAGE_KEY = "playgroundSpec";
 const EXAMPLE_CATALOG_URL = "example-catalog.json";
@@ -52,7 +45,7 @@ const editorAndOthersRef = createRef();
 /** @type {import("lit/directives/ref.js").Ref<import("./imageExportDialog.js").default>} */
 const imageExportDialogRef = createRef();
 
-/** @type {import("lit/directives/ref.js").Ref<import("./codeEditor.js").default>} */
+/** @type {import("lit/directives/ref.js").Ref<import("./editor/codeEditor.js").default>} */
 const editorRef = createRef();
 
 /** @type {Record<string, import("./filePane.js").FileEntry>} */
@@ -318,25 +311,6 @@ async function openSpec(specUrl) {
 async function openCatalogEntry(entry) {
     closeExamplePicker();
     await openSpec(entry.specUrl);
-}
-
-function registerJsonSchema() {
-    addMarkdownProps(schema);
-    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-        validate: true,
-        schemas: [
-            {
-                uri: "https://unpkg.com/@genome-spy/core/dist/schema.json", // id of the first schema
-                fileMatch: ["*"], // associate with our model
-                schema,
-            },
-            {
-                uri: "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json", // id of the first schema
-                fileMatch: ["*"], // associate with our model
-                schema,
-            },
-        ],
-    });
 }
 
 /**
