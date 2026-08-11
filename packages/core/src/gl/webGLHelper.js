@@ -313,8 +313,9 @@ export default class WebGLHelper {
             let texture;
 
             if (props.scheme) {
-                if (scale.type == "threshold" && range) {
-                    // Scale initialization may have configured the range. Let's use it.
+                if (isDiscrete(scale.type) || isDiscretizing(scale.type)) {
+                    // Scale initialization has resolved the scheme into the exact
+                    // discrete range used by host-side encoders and tooltips.
                     texture = createDiscreteColorTexture(
                         range,
                         this.gl,

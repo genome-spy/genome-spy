@@ -2,8 +2,7 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": [
-    "Legend test case for a quantize color scale.",
-    "GPU-side quantize scale rendering is incomplete; see GitHub issue #408."
+    "Legend test case for a quantize color scale."
   ],
 
   "background": "#fafafa",
