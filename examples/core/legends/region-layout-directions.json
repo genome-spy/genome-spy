@@ -3,14 +3,15 @@
 
   "description": [
     "Legend region and entry directions",
-    "Side legends stack vertically and top legends horizontally. Entry direction is configured independently."
+    "Side legends stack vertically, top legends horizontally, and the corner region is explicitly overridden. Entry direction is configured independently."
   ],
 
   "config": {
     "legend": {
       "disable": false,
       "backgroundFill": "white",
-      "backgroundFillOpacity": 0.85
+      "backgroundFillOpacity": 0.85,
+      "layout": { "top-right": { "direction": "vertical" } }
     }
   },
 
@@ -63,6 +64,9 @@
 
     {
       "title": "Right: centered",
+      "config": {
+        "legend": { "layout": { "right": { "anchor": "middle" } } }
+      },
       "resolve": {
         "scale": { "color": "independent", "shape": "independent" },
         "legend": { "color": "independent", "shape": "independent" }
@@ -93,7 +97,7 @@
     },
 
     {
-      "title": "Corner",
+      "title": "Corner: vertical",
       "resolve": {
         "scale": { "color": "independent", "shape": "independent" },
         "legend": { "color": "independent", "shape": "independent" }

@@ -11,7 +11,11 @@
   "config": {
     "legend": {
       "disable": false,
-      "orient": "right"
+      "orient": "right",
+      "layout": { "right": { "anchor": "middle" } },
+      "gradientLength": 40,
+      "gradientThickness": 10,
+      "tickCount": 3
     }
   },
 
