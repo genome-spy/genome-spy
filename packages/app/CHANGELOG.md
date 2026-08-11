@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.84.0](https://github.com/genome-spy/genome-spy/compare/v0.83.1...v0.84.0) (2026-08-11)
+
+### Bug Fixes
+
+* **app:** host summary legends in sample pane ([00cce57](https://github.com/genome-spy/genome-spy/commit/00cce5728d6eb527b626429bb0fee06a895706ee)) by @tuner
+
+### Features
+
+* add publication-quality SVG export ([#457](https://github.com/genome-spy/genome-spy/issues/457)) ([5efb1a3](https://github.com/genome-spy/genome-spy/commit/5efb1a3746decb0e1dbbcd4434147f62504093ba)) by @tuner
+* **core:** add responsive legend wrapping ([#467](https://github.com/genome-spy/genome-spy/issues/467)) ([b4bb5c4](https://github.com/genome-spy/genome-spy/commit/b4bb5c4b98ca1694bd5fc125fbeba511a673249f)) by @tuner
+
 ## [0.83.1](https://github.com/genome-spy/genome-spy/compare/v0.83.0...v0.83.1) (2026-08-06)
 
 **Note:** Version bump only for package @genome-spy/app

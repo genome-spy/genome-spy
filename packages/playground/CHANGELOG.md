@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.84.0](https://github.com/genome-spy/genome-spy/compare/v0.83.1...v0.84.0) (2026-08-11)
+
+### Features
+
+* **playground:** add bound input panel ([44bb962](https://github.com/genome-spy/genome-spy/commit/44bb96279d8600a4346cffc0fd58506a78150de3)) by @tuner
+* **playground:** add image export dialog ([4df889f](https://github.com/genome-spy/genome-spy/commit/4df889f1754752949ce68556f78cf695e0855ede)) by @tuner
+* **playground:** migrate editor to CodeMirror ([f8e7462](https://github.com/genome-spy/genome-spy/commit/f8e74625ada75932098b4723f2c4525fa4633d18)) by @tuner
+* **playground:** redesign toolbar buttons ([2c7733c](https://github.com/genome-spy/genome-spy/commit/2c7733c8838ce4ab50f5c9ff4ac0a92c4d11f024)) by @tuner
+
 ## [0.83.1](https://github.com/genome-spy/genome-spy/compare/v0.83.0...v0.83.1) (2026-08-06)
 
 **Note:** Version bump only for package @genome-spy/playground

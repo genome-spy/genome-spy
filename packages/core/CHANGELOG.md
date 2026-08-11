@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.84.0](https://github.com/genome-spy/genome-spy/compare/v0.83.1...v0.84.0) (2026-08-11)
+
+### Bug Fixes
+
+* **app:** host summary legends in sample pane ([00cce57](https://github.com/genome-spy/genome-spy/commit/00cce5728d6eb527b626429bb0fee06a895706ee)) by @tuner
+* **core:** align index scale padding with WebGL ([eb17342](https://github.com/genome-spy/genome-spy/commit/eb1734213c9254950b3332408be6be70db07f242)) by @tuner
+* **core:** align quantize GPU colors with scale range ([21fec25](https://github.com/genome-spy/genome-spy/commit/21fec2556bf8d1d817a74c944de70ac67411255d)) by @tuner
+* **core:** cull hidden sample facet rectangles ([885b7fc](https://github.com/genome-spy/genome-spy/commit/885b7fcb236c3a2bbac60d95594a3ebc08ff93c8)) by @tuner
+* **core:** defer graphics updates until data is ready ([8c2c1d5](https://github.com/genome-spy/genome-spy/commit/8c2c1d5d939f0fa8054a9ab22a844c7317e62beb)) by @tuner
+* **core:** ignore transparent lazy views ([08bcae6](https://github.com/genome-spy/genome-spy/commit/08bcae69e47131ffff885113f8f9c1d28a4df9d7)) by @tuner
+* **core:** increase spacing between track legends ([2a670d4](https://github.com/genome-spy/genome-spy/commit/2a670d4fe40f4881ef8e44a40fd2db37a7c4990e)) by @tuner
+* **core:** preserve zoom during lazy reloads ([7ded7ac](https://github.com/genome-spy/genome-spy/commit/7ded7aca68450ae31e0bca4f84dcb6530b9f6697)) by @tuner
+* **core:** prevent stale domain transition commits ([72d4069](https://github.com/genome-spy/genome-spy/commit/72d406926e33ce70f638942acf17fe426668056b)) by @tuner
+* **core:** publish lazy readiness after descriptor load ([c6aa872](https://github.com/genome-spy/genome-spy/commit/c6aa872a74bbba2e3b861f414ef2725890d9007a)) by @tuner
+
+### Features
+
+* add publication-quality SVG export ([#457](https://github.com/genome-spy/genome-spy/issues/457)) ([5efb1a3](https://github.com/genome-spy/genome-spy/commit/5efb1a3746decb0e1dbbcd4434147f62504093ba)) by @tuner
+* **core:** add responsive legend wrapping ([#467](https://github.com/genome-spy/genome-spy/issues/467)) ([b4bb5c4](https://github.com/genome-spy/genome-spy/commit/b4bb5c4b98ca1694bd5fc125fbeba511a673249f)) by @tuner
+* **core:** collect legends at composition layouts ([#465](https://github.com/genome-spy/genome-spy/issues/465)) ([162bca7](https://github.com/genome-spy/genome-spy/commit/162bca7d9b19232ef8d8c58fd39ef0263ef30fec)) by @tuner
+* **core:** improve legend layout fidelity ([#466](https://github.com/genome-spy/genome-spy/issues/466)) ([002af2c](https://github.com/genome-spy/genome-spy/commit/002af2c8812edcbd952179c6c865052f9d8fdb85)) by @tuner
+
 ## [0.83.1](https://github.com/genome-spy/genome-spy/compare/v0.83.0...v0.83.1) (2026-08-06)
 
 ### Bug Fixes
