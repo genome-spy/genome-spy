@@ -131,6 +131,8 @@ ambiguous and cause an error.
 ### `collected` legends
 
 Use `"collected"` to place complete descendant legends around a composition.
+This is useful in dense matrix-like layouts where legends beside every child
+would fragment the layout, but the underlying scales must remain distinct.
 Collection changes only layout. Legend resolution continues to follow the
 corresponding scale resolution:
 
