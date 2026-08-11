@@ -87,6 +87,7 @@ support this distinction.
 - Reactive changes to resolution behavior.
 - Per-definition collection overrides outside the existing resolution scopes.
 - Free-coordinate legend placement.
+- A generalized guide-routing framework or persistent collector registry.
 
 ## Existing architecture
 
@@ -265,11 +266,31 @@ Use the existing deterministic legend ordering:
 
 Collection must not reorder semantic resolution members.
 
+## KISS implementation constraints
+
+Implement collection as a small extension of existing legend discovery and
+synchronization:
+
+1. Add one pure helper that walks from a semantic legend owner toward the root
+   and returns the nearest collected layout host, stops at `"excluded"`, or
+   returns no override.
+2. Have existing local and shared legend synchronization call that helper when
+   deciding whether they own a definition.
+3. Let a collecting `GridView` reuse the existing descendant legend discovery
+   and legend-region construction paths.
+4. Reuse current initialization, mutation, visibility, disposal, and layout
+   invalidation hooks.
+
+Do not add a new semantic resolution object, generalized guide scheduler,
+named collector abstraction, or persistent routing map. Collection targets are
+cheap derived state and should be recomputed from the view hierarchy when
+existing guide synchronization runs.
+
 ## Guide synchronization
 
-Introduce one guide-synchronization pass that can see the completed non-chrome
-view hierarchy. It should derive layout contributions from semantic resolution
-owners rather than creating another resolution structure.
+Extend existing legend synchronization so a collecting `GridView` can inspect
+the completed non-chrome subtree. Derive layout contributions from semantic
+resolution owners without creating another resolution structure.
 
 For every active legend definition, derive:
 
@@ -290,14 +311,17 @@ Each definition must appear in exactly one physical collector:
 - Definitions shielded by `"excluded"` remain at their semantic owner's normal
   layout collector.
 
-The collected contribution list is derived state. Do not store a second
-long-lived map that can disagree with the resolution hierarchy.
+The collection helper and existing ordered legend discovery provide all
+routing information. Do not store a second long-lived map that can disagree
+with the resolution hierarchy.
 
-Guide synchronization runs:
+Use the existing guide synchronization calls that already run:
 
 - After initial resolution planning and view-level guide attachment.
 - After subtree insertion, removal, replacement, or reordering.
 - After visibility changes that affect active legend definitions.
+
+Do not introduce a separate collection scheduler or lifecycle.
 
 Disposal must remove generated legend subtrees, listeners, and dataflow
 branches before rebuilding affected regions.
@@ -390,16 +414,6 @@ Deferred. The collected-resolution design does not preclude them later.
 - Shared scales with collected legends may intentionally produce visually
   duplicate independent legends; documentation must make the behavior clear.
 
-## Unresolved questions
-
-- Should `"collected"` be accepted on non-container authored views even when it
-  has no observable effect beyond moving that view's own legend to its grid
-  host?
-- Should debug snapshots expose the physical collection target explicitly?
-
-These questions do not require merging semantic resolutions and can be settled
-without changing the core meaning of `"collected"`.
-
 ## Implementation steps
 
 ### 1. Define collected legend resolution
@@ -441,41 +455,28 @@ axis host.
 
 **Outcome:** Discover nearest collected declarations and render each complete
 legend at exactly one destination collector without moving semantic
-resolutions.
+resolutions. Integrate with existing mutation, visibility, disposal, and
+layout invalidation paths in the same step.
 
 **Affected areas:** Grid-child legend discovery, `GridView` shared legend
-synchronization, hierarchy-wide guide synchronization, generated legend
-disposal, and deterministic ordering helpers.
+synchronization, the existing guide synchronization entry points, generated
+legend disposal, deterministic ordering helpers, and focused layout snapshots.
 
 **Verification:** Cover independent legends collected at root, collection by
 one channel and by `default`, distinct titles/domains, mixed orientations,
 nested nearest collectors, an internally shared legend collected by an outer
 composition, unit-level and subtree-level `"excluded"` barriers, and clear
-failure without a grid host.
+failure without a grid host. Insert, remove, move, and replace child views;
+toggle active legends; ensure no stale or duplicate generated views; confirm
+collected legends reserve space only at their collector and do not distort
+sibling flex allocation.
 
 **Documentation and migration:** None beyond implementation comments that state
 the semantic/layout ownership split.
 
 **Tentative commit:** `feat(core): collect legends at composition layouts`
 
-### 4. Preserve lifecycle and sizing behavior
-
-**Outcome:** Keep collected regions correct through visibility, mutation,
-measurement, and layout reflow.
-
-**Affected areas:** Mutation guide synchronization, active legend handling,
-layout snapshots, region overhang, gradient sizing, and disposal tests.
-
-**Verification:** Insert, remove, move, and replace child views; toggle active
-legends; ensure no stale or duplicate generated views; confirm collected
-legends reserve space only at their collector and do not distort sibling flex
-allocation.
-
-**Documentation and migration:** None.
-
-**Tentative commit:** `fix(core): synchronize collected legend layouts`
-
-### 5. Add examples and user documentation
+### 4. Add examples and user documentation
 
 **Outcome:** Demonstrate resolution-owner defaults and explicit collection.
 
@@ -514,5 +515,7 @@ gallery.
   collection.
 - View mutations and visibility changes cannot leave stale, duplicated, or
   orphaned collected legends.
+- The implementation adds no persistent collection registry or separate guide
+  synchronization framework.
 - Core unit tests, TypeScript checks, linting, App integration tests, schema
   generation, docs build, and example snapshots pass.
