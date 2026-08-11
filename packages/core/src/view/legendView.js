@@ -23,8 +23,10 @@ import {
     getLargestSize,
     getSizeDefMaxPx,
     getSizeDefMinPx,
+    getMinimumSize,
     mapToPixelCoords,
     sumSizeDefs,
+    wrapFlexItems,
 } from "./layout/flexLayout.js";
 import Rectangle from "./layout/rectangle.js";
 import UnitView from "./unitView.js";
@@ -893,6 +895,11 @@ export class LegendRegionView extends ContainerView {
 
     #stackSpacing;
 
+    #wrap;
+
+    /** @type {number[][] | undefined} */
+    #lines;
+
     /** @type {import("../spec/legend.js").LegendRegionAnchor} */
     #anchor;
 
@@ -903,6 +910,7 @@ export class LegendRegionView extends ContainerView {
      * @param {import("../spec/legend.js").LegendOrient} orient
      * @param {import("../spec/legend.js").LegendRegionAnchor} anchor
      * @param {import("../spec/legend.js").LegendDirection} direction
+     * @param {boolean} wrap
      * @param {number} stackSpacing
      * @param {import("../types/viewContext.js").default} context
      * @param {import("./containerView.js").default} layoutParent
@@ -912,6 +920,7 @@ export class LegendRegionView extends ContainerView {
         orient,
         anchor,
         direction,
+        wrap,
         stackSpacing,
         context,
         layoutParent,
@@ -933,6 +942,7 @@ export class LegendRegionView extends ContainerView {
         this.orient = orient;
         this.#anchor = anchor;
         this.#direction = direction;
+        this.#wrap = wrap;
         this.#stackSpacing = stackSpacing;
 
         markViewAsNonAddressable(this, { skipSubtree: true });
@@ -974,6 +984,32 @@ export class LegendRegionView extends ContainerView {
      */
     #getVisibleLegendViews() {
         return this.#legendViews.filter((legendView) => legendView.isActive());
+    }
+
+    /**
+     * Resolves wrap lines against the allocated plot size.
+     *
+     * @param {number} width
+     * @param {number} height
+     * @returns {boolean} Whether the line assignment changed
+     */
+    prepareLayoutSize(width, height) {
+        if (!this.#wrap) {
+            return false;
+        }
+
+        const legendViews = this.#getVisibleLegendViews();
+        const horizontal = this.#direction == "horizontal";
+        const mainSizes = legendViews.map((legendView) => {
+            const size = legendView.getSize();
+            return horizontal ? size.width : size.height;
+        });
+        const lines = wrapFlexItems(mainSizes, horizontal ? width : height, {
+            spacing: this.#stackSpacing,
+        });
+        const changed = !sameLines(this.#lines, lines);
+        this.#lines = lines;
+        return changed;
     }
 
     /**
@@ -1024,6 +1060,23 @@ export class LegendRegionView extends ContainerView {
                 },
             ]);
 
+        if (this.#wrap && this.#lines) {
+            const lineCrossSizes = this.#lines.map((line) =>
+                getLargestSize(
+                    line.map((index) =>
+                        this.#direction == "horizontal"
+                            ? heights[index]
+                            : widths[index]
+                    )
+                )
+            );
+            const crossSize = sumWithSpacing(lineCrossSizes);
+            const parallelSize = { grow: 1, minPx: 0 };
+            return this.#direction == "horizontal"
+                ? { width: parallelSize, height: crossSize }
+                : { width: crossSize, height: parallelSize };
+        }
+
         return this.#direction == "horizontal"
             ? {
                   width: sumWithSpacing(widths),
@@ -1071,6 +1124,10 @@ export class LegendRegionView extends ContainerView {
             return 0;
         }
 
+        if (this.#wrap && this.#lines) {
+            return undefined;
+        }
+
         const size = this.getSize();
         const parallelSize =
             this.orient == "top" || this.orient == "bottom"
@@ -1104,35 +1161,61 @@ export class LegendRegionView extends ContainerView {
         context.pushView(this, coords);
         const legendViews = this.#getVisibleLegendViews();
         const horizontal = this.#direction == "horizontal";
-        const legendSizes = legendViews.map((legendView) => {
+        const mainSizes = legendViews.map((legendView) => {
             const size = legendView.getSize();
             return horizontal ? size.width : size.height;
         });
-        const legendLocSizes = mapToPixelCoords(
-            legendSizes,
-            horizontal ? coords.width : coords.height,
-            {
-                spacing: this.#stackSpacing,
-                devicePixelRatio: context.getDevicePixelRatio(),
-            }
+        const crossSizes = legendViews.map((legendView) => {
+            const size = legendView.getSize();
+            return horizontal ? size.height : size.width;
+        });
+        const lines = this.#lines ?? [legendViews.map((_, index) => index)];
+        const lineCrossSizes = lines.map((line) =>
+            getLargestSize(line.map((index) => crossSizes[index]))
+        );
+        const lineLocSizes = mapToPixelCoords(
+            lineCrossSizes,
+            horizontal ? coords.height : coords.width,
+            { spacing: this.#stackSpacing }
         );
 
-        for (const [index, legendView] of legendViews.entries()) {
-            const locSize = legendLocSizes[index];
-            const legendCoords = horizontal
-                ? new Rectangle(
-                      () => coords.x + locSize.location,
-                      () => coords.y,
-                      () => locSize.size,
-                      () => coords.height
-                  )
-                : new Rectangle(
-                      () => coords.x,
-                      () => coords.y + locSize.location,
-                      () => coords.width,
-                      () => locSize.size
-                  );
-            legendView.render(context, legendCoords, options);
+        for (const [lineIndex, line] of lines.entries()) {
+            const lineSizes = line.map((index) => mainSizes[index]);
+            const availableMainSize = horizontal ? coords.width : coords.height;
+            const fixed = lineSizes.every(
+                (size) => getSizeDefMaxPx(size) !== undefined
+            );
+            const lineMainSize = fixed
+                ? getMinimumSize(lineSizes, { spacing: this.#stackSpacing })
+                : availableMainSize;
+            const anchorOffset =
+                getLegendAnchorFactor(this.#anchor) *
+                Math.max(0, availableMainSize - lineMainSize);
+            const itemLocSizes = mapToPixelCoords(lineSizes, lineMainSize, {
+                spacing: this.#stackSpacing,
+                offset: anchorOffset,
+                devicePixelRatio: context.getDevicePixelRatio(),
+            });
+            const lineLocSize = lineLocSizes[lineIndex];
+
+            for (const [itemIndex, legendIndex] of line.entries()) {
+                const legendView = legendViews[legendIndex];
+                const itemLocSize = itemLocSizes[itemIndex];
+                const legendCoords = horizontal
+                    ? new Rectangle(
+                          () => coords.x + itemLocSize.location,
+                          () => coords.y + lineLocSize.location,
+                          () => itemLocSize.size,
+                          () => lineLocSize.size
+                      )
+                    : new Rectangle(
+                          () => coords.x + lineLocSize.location,
+                          () => coords.y + itemLocSize.location,
+                          () => lineLocSize.size,
+                          () => itemLocSize.size
+                      );
+                legendView.render(context, legendCoords, options);
+            }
         }
         context.popView(this);
     }
@@ -1144,6 +1227,34 @@ export class LegendRegionView extends ContainerView {
         this.handleInteraction(event, true);
         this.#child?.propagateInteraction(event);
         this.handleInteraction(event, false);
+    }
+}
+
+/**
+ * @param {number[][] | undefined} a
+ * @param {number[][]} b
+ */
+function sameLines(a, b) {
+    return (
+        a?.length == b.length &&
+        a.every(
+            (line, index) =>
+                line.length == b[index].length &&
+                line.every((item, itemIndex) => item == b[index][itemIndex])
+        )
+    );
+}
+
+/** @param {import("../spec/legend.js").LegendRegionAnchor} anchor */
+function getLegendAnchorFactor(anchor) {
+    if (anchor == "start") {
+        return 0;
+    } else if (anchor == "middle") {
+        return 0.5;
+    } else if (anchor == "end") {
+        return 1;
+    } else {
+        throw new Error(`Invalid legend region anchor: ${anchor}`);
     }
 }
 

@@ -1250,14 +1250,36 @@ describe("GridView legends", () => {
                 ],
             });
             const [region] = getLegendRegions(view);
-            const legendHeights = getLegends(view).map((legend) =>
+            const legends = getLegends(view);
+            const legendHeights = legends.map((legend) =>
                 legend.getStackedParallelSize()
+            );
+            const legendWidths = legends.map((legend) =>
+                getSizeDefMinPx(legend.getSize().width)
             );
 
             expect(region.getParallelSize()).toBe(
                 legendHeights.reduce((sum, height) => sum + height, 0) + 10
             );
             expect(legendHeights.at(-1)).toBeGreaterThan(100);
+
+            const availableHeight = Math.max(...legendHeights);
+            expect(region.prepareLayoutSize(300, availableHeight)).toBe(true);
+            expect(region.getWidth()).toBe(
+                legendWidths.reduce((sum, width) => sum + width, 0) + 10
+            );
+
+            const context = new LegendRecordingRenderingContext({
+                picking: false,
+            });
+            region.render(
+                context,
+                Rectangle.create(0, 0, region.getWidth(), availableHeight)
+            );
+            const coords = Array.from(context.legendCoords.values());
+            expect(coords[0].x).toBe(0);
+            expect(coords[1].x).toBeGreaterThan(coords[0].x);
+            expect(coords[0].y).toBe(coords[1].y);
         });
 
         test("packs top and bottom legend regions horizontally by default", async () => {
@@ -1345,6 +1367,37 @@ describe("GridView legends", () => {
             expect(coords[0].x).toBe(0);
             expect(coords[1].x - coords[0].x - coords[0].width).toBe(10);
             expect(coords[0].y).toBe(coords[1].y);
+
+            expect(
+                region.prepareLayoutSize(Math.max(...legendWidths), 80)
+            ).toBe(true);
+            const wrappedHeight = region.getHeight();
+            const wrappedContext = new LegendRecordingRenderingContext({
+                picking: false,
+            });
+            region.render(
+                wrappedContext,
+                Rectangle.create(0, 0, Math.max(...legendWidths), wrappedHeight)
+            );
+            const wrappedCoords = Array.from(
+                wrappedContext.legendCoords.values()
+            );
+            expect(wrappedCoords[0].x).toBe(wrappedCoords[1].x);
+            expect(wrappedCoords[1].y).toBeGreaterThan(wrappedCoords[0].y);
+
+            // GridView prepares wrapping from the flex-allocated plot width.
+            region.prepareLayoutSize(1000, 80);
+            const layoutContext = new LegendRecordingRenderingContext({
+                picking: false,
+            });
+            view.render(
+                layoutContext,
+                Rectangle.create(0, 0, Math.max(...legendWidths) + 40, 200)
+            );
+            const layoutCoords = Array.from(
+                layoutContext.legendCoords.values()
+            );
+            expect(layoutCoords[1].y).toBeGreaterThan(layoutCoords[0].y);
         });
 
         test("stacks local bottom legends outside shared bottom axes", async () => {

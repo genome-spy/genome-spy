@@ -454,7 +454,7 @@ export async function addLegendView(legends, legend, resolution) {
     let region = legends[orient];
 
     if (!region) {
-        const { anchor, direction } = getConfiguredLegendRegionLayout(
+        const { anchor, direction, wrap } = getConfiguredLegendRegionLayout(
             legend.layoutParent.getConfigScopes(),
             orient
         );
@@ -462,6 +462,7 @@ export async function addLegendView(legends, legend, resolution) {
             orient,
             anchor,
             direction,
+            wrap,
             legend.legendProps.spacing ?? 0,
             legend.context,
             legend.layoutParent,
@@ -488,6 +489,20 @@ export function* iterateLegendViews(legends) {
     for (const region of Object.values(legends)) {
         yield region.legendView;
     }
+}
+
+/**
+ * @param {GridChildLegends} legends
+ * @param {number} width
+ * @param {number} height
+ */
+export function prepareLegendLayoutSize(legends, width, height) {
+    let changed = false;
+    for (const regionView of iterateLegendViews(legends)) {
+        const regionChanged = regionView.prepareLayoutSize(width, height);
+        changed ||= regionChanged;
+    }
+    return changed;
 }
 
 /**

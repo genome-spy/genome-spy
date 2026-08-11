@@ -34,6 +34,7 @@ import {
     getLegendOverhang,
     getOrderedLegendEntries,
     iterateLegendViews,
+    prepareLegendLayoutSize,
 } from "./gridChildLegends.js";
 import {
     findLegendCollectionDeclaration,
@@ -76,6 +77,8 @@ const DECORATION_ORDER = Object.freeze({
     scrollbar: 90,
     title: 100,
 });
+
+const MAX_CONSTRAINT_LAYOUT_PASSES = 10;
 
 // Default z-index for axes and view strokes when the content is clipped or
 // scrollable. This keeps guides above content-edge artifacts while still
@@ -969,8 +972,27 @@ export default class GridView extends ContainerView {
             // Usually padding is applied by the parent GridView, but if this is the root view, we need to apply it here
             coords = coords.shrink(this.getPadding());
         }
-        const sharedGuideOverhang = this.#getSharedGuideOverhang();
-        coords = coords.shrink(sharedGuideOverhang);
+
+        let sharedGuideOverhang = this.#getSharedGuideOverhang();
+        let remainingSharedLayoutPasses = MAX_CONSTRAINT_LAYOUT_PASSES;
+        while (true) {
+            const plotCoords = coords.shrink(sharedGuideOverhang);
+            const changed = prepareLegendLayoutSize(
+                this.#sharedLegends,
+                plotCoords.width,
+                plotCoords.height
+            );
+            if (!changed) {
+                coords = plotCoords;
+                break;
+            }
+
+            remainingSharedLayoutPasses--;
+            if (!remainingSharedLayoutPasses) {
+                throw new Error("Shared legend layout did not settle.");
+            }
+            sharedGuideOverhang = this.#getSharedGuideOverhang();
+        }
 
         context.pushView(this, coords);
 
@@ -985,7 +1007,7 @@ export default class GridView extends ContainerView {
             flexOpts
         );
 
-        const rowFlexCoords = mapToPixelCoords(
+        let rowFlexCoords = mapToPixelCoords(
             this.#makeFlexItems("row"),
             coords.height,
             flexOpts
@@ -996,29 +1018,48 @@ export default class GridView extends ContainerView {
             this.#columns ?? Infinity
         );
 
-        let columnLayoutDirty = false;
-        for (const [i, gridChild] of this.#visibleChildren.entries()) {
-            const [col, row] = grid.getCellCoords(i);
-            const colLocSize =
-                columnFlexCoords[this.#getViewSlot("column", col)];
-            const rowLocSize = rowFlexCoords[this.#getViewSlot("row", row)];
+        let remainingLayoutPasses = MAX_CONSTRAINT_LAYOUT_PASSES;
+        while (true) {
+            let layoutChanged = false;
+            for (const [i, gridChild] of this.#visibleChildren.entries()) {
+                const [col, row] = grid.getCellCoords(i);
+                const colLocSize =
+                    columnFlexCoords[this.#getViewSlot("column", col)];
+                const rowLocSize = rowFlexCoords[this.#getViewSlot("row", row)];
 
-            // Some child views have side overhang that depends on the final
-            // row height, such as SampleView's repeated y-axis threshold. Row
-            // slots are known here, but final columns may need one more pass if
-            // a child reports that its height-dependent overhang changed.
-            const layoutChanged =
-                /** @type {{ prepareLayoutSize?: (width: number, height: number) => boolean }} */ (
-                    gridChild.view
-                ).prepareLayoutSize?.(colLocSize.size, rowLocSize.size);
-            columnLayoutDirty ||= layoutChanged === true;
-        }
+                // Some child chrome depends on the final plot allocation.
+                // Repeating both dimensions lets external legend rows and
+                // columns converge when their overhangs affect each other.
+                const viewLayoutChanged =
+                    /** @type {{ prepareLayoutSize?: (width: number, height: number) => boolean }} */ (
+                        gridChild.view
+                    ).prepareLayoutSize?.(colLocSize.size, rowLocSize.size) ===
+                    true;
+                const legendLayoutChanged = gridChild.prepareLegendLayoutSize(
+                    colLocSize.size,
+                    rowLocSize.size
+                );
+                layoutChanged ||= viewLayoutChanged || legendLayoutChanged;
+            }
 
-        if (columnLayoutDirty) {
-            this._invalidateCacheByPrefix("size/directionSizes/column");
+            if (!layoutChanged) {
+                break;
+            }
+
+            remainingLayoutPasses--;
+            if (!remainingLayoutPasses) {
+                throw new Error("Legend layout did not settle.");
+            }
+
+            this._invalidateCacheByPrefix("size/directionSizes");
             columnFlexCoords = mapToPixelCoords(
                 this.#makeFlexItems("column"),
                 coords.width,
+                flexOpts
+            );
+            rowFlexCoords = mapToPixelCoords(
+                this.#makeFlexItems("row"),
+                coords.height,
                 flexOpts
             );
         }
