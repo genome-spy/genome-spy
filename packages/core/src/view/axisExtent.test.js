@@ -159,7 +159,7 @@ async function getSettledAxisSnapshot(spec, orient) {
         rows.push({
             value: datum.value,
             label: datum.label,
-            width: datum._labelWidth,
+            width: datum.labelWidth,
         });
     });
 
@@ -241,11 +241,96 @@ describe("Axis extent measurement", () => {
         expect(measureTextTransform).toMatchObject({
             type: "measureText",
             field: "label",
-            as: "_labelWidth",
+            as: "labelWidth",
             font: "Lato",
             fontStyle: "italic",
             fontWeight: "bold",
             fontSize: axis.axisProps.labelFontSize,
+        });
+    });
+
+    test("locus axis measures both labels with their rendered fonts", async () => {
+        const context = createBroadcastingTestViewContext();
+        const { view: root } = await createHeadlessEngine(
+            {
+                data: {
+                    values: [{ chrom: "long_contig_name", pos: 1 }],
+                },
+                config: {
+                    text: {
+                        font: "Lato",
+                        fontStyle: "italic",
+                    },
+                    axisBottom: {
+                        labelFontWeight: "bold",
+                        chromLabelFontWeight: 500,
+                    },
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        chrom: "chrom",
+                        pos: "pos",
+                        type: "locus",
+                        scale: {
+                            type: "locus",
+                            assembly: {
+                                contigs: [
+                                    { name: "long_contig_name", size: 100 },
+                                ],
+                            },
+                        },
+                    },
+                },
+            },
+            { context }
+        );
+
+        const axis = findAxisView(root, "bottom");
+        const labelsView = findLabelsView(axis);
+        const chromosomeLabelsView = axis
+            .getDescendants()
+            .find(
+                (view) =>
+                    view instanceof UnitView &&
+                    view.name === "chromosome_labels"
+            );
+        if (!(chromosomeLabelsView instanceof UnitView)) {
+            throw new Error("Chromosome labels view not found!");
+        }
+
+        const transforms =
+            /** @type {import("../spec/transform.js").MeasureTextParams[]} */ (
+                labelsView.spec.transform
+            );
+        const numericMeasure = transforms.find(
+            (transform) => transform.field === "label"
+        );
+        const chromosomeMeasure = transforms.find(
+            (transform) => transform.field === "chromLabel"
+        );
+
+        expect(labelsView.spec.mark).toMatchObject({
+            font: "Lato",
+            fontStyle: "italic",
+            fontWeight: "bold",
+        });
+        expect(numericMeasure).toMatchObject({
+            as: "labelWidth",
+            font: "Lato",
+            fontStyle: "italic",
+            fontWeight: "bold",
+        });
+        expect(chromosomeLabelsView.spec.mark).toMatchObject({
+            font: "Lato",
+            fontStyle: "normal",
+            fontWeight: 500,
+        });
+        expect(chromosomeMeasure).toMatchObject({
+            as: "chromLabelWidth",
+            font: "Lato",
+            fontStyle: "normal",
+            fontWeight: 500,
         });
     });
 

@@ -5,13 +5,15 @@ import { FlexDimensions } from "./layout/flexLayout.js";
 import UnitView from "./unitView.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { getConfiguredAxisDefaults } from "../config/axisConfig.js";
+import { getConfiguredMarkDefaults } from "../config/markConfig.js";
 import { getProjectedTextExtent, getTextHeight } from "../fonts/textMetrics.js";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 const LABELS_LAYER_NAME = "labels_main";
 const TICKS_AND_LABELS_LAYER_NAME = "ticks_and_labels";
 const AXIS_EXTENT_PARAM = "axisExtent";
-const LABEL_WIDTH_FIELD = "_labelWidth";
+const LABEL_WIDTH_FIELD = "labelWidth";
+const CHROM_LABEL_WIDTH_FIELD = "chromLabelWidth";
 const Y_AXIS_LABEL_HEURISTIC_PX = 10;
 const AUTO_EXTENT_GROW_THRESHOLD_PX = 2;
 
@@ -161,6 +163,11 @@ export default class AxisView extends LayerView {
                 style: axisProps.style,
             }
         );
+        const textDefaults = getConfiguredMarkDefaults(
+            dataParent.getConfigScopes(),
+            "text",
+            undefined
+        );
 
         /** @type {Axis} */
         const preliminaryAxisProps = {
@@ -185,11 +192,12 @@ export default class AxisView extends LayerView {
 
         super(
             genomeAxis
-                ? createGenomeAxis(fullAxisProps, type)
+                ? createGenomeAxis(fullAxisProps, type, textDefaults)
                 : createAxis(
                       fullAxisProps,
                       type,
-                      options?.labelClipPolicy ?? "pixel"
+                      options?.labelClipPolicy ?? "pixel",
+                      textDefaults
                   ),
             context,
             layoutParent,
@@ -514,12 +522,27 @@ function getDefaultAngleAndAlign(type, axisProps) {
  * @param {Axis} axisProps
  * @param {string} type
  * @param {"pixel" | "anchor"} labelClipPolicy
+ * @param {Record<string, any>} [textDefaults]
+ * @param {ReturnType<typeof resolveTextStyle>} [chromLabelTextStyle]
  * @returns {LayerSpec}
  */
-function createAxis(axisProps, type, labelClipPolicy = "pixel") {
+function createAxis(
+    axisProps,
+    type,
+    labelClipPolicy = "pixel",
+    textDefaults = {},
+    chromLabelTextStyle
+) {
     // TODO: Ensure that no channels except the positional ones are shared
 
     const ap = axisProps;
+    const labelTextStyle = resolveTextStyle(
+        ap.labelFont,
+        ap.labelFontStyle,
+        ap.labelFontWeight,
+        ap.labelFontSize,
+        textDefaults
+    );
 
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
@@ -551,41 +574,59 @@ function createAxis(axisProps, type, labelClipPolicy = "pixel") {
     /**
      * @return {import("../spec/view.js").UnitSpec}
      */
-    const createLabels = () => ({
-        name: LABELS_LAYER_NAME,
-        transform: [
+    const createLabels = () => {
+        /** @type {import("../spec/transform.js").TransformParams[]} */
+        const transform = [
             {
                 type: "measureText",
                 field: "label",
                 as: LABEL_WIDTH_FIELD,
-                fontSize: ap.labelFontSize,
-                font: ap.labelFont,
-                fontStyle: ap.labelFontStyle,
-                fontWeight: ap.labelFontWeight,
+                fontSize: labelTextStyle.size,
+                font: labelTextStyle.font,
+                fontStyle: labelTextStyle.fontStyle,
+                fontWeight: labelTextStyle.fontWeight,
             },
-        ],
-        mark: {
-            type: "text",
-            clip: labelClipPolicy === "anchor" ? "never" : false,
-            cullByVisibleRange: labelClipPolicy === "anchor" ? main : undefined,
-            align: ap.labelAlign,
-            angle: ap.labelAngle,
-            baseline: ap.labelBaseline,
-            font: ap.labelFont,
-            fontStyle: ap.labelFontStyle,
-            fontWeight: ap.labelFontWeight,
-            [secondary + "Offset"]:
-                (ap.tickSize + ap.labelPadding) * offsetDirection,
-            [secondary]: anchor,
-            size: ap.labelFontSize,
-            color: ap.labelColor,
-            minBufferSize: 1500, // to prevent GPU buffer reallocation when zooming
-        },
-        encoding: {
-            [main]: makeMainDomainDef(),
-            text: { field: "label" },
-        },
-    });
+        ];
+
+        if (chromLabelTextStyle) {
+            transform.push({
+                type: "measureText",
+                field: "chromLabel",
+                as: CHROM_LABEL_WIDTH_FIELD,
+                fontSize: chromLabelTextStyle.size,
+                font: chromLabelTextStyle.font,
+                fontStyle: chromLabelTextStyle.fontStyle,
+                fontWeight: chromLabelTextStyle.fontWeight,
+            });
+        }
+
+        return {
+            name: LABELS_LAYER_NAME,
+            transform,
+            mark: {
+                type: "text",
+                clip: labelClipPolicy === "anchor" ? "never" : false,
+                cullByVisibleRange:
+                    labelClipPolicy === "anchor" ? main : undefined,
+                align: ap.labelAlign,
+                angle: ap.labelAngle,
+                baseline: ap.labelBaseline,
+                font: labelTextStyle.font,
+                fontStyle: labelTextStyle.fontStyle,
+                fontWeight: labelTextStyle.fontWeight,
+                [secondary + "Offset"]:
+                    (ap.tickSize + ap.labelPadding) * offsetDirection,
+                [secondary]: anchor,
+                size: labelTextStyle.size,
+                color: ap.labelColor,
+                minBufferSize: 1500, // to prevent GPU buffer reallocation when zooming
+            },
+            encoding: {
+                [main]: makeMainDomainDef(),
+                text: { field: "label" },
+            },
+        };
+    };
 
     /**
      * @return {import("../spec/view.js").UnitSpec}
@@ -709,10 +750,18 @@ function createAxis(axisProps, type, labelClipPolicy = "pixel") {
 /**
  * @param {GenomeAxis} axisProps
  * @param {string} type
+ * @param {Record<string, any>} [textDefaults]
  * @returns {LayerSpec}
  */
-export function createGenomeAxis(axisProps, type) {
+export function createGenomeAxis(axisProps, type, textDefaults = {}) {
     const ap = axisProps;
+    const chromLabelTextStyle = resolveTextStyle(
+        ap.chromLabelFont,
+        ap.chromLabelFontStyle,
+        ap.chromLabelFontWeight,
+        ap.chromLabelFontSize,
+        textDefaults
+    );
 
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
@@ -800,10 +849,10 @@ export function createGenomeAxis(axisProps, type) {
             name: "chromosome_labels",
             mark: {
                 type: "text",
-                size: ap.chromLabelFontSize,
-                font: ap.chromLabelFont,
-                fontWeight: ap.chromLabelFontWeight,
-                fontStyle: ap.chromLabelFontStyle,
+                size: chromLabelTextStyle.size,
+                font: chromLabelTextStyle.font,
+                fontWeight: chromLabelTextStyle.fontWeight,
+                fontStyle: chromLabelTextStyle.fontStyle,
                 color: ap.chromLabelColor,
                 align: axisProps.chromLabelAlign,
                 baseline: "alphabetic",
@@ -828,7 +877,10 @@ export function createGenomeAxis(axisProps, type) {
             ...getFixedGenomeAxisProps(axisProps),
             // TODO: Allow the user to override fixedAxisProps
         },
-        type
+        type,
+        "pixel",
+        textDefaults,
+        axisProps.chromLabels ? chromLabelTextStyle : undefined
     );
 
     if (axisProps.chromTicks || axisProps.chromLabels) {
@@ -896,4 +948,22 @@ export function createGenomeAxis(axisProps, type) {
     }
 
     return axisSpec;
+}
+
+/**
+ * Resolves axis-specific font properties over the effective text-mark defaults.
+ *
+ * @param {string | undefined} font
+ * @param {import("../spec/font.js").FontStyle | undefined} fontStyle
+ * @param {import("../spec/font.js").FontWeight | undefined} fontWeight
+ * @param {number | undefined} size
+ * @param {Record<string, any>} textDefaults
+ */
+function resolveTextStyle(font, fontStyle, fontWeight, size, textDefaults) {
+    return {
+        font: font ?? textDefaults.font,
+        fontStyle: fontStyle ?? textDefaults.fontStyle,
+        fontWeight: fontWeight ?? textDefaults.fontWeight,
+        size: size ?? textDefaults.size,
+    };
 }
