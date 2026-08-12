@@ -580,7 +580,35 @@ function createAxis(
     /**
      * @return {import("../spec/view.js").UnitSpec}
      */
-    const createLabels = () => {
+    const createLabels = () => ({
+        name: LABELS_LAYER_NAME,
+        mark: {
+            type: "text",
+            clip: labelClipPolicy === "anchor" ? "never" : false,
+            cullByVisibleRange: labelClipPolicy === "anchor" ? main : undefined,
+            align: ap.labelAlign,
+            angle: ap.labelAngle,
+            baseline: ap.labelBaseline,
+            font: labelTextStyle.font,
+            fontStyle: labelTextStyle.fontStyle,
+            fontWeight: labelTextStyle.fontWeight,
+            [secondary + "Offset"]:
+                (ap.tickSize + ap.labelPadding) * offsetDirection,
+            [secondary]: anchor,
+            size: labelTextStyle.size,
+            color: ap.labelColor,
+            minBufferSize: 1500, // to prevent GPU buffer reallocation when zooming
+        },
+        encoding: {
+            [main]: makeMainDomainDef(),
+            text: { field: "label" },
+        },
+    });
+
+    /**
+     * @return {import("../spec/transform.js").TransformParams[]}
+     */
+    const createLabelTransforms = () => {
         /** @type {import("../spec/transform.js").TransformParams[]} */
         const transform = [
             {
@@ -617,32 +645,7 @@ function createAxis(
             });
         }
 
-        return {
-            name: LABELS_LAYER_NAME,
-            transform,
-            mark: {
-                type: "text",
-                clip: labelClipPolicy === "anchor" ? "never" : false,
-                cullByVisibleRange:
-                    labelClipPolicy === "anchor" ? main : undefined,
-                align: ap.labelAlign,
-                angle: ap.labelAngle,
-                baseline: ap.labelBaseline,
-                font: labelTextStyle.font,
-                fontStyle: labelTextStyle.fontStyle,
-                fontWeight: labelTextStyle.fontWeight,
-                [secondary + "Offset"]:
-                    (ap.tickSize + ap.labelPadding) * offsetDirection,
-                [secondary]: anchor,
-                size: labelTextStyle.size,
-                color: ap.labelColor,
-                minBufferSize: 1500, // to prevent GPU buffer reallocation when zooming
-            },
-            encoding: {
-                [main]: makeMainDomainDef(),
-                text: { field: "label" },
-            },
-        };
+        return transform;
     };
 
     /**
@@ -717,6 +720,7 @@ function createAxis(
         /** @type {LayerSpec} */
         const spec = {
             name: TICKS_AND_LABELS_LAYER_NAME,
+            transform: ap.labels ? createLabelTransforms() : undefined,
             encoding: {
                 [main]: makeMainDomainDef(),
             },

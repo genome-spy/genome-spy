@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import Rectangle from "./layout/rectangle.js";
 import ViewRenderingContext from "./renderingContext/viewRenderingContext.js";
 import UnitView from "./unitView.js";
+import LayerView from "./layerView.js";
 import AxisView from "./axisView.js";
 import {
     createBroadcastingTestViewContext,
@@ -73,6 +74,24 @@ function findLabelsView(axisView) {
     }
 
     return labelsView;
+}
+
+/**
+ * @param {AxisView} axisView
+ */
+function findTicksAndLabelsView(axisView) {
+    const ticksAndLabelsView = axisView
+        .getDescendants()
+        .find(
+            (view) =>
+                view instanceof LayerView && view.name === "ticks_and_labels"
+        );
+
+    if (!(ticksAndLabelsView instanceof LayerView)) {
+        throw new Error("Axis ticks and labels view not found!");
+    }
+
+    return ticksAndLabelsView;
 }
 
 /**
@@ -226,9 +245,10 @@ describe("Axis extent measurement", () => {
 
         const axis = findAxisView(root, "bottom");
         const labelsView = findLabelsView(axis);
+        const ticksAndLabelsView = findTicksAndLabelsView(axis);
         const measureTextTransform =
             /** @type {import("../spec/transform.js").MeasureTextParams[]} */ (
-                labelsView.spec.transform
+                ticksAndLabelsView.spec.transform
             ).find((transform) => transform.type === "measureText");
         const textMark = /** @type {import("../marks/text.js").default} */ (
             labelsView.mark
@@ -288,6 +308,7 @@ describe("Axis extent measurement", () => {
 
         const axis = findAxisView(root, "bottom");
         const labelsView = findLabelsView(axis);
+        const ticksAndLabelsView = findTicksAndLabelsView(axis);
         const chromosomeLabelsView = axis
             .getDescendants()
             .find(
@@ -301,7 +322,7 @@ describe("Axis extent measurement", () => {
 
         const transforms =
             /** @type {import("../spec/transform.js").MeasureTextParams[]} */ (
-                labelsView.spec.transform
+                ticksAndLabelsView.spec.transform
             );
         const numericMeasure = transforms.find(
             (transform) => transform.field === "label"
@@ -334,7 +355,7 @@ describe("Axis extent measurement", () => {
         });
     });
 
-    test("long chromosome names cull labels but retain numeric tick rules", async () => {
+    test("long chromosome names cull numeric labels and tick rules", async () => {
         const chrom = "HAMBI_2443_chromosome_circ_with_a_long_suffix";
         const context = createBroadcastingTestViewContext();
         await context.genomeStore.initialize({
@@ -369,6 +390,7 @@ describe("Axis extent measurement", () => {
         await settleLayout(root, context);
 
         const labelsView = findLabelsView(axis);
+        const ticksAndLabelsView = findTicksAndLabelsView(axis);
         const ticksView = axis
             .getDescendants()
             .find((view) => view instanceof UnitView && view.name === "ticks");
@@ -376,11 +398,16 @@ describe("Axis extent measurement", () => {
             throw new Error("Axis ticks view not found!");
         }
 
-        const labelCount = labelsView.getCollector().getItemCount();
-        const tickCount = ticksView.getCollector().getItemCount();
-        expect(tickCount - labelCount).toBeGreaterThanOrEqual(2);
+        const labelValues = Array.from(labelsView.getCollector().getData()).map(
+            (datum) => datum.value
+        );
+        const tickValues = Array.from(ticksView.getCollector().getData()).map(
+            (datum) => datum.value
+        );
+        expect(tickValues).toEqual(labelValues);
         expect(ticksView.spec.transform).toBeUndefined();
-        expect(labelsView.spec.transform).toContainEqual(
+        expect(labelsView.spec.transform).toBeUndefined();
+        expect(ticksAndLabelsView.spec.transform).toContainEqual(
             expect.objectContaining({
                 type: "filterLocusAxisLabels",
                 labelSpacing: 5,
