@@ -53,6 +53,9 @@ export default class AxisLabelLayoutTransform extends Transform {
         /** @type {Set<import("../../spec/channel.js").Scalar>} */
         this.visibleLabelValueSet = new Set();
 
+        /** @type {Set<import("../../spec/channel.js").Scalar>} */
+        this.nextVisibleLabelValueSet = new Set();
+
         this.hasPublished = false;
 
         this.resolution = view.getScaleResolution(this.channel);
@@ -126,37 +129,40 @@ export default class AxisLabelLayoutTransform extends Transform {
                   this.params.labelSeparation
               )
             : this.nextOutputData;
-        const nextVisibleValueSet = new Set(
-            visibleData.map((datum) => datum.value)
-        );
+        this.nextVisibleLabelValueSet.clear();
+        for (const datum of visibleData) {
+            this.nextVisibleLabelValueSet.add(datum.value);
+        }
 
         for (const datum of this.nextOutputData) {
-            datum[this.params.labelVisible] = nextVisibleValueSet.has(
+            datum[this.params.labelVisible] = this.nextVisibleLabelValueSet.has(
                 datum.value
             );
         }
 
-        this.propagateIfChanged(nextVisibleValueSet);
+        this.propagateIfChanged();
     }
 
-    /**
-     * @param {Set<import("../../spec/channel.js").Scalar>} nextVisibleValueSet
-     */
-    propagateIfChanged(nextVisibleValueSet = new Set()) {
+    propagateIfChanged() {
         const changed =
             !this.hasPublished ||
             this.nextOutputData.length != this.outputValueSet.size ||
             this.nextOutputData.some(
                 (datum) => !this.outputValueSet.has(datum.value)
             ) ||
-            !setsEqual(nextVisibleValueSet, this.visibleLabelValueSet);
+            !setsEqual(
+                this.nextVisibleLabelValueSet,
+                this.visibleLabelValueSet
+            );
 
         if (changed) {
             this.outputValueSet.clear();
             for (const datum of this.nextOutputData) {
                 this.outputValueSet.add(datum.value);
             }
-            this.visibleLabelValueSet = nextVisibleValueSet;
+            const previousVisibleLabelValueSet = this.visibleLabelValueSet;
+            this.visibleLabelValueSet = this.nextVisibleLabelValueSet;
+            this.nextVisibleLabelValueSet = previousVisibleLabelValueSet;
 
             super.reset();
             for (const datum of this.nextOutputData) {
@@ -169,6 +175,7 @@ export default class AxisLabelLayoutTransform extends Transform {
         }
 
         this.nextOutputData.length = 0;
+        this.nextVisibleLabelValueSet.clear();
     }
 
     /**
