@@ -1,4 +1,10 @@
-# Axis label overlap removal plan
+# Axis label layout plan
+
+## Status
+
+Steps 1–4 are implemented on `feat/axis-label-overlap`. This revision adds
+flushed endpoint labels as Step 5, using the existing reactive layout transform
+rather than another dataflow node.
 
 ## Context
 
@@ -16,6 +22,14 @@ leaving tick rules intact:
 - [Vega axis-label parser](https://github.com/vega/vega/blob/c03b7d0fe369be1a6e81d23dc899aef6eb7da967/packages/vega-parser/src/parsers/guides/axis-labels.js)
 - [Vega overlap transform](https://github.com/vega/vega/blob/c03b7d0fe369be1a6e81d23dc899aef6eb7da967/packages/vega-view-transforms/src/Overlap.js)
 - [Vega-Lite overlap defaults](https://github.com/vega/vega-lite/blob/f0e76dfc7efa720817249f612f66599e2ca5ead4/src/compile/axis/properties.ts)
+
+Vega also flushes labels whose scaled anchors are at, or within a configured
+threshold of, the scale-range endpoints. It keeps the tick value and scaled
+anchor unchanged, applies endpoint-specific text alignment or baseline, and
+optionally offsets the label outward:
+
+- [Vega axis-label flush encodings](https://github.com/vega/vega/blob/c03b7d0fe369be1a6e81d23dc899aef6eb7da967/packages/vega-parser/src/parsers/guides/axis-labels.js)
+- [Vega range-endpoint classifier](https://github.com/vega/vega/blob/c03b7d0fe369be1a6e81d23dc899aef6eb7da967/packages/vega-util/src/flush.ts)
 
 Vega and Vega-Lite use the BSD-3-Clause license, which is compatible with
 GenomeSpy's MIT license. The implementation will be original and adapted to
@@ -38,12 +52,15 @@ reactive collector behind it.
   - use greedy removal for log and symlog scales;
   - leave nominal and ordinal labels unchanged by default.
 - Provide explicit `labelOverlap` and `labelSeparation` axis properties.
+- Flush endpoint labels without changing tick values or tick/grid positions.
+- Use the Vega-Lite default of flushing continuous x-axis labels, while
+  allowing explicit flushing on other axes.
 - Keep tick generation independent of font metrics and layout.
 - Preserve all tick rules when ordinary labels are culled, matching Vega.
 - Compose correctly with locus chromosome-label culling, which continues to
   remove both the numeric label and its otherwise orphaned tick rule.
-- Recompute during zoom and layout changes without propagating when the set of
-  retained datum `value` keys is unchanged.
+- Recompute during zoom and layout changes without propagating when the retained
+  datum keys, visible-label keys, and flush assignments are unchanged.
 
 ## Non-goals
 
@@ -53,6 +70,7 @@ reactive collector behind it.
 - Collision avoidance between labels belonging to separate axes or views.
 - General-purpose two-dimensional mark-label placement.
 - Culling chromosome labels against each other.
+- Data-driven text alignment or baseline as a general text-mark feature.
 
 ## Public API
 
@@ -62,6 +80,8 @@ schema-generating TypeScript definitions:
 ```ts
 labelOverlap?: boolean | "parity" | "greedy";
 labelSeparation?: number;
+labelFlush?: boolean | number;
+labelFlushOffset?: number;
 ```
 
 Semantics:
@@ -74,14 +94,21 @@ Semantics:
   ordinal axes behave as if `false`.
 - `labelSeparation` adds the requested pixel gap between retained label bounds
   and defaults to `0`, matching Vega.
+- `labelFlush: true` flushes labels whose anchors are within one pixel of a
+  scale-range endpoint. A number supplies the endpoint threshold in pixels;
+  `0` therefore flushes labels exactly at an endpoint.
+- When omitted, `labelFlush` defaults to `true` for continuous x axes and
+  `false` otherwise, matching Vega-Lite.
+- `labelFlushOffset` moves a flushed label outward from its endpoint anchor and
+  defaults to `0`, matching Vega.
 
 The first version supports axis-aligned text rectangles only: angles equivalent
 to `0`, `90`, `180`, or `270` degrees. Quarter-turn labels need only swap the
 measured width and resolved font-size extent; arbitrary angles are excluded
 until their anchor-aware bounds can be shared with the text renderer. Automatic
-overlap removal is disabled for unsupported angles. Explicitly requesting
-overlap removal with an unsupported angle fails with a clear error rather than
-silently applying incorrect geometry.
+overlap removal and flushing are disabled for unsupported angles. Explicitly
+requesting either feature with an unsupported angle fails with a clear error
+rather than silently applying incorrect geometry.
 
 ## Design
 
@@ -99,33 +126,72 @@ AxisTickSource
 ```
 
 `axisLabelLayout` replaces and generalizes `filterLocusAxisLabels`. It makes
-two related decisions in one pass:
+three related decisions in one pass:
 
 - chromosome conflicts remove the datum from the shared output, so both the
   numeric label and its tick rule disappear;
+- endpoint flushing writes a main-axis pixel offset to the datum without
+  changing its `value` or the tick position;
 - ordinary density reduction sets a public internal-datum field such as
   `labelVisible`, while leaving the datum available to the tick layer;
 - a plain, non-reactive filter on `labels_main` keeps only datums whose
   `labelVisible` field is true.
 
-The chromosome decision runs first, so ordinary overlap reduction sees only
-valid remaining label candidates. Axes that need neither chromosome collision
-handling nor ordinary overlap removal can omit the transform.
+The chromosome decision runs first. Flush placement runs next, so ordinary
+overlap reduction sees the final label bounds of the valid remaining
+candidates. Axes that need none of chromosome collision handling, flushing, or
+ordinary overlap removal can omit the transform.
 
 ### Label geometry
 
-`measureText` remains the only transform that measures label strings. The new
-filter receives the measured-width field and the resolved label font size.
-For supported quarter-turn angles, it builds a one-dimensional interval along
-the axis using the tick's scaled pixel position, width/font-size extent, and
-the applicable alignment or baseline. No view traversal or mark inspection is
-needed.
+`measureText` remains the only transform that measures label strings. The
+layout transform receives the measured-width field and the resolved label font
+size. For supported quarter-turn angles, it builds a one-dimensional interval
+along the axis using the tick's scaled pixel position, width/font-size extent,
+and the applicable alignment or baseline. No view traversal or mark inspection
+is needed.
 
 Using the resolved font size for text height is intentionally conservative and
 avoids a second font lookup or a new measurement path. If visual verification
 shows that this over-culls quarter-turn labels materially, stop and propose
 extending `measureText` to publish height rather than duplicating font logic in
 the overlap transform.
+
+### Flushed endpoint placement
+
+Do not change the tick datum's `value`. It is the scale input and unique datum
+key, and changing it would also move or invalidate the corresponding tick and
+gridline.
+
+Keep `TextMark` alignment and baseline static. Instead, reproduce Vega's visual
+placement with an internal pixel field such as `labelOffset`, encoded on the
+label layer's main-axis offset channel (`xOffset` for x axes and `yOffset` for y
+axes). The perpendicular offset remains reserved for tick size and label
+padding.
+
+For each candidate, classify its scaled anchor against the sorted pixel-range
+endpoints using the configured threshold. Reversed scales therefore require no
+special orientation branch. Using the already computed label bounds `[lo, hi]`
+and anchor `p`, calculate:
+
+```text
+range-start label: p - lo - labelFlushOffset
+range-end label:   p - hi + labelFlushOffset
+other label:       0
+```
+
+The first expression moves the near edge to the unchanged anchor, equivalent
+to Vega's left alignment or top baseline. The second moves the far edge to the
+anchor, equivalent to right alignment or bottom baseline. The optional outward
+offset uses the same sign convention as Vega. Because bounds are relative to
+the anchor, the resulting offset stays constant while the same datum retains
+the same flush classification.
+
+The overlap reducer must add `labelOffset` to the bounds it evaluates. The
+transform tracks published flush assignments and numeric offsets by the unique
+datum `value`, in addition to its existing tick and visible-label sets. A
+classification or offset change must propagate even if the retained datum sets
+are unchanged. No new scale listener or reactive parameter is introduced.
 
 ### Reduction methods
 
@@ -144,11 +210,12 @@ The transform owns the same minimal reactive state as the current locus filter:
 - source datums;
 - a reusable next-output buffer;
 - the published tick and visible-label sets, keyed by the unique datum `value`;
+- the published flush assignment and offset for each flushed `value`;
 - domain and `layoutComputed` listeners.
 
-It propagates only when either the retained tick set or visible-label set
-changes. Scale position changes for unchanged sets remain the mark/scale
-system's responsibility.
+It propagates only when the retained tick set, visible-label set, or flush state
+changes. Other scale-position changes remain the mark/scale system's
+responsibility.
 
 This avoids three independently reactive nodes. `AxisTickSource` must still
 listen for scale changes because the tick candidates can change, and the one
@@ -193,6 +260,21 @@ Rejected for the first implementation. Text positions are primarily resolved
 in shaders, and adding axis-specific neighbor logic to a general text mark
 would couple rendering and guide semantics.
 
+### Make text alignment and baseline data-driven
+
+Rejected for flushing. Vega expresses flushing through per-item alignment and
+baseline, but GenomeSpy currently stores these as text-mark uniforms. Extending
+the general text mark would be a substantially broader change. A measured
+main-axis pixel offset produces the same endpoint placement within the
+axis-aligned scope and uses existing encoding machinery.
+
+### Adjust the tick value for the label branch
+
+Rejected. `value` is both the actual scale input and the unique tick datum key.
+Changing it would mix guide layout with scale semantics and risks moving tick
+rules or gridlines. Cloning and rewriting datums only for labels would add more
+machinery than an offset field.
+
 ### Filter ticks and labels together
 
 Rejected as the only output policy. Vega keeps ordinary tick rules, and the
@@ -234,6 +316,14 @@ addition and gives log/symlog axes the established greedy behavior.
   quarter-turn labels, stop and propose height output from `measureText`.
 - The combined post-processor must compare both its shared tick output and its
   visible-label subset. Comparing only one set can leave the other branch stale.
+- Flush classification can change while tick and visibility sets remain the
+  same. If offset updates cannot be propagated without reintroducing label
+  flashing during zoom, stop and propose a renderer-side positional expression
+  rather than adding another reactive transform.
+- Main-axis offsets must match the bounds used for overlap reduction in all four
+  axis orientations and with reversed scales. If this needs orientation-specific
+  renderer logic in the transform, stop and propose a shared text-placement
+  helper.
 
 ## Implementation steps
 
@@ -341,6 +431,62 @@ Verification:
 
 Tentative commit: `docs(core): document axis label overlap removal`
 
+### 5. Add flushed endpoint placement
+
+Outcome:
+
+- Add `labelFlush` and `labelFlushOffset` to the axis specification.
+- Apply the Vega-Lite default only to continuous x axes.
+- Classify endpoint labels and publish a measured main-axis pixel offset from
+  the existing `axisLabelLayout` transform.
+- Evaluate ordinary label overlap using the flushed bounds.
+- Propagate when flush assignments or offsets change, without adding a reactive
+  node or changing tick values.
+
+Affected areas:
+
+- `packages/core/src/spec/axis.d.ts`
+- `packages/core/src/spec/transform.d.ts`
+- `packages/core/src/data/transforms/axisLabelLayout.js`
+- `packages/core/src/view/axisView.js`
+- adjacent unit and axis integration tests
+
+Verification:
+
+- Focused tests for range-start, range-end, threshold, outward offset, reversed
+  scales, and unchanged-state suppression
+- Tests confirming tick/grid positions and datum `value` remain unchanged
+- Tests confirming overlap decisions use flushed bounds
+- Core TypeScript and lint checks
+
+Tentative commit: `feat(core): flush endpoint axis labels`
+
+### 6. Document and visually validate flushing
+
+Outcome:
+
+- Document flush defaults, threshold, offset, and axis-aligned limitation.
+- Extend the existing two-track overlap example if it can demonstrate flushing
+  without obscuring the overlap comparison; otherwise add no new example.
+- Check continuous x axes, explicit vertical flushing, reversed scales, and
+  zoom behavior in the browser.
+
+Affected areas:
+
+- `docs/grammar/axis.md`
+- schema-derived documentation/artifacts
+- optionally `examples/core/scales/axis_label_overlap.json`
+
+Verification:
+
+- `npm test`
+- `npm --workspaces run test:tsc --if-present`
+- `npm run lint`
+- docs/schema build
+- browser zoom/pan check for stable, non-flashing labels
+
+Tentative commit: `docs(core): document flushed axis labels`
+
 ## Acceptance criteria
 
 - A continuous x axis containing both short and long formatted numbers shows no
@@ -351,6 +497,12 @@ Tentative commit: `docs(core): document axis label overlap removal`
   explicitly requested.
 - `labelOverlap: false` retains every candidate label.
 - `labelSeparation` is included in collision decisions.
+- Continuous x axes flush endpoint labels by default; other axes do so only
+  when explicitly requested.
+- Flushing does not alter datum `value`, tick positions, or gridline positions.
+- Reversed scales flush labels against the correct pixel-range endpoints.
+- `labelFlushOffset` moves only flushed labels outward.
+- Overlap removal uses the final flushed label bounds.
 - Ordinary label removal does not remove tick rules.
 - Locus chromosome conflicts still remove both the numeric label and tick rule
   before ordinary density reduction.
