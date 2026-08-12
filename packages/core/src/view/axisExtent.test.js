@@ -383,17 +383,11 @@ describe("Axis extent measurement", () => {
         expect(labelsView.spec.transform).toContainEqual(
             expect.objectContaining({ type: "filterLocusAxisLabels" })
         );
-        expect(labelsView.spec.params).toContainEqual({
-            name: "chromLabelFadeDistance",
-            value: 40,
-            persist: false,
-        });
-        expect(labelsView.spec.mark.viewportEdgeFadeDistanceLeft).toEqual({
-            expr: "chromLabelFadeDistance",
-        });
+        expect(labelsView.spec.params).toBeUndefined();
+        expect(labelsView.spec.mark.viewportEdgeFadeWidthLeft).toBeUndefined();
         expect(
-            labelsView.paramRuntime.getValue("chromLabelFadeDistance")
-        ).toBeGreaterThan(40);
+            labelsView.spec.mark.viewportEdgeFadeDistanceLeft
+        ).toBeUndefined();
     });
 
     test("long categorical labels increase bottom axis extent after layout", async () => {

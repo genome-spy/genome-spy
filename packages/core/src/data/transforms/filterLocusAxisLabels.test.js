@@ -60,10 +60,6 @@ class FakeView {
     /** @type {(() => void)[]} */
     transitions = [];
 
-    paramRuntime = {
-        setValue: vi.fn(),
-    };
-
     context = {
         animator: {
             requestTransition: (/** @type {() => void} */ callback) => {
@@ -122,7 +118,6 @@ function createFixture({
             labelAlign: "center",
             chromLabelAlign: "left",
             chromLabelPadding: 4,
-            fadeDistanceParam: "chromLabelFadeDistance",
         },
         /** @type {any} */ (view)
     );
@@ -315,61 +310,6 @@ describe("FilterLocusAxisLabelsTransform", () => {
         expect([...collector.getData()].map((datum) => datum.value)).toEqual([
             300,
         ]);
-    });
-
-    test("publishes the leading label extent without re-entering", () => {
-        const { transform, view } = createFixture();
-        const filterSpy = vi.spyOn(transform, "filterAndPropagate");
-
-        propagate(transform, view, [tick(350, 120)]);
-
-        expect(view.paramRuntime.setValue).toHaveBeenCalledOnce();
-        expect(view.paramRuntime.setValue).toHaveBeenCalledWith(
-            "chromLabelFadeDistance",
-            128
-        );
-        expect(filterSpy).toHaveBeenCalledOnce();
-    });
-
-    test("updates the fade distance when the axis is resized", () => {
-        const { resolution, transform, view } = createFixture();
-        resolution.axisLength = 80;
-        propagate(transform, view, [tick(350, 120)]);
-        expect(view.paramRuntime.setValue).toHaveBeenLastCalledWith(
-            "chromLabelFadeDistance",
-            84
-        );
-
-        resolution.axisLength = 500;
-        view.emit("layoutComputed");
-        view.flushTransitions();
-        expect(view.paramRuntime.setValue).toHaveBeenLastCalledWith(
-            "chromLabelFadeDistance",
-            128
-        );
-    });
-
-    test("updates the fade distance when panning to a longer name", () => {
-        const { resolution, transform, view } = createFixture({
-            contigs: [
-                { name: "chr1", size: 500 },
-                { name: "long_contig_name", size: 500 },
-            ],
-        });
-        resolution.domain = [0, 500];
-        propagate(transform, view, [tick(200, 30, "chr1")]);
-        expect(view.paramRuntime.setValue).toHaveBeenLastCalledWith(
-            "chromLabelFadeDistance",
-            38
-        );
-
-        transform.reset();
-        resolution.domain = [500, 1000];
-        propagate(transform, view, [tick(700, 120)]);
-        expect(view.paramRuntime.setValue).toHaveBeenLastCalledWith(
-            "chromLabelFadeDistance",
-            128
-        );
     });
 
     test("disposes its domain and layout listeners", () => {

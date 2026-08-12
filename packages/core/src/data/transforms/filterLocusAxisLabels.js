@@ -26,8 +26,6 @@ export default class FilterLocusAxisLabelsTransform extends Transform {
         this.channel = params.channel;
         this.labelWidthAccessor = field(params.labelWidth);
         this.chromLabelWidthAccessor = field(params.chromLabelWidth);
-        this.setFadeDistance = (/** @type {number} */ value) =>
-            view.paramRuntime.setValue(params.fadeDistanceParam, value);
 
         /** @type {import("../flowNode.js").Datum[]} */
         this.data = [];
@@ -85,7 +83,6 @@ export default class FilterLocusAxisLabelsTransform extends Transform {
                 this.resolution.getScale()
             );
         const genome = scale.genome();
-        let fadeDistance;
 
         for (const datum of this.data) {
             const chromosome = genome.getChromosome(datum.chromLabel);
@@ -112,23 +109,9 @@ export default class FilterLocusAxisLabelsTransform extends Transform {
                 axisLength
             );
 
-            if (
-                Math.min(chromosomeStart, chromosomeEnd) <= 0 &&
-                Math.max(chromosomeStart, chromosomeEnd) >= 0
-            ) {
-                fadeDistance =
-                    chromosomeBounds[0] <= this.params.chromLabelPadding
-                        ? chromosomeBounds[1] + this.params.chromLabelPadding
-                        : -Infinity;
-            }
-
             if (!boundsOverlap(numericBounds, chromosomeBounds)) {
                 this.nextOutputData.push(datum);
             }
-        }
-
-        if (fadeDistance !== undefined) {
-            this.setFadeDistance(fadeDistance);
         }
 
         this.propagateIfChanged();
