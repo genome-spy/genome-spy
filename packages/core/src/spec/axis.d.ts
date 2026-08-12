@@ -441,6 +441,27 @@ export interface BaseAxis {
     labelAngle?: number;
 
     /**
+     * The strategy for removing overlapping axis labels. `true` uses the
+     * `"parity"` strategy. `"parity"` removes every other label until the
+     * remaining labels no longer overlap. `"greedy"` keeps each label that
+     * does not overlap the previously retained label. `false` disables overlap
+     * removal.
+     *
+     * By default, overlap removal uses `"parity"` for continuous scales and
+     * `"greedy"` for logarithmic and symlog scales. It is disabled for
+     * discrete scales.
+     */
+    labelOverlap?: boolean | "parity" | "greedy";
+
+    /**
+     * The minimum separation, in pixels, between retained axis labels.
+     *
+     * __Default value:__ `0`
+     * @minimum 0
+     */
+    labelSeparation?: number;
+
+    /**
      * Vertical text baseline of axis tick labels, overriding the default setting for the current axis orientation.
      * One of `"alphabetic"` (default), `"top"`, `"middle"`, `"bottom"`.
      */
