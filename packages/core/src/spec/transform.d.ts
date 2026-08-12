@@ -1039,6 +1039,17 @@ export interface FilterScoredLabelsParams extends TransformParamsBase {
     channel?: "x" | "y";
 }
 
+/** Parameters for GenomeSpy's generated locus-axis label pipeline. */
+export interface FilterLocusAxisLabelsParams extends TransformParamsBase {
+    type: "filterLocusAxisLabels";
+    channel: PrimaryPositionalChannel;
+    labelWidth: Field;
+    chromLabelWidth: Field;
+    labelAlign: "left" | "center" | "right";
+    chromLabelAlign: "left" | "center" | "right";
+    chromLabelPadding: number;
+}
+
 export interface Displace1DParams extends TransformParamsBase {
     type: "displace1d";
 
@@ -1121,6 +1132,7 @@ export type TransformParams =
     | FormulaParams
     | LookupParams
     | FilterParams
+    | FilterLocusAxisLabelsParams
     | FilterScoredLabelsParams
     | FlattenParams
     | FlattenCompressedExonsParams

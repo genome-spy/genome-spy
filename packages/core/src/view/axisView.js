@@ -14,6 +14,7 @@ const TICKS_AND_LABELS_LAYER_NAME = "ticks_and_labels";
 const AXIS_EXTENT_PARAM = "axisExtent";
 const LABEL_WIDTH_FIELD = "labelWidth";
 const CHROM_LABEL_WIDTH_FIELD = "chromLabelWidth";
+const CHROM_LABEL_RANGE_PADDING = 4;
 const Y_AXIS_LABEL_HEURISTIC_PX = 10;
 const AUTO_EXTENT_GROW_THRESHOLD_PX = 2;
 
@@ -523,7 +524,11 @@ function getDefaultAngleAndAlign(type, axisProps) {
  * @param {string} type
  * @param {"pixel" | "anchor"} labelClipPolicy
  * @param {Record<string, any>} [textDefaults]
- * @param {ReturnType<typeof resolveTextStyle>} [chromLabelTextStyle]
+ * @param {{
+ *     textStyle: ReturnType<typeof resolveTextStyle>,
+ *     align: "left" | "center" | "right",
+ *     padding: number,
+ * }} [chromLabelLayout]
  * @returns {LayerSpec}
  */
 function createAxis(
@@ -531,7 +536,7 @@ function createAxis(
     type,
     labelClipPolicy = "pixel",
     textDefaults = {},
-    chromLabelTextStyle
+    chromLabelLayout
 ) {
     // TODO: Ensure that no channels except the positional ones are shared
 
@@ -588,15 +593,25 @@ function createAxis(
             },
         ];
 
-        if (chromLabelTextStyle) {
+        if (chromLabelLayout) {
+            const style = chromLabelLayout.textStyle;
             transform.push({
                 type: "measureText",
                 field: "chromLabel",
                 as: CHROM_LABEL_WIDTH_FIELD,
-                fontSize: chromLabelTextStyle.size,
-                font: chromLabelTextStyle.font,
-                fontStyle: chromLabelTextStyle.fontStyle,
-                fontWeight: chromLabelTextStyle.fontWeight,
+                fontSize: style.size,
+                font: style.font,
+                fontStyle: style.fontStyle,
+                fontWeight: style.fontWeight,
+            });
+            transform.push({
+                type: "filterLocusAxisLabels",
+                channel: main,
+                labelWidth: LABEL_WIDTH_FIELD,
+                chromLabelWidth: CHROM_LABEL_WIDTH_FIELD,
+                labelAlign: ap.labelAlign,
+                chromLabelAlign: chromLabelLayout.align,
+                chromLabelPadding: chromLabelLayout.padding,
             });
         }
 
@@ -767,6 +782,13 @@ export function createGenomeAxis(axisProps, type, textDefaults = {}) {
     const secondary = getPerpendicularChannel(main);
 
     const { anchor, tickSide } = getAxisGeometry(ap);
+    const chromLabelLayout = {
+        textStyle: chromLabelTextStyle,
+        align: /** @type {"left" | "center" | "right"} */ (
+            tickSide == "right" ? "left" : ap.chromLabelAlign
+        ),
+        padding: CHROM_LABEL_RANGE_PADDING,
+    };
 
     /**
      * @return {import("../spec/view.js").UnitSpec}
@@ -799,7 +821,7 @@ export function createGenomeAxis(axisProps, type, textDefaults = {}) {
                 chromLabelMarkProps = {
                     y: 0,
                     angle: 0,
-                    paddingX: 4,
+                    paddingX: chromLabelLayout.padding,
                     dy: -ap.chromLabelPadding,
                     viewportEdgeFadeWidthLeft: 20,
                     viewportEdgeFadeWidthRight: 20,
@@ -811,7 +833,7 @@ export function createGenomeAxis(axisProps, type, textDefaults = {}) {
                 chromLabelMarkProps = {
                     y: 1,
                     angle: 0,
-                    paddingX: 4,
+                    paddingX: chromLabelLayout.padding,
                     dy: ap.chromLabelPadding + ap.chromLabelFontSize * 0.73, // A hack to align baseline with other labels
                     viewportEdgeFadeWidthLeft: 20,
                     viewportEdgeFadeWidthRight: 20,
@@ -823,7 +845,7 @@ export function createGenomeAxis(axisProps, type, textDefaults = {}) {
                 chromLabelMarkProps = {
                     x: 1,
                     angle: -90,
-                    paddingY: 4,
+                    paddingY: chromLabelLayout.padding,
                     dy: -ap.chromLabelPadding,
                     viewportEdgeFadeWidthBottom: 20,
                     viewportEdgeFadeWidthTop: 20,
@@ -836,7 +858,7 @@ export function createGenomeAxis(axisProps, type, textDefaults = {}) {
                     x: 0,
                     angle: 90,
                     align: "right",
-                    paddingY: 4,
+                    paddingY: chromLabelLayout.padding,
                     dy: -ap.chromLabelPadding,
                 };
                 break;
@@ -880,7 +902,7 @@ export function createGenomeAxis(axisProps, type, textDefaults = {}) {
         type,
         "pixel",
         textDefaults,
-        axisProps.chromLabels ? chromLabelTextStyle : undefined
+        axisProps.chromLabels ? chromLabelLayout : undefined
     );
 
     if (axisProps.chromTicks || axisProps.chromLabels) {

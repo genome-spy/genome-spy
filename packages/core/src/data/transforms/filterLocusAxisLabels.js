@@ -1,0 +1,182 @@
+import { BEHAVIOR_COLLECTS } from "../flowNode.js";
+import { field } from "../../utils/field.js";
+import Transform from "./transform.js";
+
+/**
+ * Filters numeric locus-axis labels that overlap the chromosome label rendered
+ * inside the same chromosome interval.
+ */
+export default class FilterLocusAxisLabelsTransform extends Transform {
+    get behavior() {
+        return BEHAVIOR_COLLECTS;
+    }
+
+    get domainSensitiveScaleChannels() {
+        return [this.channel];
+    }
+
+    /**
+     * @param {import("../../spec/transform.js").FilterLocusAxisLabelsParams} params
+     * @param {import("../../view/view.js").default} view
+     */
+    constructor(params, view) {
+        super(params, view);
+
+        this.params = params;
+        this.channel = params.channel;
+        this.labelWidthAccessor = field(params.labelWidth);
+        this.chromLabelWidthAccessor = field(params.chromLabelWidth);
+
+        /** @type {import("../flowNode.js").Datum[]} */
+        this.data = [];
+
+        this.resolution = view.getScaleResolution(this.channel);
+        this.schedule = () =>
+            view.context.animator.requestTransition(() =>
+                this.filterAndPropagate()
+            );
+
+        const domainListener = () => this.filterAndPropagate();
+        this.resolution.addEventListener("domain", domainListener);
+        this.registerDisposer(() =>
+            this.resolution.removeEventListener("domain", domainListener)
+        );
+
+        this.registerDisposer(
+            view._addBroadcastHandler("layoutComputed", this.schedule)
+        );
+    }
+
+    complete() {
+        this.schedule();
+        super.complete();
+    }
+
+    filterAndPropagate() {
+        super.reset();
+
+        const axisLength = this.resolution.getAxisLength();
+        if (!axisLength) {
+            return;
+        }
+
+        const scale =
+            /** @type {import("../../genome/scaleLocus.js").ScaleLocus} */ (
+                this.resolution.getScale()
+            );
+        const genome = scale.genome();
+
+        for (const datum of this.data) {
+            const chromosome = genome.getChromosome(datum.chromLabel);
+            if (!chromosome) {
+                throw new Error(
+                    "Unknown chromosome on locus axis: " + datum.chromLabel
+                );
+            }
+
+            const numericBounds = getPointLabelBounds(
+                scale(datum.value) * axisLength,
+                this.labelWidthAccessor(datum),
+                this.params.labelAlign
+            );
+            const chromosomeBounds = getRangedLabelBounds(
+                scale(chromosome.continuousStart) * axisLength,
+                scale(chromosome.continuousEnd) * axisLength,
+                this.chromLabelWidthAccessor(datum),
+                this.params.chromLabelPadding,
+                this.params.chromLabelAlign,
+                axisLength
+            );
+
+            if (!boundsOverlap(numericBounds, chromosomeBounds)) {
+                this._propagate(datum);
+            }
+        }
+
+        super.complete();
+    }
+
+    reset() {
+        super.reset();
+        this.data = [];
+    }
+
+    /** @param {import("../flowNode.js").Datum} datum */
+    handle(datum) {
+        this.data.push(datum);
+    }
+}
+
+/**
+ * @param {number} position
+ * @param {number} width
+ * @param {"left" | "center" | "right"} align
+ */
+function getPointLabelBounds(position, width, align) {
+    switch (align) {
+        case "left":
+            return [position, position + width];
+        case "center":
+            return [position - width / 2, position + width / 2];
+        case "right":
+            return [position - width, position];
+        default:
+            throw new Error("Invalid label alignment: " + align);
+    }
+}
+
+/**
+ * Conservatively approximates a ranged text mark using its visible chromosome
+ * interval. Partially visible text is kept inside the viewport, which may cull
+ * one extra numeric label but cannot leave an overlap.
+ *
+ * @param {number} start
+ * @param {number} end
+ * @param {number} width
+ * @param {number} padding
+ * @param {"left" | "center" | "right"} align
+ * @param {number} viewportLength
+ */
+export function getRangedLabelBounds(
+    start,
+    end,
+    width,
+    padding,
+    align,
+    viewportLength
+) {
+    const rangeStart = Math.min(start, end);
+    const rangeEnd = Math.max(start, end);
+    const span = rangeEnd - rangeStart;
+    const renderedWidth = Math.min(width, Math.max(0, span - padding));
+    const visibleStart = Math.max(0, rangeStart);
+    const visibleEnd = Math.min(viewportLength, rangeEnd);
+
+    switch (align) {
+        case "left": {
+            const anchor = visibleStart + padding;
+            return [anchor, anchor + renderedWidth];
+        }
+        case "center": {
+            const anchor = Math.max(
+                renderedWidth / 2,
+                Math.min(
+                    viewportLength - renderedWidth / 2,
+                    (visibleStart + visibleEnd) / 2
+                )
+            );
+            return [anchor - renderedWidth / 2, anchor + renderedWidth / 2];
+        }
+        case "right": {
+            const anchor = visibleEnd - padding;
+            return [anchor - renderedWidth, anchor];
+        }
+        default:
+            throw new Error("Invalid chromosome label alignment: " + align);
+    }
+}
+
+/** @param {number[]} a @param {number[]} b */
+function boundsOverlap(a, b) {
+    return a[0] < b[1] && b[0] < a[1];
+}

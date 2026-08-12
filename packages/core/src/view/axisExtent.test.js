@@ -334,6 +334,57 @@ describe("Axis extent measurement", () => {
         });
     });
 
+    test("long chromosome names cull labels but retain numeric tick rules", async () => {
+        const chrom = "HAMBI_2443_chromosome_circ_with_a_long_suffix";
+        const context = createBroadcastingTestViewContext();
+        await context.genomeStore.initialize({
+            name: "custom",
+            contigs: [{ name: chrom, size: 200_000_000 }],
+        });
+        const { view: root } = await createHeadlessEngine(
+            {
+                data: { values: [{ chrom, pos: 1 }] },
+                scales: {
+                    x: {
+                        type: "locus",
+                        domain: [
+                            { chrom, pos: 1 },
+                            { chrom, pos: 200_000_000 },
+                        ],
+                    },
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        chrom: "chrom",
+                        pos: "pos",
+                        type: "locus",
+                    },
+                },
+            },
+            { context }
+        );
+
+        const axis = findAxisView(root, "bottom");
+        await settleLayout(root, context);
+
+        const labelsView = findLabelsView(axis);
+        const ticksView = axis
+            .getDescendants()
+            .find((view) => view instanceof UnitView && view.name === "ticks");
+        if (!(ticksView instanceof UnitView)) {
+            throw new Error("Axis ticks view not found!");
+        }
+
+        const labelCount = labelsView.getCollector().getItemCount();
+        const tickCount = ticksView.getCollector().getItemCount();
+        expect(tickCount - labelCount).toBeGreaterThanOrEqual(2);
+        expect(ticksView.spec.transform).toBeUndefined();
+        expect(labelsView.spec.transform).toContainEqual(
+            expect.objectContaining({ type: "filterLocusAxisLabels" })
+        );
+    });
+
     test("long categorical labels increase bottom axis extent after layout", async () => {
         const context = createBroadcastingTestViewContext();
         const root = await createAndInitializeRoot(
