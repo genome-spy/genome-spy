@@ -93,12 +93,12 @@ Keep one scale-reactive post-processing transform in the shared axis pipeline:
 AxisTickSource
     -> measureText(label)
     -> measureText(chromLabel), locus axes only
-    -> layoutAxisLabels
+    -> axisLabelLayout
        -> ticks_main
        -> labels_main -> filter(labelVisible) -> text mark
 ```
 
-`layoutAxisLabels` replaces and generalizes `filterLocusAxisLabels`. It makes
+`axisLabelLayout` replaces and generalizes `filterLocusAxisLabels`. It makes
 two related decisions in one pass:
 
 - chromosome conflicts remove the datum from the shared output, so both the
@@ -264,7 +264,7 @@ Tentative commit: `feat(core): define axis label overlap reduction`
 
 Outcome:
 
-- Replace `filterLocusAxisLabels` with one collecting `layoutAxisLabels`
+- Replace `filterLocusAxisLabels` with one collecting `axisLabelLayout`
   transform used by both ordinary and locus axes.
 - Use measured widths, resolved font size, quarter-turn geometry, runtime scale
   type, and axis length.

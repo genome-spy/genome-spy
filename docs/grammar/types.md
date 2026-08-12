@@ -53,6 +53,10 @@ See the [AxisConfig documentation](axis.md#config-properties).
 
 See the [AxisGenomeData documentation](data/lazy.md#parameters_8).
 
+## AxisLabelLayoutParams
+
+SCHEMA AxisLabelLayoutParams
+
 ## AxisOrient
 
 SCHEMA AxisOrient

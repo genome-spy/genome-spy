@@ -104,6 +104,18 @@ values are omitted. `extraValues` is ignored on discrete scales and when
 Use `format` to format numeric labels with a
 [d3-format](https://github.com/d3/d3-format#locale_format) specifier.
 
+GenomeSpy automatically removes overlapping labels from continuous axes. It
+uses regular parity reduction for continuous scales and greedy reduction for
+log and symlog scales. Nominal and ordinal axes retain all labels by default.
+Removed ordinary labels leave their tick marks visible.
+
+Set `labelOverlap` to `false` to retain all labels, or to `"parity"` or
+`"greedy"` to choose a reduction strategy explicitly. `true` selects
+`"parity"`. Use `labelSeparation` to add a minimum pixel gap between retained
+labels. Overlap removal supports label angles that are multiples of 90 degrees;
+the automatic behavior is disabled at other angles, and explicit overlap
+removal at those angles is rejected.
+
 Set `ticks` or `labels` to `false` to hide tick marks or labels while keeping
 the rest of the axis.
 

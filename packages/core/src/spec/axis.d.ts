@@ -449,7 +449,9 @@ export interface BaseAxis {
      *
      * By default, overlap removal uses `"parity"` for continuous scales and
      * `"greedy"` for logarithmic and symlog scales. It is disabled for
-     * discrete scales.
+     * discrete scales. Overlap removal supports label angles that are
+     * multiples of 90 degrees. The automatic behavior is disabled at other
+     * angles.
      */
     labelOverlap?: boolean | "parity" | "greedy";
 

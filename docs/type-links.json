@@ -105,6 +105,7 @@
   "ArrowDirection": "/grammar/types/#arrowdirection",
   "ArrowRelativeSize": "/grammar/types/#arrowrelativesize",
   "ArrowSize": "/grammar/types/#arrowsize",
+  "AxisLabelLayoutParams": "/grammar/types/#axislabellayoutparams",
   "AxisOrient": "/grammar/types/#axisorient",
   "AxisPlacement": "/grammar/types/#axisplacement",
   "Baseline": "/grammar/types/#baseline",
