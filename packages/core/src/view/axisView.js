@@ -15,6 +15,7 @@ const AXIS_EXTENT_PARAM = "axisExtent";
 const LABEL_WIDTH_FIELD = "labelWidth";
 const CHROM_LABEL_WIDTH_FIELD = "chromLabelWidth";
 const CHROM_LABEL_RANGE_PADDING = 4;
+const CHROM_LABEL_FADE_DISTANCE_PARAM = "chromLabelFadeDistance";
 const Y_AXIS_LABEL_HEURISTIC_PX = 10;
 const AUTO_EXTENT_GROW_THRESHOLD_PX = 2;
 
@@ -612,11 +613,21 @@ function createAxis(
                 labelAlign: ap.labelAlign,
                 chromLabelAlign: chromLabelLayout.align,
                 chromLabelPadding: chromLabelLayout.padding,
+                fadeDistanceParam: CHROM_LABEL_FADE_DISTANCE_PARAM,
             });
         }
 
         return {
             name: LABELS_LAYER_NAME,
+            params: chromLabelLayout
+                ? [
+                      {
+                          name: CHROM_LABEL_FADE_DISTANCE_PARAM,
+                          value: 40,
+                          persist: false,
+                      },
+                  ]
+                : undefined,
             transform,
             mark: {
                 type: "text",
@@ -958,10 +969,14 @@ export function createGenomeAxis(axisProps, type, textDefaults = {}) {
             if (labelMarkSpec) {
                 if (ap.orient == "top" || ap.orient == "bottom") {
                     labelMarkSpec.viewportEdgeFadeWidthLeft = 30;
-                    labelMarkSpec.viewportEdgeFadeDistanceLeft = 40;
+                    labelMarkSpec.viewportEdgeFadeDistanceLeft = {
+                        expr: CHROM_LABEL_FADE_DISTANCE_PARAM,
+                    };
                 } else {
                     labelMarkSpec.viewportEdgeFadeWidthBottom = 30;
-                    labelMarkSpec.viewportEdgeFadeDistanceBottom = 40;
+                    labelMarkSpec.viewportEdgeFadeDistanceBottom = {
+                        expr: CHROM_LABEL_FADE_DISTANCE_PARAM,
+                    };
                 }
             }
         }

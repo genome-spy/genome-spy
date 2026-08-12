@@ -15,6 +15,7 @@ import Mark from "./mark.js";
 import { fixCoveragePositional, fixHalfOpenRangedText } from "./markUtils.js";
 import { primaryPositionalChannels } from "../encoder/encoder.js";
 import { requestFont } from "../fonts/textMetrics.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 /** For GLSL uniforms */
 const alignments = {
@@ -140,6 +141,19 @@ export default class TextMark extends Mark {
         this.registerMarkUniformValue("uFlushY", props.flushY, (x) => !!x);
         this.registerMarkUniformValue("uSqueeze", props.squeeze, (x) => !!x);
 
+        this.registerMarkUniformVector("uViewportEdgeFadeWidth", [
+            props.viewportEdgeFadeWidthTop,
+            props.viewportEdgeFadeWidthRight,
+            props.viewportEdgeFadeWidthBottom,
+            props.viewportEdgeFadeWidthLeft,
+        ]);
+        this.registerMarkUniformVector("uViewportEdgeFadeDistance", [
+            props.viewportEdgeFadeDistanceTop,
+            props.viewportEdgeFadeDistanceRight,
+            props.viewportEdgeFadeDistanceBottom,
+            props.viewportEdgeFadeDistanceLeft,
+        ]);
+
         setBlockUniforms(this.markUniformInfo, {
             uAlign: [alignments[props.align], baselines[props.baseline]],
 
@@ -148,21 +162,33 @@ export default class TextMark extends Mark {
             uLogoLetter: !!props.logoLetters,
 
             uSdfNumerator: sdfNumerator,
-
-            uViewportEdgeFadeWidth: [
-                props.viewportEdgeFadeWidthTop,
-                props.viewportEdgeFadeWidthRight,
-                props.viewportEdgeFadeWidthBottom,
-                props.viewportEdgeFadeWidthLeft,
-            ],
-
-            uViewportEdgeFadeDistance: [
-                props.viewportEdgeFadeDistanceTop,
-                props.viewportEdgeFadeDistanceRight,
-                props.viewportEdgeFadeDistanceBottom,
-                props.viewportEdgeFadeDistanceLeft,
-            ],
         });
+    }
+
+    /**
+     * Registers a vector uniform whose components may be expression references.
+     *
+     * @param {string} uniformName
+     * @param {(number | import("../spec/parameter.js").ExprRef)[]} values
+     */
+    registerMarkUniformVector(uniformName, values) {
+        const setter = this.createMarkUniformSetter(uniformName);
+        /** @type {(() => number)[]} */
+        const readers = [];
+        const update = () => setter(readers.map((read) => read()));
+
+        for (const value of values) {
+            readers.push(
+                isExprRef(value)
+                    ? this.unitView.paramRuntime.watchExpression(
+                          value.expr,
+                          update
+                      )
+                    : () => value
+            );
+        }
+
+        update();
     }
 
     updateGraphicsData() {

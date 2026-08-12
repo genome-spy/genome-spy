@@ -26,6 +26,8 @@ export default class FilterLocusAxisLabelsTransform extends Transform {
         this.channel = params.channel;
         this.labelWidthAccessor = field(params.labelWidth);
         this.chromLabelWidthAccessor = field(params.chromLabelWidth);
+        this.setFadeDistance = (/** @type {number} */ value) =>
+            view.paramRuntime.setValue(params.fadeDistanceParam, value);
 
         /** @type {import("../flowNode.js").Datum[]} */
         this.data = [];
@@ -65,6 +67,7 @@ export default class FilterLocusAxisLabelsTransform extends Transform {
                 this.resolution.getScale()
             );
         const genome = scale.genome();
+        let fadeDistance;
 
         for (const datum of this.data) {
             const chromosome = genome.getChromosome(datum.chromLabel);
@@ -79,18 +82,35 @@ export default class FilterLocusAxisLabelsTransform extends Transform {
                 this.labelWidthAccessor(datum),
                 this.params.labelAlign
             );
+            const chromosomeStart =
+                scale(chromosome.continuousStart) * axisLength;
+            const chromosomeEnd = scale(chromosome.continuousEnd) * axisLength;
             const chromosomeBounds = getRangedLabelBounds(
-                scale(chromosome.continuousStart) * axisLength,
-                scale(chromosome.continuousEnd) * axisLength,
+                chromosomeStart,
+                chromosomeEnd,
                 this.chromLabelWidthAccessor(datum),
                 this.params.chromLabelPadding,
                 this.params.chromLabelAlign,
                 axisLength
             );
 
+            if (
+                Math.min(chromosomeStart, chromosomeEnd) <= 0 &&
+                Math.max(chromosomeStart, chromosomeEnd) >= 0
+            ) {
+                fadeDistance =
+                    chromosomeBounds[0] <= this.params.chromLabelPadding
+                        ? chromosomeBounds[1] + this.params.chromLabelPadding
+                        : -Infinity;
+            }
+
             if (!boundsOverlap(numericBounds, chromosomeBounds)) {
                 this._propagate(datum);
             }
+        }
+
+        if (fadeDistance !== undefined) {
+            this.setFadeDistance(fadeDistance);
         }
 
         super.complete();

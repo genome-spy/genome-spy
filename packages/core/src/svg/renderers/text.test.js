@@ -439,4 +439,34 @@ describe("SVG text renderer", () => {
         ]);
         expect(warnings).toEqual([]);
     });
+
+    test("resolves the current expression-backed edge fade", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "fadeDistance", value: -5 }],
+            data: { values: [{ label: "Label" }] },
+            mark: {
+                type: "text",
+                viewportEdgeFadeWidthLeft: 20,
+                viewportEdgeFadeDistanceLeft: { expr: "fadeDistance" },
+            },
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                text: { field: "label" },
+                color: { value: "black" },
+            },
+        });
+
+        const renderGradient = () =>
+            createSvg({
+                viewRoot: view,
+                logicalWidth: 100,
+                logicalHeight: 50,
+                background: null,
+            }).svg.querySelector("linearGradient");
+
+        expect(renderGradient()?.getAttribute("x1")).toBe("-5");
+        view.paramRuntime.setValue("fadeDistance", 10);
+        expect(renderGradient()?.getAttribute("x1")).toBe("10");
+    });
 });
