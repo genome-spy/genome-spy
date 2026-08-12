@@ -127,12 +127,6 @@ export default class AxisTickSource extends SingleAxisLazySource {
 
                     if (genome) {
                         const chromosome = genome.toChromosome(tick);
-                        if (!chromosome) {
-                            throw new Error(
-                                "Locus axis tick is outside the genome: " + tick
-                            );
-                        }
-
                         return { ...datum, chromLabel: chromosome.name };
                     } else {
                         return datum;

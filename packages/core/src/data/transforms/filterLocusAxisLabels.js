@@ -86,12 +86,6 @@ export default class FilterLocusAxisLabelsTransform extends Transform {
 
         for (const datum of this.data) {
             const chromosome = genome.getChromosome(datum.chromLabel);
-            if (!chromosome) {
-                throw new Error(
-                    "Unknown chromosome on locus axis: " + datum.chromLabel
-                );
-            }
-
             const numericBounds = getPointLabelBounds(
                 scale(datum.value) * axisLength,
                 this.labelWidthAccessor(datum),
