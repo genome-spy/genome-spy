@@ -251,7 +251,7 @@ describe("AxisTickSource", () => {
         ]);
     });
 
-    test("responds to domain events after activation and load", async () => {
+    test("does not propagate unchanged ticks on domain events", async () => {
         const { getDomainListener, view } = createViewStub({
             axisLength: 160,
         });
@@ -263,14 +263,18 @@ describe("AxisTickSource", () => {
             },
             /** @type {any} */ (view)
         );
+        const collector = new Collector();
+        source.addChild(collector);
         const onDomainChangedSpy = vi.spyOn(source, "onDomainChanged");
 
         source.activate();
         await source.load();
         onDomainChangedSpy.mockClear();
+        const resetSpy = vi.spyOn(collector, "reset");
         getDomainListener()?.();
 
         expect(onDomainChangedSpy).toHaveBeenCalledOnce();
+        expect(resetSpy).not.toHaveBeenCalled();
     });
 
     test("removes domain listeners on dispose", () => {
