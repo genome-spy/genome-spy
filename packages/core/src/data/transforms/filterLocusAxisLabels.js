@@ -32,6 +32,17 @@ export default class FilterLocusAxisLabelsTransform extends Transform {
         /** @type {import("../flowNode.js").Datum[]} */
         this.data = [];
 
+        /** @type {import("../flowNode.js").Datum[]} */
+        this.nextOutputData = [];
+
+        /**
+         * Published locus tick datums are uniquely identified by `value`.
+         * @type {Set<import("../../spec/channel.js").Scalar>}
+         */
+        this.outputValueSet = new Set();
+
+        this.hasPublished = false;
+
         this.resolution = view.getScaleResolution(this.channel);
         const filterAndPropagate = () => this.filterAndPropagate();
         this.schedule = () =>
@@ -53,17 +64,21 @@ export default class FilterLocusAxisLabelsTransform extends Transform {
             this.filterAndPropagate();
         } else {
             this.schedule();
-            super.complete();
+            if (this.hasPublished) {
+                this.completed = true;
+            } else {
+                this.propagateIfChanged();
+            }
         }
     }
 
     filterAndPropagate() {
-        super.reset();
-
         const axisLength = this.resolution.getAxisLength();
         if (!axisLength) {
             return;
         }
+
+        this.nextOutputData.length = 0;
 
         const scale =
             /** @type {import("../../genome/scaleLocus.js").ScaleLocus} */ (
@@ -108,7 +123,7 @@ export default class FilterLocusAxisLabelsTransform extends Transform {
             }
 
             if (!boundsOverlap(numericBounds, chromosomeBounds)) {
-                this._propagate(datum);
+                this.nextOutputData.push(datum);
             }
         }
 
@@ -116,12 +131,41 @@ export default class FilterLocusAxisLabelsTransform extends Transform {
             this.setFadeDistance(fadeDistance);
         }
 
-        super.complete();
+        this.propagateIfChanged();
+    }
+
+    propagateIfChanged() {
+        const changed =
+            !this.hasPublished ||
+            this.nextOutputData.length != this.outputValueSet.size ||
+            this.nextOutputData.some(
+                (datum) => !this.outputValueSet.has(datum.value)
+            );
+
+        if (changed) {
+            this.outputValueSet.clear();
+            for (const datum of this.nextOutputData) {
+                this.outputValueSet.add(datum.value);
+            }
+
+            super.reset();
+            for (const datum of this.nextOutputData) {
+                this._propagate(datum);
+            }
+            this.hasPublished = true;
+            super.complete();
+        } else {
+            this.completed = true;
+        }
+
+        this.nextOutputData.length = 0;
     }
 
     reset() {
-        super.reset();
-        this.data = [];
+        // Keep descendants intact until the replacement output set is known.
+        this.completed = false;
+        this.data.length = 0;
+        this.nextOutputData.length = 0;
     }
 
     /** @param {import("../flowNode.js").Datum} datum */

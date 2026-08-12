@@ -192,6 +192,30 @@ describe("FilterLocusAxisLabelsTransform", () => {
         ]);
     });
 
+    test("preserves published output while axis length is unavailable", () => {
+        const { collector, resolution, transform, view } = createFixture();
+        const ticks = [tick(350, 120)];
+        propagate(transform, view, ticks);
+        const resetSpy = vi.spyOn(collector, "reset");
+        const completeSpy = vi.spyOn(collector, "complete");
+
+        resolution.axisLength = 0;
+        transform.reset();
+        for (const datum of ticks) {
+            transform.handle(datum);
+        }
+        transform.complete();
+
+        expect(resetSpy).not.toHaveBeenCalled();
+        expect(completeSpy).not.toHaveBeenCalled();
+        expect([...collector.getData()]).toEqual(ticks);
+
+        resolution.axisLength = 500;
+        view.flushTransitions();
+        expect(resetSpy).not.toHaveBeenCalled();
+        expect(completeSpy).not.toHaveBeenCalled();
+    });
+
     test("a long chromosome label culls several numeric labels", () => {
         const { collector, transform, view } = createFixture();
         propagate(
@@ -248,6 +272,49 @@ describe("FilterLocusAxisLabelsTransform", () => {
         resolution.emitDomain();
         expect([...collector.getData()]).toHaveLength(0);
         expect(filterSpy).toHaveBeenCalledTimes(3);
+    });
+
+    test("does not propagate when the output value set is unchanged", () => {
+        const { collector, resolution, transform, view } = createFixture();
+        const ticks = [tick(350, 120), tick(450, 120)];
+        propagate(transform, view, ticks);
+
+        const resetSpy = vi.spyOn(collector, "reset");
+        const handleSpy = vi.spyOn(collector, "handle");
+        const completeSpy = vi.spyOn(collector, "complete");
+
+        resolution.emitDomain();
+        view.emit("layoutComputed");
+        view.flushTransitions();
+
+        transform.reset();
+        propagate(
+            transform,
+            view,
+            ticks.toReversed().map((datum) => ({ ...datum }))
+        );
+
+        expect(resetSpy).not.toHaveBeenCalled();
+        expect(handleSpy).not.toHaveBeenCalled();
+        expect(completeSpy).not.toHaveBeenCalled();
+        expect([...collector.getData()]).toEqual(ticks);
+    });
+
+    test("propagates when the output value set changes", () => {
+        const { collector, resolution, transform, view } = createFixture();
+        propagate(transform, view, [tick(300, 160)]);
+        const resetSpy = vi.spyOn(collector, "reset");
+        const completeSpy = vi.spyOn(collector, "complete");
+
+        resolution.axisLength = 1000;
+        view.emit("layoutComputed");
+        view.flushTransitions();
+
+        expect(resetSpy).toHaveBeenCalledOnce();
+        expect(completeSpy).toHaveBeenCalledOnce();
+        expect([...collector.getData()].map((datum) => datum.value)).toEqual([
+            300,
+        ]);
     });
 
     test("publishes the leading label extent without re-entering", () => {
