@@ -1,0 +1,55 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "description": "Comparison of automatic axis label overlap removal and disabled overlap removal.",
+
+  "data": {
+    "values": [{ "value": 0 }, { "value": 800000000 }]
+  },
+
+  "vconcat": [
+    {
+      "title": "Automatic overlap removal",
+      "width": 400,
+      "height": 50,
+      "mark": "point",
+      "encoding": {
+        "x": {
+          "field": "value",
+          "type": "quantitative",
+          "scale": { "domain": [0, 800000000] },
+          "axis": {
+            "values": [
+              0, 100000000, 200000000, 300000000, 400000000, 500000000,
+              600000000, 700000000, 800000000
+            ],
+            "tickCount": 20,
+            "format": ",d"
+          }
+        }
+      }
+    },
+
+    {
+      "title": "Overlap removal disabled",
+      "width": 400,
+      "height": 50,
+      "mark": "point",
+      "encoding": {
+        "x": {
+          "field": "value",
+          "type": "quantitative",
+          "scale": { "domain": [0, 800000000] },
+          "axis": {
+            "values": [
+              0, 100000000, 200000000, 300000000, 400000000, 500000000,
+              600000000, 700000000, 800000000
+            ],
+            "tickCount": 20,
+            "format": ",d",
+            "labelOverlap": false
+          }
+        }
+      }
+    }
+  ]
+}
