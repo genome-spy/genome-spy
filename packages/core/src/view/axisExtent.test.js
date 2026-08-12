@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import Rectangle from "./layout/rectangle.js";
 import ViewRenderingContext from "./renderingContext/viewRenderingContext.js";
@@ -12,6 +12,7 @@ import {
 import { VIEW_ROOT_NAME } from "./viewFactory.js";
 import { checkForDuplicateScaleNames } from "./viewUtils.js";
 import { initializeViewData } from "../genomeSpy/viewDataInit.js";
+import { getTextHeight } from "../fonts/textMetrics.js";
 
 /**
  * @typedef {import("./testUtils.js").BroadcastingViewContext} BroadcastingViewContext
@@ -267,6 +268,58 @@ describe("Axis extent measurement", () => {
             fontWeight: "bold",
             fontSize: axis.axisProps.labelFontSize,
         });
+    });
+
+    test("axis extent uses the font loaded by the text mark", async () => {
+        const context = createBroadcastingTestViewContext();
+        const defaultFont = context.fontManager.getDefaultFont();
+        const metrics = {
+            ...defaultFont.metrics,
+            capHeight: defaultFont.metrics.common.base * 2,
+            descent: 0,
+        };
+        const configuredFont = { ...defaultFont, metrics };
+        vi.spyOn(context.fontManager, "getFont").mockReturnValue(
+            configuredFont
+        );
+
+        const root = await createAndInitializeRoot(
+            {
+                data: {
+                    values: [{ category: "Alpha", value: 1 }],
+                },
+                config: {
+                    text: { font: "Configured font" },
+                },
+                mark: "rect",
+                encoding: {
+                    x: {
+                        field: "category",
+                        type: "nominal",
+                        axis: { labelAngle: 0, title: null },
+                    },
+                    y: { field: "value", type: "quantitative" },
+                    y2: { value: 0 },
+                },
+            },
+            context
+        );
+
+        const axis = findAxisView(root, "bottom");
+        const textMark = /** @type {import("../marks/text.js").default} */ (
+            findLabelsView(axis).mark
+        );
+
+        await settleLayout(root, context);
+
+        const expectedLabelExtent = Math.ceil(
+            getTextHeight(metrics, Number(textMark.properties.size))
+        );
+        expect(axis.getPerpendicularSize()).toBe(
+            axis.axisProps.tickSize +
+                axis.axisProps.labelPadding +
+                expectedLabelExtent
+        );
     });
 
     test("locus axis measures both labels with their rendered fonts", async () => {

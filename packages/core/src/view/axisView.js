@@ -318,7 +318,6 @@ export default class AxisView extends LayerView {
 
         const measuredLabelExtent = getMeasuredLabelExtent(
             this.axisProps,
-            this.context,
             this.#labelsView
         );
         if (measuredLabelExtent === undefined) {
@@ -408,10 +407,9 @@ function clampAxisExtent(axisProps, extent) {
 
 /**
  * @param {Axis} axisProps
- * @param {import("../types/viewContext.js").default} context
  * @param {UnitView | undefined} labelsView
  */
-function getMeasuredLabelExtent(axisProps, context, labelsView) {
+function getMeasuredLabelExtent(axisProps, labelsView) {
     const collector = labelsView?.getCollector();
     if (!collector?.completed) {
         return undefined;
@@ -422,23 +420,18 @@ function getMeasuredLabelExtent(axisProps, context, labelsView) {
         maxWidth = Math.max(maxWidth, Number(datum[LABEL_WIDTH_FIELD]) || 0);
     });
 
-    const font = axisProps.labelFont
-        ? context.fontManager.getFont(
-              axisProps.labelFont,
-              /** @type {import("../spec/font.js").FontStyle | undefined} */ (
-                  axisProps.labelFontStyle
-              ),
-              /** @type {import("../spec/font.js").FontWeight | undefined} */ (
-                  axisProps.labelFontWeight
-              )
-          )
-        : context.fontManager.getDefaultFont();
-    const metrics = font.metrics;
+    const textMark = /** @type {import("../marks/text.js").default} */ (
+        labelsView.mark
+    );
+    const metrics = textMark.font.metrics;
     if (!metrics) {
         return undefined;
     }
 
-    const labelHeight = getTextHeight(metrics, axisProps.labelFontSize);
+    const labelHeight = getTextHeight(
+        metrics,
+        Number(textMark.properties.size)
+    );
     const perpendicularExtent = getProjectedTextExtent(
         { width: maxWidth, height: labelHeight },
         axisProps.labelAngle,
