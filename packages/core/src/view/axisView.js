@@ -158,6 +158,7 @@ export default class AxisView extends LayerView {
      */
     constructor(axisProps, type, context, layoutParent, dataParent, options) {
         const channel = orient2channel(axisProps.orient);
+        const zoomable = dataParent.getScaleResolution(channel).isZoomable();
         const configuredDefaults = getConfiguredAxisDefaults(
             dataParent.getConfigScopes(),
             {
@@ -196,10 +197,11 @@ export default class AxisView extends LayerView {
 
         super(
             genomeAxis
-                ? createGenomeAxis(fullAxisProps, type, textDefaults)
+                ? createGenomeAxis(fullAxisProps, type, textDefaults, zoomable)
                 : createAxis(
                       fullAxisProps,
                       type,
+                      zoomable,
                       options?.labelClipPolicy ?? "pixel",
                       textDefaults
                   ),
@@ -540,16 +542,17 @@ function getLabelOverlap(type, axisProps) {
 /**
  * @param {string} type
  * @param {Axis} axisProps
+ * @param {boolean} zoomable
  * @returns {false | number}
  */
-function getLabelFlush(type, axisProps) {
+function getLabelFlush(type, axisProps, zoomable) {
     const supportedAngle = axisProps.labelAngle % 90 == 0;
     const configured = axisProps.labelFlush;
 
     if (configured === undefined) {
         return orient2channel(axisProps.orient) == "x" &&
             isContinuousAxisType(type) &&
-            type != "locus" &&
+            !zoomable &&
             supportedAngle
             ? 1
             : false;
@@ -586,6 +589,7 @@ function isContinuousAxisType(type) {
 /**
  * @param {Axis} axisProps
  * @param {string} type
+ * @param {boolean} zoomable
  * @param {"pixel" | "anchor"} labelClipPolicy
  * @param {Record<string, any>} [textDefaults]
  * @param {{
@@ -598,6 +602,7 @@ function isContinuousAxisType(type) {
 function createAxis(
     axisProps,
     type,
+    zoomable,
     labelClipPolicy = "pixel",
     textDefaults = {},
     chromLabelLayout
@@ -613,7 +618,7 @@ function createAxis(
         textDefaults
     );
     const labelOverlap = getLabelOverlap(type, ap);
-    const labelFlush = getLabelFlush(type, ap);
+    const labelFlush = getLabelFlush(type, ap, zoomable);
     const layoutLabels =
         !!chromLabelLayout || !!labelOverlap || labelFlush !== false;
 
@@ -872,9 +877,15 @@ function createAxis(
  * @param {GenomeAxis} axisProps
  * @param {string} type
  * @param {Record<string, any>} [textDefaults]
+ * @param {boolean} [zoomable]
  * @returns {LayerSpec}
  */
-export function createGenomeAxis(axisProps, type, textDefaults = {}) {
+export function createGenomeAxis(
+    axisProps,
+    type,
+    textDefaults = {},
+    zoomable = true
+) {
     const ap = axisProps;
     const chromLabelTextStyle = resolveTextStyle(
         ap.chromLabelFont,
@@ -1006,6 +1017,7 @@ export function createGenomeAxis(axisProps, type, textDefaults = {}) {
             // TODO: Allow the user to override fixedAxisProps
         },
         type,
+        zoomable,
         "pixel",
         textDefaults,
         axisProps.chromLabels ? chromLabelLayout : undefined

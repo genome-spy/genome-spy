@@ -48,8 +48,9 @@ function findUnitView(axisView, name) {
  * @param {import("../spec/axis.js").AxisOrient} orient
  * @param {import("../spec/axis.js").Axis} axis
  * @param {import("../spec/channel.js").Type} [type]
+ * @param {boolean} [zoom]
  */
-async function createAxis(orient, axis, type = "quantitative") {
+async function createAxis(orient, axis, type = "quantitative", zoom) {
     const channel = orient === "left" || orient === "right" ? "y" : "x";
     const disabledChannel = channel === "x" ? "y" : "x";
     const { view } = await createHeadlessViewHierarchy(
@@ -65,6 +66,7 @@ async function createAxis(orient, axis, type = "quantitative") {
                 [channel]: {
                     field: channel,
                     type,
+                    ...(zoom === undefined ? {} : { scale: { zoom } }),
                     axis: {
                         orient,
                         ...axis,
@@ -137,7 +139,7 @@ function readCoord(coords, key) {
 }
 
 describe("axis placement", () => {
-    test("uses Vega-Lite-style label layout defaults for continuous x axes", async () => {
+    test("flushes non-zoomable quantitative x axes by default", async () => {
         const axis = await createAxis("bottom", {});
         const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
         const labels = findUnitView(axis, "labels_main");
@@ -160,6 +162,32 @@ describe("axis placement", () => {
         expect(labels.spec.transform).toEqual([
             { type: "filter", expr: "datum.labelVisible" },
         ]);
+    });
+
+    test("does not flush a zoomable index x axis by default", async () => {
+        const axis = await createAxis("bottom", {}, "index");
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: false,
+            })
+        );
+        expect(labels.spec.encoding.xOffset).toBeUndefined();
+    });
+
+    test("flushes a non-zoomable locus x axis by default", async () => {
+        const axis = await createAxis("bottom", {}, "locus", false);
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: 1,
+            })
+        );
     });
 
     test("does not remove discrete labels by default", async () => {

@@ -446,10 +446,10 @@ export interface BaseAxis {
      * distance threshold in pixels. `true` uses a threshold of one pixel.
      *
      * Flushing is supported for quantitative, index, and locus axes. By
-     * default, it is enabled for quantitative and index x axes and disabled
-     * for other supported axes, including locus axes. Flushing supports label
-     * angles that are multiples of 90 degrees. The automatic behavior is
-     * disabled at other angles.
+     * default, it is enabled for non-zoomable x axes of these types and
+     * disabled for zoomable scales and y axes. Flushing supports label angles
+     * that are multiples of 90 degrees. The automatic behavior is disabled at
+     * other angles.
      */
     labelFlush?: boolean | number;
 

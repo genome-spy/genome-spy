@@ -104,13 +104,13 @@ values are omitted. `extraValues` is ignored on discrete scales and when
 Use `format` to format numeric labels with a
 [d3-format](https://github.com/d3/d3-format#locale_format) specifier.
 
-Quantitative and index x axes align labels at the scale-range endpoints flush
-with the plot edges. Set `labelFlush` to `false` to disable this behavior. A
-numeric value sets the pixel threshold for deciding whether a label is near an
-endpoint; `true` uses one pixel. Use `labelFlushOffset` to move flushed labels
-outward from their endpoints. Flushing is supported on quantitative, index, and
-locus axes. Other supported axes, including locus and y axes, are not flushed by
-default.
+Non-zoomable quantitative, index, and locus x axes align labels at the
+scale-range endpoints flush with the plot edges. Flushing is disabled by
+default on zoomable scales because labels would jump when their anchors cross
+the endpoint threshold during zooming. Set `labelFlush` explicitly to override
+the default. A numeric value sets the endpoint threshold in pixels; `true` uses
+one pixel. Use `labelFlushOffset` to move flushed labels outward from their
+endpoints. Flushing is disabled by default on y axes.
 
 GenomeSpy automatically removes overlapping labels from continuous axes. It
 uses regular parity reduction for continuous scales and greedy reduction for
