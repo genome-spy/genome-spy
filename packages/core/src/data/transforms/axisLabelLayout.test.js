@@ -2,9 +2,10 @@ import { describe, expect, test, vi } from "vitest";
 
 import Collector from "../collector.js";
 import Genome from "../../genome/genome.js";
-import FilterLocusAxisLabelsTransform, {
+import AxisLabelLayoutTransform, {
+    getAxisLabelBounds,
     getRangedLabelBounds,
-} from "./filterLocusAxisLabels.js";
+} from "./axisLabelLayout.js";
 
 class FakeScaleResolution {
     /** @type {Set<() => void>} */
@@ -21,6 +22,7 @@ class FakeScaleResolution {
         const scale = (/** @type {number} */ value) =>
             (value - this.domain[0]) / (this.domain[1] - this.domain[0]);
         scale.genome = () => this.genome;
+        scale.type = "linear";
         this.scale = scale;
     }
 
@@ -103,24 +105,38 @@ class FakeView {
  * @param {object} [options]
  * @param {{ name: string, size: number }[]} [options.contigs]
  * @param {"left" | "center" | "right"} [options.chromLabelAlign]
+ * @param {boolean} [options.chromLabels]
+ * @param {false | "auto" | "parity" | "greedy"} [options.labelOverlap]
  */
 function createFixture({
     contigs = [{ name: "long_contig_name", size: 1000 }],
     chromLabelAlign = "left",
+    chromLabels = true,
+    labelOverlap = false,
 } = {}) {
     const genome = new Genome({ name: "custom", contigs });
     const resolution = new FakeScaleResolution(genome);
     const view = new FakeView(resolution);
-    const transform = new FilterLocusAxisLabelsTransform(
+    const transform = new AxisLabelLayoutTransform(
         {
-            type: "filterLocusAxisLabels",
+            type: "axisLabelLayout",
             channel: "x",
             labelWidth: "labelWidth",
-            chromLabelWidth: "chromLabelWidth",
+            labelFontSize: 10,
+            labelAngle: 0,
             labelAlign: "center",
-            chromLabelAlign,
-            chromLabelPadding: 4,
-            labelSpacing: 5,
+            labelBaseline: "top",
+            labelOverlap,
+            labelSeparation: 0,
+            labelVisible: "labelVisible",
+            ...(chromLabels
+                ? {
+                      chromLabelWidth: "chromLabelWidth",
+                      chromLabelAlign,
+                      chromLabelPadding: 4,
+                      chromLabelSpacing: 5,
+                  }
+                : {}),
         },
         /** @type {any} */ (view)
     );
@@ -131,7 +147,7 @@ function createFixture({
 }
 
 /**
- * @param {FilterLocusAxisLabelsTransform} transform
+ * @param {AxisLabelLayoutTransform} transform
  * @param {FakeView} view
  * @param {any[]} data
  */
@@ -147,18 +163,24 @@ function propagate(transform, view, data) {
  * @param {number} value
  * @param {number} chromLabelWidth
  * @param {string} [chromLabel]
+ * @param {number} [labelWidth]
  */
-function tick(value, chromLabelWidth, chromLabel = "long_contig_name") {
+function tick(
+    value,
+    chromLabelWidth,
+    chromLabel = "long_contig_name",
+    labelWidth = 20
+) {
     return {
         value,
         label: String(value),
         chromLabel,
-        labelWidth: 20,
+        labelWidth,
         chromLabelWidth,
     };
 }
 
-describe("FilterLocusAxisLabelsTransform", () => {
+describe("AxisLabelLayoutTransform", () => {
     test("publishes the filtered batch synchronously on completion", () => {
         const { collector, transform, view } = createFixture();
 
@@ -324,6 +346,83 @@ describe("FilterLocusAxisLabelsTransform", () => {
         ]);
     });
 
+    test("reacts when subtle zoom changes label visibility but not tick values", () => {
+        const { collector, resolution, transform, view } = createFixture({
+            chromLabels: false,
+            labelOverlap: "parity",
+        });
+        resolution.axisLength = 100;
+        const ticks = [200, 500, 800].map((value) =>
+            tick(value, 0, undefined, 20)
+        );
+        propagate(transform, view, ticks);
+
+        expect(
+            [...collector.getData()].map((datum) => datum.labelVisible)
+        ).toEqual([true, true, true]);
+        const resetSpy = vi.spyOn(collector, "reset");
+
+        // No new tick batch is propagated; only the scale domain changes.
+        resolution.domain = [0, 2000];
+        resolution.emitDomain();
+
+        expect(resetSpy).toHaveBeenCalledOnce();
+        expect([...collector.getData()].map((datum) => datum.value)).toEqual([
+            200, 500, 800,
+        ]);
+        expect(
+            [...collector.getData()].map((datum) => datum.labelVisible)
+        ).toEqual([true, false, true]);
+    });
+
+    test("removes chromosome conflicts before ordinary overlap reduction", () => {
+        const { collector, transform, view } = createFixture({
+            labelOverlap: "parity",
+        });
+        const ticks = [
+            ...[50, 150, 230].map((value) => tick(value, 120)),
+            ...[350, 370, 390].map((value) => tick(value, 120, undefined, 30)),
+        ];
+        propagate(transform, view, ticks);
+
+        expect([...collector.getData()].map((datum) => datum.value)).toEqual([
+            350, 370, 390,
+        ]);
+        expect(
+            [...collector.getData()].map((datum) => datum.labelVisible)
+        ).toEqual([true, false, true]);
+    });
+
+    test("rejects overlap removal for non-axis-aligned labels", () => {
+        expect(
+            () =>
+                new AxisLabelLayoutTransform(
+                    {
+                        type: "axisLabelLayout",
+                        channel: "x",
+                        labelWidth: "labelWidth",
+                        labelFontSize: 10,
+                        labelAngle: 45,
+                        labelAlign: "center",
+                        labelBaseline: "top",
+                        labelOverlap: "parity",
+                        labelSeparation: 0,
+                        labelVisible: "labelVisible",
+                    },
+                    /** @type {any} */ (
+                        new FakeView(
+                            new FakeScaleResolution(
+                                new Genome({
+                                    name: "custom",
+                                    contigs: [{ name: "chr1", size: 1000 }],
+                                })
+                            )
+                        )
+                    )
+                )
+        ).toThrow(/axis-aligned/);
+    });
+
     test("disposes its domain and layout listeners", () => {
         const { resolution, transform, view } = createFixture();
         expect(resolution.domainListeners.size).toBe(1);
@@ -333,6 +432,20 @@ describe("FilterLocusAxisLabelsTransform", () => {
 
         expect(resolution.domainListeners.size).toBe(0);
         expect(view.broadcastHandlers.get("layoutComputed").size).toBe(0);
+    });
+});
+
+describe("getAxisLabelBounds", () => {
+    test("uses measured width along a horizontal unrotated axis", () => {
+        expect(
+            getAxisLabelBounds(100, 40, 10, 0, "x", "center", "top")
+        ).toEqual([80, 120]);
+    });
+
+    test("uses measured width along a vertical quarter-turned axis", () => {
+        expect(
+            getAxisLabelBounds(100, 40, 10, 90, "y", "left", "middle")
+        ).toEqual([60, 100]);
     });
 });
 

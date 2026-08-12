@@ -7,7 +7,7 @@ import {
     NamedData,
     UrlData,
 } from "./data.js";
-import { FontStyle, FontWeight } from "./font.js";
+import { Baseline, FontStyle, FontWeight } from "./font.js";
 import { ExprRef } from "./parameter.js";
 
 /**
@@ -1039,16 +1039,22 @@ export interface FilterScoredLabelsParams extends TransformParamsBase {
     channel?: "x" | "y";
 }
 
-/** Parameters for GenomeSpy's generated locus-axis label pipeline. */
-export interface FilterLocusAxisLabelsParams extends TransformParamsBase {
-    type: "filterLocusAxisLabels";
+/** Parameters for GenomeSpy's generated axis-label layout pipeline. */
+export interface AxisLabelLayoutParams extends TransformParamsBase {
+    type: "axisLabelLayout";
     channel: PrimaryPositionalChannel;
     labelWidth: Field;
-    chromLabelWidth: Field;
+    labelFontSize: number;
+    labelAngle: number;
     labelAlign: "left" | "center" | "right";
-    chromLabelAlign: "left" | "center" | "right";
-    chromLabelPadding: number;
-    labelSpacing: number;
+    labelBaseline: Baseline;
+    labelOverlap: false | "auto" | "parity" | "greedy";
+    labelSeparation: number;
+    labelVisible: string;
+    chromLabelWidth?: Field;
+    chromLabelAlign?: "left" | "center" | "right";
+    chromLabelPadding?: number;
+    chromLabelSpacing?: number;
 }
 
 export interface Displace1DParams extends TransformParamsBase {
@@ -1133,7 +1139,7 @@ export type TransformParams =
     | FormulaParams
     | LookupParams
     | FilterParams
-    | FilterLocusAxisLabelsParams
+    | AxisLabelLayoutParams
     | FilterScoredLabelsParams
     | FlattenParams
     | FlattenCompressedExonsParams

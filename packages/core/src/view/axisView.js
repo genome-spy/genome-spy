@@ -13,6 +13,7 @@ const LABELS_LAYER_NAME = "labels_main";
 const TICKS_AND_LABELS_LAYER_NAME = "ticks_and_labels";
 const AXIS_EXTENT_PARAM = "axisExtent";
 const LABEL_WIDTH_FIELD = "labelWidth";
+const LABEL_VISIBLE_FIELD = "labelVisible";
 const CHROM_LABEL_WIDTH_FIELD = "chromLabelWidth";
 const CHROM_LABEL_RANGE_PADDING = 4;
 const CHROM_LABEL_TICK_SPACING = 5;
@@ -627,14 +628,20 @@ function createAxis(
                 fontWeight: style.fontWeight,
             });
             transform.push({
-                type: "filterLocusAxisLabels",
+                type: "axisLabelLayout",
                 channel: main,
                 labelWidth: LABEL_WIDTH_FIELD,
+                labelFontSize: labelTextStyle.size,
+                labelAngle: ap.labelAngle,
                 chromLabelWidth: CHROM_LABEL_WIDTH_FIELD,
                 labelAlign: ap.labelAlign,
+                labelBaseline: ap.labelBaseline,
+                labelOverlap: false,
+                labelSeparation: 0,
+                labelVisible: LABEL_VISIBLE_FIELD,
                 chromLabelAlign: chromLabelLayout.align,
                 chromLabelPadding: chromLabelLayout.padding,
-                labelSpacing: CHROM_LABEL_TICK_SPACING,
+                chromLabelSpacing: CHROM_LABEL_TICK_SPACING,
             });
         }
 
