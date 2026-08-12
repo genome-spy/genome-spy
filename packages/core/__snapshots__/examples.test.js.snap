@@ -1049,6 +1049,45 @@ exports[`shared examples > initializes examples/core/genomic/bedpeColumns.json 1
 }
 `;
 
+exports[`shared examples > initializes examples/core/genomic/longChromosomeNames.json 1`] = `
+{
+  "assemblies": [
+    "long-names",
+  ],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
 exports[`shared examples > initializes examples/core/layout/grid/complex_grid_layout.json 1`] = `
 {
   "assemblies": [],

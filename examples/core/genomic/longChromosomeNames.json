@@ -1,0 +1,43 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Locus axis with long chromosome and contig names.",
+
+  "genomes": {
+    "long-names": {
+      "contigs": [
+        { "name": "chr22", "size": 120000000 },
+        { "name": "HAMBI_2443_chromosome_circ", "size": 180000000 },
+        { "name": "decoy_sequence_with_a_long_name", "size": 100000000 }
+      ]
+    }
+  },
+  "assembly": "long-names",
+
+  "width": 900,
+  "height": 80,
+
+  "data": {
+    "values": [
+      { "chrom": "chr22", "start": 0, "end": 120000000 },
+      {
+        "chrom": "HAMBI_2443_chromosome_circ",
+        "start": 0,
+        "end": 180000000
+      },
+      {
+        "chrom": "decoy_sequence_with_a_long_name",
+        "start": 0,
+        "end": 100000000
+      }
+    ]
+  },
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
+    "x2": { "chrom": "chrom", "pos": "end" },
+    "color": { "field": "chrom", "type": "nominal", "legend": null }
+  }
+}
