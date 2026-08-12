@@ -8,8 +8,9 @@ import AxisTickSource from "./axisTickSource.js";
  * @param {object} options
  * @param {number} options.axisLength
  * @param {string} [options.scaleType]
+ * @param {import("../../../genome/genome.js").default} [options.genome]
  */
-function createViewStub({ axisLength, scaleType = "linear" }) {
+function createViewStub({ axisLength, scaleType = "linear", genome }) {
     /** @type {(() => void) | undefined} */
     let lastDomainListener;
 
@@ -20,6 +21,9 @@ function createViewStub({ axisLength, scaleType = "linear" }) {
     scale.ticks = (/** @type {number | undefined} */ count) =>
         Array.from({ length: count ?? 10 }, (_, index) => index);
     scale.tickFormat = () => (/** @type {number} */ value) => String(value);
+    if (genome) {
+        scale.genome = () => genome;
+    }
 
     const scaleResolution = {
         addEventListener: (
@@ -111,6 +115,53 @@ describe("AxisTickSource", () => {
 
         expect([...collector.getData()].map((datum) => datum.value)).toEqual([
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+        ]);
+    });
+
+    test("adds chromosome labels only to locus ticks", async () => {
+        const genome = /** @type {any} */ ({
+            toChromosome: (/** @type {number} */ value) => ({
+                name: value < 2 ? "long_contig_name" : "chr2",
+            }),
+        });
+        const { view: locusView } = createViewStub({
+            axisLength: 100,
+            scaleType: "locus",
+            genome,
+        });
+        const locusSource = new AxisTickSource(
+            {
+                type: "axisTicks",
+                channel: "x",
+                axis: { values: [1, 2] },
+            },
+            /** @type {any} */ (locusView)
+        );
+        const locusCollector = new Collector();
+        locusSource.addChild(locusCollector);
+
+        const { view: linearView } = createViewStub({ axisLength: 100 });
+        const linearSource = new AxisTickSource(
+            {
+                type: "axisTicks",
+                channel: "x",
+                axis: { values: [1, 2] },
+            },
+            /** @type {any} */ (linearView)
+        );
+        const linearCollector = new Collector();
+        linearSource.addChild(linearCollector);
+
+        await locusSource.load();
+        await linearSource.load();
+
+        expect([...locusCollector.getData()]).toEqual([
+            { value: 1, label: "1", chromLabel: "long_contig_name" },
+            { value: 2, label: "2", chromLabel: "chr2" },
+        ]);
+        expect([...linearCollector.getData()]).toEqual([
+            { value: 1, label: "1" },
+            { value: 2, label: "2" },
         ]);
     });
 

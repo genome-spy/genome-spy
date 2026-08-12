@@ -112,8 +112,26 @@ export default class AxisTickSource extends SingleAxisLazySource {
             this.ticks = ticks;
 
             const format = tickFormat(scale, requestedCount, axisParams.format);
+            const genome =
+                scale.type == "locus"
+                    ? /** @type {import("../../../genome/scaleLocus.js").ScaleLocus} */ (
+                          scale
+                      ).genome()
+                    : undefined;
             this.publishData([
-                ticks.map((tick) => ({ value: tick, label: format(tick) })),
+                ticks.map((tick) => {
+                    const datum = {
+                        value: tick,
+                        label: format(tick),
+                    };
+
+                    if (genome) {
+                        const chromosome = genome.toChromosome(tick);
+                        return { ...datum, chromLabel: chromosome.name };
+                    } else {
+                        return datum;
+                    }
+                }),
             ]);
         }
     }

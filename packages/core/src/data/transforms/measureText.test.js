@@ -52,6 +52,38 @@ test("MeasureTextTransform uses configured font metrics", () => {
     ]);
 });
 
+test("MeasureTextTransform preserves style when using the default family", () => {
+    const provider = makeParamRuntimeProvider();
+    const getFont = vi.fn(() => ({
+        texture: /** @type {WebGLTexture | undefined} */ (undefined),
+        metrics: /** @type {any} */ ({ measureWidth: () => 10 }),
+    }));
+    provider.context = /** @type {any} */ ({
+        fontManager: {
+            getFont,
+            getDefaultFont: () => {
+                throw new Error("Style-aware font lookup must be used.");
+            },
+        },
+    });
+
+    const transform = new MeasureTextTransform(
+        {
+            type: "measureText",
+            field: "label",
+            fontStyle: "italic",
+            fontWeight: "bold",
+            fontSize: 5,
+            as: "width",
+        },
+        provider
+    );
+
+    transform.initialize();
+
+    expect(getFont).toHaveBeenCalledWith(undefined, "italic", "bold");
+});
+
 test("MeasureTextTransform reacts to changed expression-backed font size", () => {
     const provider = makeParamRuntimeProvider();
     const setFontSize = provider.paramRuntime.allocateSetter("fontSize", 5);

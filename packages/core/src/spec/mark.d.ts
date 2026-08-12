@@ -251,15 +251,15 @@ export interface MinPickingSizeProps {
  * This is mainly used to make axis labels pretty.
  */
 export interface ViewportEdgeFadeProps {
-    viewportEdgeFadeWidthTop?: number;
-    viewportEdgeFadeWidthRight?: number;
-    viewportEdgeFadeWidthBottom?: number;
-    viewportEdgeFadeWidthLeft?: number;
+    viewportEdgeFadeWidthTop?: number | ExprRef;
+    viewportEdgeFadeWidthRight?: number | ExprRef;
+    viewportEdgeFadeWidthBottom?: number | ExprRef;
+    viewportEdgeFadeWidthLeft?: number | ExprRef;
 
-    viewportEdgeFadeDistanceTop?: number;
-    viewportEdgeFadeDistanceRight?: number;
-    viewportEdgeFadeDistanceBottom?: number;
-    viewportEdgeFadeDistanceLeft?: number;
+    viewportEdgeFadeDistanceTop?: number | ExprRef;
+    viewportEdgeFadeDistanceRight?: number | ExprRef;
+    viewportEdgeFadeDistanceBottom?: number | ExprRef;
+    viewportEdgeFadeDistanceLeft?: number | ExprRef;
 }
 
 export interface RectProps

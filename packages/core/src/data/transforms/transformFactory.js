@@ -5,6 +5,7 @@ import CrossTransform from "./cross.js";
 import CoverageTransform from "./coverage.js";
 import Displace1DTransform from "./displace1d.js";
 import FilterScoredLabelsTransform from "./filterScoredLabels.js";
+import FilterLocusAxisLabelsTransform from "./filterLocusAxisLabels.js";
 import FilterTransform from "./filter.js";
 import FlattenTransform from "./flatten.js";
 import FlattenCompressedExonsTransform from "./flattenCompressedExons.js";
@@ -39,6 +40,7 @@ export const transforms = {
     collect: Collector,
     coverage: CoverageTransform,
     displace1d: Displace1DTransform,
+    filterLocusAxisLabels: FilterLocusAxisLabelsTransform,
     filterScoredLabels: FilterScoredLabelsTransform,
     filter: FilterTransform,
     flatten: FlattenTransform,

@@ -1,8 +1,9 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import Rectangle from "./layout/rectangle.js";
 import ViewRenderingContext from "./renderingContext/viewRenderingContext.js";
 import UnitView from "./unitView.js";
+import LayerView from "./layerView.js";
 import AxisView from "./axisView.js";
 import {
     createBroadcastingTestViewContext,
@@ -11,6 +12,7 @@ import {
 import { VIEW_ROOT_NAME } from "./viewFactory.js";
 import { checkForDuplicateScaleNames } from "./viewUtils.js";
 import { initializeViewData } from "../genomeSpy/viewDataInit.js";
+import { getTextHeight } from "../fonts/textMetrics.js";
 
 /**
  * @typedef {import("./testUtils.js").BroadcastingViewContext} BroadcastingViewContext
@@ -73,6 +75,24 @@ function findLabelsView(axisView) {
     }
 
     return labelsView;
+}
+
+/**
+ * @param {AxisView} axisView
+ */
+function findTicksAndLabelsView(axisView) {
+    const ticksAndLabelsView = axisView
+        .getDescendants()
+        .find(
+            (view) =>
+                view instanceof LayerView && view.name === "ticks_and_labels"
+        );
+
+    if (!(ticksAndLabelsView instanceof LayerView)) {
+        throw new Error("Axis ticks and labels view not found!");
+    }
+
+    return ticksAndLabelsView;
 }
 
 /**
@@ -159,7 +179,7 @@ async function getSettledAxisSnapshot(spec, orient) {
         rows.push({
             value: datum.value,
             label: datum.label,
-            width: datum._labelWidth,
+            width: datum.labelWidth,
         });
     });
 
@@ -226,9 +246,10 @@ describe("Axis extent measurement", () => {
 
         const axis = findAxisView(root, "bottom");
         const labelsView = findLabelsView(axis);
+        const ticksAndLabelsView = findTicksAndLabelsView(axis);
         const measureTextTransform =
             /** @type {import("../spec/transform.js").MeasureTextParams[]} */ (
-                labelsView.spec.transform
+                ticksAndLabelsView.spec.transform
             ).find((transform) => transform.type === "measureText");
         const textMark = /** @type {import("../marks/text.js").default} */ (
             labelsView.mark
@@ -241,12 +262,251 @@ describe("Axis extent measurement", () => {
         expect(measureTextTransform).toMatchObject({
             type: "measureText",
             field: "label",
-            as: "_labelWidth",
+            as: "labelWidth",
             font: "Lato",
             fontStyle: "italic",
             fontWeight: "bold",
             fontSize: axis.axisProps.labelFontSize,
         });
+    });
+
+    test("axis extent uses the font loaded by the text mark", async () => {
+        const context = createBroadcastingTestViewContext();
+        const defaultFont = context.fontManager.getDefaultFont();
+        const metrics = {
+            ...defaultFont.metrics,
+            capHeight: defaultFont.metrics.common.base * 2,
+            descent: 0,
+        };
+        const configuredFont = { ...defaultFont, metrics };
+        vi.spyOn(context.fontManager, "getFont").mockReturnValue(
+            configuredFont
+        );
+
+        const root = await createAndInitializeRoot(
+            {
+                data: {
+                    values: [{ category: "Alpha", value: 1 }],
+                },
+                config: {
+                    text: { font: "Configured font" },
+                },
+                mark: "rect",
+                encoding: {
+                    x: {
+                        field: "category",
+                        type: "nominal",
+                        axis: { labelAngle: 0, title: null },
+                    },
+                    y: { field: "value", type: "quantitative" },
+                    y2: { value: 0 },
+                },
+            },
+            context
+        );
+
+        const axis = findAxisView(root, "bottom");
+        const textMark = /** @type {import("../marks/text.js").default} */ (
+            findLabelsView(axis).mark
+        );
+
+        await settleLayout(root, context);
+
+        const expectedLabelExtent = Math.ceil(
+            getTextHeight(metrics, Number(textMark.properties.size))
+        );
+        expect(axis.getPerpendicularSize()).toBe(
+            axis.axisProps.tickSize +
+                axis.axisProps.labelPadding +
+                expectedLabelExtent
+        );
+    });
+
+    test("locus axis measures both labels with their rendered fonts", async () => {
+        const context = createBroadcastingTestViewContext();
+        const { view: root } = await createHeadlessEngine(
+            {
+                data: {
+                    values: [{ chrom: "long_contig_name", pos: 1 }],
+                },
+                config: {
+                    text: {
+                        font: "Lato",
+                        fontStyle: "italic",
+                    },
+                    axisBottom: {
+                        labelFontWeight: "bold",
+                        chromLabelFontWeight: 500,
+                    },
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        chrom: "chrom",
+                        pos: "pos",
+                        type: "locus",
+                        scale: {
+                            type: "locus",
+                            assembly: {
+                                contigs: [
+                                    { name: "long_contig_name", size: 100 },
+                                ],
+                            },
+                        },
+                    },
+                },
+            },
+            { context }
+        );
+
+        const axis = findAxisView(root, "bottom");
+        const labelsView = findLabelsView(axis);
+        const ticksAndLabelsView = findTicksAndLabelsView(axis);
+        const chromosomeLabelsView = axis
+            .getDescendants()
+            .find(
+                (view) =>
+                    view instanceof UnitView &&
+                    view.name === "chromosome_labels"
+            );
+        if (!(chromosomeLabelsView instanceof UnitView)) {
+            throw new Error("Chromosome labels view not found!");
+        }
+
+        const transforms =
+            /** @type {import("../spec/transform.js").MeasureTextParams[]} */ (
+                ticksAndLabelsView.spec.transform
+            );
+        const numericMeasure = transforms.find(
+            (transform) => transform.field === "label"
+        );
+        const chromosomeMeasure = transforms.find(
+            (transform) => transform.field === "chromLabel"
+        );
+
+        expect(labelsView.spec.mark).toMatchObject({
+            font: "Lato",
+            fontStyle: "italic",
+            fontWeight: "bold",
+        });
+        expect(numericMeasure).toMatchObject({
+            as: "labelWidth",
+            font: "Lato",
+            fontStyle: "italic",
+            fontWeight: "bold",
+        });
+        expect(chromosomeLabelsView.spec.mark).toMatchObject({
+            font: "Lato",
+            fontStyle: "normal",
+            fontWeight: 500,
+        });
+        expect(chromosomeMeasure).toMatchObject({
+            as: "chromLabelWidth",
+            font: "Lato",
+            fontStyle: "normal",
+            fontWeight: 500,
+        });
+    });
+
+    test("long chromosome names cull numeric labels and tick rules", async () => {
+        const chrom = "HAMBI_2443_chromosome_circ_with_a_long_suffix";
+        const context = createBroadcastingTestViewContext();
+        await context.genomeStore.initialize({
+            name: "custom",
+            contigs: [{ name: chrom, size: 200_000_000 }],
+        });
+        const { view: root } = await createHeadlessEngine(
+            {
+                data: { values: [{ chrom, pos: 1 }] },
+                scales: {
+                    x: {
+                        type: "locus",
+                        domain: [
+                            { chrom, pos: 1 },
+                            { chrom, pos: 200_000_000 },
+                        ],
+                    },
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        chrom: "chrom",
+                        pos: "pos",
+                        type: "locus",
+                    },
+                },
+            },
+            { context }
+        );
+
+        const axis = findAxisView(root, "bottom");
+        await settleLayout(root, context);
+
+        const labelsView = findLabelsView(axis);
+        const ticksAndLabelsView = findTicksAndLabelsView(axis);
+        const ticksView = axis
+            .getDescendants()
+            .find((view) => view instanceof UnitView && view.name === "ticks");
+        if (!(ticksView instanceof UnitView)) {
+            throw new Error("Axis ticks view not found!");
+        }
+
+        const labelValues = Array.from(labelsView.getCollector().getData()).map(
+            (datum) => datum.value
+        );
+        const tickValues = Array.from(ticksView.getCollector().getData()).map(
+            (datum) => datum.value
+        );
+        expect(tickValues).toEqual(labelValues);
+        expect(ticksView.spec.transform).toBeUndefined();
+        expect(labelsView.spec.transform).toBeUndefined();
+        expect(ticksAndLabelsView.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "filterLocusAxisLabels",
+                labelSpacing: 5,
+            })
+        );
+        expect(labelsView.spec.params).toBeUndefined();
+        expect(labelsView.spec.mark.viewportEdgeFadeWidthLeft).toBeUndefined();
+        expect(
+            labelsView.spec.mark.viewportEdgeFadeDistanceLeft
+        ).toBeUndefined();
+    });
+
+    test("vertical locus axes preserve chromosome range alignment", async () => {
+        const chrom = "long_contig_name";
+        const context = createBroadcastingTestViewContext();
+        const { view: root } = await createHeadlessEngine(
+            {
+                data: { values: [{ chrom, pos: 1 }] },
+                mark: "point",
+                encoding: {
+                    y: {
+                        chrom: "chrom",
+                        pos: "pos",
+                        type: "locus",
+                        scale: {
+                            type: "locus",
+                            assembly: {
+                                contigs: [{ name: chrom, size: 1000 }],
+                            },
+                        },
+                    },
+                },
+            },
+            { context }
+        );
+
+        const axis = findAxisView(root, "left");
+        const ticksAndLabelsView = findTicksAndLabelsView(axis);
+
+        expect(ticksAndLabelsView.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "filterLocusAxisLabels",
+                channel: "y",
+                chromLabelAlign: "left",
+            })
+        );
     });
 
     test("long categorical labels increase bottom axis extent after layout", async () => {

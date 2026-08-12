@@ -1,5 +1,6 @@
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import { field } from "../../utils/field.js";
+import { requestFont } from "../../fonts/textMetrics.js";
 import Transform from "./transform.js";
 
 /**
@@ -52,12 +53,6 @@ export default class MeasureTextTransform extends Transform {
         const fontManager = this.paramRuntimeProvider.context.fontManager;
         // Resolve the font during flow initialization so viewDataInit's global
         // font wait also covers measureText before any rows are propagated.
-        this.font = this.params.font
-            ? fontManager.getFont(
-                  this.params.font,
-                  this.params.fontStyle,
-                  this.params.fontWeight
-              )
-            : fontManager.getDefaultFont();
+        this.font = requestFont(fontManager, this.params);
     }
 }
