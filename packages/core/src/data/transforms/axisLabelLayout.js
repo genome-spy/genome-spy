@@ -140,9 +140,12 @@ export default class AxisLabelLayoutTransform extends Transform {
         }
 
         const method = this.getOverlapMethod(scale);
+        const labelCandidates = this.nextOutputData.filter(
+            (datum) => datum.label !== ""
+        );
         const visibleData = method
             ? removeOverlappingAxisLabels(
-                  this.nextOutputData,
+                  labelCandidates,
                   (datum) => {
                       const bounds = this.getLabelBounds(
                           datum,
@@ -160,7 +163,7 @@ export default class AxisLabelLayoutTransform extends Transform {
                   method,
                   this.params.labelSeparation
               )
-            : this.nextOutputData;
+            : labelCandidates;
         this.nextVisibleLabelValueSet.clear();
         for (const datum of visibleData) {
             this.nextVisibleLabelValueSet.add(datum.value);

@@ -506,6 +506,26 @@ describe("AxisLabelLayoutTransform", () => {
         ).toEqual([true, false, true]);
     });
 
+    test("ignores empty labels during overlap removal", () => {
+        const { collector, resolution, transform, view } = createFixture({
+            chromLabels: false,
+            labelOverlap: "greedy",
+        });
+        resolution.domain = [0, 100];
+        resolution.axisLength = 100;
+        const ticks = [
+            { ...tick(0, 0, undefined, 8), label: "a" },
+            { ...tick(10, 0, undefined, 0), label: "" },
+            { ...tick(12, 0, undefined, 10), label: "c" },
+            { ...tick(30, 0, undefined, 8), label: "d" },
+        ];
+        propagate(transform, view, ticks);
+
+        expect(
+            [...collector.getData()].map((datum) => datum.labelVisible)
+        ).toEqual([true, false, true, true]);
+    });
+
     test("removes chromosome conflicts before ordinary overlap reduction", () => {
         const { collector, transform, view } = createFixture({
             labelOverlap: "parity",
