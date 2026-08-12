@@ -212,7 +212,9 @@ export default class AxisLabelLayoutTransform extends Transform {
             case false:
                 return false;
             case "auto":
-                return isLogarithmic(scale.type) ? "greedy" : "parity";
+                return isLogarithmic(scale.type) || scale.type == "symlog"
+                    ? "greedy"
+                    : "parity";
             case "parity":
             case "greedy":
                 return this.params.labelOverlap;

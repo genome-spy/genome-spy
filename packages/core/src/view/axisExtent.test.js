@@ -459,7 +459,9 @@ describe("Axis extent measurement", () => {
         );
         expect(tickValues).toEqual(labelValues);
         expect(ticksView.spec.transform).toBeUndefined();
-        expect(labelsView.spec.transform).toBeUndefined();
+        expect(labelsView.spec.transform).toEqual([
+            { type: "filter", expr: "datum.labelVisible" },
+        ]);
         expect(ticksAndLabelsView.spec.transform).toContainEqual(
             expect.objectContaining({
                 type: "axisLabelLayout",
@@ -507,6 +509,52 @@ describe("Axis extent measurement", () => {
                 chromLabelAlign: "left",
             })
         );
+    });
+
+    test("ordinary overlap removal preserves tick rules", async () => {
+        const values = Array.from({ length: 9 }, (_, index) => index * 1e8);
+        const context = createBroadcastingTestViewContext();
+        const { view: root } = await createHeadlessEngine(
+            {
+                data: { values: values.map((value) => ({ value })) },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "value",
+                        type: "quantitative",
+                        scale: { domain: [0, 8e8] },
+                        axis: {
+                            values,
+                            tickCount: 20,
+                            format: ",d",
+                        },
+                    },
+                },
+            },
+            { context }
+        );
+
+        const axis = findAxisView(root, "bottom");
+        await settleLayout(root, context);
+        const labelsView = findLabelsView(axis);
+        const ticksView = axis
+            .getDescendants()
+            .find((view) => view instanceof UnitView && view.name === "ticks");
+        if (!(ticksView instanceof UnitView)) {
+            throw new Error("Axis ticks view not found!");
+        }
+
+        const tickValues = Array.from(ticksView.getCollector().getData()).map(
+            (datum) => datum.value
+        );
+        const labelValues = Array.from(labelsView.getCollector().getData()).map(
+            (datum) => datum.value
+        );
+
+        expect(tickValues).toEqual(values);
+        expect(labelValues.length).toBeLessThan(tickValues.length);
+        expect(labelValues.at(0)).toBe(values.at(0));
+        expect(labelValues.at(-1)).toBe(values.at(-1));
     });
 
     test("long categorical labels increase bottom axis extent after layout", async () => {

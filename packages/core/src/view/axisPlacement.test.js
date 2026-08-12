@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import AxisView, { createGenomeAxis } from "./axisView.js";
+import LayerView from "./layerView.js";
 import Rectangle from "./layout/rectangle.js";
 import UnitView from "./unitView.js";
 import { specToLayout } from "./testUtils.js";
@@ -46,8 +47,9 @@ function findUnitView(axisView, name) {
 /**
  * @param {import("../spec/axis.js").AxisOrient} orient
  * @param {import("../spec/axis.js").Axis} axis
+ * @param {import("../spec/channel.js").Type} [type]
  */
-async function createAxis(orient, axis) {
+async function createAxis(orient, axis, type = "quantitative") {
     const channel = orient === "left" || orient === "right" ? "y" : "x";
     const disabledChannel = channel === "x" ? "y" : "x";
     const { view } = await createHeadlessViewHierarchy(
@@ -62,7 +64,7 @@ async function createAxis(orient, axis) {
                 },
                 [channel]: {
                     field: channel,
-                    type: "quantitative",
+                    type,
                     axis: {
                         orient,
                         ...axis,
@@ -78,6 +80,22 @@ async function createAxis(orient, axis) {
     );
 
     return findAxisView(view, orient);
+}
+
+/**
+ * @param {AxisView} axisView
+ * @param {string} name
+ */
+function findLayerView(axisView, name) {
+    const layerView = axisView
+        .getDescendants()
+        .find((view) => view instanceof LayerView && view.name === name);
+
+    if (!(layerView instanceof LayerView)) {
+        throw new Error("Layer view not found: " + name);
+    }
+
+    return layerView;
 }
 
 /**
@@ -119,6 +137,76 @@ function readCoord(coords, key) {
 }
 
 describe("axis placement", () => {
+    test("uses Vega-Lite-style overlap defaults for continuous axes", async () => {
+        const axis = await createAxis("bottom", {});
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelOverlap: "auto",
+                labelSeparation: 0,
+            })
+        );
+        expect(labels.spec.transform).toEqual([
+            { type: "filter", expr: "datum.labelVisible" },
+        ]);
+    });
+
+    test("does not remove discrete labels by default", async () => {
+        const axis = await createAxis("bottom", {}, "nominal");
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).not.toContainEqual(
+            expect.objectContaining({ type: "axisLabelLayout" })
+        );
+        expect(labels.spec.transform).toBeUndefined();
+    });
+
+    test("supports explicit overlap settings and separation", async () => {
+        const axis = await createAxis("bottom", {
+            labelOverlap: true,
+            labelSeparation: 5,
+        });
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelOverlap: "parity",
+                labelSeparation: 5,
+            })
+        );
+    });
+
+    test("allows overlap removal to be disabled explicitly", async () => {
+        const axis = await createAxis("bottom", { labelOverlap: false });
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).not.toContainEqual(
+            expect.objectContaining({ type: "axisLabelLayout" })
+        );
+        expect(labels.spec.transform).toBeUndefined();
+    });
+
+    test("disables the automatic default for unsupported angles", async () => {
+        const axis = await createAxis("bottom", { labelAngle: 45 });
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+
+        expect(ticksAndLabels.spec.transform).not.toContainEqual(
+            expect.objectContaining({ type: "axisLabelLayout" })
+        );
+    });
+
+    test("rejects explicitly enabled overlap removal at unsupported angles", async () => {
+        await expect(
+            createAxis("bottom", { labelAngle: 45, labelOverlap: true })
+        ).rejects.toThrow(/axis-aligned/);
+    });
+
     test("left inside axis mirrors tick and label direction into the plot", async () => {
         const axis = await createLeftAxis({ placement: "inside" });
         const labels = findUnitView(axis, "labels_main");

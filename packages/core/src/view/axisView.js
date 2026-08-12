@@ -515,6 +515,42 @@ function getDefaultAngleAndAlign(type, axisProps) {
 }
 
 /**
+ * @param {string} type
+ * @param {Axis} axisProps
+ * @returns {false | "auto" | "parity" | "greedy"}
+ */
+function getLabelOverlap(type, axisProps) {
+    const supportedAngle = axisProps.labelAngle % 90 == 0;
+    const configured = axisProps.labelOverlap;
+
+    if (configured === undefined) {
+        let continuous;
+        switch (type) {
+            case "quantitative":
+            case "index":
+            case "locus":
+                continuous = true;
+                break;
+            case "nominal":
+            case "ordinal":
+                continuous = false;
+                break;
+            default:
+                throw new Error("Invalid axis field type: " + type);
+        }
+        return continuous && supportedAngle ? "auto" : false;
+    } else if (configured === false) {
+        return false;
+    } else if (!supportedAngle) {
+        throw new Error(
+            "Axis label overlap removal requires an axis-aligned label angle."
+        );
+    } else {
+        return configured === true ? "parity" : configured;
+    }
+}
+
+/**
  * @param {Axis} axisProps
  * @param {string} type
  * @param {"pixel" | "anchor"} labelClipPolicy
@@ -543,6 +579,8 @@ function createAxis(
         ap.labelFontSize,
         textDefaults
     );
+    const labelOverlap = getLabelOverlap(type, ap);
+    const layoutLabels = !!chromLabelLayout || !!labelOverlap;
 
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
@@ -576,6 +614,14 @@ function createAxis(
      */
     const createLabels = () => ({
         name: LABELS_LAYER_NAME,
+        transform: layoutLabels
+            ? [
+                  {
+                      type: "filter",
+                      expr: `datum.${LABEL_VISIBLE_FIELD}`,
+                  },
+              ]
+            : undefined,
         mark: {
             type: "text",
             clip: labelClipPolicy === "anchor" ? "never" : false,
@@ -627,21 +673,28 @@ function createAxis(
                 fontStyle: style.fontStyle,
                 fontWeight: style.fontWeight,
             });
+        }
+
+        if (layoutLabels) {
             transform.push({
                 type: "axisLabelLayout",
                 channel: main,
                 labelWidth: LABEL_WIDTH_FIELD,
                 labelFontSize: labelTextStyle.size,
                 labelAngle: ap.labelAngle,
-                chromLabelWidth: CHROM_LABEL_WIDTH_FIELD,
                 labelAlign: ap.labelAlign,
                 labelBaseline: ap.labelBaseline,
-                labelOverlap: false,
-                labelSeparation: 0,
+                labelOverlap,
+                labelSeparation: ap.labelSeparation ?? 0,
                 labelVisible: LABEL_VISIBLE_FIELD,
-                chromLabelAlign: chromLabelLayout.align,
-                chromLabelPadding: chromLabelLayout.padding,
-                chromLabelSpacing: CHROM_LABEL_TICK_SPACING,
+                ...(chromLabelLayout
+                    ? {
+                          chromLabelWidth: CHROM_LABEL_WIDTH_FIELD,
+                          chromLabelAlign: chromLabelLayout.align,
+                          chromLabelPadding: chromLabelLayout.padding,
+                          chromLabelSpacing: CHROM_LABEL_TICK_SPACING,
+                      }
+                    : {}),
             });
         }
 

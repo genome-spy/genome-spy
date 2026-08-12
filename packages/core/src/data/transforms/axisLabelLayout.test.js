@@ -393,6 +393,31 @@ describe("AxisLabelLayoutTransform", () => {
         ).toEqual([true, false, true]);
     });
 
+    test.each([
+        ["linear", [true, false, true, false, true]],
+        ["log", [true, true, false, true, false]],
+        ["symlog", [true, true, false, true, false]],
+    ])("resolves the auto method for %s scales", (scaleType, expected) => {
+        const { collector, resolution, transform, view } = createFixture({
+            chromLabels: false,
+            labelOverlap: "auto",
+        });
+        resolution.domain = [0, 100];
+        resolution.axisLength = 100;
+        resolution.scale.type = scaleType;
+        propagate(transform, view, [
+            tick(0, 0, undefined, 20),
+            tick(15, 0, undefined, 10),
+            tick(25, 0, undefined, 20),
+            tick(40, 0, undefined, 10),
+            tick(50, 0, undefined, 20),
+        ]);
+
+        expect(
+            [...collector.getData()].map((datum) => datum.labelVisible)
+        ).toEqual(expected);
+    });
+
     test("rejects overlap removal for non-axis-aligned labels", () => {
         expect(
             () =>
