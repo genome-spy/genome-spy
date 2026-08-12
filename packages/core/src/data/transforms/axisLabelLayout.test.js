@@ -4,6 +4,7 @@ import Collector from "../collector.js";
 import Genome from "../../genome/genome.js";
 import AxisLabelLayoutTransform, {
     getAxisLabelBounds,
+    getFlushedLabelOffset,
     getRangedLabelBounds,
 } from "./axisLabelLayout.js";
 
@@ -107,12 +108,22 @@ class FakeView {
  * @param {"left" | "center" | "right"} [options.chromLabelAlign]
  * @param {boolean} [options.chromLabels]
  * @param {false | "auto" | "parity" | "greedy"} [options.labelOverlap]
+ * @param {false | number} [options.labelFlush]
+ * @param {number} [options.labelFlushOffset]
+ * @param {"x" | "y"} [options.channel]
+ * @param {"left" | "center" | "right"} [options.labelAlign]
+ * @param {"alphabetic" | "baseline" | "top" | "middle" | "bottom"} [options.labelBaseline]
  */
 function createFixture({
     contigs = [{ name: "long_contig_name", size: 1000 }],
     chromLabelAlign = "left",
     chromLabels = true,
     labelOverlap = false,
+    labelFlush = false,
+    labelFlushOffset = 0,
+    channel = "x",
+    labelAlign = "center",
+    labelBaseline = "top",
 } = {}) {
     const genome = new Genome({ name: "custom", contigs });
     const resolution = new FakeScaleResolution(genome);
@@ -120,12 +131,15 @@ function createFixture({
     const transform = new AxisLabelLayoutTransform(
         {
             type: "axisLabelLayout",
-            channel: "x",
+            channel,
             labelWidth: "labelWidth",
             labelFontSize: 10,
             labelAngle: 0,
-            labelAlign: "center",
-            labelBaseline: "top",
+            labelAlign,
+            labelBaseline,
+            labelFlush,
+            labelFlushOffset,
+            labelOffset: "labelOffset",
             labelOverlap,
             labelSeparation: 0,
             labelVisible: "labelVisible",
@@ -375,6 +389,123 @@ describe("AxisLabelLayoutTransform", () => {
         ).toEqual([true, false, true]);
     });
 
+    test("flushes endpoint labels without changing tick values", () => {
+        const { collector, transform, view } = createFixture({
+            chromLabels: false,
+            labelFlush: 1,
+        });
+        const ticks = [0, 500, 1000].map((value) =>
+            tick(value, 0, undefined, 40)
+        );
+        propagate(transform, view, ticks);
+
+        expect([...collector.getData()].map((datum) => datum.value)).toEqual([
+            0, 500, 1000,
+        ]);
+        expect(
+            [...collector.getData()].map((datum) => datum.labelOffset)
+        ).toEqual([20, 0, -20]);
+    });
+
+    test("flushes vertical labels using their main-axis bounds", () => {
+        const { collector, transform, view } = createFixture({
+            chromLabels: false,
+            labelFlush: 1,
+            channel: "y",
+            labelAlign: "right",
+            labelBaseline: "middle",
+        });
+        propagate(transform, view, [
+            tick(0, 0, undefined, 40),
+            tick(1000, 0, undefined, 40),
+        ]);
+
+        expect(
+            [...collector.getData()].map((datum) => datum.labelOffset)
+        ).toEqual([-5, 5]);
+    });
+
+    test("applies the flush threshold and outward offset", () => {
+        const { collector, transform, view } = createFixture({
+            chromLabels: false,
+            labelFlush: 1,
+            labelFlushOffset: 2,
+        });
+        propagate(transform, view, [
+            tick(1, 0, undefined, 40),
+            tick(997, 0, undefined, 40),
+        ]);
+
+        expect(
+            [...collector.getData()].map((datum) => datum.labelOffset)
+        ).toEqual([18, 0]);
+    });
+
+    test("flushes the correct endpoints on a reversed scale", () => {
+        const { collector, resolution, transform, view } = createFixture({
+            chromLabels: false,
+            labelFlush: 1,
+        });
+        resolution.domain = [1000, 0];
+        propagate(transform, view, [
+            tick(1000, 0, undefined, 40),
+            tick(0, 0, undefined, 40),
+        ]);
+
+        expect(
+            [...collector.getData()].map((datum) => datum.labelOffset)
+        ).toEqual([20, -20]);
+    });
+
+    test("propagates when only the flush assignment changes", () => {
+        const { collector, resolution, transform, view } = createFixture({
+            chromLabels: false,
+            labelFlush: 1,
+        });
+        const ticks = [tick(0, 0, undefined, 40)];
+        propagate(transform, view, ticks);
+        const resetSpy = vi.spyOn(collector, "reset");
+
+        resolution.domain = [-100, 900];
+        resolution.emitDomain();
+
+        expect(resetSpy).toHaveBeenCalledOnce();
+        expect([...collector.getData()][0].labelOffset).toBe(0);
+    });
+
+    test("does not propagate when flush assignments stay unchanged", () => {
+        const { collector, resolution, transform, view } = createFixture({
+            chromLabels: false,
+            labelFlush: 1,
+        });
+        propagate(transform, view, [tick(0, 0, undefined, 40)]);
+        const resetSpy = vi.spyOn(collector, "reset");
+
+        resolution.emitDomain();
+
+        expect(resetSpy).not.toHaveBeenCalled();
+        expect([...collector.getData()][0].labelOffset).toBe(20);
+    });
+
+    test("uses flushed bounds for overlap removal", () => {
+        const { collector, resolution, transform, view } = createFixture({
+            chromLabels: false,
+            labelFlush: 1,
+            labelOverlap: "parity",
+        });
+        resolution.domain = [0, 100];
+        resolution.axisLength = 100;
+        propagate(
+            transform,
+            view,
+            [0, 50, 100].map((value) => tick(value, 0, undefined, 40))
+        );
+
+        expect(
+            [...collector.getData()].map((datum) => datum.labelVisible)
+        ).toEqual([true, false, true]);
+    });
+
     test("removes chromosome conflicts before ordinary overlap reduction", () => {
         const { collector, transform, view } = createFixture({
             labelOverlap: "parity",
@@ -430,6 +561,9 @@ describe("AxisLabelLayoutTransform", () => {
                         labelAngle: 45,
                         labelAlign: "center",
                         labelBaseline: "top",
+                        labelFlush: false,
+                        labelFlushOffset: 0,
+                        labelOffset: "labelOffset",
                         labelOverlap: "parity",
                         labelSeparation: 0,
                         labelVisible: "labelVisible",
@@ -471,6 +605,18 @@ describe("getAxisLabelBounds", () => {
         expect(
             getAxisLabelBounds(100, 40, 10, 90, "y", "left", "middle")
         ).toEqual([60, 100]);
+    });
+});
+
+describe("getFlushedLabelOffset", () => {
+    test("uses a zero threshold for exact endpoints", () => {
+        expect(getFlushedLabelOffset(0, [-20, 20], 100, 0, 0)).toBe(20);
+        expect(getFlushedLabelOffset(0.1, [-19.9, 20.1], 100, 0, 0)).toBe(0);
+    });
+
+    test("moves endpoint labels outward", () => {
+        expect(getFlushedLabelOffset(0, [-20, 20], 100, 1, 2)).toBe(18);
+        expect(getFlushedLabelOffset(100, [80, 120], 100, 1, 2)).toBe(-18);
     });
 });
 

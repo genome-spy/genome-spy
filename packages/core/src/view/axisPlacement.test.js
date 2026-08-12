@@ -137,7 +137,7 @@ function readCoord(coords, key) {
 }
 
 describe("axis placement", () => {
-    test("uses Vega-Lite-style overlap defaults for continuous axes", async () => {
+    test("uses Vega-Lite-style label layout defaults for continuous x axes", async () => {
         const axis = await createAxis("bottom", {});
         const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
         const labels = findUnitView(axis, "labels_main");
@@ -145,10 +145,18 @@ describe("axis placement", () => {
         expect(ticksAndLabels.spec.transform).toContainEqual(
             expect.objectContaining({
                 type: "axisLabelLayout",
+                labelFlush: 1,
+                labelFlushOffset: 0,
+                labelOffset: "labelOffset",
                 labelOverlap: "auto",
                 labelSeparation: 0,
             })
         );
+        expect(labels.spec.encoding.xOffset).toEqual({
+            field: "labelOffset",
+            type: "quantitative",
+            scale: null,
+        });
         expect(labels.spec.transform).toEqual([
             { type: "filter", expr: "datum.labelVisible" },
         ]);
@@ -181,15 +189,72 @@ describe("axis placement", () => {
         );
     });
 
-    test("allows overlap removal to be disabled explicitly", async () => {
+    test("allows overlap removal to be disabled independently", async () => {
         const axis = await createAxis("bottom", { labelOverlap: false });
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: 1,
+                labelOverlap: false,
+            })
+        );
+        expect(labels.spec.transform).toEqual([
+            { type: "filter", expr: "datum.labelVisible" },
+        ]);
+    });
+
+    test("allows flushing and overlap removal to be disabled", async () => {
+        const axis = await createAxis("bottom", {
+            labelFlush: false,
+            labelOverlap: false,
+        });
         const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
         const labels = findUnitView(axis, "labels_main");
 
         expect(ticksAndLabels.spec.transform).not.toContainEqual(
             expect.objectContaining({ type: "axisLabelLayout" })
         );
+        expect(labels.spec.encoding.xOffset).toBeUndefined();
         expect(labels.spec.transform).toBeUndefined();
+    });
+
+    test("does not flush continuous y axes by default", async () => {
+        const axis = await createAxis("left", {});
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: false,
+            })
+        );
+        expect(labels.spec.encoding.yOffset).toBeUndefined();
+    });
+
+    test("supports explicit vertical label flushing", async () => {
+        const axis = await createAxis("left", {
+            labelFlush: true,
+            labelFlushOffset: 2,
+        });
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: 1,
+                labelFlushOffset: 2,
+            })
+        );
+        expect(labels.spec.encoding.yOffset).toEqual({
+            field: "labelOffset",
+            type: "quantitative",
+            scale: null,
+        });
     });
 
     test("disables the automatic default for unsupported angles", async () => {
@@ -204,6 +269,16 @@ describe("axis placement", () => {
     test("rejects explicitly enabled overlap removal at unsupported angles", async () => {
         await expect(
             createAxis("bottom", { labelAngle: 45, labelOverlap: true })
+        ).rejects.toThrow(/axis-aligned/);
+    });
+
+    test("rejects explicitly enabled flushing at unsupported angles", async () => {
+        await expect(
+            createAxis("bottom", {
+                labelAngle: 45,
+                labelFlush: true,
+                labelOverlap: false,
+            })
         ).rejects.toThrow(/axis-aligned/);
     });
 

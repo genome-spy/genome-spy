@@ -441,6 +441,25 @@ export interface BaseAxis {
     labelAngle?: number;
 
     /**
+     * Indicates whether labels near the beginning or end of the axis should be
+     * aligned flush with the scale range. A number specifies the endpoint
+     * distance threshold in pixels. `true` uses a threshold of one pixel.
+     *
+     * By default, flushing is enabled for continuous x axes and disabled for
+     * other axes. Flushing supports label angles that are multiples of 90
+     * degrees. The automatic behavior is disabled at other angles.
+     */
+    labelFlush?: boolean | number;
+
+    /**
+     * The number of pixels by which to move flush-adjusted labels outward from
+     * the axis range.
+     *
+     * __Default value:__ `0`
+     */
+    labelFlushOffset?: number;
+
+    /**
      * The strategy for removing overlapping axis labels. `true` uses the
      * `"parity"` strategy. `"parity"` removes every other label until the
      * remaining labels no longer overlap. `"greedy"` keeps each label that

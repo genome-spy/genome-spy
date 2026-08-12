@@ -14,6 +14,7 @@ const TICKS_AND_LABELS_LAYER_NAME = "ticks_and_labels";
 const AXIS_EXTENT_PARAM = "axisExtent";
 const LABEL_WIDTH_FIELD = "labelWidth";
 const LABEL_VISIBLE_FIELD = "labelVisible";
+const LABEL_OFFSET_FIELD = "labelOffset";
 const CHROM_LABEL_WIDTH_FIELD = "chromLabelWidth";
 const CHROM_LABEL_RANGE_PADDING = 4;
 const CHROM_LABEL_TICK_SPACING = 5;
@@ -524,21 +525,7 @@ function getLabelOverlap(type, axisProps) {
     const configured = axisProps.labelOverlap;
 
     if (configured === undefined) {
-        let continuous;
-        switch (type) {
-            case "quantitative":
-            case "index":
-            case "locus":
-                continuous = true;
-                break;
-            case "nominal":
-            case "ordinal":
-                continuous = false;
-                break;
-            default:
-                throw new Error("Invalid axis field type: " + type);
-        }
-        return continuous && supportedAngle ? "auto" : false;
+        return isContinuousAxisType(type) && supportedAngle ? "auto" : false;
     } else if (configured === false) {
         return false;
     } else if (!supportedAngle) {
@@ -547,6 +534,47 @@ function getLabelOverlap(type, axisProps) {
         );
     } else {
         return configured === true ? "parity" : configured;
+    }
+}
+
+/**
+ * @param {string} type
+ * @param {Axis} axisProps
+ * @returns {false | number}
+ */
+function getLabelFlush(type, axisProps) {
+    const supportedAngle = axisProps.labelAngle % 90 == 0;
+    const configured = axisProps.labelFlush;
+
+    if (configured === undefined) {
+        return orient2channel(axisProps.orient) == "x" &&
+            isContinuousAxisType(type) &&
+            supportedAngle
+            ? 1
+            : false;
+    } else if (configured === false) {
+        return false;
+    } else if (!supportedAngle) {
+        throw new Error(
+            "Axis label flushing requires an axis-aligned label angle."
+        );
+    } else {
+        return configured === true ? 1 : configured;
+    }
+}
+
+/** @param {string} type */
+function isContinuousAxisType(type) {
+    switch (type) {
+        case "quantitative":
+        case "index":
+        case "locus":
+            return true;
+        case "nominal":
+        case "ordinal":
+            return false;
+        default:
+            throw new Error("Invalid axis field type: " + type);
     }
 }
 
@@ -580,7 +608,9 @@ function createAxis(
         textDefaults
     );
     const labelOverlap = getLabelOverlap(type, ap);
-    const layoutLabels = !!chromLabelLayout || !!labelOverlap;
+    const labelFlush = getLabelFlush(type, ap);
+    const layoutLabels =
+        !!chromLabelLayout || !!labelOverlap || labelFlush !== false;
 
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
@@ -641,6 +671,15 @@ function createAxis(
         },
         encoding: {
             [main]: makeMainDomainDef(),
+            ...(labelFlush !== false
+                ? {
+                      [main + "Offset"]: {
+                          field: LABEL_OFFSET_FIELD,
+                          type: "quantitative",
+                          scale: null,
+                      },
+                  }
+                : {}),
             text: { field: "label" },
         },
     });
@@ -684,6 +723,9 @@ function createAxis(
                 labelAngle: ap.labelAngle,
                 labelAlign: ap.labelAlign,
                 labelBaseline: ap.labelBaseline,
+                labelFlush,
+                labelFlushOffset: ap.labelFlushOffset ?? 0,
+                labelOffset: LABEL_OFFSET_FIELD,
                 labelOverlap,
                 labelSeparation: ap.labelSeparation ?? 0,
                 labelVisible: LABEL_VISIBLE_FIELD,

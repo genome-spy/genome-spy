@@ -1048,6 +1048,9 @@ export interface AxisLabelLayoutParams extends TransformParamsBase {
     labelAngle: number;
     labelAlign: "left" | "center" | "right";
     labelBaseline: Baseline;
+    labelFlush: false | number;
+    labelFlushOffset: number;
+    labelOffset: string;
     labelOverlap: false | "auto" | "parity" | "greedy";
     labelSeparation: number;
     labelVisible: string;

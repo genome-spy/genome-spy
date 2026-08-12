@@ -32,9 +32,12 @@ export default class AxisLabelLayoutTransform extends Transform {
             ? field(params.chromLabelWidth)
             : undefined;
 
-        if (params.labelOverlap && !isAxisAligned(params.labelAngle)) {
+        if (
+            (params.labelOverlap || params.labelFlush !== false) &&
+            !isAxisAligned(params.labelAngle)
+        ) {
             throw new Error(
-                "Axis label overlap removal requires an axis-aligned label angle."
+                "Axis label layout requires an axis-aligned label angle."
             );
         }
 
@@ -55,6 +58,12 @@ export default class AxisLabelLayoutTransform extends Transform {
 
         /** @type {Set<import("../../spec/channel.js").Scalar>} */
         this.nextVisibleLabelValueSet = new Set();
+
+        /** @type {Map<import("../../spec/channel.js").Scalar, number>} */
+        this.flushOffsetMap = new Map();
+
+        /** @type {Map<import("../../spec/channel.js").Scalar, number>} */
+        this.nextFlushOffsetMap = new Map();
 
         this.hasPublished = false;
 
@@ -111,20 +120,43 @@ export default class AxisLabelLayoutTransform extends Transform {
             }
         }
 
+        this.nextFlushOffsetMap.clear();
+        for (const datum of this.nextOutputData) {
+            const bounds = this.getLabelBounds(datum, scale, axisLength);
+            const layoutOffset =
+                this.params.labelFlush === false
+                    ? 0
+                    : getFlushedLabelOffset(
+                          scale(datum.value) * axisLength,
+                          bounds,
+                          axisLength,
+                          this.params.labelFlush,
+                          this.params.labelFlushOffset
+                      );
+            const encodedOffset =
+                this.channel == "x" ? layoutOffset : -layoutOffset;
+            datum[this.params.labelOffset] = encodedOffset;
+            this.nextFlushOffsetMap.set(datum.value, encodedOffset);
+        }
+
         const method = this.getOverlapMethod(scale);
         const visibleData = method
             ? removeOverlappingAxisLabels(
                   this.nextOutputData,
-                  (datum) =>
-                      getAxisLabelBounds(
-                          scale(datum.value) * axisLength,
-                          this.labelWidthAccessor(datum),
-                          this.params.labelFontSize,
-                          this.params.labelAngle,
-                          this.channel,
-                          this.params.labelAlign,
-                          this.params.labelBaseline
-                      ),
+                  (datum) => {
+                      const bounds = this.getLabelBounds(
+                          datum,
+                          scale,
+                          axisLength
+                      );
+                      const encodedOffset = datum[this.params.labelOffset];
+                      const layoutOffset =
+                          this.channel == "x" ? encodedOffset : -encodedOffset;
+                      return [
+                          bounds[0] + layoutOffset,
+                          bounds[1] + layoutOffset,
+                      ];
+                  },
                   method,
                   this.params.labelSeparation
               )
@@ -153,7 +185,8 @@ export default class AxisLabelLayoutTransform extends Transform {
             !setsEqual(
                 this.nextVisibleLabelValueSet,
                 this.visibleLabelValueSet
-            );
+            ) ||
+            !mapsEqual(this.nextFlushOffsetMap, this.flushOffsetMap);
 
         if (changed) {
             this.outputValueSet.clear();
@@ -163,6 +196,9 @@ export default class AxisLabelLayoutTransform extends Transform {
             const previousVisibleLabelValueSet = this.visibleLabelValueSet;
             this.visibleLabelValueSet = this.nextVisibleLabelValueSet;
             this.nextVisibleLabelValueSet = previousVisibleLabelValueSet;
+            const previousFlushOffsetMap = this.flushOffsetMap;
+            this.flushOffsetMap = this.nextFlushOffsetMap;
+            this.nextFlushOffsetMap = previousFlushOffsetMap;
 
             super.reset();
             for (const datum of this.nextOutputData) {
@@ -176,6 +212,7 @@ export default class AxisLabelLayoutTransform extends Transform {
 
         this.nextOutputData.length = 0;
         this.nextVisibleLabelValueSet.clear();
+        this.nextFlushOffsetMap.clear();
     }
 
     /**
@@ -186,15 +223,7 @@ export default class AxisLabelLayoutTransform extends Transform {
      */
     chromosomeLabelOverlaps(datum, scale, genome, axisLength) {
         const chromosome = genome.getChromosome(datum.chromLabel);
-        const numericBounds = getAxisLabelBounds(
-            scale(datum.value) * axisLength,
-            this.labelWidthAccessor(datum),
-            this.params.labelFontSize,
-            this.params.labelAngle,
-            this.channel,
-            this.params.labelAlign,
-            this.params.labelBaseline
-        );
+        const numericBounds = this.getLabelBounds(datum, scale, axisLength);
         const chromosomeStart = scale(chromosome.continuousStart) * axisLength;
         const chromosomeEnd = scale(chromosome.continuousEnd) * axisLength;
         const chromosomeBounds = getRangedLabelBounds(
@@ -210,6 +239,24 @@ export default class AxisLabelLayoutTransform extends Transform {
             numericBounds,
             chromosomeBounds,
             this.params.chromLabelSpacing
+        );
+    }
+
+    /**
+     * @param {import("../flowNode.js").Datum} datum
+     * @param {import("../../types/encoder.js").VegaScale} scale
+     * @param {number} axisLength
+     * @returns {[number, number]}
+     */
+    getLabelBounds(datum, scale, axisLength) {
+        return getAxisLabelBounds(
+            scale(datum.value) * axisLength,
+            this.labelWidthAccessor(datum),
+            this.params.labelFontSize,
+            this.params.labelAngle,
+            this.channel,
+            this.params.labelAlign,
+            this.params.labelBaseline
         );
     }
 
@@ -324,6 +371,56 @@ function isAxisAligned(angle) {
  */
 function setsEqual(a, b) {
     return a.size == b.size && a.isSubsetOf(b);
+}
+
+/**
+ * @template K, V
+ * @param {Map<K, V>} a
+ * @param {Map<K, V>} b
+ */
+function mapsEqual(a, b) {
+    if (a.size != b.size) {
+        return false;
+    }
+
+    for (const [key, value] of a) {
+        if (b.get(key) !== value) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Returns the main-axis pixel offset that visually reproduces Vega's endpoint
+ * alignment while keeping GenomeSpy's text alignment and tick value unchanged.
+ * Based on Vega's flush classification semantics:
+ * https://github.com/vega/vega/blob/c03b7d0fe369be1a6e81d23dc899aef6eb7da967/packages/vega-util/src/flush.ts
+ *
+ * @param {number} position
+ * @param {[number, number]} bounds
+ * @param {number} axisLength
+ * @param {number} threshold
+ * @param {number} outwardOffset
+ */
+export function getFlushedLabelOffset(
+    position,
+    bounds,
+    axisLength,
+    threshold,
+    outwardOffset
+) {
+    const startDistance = Math.abs(position);
+    const endDistance = Math.abs(axisLength - position);
+
+    if (startDistance < endDistance && startDistance <= threshold) {
+        return position - bounds[0] - outwardOffset;
+    } else if (endDistance <= threshold) {
+        return position - bounds[1] + outwardOffset;
+    } else {
+        return 0;
+    }
 }
 
 /**
