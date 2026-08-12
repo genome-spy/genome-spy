@@ -123,6 +123,6 @@ function hasOverlap(candidates, getBounds, separation) {
  * @param {LabelBounds} b
  * @param {number} separation
  */
-function boundsOverlap(a, b, separation) {
+export function boundsOverlap(a, b, separation) {
     return separation > Math.max(b[0] - a[1], a[0] - b[1]);
 }

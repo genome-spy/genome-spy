@@ -1,7 +1,10 @@
 import { isLogarithmic } from "vega-scale";
 import { BEHAVIOR_COLLECTS, BEHAVIOR_MODIFIES } from "../flowNode.js";
 import { field } from "../../utils/field.js";
-import { removeOverlappingAxisLabels } from "./axisLabelOverlap.js";
+import {
+    boundsOverlap,
+    removeOverlappingAxisLabels,
+} from "./axisLabelOverlap.js";
 import Transform from "./transform.js";
 
 /**
@@ -439,6 +442,7 @@ export function getFlushedLabelOffset(
  * @param {number} padding
  * @param {"left" | "center" | "right"} align
  * @param {number} viewportLength
+ * @returns {[number, number]}
  */
 export function getRangedLabelBounds(
     start,
@@ -482,13 +486,4 @@ export function getRangedLabelBounds(
         default:
             throw new Error("Invalid chromosome label alignment: " + align);
     }
-}
-
-/**
- * @param {number[]} a
- * @param {number[]} b
- * @param {number} spacing
- */
-function boundsOverlap(a, b, spacing) {
-    return a[0] < b[1] + spacing && b[0] - spacing < a[1];
 }
