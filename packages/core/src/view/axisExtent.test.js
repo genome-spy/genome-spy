@@ -473,7 +473,7 @@ describe("Axis extent measurement", () => {
         ).toBeUndefined();
     });
 
-    test("vertical locus axes cull beside the rotated chromosome label", async () => {
+    test("vertical locus axes preserve chromosome range alignment", async () => {
         const chrom = "long_contig_name";
         const context = createBroadcastingTestViewContext();
         const { view: root } = await createHeadlessEngine(
@@ -504,7 +504,7 @@ describe("Axis extent measurement", () => {
             expect.objectContaining({
                 type: "filterLocusAxisLabels",
                 channel: "y",
-                chromLabelAlign: "right",
+                chromLabelAlign: "left",
             })
         );
     });

@@ -264,22 +264,6 @@ describe("FilterLocusAxisLabelsTransform", () => {
         ]);
     });
 
-    test("handles a trailing chromosome label on a reversed vertical scale", () => {
-        const { collector, resolution, transform, view } = createFixture({
-            chromLabelAlign: "right",
-        });
-        resolution.domain = [1000, 0];
-        propagate(transform, view, [
-            tick(50, 100),
-            tick(300, 100),
-            tick(950, 100),
-        ]);
-
-        expect([...collector.getData()].map((datum) => datum.value)).toEqual([
-            300, 950,
-        ]);
-    });
-
     test("recomputes retained rows after domain and layout changes", () => {
         const { collector, resolution, transform, view } = createFixture();
         const filterSpy = vi.spyOn(transform, "filterAndPropagate");

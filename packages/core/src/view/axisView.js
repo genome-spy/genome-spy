@@ -783,8 +783,9 @@ export function createGenomeAxis(axisProps, type, textDefaults = {}) {
     const { anchor, tickSide } = getAxisGeometry(ap);
     const chromLabelLayout = {
         textStyle: chromLabelTextStyle,
-        // A left-aligned label rotated onto a vertical axis trails along y.
-        align: /** @type {"left" | "right"} */ (main == "x" ? "left" : "right"),
+        align: /** @type {"left" | "center" | "right"} */ (
+            tickSide == "right" ? "left" : ap.chromLabelAlign
+        ),
         padding: CHROM_LABEL_RANGE_PADDING,
     };
 
