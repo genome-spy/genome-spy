@@ -1048,6 +1048,7 @@ export interface FilterLocusAxisLabelsParams extends TransformParamsBase {
     labelAlign: "left" | "center" | "right";
     chromLabelAlign: "left" | "center" | "right";
     chromLabelPadding: number;
+    labelSpacing: number;
 }
 
 export interface Displace1DParams extends TransformParamsBase {

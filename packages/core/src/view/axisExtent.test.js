@@ -381,7 +381,10 @@ describe("Axis extent measurement", () => {
         expect(tickCount - labelCount).toBeGreaterThanOrEqual(2);
         expect(ticksView.spec.transform).toBeUndefined();
         expect(labelsView.spec.transform).toContainEqual(
-            expect.objectContaining({ type: "filterLocusAxisLabels" })
+            expect.objectContaining({
+                type: "filterLocusAxisLabels",
+                labelSpacing: 5,
+            })
         );
         expect(labelsView.spec.params).toBeUndefined();
         expect(labelsView.spec.mark.viewportEdgeFadeWidthLeft).toBeUndefined();

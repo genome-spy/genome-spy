@@ -118,6 +118,7 @@ function createFixture({
             labelAlign: "center",
             chromLabelAlign: "left",
             chromLabelPadding: 4,
+            labelSpacing: 5,
         },
         /** @type {any} */ (view)
     );
@@ -234,6 +235,15 @@ describe("FilterLocusAxisLabelsTransform", () => {
 
         expect([...collector.getData()].map((datum) => datum.value)).toEqual([
             200, 400, 600, 800,
+        ]);
+    });
+
+    test("keeps spacing between chromosome and numeric labels", () => {
+        const { collector, transform, view } = createFixture();
+        propagate(transform, view, [tick(228, 100), tick(238, 100)]);
+
+        expect([...collector.getData()].map((datum) => datum.value)).toEqual([
+            238,
         ]);
     });
 

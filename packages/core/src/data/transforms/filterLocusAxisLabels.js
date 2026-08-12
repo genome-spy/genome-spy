@@ -109,7 +109,13 @@ export default class FilterLocusAxisLabelsTransform extends Transform {
                 axisLength
             );
 
-            if (!boundsOverlap(numericBounds, chromosomeBounds)) {
+            if (
+                !boundsOverlap(
+                    numericBounds,
+                    chromosomeBounds,
+                    this.params.labelSpacing
+                )
+            ) {
                 this.nextOutputData.push(datum);
             }
         }
@@ -232,7 +238,11 @@ export function getRangedLabelBounds(
     }
 }
 
-/** @param {number[]} a @param {number[]} b */
-function boundsOverlap(a, b) {
-    return a[0] < b[1] && b[0] < a[1];
+/**
+ * @param {number[]} a
+ * @param {number[]} b
+ * @param {number} spacing
+ */
+function boundsOverlap(a, b, spacing) {
+    return a[0] < b[1] + spacing && b[0] - spacing < a[1];
 }

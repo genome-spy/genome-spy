@@ -15,6 +15,7 @@ const AXIS_EXTENT_PARAM = "axisExtent";
 const LABEL_WIDTH_FIELD = "labelWidth";
 const CHROM_LABEL_WIDTH_FIELD = "chromLabelWidth";
 const CHROM_LABEL_RANGE_PADDING = 4;
+const CHROM_LABEL_TICK_SPACING = 5;
 const Y_AXIS_LABEL_HEURISTIC_PX = 10;
 const AUTO_EXTENT_GROW_THRESHOLD_PX = 2;
 
@@ -612,6 +613,7 @@ function createAxis(
                 labelAlign: ap.labelAlign,
                 chromLabelAlign: chromLabelLayout.align,
                 chromLabelPadding: chromLabelLayout.padding,
+                labelSpacing: CHROM_LABEL_TICK_SPACING,
             });
         }
 
