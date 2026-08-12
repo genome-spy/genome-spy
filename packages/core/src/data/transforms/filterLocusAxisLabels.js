@@ -150,8 +150,9 @@ function getPointLabelBounds(position, width, align) {
 
 /**
  * Conservatively approximates a ranged text mark using its visible chromosome
- * interval. Partially visible text is kept inside the viewport, which may cull
- * one extra numeric label but cannot leave an overlap.
+ * interval. A squeezed label occupies the whole visible interval. Partially
+ * visible text is kept inside the viewport, which may cull one extra numeric
+ * label but cannot leave an overlap.
  *
  * @param {number} start
  * @param {number} end
@@ -171,28 +172,33 @@ export function getRangedLabelBounds(
     const rangeStart = Math.min(start, end);
     const rangeEnd = Math.max(start, end);
     const span = rangeEnd - rangeStart;
-    const renderedWidth = Math.min(width, Math.max(0, span - padding));
     const visibleStart = Math.max(0, rangeStart);
     const visibleEnd = Math.min(viewportLength, rangeEnd);
+    const paddedWidth = width + 2 * padding;
+    const availableSpan = span - padding;
+
+    if (paddedWidth > availableSpan) {
+        return [visibleStart, visibleEnd];
+    }
 
     switch (align) {
         case "left": {
             const anchor = visibleStart + padding;
-            return [anchor, anchor + renderedWidth];
+            return [anchor, anchor + width];
         }
         case "center": {
             const anchor = Math.max(
-                renderedWidth / 2,
+                width / 2,
                 Math.min(
-                    viewportLength - renderedWidth / 2,
+                    viewportLength - width / 2,
                     (visibleStart + visibleEnd) / 2
                 )
             );
-            return [anchor - renderedWidth / 2, anchor + renderedWidth / 2];
+            return [anchor - width / 2, anchor + width / 2];
         }
         case "right": {
             const anchor = visibleEnd - padding;
-            return [anchor - renderedWidth, anchor];
+            return [anchor - width, anchor];
         }
         default:
             throw new Error("Invalid chromosome label alignment: " + align);

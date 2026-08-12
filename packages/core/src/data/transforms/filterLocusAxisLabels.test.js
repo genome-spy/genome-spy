@@ -318,6 +318,12 @@ describe("FilterLocusAxisLabelsTransform", () => {
 });
 
 describe("getRangedLabelBounds", () => {
+    test("uses the whole visible chromosome interval when squeezed", () => {
+        expect(getRangedLabelBounds(-20, 80, 120, 4, "left", 500)).toEqual([
+            0, 80,
+        ]);
+    });
+
     test("flushes a partially visible leading chromosome label", () => {
         expect(getRangedLabelBounds(-200, 300, 120, 4, "left", 500)).toEqual([
             4, 124,
