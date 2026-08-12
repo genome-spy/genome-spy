@@ -555,6 +555,10 @@ function getLabelFlush(type, axisProps) {
             : false;
     } else if (configured === false) {
         return false;
+    } else if (!isContinuousAxisType(type)) {
+        throw new Error(
+            "Axis label flushing requires a quantitative, index, or locus axis."
+        );
     } else if (!supportedAngle) {
         throw new Error(
             "Axis label flushing requires an axis-aligned label angle."

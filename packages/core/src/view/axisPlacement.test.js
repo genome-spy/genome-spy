@@ -173,6 +173,16 @@ describe("axis placement", () => {
         expect(labels.spec.transform).toBeUndefined();
     });
 
+    test("rejects label flushing on discrete axes", async () => {
+        await expect(
+            createAxis(
+                "bottom",
+                { labelFlush: true, labelOverlap: false },
+                "nominal"
+            )
+        ).rejects.toThrow(/quantitative, index, or locus/);
+    });
+
     test("supports explicit overlap settings and separation", async () => {
         const axis = await createAxis("bottom", {
             labelOverlap: true,

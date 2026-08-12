@@ -108,8 +108,9 @@ Quantitative and index x axes align labels at the scale-range endpoints flush
 with the plot edges. Set `labelFlush` to `false` to disable this behavior. A
 numeric value sets the pixel threshold for deciding whether a label is near an
 endpoint; `true` uses one pixel. Use `labelFlushOffset` to move flushed labels
-outward from their endpoints. Other axes, including locus axes, are not flushed
-by default.
+outward from their endpoints. Flushing is supported on quantitative, index, and
+locus axes. Other supported axes, including locus and y axes, are not flushed by
+default.
 
 GenomeSpy automatically removes overlapping labels from continuous axes. It
 uses regular parity reduction for continuous scales and greedy reduction for
