@@ -445,9 +445,10 @@ export interface BaseAxis {
      * aligned flush with the scale range. A number specifies the endpoint
      * distance threshold in pixels. `true` uses a threshold of one pixel.
      *
-     * By default, flushing is enabled for continuous x axes and disabled for
-     * other axes. Flushing supports label angles that are multiples of 90
-     * degrees. The automatic behavior is disabled at other angles.
+     * By default, flushing is enabled for quantitative and index x axes and
+     * disabled for other axes, including locus axes. Flushing supports label
+     * angles that are multiples of 90 degrees. The automatic behavior is
+     * disabled at other angles.
      */
     labelFlush?: boolean | number;
 

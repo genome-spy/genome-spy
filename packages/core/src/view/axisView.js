@@ -549,6 +549,7 @@ function getLabelFlush(type, axisProps) {
     if (configured === undefined) {
         return orient2channel(axisProps.orient) == "x" &&
             isContinuousAxisType(type) &&
+            type != "locus" &&
             supportedAngle
             ? 1
             : false;

@@ -466,8 +466,10 @@ describe("Axis extent measurement", () => {
             expect.objectContaining({
                 type: "axisLabelLayout",
                 chromLabelSpacing: 5,
+                labelFlush: false,
             })
         );
+        expect(labelsView.spec.encoding.xOffset).toBeUndefined();
         expect(labelsView.spec.params).toBeUndefined();
         expect(labelsView.spec.mark.viewportEdgeFadeWidthLeft).toBeUndefined();
         expect(

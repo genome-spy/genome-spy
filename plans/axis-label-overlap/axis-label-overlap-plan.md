@@ -52,8 +52,8 @@ reactive collector behind it.
   - leave nominal and ordinal labels unchanged by default.
 - Provide explicit `labelOverlap` and `labelSeparation` axis properties.
 - Flush endpoint labels without changing tick values or tick/grid positions.
-- Use the Vega-Lite default of flushing continuous x-axis labels, while
-  allowing explicit flushing on other axes.
+- Use a Vega-Lite-style default for quantitative and index x-axis labels, while
+  leaving locus axes unflushed and allowing explicit flushing on other axes.
 - Keep tick generation independent of font metrics and layout.
 - Preserve all tick rules when ordinary labels are culled, matching Vega.
 - Compose correctly with locus chromosome-label culling, which continues to
@@ -96,8 +96,8 @@ Semantics:
 - `labelFlush: true` flushes labels whose anchors are within one pixel of a
   scale-range endpoint. A number supplies the endpoint threshold in pixels;
   `0` therefore flushes labels exactly at an endpoint.
-- When omitted, `labelFlush` defaults to `true` for continuous x axes and
-  `false` otherwise, matching Vega-Lite.
+- When omitted, `labelFlush` defaults to `true` for quantitative and index x
+  axes and `false` otherwise. In particular, locus axes are not flushed.
 - `labelFlushOffset` moves a flushed label outward from its endpoint anchor and
   defaults to `0`, matching Vega.
 
@@ -435,7 +435,7 @@ Tentative commit: `docs(core): document axis label overlap removal`
 Outcome:
 
 - Add `labelFlush` and `labelFlushOffset` to the axis specification.
-- Apply the Vega-Lite default only to continuous x axes.
+- Apply the Vega-Lite-style default only to quantitative and index x axes.
 - Classify endpoint labels and publish a measured main-axis pixel offset from
   the existing `axisLabelLayout` transform.
 - Evaluate ordinary label overlap using the flushed bounds.
@@ -496,8 +496,8 @@ Tentative commit: `docs(core): document flushed axis labels`
   explicitly requested.
 - `labelOverlap: false` retains every candidate label.
 - `labelSeparation` is included in collision decisions.
-- Continuous x axes flush endpoint labels by default; other axes do so only
-  when explicitly requested.
+- Quantitative and index x axes flush endpoint labels by default; locus and
+  other axes do so only when explicitly requested.
 - Flushing does not alter datum `value`, tick positions, or gridline positions.
 - Reversed scales flush labels against the correct pixel-range endpoints.
 - `labelFlushOffset` moves only flushed labels outward.
