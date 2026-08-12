@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
-  "description": "Comparison of automatic axis label overlap removal and disabled overlap removal.",
+  "description": "Comparison of automatic axis label layout and disabled label layout.",
 
   "data": {
     "values": [{ "value": 0 }, { "value": 800000000 }]
@@ -8,7 +8,7 @@
 
   "vconcat": [
     {
-      "title": "Automatic overlap removal",
+      "title": "Automatic label layout",
       "width": 400,
       "height": 50,
       "mark": "point",
@@ -16,7 +16,7 @@
         "x": {
           "field": "value",
           "type": "quantitative",
-          "scale": { "domain": [0, 800000000] },
+          "scale": { "domain": [0, 800000000], "zoom": true },
           "axis": {
             "values": [
               0, 100000000, 200000000, 300000000, 400000000, 500000000,
@@ -30,7 +30,7 @@
     },
 
     {
-      "title": "Overlap removal disabled",
+      "title": "Label layout disabled",
       "width": 400,
       "height": 50,
       "mark": "point",
@@ -38,7 +38,7 @@
         "x": {
           "field": "value",
           "type": "quantitative",
-          "scale": { "domain": [0, 800000000] },
+          "scale": { "domain": [0, 800000000], "zoom": true },
           "axis": {
             "values": [
               0, 100000000, 200000000, 300000000, 400000000, 500000000,
@@ -46,7 +46,8 @@
             ],
             "tickCount": 20,
             "format": ",d",
-            "labelOverlap": false
+            "labelOverlap": false,
+            "labelFlush": false
           }
         }
       }

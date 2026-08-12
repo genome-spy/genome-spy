@@ -2,9 +2,8 @@
 
 ## Status
 
-Steps 1–4 are implemented on `feat/axis-label-overlap`. This revision adds
-flushed endpoint labels as Step 5, using the existing reactive layout transform
-rather than another dataflow node.
+Steps 1–6 are implemented on `feat/axis-label-overlap`. Flushed endpoint labels
+use the existing reactive layout transform rather than another dataflow node.
 
 ## Context
 
