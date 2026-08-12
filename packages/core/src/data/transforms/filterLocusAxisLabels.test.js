@@ -102,9 +102,11 @@ class FakeView {
 /**
  * @param {object} [options]
  * @param {{ name: string, size: number }[]} [options.contigs]
+ * @param {"left" | "center" | "right"} [options.chromLabelAlign]
  */
 function createFixture({
     contigs = [{ name: "long_contig_name", size: 1000 }],
+    chromLabelAlign = "left",
 } = {}) {
     const genome = new Genome({ name: "custom", contigs });
     const resolution = new FakeScaleResolution(genome);
@@ -116,7 +118,7 @@ function createFixture({
             labelWidth: "labelWidth",
             chromLabelWidth: "chromLabelWidth",
             labelAlign: "center",
-            chromLabelAlign: "left",
+            chromLabelAlign,
             chromLabelPadding: 4,
             labelSpacing: 5,
         },
@@ -259,6 +261,22 @@ describe("FilterLocusAxisLabelsTransform", () => {
 
         expect([...collector.getData()].map((datum) => datum.value)).toEqual([
             700,
+        ]);
+    });
+
+    test("handles a trailing chromosome label on a reversed vertical scale", () => {
+        const { collector, resolution, transform, view } = createFixture({
+            chromLabelAlign: "right",
+        });
+        resolution.domain = [1000, 0];
+        propagate(transform, view, [
+            tick(50, 100),
+            tick(300, 100),
+            tick(950, 100),
+        ]);
+
+        expect([...collector.getData()].map((datum) => datum.value)).toEqual([
+            300, 950,
         ]);
     });
 

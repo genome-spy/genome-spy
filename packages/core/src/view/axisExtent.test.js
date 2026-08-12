@@ -420,6 +420,42 @@ describe("Axis extent measurement", () => {
         ).toBeUndefined();
     });
 
+    test("vertical locus axes cull beside the rotated chromosome label", async () => {
+        const chrom = "long_contig_name";
+        const context = createBroadcastingTestViewContext();
+        const { view: root } = await createHeadlessEngine(
+            {
+                data: { values: [{ chrom, pos: 1 }] },
+                mark: "point",
+                encoding: {
+                    y: {
+                        chrom: "chrom",
+                        pos: "pos",
+                        type: "locus",
+                        scale: {
+                            type: "locus",
+                            assembly: {
+                                contigs: [{ name: chrom, size: 1000 }],
+                            },
+                        },
+                    },
+                },
+            },
+            { context }
+        );
+
+        const axis = findAxisView(root, "left");
+        const ticksAndLabelsView = findTicksAndLabelsView(axis);
+
+        expect(ticksAndLabelsView.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "filterLocusAxisLabels",
+                channel: "y",
+                chromLabelAlign: "right",
+            })
+        );
+    });
+
     test("long categorical labels increase bottom axis extent after layout", async () => {
         const context = createBroadcastingTestViewContext();
         const root = await createAndInitializeRoot(
