@@ -33,10 +33,9 @@ export default class FilterLocusAxisLabelsTransform extends Transform {
         this.data = [];
 
         this.resolution = view.getScaleResolution(this.channel);
+        const filterAndPropagate = () => this.filterAndPropagate();
         this.schedule = () =>
-            view.context.animator.requestTransition(() =>
-                this.filterAndPropagate()
-            );
+            view.context.animator.requestTransition(filterAndPropagate);
 
         const domainListener = () => this.filterAndPropagate();
         this.resolution.addEventListener("domain", domainListener);
@@ -50,8 +49,12 @@ export default class FilterLocusAxisLabelsTransform extends Transform {
     }
 
     complete() {
-        this.schedule();
-        super.complete();
+        if (this.resolution.getAxisLength()) {
+            this.filterAndPropagate();
+        } else {
+            this.schedule();
+            super.complete();
+        }
     }
 
     filterAndPropagate() {

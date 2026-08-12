@@ -161,6 +161,37 @@ function tick(value, chromLabelWidth, chromLabel = "long_contig_name") {
 }
 
 describe("FilterLocusAxisLabelsTransform", () => {
+    test("publishes the filtered batch synchronously on completion", () => {
+        const { collector, transform, view } = createFixture();
+
+        transform.handle(tick(350, 120));
+        transform.complete();
+
+        expect(collector.completed).toBe(true);
+        expect([...collector.getData()].map((datum) => datum.value)).toEqual([
+            350,
+        ]);
+        expect(view.transitions).toHaveLength(0);
+    });
+
+    test("defers the initial batch until axis length is available", () => {
+        const { collector, resolution, transform, view } = createFixture();
+        resolution.axisLength = 0;
+
+        transform.handle(tick(350, 120));
+        transform.complete();
+
+        expect(collector.completed).toBe(true);
+        expect([...collector.getData()]).toHaveLength(0);
+        expect(view.transitions).toHaveLength(1);
+
+        resolution.axisLength = 500;
+        view.flushTransitions();
+        expect([...collector.getData()].map((datum) => datum.value)).toEqual([
+            350,
+        ]);
+    });
+
     test("a long chromosome label culls several numeric labels", () => {
         const { collector, transform, view } = createFixture();
         propagate(
