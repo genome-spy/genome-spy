@@ -122,13 +122,13 @@ export default class AxisLabelLayoutTransform extends Transform {
 
         this.nextFlushOffsetMap.clear();
         for (const datum of this.nextOutputData) {
-            const bounds = this.getLabelBounds(datum, scale, axisLength);
+            const position = scale(datum.value) * axisLength;
             const layoutOffset =
                 this.params.labelFlush === false
                     ? 0
                     : getFlushedLabelOffset(
-                          scale(datum.value) * axisLength,
-                          bounds,
+                          position,
+                          this.getLabelBounds(datum, 0),
                           axisLength,
                           this.params.labelFlush,
                           this.params.labelFlushOffset
@@ -149,8 +149,7 @@ export default class AxisLabelLayoutTransform extends Transform {
                   (datum) => {
                       const bounds = this.getLabelBounds(
                           datum,
-                          scale,
-                          axisLength
+                          scale(datum.value) * axisLength
                       );
                       const encodedOffset = datum[this.params.labelOffset];
                       const layoutOffset =
@@ -226,7 +225,10 @@ export default class AxisLabelLayoutTransform extends Transform {
      */
     chromosomeLabelOverlaps(datum, scale, genome, axisLength) {
         const chromosome = genome.getChromosome(datum.chromLabel);
-        const numericBounds = this.getLabelBounds(datum, scale, axisLength);
+        const numericBounds = this.getLabelBounds(
+            datum,
+            scale(datum.value) * axisLength
+        );
         const chromosomeStart = scale(chromosome.continuousStart) * axisLength;
         const chromosomeEnd = scale(chromosome.continuousEnd) * axisLength;
         const chromosomeBounds = getRangedLabelBounds(
@@ -247,13 +249,12 @@ export default class AxisLabelLayoutTransform extends Transform {
 
     /**
      * @param {import("../flowNode.js").Datum} datum
-     * @param {import("../../types/encoder.js").VegaScale} scale
-     * @param {number} axisLength
+     * @param {number} position
      * @returns {[number, number]}
      */
-    getLabelBounds(datum, scale, axisLength) {
+    getLabelBounds(datum, position) {
         return getAxisLabelBounds(
-            scale(datum.value) * axisLength,
+            position,
             this.labelWidthAccessor(datum),
             this.params.labelFontSize,
             this.params.labelAngle,
@@ -402,14 +403,14 @@ function mapsEqual(a, b) {
  * https://github.com/vega/vega/blob/c03b7d0fe369be1a6e81d23dc899aef6eb7da967/packages/vega-util/src/flush.ts
  *
  * @param {number} position
- * @param {[number, number]} bounds
+ * @param {[number, number]} relativeBounds
  * @param {number} axisLength
  * @param {number} threshold
  * @param {number} outwardOffset
  */
 export function getFlushedLabelOffset(
     position,
-    bounds,
+    relativeBounds,
     axisLength,
     threshold,
     outwardOffset
@@ -418,9 +419,9 @@ export function getFlushedLabelOffset(
     const endDistance = Math.abs(axisLength - position);
 
     if (startDistance < endDistance && startDistance <= threshold) {
-        return position - bounds[0] - outwardOffset;
+        return -relativeBounds[0] - outwardOffset;
     } else if (endDistance <= threshold) {
-        return position - bounds[1] + outwardOffset;
+        return -relativeBounds[1] + outwardOffset;
     } else {
         return 0;
     }

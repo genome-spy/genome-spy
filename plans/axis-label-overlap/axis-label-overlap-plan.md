@@ -170,12 +170,12 @@ padding.
 
 For each candidate, classify its scaled anchor against the sorted pixel-range
 endpoints using the configured threshold. Reversed scales therefore require no
-special orientation branch. Using the already computed label bounds `[lo, hi]`
-and anchor `p`, calculate:
+special orientation branch. Using label bounds `[lo, hi]` relative to the
+anchor, calculate:
 
 ```text
-range-start label: p - lo - labelFlushOffset
-range-end label:   p - hi + labelFlushOffset
+range-start label: -lo - labelFlushOffset
+range-end label:   -hi + labelFlushOffset
 other label:       0
 ```
 

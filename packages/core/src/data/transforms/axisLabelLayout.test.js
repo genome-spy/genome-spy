@@ -487,6 +487,21 @@ describe("AxisLabelLayoutTransform", () => {
         expect([...collector.getData()][0].labelOffset).toBe(20);
     });
 
+    test("keeps flush offsets stable across subtle scale changes", () => {
+        const { collector, resolution, transform, view } = createFixture({
+            chromLabels: false,
+            labelFlush: 1,
+        });
+        propagate(transform, view, [tick(999.8, 0, undefined, 40.123456789)]);
+        const resetSpy = vi.spyOn(collector, "reset");
+
+        resolution.domain = [0, 1000.2];
+        resolution.emitDomain();
+
+        expect(resetSpy).not.toHaveBeenCalled();
+        expect([...collector.getData()][0].labelOffset).toBe(-40.123456789 / 2);
+    });
+
     test("uses flushed bounds for overlap removal", () => {
         const { collector, resolution, transform, view } = createFixture({
             chromLabels: false,
@@ -631,12 +646,12 @@ describe("getAxisLabelBounds", () => {
 describe("getFlushedLabelOffset", () => {
     test("uses a zero threshold for exact endpoints", () => {
         expect(getFlushedLabelOffset(0, [-20, 20], 100, 0, 0)).toBe(20);
-        expect(getFlushedLabelOffset(0.1, [-19.9, 20.1], 100, 0, 0)).toBe(0);
+        expect(getFlushedLabelOffset(0.1, [-20, 20], 100, 0, 0)).toBe(0);
     });
 
     test("moves endpoint labels outward", () => {
         expect(getFlushedLabelOffset(0, [-20, 20], 100, 1, 2)).toBe(18);
-        expect(getFlushedLabelOffset(100, [80, 120], 100, 1, 2)).toBe(-18);
+        expect(getFlushedLabelOffset(100, [-20, 20], 100, 1, 2)).toBe(-18);
     });
 });
 
