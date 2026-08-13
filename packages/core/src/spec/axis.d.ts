@@ -251,14 +251,18 @@ export interface Axis extends BaseAxis, ZIndexProps {
     tickMinStep?: number;
 
     /**
-     * Explicitly set the visible axis tick and label values.
+     * Explicitly set the visible axis tick and label values. During automatic
+     * overlap removal, these labels are reduced against each other but take
+     * precedence over automatically generated labels.
      */
     values?: any[];
 
     /**
      * Additional tick and label values to include alongside automatically
      * generated ticks on continuous scales. Values outside the visible scale
-     * range are omitted and duplicates are removed.
+     * range are omitted and duplicates are removed. During automatic overlap
+     * removal, these labels are reduced against other explicitly specified
+     * labels but take precedence over automatically generated labels.
      *
      * This property is ignored on discrete scales and when `values` is set.
      */

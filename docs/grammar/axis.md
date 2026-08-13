@@ -99,7 +99,9 @@ Use `values` to replace the automatically generated ticks with explicit tick
 and label values. On continuous scales, use `extraValues` to add values while
 retaining the automatically generated ticks. Invisible and duplicate extra
 values are omitted. `extraValues` is ignored on discrete scales and when
-`values` is set.
+`values` is set. During automatic overlap removal, explicitly specified labels
+are reduced against each other first. The surviving explicit labels take
+precedence over automatically generated labels.
 
 Use `format` to format numeric labels with a
 [d3-format](https://github.com/d3/d3-format#locale_format) specifier.

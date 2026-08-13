@@ -97,21 +97,23 @@ export default class AxisTickSource extends SingleAxisLazySource {
         const generatedTicks = axisParams.values
             ? validTicks(scale, axisParams.values, count)
             : tickValues(scale, count);
-        const ticks =
+        const extraTicks =
             !axisParams.values &&
             axisParams.extraValues &&
             isContinuous(scale.type)
-                ? mergeExtraValues(
-                      scale,
-                      generatedTicks,
-                      axisParams.extraValues
-                  )
-                : generatedTicks;
+                ? validTicks(scale, axisParams.extraValues)
+                : [];
+        const ticks = extraTicks.length
+            ? mergeExtraValues(generatedTicks, extraTicks)
+            : generatedTicks;
 
         if (this.ticks == null || !shallowArrayEquals(ticks, this.ticks)) {
             this.ticks = ticks;
 
             const format = tickFormat(scale, requestedCount, axisParams.format);
+            const explicitTicks = new Set(
+                axisParams.values ? ticks : extraTicks
+            );
             const genome =
                 scale.type == "locus"
                     ? /** @type {import("../../../genome/scaleLocus.js").ScaleLocus} */ (
@@ -123,6 +125,7 @@ export default class AxisTickSource extends SingleAxisLazySource {
                     const datum = {
                         value: tick,
                         label: format(tick),
+                        explicit: explicitTicks.has(tick),
                     };
 
                     if (genome) {
@@ -138,14 +141,13 @@ export default class AxisTickSource extends SingleAxisLazySource {
 }
 
 /**
- * @param {import("../../../types/encoder.js").VegaScale} scale
  * @param {number[]} ticks
  * @param {number[]} extraValues
  * @returns {number[]}
  */
-function mergeExtraValues(scale, ticks, extraValues) {
+function mergeExtraValues(ticks, extraValues) {
     const merged = new Set(ticks);
-    validTicks(scale, extraValues).forEach((value) => merged.add(value));
+    extraValues.forEach((value) => merged.add(value));
     return Array.from(merged).sort((a, b) => a - b);
 }
 

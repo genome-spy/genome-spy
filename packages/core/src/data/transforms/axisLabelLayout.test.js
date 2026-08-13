@@ -521,6 +521,52 @@ describe("AxisLabelLayoutTransform", () => {
         ).toEqual([true, false, true]);
     });
 
+    test("culls explicit labels before giving them priority over generated labels", () => {
+        const { collector, resolution, transform, view } = createFixture({
+            chromLabels: false,
+            labelOverlap: "parity",
+        });
+        resolution.domain = [0, 100];
+        resolution.axisLength = 100;
+        const ticks = [
+            tick(0, 0, undefined, 16),
+            { ...tick(10, 0, undefined, 16), explicit: true },
+            { ...tick(18, 0, undefined, 16), explicit: true },
+            { ...tick(26, 0, undefined, 16), explicit: true },
+            tick(50, 0, undefined, 16),
+        ];
+        propagate(transform, view, ticks);
+
+        expect(
+            [...collector.getData()].map((datum) => datum.labelVisible)
+        ).toEqual([false, true, false, true, true]);
+    });
+
+    test("retains and flushes an explicit endpoint over a generated label", () => {
+        const { collector, resolution, transform, view } = createFixture({
+            chromLabels: false,
+            labelFlush: 1,
+            labelOverlap: "greedy",
+        });
+        resolution.domain = [0, 100];
+        resolution.axisLength = 100;
+        propagate(transform, view, [
+            tick(85, 0, undefined, 30),
+            { ...tick(100, 0, undefined, 40), explicit: true },
+        ]);
+
+        expect(
+            [...collector.getData()].map((datum) => ({
+                value: datum.value,
+                visible: datum.labelVisible,
+                offset: datum.labelOffset,
+            }))
+        ).toEqual([
+            { value: 85, visible: false, offset: 0 },
+            { value: 100, visible: true, offset: -20 },
+        ]);
+    });
+
     test("ignores empty labels during overlap removal", () => {
         const { collector, resolution, transform, view } = createFixture({
             chromLabels: false,

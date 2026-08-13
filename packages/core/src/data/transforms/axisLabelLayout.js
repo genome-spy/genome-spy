@@ -146,22 +146,24 @@ export default class AxisLabelLayoutTransform extends Transform {
         const labelCandidates = this.nextOutputData.filter(
             (datum) => datum.label !== ""
         );
+        /**
+         * @param {import("../flowNode.js").Datum} datum
+         * @returns {[number, number]}
+         */
+        const getBounds = (datum) => {
+            const bounds = this.getLabelBounds(
+                datum,
+                scale(datum.value) * axisLength
+            );
+            const encodedOffset = datum[this.params.labelOffset];
+            const layoutOffset =
+                this.channel == "x" ? encodedOffset : -encodedOffset;
+            return [bounds[0] + layoutOffset, bounds[1] + layoutOffset];
+        };
         const visibleData = method
-            ? removeOverlappingAxisLabels(
+            ? removeOverlappingLabelsByPriority(
                   labelCandidates,
-                  (datum) => {
-                      const bounds = this.getLabelBounds(
-                          datum,
-                          scale(datum.value) * axisLength
-                      );
-                      const encodedOffset = datum[this.params.labelOffset];
-                      const layoutOffset =
-                          this.channel == "x" ? encodedOffset : -encodedOffset;
-                      return [
-                          bounds[0] + layoutOffset,
-                          bounds[1] + layoutOffset,
-                      ];
-                  },
+                  getBounds,
                   method,
                   this.params.labelSeparation
               )
@@ -298,6 +300,50 @@ export default class AxisLabelLayoutTransform extends Transform {
     handle(datum) {
         this.data.push(datum);
     }
+}
+
+/**
+ * Explicit ticks are reduced first. Generated labels may use the remaining
+ * space but cannot displace a surviving explicit label.
+ *
+ * @param {import("../flowNode.js").Datum[]} candidates
+ * @param {(datum: import("../flowNode.js").Datum) => [number, number]} getBounds
+ * @param {"parity" | "greedy"} method
+ * @param {number} separation
+ */
+function removeOverlappingLabelsByPriority(
+    candidates,
+    getBounds,
+    method,
+    separation
+) {
+    const explicitCandidates = candidates.filter((datum) => datum.explicit);
+    const visibleExplicit = removeOverlappingAxisLabels(
+        explicitCandidates,
+        getBounds,
+        method,
+        separation
+    );
+    const generatedCandidates = candidates.filter(
+        (datum) =>
+            !datum.explicit &&
+            visibleExplicit.every(
+                (explicitDatum) =>
+                    !boundsOverlap(
+                        getBounds(datum),
+                        getBounds(explicitDatum),
+                        separation
+                    )
+            )
+    );
+    const visibleGenerated = removeOverlappingAxisLabels(
+        generatedCandidates,
+        getBounds,
+        method,
+        separation
+    );
+
+    return visibleExplicit.concat(visibleGenerated);
 }
 
 /**

@@ -156,12 +156,17 @@ describe("AxisTickSource", () => {
         await linearSource.load();
 
         expect([...locusCollector.getData()]).toEqual([
-            { value: 1, label: "1", chromLabel: "long_contig_name" },
-            { value: 2, label: "2", chromLabel: "chr2" },
+            {
+                value: 1,
+                label: "1",
+                explicit: true,
+                chromLabel: "long_contig_name",
+            },
+            { value: 2, label: "2", explicit: true, chromLabel: "chr2" },
         ]);
         expect([...linearCollector.getData()]).toEqual([
-            { value: 1, label: "1" },
-            { value: 2, label: "2" },
+            { value: 1, label: "1", explicit: true },
+            { value: 2, label: "2", explicit: true },
         ]);
     });
 
@@ -180,8 +185,18 @@ describe("AxisTickSource", () => {
 
         await source.load();
 
-        expect([...collector.getData()].map((datum) => datum.value)).toEqual([
-            0, 1, 2, 3, 4, 50,
+        expect(
+            [...collector.getData()].map((datum) => [
+                datum.value,
+                datum.explicit,
+            ])
+        ).toEqual([
+            [0, false],
+            [1, false],
+            [2, true],
+            [3, false],
+            [4, false],
+            [50, true],
         ]);
     });
 
@@ -223,8 +238,14 @@ describe("AxisTickSource", () => {
 
         await source.load();
 
-        expect([...collector.getData()].map((datum) => datum.value)).toEqual([
-            10, 20,
+        expect(
+            [...collector.getData()].map((datum) => [
+                datum.value,
+                datum.explicit,
+            ])
+        ).toEqual([
+            [10, true],
+            [20, true],
         ]);
     });
 
