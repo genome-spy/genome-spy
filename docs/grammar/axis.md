@@ -87,54 +87,18 @@ Set `titleFit` to `"range"` to constrain the axis title to the axis span. Ranged
 titles are squeezed when space is scarce and stay visible longer inside
 scrollable viewports, but cannot extend outside the axis span.
 
-## Ticks, Labels, and Grid Lines
+## Ticks and Labels
 
-Use `tickCount` to set the desired number of ticks on quantitative axes. The
-actual number may differ when GenomeSpy chooses nice tick values. `tickCount`
-can also be an expression reference. In tick-count expressions, `axisLength` is
-the current length of the axis in pixels. Use `tickMinStep` to set the minimum
-step between ticks in domain units.
+By default, ticks are generated from the scale. Explicit `values` replace them,
+while `extraValues` supplement them on continuous scales. When labels overlap,
+explicit labels are culled among themselves first, and the survivors take
+precedence over generated labels.
 
-Use `values` to replace the automatically generated ticks with explicit tick
-and label values. On continuous scales, use `extraValues` to add values while
-retaining the automatically generated ticks. Invisible and duplicate extra
-values are omitted. `extraValues` is ignored on discrete scales and when
-`values` is set. During automatic overlap removal, explicitly specified labels
-are reduced against each other first. The surviving explicit labels take
-precedence over automatically generated labels.
-
-Use `format` to format numeric labels with a
-[d3-format](https://github.com/d3/d3-format#locale_format) specifier.
-
-Non-zoomable quantitative, index, and locus x axes align labels at the
-scale-range endpoints flush with the plot edges. On zoomable x axes with a
-configured bounded zoom extent, ticks matching the extent boundaries are
-flushed while visible. Other zoomable ticks are not flushed by default because
-labels would jump when their anchors cross the endpoint threshold during
-zooming. Set `labelFlush` explicitly to override the default. A numeric value
-sets the endpoint threshold in pixels; `true` uses one pixel. Use
-`labelFlushOffset` to move flushed labels outward from their endpoints.
-Flushing is disabled by default on y axes.
-
-GenomeSpy automatically removes overlapping labels from continuous axes. It
-uses regular parity reduction for linear-like continuous scales and greedy
-reduction for log and symlog scales. Nominal and ordinal axes retain all labels
-by default. Removed ordinary labels leave their tick marks visible.
-
-Set `labelOverlap` to `false` to retain all labels, or to `"parity"` or
-`"greedy"` to choose a reduction strategy explicitly. `true` selects
-`"parity"`. Retained labels have a two-pixel minimum gap by default; use
-`labelSeparation` to adjust it. Overlap removal supports label angles that are
-multiples of 90 degrees; the automatic flushing and overlap behavior is
-disabled at other angles, and explicitly enabling either feature at those
-angles is rejected.
-
-Set `ticks` or `labels` to `false` to hide tick marks or labels while keeping
-the rest of the axis.
-
-Grid lines are hidden by default in the default theme. Set `grid` to `true` to
-show grid lines for an axis. Global grid defaults can be configured with
-[`config.axis*`](./config.md#axis-defaults).
+By default, continuous axes cull overlapping labels. Non-zoomable x axes also
+align endpoint labels flush with the plot edges. On zoomable x axes, only ticks
+at a configured bounded zoom extent are flushed, avoiding label snapping during
+zooming. These behaviors support axis-aligned labels; culling a label does not
+remove its tick mark.
 
 ## Resolution
 
