@@ -1263,6 +1263,27 @@ describe("GridView legends", () => {
             );
             expect(legendHeights.at(-1)).toBeGreaterThan(100);
 
+            const stackedContext = new LegendRecordingRenderingContext({
+                picking: false,
+            });
+            const regionWidth = Math.max(...legendWidths);
+            region.render(
+                stackedContext,
+                Rectangle.create(
+                    0,
+                    0,
+                    regionWidth,
+                    /** @type {number} */ (region.getParallelSize())
+                )
+            );
+            const stackedCoords = Array.from(
+                stackedContext.legendCoords.values()
+            );
+            expect(stackedCoords.every((coords) => coords.x == 0)).toBe(true);
+            expect(stackedCoords.map((coords) => coords.width)).toEqual(
+                legendWidths
+            );
+
             const availableHeight = Math.max(...legendHeights);
             expect(region.prepareLayoutSize(300, availableHeight)).toBe(true);
             expect(region.getWidth()).toBe(
@@ -1282,9 +1303,14 @@ describe("GridView legends", () => {
             expect(coords[0].y).toBe(coords[1].y);
         });
 
-        test("packs top and bottom legend regions horizontally by default", async () => {
+        test("packs and middle-aligns side-titled horizontal legends", async () => {
             const view = await createLegendTestView({
-                config: { legend: { disable: false } },
+                config: {
+                    legend: {
+                        disable: false,
+                        style: "track-bottom-legend",
+                    },
+                },
                 vconcat: [
                     {
                         data: {
@@ -1354,7 +1380,7 @@ describe("GridView legends", () => {
                 Math.max(...legendHeights)
             );
             expect(region.getWidth()).toBe(
-                legendWidths.reduce((sum, width) => sum + width, 0) + 10
+                legendWidths.reduce((sum, width) => sum + width, 0) + 15
             );
 
             const context = new LegendRecordingRenderingContext({
@@ -1365,8 +1391,14 @@ describe("GridView legends", () => {
 
             expect(coords).toHaveLength(2);
             expect(coords[0].x).toBe(0);
-            expect(coords[1].x - coords[0].x - coords[0].width).toBe(10);
-            expect(coords[0].y).toBe(coords[1].y);
+            expect(coords[1].x - coords[0].x - coords[0].width).toBe(15);
+            const rowCenter = coords[0].y + coords[0].height / 2;
+            for (const [index, legendCoords] of coords.entries()) {
+                expect(legendCoords.height).toBe(legendHeights[index]);
+                expect(legendCoords.y + legendCoords.height / 2).toBe(
+                    rowCenter
+                );
+            }
 
             expect(
                 region.prepareLayoutSize(Math.max(...legendWidths), 80)

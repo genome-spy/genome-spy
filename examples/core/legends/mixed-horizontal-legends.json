@@ -1,0 +1,71 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Mixed horizontal legends",
+    "Symbol legends and a gradient share a bottom legend row."
+  ],
+
+  "width": 800,
+  "height": 180,
+
+  "config": {
+    "legend": { "disable": false, "style": "track-bottom-legend" }
+  },
+
+  "data": {
+    "values": [
+      { "x": 1, "y": 3, "class": "A", "group": "M0", "value": 200 },
+      { "x": 2, "y": 5, "class": "B", "group": "M1", "value": 800 },
+      { "x": 3, "y": 4, "class": "C", "group": "M2", "value": 1400 },
+      { "x": 4, "y": 7, "class": "D", "group": "M3", "value": 2200 }
+    ]
+  },
+
+  "resolve": {
+    "scale": { "color": "independent" },
+    "legend": { "color": "independent" }
+  },
+
+  "layer": [
+    {
+      "mark": { "type": "point", "filled": true, "size": 100 },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" },
+        "color": {
+          "field": "class",
+          "type": "nominal",
+          "legend": { "title": "Class" }
+        }
+      }
+    },
+
+    {
+      "mark": { "type": "point", "filled": false, "size": 250 },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" },
+        "color": {
+          "field": "group",
+          "type": "nominal",
+          "legend": { "title": "Group" }
+        }
+      }
+    },
+
+    {
+      "mark": { "type": "point", "filled": true, "size": 30 },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" },
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "scale": { "scheme": "blues" },
+          "legend": { "title": "Value", "gradientLength": 260 }
+        }
+      }
+    }
+  ]
+}

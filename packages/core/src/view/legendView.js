@@ -1201,17 +1201,23 @@ export class LegendRegionView extends ContainerView {
             for (const [itemIndex, legendIndex] of line.entries()) {
                 const legendView = legendViews[legendIndex];
                 const itemLocSize = itemLocSizes[itemIndex];
+                const itemCrossSize = getSizeDefMinPx(crossSizes[legendIndex]);
+                const crossOffset =
+                    legendView.legendProps.title != null &&
+                    getTitleOrient(legendView.legendProps) == "top"
+                        ? 0
+                        : Math.max(0, (lineLocSize.size - itemCrossSize) / 2);
                 const legendCoords = horizontal
                     ? new Rectangle(
                           () => coords.x + itemLocSize.location,
-                          () => coords.y + lineLocSize.location,
+                          () => coords.y + lineLocSize.location + crossOffset,
                           () => itemLocSize.size,
-                          () => lineLocSize.size
+                          () => itemCrossSize
                       )
                     : new Rectangle(
-                          () => coords.x + lineLocSize.location,
+                          () => coords.x + lineLocSize.location + crossOffset,
                           () => coords.y + itemLocSize.location,
-                          () => lineLocSize.size,
+                          () => itemCrossSize,
                           () => itemLocSize.size
                       );
                 legendView.render(context, legendCoords, options);
