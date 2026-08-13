@@ -36,7 +36,9 @@ export default class AxisLabelLayoutTransform extends Transform {
             : undefined;
 
         if (
-            (params.labelOverlap || params.labelFlush !== false) &&
+            (params.labelOverlap ||
+                params.labelFlush !== false ||
+                params.labelFlushZoomExtent) &&
             !isAxisAligned(params.labelAngle)
         ) {
             throw new Error(
@@ -127,15 +129,22 @@ export default class AxisLabelLayoutTransform extends Transform {
         for (const datum of this.nextOutputData) {
             const position = scale(datum.value) * axisLength;
             const layoutOffset =
-                this.params.labelFlush === false
-                    ? 0
-                    : getFlushedLabelOffset(
+                this.params.labelFlushZoomExtent && datum.zoomExtent
+                    ? getZoomExtentFlushedLabelOffset(
                           position,
                           this.getLabelBounds(datum, 0),
                           axisLength,
-                          this.params.labelFlush,
                           this.params.labelFlushOffset
-                      );
+                      )
+                    : this.params.labelFlush === false
+                      ? 0
+                      : getFlushedLabelOffset(
+                            position,
+                            this.getLabelBounds(datum, 0),
+                            axisLength,
+                            this.params.labelFlush,
+                            this.params.labelFlushOffset
+                        );
             const encodedOffset =
                 this.channel == "x" ? layoutOffset : -layoutOffset;
             datum[this.params.labelOffset] = encodedOffset;
@@ -473,6 +482,32 @@ export function getFlushedLabelOffset(
         return -relativeBounds[1] + outwardOffset;
     } else {
         return 0;
+    }
+}
+
+/**
+ * Moves a configured zoom-extent label inward only when it protrudes beyond
+ * the nearest viewport edge. This accommodates index and locus ticks whose
+ * anchors are centered inside their endpoint bands.
+ *
+ * @param {number} position
+ * @param {[number, number]} relativeBounds
+ * @param {number} axisLength
+ * @param {number} outwardOffset
+ */
+export function getZoomExtentFlushedLabelOffset(
+    position,
+    relativeBounds,
+    axisLength,
+    outwardOffset
+) {
+    if (position < axisLength - position) {
+        return Math.max(0, -position - relativeBounds[0] - outwardOffset);
+    } else {
+        return Math.min(
+            0,
+            axisLength - position - relativeBounds[1] + outwardOffset
+        );
     }
 }
 

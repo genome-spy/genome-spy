@@ -9,10 +9,17 @@ import AxisTickSource from "./axisTickSource.js";
  * @param {number} options.axisLength
  * @param {string} [options.scaleType]
  * @param {import("../../../genome/genome.js").default} [options.genome]
+ * @param {number[]} [options.zoomExtent]
  */
-function createViewStub({ axisLength, scaleType = "linear", genome }) {
+function createViewStub({
+    axisLength,
+    scaleType = "linear",
+    genome,
+    zoomExtent,
+}) {
     /** @type {(() => void) | undefined} */
     let lastDomainListener;
+    let currentZoomExtent = zoomExtent;
 
     const scale = /** @type {any} */ ((/** @type {number} */ value) => value);
     scale.type = scaleType;
@@ -45,6 +52,10 @@ function createViewStub({ axisLength, scaleType = "linear", genome }) {
         getAxisLength: () => axisLength,
         getDomain: () => [0, 100],
         getScale: () => scale,
+        hasConfiguredZoomExtent: () => currentZoomExtent !== undefined,
+        get zoomExtent() {
+            return currentZoomExtent;
+        },
     };
 
     const paramRuntime = new ViewParamRuntime(
@@ -55,6 +66,9 @@ function createViewStub({ axisLength, scaleType = "linear", genome }) {
     return {
         getDomainListener: () => lastDomainListener,
         paramRuntime,
+        setZoomExtent: (/** @type {number[]} */ extent) => {
+            currentZoomExtent = extent;
+        },
         view: {
             paramRuntime,
             getScaleResolution: () => scaleResolution,
@@ -247,6 +261,65 @@ describe("AxisTickSource", () => {
             [10, true],
             [20, true],
         ]);
+    });
+
+    test("marks ticks at a configured index zoom extent", async () => {
+        const { view } = createViewStub({
+            axisLength: 2000,
+            scaleType: "index",
+            // Index extents use an internal half-open upper bound.
+            zoomExtent: [1, 1069],
+        });
+        const source = new AxisTickSource(
+            {
+                type: "axisTicks",
+                channel: "x",
+                axis: { values: [1, 500, 1068] },
+            },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await source.load();
+
+        expect([...collector.getData()]).toEqual([
+            { value: 1, label: "1", explicit: true, zoomExtent: true },
+            { value: 500, label: "500", explicit: true },
+            {
+                value: 1068,
+                label: "1068",
+                explicit: true,
+                zoomExtent: true,
+            },
+        ]);
+    });
+
+    test("repropagates when zoom-extent ticks change", async () => {
+        const { setZoomExtent, view } = createViewStub({
+            axisLength: 100,
+            zoomExtent: [0, 4],
+        });
+        const source = new AxisTickSource(
+            {
+                type: "axisTicks",
+                channel: "x",
+                axis: { tickCount: 5 },
+            },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+        await source.load();
+        const resetSpy = vi.spyOn(collector, "reset");
+
+        setZoomExtent([0, 3]);
+        await source.onDomainChanged();
+
+        expect(resetSpy).toHaveBeenCalledOnce();
+        expect(
+            [...collector.getData()].map((datum) => datum.zoomExtent)
+        ).toEqual([true, undefined, undefined, true, undefined]);
     });
 
     test("updates ticks when a tickCount expression dependency changes", async () => {

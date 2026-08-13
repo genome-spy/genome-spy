@@ -48,7 +48,7 @@ function findUnitView(axisView, name) {
  * @param {import("../spec/axis.js").AxisOrient} orient
  * @param {import("../spec/axis.js").Axis} axis
  * @param {import("../spec/channel.js").Type} [type]
- * @param {boolean} [zoom]
+ * @param {import("../spec/scale.js").Scale["zoom"]} [zoom]
  */
 async function createAxis(orient, axis, type = "quantitative", zoom) {
     const channel = orient === "left" || orient === "right" ? "y" : "x";
@@ -173,6 +173,47 @@ describe("axis placement", () => {
             expect.objectContaining({
                 type: "axisLabelLayout",
                 labelFlush: false,
+            })
+        );
+        expect(labels.spec.encoding.xOffset).toBeUndefined();
+    });
+
+    test("flushes configured zoom-extent ticks on a zoomable x axis", async () => {
+        const axis = await createAxis("bottom", {}, "index", {
+            extent: [1, 1068],
+        });
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: false,
+                labelFlushZoomExtent: true,
+            })
+        );
+        expect(labels.spec.encoding.xOffset).toEqual({
+            field: "labelOffset",
+            type: "quantitative",
+            scale: null,
+        });
+    });
+
+    test("allows configured zoom-extent flushing to be disabled", async () => {
+        const axis = await createAxis(
+            "bottom",
+            { labelFlush: false },
+            "index",
+            { extent: [1, 1068] }
+        );
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: false,
+                labelFlushZoomExtent: false,
             })
         );
         expect(labels.spec.encoding.xOffset).toBeUndefined();

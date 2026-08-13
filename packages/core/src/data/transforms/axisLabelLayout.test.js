@@ -6,6 +6,7 @@ import AxisLabelLayoutTransform, {
     getAxisLabelBounds,
     getFlushedLabelOffset,
     getRangedLabelBounds,
+    getZoomExtentFlushedLabelOffset,
 } from "./axisLabelLayout.js";
 
 class FakeScaleResolution {
@@ -109,6 +110,7 @@ class FakeView {
  * @param {boolean} [options.chromLabels]
  * @param {false | "auto" | "parity" | "greedy"} [options.labelOverlap]
  * @param {false | number} [options.labelFlush]
+ * @param {boolean} [options.labelFlushZoomExtent]
  * @param {number} [options.labelFlushOffset]
  * @param {"x" | "y"} [options.channel]
  * @param {"left" | "center" | "right"} [options.labelAlign]
@@ -120,6 +122,7 @@ function createFixture({
     chromLabels = true,
     labelOverlap = false,
     labelFlush = false,
+    labelFlushZoomExtent = false,
     labelFlushOffset = 0,
     channel = "x",
     labelAlign = "center",
@@ -138,6 +141,7 @@ function createFixture({
             labelAlign,
             labelBaseline,
             labelFlush,
+            labelFlushZoomExtent,
             labelFlushOffset,
             labelOffset: "labelOffset",
             labelOverlap,
@@ -407,6 +411,24 @@ describe("AxisLabelLayoutTransform", () => {
         ).toEqual([20, 0, -20]);
     });
 
+    test("flushes zoom-extent labels centered inside endpoint bands", () => {
+        const { collector, resolution, transform, view } = createFixture({
+            chromLabels: false,
+            labelFlushZoomExtent: true,
+        });
+        resolution.domain = [0, 100];
+        resolution.axisLength = 100;
+        propagate(transform, view, [
+            { ...tick(5, 0, undefined, 20), zoomExtent: true },
+            tick(50, 0, undefined, 20),
+            { ...tick(95, 0, undefined, 20), zoomExtent: true },
+        ]);
+
+        expect(
+            [...collector.getData()].map((datum) => datum.labelOffset)
+        ).toEqual([5, 0, -5]);
+    });
+
     test("flushes vertical labels using their main-axis bounds", () => {
         const { collector, transform, view } = createFixture({
             chromLabels: false,
@@ -643,6 +665,7 @@ describe("AxisLabelLayoutTransform", () => {
                         labelAlign: "center",
                         labelBaseline: "top",
                         labelFlush: false,
+                        labelFlushZoomExtent: false,
                         labelFlushOffset: 0,
                         labelOffset: "labelOffset",
                         labelOverlap: "parity",
@@ -698,6 +721,18 @@ describe("getFlushedLabelOffset", () => {
     test("moves endpoint labels outward", () => {
         expect(getFlushedLabelOffset(0, [-20, 20], 100, 1, 2)).toBe(18);
         expect(getFlushedLabelOffset(100, [-20, 20], 100, 1, 2)).toBe(-18);
+    });
+});
+
+describe("getZoomExtentFlushedLabelOffset", () => {
+    test("moves protruding labels inward from index-band centers", () => {
+        expect(getZoomExtentFlushedLabelOffset(5, [-10, 10], 100, 0)).toBe(5);
+        expect(getZoomExtentFlushedLabelOffset(95, [-10, 10], 100, 0)).toBe(-5);
+    });
+
+    test("does not pull an already fitting label outward", () => {
+        expect(getZoomExtentFlushedLabelOffset(20, [-5, 5], 100, 0)).toBe(0);
+        expect(getZoomExtentFlushedLabelOffset(80, [-5, 5], 100, 0)).toBe(0);
     });
 });
 

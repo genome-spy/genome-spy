@@ -9,7 +9,7 @@ import ScaleResolution from "./scaleResolution.js";
  * @param {string} options.path
  * @param {import("../spec/channel.js").ChannelWithScale} [options.channel]
  * @param {import("../spec/channel.js").Type} [options.type]
- * @param {boolean} [options.zoom]
+ * @param {import("../spec/scale.js").Scale["zoom"]} [options.zoom]
  * @returns {import("./scaleResolution.js").ScaleResolutionMember}
  */
 function createMember({ path, channel = "x", type = "index", zoom }) {
@@ -93,6 +93,30 @@ describe("scale resolution zoomability", () => {
 
         expect(resolution.isZoomable()).toBe(true);
         expect(orderSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test("identifies explicitly configured bounded zoom extents", () => {
+        const resolution = new ScaleResolution("x");
+        resolution.registerMember(
+            createMember({
+                path: "root/a",
+                zoom: { extent: [1, 100] },
+            })
+        );
+
+        expect(resolution.hasConfiguredZoomExtent()).toBe(true);
+    });
+
+    test.each(
+        /** @type {import("../spec/scale.js").Scale["zoom"][]} */ ([
+            true,
+            { extent: "unbounded" },
+        ])
+    )("does not identify %j as a bounded configured zoom extent", (zoom) => {
+        const resolution = new ScaleResolution("x");
+        resolution.registerMember(createMember({ path: "root/a", zoom }));
+
+        expect(resolution.hasConfiguredZoomExtent()).toBe(false);
     });
 
     test("binds range expressions through the contributing member view", () => {

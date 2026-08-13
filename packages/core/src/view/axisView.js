@@ -158,7 +158,10 @@ export default class AxisView extends LayerView {
      */
     constructor(axisProps, type, context, layoutParent, dataParent, options) {
         const channel = orient2channel(axisProps.orient);
-        const zoomable = dataParent.getScaleResolution(channel).isZoomable();
+        const scaleResolution = dataParent.getScaleResolution(channel);
+        const zoomable = scaleResolution.isZoomable();
+        const hasConfiguredZoomExtent =
+            scaleResolution.hasConfiguredZoomExtent();
         const configuredDefaults = getConfiguredAxisDefaults(
             dataParent.getConfigScopes(),
             {
@@ -197,11 +200,18 @@ export default class AxisView extends LayerView {
 
         super(
             genomeAxis
-                ? createGenomeAxis(fullAxisProps, type, textDefaults, zoomable)
+                ? createGenomeAxis(
+                      fullAxisProps,
+                      type,
+                      textDefaults,
+                      zoomable,
+                      hasConfiguredZoomExtent
+                  )
                 : createAxis(
                       fullAxisProps,
                       type,
                       zoomable,
+                      hasConfiguredZoomExtent,
                       options?.labelClipPolicy ?? "pixel",
                       textDefaults
                   ),
@@ -571,6 +581,28 @@ function getLabelFlush(type, axisProps, zoomable) {
     }
 }
 
+/**
+ * @param {string} type
+ * @param {Axis} axisProps
+ * @param {boolean} zoomable
+ * @param {boolean} hasConfiguredZoomExtent
+ */
+function getLabelFlushZoomExtent(
+    type,
+    axisProps,
+    zoomable,
+    hasConfiguredZoomExtent
+) {
+    return (
+        axisProps.labelFlush !== false &&
+        orient2channel(axisProps.orient) == "x" &&
+        isContinuousAxisType(type) &&
+        axisProps.labelAngle % 90 == 0 &&
+        zoomable &&
+        hasConfiguredZoomExtent
+    );
+}
+
 /** @param {string} type */
 function isContinuousAxisType(type) {
     switch (type) {
@@ -590,6 +622,7 @@ function isContinuousAxisType(type) {
  * @param {Axis} axisProps
  * @param {string} type
  * @param {boolean} zoomable
+ * @param {boolean} hasConfiguredZoomExtent
  * @param {"pixel" | "anchor"} labelClipPolicy
  * @param {Record<string, any>} [textDefaults]
  * @param {{
@@ -603,6 +636,7 @@ function createAxis(
     axisProps,
     type,
     zoomable,
+    hasConfiguredZoomExtent,
     labelClipPolicy = "pixel",
     textDefaults = {},
     chromLabelLayout
@@ -619,8 +653,17 @@ function createAxis(
     );
     const labelOverlap = getLabelOverlap(type, ap);
     const labelFlush = getLabelFlush(type, ap, zoomable);
+    const labelFlushZoomExtent = getLabelFlushZoomExtent(
+        type,
+        ap,
+        zoomable,
+        hasConfiguredZoomExtent
+    );
     const layoutLabels =
-        !!chromLabelLayout || !!labelOverlap || labelFlush !== false;
+        !!chromLabelLayout ||
+        !!labelOverlap ||
+        labelFlush !== false ||
+        labelFlushZoomExtent;
 
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
@@ -681,7 +724,7 @@ function createAxis(
         },
         encoding: {
             [main]: makeMainDomainDef(),
-            ...(labelFlush !== false
+            ...(labelFlush !== false || labelFlushZoomExtent
                 ? {
                       [main + "Offset"]: {
                           field: LABEL_OFFSET_FIELD,
@@ -734,6 +777,7 @@ function createAxis(
                 labelAlign: ap.labelAlign,
                 labelBaseline: ap.labelBaseline,
                 labelFlush,
+                labelFlushZoomExtent,
                 labelFlushOffset: ap.labelFlushOffset ?? 0,
                 labelOffset: LABEL_OFFSET_FIELD,
                 labelOverlap,
@@ -878,13 +922,15 @@ function createAxis(
  * @param {string} type
  * @param {Record<string, any>} [textDefaults]
  * @param {boolean} [zoomable]
+ * @param {boolean} [hasConfiguredZoomExtent]
  * @returns {LayerSpec}
  */
 export function createGenomeAxis(
     axisProps,
     type,
     textDefaults = {},
-    zoomable = true
+    zoomable = true,
+    hasConfiguredZoomExtent = false
 ) {
     const ap = axisProps;
     const chromLabelTextStyle = resolveTextStyle(
@@ -1018,6 +1064,7 @@ export function createGenomeAxis(
         },
         type,
         zoomable,
+        hasConfiguredZoomExtent,
         "pixel",
         textDefaults,
         axisProps.chromLabels ? chromLabelLayout : undefined

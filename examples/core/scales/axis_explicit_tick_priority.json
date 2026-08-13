@@ -16,7 +16,10 @@
     "x": {
       "field": "start",
       "type": "index",
-      "scale": { "domain": [1, 1069], "zoom": false },
+      "scale": {
+        "domain": [1, 1068],
+        "zoom": { "extent": [1, 1068] }
+      },
       "axis": {
         "title": "Protein position (length: 1,068 aa)",
         "tickCount": 10,
