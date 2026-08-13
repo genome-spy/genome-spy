@@ -87,29 +87,20 @@ Set `titleFit` to `"range"` to constrain the axis title to the axis span. Ranged
 titles are squeezed when space is scarce and stay visible longer inside
 scrollable viewports, but cannot extend outside the axis span.
 
-## Ticks, Labels, and Grid Lines
+## Ticks and Labels
 
-Use `tickCount` to set the desired number of ticks on quantitative axes. The
-actual number may differ when GenomeSpy chooses nice tick values. `tickCount`
-can also be an expression reference. In tick-count expressions, `axisLength` is
-the current length of the axis in pixels. Use `tickMinStep` to set the minimum
-step between ticks in domain units.
+By default, ticks are generated from the scale. Explicit `values` replace them,
+while `extraValues` supplement them on continuous scales. When labels overlap,
+explicit labels are culled among themselves first, and the survivors take
+precedence over generated labels.
 
-Use `values` to replace the automatically generated ticks with explicit tick
-and label values. On continuous scales, use `extraValues` to add values while
-retaining the automatically generated ticks. Invisible and duplicate extra
-values are omitted. `extraValues` is ignored on discrete scales and when
-`values` is set.
+EXAMPLE examples/docs/grammar/axis/protein-domain-ticks.json height=90 spechidden
 
-Use `format` to format numeric labels with a
-[d3-format](https://github.com/d3/d3-format#locale_format) specifier.
-
-Set `ticks` or `labels` to `false` to hide tick marks or labels while keeping
-the rest of the axis.
-
-Grid lines are hidden by default in the default theme. Set `grid` to `true` to
-show grid lines for an axis. Global grid defaults can be configured with
-[`config.axis*`](./config.md#axis-defaults).
+By default, continuous axes cull overlapping labels. Non-zoomable x axes also
+align endpoint labels flush with the plot edges. On zoomable x axes, only ticks
+at a configured bounded zoom extent are flushed, avoiding label snapping during
+zooming. These behaviors support axis-aligned labels; culling a label does not
+remove its tick mark.
 
 ## Resolution
 

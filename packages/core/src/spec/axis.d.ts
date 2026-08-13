@@ -251,14 +251,18 @@ export interface Axis extends BaseAxis, ZIndexProps {
     tickMinStep?: number;
 
     /**
-     * Explicitly set the visible axis tick and label values.
+     * Explicitly set the visible axis tick and label values. During automatic
+     * overlap removal, these labels are reduced against each other but take
+     * precedence over automatically generated labels.
      */
     values?: any[];
 
     /**
      * Additional tick and label values to include alongside automatically
      * generated ticks on continuous scales. Values outside the visible scale
-     * range are omitted and duplicates are removed.
+     * range are omitted and duplicates are removed. During automatic overlap
+     * removal, these labels are reduced against other explicitly specified
+     * labels but take precedence over automatically generated labels.
      *
      * This property is ignored on discrete scales and when `values` is set.
      */
@@ -439,6 +443,52 @@ export interface BaseAxis {
      * @maximum 360
      */
     labelAngle?: number;
+
+    /**
+     * Indicates whether labels near the beginning or end of the axis should be
+     * aligned flush with the scale range. A number specifies the endpoint
+     * distance threshold in pixels. `true` uses a threshold of one pixel.
+     *
+     * Flushing is supported for quantitative, index, and locus axes. By
+     * default, it is enabled for non-zoomable x axes of these types. On a
+     * zoomable x axis with a configured bounded zoom extent, ticks matching
+     * the extent boundaries are flushed while they remain visible. Other
+     * zoomable ticks and y-axis ticks are not flushed by default. Flushing
+     * supports label angles that are multiples of 90 degrees. The automatic
+     * behavior is disabled at other angles.
+     */
+    labelFlush?: boolean | number;
+
+    /**
+     * The number of pixels by which to move flush-adjusted labels outward from
+     * the axis range.
+     *
+     * __Default value:__ `0`
+     */
+    labelFlushOffset?: number;
+
+    /**
+     * The strategy for removing overlapping axis labels. `true` uses the
+     * `"parity"` strategy. `"parity"` removes every other label until the
+     * remaining labels no longer overlap. `"greedy"` keeps each label that
+     * does not overlap the previously retained label. `false` disables overlap
+     * removal.
+     *
+     * By default, overlap removal uses `"parity"` for linear-like continuous
+     * scales and `"greedy"` for logarithmic and symlog scales. It is disabled
+     * for discrete scales. Overlap removal supports label angles that are
+     * multiples of 90 degrees. The automatic behavior is disabled at other
+     * angles.
+     */
+    labelOverlap?: boolean | "parity" | "greedy";
+
+    /**
+     * The minimum separation, in pixels, between retained axis labels.
+     *
+     * __Default value:__ `2`
+     * @minimum 0
+     */
+    labelSeparation?: number;
 
     /**
      * Vertical text baseline of axis tick labels, overriding the default setting for the current axis orientation.

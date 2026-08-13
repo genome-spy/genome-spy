@@ -13,6 +13,8 @@ const LABELS_LAYER_NAME = "labels_main";
 const TICKS_AND_LABELS_LAYER_NAME = "ticks_and_labels";
 const AXIS_EXTENT_PARAM = "axisExtent";
 const LABEL_WIDTH_FIELD = "labelWidth";
+const LABEL_VISIBLE_FIELD = "labelVisible";
+const LABEL_OFFSET_FIELD = "labelOffset";
 const CHROM_LABEL_WIDTH_FIELD = "chromLabelWidth";
 const CHROM_LABEL_RANGE_PADDING = 4;
 const CHROM_LABEL_TICK_SPACING = 5;
@@ -156,6 +158,10 @@ export default class AxisView extends LayerView {
      */
     constructor(axisProps, type, context, layoutParent, dataParent, options) {
         const channel = orient2channel(axisProps.orient);
+        const scaleResolution = dataParent.getScaleResolution(channel);
+        const zoomable = scaleResolution.isZoomable();
+        const hasConfiguredZoomExtent =
+            scaleResolution.hasConfiguredZoomExtent();
         const configuredDefaults = getConfiguredAxisDefaults(
             dataParent.getConfigScopes(),
             {
@@ -194,10 +200,18 @@ export default class AxisView extends LayerView {
 
         super(
             genomeAxis
-                ? createGenomeAxis(fullAxisProps, type, textDefaults)
+                ? createGenomeAxis(
+                      fullAxisProps,
+                      type,
+                      textDefaults,
+                      zoomable,
+                      hasConfiguredZoomExtent
+                  )
                 : createAxis(
                       fullAxisProps,
                       type,
+                      zoomable,
+                      hasConfiguredZoomExtent,
                       options?.labelClipPolicy ?? "pixel",
                       textDefaults
                   ),
@@ -514,8 +528,101 @@ function getDefaultAngleAndAlign(type, axisProps) {
 }
 
 /**
+ * @param {string} type
+ * @param {Axis} axisProps
+ * @returns {false | "auto" | "parity" | "greedy"}
+ */
+function getLabelOverlap(type, axisProps) {
+    const supportedAngle = axisProps.labelAngle % 90 == 0;
+    const configured = axisProps.labelOverlap;
+
+    if (configured === undefined) {
+        return isContinuousAxisType(type) && supportedAngle ? "auto" : false;
+    } else if (configured === false) {
+        return false;
+    } else if (!supportedAngle) {
+        throw new Error(
+            "Axis label overlap removal requires an axis-aligned label angle."
+        );
+    } else {
+        return configured === true ? "parity" : configured;
+    }
+}
+
+/**
+ * @param {string} type
+ * @param {Axis} axisProps
+ * @param {boolean} zoomable
+ * @returns {false | number}
+ */
+function getLabelFlush(type, axisProps, zoomable) {
+    const supportedAngle = axisProps.labelAngle % 90 == 0;
+    const configured = axisProps.labelFlush;
+
+    if (configured === undefined) {
+        return orient2channel(axisProps.orient) == "x" &&
+            isContinuousAxisType(type) &&
+            !zoomable &&
+            supportedAngle
+            ? 1
+            : false;
+    } else if (configured === false) {
+        return false;
+    } else if (!isContinuousAxisType(type)) {
+        throw new Error(
+            "Axis label flushing requires a quantitative, index, or locus axis."
+        );
+    } else if (!supportedAngle) {
+        throw new Error(
+            "Axis label flushing requires an axis-aligned label angle."
+        );
+    } else {
+        return configured === true ? 1 : configured;
+    }
+}
+
+/**
+ * @param {string} type
+ * @param {Axis} axisProps
+ * @param {boolean} zoomable
+ * @param {boolean} hasConfiguredZoomExtent
+ */
+function getLabelFlushZoomExtent(
+    type,
+    axisProps,
+    zoomable,
+    hasConfiguredZoomExtent
+) {
+    return (
+        axisProps.labelFlush !== false &&
+        orient2channel(axisProps.orient) == "x" &&
+        isContinuousAxisType(type) &&
+        axisProps.labelAngle % 90 == 0 &&
+        zoomable &&
+        hasConfiguredZoomExtent
+    );
+}
+
+/** @param {string} type */
+function isContinuousAxisType(type) {
+    switch (type) {
+        case "quantitative":
+        case "index":
+        case "locus":
+            return true;
+        case "nominal":
+        case "ordinal":
+            return false;
+        default:
+            throw new Error("Invalid axis field type: " + type);
+    }
+}
+
+/**
  * @param {Axis} axisProps
  * @param {string} type
+ * @param {boolean} zoomable
+ * @param {boolean} hasConfiguredZoomExtent
  * @param {"pixel" | "anchor"} labelClipPolicy
  * @param {Record<string, any>} [textDefaults]
  * @param {{
@@ -528,6 +635,8 @@ function getDefaultAngleAndAlign(type, axisProps) {
 function createAxis(
     axisProps,
     type,
+    zoomable,
+    hasConfiguredZoomExtent,
     labelClipPolicy = "pixel",
     textDefaults = {},
     chromLabelLayout
@@ -542,6 +651,19 @@ function createAxis(
         ap.labelFontSize,
         textDefaults
     );
+    const labelOverlap = getLabelOverlap(type, ap);
+    const labelFlush = getLabelFlush(type, ap, zoomable);
+    const labelFlushZoomExtent = getLabelFlushZoomExtent(
+        type,
+        ap,
+        zoomable,
+        hasConfiguredZoomExtent
+    );
+    const layoutLabels =
+        !!chromLabelLayout ||
+        !!labelOverlap ||
+        labelFlush !== false ||
+        labelFlushZoomExtent;
 
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
@@ -575,6 +697,14 @@ function createAxis(
      */
     const createLabels = () => ({
         name: LABELS_LAYER_NAME,
+        transform: layoutLabels
+            ? [
+                  {
+                      type: "filter",
+                      expr: `datum.${LABEL_VISIBLE_FIELD}`,
+                  },
+              ]
+            : undefined,
         mark: {
             type: "text",
             clip: labelClipPolicy === "anchor" ? "never" : false,
@@ -594,6 +724,15 @@ function createAxis(
         },
         encoding: {
             [main]: makeMainDomainDef(),
+            ...(labelFlush !== false || labelFlushZoomExtent
+                ? {
+                      [main + "Offset"]: {
+                          field: LABEL_OFFSET_FIELD,
+                          type: "quantitative",
+                          scale: null,
+                      },
+                  }
+                : {}),
             text: { field: "label" },
         },
     });
@@ -626,15 +765,32 @@ function createAxis(
                 fontStyle: style.fontStyle,
                 fontWeight: style.fontWeight,
             });
+        }
+
+        if (layoutLabels) {
             transform.push({
-                type: "filterLocusAxisLabels",
+                type: "axisLabelLayout",
                 channel: main,
                 labelWidth: LABEL_WIDTH_FIELD,
-                chromLabelWidth: CHROM_LABEL_WIDTH_FIELD,
+                labelFontSize: labelTextStyle.size,
+                labelAngle: ap.labelAngle,
                 labelAlign: ap.labelAlign,
-                chromLabelAlign: chromLabelLayout.align,
-                chromLabelPadding: chromLabelLayout.padding,
-                labelSpacing: CHROM_LABEL_TICK_SPACING,
+                labelBaseline: ap.labelBaseline,
+                labelFlush,
+                labelFlushZoomExtent,
+                labelFlushOffset: ap.labelFlushOffset ?? 0,
+                labelOffset: LABEL_OFFSET_FIELD,
+                labelOverlap,
+                labelSeparation: ap.labelSeparation ?? 2,
+                labelVisible: LABEL_VISIBLE_FIELD,
+                ...(chromLabelLayout
+                    ? {
+                          chromLabelWidth: CHROM_LABEL_WIDTH_FIELD,
+                          chromLabelAlign: chromLabelLayout.align,
+                          chromLabelPadding: chromLabelLayout.padding,
+                          chromLabelSpacing: CHROM_LABEL_TICK_SPACING,
+                      }
+                    : {}),
             });
         }
 
@@ -765,9 +921,17 @@ function createAxis(
  * @param {GenomeAxis} axisProps
  * @param {string} type
  * @param {Record<string, any>} [textDefaults]
+ * @param {boolean} [zoomable]
+ * @param {boolean} [hasConfiguredZoomExtent]
  * @returns {LayerSpec}
  */
-export function createGenomeAxis(axisProps, type, textDefaults = {}) {
+export function createGenomeAxis(
+    axisProps,
+    type,
+    textDefaults = {},
+    zoomable = true,
+    hasConfiguredZoomExtent = false
+) {
     const ap = axisProps;
     const chromLabelTextStyle = resolveTextStyle(
         ap.chromLabelFont,
@@ -899,6 +1063,8 @@ export function createGenomeAxis(axisProps, type, textDefaults = {}) {
             // TODO: Allow the user to override fixedAxisProps
         },
         type,
+        zoomable,
+        hasConfiguredZoomExtent,
         "pixel",
         textDefaults,
         axisProps.chromLabels ? chromLabelLayout : undefined

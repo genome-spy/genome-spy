@@ -1,0 +1,68 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "The first and last amino acids of protein domains, and the protein length, are explicit ticks that take priority over generated labels. Domain ranges are half-open.",
+
+  "data": {
+    "values": [
+      { "name": "Signal peptide", "start": 73, "stop": 219 },
+      { "name": "Catalytic domain", "start": 387, "stop": 583 },
+      { "name": "Regulatory domain", "start": 749, "stop": 944 }
+    ]
+  },
+
+  "encoding": {
+    "x": {
+      "field": "start",
+      "type": "index",
+      "scale": {
+        "domain": [1, 1068],
+        "zoom": { "extent": [1, 1068] }
+      },
+      "axis": {
+        "title": "Protein position (length: 1,068 aa)",
+        "tickCount": 10,
+        "extraValues": [1, 73, 218, 387, 582, 749, 943, 1068],
+        "offset": 5
+      }
+    },
+    "x2": { "field": "stop" }
+  },
+
+  "layer": [
+    {
+      "data": { "values": [{ "start": 1, "stop": 1069 }] },
+      "mark": {
+        "type": "rule",
+        "color": "#888",
+        "size": 8,
+        "strokeCap": "round"
+      },
+      "encoding": { "y": { "value": 0.5 } }
+    },
+
+    {
+      "mark": { "type": "rect", "cornerRadius": 3 },
+      "encoding": {
+        "color": {
+          "field": "name",
+          "type": "nominal",
+          "scale": { "scheme": "category10" },
+          "legend": null
+        }
+      }
+    },
+
+    {
+      "mark": {
+        "type": "text",
+        "align": "center",
+        "baseline": "middle",
+        "color": "white",
+        "paddingX": 4
+      },
+      "encoding": {
+        "text": { "field": "name" }
+      }
+    }
+  ]
+}

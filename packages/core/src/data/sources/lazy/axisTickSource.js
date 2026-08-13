@@ -2,6 +2,7 @@ import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
 import { isExprRef } from "../../../paramRuntime/paramUtils.js";
 import { isContinuous } from "vega-scale";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
+import { toExternalIndexLikeInterval } from "../../../scales/indexLikeDomainUtils.js";
 import {
     validTicks,
     tickValues,
@@ -19,6 +20,9 @@ export default class AxisTickSource extends SingleAxisLazySource {
      * @type {import("../../../spec/channel.js").Scalar[]}
      */
     ticks = [];
+
+    /** @type {number[]} */
+    zoomExtentTicks = [];
 
     /**
      * @type {import("../../../paramRuntime/types.js").ExprRefFunction | undefined}
@@ -97,21 +101,37 @@ export default class AxisTickSource extends SingleAxisLazySource {
         const generatedTicks = axisParams.values
             ? validTicks(scale, axisParams.values, count)
             : tickValues(scale, count);
-        const ticks =
+        const extraTicks =
             !axisParams.values &&
             axisParams.extraValues &&
             isContinuous(scale.type)
-                ? mergeExtraValues(
-                      scale,
-                      generatedTicks,
-                      axisParams.extraValues
-                  )
-                : generatedTicks;
+                ? validTicks(scale, axisParams.extraValues)
+                : [];
+        const ticks = extraTicks.length
+            ? mergeExtraValues(generatedTicks, extraTicks)
+            : generatedTicks;
+        const zoomExtentTicks = this.scaleResolution.hasConfiguredZoomExtent()
+            ? toExternalIndexLikeInterval(
+                  /** @type {import("../../../spec/scale.js").ScaleType} */ (
+                      scale.type
+                  ),
+                  this.scaleResolution.zoomExtent
+              )
+            : [];
 
-        if (this.ticks == null || !shallowArrayEquals(ticks, this.ticks)) {
+        if (
+            this.ticks == null ||
+            !shallowArrayEquals(ticks, this.ticks) ||
+            !shallowArrayEquals(zoomExtentTicks, this.zoomExtentTicks)
+        ) {
             this.ticks = ticks;
+            this.zoomExtentTicks = zoomExtentTicks;
 
             const format = tickFormat(scale, requestedCount, axisParams.format);
+            const explicitTicks = new Set(
+                axisParams.values ? ticks : extraTicks
+            );
+            const zoomExtentTickSet = new Set(zoomExtentTicks);
             const genome =
                 scale.type == "locus"
                     ? /** @type {import("../../../genome/scaleLocus.js").ScaleLocus} */ (
@@ -123,6 +143,10 @@ export default class AxisTickSource extends SingleAxisLazySource {
                     const datum = {
                         value: tick,
                         label: format(tick),
+                        explicit: explicitTicks.has(tick),
+                        ...(zoomExtentTickSet.has(tick)
+                            ? { zoomExtent: true }
+                            : {}),
                     };
 
                     if (genome) {
@@ -138,14 +162,13 @@ export default class AxisTickSource extends SingleAxisLazySource {
 }
 
 /**
- * @param {import("../../../types/encoder.js").VegaScale} scale
  * @param {number[]} ticks
  * @param {number[]} extraValues
  * @returns {number[]}
  */
-function mergeExtraValues(scale, ticks, extraValues) {
+function mergeExtraValues(ticks, extraValues) {
     const merged = new Set(ticks);
-    validTicks(scale, extraValues).forEach((value) => merged.add(value));
+    extraValues.forEach((value) => merged.add(value));
     return Array.from(merged).sort((a, b) => a - b);
 }
 

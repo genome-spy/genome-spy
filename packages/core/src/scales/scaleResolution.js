@@ -1554,6 +1554,20 @@ export default class ScaleResolution {
     }
 
     /**
+     * Returns true when the scale has an explicitly configured bounded zoom
+     * extent whose boundary ticks can be identified independently of the
+     * current viewport domain.
+     */
+    hasConfiguredZoomExtent() {
+        const zoom = this.#getMergedScaleProps().zoom;
+        return (
+            typeof zoom == "object" &&
+            zoom.extent !== undefined &&
+            zoom.extent !== "unbounded"
+        );
+    }
+
+    /**
      * Pans (translates) and zooms using a specified scale factor.
      *
      * @param {number} scaleFactor

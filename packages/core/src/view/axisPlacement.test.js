@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import AxisView, { createGenomeAxis } from "./axisView.js";
+import LayerView from "./layerView.js";
 import Rectangle from "./layout/rectangle.js";
 import UnitView from "./unitView.js";
 import { specToLayout } from "./testUtils.js";
@@ -46,8 +47,10 @@ function findUnitView(axisView, name) {
 /**
  * @param {import("../spec/axis.js").AxisOrient} orient
  * @param {import("../spec/axis.js").Axis} axis
+ * @param {import("../spec/channel.js").Type} [type]
+ * @param {import("../spec/scale.js").Scale["zoom"]} [zoom]
  */
-async function createAxis(orient, axis) {
+async function createAxis(orient, axis, type = "quantitative", zoom) {
     const channel = orient === "left" || orient === "right" ? "y" : "x";
     const disabledChannel = channel === "x" ? "y" : "x";
     const { view } = await createHeadlessViewHierarchy(
@@ -62,7 +65,8 @@ async function createAxis(orient, axis) {
                 },
                 [channel]: {
                     field: channel,
-                    type: "quantitative",
+                    type,
+                    ...(zoom === undefined ? {} : { scale: { zoom } }),
                     axis: {
                         orient,
                         ...axis,
@@ -78,6 +82,22 @@ async function createAxis(orient, axis) {
     );
 
     return findAxisView(view, orient);
+}
+
+/**
+ * @param {AxisView} axisView
+ * @param {string} name
+ */
+function findLayerView(axisView, name) {
+    const layerView = axisView
+        .getDescendants()
+        .find((view) => view instanceof LayerView && view.name === name);
+
+    if (!(layerView instanceof LayerView)) {
+        throw new Error("Layer view not found: " + name);
+    }
+
+    return layerView;
 }
 
 /**
@@ -119,6 +139,228 @@ function readCoord(coords, key) {
 }
 
 describe("axis placement", () => {
+    test("flushes non-zoomable quantitative x axes by default", async () => {
+        const axis = await createAxis("bottom", {});
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: 1,
+                labelFlushOffset: 0,
+                labelOffset: "labelOffset",
+                labelOverlap: "auto",
+                labelSeparation: 2,
+            })
+        );
+        expect(labels.spec.encoding.xOffset).toEqual({
+            field: "labelOffset",
+            type: "quantitative",
+            scale: null,
+        });
+        expect(labels.spec.transform).toEqual([
+            { type: "filter", expr: "datum.labelVisible" },
+        ]);
+    });
+
+    test("does not flush a zoomable index x axis by default", async () => {
+        const axis = await createAxis("bottom", {}, "index");
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: false,
+            })
+        );
+        expect(labels.spec.encoding.xOffset).toBeUndefined();
+    });
+
+    test("flushes configured zoom-extent ticks on a zoomable x axis", async () => {
+        const axis = await createAxis("bottom", {}, "index", {
+            extent: [1, 1068],
+        });
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: false,
+                labelFlushZoomExtent: true,
+            })
+        );
+        expect(labels.spec.encoding.xOffset).toEqual({
+            field: "labelOffset",
+            type: "quantitative",
+            scale: null,
+        });
+    });
+
+    test("allows configured zoom-extent flushing to be disabled", async () => {
+        const axis = await createAxis(
+            "bottom",
+            { labelFlush: false },
+            "index",
+            { extent: [1, 1068] }
+        );
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: false,
+                labelFlushZoomExtent: false,
+            })
+        );
+        expect(labels.spec.encoding.xOffset).toBeUndefined();
+    });
+
+    test("flushes a non-zoomable locus x axis by default", async () => {
+        const axis = await createAxis("bottom", {}, "locus", false);
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: 1,
+            })
+        );
+    });
+
+    test("does not remove discrete labels by default", async () => {
+        const axis = await createAxis("bottom", {}, "nominal");
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).not.toContainEqual(
+            expect.objectContaining({ type: "axisLabelLayout" })
+        );
+        expect(labels.spec.transform).toBeUndefined();
+    });
+
+    test("rejects label flushing on discrete axes", async () => {
+        await expect(
+            createAxis(
+                "bottom",
+                { labelFlush: true, labelOverlap: false },
+                "nominal"
+            )
+        ).rejects.toThrow(/quantitative, index, or locus/);
+    });
+
+    test("supports explicit overlap settings and separation", async () => {
+        const axis = await createAxis("bottom", {
+            labelOverlap: true,
+            labelSeparation: 5,
+        });
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelOverlap: "parity",
+                labelSeparation: 5,
+            })
+        );
+    });
+
+    test("allows overlap removal to be disabled independently", async () => {
+        const axis = await createAxis("bottom", { labelOverlap: false });
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: 1,
+                labelOverlap: false,
+            })
+        );
+        expect(labels.spec.transform).toEqual([
+            { type: "filter", expr: "datum.labelVisible" },
+        ]);
+    });
+
+    test("allows flushing and overlap removal to be disabled", async () => {
+        const axis = await createAxis("bottom", {
+            labelFlush: false,
+            labelOverlap: false,
+        });
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).not.toContainEqual(
+            expect.objectContaining({ type: "axisLabelLayout" })
+        );
+        expect(labels.spec.encoding.xOffset).toBeUndefined();
+        expect(labels.spec.transform).toBeUndefined();
+    });
+
+    test("does not flush continuous y axes by default", async () => {
+        const axis = await createAxis("left", {});
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: false,
+            })
+        );
+        expect(labels.spec.encoding.yOffset).toBeUndefined();
+    });
+
+    test("supports explicit vertical label flushing", async () => {
+        const axis = await createAxis("left", {
+            labelFlush: true,
+            labelFlushOffset: 2,
+        });
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+        const labels = findUnitView(axis, "labels_main");
+
+        expect(ticksAndLabels.spec.transform).toContainEqual(
+            expect.objectContaining({
+                type: "axisLabelLayout",
+                labelFlush: 1,
+                labelFlushOffset: 2,
+            })
+        );
+        expect(labels.spec.encoding.yOffset).toEqual({
+            field: "labelOffset",
+            type: "quantitative",
+            scale: null,
+        });
+    });
+
+    test("disables the automatic default for unsupported angles", async () => {
+        const axis = await createAxis("bottom", { labelAngle: 45 });
+        const ticksAndLabels = findLayerView(axis, "ticks_and_labels");
+
+        expect(ticksAndLabels.spec.transform).not.toContainEqual(
+            expect.objectContaining({ type: "axisLabelLayout" })
+        );
+    });
+
+    test("rejects explicitly enabled overlap removal at unsupported angles", async () => {
+        await expect(
+            createAxis("bottom", { labelAngle: 45, labelOverlap: true })
+        ).rejects.toThrow(/axis-aligned/);
+    });
+
+    test("rejects explicitly enabled flushing at unsupported angles", async () => {
+        await expect(
+            createAxis("bottom", {
+                labelAngle: 45,
+                labelFlush: true,
+                labelOverlap: false,
+            })
+        ).rejects.toThrow(/axis-aligned/);
+    });
+
     test("left inside axis mirrors tick and label direction into the plot", async () => {
         const axis = await createLeftAxis({ placement: "inside" });
         const labels = findUnitView(axis, "labels_main");
