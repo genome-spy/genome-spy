@@ -94,6 +94,8 @@ while `extraValues` supplement them on continuous scales. When labels overlap,
 explicit labels are culled among themselves first, and the survivors take
 precedence over generated labels.
 
+EXAMPLE examples/docs/grammar/axis/protein-domain-ticks.json height=90 spechidden
+
 By default, continuous axes cull overlapping labels. Non-zoomable x axes also
 align endpoint labels flush with the plot edges. On zoomable x axes, only ticks
 at a configured bounded zoom extent are flushed, avoiding label snapping during
