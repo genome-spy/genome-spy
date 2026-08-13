@@ -175,7 +175,10 @@ SCHEMA Axis
 
 ## Genome Axis Properties
 
-SCHEMA GenomeAxis
+Genome axes support all normal axis properties above, along with the following
+genome-specific properties:
+
+SCHEMA GenomeAxis chromTicks chromTickSize chromTickWidth chromTickColor chromTickDash chromTickDashOffset chromLabels chromLabelFont chromLabelFontSize chromLabelFontWeight chromLabelFontStyle chromLabelColor chromLabelPadding chromLabelAlign chromGrid chromGridColor chromGridCap chromGridDash chromGridDashOffset chromGridOpacity chromGridWidth chromGridFillOdd chromGridFillEven
 
 ## Styling
 
