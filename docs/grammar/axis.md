@@ -117,16 +117,17 @@ sets the endpoint threshold in pixels; `true` uses one pixel. Use
 Flushing is disabled by default on y axes.
 
 GenomeSpy automatically removes overlapping labels from continuous axes. It
-uses regular parity reduction for continuous scales and greedy reduction for
-log and symlog scales. Nominal and ordinal axes retain all labels by default.
-Removed ordinary labels leave their tick marks visible.
+uses regular parity reduction for linear-like continuous scales and greedy
+reduction for log and symlog scales. Nominal and ordinal axes retain all labels
+by default. Removed ordinary labels leave their tick marks visible.
 
 Set `labelOverlap` to `false` to retain all labels, or to `"parity"` or
 `"greedy"` to choose a reduction strategy explicitly. `true` selects
-`"parity"`. Use `labelSeparation` to add a minimum pixel gap between retained
-labels. Overlap removal supports label angles that are multiples of 90 degrees;
-the automatic flushing and overlap behavior is disabled at other angles, and
-explicitly enabling either feature at those angles is rejected.
+`"parity"`. Retained labels have a two-pixel minimum gap by default; use
+`labelSeparation` to adjust it. Overlap removal supports label angles that are
+multiples of 90 degrees; the automatic flushing and overlap behavior is
+disabled at other angles, and explicitly enabling either feature at those
+angles is rejected.
 
 Set `ticks` or `labels` to `false` to hide tick marks or labels while keeping
 the rest of the axis.
