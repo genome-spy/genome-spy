@@ -781,7 +781,7 @@ function createAxis(
                 labelFlushOffset: ap.labelFlushOffset ?? 0,
                 labelOffset: LABEL_OFFSET_FIELD,
                 labelOverlap,
-                labelSeparation: ap.labelSeparation ?? 0,
+                labelSeparation: ap.labelSeparation ?? 2,
                 labelVisible: LABEL_VISIBLE_FIELD,
                 ...(chromLabelLayout
                     ? {

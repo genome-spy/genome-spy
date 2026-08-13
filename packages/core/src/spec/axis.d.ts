@@ -485,7 +485,7 @@ export interface BaseAxis {
     /**
      * The minimum separation, in pixels, between retained axis labels.
      *
-     * __Default value:__ `0`
+     * __Default value:__ `2`
      * @minimum 0
      */
     labelSeparation?: number;

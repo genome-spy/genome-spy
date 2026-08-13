@@ -151,7 +151,7 @@ describe("axis placement", () => {
                 labelFlushOffset: 0,
                 labelOffset: "labelOffset",
                 labelOverlap: "auto",
-                labelSeparation: 0,
+                labelSeparation: 2,
             })
         );
         expect(labels.spec.encoding.xOffset).toEqual({
