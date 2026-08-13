@@ -1,0 +1,70 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "description": "Protein-domain boundaries and the protein length are added as explicit ticks that take priority over automatically generated labels.",
+
+  "height": 70,
+
+  "data": {
+    "values": [
+      { "name": "Signal peptide", "start": 80, "end": 230 },
+      { "name": "Catalytic domain", "start": 390, "end": 580 },
+      { "name": "Regulatory domain", "start": 760, "end": 930 }
+    ]
+  },
+
+  "encoding": {
+    "x": {
+      "field": "start",
+      "type": "index",
+      "scale": { "domain": [1, 1069], "zoom": false },
+      "axis": {
+        "title": "Protein position (length: 1,068 aa)",
+        "tickCount": 10,
+        "extraValues": [80, 230, 390, 580, 760, 930, 1068]
+      }
+    },
+    "x2": { "field": "end" }
+  },
+
+  "layer": [
+    {
+      "data": { "values": [{ "start": 1, "end": 1068 }] },
+      "mark": {
+        "type": "rule",
+        "color": "#888",
+        "size": 8,
+        "strokeCap": "round"
+      },
+      "encoding": { "y": { "value": 0.5 } }
+    },
+
+    {
+      "mark": { "type": "rect", "cornerRadius": 3 },
+      "encoding": {
+        "y": { "value": 0.25 },
+        "y2": { "value": 0.75 },
+        "color": {
+          "field": "name",
+          "type": "nominal",
+          "scale": { "scheme": "category10" },
+          "legend": { "title": "Protein domains" }
+        }
+      }
+    },
+
+    {
+      "mark": {
+        "type": "text",
+        "align": "center",
+        "baseline": "middle",
+        "color": "white",
+        "size": 10,
+        "paddingX": 4
+      },
+      "encoding": {
+        "y": { "value": 0.5 },
+        "text": { "field": "name" }
+      }
+    }
+  ]
+}
