@@ -109,7 +109,8 @@ The data source is based on [GMOD](http://gmod.org/)'s
 The `"bigbed"` source enables the retrieval of segmented data, such as annotated
 genomic regions stored in BigBed files. The fields and their types are determined
 by the file's embedded AutoSQL schema, or by the standard BED schema when the
-file does not include one.
+file does not include one. When the schema includes a `strand` field, its value
+is normalized to `"+"`, `"-"`, or `null`.
 
 ### Parameters
 
@@ -144,7 +145,9 @@ field names from `columns`, from a commented header line in the tabix file
 header, or from the first row of a plain TSV header. Field types are inferred
 automatically unless you provide `parse` (see [eager data sources](eager.md#tabular-formats)
 for the supported syntax). If the file uses bare chromosome names, set
-`addChrPrefix` to `true` to align them with GenomeSpy's UCSC-style genomes.
+`addChrPrefix` to `true` so UCSC-style assembly names query the corresponding
+bare names in the index. This mapping does not rewrite chromosome fields in
+the loaded records.
 
 Advanced multi-file Tabix views can use a URL template together with an
 `indexUrl` template. See [URL templates and multiple files](multi-url.md).
@@ -249,7 +252,7 @@ Returned fields:
 | `name`            | string   | Read name.                                                                       |
 | `cigar`           | string   | CIGAR string, or `"*"` when unavailable.                                         |
 | `mapq`            | number   | Mapping quality.                                                                 |
-| `strand`          | string   | Read strand: `"+"` or `"-"`.                                                     |
+| `strand`          | string or null | Read strand: `"+"`, `"-"`, or `null` when unstranded.                     |
 | `seq`             | string   | Read sequence.                                                                   |
 | `qual`            | number[] | Base quality values, when available.                                             |
 | `md`              | string   | `MD` tag value, when available.                                                  |

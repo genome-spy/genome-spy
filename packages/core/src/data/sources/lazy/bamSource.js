@@ -5,6 +5,7 @@ import {
 import { normalizeSingleUrlDescriptor } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
+import { normalizeGenomicStrand } from "../../formats/genomicStrand.js";
 
 export default class BamSource extends SingleAxisWindowedSource {
     /** @type {import("@gmod/bam").BamFile} */
@@ -149,7 +150,7 @@ export function createBamReadDatum(chrom, record) {
         name: record.name,
         cigar: record.CIGAR || "*",
         mapq: record.mq,
-        strand: record.strand === 1 ? "+" : "-",
+        strand: normalizeGenomicStrand(record.strand),
         seq: record.seq,
         qual: record.qual ? Array.from(record.qual) : undefined,
         md: record.getTag("MD"),

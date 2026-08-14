@@ -273,4 +273,28 @@ describe("BamSource", () => {
             cigar: "*",
         });
     });
+
+    test("maps an unstranded BAM record to null", () => {
+        /** @type {FakeBamRecord} */
+        const record = {
+            start: 50,
+            end: 50,
+            name: "unstranded",
+            CIGAR: "",
+            mq: undefined,
+            strand: 0,
+            seq: "",
+            qual: undefined,
+            flags: 4,
+            getTag: () => undefined,
+            isPaired: () => false,
+            isProperlyPaired: () => false,
+            isDuplicate: () => false,
+            isFailedQc: () => false,
+            isSecondary: () => false,
+            isSupplementary: () => false,
+        };
+
+        expect(createDatum("chr1", record).strand).toBeNull();
+    });
 });

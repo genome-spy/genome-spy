@@ -9,7 +9,7 @@ test("parses BED rows without canonical interval fields", async () => {
             chromEnd: 10,
             name: "featureA",
             score: 5,
-            strand: 1,
+            strand: "+",
         },
     ]);
 });
@@ -26,7 +26,7 @@ chr19\t49302000\t49302300`;
             chrom: "chr19",
             chromStart: 49302000,
             chromEnd: 49302300,
-            strand: 0,
+            strand: null,
         },
     ]);
 });
@@ -41,7 +41,7 @@ test("keeps fallback fieldN names from parser output", async () => {
             chromEnd: 10,
             name: "item",
             score: 7,
-            strand: 1,
+            strand: "+",
             field6: "1",
             field7: "9",
             field8: "255,0,0",
@@ -61,7 +61,7 @@ test("parses BED12 rows with BED12 field names", async () => {
             chromEnd: 10,
             name: "item",
             score: 7,
-            strand: 1,
+            strand: "+",
             thickStart: 1,
             thickEnd: 9,
             itemRgb: "255,0,0",
@@ -78,7 +78,7 @@ test("keeps malformed percent escapes in chromosome names", async () => {
             chrom: "chr1%ZZ",
             chromStart: 0,
             chromEnd: 10,
-            strand: 0,
+            strand: null,
         },
     ]);
 });
@@ -93,7 +93,7 @@ test("skips trailing empty lines at end of input", async () => {
             chromEnd: 10,
             name: "featureA",
             score: 5,
-            strand: 1,
+            strand: "+",
         },
     ]);
 });

@@ -1,4 +1,5 @@
 import { formats as vegaFormats } from "vega-loader";
+import { normalizeGenomicStrand } from "./genomicStrand.js";
 
 const blankLinePattern = /^\s*$/;
 const controlLinePattern = /^\s*(?:browser\b|track\b|#)/;
@@ -21,15 +22,6 @@ const requiredColumns = defaultColumns.slice(0, 6);
 const normalizeNone = (/** @type {string} */ value) => value;
 const normalizeStringSentinel = (/** @type {string} */ value) =>
     value == "." ? null : value;
-const normalizeStrand = (/** @type {string} */ value) => {
-    if (value == "+") {
-        return 1;
-    }
-    if (value == "-") {
-        return -1;
-    }
-    return 0;
-};
 const normalizeCoordinate = (/** @type {string} */ value) => {
     if (value == "." || value == "-1" || value == "") {
         return null;
@@ -50,8 +42,8 @@ const columnNormalizers = {
     chrom1: normalizeStringSentinel,
     chrom2: normalizeStringSentinel,
     name: normalizeStringSentinel,
-    strand1: normalizeStrand,
-    strand2: normalizeStrand,
+    strand1: normalizeGenomicStrand,
+    strand2: normalizeGenomicStrand,
     start1: normalizeCoordinate,
     end1: normalizeCoordinate,
     start2: normalizeCoordinate,
