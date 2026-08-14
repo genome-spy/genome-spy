@@ -100,11 +100,10 @@ Tests must cover:
 - multiple files whose raw reference naming differs;
 - a reactive `addChrPrefix` change and handle reload.
 
-**MB-3:** Define `addChrPrefix` behavior for mixed-file naming and decide
-whether it is a query-only mapping or also affects emitted format-aware
-`chrom`. A single blind prefix operation cannot normalize both already-prefixed
-and bare names without an explicit idempotence or rejection rule. Eager parsers
-cannot claim assembly-facing names unless a normalization context is added.
+**MB-3 resolution:** `addChrPrefix` is an idempotent query-only mapping. Each
+handle maps the assembly query name to its raw indexed name, allowing bare and
+already-prefixed files to load together. Loaded records retain file-native
+reference names. Collisions within one file fail during initialization.
 
 ### Public header access
 
@@ -310,7 +309,7 @@ Tentative commit: `refactor(core): modernize Tabix source integration`
 
 Outcome: `@gmod/vcf` uses the reviewed version and eager/lazy parsing preserves
 the intentionally raw record materialization. Canonical fields may follow in a
-separate source-contract commit after MB-2 and MB-3 are resolved.
+separate source-contract commit after MB-2 is resolved.
 
 Affected areas:
 
@@ -322,7 +321,7 @@ Verification:
 
 - Parser construction, headers, samples, array-valued INFO fields, ALT/breakend
   strings, and all other raw fields are pinned by focused tests.
-- No canonical-field algorithm is introduced until MB-2 and MB-3 close.
+- No canonical-field algorithm is introduced until MB-2 closes.
 
 Documentation and migration: none for the raw-preserving upgrade.
 

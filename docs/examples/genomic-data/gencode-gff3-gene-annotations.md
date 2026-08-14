@@ -33,8 +33,9 @@ This example combines several GenomeSpy capabilities in one spec:
   from a tabix-indexed file.
 - [`flatten`](../../grammar/transform/flatten.md) expands hierarchical GFF3
   feature arrays.
-- [`project`](../../grammar/transform/project.md) extracts nested attributes
-  such as transcript IDs, transcript names, exon numbers, and feature types.
+- [`project`](../../grammar/transform/project.md) selects flattened GFF3
+  properties such as transcript IDs, transcript names, exon numbers, and
+  feature types.
 - [`collect`](../../grammar/transform/collect.md) sorts transcript features
   before lane assignment.
 - [`pileup`](../../grammar/transform/pileup.md) packs overlapping transcripts

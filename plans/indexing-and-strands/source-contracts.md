@@ -29,16 +29,14 @@ A point-like record still has a reference span. For a single reference base,
 `end == start + 1`. Marks may encode only `start` when a visual point is
 desired, but the source contract remains an interval contract.
 
-**MB-3:** Before finalizing GFF and VCF output, decide whether `chrom` preserves
-the file's reference name or accepts an explicit normalization context. Eager
-format parsers have no assembly context, so they cannot implicitly promise an
-assembly-facing name. `addChrPrefix` may remain a query-name mapping without
-rewriting emitted raw records.
+**MB-3 resolution:** `chrom` preserves the reference name stored in the file.
+`addChrPrefix` is an idempotent query-name mapping and does not rewrite emitted
+records. This policy is identical for eager and lazy format adapters.
 
-**MB-4:** Keep the invariant about coordinate semantics separate from field
-naming. BED may continue to expose `chromStart/chromEnd`, and BEDPE may continue
-to expose `start1/end1` and `start2/end2`, provided those documented fields are
-zero-based and half-open.
+**MB-4 resolution:** The invariant applies to coordinate semantics, not one
+mandatory set of field names. BED continues to expose `chromStart/chromEnd`,
+and BEDPE continues to expose `start1/end1` and `start2/end2`; these documented
+fields are zero-based and half-open.
 
 Known source adapters perform format-aware conversion before publishing rows to
 the dataflow. Consequently, formulas, filters, pileups, lookups, windows,
@@ -158,7 +156,7 @@ feature recursively to this public shape:
 
 Specific decisions:
 
-- Rename parser `refName` to canonical `chrom`.
+- Rename parser `refName` to `chrom` without changing the file's reference name.
 - Preserve canonical zero-based, half-open `start` and `end` from v5.
 - Convert numeric parser strand to the symbolic/null contract.
 - Keep `subfeatures` as direct feature objects and normalize them recursively.
@@ -168,16 +166,11 @@ Specific decisions:
   their v5 types.
 - Do not reintroduce `derived_features` or merge multi-location records in the
   adapter.
-- Apply the reference-name policy selected in MB-3; preserve parser-native
-  reference information only if a separately named raw field is needed and
-  documented.
 
-**MB-5:** The adapter-created `chrom` field is not one of `gff-nostream`'s
-parser-native collision targets. Decide how an input attribute named `chrom`
-is renamed or preserved before assigning the canonical field. Also distinguish
-accidental duplicate attachment from valid GFF features with multiple parents:
-the adapter must preserve each declared parent relationship while avoiding
-duplicate attachment to the same parent/path.
+**MB-5 resolution:** Reserve adapter-created `chrom`. Rename an attribute named
+`chrom` to the next free numeric field (`chrom2`, `chrom3`, and so on). Preserve
+the same adapted feature object under each declared parent, while deduplicating
+repeated attachment to the same parent/path.
 
 The exact output fixture becomes a deliberate public contract and should be
 captured by focused snapshots after the adapter design stabilizes.
@@ -209,7 +202,7 @@ parser type after `refName` and numeric strand have been adapted.
   same parent/path.
 - Test attribute arrays, singleton attributes, and collisions with built-in
   property names.
-- Test the MB-3 reference-name policy with a bare-reference file.
+- Test raw reference-name preservation with a bare-reference file.
 - Add a stable snapshot for the normalized hierarchy.
 - Render a representative GENCODE interval and assert the expected mark/SVG
   count so object duplication cannot return unnoticed.
@@ -225,7 +218,7 @@ the raw parser materialization and adds only these GenomeSpy-owned fields:
 {
     CHROM, POS, ID, REF, ALT, QUAL, FILTER, INFO, SAMPLES,
     // ...other raw parser fields...
-    chrom, // reference name under the policy selected in MB-3
+    chrom, // same reference name as raw CHROM
     start, // zero-based inclusive local start
     end,   // zero-based exclusive local end
 }
@@ -248,8 +241,7 @@ Raw fields remain untouched:
 Create one shared helper used by eager `format.type: "vcf"` and lazy
 `data.lazy.type: "vcf"`:
 
-1. `chrom` follows the reference-name policy selected in MB-3 while raw `CHROM`
-   remains unchanged.
+1. `chrom` equals raw `CHROM`; the raw field remains unchanged.
 2. `start` is `POS - 1`.
 3. Compute `end` from the exact algorithm selected in MB-2.
 
@@ -288,7 +280,8 @@ reviewing the public contract.
 - Assert raw `POS`, `INFO`, `ALT`, and sample objects are unchanged.
 - Assert eager and lazy parsing produce identical canonical fields.
 - Assert breakend mate coordinates and confidence intervals are not rewritten.
-- Test the MB-3 reference-name policy separately from raw `CHROM` preservation.
+- Test that `chrom` equals raw `CHROM` even when a lazy query uses
+  `addChrPrefix` mapping.
 - Update ClinVar to encode canonical fields without an encoding offset.
 - Audit HCC1954 structural-variant formulas so local and mate endpoints declare
   explicitly whether they consume canonical or raw values.

@@ -25,41 +25,34 @@
   },
 
   "transform": [
-    { "type": "flatten" },
-    {
-      "type": "formula",
-      "expr": "datum.attributes.gene_name",
-      "as": "gene_name"
-    },
-    { "type": "flatten", "fields": ["child_features"] },
     {
       "type": "flatten",
-      "fields": ["child_features"],
-      "as": ["child_feature"]
+      "fields": ["subfeatures"],
+      "as": ["transcript"]
     },
     {
       "type": "project",
       "fields": [
         "gene_name",
-        "child_feature.type",
-        "child_feature.strand",
-        "child_feature.seq_id",
-        "child_feature.start",
-        "child_feature.end",
-        "child_feature.attributes.gene_type",
-        "child_feature.attributes.transcript_type",
-        "child_feature.attributes.gene_id",
-        "child_feature.attributes.transcript_id",
-        "child_feature.attributes.transcript_name",
-        "child_feature.attributes.tag",
-        "source",
-        "child_feature.child_features"
+        "transcript.type",
+        "transcript.strand",
+        "transcript.chrom",
+        "transcript.start",
+        "transcript.end",
+        "transcript.gene_type",
+        "transcript.transcript_type",
+        "transcript.gene_id",
+        "transcript.transcript_id",
+        "transcript.transcript_name",
+        "transcript.tag",
+        "transcript.source",
+        "transcript.subfeatures"
       ],
       "as": [
         "gene_name",
         "type",
         "strand",
-        "seq_id",
+        "chrom",
         "start",
         "end",
         "gene_type",
@@ -69,12 +62,12 @@
         "transcript_name",
         "tag",
         "source",
-        "_child_features"
+        "_subfeatures"
       ]
     },
     {
       "type": "collect",
-      "sort": { "field": ["seq_id", "start", "transcript_id"] }
+      "sort": { "field": ["chrom", "start", "transcript_id"] }
     },
     { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
   ],
@@ -90,12 +83,11 @@
 
   "encoding": {
     "x": {
-      "chrom": "seq_id",
+      "chrom": "chrom",
       "pos": "start",
-      "offset": 1,
       "type": "locus"
     },
-    "x2": { "chrom": "seq_id", "pos": "end" },
+    "x2": { "chrom": "chrom", "pos": "end" },
     "y": {
       "field": "_lane",
       "type": "index",
@@ -132,29 +124,28 @@
     {
       "name": "gencode-exons",
       "transform": [
-        { "type": "flatten", "fields": ["_child_features"] },
         {
           "type": "flatten",
-          "fields": ["_child_features"],
-          "as": ["child_feature"]
+          "fields": ["_subfeatures"],
+          "as": ["subfeature"]
         },
         {
           "type": "project",
           "fields": [
             "gene_name",
             "_lane",
-            "child_feature.type",
-            "child_feature.seq_id",
-            "child_feature.start",
-            "child_feature.end",
-            "child_feature.attributes.exon_number",
-            "child_feature.attributes.exon_id"
+            "subfeature.type",
+            "subfeature.chrom",
+            "subfeature.start",
+            "subfeature.end",
+            "subfeature.exon_number",
+            "subfeature.exon_id"
           ],
           "as": [
             "gene_name",
             "_lane",
             "type",
-            "seq_id",
+            "chrom",
             "start",
             "end",
             "exon_number",

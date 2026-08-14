@@ -651,6 +651,11 @@ export interface TabixTsvData extends TabixData {
     parse?: Parse | null;
 }
 
+/**
+ * Loads tabix-indexed GFF3 features as zero-based, half-open hierarchical
+ * records. Attributes are lowercase top-level fields, child features are in
+ * `subfeatures`, and strand values are `"+"`, `"-"`, or `null`.
+ */
 export interface Gff3Data extends TabixData {
     type: "gff3";
 }
