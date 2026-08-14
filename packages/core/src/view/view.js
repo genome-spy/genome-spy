@@ -314,6 +314,15 @@ export default class View {
     }
 
     /**
+     * Z-order among sibling views in a composition.
+     *
+     * @returns {number}
+     */
+    getZindex() {
+        return this.spec.zindex ?? 0;
+    }
+
+    /**
      * The auto-generated default name that was assigned by the parent/factory.
      * Intended for debugging only.
      */

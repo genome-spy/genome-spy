@@ -93,6 +93,21 @@ zooming:
 }
 ```
 
+## Render order
+
+Layer children render in declaration order by default. Set `zindex` on a child
+to override its render order without moving it in the `layer` array. Higher
+values render later, and children with equal values retain declaration order.
+
+```json
+{
+  "layer": [{ "mark": "point", "zindex": 1 }, { "mark": "rule" }]
+}
+```
+
+The point layer renders above the rule layer. Pointer interactions are handled
+from the visually topmost layer downward.
+
 ## Resolve
 
 By default, layers share their scales and axes, unioning the data domains.

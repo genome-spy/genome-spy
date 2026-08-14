@@ -158,6 +158,16 @@ export default class LayerView extends ContainerView {
     }
 
     /**
+     * Returns children in stable sibling z-order without changing declaration
+     * order, which remains significant for hierarchy and mutation APIs.
+     *
+     * @returns {(LayerView | import("./unitView.js").default)[]}
+     */
+    #getChildrenInRenderOrder() {
+        return this.#children.toSorted((a, b) => a.getZindex() - b.getZindex());
+    }
+
+    /**
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
@@ -180,7 +190,7 @@ export default class LayerView extends ContainerView {
 
         context.pushView(this, coords);
 
-        for (const child of this.#children) {
+        for (const child of this.#getChildrenInRenderOrder()) {
             child.render(context, coords, options);
         }
 
@@ -192,8 +202,9 @@ export default class LayerView extends ContainerView {
      */
     propagateInteraction(event) {
         this.handleInteraction(event, true);
-        for (let i = this.#children.length - 1; i >= 0; i--) {
-            this.#children[i].propagateInteraction(event);
+        const children = this.#getChildrenInRenderOrder();
+        for (let i = children.length - 1; i >= 0; i--) {
+            children[i].propagateInteraction(event);
             if (event.stopped) {
                 return;
             }

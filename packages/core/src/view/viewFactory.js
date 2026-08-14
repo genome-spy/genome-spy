@@ -353,6 +353,10 @@ function applyParamsToImportedSpec(importedSpec, importSpec) {
         importedSpec.visible = importSpec.visible;
     }
 
+    if (importSpec.zindex != null) {
+        importedSpec.zindex = importSpec.zindex;
+    }
+
     importedSpec.config = resolveImportedSpecConfig(
         importSpec.config,
         importedSpec.config

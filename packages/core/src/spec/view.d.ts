@@ -177,6 +177,15 @@ export interface ViewSpecBase extends ResolveSpec {
     name?: string;
 
     /**
+     * Z-order among sibling views in a composition. Higher values render
+     * later. Views with equal values render in declaration order. This does
+     * not affect layout order.
+     *
+     * __Default value:__ `0`
+     */
+    zindex?: number;
+
+    /**
      * Named datasets available to this view and its descendants.
      *
      * A descendant declaration with the same name shadows this declaration.
@@ -585,6 +594,14 @@ export interface ImportSpec {
      * is used for bookmarkable view visibility and parameter addressing.
      */
     name?: string;
+
+    /**
+     * Overrides the imported view's z-order among sibling views. Higher
+     * values render later. This does not affect layout order.
+     *
+     * __Default value:__ the imported view's `zindex`, or `0`
+     */
+    zindex?: number;
 
     /**
      * Dynamic variables that parameterize a visualization. Parameters defined

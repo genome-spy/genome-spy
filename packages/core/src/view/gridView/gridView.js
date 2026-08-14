@@ -1219,7 +1219,7 @@ export default class GridView extends ContainerView {
         const underlays = [];
         /** @type {{ zindex: number, order: number, sequence: number, render: () => void }[]} */
         const overlays = [];
-        /** @type {(() => void)[]} */
+        /** @type {{ zindex: number, render: () => void }[]} */
         const contents = [];
         let sequence = 0;
 
@@ -1371,7 +1371,10 @@ export default class GridView extends ContainerView {
                         : options
                 );
 
-            contents.push(renderContent);
+            contents.push({
+                zindex: view.getZindex(),
+                render: renderContent,
+            });
 
             if (backgroundStroke) {
                 queueDecoration(
@@ -1542,8 +1545,10 @@ export default class GridView extends ContainerView {
 
         renderDecorations(underlays);
 
-        for (const renderContent of contents) {
-            renderContent();
+        for (const content of contents.toSorted(
+            (a, b) => a.zindex - b.zindex
+        )) {
+            content.render();
         }
 
         renderDecorations(overlays);

@@ -28,6 +28,23 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
+    test("accepts zindex on views and imports", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            templates: {
+                panel: { mark: "point", zindex: 3 },
+            },
+            vconcat: [
+                { mark: "point", zindex: -1.5 },
+                { import: { template: "panel" }, zindex: 0 },
+            ],
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
+
     test("accepts collected only as a legend resolution behavior", () => {
         const validate = createCoreValidator();
         const baseSpec = {

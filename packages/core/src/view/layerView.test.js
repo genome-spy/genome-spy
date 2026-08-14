@@ -63,6 +63,74 @@ const makeEncodingInheritedUnitSpec = () => ({
     mark: "point",
 });
 
+describe("LayerView child zindex", () => {
+    test("renders by stable zindex without changing declaration order", async () => {
+        const view = await createAndInitialize(
+            {
+                layer: [
+                    { ...makeUnitSpec(), name: "positive", zindex: 1 },
+                    { ...makeUnitSpec(), name: "negative", zindex: -1 },
+                    { ...makeUnitSpec(), name: "default" },
+                    { ...makeUnitSpec(), name: "equal", zindex: 0 },
+                ],
+            },
+            LayerView
+        );
+        const children = [...view];
+        /** @type {string[]} */
+        const order = [];
+
+        for (const child of children) {
+            const render = child.render.bind(child);
+            child.render = (context, coords, options) => {
+                order.push(child.name);
+                render(context, coords, options);
+            };
+        }
+
+        view.render(
+            new NoOpRenderingContext({ picking: false }),
+            Rectangle.create(0, 0, 200, 100),
+            { firstFacet: true }
+        );
+
+        expect(order).toEqual(["negative", "default", "equal", "positive"]);
+        expect(children.map((child) => child.name)).toEqual([
+            "positive",
+            "negative",
+            "default",
+            "equal",
+        ]);
+    });
+
+    test("propagates interactions from the topmost child", async () => {
+        const view = await createAndInitialize(
+            {
+                layer: [
+                    { ...makeUnitSpec(), name: "front", zindex: 1 },
+                    { ...makeUnitSpec(), name: "back", zindex: -1 },
+                    { ...makeUnitSpec(), name: "middle" },
+                ],
+            },
+            LayerView
+        );
+        /** @type {string[]} */
+        const order = [];
+
+        for (const child of view) {
+            child.propagateInteraction = () => {
+                order.push(child.name);
+            };
+        }
+
+        view.propagateInteraction(
+            /** @type {any} */ ({ type: "mousemove", stopped: false })
+        );
+
+        expect(order).toEqual(["front", "middle", "back"]);
+    });
+});
+
 describe("LayerView dynamic children", () => {
     test("children inherit the layer view's layout size params", async () => {
         const view = await createAndInitialize(

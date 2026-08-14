@@ -168,6 +168,68 @@ const recordRenderOrder = (spec, labels) => {
     });
 };
 
+describe("GridView child zindex", () => {
+    test("renders child content by stable zindex", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        ...makeUnitSpecWithoutAxes(),
+                        name: "positive",
+                        zindex: 1,
+                    },
+                    {
+                        ...makeUnitSpecWithoutAxes(),
+                        name: "negative",
+                        zindex: -1,
+                    },
+                    { ...makeUnitSpecWithoutAxes(), name: "default" },
+                    {
+                        ...makeUnitSpecWithoutAxes(),
+                        name: "equal",
+                        zindex: 0,
+                    },
+                ],
+            },
+            ["positive", "negative", "default", "equal"]
+        );
+
+        expect(order).toEqual(["negative", "default", "equal", "positive"]);
+    });
+
+    test("keeps parent-owned decorations outside child content order", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        ...makeUnitSpecWithoutAxes(),
+                        name: "front",
+                        zindex: 1,
+                        title: "Front",
+                        view: { fill: "white" },
+                    },
+                    {
+                        ...makeUnitSpecWithoutAxes(),
+                        name: "back",
+                        title: "Back",
+                        view: { fill: "white" },
+                    },
+                ],
+            },
+            ["background0", "background1", "front", "back", "title0", "title1"]
+        );
+
+        expect(order).toEqual([
+            "background0",
+            "background1",
+            "back",
+            "front",
+            "title0",
+            "title1",
+        ]);
+    });
+});
+
 describe("GridView incremental child management", () => {
     test("dynamic add/remove keeps shared axes in sync", async () => {
         const context = createTestViewContext();

@@ -123,6 +123,28 @@ for dense composed layouts where the author controls the overlap. Missing edges
 retain the default reservation behavior. Explicit "padding" remains reserved
 and can be used to add a deliberate safety margin.
 
+## Render order
+
+Concat children render in declaration order by default. Set `zindex` on a
+child to override its render order without changing its layout position. Higher
+values render later, and children with equal values retain declaration order.
+
+This is useful when unclipped marks extend into an adjacent track. For example,
+a middle protein track can render after lollipop tracks above and below it:
+
+```json
+{
+  "vconcat": [
+    { "name": "upper-lollipops", "mark": "rule" },
+    { "name": "protein", "zindex": 1, "mark": "rect" },
+    { "name": "lower-lollipops", "mark": "rule" }
+  ]
+}
+```
+
+Axes, titles, backgrounds, and other view decorations have their own `zindex`
+settings relative to composition content.
+
 ## Resolve
 
 By default, all channels have `"independent"` scales and axes. However, because

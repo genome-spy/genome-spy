@@ -1,0 +1,149 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Concat child z-order in a paired lollipop plot",
+    "The middle protein track uses zindex to render last and hide both sets of extended stem endpoints."
+  ],
+
+  "spacing": 0,
+
+  "resolve": { "scale": { "x": "shared" } },
+
+  "vconcat": [
+    {
+      "name": "upper-lollipops",
+      "height": 90,
+      "data": {
+        "values": [
+          { "position": 12, "value": 4 },
+          { "position": 38, "value": 7 },
+          { "position": 72, "value": 5 }
+        ]
+      },
+      "encoding": {
+        "x": {
+          "field": "position",
+          "type": "quantitative",
+          "scale": { "domain": [0, 100], "nice": false },
+          "axis": null
+        },
+        "y": {
+          "field": "value",
+          "type": "quantitative",
+          "scale": { "domain": [0, 8], "nice": false },
+          "axis": null
+        }
+      },
+      "layer": [
+        {
+          "mark": {
+            "type": "rule",
+            "color": "#59636e",
+            "size": 3,
+            "y2Offset": 12
+          },
+          "encoding": { "y2": { "datum": 0 } }
+        },
+        {
+          "mark": {
+            "type": "point",
+            "color": "#d95f02",
+            "filled": true,
+            "size": 220
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "protein",
+      "zindex": 1,
+      "height": 30,
+      "data": {
+        "values": [
+          { "start": 0, "end": 100, "kind": "backbone" },
+          { "start": 18, "end": 45, "kind": "domain" },
+          { "start": 62, "end": 88, "kind": "domain" }
+        ]
+      },
+      "encoding": {
+        "x": {
+          "field": "start",
+          "type": "quantitative",
+          "scale": { "domain": [0, 100], "nice": false },
+          "axis": null
+        },
+        "x2": { "field": "end" }
+      },
+      "layer": [
+        {
+          "transform": [
+            { "type": "filter", "expr": "datum.kind == 'backbone'" }
+          ],
+          "mark": {
+            "type": "rect",
+            "y": 0.38,
+            "y2": 0.62,
+            "color": "#b8bec5"
+          }
+        },
+        {
+          "transform": [{ "type": "filter", "expr": "datum.kind == 'domain'" }],
+          "mark": {
+            "type": "rect",
+            "y": 0.16,
+            "y2": 0.84,
+            "color": "#4e79a7",
+            "cornerRadius": 3
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "lower-lollipops",
+      "height": 90,
+      "data": {
+        "values": [
+          { "position": 25, "value": 5 },
+          { "position": 55, "value": 3 },
+          { "position": 82, "value": 7 }
+        ]
+      },
+      "encoding": {
+        "x": {
+          "field": "position",
+          "type": "quantitative",
+          "scale": { "domain": [0, 100], "nice": false },
+          "axis": { "title": "Protein position", "grid": false }
+        },
+        "y": {
+          "field": "value",
+          "type": "quantitative",
+          "scale": { "domain": [0, 8], "reverse": true, "nice": false },
+          "axis": null
+        }
+      },
+      "layer": [
+        {
+          "mark": {
+            "type": "rule",
+            "color": "#59636e",
+            "size": 3,
+            "y2Offset": -12
+          },
+          "encoding": { "y2": { "datum": 0 } }
+        },
+        {
+          "mark": {
+            "type": "point",
+            "color": "#1b9e77",
+            "filled": true,
+            "size": 220
+          }
+        }
+      ]
+    }
+  ]
+}

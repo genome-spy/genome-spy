@@ -79,6 +79,35 @@ test("ImportSpec.visible overrides imported view visibility", async () => {
     expect(visible.spec.visible).toBe(true);
 });
 
+test("ImportSpec.zindex overrides imported view zindex", async () => {
+    const context = createTestViewContext({
+        allowImport: true,
+        wrapRoot: false,
+    });
+
+    /** @type {import("../spec/view.js").VConcatSpec} */
+    const spec = {
+        templates: {
+            panel: {
+                mark: "point",
+                zindex: 5,
+            },
+        },
+        vconcat: [
+            {
+                import: { template: "panel" },
+                zindex: 0,
+            },
+        ],
+    };
+
+    const root = /** @type {import("./containerView.js").default} */ (
+        await context.createOrImportView(spec, null, null, "root")
+    );
+
+    expect([...root][0].getZindex()).toBe(0);
+});
+
 test("ImportSpec.config is merged before imported root config", async () => {
     const context = createTestViewContext({
         allowImport: true,
