@@ -122,7 +122,24 @@ function renderToFramebuffer({
         height
     );
 
+    /** @type {import("twgl.js").FramebufferInfo | undefined} */
+    let multisampleFramebufferInfo;
     try {
+        multisampleFramebufferInfo = createFramebufferInfo(
+            gl,
+            [
+                {
+                    format: gl.RGBA8,
+                    samples: Math.min(
+                        4,
+                        /** @type {number} */ (gl.getParameter(gl.MAX_SAMPLES))
+                    ),
+                },
+            ],
+            width,
+            height
+        );
+
         const renderingContext = new BufferedViewRenderingContext(
             { picking: false },
             {
@@ -130,7 +147,7 @@ function renderToFramebuffer({
                 canvasSize: { width: logicalWidth, height: logicalHeight },
                 devicePixelRatio: pixelRatio,
                 clearColor,
-                framebufferInfo,
+                framebufferInfo: multisampleFramebufferInfo,
             }
         );
 
@@ -140,10 +157,37 @@ function renderToFramebuffer({
         );
         renderingContext.render();
 
+        gl.bindFramebuffer(
+            gl.READ_FRAMEBUFFER,
+            multisampleFramebufferInfo.framebuffer
+        );
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, framebufferInfo.framebuffer);
+        gl.blitFramebuffer(
+            0,
+            0,
+            width,
+            height,
+            0,
+            0,
+            width,
+            height,
+            gl.COLOR_BUFFER_BIT,
+            gl.NEAREST
+        );
+
         return { gl, framebufferInfo };
     } catch (error) {
         deleteFramebuffer(gl, framebufferInfo);
         throw error;
+    } finally {
+        if (multisampleFramebufferInfo) {
+            gl.deleteRenderbuffer(
+                /** @type {WebGLRenderbuffer} */ (
+                    multisampleFramebufferInfo.attachments[0]
+                )
+            );
+            gl.deleteFramebuffer(multisampleFramebufferInfo.framebuffer);
+        }
     }
 }
 
