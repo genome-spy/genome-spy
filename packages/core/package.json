@@ -54,7 +54,7 @@
     "@gmod/bed": "^2.2.10",
     "@gmod/indexedfasta": "^5.0.10",
     "@gmod/tabix": "3.8.1",
-    "@gmod/vcf": "^7.0.0",
+    "@gmod/vcf": "^7.2.0",
     "@types/d3-array": "^3.2.2",
     "@types/d3-dsv": "^3.0.7",
     "@types/d3-ease": "^3.0.2",
