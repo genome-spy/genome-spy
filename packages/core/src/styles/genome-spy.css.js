@@ -86,7 +86,7 @@ height: 1.5em;
 }
 }
 
-.tooltip {
+.gs-tooltip {
 position: fixed;
 inset: auto;
 margin: 0;

@@ -158,3 +158,19 @@ To use a specific (custom) handler in a view specification:
   ...
 }
 ```
+
+## Styling tooltips
+
+The built-in tooltip element has the `gs-tooltip` class. Use this class
+to customize its appearance in the embedding page. The `sticky` class is added
+while a tooltip is pinned open.
+
+```css
+.gs-tooltip {
+  --background-color: white;
+  --font-size: 14px;
+}
+```
+
+The class is namespaced to avoid conflicts with tooltip styles from CSS
+frameworks such as Bootstrap.

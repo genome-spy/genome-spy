@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import Tooltip from "./tooltip.js";
+import Tooltip, { TOOLTIP_CLASS_NAME } from "./tooltip.js";
 import { html } from "lit";
 
 describe("Tooltip async updates", () => {
@@ -71,7 +71,7 @@ describe("Tooltip popover placement", () => {
         new Tooltip(container);
 
         const element = /** @type {HTMLElement} */ (
-            container.querySelector(".tooltip")
+            container.querySelector(`.${TOOLTIP_CLASS_NAME}`)
         );
 
         expect(element.getAttribute("popover")).toBe("manual");
@@ -83,7 +83,7 @@ describe("Tooltip popover placement", () => {
         tooltip.mouseCoords = [0, 0];
 
         const element = /** @type {HTMLElement} */ (
-            container.querySelector(".tooltip")
+            container.querySelector(`.${TOOLTIP_CLASS_NAME}`)
         );
         element.showPopover = vi.fn();
         element.hidePopover = vi.fn();
@@ -99,7 +99,7 @@ describe("Tooltip popover placement", () => {
         const container = document.createElement("div");
         const tooltip = new Tooltip(container);
         const element = /** @type {HTMLElement} */ (
-            container.querySelector(".tooltip")
+            container.querySelector(`.${TOOLTIP_CLASS_NAME}`)
         );
 
         Object.defineProperty(element, "offsetWidth", { value: 60 });
@@ -126,7 +126,7 @@ describe("Tooltip popover placement", () => {
         const container = document.createElement("div");
         const tooltip = new Tooltip(container);
         const element = /** @type {HTMLElement} */ (
-            container.querySelector(".tooltip")
+            container.querySelector(`.${TOOLTIP_CLASS_NAME}`)
         );
         const event = new Event("mousedown");
         event.composedPath = () => [element, container, document];

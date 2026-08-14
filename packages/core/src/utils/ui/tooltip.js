@@ -3,6 +3,7 @@ import { peek } from "../arrayUtils.js";
 
 export const SUPPRESS_TOOLTIP_CLASS_NAME = "gs-suppress-tooltip";
 export const FREEZE_INTERACTION_CLASS_NAME = "gs-freeze-interaction";
+export const TOOLTIP_CLASS_NAME = "gs-tooltip";
 
 export default class Tooltip {
     #sticky = false;
@@ -30,7 +31,7 @@ export default class Tooltip {
      */
     constructor(container) {
         this.#element = document.createElement("div");
-        this.#element.className = "tooltip";
+        this.#element.className = TOOLTIP_CLASS_NAME;
         this.#element.setAttribute("popover", "manual");
         container.appendChild(this.#element);
 
