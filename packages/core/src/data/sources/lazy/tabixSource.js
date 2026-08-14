@@ -1,4 +1,3 @@
-import { unzip } from "@gmod/bgzf-filehandle";
 import {
     activateExprRefProps,
     withoutExprRef,
@@ -242,6 +241,7 @@ export default class TabixSource extends SingleAxisWindowedSource {
             maxBlockSize,
             0
         );
+        const { unzip } = await import("@gmod/bgzf-filehandle");
         const bytes = await unzip(compressedPrefix);
         return new TextDecoder("utf-8").decode(bytes);
     }
