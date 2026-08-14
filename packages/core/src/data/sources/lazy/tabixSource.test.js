@@ -3,6 +3,7 @@ import Collector from "../../collector.js";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
 import RegexFoldTransform from "../../transforms/regexFold.js";
 import TabixTsvSource from "./tabixTsvSource.js";
+import { createReferenceNameMap } from "./tabixSource.js";
 
 /** @type {Map<string, string[]>} */
 const linesByUrl = new Map();
@@ -14,6 +15,8 @@ const openedUrls = [];
 const requestedIntervals = [];
 /** @type {Map<string, string>} */
 const headerByUrl = new Map();
+/** @type {Map<string, string[]>} */
+const referenceNamesByUrl = new Map();
 /** @type {Set<string>} */
 const failingHeaderUrls = new Set();
 
@@ -36,11 +39,21 @@ vi.mock("@gmod/tabix", () => ({
             indexUrlByUrl.set(this.url, this.indexUrl);
         }
 
-        async getHeader() {
+        async getHeaderLines() {
             if (failingHeaderUrls.has(this.url)) {
                 throw new Error("Missing Tabix file");
             }
-            return headerByUrl.get(this.url) ?? "#chrom\tstart\tend\tvalue";
+            return (
+                headerByUrl.get(this.url) ?? "#chrom\tstart\tend\tvalue"
+            ).split(/\r?\n/);
+        }
+
+        async getReferenceSequenceNames() {
+            return referenceNamesByUrl.get(this.url) ?? ["chr1"];
+        }
+
+        clearChunkCache() {
+            // No-op in the source adapter mock.
         }
 
         /**
@@ -71,6 +84,7 @@ function createViewStub() {
         "ovarian",
         "breast",
     ]);
+    const setPrefix = paramRuntime.allocateSetter("prefix", false);
 
     const genome = {
         totalSize: 1000,
@@ -100,6 +114,7 @@ function createViewStub() {
 
     return {
         paramRuntime,
+        setPrefix,
         setVisibleCancers,
         loadingStatuses,
         getBaseUrl: () => "",
@@ -127,6 +142,7 @@ describe("TabixSource", () => {
         openedUrls.length = 0;
         requestedIntervals.length = 0;
         headerByUrl.clear();
+        referenceNamesByUrl.clear();
         failingHeaderUrls.clear();
         linesByUrl.set("variants/ovarian.vcf.gz", ["chr1\t1\t2\tA"]);
         linesByUrl.set("variants/breast.vcf.gz", ["chr1\t3\t4\tB"]);
@@ -184,13 +200,68 @@ describe("TabixSource", () => {
         ]);
     });
 
-    it("applies addChrPrefix when querying the Tabix index", async () => {
+    it("maps prefixed assembly queries to raw file references without rewriting rows", async () => {
+        referenceNamesByUrl.set("variants/ovarian.vcf.gz", ["1"]);
+        linesByUrl.set("variants/ovarian.vcf.gz", ["1\t1\t2\tA"]);
+
         const source = new TabixTsvSource(
             /** @type {any} */ ({
                 type: "tabix",
                 debounceMode: "domain",
-                addChrPrefix: "ref-",
-                url: "variants/prefixed.vcf.gz",
+                url: "variants/ovarian.vcf.gz",
+                addChrPrefix: true,
+            }),
+            /** @type {any} */ (createViewStub())
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await /** @type {any} */ (source).initializedPromise;
+        await source.loadInterval([0, 100]);
+
+        expect(requestedIntervals).toEqual([
+            { chrom: "1", start: 0, end: 100 },
+        ]);
+        expect([...collector.getData()]).toEqual([
+            { chrom: "1", start: 1, end: 2, value: "A" },
+        ]);
+    });
+
+    it("updates query mappings when reactive prefixing changes", async () => {
+        referenceNamesByUrl.set("variants/ovarian.vcf.gz", ["1"]);
+        const view = createViewStub();
+        const source = new TabixTsvSource(
+            /** @type {any} */ ({
+                type: "tabix",
+                debounceMode: "domain",
+                url: "variants/ovarian.vcf.gz",
+                addChrPrefix: { expr: "prefix" },
+            }),
+            /** @type {any} */ (view)
+        );
+
+        await /** @type {any} */ (source).initializedPromise;
+        view.setPrefix(true);
+        await Promise.resolve();
+        await /** @type {any} */ (source).initializedPromise;
+        await source.loadInterval([0, 100]);
+
+        expect(openedUrls).toEqual(["variants/ovarian.vcf.gz"]);
+        expect(requestedIntervals).toEqual([
+            { chrom: "1", start: 0, end: 100 },
+        ]);
+    });
+
+    it("loads files with bare and already-prefixed reference names together", async () => {
+        referenceNamesByUrl.set("variants/ovarian.vcf.gz", ["1"]);
+        referenceNamesByUrl.set("variants/breast.vcf.gz", ["chr1"]);
+
+        const source = new TabixTsvSource(
+            /** @type {any} */ ({
+                type: "tabix",
+                debounceMode: "domain",
+                url: ["variants/ovarian.vcf.gz", "variants/breast.vcf.gz"],
+                addChrPrefix: true,
             }),
             /** @type {any} */ (createViewStub())
         );
@@ -199,8 +270,45 @@ describe("TabixSource", () => {
         await source.loadInterval([0, 100]);
 
         expect(requestedIntervals).toEqual([
-            { chrom: "ref-chr1", start: 0, end: 100 },
+            { chrom: "1", start: 0, end: 100 },
+            { chrom: "chr1", start: 0, end: 100 },
         ]);
+    });
+
+    it("fails when prefixing makes file reference names ambiguous", async () => {
+        referenceNamesByUrl.set("variants/ovarian.vcf.gz", ["1", "chr1"]);
+
+        const source = new TabixTsvSource(
+            /** @type {any} */ ({
+                type: "tabix",
+                debounceMode: "domain",
+                url: "variants/ovarian.vcf.gz",
+                addChrPrefix: true,
+            }),
+            /** @type {any} */ (createViewStub())
+        );
+
+        await expect(
+            /** @type {any} */ (source).initializedPromise
+        ).rejects.toThrow('both map to "chr1"');
+    });
+
+    it("fails clearly for an unavailable query reference", async () => {
+        referenceNamesByUrl.set("variants/ovarian.vcf.gz", ["chr2"]);
+
+        const source = new TabixTsvSource(
+            /** @type {any} */ ({
+                type: "tabix",
+                debounceMode: "domain",
+                url: "variants/ovarian.vcf.gz",
+            }),
+            /** @type {any} */ (createViewStub())
+        );
+
+        await /** @type {any} */ (source).initializedPromise;
+        await expect(source.loadInterval([0, 100])).rejects.toThrow(
+            'Reference "chr1" is not available'
+        );
     });
 
     it("can expand URL templates without attaching fields", async () => {
@@ -231,6 +339,37 @@ describe("TabixSource", () => {
                 start: 5,
                 end: 6,
                 value: "C",
+            },
+        ]);
+    });
+
+    it("uses an uncommented header row reported by the Tabix index", async () => {
+        headerByUrl.set(
+            "variants/ovarian.vcf.gz",
+            "chromosome\tbegin\tfinish\tlabel"
+        );
+        linesByUrl.set("variants/ovarian.vcf.gz", ["chr1\t5\t6\tA"]);
+
+        const source = new TabixTsvSource(
+            /** @type {any} */ ({
+                type: "tabix",
+                debounceMode: "domain",
+                url: "variants/ovarian.vcf.gz",
+            }),
+            /** @type {any} */ (createViewStub())
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await /** @type {any} */ (source).initializedPromise;
+        await source.loadInterval([0, 100]);
+
+        expect([...collector.getData()]).toEqual([
+            {
+                chromosome: "chr1",
+                begin: 5,
+                finish: 6,
+                label: "A",
             },
         ]);
     });
@@ -412,5 +551,19 @@ describe("TabixSource", () => {
         expect(openedUrls).toEqual([]);
         expect(view.loadingStatuses.at(-1)).toEqual({ status: "complete" });
         expect([...collector.getData()]).toEqual([]);
+    });
+});
+
+describe("createReferenceNameMap", () => {
+    it("adds prefixes idempotently", () => {
+        expect(createReferenceNameMap(["1"], true)).toEqual(
+            new Map([["chr1", "1"]])
+        );
+        expect(createReferenceNameMap(["chr1"], true)).toEqual(
+            new Map([["chr1", "chr1"]])
+        );
+        expect(createReferenceNameMap(["1"], "GRCh38_")).toEqual(
+            new Map([["GRCh38_1", "1"]])
+        );
     });
 });
