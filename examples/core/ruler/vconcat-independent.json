@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "A parent ruler is rendered separately in each vconcat child.",
+  "description": [
+    "Independent rulers in concatenated views",
+    "A parent ruler is rendered separately in each vconcat child."
+  ],
 
   "params": [
     {

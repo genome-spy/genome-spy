@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Testing vertical alignment and various fonts",
+  "description": [
+    "Text baselines and font rendering",
+    "Compares vertical alignment and font choices across text marks."
+  ],
 
   "data": { "values": ["The quick brown fox jumps over the lazy dog. ACTG"] },
 

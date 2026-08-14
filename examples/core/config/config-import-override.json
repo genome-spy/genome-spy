@@ -1,5 +1,8 @@
 {
-  "description": "Import-site config overrides parent scopes but not imported root config.",
+  "description": [
+    "Import-site config overrides",
+    "Shows that import-site config overrides parent scopes but not imported root config."
+  ],
   "config": {
     "mark": {
       "color": "#7f7f7f"

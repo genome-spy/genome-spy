@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "A scatterplot showing horsepower and miles per gallons for various cars.",
+  "description": [
+    "Horsepower and miles per gallon by origin",
+    "Scatterplot of cars from the Vega-Lite dataset."
+  ],
 
   "data": { "url": "vega-datasets/cars.json" },
 

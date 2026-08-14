@@ -1,5 +1,8 @@
 {
-  "description": "Complex showcase of root theme + scoped config/style overrides (no subtree themes).",
+  "description": [
+    "Root and scoped theme overrides",
+    "Compares a dark root theme with scoped config and style overrides, without subtree themes."
+  ],
   "theme": "dark",
   "spacing": 20,
   "resolve": {

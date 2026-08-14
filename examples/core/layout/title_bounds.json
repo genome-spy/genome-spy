@@ -1,6 +1,9 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Acid test for title bounds in composed layouts.",
+  "description": [
+    "Title bounds in composed layouts",
+    "Checks that composed-view title bounds include the required layout space."
+  ],
 
   "data": {
     "values": [

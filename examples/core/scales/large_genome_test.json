@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Testing a very large genome where 32 bit integers are insufficient.",
+  "description": [
+    "Very large genome coordinates",
+    "Tests genome coordinates beyond the range of 32-bit integers."
+  ],
 
   "genome": {
     "name": "custom",

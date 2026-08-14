@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Arrow size relative to a band or the perpendicular view span.",
+  "description": [
+    "Arrow sizing across view spans",
+    "Compares arrow size on a band scale with sizing relative to the perpendicular view span."
+  ],
 
   "data": {
     "values": [{ "band": "band scale", "start": 10, "end": 90 }]

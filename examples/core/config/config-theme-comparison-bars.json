@@ -1,5 +1,8 @@
 {
-  "description": "Two-row comparison: root GenomeSpy defaults vs scoped Vega-Lite-like config overrides.",
+  "description": [
+    "Root and scoped theme comparison",
+    "Compares GenomeSpy defaults with scoped Vega-Lite-like config overrides in two rows."
+  ],
   "theme": "genomespy",
   "spacing": 24,
   "resolve": {

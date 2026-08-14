@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Semantic zoom visibility",
+    "Uses semanticScore and semanticZoomFraction to reveal points during zooming."
+  ],
+
   "data": {
     "sequence": { "start": 0, "stop": 400000, "as": "x" }
   },

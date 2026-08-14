@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Dome-shaped link marks",
+    "Renders zoomable links between paired quantitative coordinates."
+  ],
+
   "data": {
     "sequence": { "start": 0, "stop": 50, "as": "z" }
   },

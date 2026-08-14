@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Indexed bars with thresholds",
+    "Uses rect marks and a threshold color scale on an index axis."
+  ],
+
   "data": {
     "sequence": { "start": 0, "stop": 100, "as": "x" }
   },

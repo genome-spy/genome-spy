@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Interactive rect mark styling",
+    "Uses input bindings to control rectangle corners, fills, strokes, and shadows."
+  ],
+
   "padding": 20,
 
   "view": {

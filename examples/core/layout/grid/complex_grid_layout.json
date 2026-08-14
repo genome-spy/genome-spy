@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Nested grid layout",
+    "Exercises nested hconcat and vconcat composition with shared sincos data."
+  ],
+
   "data": { "url": "data/sincos.csv" },
   "config": {
     "view": {

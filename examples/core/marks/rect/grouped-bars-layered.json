@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Grouped bars with points aligned through a shared xOffset scale.",
+  "description": [
+    "Grouped bars with aligned points",
+    "Uses a shared xOffset scale to align layered points and bars."
+  ],
 
   "width": 300,
 

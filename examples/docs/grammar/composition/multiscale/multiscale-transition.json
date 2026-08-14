@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "A three-stage semantic zoom that cross-fades after selecting a discrete multiscale level.",
+  "description": [
+    "Cross-fading multiscale zoom",
+    "Cross-fades after selecting a discrete multiscale level."
+  ],
 
   "view": { "stroke": "lightgray" },
 

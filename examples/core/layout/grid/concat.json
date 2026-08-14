@@ -1,6 +1,8 @@
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
 
+  "description": "Nested concatenated views with shared data",
+
   "data": { "url": "data/sincos.csv" },
 
   "vconcat": [

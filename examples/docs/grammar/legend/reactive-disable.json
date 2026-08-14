@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "A Palmer penguins scatter plot with a checkbox for showing and hiding the legend.",
+  "description": [
+    "Interactive legend visibility",
+    "Uses a checkbox to show and hide the legend in a penguin scatterplot."
+  ],
 
   "width": 250,
   "height": 250,

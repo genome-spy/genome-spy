@@ -1,7 +1,7 @@
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
 
-  "description": "Legend test case for redundant nominal color and shape encodings.",
+  "description": "Redundant nominal color and shape encodings",
 
   "background": "#fafafa",
 

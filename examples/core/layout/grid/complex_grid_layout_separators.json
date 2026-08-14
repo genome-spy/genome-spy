@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Nested concatenation separators",
+    "Tests separator styling across nested concatenated views."
+  ],
+
   "data": { "url": "data/sincos.csv" },
 
   "encoding": {

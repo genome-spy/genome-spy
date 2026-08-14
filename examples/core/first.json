@@ -1,6 +1,8 @@
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
 
+  "description": "Basic point plot of sine values",
+
   "data": { "url": "data/sincos.csv" },
 
   "mark": "point",

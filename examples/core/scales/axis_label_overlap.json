@@ -1,6 +1,9 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
-  "description": "Comparison of automatic axis label layout and disabled label layout.",
+  "description": [
+    "Automatic and disabled axis label layout",
+    "Compares automatic axis label layout with disabled label layout."
+  ],
 
   "data": {
     "values": [{ "value": 0 }, { "value": 800000000 }]

@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Genomic interval selection",
+    "Brushes points on a locus scale using an interval selection."
+  ],
+
   "genome": { "name": "hg38" },
 
   "params": [

@@ -1,7 +1,7 @@
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
 
-  "description": "A diverging scale, zero forced to the middle of the domain.",
+  "description": "Diverging scale centered at zero",
 
   "data": {
     "sequence": { "start": -5, "stop": 11 }

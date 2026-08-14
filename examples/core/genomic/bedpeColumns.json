@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "BEDPE example with explicit format.columns for a headerless file.",
+  "description": [
+    "BEDPE columns for headerless files",
+    "Uses format.columns to parse a headerless BEDPE file."
+  ],
 
   "genome": { "name": "hg38" },
 

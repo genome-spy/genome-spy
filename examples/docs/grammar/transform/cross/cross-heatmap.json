@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Cross two generated sequences to form a heatmap grid.",
+  "description": [
+    "Crossed sequences as a heatmap",
+    "Crosses two generated sequences to form a grid."
+  ],
 
   "data": {
     "sequence": { "start": 0, "stop": 6, "as": "x" }

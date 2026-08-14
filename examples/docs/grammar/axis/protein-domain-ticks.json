@@ -1,6 +1,9 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "The first and last amino acids of protein domains, and the protein length, are explicit ticks that take priority over generated labels. Domain ranges are half-open.",
+  "description": [
+    "Protein domain boundary ticks",
+    "Prioritizes domain boundaries and protein length over generated labels; ranges are half-open."
+  ],
 
   "data": {
     "values": [

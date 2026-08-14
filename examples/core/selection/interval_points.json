@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "2D scatter plot with normally distributed random data",
+  "description": [
+    "Interval selection on normal data",
+    "Brushes a normally distributed 2D point cloud."
+  ],
 
   "params": [
     {

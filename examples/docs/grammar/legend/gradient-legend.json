@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "A Palmer penguins scatter plot with a quantitative body mass legend.",
+  "description": [
+    "Penguin scatterplot with body mass legend",
+    "Uses a quantitative body mass legend for a Palmer penguins scatterplot."
+  ],
 
   "width": 250,
   "height": 250,

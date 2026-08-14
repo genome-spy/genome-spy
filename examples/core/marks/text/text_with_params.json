@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Interactive text parameters",
+    "Binds text content, size, and angle to inputs."
+  ],
+
   "params": [
     {
       "name": "size",

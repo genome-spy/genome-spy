@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Interactive point plot with a zoomable x-scale and zoom-dependent point size.",
+  "description": [
+    "Zoomable point plot",
+    "Point size increases with zoom level."
+  ],
 
   "data": {
     "sequence": { "start": 0, "stop": 200000, "as": "x" }

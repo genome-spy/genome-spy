@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Sequence text in fitted bands",
+    "Fits sequence letters into indexed bands with logo styling."
+  ],
+
   "width": "container",
 
   "height": "container",

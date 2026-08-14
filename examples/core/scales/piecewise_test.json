@@ -1,7 +1,7 @@
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
 
-  "description": "Piecewise color scale with more than three thresholds. Three thresholds = diverging scale.",
+  "description": "Piecewise color scale with multiple thresholds",
 
   "data": {
     "sequence": { "start": 0, "stop": 40 }

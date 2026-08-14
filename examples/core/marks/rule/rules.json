@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Zoomable rule marks",
+    "Renders random intervals with identity size and categorical color."
+  ],
+
   "data": {
     "sequence": { "start": 0, "stop": 10000 }
   },

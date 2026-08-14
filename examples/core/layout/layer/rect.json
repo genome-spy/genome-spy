@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Layered rect and rule marks",
+    "Uses regexFold to draw a rectangle with reference rules."
+  ],
+
   "data": {
     "values": [
       { "x": 0.2, "x2": 0.4 },

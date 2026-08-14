@@ -5,7 +5,10 @@
 
   "height": 600,
 
-  "description": "Check that the rules align to the pixel grid perfectly",
+  "description": [
+    "Pixel-aligned rule marks",
+    "Checks that rule marks align perfectly to the pixel grid."
+  ],
 
   "view": { "stroke": "#d0d0d0" },
 

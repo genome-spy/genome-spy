@@ -1,7 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Adapted from: https://vega.github.io/vega-lite/docs/bind.html#input-element-binding",
+  "description": [
+    "HTML input element bindings",
+    "Binds range and choice inputs to parameters.",
+    "Adapted from Vega-Lite's input binding example."
+  ],
 
   "params": [
     {

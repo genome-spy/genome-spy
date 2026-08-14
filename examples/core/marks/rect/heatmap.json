@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Indexed quantitative heatmap",
+    "Renders a generated measurement field with a quantitative color legend."
+  ],
+
   "config": { "legend": { "disable": false, "offset": 18 } },
 
   "data": {

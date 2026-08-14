@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Ranged text labels",
+    "Places text inside quantitative intervals with a background."
+  ],
+
   "data": { "values": ["A", "B", "C", "D", "E", "F", "G"] },
 
   "transform": [

@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "A three-stage semantic zoom using the multiscale composition operator.",
+  "description": [
+    "Three-stage semantic zoom",
+    "Uses the multiscale composition operator."
+  ],
 
   "view": { "stroke": "lightgray" },
 

@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Heatmap with text overlays",
+    "Combines a quantitative heatmap with values and zoom guidance."
+  ],
+
   "data": {
     "sequence": { "start": 0, "stop": 40000, "as": "i" }
   },

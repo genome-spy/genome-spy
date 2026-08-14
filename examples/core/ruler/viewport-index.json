@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "A viewport ruler tracks the center of an index-scaled view.",
+  "description": [
+    "Viewport ruler tracks index center",
+    "Tracks the center of an index-scaled view with a viewport ruler."
+  ],
 
   "params": [
     {

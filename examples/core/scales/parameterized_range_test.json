@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Using parameters to control scale's range",
+  "description": [
+    "Parameterized scale range",
+    "Uses parameters to control the scale range."
+  ],
 
   "params": [
     {

@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Bubble plot testbed for a quantitative size legend, adapted from the Vega-Lite health and income example.",
+  "description": [
+    "Health and income bubble plot",
+    "Uses population for legend size in an adapted Vega-Lite example."
+  ],
 
   "background": "#fafafa",
 

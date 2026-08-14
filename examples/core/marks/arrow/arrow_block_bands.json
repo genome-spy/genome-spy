@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Block arrows on categorical bands with quantitative x positions.",
+  "description": [
+    "Block arrows on categorical bands",
+    "Encodes arrow endpoints quantitatively across categorical bands."
+  ],
 
   "data": {
     "values": [

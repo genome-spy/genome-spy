@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "ENCODE Candidate Cis-Regulatory Elements (cCREs) combined from all cell types, hg38",
+  "description": [
+    "ENCODE cCREs in hg38",
+    "Loads combined ENCODE candidate cis-regulatory elements from a BigBed file."
+  ],
 
   "params": [
     {

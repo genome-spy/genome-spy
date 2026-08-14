@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Coverage and pileup tracks",
+    "Compares coverage aggregation with pileup lane assignment."
+  ],
+
   "resolve": {
     "scale": { "x": "shared" }
   },

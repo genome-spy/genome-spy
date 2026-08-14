@@ -2,8 +2,8 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": [
-    "Using ordinal scale to map values to arbitrary positions on the positional channels",
-    "This is mainly for GenomeSpy's internal use."
+    "Ordinal positions on positional channels",
+    "Maps values to arbitrary positions on positional channels for internal use."
   ],
 
   "resolve": {

@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Lazy indexed FASTA sequence",
+    "Reveals a reference sequence as the locus view zooms in."
+  ],
+
   "height": 30,
 
   "genome": { "name": "hg38" },

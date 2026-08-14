@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Test quality of text mark rendering with different sizes.",
+  "description": [
+    "Text mark rendering quality",
+    "Renders varied text sizes, letters, and digits for visual inspection."
+  ],
 
   "data": {
     "sequence": { "start": 1, "stop": 20, "step": 1 }

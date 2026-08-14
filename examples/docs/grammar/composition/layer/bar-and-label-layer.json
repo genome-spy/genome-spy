@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Layered bar chart with shared encodings and text labels.",
+  "description": [
+    "Layered bars with text labels",
+    "Shares encodings between bar and text layers."
+  ],
 
   "data": {
     "values": [

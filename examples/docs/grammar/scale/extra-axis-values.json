@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "A one-based index scale that identifies the first residue.",
+  "description": [
+    "One-based index axis ticks",
+    "Uses extra axis values to identify the first residue."
+  ],
 
   "data": {
     "values": [

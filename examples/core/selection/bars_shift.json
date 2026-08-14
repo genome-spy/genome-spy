@@ -1,7 +1,11 @@
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
 
-  "description": "A bar chart with highlighting on hover and selecting on click. (Inspired by Tableau's interaction style.)",
+  "description": [
+    "Hover and click bar selection",
+    "Highlights bars on hover and selects them on click.",
+    "Inspired by Tableau's interaction style."
+  ],
 
   "width": 200,
 

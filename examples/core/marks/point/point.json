@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Point mark encoding channels",
+    "Maps categorical and quantitative fields to point appearance."
+  ],
+
   "data": {
     "sequence": { "start": 0, "stop": 160, "as": "z" }
   },

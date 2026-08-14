@@ -2,7 +2,7 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": [
-    "Interactive GenomeSpy version of the five-set mutations example from UpSetR.",
+    "UpSetR-style five-set mutation intersections",
     "Shows exact mutation intersections among five genes in a glioblastoma cohort using aligned set-size bars, intersection-size bars, and hover-linked matrix highlighting."
   ],
 

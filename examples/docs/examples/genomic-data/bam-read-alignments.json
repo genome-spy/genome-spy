@@ -2,7 +2,7 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": [
-    "BAM read alignment example using a downsampled GIAB HG002 chr20 slice.",
+    "BAM alignment view for GIAB HG002",
     "Shows an IGV-like BAM alignment view with depth coverage, insertion and mismatch summaries, directional read pileups, CIGAR overlays, and base-quality filtering."
   ],
 

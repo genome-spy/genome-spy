@@ -1,6 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
+  "description": [
+    "Condensed concatenated views",
+    "Uses shared scales and overlay titles with zero spacing."
+  ],
+
   "data": { "url": "data/sincos.csv" },
 
   "encoding": {
