@@ -2,8 +2,8 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": [
-    "Multiple Sequence Alignment",
-    "Visualizes the 16SRNA_Deino_87seq nucleotide alignment with a sequence logo showing per-position information content and a zoomable base-by-base alignment.",
+    "Zoomable Multiple Sequence Alignment with a Sequence Logo",
+    "Visualizes NCBI's 16SRNA_Deino_87seq alignment as a zoomable sequence logo.",
     "Data source: 16SRNA_Deino_87seq.aln from NCBI's Multiple Sequence Alignment Viewer tutorial and NCBI FTP. NCBI places no restrictions on use or distribution of molecular data in its databases, but original submitters may hold third-party intellectual-property rights."
   ],
 

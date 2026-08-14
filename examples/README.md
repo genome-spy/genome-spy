@@ -21,8 +21,11 @@ reuse, and stable enough for automated tooling.
 
 ## Structure
 
-- `core/` is for curated shared examples that work with GenomeSpy Core.
-- `docs/` is for examples extracted from documentation pages.
+- `docs/` is for polished, user-facing examples with a clear purpose in the
+  documentation.
+- `core/` is for focused, test-like examples that demonstrate that a Core
+  feature or combination of features really works. They do not need to be
+  polished documentation examples.
 - `app/` is reserved for app-only examples.
 - `data/` contains small GenomeSpy-owned fixtures referenced by examples.
 - `vega-datasets/` is reserved for upstream `vega-datasets` files served at
@@ -57,6 +60,31 @@ This section is a style guide for both humans and LLMs editing example specs.
 - Add a blank line between major top-level sections to improve scanability.
 - Prefer short files that read well in documentation code blocks.
 - Preserve semantic grouping even when compacting the formatting.
+
+### Descriptions and titles
+
+- Use the root `description` as the semantic title and a concise orientation
+  for readers learning from the spec: describe what the visualization is for
+  and what the example demonstrates, rather than necessarily naming the plot
+  title shown inside the visualization.
+- Keep the only string, or the first string in a description array, short
+  enough for the App and Playground toolbars, gallery cards, and example
+  selectors. Aim for eight words or fewer.
+- Use a description array when the example needs supporting text. Put the
+  semantic example title first, the main description second, and any additional
+  context after that:
+
+  ```json
+  "description": [
+    "Zoomable Multiple Sequence Alignment with a Sequence Logo",
+    "Visualizes NCBI's 16SRNA_Deino_87seq alignment as a zoomable sequence logo.",
+    "Data source: NCBI's tutorial alignment."
+  ]
+  ```
+
+- Use the view's `title` property separately when the visualization itself needs
+  an official plot title. It may differ from the semantic example title in the
+  root `description`.
 
 ### Compactness
 
