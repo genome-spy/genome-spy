@@ -95,6 +95,36 @@ describe("layout snapshot helper", () => {
         });
     });
 
+    test("renders a title declared on a root grid view", async () => {
+        const layout = await specToLayout(
+            {
+                title: "Main title",
+                vconcat: [
+                    {
+                        data: { values: [{ x: 1, y: 2 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            {},
+            Rectangle.create(0, 0, 200, 120)
+        );
+
+        expect(findLayoutNode(layout, "title0")).toBeDefined();
+    });
+
     test("title-styles docs example relies on title bounds instead of padding", async () => {
         const spec = loadSharedExampleSpec(
             "examples/docs/grammar/title/title-styles.json"

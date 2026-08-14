@@ -263,27 +263,29 @@ export class ViewFactory {
                     asSelectionConfig(param.select).type == "interval"
             );
 
+        const isGridSpec =
+            isVConcatSpec(viewSpec) ||
+            isHConcatSpec(viewSpec) ||
+            isConcatSpec(viewSpec);
+
         // A non-grid root needs a grid parent to host layout chrome such as
-        // axes and legends. This also covers view types registered by clients.
-        let isImplicitRoot = false;
-        if (
+        // axes and legends. A titled grid root also needs a parent because
+        // titles are rendered by GridChild instances.
+        const isImplicitRoot =
             !dataParent &&
             this.options.wrapRoot &&
-            (!(
-                isVConcatSpec(viewSpec) ||
-                isHConcatSpec(viewSpec) ||
-                isConcatSpec(viewSpec)
-            ) ||
-                hasIntervalSelection(viewSpec)) &&
-            defaultName === VIEW_ROOT_NAME
-        ) {
+            defaultName === VIEW_ROOT_NAME &&
+            (!isGridSpec ||
+                viewSpec.title !== undefined ||
+                hasIntervalSelection(viewSpec));
+
+        if (isImplicitRoot) {
             const wrappedChild = { ...viewSpec };
             delete (/** @type {any} */ (wrappedChild).theme);
             viewSpec = {
                 name: "implicitRoot",
                 vconcat: [wrappedChild],
             };
-            isImplicitRoot = true;
         }
 
         const view = this.createView(

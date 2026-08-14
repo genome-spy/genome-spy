@@ -8336,6 +8336,10 @@ exports[`shared examples > initializes examples/docs/examples/genomic-data/pik3c
     },
     {
       "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
       "type": "LegendEntriesSource",
     },
     {
@@ -8348,16 +8352,73 @@ exports[`shared examples > initializes examples/docs/examples/genomic-data/pik3c
     },
   ],
   "hierarchy": {
-    "baseUrl": "examples/",
+    "baseUrl": null,
     "children": [
       {
         "baseUrl": "examples/",
         "children": [
           {
             "baseUrl": "examples/",
-            "children": [],
-            "name": "mutation-labels",
-            "type": "UnitView",
+            "children": [
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "mutation-labels",
+                "type": "UnitView",
+              },
+              {
+                "baseUrl": "examples/",
+                "children": [
+                  {
+                    "baseUrl": "examples/",
+                    "children": [],
+                    "name": "stems",
+                    "type": "UnitView",
+                  },
+                  {
+                    "baseUrl": "examples/",
+                    "children": [],
+                    "name": "upper-guides",
+                    "type": "UnitView",
+                  },
+                  {
+                    "baseUrl": "examples/",
+                    "children": [],
+                    "name": "lollipops",
+                    "type": "UnitView",
+                  },
+                  {
+                    "baseUrl": "examples/",
+                    "children": [],
+                    "name": "sample-counts",
+                    "type": "UnitView",
+                  },
+                ],
+                "name": "mutations",
+                "type": "LayerView",
+              },
+              {
+                "baseUrl": "examples/",
+                "children": [
+                  {
+                    "baseUrl": "examples/",
+                    "children": [],
+                    "name": "lower-connectors",
+                    "type": "UnitView",
+                  },
+                  {
+                    "baseUrl": "examples/",
+                    "children": [],
+                    "name": "true-position-anchors",
+                    "type": "UnitView",
+                  },
+                ],
+                "name": "grid2",
+                "type": "LayerView",
+              },
+            ],
+            "name": "grid0",
+            "type": "ConcatView",
           },
           {
             "baseUrl": "examples/",
@@ -8365,81 +8426,31 @@ exports[`shared examples > initializes examples/docs/examples/genomic-data/pik3c
               {
                 "baseUrl": "examples/",
                 "children": [],
-                "name": "stems",
+                "name": "protein-backbone",
                 "type": "UnitView",
               },
               {
                 "baseUrl": "examples/",
                 "children": [],
-                "name": "upper-guides",
+                "name": "domains",
                 "type": "UnitView",
               },
               {
                 "baseUrl": "examples/",
                 "children": [],
-                "name": "lollipops",
-                "type": "UnitView",
-              },
-              {
-                "baseUrl": "examples/",
-                "children": [],
-                "name": "sample-counts",
+                "name": "domain-labels",
                 "type": "UnitView",
               },
             ],
-            "name": "mutations",
-            "type": "LayerView",
-          },
-          {
-            "baseUrl": "examples/",
-            "children": [
-              {
-                "baseUrl": "examples/",
-                "children": [],
-                "name": "lower-connectors",
-                "type": "UnitView",
-              },
-              {
-                "baseUrl": "examples/",
-                "children": [],
-                "name": "true-position-anchors",
-                "type": "UnitView",
-              },
-            ],
-            "name": "grid2",
+            "name": "protein",
             "type": "LayerView",
           },
         ],
         "name": "grid0",
         "type": "ConcatView",
       },
-      {
-        "baseUrl": "examples/",
-        "children": [
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "protein-backbone",
-            "type": "UnitView",
-          },
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "domains",
-            "type": "UnitView",
-          },
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "domain-labels",
-            "type": "UnitView",
-          },
-        ],
-        "name": "protein",
-        "type": "LayerView",
-      },
     ],
-    "name": "viewRoot",
+    "name": "implicitRoot",
     "type": "ConcatView",
   },
 }
