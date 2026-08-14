@@ -115,8 +115,16 @@ export default class TabixSource extends SingleAxisWindowedSource {
             setLoadingStatus: (status, detail) =>
                 this.setLoadingStatus(status, detail),
             loadModules: loadTabixModules,
-            createHandle: (descriptor, { TabixIndexedFile, RemoteFile }) =>
-                this.#createHandle(descriptor, TabixIndexedFile, RemoteFile),
+            createHandle: (
+                descriptor,
+                { TabixIndexedFile, RemoteFile, gmodChunkCacheBudget }
+            ) =>
+                this.#createHandle(
+                    descriptor,
+                    TabixIndexedFile,
+                    RemoteFile,
+                    gmodChunkCacheBudget
+                ),
         });
 
         const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
@@ -139,14 +147,21 @@ export default class TabixSource extends SingleAxisWindowedSource {
      * @param {import("../urlDescriptor.js").UrlDescriptor} descriptor
      * @param {typeof import("@gmod/tabix").TabixIndexedFile} TabixIndexedFile
      * @param {typeof import("generic-filehandle2").RemoteFile} RemoteFile
+     * @param {import("@gmod/shared-read-cache").SharedBudget} gmodChunkCacheBudget
      * @returns {Promise<TabixHandle>}
      */
-    async #createHandle(descriptor, TabixIndexedFile, RemoteFile) {
+    async #createHandle(
+        descriptor,
+        TabixIndexedFile,
+        RemoteFile,
+        gmodChunkCacheBudget
+    ) {
         const tbiIndex = new TabixIndexedFile({
             filehandle: new RemoteFile(descriptor.url),
             tbiFilehandle: new RemoteFile(
                 descriptor.indexUrl ?? descriptor.url + ".tbi"
             ),
+            chunkCacheBudget: gmodChunkCacheBudget,
         });
         const [headerLines, rawReferenceNames] = await Promise.all([
             tbiIndex.getHeaderLines(),
@@ -283,11 +298,13 @@ export default class TabixSource extends SingleAxisWindowedSource {
 }
 
 async function loadTabixModules() {
-    const [{ TabixIndexedFile }, { RemoteFile }] = await Promise.all([
-        import("@gmod/tabix"),
-        import("generic-filehandle2"),
-    ]);
-    return { TabixIndexedFile, RemoteFile };
+    const [{ TabixIndexedFile }, { RemoteFile }, { gmodChunkCacheBudget }] =
+        await Promise.all([
+            import("@gmod/tabix"),
+            import("generic-filehandle2"),
+            import("./gmodChunkCache.js"),
+        ]);
+    return { TabixIndexedFile, RemoteFile, gmodChunkCacheBudget };
 }
 
 /**

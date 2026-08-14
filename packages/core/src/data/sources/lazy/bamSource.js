@@ -79,17 +79,21 @@ export default class BamSource extends SingleAxisWindowedSource {
             },
             "BamSource"
         );
-        const [{ BamFile }, { RemoteFile }] = await Promise.all([
-            import("@gmod/bam"),
-            import("generic-filehandle2"),
-        ]);
+        const [{ BamFile }, { RemoteFile }, { gmodChunkCacheBudget }] =
+            await Promise.all([
+                import("@gmod/bam"),
+                import("generic-filehandle2"),
+                import("./gmodChunkCache.js"),
+            ]);
 
         this.#bam = new BamFile({
             bamFilehandle: new RemoteFile(descriptor.url),
             baiFilehandle: new RemoteFile(
                 descriptor.indexUrl ?? descriptor.url + ".bai"
             ),
+            cacheBudget: gmodChunkCacheBudget,
         });
+        this.registerDisposer(() => this.#bam.chunkFeatureCache.clear());
 
         await this.#bam.getHeader();
         const g = this.genome.hasChrPrefix();

@@ -28,6 +28,7 @@ are recent.
 | `@gmod/indexedfasta` | `^5.0.2` | `5.0.7` | `5.0.10` |
 | `@gmod/tabix` | `3.2.2` | `3.2.2` | `3.8.1` |
 | `@gmod/vcf` | `^7.0.0` | `7.0.9` | `7.2.0` |
+| `@gmod/shared-read-cache` | — | — | `1.6.0` |
 | `gff-nostream` | `^3.0.2` | `3.0.11` | `5.2.1` |
 | `generic-filehandle2` | `^2.0.18` | `2.2.0` | `2.3.1` |
 
@@ -192,12 +193,14 @@ During implementation:
    comparable.
 5. Test disposal/reinitialization so stale handles do not retain cache owners.
 
-**MB-6:** Before aggregate verification, choose one of two explicit outcomes:
-(a) create and pass a bounded shared BAM/Tabix budget with a justified size and
-lifecycle, declaring `@gmod/shared-read-cache` directly; or (b) retain package
-budgets after measuring simultaneous tracks and express acceptance as a
-documented measured bound. Do not assert compliance with an unspecified
-“selected cache budget.”
+**MB-6 resolution:** Core declares `@gmod/shared-read-cache` directly and uses
+one internal 1 GiB budget for all BAM and Tabix chunk caches in the JavaScript
+realm. Both packages weigh these entries in decompressed bytes, so a shared
+budget has consistent units and lets inactive files yield entries to the
+active track. Their three-minute idle eviction remains enabled. Source
+disposal clears the corresponding cache, and the budget holds members weakly.
+The budget bounds settled retained chunks across files; reads in flight and
+each cache's last settled entry can exceed it by design.
 
 The new BGZF worker pool is an optional performance follow-up. If adopted,
 declare `@gmod/bgzf-filehandle` directly, share a bounded pool, verify worker

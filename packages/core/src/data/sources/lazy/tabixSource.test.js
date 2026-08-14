@@ -3,6 +3,7 @@ import Collector from "../../collector.js";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
 import RegexFoldTransform from "../../transforms/regexFold.js";
 import TabixTsvSource from "./tabixTsvSource.js";
+import { gmodChunkCacheBudget } from "./gmodChunkCache.js";
 import { createReferenceNameMap } from "./tabixSource.js";
 
 /** @type {Map<string, string[]>} */
@@ -19,6 +20,10 @@ const headerByUrl = new Map();
 const referenceNamesByUrl = new Map();
 /** @type {Set<string>} */
 const failingHeaderUrls = new Set();
+/** @type {Record<string, unknown>[]} */
+const tabixConstructorOptions = [];
+/** @type {string[]} */
+const clearedChunkCacheUrls = [];
 
 vi.mock("generic-filehandle2", () => ({
     RemoteFile: class RemoteFile {
@@ -31,10 +36,11 @@ vi.mock("generic-filehandle2", () => ({
 
 vi.mock("@gmod/tabix", () => ({
     TabixIndexedFile: class TabixIndexedFile {
-        /** @param {{ filehandle: { url: string }, tbiFilehandle: { url: string } }} options */
+        /** @param {{ filehandle: { url: string }, tbiFilehandle: { url: string }, chunkCacheBudget: unknown }} options */
         constructor(options) {
             this.url = options.filehandle.url;
             this.indexUrl = options.tbiFilehandle.url;
+            tabixConstructorOptions.push(options);
             openedUrls.push(this.url);
             indexUrlByUrl.set(this.url, this.indexUrl);
         }
@@ -53,7 +59,7 @@ vi.mock("@gmod/tabix", () => ({
         }
 
         clearChunkCache() {
-            // No-op in the source adapter mock.
+            clearedChunkCacheUrls.push(this.url);
         }
 
         /**
@@ -144,6 +150,8 @@ describe("TabixSource", () => {
         headerByUrl.clear();
         referenceNamesByUrl.clear();
         failingHeaderUrls.clear();
+        tabixConstructorOptions.length = 0;
+        clearedChunkCacheUrls.length = 0;
         linesByUrl.set("variants/ovarian.vcf.gz", ["chr1\t1\t2\tA"]);
         linesByUrl.set("variants/breast.vcf.gz", ["chr1\t3\t4\tB"]);
     });
@@ -197,6 +205,30 @@ describe("TabixSource", () => {
                 end: 4,
                 value: "B",
             },
+        ]);
+    });
+
+    it("shares the bounded chunk budget and clears caches on disposal", async () => {
+        const source = new TabixTsvSource(
+            /** @type {any} */ ({
+                type: "tabix",
+                debounceMode: "domain",
+                url: ["variants/ovarian.vcf.gz", "variants/breast.vcf.gz"],
+            }),
+            /** @type {any} */ (createViewStub())
+        );
+
+        await /** @type {any} */ (source).initializedPromise;
+
+        expect(
+            tabixConstructorOptions.map((options) => options.chunkCacheBudget)
+        ).toEqual([gmodChunkCacheBudget, gmodChunkCacheBudget]);
+
+        source.dispose();
+        source.dispose();
+        expect(clearedChunkCacheUrls).toEqual([
+            "variants/ovarian.vcf.gz",
+            "variants/breast.vcf.gz",
         ]);
     });
 

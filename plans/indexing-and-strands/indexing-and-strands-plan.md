@@ -136,7 +136,7 @@ each committed state builds and passes its focused tests.
 | MB-3 | **RESOLVED** | Emitted `chrom` preserves the file reference name. `addChrPrefix` is an idempotent, query-only per-file mapping and does not rewrite loaded rows. | — |
 | MB-4 | **RESOLVED** | The contract standardizes zero-based, half-open semantics while retaining documented format-specific fields such as BED `chromStart/chromEnd` and BEDPE's two intervals. | — |
 | MB-5 | **RESOLVED** | The GFF adapter reserves `chrom`, moves a colliding attribute to the next free `chromN` field, preserves shared identity across parents, and deduplicates attachment within each parent/path. | — |
-| MB-6 | **OPEN — MERGE BLOCKER** | Select and verify the BAM/Tabix cache ownership and budget policy, or replace the fixed-budget assertion with a measured acceptance gate. | Aggregate verification |
+| MB-6 | **RESOLVED** | BAM and Tabix share one internal 1 GiB decompressed-byte retention budget. Their idle eviction remains enabled, source disposal clears caches, and tests verify shared ownership and cleanup. | — |
 | MB-7 | **OPEN — MERGE BLOCKER** | Audit every specification under `examples/` and verify that all examples work. Change only affected specifications or support code; do not treat every asset as requiring conversion. | Final examples acceptance |
 | MB-8 | **OPEN — MERGE BLOCKER** | Complete public output typings, choose the migration-document location/navigation, decide the actual offset deprecation/removal path, and use durable release-specific upstream references. | Final schema and documentation acceptance |
 
