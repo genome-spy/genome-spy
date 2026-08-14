@@ -99,3 +99,7 @@ sources for use with bundlers such as [Vite](https://vitejs.dev) and
   package contains examples of embedding GenomeSpy in web applications and using the API.
 - [SegmentModel Spy](https://github.com/genome-spy/segment-model-spy) is an example
   of a complete web application that uses GenomeSpy for visualization.
+- [MutGlyph](https://github.com/genome-spy/MutGlyph) is an R package that embeds
+  GenomeSpy in an htmlwidget and provides interactive
+  counterparts to established `maftools` plots. See the [MutGlyph
+  documentation](https://genomespy.app/MutGlyph/) for examples.
