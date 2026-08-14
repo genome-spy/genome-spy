@@ -8,6 +8,7 @@ extra_css = ["stylesheets/extra.css"]
 nav = [
     "index.md",
     "getting-started.md",
+    { "Migration to GenomeSpy 2.0" = "migration/v2-genomic-data.md" },
     { "Visualization Grammar" = [
         "grammar/index.md",
         { "Data Input" = [

@@ -2,7 +2,7 @@
 
 ## Summary
 
-Before GenomeSpy 1.0, standardize the genomic records emitted by built-in data
+For GenomeSpy 2.0, standardize the genomic records emitted by built-in data
 sources. GenomeSpy-owned interval fields use zero-based, half-open coordinates,
 and GenomeSpy-owned strand fields use `"+"`, `"-"`, or `null`. Known formats
 are normalized at the data-source boundary. Generic or custom data remains
@@ -67,7 +67,7 @@ versions, and where a field is accessed in the dataflow.
 - Remove indexing correction from locus encodings and coordinate linearization.
 - Upgrade all direct GMOD packages without regressing lazy loading, chromosome
   naming, multi-file sources, cancellation, or memory use.
-- Publish migration guidance before 1.0 and make documentation changes part of
+- Publish migration guidance for 2.0 and make documentation changes part of
   the acceptance criteria.
 
 ## Non-goals
@@ -103,11 +103,11 @@ describe only the primary record interval.
 ### Deprecate, then remove indexing offsets
 
 Mark `ChromPosDefBase.offset` and
-`LinearizeGenomicCoordinateParams.offset` deprecated immediately. If a public
-prerelease is planned, retain their behavior for that prerelease and emit the
-normal schema/documentation deprecation signal. The final 1.0-bound state
-removes both properties and their implementation. If no prerelease will expose
-the warning, remove them directly and retain the same migration documentation.
+`LinearizeGenomicCoordinateParams.offset` deprecated during 1.x if a release can
+provide a useful migration window. Retain their behavior throughout that
+window. The final 2.0 state removes both properties and their implementation.
+If no 1.x release will expose the warning, remove them directly in 2.0 and
+retain the same migration documentation.
 
 The `linearizeGenomicCoordinate` transform itself remains supported; it maps an
 already-normalized chromosome/position pair into a continuous genome-wide
@@ -131,14 +131,14 @@ each committed state builds and passes its focused tests.
 
 | ID | Status | Finding that must be resolved before merge | Earliest work it blocks |
 | --- | --- | --- | --- |
-| MB-1 | **RESOLVED** | Tabix 3.8.1 landed with its public-API adapter, and `gff-nostream` 5.2.1 landed with the v1 GFF adapter. | — |
+| MB-1 | **RESOLVED** | Tabix 3.8.1 landed with its public-API adapter, and `gff-nostream` 5.2.1 landed with the v2 GFF adapter. | — |
 | MB-2 | **OPEN — MERGE BLOCKER** | Define the exact VCF primary-interval algorithm for current `@gmod/vcf` array-valued INFO fields and Tabix's translocation handling, including malformed `END`/`REF` behavior. | Canonical VCF fields |
 | MB-3 | **RESOLVED** | Emitted `chrom` preserves the file reference name. `addChrPrefix` is an idempotent, query-only per-file mapping and does not rewrite loaded rows. | — |
 | MB-4 | **RESOLVED** | The contract standardizes zero-based, half-open semantics while retaining documented format-specific fields such as BED `chromStart/chromEnd` and BEDPE's two intervals. | — |
 | MB-5 | **RESOLVED** | The GFF adapter reserves `chrom`, moves a colliding attribute to the next free `chromN` field, preserves shared identity across parents, and deduplicates attachment within each parent/path. | — |
 | MB-6 | **RESOLVED** | BAM and Tabix share one internal 1 GiB decompressed-byte retention budget. Their idle eviction remains enabled, source disposal clears caches, and tests verify shared ownership and cleanup. | — |
-| MB-7 | **OPEN — MERGE BLOCKER** | Audit every specification under `examples/` and verify that all examples work. Change only affected specifications or support code; do not treat every asset as requiring conversion. | Final examples acceptance |
-| MB-8 | **OPEN — MERGE BLOCKER** | Complete public output typings, choose the migration-document location/navigation, decide the actual offset deprecation/removal path, and use durable release-specific upstream references. | Final schema and documentation acceptance |
+| MB-7 | **RESOLVED** | Static contract checks and browser verification cover all 215 JSON specifications under `examples/`: 209 Core/Docs specs through `npm run smoke:examples` and six App specs through the App development route. Only the affected GFF3 example required migration. | — |
+| MB-8 | **OPEN — MERGE BLOCKER** | The migration guide now lives at `docs/migration/v2-genomic-data.md` and is in site navigation. Complete public output typings, decide the actual offset deprecation/removal path, add the deferred VCF migration, and use durable release-specific upstream references. | Final schema and documentation acceptance |
 
 The focused plans record the evidence and verification needed to close these
 blockers. Resolving a blocker may refine the corresponding implementation step
@@ -217,7 +217,7 @@ Affected areas and detailed verification are in
 Documentation and migration: replace the legacy GFF object-format description,
 simplify the GENCODE example, and publish an old-to-new field mapping.
 
-Tentative commit: `feat(core)!: migrate GFF3 records to the v1 contract`
+Tentative commit: `feat(core)!: migrate GFF3 records to the v2 contract`
 
 ### 4. Add the bounded VCF primary interval
 
@@ -261,7 +261,7 @@ Tentative commit: `refactor(core)!: remove genomic indexing offsets`
 
 ### 6. Complete docs, examples, and end-to-end verification
 
-Outcome: the repository teaches only the v1 contracts, migration guidance is
+Outcome: the repository teaches only the v2 contracts, migration guidance is
 complete, and every existing example has been audited and works correctly.
 
 Affected areas:
@@ -290,13 +290,13 @@ Verification:
   has been checked and works correctly. Only affected specifications are
   migrated: no affected example retains genomic indexing correction in locus
   encodings or `linearizeGenomicCoordinate`, and its coordinate, strand, GFF,
-  and VCF field references use the v1 contracts.
+  and VCF field references use the v2 contracts.
 - Compare focused line counts and `git diff --stat` before and after; the
   offset and legacy GFF paths should become smaller.
 
 Documentation and migration: this step is the documentation deliverable.
 
-Tentative commit: `docs(core): document v1 genomic data contracts`
+Tentative commit: `docs(core): document v2 genomic data contracts`
 
 ## Alternatives considered
 
@@ -364,7 +364,7 @@ consumers would still receive inconsistent values.
 - Built-in interval sources document and emit zero-based, half-open values in
   their public interval fields, including format-specific field names.
 - BED, BEDPE, BigBed, BAM, and GFF expose symbolic/null strands consistently.
-- GFF3 exposes the documented v1 hierarchy, preserves valid multi-parent
+- GFF3 exposes the documented v2 hierarchy, preserves valid multi-parent
   relationships, and does not attach a feature more than once to the same
   parent/path.
 - Eager and lazy VCF expose identical canonical primary interval semantics and
@@ -377,7 +377,7 @@ consumers would still receive inconsistent values.
 - `addChrPrefix`, multi-file lazy loading, abort handling, and header parsing
   work with the upgraded Tabix package.
 - Every existing specification under `examples/` is audited and verified to
-  work with the v1 contracts. Only affected specifications and supporting code
+  work with the v2 contracts. Only affected specifications and supporting code
   or assets are changed, and no affected example retains a deprecated
   compatibility path.
 - User-facing source, coordinate, transform, and migration documentation is

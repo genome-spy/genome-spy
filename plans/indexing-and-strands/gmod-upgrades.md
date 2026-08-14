@@ -218,7 +218,7 @@ and pin the normalized hierarchy through tests described in
 `source-contracts.md`.
 
 Do not add compatibility shims that reconstruct the v3 hierarchy. This is an
-intentional pre-1.0 break.
+intentional GenomeSpy 2.0 break.
 
 The dependency change and the GenomeSpy GFF adapter must be one coherent step:
 v5 changes coordinates, strand representation, attributes, and hierarchy, so
@@ -330,7 +330,7 @@ Documentation and migration: none for the raw-preserving upgrade.
 
 Tentative commit: `build(core): update GMOD VCF parser`
 
-### 5. Upgrade GFF with its v1 adapter
+### 5. Upgrade GFF with its v2 adapter
 
 Outcome: `gff-nostream` 5 and the GFF source adapter land together with the
 normalized public record contract. This closes MB-1 and MB-5 for GFF.
@@ -341,7 +341,7 @@ Affected areas and verification are shared with
 Documentation and migration: record the public hierarchy, coordinate, strand,
 attribute, and collision changes with the adapter.
 
-Tentative commit: `feat(core)!: migrate GFF3 records to the v1 contract`
+Tentative commit: `feat(core)!: migrate GFF3 records to the v2 contract`
 
 ### 6. Modernize the embedded FASTA example
 

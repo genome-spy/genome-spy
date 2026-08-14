@@ -178,9 +178,9 @@ captured by focused snapshots after the adapter design stabilizes.
 Define an explicit GenomeSpy GFF datum type rather than reusing the upstream
 parser type after `refName` and numeric strand have been adapted.
 
-### Legacy-to-v1 mapping
+### GenomeSpy 1.x-to-v2 mapping
 
-| Legacy GFF3 field/path | v1 field/path |
+| GenomeSpy 1.x GFF3 field/path | GenomeSpy 2.0 field/path |
 | --- | --- |
 | `seq_id` | `chrom` |
 | `start` with encoding offset | canonical `start` |
@@ -381,15 +381,16 @@ initialization suite is insufficient because it skips specifications with
 absolute HTTP data URLs. Do not treat the known list as exhaustive or presume
 that every example needs an edit.
 
-Add a v1 migration section with old/new snippets for encoding offsets, explicit
+Add a v2 migration section with old/new snippets for encoding offsets, explicit
 custom-data correction, numeric strands, GFF hierarchy fields, and canonical
 versus raw VCF fields.
 
 **MB-8:** Select a concrete migration document path and add it to
 `zensical.toml`. Decide whether the offsets receive an observable prerelease
-deprecation or are removed directly for 1.0; document the chosen path in types,
-schema-derived docs, and the migration page. Replace mutable upstream `main`
-links used as compatibility evidence with release-tagged or commit-pinned links.
+deprecation during 1.x or are removed directly in 2.0; document the chosen path
+in types, schema-derived docs, and the migration page. Replace mutable upstream
+`main` links used as compatibility evidence with release-tagged or commit-pinned
+links.
 
 Regenerate schema artifacts from `.d.ts` sources. Do not edit generated schema
 descriptions directly.
