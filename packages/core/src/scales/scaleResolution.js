@@ -25,7 +25,12 @@ import {
 } from "./scaleResolutionConstants.js";
 
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
-import { getEncoderAccessors, isSecondaryChannel } from "../encoder/encoder.js";
+import {
+    getEncoderAccessors,
+    getEncoderDataAccessor,
+    isSecondaryChannel,
+    primaryPositionalChannels,
+} from "../encoder/encoder.js";
 import { collectConfiguredDomainExprRefs } from "./domainExpressions.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
@@ -177,6 +182,8 @@ export default class ScaleResolution {
             getDataMembers: () =>
                 this.#getActiveMembers(this.#dataDomainMembers),
             getViewLevelDomainSource: () => this.#getViewLevelDomainSource(),
+            getViewportConstraints: (member) =>
+                this.#getViewportConstraints(member),
             getType: () => this.type,
             getLocusExtent: (assembly) => this.#getLocusExtent(assembly),
             fromComplexInterval: this.fromComplexInterval.bind(this),
@@ -689,6 +696,62 @@ export default class ScaleResolution {
             type: this.type,
             domain: viewLevelScaleProps.props.domain,
         };
+    }
+
+    /**
+     * @param {ScaleResolutionMember} member
+     * @returns {{ channel: "x" | "y", domain: [number, number], accessor: import("../types/encoder.js").Accessor, accessor2?: import("../types/encoder.js").Accessor }[]}
+     */
+    #getViewportConstraints(member) {
+        /** @type {{ channel: "x" | "y", domain: [number, number], accessor: import("../types/encoder.js").Accessor, accessor2?: import("../types/encoder.js").Accessor }[]} */
+        const constraints = [];
+
+        for (const channel of primaryPositionalChannels) {
+            const resolution = member.view.getScaleResolution(channel);
+            if (!resolution || resolution === this) {
+                continue;
+            }
+
+            const scale = resolution.getScale();
+            if (!isContinuous(scale.type) || isDiscrete(scale.type)) {
+                continue;
+            }
+
+            const encoder = member.view.mark.encoders?.[channel];
+            if (!encoder) {
+                continue;
+            }
+            const accessor = getViewportAccessor(encoder);
+            if (!accessor) {
+                continue;
+            }
+
+            const secondaryChannel = channel === "x" ? "x2" : "y2";
+            const secondaryEncoder =
+                member.view.mark.encoders?.[secondaryChannel];
+            const accessor2 = secondaryEncoder
+                ? getViewportAccessor(secondaryEncoder)
+                : undefined;
+            const domain = resolution.getDomain();
+            constraints.push({
+                channel,
+                domain: [domain[0], domain.at(-1)],
+                accessor,
+                ...(accessor2 && { accessor2 }),
+            });
+        }
+
+        if (constraints.length === 0) {
+            const viewPath =
+                member.view.getPathString?.() ??
+                member.view.name ??
+                "(unknown)";
+            throw new Error(
+                `Viewport-derived ${this.channel} domain in view "${viewPath}" requires an independent continuous positional scale.`
+            );
+        }
+
+        return constraints;
     }
 
     /**
@@ -1737,6 +1800,17 @@ function intervalsEqual(a, b) {
     }
 
     return a.length === b.length && shallowArrayEquals(a, b);
+}
+
+/**
+ * @param {import("../types/encoder.js").Encoder} encoder
+ * @returns {import("../types/encoder.js").Accessor | undefined}
+ */
+function getViewportAccessor(encoder) {
+    return (
+        getEncoderDataAccessor(encoder) ??
+        getEncoderAccessors(encoder).find(isScaleAccessor)
+    );
 }
 
 /**

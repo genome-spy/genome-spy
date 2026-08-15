@@ -804,6 +804,101 @@ describe("Scale resolution domain handling", () => {
         expect(getScaleDomain(view, "y")).toEqual([0, 3]);
     });
 
+    test("visible y domains use the current x viewport", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 2 },
+                        { x: 1, y: 3 },
+                        { x: 2, y: 100 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { domain: { source: "visible" } },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        getRequiredScaleResolution(view, "x").getScale().domain([1.5, -0.5]);
+        const yResolution = getRequiredScaleResolution(view, "y");
+        yResolution.reconfigureDomain();
+
+        expect(r(yResolution.getDataDomain())).toEqual([2, 3]);
+    });
+
+    test("visible size domains use both scatter-plot viewports", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 0, size: 2 },
+                        { x: 1, y: 2, size: 100 },
+                        { x: 2, y: 0, size: 3 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                    size: {
+                        field: "size",
+                        type: "quantitative",
+                        scale: { domain: { source: "visible" } },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        getRequiredScaleResolution(view, "x").getScale().domain([-0.5, 1.5]);
+        getRequiredScaleResolution(view, "y").getScale().domain([-0.5, 0.5]);
+        const sizeResolution = getRequiredScaleResolution(view, "size");
+        sizeResolution.reconfigureDomain();
+
+        expect(r(sizeResolution.getDataDomain())).toEqual([2, 2]);
+    });
+
+    test("visible domains require an independent positional scale", async () => {
+        await expect(
+            initView(
+                {
+                    data: { values: [{ y: 2 }] },
+                    mark: "point",
+                    encoding: {
+                        y: {
+                            field: "y",
+                            type: "quantitative",
+                            scale: { domain: { source: "visible" } },
+                        },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow(
+            "requires an independent continuous positional scale"
+        );
+    });
+
     test("implicit members participate in a shared visible-domain resolution", async () => {
         const view = await initView(
             {

@@ -40,6 +40,8 @@ import {
  * @typedef {{ view: import("../view/view.js").default, channel: import("../spec/channel.js").ChannelWithScale, type: import("../spec/channel.js").Type, domain: import("../spec/scale.js").Scale["domain"] }} ConfiguredDomainSource
  * @typedef {() => Set<ScaleResolutionMember>} ScaleMembersGetter
  * @typedef {() => ConfiguredDomainSource | undefined} ViewLevelDomainSourceGetter
+ * @typedef {{ channel: "x" | "y", domain: [number, number], accessor: import("../types/encoder.js").Accessor, accessor2?: import("../types/encoder.js").Accessor }} ViewportConstraint
+ * @typedef {(member: ScaleResolutionMember) => ViewportConstraint[]} ViewportConstraintsGetter
  * @typedef {(interval: ScalarDomain | ComplexDomain) => number[]} FromComplexInterval
  * @typedef {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} GetLocusExtent
  * @typedef {{
@@ -82,6 +84,9 @@ export default class DomainPlanner {
     /** @type {ViewLevelDomainSourceGetter | undefined} */
     #getViewLevelDomainSource;
 
+    /** @type {ViewportConstraintsGetter | undefined} */
+    #getViewportConstraints;
+
     /** @type {() => import("../spec/channel.js").Type} */
     #getType;
 
@@ -113,6 +118,7 @@ export default class DomainPlanner {
      * @param {ScaleMembersGetter} [options.getAllMembers] All members, including inactive ones, used for conflict validation.
      * @param {ScaleMembersGetter} [options.getDataMembers] Members used for data-domain extraction; defaults to `getActiveMembers`.
      * @param {ViewLevelDomainSourceGetter} [options.getViewLevelDomainSource] View-level domain source.
+     * @param {ViewportConstraintsGetter} [options.getViewportConstraints] Positional constraints for visible-domain extraction.
      * @param {() => import("../spec/channel.js").Type} options.getType
      * @param {GetLocusExtent} options.getLocusExtent
      * @param {FromComplexInterval} options.fromComplexInterval
@@ -122,6 +128,7 @@ export default class DomainPlanner {
         getAllMembers,
         getDataMembers,
         getViewLevelDomainSource,
+        getViewportConstraints,
         getType,
         getLocusExtent,
         fromComplexInterval,
@@ -130,6 +137,7 @@ export default class DomainPlanner {
         this.#getAllMembers = getAllMembers ?? getActiveMembers;
         this.#getDataMembers = getDataMembers ?? getActiveMembers;
         this.#getViewLevelDomainSource = getViewLevelDomainSource;
+        this.#getViewportConstraints = getViewportConstraints;
         this.#getType = getType;
         this.#getLocusExtent = getLocusExtent;
         this.#fromComplexInterval = fromComplexInterval;
@@ -278,11 +286,24 @@ export default class DomainPlanner {
      * @return {DomainArray | undefined}
      */
     getDataDomain() {
-        return resolveDataDomain(
-            this.#getDataMembers(),
-            this.#getType,
-            (member) => this.#getMemberAccessors(member)
-        );
+        const members = this.#getDataMembers();
+        /** @param {ScaleResolutionMember} member */
+        const getAccessors = (member) => this.#getMemberAccessors(member);
+        if (this.hasVisibleDomain()) {
+            if (!this.#getViewportConstraints) {
+                throw new Error(
+                    "Visible-domain extraction requires positional constraints."
+                );
+            }
+            return resolveVisibleDataDomain(
+                members,
+                this.#getType,
+                getAccessors,
+                this.#getViewportConstraints
+            );
+        } else {
+            return resolveDataDomain(members, this.#getType, getAccessors);
+        }
     }
 
     /**
@@ -778,6 +799,56 @@ export function isVisibleDomainRef(domain) {
         !Array.isArray(domain) &&
         domain.source === "visible"
     );
+}
+
+/**
+ * @param {Set<ScaleResolutionMember>} members
+ * @param {() => import("../spec/channel.js").Type} getType
+ * @param {(member: ScaleResolutionMember) => import("../types/encoder.js").ScaleAccessor[]} getAccessorsForMember
+ * @param {ViewportConstraintsGetter} getViewportConstraints
+ * @returns {DomainArray | undefined}
+ */
+function resolveVisibleDataDomain(
+    members,
+    getType,
+    getAccessorsForMember,
+    getViewportConstraints
+) {
+    const type = getType();
+    const domain = createDomain(type);
+    let hasContributors = false;
+
+    for (const member of members) {
+        if (!member.contributesToDomain) {
+            continue;
+        }
+
+        const accessors = getAccessorsForMember(member);
+        if (accessors.length === 0) {
+            continue;
+        }
+
+        const constraints = getViewportConstraints(member);
+        const collector = member.view.getCollector();
+        for (const accessor of accessors) {
+            if (collector) {
+                domain.extendAll(
+                    collector.getViewportDomain(
+                        getAccessorDomainKey(accessor, type),
+                        type,
+                        accessor,
+                        constraints
+                    )
+                );
+                hasContributors = true;
+            } else if (accessor.constant) {
+                domain.extend(accessor({}));
+                hasContributors = true;
+            }
+        }
+    }
+
+    return hasContributors ? domain : undefined;
 }
 
 /**

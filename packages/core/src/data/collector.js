@@ -10,6 +10,48 @@ import { UNIQUE_ID_KEY } from "./transforms/identifier.js";
 import createDomain from "../utils/domainArray.js";
 import KeyIndex from "./keyIndex.js";
 
+const VIEWPORT_BLOCK_SIZE = 256;
+
+/**
+ * @typedef {object} ViewportConstraint
+ * @property {"x" | "y"} channel
+ * @property {[number, number]} domain
+ * @property {import("../types/encoder.js").Accessor} accessor
+ * @property {import("../types/encoder.js").Accessor} [accessor2]
+ */
+
+/**
+ * @typedef {object} TargetSummary
+ * @property {Float64Array} min
+ * @property {Float64Array} max
+ * @property {Uint8Array} valid
+ * @property {Uint8Array} uncertain
+ */
+
+/**
+ * @typedef {object} ViewportBlockBatch
+ * @property {import("./flowNode.js").Data} data
+ * @property {Float64Array} minStart
+ * @property {Float64Array} maxStart
+ * @property {Float64Array} minEnd
+ * @property {Float64Array} maxEnd
+ * @property {Uint8Array} uncertain
+ * @property {Map<string, TargetSummary>} targets
+ */
+
+/**
+ * @typedef {object} ViewportIndexConfig
+ * @property {import("../types/encoder.js").Accessor} accessor
+ * @property {import("../types/encoder.js").Accessor | undefined} accessor2
+ * @property {Map<string, import("../types/encoder.js").Accessor>} targets
+ */
+
+/**
+ * @typedef {object} ViewportIndex
+ * @property {ViewportIndexConfig} config
+ * @property {ViewportBlockBatch[]} batches
+ */
+
 /**
  * Collects (materializes) the data that flows through this node.
  * The collected data can be optionally grouped and sorted.
@@ -53,6 +95,12 @@ export default class Collector extends FlowNode {
     /** @type {DomainCache} */
     #domainCache = new DomainCache();
 
+    /** @type {Map<string, ViewportIndexConfig>} */
+    #viewportIndexConfigs = new Map();
+
+    /** @type {Map<string, ViewportIndex>} */
+    #viewportIndexes = new Map();
+
     get behavior() {
         return BEHAVIOR_COLLECTS;
     }
@@ -85,6 +133,7 @@ export default class Collector extends FlowNode {
         this.#buffer = [];
         this.#uniqueIdIndex = [];
         this.#keyIndex.invalidate();
+        this.#viewportIndexes.clear();
 
         this.facetBatches.clear();
         this.facetBatches.set(undefined, this.#buffer);
@@ -140,6 +189,8 @@ export default class Collector extends FlowNode {
                 data.sort(this.#comparator);
             }
         }
+
+        this.#rebuildViewportIndexes();
 
         this.#buildUniqueIdIndex();
         this.#propagateToChildren();
@@ -221,6 +272,95 @@ export default class Collector extends FlowNode {
 
             return domain;
         });
+    }
+
+    /**
+     * Calculates a target domain from rows that overlap the positional
+     * viewport. X-sorted data use a flat block index; other data use the same
+     * exact row predicate over the full collector.
+     *
+     * @param {string} domainKey
+     * @param {import("../spec/channel.js").Type} type
+     * @param {import("../types/encoder.js").Accessor} targetAccessor
+     * @param {ViewportConstraint[]} constraints
+     * @returns {import("../utils/domainArray.js").DomainArray}
+     */
+    getViewportDomain(domainKey, type, targetAccessor, constraints) {
+        const xConstraint = constraints.find(
+            (constraint) => constraint.channel === "x"
+        );
+        if (!xConstraint || !this.#isViewportIndexEligible(xConstraint)) {
+            return scanViewportDomain(
+                this.facetBatches.values(),
+                type,
+                targetAccessor,
+                constraints
+            );
+        }
+
+        const indexKey = getViewportIndexKey(xConstraint);
+        let config = this.#viewportIndexConfigs.get(indexKey);
+        if (!config) {
+            config = {
+                accessor: xConstraint.accessor,
+                accessor2: xConstraint.accessor2,
+                targets: new Map(),
+            };
+            this.#viewportIndexConfigs.set(indexKey, config);
+        }
+
+        const needsTargetSummary = constraints.length === 1;
+        const previousTarget = config.targets.get(domainKey);
+        if (needsTargetSummary && previousTarget !== targetAccessor) {
+            config.targets.set(domainKey, targetAccessor);
+            this.#viewportIndexes.delete(indexKey);
+        }
+
+        let index = this.#viewportIndexes.get(indexKey);
+        if (!index && this.completed) {
+            index = buildViewportIndex(this.facetBatches.values(), config);
+            this.#viewportIndexes.set(indexKey, index);
+        }
+
+        return index
+            ? queryViewportIndex(
+                  index,
+                  domainKey,
+                  type,
+                  targetAccessor,
+                  constraints
+              )
+            : createDomain(type);
+    }
+
+    /**
+     * Exposes conditional construction for focused contract tests and
+     * diagnostics.
+     *
+     * @internal
+     */
+    getViewportIndexCount() {
+        return this.#viewportIndexes.size;
+    }
+
+    /**
+     * @param {ViewportConstraint} constraint
+     */
+    #isViewportIndexEligible(constraint) {
+        const sortField = asArray(this.params.sort?.field)[0];
+        const channelDef = constraint.accessor.channelDef;
+        const xField = "field" in channelDef ? channelDef.field : undefined;
+        return typeof xField === "string" && sortField === xField;
+    }
+
+    #rebuildViewportIndexes() {
+        this.#viewportIndexes.clear();
+        for (const [key, config] of this.#viewportIndexConfigs) {
+            this.#viewportIndexes.set(
+                key,
+                buildViewportIndex(this.facetBatches.values(), config)
+            );
+        }
     }
 
     /**
@@ -379,6 +519,322 @@ export default class Collector extends FlowNode {
             this.facetBatches.values()
         );
     }
+}
+
+/**
+ * @param {ViewportConstraint} constraint
+ */
+function getViewportIndexKey(constraint) {
+    return (
+        constraint.accessor.sourceKey +
+        "|" +
+        (constraint.accessor2?.sourceKey ?? "point")
+    );
+}
+
+/**
+ * @param {Iterable<import("./flowNode.js").Data>} batches
+ * @param {ViewportIndexConfig} config
+ * @returns {ViewportIndex}
+ */
+function buildViewportIndex(batches, config) {
+    return {
+        config,
+        batches: Array.from(batches, (data) =>
+            buildViewportBlockBatch(data, config)
+        ),
+    };
+}
+
+/**
+ * @param {import("./flowNode.js").Data} data
+ * @param {ViewportIndexConfig} config
+ * @returns {ViewportBlockBatch}
+ */
+function buildViewportBlockBatch(data, config) {
+    const blockCount = Math.ceil(data.length / VIEWPORT_BLOCK_SIZE);
+    const minStart = createFilledFloat64Array(blockCount, Infinity);
+    const maxStart = createFilledFloat64Array(blockCount, -Infinity);
+    const minEnd = createFilledFloat64Array(blockCount, Infinity);
+    const maxEnd = createFilledFloat64Array(blockCount, -Infinity);
+    const uncertain = new Uint8Array(blockCount);
+
+    /** @type {Map<string, TargetSummary>} */
+    const targets = new Map();
+    for (const key of config.targets.keys()) {
+        targets.set(key, {
+            min: createFilledFloat64Array(blockCount, Infinity),
+            max: createFilledFloat64Array(blockCount, -Infinity),
+            valid: new Uint8Array(blockCount),
+            uncertain: new Uint8Array(blockCount),
+        });
+    }
+
+    for (let i = 0; i < data.length; i++) {
+        const block = Math.floor(i / VIEWPORT_BLOCK_SIZE);
+        const datum = data[i];
+        const interval = readDatumInterval(
+            datum,
+            config.accessor,
+            config.accessor2
+        );
+
+        if (!interval) {
+            uncertain[block] = 1;
+        } else {
+            minStart[block] = Math.min(minStart[block], interval.start);
+            maxStart[block] = Math.max(maxStart[block], interval.start);
+            minEnd[block] = Math.min(minEnd[block], interval.end);
+            maxEnd[block] = Math.max(maxEnd[block], interval.end);
+
+            if (config.accessor2 && interval.start === interval.end) {
+                uncertain[block] = 1;
+            }
+        }
+
+        for (const [key, accessor] of config.targets) {
+            const summary = targets.get(key);
+            const value = accessor(datum);
+            if (value === null || value === undefined || Number.isNaN(value)) {
+                continue;
+            }
+
+            const numericValue = +value;
+            if (Number.isNaN(numericValue)) {
+                summary.uncertain[block] = 1;
+            } else {
+                summary.valid[block] = 1;
+                summary.min[block] = Math.min(summary.min[block], numericValue);
+                summary.max[block] = Math.max(summary.max[block], numericValue);
+            }
+        }
+    }
+
+    return {
+        data,
+        minStart,
+        maxStart,
+        minEnd,
+        maxEnd,
+        uncertain,
+        targets,
+    };
+}
+
+/**
+ * @param {number} length
+ * @param {number} value
+ */
+function createFilledFloat64Array(length, value) {
+    const array = new Float64Array(length);
+    array.fill(value);
+    return array;
+}
+
+/**
+ * @param {ViewportIndex} index
+ * @param {string} domainKey
+ * @param {import("../spec/channel.js").Type} type
+ * @param {import("../types/encoder.js").Accessor} targetAccessor
+ * @param {ViewportConstraint[]} constraints
+ */
+function queryViewportIndex(
+    index,
+    domainKey,
+    type,
+    targetAccessor,
+    constraints
+) {
+    const normalizedConstraints = constraints.map(normalizeConstraint);
+    const xConstraint = normalizedConstraints.find(
+        (constraint) => constraint.channel === "x"
+    );
+    const domain = createDomain(type);
+
+    for (const batch of index.batches) {
+        const blockCount = Math.ceil(batch.data.length / VIEWPORT_BLOCK_SIZE);
+        for (let block = 0; block < blockCount; block++) {
+            const uncertain = batch.uncertain[block] === 1;
+            if (
+                !uncertain &&
+                isBlockDisjoint(
+                    batch,
+                    block,
+                    xConstraint.domain,
+                    Boolean(index.config.accessor2)
+                )
+            ) {
+                continue;
+            }
+
+            if (
+                normalizedConstraints.length === 1 &&
+                !uncertain &&
+                isBlockFullyVisible(
+                    batch,
+                    block,
+                    xConstraint.domain,
+                    Boolean(index.config.accessor2)
+                )
+            ) {
+                const summary = batch.targets.get(domainKey);
+                if (summary && summary.uncertain[block] === 0) {
+                    if (summary.valid[block] === 1) {
+                        domain.extend(summary.min[block]);
+                        domain.extend(summary.max[block]);
+                    }
+                    continue;
+                }
+            }
+
+            const start = block * VIEWPORT_BLOCK_SIZE;
+            const end = Math.min(
+                start + VIEWPORT_BLOCK_SIZE,
+                batch.data.length
+            );
+            scanViewportRows(
+                batch.data,
+                start,
+                end,
+                domain,
+                targetAccessor,
+                normalizedConstraints
+            );
+        }
+    }
+
+    return domain;
+}
+
+/**
+ * @param {Iterable<import("./flowNode.js").Data>} batches
+ * @param {import("../spec/channel.js").Type} type
+ * @param {import("../types/encoder.js").Accessor} targetAccessor
+ * @param {ViewportConstraint[]} constraints
+ */
+function scanViewportDomain(batches, type, targetAccessor, constraints) {
+    const domain = createDomain(type);
+    const normalizedConstraints = constraints.map(normalizeConstraint);
+    for (const data of batches) {
+        scanViewportRows(
+            data,
+            0,
+            data.length,
+            domain,
+            targetAccessor,
+            normalizedConstraints
+        );
+    }
+    return domain;
+}
+
+/**
+ * @param {import("./flowNode.js").Data} data
+ * @param {number} start
+ * @param {number} end
+ * @param {import("../utils/domainArray.js").DomainArray} domain
+ * @param {import("../types/encoder.js").Accessor} targetAccessor
+ * @param {ViewportConstraint[]} constraints
+ */
+function scanViewportRows(
+    data,
+    start,
+    end,
+    domain,
+    targetAccessor,
+    constraints
+) {
+    for (let i = start; i < end; i++) {
+        const datum = data[i];
+        if (
+            constraints.every((constraint) =>
+                datumOverlapsConstraint(datum, constraint)
+            )
+        ) {
+            domain.extend(targetAccessor(datum));
+        }
+    }
+}
+
+/**
+ * @param {ViewportConstraint} constraint
+ * @returns {ViewportConstraint}
+ */
+function normalizeConstraint(constraint) {
+    const start = Math.min(constraint.domain[0], constraint.domain[1]);
+    const end = Math.max(constraint.domain[0], constraint.domain[1]);
+    return { ...constraint, domain: [start, end] };
+}
+
+/**
+ * @param {import("./flowNode.js").Datum} datum
+ * @param {ViewportConstraint} constraint
+ */
+function datumOverlapsConstraint(datum, constraint) {
+    const interval = readDatumInterval(
+        datum,
+        constraint.accessor,
+        constraint.accessor2
+    );
+    if (!interval) {
+        return false;
+    }
+
+    const [lo, hi] = constraint.domain;
+    return interval.start === interval.end
+        ? interval.start >= lo && interval.start <= hi
+        : interval.start < hi && interval.end > lo;
+}
+
+/**
+ * @param {import("./flowNode.js").Datum} datum
+ * @param {import("../types/encoder.js").Accessor} accessor
+ * @param {import("../types/encoder.js").Accessor} [accessor2]
+ * @returns {{ start: number, end: number } | undefined}
+ */
+function readDatumInterval(datum, accessor, accessor2) {
+    const value = accessor(datum);
+    const value2 = accessor2 ? accessor2(datum) : value;
+    if (value == null || value2 == null) {
+        return undefined;
+    }
+
+    const numericValue = +value;
+    const numericValue2 = +value2;
+    if (Number.isNaN(numericValue) || Number.isNaN(numericValue2)) {
+        return undefined;
+    }
+
+    return {
+        start: Math.min(numericValue, numericValue2),
+        end: Math.max(numericValue, numericValue2),
+    };
+}
+
+/**
+ * @param {ViewportBlockBatch} batch
+ * @param {number} block
+ * @param {[number, number]} domain
+ * @param {boolean} interval
+ */
+function isBlockDisjoint(batch, block, domain, interval) {
+    const [lo, hi] = domain;
+    return interval
+        ? batch.maxEnd[block] <= lo || batch.minStart[block] >= hi
+        : batch.maxStart[block] < lo || batch.minStart[block] > hi;
+}
+
+/**
+ * @param {ViewportBlockBatch} batch
+ * @param {number} block
+ * @param {[number, number]} domain
+ * @param {boolean} interval
+ */
+function isBlockFullyVisible(batch, block, domain, interval) {
+    const [lo, hi] = domain;
+    return interval
+        ? batch.maxStart[block] < hi && batch.minEnd[block] > lo
+        : batch.minStart[block] >= lo && batch.maxStart[block] <= hi;
 }
 
 /**
