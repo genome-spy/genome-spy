@@ -1,7 +1,7 @@
 import { span } from "vega-util";
 import { isContinuous } from "vega-scale";
 
-import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
+import { INDEX, LOCUS, NOMINAL, ORDINAL } from "./scaleResolutionConstants.js";
 import {
     toInternalIndexLikeDataDomain,
     toInternalIndexLikeInterval,
@@ -34,6 +34,7 @@ import {
  * @typedef {import("../spec/scale.js").ComplexDomain} ComplexDomain
  * @typedef {import("../spec/scale.js").ScalarDomain} ScalarDomain
  * @typedef {import("../spec/scale.js").SelectionDomainRef} SelectionDomainRef
+ * @typedef {import("../spec/scale.js").VisibleDomainRef} VisibleDomainRef
  * @typedef {import("../spec/parameter.js").ExprRef} ExprRef
  * @typedef {import("./scaleResolution.js").ScaleResolutionMember} ScaleResolutionMember
  * @typedef {{ view: import("../view/view.js").default, channel: import("../spec/channel.js").ChannelWithScale, type: import("../spec/channel.js").Type, domain: import("../spec/scale.js").Scale["domain"] }} ConfiguredDomainSource
@@ -95,6 +96,8 @@ export default class DomainPlanner {
 
     /** @type {SelectionDomainLinkInfo | undefined} */
     #selectionDomainLinkInfo = undefined;
+
+    #hasVisibleDomain = false;
 
     #configuredDomainDirty = true;
 
@@ -178,7 +181,13 @@ export default class DomainPlanner {
     invalidateConfiguredDomain() {
         this.#configuredDomainDirty = true;
         this.#selectionDomainLinkInfo = undefined;
+        this.#hasVisibleDomain = false;
         this.#configuredDomainsByInitialMode.clear();
+    }
+
+    hasVisibleDomain() {
+        this.getConfiguredDomain();
+        return this.#hasVisibleDomain;
     }
 
     /**
@@ -238,9 +247,14 @@ export default class DomainPlanner {
             );
         }
 
+        const viewLevelDomainSource = this.#getViewLevelDomainSource?.();
+        const hasVisibleDomain = validateSharedVisibleDomain(
+            this.#getAllMembers(),
+            viewLevelDomainSource
+        );
         const configuredDomain = resolveConfiguredDomain(
             this.#getActiveMembers(),
-            this.#getViewLevelDomainSource?.(),
+            viewLevelDomainSource,
             this.#fromComplexInterval,
             includeSelectionInitial
         );
@@ -249,6 +263,7 @@ export default class DomainPlanner {
             configuredDomain.selectionRef
         );
         this.#selectionDomainLinkInfo = configuredDomain.selectionRef;
+        this.#hasVisibleDomain = hasVisibleDomain;
         this.#configuredDomainsByInitialMode.set(
             includeSelectionInitial,
             configuredDomain.domain
@@ -357,7 +372,10 @@ function resolveConfiguredDomain(
 ) {
     const domainMembers = Array.from(members)
         .filter((member) => member.contributesToDomain)
-        .filter((member) => member.channelDef.scale?.domain);
+        .filter((member) => {
+            const domain = member.channelDef.scale?.domain;
+            return domain && !isVisibleDomainRef(domain);
+        });
 
     /** @type {ConfiguredDomainResolutionState} */
     const state = {
@@ -368,7 +386,10 @@ function resolveConfiguredDomain(
         hasLiteralDomain: false,
     };
 
-    if (viewLevelDomain?.domain !== undefined) {
+    if (
+        viewLevelDomain?.domain !== undefined &&
+        !isVisibleDomainRef(viewLevelDomain.domain)
+    ) {
         const resolved = resolveConfiguredDomainSource(
             viewLevelDomain,
             fromComplexInterval,
@@ -497,6 +518,12 @@ function mergeLiteralConfiguredDomain(state, resolved) {
     state.domains.push(resolved.domain);
 }
 
+function throwVisibleDomainConflict() {
+    throw new Error(
+        "Cannot mix viewport-derived and other configured domains on a shared scale."
+    );
+}
+
 /**
  * @param {ConfiguredDomainResolutionState} state
  * @returns {{
@@ -608,6 +635,59 @@ function resolveConfiguredIntervalDomain(type, interval, fromComplexInterval) {
 }
 
 /**
+ * Validates visible-domain sources across all members, including currently
+ * inactive members that may become active later.
+ *
+ * @param {Set<ScaleResolutionMember>} members
+ * @param {ConfiguredDomainSource | undefined} viewLevelDomain
+ * @returns {boolean}
+ */
+function validateSharedVisibleDomain(members, viewLevelDomain) {
+    /** @type {ConfiguredDomainSource[]} */
+    const sources = [];
+
+    if (viewLevelDomain?.domain !== undefined) {
+        sources.push(viewLevelDomain);
+    }
+
+    for (const member of members) {
+        const domain = member.channelDef.scale?.domain;
+        if (member.contributesToDomain && domain !== undefined) {
+            sources.push({
+                view: member.view,
+                channel: member.channel,
+                type: member.channelDef.type,
+                domain,
+            });
+        }
+    }
+
+    const visibleSources = sources.filter((source) =>
+        isVisibleDomainRef(source.domain)
+    );
+    for (const source of visibleSources) {
+        validateVisibleDomainType(source);
+    }
+
+    if (visibleSources.length > 0 && visibleSources.length !== sources.length) {
+        throwVisibleDomainConflict();
+    }
+
+    return visibleSources.length > 0;
+}
+
+/**
+ * @param {ConfiguredDomainSource} source
+ */
+function validateVisibleDomainType(source) {
+    if (source.type === NOMINAL || source.type === ORDINAL) {
+        throw new Error(
+            `Viewport-derived domains require a continuous scale, but channel "${source.channel}" has type "${source.type}".`
+        );
+    }
+}
+
+/**
  * Fails fast when a selection-driven scale domain ends up sharing the same
  * scale resolution as the interval selection that drives it. This typically
  * happens when an overview/detail spec forgets to make the linked positional
@@ -684,6 +764,19 @@ export function isSelectionDomainRef(domain) {
         domain !== null &&
         !Array.isArray(domain) &&
         typeof domain.param === "string"
+    );
+}
+
+/**
+ * @param {any} domain
+ * @returns {domain is VisibleDomainRef}
+ */
+export function isVisibleDomainRef(domain) {
+    return (
+        typeof domain === "object" &&
+        domain !== null &&
+        !Array.isArray(domain) &&
+        domain.source === "visible"
     );
 }
 

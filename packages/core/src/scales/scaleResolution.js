@@ -13,7 +13,7 @@ import { configureDomain } from "../scale/scale.js";
 
 import ScaleInstanceManager from "./scaleInstanceManager.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
-import DomainPlanner from "./domainPlanner.js";
+import DomainPlanner, { isVisibleDomainRef } from "./domainPlanner.js";
 import ScaleInteractionController from "./scaleInteractionController.js";
 import { validateScaleTypeCompatibility } from "./scaleRules.js";
 import {
@@ -228,9 +228,10 @@ export default class ScaleResolution {
             if (!view.isConfiguredVisible()) {
                 continue;
             }
+            const domain = member.channelDef?.scale?.domain;
             if (
                 !view.isDataInitialized() &&
-                !member.channelDef?.scale?.domain
+                (domain === undefined || isVisibleDomainRef(domain))
             ) {
                 // Explicit domains should be honored even before data init.
                 continue;
@@ -410,14 +411,20 @@ export default class ScaleResolution {
      * @returns {boolean}
      */
     #hasConfiguredDomain() {
-        if (this.#viewLevelScaleProps?.props.domain !== undefined) {
+        const viewLevelDomain = this.#viewLevelScaleProps?.props.domain;
+        if (
+            viewLevelDomain !== undefined &&
+            !isVisibleDomainRef(viewLevelDomain)
+        ) {
             return true;
         }
 
         for (const member of this.#members) {
+            const domain = member.channelDef.scale?.domain;
             if (
                 member.contributesToDomain &&
-                member.channelDef.scale?.domain !== undefined
+                domain !== undefined &&
+                !isVisibleDomainRef(domain)
             ) {
                 return true;
             }
@@ -833,7 +840,8 @@ export default class ScaleResolution {
                 continue;
             }
             if (!view.isDataInitialized()) {
-                if (!member.channelDef.scale?.domain) {
+                const domain = member.channelDef.scale?.domain;
+                if (domain === undefined || isVisibleDomainRef(domain)) {
                     return false;
                 }
                 continue;
@@ -981,6 +989,7 @@ export default class ScaleResolution {
                 configScopes: this.#resolutionView.getConfigScopes(),
             });
             this.#validateLinkedSelectionConfiguration(props);
+            this.#validateVisibleDomainConfiguration(props);
             return props;
         });
     }
@@ -1084,6 +1093,31 @@ export default class ScaleResolution {
             throw new Error(
                 `Selection domain reference "${linkInfo.param}.${linkInfo.encoding}" cannot use "initial" with a non-zoomable ${this.channel} scale. ` +
                     `Enable zoom on the linked scale or remove "initial".`
+            );
+        }
+    }
+
+    /**
+     * @param {import("../spec/scale.js").Scale} props
+     */
+    #validateVisibleDomainConfiguration(props) {
+        if (
+            !this.#domainAggregator.hasVisibleDomain() ||
+            props === null ||
+            props.type === "null"
+        ) {
+            return;
+        }
+
+        if (!isContinuous(props.type) || isDiscrete(props.type)) {
+            throw new Error(
+                `Viewport-derived domains require a continuous ${this.channel} scale.`
+            );
+        }
+
+        if ((this.channel === "x" || this.channel === "y") && props.zoom) {
+            throw new Error(
+                `Viewport-derived domains cannot target a zoomable ${this.channel} scale.`
             );
         }
     }

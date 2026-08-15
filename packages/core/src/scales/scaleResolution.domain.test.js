@@ -773,6 +773,114 @@ describe("Scale resolution domain handling", () => {
         expect(getScaleDomain(view, "y")).toEqual(expected);
     });
 
+    test("visible domains retain data-derived defaults", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 2 },
+                        { x: 1, y: 3 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { domain: { source: "visible" } },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = getRequiredScaleResolution(view, "y");
+        expect(resolution.isDomainDefinedExplicitly()).toBe(false);
+        expect(getScaleDomain(view, "y")).toEqual([0, 3]);
+    });
+
+    test("implicit members participate in a shared visible-domain resolution", async () => {
+        const view = await initView(
+            {
+                resolve: { scale: { y: "shared" } },
+                layer: [
+                    {
+                        data: { values: [{ x: 0, y: 2 }] },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                scale: { domain: { source: "visible" } },
+                            },
+                        },
+                    },
+                    {
+                        data: { values: [{ x: 1, y: 5 }] },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+
+        expect(getScaleDomain(view, "y")).toEqual([0, 5]);
+    });
+
+    test("visible domains reject discrete scales", async () => {
+        await expect(
+            initView(
+                {
+                    data: { values: [{ x: 0, group: "a" }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        color: {
+                            field: "group",
+                            type: "nominal",
+                            scale: { domain: { source: "visible" } },
+                        },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow("Viewport-derived domains require a continuous");
+    });
+
+    test("visible domains reject zoomable positional targets", async () => {
+        await expect(
+            initView(
+                {
+                    data: { values: [{ x: 0 }] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: {
+                                domain: { source: "visible" },
+                                zoom: true,
+                            },
+                        },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow(
+            "Viewport-derived domains cannot target a zoomable x scale"
+        );
+    });
+
     test("reconfigureDomain notifies when a non-zoomable domain changes", async () => {
         const view = await initView(
             {

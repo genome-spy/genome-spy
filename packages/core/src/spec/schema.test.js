@@ -28,6 +28,28 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
+    test("accepts visible scale domains and rejects unknown sources", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            data: { values: [{ x: 1, y: 2 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: {
+                    field: "y",
+                    type: "quantitative",
+                    scale: { domain: { source: "visible" } },
+                },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+        spec.encoding.y.scale.domain.source = "viewport";
+        expect(validate(spec)).toBe(false);
+    });
+
     test("accepts zindex on views and imports", () => {
         const validate = createCoreValidator();
         const spec = {
