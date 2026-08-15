@@ -725,6 +725,11 @@ export default class ScaleResolution {
             if (!resolution || resolution === this) {
                 continue;
             }
+            if (this.#hasVisibleDependencyPath(resolution, new Set())) {
+                throw new Error(
+                    `Viewport-derived scale domains form a dependency cycle in view "${member.view.getPathString()}".`
+                );
+            }
 
             const scale = resolution.getScale();
             if (!isContinuous(scale.type) || isDiscrete(scale.type)) {
@@ -766,6 +771,37 @@ export default class ScaleResolution {
         }
 
         return constraints;
+    }
+
+    /**
+     * @param {ScaleResolution} resolution
+     * @param {Set<ScaleResolution>} visited
+     */
+    #hasVisibleDependencyPath(resolution, visited) {
+        if (resolution === this) {
+            return true;
+        }
+        if (
+            visited.has(resolution) ||
+            !resolution.#domainAggregator.hasVisibleDomain()
+        ) {
+            return false;
+        }
+
+        visited.add(resolution);
+        for (const member of resolution.#dataDomainMembers) {
+            for (const channel of primaryPositionalChannels) {
+                const dependency = member.view.getScaleResolution(channel);
+                if (
+                    dependency &&
+                    dependency !== resolution &&
+                    this.#hasVisibleDependencyPath(dependency, visited)
+                ) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**

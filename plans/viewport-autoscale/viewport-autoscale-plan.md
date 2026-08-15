@@ -250,8 +250,9 @@ transitions. It should also own the minimal viewport-autoscale scheduling state:
 - one trailing timer;
 - whether a calculation remains pending because lazy data are not ready.
 
-It also owns the last nonempty raw visible-data extent for the resolution. Store
-the raw union before `zero`, `nice`, `domainMin`, `domainMax`, or `domainMid` are
+`DomainPlanner` retains the last nonempty raw visible-data extent because it
+already owns raw domain extraction and configured-domain invalidation. Store the
+raw union before `zero`, `nice`, `domainMin`, `domainMax`, or `domainMid` are
 applied. Reset it when active resolution members, target accessors, or the
 configured domain source change; do not reset it merely because navigation
 reaches an empty ready viewport.
@@ -503,6 +504,32 @@ code is acceptable only where it clearly establishes the public contract,
 correct lifecycle behavior, or representative tests. If critical evaluation
 finds that the working implementation is more complex than necessary, refactor
 it before the feature is considered complete.
+
+### Implementation audit result
+
+The completed implementation retains one debounce timer, one lazy-readiness
+flag, one positional-subscription list, and one collector map of flat block
+indexes. Each directly corresponds to a tested requirement. A final refactor
+merged the index configuration and built summaries into the same map entry,
+removing a parallel cache and its synchronization path. No cancellation token,
+worker, tree, reference counting, or multidimensional index was added.
+
+The focused production diff adds 921 lines across the collector, domain
+planner, scale resolution, and public scale type. Most collector code is the
+exact overlap predicate plus typed-array block summaries; most scale-resolution
+code is subscription, debounce, dependency-cycle, and shared lazy-readiness
+handling. Focused tests cover boundaries, facets, compatible target reuse,
+reset, scatter-plot filtering, debounce, transitions, lazy readiness, cycles,
+and empty-domain retention.
+
+On a local Node.js benchmark, a settled x-sorted x-only query took about 0.06 ms
+for one million rows and had a 0.99 ms p95 for ten million rows. Building the
+ten-million-row index took 121 ms and added 1.90 MiB of array buffers. An x/y
+query over a 10% x-window had a 15.90 ms p95 for ten million rows, and the
+one-million-row unsorted exact scan averaged 9.1 ms. The sorted collector had one
+index and the unsorted collector had none. Browser verification with the
+200,000-point example confirmed smooth interaction and a settled y-domain change
+after wheel zoom.
 
 ## Unresolved questions
 

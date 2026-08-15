@@ -311,6 +311,85 @@ describe("Viewport domains", () => {
         expect(collector.getViewportIndexCount()).toBe(1);
     });
 
+    test("unions facet batches and reuses the x blocks for another target", () => {
+        const collector = new Collector({
+            type: "collect",
+            sort: { field: "x" },
+        });
+        collector.beginBatch({ type: "facet", facetId: "A" });
+        collector.handle({ x: 0, y: 10, size: 100 });
+        collector.beginBatch({ type: "facet", facetId: "B" });
+        collector.handle({ x: 1, y: 20, size: 200 });
+        collector.complete();
+        const constraints = [
+            {
+                channel: /** @type {"x"} */ ("x"),
+                domain: /** @type {[number, number]} */ ([0, 1]),
+                accessor: x,
+            },
+        ];
+
+        const yDomain = collector.getViewportDomain(
+            "quantitative|y|field|y",
+            "quantitative",
+            y,
+            constraints
+        );
+        const sizeDomain = collector.getViewportDomain(
+            "quantitative|size|field|size",
+            "quantitative",
+            size,
+            constraints
+        );
+
+        expect(toRegularArray(yDomain)).toEqual([10, 20]);
+        expect(toRegularArray(sizeDomain)).toEqual([100, 200]);
+        expect(collector.getViewportIndexCount()).toBe(1);
+    });
+
+    test("matches the exact scan for representative interval viewports", () => {
+        const values = Array.from({ length: 1024 }, (_, i) => ({
+            x: i,
+            x2: i + 1 + (i % 7),
+            y: Math.sin(i),
+        }));
+        /** @param {boolean} sorted */
+        const makeCollector = (sorted) => {
+            const collector = new Collector(
+                sorted ? { type: "collect", sort: { field: "x" } } : undefined
+            );
+            for (const datum of values) {
+                collector.handle(datum);
+            }
+            collector.complete();
+            return collector;
+        };
+        const indexed = makeCollector(true);
+        const exact = makeCollector(false);
+
+        for (const domain of /** @type {[number, number][]} */ ([
+            [0, 1],
+            [255, 512],
+            [1000, 900],
+        ])) {
+            const constraints = [
+                { channel: "x", domain, accessor: x, accessor2: x2 },
+            ];
+            /** @param {Collector} collector */
+            const query = (collector) =>
+                toRegularArray(
+                    collector.getViewportDomain(
+                        "quantitative|y|field|y",
+                        "quantitative",
+                        y,
+                        /** @type {any} */ (constraints)
+                    )
+                );
+
+            expect(query(indexed)).toEqual(query(exact));
+        }
+    });
+
     test("rebuilds an enabled index when collector data change", () => {
         const collector = new Collector({
             type: "collect",

@@ -1073,6 +1073,30 @@ describe("Scale resolution domain handling", () => {
         );
     });
 
+    test("visible positional domains reject dependency cycles", async () => {
+        await expect(
+            initView(
+                {
+                    data: { values: [{ x: 1, y: 2 }] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: { domain: { source: "visible" } },
+                        },
+                        y: {
+                            field: "y",
+                            type: "quantitative",
+                            scale: { domain: { source: "visible" } },
+                        },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow("form a dependency cycle");
+    });
+
     test("implicit members participate in a shared visible-domain resolution", async () => {
         const view = await initView(
             {
