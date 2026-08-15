@@ -104,6 +104,9 @@ export default class DomainPlanner {
 
     #hasVisibleDomain = false;
 
+    /** @type {DomainArray | undefined} */
+    #lastVisibleDataDomain;
+
     #configuredDomainDirty = true;
 
     /** @type {Map<boolean, DomainArray | undefined>} */
@@ -190,6 +193,7 @@ export default class DomainPlanner {
         this.#configuredDomainDirty = true;
         this.#selectionDomainLinkInfo = undefined;
         this.#hasVisibleDomain = false;
+        this.#lastVisibleDataDomain = undefined;
         this.#configuredDomainsByInitialMode.clear();
     }
 
@@ -295,12 +299,16 @@ export default class DomainPlanner {
                     "Visible-domain extraction requires positional constraints."
                 );
             }
-            return resolveVisibleDataDomain(
+            const domain = resolveVisibleDataDomain(
                 members,
                 this.#getType,
                 getAccessors,
                 this.#getViewportConstraints
             );
+            if (domain && domain.length > 0) {
+                this.#lastVisibleDataDomain = domain;
+            }
+            return domain?.length ? domain : this.#lastVisibleDataDomain;
         } else {
             return resolveDataDomain(members, this.#getType, getAccessors);
         }

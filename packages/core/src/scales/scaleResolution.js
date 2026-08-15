@@ -45,6 +45,9 @@ import {
     normalizeIntervalForSelection,
 } from "./selectionDomainUtils.js";
 import { toExternalIndexLikeInterval } from "./indexLikeDomainUtils.js";
+import { isSubtreeLazyReady } from "../view/dataReadiness.js";
+
+const VIEWPORT_AUTOSCALE_DEBOUNCE = 150;
 
 // Register scaleLocus to Vega-Scale.
 // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
@@ -120,6 +123,14 @@ export default class ScaleResolution {
         domain: new Set(),
         range: new Set(),
     };
+
+    /** @type {(() => void)[]} */
+    #viewportDomainUnsubscribers = [];
+
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    #viewportDomainTimer;
+
+    #viewportDomainWaitingForData = false;
 
     /** @type {ScaleInstanceManager} */
     #scaleManager;
@@ -557,6 +568,7 @@ export default class ScaleResolution {
         this.#invalidateConfiguredDomain();
         this.#refreshSelectionDomainParamSubscriptions();
         this.#refreshConfiguredDomainExprSubscriptions();
+        this.#refreshViewportDomainSubscriptions();
     }
 
     #markMembersDirty() {
@@ -645,6 +657,7 @@ export default class ScaleResolution {
         this.#invalidateConfiguredDomain();
         this.#refreshSelectionDomainParamSubscriptions();
         this.#refreshConfiguredDomainExprSubscriptions();
+        this.#refreshViewportDomainSubscriptions();
         this.#recreateInitializedScaleAndNotifyDomain();
     }
 
@@ -658,6 +671,7 @@ export default class ScaleResolution {
             this.#invalidateConfiguredDomain();
             this.#refreshSelectionDomainParamSubscriptions();
             this.#refreshConfiguredDomainExprSubscriptions();
+            this.#refreshViewportDomainSubscriptions();
             this.#recreateInitializedScaleAndNotifyDomain();
         }
     }
@@ -781,6 +795,7 @@ export default class ScaleResolution {
     dispose() {
         this.#clearSelectionDomainParamSubscriptions();
         this.#clearConfiguredDomainExprSubscriptions();
+        this.#clearViewportDomainSubscriptions();
         this.#listeners.domain.clear();
         this.#listeners.range.clear();
         this.#scaleManager.dispose();
@@ -874,6 +889,93 @@ export default class ScaleResolution {
             const unsubscribe = expr.subscribe(listener);
             this.#configuredDomainExprUnsubscribers.push(unsubscribe);
         }
+    }
+
+    #clearViewportDomainSubscriptions() {
+        for (const unsubscribe of this.#viewportDomainUnsubscribers) {
+            unsubscribe();
+        }
+        this.#viewportDomainUnsubscribers = [];
+        clearTimeout(this.#viewportDomainTimer);
+        this.#viewportDomainTimer = undefined;
+        this.#viewportDomainWaitingForData = false;
+    }
+
+    #refreshViewportDomainSubscriptions() {
+        this.#clearViewportDomainSubscriptions();
+        if (!this.#domainAggregator.hasVisibleDomain()) {
+            return;
+        }
+
+        /** @type {Set<ScaleResolution>} */
+        const dependencies = new Set();
+        for (const member of this.#dataDomainMembers) {
+            for (const channel of primaryPositionalChannels) {
+                const resolution = member.view.getScaleResolution(channel);
+                if (resolution && resolution !== this) {
+                    dependencies.add(resolution);
+                }
+            }
+        }
+
+        const listener = () => this.#scheduleViewportDomainUpdate(false);
+        for (const resolution of dependencies) {
+            resolution.addEventListener("domain", listener);
+            this.#viewportDomainUnsubscribers.push(() =>
+                resolution.removeEventListener("domain", listener)
+            );
+        }
+    }
+
+    /**
+     * @param {boolean} collectorChanged
+     */
+    #scheduleViewportDomainUpdate(collectorChanged) {
+        if (
+            collectorChanged &&
+            this.#viewportDomainWaitingForData &&
+            this.#isViewportDataReady()
+        ) {
+            this.#viewportDomainWaitingForData = false;
+            this.reconfigureDomain();
+            return;
+        }
+
+        clearTimeout(this.#viewportDomainTimer);
+        this.#viewportDomainWaitingForData = false;
+        this.#viewportDomainTimer = setTimeout(() => {
+            this.#viewportDomainTimer = undefined;
+            if (this.#isViewportDataReady()) {
+                this.reconfigureDomain();
+            } else {
+                this.#viewportDomainWaitingForData = true;
+            }
+        }, VIEWPORT_AUTOSCALE_DEBOUNCE);
+    }
+
+    #isViewportDataReady() {
+        for (const member of this.#getActiveMembers(this.#dataDomainMembers)) {
+            const collector = member.view.getCollector();
+            if (!collector?.completed) {
+                return false;
+            }
+
+            /** @type {import("../data/sources/lazy/singleAxisLazySource.js").DataReadinessRequest} */
+            const request = {};
+            for (const constraint of this.#getViewportConstraints(member)) {
+                request[constraint.channel] = Array.from(constraint.domain);
+            }
+            if (
+                !isSubtreeLazyReady(
+                    member.view,
+                    request,
+                    (view) => view === member.view
+                )
+            ) {
+                return false;
+            }
+        }
+        return true;
     }
 
     #hasRenderedMember() {
@@ -991,7 +1093,14 @@ export default class ScaleResolution {
         }
 
         const listener = () => {
-            this.reconfigureDomain();
+            if (
+                this.#domainAggregator.hasVisibleDomain() &&
+                this.#initialDomainFinalized
+            ) {
+                this.#scheduleViewportDomainUpdate(true);
+            } else {
+                this.reconfigureDomain();
+            }
         };
 
         /** @type {(() => void)[]} */
