@@ -1,7 +1,6 @@
 import { span } from "vega-util";
 import { isContinuous } from "vega-scale";
-
-import { INDEX, LOCUS, NOMINAL, ORDINAL } from "./scaleResolutionConstants.js";
+import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
 import {
     toInternalIndexLikeDataDomain,
     toInternalIndexLikeInterval,
@@ -13,6 +12,11 @@ import {
 import createDomain from "../utils/domainArray.js";
 import { resolveConfiguredDomainValue } from "./domainExpressions.js";
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
+import {
+    isVisibleDomainRef,
+    resolveVisibleDataDomain,
+    validateSharedVisibleDomain,
+} from "./visibleDomain.js";
 import { getEncoderAccessors, getPrimaryChannel } from "../encoder/encoder.js";
 import {
     hasExplicitLocusUpperBound,
@@ -34,14 +38,12 @@ import {
  * @typedef {import("../spec/scale.js").ComplexDomain} ComplexDomain
  * @typedef {import("../spec/scale.js").ScalarDomain} ScalarDomain
  * @typedef {import("../spec/scale.js").SelectionDomainRef} SelectionDomainRef
- * @typedef {import("../spec/scale.js").VisibleDomainRef} VisibleDomainRef
  * @typedef {import("../spec/parameter.js").ExprRef} ExprRef
  * @typedef {import("./scaleResolution.js").ScaleResolutionMember} ScaleResolutionMember
  * @typedef {{ view: import("../view/view.js").default, channel: import("../spec/channel.js").ChannelWithScale, type: import("../spec/channel.js").Type, domain: import("../spec/scale.js").Scale["domain"] }} ConfiguredDomainSource
  * @typedef {() => Set<ScaleResolutionMember>} ScaleMembersGetter
  * @typedef {() => ConfiguredDomainSource | undefined} ViewLevelDomainSourceGetter
- * @typedef {{ channel: "x" | "y", domain: [number, number], accessor: import("../types/encoder.js").Accessor, accessor2?: import("../types/encoder.js").Accessor }} ViewportConstraint
- * @typedef {(member: ScaleResolutionMember) => ViewportConstraint[]} ViewportConstraintsGetter
+ * @typedef {(member: ScaleResolutionMember) => import("../data/viewportDomain.js").ViewportConstraint[]} ViewportConstraintsGetter
  * @typedef {(interval: ScalarDomain | ComplexDomain) => number[]} FromComplexInterval
  * @typedef {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} GetLocusExtent
  * @typedef {{
@@ -547,12 +549,6 @@ function mergeLiteralConfiguredDomain(state, resolved) {
     state.domains.push(resolved.domain);
 }
 
-function throwVisibleDomainConflict() {
-    throw new Error(
-        "Cannot mix viewport-derived and other configured domains on a shared scale."
-    );
-}
-
 /**
  * @param {ConfiguredDomainResolutionState} state
  * @returns {{
@@ -664,59 +660,6 @@ function resolveConfiguredIntervalDomain(type, interval, fromComplexInterval) {
 }
 
 /**
- * Validates visible-domain sources across all members, including currently
- * inactive members that may become active later.
- *
- * @param {Set<ScaleResolutionMember>} members
- * @param {ConfiguredDomainSource | undefined} viewLevelDomain
- * @returns {boolean}
- */
-function validateSharedVisibleDomain(members, viewLevelDomain) {
-    /** @type {ConfiguredDomainSource[]} */
-    const sources = [];
-
-    if (viewLevelDomain?.domain !== undefined) {
-        sources.push(viewLevelDomain);
-    }
-
-    for (const member of members) {
-        const domain = member.channelDef.scale?.domain;
-        if (member.contributesToDomain && domain !== undefined) {
-            sources.push({
-                view: member.view,
-                channel: member.channel,
-                type: member.channelDef.type,
-                domain,
-            });
-        }
-    }
-
-    const visibleSources = sources.filter((source) =>
-        isVisibleDomainRef(source.domain)
-    );
-    for (const source of visibleSources) {
-        validateVisibleDomainType(source);
-    }
-
-    if (visibleSources.length > 0 && visibleSources.length !== sources.length) {
-        throwVisibleDomainConflict();
-    }
-
-    return visibleSources.length > 0;
-}
-
-/**
- * @param {ConfiguredDomainSource} source
- */
-function validateVisibleDomainType(source) {
-    if (source.type === NOMINAL || source.type === ORDINAL) {
-        throw new Error(
-            `Viewport-derived domains require a continuous scale, but channel "${source.channel}" has type "${source.type}".`
-        );
-    }
-}
-
-/**
  * Fails fast when a selection-driven scale domain ends up sharing the same
  * scale resolution as the interval selection that drives it. This typically
  * happens when an overview/detail spec forgets to make the linked positional
@@ -794,69 +737,6 @@ export function isSelectionDomainRef(domain) {
         !Array.isArray(domain) &&
         typeof domain.param === "string"
     );
-}
-
-/**
- * @param {any} domain
- * @returns {domain is VisibleDomainRef}
- */
-export function isVisibleDomainRef(domain) {
-    return (
-        typeof domain === "object" &&
-        domain !== null &&
-        !Array.isArray(domain) &&
-        domain.source === "visible"
-    );
-}
-
-/**
- * @param {Set<ScaleResolutionMember>} members
- * @param {() => import("../spec/channel.js").Type} getType
- * @param {(member: ScaleResolutionMember) => import("../types/encoder.js").ScaleAccessor[]} getAccessorsForMember
- * @param {ViewportConstraintsGetter} getViewportConstraints
- * @returns {DomainArray | undefined}
- */
-function resolveVisibleDataDomain(
-    members,
-    getType,
-    getAccessorsForMember,
-    getViewportConstraints
-) {
-    const type = getType();
-    const domain = createDomain(type);
-    let hasContributors = false;
-
-    for (const member of members) {
-        if (!member.contributesToDomain) {
-            continue;
-        }
-
-        const accessors = getAccessorsForMember(member);
-        if (accessors.length === 0) {
-            continue;
-        }
-
-        const constraints = getViewportConstraints(member);
-        const collector = member.view.getCollector();
-        for (const accessor of accessors) {
-            if (collector) {
-                domain.extendAll(
-                    collector.getViewportDomain(
-                        getAccessorDomainKey(accessor, type),
-                        type,
-                        accessor,
-                        constraints
-                    )
-                );
-                hasContributors = true;
-            } else if (accessor.constant) {
-                domain.extend(accessor({}));
-                hasContributors = true;
-            }
-        }
-    }
-
-    return hasContributors ? domain : undefined;
 }
 
 /**

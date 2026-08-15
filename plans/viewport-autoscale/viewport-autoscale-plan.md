@@ -285,14 +285,15 @@ Add one focused collector operation that calculates a domain from its final
 rows using a target accessor and one or two positional constraints. It
 must not mutate collector data or invalidate the ordinary full-domain cache.
 
-When a visible-domain contribution is configured, mark its collector as needing
-the x block index. If the collector's configured sort begins with the primary x
-field, ascending or descending, build the index when that collector completes,
-or immediately if it has already completed. Rely on the collector's sort
-configuration; do not scan rows to detect order and do not sort as a side effect
-of autoscaling. Invalidate and rebuild the index with collector data. Keep it for
-the collector's lifetime; do not add reference counting or dynamic release. If
-the collector is not x-sorted, use the exact full scan and build no index.
+The first visible-domain query enables the x block index for its collector. If
+the collector's configured sort begins with the primary x field, ascending or
+descending, build the index immediately when data are complete; otherwise,
+build it when that enabled collector completes. Rely on the collector's sort
+configuration; do not scan rows to detect order and do not sort as a side
+effect of autoscaling. Invalidate and rebuild enabled indexes with collector
+data. Keep them for the collector's lifetime; do not add reference counting or
+dynamic release. If the collector is not x-sorted, use the exact full scan and
+build no index.
 
 Split each facet batch into consecutive blocks of approximately 256 rows. Keep
 the structure flat; do not add a tree over the blocks. Store each block's row
@@ -508,19 +509,25 @@ it before the feature is considered complete.
 ### Implementation audit result
 
 The completed implementation retains one debounce timer, one lazy-readiness
-flag, one positional-subscription list, and one collector map of flat block
-indexes. Each directly corresponds to a tested requirement. A final refactor
-merged the index configuration and built summaries into the same map entry,
-removing a parallel cache and its synchronization path. No cancellation token,
-worker, tree, reference counting, or multidimensional index was added.
+flag, one positional-subscription list, and one map of flat block indexes. Each
+directly corresponds to a tested requirement. A final refactor merged the index
+configuration and built summaries into the same map entry, removing a parallel
+cache and its synchronization path. No cancellation token, worker, tree,
+reference counting, or multidimensional index was added.
 
-The focused production diff adds 921 lines across the collector, domain
-planner, scale resolution, and public scale type. Most collector code is the
-exact overlap predicate plus typed-array block summaries; most scale-resolution
-code is subscription, debounce, dependency-cycle, and shared lazy-readiness
-handling. Focused tests cover boundaries, facets, compatible target reuse,
-reset, scatter-plot filtering, debounce, transitions, lazy readiness, cycles,
-and empty-domain retention.
+The KISS review also moved the block-index implementation out of `Collector`
+and the visible-domain policy and scheduler out of the already large scale
+orchestrators. Relative to the working implementation, `collector.js` shrank
+from 1,010 to 583 lines, `domainPlanner.js` from 943 to 823, and
+`scaleResolution.js` from 2,008 to 1,873. The focused modules
+`viewportDomain.js` and `visibleDomain.js` contain the extracted responsibilities
+without adding alternative strategies or lifecycle layers. The split adds
+about 90 lines of module-boundary typing and delegation overall, an accepted
+tradeoff for keeping collection and scale orchestration readable.
+
+Focused tests cover boundaries, facets, compatible target reuse, reset,
+scatter-plot filtering, debounce, transitions, lazy readiness, cycles, and
+empty-domain retention.
 
 On a local Node.js benchmark, a settled x-sorted x-only query took about 0.06 ms
 for one million rows and had a 0.99 ms p95 for ten million rows. Building the
@@ -578,11 +585,12 @@ Tentative commit: `feat(core): specify viewport-derived scale domains`
 
 ### 2. Add exact viewport-domain extraction
 
-Outcome: autoscale-enabled, x-sorted collectors build a flat x block index at
-collector completion. X-only queries skip disjoint blocks, merge blocks whose
-rows are all x-visible, and scan other candidates. Two-dimensional queries scan
-x-selected rows and apply y exactly. Unsorted collectors use the debounced exact
-scan. Collectors without viewport autoscaling build no index.
+Outcome: autoscale-enabled, x-sorted collectors build a flat x block index on
+demand, or at completion once enabled. X-only queries skip disjoint blocks,
+merge blocks whose rows are all x-visible, and scan other candidates.
+Two-dimensional queries scan x-selected rows and apply y exactly. Unsorted
+collectors use the debounced exact scan. Collectors without viewport autoscaling
+build no index.
 
 Affected areas:
 
@@ -605,14 +613,14 @@ Verification:
 - Fully disjoint x blocks are skipped, x-only blocks whose rows are all visible
   merge target min/max, and other x-candidate blocks scan their rows exactly.
 - An x/y query scans rows from x-candidate blocks and applies y/y2 exactly.
-- Collector completion builds the index when visible autoscaling is enabled and
-  its configured sort begins with the x field.
+- A visible-domain query enables and builds the index when complete and its
+  configured sort begins with the x field.
 - A collector without visible-domain contributors builds no index.
 - An unsorted collector uses the exact scan and builds no index.
 - Eligibility comes from existing collector sort metadata; autoscaling does not
   scan for sortedness or introduce sorting.
 - Collector reset or replacement invalidates the index, and completion rebuilds
-  it when visible autoscaling remains configured.
+  an index that was already enabled by a visible-domain query.
 - Compatible y, color, and size targets reuse one x block partition; x-only
   targets retain their own min/max arrays.
 - Index construction does not enable the mark's `buildIndex` or reorder
@@ -721,10 +729,11 @@ Verification:
   x-sorted point data to complete at p95 within 16 ms for 1 million rows and 50
   ms for 10 million rows. Revisit block size or implementation layout if they do
   not.
-- Build the index during collector completion, never in the first navigation
-  callback. For the single-facet 10-million-row reference, keep incremental
-  index construction within 250 ms and memory below 4 MiB for one x partition
-  plus one target min/max pair on the recorded reference machine.
+- Build the index at completion when it has already been enabled; if the first
+  visible-domain query arrives after completion, build it on that query. For the
+  single-facet 10-million-row reference, keep index construction within 250 ms
+  and memory below 4 MiB for one x partition plus one target min/max pair on the
+  recorded reference machine.
 - Confirm that the x block index is built only for x-sorted collectors with
   enabled viewport autoscaling and that compatible targets reuse the x
   partition.
