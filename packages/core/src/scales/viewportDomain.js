@@ -12,7 +12,7 @@ import { NOMINAL, ORDINAL } from "./scaleResolutionConstants.js";
 const AUTOSCALE_DEBOUNCE = 150;
 
 /**
- * @typedef {import("../spec/scale.js").VisibleDomainRef} VisibleDomainRef
+ * @typedef {import("../spec/scale.js").ViewportDomainRef} ViewportDomainRef
  * @typedef {import("./scaleResolution.js").ScaleResolutionMember} ScaleResolutionMember
  * @typedef {{ view: import("../view/view.js").default, channel: import("../spec/channel.js").ChannelWithScale, type: import("../spec/channel.js").Type, domain: import("../spec/scale.js").Scale["domain"] }} ConfiguredDomainSource
  * @typedef {(member: ScaleResolutionMember) => import("../data/viewportDomain.js").ViewportConstraint[]} ViewportConstraintsGetter
@@ -20,26 +20,26 @@ const AUTOSCALE_DEBOUNCE = 150;
 
 /**
  * @param {any} domain
- * @returns {domain is VisibleDomainRef}
+ * @returns {domain is ViewportDomainRef}
  */
-export function isVisibleDomainRef(domain) {
+export function isViewportDomainRef(domain) {
     return (
         typeof domain === "object" &&
         domain !== null &&
         !Array.isArray(domain) &&
-        domain.source === "visible"
+        domain.source === "viewport"
     );
 }
 
 /**
- * Validates visible-domain sources across all members, including currently
+ * Validates viewport-domain sources across all members, including currently
  * inactive members that may become active later.
  *
  * @param {Set<ScaleResolutionMember>} members
  * @param {ConfiguredDomainSource | undefined} viewLevelDomain
  * @returns {boolean}
  */
-export function validateSharedVisibleDomain(members, viewLevelDomain) {
+export function validateSharedViewportDomain(members, viewLevelDomain) {
     /** @type {ConfiguredDomainSource[]} */
     const sources = [];
 
@@ -60,7 +60,7 @@ export function validateSharedVisibleDomain(members, viewLevelDomain) {
     }
 
     const visibleSources = sources.filter((source) =>
-        isVisibleDomainRef(source.domain)
+        isViewportDomainRef(source.domain)
     );
     for (const source of visibleSources) {
         if (source.type === NOMINAL || source.type === ORDINAL) {
@@ -242,7 +242,7 @@ export function isViewportDataReady(members, getConstraints) {
     return true;
 }
 
-export class VisibleDomainScheduler {
+export class ViewportDomainScheduler {
     /** @type {(() => void)[]} */
     #unsubscribers = [];
 
@@ -253,13 +253,13 @@ export class VisibleDomainScheduler {
 
     /**
      * @param {object} options
-     * @param {() => boolean} options.hasVisibleDomain
+     * @param {() => boolean} options.hasViewportDomain
      * @param {() => Set<import("./scaleResolution.js").default>} options.getDependencies
      * @param {() => boolean} options.isReady
      * @param {() => void} options.update
      */
-    constructor({ hasVisibleDomain, getDependencies, isReady, update }) {
-        this.hasVisibleDomain = hasVisibleDomain;
+    constructor({ hasViewportDomain, getDependencies, isReady, update }) {
+        this.hasViewportDomain = hasViewportDomain;
         this.getDependencies = getDependencies;
         this.isReady = isReady;
         this.update = update;
@@ -267,7 +267,7 @@ export class VisibleDomainScheduler {
 
     refresh() {
         this.clear();
-        if (!this.hasVisibleDomain()) {
+        if (!this.hasViewportDomain()) {
             return;
         }
 

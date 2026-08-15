@@ -30,7 +30,7 @@
     "y": {
       "field": "y",
       "type": "quantitative",
-      "scale": { "domain": { "source": "visible" } }
+      "scale": { "domain": { "source": "viewport" } }
     },
     "opacity": { "value": 0.6 }
   }

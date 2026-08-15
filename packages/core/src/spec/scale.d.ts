@@ -76,7 +76,7 @@ export interface Scale {
         | ScalarDomain
         | ComplexDomain
         | SelectionDomainRef
-        | VisibleDomainRef
+        | ViewportDomainRef
         | ExprRef
         | DomainValueArray;
 
@@ -298,14 +298,14 @@ export interface SelectionDomainRef {
     encoding?: "x" | "y";
 }
 
-export interface VisibleDomainRef {
+export interface ViewportDomainRef {
     /**
      * Derives the domain from data in the current positional viewport.
      *
      * The domain is updated shortly after navigation pauses. Normal
      * data-derived domain options, such as `zero` and `nice`, still apply.
      */
-    source: "visible";
+    source: "viewport";
 }
 
 export interface SchemeParams {

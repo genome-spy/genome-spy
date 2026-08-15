@@ -103,7 +103,7 @@ so it uses a separate, flat x block index over collector rows.
 
 ## Key decisions
 
-- Expose one opt-in domain source: `domain: { "source": "visible" }`.
+- Expose one opt-in domain source: `domain: { "source": "viewport" }`.
 - Infer one or two independent continuous positional constraints from each
   contributing member; reject members with no such constraint.
 - Keep scheduling in `ScaleResolution` and use one approximately 150 ms trailing
@@ -138,13 +138,13 @@ implementation.
 Add a discriminated domain reference:
 
 ```ts
-export interface VisibleDomainRef {
+export interface ViewportDomainRef {
   /** Derive the domain from data in the current positional viewport. */
-  source: "visible";
+  source: "viewport";
 }
 ```
 
-Extend `Scale.domain` with `VisibleDomainRef`:
+Extend `Scale.domain` with `ViewportDomainRef`:
 
 ```json
 {
@@ -152,7 +152,7 @@ Extend `Scale.domain` with `VisibleDomainRef`:
     "field": "score",
     "type": "quantitative",
     "scale": {
-      "domain": { "source": "visible" }
+      "domain": { "source": "viewport" }
     }
   }
 }
@@ -163,13 +163,13 @@ inferred from each contributing scale member, and the debounce is an internal
 default. This avoids public configuration for choices that have not yet shown
 a need to vary.
 
-`VisibleDomainRef` selects a data-derived mode; it is not a literal explicit
+`ViewportDomainRef` selects a data-derived mode; it is not a literal explicit
 domain. Consequently, normal data-derived defaults such as including zero
-continue to apply. A visible-domain reference cannot be combined in one shared
+continue to apply. A viewport-domain reference cannot be combined in one shared
 resolution with a literal domain, an expression domain, or a selection-linked
 domain. Members that omit `domain` may participate in a shared resolution whose
-mode is selected by another member's visible-domain reference. Multiple members
-may repeat the same visible-domain reference. Reject visible-domain mode for
+mode is selected by another member's viewport-domain reference. Multiple members
+may repeat the same viewport-domain reference. Reject viewport-domain mode for
 non-continuous target scales. A view-level scale declaration selects the same
 resolution-wide mode and includes all ordinary domain-contributing members.
 
@@ -224,11 +224,11 @@ nonempty viewport domain becomes available.
 ### DomainPlanner: domain mode and extraction
 
 `DomainPlanner` remains responsible for interpreting domain sources and
-unioning member contributions. Add recognition of `VisibleDomainRef` and a
+unioning member contributions. Add recognition of `ViewportDomainRef` and a
 visible-data extraction path. It must not own timers, event subscriptions, or
 lazy-source lifecycle.
 
-Ordinary implicit domains keep using `Collector.getDomain()`. A visible-domain
+Ordinary implicit domains keep using `Collector.getDomain()`. A viewport-domain
 scale asks the collector to calculate the accessor domain under member-specific
 positional constraints. Configured-domain validation rejects mixed visible and
 literal/selection/expression sources in a shared resolution.
@@ -236,7 +236,7 @@ literal/selection/expression sources in a shared resolution.
 Visible mode is configured but data-derived. Update `ScaleResolution` checks
 that currently infer explicitness from the mere presence of `scale.domain`,
 including `#hasConfiguredDomain()`, `isDomainDefinedExplicitly()`,
-`#getActiveMembers()`, and `#finalizeInitialDomainFromData()`. A visible-domain
+`#getActiveMembers()`, and `#finalizeInitialDomainFromData()`. A viewport-domain
 member must wait for initialized data, retain normal data-domain defaults such
 as `zero` and `nice`, and participate in initial-domain coverage like an
 ordinary implicit-domain member.
@@ -262,7 +262,7 @@ resolution subscriptions along with the existing derived membership state.
 Each x/y domain event marks the viewport domain dirty and schedules one update
 after an internal debounce of approximately 150 ms.
 
-Collector invalidation for a visible-domain target must use this same scheduling
+Collector invalidation for a viewport-domain target must use this same scheduling
 path instead of immediately calling `reconfigureDomain()`. Normally it restarts
 the trailing timer. If the timer has already fired and is waiting specifically
 for lazy readiness, the collector event calculates immediately once the latest
@@ -285,7 +285,7 @@ Add one focused collector operation that calculates a domain from its final
 rows using a target accessor and one or two positional constraints. It
 must not mutate collector data or invalidate the ordinary full-domain cache.
 
-The first visible-domain query enables the x block index for its collector. If
+The first viewport-domain query enables the x block index for its collector. If
 the collector's configured sort begins with the primary x field, ascending or
 descending, build the index immediately when data are complete; otherwise,
 build it when that enabled collector completes. Rely on the collector's sort
@@ -304,7 +304,7 @@ numeric arrays rather than one object per block.
 
 Multiple y, color, size, or other targets using the same collector and x/x2
 accessors reuse the x block partition. Target min/max arrays are built only for
-x-only visible-domain contributions that can merge fully accepted blocks; a
+x-only viewport-domain contributions that can merge fully accepted blocks; a
 two-dimensional x/y query does not need them because it must inspect y per row.
 The structure uses the collector's established x order and does not sort or
 reorder data. It is independent of both the mark's GPU vertex index and
@@ -390,7 +390,7 @@ Retain the static 200,000-point sequence, zoomable x-scale, point mark, and
 zoom-dependent point-size expression. Reduce the stochastic component of the y
 formula from its current `1.618` multiplier to approximately `0.6`, leaving the
 sinusoidal structure and occasional deviations easier to distinguish. Add
-`domain: { "source": "visible" }` to the y-scale. The example should make the
+`domain: { "source": "viewport" }` to the y-scale. The example should make the
 delayed smooth y-domain adjustment obvious when zooming into regions with
 different local extrema.
 
@@ -458,10 +458,10 @@ timing knobs can be added later if concrete use cases need them.
   x-sorted data, debounce exact scans for unsorted and two-dimensional data,
   benchmark both paths, and specialize only if measurements justify more code.
 - **Indexing penalizes ordinary scales:** enable and build the x block index only
-  for visible-domain contributions on x-sorted collectors and invalidate it with
+  for viewport-domain contributions on x-sorted collectors and invalidate it with
   collector data. Unsorted and ordinary collectors retain no index state.
 - **Lazy publication bypasses the debounce:** route collector changes for
-  visible-domain scales through the same scheduler as positional events.
+  viewport-domain scales through the same scheduler as positional events.
 - **Stale lazy data changes the domain:** require readiness for the latest
   positional domains immediately before extraction.
 - **Circular positional dependency:** reject zoomable positional targets,
@@ -516,11 +516,11 @@ cache and its synchronization path. No cancellation token, worker, tree,
 reference counting, or multidimensional index was added.
 
 The KISS review also moved the block-index implementation out of `Collector`
-and the visible-domain policy and scheduler out of the already large scale
+and the viewport-domain policy and scheduler out of the already large scale
 orchestrators. Relative to the working implementation, `collector.js` shrank
 from 1,010 to 583 lines, `domainPlanner.js` from 943 to 823, and
 `scaleResolution.js` from 2,008 to 1,873. The focused modules
-`viewportDomain.js` and `visibleDomain.js` contain the extracted responsibilities
+the data and scale `viewportDomain.js` modules contain the extracted responsibilities
 without adding alternative strategies or lifecycle layers. The split adds
 about 90 lines of module-boundary typing and delegation overall, an accepted
 tradeoff for keeping collection and scale orchestration readable.
@@ -546,10 +546,10 @@ after wheel zoom.
 
 ## Implementation plan
 
-### 1. Specify the visible domain source
+### 1. Specify the viewport domain source
 
 Outcome: schema and domain planning recognize
-`domain: { "source": "visible" }`, validate shared-scale conflicts, and retain
+`domain: { "source": "viewport" }`, validate shared-scale conflicts, and retain
 data-derived scale defaults.
 
 Affected areas:
@@ -563,12 +563,12 @@ Affected areas:
 
 Verification:
 
-- Schema accepts the visible-domain reference and rejects malformed forms.
-- Non-continuous targets reject visible-domain mode.
+- Schema accepts the viewport-domain reference and rejects malformed forms.
+- Non-continuous targets reject viewport-domain mode.
 - Repeated visible references are compatible in a shared resolution.
-- Members without a configured domain can participate in a shared visible-domain
+- Members without a configured domain can participate in a shared viewport-domain
   resolution.
-- A view-level visible-domain declaration selects the same resolution-wide mode.
+- A view-level viewport-domain declaration selects the same resolution-wide mode.
 - Mixing visible with literal, expression, or selection-driven domain sources
   fails with a contextual error.
 - `zero`, `nice`, `domainMin`, `domainMax`, and `domainMid` retain their
@@ -613,14 +613,14 @@ Verification:
 - Fully disjoint x blocks are skipped, x-only blocks whose rows are all visible
   merge target min/max, and other x-candidate blocks scan their rows exactly.
 - An x/y query scans rows from x-candidate blocks and applies y/y2 exactly.
-- A visible-domain query enables and builds the index when complete and its
+- A viewport-domain query enables and builds the index when complete and its
   configured sort begins with the x field.
-- A collector without visible-domain contributors builds no index.
+- A collector without viewport-domain contributors builds no index.
 - An unsorted collector uses the exact scan and builds no index.
 - Eligibility comes from existing collector sort metadata; autoscaling does not
   scan for sortedness or introduce sorting.
 - Collector reset or replacement invalidates the index, and completion rebuilds
-  an index that was already enabled by a visible-domain query.
+  an index that was already enabled by a viewport-domain query.
 - Compatible y, color, and size targets reuse one x block partition; x-only
   targets retain their own min/max arrays.
 - Index construction does not enable the mark's `buildIndex` or reorder
@@ -646,7 +646,7 @@ Affected areas:
 - `packages/core/src/scales/scaleResolution.js`
 - `packages/core/src/scales/scaleResolution.domain.test.js`
 - `packages/core/src/view/unitView.js` if collector-domain subscription routing
-  needs a visible-domain distinction
+  needs a viewport-domain distinction
 - `packages/core/src/view/dataReadiness.js`
 - focused readiness tests
 
@@ -730,7 +730,7 @@ Verification:
   ms for 10 million rows. Revisit block size or implementation layout if they do
   not.
 - Build the index at completion when it has already been enabled; if the first
-  visible-domain query arrives after completion, build it on that query. For the
+  viewport-domain query arrives after completion, build it on that query. For the
   single-facet 10-million-row reference, keep index construction within 250 ms
   and memory below 4 MiB for one x partition plus one target min/max pair on the
   recorded reference machine.
@@ -754,7 +754,7 @@ Tentative commit: `refactor(core): simplify viewport autoscaling`
 
 ## Acceptance criteria
 
-- `domain: { "source": "visible" }` is a documented, schema-valid opt-in mode
+- `domain: { "source": "viewport" }` is a documented, schema-valid opt-in mode
   for continuous data-derived scales.
 - A genomic y-scale excludes values outside the visible x-domain even when they
   are present in a larger lazy-loaded window.

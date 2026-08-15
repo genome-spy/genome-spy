@@ -129,11 +129,11 @@ describe("DomainPlanner", () => {
         expect(toRegularArray(domain)).toEqual([0, 7]);
     });
 
-    test("visible domain references select a data-derived domain mode", () => {
+    test("viewport domain references select a data-derived domain mode", () => {
         const members = [
             createSelectionDomainMember({
                 selectionValue: undefined,
-                domain: { source: "visible" },
+                domain: { source: "viewport" },
             }),
             {
                 channel: "x",
@@ -144,27 +144,27 @@ describe("DomainPlanner", () => {
         const planner = createPlanner(members, "quantitative");
 
         expect(planner.getConfiguredDomain()).toBeUndefined();
-        expect(planner.hasVisibleDomain()).toBe(true);
+        expect(planner.hasViewportDomain()).toBe(true);
     });
 
-    test("repeated visible domain references are compatible", () => {
+    test("repeated viewport domain references are compatible", () => {
         const members = Array.from({ length: 2 }, () =>
             createSelectionDomainMember({
                 selectionValue: undefined,
-                domain: { source: "visible" },
+                domain: { source: "viewport" },
             })
         );
         const planner = createPlanner(members, "quantitative");
 
         expect(planner.getConfiguredDomain()).toBeUndefined();
-        expect(planner.hasVisibleDomain()).toBe(true);
+        expect(planner.hasViewportDomain()).toBe(true);
     });
 
     test("visible and other configured domains cannot be mixed", () => {
         const members = [
             createSelectionDomainMember({
                 selectionValue: undefined,
-                domain: { source: "visible" },
+                domain: { source: "viewport" },
             }),
             createSelectionDomainMember({
                 selectionValue: undefined,
@@ -178,12 +178,12 @@ describe("DomainPlanner", () => {
         );
     });
 
-    test("visible domains require a continuous data type", () => {
+    test("viewport domains require a continuous data type", () => {
         const member = createSelectionDomainMember({
             selectionValue: undefined,
             type: "nominal",
             channel: "color",
-            domain: { source: "visible" },
+            domain: { source: "viewport" },
         });
         const planner = createPlanner([member], "nominal");
 
@@ -192,14 +192,14 @@ describe("DomainPlanner", () => {
         );
     });
 
-    test("view-level visible domains select the resolution-wide mode", () => {
+    test("view-level viewport domains select the resolution-wide mode", () => {
         const planner = new DomainPlanner({
             getActiveMembers: () => new Set(),
             getViewLevelDomainSource: () => ({
                 view: /** @type {any} */ ({}),
                 channel: "y",
                 type: "quantitative",
-                domain: { source: "visible" },
+                domain: { source: "viewport" },
             }),
             getType: () => "quantitative",
             getLocusExtent: () => [0, 10],
@@ -208,7 +208,7 @@ describe("DomainPlanner", () => {
         });
 
         expect(planner.getConfiguredDomain()).toBeUndefined();
-        expect(planner.hasVisibleDomain()).toBe(true);
+        expect(planner.hasViewportDomain()).toBe(true);
     });
 
     test("data domains are unioned", () => {

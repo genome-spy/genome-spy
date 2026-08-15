@@ -28,7 +28,7 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
-    test("accepts visible scale domains and rejects unknown sources", () => {
+    test("accepts viewport scale domains and rejects unknown sources", () => {
         const validate = createCoreValidator();
         const spec = {
             data: { values: [{ x: 1, y: 2 }] },
@@ -38,7 +38,7 @@ describe("generated core schema", () => {
                 y: {
                     field: "y",
                     type: "quantitative",
-                    scale: { domain: { source: "visible" } },
+                    scale: { domain: { source: "viewport" } },
                 },
             },
         };
@@ -46,7 +46,7 @@ describe("generated core schema", () => {
         expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
             true
         );
-        spec.encoding.y.scale.domain.source = "viewport";
+        spec.encoding.y.scale.domain.source = "visible";
         expect(validate(spec)).toBe(false);
     });
 

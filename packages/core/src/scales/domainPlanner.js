@@ -13,10 +13,10 @@ import createDomain from "../utils/domainArray.js";
 import { resolveConfiguredDomainValue } from "./domainExpressions.js";
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
 import {
-    isVisibleDomainRef,
+    isViewportDomainRef,
     resolveVisibleDataDomain,
-    validateSharedVisibleDomain,
-} from "./visibleDomain.js";
+    validateSharedViewportDomain,
+} from "./viewportDomain.js";
 import { getEncoderAccessors, getPrimaryChannel } from "../encoder/encoder.js";
 import {
     hasExplicitLocusUpperBound,
@@ -104,7 +104,7 @@ export default class DomainPlanner {
     /** @type {SelectionDomainLinkInfo | undefined} */
     #selectionDomainLinkInfo = undefined;
 
-    #hasVisibleDomain = false;
+    #hasViewportDomain = false;
 
     /** @type {DomainArray | undefined} */
     #lastVisibleDataDomain;
@@ -123,7 +123,7 @@ export default class DomainPlanner {
      * @param {ScaleMembersGetter} [options.getAllMembers] All members, including inactive ones, used for conflict validation.
      * @param {ScaleMembersGetter} [options.getDataMembers] Members used for data-domain extraction; defaults to `getActiveMembers`.
      * @param {ViewLevelDomainSourceGetter} [options.getViewLevelDomainSource] View-level domain source.
-     * @param {ViewportConstraintsGetter} [options.getViewportConstraints] Positional constraints for visible-domain extraction.
+     * @param {ViewportConstraintsGetter} [options.getViewportConstraints] Positional constraints for viewport-domain extraction.
      * @param {() => import("../spec/channel.js").Type} options.getType
      * @param {GetLocusExtent} options.getLocusExtent
      * @param {FromComplexInterval} options.fromComplexInterval
@@ -194,14 +194,14 @@ export default class DomainPlanner {
     invalidateConfiguredDomain() {
         this.#configuredDomainDirty = true;
         this.#selectionDomainLinkInfo = undefined;
-        this.#hasVisibleDomain = false;
+        this.#hasViewportDomain = false;
         this.#lastVisibleDataDomain = undefined;
         this.#configuredDomainsByInitialMode.clear();
     }
 
-    hasVisibleDomain() {
+    hasViewportDomain() {
         this.getConfiguredDomain();
-        return this.#hasVisibleDomain;
+        return this.#hasViewportDomain;
     }
 
     /**
@@ -262,7 +262,7 @@ export default class DomainPlanner {
         }
 
         const viewLevelDomainSource = this.#getViewLevelDomainSource?.();
-        const hasVisibleDomain = validateSharedVisibleDomain(
+        const hasViewportDomain = validateSharedViewportDomain(
             this.#getAllMembers(),
             viewLevelDomainSource
         );
@@ -277,7 +277,7 @@ export default class DomainPlanner {
             configuredDomain.selectionRef
         );
         this.#selectionDomainLinkInfo = configuredDomain.selectionRef;
-        this.#hasVisibleDomain = hasVisibleDomain;
+        this.#hasViewportDomain = hasViewportDomain;
         this.#configuredDomainsByInitialMode.set(
             includeSelectionInitial,
             configuredDomain.domain
@@ -295,10 +295,10 @@ export default class DomainPlanner {
         const members = this.#getDataMembers();
         /** @param {ScaleResolutionMember} member */
         const getAccessors = (member) => this.#getMemberAccessors(member);
-        if (this.hasVisibleDomain()) {
+        if (this.hasViewportDomain()) {
             if (!this.#getViewportConstraints) {
                 throw new Error(
-                    "Visible-domain extraction requires positional constraints."
+                    "Viewport-domain extraction requires positional constraints."
                 );
             }
             const domain = resolveVisibleDataDomain(
@@ -405,7 +405,7 @@ function resolveConfiguredDomain(
         .filter((member) => member.contributesToDomain)
         .filter((member) => {
             const domain = member.channelDef.scale?.domain;
-            return domain && !isVisibleDomainRef(domain);
+            return domain && !isViewportDomainRef(domain);
         });
 
     /** @type {ConfiguredDomainResolutionState} */
@@ -419,7 +419,7 @@ function resolveConfiguredDomain(
 
     if (
         viewLevelDomain?.domain !== undefined &&
-        !isVisibleDomainRef(viewLevelDomain.domain)
+        !isViewportDomainRef(viewLevelDomain.domain)
     ) {
         const resolved = resolveConfiguredDomainSource(
             viewLevelDomain,

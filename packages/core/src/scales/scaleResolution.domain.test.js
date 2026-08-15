@@ -773,7 +773,7 @@ describe("Scale resolution domain handling", () => {
         expect(getScaleDomain(view, "y")).toEqual(expected);
     });
 
-    test("visible domains retain data-derived defaults", async () => {
+    test("viewport domains retain data-derived defaults", async () => {
         const view = await initView(
             {
                 data: {
@@ -792,7 +792,7 @@ describe("Scale resolution domain handling", () => {
                     y: {
                         field: "y",
                         type: "quantitative",
-                        scale: { domain: { source: "visible" } },
+                        scale: { domain: { source: "viewport" } },
                     },
                 },
             },
@@ -824,7 +824,7 @@ describe("Scale resolution domain handling", () => {
                     y: {
                         field: "y",
                         type: "quantitative",
-                        scale: { domain: { source: "visible" } },
+                        scale: { domain: { source: "viewport" } },
                     },
                 },
             },
@@ -838,7 +838,7 @@ describe("Scale resolution domain handling", () => {
         expect(r(yResolution.getDataDomain())).toEqual([2, 3]);
     });
 
-    test("visible domains update once after positional navigation pauses", async () => {
+    test("viewport domains update once after positional navigation pauses", async () => {
         const view = await initView(
             {
                 data: {
@@ -859,7 +859,7 @@ describe("Scale resolution domain handling", () => {
                         field: "y",
                         type: "quantitative",
                         scale: {
-                            domain: { source: "visible" },
+                            domain: { source: "viewport" },
                             zero: false,
                         },
                     },
@@ -896,7 +896,7 @@ describe("Scale resolution domain handling", () => {
         }
     });
 
-    test("visible domains retain the last nonempty domain", async () => {
+    test("viewport domains retain the last nonempty domain", async () => {
         const view = await initView(
             {
                 data: {
@@ -916,7 +916,7 @@ describe("Scale resolution domain handling", () => {
                         field: "y",
                         type: "quantitative",
                         scale: {
-                            domain: { source: "visible" },
+                            domain: { source: "viewport" },
                             zero: false,
                         },
                     },
@@ -939,7 +939,7 @@ describe("Scale resolution domain handling", () => {
         }
     });
 
-    test("visible domains wait for the latest lazy viewport", async () => {
+    test("viewport domains wait for the latest lazy viewport", async () => {
         const unregister = registerLazyDataSource(
             (params) => /** @type {any} */ (params).type == "mockLazy",
             MockLazySource
@@ -969,7 +969,7 @@ describe("Scale resolution domain handling", () => {
                             field: "y",
                             type: "quantitative",
                             scale: {
-                                domain: { source: "visible" },
+                                domain: { source: "viewport" },
                                 zero: false,
                             },
                         },
@@ -1037,7 +1037,7 @@ describe("Scale resolution domain handling", () => {
                     size: {
                         field: "size",
                         type: "quantitative",
-                        scale: { domain: { source: "visible" } },
+                        scale: { domain: { source: "viewport" } },
                     },
                 },
             },
@@ -1052,7 +1052,7 @@ describe("Scale resolution domain handling", () => {
         expect(r(sizeResolution.getDataDomain())).toEqual([2, 2]);
     });
 
-    test("visible domains require an independent positional scale", async () => {
+    test("viewport domains require an independent positional scale", async () => {
         await expect(
             initView(
                 {
@@ -1062,7 +1062,7 @@ describe("Scale resolution domain handling", () => {
                         y: {
                             field: "y",
                             type: "quantitative",
-                            scale: { domain: { source: "visible" } },
+                            scale: { domain: { source: "viewport" } },
                         },
                     },
                 },
@@ -1083,12 +1083,12 @@ describe("Scale resolution domain handling", () => {
                         x: {
                             field: "x",
                             type: "quantitative",
-                            scale: { domain: { source: "visible" } },
+                            scale: { domain: { source: "viewport" } },
                         },
                         y: {
                             field: "y",
                             type: "quantitative",
-                            scale: { domain: { source: "visible" } },
+                            scale: { domain: { source: "viewport" } },
                         },
                     },
                 },
@@ -1097,7 +1097,7 @@ describe("Scale resolution domain handling", () => {
         ).rejects.toThrow("form a dependency cycle");
     });
 
-    test("implicit members participate in a shared visible-domain resolution", async () => {
+    test("implicit members participate in a shared viewport-domain resolution", async () => {
         const view = await initView(
             {
                 resolve: { scale: { y: "shared" } },
@@ -1110,7 +1110,7 @@ describe("Scale resolution domain handling", () => {
                             y: {
                                 field: "y",
                                 type: "quantitative",
-                                scale: { domain: { source: "visible" } },
+                                scale: { domain: { source: "viewport" } },
                             },
                         },
                     },
@@ -1130,7 +1130,7 @@ describe("Scale resolution domain handling", () => {
         expect(getScaleDomain(view, "y")).toEqual([0, 5]);
     });
 
-    test("visible domains reject discrete scales", async () => {
+    test("viewport domains reject discrete scales", async () => {
         await expect(
             initView(
                 {
@@ -1141,7 +1141,7 @@ describe("Scale resolution domain handling", () => {
                         color: {
                             field: "group",
                             type: "nominal",
-                            scale: { domain: { source: "visible" } },
+                            scale: { domain: { source: "viewport" } },
                         },
                     },
                 },
@@ -1150,7 +1150,7 @@ describe("Scale resolution domain handling", () => {
         ).rejects.toThrow("Viewport-derived domains require a continuous");
     });
 
-    test("visible domains reject zoomable positional targets", async () => {
+    test("viewport domains reject zoomable positional targets", async () => {
         await expect(
             initView(
                 {
@@ -1161,7 +1161,7 @@ describe("Scale resolution domain handling", () => {
                             field: "x",
                             type: "quantitative",
                             scale: {
-                                domain: { source: "visible" },
+                                domain: { source: "viewport" },
                                 zoom: true,
                             },
                         },

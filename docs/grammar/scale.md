@@ -232,7 +232,7 @@ For detailed brushing-and-linking guidance and interactive examples, see
 
 ## Viewport-derived domains
 
-Set `domain` to `{ "source": "visible" }` to derive a quantitative scale domain
+Set `domain` to `{ "source": "viewport" }` to derive a quantitative scale domain
 from data in the current positional viewport. This is useful for autoscaling a
 genomic signal's y-axis or a scatter plot's size or color while zooming and
 panning.
