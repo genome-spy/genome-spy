@@ -1,0 +1,4 @@
+interface:
+    display_name: "Debug GenomeSpy Web"
+    short_description: "Debug GenomeSpy in a real browser"
+    default_prompt: "Use $debug-genomespy-web to reproduce and diagnose this UI issue."

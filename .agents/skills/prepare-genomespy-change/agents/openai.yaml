@@ -1,0 +1,4 @@
+interface:
+    display_name: "Prepare GenomeSpy Change"
+    short_description: "Prepare commits and pull requests for delivery"
+    default_prompt: "Use $prepare-genomespy-change to prepare this change for review."

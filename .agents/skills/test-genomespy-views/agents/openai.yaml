@@ -1,0 +1,4 @@
+interface:
+    display_name: "Test GenomeSpy Views"
+    short_description: "Test view layouts and generated specs"
+    default_prompt: "Use $test-genomespy-views to add focused view or layout coverage."

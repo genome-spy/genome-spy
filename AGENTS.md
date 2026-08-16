@@ -1,229 +1,136 @@
 # GenomeSpy
 
-GenomeSpy is a high-performance, web-based visual analytics toolkit for genomic
-data. It combines a declarative visualization grammar with a custom GPU-
-accelerated rendering engine to provide smooth interaction with large,
-heterogeneous datasets, including copy number profiles, structural variants,
-mutations, and metadata across cohorts. The project includes a modular core and
-a schema-driven specification format.
+GenomeSpy is a high-performance, browser-based visual analytics toolkit for
+genomic data. The monorepo contains the WebGL-based declarative visualization
+core, the Lit/Redux cohort-analysis application, integrations and examples, and
+an early browser-side LLM agent with a thin Python relay.
 
-GenomeSpy Core provides building blocks such as marks, scales, axes, and data
-transforms, inspired by Vega/Vega-Lite. GenomeSpy App is a higher-level
-interactive application for cohort analysis, built on the Core with provenance-
-aware interactions.
+## Instruction and architecture routing
 
-## Tech stack in use
+- Before editing a package, read the nearest descendant `AGENTS.md` files for
+  the target paths. Codex sessions started at the repository root do not load
+  descendant instructions automatically.
+- Start architectural work at `ARCHITECTURE.md`, then read only the linked
+  subsystem documents relevant to the change.
+- Repository workflows live in `.agents/skills/` and should be used when their
+  descriptions match the task.
 
-- Fully client-side application using modern web technologies
-- JavaScript (Modern ESNext) typed with JSDoc
-- TypeScript for more complex type definitions and JSON Schema generation
-- Monorepo managed with lerna-lite
+## Project map and stack
 
-### Core
-
-- WebGL rendering via twgl.js
-- JSON Schema built from TypeScript types
-- Application state is maintained in the view hierarchy
-  - Data flow (built from FlowNode objects) handles data input and transformation
-  - ScaleResolution collects views that share scales and initializes the scales
-  - ParamMediator manages reactive parameters (signals)
-
-### App
-
-- Embeds GenomeSpy Core for rendering
-- State management with Redux Toolkit (including provenance tracking)
-- UI components with Lit
-- Iconography with FontAwesome
-- No external CSS frameworks or component libraries
-
-### App AI Agent
-
-- An LLM agent/chatbot is in early development, implemented in `packages/app-agent/` and the Python relay in `packages/app-agent/server/`.
-
-## Testing
-
-- Unit tests with Vitest
-- Tests live next to code, with `.test.` in the filename
-- When writing tests, add a short comment for non-obvious test setup/intent.
-- Do not use TDD for trivial presentation-only changes such as changing a
-  label, icon, tooltip, or other copy/style detail. Apply the small edit
-  directly and verify with the lightest relevant check.
-- Permanent tests should verify behavior, contracts, dataflow, layout
-  semantics, or user-visible output rather than duplicating the current
-  implementation.
-- Prefer representative assertions that capture intent. Avoid exhaustive checks
-  over every property of a configuration object, generated spec, or internal
-  structure unless that full shape is an intentional compatibility contract.
-- Transient tests that pin down implementation details are acceptable while
-  debugging, but delete or rewrite them before committing. After a refactor,
-  remove tests that only cover temporary compatibility paths or intermediate
-  implementation details unless that behavior remains an intentional public
-  contract.
-- For generated specs, rendered hierarchy/layout inspection, or other structured
-  output where the whole shape matters, prefer focused snapshot tests once the
-  design has stabilized. Prefer `specToLayout(...)` or `renderToLayout(...)`
-  from `packages/core/src/view/testUtils.js` instead of ad hoc scripts.
-- If existing structures are unsuitable for snapshot testing, proactively
-  propose a stable snapshot-friendly representation or test helper. Do not
-  refactor production code or test infrastructure solely for snapshot testing
-  without developer approval.
-- `packages/core/layout.test.js` and `packages/core/src/view/layoutSnapshot.test.js` show the recommended layout-snapshot pattern.
-
-### Running tests and linting
-
-- From repo root, run the full unit suite: `npm test`
-- Run a focused Vitest suite: `npx vitest run packages/app/src/sampleView/sampleView.test.js`
-- TypeScript checks for workspaces (if present): `npm --workspaces run test:tsc --if-present`
-- Lint the workspace sources: `npm run lint`
-
-### Web App Debugging
-
-- Prefer Vitest and Playwright. However,
-- Use Chrome DevTools MCP (https://github.com/ChromeDevTools/chrome-devtools-mcp/) may also be available.
-- Open `http://127.0.0.1:8080/` using Chrome DevTools MCP.
-- If the dev server is not running, start it with `npm start` from the repo root.
-- The root page lists example and private specs; the first example is usually the quickest smoke test.
-- The dev routes live in the package `vite.config.js` files and share helper code from `devServerRoutes.mjs` at the repo root.
+- `packages/core`: ESNext JavaScript with JSDoc, TypeScript specification types,
+  JSON Schema generation, WebGL2, and twgl.js. State lives primarily in the view
+  hierarchy; data flows through `FlowNode`s; scales are coordinated by
+  `ScaleResolution`; reactive parameters use `ViewParamRuntime`/`ParamRuntime`.
+  Its declarative grammar is strongly inspired by Vega and Vega-Lite.
+- `packages/app`: GenomeSpy Core embedded in a Lit UI, with Redux Toolkit and
+  provenance-aware interactions. Use FontAwesome and the project's own CSS;
+  there is no external CSS framework or component library.
+- `packages/app-agent`: Browser-side agent plugin and chat UI. Its Python relay
+  is under `packages/app-agent/server/`.
+- The monorepo is managed with lerna-lite.
 
 ## Workflow expectations
 
-- By default, make a plan first; don't start editing code when the user is asking
-  a random question and hasn't explicitly asked for editing work to start.
-- When planning, consider documentation in `docs/` for user-visible changes. New
-  features in Core or App may need docs, while refactors typically do not.
-- For refactors and simplification work, measure the relevant code size before
-  and after the change, for example with `wc -l`, `git diff --stat`, or focused
-  line counts. Treat added lines in a simplification task as a signal to re-check
-  whether the result is actually simpler. More lines are acceptable only when
-  they clearly improve correctness, readability, or maintainability.
-- In refactors, prefer deleting code, merging duplicate paths, and simplifying
-  control flow over introducing new abstractions. Avoid replacing straightforward
-  code with a larger structure unless the tradeoff is explicit and worthwhile.
-- When editing shared example specs under `examples/`, follow the formatting and
-  layout guidance in `examples/README.md`.
+- Before non-trivial edits, make a brief working plan. Use the
+  `plan-genomespy-change` skill for requested design or implementation
+  proposals; routine edits do not need a formal plan file. Do not infer
+  permission to edit from a question or review request.
+- Consider `docs/` for user-visible Core or App features. Refactors usually do
+  not require documentation changes.
+- For refactors and simplification, measure relevant size before and after with
+  `wc -l`, `git diff --stat`, or focused counts. Added code is a signal to
+  re-check whether the result is actually simpler; accept growth only when it
+  clearly improves correctness, readability, or maintainability.
+- Prefer deleting duplicate paths and simplifying control flow over introducing
+  abstractions. Do not replace straightforward code with a larger structure
+  without a clear tradeoff.
+- When editing shared example specs under `examples/`, follow
+  `examples/README.md`.
+
+## Testing
+
+- Use Vitest for JavaScript/TypeScript tests and keep `.test.` files next to the
+  code they cover. Add a short comment for non-obvious setup or intent.
+- Do not use TDD for trivial copy or presentation-only changes. Apply the small
+  edit directly and use the lightest relevant verification.
+- Permanent tests should verify behavior, contracts, dataflow, layout semantics,
+  or user-visible output rather than repeat the implementation.
+- Prefer representative assertions. Exhaustive configuration or generated-shape
+  assertions are appropriate only when the full shape is an intentional
+  compatibility contract.
+- Temporary implementation-detail tests are acceptable while debugging, but
+  delete or rewrite them before finishing. After refactors, remove tests for
+  temporary compatibility paths unless the behavior remains a public contract.
+- During iteration, run the narrowest relevant suite and use Vitest's `agent`
+  reporter to keep successful output compact. Run the full suite only when the
+  scope or risk warrants it.
+- Use the `test-genomespy-views` skill for generated specs, layout snapshots,
+  or rendered hierarchy inspection.
+
+Common checks from the repository root:
+
+- Focused suite: `npx vitest run <test-file> --reporter=agent`
+- Full unit suite: `npm test -- --reporter=agent`
+- Workspace TypeScript checks: `npm --workspaces run test:tsc --if-present`
+- Lint: `npm run lint`
 
 ## Project and code guidelines
 
-- Always use type hints in any language which supports them
-- JavaScript/TypeScript files should use JSDoc for type annotations
-- Class members without a clear initializer should have an explicit JSDoc type; members with a clear initializer may rely on initializer inference
-- Use a blank line between adjacent members with JSDoc; skip it for the first member in a block
-- When removing a function/class, also remove its JSDoc block to avoid orphaned docs
-- JavaScript is indented with 4 spaces, no tabs
-- WGSL code should be indented with 4 spaces, no tabs
-- JSON files are indented with 2 spaces, no tabs
-- Use modern ESNext syntax (async/await, arrow functions, destructuring, spread)
-- Use Array.from instead of spread when converting NodeList to Array
-- Prefer const over let unless reassignment is needed
-- Use offensive, not defensive coding style
-  - Rely on types and type checking instead of runtime checks
-  - Fail fast on unexpected inputs
-  - Avoid unnecessary null/undefined checks and optional chaining
-  - Validate inputs at application boundaries only
-- Prefer explicit `else` blocks over early-return branches when both paths are
-  similarly likely.
-- Prefer explicit contracts over implicit behavior (e.g., require domains for ordinal/band)
-- Prefer explicit, readable string concatenation for trivial two-part
-  concatenation.
-- Use string interpolation (template literals) when more than two elements are
-  concatenated.
-- Avoid optional or nullable state unless it has a clear semantic meaning
-- Use JSDoc blocks to capture intent when logic is non-obvious
-- Prefer single-source-of-truth data structures; derive secondary views via helpers
-- Keep WGSL in template strings prefixed with `/* wgsl */` for highlighting
-- When branching on enums (e.g., selection types), use explicit `if/else` or
-  `switch` structures that cover all cases and fail loudly on unknown values.
-- Use `Map`/`WeakMap` when identity matters; default to empty maps rather than
-  optional maps.
-- Fail fast with clear error messages; avoid silent fallbacks.
-- Use consistent naming: classes use `PascalCase` (`FooView`), files use
-  `camelCase` (`fooView.js`), and related types share the same stem.
-- Avoid per-frame allocations in rendering and dataflow hot paths; reuse arrays
-  and maps when possible.
-- Avoid ad hoc `console` logging in core hot paths; use a centralized logger if
-  logging is necessary.
-- Keep tests close to the code, and add a short intent comment for non-obvious
-  setup.
-- Prefer using iterator helpers (`map`, `filter`, `flatMap`) on iterables
-  instead of converting them to arrays first.
+- Use type hints in every language that supports them. JavaScript and TypeScript
+  use JSDoc annotations.
+- Class members without a clear initializer need an explicit JSDoc type; members
+  with a clear initializer may rely on inference. Put a blank line between
+  adjacent JSDoc-annotated members, except before the first member in a block.
+- When removing a function or class, remove its JSDoc block too.
+- Formatting is defined by `.editorconfig` and Prettier: JavaScript and WGSL use
+  four spaces, JSON uses two, and indentation uses spaces rather than tabs.
+- Use modern ESNext syntax. Prefer `const` unless reassignment is necessary and
+  use `Array.from` instead of spread when converting a `NodeList` to an array.
+- Prefer offensive over defensive code: rely on types, validate at boundaries,
+  fail fast on unexpected input, and avoid unnecessary null checks, optional
+  chaining, and silent fallbacks.
+- Prefer an explicit `else` when both branches are similarly likely. Branches on
+  enums must cover every case and fail loudly on unknown values.
+- Prefer explicit contracts over implicit behavior, such as requiring domains
+  for ordinal and band scales.
+- Use readable concatenation for two simple string parts and template literals
+  when combining more than two elements.
+- Avoid optional or nullable state unless it has clear semantics.
+- Use JSDoc to record non-obvious intent. Keep one source of truth and derive
+  secondary views through helpers.
+- Use `Map` or `WeakMap` when identity matters; prefer an empty map over an
+  optional map.
+- Classes use `PascalCase`, files use `camelCase`, and related types share a
+  naming stem.
+- Prefer iterator helpers such as `map`, `filter`, and `flatMap` directly on
+  iterables instead of converting them to arrays first.
 
-## Planning and design
+## Documentation and change delivery
 
-- When the user requests a design proposal file, place it under
-  `plans/[feature-name]/[feature-name]-plan.md`.
-- Base proposals on the current implementation and reference relevant files,
-  types, and architectural constraints.
-- When designing new features or architecture, study how comparable established
-  projects solve the same problem. Prefer proven patterns when they fit
-  GenomeSpy's requirements; use a custom design when it provides clear benefits,
-  and document the tradeoffs.
-- Preserve the provenance of borrowed ideas. Cite the source in the proposal and
-  in relevant code comments using wording such as "Adapted from ..." or "Based
-  on the design of ...", with a link or other durable source reference.
-- Before copying or closely adapting code, verify that its license is compatible
-  with GenomeSpy. Keep the source attribution and applicable copyright and
-  license notice near the copied block, in addition to any other notices required
-  by the license.
-- State the goals, non-goals, key decisions, alternatives considered, risks,
-  unresolved questions, and acceptance criteria.
-- Split large proposals into focused files under the same folder.
-- Divide implementation into independently reviewable steps. For each step,
-  describe the intended outcome, affected areas, verification, documentation or
-  migration work, and a tentative Conventional Commit message.
-
-## Commit conventions
-
-- The repo follows Conventional Commits; prefix commit messages with the relevant type (e.g., `feat:`, `fix:`).
-- Use the monorepo package name as the scope (e.g., `core`, `app`) when the change touches a specific workspace.
-- An example message: `feat(app): cool new feature`.
-- Reserve `fix` and `feat` primarily for user-facing bug fixes and features. Use
-  `build` for dependency, package metadata, release tooling, and other
-  build-system fixes.
-- Before writing a commit message, inspect the full relevant diff with
-  `git diff` and, when committing staged changes, `git diff --cached`. Base the
-  commit message on everything being committed, not only the latest edits.
-- Commit messages should mention all meaningful areas changed by the diff. Use
-  the body for brief details when the change spans multiple behaviors or files.
-- When working in a feature branch (i.e., not master or main), it's okay to use more casual commit messages; scope can be omitted.
-- When in master or main, add (brief) details to commit message body.
-
-## PR notes
-
-- Provide a PR title in Conventional Commits style.
-- Notes should be Markdown.
-- Start with a brief prose-style rationale paragraph.
-- Follow with concise key points focused on user-visible benefits; skip minor refactors.
-
-## Documentation
-
-- TypeScript `.d.ts` specs in `packages/core/src/spec/` are compiled into the JSON schema; keep their docs user-facing
-- When documenting defaults in spec `.d.ts`, use the `__Default value:__` convention at the end of the JSDoc block
-- Keep docs focused on user-visible behavior and semantics; avoid implementation details unless they are necessary for correct usage
-- Prefer concise, direct wording in docs and JSDoc in `.d.ts`.
-- Avoid vague or tentative phrasing unless it carries real meaning
-- Prefer plain statements about behavior over analogies or design commentary
-- Use imperative phrasing such as "Use ..." or "Use this to ..." only when the
-  action is required or strongly recommended. When something is one available
-  option, present it as an option.
-- User-facing docs should not include implementation details or internal design rationale unless they are necessary for correct usage
-- If a sentence does not help the reader use the feature, shorten it or remove it
-- Documention in `docs/` is user-facing and should be written with the same principles as JSDoc;
-- Docs macros:
-  - `SCHEMA <TypeName>` embeds schema-derived property docs (for example, `SCHEMA ExprRef`)
-  - `EXAMPLE examples/docs/...json` embeds a small self-contained docs spec from `examples/docs/`
-  - Docs macros are implemented in `utils/markdown_extension/extension/extension.py`
-- If a new or renamed type is missing during docs build, regenerate schema/docs artifacts (for example, `npm run build && npm run build:docs`)
-- User-facing docs use Zensical (https://zensical.org/). Site structure is configured in `zensical.toml`.
--
-
-## Architecture pointers
-
-Essential architectural topics live in `ARCHITECTURE.md`. Refer to that file for the details listed below:
-
-- High-level architecture, view hierarchy, and dataflow (Core orchestrator, view factory, flow builder, resolution management, lifecycle, mutations, and quick subtree helpers)
-- Rendering pipeline (two-phase layout + render, contexts, batches, animator coordination, picking, WebGL resources, shaders, textures)
-- Reactivity and expressions (ParamMediator, expressions, expression propagation, ExprRef activation, future signals migration notes)
-- WebGPU migration implications and research context (why WebGL2, selection strategy, research goals, key interaction patterns)
-- Project layout plus Core/App entry points and Redux/provenance pathways in `packages/app`
-
-This doc is now the single source of architectural truth; AGENTS now only highlight where to find these topics.
+- Use the `write-genomespy-docs` skill for user-facing docs, specification JSDoc,
+  schema macros, or docs builds.
+- Use the `plan-genomespy-change` skill for architecture or implementation
+  proposals.
+- Use the `debug-genomespy-web` skill for browser reproduction and UI smoke
+  testing.
+- For GitHub reads and writes, including PRs, reviews, comments, and issues,
+  prefer the connected GitHub MCP tools. Use the `gh` CLI only when the
+  connector does not support the required operation or context.
+- For agent-authored or materially rewritten GitHub issue or PR bodies, reviews,
+  and comments, append
+  `_Posted by <agent name> (AI agent) at the user's request._`, replacing
+  `<agent name>` with the actual agent identity, such as `Codex` or `Claude`.
+  Do not append attribution to issue or PR titles. Omit the footer only when
+  posting the user's wording verbatim, and never present agent-authored text as
+  if the user wrote it.
+- Before creating a PR or merging, reconcile every incomplete task in relevant
+  `plans/` files by completing it or marking it discarded, commit that record,
+  and delete the plan files in a later commit. Never merge temporary plan files.
+- Commits use Conventional Commits. The complete header and every body/footer
+  line must be at most 100 characters. Include a brief body by default, focused
+  on the rationale for the change; omit it only for genuinely trivial commits.
+  Reserve `docs` for user-facing documentation that belongs in changelogs. Use
+  `chore` for internal documentation such as agent instructions and architecture
+  maintenance.
+  Use the `prepare-genomespy-change` skill when writing commits, commit messages,
+  PR titles, or PR notes.

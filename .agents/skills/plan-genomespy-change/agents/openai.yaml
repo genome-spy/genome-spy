@@ -1,0 +1,4 @@
+interface:
+    display_name: "Plan GenomeSpy Change"
+    short_description: "Design reviewable GenomeSpy changes"
+    default_prompt: "Use $plan-genomespy-change to create an implementation proposal."

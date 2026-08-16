@@ -1,0 +1,4 @@
+interface:
+    display_name: "Write GenomeSpy Docs"
+    short_description: "Author user-facing GenomeSpy documentation"
+    default_prompt: "Use $write-genomespy-docs to update GenomeSpy documentation."
