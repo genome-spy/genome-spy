@@ -997,6 +997,10 @@ SCHEMA ViewOpacityDef
 
 SCHEMA ViewSpec
 
+## ViewportDomainRef
+
+SCHEMA ViewportDomainRef
+
 ## WigDataFormat
 
 SCHEMA WigDataFormat
