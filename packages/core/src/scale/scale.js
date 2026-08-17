@@ -127,7 +127,12 @@ var SKIP = toSet([
     "name",
 ]);
 
-export function configureScale(_, scale, logger) {
+export function configureScale(
+    _,
+    scale,
+    logger,
+    suppressUninitializedDomain = false
+) {
     logger = ensureLogger(logger);
 
     for (const key in _) {
@@ -141,7 +146,12 @@ export function configureScale(_, scale, logger) {
         }
     }
 
-    const domainConfig = configureDomain(scale, _, logger);
+    const domainConfig = configureDomain(
+        scale,
+        _,
+        logger,
+        suppressUninitializedDomain
+    );
     if (domainConfig.domain) {
         scale.domain(domainConfig.domain);
     }
@@ -161,14 +171,15 @@ export function configureScale(_, scale, logger) {
 export default function createScale(_, logger) {
     // Seed continuous scales with a placeholder domain before key selection so
     // scheme-backed scales choose the interpolating family.
-    const scaleProps =
-        !_.domain && isContinuous(_.type)
-            ? {
-                  ..._,
-                  // [0, 0] indicates an uninitialized domain.
-                  domain: [0, 0],
-              }
-            : _;
+    const suppressUninitializedDomain =
+        !_.domain && !_.domainRaw && isContinuous(_.type);
+    const scaleProps = suppressUninitializedDomain
+        ? {
+              ..._,
+              // [0, 0] indicates an uninitialized domain.
+              domain: [0, 0],
+          }
+        : _;
 
     const key = scaleKey(scaleProps);
     const scale = getScale(key);
@@ -179,7 +190,12 @@ export default function createScale(_, logger) {
 
     const scaleInstance = scale();
 
-    configureScale(scaleProps, scaleInstance, logger);
+    configureScale(
+        scaleProps,
+        scaleInstance,
+        logger,
+        suppressUninitializedDomain
+    );
 
     return scaleInstance;
 }
@@ -226,7 +242,12 @@ function copyScaleForDomain(scale) {
     return copy;
 }
 
-export function configureDomain(scale, _, logger) {
+export function configureDomain(
+    scale,
+    _,
+    logger,
+    suppressUninitializedDomain = false
+) {
     if (!scale.domain) {
         return {
             domain: null,
@@ -308,7 +329,9 @@ export function configureDomain(scale, _, logger) {
     }
 
     // set the scale domain
-    workingScale.domain(domainCheck(type, domain, logger));
+    workingScale.domain(
+        domainCheck(type, domain, logger, suppressUninitializedDomain)
+    );
 
     // perform 'nice' adjustment as requested
     if (_.nice && workingScale.nice) {
@@ -362,8 +385,15 @@ function padDomain(type, domain, range, pad, exponent, constant) {
     return domain;
 }
 
-function domainCheck(type, domain, logger) {
-    if (isLogarithmic(type)) {
+function domainCheck(
+    type,
+    domain,
+    logger,
+    suppressUninitializedDomain = false
+) {
+    // createScale seeds continuous scales with [0, 0] before data initializes
+    // their domain. Do not report that internal placeholder as user input.
+    if (isLogarithmic(type) && !suppressUninitializedDomain) {
         // sum signs of domain values
         // if all pos or all neg, abs(sum) === domain.length
         var s = Math.abs(

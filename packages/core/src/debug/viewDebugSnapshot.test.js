@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import View from "../view/view.js";
 import { create } from "../view/testUtils.js";
 import { createViewDebugSnapshot } from "./viewDebugSnapshot.js";
@@ -79,11 +79,26 @@ describe("createViewDebugSnapshot", () => {
         view.getSize = () => {
             throw new Error("Cannot use step-based size with null scale.");
         };
+        // These failures are intentional; assert their diagnostics without printing them.
+        const warn = vi
+            .spyOn(console, "warn")
+            .mockImplementation(() => undefined);
 
         const snapshot = createViewDebugSnapshot(view, {
             getDebugId: () => "view-id",
         });
 
+        expect(warn).toHaveBeenNthCalledWith(
+            1,
+            'Failed to collect view debug field "size".',
+            expect.any(Error)
+        );
+        expect(warn).toHaveBeenNthCalledWith(
+            2,
+            'Failed to collect view debug field "viewportSize".',
+            expect.any(Error)
+        );
+        warn.mockRestore();
         expect(snapshot.nodes).toHaveLength(1);
         expect(snapshot.nodes[0]).toMatchObject({
             name: "broken",

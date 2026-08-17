@@ -23,6 +23,7 @@ import MergeSampleFacets from "./mergeFacets.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import Provenance from "../state/provenance.js";
 import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
+import { LEGACY_LABEL_TITLE_TEXT_WARNING } from "./sampleViewSpecNormalizer.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -709,6 +710,9 @@ describe("sample label column", () => {
     });
 
     test("keeps the legacy labelTitleText alias working", async () => {
+        const warn = vi
+            .spyOn(console, "warn")
+            .mockImplementation(() => undefined);
         const { view } = await createSampleViewForTest({
             spec: /** @type {any} */ ({
                 data: {
@@ -727,6 +731,8 @@ describe("sample label column", () => {
             }),
         });
 
+        expect(warn).toHaveBeenCalledWith(LEGACY_LABEL_TITLE_TEXT_WARNING);
+        warn.mockRestore();
         expect(view.sampleLabelView.spec.title).toMatchObject({
             text: "Legacy title",
         });

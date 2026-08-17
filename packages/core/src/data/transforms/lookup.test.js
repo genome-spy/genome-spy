@@ -724,6 +724,9 @@ test("loads and parses each VCF once while matching within file batches", async 
 });
 
 test("rejects lazy lookup tables", async () => {
+    // The invalid auxiliary source is intentional; assert its diagnostic without printing it.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
     await expect(
         createHeadlessEngine({
             data: { values: [{ codon: "ATG" }] },
@@ -743,4 +746,10 @@ test("rejects lazy lookup tables", async () => {
             },
         })
     ).rejects.toThrow(/Lookup tables cannot use lazy data sources/);
+    expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({
+            message: "Lookup tables cannot use lazy data sources.",
+        })
+    );
+    warn.mockRestore();
 });

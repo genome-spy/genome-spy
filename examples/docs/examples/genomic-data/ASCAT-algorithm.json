@@ -506,7 +506,7 @@
                   "type": "quantitative",
                   "scale": {
                     "type": "pow",
-                    "base": 2,
+                    "exponent": 2,
                     "domain": [0, 0.5],
                     "range": [0, 0.8]
                   }
@@ -538,7 +538,7 @@
                   "type": "quantitative",
                   "scale": {
                     "type": "pow",
-                    "base": 2,
+                    "exponent": 2,
                     "domain": [0, 0.5],
                     "range": [0, 0.8]
                   }

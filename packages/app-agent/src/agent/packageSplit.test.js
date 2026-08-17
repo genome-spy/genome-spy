@@ -32,19 +32,19 @@ beforeAll(() => {
 
     execFileSync(process.execPath, [viteBin, "build"], {
         cwd: resolve(repoRoot, "packages/app"),
-        stdio: "inherit",
+        stdio: ["ignore", "ignore", "inherit"],
     });
     execFileSync(
         process.execPath,
         [viteBin, "build", "--config", "vite.agent-subpaths.config.js"],
         {
             cwd: resolve(repoRoot, "packages/app"),
-            stdio: "inherit",
+            stdio: ["ignore", "ignore", "inherit"],
         }
     );
     execFileSync(process.execPath, [viteBin, "build"], {
         cwd: resolve(repoRoot, "packages/app-agent"),
-        stdio: "inherit",
+        stdio: ["ignore", "ignore", "inherit"],
     });
 });
 
@@ -68,9 +68,9 @@ describe("bundled package split", () => {
                 "dialog.es.js",
             ])
         );
-        expect(appAgentDistFiles.some((file) => file.startsWith("blosc-"))).toBe(
-            false
-        );
+        expect(
+            appAgentDistFiles.some((file) => file.startsWith("blosc-"))
+        ).toBe(false);
         expect(appAgentDistFiles.some((file) => file.startsWith("zstd-"))).toBe(
             false
         );

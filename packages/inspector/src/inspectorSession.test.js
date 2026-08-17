@@ -66,6 +66,7 @@ function createFakeView() {
         flowHandle: {},
         visit: (visitor) => visitor(view),
         getPathString: () => "root",
+        getDataAncestors: () => [],
         isVisible: () => true,
         isConfiguredVisible: () => true,
         isVisibleInSpec: () => true,

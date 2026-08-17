@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import { createSvg } from "../index.js";
@@ -241,6 +241,10 @@ describe("SVG point renderer", () => {
     });
 
     test("reports resolved unsupported properties separately", async () => {
+        // The deprecated property is intentional; assert its diagnostic without printing it.
+        const warn = vi
+            .spyOn(console, "warn")
+            .mockImplementation(() => undefined);
         const { view } = await createHeadlessEngine({
             params: [{ name: "gradient", value: 0.25 }],
             data: { values: [{}] },
@@ -256,6 +260,10 @@ describe("SVG point renderer", () => {
             },
         });
 
+        expect(warn).toHaveBeenCalledWith(
+            'geometricZoomBound is deprecated. Use something like the following instead: "size": { "expr": "min(0.5 * pow(zoomLevel, 2), 200)" }.'
+        );
+        warn.mockRestore();
         const { warnings } = createSvg({
             viewRoot: view,
             logicalWidth: 100,

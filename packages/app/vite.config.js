@@ -57,6 +57,7 @@ export default defineConfig(({ command }) => ({
                 // Replace is needed by redux. Maybe a different redux build
                 // should be used in production.
                 replace({
+                    preventAssignment: true,
                     "process.env.NODE_ENV": JSON.stringify("production"),
                 }),
             ],

@@ -75,7 +75,10 @@ describe("gs-agent-chat-panel", () => {
         };
 
         getAgentState(app).agentAdapter = {
-            requestAgentTurn: vi.fn(),
+            requestAgentTurn: vi.fn(async () => ({
+                response: { type: "answer", message: "Ready." },
+                trace: {},
+            })),
             getAgentContext: vi.fn(() => ({})),
             getAgentVolatileContext: vi.fn(() => ({})),
             executeActions: vi.fn(),
@@ -116,7 +119,10 @@ describe("gs-agent-chat-panel", () => {
         };
 
         getAgentState(app).agentAdapter = {
-            requestAgentTurn: vi.fn(),
+            requestAgentTurn: vi.fn(async () => ({
+                response: { type: "answer", message: "Ready." },
+                trace: {},
+            })),
             getAgentContext: vi.fn(() => ({})),
             getAgentVolatileContext: vi.fn(() => ({})),
             executeActions: vi.fn(),

@@ -514,6 +514,8 @@ test("UrlSource reports conflicting template fields", async () => {
             async () => new Response("sample\tvalue\nB\t1\n", { status: 200 })
         )
     );
+    // The conflict is expected; keep its diagnostic out of the test runner output.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
     const view = createViewStub();
     const source = new UrlSource(
@@ -530,6 +532,11 @@ test("UrlSource reports conflicting template fields", async () => {
 
     await source.load();
 
+    expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({
+            message: 'Descriptor field "sample" conflicts with loaded datum.',
+        })
+    );
     expect(/** @type {any} */ (view).loadingStatus).toEqual({
         status: "error",
         detail: expect.stringContaining(

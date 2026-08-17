@@ -193,10 +193,18 @@ describe("bookmark restore", () => {
                 throw new Error("Intent failed");
             },
         });
+        // The rejected intent is expected; assert its diagnostic without printing it.
+        const error = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => undefined);
 
         await expect(restoreBookmark(entry, app)).resolves.toEqual({
             plots: [],
         });
+        expect(error).toHaveBeenCalledWith(
+            expect.objectContaining({ message: "Intent failed" })
+        );
+        error.mockRestore();
     });
 });
 

@@ -272,9 +272,18 @@ test("Scale warns for zero in log domain", function () {
     expect(logScale([0, 1])).toThrow();
     expect(logScale([-1, 0])).toThrow();
     expect(logScale([-1, 1])).toThrow();
+    expect(logScale([0, 0])).toThrow();
     expect(logScale([1, 0, 2])).toThrow();
     expect(logScale([1, 2])).not.toThrow();
     expect(logScale([-2, -1])).not.toThrow();
+});
+
+test("does not warn for an uninitialized log domain", function () {
+    let warnings = 0;
+
+    scale({ type: "log" }, { warn: () => warnings++ });
+
+    expect(warnings).toBe(0);
 });
 
 test("Scale infers scale key from type, domain, and range", function () {
