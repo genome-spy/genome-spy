@@ -30,6 +30,14 @@ states, preserve an outgoing visual until the transition ends, and animate to
 the new state—but GenomeSpy can initially keep persistent views live rather than
 capture bitmap snapshots. See [CSS View Transitions Level 1](https://www.w3.org/TR/css-view-transitions-1/).
 
+Clay's enter/exit transition model is useful evidence for two narrower
+requirements: a disappearing parent owns the lifetime of its exiting subtree,
+and exiting content needs an explicit position in sibling paint order. GenomeSpy
+should adapt those requirements to persistent live views rather than Clay's
+per-frame subtree cloning. See Clay's
+[transition configuration](https://github.com/nicbarker/clay#clay_transitionelementconfig)
+and [exit handling](https://github.com/nicbarker/clay/blob/main/clay.h#L4211-L4307).
+
 ## Intended behavior
 
 - A zoom-dependent policy changes whether a persistent concat child participates
@@ -47,7 +55,22 @@ capture bitmap snapshots. See [CSS View Transitions Level 1](https://www.w3.org/
 - Threshold hysteresis or an equivalent policy prevents flicker around semantic
   zoom boundaries.
 
-Layers within one semantic track should initially enter and exit as a unit.
+The semantic track is the transition owner. Its layers and other descendants
+initially enter and exit as a unit and do not create independent enter/exit
+state. App `SampleView` peek remains the one specialized nested transition and
+must compose with or be cancelled by the outer track transition explicitly.
+Per-layer semantic behavior is not introduced in this phase.
+
+Only instances participating in the target layout are interactive. An exiting
+track stops participating in picking and interaction when its exit begins, even
+though it remains drawable until presentation completes. An entering track uses
+its presented geometry for interaction once it joins the target layout.
+
+Exiting content also needs a deterministic paint position relative to reflowing
+siblings. Evaluate underneath, previous natural order, and above-sibling behavior
+using the representative semantic-track example, then select and test one
+internal policy. A public ordering option is not required.
+
 Arbitrary child insertion, removal, reparenting, and facet restructuring may use
 the existing immediate structural fallback.
 
@@ -80,11 +103,16 @@ not required to validate the architecture.
   entering, exiting, opening, closing, or scrolling peek before and during the
   outer track transition preserves sample identity, clipping, picking, and
   cleanup without multiplying transition state.
+- Descendant layers do not create independent enter/exit state when their
+  semantic track transitions. Parent motion and SampleView peek are each applied
+  exactly once.
 - Reversing zoom direction at multiple transition points causes no coordinate or
   opacity jump.
 - Hysteresis prevents repeated toggles near a threshold.
-- Exiting content remains correctly clipped and pickable only according to the
-  chosen interaction policy.
+- Exiting content remains correctly clipped but is excluded from picking and
+  interaction from the start of its exit.
+- Exiting content follows the selected deterministic paint-order policy while
+  siblings reflow through its previous area.
 - Temporary state and obsolete batch commands are cleaned up after completion or
   cancellation.
 - Disabled transitions, reduced motion, headless rendering, and unsupported
@@ -104,7 +132,10 @@ not required to validate the architecture.
   resource policy needs measurement.
 - Batch rebuilding at enter/exit boundaries must not occur on every animation
   frame.
-- Interaction with exiting content needs an explicit rule.
+- Active pointer capture must be cancelled or transferred deterministically when
+  its track begins exiting.
+- Exit paint order must work with retained mark-grouped batches; Clay's ordering
+  choices are cases to evaluate, not an implementation to copy.
 - Target layout has no rectangle for an exiting child, so exit geometry must be
   presentation-only and must not leak back into sizing.
 - Semantic thresholds based directly on animated geometry could create feedback;

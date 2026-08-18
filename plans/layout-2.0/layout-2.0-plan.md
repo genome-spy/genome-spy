@@ -135,6 +135,28 @@ Stable layout-instance identity is a prerequisite for retention and animation.
 It should be based on explicit concepts such as view, facet, and rendering role,
 not traversal order or serialized keys.
 
+[Clay](https://github.com/nicbarker/clay) provides additional evidence for this
+direction. Its immediate-mode layout output uses stable semantic element IDs to
+connect repeated layouts to transitions and retained renderers, and its local-ID
+model shows how parent-instance scope can disambiguate reusable descendants. The
+transferable idea is explicit identity based on domain keys and ownership, not
+Clay's hashing or traversal-derived automatic IDs. See Clay's
+[element-ID documentation](https://github.com/nicbarker/clay#element-ids) and
+[retained-mode guidance](https://github.com/nicbarker/clay#retained-mode-rendering).
+
+Clay's transition implementation also exposes requirements that should be made
+explicit here: nested motion must not be applied twice, a semantic group needs
+one owner for enter/exit lifetime, interaction during transitions needs a
+policy, and exiting content needs deterministic paint order. These are design
+and test requirements, not implementation patterns to copy. Clay recomputes
+layout during active transitions and clones disappearing subtrees; both conflict
+with GenomeSpy's layout-free animation frames and persistent-view starting
+point. See Clay's
+[transition processing](https://github.com/nicbarker/clay/blob/main/clay.h#L4188-L4478).
+Clay's generation-based cleanup is also not a lifetime model for GenomeSpy:
+absence from a target-layout result may mean non-participating but still
+renderable, not destroyed.
+
 ## Alternatives considered
 
 - **Implement incremental layout first:** rejected as the default sequence
@@ -272,6 +294,9 @@ implementation prematurely.
 
 - App `SampleView` facets, axes, legends, titles, backgrounds, scrollbars,
   clipping, and decorations have stable, unambiguous identities.
+- Repeated instances use semantic or domain keys when their order can change.
+  Parent-instance scope may disambiguate reusable generated descendants without
+  making traversal position part of their identity.
 - Equal rectangles belonging to different instances may later diverge without
   accidentally sharing presentation state.
 - Sample filtering updates repeated membership, layout, metadata/sidebar
@@ -286,17 +311,29 @@ implementation prematurely.
 
 - Resizing or repositioning produces deterministic start, intermediate, and
   target geometry without layout work on animation frames.
+- Parent and child presentation remain coherent: movement inherited from a
+  transitioning parent is applied exactly once, regardless of whether the
+  implementation interpolates local or absolute geometry.
 - Picking, hit testing, and clipping follow presented geometry; logical layout
   and scale sizing use target geometry.
+- Persistent instances that remain in the target layout remain interactive
+  through their presented geometry during the transition.
 - Interruption continues from the current presentation without a visible jump.
 
 ### Semantic zoom in a concat view
 
 - Crossing a zoom threshold changes the visible set of persistent concat
   children while exiting, entering, and sibling tracks animate coherently.
+- The semantic track owns its enter/exit lifetime and presentation. Descendant
+  layers follow that transition rather than creating independent enter/exit
+  state.
+- Exiting tracks stop participating in picking and interaction when the exit
+  begins, even though they remain drawable until presentation completes.
+- Exiting tracks have a deterministic, tested paint order relative to reflowing
+  siblings; the initial policy is selected using the representative example.
 - Reversing direction does not cause coordinate jumps. Hysteresis or an
   equivalent policy prevents threshold flicker.
-- Layers inside a track behave as a unit unless independently configured.
+- Layers inside a track behave as a unit.
 
 ### Immediate and structural fallbacks
 
@@ -316,6 +353,9 @@ implementation prematurely.
 - The location of semantic-zoom policy—specification, parameter expression, or
   application state—remains open.
 - Transition interruption and threshold hysteresis require explicit semantics.
+- Exit paint order must account for retained mark batching; Clay's underneath,
+  natural, and above-sibling policies are useful cases to evaluate, not a public
+  API requirement.
 - Scope may grow toward arbitrary structural transitions; YAGNI review should
   keep those out until a concrete use case requires them.
 

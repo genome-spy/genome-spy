@@ -99,6 +99,14 @@ Earlier review identified these candidates, independent of dirty layout:
 - Cull or virtualize offscreen scroll content before building fine-grained
   invalidation machinery when large repeated collections are the bottleneck.
 
+Clay's default visibility culling is evidence that early viewport rejection can
+keep regenerated render output compact. GenomeSpy already has clipping and
+mark-level visible-range culling, so any additional optimization should target
+measured view/instance dispatch cost. Base it on presented bounds and effective
+clips, and do not let culling change instance identity, resource lifetime,
+render membership, or batch topology. See Clay's
+[visibility-culling documentation](https://github.com/nicbarker/clay#visibility-culling).
+
 ## Rectangle representation opportunity
 
 `Rectangle` deliberately models coordinates as an immutable graph of accessor

@@ -22,6 +22,15 @@ At minimum, a transitioning instance needs:
 - its newly computed target geometry;
 - enough timing/easing state to derive the next presented geometry.
 
+Clay's transition records and interruption behavior provide supporting evidence
+for this small state model: when a target changes, Clay starts again from the
+current presentation. Its implementation also compares parent-relative motion
+to avoid animating movement inherited from a parent. GenomeSpy should preserve
+the observable invariants without copying that algorithm, because its
+transitions must not recompute layout on animation frames. See Clay's
+[transition state](https://github.com/nicbarker/clay/blob/main/clay.h#L1154-L1169)
+and [target-change handling](https://github.com/nicbarker/clay/blob/main/clay.h#L4367-L4431).
+
 A permanently stored `from` rectangle may not be necessary if it can be captured
 by the transition coordinator. The representation should be chosen only after
 Phase 3 establishes how render commands access geometry.
@@ -46,6 +55,8 @@ target/presented interpolation to sample facets.
   parameters, scale and axis lengths, lazy-data sizing, and target canvas size.
 - **Presented geometry** drives WebGL viewports, clipping, picking, hit testing,
   rulers, loading indicators, and other visible interaction bounds.
+- Persistent instances that remain in the target layout remain interactive
+  using presented geometry while they move.
 - Outside a transition the two are equal.
 - Headless, export, reduced-motion, and transitions-disabled paths snap
   presented geometry to target deterministically.
@@ -65,6 +76,12 @@ matched by Phase 2 identity:
 4. On interruption, begin again from the current presentation, not the previous
    target or original start.
 5. At completion, snap exactly to target and release transient transition state.
+
+Nested presentation must apply movement exactly once. A descendant whose target
+changes only because its parent moved must remain visually attached to that
+parent without acquiring a second effective interpolation. This is a semantic
+requirement rather than a prescribed local- or absolute-coordinate algorithm;
+the representation chosen after Phase 3 should determine the simplest method.
 
 Clipping should be derived from presented parent/viewport geometry. Pixel
 rounding should occur when applying WebGL viewport/scissor state rather than in
@@ -102,6 +119,8 @@ required for Phase 4 acceptance.
 - Picking, clipping, and hit testing follow midpoint presentation geometry.
 - Axis/scale sizing and a subsequent interrupted layout use target geometry.
 - Nested expansion and contraction maintain valid clipping.
+- A parent-only move keeps descendants attached and applies the inherited motion
+  exactly once at start, midpoint, interruption, and completion.
 - SampleView peek continues to interpolate each sample exactly once. Its sample
   facet texture and CPU/SVG position path, sticky summaries, group backgrounds,
   repeated axes, scrollbar, clipping, picking, and pointer-to-sample lookup agree
@@ -122,8 +141,8 @@ required for Phase 4 acceptance.
 ## Risks and open questions
 
 - Which public bounds APIs mean last presented bounds versus canonical targets?
-- Should interaction remain active throughout a transition, and how should
-  rapidly moving small targets behave?
+- How should active pointer capture behave when a persistent target moves
+  rapidly or becomes very small?
 - How are nested clips combined when both parent and child interpolate?
 - What minimal state supports interruption without allocating on every frame?
 - Should the first implementation be opt-in and use a fixed internal duration

@@ -41,6 +41,15 @@ existing batch. Filtering changes the sample hierarchy, repeated membership,
 sidebar/metadata alignment, and potentially guide overhang; it explicitly
 invalidates scene and size and should rebuild once after the update settles.
 
+Clay's retained-rendering guidance is supporting evidence for associating
+regenerated layout output with persistent graphics objects through stable IDs.
+GenomeSpy should adapt that mapping concept through layout-instance indices or
+slots. Do not adapt Clay's suggestion to byte-compare flat render commands:
+GenomeSpy commands capture callbacks, rendering options, picking behavior, and
+GPU state whose contracts are clearer through explicit scene invalidation. See
+Clay's
+[retained-mode guidance](https://github.com/nicbarker/clay#retained-mode-rendering).
+
 ## Intended outcome
 
 - A full layout produces new target geometry for stable instances.
