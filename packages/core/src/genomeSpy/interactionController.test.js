@@ -363,12 +363,15 @@ describe("InteractionController", () => {
 
         /** @type {any} */
         let currentTarget = firstTarget;
+        /** @type {string[]} */
+        const interactionTypes = [];
 
         const controller = new InteractionController({
             viewRoot: /** @type {any} */ ({
                 propagateInteraction(
                     /** @type {import("../utils/interaction.js").default} */ event
                 ) {
+                    interactionTypes.push(event.type);
                     event.target = currentTarget;
                 },
                 visit: /** @returns {void} */ () => undefined,
@@ -388,7 +391,6 @@ describe("InteractionController", () => {
             }),
             emitEvent: /** @returns {void} */ () => undefined,
             tooltipHandlers: /** @type {Record<string, any>} */ ({}),
-            renderPickingFramebuffer: /** @returns {void} */ () => undefined,
         });
 
         controller.registerInteractionEvents();
@@ -397,6 +399,41 @@ describe("InteractionController", () => {
             new MouseEvent("mousemove", { clientX: 20, clientY: 30 })
         );
         expect(canvas.style.cursor).toBe("move");
+
+        canvas.dispatchEvent(
+            new MouseEvent(
+                "wheel",
+                /** @type {any} */ ({
+                    clientX: 20,
+                    clientY: 30,
+                    deltaX: 10,
+                    deltaY: 0,
+                })
+            )
+        );
+        canvas.dispatchEvent(
+            new MouseEvent("mousedown", { clientX: 20, clientY: 30 })
+        );
+        canvas.dispatchEvent(
+            new MouseEvent("mousemove", {
+                buttons: 1,
+                clientX: 25,
+                clientY: 35,
+            })
+        );
+        canvas.dispatchEvent(
+            new MouseEvent("mouseup", { clientX: 25, clientY: 35 })
+        );
+
+        expect(interactionTypes).toEqual(
+            expect.arrayContaining([
+                "wheel",
+                "mousedown",
+                "mousemove",
+                "mouseup",
+            ])
+        );
+        expect(readPickingId).not.toHaveBeenCalled();
 
         document.body.classList.add(FREEZE_INTERACTION_CLASS_NAME);
         currentTarget = secondTarget;

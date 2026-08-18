@@ -92,12 +92,12 @@ describe("createRenderingBackend", () => {
         );
     });
 
-    test("removes a failed WebGL canvas before falling back", async () => {
+    test("preserves existing canvases when WebGL creation fails", async () => {
         const container = document.createElement("div");
-        const failedCanvas = document.createElement("canvas");
+        const existingCanvas = document.createElement("canvas");
+        container.appendChild(existingCanvas);
         const canvasBackend = /** @type {any} */ ({ surface: {} });
         mocks.createWebGLHelper.mockImplementation(() => {
-            container.appendChild(failedCanvas);
             throw new Error("No WebGL2");
         });
         mocks.createCanvas2DRenderingBackend.mockReturnValue(canvasBackend);
@@ -108,7 +108,7 @@ describe("createRenderingBackend", () => {
         });
 
         expect(backend).toBe(canvasBackend);
-        expect(failedCanvas.isConnected).toBe(false);
+        expect(existingCanvas.parentElement).toBe(container);
         expect(mocks.warnOnce).toHaveBeenCalledOnce();
     });
 

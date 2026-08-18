@@ -601,19 +601,31 @@ Recorded Step 1 measurements:
 
 - Baseline `index.es.js`: 724,106 bytes raw and 243,616 bytes using
   `gzip -c`.
-- Step 1 `index.es.js`: 725,175 bytes raw and 243,966 bytes using `gzip -c`.
-  The synchronous ESM change is +1,069 bytes raw and +350 bytes gzip, below the
+- Final Step 1 `index.es.js`: 725,336 bytes raw and 244,028 bytes using
+  `gzip -c`. The synchronous ESM change is +1,230 bytes raw and +412 bytes gzip,
+  below the
   2 KiB gzip budget.
-- Existing affected synchronous files changed from 3,048 to 3,057 lines
-  combined. The new static backend factory adds 109 lines, for +118 synchronous
+- Existing affected synchronous files changed from 5,100 to 5,119 lines
+  combined. The new static backend factory adds 107 lines, for +126 synchronous
   source lines in total. The seven-line Canvas2D placeholder remains in its own
   171-byte optional ESM chunk.
 - Core build bundling succeeds and emits the Canvas2D chunk. Typings generation
   remains blocked by the pre-existing `gff-nostream` `GFF3Feature` and
   `generic-filehandle2`/`renameRefSeqs` type mismatches; `test:tsc` additionally
   reports the pre-existing `interactionDispatcher.test.js` view-stub mismatch.
-- Focused backend, interaction, and coordinator tests pass (16 tests), as does
-  the full Core unit suite (1,962 passed, one skipped, and two todo).
+- Focused backend, interaction, coordinator, launch, and cleanup tests pass, as
+  does the full Core unit suite (1,965 passed, one skipped, and two todo).
+
+Step 1 review gate outcome:
+
+- The reviewed implementation was committed as `f0d02afcd` before applying
+  review fixes.
+- The review found and the follow-up accepts three changes: allow the existing
+  no-GL view-context path during Canvas launch and type it honestly, verify
+  pickerless wheel/drag routing, and make `WebGLHelper` roll back its own failed
+  constructor instead of deleting a canvas from generic factory code.
+- The KISS review found no other useful abstraction, rendering path, or state to
+  remove. The cleanup ownership change is the accepted simplification.
 
 Documentation and migration: add the option type and internal contract only;
 defer public renderer documentation until the backend is functional. Existing

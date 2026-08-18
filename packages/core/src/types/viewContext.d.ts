@@ -43,7 +43,7 @@ export type CreateViewOptions = ViewOptions;
  */
 export default interface ViewContext {
     dataFlow: DataFlow;
-    glHelper: WebGLHelper;
+    glHelper?: WebGLHelper;
     animator: Animator;
     genomeStore?: GenomeStore;
     fontManager: BmFontManager;

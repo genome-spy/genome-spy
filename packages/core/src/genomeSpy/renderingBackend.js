@@ -53,8 +53,6 @@ export async function createRenderingBackend(options) {
             throw error;
         }
 
-        // WebGLHelper appends its canvas before requesting a context.
-        options.container.querySelector("canvas")?.remove();
         const backend = await createCanvas2DBackend(options);
         warnOnce(
             "WebGL2 is unavailable. Using the Canvas2D compatibility renderer."

@@ -1296,7 +1296,7 @@ export default class Mark {
      * Delete WebGL buffers etc.
      */
     deleteGraphicsData() {
-        const glHelper = this.glHelper;
+        const glHelper = this.getContext().glHelper;
         if (!glHelper) {
             this.vertexArrayInfo = undefined;
             this.bufferInfo = undefined;
@@ -1373,7 +1373,11 @@ export default class Mark {
 
     /** Convenience method */
     get glHelper() {
-        return this.getContext().glHelper;
+        const glHelper = this.getContext().glHelper;
+        if (!glHelper) {
+            throw new Error("WebGL is not available for this mark.");
+        }
+        return glHelper;
     }
 
     /** Convenience method */

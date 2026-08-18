@@ -389,6 +389,7 @@ export default class GenomeSpy {
         return createViewContext({
             dataFlow,
             glHelper: this.#glHelper,
+            allowMissingGlHelper: !this.#glHelper,
             animator: this.animator,
             genomeStore: this.genomeStore,
             fontManager: new BmFontManager(this.#glHelper),
