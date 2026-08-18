@@ -3,7 +3,8 @@
 This directory contains GenomeSpy Core's compatibility renderer for browsers
 and virtual desktops where WebGL2 is unavailable. The subsystem is dynamically
 imported after backend selection, so normal WebGL rendering does not include it
-in the synchronous entry bundle.
+in the synchronous ESM entry bundle. The single-file UMD distribution still
+inlines optional modules.
 
 ## Architecture
 

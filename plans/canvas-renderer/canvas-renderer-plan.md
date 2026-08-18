@@ -1031,6 +1031,18 @@ Recorded Step 5 results (pre-review):
   claiming compatibility with that specific desktop policy and performance
   profile.
 
+Step 5 review gate outcome:
+
+- The reviewed documentation and bundle guard were committed as `44d98fcff`
+  before applying review fixes.
+- The review accepted two documentation corrections: qualify lazy chunking as
+  an ESM guarantee because the single-file UMD includes optional modules, and
+  distinguish local implementation completion from the outstanding target-
+  desktop compatibility validation.
+- The KISS review found no code to remove or useful simplification. The bundle
+  guard is a direct extension of the existing source-map check, and the short
+  public documentation mentions serve separate discovery and API contexts.
+
 Documentation and migration: document `renderer`, automatic fallback,
 Canvas2D performance expectations, native-font differences, Canvas backing
 caveat, raster export behavior, and the absence of datum picking, data
@@ -1040,4 +1052,5 @@ changes.
 Tentative commit: `docs(core): document Canvas2D compatibility rendering`
 
 Step gate: complete the mandatory subagent review and commit gate before
-declaring the implementation plan complete.
+declaring local implementation complete. Keep target-desktop compatibility
+validation open until it has been run on the actual restricted environment.
