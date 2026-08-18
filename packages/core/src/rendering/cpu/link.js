@@ -49,12 +49,12 @@ export function visitLinkInstances(mark, properties, options, visitor) {
             [x2 - coords.x, coords.y2 - y2],
             { width: coords.width, height: coords.height },
             properties
-        ).map(([pointX, pointY]) => [
-            coords.x + pointX,
-            coords.y + coords.height - pointY,
-        ]);
-        const typedPoints = /** @type {LinkInstance["points"]} */ (points);
-        const [p1, p2, p3, p4] = typedPoints;
+        );
+        for (const point of points) {
+            point[0] += coords.x;
+            point[1] = coords.y + coords.height - point[1];
+        }
+        const [p1, p2, p3, p4] = points;
         const strokeWidth = encodeNumber(encoders.size, datum);
         if (
             !intersectsSvgBounds(
@@ -70,7 +70,7 @@ export function visitLinkInstances(mark, properties, options, visitor) {
         }
 
         instanceCount++;
-        visitor({ datum, points: typedPoints, strokeWidth });
+        visitor({ datum, points, strokeWidth });
     }
     return instanceCount;
 }

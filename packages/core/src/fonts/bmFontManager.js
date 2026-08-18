@@ -126,11 +126,13 @@ export default class BmFontManager {
                 "/" +
                 filename.replace(/\.\w+/, "");
 
-            const texturePromise = this._createTexture(urlBase + ".png");
             const metricsPromise = this._loadFont(urlBase + ".json");
+            const texturePromise = this._webGLHelper
+                ? this._createTexture(urlBase + ".png")
+                : undefined;
 
-            fontEntry.texture = await texturePromise;
             fontEntry.metrics = await metricsPromise;
+            fontEntry.texture = await texturePromise;
         } catch {
             console.warn(
                 `Cannot load font: "${key.family}". Using the embedded default font.`

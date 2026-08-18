@@ -10,12 +10,28 @@ function createRecordingContext() {
      * @type {{
      *     arcs: [number, number, number][],
      *     fillRects: [number, number, number, number][],
+     *     moves: [number, number][],
+     *     lines: [number, number][],
+     *     beziers: [number, number, number, number, number, number][],
+     *     translates: [number, number][],
+     *     rotations: number[],
+     *     fillTexts: [string, number, number, number | undefined][],
+     *     scales: [number, number][],
+     *     closes: number,
      *     saves: number
      * }}
      */
     const calls = {
         arcs: [],
         fillRects: [],
+        moves: [],
+        lines: [],
+        beziers: [],
+        translates: [],
+        rotations: [],
+        fillTexts: [],
+        scales: [],
+        closes: 0,
         saves: 0,
     };
     const context = /** @type {any} */ ({
@@ -24,6 +40,12 @@ function createRecordingContext() {
         strokeStyle: "#000000",
         globalAlpha: 1,
         lineWidth: 1,
+        lineCap: "butt",
+        lineJoin: "miter",
+        lineDashOffset: 0,
+        font: "",
+        textAlign: "start",
+        textBaseline: "alphabetic",
         resetTransform: vi.fn(),
         clearRect: vi.fn(),
         setTransform: vi.fn(),
@@ -32,6 +54,20 @@ function createRecordingContext() {
         beginPath: vi.fn(),
         rect: vi.fn(),
         clip: vi.fn(),
+        moveTo: (/** @type {number} */ x, /** @type {number} */ y) =>
+            calls.moves.push([x, y]),
+        lineTo: (/** @type {number} */ x, /** @type {number} */ y) =>
+            calls.lines.push([x, y]),
+        bezierCurveTo: (
+            /** @type {number} */ x1,
+            /** @type {number} */ y1,
+            /** @type {number} */ x2,
+            /** @type {number} */ y2,
+            /** @type {number} */ x3,
+            /** @type {number} */ y3
+        ) => calls.beziers.push([x1, y1, x2, y2, x3, y3]),
+        closePath: () => calls.closes++,
+        setLineDash: vi.fn(),
         fillRect: (
             /** @type {number} */ x,
             /** @type {number} */ y,
@@ -39,6 +75,18 @@ function createRecordingContext() {
             /** @type {number} */ height
         ) => calls.fillRects.push([x, y, width, height]),
         strokeRect: vi.fn(),
+        translate: (/** @type {number} */ x, /** @type {number} */ y) =>
+            calls.translates.push([x, y]),
+        rotate: (/** @type {number} */ angle) => calls.rotations.push(angle),
+        scale: (/** @type {number} */ x, /** @type {number} */ y) =>
+            calls.scales.push([x, y]),
+        measureText: vi.fn(() => ({ width: 0.5 })),
+        fillText: (
+            /** @type {string} */ text,
+            /** @type {number} */ x,
+            /** @type {number} */ y,
+            /** @type {number | undefined} */ maxWidth
+        ) => calls.fillTexts.push([text, x, y, maxWidth]),
         arc: (
             /** @type {number} */ x,
             /** @type {number} */ y,
@@ -225,5 +273,126 @@ describe("Canvas2DViewRenderingContext", () => {
         } finally {
             warn.mockRestore();
         }
+    });
+
+    test("records exact rule and link paths", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            layer: [
+                {
+                    mark: { type: "rule", strokeCap: "round" },
+                    encoding: {
+                        x: { value: 0.1 },
+                        x2: { value: 0.9 },
+                        y: { value: 0.25 },
+                        y2: { value: 0.25 },
+                        color: { value: "black" },
+                        size: { value: 2 },
+                    },
+                },
+                {
+                    mark: {
+                        type: "link",
+                        linkShape: "diagonal",
+                        orient: "vertical",
+                    },
+                    encoding: {
+                        x: { value: 0.1 },
+                        x2: { value: 0.9 },
+                        y: { value: 0.2 },
+                        y2: { value: 0.8 },
+                        color: { value: "black" },
+                        size: { value: 3 },
+                    },
+                },
+            ],
+        });
+        const recording = createRecordingContext();
+
+        render(view, recording.context);
+
+        expect(recording.calls.moves).toEqual([
+            [10, 75],
+            [10, 80],
+        ]);
+        expect(recording.calls.lines).toEqual([[90, 75]]);
+        expect(recording.calls.beziers).toEqual([[10, 50, 90, 50, 90, 20]]);
+        expect(recording.context.setLineDash).toHaveBeenCalledWith([]);
+    });
+
+    test("records text rotation, alignment, and offset", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "text",
+                align: "right",
+                baseline: "top",
+                dx: 3,
+                dy: 4,
+            },
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                text: { value: "T" },
+                angle: { value: 90 },
+                color: { value: "black" },
+                size: { value: 12 },
+            },
+        });
+        const recording = createRecordingContext();
+
+        render(view, recording.context);
+
+        expect(recording.calls.translates).toEqual([[50, 50]]);
+        expect(recording.calls.rotations).toEqual([Math.PI / 2]);
+        expect(recording.calls.fillTexts[0].slice(0, 3)).toEqual(["T", 3, 4]);
+        expect(recording.context.textAlign).toBe("right");
+        expect(recording.context.textBaseline).toBe("top");
+    });
+
+    test("records closed arrow boundaries beginning at its tip", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: "arrow",
+            encoding: {
+                x: { value: 0.1 },
+                x2: { value: 0.9 },
+                y: { value: 0.5 },
+                y2: { value: 0.5 },
+                fill: { value: "black" },
+                size: { value: 6 },
+            },
+        });
+        const recording = createRecordingContext();
+
+        render(view, recording.context);
+
+        expect(recording.calls.moves[0]).toEqual([90, 50]);
+        expect(recording.calls.lines.length).toBeGreaterThanOrEqual(4);
+        expect(recording.calls.closes).toBe(2);
+        expect(recording.context.fill).toHaveBeenCalledTimes(1);
+    });
+
+    test("normalizes reversed logo-letter cells by the measured glyph width", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: { type: "text", logoLetters: true },
+            encoding: {
+                x: { value: 0.8 },
+                x2: { value: 0.2 },
+                y: { value: 0.2 },
+                y2: { value: 0.8 },
+                text: { value: "A" },
+                color: { value: "black" },
+                size: { value: 10 },
+            },
+        });
+        const recording = createRecordingContext();
+
+        render(view, recording.context);
+
+        expect(recording.context.measureText).toHaveBeenCalledWith("A");
+        expect(recording.calls.scales[0][0]).toBeCloseTo(-120);
+        expect(recording.calls.fillTexts).toEqual([["A", 0, 0, undefined]]);
     });
 });

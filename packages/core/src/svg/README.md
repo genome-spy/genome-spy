@@ -14,10 +14,10 @@ rasterization is enabled, a preliminary traversal counts post-culling mark
 instances without creating instance elements.
 
 Mark-specific conversion lives in `renderers/`. `renderers/index.js` maps mark
-types to their SVG renderers. Renderers use the existing CPU encoders and
-resolved scales, project instances into the current view coordinates, cull
-invisible geometry, and emit editable SVG elements in draw order. SampleView
-facet transforms are applied by the rendering context before mark emission.
+types to thin SVG emitters. Shared visitors in `../rendering/cpu/` use the
+existing encoders and resolved scales to project, construct, and cull mark
+geometry. SVG and Canvas2D consume those occurrences in draw order. SampleView
+facet transforms are applied by each rendering context before mark emission.
 
 Marks above the user-supplied `maxVectorInstances` threshold are collected into
 maximal contiguous paint-order runs. `raster/index.js` is dynamically imported
@@ -31,8 +31,8 @@ Shared helpers include:
 - `svgMarkUtils.js` for encoders, scale projection, inherited presentation
   attributes, and numeric formatting.
 - `svgBounds.js` for clip-aware geometry and anchor culling.
-- `../rendering/cpu/markData.js` for selecting collector batches and traversing
-  rendered occurrences shared with Canvas2D.
+- `../rendering/cpu/` for selecting collector batches and for mark projection,
+  geometry, and visibility shared with Canvas2D.
 - `rectHatchPattern.js`, `linkArcFadeMask.js`, and `polygonUnion.js` for reusable
   definitions and specialized geometry.
 

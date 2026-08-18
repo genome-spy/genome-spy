@@ -44,7 +44,13 @@ export function renderArrowSvg(baseMark, options) {
     return visitArrowInstances(
         mark,
         properties,
-        { coords, data, visibleBounds, viewOpacity },
+        {
+            coords,
+            data,
+            visibleBounds,
+            viewOpacity,
+            countOnly: options.countOnly,
+        },
         (instance) => {
             if (options.countOnly) {
                 return;

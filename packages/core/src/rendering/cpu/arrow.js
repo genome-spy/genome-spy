@@ -45,11 +45,11 @@ export function resolveArrowProperties(mark) {
 /**
  * @param {import("../../marks/arrow.js").default} mark
  * @param {ReturnType<typeof resolveArrowProperties>} properties
- * @param {{coords: import("../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../../svg/svgBounds.js").SvgBounds, viewOpacity: number}} options
+ * @param {{coords: import("../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../../svg/svgBounds.js").SvgBounds, viewOpacity: number, countOnly?: boolean}} options
  * @param {(instance: ArrowInstance) => void} visitor
  */
 export function visitArrowInstances(mark, properties, options, visitor) {
-    const { coords, data, visibleBounds, viewOpacity } = options;
+    const { coords, data, visibleBounds, viewOpacity, countOnly } = options;
     const encoders =
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -134,6 +134,10 @@ export function visitArrowInstances(mark, properties, options, visitor) {
         ) {
             continue;
         }
+        instanceCount++;
+        if (countOnly) {
+            continue;
+        }
 
         const renderedHeadShape =
             properties.headShape == "triangle" || properties.headShape == "open"
@@ -205,7 +209,6 @@ export function visitArrowInstances(mark, properties, options, visitor) {
             toSvgString(encoders.stroke(datum)) != "none" &&
             encodeNumber(encoders.strokeOpacity, datum) * viewOpacity > 0 &&
             strokeWidth > 0;
-        instanceCount++;
         visitor({
             datum,
             boundaryLoops:

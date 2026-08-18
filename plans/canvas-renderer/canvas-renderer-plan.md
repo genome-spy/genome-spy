@@ -841,6 +841,36 @@ Recorded Step 3 results (pre-review):
   four SVG renderers shrink from 1,549 to 503 lines because geometry now has
   one owner.
 
+Step 3 review gate outcome:
+
+- The reviewed implementation was committed as `4a5f4e9b4` before applying
+  review fixes.
+- The review found two fidelity defects: Canvas logo letters did not normalize
+  native glyph width to the encoded cell, and non-default font metrics still
+  attempted to create a WebGL texture. The follow-up normalizes measured glyph
+  width and loads metrics without a texture when no WebGL helper exists.
+- The review also restores an allocation-free arrow count-only fast path, adds
+  exact command-recorder assertions for rule, link, text, arrow, and reversed
+  logo ranges, and updates the SVG architecture description.
+- The KISS review removed the one-consumer text-anchor visitor and the second
+  link control-point array. Text projection now reuses its range, layout, and
+  instance records rather than allocating intermediate objects for every
+  datum.
+- Chromium 149 sampling-heap profiles used a 4 KiB interval after warmup. One
+  hundred alternating redraws of 50,000 rects and 100,000 points, and 40
+  redraws of 25,000 links, sampled no allocation attributed to Canvas2D or the
+  shared CPU visitors. The initial dense-text profile sampled 4,128 bytes in
+  `visitTextInstances`; after reusing its helper results, the same 40 redraws
+  of 25,000 ranged text instances sampled none. Heap-profiler timings are not
+  comparable to the uninstrumented Step 2 benchmark.
+- Final verification passes all 385 repository test files (3,223 tests passed,
+  one skipped, and two todo), lint, the Core production build, and minimal-
+  bundle verification. Type checking still reports only the three pre-existing
+  `GFF3Feature`, `renameRefSeqs`, and `interactionDispatcher.test.js` errors.
+  The synchronous ESM entry remains 722.93 kB; Canvas2D remains an 11.53 kB /
+  3.78 kB gzip optional chunk, with shared text geometry in a separate optional
+  chunk.
+
 Documentation and migration: update `packages/core/src/svg/README.md` to point
 to the shared CPU geometry layer. No user migration.
 

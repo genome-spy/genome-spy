@@ -73,8 +73,9 @@ export function renderTextCanvas(baseMark, options) {
             context.translate(instance.x, instance.y);
             context.rotate((instance.angle * Math.PI) / 180);
             context.translate(instance.dx, instance.dy);
+            const glyphWidth = context.measureText(instance.text).width;
             context.scale(
-                instance.logoScale.width,
+                instance.logoScale.width / glyphWidth,
                 instance.logoScale.heightScale
             );
             context.textAlign = "center";

@@ -13,20 +13,6 @@ import {
     resolveSvgProperty,
 } from "../../svg/svgMarkUtils.js";
 
-/**
- * @typedef {object} TextAnchor
- * @prop {object} datum
- * @prop {string} text
- * @prop {number} x
- * @prop {number} x2
- * @prop {number} y
- * @prop {number} y2
- * @prop {number} size
- * @prop {number} angle
- * @prop {boolean} hasX2
- * @prop {boolean} hasY2
- */
-
 /** @param {import("../../marks/text.js").default} mark */
 export function resolveTextProperties(mark) {
     const props = mark.properties;
@@ -40,52 +26,6 @@ export function resolveTextProperties(mark) {
         dx: resolveSvgProperty(mark, props.dx),
         dy: resolveSvgProperty(mark, props.dy),
     };
-}
-
-/**
- * @param {import("../../marks/text.js").default} mark
- * @param {{coords: import("../../view/layout/rectangle.js").default, data: object[]}} options
- * @param {(anchor: TextAnchor) => boolean} visitor
- */
-function visitTextAnchors(mark, options, visitor) {
-    const { coords, data } = options;
-    const encoders =
-        /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
-            mark.encoders
-        );
-    const channelDef = mark.encoding.text;
-    const numberFormat =
-        "format" in channelDef
-            ? format(channelDef.format)
-            : (/** @type {any} */ value) => value;
-    let instanceCount = 0;
-
-    for (const datum of data) {
-        const value = numberFormat(encoders.text(datum));
-        const text = isString(value) ? value : value === null ? "" : "" + value;
-        if (!text) {
-            continue;
-        }
-        const [x, x2] = projectXRange(coords, encoders, datum);
-        const [y, y2] = projectYRange(coords, encoders, datum);
-        if (
-            visitor({
-                datum,
-                text,
-                x,
-                x2,
-                y,
-                y2,
-                size: encodeNumber(encoders.size, datum),
-                angle: encodeNumber(encoders.angle, datum),
-                hasX2: !!encoders.x2,
-                hasY2: !!encoders.y2,
-            })
-        ) {
-            instanceCount++;
-        }
-    }
-    return instanceCount;
 }
 
 /**
@@ -106,17 +46,64 @@ function visitTextAnchors(mark, options, visitor) {
  */
 
 /**
+ * Visits visible text instances using one mutable record. The visitor must
+ * consume each record synchronously and must not retain it.
+ *
  * @param {import("../../marks/text.js").default} mark
  * @param {ReturnType<typeof resolveTextProperties>} properties
  * @param {{coords: import("../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../../svg/svgBounds.js").SvgBounds, anchorCullBounds: import("../../svg/svgBounds.js").SvgBounds}} options
  * @param {(instance: TextInstance) => void} visitor
  */
 export function visitTextInstances(mark, properties, options, visitor) {
-    const { coords, visibleBounds, anchorCullBounds } = options;
+    const { coords, data, visibleBounds, anchorCullBounds } = options;
     const props = mark.properties;
-    return visitTextAnchors(mark, options, (anchor) => {
-        let { x, x2, y, y2 } = anchor;
-        const { datum, text, size, angle, hasX2, hasY2 } = anchor;
+    const encoders =
+        /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
+            mark.encoders
+        );
+    const channelDef = mark.encoding.text;
+    const numberFormat =
+        "format" in channelDef
+            ? format(channelDef.format)
+            : (/** @type {any} */ value) => value;
+    const xRange = /** @type {[number, number]} */ ([0, 0]);
+    const yRange = /** @type {[number, number]} */ ([0, 0]);
+    const rotatedSize = { width: 0, height: 0 };
+    const rangeAlign = { x: 0, y: 0 };
+    const rangePosition = { position: 0, scale: 0 };
+    const logoScale = { width: 0, heightScale: 0 };
+    /** @type {TextInstance} */
+    const instance = {
+        datum: {},
+        text: "",
+        x: 0,
+        y: 0,
+        size: 0,
+        width: 0,
+        angle: 0,
+        dx: properties.dx,
+        dy: properties.dy,
+        fadeOpacity: 1,
+        scale: 1,
+        logoScale: undefined,
+        multiCharacterLogo: false,
+    };
+    const hasX2 = !!encoders.x2;
+    const hasY2 = !!encoders.y2;
+    let instanceCount = 0;
+
+    for (const datum of data) {
+        const value = numberFormat(encoders.text(datum));
+        const text = isString(value) ? value : value === null ? "" : "" + value;
+        if (!text) {
+            continue;
+        }
+        projectXRange(coords, encoders, datum, xRange);
+        projectYRange(coords, encoders, datum, yRange);
+        let [x, x2] = xRange;
+        let [y, y2] = yRange;
+        const size = encodeNumber(encoders.size, datum);
+        const angle = encodeNumber(encoders.angle, datum);
 
         if (properties.logoLetters) {
             let width = size;
@@ -146,7 +133,7 @@ export function visitTextInstances(mark, properties, options, visitor) {
                     properties.dy
                 )
             ) {
-                return false;
+                continue;
             }
             const glyph = mark.font.metrics.getChar(text[0]);
             const heightScale =
@@ -154,36 +141,35 @@ export function visitTextInstances(mark, properties, options, visitor) {
                     mark.font.metrics.common.base *
                     (glyph.height + 2 * SDF_PADDING)) /
                 (glyph.height * glyph.height);
-            visitor({
-                datum,
-                text,
-                x,
-                y,
-                size: 1,
-                width: 1,
-                angle,
-                dx: properties.dx,
-                dy: properties.dy,
-                fadeOpacity: 1,
-                scale: 1,
-                logoScale: { width, heightScale },
-                multiCharacterLogo: text.length > 1,
-            });
-            return true;
+            instanceCount++;
+            instance.datum = datum;
+            instance.text = text;
+            instance.x = x;
+            instance.y = y;
+            instance.size = 1;
+            instance.width = 1;
+            instance.angle = angle;
+            instance.fadeOpacity = 1;
+            instance.scale = 1;
+            logoScale.width = width;
+            logoScale.heightScale = heightScale;
+            instance.logoScale = logoScale;
+            instance.multiCharacterLogo = text.length > 1;
+            visitor(instance);
+            continue;
         }
 
         const measuredWidth = mark.font.metrics.measureWidth(text, size);
-        const rotatedSize = getRotatedSize(measuredWidth, size, angle);
-        const rangeAlign =
-            hasX2 || hasY2
-                ? fixRangeAlign(props.align, props.baseline, angle)
-                : {
-                      x: alignmentValues[props.align],
-                      y: baselineValues[props.baseline],
-                  };
+        getRotatedSize(measuredWidth, size, angle, rotatedSize);
+        if (hasX2 || hasY2) {
+            fixRangeAlign(props.align, props.baseline, angle, rangeAlign);
+        } else {
+            rangeAlign.x = alignmentValues[props.align];
+            rangeAlign.y = baselineValues[props.baseline];
+        }
         let scale = 1;
         if (hasX2) {
-            const result = positionInsideRange(
+            positionInsideRange(
                 Math.min(x, x2),
                 Math.max(x, x2),
                 rotatedSize.width,
@@ -191,13 +177,14 @@ export function visitTextInstances(mark, properties, options, visitor) {
                 rangeAlign.x,
                 properties.flushX,
                 coords.x,
-                coords.x2
+                coords.x2,
+                rangePosition
             );
-            x = result.position;
-            scale *= result.scale;
+            x = rangePosition.position;
+            scale *= rangePosition.scale;
         }
         if (hasY2) {
-            const result = positionInsideRange(
+            positionInsideRange(
                 Math.min(y, y2),
                 Math.max(y, y2),
                 rotatedSize.height * scale,
@@ -205,18 +192,19 @@ export function visitTextInstances(mark, properties, options, visitor) {
                 rangeAlign.y,
                 properties.flushY,
                 coords.y,
-                coords.y2
+                coords.y2,
+                rangePosition
             );
-            y = result.position;
-            scale *= result.scale;
+            y = rangePosition.position;
+            scale *= rangePosition.scale;
         }
         if (isOutsideSvgBounds(anchorCullBounds, x, y)) {
-            return false;
+            continue;
         }
         let fadeOpacity = 1;
         if (scale < 1) {
             if (!properties.squeeze || scale < 3 / size) {
-                return false;
+                continue;
             }
             fadeOpacity = linearstep(3 / size, 6 / size, scale);
         }
@@ -236,25 +224,23 @@ export function visitTextInstances(mark, properties, options, visitor) {
                 properties.dy
             )
         ) {
-            return false;
+            continue;
         }
-        visitor({
-            datum,
-            text,
-            x,
-            y,
-            size: scaledSize,
-            width: scaledWidth,
-            angle,
-            dx: properties.dx,
-            dy: properties.dy,
-            fadeOpacity,
-            scale,
-            logoScale: undefined,
-            multiCharacterLogo: false,
-        });
-        return true;
-    });
+        instanceCount++;
+        instance.datum = datum;
+        instance.text = text;
+        instance.x = x;
+        instance.y = y;
+        instance.size = scaledSize;
+        instance.width = scaledWidth;
+        instance.angle = angle;
+        instance.fadeOpacity = fadeOpacity;
+        instance.scale = scale;
+        instance.logoScale = undefined;
+        instance.multiCharacterLogo = false;
+        visitor(instance);
+    }
+    return instanceCount;
 }
 
 /**
@@ -310,15 +296,18 @@ function textIntersectsVisibleBounds(
     );
 }
 
-/** @param {number} width @param {number} height @param {number} angleInDegrees */
-function getRotatedSize(width, height, angleInDegrees) {
+/**
+ * @param {number} width
+ * @param {number} height
+ * @param {number} angleInDegrees
+ * @param {{width: number, height: number}} result
+ */
+function getRotatedSize(width, height, angleInDegrees, result) {
     const angle = (angleInDegrees * Math.PI) / 180;
     const sin = Math.abs(Math.sin(angle));
     const cos = Math.abs(Math.cos(angle));
-    return {
-        width: width * cos + height * sin,
-        height: width * sin + height * cos,
-    };
+    result.width = width * cos + height * sin;
+    result.height = width * sin + height * cos;
 }
 
 /**
@@ -330,6 +319,7 @@ function getRotatedSize(width, height, angleInDegrees) {
  * @param {boolean} flush
  * @param {number} viewportStart
  * @param {number} viewportEnd
+ * @param {{position: number, scale: number}} result
  */
 function positionInsideRange(
     start,
@@ -339,12 +329,15 @@ function positionInsideRange(
     align,
     flush,
     viewportStart,
-    viewportEnd
+    viewportEnd,
+    result
 ) {
     const span = end - start;
     const paddedSpan = contentSpan + 2 * padding;
     if (start > viewportEnd || end < viewportStart) {
-        return { position: 0, scale: 0 };
+        result.position = 0;
+        result.scale = 0;
+        return;
     }
 
     const extra = Math.max(0, span - paddedSpan);
@@ -375,18 +368,17 @@ function positionInsideRange(
         position = edge - padding;
     }
 
-    return {
-        position,
-        scale: Math.max(0, Math.min(1, (span - padding) / paddedSpan)),
-    };
+    result.position = position;
+    result.scale = Math.max(0, Math.min(1, (span - padding) / paddedSpan));
 }
 
 /**
  * @param {keyof typeof alignmentValues} align
  * @param {keyof typeof baselineValues} baseline
  * @param {number} angle
+ * @param {{x: number, y: number}} result
  */
-function fixRangeAlign(align, baseline, angle) {
+function fixRangeAlign(align, baseline, angle, result) {
     const x = alignmentValues[align];
     const y = -baselineValues[baseline];
     const quadrantAngle = (((angle + 45) % 360) + 360) % 360;
@@ -405,7 +397,8 @@ function fixRangeAlign(align, baseline, angle) {
         rangeX = -y;
         rangeY = x;
     }
-    return { x: rangeX, y: -rangeY };
+    result.x = rangeX;
+    result.y = -rangeY;
 }
 
 const alignmentValues = { left: -1, center: 0, right: 1 };
