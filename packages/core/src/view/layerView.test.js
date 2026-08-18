@@ -124,7 +124,11 @@ describe("LayerView child zindex", () => {
         }
 
         view.propagateInteraction(
-            /** @type {any} */ ({ type: "mousemove", stopped: false })
+            /** @type {any} */ ({
+                type: "mousemove",
+                stopped: false,
+                pointedViews: new Set(),
+            })
         );
 
         expect(order).toEqual(["front", "middle", "back"]);

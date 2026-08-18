@@ -919,6 +919,10 @@ export default class View {
      * @param {boolean} capturing
      */
     handleInteraction(event, capturing) {
+        if (capturing && event.type === "mousemove") {
+            event.pointedViews.add(this);
+        }
+
         const listenersByType = capturing
             ? this.#capturingInteractionListeners
             : this.#bubblingInteractionListeners;

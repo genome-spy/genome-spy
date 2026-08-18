@@ -12,6 +12,8 @@ import {
  * - `point` is always in canvas coordinates
  * - `uiEvent` is the original native or synthesized low-level event
  * - `target` is the resolved deepest view target after propagation
+ * - `pointedViews` contains every view reached during mousemove routing,
+ *   including parallel branches in layered compositions
  * - `currentTarget` and `relatedTarget` are used by synthesized
  *   `mouseenter` / `mouseleave` delivery
  *
@@ -62,6 +64,14 @@ export default class Interaction {
         this.stopped = false;
         this.wheelClaimed = false;
         this.#typeOverride = type;
+
+        /**
+         * Views reached during ordinary mousemove routing. Unlike `target`,
+         * this retains parallel branches in layered compositions.
+         *
+         * @type {Set<import("../view/view.js").default>}
+         */
+        this.pointedViews = new Set();
 
         /**
          * The target is known only after the interaction has been resolved

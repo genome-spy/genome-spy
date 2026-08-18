@@ -162,6 +162,71 @@ describe("InteractionDispatcher", () => {
             },
         ]);
     });
+
+    it("tracks parallel pointed branches independently of the target", () => {
+        /** @type {Array<{ view: string, type: string, relatedTarget?: string, capturing: boolean }>} */
+        const calls = [];
+
+        const root = createMockView("root", undefined, calls);
+        const layer = createMockView("layer", root, calls);
+        const selected = createMockView("selected", layer, calls);
+        const underlay = createMockView("underlay", layer, calls);
+        const sibling = createMockView("sibling", root, calls);
+        const pointedViews = [
+            [root, layer, selected, underlay],
+            [root, sibling],
+        ];
+        const targets = [underlay, sibling];
+        const dispatcher = new InteractionDispatcher({
+            viewRoot: /** @type {any} */ ({
+                propagateInteraction(
+                    /** @type {import("../utils/interaction.js").default} */ event
+                ) {
+                    for (const view of pointedViews.shift()) {
+                        event.pointedViews.add(view);
+                    }
+                    event.target = /** @type {any} */ (targets.shift());
+                },
+            }),
+        });
+
+        dispatcher.dispatch(
+            new Point(1, 1),
+            /** @type {any} */ ({ type: "mousemove" })
+        );
+        calls.length = 0;
+        dispatcher.dispatch(
+            new Point(2, 2),
+            /** @type {any} */ ({ type: "mousemove" })
+        );
+
+        expect(calls.filter((call) => call.capturing)).toEqual([
+            {
+                view: "underlay",
+                type: "mouseleave",
+                relatedTarget: "sibling",
+                capturing: true,
+            },
+            {
+                view: "selected",
+                type: "mouseleave",
+                relatedTarget: "sibling",
+                capturing: true,
+            },
+            {
+                view: "layer",
+                type: "mouseleave",
+                relatedTarget: "sibling",
+                capturing: true,
+            },
+            {
+                view: "sibling",
+                type: "mouseenter",
+                relatedTarget: "underlay",
+                capturing: true,
+            },
+        ]);
+    });
 });
 
 /**

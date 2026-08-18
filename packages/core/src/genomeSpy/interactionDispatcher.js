@@ -4,8 +4,8 @@ import Interaction from "../utils/interaction.js";
  * Dispatches `Interaction` objects through the view hierarchy and synthesizes
  * subtree-level pointer transition events.
  *
- * The dispatcher keeps track of the previously hovered target path and
- * compares it with the current one on every `mousemove`. From that diff it
+ * The dispatcher keeps track of the previously pointed views and compares
+ * them with the views reached on every `mousemove`. From that diff it
  * emits:
  * - `mouseleave` for views that are no longer in the pointed subtree
  * - `mouseenter` for views that have newly entered the pointed subtree
@@ -20,7 +20,10 @@ import Interaction from "../utils/interaction.js";
  * whole previously hovered path and clears its tracked state.
  *
  * The dispatcher does not do hit testing itself. It relies on views to route
- * the incoming interaction and set `interaction.target` during propagation.
+ * the incoming interaction, record themselves in `interaction.pointedViews`,
+ * and set the deepest `interaction.target` during propagation. Tracking all
+ * routed views is necessary for layers, where multiple parallel branches are
+ * pointed simultaneously even though `target` can identify only one of them.
  */
 export default class InteractionDispatcher {
     /** @type {import("../view/view.js").default} */
@@ -30,7 +33,9 @@ export default class InteractionDispatcher {
     /** @type {import("../view/view.js").default | undefined} */
     #lastTarget;
     /** @type {import("../view/view.js").default[]} */
-    #previousPath = [];
+    #previousViews = [];
+    /** @type {Set<import("../view/view.js").default>} */
+    #previousViewSet = new Set();
 
     /**
      * @param {object} options
@@ -67,8 +72,9 @@ export default class InteractionDispatcher {
      * @param {import("../utils/interactionEvent.js").InteractionUiEvent} uiEvent
      */
     handlePointerLeave(uiEvent) {
-        if (!this.#lastPoint || this.#previousPath.length === 0) {
-            this.#previousPath = [];
+        if (!this.#lastPoint || this.#previousViews.length === 0) {
+            this.#previousViews = [];
+            this.#previousViewSet.clear();
             this.#lastTarget = undefined;
             return;
         }
@@ -78,8 +84,9 @@ export default class InteractionDispatcher {
             uiEvent,
             "mouseleave"
         );
-        this.#dispatchLeaveEvents(interaction, this.#previousPath, undefined);
-        this.#previousPath = [];
+        this.#dispatchLeaveEvents(interaction, this.#previousViews, undefined);
+        this.#previousViews = [];
+        this.#previousViewSet.clear();
         this.#lastTarget = undefined;
     }
 
@@ -94,35 +101,39 @@ export default class InteractionDispatcher {
      * @param {Interaction} interaction
      */
     #dispatchPointerTransitions(interaction) {
-        const currentPath = this.#toRootPath(interaction.target);
-        const previousPath = this.#previousPath;
+        const currentViews =
+            interaction.pointedViews.size > 0
+                ? Array.from(interaction.pointedViews)
+                : this.#toRootPath(interaction.target);
+        const currentViewSet =
+            interaction.pointedViews.size > 0
+                ? interaction.pointedViews
+                : new Set(currentViews);
+        const leavingViews = this.#previousViews.filter(
+            (view) => !currentViewSet.has(view)
+        );
+        const enteringViews = currentViews.filter(
+            (view) => !this.#previousViewSet.has(view)
+        );
 
-        let commonLength = 0;
-        while (
-            commonLength < previousPath.length &&
-            commonLength < currentPath.length &&
-            previousPath[commonLength] === currentPath[commonLength]
-        ) {
-            commonLength++;
-        }
-
-        if (commonLength < previousPath.length) {
+        if (leavingViews.length > 0) {
             this.#dispatchLeaveEvents(
                 interaction,
-                previousPath.slice(commonLength),
-                currentPath.at(-1)
+                leavingViews,
+                currentViews.at(-1)
             );
         }
 
-        if (commonLength < currentPath.length) {
+        if (enteringViews.length > 0) {
             this.#dispatchEnterEvents(
                 interaction,
-                currentPath.slice(commonLength),
-                previousPath.at(-1)
+                enteringViews,
+                this.#previousViews.at(-1)
             );
         }
 
-        this.#previousPath = currentPath;
+        this.#previousViews = currentViews;
+        this.#previousViewSet = currentViewSet;
     }
 
     /**

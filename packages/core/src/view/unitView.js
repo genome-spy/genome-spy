@@ -175,6 +175,14 @@ export default class UnitView extends View {
 
                 const eventPredicate = createEventPredicate(eventConfig);
 
+                const clearSelection = () => {
+                    lastId = none;
+                    const selection = select.toggle
+                        ? createMultiPointSelection()
+                        : createSinglePointSelection(null);
+                    setter(selection);
+                };
+
                 const listener = (
                     /** @type {import("../utils/interaction.js").default} */ event
                 ) => {
@@ -218,14 +226,25 @@ export default class UnitView extends View {
                     }
                 };
 
+                const hoverSelection = ["mouseover", "pointerover"].includes(
+                    eventConfig.type
+                );
                 this.addInteractionListener(
-                    ["mouseover", "pointerover"].includes(eventConfig.type)
-                        ? "mousemove"
-                        : eventConfig.type,
+                    hoverSelection ? "mousemove" : eventConfig.type,
                     listener
                 );
 
-                if (clearEventConfig) {
+                if (hoverSelection) {
+                    // Hover selections are continuously derived from the picked
+                    // mark. A sibling view receives subsequent mousemove events,
+                    // so clear this view when the dispatcher detects that its
+                    // pointed subtree has been left.
+                    this.addInteractionListener("mouseleave", clearSelection);
+                }
+
+                const clearHandledByHoverExit =
+                    hoverSelection && clearEventConfig?.type === "mouseleave";
+                if (clearEventConfig && !clearHandledByHoverExit) {
                     const clearPredicate =
                         createEventPredicate(clearEventConfig);
 
@@ -235,11 +254,7 @@ export default class UnitView extends View {
                         if (!clearPredicate(event.proxiedMouseEvent)) {
                             return;
                         }
-                        lastId = none;
-                        const selection = select.toggle
-                            ? createMultiPointSelection()
-                            : createSinglePointSelection(null);
-                        setter(selection);
+                        clearSelection();
                     };
 
                     this.addInteractionListener(

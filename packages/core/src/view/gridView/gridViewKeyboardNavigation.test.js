@@ -188,6 +188,7 @@ describe("GridView keyboard navigation", () => {
                 type: "mousemove",
                 point: { x: 150, y: 50 },
                 stopped: false,
+                pointedViews: new Set(),
                 stopPropagation: /** @returns {void} */ () => undefined,
             })
         );
