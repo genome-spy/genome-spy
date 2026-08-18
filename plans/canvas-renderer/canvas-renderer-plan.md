@@ -672,6 +672,32 @@ Verification:
   Step 3. If performance is not useful, stop broadening the renderer and revise
   or retire the remaining plan.
 
+Reproduction procedure:
+
+- Start the Core development server with
+  `npm -w @genome-spy/core run dev`, open Chromium at a 900 x 420 viewport, and
+  use the normal headless launch defaults without custom GPU flags.
+- In the browser console, load the retained development-only harness with
+  `const { runCanvas2DBenchmark } = await import("/canvas2d/canvas2DBenchmark.js")`.
+- Rect rows use `canvas-dense-rects.json`, instance counts 10,000, 25,000, and
+  50,000, `fullDomain: [0, 1000]`, and `zoomDomain: [100, 900]`. Point rows use
+  `canvas-dense-points.json`, instance counts 25,000, 50,000, and 100,000,
+  `fullDomain: [0, 100000]`, and `zoomDomain: [10000, 90000]`.
+- Call `runCanvas2DBenchmark` with the matching spec URL and domains. The
+  harness performs 20 alternating warmups and 100 measured redraws. Each
+  sample first restores the full domain without timing it and then times the
+  zoom-domain `zoomTo` call with `{ duration: 0, renderImmediately: true }`.
+  It reports p50/p95, browser identity, DPR, logical size, and backing size.
+- For the DPR 2 fallback check, start the browser with device scale factor 2,
+  disable `devicePixelContentBox` support in the page before launch, and verify
+  the reported backing size is 1,800 x 840 before accepting the result.
+- For interaction timing, warm up with five wheel and five drag gestures, then
+  record 30 real gestures of each kind. Start at event dispatch and stop on the
+  next animation-frame callback; verify `benchmark-x` changes and Canvas draw
+  calls increase. This is an event-to-following-RAF proxy, not compositor
+  instrumentation. The permanent live test repeats the domain and repaint
+  assertions without platform-sensitive timing thresholds.
+
 Recorded Step 2 measurements (pre-review):
 
 - Environment: headless Chromium 151 on macOS, 900 x 420 logical pixels. Every
@@ -722,6 +748,20 @@ Recorded Step 2 measurements (pre-review):
   existing synchronous runtime files (`GenomeSpyBase`, `Mark`, and the view
   context type); the implementation itself remains dynamically loaded.
 
+Step 2 review gate outcome:
+
+- The reviewed implementation was committed as `825dd68a3` before applying
+  review fixes.
+- The review found one production defect: the view-context factory dropped the
+  Canvas capability that suppresses GPU buffer updates for expression-backed
+  properties. The follow-up propagates the capability and exercises it through
+  the real factory and a launched Canvas instance.
+- The follow-up also retains the exact redraw harness and gesture assertions,
+  caches requested color strings in hot mark loops, moves the mark-data tests
+  to their shared CPU owner, and removes the dead point radius field.
+- The KISS review rejected extracting the two tiny Canvas style helpers because
+  that would add indirection without removing meaningful complexity.
+
 Documentation and migration: no public documentation yet. Record the benchmark
 specifications, environment, results, and decision in the working plan and the
 eventual PR notes so the feasibility decision remains reviewable.
@@ -740,7 +780,7 @@ Canvas2D emitters.
 Affected areas:
 
 - remaining modules under `packages/core/src/rendering/cpu/`
-- `packages/core/src/svg/markData.js`
+- `packages/core/src/rendering/cpu/markData.js`
 - `packages/core/src/svg/svgBounds.js`
 - `packages/core/src/svg/svgMarkUtils.js`
 - `packages/core/src/svg/renderers/*.js`

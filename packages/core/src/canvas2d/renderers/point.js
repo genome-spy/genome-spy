@@ -33,6 +33,11 @@ export function renderPointCanvas(baseMark, options) {
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    /** @type {string | undefined} */
+    let fillStyle;
+
+    /** @type {string | undefined} */
+    let strokeStyle;
 
     return visitPointInstances(mark, properties, options, (instance) => {
         if (instance.angle && instance.shape != "circle") {
@@ -77,31 +82,23 @@ export function renderPointCanvas(baseMark, options) {
         }
 
         if (!lineShape && fill != "none" && fillOpacity > 0) {
-            setFillStyle(context, fill);
+            if (fillStyle != fill) {
+                context.fillStyle = fill;
+                fillStyle = fill;
+            }
             setAlpha(context, fillOpacity);
             context.fill();
         }
         if (stroke != "none" && strokeOpacity > 0 && instance.strokeWidth > 0) {
-            setStrokeStyle(context, stroke);
+            if (strokeStyle != stroke) {
+                context.strokeStyle = stroke;
+                strokeStyle = stroke;
+            }
             setAlpha(context, strokeOpacity);
             setLineWidth(context, instance.strokeWidth);
             context.stroke();
         }
     });
-}
-
-/** @param {CanvasRenderingContext2D} context @param {string} value */
-function setFillStyle(context, value) {
-    if (context.fillStyle != value) {
-        context.fillStyle = value;
-    }
-}
-
-/** @param {CanvasRenderingContext2D} context @param {string} value */
-function setStrokeStyle(context, value) {
-    if (context.strokeStyle != value) {
-        context.strokeStyle = value;
-    }
 }
 
 /** @param {CanvasRenderingContext2D} context @param {number} value */

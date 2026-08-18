@@ -10,10 +10,13 @@ import GenomeSpy from "./genomeSpyBase.js";
 let contexts;
 /** @type {string[]} */
 let contextTypes;
+/** @type {FrameRequestCallback[]} */
+let animationFrames;
 
 beforeEach(() => {
     contexts = [];
     contextTypes = [];
+    animationFrames = [];
     vi.stubGlobal(
         "matchMedia",
         vi.fn(() => ({
@@ -23,7 +26,10 @@ beforeEach(() => {
     );
     vi.stubGlobal(
         "requestAnimationFrame",
-        vi.fn(() => 1)
+        vi.fn((callback) => {
+            animationFrames.push(callback);
+            return animationFrames.length;
+        })
     );
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
         function (type) {
@@ -43,7 +49,7 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-test("launches and paints rects and points without requesting a GPU context", async () => {
+test("launches, updates expressions, and repaints interactions without a GPU context", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const genomeSpy = new GenomeSpy(
@@ -52,6 +58,7 @@ test("launches and paints rects and points without requesting a GPU context", as
             width: 200,
             height: 100,
             padding: 0,
+            params: [{ name: "offset", value: 0 }],
             data: {
                 values: [
                     { x: 0.25, x2: 0.45 },
@@ -65,7 +72,11 @@ test("launches and paints rects and points without requesting a GPU context", as
                         x: {
                             field: "x",
                             type: "quantitative",
-                            scale: { domain: [0, 1] },
+                            scale: {
+                                domain: [0, 1],
+                                name: "canvas-x",
+                                zoom: { extent: "unbounded" },
+                            },
                             axis: null,
                         },
                         x2: { field: "x2" },
@@ -75,12 +86,18 @@ test("launches and paints rects and points without requesting a GPU context", as
                     },
                 },
                 {
-                    mark: "point",
+                    mark: {
+                        type: "point",
+                        xOffset: { expr: "offset" },
+                    },
                     encoding: {
                         x: {
                             field: "x",
                             type: "quantitative",
-                            scale: { domain: [0, 1] },
+                            scale: {
+                                domain: [0, 1],
+                                zoom: { extent: "unbounded" },
+                            },
                             axis: null,
                         },
                         y: { value: 0.7 },
@@ -102,8 +119,90 @@ test("launches and paints rects and points without requesting a GPU context", as
     expect(contexts[0].arc).toHaveBeenCalledTimes(2);
     expect(container.querySelectorAll("canvas")).toHaveLength(1);
 
+    expect(() => genomeSpy.getParam("offset").setValue(5)).not.toThrow();
+    flushAnimationFrames(2);
+
+    const canvas = container.querySelector("canvas");
+    if (!canvas) {
+        throw new Error("Canvas surface was not created.");
+    }
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(
+        /** @type {DOMRect} */ (
+            /** @type {unknown} */ ({
+                left: 0,
+                top: 0,
+                width: 200,
+                height: 100,
+            })
+        )
+    );
+    const xScale = genomeSpy.getNamedScaleResolutions().get("canvas-x");
+    if (!xScale) {
+        throw new Error("Named Canvas scale was not created.");
+    }
+    const initialDomain = xScale.getDomain().slice();
+    const initialPaints = contexts[0].fillRect.mock.calls.length;
+
+    canvas.dispatchEvent(
+        new WheelEvent("wheel", {
+            clientX: 100,
+            clientY: 50,
+            deltaY: 60,
+            cancelable: true,
+        })
+    );
+    flushAnimationFrames(4);
+
+    expect(xScale.getDomain()).not.toEqual(initialDomain);
+    expect(contexts[0].fillRect.mock.calls.length).toBeGreaterThan(
+        initialPaints
+    );
+
+    const wheelDomain = xScale.getDomain().slice();
+    const wheelPaints = contexts[0].fillRect.mock.calls.length;
+    canvas.dispatchEvent(
+        new MouseEvent("mousedown", {
+            button: 0,
+            buttons: 1,
+            clientX: 100,
+            clientY: 50,
+            bubbles: true,
+        })
+    );
+    document.dispatchEvent(
+        new MouseEvent("mousemove", {
+            buttons: 1,
+            clientX: 120,
+            clientY: 50,
+            bubbles: true,
+        })
+    );
+    document.dispatchEvent(
+        new MouseEvent("mouseup", {
+            button: 0,
+            clientX: 120,
+            clientY: 50,
+            bubbles: true,
+        })
+    );
+    flushAnimationFrames(2);
+
+    expect(xScale.getDomain()).not.toEqual(wheelDomain);
+    expect(contexts[0].fillRect.mock.calls.length).toBeGreaterThan(wheelPaints);
+
     genomeSpy.destroy();
 });
+
+/** @param {number} count */
+function flushAnimationFrames(count) {
+    const start = performance.now();
+    for (let i = 0; i < count; i++) {
+        const callbacks = animationFrames.splice(0);
+        for (const callback of callbacks) {
+            callback(start + (i + 1) * 16);
+        }
+    }
+}
 
 /** @param {HTMLCanvasElement} canvas */
 function createContext(canvas) {

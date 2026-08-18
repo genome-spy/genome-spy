@@ -33,11 +33,19 @@ export function renderRectCanvas(baseMark, options) {
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    /** @type {string | undefined} */
+    let fillStyle;
+
+    /** @type {string | undefined} */
+    let strokeStyle;
 
     return visitRectInstances(mark, properties, options, (instance) => {
         const opacityFactor = instance.opacityFactor;
         if (instance.fill != "none" && instance.fillOpacity > 0) {
-            setFillStyle(context, instance.fill);
+            if (fillStyle != instance.fill) {
+                context.fillStyle = instance.fill;
+                fillStyle = instance.fill;
+            }
             setAlpha(context, instance.fillOpacity * opacityFactor);
             context.fillRect(
                 instance.x,
@@ -53,7 +61,10 @@ export function renderRectCanvas(baseMark, options) {
             options.viewOpacity *
             opacityFactor;
         if (stroke != "none" && strokeOpacity > 0 && instance.strokeWidth > 0) {
-            setStrokeStyle(context, stroke);
+            if (strokeStyle != stroke) {
+                context.strokeStyle = stroke;
+                strokeStyle = stroke;
+            }
             setAlpha(context, strokeOpacity);
             setLineWidth(context, instance.strokeWidth);
             context.strokeRect(
@@ -64,20 +75,6 @@ export function renderRectCanvas(baseMark, options) {
             );
         }
     });
-}
-
-/** @param {CanvasRenderingContext2D} context @param {string} value */
-function setFillStyle(context, value) {
-    if (context.fillStyle != value) {
-        context.fillStyle = value;
-    }
-}
-
-/** @param {CanvasRenderingContext2D} context @param {string} value */
-function setStrokeStyle(context, value) {
-    if (context.strokeStyle != value) {
-        context.strokeStyle = value;
-    }
 }
 
 /** @param {CanvasRenderingContext2D} context @param {number} value */

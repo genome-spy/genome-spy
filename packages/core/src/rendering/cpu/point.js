@@ -17,7 +17,6 @@ import {
  * @prop {string} shape
  * @prop {number} x
  * @prop {number} y
- * @prop {number} radius
  * @prop {number} geometryRadius
  * @prop {number} angle
  * @prop {number} strokeWidth
@@ -61,7 +60,6 @@ export function visitPointInstances(mark, properties, options, visitor) {
         shape: "circle",
         x: 0,
         y: 0,
-        radius: 0,
         geometryRadius: 0,
         angle: 0,
         strokeWidth: 0,
@@ -123,7 +121,6 @@ export function visitPointInstances(mark, properties, options, visitor) {
         instance.shape = shape;
         instance.x = x;
         instance.y = y;
-        instance.radius = radius;
         instance.geometryRadius = geometryRadius;
         instance.angle = encodeNumber(encoders.angle, datum);
         instance.strokeWidth = adjustedStrokeWidth;

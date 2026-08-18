@@ -1,12 +1,12 @@
-import { describe, expect, test } from "vitest";
 import { InternMap } from "internmap";
-import { getSvgData } from "./markData.js";
+import { describe, expect, test } from "vitest";
+import { getMarkData } from "./markData.js";
 
 /**
  * @param {Map<any, object[]> | InternMap<any, object[]>} facetBatches
  */
 function createMark(facetBatches) {
-    return /** @type {import("../marks/mark.js").default} */ (
+    return /** @type {import("../../marks/mark.js").default} */ (
         /** @type {unknown} */ ({
             unitView: {
                 getCollector: () => ({ facetBatches }),
@@ -16,12 +16,12 @@ function createMark(facetBatches) {
     );
 }
 
-describe("SVG mark data", () => {
+describe("CPU mark data", () => {
     test("repeats non-faceted data for a sample facet", () => {
         const data = [{ value: 1 }];
         const mark = createMark(new Map([[undefined, data]]));
 
-        expect(getSvgData(mark, { facetId: ["sample-1"] })).toBe(data);
+        expect(getMarkData(mark, { facetId: ["sample-1"] })).toBe(data);
     });
 
     test("uses sample-faceted data when the non-faceted batch is empty", () => {
@@ -36,7 +36,7 @@ describe("SVG mark data", () => {
             )
         );
 
-        expect(getSvgData(mark, { facetId: ["sample-1"] })).toBe(data);
+        expect(getMarkData(mark, { facetId: ["sample-1"] })).toBe(data);
     });
 
     test("treats a missing sample facet as empty", () => {
@@ -50,7 +50,7 @@ describe("SVG mark data", () => {
             )
         );
 
-        expect(getSvgData(mark, { facetId: ["sample-without-data"] })).toEqual(
+        expect(getMarkData(mark, { facetId: ["sample-without-data"] })).toEqual(
             []
         );
     });

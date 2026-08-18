@@ -79,9 +79,10 @@ describe("TextMark", () => {
                 data: { values: [{ label: "text" }] },
                 mark: { type: "text", text: { expr: "width" } },
             },
-            UnitView
+            UnitView,
+            {},
+            { graphicsDataUpdates: false }
         );
-        view.context.graphicsDataUpdates = false;
         view.mark.initializeEncoders();
         initializeViewSubtree(view, view.context.dataFlow);
         view.getCollector().complete();

@@ -31,7 +31,8 @@ Shared helpers include:
 - `svgMarkUtils.js` for encoders, scale projection, inherited presentation
   attributes, and numeric formatting.
 - `svgBounds.js` for clip-aware geometry and anchor culling.
-- `markData.js` for selecting the collector batch of each rendered occurrence.
+- `../rendering/cpu/markData.js` for selecting collector batches and traversing
+  rendered occurrences shared with Canvas2D.
 - `rectHatchPattern.js`, `linkArcFadeMask.js`, and `polygonUnion.js` for reusable
   definitions and specialized geometry.
 
