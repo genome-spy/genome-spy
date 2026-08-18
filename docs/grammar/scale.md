@@ -230,6 +230,25 @@ selection. Non-zoomable linked scales only read the selection. This affects
 For detailed brushing-and-linking guidance and interactive examples, see
 [Parameters: Interval selection](./parameters.md#interval-selection).
 
+## Viewport autoscaling
+
+Enable autoscaling by setting `domain` to `{ "source": "viewport" }`. GenomeSpy
+then derives the quantitative scale domain from data in the current positional
+viewport. This is useful for autoscaling a genomic signal's y-axis or a scatter
+plot's size or color while zooming and panning.
+
+GenomeSpy calculates the domain shortly after navigation pauses and applies the
+normal smooth domain transition. Existing scale options such as `zero`, `nice`,
+`domainMin`, and `domainMax` still apply. If a ready viewport has no values, the
+scale retains its last nonempty domain.
+
+GenomeSpy uses at least one continuous x or y scale to determine which data are
+inside the viewport. The domain of that positional scale must not depend on the
+autoscaled scale. A positional scale cannot be both zoomable and
+viewport-derived.
+
+EXAMPLE examples/docs/grammar/scale/viewport-autoscale.json
+
 ## Zooming and panning
 
 To enable zooming and panning of continuous scales on positional channels, set

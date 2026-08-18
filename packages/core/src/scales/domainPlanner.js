@@ -1,6 +1,5 @@
 import { span } from "vega-util";
 import { isContinuous } from "vega-scale";
-
 import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
 import {
     toInternalIndexLikeDataDomain,
@@ -13,6 +12,11 @@ import {
 import createDomain from "../utils/domainArray.js";
 import { resolveConfiguredDomainValue } from "./domainExpressions.js";
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
+import {
+    isViewportDomainRef,
+    resolveVisibleDataDomain,
+    validateSharedViewportDomain,
+} from "./viewportDomain.js";
 import { getEncoderAccessors, getPrimaryChannel } from "../encoder/encoder.js";
 import {
     hasExplicitLocusUpperBound,
@@ -39,6 +43,7 @@ import {
  * @typedef {{ view: import("../view/view.js").default, channel: import("../spec/channel.js").ChannelWithScale, type: import("../spec/channel.js").Type, domain: import("../spec/scale.js").Scale["domain"] }} ConfiguredDomainSource
  * @typedef {() => Set<ScaleResolutionMember>} ScaleMembersGetter
  * @typedef {() => ConfiguredDomainSource | undefined} ViewLevelDomainSourceGetter
+ * @typedef {(member: ScaleResolutionMember) => import("../data/viewportDomain.js").ViewportConstraint[]} ViewportConstraintsGetter
  * @typedef {(interval: ScalarDomain | ComplexDomain) => number[]} FromComplexInterval
  * @typedef {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} GetLocusExtent
  * @typedef {{
@@ -81,6 +86,9 @@ export default class DomainPlanner {
     /** @type {ViewLevelDomainSourceGetter | undefined} */
     #getViewLevelDomainSource;
 
+    /** @type {ViewportConstraintsGetter | undefined} */
+    #getViewportConstraints;
+
     /** @type {() => import("../spec/channel.js").Type} */
     #getType;
 
@@ -96,6 +104,11 @@ export default class DomainPlanner {
     /** @type {SelectionDomainLinkInfo | undefined} */
     #selectionDomainLinkInfo = undefined;
 
+    #hasViewportDomain = false;
+
+    /** @type {DomainArray | undefined} */
+    #lastVisibleDataDomain;
+
     #configuredDomainDirty = true;
 
     /** @type {Map<boolean, DomainArray | undefined>} */
@@ -110,6 +123,7 @@ export default class DomainPlanner {
      * @param {ScaleMembersGetter} [options.getAllMembers] All members, including inactive ones, used for conflict validation.
      * @param {ScaleMembersGetter} [options.getDataMembers] Members used for data-domain extraction; defaults to `getActiveMembers`.
      * @param {ViewLevelDomainSourceGetter} [options.getViewLevelDomainSource] View-level domain source.
+     * @param {ViewportConstraintsGetter} [options.getViewportConstraints] Positional constraints for viewport-domain extraction.
      * @param {() => import("../spec/channel.js").Type} options.getType
      * @param {GetLocusExtent} options.getLocusExtent
      * @param {FromComplexInterval} options.fromComplexInterval
@@ -119,6 +133,7 @@ export default class DomainPlanner {
         getAllMembers,
         getDataMembers,
         getViewLevelDomainSource,
+        getViewportConstraints,
         getType,
         getLocusExtent,
         fromComplexInterval,
@@ -127,6 +142,7 @@ export default class DomainPlanner {
         this.#getAllMembers = getAllMembers ?? getActiveMembers;
         this.#getDataMembers = getDataMembers ?? getActiveMembers;
         this.#getViewLevelDomainSource = getViewLevelDomainSource;
+        this.#getViewportConstraints = getViewportConstraints;
         this.#getType = getType;
         this.#getLocusExtent = getLocusExtent;
         this.#fromComplexInterval = fromComplexInterval;
@@ -178,7 +194,14 @@ export default class DomainPlanner {
     invalidateConfiguredDomain() {
         this.#configuredDomainDirty = true;
         this.#selectionDomainLinkInfo = undefined;
+        this.#hasViewportDomain = false;
+        this.#lastVisibleDataDomain = undefined;
         this.#configuredDomainsByInitialMode.clear();
+    }
+
+    hasViewportDomain() {
+        this.getConfiguredDomain();
+        return this.#hasViewportDomain;
     }
 
     /**
@@ -238,9 +261,14 @@ export default class DomainPlanner {
             );
         }
 
+        const viewLevelDomainSource = this.#getViewLevelDomainSource?.();
+        const hasViewportDomain = validateSharedViewportDomain(
+            this.#getAllMembers(),
+            viewLevelDomainSource
+        );
         const configuredDomain = resolveConfiguredDomain(
             this.#getActiveMembers(),
-            this.#getViewLevelDomainSource?.(),
+            viewLevelDomainSource,
             this.#fromComplexInterval,
             includeSelectionInitial
         );
@@ -249,6 +277,7 @@ export default class DomainPlanner {
             configuredDomain.selectionRef
         );
         this.#selectionDomainLinkInfo = configuredDomain.selectionRef;
+        this.#hasViewportDomain = hasViewportDomain;
         this.#configuredDomainsByInitialMode.set(
             includeSelectionInitial,
             configuredDomain.domain
@@ -263,11 +292,28 @@ export default class DomainPlanner {
      * @return {DomainArray | undefined}
      */
     getDataDomain() {
-        return resolveDataDomain(
-            this.#getDataMembers(),
-            this.#getType,
-            (member) => this.#getMemberAccessors(member)
-        );
+        const members = this.#getDataMembers();
+        /** @param {ScaleResolutionMember} member */
+        const getAccessors = (member) => this.#getMemberAccessors(member);
+        if (this.hasViewportDomain()) {
+            if (!this.#getViewportConstraints) {
+                throw new Error(
+                    "Viewport-domain extraction requires positional constraints."
+                );
+            }
+            const domain = resolveVisibleDataDomain(
+                members,
+                this.#getType,
+                getAccessors,
+                this.#getViewportConstraints
+            );
+            if (domain && domain.length > 0) {
+                this.#lastVisibleDataDomain = domain;
+            }
+            return domain?.length ? domain : this.#lastVisibleDataDomain;
+        } else {
+            return resolveDataDomain(members, this.#getType, getAccessors);
+        }
     }
 
     /**
@@ -357,7 +403,10 @@ function resolveConfiguredDomain(
 ) {
     const domainMembers = Array.from(members)
         .filter((member) => member.contributesToDomain)
-        .filter((member) => member.channelDef.scale?.domain);
+        .filter((member) => {
+            const domain = member.channelDef.scale?.domain;
+            return domain && !isViewportDomainRef(domain);
+        });
 
     /** @type {ConfiguredDomainResolutionState} */
     const state = {
@@ -368,7 +417,10 @@ function resolveConfiguredDomain(
         hasLiteralDomain: false,
     };
 
-    if (viewLevelDomain?.domain !== undefined) {
+    if (
+        viewLevelDomain?.domain !== undefined &&
+        !isViewportDomainRef(viewLevelDomain.domain)
+    ) {
         const resolved = resolveConfiguredDomainSource(
             viewLevelDomain,
             fromComplexInterval,

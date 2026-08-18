@@ -13257,6 +13257,55 @@ exports[`shared examples > initializes examples/docs/grammar/scale/range-indices
 }
 `;
 
+exports[`shared examples > initializes examples/docs/grammar/scale/viewport-autoscale.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "SequenceSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
 exports[`shared examples > initializes examples/docs/grammar/title/basic-title.json 1`] = `
 {
   "assemblies": [],

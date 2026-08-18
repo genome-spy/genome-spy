@@ -14,6 +14,13 @@ import { configureDomain } from "../scale/scale.js";
 import ScaleInstanceManager from "./scaleInstanceManager.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
 import DomainPlanner from "./domainPlanner.js";
+import {
+    getViewportConstraints,
+    getViewportDependencies,
+    isViewportDomainRef,
+    isViewportDataReady,
+    ViewportDomainScheduler,
+} from "./viewportDomain.js";
 import ScaleInteractionController from "./scaleInteractionController.js";
 import { validateScaleTypeCompatibility } from "./scaleRules.js";
 import {
@@ -25,7 +32,11 @@ import {
 } from "./scaleResolutionConstants.js";
 
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
-import { getEncoderAccessors, isSecondaryChannel } from "../encoder/encoder.js";
+import {
+    getEncoderAccessors,
+    isSecondaryChannel,
+    primaryPositionalChannels,
+} from "../encoder/encoder.js";
 import { collectConfiguredDomainExprRefs } from "./domainExpressions.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
@@ -116,6 +127,9 @@ export default class ScaleResolution {
         range: new Set(),
     };
 
+    /** @type {ViewportDomainScheduler} */
+    #viewportDomainScheduler;
+
     /** @type {ScaleInstanceManager} */
     #scaleManager;
 
@@ -177,9 +191,23 @@ export default class ScaleResolution {
             getDataMembers: () =>
                 this.#getActiveMembers(this.#dataDomainMembers),
             getViewLevelDomainSource: () => this.#getViewLevelDomainSource(),
+            getViewportConstraints: (member) =>
+                this.#getViewportConstraints(member),
             getType: () => this.type,
             getLocusExtent: (assembly) => this.#getLocusExtent(assembly),
             fromComplexInterval: this.fromComplexInterval.bind(this),
+        });
+
+        this.#viewportDomainScheduler = new ViewportDomainScheduler({
+            hasViewportDomain: () => this.#domainAggregator.hasViewportDomain(),
+            getDependencies: () =>
+                getViewportDependencies(this.#dataDomainMembers, this),
+            isReady: () =>
+                isViewportDataReady(
+                    this.#getActiveMembers(this.#dataDomainMembers),
+                    (member) => this.#getViewportConstraints(member)
+                ),
+            update: () => this.reconfigureDomain(),
         });
 
         this.#scaleManager = new ScaleInstanceManager({
@@ -228,9 +256,10 @@ export default class ScaleResolution {
             if (!view.isConfiguredVisible()) {
                 continue;
             }
+            const domain = member.channelDef?.scale?.domain;
             if (
                 !view.isDataInitialized() &&
-                !member.channelDef?.scale?.domain
+                (domain === undefined || isViewportDomainRef(domain))
             ) {
                 // Explicit domains should be honored even before data init.
                 continue;
@@ -410,14 +439,20 @@ export default class ScaleResolution {
      * @returns {boolean}
      */
     #hasConfiguredDomain() {
-        if (this.#viewLevelScaleProps?.props.domain !== undefined) {
+        const viewLevelDomain = this.#viewLevelScaleProps?.props.domain;
+        if (
+            viewLevelDomain !== undefined &&
+            !isViewportDomainRef(viewLevelDomain)
+        ) {
             return true;
         }
 
         for (const member of this.#members) {
+            const domain = member.channelDef.scale?.domain;
             if (
                 member.contributesToDomain &&
-                member.channelDef.scale?.domain !== undefined
+                domain !== undefined &&
+                !isViewportDomainRef(domain)
             ) {
                 return true;
             }
@@ -543,6 +578,7 @@ export default class ScaleResolution {
         this.#invalidateConfiguredDomain();
         this.#refreshSelectionDomainParamSubscriptions();
         this.#refreshConfiguredDomainExprSubscriptions();
+        this.#viewportDomainScheduler.refresh();
     }
 
     #markMembersDirty() {
@@ -631,6 +667,7 @@ export default class ScaleResolution {
         this.#invalidateConfiguredDomain();
         this.#refreshSelectionDomainParamSubscriptions();
         this.#refreshConfiguredDomainExprSubscriptions();
+        this.#viewportDomainScheduler.refresh();
         this.#recreateInitializedScaleAndNotifyDomain();
     }
 
@@ -644,6 +681,7 @@ export default class ScaleResolution {
             this.#invalidateConfiguredDomain();
             this.#refreshSelectionDomainParamSubscriptions();
             this.#refreshConfiguredDomainExprSubscriptions();
+            this.#viewportDomainScheduler.refresh();
             this.#recreateInitializedScaleAndNotifyDomain();
         }
     }
@@ -686,6 +724,51 @@ export default class ScaleResolution {
 
     /**
      * @param {ScaleResolutionMember} member
+     * @returns {{ channel: "x" | "y", domain: [number, number], accessor: import("../types/encoder.js").Accessor, accessor2?: import("../types/encoder.js").Accessor }[]}
+     */
+    #getViewportConstraints(member) {
+        return getViewportConstraints(
+            member,
+            this,
+            /** @type {ChannelWithScale} */ (this.channel),
+            (resolution) =>
+                this.#hasVisibleDependencyPath(resolution, new Set())
+        );
+    }
+
+    /**
+     * @param {ScaleResolution} resolution
+     * @param {Set<ScaleResolution>} visited
+     */
+    #hasVisibleDependencyPath(resolution, visited) {
+        if (resolution === this) {
+            return true;
+        }
+        if (
+            visited.has(resolution) ||
+            !resolution.#domainAggregator.hasViewportDomain()
+        ) {
+            return false;
+        }
+
+        visited.add(resolution);
+        for (const member of resolution.#dataDomainMembers) {
+            for (const channel of primaryPositionalChannels) {
+                const dependency = member.view.getScaleResolution(channel);
+                if (
+                    dependency &&
+                    dependency !== resolution &&
+                    this.#hasVisibleDependencyPath(dependency, visited)
+                ) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param {ScaleResolutionMember} member
      */
     #assertCanRegisterMember(member) {
         if (!this.#viewLevelScaleProps) {
@@ -711,6 +794,7 @@ export default class ScaleResolution {
     dispose() {
         this.#clearSelectionDomainParamSubscriptions();
         this.#clearConfiguredDomainExprSubscriptions();
+        this.#viewportDomainScheduler.clear();
         this.#listeners.domain.clear();
         this.#listeners.range.clear();
         this.#scaleManager.dispose();
@@ -833,7 +917,8 @@ export default class ScaleResolution {
                 continue;
             }
             if (!view.isDataInitialized()) {
-                if (!member.channelDef.scale?.domain) {
+                const domain = member.channelDef.scale?.domain;
+                if (domain === undefined || isViewportDomainRef(domain)) {
                     return false;
                 }
                 continue;
@@ -920,7 +1005,14 @@ export default class ScaleResolution {
         }
 
         const listener = () => {
-            this.reconfigureDomain();
+            if (
+                this.#domainAggregator.hasViewportDomain() &&
+                this.#initialDomainFinalized
+            ) {
+                this.#viewportDomainScheduler.schedule(true);
+            } else {
+                this.reconfigureDomain();
+            }
         };
 
         /** @type {(() => void)[]} */
@@ -981,6 +1073,7 @@ export default class ScaleResolution {
                 configScopes: this.#resolutionView.getConfigScopes(),
             });
             this.#validateLinkedSelectionConfiguration(props);
+            this.#validateViewportDomainConfiguration(props);
             return props;
         });
     }
@@ -1084,6 +1177,31 @@ export default class ScaleResolution {
             throw new Error(
                 `Selection domain reference "${linkInfo.param}.${linkInfo.encoding}" cannot use "initial" with a non-zoomable ${this.channel} scale. ` +
                     `Enable zoom on the linked scale or remove "initial".`
+            );
+        }
+    }
+
+    /**
+     * @param {import("../spec/scale.js").Scale} props
+     */
+    #validateViewportDomainConfiguration(props) {
+        if (
+            !this.#domainAggregator.hasViewportDomain() ||
+            props === null ||
+            props.type === "null"
+        ) {
+            return;
+        }
+
+        if (!isContinuous(props.type) || isDiscrete(props.type)) {
+            throw new Error(
+                `Viewport-derived domains require a continuous ${this.channel} scale.`
+            );
+        }
+
+        if ((this.channel === "x" || this.channel === "y") && props.zoom) {
+            throw new Error(
+                `Viewport-derived domains cannot target a zoomable ${this.channel} scale.`
             );
         }
     }

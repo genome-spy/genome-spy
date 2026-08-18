@@ -7,8 +7,9 @@ import { field } from "../utils/field.js";
 import { asArray } from "../utils/arrayUtils.js";
 import { radixSortIntoLookupArray } from "../utils/radixSort.js";
 import { UNIQUE_ID_KEY } from "./transforms/identifier.js";
-import createDomain from "../utils/domainArray.js";
 import KeyIndex from "./keyIndex.js";
+import ViewportDomainManager from "./viewportDomain.js";
+import createDomain from "../utils/domainArray.js";
 
 /**
  * Collects (materializes) the data that flows through this node.
@@ -53,6 +54,9 @@ export default class Collector extends FlowNode {
     /** @type {DomainCache} */
     #domainCache = new DomainCache();
 
+    /** @type {ViewportDomainManager} */
+    #viewportDomains;
+
     get behavior() {
         return BEHAVIOR_COLLECTS;
     }
@@ -68,6 +72,11 @@ export default class Collector extends FlowNode {
         super();
 
         this.params = params ?? { type: "collect" };
+        this.#viewportDomains = new ViewportDomainManager(
+            this.params,
+            () => this.facetBatches.values(),
+            () => this.completed
+        );
 
         /** @type {Set<function(Collector):void>} */
         this.observers = new Set();
@@ -85,6 +94,7 @@ export default class Collector extends FlowNode {
         this.#buffer = [];
         this.#uniqueIdIndex = [];
         this.#keyIndex.invalidate();
+        this.#viewportDomains.reset();
 
         this.facetBatches.clear();
         this.facetBatches.set(undefined, this.#buffer);
@@ -140,6 +150,8 @@ export default class Collector extends FlowNode {
                 data.sort(this.#comparator);
             }
         }
+
+        this.#viewportDomains.complete();
 
         this.#buildUniqueIdIndex();
         this.#propagateToChildren();
@@ -221,6 +233,36 @@ export default class Collector extends FlowNode {
 
             return domain;
         });
+    }
+
+    /**
+     * Calculates a target domain from rows that overlap the positional
+     * viewport. X-sorted data use a flat block index; other data use the same
+     * exact row predicate over the full collector.
+     *
+     * @param {string} domainKey
+     * @param {import("../spec/channel.js").Type} type
+     * @param {import("../types/encoder.js").Accessor} targetAccessor
+     * @param {import("./viewportDomain.js").ViewportConstraint[]} constraints
+     * @returns {import("../utils/domainArray.js").DomainArray}
+     */
+    getViewportDomain(domainKey, type, targetAccessor, constraints) {
+        return this.#viewportDomains.getDomain(
+            domainKey,
+            type,
+            targetAccessor,
+            constraints
+        );
+    }
+
+    /**
+     * Exposes conditional construction for focused contract tests and
+     * diagnostics.
+     *
+     * @internal
+     */
+    getViewportIndexCount() {
+        return this.#viewportDomains.getIndexCount();
     }
 
     /**

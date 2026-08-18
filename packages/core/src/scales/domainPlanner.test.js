@@ -129,6 +129,88 @@ describe("DomainPlanner", () => {
         expect(toRegularArray(domain)).toEqual([0, 7]);
     });
 
+    test("viewport domain references select a data-derived domain mode", () => {
+        const members = [
+            createSelectionDomainMember({
+                selectionValue: undefined,
+                domain: { source: "viewport" },
+            }),
+            {
+                channel: "x",
+                channelDef: { type: "quantitative", scale: {} },
+                contributesToDomain: true,
+            },
+        ];
+        const planner = createPlanner(members, "quantitative");
+
+        expect(planner.getConfiguredDomain()).toBeUndefined();
+        expect(planner.hasViewportDomain()).toBe(true);
+    });
+
+    test("repeated viewport domain references are compatible", () => {
+        const members = Array.from({ length: 2 }, () =>
+            createSelectionDomainMember({
+                selectionValue: undefined,
+                domain: { source: "viewport" },
+            })
+        );
+        const planner = createPlanner(members, "quantitative");
+
+        expect(planner.getConfiguredDomain()).toBeUndefined();
+        expect(planner.hasViewportDomain()).toBe(true);
+    });
+
+    test("visible and other configured domains cannot be mixed", () => {
+        const members = [
+            createSelectionDomainMember({
+                selectionValue: undefined,
+                domain: { source: "viewport" },
+            }),
+            createSelectionDomainMember({
+                selectionValue: undefined,
+                domain: [0, 10],
+            }),
+        ];
+        const planner = createPlanner(members, "quantitative");
+
+        expect(() => planner.getConfiguredDomain()).toThrow(
+            "Cannot mix viewport-derived and other configured domains"
+        );
+    });
+
+    test("viewport domains require a continuous data type", () => {
+        const member = createSelectionDomainMember({
+            selectionValue: undefined,
+            type: "nominal",
+            channel: "color",
+            domain: { source: "viewport" },
+        });
+        const planner = createPlanner([member], "nominal");
+
+        expect(() => planner.getConfiguredDomain()).toThrow(
+            'channel "color" has type "nominal"'
+        );
+    });
+
+    test("view-level viewport domains select the resolution-wide mode", () => {
+        const planner = new DomainPlanner({
+            getActiveMembers: () => new Set(),
+            getViewLevelDomainSource: () => ({
+                view: /** @type {any} */ ({}),
+                channel: "y",
+                type: "quantitative",
+                domain: { source: "viewport" },
+            }),
+            getType: () => "quantitative",
+            getLocusExtent: () => [0, 10],
+            fromComplexInterval: (interval) =>
+                /** @type {number[]} */ (interval),
+        });
+
+        expect(planner.getConfiguredDomain()).toBeUndefined();
+        expect(planner.hasViewportDomain()).toBe(true);
+    });
+
     test("data domains are unioned", () => {
         const domainsByKey = new Map([
             ["quantitative|x|field|a", createDomain("quantitative", [1, 4])],

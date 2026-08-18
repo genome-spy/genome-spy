@@ -773,6 +773,407 @@ describe("Scale resolution domain handling", () => {
         expect(getScaleDomain(view, "y")).toEqual(expected);
     });
 
+    test("viewport domains retain data-derived defaults", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 2 },
+                        { x: 1, y: 3 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { domain: { source: "viewport" } },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = getRequiredScaleResolution(view, "y");
+        expect(resolution.isDomainDefinedExplicitly()).toBe(false);
+        expect(getScaleDomain(view, "y")).toEqual([0, 3]);
+    });
+
+    test("visible y domains use the current x viewport", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 2 },
+                        { x: 1, y: 3 },
+                        { x: 2, y: 100 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { domain: { source: "viewport" } },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        getRequiredScaleResolution(view, "x").getScale().domain([1.5, -0.5]);
+        const yResolution = getRequiredScaleResolution(view, "y");
+        yResolution.reconfigureDomain();
+
+        expect(r(yResolution.getDataDomain())).toEqual([2, 3]);
+    });
+
+    test("viewport domains update once after positional navigation pauses", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 2 },
+                        { x: 1, y: 3 },
+                        { x: 2, y: 100 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: {
+                            domain: { source: "viewport" },
+                            zero: false,
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const collector = view.getCollector();
+        const xResolution = getRequiredScaleResolution(view, "x");
+        const yResolution = getRequiredScaleResolution(view, "y");
+        const query = vi.spyOn(collector, "getViewportDomain");
+        view.onBeforeRender();
+        const transition = vi.spyOn(yResolution, "zoomTo");
+        vi.useFakeTimers();
+        try {
+            xResolution.getScale().domain([0, 1.5]);
+            xResolution.getScale().domain([-0.5, 1.5]);
+
+            expect(query).not.toHaveBeenCalled();
+            expect(transition).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(149);
+            expect(query).not.toHaveBeenCalled();
+            expect(transition).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(1);
+
+            expect(query).toHaveBeenCalledOnce();
+            expect(transition).toHaveBeenCalledOnce();
+            expect(r(yResolution.getDomain())).toEqual([2, 3]);
+        } finally {
+            vi.useRealTimers();
+            query.mockRestore();
+            transition.mockRestore();
+        }
+    });
+
+    test("viewport domains retain the last nonempty domain", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 2 },
+                        { x: 1, y: 3 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: {
+                            domain: { source: "viewport" },
+                            zero: false,
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const yResolution = getRequiredScaleResolution(view, "y");
+        expect(r(yResolution.getDomain())).toEqual([2, 3]);
+
+        vi.useFakeTimers();
+        try {
+            getRequiredScaleResolution(view, "x").getScale().domain([10, 11]);
+            await vi.advanceTimersByTimeAsync(150);
+
+            expect(r(yResolution.getDomain())).toEqual([2, 3]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test("viewport domains wait for the latest lazy viewport", async () => {
+        const unregister = registerLazyDataSource(
+            (params) => /** @type {any} */ (params).type == "mockLazy",
+            MockLazySource
+        );
+
+        try {
+            const view = await create(
+                {
+                    data: {
+                        lazy: /** @type {any} */ ({
+                            type: "mockLazy",
+                            channel: "x",
+                            data: [
+                                { x: 0, y: 2 },
+                                { x: 1, y: 3 },
+                            ],
+                        }),
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: { domain: [0, 1], zoom: true },
+                        },
+                        y: {
+                            field: "y",
+                            type: "quantitative",
+                            scale: {
+                                domain: { source: "viewport" },
+                                zero: false,
+                            },
+                        },
+                    },
+                },
+                UnitView
+            );
+            initializeViewSubtree(view, view.context.dataFlow);
+
+            const source = /** @type {MockLazySource} */ (
+                view.flowHandle.dataSource
+            );
+            source.requestDataForDomain([0, 1]);
+            const yResolution = getRequiredScaleResolution(view, "y");
+            await vi.waitFor(() =>
+                expect(r(yResolution.getDomain())).toEqual([2, 3])
+            );
+
+            const collector = view.getCollector();
+            const query = vi.spyOn(collector, "getViewportDomain");
+            source.delay = 250;
+            source.params.data = [
+                { x: 10, y: 20 },
+                { x: 11, y: 30 },
+            ];
+            getRequiredScaleResolution(view, "x").getScale().domain([10, 11]);
+            source.requestDataForDomain([10, 11]);
+
+            await new Promise((resolve) => setTimeout(resolve, 175));
+            expect(query).not.toHaveBeenCalled();
+            expect(r(yResolution.getDomain())).toEqual([2, 3]);
+
+            await vi.waitFor(() =>
+                expect(r(yResolution.getDomain())).toEqual([20, 30])
+            );
+            expect(query).toHaveBeenCalledOnce();
+            query.mockRestore();
+        } finally {
+            unregister();
+        }
+    });
+
+    test("visible size domains use both scatter-plot viewports", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 0, size: 2 },
+                        { x: 1, y: 2, size: 100 },
+                        { x: 2, y: 0, size: 3 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                    size: {
+                        field: "size",
+                        type: "quantitative",
+                        scale: { domain: { source: "viewport" } },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        getRequiredScaleResolution(view, "x").getScale().domain([-0.5, 1.5]);
+        getRequiredScaleResolution(view, "y").getScale().domain([-0.5, 0.5]);
+        const sizeResolution = getRequiredScaleResolution(view, "size");
+        sizeResolution.reconfigureDomain();
+
+        expect(r(sizeResolution.getDataDomain())).toEqual([2, 2]);
+    });
+
+    test("viewport domains require an independent positional scale", async () => {
+        await expect(
+            initView(
+                {
+                    data: { values: [{ y: 2 }] },
+                    mark: "point",
+                    encoding: {
+                        y: {
+                            field: "y",
+                            type: "quantitative",
+                            scale: { domain: { source: "viewport" } },
+                        },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow(
+            "requires an independent continuous positional scale"
+        );
+    });
+
+    test("visible positional domains reject dependency cycles", async () => {
+        await expect(
+            initView(
+                {
+                    data: { values: [{ x: 1, y: 2 }] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: { domain: { source: "viewport" } },
+                        },
+                        y: {
+                            field: "y",
+                            type: "quantitative",
+                            scale: { domain: { source: "viewport" } },
+                        },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow("form a dependency cycle");
+    });
+
+    test("implicit members participate in a shared viewport-domain resolution", async () => {
+        const view = await initView(
+            {
+                resolve: { scale: { y: "shared" } },
+                layer: [
+                    {
+                        data: { values: [{ x: 0, y: 2 }] },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                scale: { domain: { source: "viewport" } },
+                            },
+                        },
+                    },
+                    {
+                        data: { values: [{ x: 1, y: 5 }] },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+
+        expect(getScaleDomain(view, "y")).toEqual([0, 5]);
+    });
+
+    test("viewport domains reject discrete scales", async () => {
+        await expect(
+            initView(
+                {
+                    data: { values: [{ x: 0, group: "a" }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        color: {
+                            field: "group",
+                            type: "nominal",
+                            scale: { domain: { source: "viewport" } },
+                        },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow("Viewport-derived domains require a continuous");
+    });
+
+    test("viewport domains reject zoomable positional targets", async () => {
+        await expect(
+            initView(
+                {
+                    data: { values: [{ x: 0 }] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: {
+                                domain: { source: "viewport" },
+                                zoom: true,
+                            },
+                        },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow(
+            "Viewport-derived domains cannot target a zoomable x scale"
+        );
+    });
+
     test("reconfigureDomain notifies when a non-zoomable domain changes", async () => {
         const view = await initView(
             {

@@ -6,6 +6,28 @@ import { toRegularArray } from "../utils/domainArray.js";
 
 const data = [1, 5, 2, 4, 3].map((x) => ({ x }));
 
+/**
+ * @param {string} fieldName
+ * @param {import("../spec/channel.js").ChannelWithScale} channel
+ * @returns {import("../types/encoder.js").ScaleAccessor<number>}
+ */
+function createAccessor(fieldName, channel) {
+    const accessor =
+        /** @type {import("../types/encoder.js").ScaleAccessor<number>} */ (
+            (/** @type {Record<string, number>} */ datum) => datum[fieldName]
+        );
+    accessor.constant = false;
+    accessor.channel = channel;
+    accessor.scaleChannel = channel;
+    accessor.sourceKey = "field|" + fieldName;
+    accessor.domainKeyBase = channel + "|field|" + fieldName;
+    accessor.channelDef = /** @type {any} */ ({
+        field: fieldName,
+        type: "quantitative",
+    });
+    return accessor;
+}
+
 test("Collector collects data", () => {
     const collector = new Collector();
 
@@ -176,6 +198,224 @@ describe("Indexing unique ids", () => {
         collector.complete();
 
         expect(collector.findDatumByUniqueId(0)).toBeUndefined();
+    });
+});
+
+describe("Viewport domains", () => {
+    const x = createAccessor("x", "x");
+    const x2 = createAccessor("x2", "x2");
+    const y = createAccessor("y", "y");
+    const size = createAccessor("size", "size");
+
+    test("uses exact point and half-open interval boundaries", () => {
+        const collector = new Collector();
+        const values = [
+            { x: 0, x2: 2, y: 10 },
+            { x: 2, x2: 4, y: 20 },
+            { x: 3, x2: 3, y: 30 },
+            { x: 4, x2: 5, y: 40 },
+        ];
+        for (const datum of values) {
+            collector.handle(datum);
+        }
+        collector.complete();
+
+        const domain = collector.getViewportDomain(
+            "quantitative|y|field|y",
+            "quantitative",
+            y,
+            [{ channel: "x", domain: [2, 3], accessor: x, accessor2: x2 }]
+        );
+
+        expect(toRegularArray(domain)).toEqual([20, 30]);
+        expect(collector.getViewportIndexCount()).toBe(0);
+    });
+
+    test.each(["ascending", "descending"])(
+        "builds an index for %s x-sorted points",
+        (order) => {
+            const collector = new Collector({
+                type: "collect",
+                sort: {
+                    field: "x",
+                    order: /** @type {"ascending" | "descending"} */ (order),
+                },
+            });
+            for (let i = 0; i < 800; i++) {
+                collector.handle({ x: i, y: i });
+            }
+            collector.complete();
+
+            expect(collector.getViewportIndexCount()).toBe(0);
+            const domain = collector.getViewportDomain(
+                "quantitative|y|field|y",
+                "quantitative",
+                y,
+                [{ channel: "x", domain: [256, 511], accessor: x }]
+            );
+
+            expect(toRegularArray(domain)).toEqual([256, 511]);
+            expect(collector.getViewportIndexCount()).toBe(1);
+        }
+    );
+
+    test("uses x candidates and exact y filtering for scatter plots", () => {
+        const collector = new Collector({
+            type: "collect",
+            sort: { field: "x" },
+        });
+        for (let i = 0; i < 600; i++) {
+            collector.handle({ x: i, y: i % 10, size: i });
+        }
+        collector.complete();
+
+        const domain = collector.getViewportDomain(
+            "quantitative|size|field|size",
+            "quantitative",
+            size,
+            [
+                { channel: "x", domain: [256, 511], accessor: x },
+                { channel: "y", domain: [3, 5], accessor: y },
+            ]
+        );
+
+        expect(toRegularArray(domain)).toEqual([263, 505]);
+        expect(collector.getViewportIndexCount()).toBe(1);
+    });
+
+    test("indexes x-sorted intervals without changing overlap semantics", () => {
+        const collector = new Collector({
+            type: "collect",
+            sort: { field: "x" },
+        });
+        for (let i = 0; i < 600; i++) {
+            collector.handle({ x: i, x2: i + 10, y: i });
+        }
+        collector.complete();
+
+        const domain = collector.getViewportDomain(
+            "quantitative|y|field|y",
+            "quantitative",
+            y,
+            [
+                {
+                    channel: "x",
+                    domain: [256, 512],
+                    accessor: x,
+                    accessor2: x2,
+                },
+            ]
+        );
+
+        expect(toRegularArray(domain)).toEqual([247, 511]);
+        expect(collector.getViewportIndexCount()).toBe(1);
+    });
+
+    test("unions facet batches and reuses the x blocks for another target", () => {
+        const collector = new Collector({
+            type: "collect",
+            sort: { field: "x" },
+        });
+        collector.beginBatch({ type: "facet", facetId: "A" });
+        collector.handle({ x: 0, y: 10, size: 100 });
+        collector.beginBatch({ type: "facet", facetId: "B" });
+        collector.handle({ x: 1, y: 20, size: 200 });
+        collector.complete();
+        const constraints = [
+            {
+                channel: /** @type {"x"} */ ("x"),
+                domain: /** @type {[number, number]} */ ([0, 1]),
+                accessor: x,
+            },
+        ];
+
+        const yDomain = collector.getViewportDomain(
+            "quantitative|y|field|y",
+            "quantitative",
+            y,
+            constraints
+        );
+        const sizeDomain = collector.getViewportDomain(
+            "quantitative|size|field|size",
+            "quantitative",
+            size,
+            constraints
+        );
+
+        expect(toRegularArray(yDomain)).toEqual([10, 20]);
+        expect(toRegularArray(sizeDomain)).toEqual([100, 200]);
+        expect(collector.getViewportIndexCount()).toBe(1);
+    });
+
+    test("matches the exact scan for representative interval viewports", () => {
+        const values = Array.from({ length: 1024 }, (_, i) => ({
+            x: i,
+            x2: i + 1 + (i % 7),
+            y: Math.sin(i),
+        }));
+        /** @param {boolean} sorted */
+        const makeCollector = (sorted) => {
+            const collector = new Collector(
+                sorted ? { type: "collect", sort: { field: "x" } } : undefined
+            );
+            for (const datum of values) {
+                collector.handle(datum);
+            }
+            collector.complete();
+            return collector;
+        };
+        const indexed = makeCollector(true);
+        const exact = makeCollector(false);
+
+        for (const domain of /** @type {[number, number][]} */ ([
+            [0, 1],
+            [255, 512],
+            [1000, 900],
+        ])) {
+            const constraints = [
+                { channel: "x", domain, accessor: x, accessor2: x2 },
+            ];
+            /** @param {Collector} collector */
+            const query = (collector) =>
+                toRegularArray(
+                    collector.getViewportDomain(
+                        "quantitative|y|field|y",
+                        "quantitative",
+                        y,
+                        /** @type {any} */ (constraints)
+                    )
+                );
+
+            expect(query(indexed)).toEqual(query(exact));
+        }
+    });
+
+    test("rebuilds an enabled index when collector data change", () => {
+        const collector = new Collector({
+            type: "collect",
+            sort: { field: "x" },
+        });
+        collector.handle({ x: 0, y: 1 });
+        collector.complete();
+        collector.getViewportDomain(
+            "quantitative|y|field|y",
+            "quantitative",
+            y,
+            [{ channel: "x", domain: [0, 1], accessor: x }]
+        );
+
+        collector.reset();
+        collector.handle({ x: 0, y: 7 });
+        collector.complete();
+        const domain = collector.getViewportDomain(
+            "quantitative|y|field|y",
+            "quantitative",
+            y,
+            [{ channel: "x", domain: [0, 1], accessor: x }]
+        );
+
+        expect(toRegularArray(domain)).toEqual([7, 7]);
+        expect(collector.getViewportIndexCount()).toBe(1);
     });
 });
 
