@@ -64,6 +64,11 @@ const { blob } = await api.imageExport.raster({
 
 `image/png` is currently the only supported MIME type.
 
+Raster export uses the active rendering backend. In Canvas2D mode, GenomeSpy
+renders the current view into a detached Canvas2D surface and encodes it without
+requesting WebGL. Native-font and effect limitations are the same as in the
+live [Canvas2D renderer](./embed-options.md#canvas2d-limitations).
+
 !!! warning "Deprecated canvas export"
 
     `exportCanvas(width, height, devicePixelRatio, background)` remains

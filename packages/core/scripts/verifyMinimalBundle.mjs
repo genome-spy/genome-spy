@@ -26,6 +26,8 @@ const forbiddenSources = [
     "src/data/sources/lazy/vcfSource.js",
 ];
 
+const forbiddenSourceDirectories = ["src/canvas2d/", "src/rendering/cpu/"];
+
 const tempDir = fs.mkdtempSync(
     path.join(os.tmpdir(), "genome-spy-minimal-bundle-")
 );
@@ -74,6 +76,14 @@ try {
 
     for (const forbidden of forbiddenSources) {
         if (sources.some((source) => source.endsWith(forbidden))) {
+            throw new Error(
+                `Minimal bundle should not include ${forbidden}, but it does.`
+            );
+        }
+    }
+
+    for (const forbidden of forbiddenSourceDirectories) {
+        if (sources.some((source) => source.includes(forbidden))) {
             throw new Error(
                 `Minimal bundle should not include ${forbidden}, but it does.`
             );

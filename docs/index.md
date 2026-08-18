@@ -10,12 +10,14 @@ from primitive graphical marks, such as [points](grammar/mark/point.md) and
 [Vega-Lite](https://vega.github.io/vega-lite/), with partial compatibility and
 extensions for genome visualization.
 
-Visualizations are rendered with a carefully crafted WebGL-based engine, which
+Visualizations normally use a carefully crafted WebGL-based engine, which
 enables fluid interaction and smooth animation for datasets with several
 million data points. This performance comes from using GPU
 [shader](https://en.wikipedia.org/wiki/Shader) programs for all
 [scale](grammar/scale.md) transformations and mark rendering, but shaders are
-an implementation detail hidden from end users.
+an implementation detail hidden from end users. A Canvas2D compatibility
+renderer keeps GenomeSpy usable when WebGL is unavailable, with lower
+performance and no datum picking.
 
 The toolkit comprises two JavaScript packages:
 

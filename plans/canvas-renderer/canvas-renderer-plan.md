@@ -997,6 +997,40 @@ Verification:
 - Smoke-test at least one real restricted virtual desktop in addition to local
   browser GPU disabling before calling the compatibility goal complete.
 
+Recorded Step 5 results (pre-review):
+
+- Public documentation now covers renderer selection and automatic fallback,
+  coordinate interactions, performance expectations, active-backend PNG
+  export, native Canvas text differences, specialized-effect fallbacks, and
+  the absence of datum picking. It also states that Canvas2D makes no WebGL or
+  WebGPU request while the browser may still accelerate Canvas internally.
+- The Canvas2D subsystem README records the lazy backend boundary, shared live
+  and export traversal, shared CPU geometry ownership, full-surface repaint
+  model, interaction limitations, and command-recorder/browser test split.
+- Minimal-bundle verification now fails if any `src/canvas2d/` or
+  `src/rendering/cpu/` source enters the synchronous minimal ESM source map.
+  The guard passes with both directories emitted only through optional chunks.
+- Step 5 changes only documentation, declaration comments, and the bundle
+  verification script, so the before and after production artifacts are byte
+  identical: `index.es.js` is 723,042 bytes raw / 243,426 bytes with
+  `gzip -c`; the Canvas2D chunk is 12,931 / 4,151 bytes; the shared CPU
+  geometry chunk is 22,208 / 7,496 bytes; and the single-file UMD output is
+  1,266,435 / 463,700 bytes. The shared chunk contains all eight
+  `rendering/cpu` modules used by SVG and Canvas2D.
+- The documentation site builds without warnings or broken-link errors. The
+  full repository suite passes all 386 test files (3,230 tests passed, one
+  skipped, and two todo), lint passes, and Core JavaScript, Vite, schema, App,
+  docs, and minimal-bundle builds pass. Workspace type checking and Core
+  declaration generation still report only the three pre-existing
+  `GFF3Feature`, `renameRefSeqs`, and interaction-dispatcher test-stub errors.
+- Local Chrome coverage includes explicit Canvas mode, forced WebGL failure,
+  one-surface automatic fallback, Core and App interaction, SampleView facets
+  and scrollbars, live updates, and detached PNG export. No target restricted
+  virtual desktop was available for this work. The implementation can be
+  completed locally, but target-environment validation remains required before
+  claiming compatibility with that specific desktop policy and performance
+  profile.
+
 Documentation and migration: document `renderer`, automatic fallback,
 Canvas2D performance expectations, native-font differences, Canvas backing
 caveat, raster export behavior, and the absence of datum picking, data
