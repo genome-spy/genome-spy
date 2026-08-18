@@ -54,5 +54,27 @@ description: Write and verify GenomeSpy user-facing documentation, schema-derive
 - Macro implementation lives in
   `utils/markdown_extension/extension/extension.py`.
 
+## Example data provenance
+
+- Follow `examples/README.md` for shared example sources and
+  `examples/data/README.md` for local fixtures.
+- For external or adapted data, add a concise `!!! disclaimer ""` next to the
+  rendered example on the consuming page.
+- Include a detail only when it identifies the exact data, discloses a material
+  change such as mirroring or preprocessing, satisfies attribution or licensing,
+  or prevents misuse. Keep dataset background, method explanations, and other
+  non-provenance material out of the disclaimer.
+- Verify every provenance statement against the data and specification that the
+  page actually renders. Update sample, region, subset, preprocessing, and use
+  limitations when an adaptation changes them.
+- Reuse concise canonical wording when another official GenomeSpy example uses
+  the same data and processing. Do not weaken required attribution or substantive
+  limitations while shortening it.
+- For a composed example, link to the component example pages for source details
+  and disclaimers instead of duplicating them.
+- A concise `Data source: ...` entry in a specification description may orient
+  readers, but it does not replace page-level provenance when attribution,
+  licensing, processing, or use limitations need explanation.
+
 Use the lightest build or targeted verification that proves the edited source
 and any generated artifact remain synchronized.
