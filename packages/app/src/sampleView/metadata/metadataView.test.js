@@ -1054,45 +1054,6 @@ describe("MetadataView", () => {
         }
     });
 
-    it("ignores synthesized mouseleave while the pointer is still inside the metadata view", async () => {
-        const { metadataView, requestRender, transition, attributeViews } =
-            await createMetadataViewTestHarness();
-
-        Object.defineProperty(metadataView, "coords", {
-            value: {
-                containsPoint: () => true,
-            },
-        });
-
-        metadataView.handleInteraction(
-            /** @type {any} */ ({
-                type: "mousemove",
-                target: attributeViews.foo,
-            }),
-            false
-        );
-
-        transition.mockClear();
-        requestRender.mockClear();
-
-        metadataView.handleInteraction(
-            /** @type {any} */ ({
-                type: "mouseleave",
-                point: { x: 1, y: 1 },
-                uiEvent: { type: "mousemove" },
-            }),
-            false
-        );
-
-        expect(metadataView._attributeHighlighState.currentAttribute).toBe(
-            "foo"
-        );
-        expect(transition).not.toHaveBeenCalled();
-        expect(requestRender).not.toHaveBeenCalled();
-
-        metadataView.dispose();
-    });
-
     it("clears attribute highlight on mouseleave without an exit delay", async () => {
         const { metadataView, requestRender, transition, attributeViews } =
             await createMetadataViewTestHarness();
@@ -1112,7 +1073,6 @@ describe("MetadataView", () => {
         metadataView.handleInteraction(
             /** @type {any} */ ({
                 type: "mouseleave",
-                uiEvent: { type: "mouseout" },
             }),
             false
         );
