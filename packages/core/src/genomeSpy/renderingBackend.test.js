@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
     createCanvas2DRenderingBackend: vi.fn(),
     readPickingPixel: vi.fn(),
     warnOnce: vi.fn(),
+    exportCanvas: vi.fn(),
+    exportRaster: vi.fn(),
 }));
 
 vi.mock("../gl/webGLHelper.js", () => ({
@@ -25,6 +27,11 @@ vi.mock("../canvas2d/index.js", () => ({
 
 vi.mock("../utils/warning.js", () => ({
     warnOnce: mocks.warnOnce,
+}));
+
+vi.mock("./canvasExport.js", () => ({
+    exportCanvas: mocks.exportCanvas,
+    exportRaster: mocks.exportRaster,
 }));
 
 import { createRenderingBackend } from "./renderingBackend.js";
@@ -90,6 +97,27 @@ describe("createRenderingBackend", () => {
             10,
             14
         );
+    });
+
+    test("routes raster exports through the active WebGL backend", async () => {
+        const container = document.createElement("div");
+        const glHelper = createGlHelper(container);
+        const viewRoot = /** @type {any} */ ({});
+        const blob = new Blob();
+        mocks.createWebGLHelper.mockReturnValue(glHelper);
+        mocks.exportCanvas.mockReturnValue("data:image/png;base64,webgl");
+        mocks.exportRaster.mockResolvedValue(blob);
+        const backend = await createRenderingBackend({
+            ...baseOptions,
+            container,
+        });
+
+        expect(backend.exportCanvas({ viewRoot })).toBe(
+            "data:image/png;base64,webgl"
+        );
+        await expect(backend.exportRaster({ viewRoot })).resolves.toBe(blob);
+        expect(mocks.exportCanvas).toHaveBeenCalledWith({ viewRoot, glHelper });
+        expect(mocks.exportRaster).toHaveBeenCalledWith({ viewRoot, glHelper });
     });
 
     test("preserves existing canvases when WebGL creation fails", async () => {

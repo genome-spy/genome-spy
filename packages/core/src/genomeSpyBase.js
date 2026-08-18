@@ -28,10 +28,6 @@ import InteractionController from "./genomeSpy/interactionController.js";
 import { createRenderingBackend } from "./genomeSpy/renderingBackend.js";
 import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
-import {
-    exportCanvas,
-    exportRaster as renderRasterExport,
-} from "./genomeSpy/canvasExport.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
 import SingleAxisWindowedSource from "./data/sources/lazy/singleAxisWindowedSource.js";
@@ -666,8 +662,7 @@ export default class GenomeSpy {
         clearColor = "white"
     ) {
         try {
-            return exportCanvas({
-                glHelper: this.#glHelper,
+            return this.#renderingBackend.exportCanvas({
                 viewRoot: this.viewRoot,
                 logicalWidth,
                 logicalHeight,
@@ -690,8 +685,7 @@ export default class GenomeSpy {
         const background = getExportBackground(this.spec, options);
 
         try {
-            const blob = await renderRasterExport({
-                glHelper: this.#glHelper,
+            const blob = await this.#renderingBackend.exportRaster({
                 viewRoot: this.viewRoot,
                 logicalWidth: options.logicalWidth,
                 logicalHeight: options.logicalHeight,

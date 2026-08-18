@@ -42,6 +42,14 @@ beforeEach(() => {
             return /** @type {any} */ (context);
         }
     );
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(
+        function (callback, type) {
+            callback(new Blob(["png"], { type: type ?? "image/png" }));
+        }
+    );
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue(
+        "data:image/png;base64,canvas2d"
+    );
 });
 
 afterEach(() => {
@@ -239,6 +247,133 @@ test("launches, updates expressions, and repaints interactions without a GPU con
     genomeSpy.destroy();
 });
 
+test("falls back automatically, updates live state, and exports without picking", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const genomeSpy = new GenomeSpy(container, {
+        width: 80,
+        height: 40,
+        padding: 0,
+        datasets: { values: [{ x: 0.2, x2: 0.4 }] },
+        layer: [
+            {
+                name: "dynamic",
+                data: { name: "values" },
+                mark: "rect",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { domain: [0, 1] },
+                    },
+                    x2: { field: "x2" },
+                    y: { value: 0.1 },
+                    y2: { value: 0.4 },
+                    fill: { value: "#123456" },
+                },
+            },
+            {
+                name: "initially-hidden",
+                visible: false,
+                data: { values: [{}] },
+                mark: "rect",
+                encoding: {
+                    x: { value: 0.5 },
+                    x2: { value: 0.8 },
+                    y: { value: 0.6 },
+                    y2: { value: 0.9 },
+                    fill: { value: "#abcdef" },
+                },
+            },
+        ],
+    });
+
+    expect(await genomeSpy.launch()).toBe(true);
+    genomeSpy.renderAll();
+
+    expect(contextTypes).toContain("webgl2");
+    expect(contextTypes.filter((type) => type == "2d")).toHaveLength(1);
+    expect(container.querySelectorAll("canvas")).toHaveLength(1);
+    expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Canvas2D compatibility renderer")
+    );
+
+    const canvas = container.querySelector("canvas");
+    if (!canvas) {
+        throw new Error("Canvas surface was not created.");
+    }
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(
+        /** @type {DOMRect} */ (
+            /** @type {unknown} */ ({
+                left: 0,
+                top: 0,
+                width: 80,
+                height: 40,
+            })
+        )
+    );
+    const click = vi.fn();
+    genomeSpy.addEventListener("click", click);
+
+    expect(() => {
+        canvas.dispatchEvent(
+            new MouseEvent("mousemove", {
+                clientX: 20,
+                clientY: 20,
+                bubbles: true,
+            })
+        );
+        canvas.dispatchEvent(
+            new MouseEvent("click", {
+                clientX: 20,
+                clientY: 20,
+                bubbles: true,
+            })
+        );
+    }).not.toThrow();
+    expect(click).toHaveBeenCalledWith({
+        type: "click",
+        viewPath: null,
+        datum: null,
+    });
+    expect(contextTypes.filter((type) => type == "2d")).toHaveLength(1);
+
+    const paintsBeforeData = contexts[0].fillRect.mock.calls.length;
+    genomeSpy.updateNamedData("values", [
+        { x: 0.1, x2: 0.2 },
+        { x: 0.7, x2: 0.9 },
+    ]);
+    flushAnimationFrames(2);
+    expect(contexts[0].fillRect.mock.calls.length).toBeGreaterThan(
+        paintsBeforeData
+    );
+
+    const paintsBeforeVisibility = contexts[0].fillRect.mock.calls.length;
+    genomeSpy.viewVisibilityPredicate = () => true;
+    await genomeSpy.initializeVisibleViewData();
+    flushAnimationFrames(2);
+    expect(contexts[0].fillRect.mock.calls.length).toBeGreaterThan(
+        paintsBeforeVisibility
+    );
+
+    const { blob } = await genomeSpy.exportRaster({
+        logicalWidth: 40,
+        logicalHeight: 20,
+        pixelRatio: 2,
+        background: null,
+    });
+    expect(blob.type).toBe("image/png");
+    expect(contextTypes.filter((type) => type == "2d")).toHaveLength(2);
+    expect(contexts[1].canvas.width).toBe(80);
+    expect(contexts[1].canvas.height).toBe(40);
+    expect(genomeSpy.exportCanvas()).toBe("data:image/png;base64,canvas2d");
+    expect(contextTypes.filter((type) => type == "2d")).toHaveLength(3);
+
+    genomeSpy.destroy();
+    warn.mockRestore();
+});
+
 /** @param {number} count */
 function flushAnimationFrames(count) {
     const start = performance.now();
@@ -281,6 +416,7 @@ function createContext(canvas) {
         translate: vi.fn(),
         rotate: vi.fn(),
         scale: vi.fn(),
+        measureText: vi.fn(() => ({ width: 1 })),
         fillRect: vi.fn(),
         strokeRect: vi.fn(),
         arc: vi.fn(),

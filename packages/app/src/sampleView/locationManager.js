@@ -397,7 +397,11 @@ export class LocationManager {
             return;
         }
 
-        const gl = this.#locationContext.viewContext.glHelper.gl;
+        const glHelper = this.#locationContext.viewContext.glHelper;
+        if (!glHelper) {
+            return;
+        }
+        const gl = glHelper.gl;
 
         this.#facetTexture = createOrUpdateTexture(
             gl,

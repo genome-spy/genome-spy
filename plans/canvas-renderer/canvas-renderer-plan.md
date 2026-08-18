@@ -912,6 +912,45 @@ Verification:
 - Confirm a failed automatic WebGL attempt leaves only the Canvas2D surface in
   the container.
 
+Recorded Step 4 results (pre-review):
+
+- Raster export is an active-backend operation. The WebGL backend retains its
+  multisampled framebuffer path, while the Canvas2D backend renders the view
+  into a detached canvas using the same immediate traversal as the live
+  surface. The deprecated synchronous data-URL export also works in Canvas2D
+  mode.
+- A real Chrome 151 run rejected `webgl2`, `webgl`, and
+  `experimental-webgl`, fell back automatically to one live Canvas surface,
+  updated a declared dataset, and exported without any further GPU-context
+  request. The PNG Blob had the standard eight-byte PNG signature, decoded to
+  the requested 160 x 80 physical pixels, and had alpha zero in the transparent
+  corner.
+- The live fallback test covers resize-independent backing dimensions, dynamic
+  named-data repaint, a newly visible view, pointer movement and a null-datum
+  click without picking, Canvas PNG export, and the legacy data-URL export. The
+  focused export test also covers configured background paint and MIME
+  rejection before a context is created.
+- The App initially exposed one remaining GPU assumption in SampleView's facet
+  texture upload. `LocationManager` now keeps CPU facet positions current but
+  skips the texture upload when no GL helper exists. A real App run rendered
+  120 sample facets and a nonempty 1,000 x 560 Canvas bitmap with no page
+  errors. Its vertical scrollbar had valid 8 x 490 geometry; close-up mode and
+  a real wheel event changed the scroll offset from 0 to 300 and updated the
+  scrollbar thumb to 8 x 57.63 pixels.
+- The retained Chrome 151 benchmark (20 warmups, 100 redraws, DPR 1, 900 x 420)
+  measured 50,000 rects at 8.6/8.8 ms and 100,000 points at 13.2/13.4 ms
+  p50/p95. Both are faster than the Step 2 results in the same browser version
+  (13.3/13.8 ms and 21.8/23.1 ms respectively), so completing the remaining
+  mark dispatch and export did not regress the performance slice.
+- All 386 repository test files pass (3,230 tests passed, one skipped, and two
+  todo). Lint, Core and App builds, App test type checking, and minimal-bundle
+  verification pass. Core type checking still reports only the three known
+  `GFF3Feature`, `renameRefSeqs`, and `interactionDispatcher.test.js` errors.
+- The synchronous Core ESM entry is 723.04 kB, up 0.11 kB from Step 3. Existing
+  statically loaded Core/App production modules gain five net source lines; the
+  102-line detached traversal/export implementation stays in the optional
+  Canvas chunk. That chunk is 12.93 kB / 4.15 kB gzip.
+
 Documentation and migration: no migration. Decide whether App needs a visible
 compatibility-mode indicator; otherwise use a one-time warning.
 

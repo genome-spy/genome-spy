@@ -1,5 +1,4 @@
-import Rectangle from "../view/layout/rectangle.js";
-import Canvas2DViewRenderingContext from "./canvas2DViewRenderingContext.js";
+import renderCanvas2D from "./renderCanvas2D.js";
 
 export default class Canvas2DRenderCoordinator {
     /**
@@ -52,21 +51,14 @@ export default class Canvas2DRenderCoordinator {
             return;
         }
 
-        const renderingContext = new Canvas2DViewRenderingContext(
-            { picking: false },
-            {
-                context: this.context,
-                width: size.width,
-                height: size.height,
-                devicePixelRatio: this.surface.getDevicePixelRatio(),
-                background: this.getBackground(),
-                paint,
-            }
-        );
-        this.viewRoot.render(
-            renderingContext,
-            Rectangle.create(0, 0, size.width, size.height),
-            { firstFacet: true }
-        );
+        renderCanvas2D({
+            viewRoot: this.viewRoot,
+            context: this.context,
+            width: size.width,
+            height: size.height,
+            devicePixelRatio: this.surface.getDevicePixelRatio(),
+            background: this.getBackground(),
+            paint,
+        });
     }
 }

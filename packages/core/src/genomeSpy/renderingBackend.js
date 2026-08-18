@@ -1,6 +1,7 @@
 import WebGLHelper, { readPickingPixel } from "../gl/webGLHelper.js";
 import RenderCoordinator from "./renderCoordinator.js";
 import { warnOnce } from "../utils/warning.js";
+import { exportCanvas, exportRaster } from "./canvasExport.js";
 
 /**
  * @typedef {object} RenderingSurface
@@ -24,6 +25,8 @@ import { warnOnce } from "../utils/warning.js";
  * @property {WebGLHelper | undefined} glHelper
  * @property {(options: Omit<ConstructorParameters<typeof RenderCoordinator>[0], "glHelper">) => RenderingCoordinator} createRenderCoordinator
  * @property {(x: number, y: number) => number} [readPickingId]
+ * @property {(options: Omit<Parameters<typeof exportCanvas>[0], "glHelper">) => string} exportCanvas
+ * @property {(options: Omit<Parameters<typeof exportRaster>[0], "glHelper">) => Promise<Blob>} exportRaster
  */
 
 /**
@@ -81,6 +84,10 @@ function createWebGLBackend(options) {
                 ...coordinatorOptions,
                 glHelper,
             }),
+        exportCanvas: (exportOptions) =>
+            exportCanvas({ ...exportOptions, glHelper }),
+        exportRaster: (exportOptions) =>
+            exportRaster({ ...exportOptions, glHelper }),
         readPickingId: (x, y) => {
             const dpr = glHelper.getDevicePixelRatio();
             const pixel = readPickingPixel(
