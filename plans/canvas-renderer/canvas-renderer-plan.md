@@ -597,6 +597,24 @@ Verification:
 - Record baseline and resulting synchronous source line counts and bundle
   sizes.
 
+Recorded Step 1 measurements:
+
+- Baseline `index.es.js`: 724,106 bytes raw and 243,616 bytes using
+  `gzip -c`.
+- Step 1 `index.es.js`: 725,175 bytes raw and 243,966 bytes using `gzip -c`.
+  The synchronous ESM change is +1,069 bytes raw and +350 bytes gzip, below the
+  2 KiB gzip budget.
+- Existing affected synchronous files changed from 3,048 to 3,057 lines
+  combined. The new static backend factory adds 109 lines, for +118 synchronous
+  source lines in total. The seven-line Canvas2D placeholder remains in its own
+  171-byte optional ESM chunk.
+- Core build bundling succeeds and emits the Canvas2D chunk. Typings generation
+  remains blocked by the pre-existing `gff-nostream` `GFF3Feature` and
+  `generic-filehandle2`/`renameRefSeqs` type mismatches; `test:tsc` additionally
+  reports the pre-existing `interactionDispatcher.test.js` view-stub mismatch.
+- Focused backend, interaction, and coordinator tests pass (16 tests), as does
+  the full Core unit suite (1,962 passed, one skipped, and two todo).
+
 Documentation and migration: add the option type and internal contract only;
 defer public renderer documentation until the backend is functional. Existing
 options require no migration because `"auto"` preserves WebGL where available.

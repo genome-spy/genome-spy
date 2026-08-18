@@ -1,6 +1,5 @@
 import UnitView from "../view/unitView.js";
 import { VISIT_STOP } from "../view/view.js";
-import { readPickingPixel } from "../gl/webGLHelper.js";
 import Inertia, { makeEventTemplate } from "../utils/inertia.js";
 import Point from "../view/layout/point.js";
 import { isStillZooming } from "../view/zoom.js";
@@ -12,8 +11,8 @@ import CursorManager from "./cursorManager.js";
 export default class InteractionController {
     /** @type {import("../view/view.js").default} */
     #viewRoot;
-    /** @type {import("../gl/webGLHelper.js").default} */
-    #glHelper;
+    /** @type {HTMLCanvasElement} */
+    #canvas;
     /** @type {import("../utils/ui/tooltip.js").default} */
     #tooltip;
     /** @type {import("../utils/animator.js").default} */
@@ -24,8 +23,8 @@ export default class InteractionController {
     #tooltipHandlers;
     /** @type {() => void} */
     #renderPickingFramebuffer;
-    /** @type {() => number} */
-    #getDevicePixelRatio;
+    /** @type {((x: number, y: number) => number) | undefined} */
+    #readPickingId;
     /** @type {InteractionDispatcher} */
     #interactionDispatcher;
     /** @type {CursorManager} */
@@ -55,34 +54,34 @@ export default class InteractionController {
     /**
      * @param {object} options
      * @param {import("../view/view.js").default} options.viewRoot
-     * @param {import("../gl/webGLHelper.js").default} options.glHelper
+     * @param {HTMLCanvasElement} options.canvas
      * @param {import("../utils/ui/tooltip.js").default} options.tooltip
      * @param {import("../utils/animator.js").default} options.animator
      * @param {(type: string, event: any) => void} options.emitEvent
      * @param {Record<string, import("../tooltip/tooltipHandler.js").TooltipHandler>} options.tooltipHandlers
-     * @param {() => void} options.renderPickingFramebuffer
-     * @param {() => number} options.getDevicePixelRatio
+     * @param {() => void} [options.renderPickingFramebuffer]
+     * @param {(x: number, y: number) => number} [options.readPickingId]
      */
     constructor({
         viewRoot,
-        glHelper,
+        canvas,
         tooltip,
         animator,
         emitEvent,
         tooltipHandlers,
         renderPickingFramebuffer,
-        getDevicePixelRatio,
+        readPickingId,
     }) {
         this.#viewRoot = viewRoot;
-        this.#glHelper = glHelper;
+        this.#canvas = canvas;
         this.#tooltip = tooltip;
         this.#animator = animator;
         this.#emitEvent = emitEvent;
         this.#tooltipHandlers = tooltipHandlers;
-        this.#renderPickingFramebuffer = renderPickingFramebuffer;
-        this.#getDevicePixelRatio = getDevicePixelRatio;
+        this.#renderPickingFramebuffer = renderPickingFramebuffer ?? (() => {});
+        this.#readPickingId = readPickingId;
         this.#interactionDispatcher = new InteractionDispatcher({ viewRoot });
-        this.#cursorManager = new CursorManager({ canvas: glHelper.canvas });
+        this.#cursorManager = new CursorManager({ canvas });
 
         /**
          * Currently hovered mark and datum
@@ -164,7 +163,7 @@ export default class InteractionController {
      * @returns {() => void}
      */
     registerInteractionEvents() {
-        const canvas = this.#glHelper.canvas;
+        const canvas = this.#canvas;
         /** @type {Array<() => void>} */
         const removers = [];
 
@@ -660,7 +659,7 @@ export default class InteractionController {
      * @param {MouseEvent} event
      */
     #toCanvasPoint(event) {
-        const canvas = this.#glHelper.canvas;
+        const canvas = this.#canvas;
         const rect = canvas.getBoundingClientRect();
         return new Point(
             event.clientX - rect.left - canvas.clientLeft,
@@ -672,7 +671,7 @@ export default class InteractionController {
      * @param {Point} point
      */
     #isInsideCanvas(point) {
-        const canvas = this.#glHelper.canvas;
+        const canvas = this.#canvas;
         return (
             point.x >= 0 &&
             point.y >= 0 &&
@@ -738,15 +737,7 @@ export default class InteractionController {
      * @param {number} y
      */
     #handlePicking(x, y) {
-        const dpr = this.#getDevicePixelRatio();
-        const pp = readPickingPixel(
-            this.#glHelper.gl,
-            this.#glHelper._pickingBufferInfo,
-            x * dpr,
-            y * dpr
-        );
-
-        const uniqueId = pp[0] | (pp[1] << 8) | (pp[2] << 16) | (pp[3] << 24);
+        const uniqueId = this.#readPickingId?.(x, y) ?? 0;
 
         if (uniqueId == 0) {
             this.#currentHover = null;

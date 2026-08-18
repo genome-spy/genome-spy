@@ -22,6 +22,14 @@ export type EmbedFunction = (
 
 export interface EmbedOptions {
     /**
+     * Rendering backend. `"auto"` uses WebGL2 when available and falls back to
+     * the Canvas2D compatibility renderer.
+     *
+     * __Default value:__ `"auto"`
+     */
+    renderer?: "auto" | "webgl" | "canvas";
+
+    /**
      * A function that allows retrieval of named data. There are two ways to provide named data:
      * 1. A data provider (this)
      * 2. Explicit updates using the `updateNamedData` method (the other).
