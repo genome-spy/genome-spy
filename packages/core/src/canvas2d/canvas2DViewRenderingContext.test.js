@@ -141,4 +141,89 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(recording.calls.saves).toBe(1);
         expect(recording.context.fill).toHaveBeenCalledTimes(2);
     });
+
+    test("projects repeated sample facets into their assigned rows", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: "point",
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                size: { value: 100 },
+                fill: { value: "black" },
+            },
+        });
+        const recording = createRecordingContext();
+        const context = new Canvas2DViewRenderingContext(
+            { picking: false },
+            {
+                context: recording.context,
+                width: 100,
+                height: 100,
+                devicePixelRatio: 1,
+                background: null,
+                paint: true,
+            }
+        );
+
+        for (const locSize of [
+            { location: 20, size: 40 },
+            { location: 60, size: 20 },
+        ]) {
+            view.render(context, Rectangle.create(0, 0, 100, 100), {
+                sampleFacetRenderingOptions: {
+                    locSize,
+                    pixelToUnit: 0.01,
+                },
+                clip: {
+                    rect: Rectangle.create(0, 10, 100, 80),
+                    clipX: true,
+                    clipY: true,
+                },
+            });
+        }
+
+        expect(recording.calls.arcs).toEqual([
+            [50, 40, 5],
+            [50, 70, 5],
+        ]);
+        expect(recording.context.clip).toHaveBeenCalledTimes(2);
+    });
+
+    test("warns once while drawing the supported base rectangle", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "rect",
+                cornerRadius: 5,
+                hatch: "diagonal",
+                shadowBlur: 10,
+                shadowOpacity: 0.5,
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.2 },
+                y2: { value: 0.8 },
+                fill: { value: "black" },
+            },
+        });
+        const recording = createRecordingContext();
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+        try {
+            render(view, recording.context);
+            const warnings = warn.mock.calls.map(([message]) => "" + message);
+            expect(recording.calls.fillRects).toHaveLength(1);
+            expect(warnings).toEqual(
+                expect.arrayContaining([
+                    expect.stringContaining("unsupported rect hatch"),
+                    expect.stringContaining("unsupported rect shadow"),
+                    expect.stringContaining("unsupported rect corner radius"),
+                ])
+            );
+        } finally {
+            warn.mockRestore();
+        }
+    });
 });

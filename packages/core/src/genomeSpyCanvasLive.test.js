@@ -105,6 +105,49 @@ test("launches, updates expressions, and repaints interactions without a GPU con
                         fill: { value: "#abcdef" },
                     },
                 },
+                {
+                    mark: "rule",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        x2: { field: "x2" },
+                        y: { value: 0.45 },
+                        y2: { value: 0.55 },
+                        color: { value: "#334455" },
+                        size: { value: 2 },
+                    },
+                },
+                {
+                    mark: { type: "link", linkShape: "diagonal" },
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        x2: { field: "x2" },
+                        y: { value: 0.2 },
+                        y2: { value: 0.8 },
+                        color: { value: "#556677" },
+                        size: { value: 2 },
+                    },
+                },
+                {
+                    mark: "text",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { value: 0.9 },
+                        text: { value: "A" },
+                        color: { value: "#112233" },
+                        size: { value: 12 },
+                    },
+                },
+                {
+                    mark: "arrow",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        x2: { field: "x2" },
+                        y: { value: 0.6 },
+                        y2: { value: 0.6 },
+                        fill: { value: "#778899" },
+                        size: { value: 4 },
+                    },
+                },
             ],
         },
         { renderer: "canvas" }
@@ -117,6 +160,9 @@ test("launches, updates expressions, and repaints interactions without a GPU con
     expect(contexts).toHaveLength(1);
     expect(contexts[0].fillRect).toHaveBeenCalled();
     expect(contexts[0].arc).toHaveBeenCalledTimes(2);
+    expect(contexts[0].bezierCurveTo).toHaveBeenCalledTimes(2);
+    expect(contexts[0].fillText).toHaveBeenCalledTimes(2);
+    expect(contexts[0].closePath).toHaveBeenCalled();
     expect(container.querySelectorAll("canvas")).toHaveLength(1);
 
     expect(() => genomeSpy.getParam("offset").setValue(5)).not.toThrow();
@@ -213,6 +259,12 @@ function createContext(canvas) {
         globalAlpha: 1,
         globalCompositeOperation: "source-over",
         lineWidth: 1,
+        lineCap: "butt",
+        lineJoin: "miter",
+        lineDashOffset: 0,
+        font: "",
+        textAlign: "start",
+        textBaseline: "alphabetic",
         resetTransform: vi.fn(),
         clearRect: vi.fn(),
         setTransform: vi.fn(),
@@ -221,10 +273,19 @@ function createContext(canvas) {
         beginPath: vi.fn(),
         rect: vi.fn(),
         clip: vi.fn(),
+        moveTo: vi.fn(),
+        lineTo: vi.fn(),
+        bezierCurveTo: vi.fn(),
+        closePath: vi.fn(),
+        setLineDash: vi.fn(),
+        translate: vi.fn(),
+        rotate: vi.fn(),
+        scale: vi.fn(),
         fillRect: vi.fn(),
         strokeRect: vi.fn(),
         arc: vi.fn(),
         fill: vi.fn(),
         stroke: vi.fn(),
+        fillText: vi.fn(),
     };
 }

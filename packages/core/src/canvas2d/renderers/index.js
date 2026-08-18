@@ -1,5 +1,9 @@
+import { renderArrowCanvas } from "./arrow.js";
+import { renderLinkCanvas } from "./link.js";
 import { renderPointCanvas } from "./point.js";
 import { renderRectCanvas } from "./rect.js";
+import { renderRuleCanvas } from "./rule.js";
+import { renderTextCanvas } from "./text.js";
 
 /**
  * @typedef {object} CanvasMarkRenderingOptions
@@ -17,10 +21,18 @@ import { renderRectCanvas } from "./rect.js";
  * @param {CanvasMarkRenderingOptions} options
  */
 export function renderMarkCanvas(mark, options) {
-    if (mark.getType() == "rect") {
+    if (mark.getType() == "arrow") {
+        return renderArrowCanvas(mark, options);
+    } else if (mark.getType() == "link") {
+        return renderLinkCanvas(mark, options);
+    } else if (mark.getType() == "rect") {
         return renderRectCanvas(mark, options);
     } else if (mark.getType() == "point") {
         return renderPointCanvas(mark, options);
+    } else if (mark.getType() == "rule" || mark.getType() == "tick") {
+        return renderRuleCanvas(mark, options);
+    } else if (mark.getType() == "text") {
+        return renderTextCanvas(mark, options);
     } else {
         options.warn(
             `Canvas2D rendering is not implemented for mark type "${mark.getType()}".`

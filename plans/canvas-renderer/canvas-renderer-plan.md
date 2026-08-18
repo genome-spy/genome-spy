@@ -807,6 +807,40 @@ Verification:
 - Compare relevant line counts before and after; extraction should reduce or
   hold the combined SVG semantic code size rather than add a parallel path.
 
+Recorded Step 3 results (pre-review):
+
+- Canvas2D now draws every current Core mark type: `rect`, `point`, `rule`
+  (including the `tick` alias), `link`, `text`, and `arrow`. Axes therefore use
+  the same rule/text emitters rather than a separate Canvas guide path.
+- Rule ranges, link Bezier control points, arrow polygons and overlap unions,
+  and all text formatting/range placement/rotation/culling live in the lazy
+  `rendering/cpu` layer and feed both SVG and Canvas emitters. The Canvas hot
+  loops retain immediate traversal and local requested-style caches.
+- The command-recorder coverage launches one Canvas instance containing all
+  mark types, verifies representative line, Bezier, closed-path, text, rect,
+  and arc commands, and still observes only one `getContext("2d")` request.
+  Focused tests also cover SampleView row projection and the warned base-rect
+  fallback for unsupported hatches, shadows, and rounded corners.
+- All 21 focused SVG/Canvas files pass (116 tests). Existing structured SVG
+  link, rule, text, arrow, point, and rect output tests remain unchanged.
+- A Chromium desktop smoke test at a 900 x 500 viewport rendered all six mark
+  types together with generated axes. It created one canvas, requested only a
+  `2d` context, and produced a non-empty 917 x 472 backing store. A synchronous
+  named-scale zoom changed `[0, 1]` to `[0.1, 0.9]` and changed the canvas
+  bitmap. The only page diagnostics were Lit development mode, a missing
+  favicon, and the expected embedded-font fallback warning.
+- Vite and minimal-bundle builds pass. The synchronous `index.es.js` remains
+  722.90 kB, so Step 3 adds nothing to the static entry. The Canvas dynamic
+  chunk is 12.94 kB / 4.39 kB gzip, the shared text chunk is 20.45 kB / 6.91 kB
+  gzip, and the SVG chunk shrank from 45.34 kB / 14.54 kB gzip after Step 2 to
+  34.46 kB / 10.89 kB gzip.
+- The four moved SVG semantic renderers plus the existing Canvas rect/point
+  files and index were 1,787 lines before Step 3. The corresponding SVG and
+  Canvas emitters plus five new shared CPU modules are now 2,315 lines, a net
+  528-line cost for four additional Canvas emitters. Within that total, the
+  four SVG renderers shrink from 1,549 to 503 lines because geometry now has
+  one owner.
+
 Documentation and migration: update `packages/core/src/svg/README.md` to point
 to the shared CPU geometry layer. No user migration.
 
