@@ -441,7 +441,9 @@ export default class Mark {
                             return;
                         }
 
-                        this.updateGraphicsData();
+                        if (this.getContext().graphicsDataUpdates !== false) {
+                            this.updateGraphicsData();
+                        }
                         this.unitView.context.animator.requestRender();
                     }
                 );

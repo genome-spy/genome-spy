@@ -10,7 +10,7 @@ import {
     createSvgVisibleBounds,
     hasVisibleArea,
 } from "./svgBounds.js";
-import { getSvgData } from "./markData.js";
+import { visitMarkOccurrences } from "../rendering/cpu/markData.js";
 import { renderMarkSvg } from "./renderers/index.js";
 import { createSvgElement, SVG_NS } from "./svgElement.js";
 import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
@@ -399,7 +399,6 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             mark.properties.cullByVisibleRange
         );
 
-        const data = getSvgData(mark, options);
         /**
          * @param {import("../view/layout/rectangle.js").default} coords
          * @param {object[]} facetData
@@ -453,37 +452,16 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             }
         };
 
-        if (options.sampleFacetRenderingOptions) {
-            render(
-                getSampleFacetCoords(
-                    this.currentCoords,
-                    options.sampleFacetRenderingOptions
-                ),
-                data
-            );
-        } else if (mark.encoders.facetIndex) {
-            for (const [facetIndex, facetData] of groupDataByFacetIndex(
-                mark.encoders.facetIndex,
-                data
-            )) {
-                const locSize = this.#getSampleFacetPosition(mark, facetIndex);
-                if (locSize) {
-                    render(
-                        getSampleFacetCoords(this.currentCoords, {
-                            locSize,
-                            pixelToUnit: 1,
-                        }),
-                        facetData
-                    );
-                } else {
-                    this.#warnings.add(
-                        `SVG export could not resolve sample facet index ${facetIndex}. View: ${mark.unitView.getPathString()}`
-                    );
-                }
-            }
-        } else {
-            render(this.currentCoords, data);
-        }
+        visitMarkOccurrences(
+            mark,
+            options,
+            this.currentCoords,
+            render,
+            (facetIndex) =>
+                this.#warnings.add(
+                    `SVG export could not resolve sample facet index ${facetIndex}. View: ${mark.unitView.getPathString()}`
+                )
+        );
         if (
             !this.#countingInstances &&
             !batched &&
@@ -657,21 +635,6 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         }
 
         return `url(#${id})`;
-    }
-
-    /**
-     * @param {import("../marks/mark.js").default} mark
-     * @param {number} index
-     * @returns {import("../view/layout/flexLayout.js").LocSize | undefined}
-     */
-    #getSampleFacetPosition(mark, index) {
-        for (const view of mark.unitView.getLayoutAncestors()) {
-            const position = view.getSampleFacetPosition(index);
-            if (position) {
-                return position;
-            }
-        }
-        return undefined;
     }
 
     /**
@@ -937,48 +900,6 @@ function createViewGroupId(name, index) {
           ? "view-" + slug
           : "view";
     return `${safeName}-${index}`;
-}
-
-/**
- * Reproduces the uniform sample-facet transform from sampleFacet.glsl using
- * SVG view coordinates. The inherited clip intentionally remains tied to the
- * original view: SampleView clips all samples at its GridChild boundary, not
- * at the boundary of each sample row.
- *
- * @param {import("../view/layout/rectangle.js").default} coords
- * @param {import("../types/rendering.js").SampleFacetRenderingOptions | undefined} facet
- */
-function getSampleFacetCoords(coords, facet) {
-    if (!facet) {
-        return coords;
-    }
-
-    const location = facet.locSize.location * facet.pixelToUnit;
-    const size = facet.locSize.size * facet.pixelToUnit;
-    return coords.modify({
-        y: () => coords.y + location * coords.height,
-        height: () => size * coords.height,
-    });
-}
-
-/**
- * @param {import("../types/encoder.js").Encoder} facetIndexEncoder
- * @param {object[]} data
- * @returns {Map<number, object[]>}
- */
-function groupDataByFacetIndex(facetIndexEncoder, data) {
-    /** @type {Map<number, object[]>} */
-    const facets = new Map();
-    for (const datum of data) {
-        const index = +facetIndexEncoder(datum);
-        let facet = facets.get(index);
-        if (!facet) {
-            facet = [];
-            facets.set(index, facet);
-        }
-        facet.push(datum);
-    }
-    return facets;
 }
 
 /**

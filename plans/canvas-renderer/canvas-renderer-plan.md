@@ -672,6 +672,56 @@ Verification:
   Step 3. If performance is not useful, stop broadening the renderer and revise
   or retire the remaining plan.
 
+Recorded Step 2 measurements (pre-review):
+
+- Environment: headless Chromium 151 on macOS, 900 x 420 logical pixels. Every
+  Canvas run requested only `getContext("2d")`; no WebGL, WebGPU, picking canvas,
+  or framebuffer readback was created.
+- DPR 1 synchronous redraws, measured with zero-duration
+  `zoomTo(..., { renderImmediately: true })` after warmup:
+
+  | Mark  | Total instances | Visible instances |     p50 |     p95 |
+  | ----- | --------------: | ----------------: | ------: | ------: |
+  | rect  |          10,000 |             8,020 |  2.6 ms |  3.1 ms |
+  | rect  |          25,000 |            20,050 |  6.4 ms |  6.8 ms |
+  | rect  |          50,000 |            40,100 | 13.3 ms | 13.8 ms |
+  | point |          25,000 |            15,125 |  4.2 ms |  4.5 ms |
+  | point |          50,000 |            40,125 | 10.6 ms | 11.1 ms |
+  | point |         100,000 |            80,251 | 21.8 ms | 23.1 ms |
+
+- A DPR 2 fallback-path run used a real 1,800 x 840 backing store. The 50,000
+  rect case measured 12.2/13.0 ms p50/p95 and the 100,000 point case measured
+  20.9/21.4 ms. Headless Chromium's device-pixel-content-box emulation reports
+  CSS pixels, so the high-DPR run disabled that observer and exercised the
+  existing `window.devicePixelRatio` fallback explicitly.
+- Idle animation-frame intervals were 8.3/8.8 ms p50/p95 for the rect run and
+  8.3/9.5 ms for points. Real Playwright wheel and drag gestures changed the
+  named x domain and repainted. Event-to-following-RAF latency was 25.4/55.5 ms
+  for rect wheel, 21.1/25.3 ms for rect drag, 41.1/75.3 ms for point wheel, and
+  28.7/41.2 ms for point drag. This following-RAF value is a browser paint
+  proxy, not compositor instrumentation.
+- Same-machine references at DPR 1: WebGL synchronous command submission was
+  0.0/0.1 ms p50/p95. SVG export traversal was 65.1 ms p50 for the current rect
+  viewport and 93.9 ms for points; SVG is a non-interactive reference.
+- Continue decision: proceed. The simple immediate renderer is already useful
+  at tens of thousands of visible instances and stays well below SVG traversal
+  time without a scenegraph, retained display list, or Canvas picking. The
+  target restricted virtual desktop still needs a repeat run before support is
+  declared; the current environment cannot reproduce that machine policy.
+- Verification before the Step 2 review: all 385 repository test files pass
+  (3,216 tests passed, one skipped, and two todo), lint passes, Core JavaScript
+  and Vite bundling pass, and minimal-bundle verification passes. Type checking
+  reports only the three pre-existing `GFF3Feature`, `renameRefSeqs`, and
+  `interactionDispatcher.test.js` errors recorded in Step 1.
+- The production ESM main chunk is 722,863 bytes raw and 243,349 bytes using
+  `gzip -c`, smaller than after Step 1 because Rollup extracted shared dynamic
+  code. The Canvas entry chunk is 7,666 bytes raw / 2,655 bytes gzip and the
+  rect CPU visitor shared by the dynamic SVG and Canvas paths is 7,084 bytes /
+  2,672 bytes. Minimal-bundle verification confirms that Canvas remains absent
+  from the synchronous entry. Step 2 adds only four net source lines to the
+  existing synchronous runtime files (`GenomeSpyBase`, `Mark`, and the view
+  context type); the implementation itself remains dynamically loaded.
+
 Documentation and migration: no public documentation yet. Record the benchmark
 specifications, environment, results, and decision in the working plan and the
 eventual PR notes so the feasibility decision remains reviewable.

@@ -26,9 +26,15 @@ export function projectY(coords, value, offset) {
  * @param {import("../view/layout/rectangle.js").default} coords
  * @param {Record<string, import("../types/encoder.js").Encoder>} encoders
  * @param {object} datum
+ * @param {[number, number]} [result]
  * @returns {[number, number]}
  */
-export function projectXRange(coords, encoders, datum) {
+export function projectXRange(
+    coords,
+    encoders,
+    datum,
+    result = /** @type {[number, number]} */ ([0, 0])
+) {
     return projectRange(
         coords,
         encoders.x,
@@ -36,7 +42,8 @@ export function projectXRange(coords, encoders, datum) {
         encoders.xOffset,
         encoders.x2Offset,
         datum,
-        projectX
+        projectX,
+        result
     );
 }
 
@@ -47,9 +54,15 @@ export function projectXRange(coords, encoders, datum) {
  * @param {import("../view/layout/rectangle.js").default} coords
  * @param {Record<string, import("../types/encoder.js").Encoder>} encoders
  * @param {object} datum
+ * @param {[number, number]} [result]
  * @returns {[number, number]}
  */
-export function projectYRange(coords, encoders, datum) {
+export function projectYRange(
+    coords,
+    encoders,
+    datum,
+    result = /** @type {[number, number]} */ ([0, 0])
+) {
     return projectRange(
         coords,
         encoders.y,
@@ -57,7 +70,8 @@ export function projectYRange(coords, encoders, datum) {
         encoders.yOffset,
         encoders.y2Offset,
         datum,
-        projectY
+        projectY,
+        result
     );
 }
 
@@ -69,6 +83,7 @@ export function projectYRange(coords, encoders, datum) {
  * @param {import("../types/encoder.js").Encoder | undefined} secondaryOffset
  * @param {object} datum
  * @param {(coords: import("../view/layout/rectangle.js").default, value: number, offset: number) => number} project
+ * @param {[number, number]} result
  * @returns {[number, number]}
  */
 function projectRange(
@@ -78,7 +93,8 @@ function projectRange(
     primaryOffset,
     secondaryOffset,
     datum,
-    project
+    project,
+    result
 ) {
     const offset = encodeNumber(primaryOffset, datum);
     const first = project(coords, encodePosition(primary, datum), offset);
@@ -89,7 +105,9 @@ function projectRange(
               secondaryOffset ? encodeNumber(secondaryOffset, datum) : offset
           )
         : first;
-    return [first, second];
+    result[0] = first;
+    result[1] = second;
+    return result;
 }
 
 /**

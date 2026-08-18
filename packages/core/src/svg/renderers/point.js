@@ -1,13 +1,12 @@
 import { createSvgElement } from "../svgElement.js";
-import { intersectsSvgBounds, isOutsideSvgBounds } from "../svgBounds.js";
+import {
+    resolvePointProperties,
+    visitPointInstances,
+} from "../../rendering/cpu/point.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
-    encodePosition,
-    encodeString,
     formatSvgNumber,
-    projectX,
-    projectY,
     resolveSvgProperty,
     toSvgString,
 } from "../svgMarkUtils.js";
@@ -34,21 +33,14 @@ export function renderPointSvg(baseMark, options) {
             "SVG export ignored unsupported point property geometricZoomBound."
         );
     }
-    const inwardStroke = resolveSvgProperty(mark, mark.properties.inwardStroke);
+    const properties = resolvePointProperties(mark);
+    const { inwardStroke } = properties;
 
-    const {
-        coords,
-        data,
-        group,
-        viewOpacity,
-        visibleBounds,
-        anchorCullBounds,
-    } = options;
+    const { group, viewOpacity } = options;
     const encoders =
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
-    const semanticThreshold = mark.getSemanticThreshold();
     const encodeStyles = createSvgAttributeEncoder(group, {
         fill: { encoder: encoders.fill, transform: toSvgString },
         "fill-opacity": {
@@ -65,70 +57,24 @@ export function renderPointSvg(baseMark, options) {
             transform: (value) => formatSvgNumber(+value),
         },
     });
-    let instanceCount = 0;
-
-    for (const datum of data) {
-        const shape = encodeString(encoders.shape, datum);
-        if (encodeNumber(encoders.semanticScore, datum) < semanticThreshold) {
-            continue;
-        }
-
-        const x = projectX(
-            coords,
-            encodePosition(encoders.x, datum),
-            encodeNumber(encoders.xOffset, datum) +
-                encodeNumber(encoders.dx, datum)
-        );
-        const y = projectY(
-            coords,
-            encodePosition(encoders.y, datum),
-            encodeNumber(encoders.yOffset, datum) -
-                encodeNumber(encoders.dy, datum)
-        );
-        if (isOutsideSvgBounds(anchorCullBounds, x, y)) {
-            continue;
-        }
-        const radius = Math.sqrt(encodeNumber(encoders.size, datum)) / 2;
-        if (inwardStroke && radius <= 0) {
-            continue;
-        }
-        const angle = encodeNumber(encoders.angle, datum);
-        const strokeWidth = encodeNumber(encoders.strokeWidth, datum);
-        const lineShape = shape == "x" || shape == "+";
-        // SVG strokes are centered on the geometry. Shrinking the path
-        // diameter by the stroke width keeps the outer diameter unchanged.
-        // Once the stroke consumes the whole fill, cap it at the radius to
-        // avoid negative or degenerate geometry. This is exact for circles
-        // and a close approximation for the other filled symbols.
-        const adjustedStrokeWidth =
-            inwardStroke && !lineShape
-                ? Math.min(strokeWidth, radius)
-                : strokeWidth;
-        const geometryRadius =
-            inwardStroke && !lineShape
-                ? radius - adjustedStrokeWidth / 2
-                : radius;
-        const strokePadding = inwardStroke ? 0 : strokeWidth / 2;
-        const conservativeRadius = radius * Math.SQRT2 + strokePadding;
-        if (
-            !intersectsSvgBounds(
-                visibleBounds,
-                x - conservativeRadius,
-                y - conservativeRadius,
-                x + conservativeRadius,
-                y + conservativeRadius
-            )
-        ) {
-            continue;
-        }
-        instanceCount++;
+    return visitPointInstances(mark, properties, options, (instance) => {
         if (options.countOnly) {
-            continue;
+            return;
         }
+        const {
+            datum,
+            shape,
+            x,
+            y,
+            geometryRadius,
+            angle,
+            strokeWidth,
+            lineShape,
+        } = instance;
         const styles = {
             ...encodeStyles(datum),
             ...(inwardStroke && !lineShape
-                ? { "stroke-width": formatSvgNumber(adjustedStrokeWidth) }
+                ? { "stroke-width": formatSvgNumber(strokeWidth) }
                 : {}),
             ...(lineShape
                 ? getLineShapeStyles(encoders, datum, viewOpacity)
@@ -156,8 +102,7 @@ export function renderPointSvg(baseMark, options) {
             }
             group.appendChild(element);
         }
-    }
-    return instanceCount;
+    });
 }
 
 /**

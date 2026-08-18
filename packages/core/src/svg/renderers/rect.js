@@ -1,20 +1,15 @@
 import { createSvgElement } from "../svgElement.js";
-import { intersectsSvgBounds } from "../svgBounds.js";
+import {
+    resolveRectProperties,
+    visitRectInstances,
+} from "../../rendering/cpu/rect.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
     formatSvgNumber,
-    projectXRange,
-    projectYRange,
-    resolveSvgProperty,
     toSvgString,
 } from "../svgMarkUtils.js";
 import { formatSvgUnitless } from "../svgNumber.js";
-
-// Adjacent SVG fills can expose hairline seams when viewers or SVG-to-PDF
-// converters antialias each rectangle separately. Small symmetric padding
-// covers shared boundaries while preserving the center of each tile.
-const RECT_SEAM_PADDING = 0.1;
 
 /**
  * @param {import("../../marks/mark.js").default} baseMark
@@ -24,43 +19,10 @@ export function renderRectSvg(baseMark, options) {
     const mark = /** @type {import("../../marks/rect.js").default} */ (
         baseMark
     );
-    const p = mark.properties;
-    const defaultRadius = resolveSvgProperty(mark, p.cornerRadius);
-    const cornerRadii = {
-        topLeft: resolveSvgProperty(
-            mark,
-            p.cornerRadiusTopLeft ?? defaultRadius
-        ),
-        topRight: resolveSvgProperty(
-            mark,
-            p.cornerRadiusTopRight ?? defaultRadius
-        ),
-        bottomRight: resolveSvgProperty(
-            mark,
-            p.cornerRadiusBottomRight ?? defaultRadius
-        ),
-        bottomLeft: resolveSvgProperty(
-            mark,
-            p.cornerRadiusBottomLeft ?? defaultRadius
-        ),
-    };
-    const minWidth = resolveSvgProperty(mark, p.minWidth);
-    const minHeight = resolveSvgProperty(mark, p.minHeight);
-    const minOpacity = resolveSvgProperty(mark, p.minOpacity);
-    const shadow = {
-        blur: resolveSvgProperty(mark, p.shadowBlur ?? 0),
-        color: resolveSvgProperty(mark, p.shadowColor ?? "black"),
-        offsetX: resolveSvgProperty(mark, p.shadowOffsetX ?? 0),
-        offsetY: resolveSvgProperty(mark, p.shadowOffsetY ?? 0),
-        opacity: resolveSvgProperty(mark, p.shadowOpacity ?? 0),
-    };
-    const hatch = resolveSvgProperty(mark, p.hatch ?? "none");
-    const canPadSeams =
-        hatch == "none" &&
-        shadow.opacity == 0 &&
-        hasZeroCornerRadii(cornerRadii);
+    const properties = resolveRectProperties(mark);
+    const { shadow, hatch } = properties;
 
-    const { coords, data, group, viewOpacity, visibleBounds } = options;
+    const { group, viewOpacity } = options;
     const encoders =
         /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -92,67 +54,22 @@ export function renderRectSvg(baseMark, options) {
                   filter: options.getShadowFilterUrl(shadow),
               }
             : null;
-    let instanceCount = 0;
-
-    for (const datum of data) {
-        const [x1, x2] = projectXRange(coords, encoders, datum);
-        const [y1, y2] = projectYRange(coords, encoders, datum);
-        let x = Math.min(x1, x2);
-        let y = Math.min(y1, y2);
-        let width = Math.abs(x2 - x1);
-        let height = Math.abs(y2 - y1);
-        const widthFactor = getMinSizeFactor(width, minWidth);
-        const heightFactor = getMinSizeFactor(height, minHeight);
-        const opacityFactor = Math.max(minOpacity, widthFactor * heightFactor);
-        if (width < minWidth) {
-            x -= (minWidth - width) / 2;
-            width = minWidth;
-        }
-        if (height < minHeight) {
-            y -= (minHeight - height) / 2;
-            height = minHeight;
-        }
-        const strokeWidth = encodeNumber(encoders.strokeWidth, datum);
-        const fill = toSvgString(encoders.fill(datum));
-        const fillOpacity =
-            encodeNumber(encoders.fillOpacity, datum) * viewOpacity;
-        const seamPadding =
-            strokeWidth == 0 &&
-            fillOpacity == 1 &&
-            opacityFactor == 1 &&
-            canPadSeams &&
-            fill != "none"
-                ? RECT_SEAM_PADDING
-                : 0;
-        if (seamPadding) {
-            x -= seamPadding;
-            y -= seamPadding;
-            width += seamPadding * 2;
-            height += seamPadding * 2;
-        }
-        const strokePadding = strokeWidth / 2;
-        const shadowPadding =
-            shadow.opacity > 0
-                ? shadow.blur +
-                  Math.max(Math.abs(shadow.offsetX), Math.abs(shadow.offsetY))
-                : 0;
-        if (
-            !intersectsSvgBounds(
-                visibleBounds,
-                x,
-                y,
-                x + width,
-                y + height,
-                strokePadding + shadowPadding
-            )
-        ) {
-            continue;
-        }
-        instanceCount++;
+    return visitRectInstances(mark, properties, options, (instance) => {
         if (options.countOnly) {
-            continue;
+            return;
         }
-        const radii = clampCornerRadii(cornerRadii, width, height);
+        const {
+            datum,
+            x,
+            y,
+            width,
+            height,
+            radii,
+            opacityFactor,
+            strokeWidth,
+            fill,
+            fillOpacity,
+        } = instance;
         /** @type {Record<string, string | number>} */
         const styles = {
             ...encodeStyles(datum),
@@ -229,8 +146,7 @@ export function renderRectSvg(baseMark, options) {
         group.appendChild(
             createRectElement(x, y, width, height, radii, styles)
         );
-    }
-    return instanceCount;
+    });
 }
 
 /**
@@ -269,11 +185,6 @@ function createRectElement(x, y, width, height, radii, styles) {
     }
 }
 
-/** @param {number} size @param {number} minSize */
-function getMinSizeFactor(size, minSize) {
-    return minSize > 0 && size < minSize ? size / minSize : 1;
-}
-
 /**
  * @typedef {object} CornerRadii
  * @prop {number} topLeft
@@ -282,32 +193,9 @@ function getMinSizeFactor(size, minSize) {
  * @prop {number} bottomLeft
  */
 
-/**
- * @param {CornerRadii} radii
- * @param {number} width
- * @param {number} height
- * @returns {CornerRadii}
- */
-function clampCornerRadii(radii, width, height) {
-    const maxRadius = Math.min(width, height) / 2;
-    return /** @type {CornerRadii} */ (
-        Object.fromEntries(
-            Object.entries(radii).map(([corner, radius]) => [
-                corner,
-                Math.min(radius, maxRadius),
-            ])
-        )
-    );
-}
-
 /** @param {CornerRadii} radii */
 function hasEqualCornerRadii(radii) {
     return Object.values(radii).every((radius) => radius == radii.topLeft);
-}
-
-/** @param {CornerRadii} radii */
-function hasZeroCornerRadii(radii) {
-    return Object.values(radii).every((radius) => radius == 0);
 }
 
 /**

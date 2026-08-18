@@ -390,6 +390,7 @@ export default class GenomeSpy {
             dataFlow,
             glHelper: this.#glHelper,
             allowMissingGlHelper: !this.#glHelper,
+            graphicsDataUpdates: !!this.#glHelper,
             animator: this.animator,
             genomeStore: this.genomeStore,
             fontManager: new BmFontManager(this.#glHelper),
