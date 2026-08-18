@@ -251,6 +251,7 @@ test("falls back automatically, updates live state, and exports without picking"
     const container = document.createElement("div");
     document.body.appendChild(container);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    let showHidden = false;
     const genomeSpy = new GenomeSpy(container, {
         width: 80,
         height: 40,
@@ -266,6 +267,7 @@ test("falls back automatically, updates live state, and exports without picking"
                         field: "x",
                         type: "quantitative",
                         scale: { domain: [0, 1] },
+                        axis: null,
                     },
                     x2: { field: "x2" },
                     y: { value: 0.1 },
@@ -288,6 +290,8 @@ test("falls back automatically, updates live state, and exports without picking"
             },
         ],
     });
+    genomeSpy.viewVisibilityPredicate = (view) =>
+        showHidden || view.isVisibleInSpec();
 
     expect(await genomeSpy.launch()).toBe(true);
     genomeSpy.renderAll();
@@ -339,23 +343,41 @@ test("falls back automatically, updates live state, and exports without picking"
     });
     expect(contextTypes.filter((type) => type == "2d")).toHaveLength(1);
 
-    const paintsBeforeData = contexts[0].fillRect.mock.calls.length;
+    contexts[0].fillRect.mockClear();
     genomeSpy.updateNamedData("values", [
         { x: 0.1, x2: 0.2 },
         { x: 0.7, x2: 0.9 },
     ]);
     flushAnimationFrames(2);
-    expect(contexts[0].fillRect.mock.calls.length).toBeGreaterThan(
-        paintsBeforeData
-    );
+    expect(contexts[0].fillRect.mock.calls).toContainEqual([
+        expect.closeTo(7.9),
+        expect.closeTo(23.9),
+        expect.closeTo(8.2),
+        expect.closeTo(12.2),
+    ]);
+    expect(contexts[0].fillRect.mock.calls).toContainEqual([
+        expect.closeTo(55.9),
+        expect.closeTo(23.9),
+        expect.closeTo(16.2),
+        expect.closeTo(12.2),
+    ]);
+    expect(contexts[0].fillRect.mock.calls).not.toContainEqual([
+        expect.closeTo(15.9),
+        expect.closeTo(23.9),
+        expect.closeTo(16.2),
+        expect.closeTo(12.2),
+    ]);
 
-    const paintsBeforeVisibility = contexts[0].fillRect.mock.calls.length;
-    genomeSpy.viewVisibilityPredicate = () => true;
+    contexts[0].fillRect.mockClear();
+    showHidden = true;
     await genomeSpy.initializeVisibleViewData();
     flushAnimationFrames(2);
-    expect(contexts[0].fillRect.mock.calls.length).toBeGreaterThan(
-        paintsBeforeVisibility
-    );
+    expect(contexts[0].fillRect.mock.calls).toContainEqual([
+        expect.closeTo(39.9),
+        expect.closeTo(3.9),
+        expect.closeTo(24.2),
+        expect.closeTo(12.2),
+    ]);
 
     const { blob } = await genomeSpy.exportRaster({
         logicalWidth: 40,

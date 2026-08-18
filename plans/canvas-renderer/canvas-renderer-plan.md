@@ -951,6 +951,19 @@ Recorded Step 4 results (pre-review):
   102-line detached traversal/export implementation stays in the optional
   Canvas chunk. That chunk is 12.93 kB / 4.15 kB gzip.
 
+Step 4 review gate outcome:
+
+- The reviewed implementation was committed as `289164898` before applying
+  review fixes.
+- The review found no production correctness or regression defect. It accepted
+  one worthwhile coverage improvement: assert the new named-data rectangles
+  and newly visible rectangle by exact geometry, rather than only observing
+  that some repaint occurred.
+- The KISS review confirmed that `renderCanvas2D` is a useful small extraction
+  because live and detached export traversals share it. It rejected extracting
+  the two short export-option adapters and found no other useful
+  simplification.
+
 Documentation and migration: no migration. Decide whether App needs a visible
 compatibility-mode indicator; otherwise use a one-time warning.
 
