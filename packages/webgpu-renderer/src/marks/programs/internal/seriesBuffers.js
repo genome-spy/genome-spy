@@ -1,9 +1,9 @@
-/* global GPUBufferUsage */
 import { isSeriesChannelConfig } from "../../../types.js";
 import {
     buildPackedSeriesLayout,
     packSeriesArrays,
 } from "./packedSeriesLayout.js";
+import { asGpuBufferSource } from "../../../utils/webgpuTextureUtils.js";
 
 /**
  * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -290,6 +290,6 @@ export class SeriesBufferManager {
             });
         }
 
-        this._device.queue.writeBuffer(buffer, 0, array);
+        this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(array));
     }
 }
