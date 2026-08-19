@@ -71,6 +71,14 @@ void main(void) {
     gl_Position = unitToNdc(facetedPos);
 
     float strokeWidth = getScaled_strokeWidth();
+    float strokeOpacity = getScaled_strokeOpacity();
+    vShape = getScaled_shape();
+
+    // Line-only shapes use their width even when the stroke falls back to the
+    // fill color. An invisible stroke must not inset other filled shapes.
+    if (strokeOpacity <= 0.0 && vShape != X && vShape != PLUS) {
+        strokeWidth = 0.0;
+    }
 
     float diameter = sqrt(size) *
         uScaleFactor *
@@ -90,9 +98,7 @@ void main(void) {
 	}
 
 	float fillOpa = getScaled_fillOpacity() * opacity;
-	float strokeOpa = getScaled_strokeOpacity() * opacity;
-
-    vShape = getScaled_shape();
+	float strokeOpa = strokeOpacity * opacity;
 
 	// Circle doesn't have sharp corners. Do some special optimizations to minimize the point size.
 	bool circle = vShape == 0.0;
