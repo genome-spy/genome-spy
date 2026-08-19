@@ -54,7 +54,6 @@ export function buildPipeline({
         entries: [
             {
                 binding: 0,
-                // eslint-disable-next-line no-undef
                 visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
                 buffer: { type: "uniform" },
             },

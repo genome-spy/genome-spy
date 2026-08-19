@@ -1,6 +1,6 @@
-/* global GPUBufferUsage */
 import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import { buildHashTableSet } from "../../../utils/hashTable.js";
+import { asGpuBufferSource } from "../../../utils/webgpuTextureUtils.js";
 import {
     SELECTION_BUFFER_PREFIX,
     SELECTION_COUNT_PREFIX,
@@ -212,11 +212,13 @@ export class SelectionResourceManager {
                 const { table } = buildHashTableSet([]);
                 const buffer = this._device.createBuffer({
                     size: table.byteLength,
-                    usage:
-                        // eslint-disable-next-line no-undef
-                        GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+                    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
                 });
-                this._device.queue.writeBuffer(buffer, 0, table);
+                this._device.queue.writeBuffer(
+                    buffer,
+                    0,
+                    asGpuBufferSource(table)
+                );
                 extraBuffers.set(bufferName, buffer);
                 this._selectionBuffers.set(def.name, {
                     buffer,
@@ -263,9 +265,7 @@ export class SelectionResourceManager {
             if (!existing || existing.byteLength < table.byteLength) {
                 const buffer = this._device.createBuffer({
                     size: table.byteLength,
-                    usage:
-                        // eslint-disable-next-line no-undef
-                        GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+                    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
                 });
                 extraBuffers.set(bufferName, buffer);
                 this._selectionBuffers.set(name, {
@@ -276,7 +276,11 @@ export class SelectionResourceManager {
             }
             const buffer = this._selectionBuffers.get(name)?.buffer;
             if (buffer) {
-                this._device.queue.writeBuffer(buffer, 0, table);
+                this._device.queue.writeBuffer(
+                    buffer,
+                    0,
+                    asGpuBufferSource(table)
+                );
             }
         } else {
             throw new Error(`Selection "${name}" has unsupported type.`);

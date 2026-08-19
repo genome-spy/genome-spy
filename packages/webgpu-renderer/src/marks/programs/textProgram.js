@@ -452,7 +452,7 @@ function normalizeTextConfig({
             normalizedChannels.text
         );
     /** @type {string[]} */
-    let strings = [];
+    let strings;
 
     if (textLayout) {
         const layout =
@@ -817,7 +817,6 @@ export default class TextProgram extends BaseProgram {
         }
         const glyphBuffer = this.device.createBuffer({
             size: glyphData.byteLength,
-            // eslint-disable-next-line no-undef
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         });
         this.device.queue.writeBuffer(glyphBuffer, 0, glyphData);
@@ -832,7 +831,6 @@ export default class TextProgram extends BaseProgram {
         }
         const stringBuffer = this.device.createBuffer({
             size: stringData.byteLength,
-            // eslint-disable-next-line no-undef
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         });
         this.device.queue.writeBuffer(stringBuffer, 0, stringData);
@@ -853,7 +851,6 @@ export default class TextProgram extends BaseProgram {
         }
         const glyphMetricsBuffer = this.device.createBuffer({
             size: glyphMetricsData.byteLength,
-            // eslint-disable-next-line no-undef
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         });
         this.device.queue.writeBuffer(glyphMetricsBuffer, 0, glyphMetricsData);
@@ -929,12 +926,10 @@ export default class TextProgram extends BaseProgram {
                 depthOrArrayLayers: 1,
             },
             format: "rgba8unorm",
-            /* eslint-disable no-undef */
             usage:
                 GPUTextureUsage.TEXTURE_BINDING |
                 GPUTextureUsage.COPY_DST |
                 GPUTextureUsage.RENDER_ATTACHMENT,
-            /* eslint-enable no-undef */
         });
         this.device.queue.copyExternalImageToTexture(
             { source: image },

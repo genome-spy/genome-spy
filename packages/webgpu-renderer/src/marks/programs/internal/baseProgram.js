@@ -130,7 +130,6 @@ export default class BaseProgram {
         this._resourceLayout = resourceLayout;
         this._uniformBuffer = this.device.createBuffer({
             size: this._uniformBufferState?.byteLength ?? 0,
-            // eslint-disable-next-line no-undef
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
         this._initializeUniforms();

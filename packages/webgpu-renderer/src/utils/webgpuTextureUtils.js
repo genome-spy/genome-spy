@@ -1,4 +1,3 @@
-/* global globalThis */
 /**
  * @typedef {object} TextureData
  * @prop {GPUTextureFormat} format
@@ -96,7 +95,7 @@ export function writeTextureData(device, texture, textureData) {
     const writeData = prepareTextureData(textureData);
     device.queue.writeTexture(
         { texture },
-        writeData.data,
+        asGpuBufferSource(writeData.data),
         {
             bytesPerRow: writeData.bytesPerRow,
             rowsPerImage: writeData.height,
@@ -106,6 +105,18 @@ export function writeTextureData(device, texture, textureData) {
             height: writeData.height,
             depthOrArrayLayers: 1,
         }
+    );
+}
+
+/**
+ * Mark an ArrayBuffer-backed view as safe for a WebGPU upload.
+ *
+ * @param {ArrayBufferView} data
+ * @returns {GPUAllowSharedBufferSource}
+ */
+export function asGpuBufferSource(data) {
+    return /** @type {GPUAllowSharedBufferSource} */ (
+        /** @type {unknown} */ (data)
     );
 }
 

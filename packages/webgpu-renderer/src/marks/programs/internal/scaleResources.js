@@ -1,4 +1,3 @@
-/* global GPUBufferUsage, GPUTextureUsage */
 import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import {
     getScaleResourceRequirements,
@@ -14,7 +13,10 @@ import {
 } from "../../scales/scaleStops.js";
 import { buildHashTableMap, HASH_EMPTY_KEY } from "../../../utils/hashTable.js";
 import { createSchemeTexture } from "../../../utils/colorUtils.js";
-import { prepareTextureData } from "../../../utils/webgpuTextureUtils.js";
+import {
+    asGpuBufferSource,
+    prepareTextureData,
+} from "../../../utils/webgpuTextureUtils.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_PREFIX,
@@ -666,7 +668,7 @@ export class ScaleResourceManager {
             : prev.texture;
         this._device.queue.writeTexture(
             { texture },
-            prepared.data,
+            asGpuBufferSource(prepared.data),
             { bytesPerRow: prepared.bytesPerRow },
             { width: prepared.width, height: prepared.height }
         );
@@ -731,7 +733,7 @@ export class ScaleResourceManager {
             });
         }
 
-        this._device.queue.writeBuffer(buffer, 0, data);
+        this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(data));
         resources.domainMap = {
             buffer,
             size: { length, byteLength: nextBytes },
@@ -786,7 +788,7 @@ export class ScaleResourceManager {
             });
         }
 
-        this._device.queue.writeBuffer(buffer, 0, data);
+        this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(data));
         resources.ordinalRange = {
             buffer,
             size: { length, byteLength: nextBytes },

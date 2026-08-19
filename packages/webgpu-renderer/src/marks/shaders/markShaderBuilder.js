@@ -1,4 +1,3 @@
-/* global GPUShaderStage */
 import { buildScaleWgsl } from "../scales/scaleWgsl.js";
 import HASH_TABLE_WGSL from "../../wgsl/hashTable.wgsl.js";
 import { preprocessShader } from "../../wgsl/preprocess.js";
@@ -148,7 +147,6 @@ export function buildMarkShader({
 
     let bindingIndex = 1;
     const vertexComputeVisibility =
-        // eslint-disable-next-line no-undef
         GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE;
     const channelIRs = buildChannelIRs(channels);
     const seriesChannelIRs = channelIRs.filter(
@@ -551,7 +549,6 @@ ${clauses.join("\n")}
         resourceBindings.push({
             binding: textureBinding,
             visibility:
-                // eslint-disable-next-line no-undef
                 GPUShaderStage.VERTEX |
                 GPUShaderStage.FRAGMENT |
                 GPUShaderStage.COMPUTE,
@@ -566,7 +563,6 @@ ${clauses.join("\n")}
         resourceBindings.push({
             binding: samplerBinding,
             visibility:
-                // eslint-disable-next-line no-undef
                 GPUShaderStage.VERTEX |
                 GPUShaderStage.FRAGMENT |
                 GPUShaderStage.COMPUTE,
@@ -583,8 +579,6 @@ ${clauses.join("\n")}
     // pipeline and must be wired explicitly.
     for (const extra of extraResources) {
         const binding = bindingIndex++;
-        // eslint-disable-next-line no-undef
-        // eslint-disable-next-line no-undef
         const visibility =
             extra.visibility === "vertex"
                 ? GPUShaderStage.VERTEX
@@ -596,7 +590,6 @@ ${clauses.join("\n")}
         if (extra.kind === "buffer") {
             resourceBindings.push({
                 binding,
-                // eslint-disable-next-line no-undef
                 visibility,
                 buffer: { type: extra.bufferType ?? "read-only-storage" },
             });
@@ -623,7 +616,6 @@ ${clauses.join("\n")}
 
             resourceBindings.push({
                 binding,
-                // eslint-disable-next-line no-undef
                 visibility,
                 texture: {
                     sampleType,
@@ -640,7 +632,6 @@ ${clauses.join("\n")}
         if (extra.kind === "sampler") {
             resourceBindings.push({
                 binding,
-                // eslint-disable-next-line no-undef
                 visibility,
                 sampler: { type: extra.samplerType ?? "filtering" },
             });

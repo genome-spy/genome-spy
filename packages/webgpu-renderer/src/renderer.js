@@ -84,7 +84,6 @@ export class Renderer {
         // Global uniforms are shared by all marks (e.g., viewport size).
         this._globalUniformBuffer = device.createBuffer({
             size: 4 * 4,
-            // eslint-disable-next-line no-undef
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -93,9 +92,7 @@ export class Renderer {
             entries: [
                 {
                     binding: 0,
-                    visibility:
-                        // eslint-disable-next-line no-undef
-                        GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
                     buffer: { type: "uniform" },
                 },
             ],
@@ -229,7 +226,6 @@ export class Renderer {
         this._pickTexture = this.device.createTexture({
             size: { width, height },
             format: this.pickFormat,
-            // eslint-disable-next-line no-undef
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
         });
         this._pickTextureView = this._pickTexture.createView();
@@ -237,7 +233,6 @@ export class Renderer {
         this._pickReadbackBuffer?.destroy();
         this._pickReadbackBuffer = this.device.createBuffer({
             size: 256,
-            // eslint-disable-next-line no-undef
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
         });
     }
@@ -308,12 +303,7 @@ export class Renderer {
         );
         this.device.queue.submit([commandEncoder.finish()]);
 
-        await this._pickReadbackBuffer.mapAsync(
-            // eslint-disable-next-line no-undef
-            GPUMapMode.READ,
-            0,
-            4
-        );
+        await this._pickReadbackBuffer.mapAsync(GPUMapMode.READ, 0, 4);
         const data = new Uint8Array(
             this._pickReadbackBuffer.getMappedRange(0, 4)
         );
