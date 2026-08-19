@@ -411,12 +411,14 @@ moved after semantic and anchor culling so rejected instances do no shape work.
 
 The remaining non-positional reads were intentionally left in their existing
 stages. Rule/link width and arrow size/direction/stroke geometry are each read
-once for a datum that has reached the relevant geometry stage. Point size,
-stroke width, angle, and shape likewise occur only as their culling or output
-stage needs them. Hoisting every common default would add a constant scalar and
-branch for each channel without evidence that those trivial accessors are hot;
-paint encoders remain owned by the backend renderers. No generic constant
-encoder reader was added.
+once for a datum that has reached the relevant geometry stage. Point
+`semanticScore`, `dx`, and `dy` remain per datum because they may be
+data-dependent and are evaluated only before their respective culling stages.
+Point size, stroke width, angle, and shape likewise occur only as their culling
+or output stage needs them. Hoisting every common default would add a constant
+scalar and branch for each channel without profile evidence that those trivial
+accessors are hot; paint encoders remain owned by the backend renderers. No
+generic constant encoder reader was added.
 
 ### Step 7: Verify and close the plan
 
