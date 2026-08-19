@@ -1,10 +1,8 @@
 import { intersectsBounds, isOutsideBounds } from "../bounds.js";
 import {
     encodeNumber,
-    encodePosition,
     encodeString,
-    projectX,
-    projectY,
+    prepareRangeProjection,
     resolveMarkProperty,
 } from "../markEncoding.js";
 
@@ -50,6 +48,23 @@ export function visitPointInstances(mark, properties, options, visitor) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    if (data.length == 0) {
+        return 0;
+    }
+    const projectXRange = prepareRangeProjection(
+        coords,
+        encoders,
+        "x",
+        data[0]
+    );
+    const projectYRange = prepareRangeProjection(
+        coords,
+        encoders,
+        "y",
+        data[0]
+    );
+    const xRange = /** @type {[number, number]} */ ([0, 0]);
+    const yRange = /** @type {[number, number]} */ ([0, 0]);
     const semanticThreshold = mark.getSemanticThreshold();
     /** @type {PointInstance} */
     const instance = {
@@ -65,23 +80,14 @@ export function visitPointInstances(mark, properties, options, visitor) {
     let instanceCount = 0;
 
     for (const datum of data) {
-        const shape = encodeString(encoders.shape, datum);
         if (encodeNumber(encoders.semanticScore, datum) < semanticThreshold) {
             continue;
         }
 
-        const x = projectX(
-            coords,
-            encodePosition(encoders.x, datum),
-            encodeNumber(encoders.xOffset, datum) +
-                encodeNumber(encoders.dx, datum)
-        );
-        const y = projectY(
-            coords,
-            encodePosition(encoders.y, datum),
-            encodeNumber(encoders.yOffset, datum) -
-                encodeNumber(encoders.dy, datum)
-        );
+        projectXRange(datum, xRange);
+        projectYRange(datum, yRange);
+        const x = xRange[0] + encodeNumber(encoders.dx, datum);
+        const y = yRange[0] - encodeNumber(encoders.dy, datum);
         if (isOutsideBounds(anchorCullBounds, x, y)) {
             continue;
         }
@@ -89,6 +95,7 @@ export function visitPointInstances(mark, properties, options, visitor) {
         if (properties.inwardStroke && radius <= 0) {
             continue;
         }
+        const shape = encodeString(encoders.shape, datum);
         const strokeWidth = encodeNumber(encoders.strokeWidth, datum);
         const lineShape = shape == "x" || shape == "+";
         const adjustedStrokeWidth =

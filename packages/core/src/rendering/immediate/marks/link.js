@@ -1,8 +1,7 @@
 import { intersectsBounds } from "../bounds.js";
 import {
     encodeNumber,
-    projectXRange,
-    projectYRange,
+    prepareRangeProjection,
     resolveMarkProperty,
 } from "../markEncoding.js";
 import { getBezierPoints } from "../geometry/linkGeometry.js";
@@ -39,20 +38,44 @@ export function visitLinkInstances(mark, properties, options, visitor) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    if (data.length == 0) {
+        return 0;
+    }
+    const projectXRange = prepareRangeProjection(
+        coords,
+        encoders,
+        "x",
+        data[0]
+    );
+    const projectYRange = prepareRangeProjection(
+        coords,
+        encoders,
+        "y",
+        data[0]
+    );
+    const xRange = /** @type {[number, number]} */ ([0, 0]);
+    const yRange = /** @type {[number, number]} */ ([0, 0]);
+    const coordsX = coords.x;
+    const coordsY = coords.y;
+    const coordsWidth = coords.width;
+    const coordsHeight = coords.height;
+    const coordsY2 = coordsY + coordsHeight;
     let instanceCount = 0;
 
     for (const datum of data) {
-        const [x, x2] = projectXRange(coords, encoders, datum);
-        const [y, y2] = projectYRange(coords, encoders, datum);
+        projectXRange(datum, xRange);
+        projectYRange(datum, yRange);
+        const [x, x2] = xRange;
+        const [y, y2] = yRange;
         const points = getBezierPoints(
-            [x - coords.x, coords.y2 - y],
-            [x2 - coords.x, coords.y2 - y2],
-            { width: coords.width, height: coords.height },
+            [x - coordsX, coordsY2 - y],
+            [x2 - coordsX, coordsY2 - y2],
+            { width: coordsWidth, height: coordsHeight },
             properties
         );
         for (const point of points) {
-            point[0] += coords.x;
-            point[1] = coords.y + coords.height - point[1];
+            point[0] += coordsX;
+            point[1] = coordsY2 - point[1];
         }
         const [p1, p2, p3, p4] = points;
         const strokeWidth = encodeNumber(encoders.size, datum);

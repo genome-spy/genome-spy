@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. Steps 1–5 are complete; Steps 6–7 have not started.
+In progress. Steps 1–6 are complete; Step 7 has not started.
 
 ## Background
 
@@ -400,6 +400,22 @@ None. The immediate-mode boundary is already documented.
 #### Tentative commit
 
 `perf(core): prepare projection for immediate marks`
+
+#### Implementation result
+
+Point, rule/tick, link, and arrow now use the same per-traversal prepared
+projection as text and rect. Each visitor reuses its two range results, and
+link snapshots its local-coordinate rectangle once. Point shape encoding was
+moved after semantic and anchor culling so rejected instances do no shape work.
+
+The remaining non-positional reads were intentionally left in their existing
+stages. Rule/link width and arrow size/direction/stroke geometry are each read
+once for a datum that has reached the relevant geometry stage. Point size,
+stroke width, angle, and shape likewise occur only as their culling or output
+stage needs them. Hoisting every common default would add a constant scalar and
+branch for each channel without evidence that those trivial accessors are hot;
+paint encoders remain owned by the backend renderers. No generic constant
+encoder reader was added.
 
 ### Step 7: Verify and close the plan
 

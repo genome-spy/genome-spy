@@ -1,8 +1,7 @@
 import { intersectsBounds } from "../bounds.js";
 import {
     encodeNumber,
-    projectXRange,
-    projectYRange,
+    prepareRangeProjection,
     resolveMarkProperty,
 } from "../markEncoding.js";
 
@@ -33,6 +32,23 @@ export function visitRuleInstances(mark, properties, options, visitor) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    if (data.length == 0) {
+        return 0;
+    }
+    const projectXRange = prepareRangeProjection(
+        coords,
+        encoders,
+        "x",
+        data[0]
+    );
+    const projectYRange = prepareRangeProjection(
+        coords,
+        encoders,
+        "y",
+        data[0]
+    );
+    const xRange = /** @type {[number, number]} */ ([0, 0]);
+    const yRange = /** @type {[number, number]} */ ([0, 0]);
     /** @type {RuleInstance} */
     const instance = {
         datum: {},
@@ -45,8 +61,10 @@ export function visitRuleInstances(mark, properties, options, visitor) {
     let instanceCount = 0;
 
     for (const datum of data) {
-        let [x1, x2] = projectXRange(coords, encoders, datum);
-        let [y1, y2] = projectYRange(coords, encoders, datum);
+        projectXRange(datum, xRange);
+        projectYRange(datum, yRange);
+        let [x1, x2] = xRange;
+        let [y1, y2] = yRange;
         const dx = x2 - x1;
         const dy = y2 - y1;
         const length = Math.hypot(dx, dy);

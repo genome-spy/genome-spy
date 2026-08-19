@@ -3,8 +3,7 @@ import { intersectsBounds } from "../bounds.js";
 import {
     encodeNumber,
     encodeString,
-    projectXRange,
-    projectYRange,
+    prepareRangeProjection,
     resolveMarkProperty,
     toPaintString,
 } from "../markEncoding.js";
@@ -54,11 +53,30 @@ export function visitArrowInstances(mark, properties, options, visitor) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    if (data.length == 0) {
+        return 0;
+    }
+    const projectXRange = prepareRangeProjection(
+        coords,
+        encoders,
+        "x",
+        data[0]
+    );
+    const projectYRange = prepareRangeProjection(
+        coords,
+        encoders,
+        "y",
+        data[0]
+    );
+    const xRange = /** @type {[number, number]} */ ([0, 0]);
+    const yRange = /** @type {[number, number]} */ ([0, 0]);
     let instanceCount = 0;
 
     for (const datum of data) {
-        const [x, x2] = projectXRange(coords, encoders, datum);
-        const [y, y2] = projectYRange(coords, encoders, datum);
+        projectXRange(datum, xRange);
+        projectYRange(datum, yRange);
+        const [x, x2] = xRange;
+        const [y, y2] = yRange;
         const a = { x, y };
         const b = { x: x2, y: y2 };
         const direction = encodeString(encoders.direction, datum);
