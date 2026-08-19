@@ -633,8 +633,8 @@ options require no migration because `"auto"` preserves WebGL where available.
 
 Tentative commit: `refactor(core): add lazy rendering backend selection`
 
-Step gate: complete the mandatory subagent review and commit gate before
-starting Step 2.
+Step gate: completed. The reviewed implementation and accepted fixes were
+committed separately before Step 2 began.
 
 ### 2. Build the live zoom and pan performance slice
 
@@ -768,8 +768,9 @@ eventual PR notes so the feasibility decision remains reviewable.
 
 Tentative commit: `feat(core): add Canvas2D zoom and pan performance slice`
 
-Step gate: complete the mandatory subagent review and commit gate, including
-the performance continue/reconsider decision, before starting Step 3.
+Step gate: completed. The reviewed implementation and accepted fixes were
+committed separately, and the measured performance supported continuing to
+Step 3.
 
 ### 3. Complete shared geometry and Canvas2D mark drawing
 
@@ -876,8 +877,8 @@ to the shared CPU geometry layer. No user migration.
 
 Tentative commit: `feat(core): complete Canvas2D mark rendering`
 
-Step gate: complete the mandatory subagent review and commit gate before
-starting Step 4.
+Step gate: completed. The reviewed implementation and accepted fixes were
+committed separately before Step 4 began.
 
 ### 4. Add raster export and complete fallback integration
 
@@ -969,8 +970,8 @@ compatibility-mode indicator; otherwise use a one-time warning.
 
 Tentative commit: `feat(core): complete Canvas2D fallback and raster export`
 
-Step gate: complete the mandatory subagent review and commit gate before
-starting Step 5.
+Step gate: completed. The reviewed implementation and accepted coverage fix
+were committed separately before Step 5 began.
 
 ### 5. Complete documentation, bundle checks, and compatibility coverage
 
@@ -1051,9 +1052,8 @@ changes.
 
 Tentative commit: `docs(core): document Canvas2D compatibility rendering`
 
-Step gate: complete the mandatory subagent review and commit gate before
-declaring local implementation complete. Keep target-desktop compatibility
-validation open until it has been run on the actual restricted environment.
+Step gate: completed for local implementation. Target-desktop compatibility
+validation is deferred as described in the final reconciliation below.
 
 ## Follow-up: organize renderers for an eventual WebGPU transition
 
@@ -1293,3 +1293,18 @@ Step gate: completed. A fresh review checked dependency direction, lazy-module
 isolation, package subpath compatibility, unchanged WebGL ownership, hybrid SVG
 raster-run behavior and paint order, naming, and KISS. The reviewed
 reorganization and accepted fixes are in separate commits.
+
+## Final reconciliation for pull request
+
+All six implementation steps, their required independent reviews, and their
+review-fix commits are complete. The renderer, documentation, bundle guards,
+browser smoke tests, and modular renderer reorganization are ready for pull
+request review.
+
+Testing on the specific restricted virtual desktop that motivated the feature
+is deferred because that environment was not available during implementation.
+It is not an incomplete code task and is outside this pull request's acceptance
+criteria. The pull request may claim locally verified Canvas2D fallback and
+documented performance characteristics, but it must not claim compatibility,
+support, or measured performance for that particular desktop policy until a
+separate validation run is completed there.
