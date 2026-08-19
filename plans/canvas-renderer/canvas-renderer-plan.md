@@ -1054,3 +1054,199 @@ Tentative commit: `docs(core): document Canvas2D compatibility rendering`
 Step gate: complete the mandatory subagent review and commit gate before
 declaring local implementation complete. Keep target-desktop compatibility
 validation open until it has been run on the actual restricted environment.
+
+## Follow-up: organize renderers for an eventual WebGPU transition
+
+### Background and rationale
+
+The Canvas2D implementation introduced a useful backend boundary, but its
+shared CPU layer still depends on SVG-named helpers, Canvas2D imports a neutral
+canvas-size helper from `gl/`, and the modular Canvas2D and SVG implementations
+live outside the otherwise shared `rendering/` hierarchy. These dependencies
+make ownership less clear than the runtime design.
+
+WebGL is expected to be replaced by WebGPU. During that transition, the current
+mark-owned WebGL implementation and a new renderer-owned WebGPU implementation
+may need to coexist. The current WebGL code in `marks/` and `gl/` must not be
+extracted into a separate renderer as part of this reorganization. Moving it
+would create a large, short-lived refactor and would not directly advance the
+WebGPU implementation. Instead, WebGL remains an explicit transitional
+exception and is eventually deleted after WebGPU reaches feature parity.
+
+The target organization groups new modular rendering implementations under
+`rendering/`, gives Canvas2D and SVG a backend-neutral immediate-mode layer,
+and leaves space for WebGPU to own its pipelines and resources without adding
+WebGPU state to marks:
+
+```text
+packages/core/src/
+├─ marks/                         semantic marks plus transitional WebGL code
+├─ gl/                            transitional WebGL infrastructure
+└─ rendering/
+   ├─ renderingBackend.js         backend contract, selection, and capabilities
+   ├─ canvasSizeHelper.js         backend-neutral surface sizing
+   ├─ immediate/                  CPU projection used by Canvas2D and SVG
+   │  ├─ bounds.js
+   │  ├─ markEncoding.js
+   │  ├─ markData.js
+   │  ├─ geometry/
+   │  │  ├─ linkGeometry.js
+   │  │  ├─ pointPath.js
+   │  │  └─ polygonUnion.js
+   │  └─ marks/
+   │     ├─ arrow.js
+   │     ├─ link.js
+   │     ├─ point.js
+   │     ├─ rect.js
+   │     ├─ rule.js
+   │     └─ text.js
+   ├─ canvas2d/                   live and detached Canvas2D rendering
+   │  └─ renderers/
+   ├─ svg/                        structured SVG export
+   │  ├─ raster/
+   │  │  └─ webgl.js              lazy hybrid-SVG raster adapter
+   │  └─ renderers/
+   └─ webgpu/                     future renderer-owned implementation
+      ├─ resources/
+      ├─ shaders/
+      └─ renderers/
+```
+
+The dependency direction is one way: Canvas2D and SVG may import the
+immediate-mode layer, while `rendering/immediate/` must not import SVG,
+Canvas2D, WebGL, or WebGPU modules. WebGPU should consume semantic mark state
+directly and keep GPU resources in the renderer, for example in maps keyed by
+mark identity. It should not depend on CPU projection merely because both
+execute some code on the CPU.
+
+The backend contract should describe capabilities such as surface sizing,
+render coordination, export, and optional picking. Existing `glHelper` access
+remains a transitional WebGL escape hatch; WebGPU must not implement a fake
+`glHelper`. Likewise, Canvas2D, SVG, WebGL, and WebGPU do not need a universal
+low-level drawing interface. Their common boundary is orchestration and
+semantic mark state, not path commands or GPU resources.
+
+Runtime coexistence does not imply that WebGL becomes a lazy optional bundle.
+WebGL and TWGL remain statically reachable while they are embedded in mark
+classes. Making WebGL lazy would require the extraction that this step
+explicitly excludes.
+
+Hybrid SVG export is a deliberate exception to the otherwise backend-neutral
+SVG dependency direction. SVG owns post-culling instance counting, contiguous
+raster-run selection, vector placeholders, crop placement, and document paint
+order. Its optional `raster/webgl.js` leaf may use the existing buffered WebGL
+renderer to turn selected runs into cropped PNG images. The adapter remains
+dynamically imported only when the raster threshold selects at least one run.
+This preserves current partial rasterization without moving WebGL code out of
+marks or allowing WebGL dependencies into `rendering/immediate/`.
+
+Canvas2D mode continues to export all-vector SVG with a warning when hybrid
+rasterization is requested because it has no WebGL helper. A future WebGPU
+implementation may provide its own selected-mark raster capability, but this
+step does not introduce a generalized rasterizer contract before another
+backend needs it.
+
+### 6. Reorganize modular renderers and the immediate-mode layer
+
+Outcome: Canvas2D and SVG have clear sibling ownership under `rendering/`,
+their shared modules have backend-neutral names and dependencies, and the
+directory structure has an obvious location for a future renderer-owned
+WebGPU implementation. Rendering behavior and the current WebGL implementation
+remain unchanged.
+
+Affected areas:
+
+- move `packages/core/src/canvas2d/` to
+  `packages/core/src/rendering/canvas2d/`
+- move `packages/core/src/svg/` to `packages/core/src/rendering/svg/`
+- move `svg/raster/index.js` to `rendering/svg/raster/webgl.js` and retain its
+  nested dynamic import from SVG export
+- replace `packages/core/src/rendering/cpu/` with
+  `packages/core/src/rendering/immediate/`
+- move CPU mark visitors under `rendering/immediate/marks/`
+- move link geometry, point paths, and polygon union under
+  `rendering/immediate/geometry/`
+- split `svgMarkUtils.js`: move projection, encoder conversion, and
+  expression-backed property resolution to `immediate/markEncoding.js`; keep
+  SVG attribute encoding in `svg/svgAttributes.js`; import SVG number formatting
+  directly from `svg/svgNumber.js`
+- rename SVG-specific shared concepts, including `SvgBounds` and
+  `resolveSvgProperty`, to backend-neutral names
+- move `gl/canvasSizeHelper.js` to `rendering/canvasSizeHelper.js`
+- move `genomeSpy/renderingBackend.js` to `rendering/renderingBackend.js` while
+  leaving `createWebGLBackend` as a thin adapter over the existing mark-owned
+  WebGL path
+- move the Canvas benchmark harness out of published renderer source into a
+  benchmark or script directory
+- move shared-geometry tests beside their new owners and split the large Canvas
+  command-recorder suite by renderer only where that improves navigation
+- update internal imports, architecture documents, subsystem READMEs, bundle
+  checks, and the App SVG test import
+- preserve the existing `@genome-spy/core/svg/index.js` package subpath, if it
+  is retained as a supported entry, with an explicit package-export mapping
+  rather than a source compatibility wrapper
+
+Constraints and non-goals:
+
+- Do not move, wrap, or otherwise extract WebGL program, shader, buffer,
+  texture, uniform, or draw code from mark classes.
+- Do not create `rendering/webgl/` merely for directory symmetry.
+- Do not implement WebGPU or add placeholder WebGPU modules in this step.
+- Do not introduce a scene graph, universal renderer interface, generic path
+  sink, or shared Canvas/SVG drawing abstraction.
+- Do not add backend-specific dependencies to `rendering/immediate/`.
+- Allow `rendering/svg/raster/webgl.js` to depend on the existing WebGL
+  framebuffer and buffered-rendering modules; keep that dependency confined to
+  this dynamically imported SVG leaf.
+- Preserve Canvas2D and SVG lazy loading and minimize changes to statically
+  imported production modules.
+- Prefer direct file moves and import updates over compatibility re-export
+  chains. Preserve only deliberate package entry points through `exports`.
+
+Verification:
+
+- Add or update an import-boundary check that rejects imports from
+  `rendering/immediate/` to `rendering/canvas2d/`, `rendering/svg/`, `gl/`, or a
+  future `rendering/webgpu/` directory.
+- Extend the production ESM source-map check, not only the minimal entry check,
+  so an accidental static Canvas2D, SVG, or immediate-mode import is detected.
+- Verify the optional Canvas2D, SVG, and immediate modules remain outside the
+  synchronous ESM entry and record before/after raw and gzip chunk sizes.
+- Run focused Canvas2D and SVG suites after each group of moves, then the full
+  repository unit suite, lint, workspace TypeScript checks, Core/App builds,
+  and minimal-bundle verification.
+- Run the existing hybrid SVG export and raster-adapter suites after the move.
+  Preserve threshold validation, post-culling counts, contiguous run grouping,
+  framebuffer cleanup, transparent cropping, and the no-WebGL all-vector
+  fallback warning.
+- Add or retain a representative hybrid export assertion in which the threshold
+  rasterizes some layers while other SVG marks remain vector elements. Verify
+  multiple separated raster runs remain distinct and preserve their positions
+  in document paint order.
+- Smoke-test explicit Canvas2D, automatic WebGL-to-Canvas fallback, SVG export,
+  Canvas raster export, and a hybrid SVG export in a real browser. The hybrid
+  smoke test must decode the embedded PNG and verify that the exported document
+  contains both an `<image>` placeholder and vector mark elements.
+- Confirm existing WebGL rendering, picking, export, shader snapshots, buffer
+  updates, and mark disposal remain behaviorally unchanged.
+- Use `git diff --stat` and focused line counts to ensure the reorganization
+  removes backend-crossing helpers and re-export indirection without growing
+  production code unnecessarily.
+
+Documentation and migration: update Core rendering architecture documentation
+and the Canvas2D/SVG subsystem READMEs to describe the transitional WebGL
+placement, immediate-mode dependency boundary, and future WebGPU ownership.
+Document that hybrid SVG run discovery remains SVG-owned while the current
+lazy raster adapter is WebGL-backed. No visualization specification or embed
+API migration is intended. Document any deliberate internal package-subpath
+change; preserve the SVG entry through an explicit export if it is considered
+supported.
+
+Tentative commit: `refactor(core): organize modular rendering backends`
+
+Step gate: apply the mandatory subagent review and commit gate. The review must
+explicitly check dependency direction, lazy-module isolation, package subpath
+compatibility, unchanged WebGL ownership, hybrid SVG raster-run behavior and
+paint order, naming, and KISS. Commit the reviewed reorganization before
+applying accepted review fixes, and commit those fixes separately before
+declaring Step 6 complete.
