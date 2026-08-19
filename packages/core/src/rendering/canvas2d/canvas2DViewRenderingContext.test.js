@@ -446,7 +446,8 @@ describe("Canvas2DViewRenderingContext", () => {
         });
         const encoders =
             /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
-                view.mark.encoders
+                /** @type {import("../../view/unitView.js").default} */ (view)
+                    .mark.encoders
             );
         let strokeWidth = 1;
         const strokeWidthEncoder = Object.assign(
@@ -670,7 +671,8 @@ describe("Canvas2DViewRenderingContext", () => {
         });
         const encoders =
             /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
-                view.mark.encoders
+                /** @type {import("../../view/unitView.js").default} */ (view)
+                    .mark.encoders
             );
         let size = 12;
         const sizeEncoder = Object.assign(
