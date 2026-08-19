@@ -248,6 +248,11 @@ describe("Canvas2DViewRenderingContext", () => {
             expect(recording.calls.rotations).toEqual(
                 Array(13).fill(Math.PI / 12)
             );
+            expect(recording.calls.saves).toBe(14);
+            expect(recording.context.restore).toHaveBeenCalledTimes(14);
+            expect(recording.calls.translates).toHaveLength(13);
+            expect(recording.calls.translates[0][0]).toBeCloseTo(200 / 15);
+            expect(recording.calls.translates[0][1]).toBe(50);
             expect(recording.context.fill).toHaveBeenCalledTimes(12);
             expect(recording.context.stroke).toHaveBeenCalledTimes(14);
             expect(recording.context.lineCap).toBe("butt");
@@ -257,6 +262,41 @@ describe("Canvas2DViewRenderingContext", () => {
         } finally {
             warn.mockRestore();
         }
+    });
+
+    test("uses fill as the stroke of line-only point shapes", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { shape: "x", x: 0.25 },
+                    { shape: "+", x: 0.75 },
+                ],
+            },
+            mark: {
+                type: "point",
+                fill: "#123456",
+                stroke: null,
+                strokeWidth: 4,
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                y: { value: 0.5 },
+                shape: { field: "shape", type: "nominal", scale: null },
+                size: { value: 400 },
+            },
+        });
+        const recording = createRecordingContext();
+        recording.context.lineCap = "round";
+
+        render(view, recording.context);
+
+        expect(recording.context.fill).not.toHaveBeenCalled();
+        expect(recording.context.stroke).toHaveBeenCalledTimes(2);
+        expect(recording.context.strokeStyle).toBe("#123456");
+        expect(recording.context.lineWidth).toBe(4);
+        expect(recording.context.lineCap).toBe("butt");
+        expect(recording.calls.moves).toHaveLength(4);
+        expect(recording.calls.lines).toHaveLength(4);
     });
 
     test("projects repeated sample facets into their assigned rows", async () => {

@@ -111,9 +111,10 @@ export default class PointMark extends Mark {
             typeof this.unitView.spec.mark == "object"
                 ? this.unitView.spec.mark
                 : {};
-        const lineShape =
-            isValueDef(encoding.shape) &&
-            (encoding.shape.value === "x" || encoding.shape.value === "+");
+        const mayHaveLineShape =
+            !isValueDef(encoding.shape) ||
+            encoding.shape.value === "x" ||
+            encoding.shape.value === "+";
         const configuredStrokeWidth = encoding.strokeWidth;
 
         for (const [legacy, offset] of /** @type {const} */ ([
@@ -137,7 +138,7 @@ export default class PointMark extends Mark {
         // is the visible geometry. Line-only shapes are line geometry, so
         // retain their configured width when they fall back to fill color.
         if (
-            lineShape &&
+            mayHaveLineShape &&
             isValueDef(encoding.stroke) &&
             encoding.stroke.value === null
         ) {

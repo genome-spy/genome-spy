@@ -36,3 +36,20 @@ test.each(["x", "+"])(
         expect(view.mark.encoding.strokeWidth).toEqual({ value: 2 });
     }
 );
+
+test("data-driven line shapes retain their line width without an explicit stroke", async () => {
+    const view = await createAndInitialize(
+        {
+            data: { values: [{ shape: "x" }, { shape: "+" }] },
+            mark: "point",
+            encoding: {
+                shape: { field: "shape", type: "nominal", scale: null },
+            },
+        },
+        UnitView
+    );
+
+    expect(view.mark.encoding.stroke).toEqual({ value: null });
+    expect(view.mark.encoding.strokeOpacity).toEqual({ value: 0 });
+    expect(view.mark.encoding.strokeWidth).toEqual({ value: 2 });
+});
