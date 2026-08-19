@@ -1,0 +1,46 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Canvas renderer dense points",
+    "A fixed 100,000-instance zoom and pan benchmark for the Canvas2D compatibility renderer."
+  ],
+
+  "width": 900,
+  "height": 420,
+  "padding": 0,
+
+  "data": {
+    "sequence": { "start": 0, "stop": 100000, "as": "x" }
+  },
+
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "sin(datum.x / 113) + cos(datum.x / 47) * 0.35",
+      "as": "y"
+    }
+  ],
+
+  "mark": { "type": "point", "size": 4, "fillOpacity": 0.65 },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": {
+        "domain": [0, 100000],
+        "zoom": true,
+        "name": "benchmark-x"
+      },
+      "axis": null
+    },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "domain": [-1.5, 1.5] },
+      "axis": null
+    },
+    "fill": { "value": "#b6413c" }
+  }
+}

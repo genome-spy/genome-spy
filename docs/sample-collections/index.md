@@ -3,7 +3,8 @@
 The **app** package of the GenomeSpy toolkit enables an interactive analysis of
 large sample collections. It builds upon the core package, which allows
 developers to build tailored visualizations using the visualization grammar and
-GPU-accelerated rendering engine. The app extends the grammar with a _facet_
+high-performance WebGL renderer. A Canvas2D compatibility renderer is available
+when WebGL is unavailable. The app extends the grammar with a _facet_
 operator that makes it possible to repeat a single visualization for thousands
 of samples. The end users of the visualization have access to several
 interactions that facilitate the exploration of such sample collections.

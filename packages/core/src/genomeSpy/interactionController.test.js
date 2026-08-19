@@ -4,15 +4,10 @@ import { FREEZE_INTERACTION_CLASS_NAME } from "../utils/ui/tooltip.js";
 import UnitView from "../view/unitView.js";
 import InteractionController from "./interactionController.js";
 
-const readPickingPixel = vi.fn();
+const readPickingId = vi.fn();
 const OriginalDocument = globalThis.document;
 const OriginalMouseEvent = globalThis.MouseEvent;
 const OriginalWindow = globalThis.window;
-
-vi.mock("../gl/webGLHelper.js", () => ({
-    readPickingPixel: (/** @type {any[]} */ ...args) =>
-        readPickingPixel(...args),
-}));
 
 class CanvasStub extends EventTarget {
     constructor() {
@@ -70,11 +65,9 @@ function createMinimalInteractionController({ canvas, tooltip = {} } = {}) {
                 propagateInteraction: /** @returns {void} */ () => undefined,
                 visit: /** @returns {void} */ () => undefined,
             }),
-            glHelper: /** @type {any} */ ({
-                canvas: canvas ?? new CanvasStub(),
-                gl: {},
-                _pickingBufferInfo: {},
-            }),
+            canvas: /** @type {HTMLCanvasElement} */ (
+                /** @type {any} */ (canvas ?? new CanvasStub())
+            ),
             tooltip: /** @type {any} */ (actualTooltip),
             animator: /** @type {any} */ ({
                 requestRender: /** @returns {void} */ () => undefined,
@@ -82,7 +75,7 @@ function createMinimalInteractionController({ canvas, tooltip = {} } = {}) {
             emitEvent: /** @returns {void} */ () => undefined,
             tooltipHandlers: /** @type {Record<string, any>} */ ({}),
             renderPickingFramebuffer: /** @returns {void} */ () => undefined,
-            getDevicePixelRatio: () => 1,
+            readPickingId,
         }),
         tooltip: actualTooltip,
     };
@@ -90,7 +83,7 @@ function createMinimalInteractionController({ canvas, tooltip = {} } = {}) {
 
 describe("InteractionController", () => {
     beforeEach(() => {
-        readPickingPixel.mockReset();
+        readPickingId.mockReset();
         vi.restoreAllMocks();
     });
 
@@ -231,11 +224,7 @@ describe("InteractionController", () => {
 
         const controller = new InteractionController({
             viewRoot: /** @type {any} */ (viewRoot),
-            glHelper: /** @type {any} */ ({
-                canvas,
-                gl: {},
-                _pickingBufferInfo: {},
-            }),
+            canvas: /** @type {any} */ (canvas),
             tooltip: /** @type {any} */ ({
                 /** @returns {void} */
                 clear() {
@@ -264,13 +253,13 @@ describe("InteractionController", () => {
             emitEvent: /** @returns {void} */ () => undefined,
             tooltipHandlers: /** @type {Record<string, any>} */ ({}),
             renderPickingFramebuffer: /** @returns {void} */ () => undefined,
-            getDevicePixelRatio: () => 1,
+            readPickingId,
         });
 
         controller.registerInteractionEvents();
 
         let pickingUniqueId = 1;
-        readPickingPixel.mockImplementation(() => [pickingUniqueId, 0, 0, 0]);
+        readPickingId.mockImplementation(() => pickingUniqueId);
 
         canvas.dispatchEvent(
             new MouseEvent("mousemove", { clientX: 20, clientY: 30 })
@@ -374,21 +363,20 @@ describe("InteractionController", () => {
 
         /** @type {any} */
         let currentTarget = firstTarget;
+        /** @type {string[]} */
+        const interactionTypes = [];
 
         const controller = new InteractionController({
             viewRoot: /** @type {any} */ ({
                 propagateInteraction(
                     /** @type {import("../utils/interaction.js").default} */ event
                 ) {
+                    interactionTypes.push(event.type);
                     event.target = currentTarget;
                 },
                 visit: /** @returns {void} */ () => undefined,
             }),
-            glHelper: /** @type {any} */ ({
-                canvas,
-                gl: {},
-                _pickingBufferInfo: {},
-            }),
+            canvas: /** @type {any} */ (canvas),
             tooltip: /** @type {any} */ ({
                 clear: /** @returns {void} */ () => undefined,
                 handleMouseMove: /** @returns {void} */ () => undefined,
@@ -403,8 +391,6 @@ describe("InteractionController", () => {
             }),
             emitEvent: /** @returns {void} */ () => undefined,
             tooltipHandlers: /** @type {Record<string, any>} */ ({}),
-            renderPickingFramebuffer: /** @returns {void} */ () => undefined,
-            getDevicePixelRatio: () => 1,
         });
 
         controller.registerInteractionEvents();
@@ -413,6 +399,41 @@ describe("InteractionController", () => {
             new MouseEvent("mousemove", { clientX: 20, clientY: 30 })
         );
         expect(canvas.style.cursor).toBe("move");
+
+        canvas.dispatchEvent(
+            new MouseEvent(
+                "wheel",
+                /** @type {any} */ ({
+                    clientX: 20,
+                    clientY: 30,
+                    deltaX: 10,
+                    deltaY: 0,
+                })
+            )
+        );
+        canvas.dispatchEvent(
+            new MouseEvent("mousedown", { clientX: 20, clientY: 30 })
+        );
+        canvas.dispatchEvent(
+            new MouseEvent("mousemove", {
+                buttons: 1,
+                clientX: 25,
+                clientY: 35,
+            })
+        );
+        canvas.dispatchEvent(
+            new MouseEvent("mouseup", { clientX: 25, clientY: 35 })
+        );
+
+        expect(interactionTypes).toEqual(
+            expect.arrayContaining([
+                "wheel",
+                "mousedown",
+                "mousemove",
+                "mouseup",
+            ])
+        );
+        expect(readPickingId).not.toHaveBeenCalled();
 
         document.body.classList.add(FREEZE_INTERACTION_CLASS_NAME);
         currentTarget = secondTarget;
@@ -530,11 +551,7 @@ describe("InteractionController", () => {
                     return visitor(pickerUnitView);
                 },
             }),
-            glHelper: /** @type {any} */ ({
-                canvas,
-                gl: {},
-                _pickingBufferInfo: {},
-            }),
+            canvas: /** @type {any} */ (canvas),
             tooltip: /** @type {any} */ ({
                 clear: /** @returns {void} */ () => undefined,
                 handleMouseMove: /** @returns {void} */ () => undefined,
@@ -550,11 +567,11 @@ describe("InteractionController", () => {
             emitEvent: /** @returns {void} */ () => undefined,
             tooltipHandlers: /** @type {Record<string, any>} */ ({}),
             renderPickingFramebuffer: /** @returns {void} */ () => undefined,
-            getDevicePixelRatio: () => 1,
+            readPickingId,
         });
 
         controller.registerInteractionEvents();
-        readPickingPixel.mockImplementation(() => [1, 0, 0, 0]);
+        readPickingId.mockReturnValue(1);
 
         canvas.dispatchEvent(
             new MouseEvent("mousemove", { clientX: 20, clientY: 30 })
@@ -654,11 +671,7 @@ describe("InteractionController", () => {
                 },
                 visit: /** @returns {void} */ () => undefined,
             }),
-            glHelper: /** @type {any} */ ({
-                canvas,
-                gl: {},
-                _pickingBufferInfo: {},
-            }),
+            canvas: /** @type {any} */ (canvas),
             tooltip: /** @type {any} */ ({
                 clear,
                 handleMouseMove: /** @returns {void} */ () => undefined,
@@ -674,7 +687,6 @@ describe("InteractionController", () => {
             emitEvent: /** @returns {void} */ () => undefined,
             tooltipHandlers: /** @type {Record<string, any>} */ ({}),
             renderPickingFramebuffer: /** @returns {void} */ () => undefined,
-            getDevicePixelRatio: () => 1,
         });
 
         controller.registerInteractionEvents();
@@ -762,11 +774,7 @@ describe("InteractionController", () => {
                 },
                 visit: /** @returns {void} */ () => undefined,
             }),
-            glHelper: /** @type {any} */ ({
-                canvas,
-                gl: {},
-                _pickingBufferInfo: {},
-            }),
+            canvas: /** @type {any} */ (canvas),
             tooltip: /** @type {any} */ ({
                 clear,
                 handleMouseMove: /** @returns {void} */ () => undefined,
@@ -782,7 +790,6 @@ describe("InteractionController", () => {
             emitEvent: /** @returns {void} */ () => undefined,
             tooltipHandlers: /** @type {Record<string, any>} */ ({}),
             renderPickingFramebuffer: /** @returns {void} */ () => undefined,
-            getDevicePixelRatio: () => 1,
         });
 
         controller.registerInteractionEvents();
@@ -915,11 +922,7 @@ describe("InteractionController", () => {
                     return visitor(pickerUnitView);
                 },
             }),
-            glHelper: /** @type {any} */ ({
-                canvas,
-                gl: {},
-                _pickingBufferInfo: {},
-            }),
+            canvas: /** @type {any} */ (canvas),
             tooltip: /** @type {any} */ ({
                 clear: /** @returns {void} */ () => undefined,
                 handleMouseMove: /** @returns {void} */ () => undefined,
@@ -937,11 +940,11 @@ describe("InteractionController", () => {
                 default: () => Promise.resolve("tooltip"),
             }),
             renderPickingFramebuffer: /** @returns {void} */ () => undefined,
-            getDevicePixelRatio: () => 1,
+            readPickingId,
         });
 
         controller.registerInteractionEvents();
-        readPickingPixel.mockImplementation(() => [1, 0, 0, 0]);
+        readPickingId.mockReturnValue(1);
 
         canvas.dispatchEvent(
             new MouseEvent("mousedown", { clientX: 20, clientY: 30 })

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Canvas renderer dense rectangles",
+    "A fixed 50,000-instance zoom and pan benchmark for the Canvas2D compatibility renderer."
+  ],
+
+  "width": 900,
+  "height": 420,
+  "padding": 0,
+
+  "data": {
+    "sequence": { "start": 0, "stop": 50000, "as": "i" }
+  },
+
+  "transform": [
+    { "type": "formula", "expr": "datum.i % 1000", "as": "x" },
+    { "type": "formula", "expr": "datum.x + 1", "as": "x2" },
+    { "type": "formula", "expr": "floor(datum.i / 1000)", "as": "y" },
+    { "type": "formula", "expr": "datum.y + 1", "as": "y2" }
+  ],
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "domain": [0, 1000], "zoom": true, "name": "benchmark-x" },
+      "axis": null
+    },
+    "x2": { "field": "x2" },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "domain": [0, 50] },
+      "axis": null
+    },
+    "y2": { "field": "y2" },
+    "fill": { "value": "#3568a8" }
+  }
+}

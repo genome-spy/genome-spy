@@ -73,6 +73,30 @@ describe("TextMark", () => {
         expect(updateGraphicsData).toHaveBeenCalledTimes(1);
     });
 
+    test("repaints expression updates without rebuilding GPU data in Canvas mode", async () => {
+        const view = await create(
+            {
+                data: { values: [{ label: "text" }] },
+                mark: { type: "text", text: { expr: "width" } },
+            },
+            UnitView,
+            {},
+            { graphicsDataUpdates: false }
+        );
+        view.mark.initializeEncoders();
+        initializeViewSubtree(view, view.context.dataFlow);
+        view.getCollector().complete();
+        const updateGraphicsData = vi
+            .spyOn(view.mark, "updateGraphicsData")
+            .mockImplementation(() => undefined);
+        const requestRender = vi.spyOn(view.context.animator, "requestRender");
+
+        view.paramRuntime.setValue("width", 200);
+
+        expect(updateGraphicsData).not.toHaveBeenCalled();
+        expect(requestRender).toHaveBeenCalled();
+    });
+
     test("requests configured weight from the default font family", async () => {
         const view = await create(
             {

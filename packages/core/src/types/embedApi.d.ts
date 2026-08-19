@@ -22,6 +22,15 @@ export type EmbedFunction = (
 
 export interface EmbedOptions {
     /**
+     * Rendering backend. `"auto"` uses WebGL2 when available and falls back to
+     * the Canvas2D compatibility renderer. `"canvas"` does not request WebGL
+     * or WebGPU, but it does not support datum picking.
+     *
+     * __Default value:__ `"auto"`
+     */
+    renderer?: "auto" | "webgl" | "canvas";
+
+    /**
      * A function that allows retrieval of named data. There are two ways to provide named data:
      * 1. A data provider (this)
      * 2. Explicit updates using the `updateNamedData` method (the other).
@@ -45,9 +54,11 @@ export interface EmbedOptions {
     inputBindingContainer?: HTMLElement | "none" | "default";
 
     /**
-     * A suggestion for the browser on the appropriate GPU setup for the WebGL environment.
-     * Defaults to "default" in the @genome-spy/core package and "high-performance" in the
-     * @genome-spy/app package.
+     * A suggestion for the browser on the appropriate GPU setup for the WebGL
+     * environment. This setting has no effect in Canvas2D mode.
+     *
+     * __Default value:__ `"default"` in `@genome-spy/core` and
+     * `"high-performance"` in `@genome-spy/app`
      */
     powerPreference?: "default" | "high-performance" | "low-power";
 
@@ -523,7 +534,10 @@ export interface SvgExportAnalysis {
 
 /** Exports the current visualization as raster or vector images. */
 export interface ImageExportApi {
-    /** Exports a raster image. PNG is currently the only supported format. */
+    /**
+     * Exports a raster image through the active rendering backend. PNG is
+     * currently the only supported format.
+     */
     raster: (options?: RasterExportOptions) => Promise<RasterExportResult>;
 
     /** Exports editable SVG arranged according to the view hierarchy. */

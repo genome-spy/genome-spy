@@ -32,7 +32,7 @@ import {
     buildHashTableSet,
     computeHashTextureDimensions,
 } from "./hashTable.js";
-import CanvasSizeHelper from "./canvasSizeHelper.js";
+import CanvasSizeHelper from "../rendering/canvasSizeHelper.js";
 
 export default class WebGLHelper {
     /**
@@ -84,8 +84,6 @@ export default class WebGLHelper {
         // --------------------------------------------------------
 
         const canvas = document.createElement("canvas");
-
-        container.appendChild(canvas);
 
         // TODO: Consider using high-performance powerPreference:
         // https://www.khronos.org/webgl/public-mailing-list/public_webgl/1912/msg00001.php
@@ -144,20 +142,27 @@ export default class WebGLHelper {
         );
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        this._canvasSizeHelper = new CanvasSizeHelper(
-            container,
-            canvas,
-            resolvedSizeSource,
-            () => {
-                // Assigning canvas.width/height clears the WebGL drawing buffer.
-                // The observer may fire after layout/render, so repaint immediately.
-                if (this.adjustGl()) {
-                    this._onCanvasResize();
+        container.appendChild(canvas);
+        try {
+            this._canvasSizeHelper = new CanvasSizeHelper(
+                container,
+                canvas,
+                resolvedSizeSource,
+                () => {
+                    // Assigning canvas.width/height clears the WebGL drawing buffer.
+                    // The observer may fire after layout/render, so repaint immediately.
+                    if (this.adjustGl()) {
+                        this._onCanvasResize();
+                    }
                 }
-            }
-        );
+            );
 
-        this.adjustGl();
+            this.adjustGl();
+        } catch (error) {
+            this._canvasSizeHelper?.finalize();
+            canvas.remove();
+            throw error;
+        }
     }
 
     invalidateSize() {

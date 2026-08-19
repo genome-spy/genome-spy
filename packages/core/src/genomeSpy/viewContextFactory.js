@@ -24,6 +24,7 @@ export function createViewContext(options) {
         glHelper: options.allowMissingGlHelper
             ? options.glHelper
             : (options.glHelper ?? missing("glHelper")),
+        graphicsDataUpdates: options.graphicsDataUpdates,
         animator: options.animator ?? missing("animator"),
         genomeStore: options.genomeStore,
         fontManager: options.fontManager ?? missing("fontManager"),

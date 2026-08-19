@@ -2,6 +2,48 @@
 
 The `embed` function accepts an optional options object.
 
+## Rendering backend
+
+GenomeSpy uses WebGL2 when available. The default `renderer: "auto"` setting
+falls back to the Canvas2D compatibility renderer when WebGL2 initialization
+fails and reports the fallback once in the browser console.
+
+Select Canvas2D explicitly on restricted desktops where browser policy blocks
+WebGL:
+
+```js
+const api = await embed(container, spec, {
+  renderer: "canvas",
+});
+```
+
+`renderer: "canvas"` does not request a WebGL or WebGPU context.
+`renderer: "webgl"` requires WebGL2 and reports an error instead of falling
+back. Canvas2D may still be accelerated internally by the browser, so the
+setting does not guarantee that the browser uses no GPU hardware.
+
+Canvas2D supports live layout, axes, legends, zooming, panning, dynamic data,
+visibility changes, and PNG export. It projects geometry on the CPU and
+repaints the full Canvas surface immediately. It is intended as a compatibility
+mode; dense views can be slower than WebGL.
+
+### Canvas2D limitations
+
+- Datum picking is disabled. Data tooltips, datum clicks, hover-dependent mark
+  behavior, and point-selection hit testing are unavailable. Coordinate-based
+  view and scale interactions continue to work. Instance-level click events
+  report `datum: null`.
+- Text uses browser-native Canvas fonts. Metrics, rasterization, and
+  antialiasing can differ from WebGL and SVG output, especially when a requested
+  font is unavailable.
+- Some specialized effects, including rectangle hatches and shadows, are
+  approximated or ignored. GenomeSpy reports a deduplicated console warning
+  when this occurs.
+
+Raster export uses the active rendering backend. A Canvas2D embed therefore
+exports PNG images without WebGL. See [Instance, Events, and
+Export](./instance.md) for export options.
+
 ## Theme config
 
 The `theme` embed option provides global defaults without modifying the
