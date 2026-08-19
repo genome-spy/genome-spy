@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. Steps 1–4 are complete; Step 5 has not started.
+In progress. Steps 1–5 are complete; Steps 6–7 have not started.
 
 ## Background
 
@@ -305,7 +305,7 @@ None. The scale API and numerical semantics remain unchanged.
 
 `perf(core): simplify index scale arithmetic`
 
-### Step 5: Reprofile, simplify, and close the plan
+### Step 5: Reprofile and identify remaining work
 
 #### Intended outcome
 
@@ -315,34 +315,117 @@ None. The scale API and numerical semantics remain unchanged.
   native painting rather than repeated traversal setup.
 - Confirm that each prior review gate already removed optimizations that did
   not produce a repeatable targeted improvement or that harmed readability.
-- Reconcile every plan item as completed or explicitly discarded before plan
-  retirement.
 - If final profiling reveals another worthwhile code change, add a new numbered
   implementation step and run the full review/commit gate instead of changing
   code during this measurement step.
 
 #### Affected areas
 
-- This plan file for reconciliation
+- This plan file for measurements and follow-up scope
 
 #### Verification
 
 - Treat a 20% reduction in median main-thread duration as a target, not a hard
   gate. Accept a simple step that produces a repeatable targeted reduction and
   no overall regression; discard complexity that does not pay for itself.
-- Full unit suite, lint, formatting, workspace TypeScript checks, minimal-bundle
-  verification, and a live Canvas MSA smoke test.
-- Confirm no CPU x index, persistent per-datum cache, or static import of the
-  optional renderers was introduced.
+- A live Canvas MSA smoke test with a clean browser console apart from Lit's
+  development-mode warning.
 
 #### Documentation or migration work
 
-Record the measured result and reconcile the plan. Delete the temporary plan in
-a later commit before merge, following repository policy.
+Record the measured result and any newly justified implementation step.
 
 #### Tentative commit
 
 `chore(core): record Canvas rendering results`
+
+#### Measured result
+
+The pre-optimization commit (`afa567142`) completed the identical gesture
+sequence in 12.00, 11.92, and 11.88 seconds, for a median of 11.92 seconds. The
+Step 4 result completed it in 6.39, 6.40, and 6.45 seconds, for a median of 6.40
+seconds: a 46.3% reduction.
+
+The removed baseline costs were repeated property coalescing, position
+encoding, range projection, and dynamic rectangle access. Remaining clear
+costs are per-datum geometry/culling, index-scale application, layout access,
+and native Canvas painting. A large `get encoding` sample was verified to be
+optimized-frame attribution beneath `renderTextCanvas`; the cached getter is
+called only once per traversal, so no speculative change is justified.
+
+### Step 6: Prepare projection for the remaining immediate marks
+
+#### Intended outcome
+
+- Use the existing prepared range projection in point, rule, link, and arrow
+  visitors, so every immediate mark snapshots layout coordinates, band
+  placement, and constant positional offsets once per traversal where its
+  geometry permits.
+- Reuse range result arrays instead of allocating destructured range pairs per
+  datum in rule, link, and arrow.
+- Preserve point `dx`/`dy`, semantic-score ordering, link-local coordinates,
+  arrow count-only behavior, culling, and Canvas/SVG geometry.
+- Hoist additional constant non-positional encoders only when the mark has a
+  clear repeated pre-culling read and the local code remains simpler than a
+  generic encoder-reader abstraction.
+- Do not migrate cold SVG legend-gradient projection or introduce a universal
+  render plan merely for consistency.
+
+#### Affected areas
+
+- Immediate point, rule, link, and arrow visitors
+- Focused Canvas2D, SVG, and immediate projection tests
+
+#### Verification
+
+- Focused geometry/output tests for point, rule, link, and arrow, including
+  data-dependent positions, constant positions and offsets, reversed spans,
+  culling, and count-only paths where applicable.
+- Confirm text/rect profiles and tests do not regress from broadening use of the
+  shared helper.
+- Measure production line-count change and reject generic preparation layers
+  that make the visitors harder to read.
+- Lint, formatting, and minimal-bundle verification.
+
+#### Documentation or migration work
+
+None. The immediate-mode boundary is already documented.
+
+#### Tentative commit
+
+`perf(core): prepare projection for immediate marks`
+
+### Step 7: Verify and close the plan
+
+#### Intended outcome
+
+- Reconcile every plan item as completed or explicitly discarded before plan
+  retirement.
+- Confirm the broader immediate-mark migration preserved the measured MSA
+  result and did not add speculative caching or indexing.
+- Record final verification and leave the plan ready for its separate deletion
+  commit before merge.
+
+#### Affected areas
+
+- This plan file for final reconciliation
+
+#### Verification
+
+- Full unit suite, lint, formatting, workspace TypeScript checks,
+  minimal-bundle verification, and live Canvas smoke tests.
+- Confirm no CPU x index, persistent per-datum cache, new preparation framework,
+  or static import of the optional renderers was introduced.
+- Check the branch diff and production line growth for unnecessary complexity.
+
+#### Documentation or migration work
+
+Reconcile this plan. Delete the temporary plan in a later commit before merge,
+following repository policy.
+
+#### Tentative commit
+
+`chore(core): reconcile Canvas rendering optimization plan`
 
 ## Risks and mitigations
 
@@ -366,7 +449,7 @@ a later commit before merge, following repository policy.
 - Native font fallback formatting runs once per text-mark traversal, not once
   per visible instance.
 - Current layout coordinates and positional scale metadata are materialized
-  once per text/rect traversal.
+  once per applicable immediate-mark traversal.
 - If Step 4 is retained, each `scaleIndex` application computes its step once
   and introduces no persistent coefficient cache.
 - Constant encoder values selected for optimization are evaluated once per
@@ -384,10 +467,5 @@ a later commit before merge, following repository policy.
 
 ## Unresolved questions
 
-- After Step 1, does constant non-positional encoder evaluation remain
-  measurable enough to justify explicit branches in the text and rect loops?
-- Can one prepared projection helper make both text and rect materially faster
-  without obscuring their loops? If not, discard it and retain the simpler
-  property and constant-encoder improvements.
-- After prepared projection removes repeated scale metadata queries, does
-  `scaleIndex` remain hot enough to justify even the local Step 4 rewrite?
+- Which additional non-positional constant encoders, if any, can be hoisted in
+  Step 6 without replacing explicit mark logic with a generic reader layer?
