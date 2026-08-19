@@ -26,7 +26,10 @@ function createEncoder(value, options = {}) {
 describe("prepareRangeProjection", () => {
     test("hoists constant positions and offsets but evaluates data-dependent encoders", () => {
         let primaryValue = 0.25;
-        const x = createEncoder(() => primaryValue, { constant: true });
+        const x = createEncoder(() => primaryValue, {
+            constant: true,
+            scale: { type: "linear" },
+        });
         const x2 = createEncoder((datum) => datum.x2);
         const xOffset = createEncoder(() => 2, { constant: true });
         const x2Offset = createEncoder((datum) => datum.offset);
