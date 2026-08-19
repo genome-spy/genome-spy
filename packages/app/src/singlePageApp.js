@@ -2,7 +2,12 @@ import { embed } from "./index.js";
 
 // This is for development purposes. Use "npm start" to launch.
 
-const specUrl = new URLSearchParams(window.location.search).get("spec");
+const searchParams = new URLSearchParams(window.location.search);
+const specUrl = searchParams.get("spec");
+const renderer =
+    /** @type {import("./appTypes.js").AppEmbedOptions["renderer"]} */ (
+        searchParams.get("renderer") ?? undefined
+    );
 if (specUrl) {
     const plugins = [];
     const { appInspector } = await import("@genome-spy/inspector");
@@ -15,7 +20,7 @@ if (specUrl) {
         plugins.push(appAgent({ baseUrl: agentBaseUrl }));
     }
 
-    embed(document.body, specUrl, { plugins });
+    embed(document.body, specUrl, { plugins, renderer });
 } else {
     document.body.innerHTML = `
         <p style="color: firebrick">No 'spec' url parameter defined!</p>
