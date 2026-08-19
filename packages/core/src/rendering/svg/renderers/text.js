@@ -54,7 +54,7 @@ export function renderTextSvg(baseMark, options) {
         "font-weight",
         "" + normalizeFontWeight(props.fontWeight ?? "normal")
     );
-    group.setAttribute("text-anchor", textAnchors[props.align]);
+    group.setAttribute("text-anchor", textAnchors[properties.align]);
 
     const edgeFade = {
         top: {
@@ -141,7 +141,10 @@ export function renderTextSvg(baseMark, options) {
                 dx: formatSvgNumber(instance.dx),
                 dy: formatSvgNumber(
                     instance.dy +
-                        getNativeBaselineOffset(props.baseline, instance.size)
+                        getNativeBaselineOffset(
+                            properties.baseline,
+                            instance.size
+                        )
                 ),
                 lengthAdjust: "spacingAndGlyphs",
                 textLength: formatSvgNumber(instance.width),

@@ -28,6 +28,10 @@ export function renderTextCanvas(baseMark, options) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    const fontFamily = createNativeFontFamily(props.font);
+    const fontPrefix = `${props.fontStyle ?? "normal"} ${normalizeFontWeight(props.fontWeight ?? "normal")} `;
+    const textBaseline =
+        properties.baseline == "baseline" ? "alphabetic" : properties.baseline;
     if (
         [
             props.viewportEdgeFadeWidthTop,
@@ -40,8 +44,13 @@ export function renderTextCanvas(baseMark, options) {
     }
     /** @type {string | undefined} */
     let fillStyle;
-    /** @type {string | undefined} */
-    let font;
+    /** @type {number | undefined} */
+    let fontSize;
+
+    if (!properties.logoLetters) {
+        context.textAlign = properties.align;
+        context.textBaseline = textBaseline;
+    }
 
     return visitTextInstances(mark, properties, options, (instance) => {
         if (instance.multiCharacterLogo) {
@@ -49,28 +58,23 @@ export function renderTextCanvas(baseMark, options) {
                 "Canvas2D stretches multi-character logo text as a single glyph cell."
             );
         }
-        if (
-            !setPaint(
-                context,
-                encoders,
-                instance.datum,
-                options.viewOpacity * instance.fadeOpacity,
-                (value) => {
-                    if (fillStyle != value) {
-                        context.fillStyle = value;
-                        fillStyle = value;
-                    }
-                }
-            )
-        ) {
+        const fill = toPaintString(encoders.color(instance.datum));
+        const opacity =
+            encodeNumber(encoders.opacity, instance.datum) *
+            options.viewOpacity *
+            instance.fadeOpacity;
+        if (fill == "none" || opacity <= 0) {
             return;
         }
-        setFont(props, instance.size, (value) => {
-            if (font != value) {
-                context.font = value;
-                font = value;
-            }
-        });
+        if (fillStyle != fill) {
+            context.fillStyle = fill;
+            fillStyle = fill;
+        }
+        context.globalAlpha = opacity;
+        if (fontSize != instance.size) {
+            context.font = `${fontPrefix}${instance.size}px ${fontFamily}`;
+            fontSize = instance.size;
+        }
 
         if (instance.logoScale) {
             context.save();
@@ -91,9 +95,6 @@ export function renderTextCanvas(baseMark, options) {
             );
             context.restore();
         } else {
-            context.textAlign = props.align;
-            context.textBaseline =
-                props.baseline == "baseline" ? "alphabetic" : props.baseline;
             if (instance.angle) {
                 context.save();
                 context.translate(instance.x, instance.y);
@@ -115,33 +116,4 @@ export function renderTextCanvas(baseMark, options) {
             }
         }
     });
-}
-
-/**
- * @param {CanvasRenderingContext2D} context
- * @param {Record<string, import("../../../types/encoder.js").Encoder>} encoders
- * @param {object} datum
- * @param {number} opacityFactor
- * @param {(fill: string) => void} setFill
- */
-function setPaint(context, encoders, datum, opacityFactor, setFill) {
-    const fill = toPaintString(encoders.color(datum));
-    const opacity = encodeNumber(encoders.opacity, datum) * opacityFactor;
-    if (fill == "none" || opacity <= 0) {
-        return false;
-    }
-    setFill(fill);
-    context.globalAlpha = opacity;
-    return true;
-}
-
-/**
- * @param {import("../../../marks/text.js").default["properties"]} props
- * @param {number} size
- * @param {(font: string) => void} setValue
- */
-function setFont(props, size, setValue) {
-    const weight = normalizeFontWeight(props.fontWeight ?? "normal");
-    const family = createNativeFontFamily(props.font);
-    setValue(`${props.fontStyle ?? "normal"} ${weight} ${size}px ${family}`);
 }

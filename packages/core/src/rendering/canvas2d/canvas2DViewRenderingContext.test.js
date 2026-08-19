@@ -20,6 +20,7 @@ function createRecordingContext() {
      *     translates: [number, number][],
      *     rotations: number[],
      *     fillTexts: [string, number, number, number | undefined][],
+     *     fonts: string[],
      *     scales: [number, number][],
      *     closes: number,
      *     saves: number
@@ -38,6 +39,7 @@ function createRecordingContext() {
         translates: [],
         rotations: [],
         fillTexts: [],
+        fonts: [],
         scales: [],
         closes: 0,
         saves: 0,
@@ -51,7 +53,6 @@ function createRecordingContext() {
         lineCap: "butt",
         lineJoin: "miter",
         lineDashOffset: 0,
-        font: "",
         textAlign: "start",
         textBaseline: "alphabetic",
         resetTransform: vi.fn(),
@@ -118,6 +119,14 @@ function createRecordingContext() {
         stroke: vi.fn(() =>
             calls.strokes.push([context.globalAlpha, "" + context.strokeStyle])
         ),
+    });
+    let font = "";
+    Object.defineProperty(context, "font", {
+        get: () => font,
+        set: (value) => {
+            font = value;
+            calls.fonts.push(value);
+        },
     });
     return { calls, context };
 }
@@ -555,7 +564,12 @@ describe("Canvas2DViewRenderingContext", () => {
 
     test("uses the configured native font with portable fallbacks", async () => {
         const { view } = await createHeadlessEngine({
-            data: { values: [{}] },
+            data: {
+                values: [
+                    { x: 0.25, label: "A" },
+                    { x: 0.75, label: "B" },
+                ],
+            },
             mark: {
                 type: "text",
                 font: "Open Sans",
@@ -563,7 +577,9 @@ describe("Canvas2DViewRenderingContext", () => {
                 fontWeight: "bold",
             },
             encoding: {
-                text: { value: "T" },
+                x: { field: "x", type: "quantitative" },
+                y: { value: 0.5 },
+                text: { field: "label" },
                 color: { value: "black" },
                 size: { value: 12 },
             },
@@ -575,6 +591,8 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(recording.context.font).toBe(
             "italic 700 12px 'Open Sans', 'Lato', 'Avenir Next', 'Avenir', 'Segoe UI', 'Ubuntu', 'Noto Sans', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif"
         );
+        expect(recording.calls.fonts).toEqual([recording.context.font]);
+        expect(recording.calls.fillTexts).toHaveLength(2);
     });
 
     test("records closed arrow boundaries beginning at its tip", async () => {

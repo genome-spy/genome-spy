@@ -14,6 +14,8 @@ import {
 export function resolveTextProperties(mark) {
     const props = mark.properties;
     return {
+        align: resolveMarkProperty(mark, props.align),
+        baseline: resolveMarkProperty(mark, props.baseline),
         logoLetters: resolveMarkProperty(mark, props.logoLetters),
         paddingX: resolveMarkProperty(mark, props.paddingX),
         paddingY: resolveMarkProperty(mark, props.paddingY),
@@ -53,7 +55,7 @@ export function resolveTextProperties(mark) {
  */
 export function visitTextInstances(mark, properties, options, visitor) {
     const { coords, data, visibleBounds, anchorCullBounds } = options;
-    const props = mark.properties;
+    const { align, baseline } = properties;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -159,10 +161,10 @@ export function visitTextInstances(mark, properties, options, visitor) {
         const measuredWidth = mark.font.metrics.measureWidth(text, size);
         getRotatedSize(measuredWidth, size, angle, rotatedSize);
         if (hasX2 || hasY2) {
-            fixRangeAlign(props.align, props.baseline, angle, rangeAlign);
+            fixRangeAlign(align, baseline, angle, rangeAlign);
         } else {
-            rangeAlign.x = alignmentValues[props.align];
-            rangeAlign.y = baselineValues[props.baseline];
+            rangeAlign.x = alignmentValues[align];
+            rangeAlign.y = baselineValues[baseline];
         }
         let scale = 1;
         if (hasX2) {
@@ -214,8 +216,8 @@ export function visitTextInstances(mark, properties, options, visitor) {
                 y,
                 scaledWidth,
                 scaledSize,
-                props.align,
-                props.baseline,
+                align,
+                baseline,
                 angle,
                 properties.dx,
                 properties.dy

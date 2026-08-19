@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed. No implementation work has started.
+In progress. Step 1 is complete; Steps 2–5 have not started.
 
 ## Background
 
