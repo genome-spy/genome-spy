@@ -70,10 +70,10 @@ datum loop. Do not persist them on marks or add invalidation machinery.
 ### Keep shared projection backend-neutral
 
 Projection preparation belongs in `rendering/immediate/markEncoding.js` and
-may be used by both Canvas2D and SVG. It must not import either backend. Add at
-most one small prepared-axis record or closure and use it only in the profiled
-text and rect visitors. Keep the existing helpers for cold callers; broader
-migration requires separate profiling evidence.
+may be used by both Canvas2D and SVG. It must not import either backend. Keep at
+most one small prepared-axis record or closure and use it in applicable
+immediate-mark visitors. Keep the existing helpers for non-mark cold callers,
+including SVG legend gradients.
 
 ### Profile before changing scaleIndex
 
@@ -95,12 +95,14 @@ results across frames.
 
 - Add no new production class and preferably no new production module.
 - Allow at most one small shared projection-preparation abstraction, scoped to
-  text and rect.
+  applicable immediate-mark visitors.
 - Remove callback indirection when possible.
 - Measure production line count before and after every step. Any meaningful
   net growth must be justified by deleted repeated work and clearer ownership.
-- Reject an optimization that is not visible in repeated profiles or that
-  makes the datum loop harder to follow.
+- Reject a profile-driven optimization that is not visible in repeated
+  profiles. A user-requested consistency migration may instead be accepted
+  when it reuses the existing abstraction, removes per-datum setup or
+  allocation, and keeps the datum loop easy to follow.
 
 ## Alternatives considered
 
@@ -139,7 +141,7 @@ This plan only hoists values already declared constant across data.
 
 ## Review and commit protocol
 
-Each implementation step is a hard gate:
+Each numbered step is a hard gate:
 
 1. Implement only that step and run its focused tests and measurements.
 2. Ask a fresh subagent to review correctness, KISS, naming, dependency
@@ -333,7 +335,7 @@ None. The scale API and numerical semantics remain unchanged.
 
 #### Documentation or migration work
 
-Record the measured result and any newly justified implementation step.
+Record the measured result and any newly justified numbered step.
 
 #### Tentative commit
 
@@ -341,17 +343,18 @@ Record the measured result and any newly justified implementation step.
 
 #### Measured result
 
-The pre-optimization commit (`afa567142`) completed the identical gesture
-sequence in 12.00, 11.92, and 11.88 seconds, for a median of 11.92 seconds. The
-Step 4 result completed it in 6.39, 6.40, and 6.45 seconds, for a median of 6.40
-seconds: a 46.3% reduction.
+In three controlled runs, the pre-optimization commit (`afa567142`) recorded
+profiled main-thread durations of 12.00, 11.92, and 11.88 seconds, for a median
+of 11.92 seconds. The Step 4 result recorded 6.39, 6.40, and 6.45 seconds, for a
+median of 6.40 seconds: a 46.3% reduction.
 
-The removed baseline costs were repeated property coalescing, position
-encoding, range projection, and dynamic rectangle access. Remaining clear
-costs are per-datum geometry/culling, index-scale application, layout access,
-and native Canvas painting. A large `get encoding` sample was verified to be
-optimized-frame attribution beneath `renderTextCanvas`; the cached getter is
-called only once per traversal, so no speculative change is justified.
+The before/after profiles show large reductions in repeated property
+coalescing, position encoding, range projection, and dynamic rectangle access.
+Remaining clear costs are per-datum geometry/culling, index-scale application,
+layout access, and native Canvas painting. A large `get encoding` sample
+appears to be optimized/inlined-frame attribution beneath `renderTextCanvas`;
+source inspection shows one cached `mark.encoding` read per text traversal, so
+no speculative change is justified.
 
 ### Step 6: Prepare projection for the remaining immediate marks
 
@@ -361,19 +364,21 @@ called only once per traversal, so no speculative change is justified.
   visitors, so every immediate mark snapshots layout coordinates, band
   placement, and constant positional offsets once per traversal where its
   geometry permits.
-- Reuse range result arrays instead of allocating destructured range pairs per
-  datum in rule, link, and arrow.
+- Reuse result arrays instead of allocating new range arrays per datum in rule,
+  link, and arrow.
 - Preserve point `dx`/`dy`, semantic-score ordering, link-local coordinates,
   arrow count-only behavior, culling, and Canvas/SVG geometry.
-- Hoist additional constant non-positional encoders only when the mark has a
-  clear repeated pre-culling read and the local code remains simpler than a
-  generic encoder-reader abstraction.
+- Audit every per-datum encoder read in the four visitors. Hoist additional
+  constant geometry/culling encoders only when the mark has a clear repeated
+  pre-culling read and the local code remains simpler than a generic
+  encoder-reader abstraction; do not introduce blanket backend paint caching.
+- Record intentionally unhoisted encoder reads during final reconciliation.
 - Do not migrate cold SVG legend-gradient projection or introduce a universal
   render plan merely for consistency.
 
 #### Affected areas
 
-- Immediate point, rule, link, and arrow visitors
+- Immediate point, rule/tick, link, and arrow visitors
 - Focused Canvas2D, SVG, and immediate projection tests
 
 #### Verification
@@ -381,6 +386,7 @@ called only once per traversal, so no speculative change is justified.
 - Focused geometry/output tests for point, rule, link, and arrow, including
   data-dependent positions, constant positions and offsets, reversed spans,
   culling, and count-only paths where applicable.
+- For each newly hoisted constant, verify reevaluation between traversals.
 - Confirm text/rect profiles and tests do not regress from broadening use of the
   shared helper.
 - Measure production line-count change and reject generic preparation layers
@@ -417,6 +423,8 @@ None. The immediate-mode boundary is already documented.
 - Confirm no CPU x index, persistent per-datum cache, new preparation framework,
   or static import of the optional renderers was introduced.
 - Check the branch diff and production line growth for unnecessary complexity.
+- Obtain a fresh independent correctness and KISS review before committing the
+  reconciled plan.
 
 #### Documentation or migration work
 
@@ -462,7 +470,7 @@ following repository policy.
   renderer framework is added.
 - Optional Canvas2D/SVG code remains outside the statically imported minimal
   entry path.
-- Every implementation step receives the required independent KISS review and
+- Every numbered step receives the required independent KISS review and
   commit gate before the next begins.
 
 ## Unresolved questions
