@@ -2,7 +2,8 @@
 
 ## Status
 
-In progress. Steps 1–6 are complete; Step 7 has not started.
+Complete. Steps 1–7 and their independent review gates are complete. The plan
+is reconciled and ready for retirement before merge.
 
 ## Background
 
@@ -451,6 +452,29 @@ following repository policy.
 
 `chore(core): reconcile Canvas rendering optimization plan`
 
+#### Final result
+
+- The final controlled MSA gesture profile took 6.53 seconds. This is within
+  2.0% of the Step 5 post-optimization median and remains 45.2% faster than the
+  11.92-second baseline, so the broader immediate-mark migration introduced no
+  material regression.
+- Live Canvas smoke tests rendered and interacted correctly for the MSA and
+  100,000-point examples. The final runs had no rendering errors; the only
+  console message was Lit's development-mode warning.
+- The full unit suite passed 389 files and 3,252 tests, with one skip and two
+  existing todo tests. ESLint, Prettier checks, focused SVG/Canvas geometry
+  suites, and minimal-bundle verification passed.
+- Workspace TypeScript checks retain the three unrelated pre-existing errors:
+  missing `GFF3Feature` and `renameRefSeqs` dependency typings, plus the
+  incomplete `View` mock in `interactionDispatcher.test.js`.
+- The performance follow-up adds 167 net production lines, of which 65 apply
+  the existing prepared projection consistently to the four remaining marks.
+  The measured 46.3% median MSA reduction and removal of repeated work justify
+  this growth; the Step 6 review rejected another abstraction solely to shorten
+  the explicit visitor setup.
+- Source and bundle inspection found no CPU x index, persistent per-datum
+  cache, new preparation framework, or static optional-renderer import.
+
 ## Risks and mitigations
 
 - **Stale prepared values:** Prepare state inside each synchronous traversal,
@@ -491,5 +515,6 @@ following repository policy.
 
 ## Unresolved questions
 
-- Which additional non-positional constant encoders, if any, can be hoisted in
-  Step 6 without replacing explicit mark logic with a generic reader layer?
+None. Step 6 intentionally leaves non-positional encoders at their existing
+geometry, culling, or backend paint stages until mark-specific profiling
+justifies a local hoist.
