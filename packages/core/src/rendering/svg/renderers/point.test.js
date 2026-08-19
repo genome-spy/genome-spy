@@ -103,6 +103,29 @@ describe("SVG point renderer", () => {
         expect(symbol?.getAttribute("stroke-width")).toBe("4");
     });
 
+    test("preserves legacy point displacement", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: { type: "point", dx: 7, dy: 11 },
+            encoding: {
+                x: { value: 0.25 },
+                y: { value: 0.75 },
+                size: { value: 100 },
+                fill: { value: "black" },
+            },
+        });
+
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+        });
+        const circle = svg.querySelector('[data-mark-type="point"] circle');
+
+        expect(circle?.getAttribute("cx")).toBe("32");
+        expect(circle?.getAttribute("cy")).toBe("14");
+    });
+
     test("keeps data-dependent presentation attributes on mark elements", async () => {
         const { view } = await createHeadlessEngine({
             data: {

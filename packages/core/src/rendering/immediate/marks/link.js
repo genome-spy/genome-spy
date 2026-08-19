@@ -57,9 +57,8 @@ export function visitLinkInstances(mark, properties, options, visitor) {
     const yRange = /** @type {[number, number]} */ ([0, 0]);
     const coordsX = coords.x;
     const coordsY = coords.y;
-    const coordsWidth = coords.width;
-    const coordsHeight = coords.height;
-    const coordsY2 = coordsY + coordsHeight;
+    const viewport = { width: coords.width, height: coords.height };
+    const coordsY2 = coordsY + viewport.height;
     let instanceCount = 0;
 
     for (const datum of data) {
@@ -70,7 +69,7 @@ export function visitLinkInstances(mark, properties, options, visitor) {
         const points = getBezierPoints(
             [x - coordsX, coordsY2 - y],
             [x2 - coordsX, coordsY2 - y2],
-            { width: coordsWidth, height: coordsHeight },
+            viewport,
             properties
         );
         for (const point of points) {
