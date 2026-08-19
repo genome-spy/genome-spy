@@ -60,6 +60,15 @@ export function visitTextInstances(mark, properties, options, visitor) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    if (data.length == 0) {
+        return 0;
+    }
+    const constantSize = encoders.size.constant
+        ? encodeNumber(encoders.size, data[0])
+        : 0;
+    const constantAngle = encoders.angle.constant
+        ? encodeNumber(encoders.angle, data[0])
+        : 0;
     const channelDef = mark.encoding.text;
     const numberFormat =
         "format" in channelDef
@@ -101,8 +110,12 @@ export function visitTextInstances(mark, properties, options, visitor) {
         projectYRange(coords, encoders, datum, yRange);
         let [x, x2] = xRange;
         let [y, y2] = yRange;
-        const size = encodeNumber(encoders.size, datum);
-        const angle = encodeNumber(encoders.angle, datum);
+        const size = encoders.size.constant
+            ? constantSize
+            : encodeNumber(encoders.size, datum);
+        const angle = encoders.angle.constant
+            ? constantAngle
+            : encodeNumber(encoders.angle, datum);
 
         if (properties.logoLetters) {
             let width = size;

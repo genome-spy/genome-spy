@@ -423,6 +423,63 @@ describe("Canvas2DViewRenderingContext", () => {
         }
     });
 
+    test("evaluates constant rect encoders once per render", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: 0.1, x2: 0.4, fillOpacity: 0.25 },
+                    { x: 0.6, x2: 0.9, fillOpacity: 0.75 },
+                ],
+            },
+            mark: {
+                type: "rect",
+                cornerRadius: 1,
+                stroke: "black",
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                x2: { field: "x2" },
+                y: { value: 0.2 },
+                y2: { value: 0.8 },
+                fill: { value: "black" },
+            },
+        });
+        const encoders =
+            /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
+                view.mark.encoders
+            );
+        let strokeWidth = 1;
+        const strokeWidthEncoder = Object.assign(
+            vi.fn(() => strokeWidth),
+            encoders.strokeWidth
+        );
+        const fillOpacityEncoder = Object.assign(
+            vi.fn((datum) => datum.fillOpacity),
+            encoders.fillOpacity,
+            { constant: false }
+        );
+        encoders.strokeWidth = strokeWidthEncoder;
+        encoders.fillOpacity = fillOpacityEncoder;
+
+        const first = createRecordingContext();
+        render(view, first.context);
+
+        expect(strokeWidthEncoder).toHaveBeenCalledOnce();
+        expect(fillOpacityEncoder).toHaveBeenCalledTimes(2);
+        expect(first.calls.fills.map(([opacity]) => opacity)).toEqual([
+            0.25, 0.75,
+        ]);
+        expect(first.context.lineWidth).toBe(1);
+
+        strokeWidth = 3;
+        const second = createRecordingContext();
+        render(view, second.context);
+
+        expect(strokeWidthEncoder).toHaveBeenCalledTimes(2);
+        expect(fillOpacityEncoder).toHaveBeenCalledTimes(4);
+        expect(second.context.lineWidth).toBe(3);
+    });
+
     test("draws independently rounded and clamped rectangle corners", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },
@@ -593,6 +650,55 @@ describe("Canvas2DViewRenderingContext", () => {
         );
         expect(recording.calls.fonts).toEqual([recording.context.font]);
         expect(recording.calls.fillTexts).toHaveLength(2);
+    });
+
+    test("evaluates constant text encoders once per render", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: 0.25, label: "A", angle: 0 },
+                    { x: 0.75, label: "B", angle: 30 },
+                ],
+            },
+            mark: "text",
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                y: { value: 0.5 },
+                text: { field: "label" },
+                color: { value: "black" },
+            },
+        });
+        const encoders =
+            /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
+                view.mark.encoders
+            );
+        let size = 12;
+        const sizeEncoder = Object.assign(
+            vi.fn(() => size),
+            encoders.size
+        );
+        const angleEncoder = Object.assign(
+            vi.fn((datum) => datum.angle),
+            encoders.angle,
+            { constant: false }
+        );
+        encoders.size = sizeEncoder;
+        encoders.angle = angleEncoder;
+
+        const first = createRecordingContext();
+        render(view, first.context);
+
+        expect(sizeEncoder).toHaveBeenCalledOnce();
+        expect(angleEncoder).toHaveBeenCalledTimes(2);
+        expect(first.calls.fonts[0]).toContain("12px");
+
+        size = 18;
+        const second = createRecordingContext();
+        render(view, second.context);
+
+        expect(sizeEncoder).toHaveBeenCalledTimes(2);
+        expect(angleEncoder).toHaveBeenCalledTimes(4);
+        expect(second.calls.fonts[0]).toContain("18px");
     });
 
     test("records closed arrow boundaries beginning at its tip", async () => {

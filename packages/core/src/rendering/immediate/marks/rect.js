@@ -115,6 +115,15 @@ export function visitRectInstances(mark, properties, options, visitor) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    if (data.length == 0) {
+        return 0;
+    }
+    const constantStrokeWidth = encoders.strokeWidth.constant
+        ? encodeNumber(encoders.strokeWidth, data[0])
+        : 0;
+    const constantFillOpacity = encoders.fillOpacity.constant
+        ? encodeNumber(encoders.fillOpacity, data[0])
+        : 0;
     const xRange = /** @type {[number, number]} */ ([0, 0]);
     const yRange = /** @type {[number, number]} */ ([0, 0]);
     /** @type {RectInstance} */
@@ -153,10 +162,14 @@ export function visitRectInstances(mark, properties, options, visitor) {
             y -= (properties.minHeight - height) / 2;
             height = properties.minHeight;
         }
-        const strokeWidth = encodeNumber(encoders.strokeWidth, datum);
+        const strokeWidth = encoders.strokeWidth.constant
+            ? constantStrokeWidth
+            : encodeNumber(encoders.strokeWidth, datum);
         const fill = toPaintString(encoders.fill(datum));
         const fillOpacity =
-            encodeNumber(encoders.fillOpacity, datum) * viewOpacity;
+            (encoders.fillOpacity.constant
+                ? constantFillOpacity
+                : encodeNumber(encoders.fillOpacity, datum)) * viewOpacity;
         const seamPadding =
             strokeWidth == 0 &&
             fillOpacity == 1 &&
