@@ -26,17 +26,22 @@ export default function scaleIndex() {
     const getStep = () =>
         rangeSpan / Math.max(1, domainSpan - paddingInner + paddingOuter * 2);
 
-    const getStart = () => {
-        const step = getStep();
+    const getStart = (step = getStep()) => {
         return (
             range[0] + (rangeSpan - step * (domainSpan - paddingInner)) * align
         );
     };
 
-    const getSignedBandwidth = () => getStep() * (1 - paddingInner);
+    const getSignedBandwidth = (step = getStep()) => step * (1 - paddingInner);
 
-    const scaleFunction = (/** @type {number} */ x) =>
-        getStart() + (x - domain[0]) * getStep() + getSignedBandwidth() * align;
+    const scaleFunction = (/** @type {number} */ x) => {
+        const step = getStep();
+        return (
+            getStart(step) +
+            (x - domain[0]) * step +
+            getSignedBandwidth(step) * align
+        );
+    };
 
     /**
      * In principle, the domain consists of integer indices. However,
