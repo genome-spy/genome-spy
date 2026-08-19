@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. Steps 1–2 are complete; Steps 3–5 have not started.
+In progress. Steps 1–3 are complete; Steps 4–5 have not started.
 
 ## Background
 

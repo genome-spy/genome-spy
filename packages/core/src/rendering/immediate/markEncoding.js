@@ -75,6 +75,74 @@ export function projectYRange(
 }
 
 /**
+ * Prepares one axis for repeated projection during a synchronous mark
+ * traversal. Constant encoders and scale band adjustments are evaluated when
+ * the projection is prepared; data-dependent encoders remain in the returned
+ * datum function.
+ *
+ * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {Record<string, import("../../types/encoder.js").Encoder>} encoders
+ * @param {"x" | "y"} axis
+ * @param {object} firstDatum
+ * @returns {(datum: object, result: [number, number]) => [number, number]}
+ */
+export function prepareRangeProjection(coords, encoders, axis, firstDatum) {
+    const primary = encoders[axis];
+    const secondary = encoders[axis + "2"];
+    const primaryOffset = encoders[axis + "Offset"];
+    const secondaryOffset = encoders[axis + "2Offset"];
+    const coordinateSpan = axis == "x" ? coords.width : coords.height;
+    const coordinateOrigin = axis == "x" ? coords.x : coords.y + coordinateSpan;
+    const coordinateScale = axis == "x" ? coordinateSpan : -coordinateSpan;
+    const primaryAdjustment = getPositionAdjustment(primary);
+    const secondaryAdjustment = secondary
+        ? getPositionAdjustment(secondary)
+        : 0;
+    const constantPrimary = primary.constant
+        ? encodeNumber(primary, firstDatum) + primaryAdjustment
+        : 0;
+    const constantSecondary = secondary?.constant
+        ? encodeNumber(secondary, firstDatum) + secondaryAdjustment
+        : 0;
+    const constantPrimaryOffset = primaryOffset.constant
+        ? encodeNumber(primaryOffset, firstDatum)
+        : 0;
+    const constantSecondaryOffset =
+        secondary && secondaryOffset?.constant
+            ? encodeNumber(secondaryOffset, firstDatum)
+            : 0;
+
+    return (datum, result) => {
+        const offset = primaryOffset.constant
+            ? constantPrimaryOffset
+            : encodeNumber(primaryOffset, datum);
+        const primaryPosition = primary.constant
+            ? constantPrimary
+            : encodeNumber(primary, datum) + primaryAdjustment;
+        const first =
+            coordinateOrigin + primaryPosition * coordinateScale + offset;
+        let second = first;
+        if (secondary) {
+            const secondaryPosition = secondary.constant
+                ? constantSecondary
+                : encodeNumber(secondary, datum) + secondaryAdjustment;
+            const offset2 = secondaryOffset
+                ? secondaryOffset.constant
+                    ? constantSecondaryOffset
+                    : encodeNumber(secondaryOffset, datum)
+                : offset;
+            second =
+                coordinateOrigin +
+                secondaryPosition * coordinateScale +
+                offset2;
+        }
+        result[0] = first;
+        result[1] = second;
+        return result;
+    };
+}
+
+/**
  * @param {import("../../view/layout/rectangle.js").default} coords
  * @param {import("../../types/encoder.js").Encoder} primary
  * @param {import("../../types/encoder.js").Encoder | undefined} secondary
@@ -126,11 +194,15 @@ export function encodeNumber(encoder, datum) {
  * @param {object} datum
  */
 export function encodePosition(encoder, datum) {
-    const basePosition = encodeNumber(encoder, datum);
+    return encodeNumber(encoder, datum) + getPositionAdjustment(encoder);
+}
+
+/** @param {import("../../types/encoder.js").Encoder} encoder */
+function getPositionAdjustment(encoder) {
     const scale = encoder.scale;
 
     if (!scale) {
-        return basePosition;
+        return 0;
     }
 
     const channelDef = encoder.channelDef;
@@ -141,7 +213,7 @@ export function encodePosition(encoder, datum) {
         const discreteScale = /** @type {{ bandwidth: () => number }} */ (
             /** @type {unknown} */ (scale)
         );
-        return basePosition + discreteScale.bandwidth() * band;
+        return discreteScale.bandwidth() * band;
     } else if (scale.type == "index" || scale.type == "locus") {
         const genomicScale =
             /** @type {{
@@ -151,9 +223,9 @@ export function encodePosition(encoder, datum) {
              * }} */ (/** @type {unknown} */ (scale));
         const signedBandwidth =
             Math.sign(genomicScale.step()) * genomicScale.bandwidth();
-        return basePosition + signedBandwidth * (band - genomicScale.align());
+        return signedBandwidth * (band - genomicScale.align());
     } else {
-        return basePosition;
+        return 0;
     }
 }
 

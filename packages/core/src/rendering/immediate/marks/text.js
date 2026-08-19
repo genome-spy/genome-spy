@@ -5,8 +5,7 @@ import { intersectsBounds, isOutsideBounds } from "../bounds.js";
 import linearstep from "../../../utils/linearstep.js";
 import {
     encodeNumber,
-    projectXRange,
-    projectYRange,
+    prepareRangeProjection,
     resolveMarkProperty,
 } from "../markEncoding.js";
 
@@ -69,6 +68,18 @@ export function visitTextInstances(mark, properties, options, visitor) {
     const constantAngle = encoders.angle.constant
         ? encodeNumber(encoders.angle, data[0])
         : 0;
+    const projectXRange = prepareRangeProjection(
+        coords,
+        encoders,
+        "x",
+        data[0]
+    );
+    const projectYRange = prepareRangeProjection(
+        coords,
+        encoders,
+        "y",
+        data[0]
+    );
     const channelDef = mark.encoding.text;
     const numberFormat =
         "format" in channelDef
@@ -106,8 +117,8 @@ export function visitTextInstances(mark, properties, options, visitor) {
         if (!text) {
             continue;
         }
-        projectXRange(coords, encoders, datum, xRange);
-        projectYRange(coords, encoders, datum, yRange);
+        projectXRange(datum, xRange);
+        projectYRange(datum, yRange);
         let [x, x2] = xRange;
         let [y, y2] = yRange;
         const size = encoders.size.constant

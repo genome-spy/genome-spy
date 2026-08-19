@@ -1,8 +1,7 @@
 import { intersectsBounds } from "../bounds.js";
 import {
     encodeNumber,
-    projectXRange,
-    projectYRange,
+    prepareRangeProjection,
     resolveMarkProperty,
     toPaintString,
 } from "../markEncoding.js";
@@ -124,6 +123,18 @@ export function visitRectInstances(mark, properties, options, visitor) {
     const constantFillOpacity = encoders.fillOpacity.constant
         ? encodeNumber(encoders.fillOpacity, data[0])
         : 0;
+    const projectXRange = prepareRangeProjection(
+        coords,
+        encoders,
+        "x",
+        data[0]
+    );
+    const projectYRange = prepareRangeProjection(
+        coords,
+        encoders,
+        "y",
+        data[0]
+    );
     const xRange = /** @type {[number, number]} */ ([0, 0]);
     const yRange = /** @type {[number, number]} */ ([0, 0]);
     /** @type {RectInstance} */
@@ -142,8 +153,8 @@ export function visitRectInstances(mark, properties, options, visitor) {
     let instanceCount = 0;
 
     for (const datum of data) {
-        projectXRange(coords, encoders, datum, xRange);
-        projectYRange(coords, encoders, datum, yRange);
+        projectXRange(datum, xRange);
+        projectYRange(datum, yRange);
         let x = Math.min(xRange[0], xRange[1]);
         let y = Math.min(yRange[0], yRange[1]);
         let width = Math.abs(xRange[1] - xRange[0]);
