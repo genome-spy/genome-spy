@@ -9,6 +9,7 @@ function createRecordingContext() {
     /**
      * @type {{
      *     arcs: [number, number, number][],
+     *     arcTos: [number, number, number, number, number][],
      *     rects: [number, number, number, number][],
      *     fillRects: [number, number, number, number][],
      *     moves: [number, number][],
@@ -24,6 +25,7 @@ function createRecordingContext() {
      */
     const calls = {
         arcs: [],
+        arcTos: [],
         rects: [],
         fillRects: [],
         moves: [],
@@ -99,6 +101,13 @@ function createRecordingContext() {
             /** @type {number} */ y,
             /** @type {number} */ radius
         ) => calls.arcs.push([x, y, radius]),
+        arcTo: (
+            /** @type {number} */ x1,
+            /** @type {number} */ y1,
+            /** @type {number} */ x2,
+            /** @type {number} */ y2,
+            /** @type {number} */ radius
+        ) => calls.arcTos.push([x1, y1, x2, y2, radius]),
         fill: vi.fn(),
         stroke: vi.fn(),
     });
@@ -347,7 +356,7 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(recording.context.clip).toHaveBeenCalledTimes(2);
     });
 
-    test("warns once while drawing the supported base rectangle", async () => {
+    test("draws rounded rectangles while warning about other effects", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },
             mark: {
@@ -371,17 +380,68 @@ describe("Canvas2DViewRenderingContext", () => {
         try {
             render(view, recording.context);
             const warnings = warn.mock.calls.map(([message]) => "" + message);
-            expect(recording.calls.fillRects).toHaveLength(1);
+            expect(recording.calls.fillRects).toHaveLength(0);
+            expect(recording.calls.arcTos).toHaveLength(4);
+            expect(recording.context.fill).toHaveBeenCalledOnce();
             expect(warnings).toEqual(
                 expect.arrayContaining([
                     expect.stringContaining("unsupported rect hatch"),
                     expect.stringContaining("unsupported rect shadow"),
+                ])
+            );
+            expect(warnings).not.toEqual(
+                expect.arrayContaining([
                     expect.stringContaining("unsupported rect corner radius"),
                 ])
             );
         } finally {
             warn.mockRestore();
         }
+    });
+
+    test("draws independently rounded and clamped rectangle corners", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "rect",
+                cornerRadius: 2,
+                cornerRadiusTopLeft: 50,
+                cornerRadiusTopRight: 4,
+                cornerRadiusBottomRight: 6,
+                cornerRadiusBottomLeft: 8,
+                stroke: "#654321",
+                strokeWidth: 2,
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.6 },
+                y: { value: 0.2 },
+                y2: { value: 0.4 },
+                fill: { value: "#123456" },
+            },
+        });
+        const recording = createRecordingContext();
+
+        render(view, recording.context);
+
+        expect(recording.calls.moves).toEqual([[30, 60]]);
+        expect(recording.calls.lines).toEqual([
+            [56, 60],
+            [60, 74],
+            [28, 80],
+            [20, 70],
+        ]);
+        expect(recording.calls.arcTos).toEqual([
+            [60, 60, 60, 64, 4],
+            [60, 80, 54, 80, 6],
+            [20, 80, 20, 72, 8],
+            [20, 60, 30, 60, 10],
+        ]);
+        expect(recording.calls.closes).toBe(1);
+        expect(recording.context.fill).toHaveBeenCalledOnce();
+        expect(recording.context.stroke).toHaveBeenCalledOnce();
+        expect(recording.calls.fillRects).toHaveLength(0);
+        expect(recording.context.strokeRect).not.toHaveBeenCalled();
     });
 
     test("records exact rule and link paths", async () => {
