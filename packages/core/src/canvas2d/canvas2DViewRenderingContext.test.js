@@ -9,6 +9,7 @@ function createRecordingContext() {
     /**
      * @type {{
      *     arcs: [number, number, number][],
+     *     rects: [number, number, number, number][],
      *     fillRects: [number, number, number, number][],
      *     moves: [number, number][],
      *     lines: [number, number][],
@@ -23,6 +24,7 @@ function createRecordingContext() {
      */
     const calls = {
         arcs: [],
+        rects: [],
         fillRects: [],
         moves: [],
         lines: [],
@@ -52,7 +54,12 @@ function createRecordingContext() {
         save: () => calls.saves++,
         restore: vi.fn(),
         beginPath: vi.fn(),
-        rect: vi.fn(),
+        rect: (
+            /** @type {number} */ x,
+            /** @type {number} */ y,
+            /** @type {number} */ width,
+            /** @type {number} */ height
+        ) => calls.rects.push([x, y, width, height]),
         clip: vi.fn(),
         moveTo: (/** @type {number} */ x, /** @type {number} */ y) =>
             calls.moves.push([x, y]),
@@ -188,6 +195,68 @@ describe("Canvas2DViewRenderingContext", () => {
         ]);
         expect(recording.calls.saves).toBe(1);
         expect(recording.context.fill).toHaveBeenCalledTimes(2);
+    });
+
+    test("draws and rotates every point shape", async () => {
+        const shapes = [
+            "circle",
+            "square",
+            "cross",
+            "diamond",
+            "triangle-up",
+            "triangle-right",
+            "triangle-down",
+            "triangle-left",
+            "tick-up",
+            "tick-right",
+            "tick-down",
+            "tick-left",
+            "x",
+            "+",
+        ];
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: shapes.map((shape, index) => ({
+                    shape,
+                    x: (index + 1) / (shapes.length + 1),
+                })),
+            },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                y: { value: 0.5 },
+                shape: { field: "shape", type: "nominal", scale: null },
+                angle: { value: 15 },
+                size: { value: 400 },
+                fill: { value: "#123456" },
+                stroke: { value: "#654321" },
+                strokeWidth: { value: 2 },
+            },
+        });
+        const recording = createRecordingContext();
+        recording.context.lineCap = "round";
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+        try {
+            render(view, recording.context);
+
+            expect(recording.calls.arcs).toHaveLength(1);
+            expect(recording.calls.rects).toHaveLength(1);
+            expect(recording.calls.moves).toHaveLength(14);
+            expect(recording.calls.lines).toHaveLength(38);
+            expect(recording.calls.closes).toBe(10);
+            expect(recording.calls.rotations).toEqual(
+                Array(13).fill(Math.PI / 12)
+            );
+            expect(recording.context.fill).toHaveBeenCalledTimes(12);
+            expect(recording.context.stroke).toHaveBeenCalledTimes(14);
+            expect(recording.context.lineCap).toBe("butt");
+            expect(warn).not.toHaveBeenCalledWith(
+                expect.stringContaining("unsupported point")
+            );
+        } finally {
+            warn.mockRestore();
+        }
     });
 
     test("projects repeated sample facets into their assigned rows", async () => {

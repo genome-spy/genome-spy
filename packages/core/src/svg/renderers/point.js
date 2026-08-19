@@ -3,6 +3,7 @@ import {
     resolvePointProperties,
     visitPointInstances,
 } from "../../rendering/cpu/point.js";
+import { tracePointPath } from "../../rendering/cpu/pointPath.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
@@ -57,6 +58,7 @@ export function renderPointSvg(baseMark, options) {
             transform: (value) => formatSvgNumber(+value),
         },
     });
+    const pointPathBuilder = createPointPathBuilder();
     return visitPointInstances(mark, properties, options, (instance) => {
         if (options.countOnly) {
             return;
@@ -80,7 +82,14 @@ export function renderPointSvg(baseMark, options) {
                 ? getLineShapeStyles(encoders, datum, viewOpacity)
                 : {}),
         };
-        const element = createPointElement(shape, x, y, geometryRadius, styles);
+        const element = createPointElement(
+            shape,
+            x,
+            y,
+            geometryRadius,
+            styles,
+            pointPathBuilder
+        );
         if (!element) {
             options.warn(
                 `SVG export rendered unsupported point shape "${shape}" as a circle.`
@@ -111,9 +120,10 @@ export function renderPointSvg(baseMark, options) {
  * @param {number} y
  * @param {number} radius
  * @param {Record<string, string | number>} styles
+ * @param {{build: (shape: string, x: number, y: number, radius: number) => string | undefined}} pointPathBuilder
  * @returns {SVGElement | undefined}
  */
-function createPointElement(shape, x, y, radius, styles) {
+function createPointElement(shape, x, y, radius, styles, pointPathBuilder) {
     const cx = formatSvgNumber(x);
     const cy = formatSvgNumber(y);
     const r = formatSvgNumber(radius);
@@ -130,95 +140,37 @@ function createPointElement(shape, x, y, radius, styles) {
         });
     }
 
-    const path = getPointPath(shape, x, y, radius);
+    const path = pointPathBuilder.build(shape, x, y, radius);
     return path ? createSvgElement("path", { d: path, ...styles }) : undefined;
 }
 
 /**
- * @param {string} shape
- * @param {number} x
- * @param {number} y
- * @param {number} radius
- * @returns {string | undefined}
+ * @returns {{build: (shape: string, x: number, y: number, radius: number) => string | undefined}}
  */
-function getPointPath(shape, x, y, radius) {
-    const p = (/** @type {[number, number]} */ point) =>
-        point.map(formatSvgNumber).join(" ");
-    const polygon = (/** @type {[number, number][]} */ points) =>
-        `M ${points.map(p).join(" L ")} Z`;
-    const arm = radius * 0.4;
-    const tickHalfWidth = radius * 0.15;
-    const triangleHeight = (Math.sqrt(3) * radius) / 2;
+function createPointPathBuilder() {
+    let pathData = "";
+    const point = (/** @type {number} */ x, /** @type {number} */ y) =>
+        `${formatSvgNumber(x)} ${formatSvgNumber(y)}`;
+    const sink = {
+        moveTo(/** @type {number} */ x, /** @type {number} */ y) {
+            pathData += `${pathData ? " M" : "M"} ${point(x, y)}`;
+        },
+        lineTo(/** @type {number} */ x, /** @type {number} */ y) {
+            pathData += ` L ${point(x, y)}`;
+        },
+        closePath() {
+            pathData += " Z";
+        },
+    };
 
-    if (shape == "diamond") {
-        return polygon([
-            [x, y - radius],
-            [x + radius, y],
-            [x, y + radius],
-            [x - radius, y],
-        ]);
-    } else if (shape == "cross") {
-        return polygon([
-            [x - arm, y - radius],
-            [x + arm, y - radius],
-            [x + arm, y - arm],
-            [x + radius, y - arm],
-            [x + radius, y + arm],
-            [x + arm, y + arm],
-            [x + arm, y + radius],
-            [x - arm, y + radius],
-            [x - arm, y + arm],
-            [x - radius, y + arm],
-            [x - radius, y - arm],
-            [x - arm, y - arm],
-        ]);
-    } else if (shape.startsWith("triangle-")) {
-        const points = {
-            "triangle-up": [
-                [x, y - triangleHeight],
-                [x + radius, y + triangleHeight],
-                [x - radius, y + triangleHeight],
-            ],
-            "triangle-right": [
-                [x + triangleHeight, y],
-                [x - triangleHeight, y + radius],
-                [x - triangleHeight, y - radius],
-            ],
-            "triangle-down": [
-                [x, y + triangleHeight],
-                [x - radius, y - triangleHeight],
-                [x + radius, y - triangleHeight],
-            ],
-            "triangle-left": [
-                [x - triangleHeight, y],
-                [x + triangleHeight, y - radius],
-                [x + triangleHeight, y + radius],
-            ],
-        }[shape];
-        return points
-            ? polygon(/** @type {[number, number][]} */ (points))
-            : undefined;
-    } else if (shape.startsWith("tick-")) {
-        const widths = {
-            "tick-up": [-tickHalfWidth, -radius, tickHalfWidth, 0],
-            "tick-right": [0, -tickHalfWidth, radius, tickHalfWidth],
-            "tick-down": [-tickHalfWidth, 0, tickHalfWidth, radius],
-            "tick-left": [-radius, -tickHalfWidth, 0, tickHalfWidth],
-        }[shape];
-        if (widths) {
-            const [x1, y1, x2, y2] = widths;
-            return polygon([
-                [x + x1, y + y1],
-                [x + x2, y + y1],
-                [x + x2, y + y2],
-                [x + x1, y + y2],
-            ]);
-        }
-    } else if (shape == "+") {
-        return `M ${p([x - radius, y])} L ${p([x + radius, y])} M ${p([x, y - radius])} L ${p([x, y + radius])}`;
-    } else if (shape == "x") {
-        return `M ${p([x - radius, y - radius])} L ${p([x + radius, y + radius])} M ${p([x + radius, y - radius])} L ${p([x - radius, y + radius])}`;
-    }
+    return {
+        build(shape, x, y, radius) {
+            pathData = "";
+            return tracePointPath(shape, x, y, radius, sink)
+                ? pathData
+                : undefined;
+        },
+    };
 }
 
 /**

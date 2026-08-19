@@ -2,6 +2,7 @@ import {
     resolvePointProperties,
     visitPointInstances,
 } from "../../rendering/cpu/point.js";
+import { tracePointPath } from "../../rendering/cpu/pointPath.js";
 import {
     encodeNumber,
     resolveSvgProperty,
@@ -40,15 +41,6 @@ export function renderPointCanvas(baseMark, options) {
     let strokeStyle;
 
     return visitPointInstances(mark, properties, options, (instance) => {
-        if (instance.angle && instance.shape != "circle") {
-            options.warn("Canvas2D ignored unsupported point rotation.");
-        }
-        if (instance.shape != "circle" && instance.shape != "square") {
-            options.warn(
-                `Canvas2D rendered unsupported point shape "${instance.shape}" as a circle.`
-            );
-        }
-
         const datum = instance.datum;
         const lineShape = instance.lineShape;
         const fill = toSvgString(encoders.fill(datum));
@@ -63,15 +55,41 @@ export function renderPointCanvas(baseMark, options) {
         }
 
         context.beginPath();
-        if (instance.shape == "square") {
+        const rotated = instance.angle != 0 && instance.shape != "circle";
+        if (rotated) {
+            context.save();
+            context.translate(instance.x, instance.y);
+            context.rotate((instance.angle * Math.PI) / 180);
+        }
+        const x = rotated ? 0 : instance.x;
+        const y = rotated ? 0 : instance.y;
+        let supported = true;
+        if (instance.shape == "circle") {
+            context.arc(x, y, instance.geometryRadius, 0, Math.PI * 2);
+        } else if (instance.shape == "square") {
             const diameter = instance.geometryRadius * 2;
             context.rect(
-                instance.x - instance.geometryRadius,
-                instance.y - instance.geometryRadius,
+                x - instance.geometryRadius,
+                y - instance.geometryRadius,
                 diameter,
                 diameter
             );
         } else {
+            supported = tracePointPath(
+                instance.shape,
+                x,
+                y,
+                instance.geometryRadius,
+                context
+            );
+        }
+        if (rotated) {
+            context.restore();
+        }
+        if (!supported) {
+            options.warn(
+                `Canvas2D rendered unsupported point shape "${instance.shape}" as a circle.`
+            );
             context.arc(
                 instance.x,
                 instance.y,
@@ -90,6 +108,9 @@ export function renderPointCanvas(baseMark, options) {
             context.fill();
         }
         if (stroke != "none" && strokeOpacity > 0 && instance.strokeWidth > 0) {
+            if (lineShape && context.lineCap != "butt") {
+                context.lineCap = "butt";
+            }
             if (strokeStyle != stroke) {
                 context.strokeStyle = stroke;
                 strokeStyle = stroke;
