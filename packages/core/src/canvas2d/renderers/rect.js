@@ -2,10 +2,6 @@ import {
     resolveRectProperties,
     visitRectInstances,
 } from "../../rendering/cpu/rect.js";
-import {
-    hasRoundedCorners,
-    traceRoundedRectPath,
-} from "../../rendering/cpu/roundedRectPath.js";
 import { encodeNumber, toSvgString } from "../../svg/svgMarkUtils.js";
 
 /**
@@ -33,34 +29,7 @@ export function renderRectCanvas(baseMark, options) {
 
     /** @type {string | undefined} */
     let strokeStyle;
-
-    const roundedRectPath = {
-        moveTo(/** @type {number} */ x, /** @type {number} */ y) {
-            context.moveTo(x, y);
-        },
-        horizontalTo(/** @type {number} */ x, /** @type {number} */ y) {
-            context.lineTo(x, y);
-        },
-        verticalTo(/** @type {number} */ x, /** @type {number} */ y) {
-            context.lineTo(x, y);
-        },
-        corner(
-            /** @type {number} */ radius,
-            /** @type {number} */ x,
-            /** @type {number} */ y,
-            /** @type {number} */ sharpX,
-            /** @type {number} */ sharpY
-        ) {
-            if (radius) {
-                context.arcTo(sharpX, sharpY, x, y, radius);
-            } else {
-                context.lineTo(sharpX, sharpY);
-            }
-        },
-        closePath() {
-            context.closePath();
-        },
-    };
+    const radii = [0, 0, 0, 0];
 
     return visitRectInstances(mark, properties, options, (instance) => {
         const opacityFactor = instance.opacityFactor;
@@ -72,16 +41,23 @@ export function renderRectCanvas(baseMark, options) {
             opacityFactor;
         const strokeVisible =
             stroke != "none" && strokeOpacity > 0 && instance.strokeWidth > 0;
-        const rounded = hasRoundedCorners(instance.radii);
+        const rounded =
+            instance.radii.topLeft != 0 ||
+            instance.radii.topRight != 0 ||
+            instance.radii.bottomRight != 0 ||
+            instance.radii.bottomLeft != 0;
         if (rounded && (fillVisible || strokeVisible)) {
+            radii[0] = instance.radii.topLeft;
+            radii[1] = instance.radii.topRight;
+            radii[2] = instance.radii.bottomRight;
+            radii[3] = instance.radii.bottomLeft;
             context.beginPath();
-            traceRoundedRectPath(
+            context.roundRect(
                 instance.x,
                 instance.y,
                 instance.width,
                 instance.height,
-                instance.radii,
-                roundedRectPath
+                radii
             );
         }
 

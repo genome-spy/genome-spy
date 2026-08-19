@@ -3,7 +3,6 @@ import {
     resolveRectProperties,
     visitRectInstances,
 } from "../../rendering/cpu/rect.js";
-import { traceRoundedRectPath } from "../../rendering/cpu/roundedRectPath.js";
 import {
     createSvgAttributeEncoder,
     encodeNumber,
@@ -55,7 +54,6 @@ export function renderRectSvg(baseMark, options) {
                   filter: options.getShadowFilterUrl(shadow),
               }
             : null;
-    const roundedRectPathBuilder = createRoundedRectPathBuilder();
     return visitRectInstances(mark, properties, options, (instance) => {
         if (options.countOnly) {
             return;
@@ -105,8 +103,7 @@ export function renderRectSvg(baseMark, options) {
                 {
                     ...shadowStyles,
                     "stroke-width": formatSvgNumber(strokeWidth),
-                },
-                roundedRectPathBuilder
+                }
             );
 
             // An opaque foreground rect covers the interior half of the blur,
@@ -132,7 +129,7 @@ export function renderRectSvg(baseMark, options) {
                         ])
                     )
                 );
-                const cutoutPath = roundedRectPathBuilder.build(
+                const cutoutPath = createRoundedRectPath(
                     x - cutoutPadding,
                     y - cutoutPadding,
                     width + cutoutPadding * 2,
@@ -147,15 +144,7 @@ export function renderRectSvg(baseMark, options) {
             }
         }
         group.appendChild(
-            createRectElement(
-                x,
-                y,
-                width,
-                height,
-                radii,
-                styles,
-                roundedRectPathBuilder
-            )
+            createRectElement(x, y, width, height, radii, styles)
         );
     });
 }
@@ -167,17 +156,8 @@ export function renderRectSvg(baseMark, options) {
  * @param {number} height
  * @param {CornerRadii} radii
  * @param {Record<string, string | number>} styles
- * @param {{build: (x: number, y: number, width: number, height: number, radii: CornerRadii) => string}} roundedRectPathBuilder
  */
-function createRectElement(
-    x,
-    y,
-    width,
-    height,
-    radii,
-    styles,
-    roundedRectPathBuilder
-) {
+function createRectElement(x, y, width, height, radii, styles) {
     if (hasEqualCornerRadii(radii)) {
         const radius = radii.topLeft;
         const roundedX = formatSvgNumber(x);
@@ -199,7 +179,7 @@ function createRectElement(
         });
     } else {
         return createSvgElement("path", {
-            d: roundedRectPathBuilder.build(x, y, width, height, radii),
+            d: createRoundedRectPath(x, y, width, height, radii),
             ...styles,
         });
     }
@@ -219,42 +199,45 @@ function hasEqualCornerRadii(radii) {
 }
 
 /**
- * @returns {{build: (x: number, y: number, width: number, height: number, radii: CornerRadii) => string}}
+ * @param {number} x
+ * @param {number} y
+ * @param {number} width
+ * @param {number} height
+ * @param {CornerRadii} radii
  */
-function createRoundedRectPathBuilder() {
-    let pathData = "";
-    const point = (/** @type {number} */ x, /** @type {number} */ y) =>
-        `${formatSvgNumber(x)} ${formatSvgNumber(y)}`;
-    const sink = {
-        moveTo(/** @type {number} */ x, /** @type {number} */ y) {
-            pathData = `M ${point(x, y)}`;
-        },
-        horizontalTo(/** @type {number} */ x) {
-            pathData += ` H ${formatSvgNumber(x)}`;
-        },
-        verticalTo(/** @type {number} */ _x, /** @type {number} */ y) {
-            pathData += ` V ${formatSvgNumber(y)}`;
-        },
-        corner(
-            /** @type {number} */ radius,
-            /** @type {number} */ x,
-            /** @type {number} */ y,
-            /** @type {number} */ sharpX,
-            /** @type {number} */ sharpY
-        ) {
-            pathData += radius
-                ? ` A ${formatSvgNumber(radius)} ${formatSvgNumber(radius)} 0 0 1 ${point(x, y)}`
-                : ` L ${point(sharpX, sharpY)}`;
-        },
-        closePath() {
-            pathData += " Z";
-        },
-    };
+function createRoundedRectPath(x, y, width, height, radii) {
+    const x2 = x + width;
+    const y2 = y + height;
+    const { topLeft, topRight, bottomRight, bottomLeft } = radii;
+    const commands = [
+        `M ${point(x + topLeft, y)}`,
+        `H ${formatSvgNumber(x2 - topRight)}`,
+        corner(topRight, x2, y + topRight, x2, y),
+        `V ${formatSvgNumber(y2 - bottomRight)}`,
+        corner(bottomRight, x2 - bottomRight, y2, x2, y2),
+        `H ${formatSvgNumber(x + bottomLeft)}`,
+        corner(bottomLeft, x, y2 - bottomLeft, x, y2),
+        `V ${formatSvgNumber(y + topLeft)}`,
+        corner(topLeft, x + topLeft, y, x, y),
+        "Z",
+    ];
+    return commands.join(" ");
+}
 
-    return {
-        build(x, y, width, height, radii) {
-            traceRoundedRectPath(x, y, width, height, radii, sink);
-            return pathData;
-        },
-    };
+/**
+ * @param {number} radius
+ * @param {number} x
+ * @param {number} y
+ * @param {number} sharpX
+ * @param {number} sharpY
+ */
+function corner(radius, x, y, sharpX, sharpY) {
+    return radius
+        ? `A ${formatSvgNumber(radius)} ${formatSvgNumber(radius)} 0 0 1 ${point(x, y)}`
+        : `L ${point(sharpX, sharpY)}`;
+}
+
+/** @param {number} x @param {number} y */
+function point(x, y) {
+    return `${formatSvgNumber(x)} ${formatSvgNumber(y)}`;
 }

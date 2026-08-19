@@ -9,9 +9,11 @@ function createRecordingContext() {
     /**
      * @type {{
      *     arcs: [number, number, number][],
-     *     arcTos: [number, number, number, number, number][],
+     *     roundRects: [number, number, number, number, number[]][],
      *     rects: [number, number, number, number][],
      *     fillRects: [number, number, number, number][],
+     *     fills: [number, string][],
+     *     strokes: [number, string][],
      *     moves: [number, number][],
      *     lines: [number, number][],
      *     beziers: [number, number, number, number, number, number][],
@@ -25,9 +27,11 @@ function createRecordingContext() {
      */
     const calls = {
         arcs: [],
-        arcTos: [],
+        roundRects: [],
         rects: [],
         fillRects: [],
+        fills: [],
+        strokes: [],
         moves: [],
         lines: [],
         beziers: [],
@@ -101,15 +105,19 @@ function createRecordingContext() {
             /** @type {number} */ y,
             /** @type {number} */ radius
         ) => calls.arcs.push([x, y, radius]),
-        arcTo: (
-            /** @type {number} */ x1,
-            /** @type {number} */ y1,
-            /** @type {number} */ x2,
-            /** @type {number} */ y2,
-            /** @type {number} */ radius
-        ) => calls.arcTos.push([x1, y1, x2, y2, radius]),
-        fill: vi.fn(),
-        stroke: vi.fn(),
+        roundRect: (
+            /** @type {number} */ x,
+            /** @type {number} */ y,
+            /** @type {number} */ width,
+            /** @type {number} */ height,
+            /** @type {number[]} */ radii
+        ) => calls.roundRects.push([x, y, width, height, Array.from(radii)]),
+        fill: vi.fn(() =>
+            calls.fills.push([context.globalAlpha, "" + context.fillStyle])
+        ),
+        stroke: vi.fn(() =>
+            calls.strokes.push([context.globalAlpha, "" + context.strokeStyle])
+        ),
     });
     return { calls, context };
 }
@@ -381,7 +389,14 @@ describe("Canvas2DViewRenderingContext", () => {
             render(view, recording.context);
             const warnings = warn.mock.calls.map(([message]) => "" + message);
             expect(recording.calls.fillRects).toHaveLength(0);
-            expect(recording.calls.arcTos).toHaveLength(4);
+            expect(recording.calls.roundRects).toHaveLength(1);
+            expect(recording.calls.roundRects[0].slice(0, 4)).toEqual([
+                20,
+                expect.closeTo(20),
+                60,
+                60,
+            ]);
+            expect(recording.calls.roundRects[0][4]).toEqual([5, 5, 5, 5]);
             expect(recording.context.fill).toHaveBeenCalledOnce();
             expect(warnings).toEqual(
                 expect.arrayContaining([
@@ -411,6 +426,8 @@ describe("Canvas2DViewRenderingContext", () => {
                 cornerRadiusBottomLeft: 8,
                 stroke: "#654321",
                 strokeWidth: 2,
+                fillOpacity: 0.25,
+                strokeOpacity: 0.75,
             },
             encoding: {
                 x: { value: 0.2 },
@@ -424,24 +441,41 @@ describe("Canvas2DViewRenderingContext", () => {
 
         render(view, recording.context);
 
-        expect(recording.calls.moves).toEqual([[30, 60]]);
-        expect(recording.calls.lines).toEqual([
-            [56, 60],
-            [60, 74],
-            [28, 80],
-            [20, 70],
+        expect(recording.calls.roundRects).toEqual([
+            [20, 60, 40, 20, [10, 4, 6, 8]],
         ]);
-        expect(recording.calls.arcTos).toEqual([
-            [60, 60, 60, 64, 4],
-            [60, 80, 54, 80, 6],
-            [20, 80, 20, 72, 8],
-            [20, 60, 30, 60, 10],
-        ]);
-        expect(recording.calls.closes).toBe(1);
         expect(recording.context.fill).toHaveBeenCalledOnce();
         expect(recording.context.stroke).toHaveBeenCalledOnce();
+        expect(recording.calls.fills).toEqual([[0.25, "#123456"]]);
+        expect(recording.calls.strokes).toEqual([[0.75, "#654321"]]);
         expect(recording.calls.fillRects).toHaveLength(0);
         expect(recording.context.strokeRect).not.toHaveBeenCalled();
+    });
+
+    test("clamps negative rectangle corner radii to zero", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "rect",
+                cornerRadius: -5,
+                cornerRadiusTopRight: 4,
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.6 },
+                y: { value: 0.2 },
+                y2: { value: 0.4 },
+                fill: { value: "black" },
+            },
+        });
+        const recording = createRecordingContext();
+
+        render(view, recording.context);
+
+        expect(recording.calls.roundRects).toEqual([
+            [20, 60, 40, 20, [0, 4, 0, 0]],
+        ]);
+        expect(recording.context.fill).toHaveBeenCalledOnce();
     });
 
     test("records exact rule and link paths", async () => {

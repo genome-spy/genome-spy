@@ -221,10 +221,10 @@ function getMinSizeFactor(size, minSize) {
  */
 function clampCornerRadii(source, width, height, target) {
     const maxRadius = Math.min(width, height) / 2;
-    target.topLeft = Math.min(source.topLeft, maxRadius);
-    target.topRight = Math.min(source.topRight, maxRadius);
-    target.bottomRight = Math.min(source.bottomRight, maxRadius);
-    target.bottomLeft = Math.min(source.bottomLeft, maxRadius);
+    target.topLeft = Math.max(0, Math.min(source.topLeft, maxRadius));
+    target.topRight = Math.max(0, Math.min(source.topRight, maxRadius));
+    target.bottomRight = Math.max(0, Math.min(source.bottomRight, maxRadius));
+    target.bottomLeft = Math.max(0, Math.min(source.bottomLeft, maxRadius));
 }
 
 /** @param {CornerRadii} radii */
