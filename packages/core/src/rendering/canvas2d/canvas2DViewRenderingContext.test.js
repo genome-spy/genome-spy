@@ -553,6 +553,30 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(recording.context.textBaseline).toBe("top");
     });
 
+    test("uses the configured native font with portable fallbacks", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "text",
+                font: "Open Sans",
+                fontStyle: "italic",
+                fontWeight: "bold",
+            },
+            encoding: {
+                text: { value: "T" },
+                color: { value: "black" },
+                size: { value: 12 },
+            },
+        });
+        const recording = createRecordingContext();
+
+        render(view, recording.context);
+
+        expect(recording.context.font).toBe(
+            "italic 700 12px 'Open Sans', 'Lato', 'Avenir Next', 'Avenir', 'Segoe UI', 'Ubuntu', 'Noto Sans', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif"
+        );
+    });
+
     test("records closed arrow boundaries beginning at its tip", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },
@@ -596,6 +620,7 @@ describe("Canvas2DViewRenderingContext", () => {
 
         expect(recording.context.measureText).toHaveBeenCalledWith("A");
         expect(recording.calls.scales[0][0]).toBeCloseTo(-120);
-        expect(recording.calls.fillTexts).toEqual([["A", 0, 0, undefined]]);
+        expect(recording.calls.fillTexts).toEqual([["A", 0, 0.35, undefined]]);
+        expect(recording.context.textBaseline).toBe("alphabetic");
     });
 });

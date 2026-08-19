@@ -10,19 +10,10 @@ import {
 } from "../../immediate/markEncoding.js";
 import { createSvgAttributeEncoder } from "../svgAttributes.js";
 import { formatSvgNumber, formatSvgUnitless } from "../svgNumber.js";
-
-const SVG_FONT_FALLBACKS = [
-    "Lato",
-    "Avenir Next",
-    "Avenir",
-    "Segoe UI",
-    "Ubuntu",
-    "Noto Sans",
-    "Helvetica Neue",
-    "Helvetica",
-    "Arial",
-    "sans-serif",
-];
+import {
+    createNativeFontFamily,
+    getNativeBaselineOffset,
+} from "../../nativeText.js";
 
 /**
  * @param {import("../../../marks/mark.js").default} baseMark
@@ -57,7 +48,7 @@ export function renderTextSvg(baseMark, options) {
             transform: (value) => formatSvgNumber(+value),
         },
     });
-    group.setAttribute("font-family", createSvgFontFamily(props.font));
+    group.setAttribute("font-family", createNativeFontFamily(props.font));
     group.setAttribute("font-style", props.fontStyle ?? "normal");
     group.setAttribute(
         "font-weight",
@@ -129,7 +120,7 @@ export function renderTextSvg(baseMark, options) {
                 const text = createSvgElement("text", {
                     x: 0,
                     y: 0,
-                    dy: getBaselineOffset("middle", 1),
+                    dy: getNativeBaselineOffset("middle", 1),
                     "text-anchor": "middle",
                     lengthAdjust: "spacingAndGlyphs",
                     textLength: 1,
@@ -150,7 +141,7 @@ export function renderTextSvg(baseMark, options) {
                 dx: formatSvgNumber(instance.dx),
                 dy: formatSvgNumber(
                     instance.dy +
-                        getBaselineOffset(props.baseline, instance.size)
+                        getNativeBaselineOffset(props.baseline, instance.size)
                 ),
                 lengthAdjust: "spacingAndGlyphs",
                 textLength: formatSvgNumber(instance.width),
@@ -182,44 +173,4 @@ export function renderTextSvg(baseMark, options) {
     return instanceCount;
 }
 
-/** @param {string | undefined} font */
-function createSvgFontFamily(font) {
-    const preferredFont = font ?? "Lato";
-    return [
-        preferredFont,
-        ...SVG_FONT_FALLBACKS.filter(
-            (fallback) => fallback.toLowerCase() != preferredFont.toLowerCase()
-        ),
-    ]
-        .map(formatFontFamily)
-        .join(", ");
-}
-
-/** @param {string} family */
-function formatFontFamily(family) {
-    return family == "sans-serif"
-        ? family
-        : `'${family.replaceAll("\\", "\\\\").replaceAll("'", "\\'")}'`;
-}
-
 const textAnchors = { left: "start", center: "middle", right: "end" };
-
-/**
- * @param {"top" | "middle" | "bottom" | "alphabetic" | "baseline"} baseline
- * @param {number} fontSize
- */
-function getBaselineOffset(baseline, fontSize) {
-    switch (baseline) {
-        case "top":
-            return 0.79 * fontSize;
-        case "middle":
-            return 0.35 * fontSize;
-        case "bottom":
-            return -0.21 * fontSize;
-        case "alphabetic":
-        case "baseline":
-            return 0;
-        default:
-            throw new Error(`Unknown text baseline: ${baseline}`);
-    }
-}

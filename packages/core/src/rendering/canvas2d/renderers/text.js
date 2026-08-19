@@ -8,6 +8,10 @@ import {
     resolveMarkProperty,
     toPaintString,
 } from "../../immediate/markEncoding.js";
+import {
+    createNativeFontFamily,
+    getNativeBaselineOffset,
+} from "../../nativeText.js";
 
 /**
  * @param {import("../../../marks/mark.js").default} baseMark
@@ -79,8 +83,12 @@ export function renderTextCanvas(baseMark, options) {
                 instance.logoScale.heightScale
             );
             context.textAlign = "center";
-            context.textBaseline = "middle";
-            context.fillText(instance.text, 0, 0);
+            context.textBaseline = "alphabetic";
+            context.fillText(
+                instance.text,
+                0,
+                getNativeBaselineOffset("middle", 1)
+            );
             context.restore();
         } else {
             context.textAlign = props.align;
@@ -134,6 +142,6 @@ function setPaint(context, encoders, datum, opacityFactor, setFill) {
  */
 function setFont(props, size, setValue) {
     const weight = normalizeFontWeight(props.fontWeight ?? "normal");
-    const family = JSON.stringify(props.font ?? "Lato");
+    const family = createNativeFontFamily(props.font);
     setValue(`${props.fontStyle ?? "normal"} ${weight} ${size}px ${family}`);
 }
