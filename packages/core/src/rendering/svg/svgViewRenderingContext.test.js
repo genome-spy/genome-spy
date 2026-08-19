@@ -302,13 +302,19 @@ describe("SvgViewRenderingContext", () => {
     });
 
     test.each([
-        ["combines adjacent dense layers", ["point", "rect", "text"], 1],
+        [
+            "combines adjacent dense layers",
+            ["point", "rect", "text"],
+            1,
+            ["raster", "text"],
+        ],
         [
             "keeps dense layers separated by a vector layer in separate runs",
             ["point", "text", "rect"],
             2,
+            ["raster", "text", "raster"],
         ],
-    ])("%s", async (_name, markTypes, expectedRunCount) => {
+    ])("%s", async (_name, markTypes, expectedRunCount, expectedPaintOrder) => {
         const layer = markTypes.map((markType) => ({
             data: {
                 values: markType == "text" ? [{ label: "vector" }] : [{}, {}],
@@ -360,6 +366,13 @@ describe("SvgViewRenderingContext", () => {
                 run.targets.map((target) => target.mark.getType())
             )
         ).toEqual(markTypes.filter((markType) => markType != "text"));
+        expect(
+            Array.from(
+                context.getSvg().querySelectorAll("[data-rasterized], text"),
+                (element) =>
+                    element.hasAttribute("data-rasterized") ? "raster" : "text"
+            )
+        ).toEqual(expectedPaintOrder);
     });
 
     test("projects texture-indexed sample facets using CPU positions", async () => {

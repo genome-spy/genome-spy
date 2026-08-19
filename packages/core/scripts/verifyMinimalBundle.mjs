@@ -41,7 +41,7 @@ const productionOutDir = path.join(tempDir, "production");
 try {
     verifyImmediateRenderingImports();
 
-    const minimalSources = await buildAndReadEntrySources(
+    const minimalSources = await buildAndReadStaticEntrySources(
         "minimal.js",
         "genomeSpyEmbedMinimal",
         minimalOutDir
@@ -63,7 +63,7 @@ try {
         }
     }
 
-    const productionSources = await buildAndReadEntrySources(
+    const productionSources = await buildAndReadStaticEntrySources(
         "index.js",
         "genomeSpyEmbed",
         productionOutDir
@@ -86,8 +86,8 @@ try {
  * @param {string} name
  * @param {string} outDir
  */
-async function buildAndReadEntrySources(entry, name, outDir) {
-    await build({
+async function buildAndReadStaticEntrySources(entry, name, outDir) {
+    const buildResult = await build({
         root: "src",
         plugins: [
             {
@@ -121,9 +121,41 @@ async function buildAndReadEntrySources(entry, name, outDir) {
         },
     });
 
-    const mapPath = path.join(outDir, "index.es.js.map");
-    const sourceMap = JSON.parse(fs.readFileSync(mapPath, "utf8"));
-    return sourceMap.sources.map((source) => source.replaceAll("\\", "/"));
+    const output = Array.isArray(buildResult)
+        ? buildResult.flatMap((result) => result.output)
+        : buildResult.output;
+    const chunks = output.filter((item) => item.type == "chunk");
+    const chunksByFileName = new Map(
+        chunks.map((chunk) => [chunk.fileName, chunk])
+    );
+    const entryChunk = chunks.find((chunk) => chunk.isEntry);
+    if (!entryChunk) {
+        throw new Error(`Build for ${entry} did not produce an entry chunk.`);
+    }
+
+    const sources = new Set();
+    const visitedChunks = new Set();
+
+    /** @param {import("rollup").OutputChunk} chunk */
+    function visitStaticImports(chunk) {
+        if (visitedChunks.has(chunk.fileName)) {
+            return;
+        }
+        visitedChunks.add(chunk.fileName);
+
+        for (const source of Object.keys(chunk.modules)) {
+            sources.add(source.replaceAll("\\", "/"));
+        }
+        for (const importedFile of chunk.imports) {
+            const importedChunk = chunksByFileName.get(importedFile);
+            if (importedChunk) {
+                visitStaticImports(importedChunk);
+            }
+        }
+    }
+
+    visitStaticImports(entryChunk);
+    return Array.from(sources);
 }
 
 function verifyImmediateRenderingImports() {

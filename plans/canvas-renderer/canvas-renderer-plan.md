@@ -678,7 +678,7 @@ Reproduction procedure:
   `npm -w @genome-spy/core run dev`, open Chromium at a 900 x 420 viewport, and
   use the normal headless launch defaults without custom GPU flags.
 - In the browser console, load the retained development-only harness with
-  `const { runCanvas2DBenchmark } = await import("/canvas2d/canvas2DBenchmark.js")`.
+  `const { runCanvas2DBenchmark } = await import("/@fs/<absolute-repository-path>/packages/core/scripts/canvas2DBenchmark.js")`.
 - Rect rows use `canvas-dense-rects.json`, instance counts 10,000, 25,000, and
   50,000, `fullDomain: [0, 1000]`, and `zoomDomain: [100, 900]`. Point rows use
   `canvas-dense-points.json`, instance counts 25,000, 50,000, and 100,000,
@@ -1208,8 +1208,9 @@ Verification:
 - Add or update an import-boundary check that rejects imports from
   `rendering/immediate/` to `rendering/canvas2d/`, `rendering/svg/`, `gl/`, or a
   future `rendering/webgpu/` directory.
-- Extend the production ESM source-map check, not only the minimal entry check,
-  so an accidental static Canvas2D, SVG, or immediate-mode import is detected.
+- Extend the production ESM static-module-graph check, not only the minimal
+  entry check, so an accidental static Canvas2D, SVG, or immediate-mode import
+  is detected.
 - Verify the optional Canvas2D, SVG, and immediate modules remain outside the
   synchronous ESM entry and record before/after raw and gzip chunk sizes.
 - Run focused Canvas2D and SVG suites after each group of moves, then the full
@@ -1250,7 +1251,7 @@ Recorded Step 6 results (pre-review):
 - retained `@genome-spy/core/svg/index.js` through an explicit package export
   and kept hybrid rasterization in the lazy `svg/raster/webgl.js` leaf
 - extended the minimal-bundle guard with immediate-mode dependency checks and
-  a production-entry source-map check for accidental static renderer imports
+  a production-entry static-module-graph check for accidental renderer imports
 - reduced the directly comparable non-test Canvas2D/SVG/immediate source and
   benchmark total from 6,535 to 6,522 lines
 - production Vite build before/after sizes: UMD 1,267.34/1,267.41 kB
@@ -1271,11 +1272,24 @@ Recorded Step 6 results (pre-review):
   the one-instance text mark as a vector element, and successfully decoded its
   embedded 320 by 180 PNG
 
+Step 6 review gate outcome:
+
+- the reviewed reorganization was committed as `78e9ebdaa` before applying
+  review fixes
+- the review found no production correctness defect and accepted two
+  verification fixes: traverse the production entry's complete static chunk
+  graph in the optional-renderer bundle guard, and assert raster/vector/raster
+  placeholder order for separated hybrid SVG runs
+- the review also corrected the retained benchmark's development import path
+  after the harness moved to `packages/core/scripts/`
+- the KISS review found no removable compatibility wrapper, unnecessary
+  renderer abstraction, or useful production simplification; it confirmed the
+  directory ownership, neutral immediate-mode dependencies, package subpath,
+  lazy SVG raster leaf, and unchanged mark-owned WebGL placement
+
 Tentative commit: `refactor(core): organize modular rendering backends`
 
-Step gate: apply the mandatory subagent review and commit gate. The review must
-explicitly check dependency direction, lazy-module isolation, package subpath
-compatibility, unchanged WebGL ownership, hybrid SVG raster-run behavior and
-paint order, naming, and KISS. Commit the reviewed reorganization before
-applying accepted review fixes, and commit those fixes separately before
-declaring Step 6 complete.
+Step gate: completed. A fresh review checked dependency direction, lazy-module
+isolation, package subpath compatibility, unchanged WebGL ownership, hybrid SVG
+raster-run behavior and paint order, naming, and KISS. The reviewed
+reorganization and accepted fixes are in separate commits.
