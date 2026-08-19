@@ -20,6 +20,7 @@
       "import": "./dist/bundle/index.es.js",
       "default": "./dist/bundle/index.js"
     },
+    "./svg/index.js": "./src/rendering/svg/index.js",
     "./data/*": "./src/data/*",
     "./*": "./src/*",
     "./schema.json": "./dist/schema.json"

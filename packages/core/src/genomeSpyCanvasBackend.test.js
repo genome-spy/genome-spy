@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
     createRenderingBackend: vi.fn(),
 }));
 
-vi.mock("./genomeSpy/renderingBackend.js", () => ({
+vi.mock("./rendering/renderingBackend.js", () => ({
     createRenderingBackend: mocks.createRenderingBackend,
 }));
 

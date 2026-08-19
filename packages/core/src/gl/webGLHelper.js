@@ -32,7 +32,7 @@ import {
     buildHashTableSet,
     computeHashTextureDimensions,
 } from "./hashTable.js";
-import CanvasSizeHelper from "./canvasSizeHelper.js";
+import CanvasSizeHelper from "../rendering/canvasSizeHelper.js";
 
 export default class WebGLHelper {
     /**

@@ -25,7 +25,7 @@ import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import InteractionController from "./genomeSpy/interactionController.js";
-import { createRenderingBackend } from "./genomeSpy/renderingBackend.js";
+import { createRenderingBackend } from "./rendering/renderingBackend.js";
 import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
@@ -61,7 +61,7 @@ import {
 export default class GenomeSpy {
     /** @type {(() => void)[]} */
     #destructionCallbacks = [];
-    /** @type {import("./genomeSpy/renderingBackend.js").RenderingCoordinator} */
+    /** @type {import("./rendering/renderingBackend.js").RenderingCoordinator} */
     #renderCoordinator;
     /** @type {LoadingIndicatorManager} */
     #loadingIndicatorManager;
@@ -71,7 +71,7 @@ export default class GenomeSpy {
     #inputBindingManager;
     /** @type {InteractionController} */
     #interactionController;
-    /** @type {import("./genomeSpy/renderingBackend.js").RenderingBackend} */
+    /** @type {import("./rendering/renderingBackend.js").RenderingBackend} */
     #renderingBackend;
 
     #keyboardListenerManager = new KeyboardListenerManager();
@@ -144,7 +144,7 @@ export default class GenomeSpy {
         );
     }
 
-    get #canvasHelper() {
+    get #surface() {
         return this.#renderingBackend.surface;
     }
 
@@ -246,7 +246,7 @@ export default class GenomeSpy {
     }
 
     #setupDpr() {
-        this.dpr = this.#canvasHelper.getDevicePixelRatio();
+        this.dpr = this.#surface.getDevicePixelRatio();
 
         const dprSetter = this.viewRoot.paramRuntime.allocateSetter(
             "devicePixelRatio",
@@ -254,8 +254,8 @@ export default class GenomeSpy {
         );
 
         const resizeCallback = () => {
-            this.#canvasHelper.invalidateSize();
-            this.dpr = this.#canvasHelper.getDevicePixelRatio();
+            this.#surface.invalidateSize();
+            this.dpr = this.#surface.getDevicePixelRatio();
             dprSetter(this.dpr);
             this.computeLayout();
             // Render immediately, without RAF
@@ -334,7 +334,7 @@ export default class GenomeSpy {
 
         this.#destructionCallbacks.forEach((callback) => callback());
 
-        this.#canvasHelper.finalize();
+        this.#surface.finalize();
 
         this.#inputBindingManager.remove();
 
@@ -492,7 +492,7 @@ export default class GenomeSpy {
 
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
-        this.#canvasHelper.invalidateSize();
+        this.#surface.invalidateSize();
         this.#renderCoordinator =
             this.#renderingBackend.createRenderCoordinator({
                 viewRoot: this.viewRoot,
@@ -530,11 +530,11 @@ export default class GenomeSpy {
         // Invalidate cached sizes to ensure that step-based sizes are current.
         // TODO: This should be done automatically when the domains of band/point scales are updated.
         this.viewRoot.visit((view) => invalidatePrefix(view, "size"));
-        this.#canvasHelper.invalidateSize();
+        this.#surface.invalidateSize();
 
         this.#interactionController = new InteractionController({
             viewRoot: this.viewRoot,
-            canvas: this.#canvasHelper.canvas,
+            canvas: this.#surface.canvas,
             tooltip: this.tooltip,
             animator: this.animator,
             emitEvent: this.#eventListeners.emit.bind(this.#eventListeners),
@@ -607,7 +607,7 @@ export default class GenomeSpy {
         // Visibility toggles can change sizes; ensure layout is recomputed even
         // when callers don't explicitly request it.
         this.viewRoot._invalidateCacheByPrefix("size", "progeny");
-        this.#canvasHelper.invalidateSize();
+        this.#surface.invalidateSize();
         this.computeLayout();
         this.animator.requestRender();
     }
@@ -712,13 +712,14 @@ export default class GenomeSpy {
      * @returns {Promise<import("./types/embedApi.js").SvgExportResult>}
      */
     async exportSvg(options = {}) {
-        const canvasSize = this.#canvasHelper.getLogicalCanvasSize();
+        const canvasSize = this.#surface.getLogicalCanvasSize();
         const logicalWidth = options.logicalWidth ?? canvasSize.width;
         const logicalHeight = options.logicalHeight ?? canvasSize.height;
         const background = getExportBackground(this.spec, options);
 
         try {
-            const { createSvgExport } = await import("./svg/index.js");
+            const { createSvgExport } =
+                await import("./rendering/svg/index.js");
             const { svg, warnings, rasterized } = await createSvgExport({
                 viewRoot: this.viewRoot,
                 webGLHelper: this.#glHelper,
@@ -748,10 +749,10 @@ export default class GenomeSpy {
      * @returns {Promise<import("./types/embedApi.js").SvgExportAnalysis>}
      */
     async analyzeSvgExport(options = {}) {
-        const canvasSize = this.#canvasHelper.getLogicalCanvasSize();
+        const canvasSize = this.#surface.getLogicalCanvasSize();
         const logicalWidth = options.logicalWidth ?? canvasSize.width;
         const logicalHeight = options.logicalHeight ?? canvasSize.height;
-        const svgModule = await import("./svg/index.js");
+        const svgModule = await import("./rendering/svg/index.js");
         return svgModule.analyzeSvgExport({
             viewRoot: this.viewRoot,
             logicalWidth,
@@ -760,7 +761,7 @@ export default class GenomeSpy {
     }
 
     getLogicalCanvasSize() {
-        return this.#canvasHelper.getLogicalCanvasSize();
+        return this.#surface.getLogicalCanvasSize();
     }
 
     getRenderedBounds() {

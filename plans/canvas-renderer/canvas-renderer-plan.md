@@ -1242,6 +1242,35 @@ API migration is intended. Document any deliberate internal package-subpath
 change; preserve the SVG entry through an explicit export if it is considered
 supported.
 
+Recorded Step 6 results (pre-review):
+
+- moved Canvas2D, SVG, shared immediate-mode projection, backend selection, and
+  surface sizing under `src/rendering/`; left mark-owned WebGL code and `gl/`
+  infrastructure in place
+- retained `@genome-spy/core/svg/index.js` through an explicit package export
+  and kept hybrid rasterization in the lazy `svg/raster/webgl.js` leaf
+- extended the minimal-bundle guard with immediate-mode dependency checks and
+  a production-entry source-map check for accidental static renderer imports
+- reduced the directly comparable non-test Canvas2D/SVG/immediate source and
+  benchmark total from 6,535 to 6,522 lines
+- production Vite build before/after sizes: UMD 1,267.34/1,267.41 kB
+  (gzip 470.33/470.38 kB), Canvas chunk 13.36/13.47 kB
+  (gzip 4.30/4.30 kB), SVG chunk 32.06/32.53 kB
+  (gzip 10.06/10.15 kB), and synchronous ESM entry 723.04/723.04 kB
+  (gzip 244.84/244.84 kB)
+- 25 focused rendering test files with 142 tests and the full repository suite
+  with 3,238 passing tests completed successfully; lint, Core/App builds,
+  bundle verification, and App TypeScript checks passed
+- Core TypeScript checks report only the pre-existing `GFF3Feature`,
+  `renameRefSeqs`, and interaction-dispatcher test-stub diagnostics; declaration
+  checks report only the first two pre-existing diagnostics
+- real-browser smoke tests produced a nonempty Canvas surface, a 10,220-byte
+  Canvas PNG export, and an all-vector SVG without warnings; forcing WebGL
+  context creation to fail selected Canvas2D and produced a nonempty surface
+- the hybrid SVG browser test rasterized only the dense point layer, retained
+  the one-instance text mark as a vector element, and successfully decoded its
+  embedded 320 by 180 PNG
+
 Tentative commit: `refactor(core): organize modular rendering backends`
 
 Step gate: apply the mandatory subagent review and commit gate. The review must

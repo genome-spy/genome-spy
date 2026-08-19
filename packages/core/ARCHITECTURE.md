@@ -58,4 +58,5 @@ It coordinates four major systems:
 - Dataflow: `src/data/`
 - Marks: `src/marks/`
 - WebGL and shaders: `src/gl/`
+- Modular Canvas2D/SVG rendering and future WebGPU ownership: `src/rendering/`
 - Parameters: `src/paramRuntime/`

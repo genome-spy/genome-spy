@@ -21,6 +21,31 @@ only when data changes.
 - `Animator` (`src/utils/animator.js`) centralizes render requests. Many reactive
   updates call `animator.requestRender()` directly.
 
+## Renderer organization
+
+Modular rendering implementations live under `src/rendering/`:
+
+- `canvas2d/` owns the live compatibility surface, immediate drawing, and PNG
+  export.
+- `svg/` owns structured SVG export and SVG-specific definitions.
+- `immediate/` projects, constructs, and culls mark occurrences shared by
+  Canvas2D and SVG. It must not depend on a rendering backend.
+- `renderingBackend.js` selects the live surface and exposes rendering, export,
+  and optional picking capabilities.
+
+The existing WebGL implementation remains split between `src/marks/` and
+`src/gl/`. This is a transitional exception: WebGL code is not extracted into
+a modular renderer before it is replaced. A future WebGPU implementation
+belongs under `src/rendering/webgpu/` and should own its pipelines, buffers,
+textures, bind groups, and per-mark resource maps rather than storing WebGPU
+state in marks.
+
+SVG hybrid export counts visible instances and selects contiguous paint-order
+runs within the SVG subsystem. Its nested `svg/raster/webgl.js` adapter may use
+the existing buffered WebGL renderer to rasterize selected runs. This lazy leaf
+is the only intended SVG-to-WebGL dependency; run selection, image
+placeholders, cropping, and document ordering remain SVG-owned.
+
 ## Shader generation and programs
 
 - Shaders are generated dynamically from encodings and scales.
@@ -59,11 +84,18 @@ device-pixel-ratio scaling.
 ## WebGPU migration implications
 
 WebGL-specific behavior is concentrated in `src/gl/`, mark buffer/program code
-under `src/marks/`, and render-context batch execution. A migration can retain
-the dataflow, view hierarchy, mark abstraction, encoding logic, and the general
-shader-generation approach while replacing:
+under `src/marks/`, and render-context batch execution. WebGL and a modular
+WebGPU renderer may coexist while the transition is incomplete. During that
+period, WebGL continues to call `mark.render()`, while WebGPU dispatches marks
+through renderer-owned implementations and resources. A migration can retain
+the dataflow, view hierarchy, mark abstraction, and encoding logic while
+replacing:
 
 - `WebGLHelper` with WebGPU device and surface setup
 - TWGL buffer/texture operations with WebGPU resources
 - GLSL compilation/linking with WGSL render-pipeline creation
 - The picking framebuffer with an offscreen WebGPU render pass
+
+Do not make WebGPU emulate `glHelper` or depend on the immediate-mode CPU
+projection layer. Existing `glHelper` access remains a legacy WebGL escape
+hatch until WebGL-specific mark code is deleted.
