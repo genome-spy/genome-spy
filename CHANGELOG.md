@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.85.0](https://github.com/genome-spy/genome-spy/compare/v0.84.0...v0.85.0) (2026-08-19)
+
+### Bug Fixes
+
+* **core:** align mixed legends by title placement ([d1f40fe](https://github.com/genome-spy/genome-spy/commit/d1f40fe62af95c503e213391c1f8403496d2b25b)) by @tuner
+* **core:** clear hover selections across views ([6418f90](https://github.com/genome-spy/genome-spy/commit/6418f902c15d02bcee5fc8ff0e1a4969b6ebcb76)) by @tuner
+* **core:** namespace tooltip CSS class ([8a241e6](https://github.com/genome-spy/genome-spy/commit/8a241e68488bf928b9496f3b71991dd7531ffafd)) by @tuner
+* **core:** preserve filled WebGL point size ([31c9e1d](https://github.com/genome-spy/genome-spy/commit/31c9e1d062db0bcf9b387fccd430a8d7c747f944)) by @tuner
+* **core:** prevent locus axis label overlaps ([#468](https://github.com/genome-spy/genome-spy/issues/468)) ([8bee115](https://github.com/genome-spy/genome-spy/commit/8bee115151f8fc6c387b1275f118350f8d51c99d)) by @tuner
+* **core:** render titles on root grid views ([cb18671](https://github.com/genome-spy/genome-spy/commit/cb18671df196dd851b0a14619f0278a36f87da6a)) by @tuner
+* **core:** support current Tabix chromosome mapping ([5b6e28a](https://github.com/genome-spy/genome-spy/commit/5b6e28af39d1c5669762fbc6167767a71e800f1d)) by @tuner
+* **core:** use MSAA for PNG exports ([0c5f64d](https://github.com/genome-spy/genome-spy/commit/0c5f64dbf4049bfcc0cb3e28f72e7920050a0d48)) by @tuner
+* normalize example descriptions ([4c081c7](https://github.com/genome-spy/genome-spy/commit/4c081c778487436ceb0e5147868fabb67a29cef0)) by @tuner
+* **test:** remove expected Vitest console noise ([272c7ac](https://github.com/genome-spy/genome-spy/commit/272c7acee23e4c085644b19e59b6e258299aea72)) by @tuner
+
+### Features
+
+* **core:** add Canvas2D compatibility renderer ([#473](https://github.com/genome-spy/genome-spy/issues/473)) ([1c7a948](https://github.com/genome-spy/genome-spy/commit/1c7a9489184eb709a6f385471c531d44bbe7db45)) by @tuner
+* **core:** autoscale domains to the visible viewport ([#472](https://github.com/genome-spy/genome-spy/issues/472)) ([8e57c69](https://github.com/genome-spy/genome-spy/commit/8e57c691e32885f3dc16c360afdca0a8ccd98735)) by @tuner
+* **core:** prevent ordinary axis label overlaps ([#469](https://github.com/genome-spy/genome-spy/issues/469)) ([1d2b7b2](https://github.com/genome-spy/genome-spy/commit/1d2b7b2a6f59bf6960eef9c4d649cf51c7e72e43)) by @tuner
+* **core:** support zindex for composition children ([6acdb98](https://github.com/genome-spy/genome-spy/commit/6acdb98854ea9a0fa29ce610fa32796d11b4d010)) by @tuner
+
+### Performance Improvements
+
+* **core:** defer BGZF decompressor loading ([8662082](https://github.com/genome-spy/genome-spy/commit/8662082d25e944b5926628b7d5462c60f4697922)) by @tuner
+
 # [0.84.0](https://github.com/genome-spy/genome-spy/compare/v0.83.1...v0.84.0) (2026-08-11)
 
 ### Bug Fixes

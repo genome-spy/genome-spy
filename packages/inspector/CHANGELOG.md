@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.85.0](https://github.com/genome-spy/genome-spy/compare/v0.84.0...v0.85.0) (2026-08-19)
+
+### Bug Fixes
+
+* **test:** remove expected Vitest console noise ([272c7ac](https://github.com/genome-spy/genome-spy/commit/272c7acee23e4c085644b19e59b6e258299aea72)) by @tuner
+
 # [0.84.0](https://github.com/genome-spy/genome-spy/compare/v0.83.1...v0.84.0) (2026-08-11)
 
 **Note:** Version bump only for package @genome-spy/inspector

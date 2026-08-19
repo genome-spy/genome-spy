@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.85.0](https://github.com/genome-spy/genome-spy/compare/v0.84.0...v0.85.0) (2026-08-19)
+
+### Bug Fixes
+
+* **core:** namespace tooltip CSS class ([8a241e6](https://github.com/genome-spy/genome-spy/commit/8a241e68488bf928b9496f3b71991dd7531ffafd)) by @tuner
+* **test:** remove expected Vitest console noise ([272c7ac](https://github.com/genome-spy/genome-spy/commit/272c7acee23e4c085644b19e59b6e258299aea72)) by @tuner
+
+### Features
+
+* **core:** add Canvas2D compatibility renderer ([#473](https://github.com/genome-spy/genome-spy/issues/473)) ([1c7a948](https://github.com/genome-spy/genome-spy/commit/1c7a9489184eb709a6f385471c531d44bbe7db45)) by @tuner
+
 # [0.84.0](https://github.com/genome-spy/genome-spy/compare/v0.83.1...v0.84.0) (2026-08-11)
 
 ### Bug Fixes
