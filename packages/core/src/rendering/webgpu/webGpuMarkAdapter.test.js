@@ -456,6 +456,23 @@ describe("WebGPU mark adapter", () => {
         );
     });
 
+    test.each(["link", "arrow"])(
+        "reports unsupported mark type %s with the Core view path",
+        (type) => {
+            const mark = createMark(type, [{ value: 1 }], {});
+
+            expect(() =>
+                createWebGpuMarkConfig(
+                    mark,
+                    /** @type {any} */ ({}),
+                    Rectangle.ZERO
+                )
+            ).toThrow(
+                `Mark type "${type}" is not supported. Mark: ${type}. View: root/plot`
+            );
+        }
+    );
+
     test("reuses field-backed columns across scale-only updates", () => {
         const data = [
             { x: 1, y: 2 },
