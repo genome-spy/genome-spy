@@ -3,6 +3,7 @@ import { format as numberFormat } from "d3-format";
 import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
 import { rectMark } from "@genome-spy/webgpu-renderer/marks/rect";
 import { ruleMark } from "@genome-spy/webgpu-renderer/marks/rule";
+import { linkMark } from "@genome-spy/webgpu-renderer/marks/link";
 import { textMark } from "@genome-spy/webgpu-renderer/marks/text";
 import { bandScale } from "@genome-spy/webgpu-renderer/scales/band";
 import { identityScale } from "@genome-spy/webgpu-renderer/scales/identity";
@@ -49,6 +50,18 @@ const STROKE_CAP_CODES = new Map([
     ["butt", 0],
     ["square", 1],
     ["round", 2],
+]);
+
+const LINK_SHAPE_CODES = new Map([
+    ["arc", 0],
+    ["dome", 1],
+    ["diagonal", 2],
+    ["line", 3],
+]);
+
+const ORIENT_CODES = new Map([
+    ["vertical", 0],
+    ["horizontal", 1],
 ]);
 
 const HATCH_CODES = new Map(
@@ -125,6 +138,11 @@ export function createWebGpuMarkConfig(mark, options, coords, viewOpacity = 1) {
         return {
             definition: textMark,
             config: createTextConfig(mark, data, coords, viewOpacity),
+        };
+    } else if (markType == "link") {
+        return {
+            definition: linkMark,
+            config: createLinkConfig(mark, data, coords, viewOpacity),
         };
     }
 
@@ -338,6 +356,52 @@ function createTextConfig(mark, data, coords, viewOpacity) {
         flushX: !!readProperty(mark, "flushX"),
         flushY: !!readProperty(mark, "flushY"),
         squeeze: !!readProperty(mark, "squeeze"),
+    };
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {object[]} data
+ * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {number} viewOpacity
+ * @returns {object}
+ */
+function createLinkConfig(mark, data, coords, viewOpacity) {
+    return {
+        count: data.length,
+        channels: {
+            x: createPositionChannel(mark, "x", data, coords),
+            x2: createPositionChannel(mark, "x2", data, coords),
+            y: createPositionChannel(mark, "y", data, coords),
+            y2: createPositionChannel(mark, "y2", data, coords),
+            xOffset: createNumericChannel(mark, "xOffset", data),
+            x2Offset: createNumericChannel(mark, "x2Offset", data),
+            yOffset: createNumericChannel(mark, "yOffset", data),
+            y2Offset: createNumericChannel(mark, "y2Offset", data),
+            size: createNumericChannel(mark, "size", data),
+            color: createColorChannel(mark, "color", data),
+            opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
+        },
+        linkShape: mapProperty(mark, "linkShape", LINK_SHAPE_CODES, "arc"),
+        orient: mapProperty(mark, "orient", ORIENT_CODES, "vertical"),
+        arcFadingDistance: readDistancePair(mark, "arcFadingDistance"),
+        arcHeightFactor: readOptionalNumericProperty(
+            mark,
+            "arcHeightFactor",
+            1
+        ),
+        minArcHeight: readOptionalNumericProperty(mark, "minArcHeight", 1.5),
+        clampApex: !!readProperty(mark, "clampApex"),
+        maxChordLength: readOptionalNumericProperty(
+            mark,
+            "maxChordLength",
+            50000
+        ),
+        segments: readOptionalNumericProperty(mark, "segments", 101),
+        noFadingOnPointSelection: !!readProperty(
+            mark,
+            "noFadingOnPointSelection"
+        ),
     };
 }
 
@@ -923,6 +987,26 @@ function readOptionalNumericProperty(mark, property, fallback) {
         );
     }
     return value;
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} property
+ * @returns {[number, number]}
+ */
+function readDistancePair(mark, property) {
+    const value = readProperty(mark, property);
+    if (value == null) {
+        return [0, 0];
+    }
+    if (
+        !Array.isArray(value) ||
+        value.length != 2 ||
+        !value.every((entry) => typeof entry == "number")
+    ) {
+        throw unsupported(mark, `Property "${property}" must be a pair.`);
+    }
+    return /** @type {[number, number]} */ (value);
 }
 
 /** @param {import("../../marks/mark.js").default} mark */
