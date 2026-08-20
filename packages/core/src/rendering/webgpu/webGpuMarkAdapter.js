@@ -1,4 +1,5 @@
 import { color as parseColor } from "d3-color";
+import { format as numberFormat } from "d3-format";
 import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
 import { rectMark } from "@genome-spy/webgpu-renderer/marks/rect";
 import { ruleMark } from "@genome-spy/webgpu-renderer/marks/rule";
@@ -656,9 +657,14 @@ function createColorScale(mark, channel, scale) {
 function createTextChannel(mark, data) {
     const encoder = requireEncoder(mark, "text");
     assertUnconditional(mark, "text", encoder);
+    const channelDef = encoder.channelDef;
+    const formatValue =
+        "format" in channelDef
+            ? numberFormat(channelDef.format)
+            : (/** @type {any} */ d) => d;
     /** @param {object} datum */
     const stringify = (datum) => {
-        const value = encoder(datum);
+        const value = formatValue(encoder(datum));
         return value == null ? "" : String(value);
     };
     return encoder.constant

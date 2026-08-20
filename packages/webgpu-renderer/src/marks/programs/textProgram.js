@@ -396,7 +396,7 @@ fn shade(in: VSOut) -> vec4<f32> {
     let dist = sampleSdf(in.uv);
     let alpha = clamp((dist - 0.5) * in.slope + 0.5, 0.0, 1.0);
     let color = vec4<f32>(in.color.rgb, in.color.a * in.opacity);
-    return color * alpha;
+    return premultiplyAlpha(color) * alpha;
 }
 
 @fragment

@@ -228,6 +228,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 fn shade(in: VSOut) -> vec4<f32> {
     var fillColor = in.fill;
     fillColor.a = fillColor.a * in.fillOpacity;
+    fillColor = premultiplyAlpha(fillColor);
 
     // Adjacent plain rectangles must share an exact rasterized edge. Applying
     // SDF coverage here would introduce translucent seams in dense heatmaps.
@@ -242,12 +243,13 @@ fn shade(in: VSOut) -> vec4<f32> {
 
     var strokeColor = in.stroke;
     strokeColor.a = strokeColor.a * in.strokeOpacity;
+    strokeColor = premultiplyAlpha(strokeColor);
 
     var background = vec4<f32>(0.0, 0.0, 0.0, 0.0);
     if (in.shadowOpacity > 0.0) {
         let sd = sdRoundedBox(centered - in.shadowOffset, halfSize, in.cornerRadius);
         let alpha = shadowAlpha(sd, in.shadowBlur) * in.shadowOpacity;
-        background = vec4<f32>(in.shadowColor.rgb, alpha);
+        background = premultiplyAlpha(vec4<f32>(in.shadowColor.rgb, alpha));
     }
 
     let halfStrokeWidth = in.strokeWidth * 0.5;
