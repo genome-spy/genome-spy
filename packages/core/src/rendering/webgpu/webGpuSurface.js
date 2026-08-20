@@ -114,7 +114,7 @@ export default class WebGpuSurface {
     /**
      * @param {import("../../marks/mark.js").default} mark
      * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
-     * @param {object} config
+     * @param {any} config
      * @param {{scissor?: import("@genome-spy/webgpu-renderer").DrawRect}} [options]
      */
     useMark(mark, definition, config, options = {}) {
@@ -131,10 +131,15 @@ export default class WebGpuSurface {
                 definition,
                 makeRetainableConfig(config)
             );
-            retained = { definition, handle };
+            retained = {
+                definition,
+                handle,
+                series: collectSeries(config),
+                count: config.count,
+            };
             this.#marks.set(mark, retained);
         } else {
-            updateRetainedMark(retained.handle, config);
+            updateRetainedMark(retained, config);
         }
 
         // Core still bakes absolute canvas coordinates into scale ranges, so
@@ -186,21 +191,12 @@ function makeRetainableConfig(config) {
  * Updates the resource slots exposed by the renderer's public mark handle.
  * The PoC grammar keeps channel structure stable after initialization.
  *
- * @param {import("@genome-spy/webgpu-renderer").MarkHandle} handle
+ * @param {RetainedMark} retained
  * @param {any} config
  */
-function updateRetainedMark(handle, config) {
-    /** @type {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} */
-    const series = {};
-
+function updateRetainedMark(retained, config) {
     for (const [name, channel] of Object.entries(config.channels)) {
-        if (ArrayBuffer.isView(channel.data) || Array.isArray(channel.data)) {
-            series[name] = channel.data;
-        } else if (typeof channel.value == "string") {
-            series[name] = channel.value;
-        }
-
-        const scaleSlot = handle.scales[name]?.default;
+        const scaleSlot = retained.handle.scales[name]?.default;
         if (scaleSlot && channel.scale) {
             if (channel.scale.domain) {
                 scaleSlot.setDomain(channel.scale.domain);
@@ -210,17 +206,68 @@ function updateRetainedMark(handle, config) {
             }
         }
 
-        const valueSlot = handle.values[name]?.default;
+        const valueSlot = retained.handle.values[name]?.default;
         if (valueSlot && channel.value !== undefined) {
             valueSlot.set(channel.value);
         }
     }
 
-    handle.series.replace(series, config.count);
+    if (hasSeriesChanges(retained, config)) {
+        retained.series = collectSeries(config);
+        retained.count = config.count;
+        retained.handle.series.replace(retained.series, retained.count);
+    }
+}
+
+/**
+ * @param {RetainedMark} retained
+ * @param {any} config
+ */
+function hasSeriesChanges(retained, config) {
+    if (retained.count != config.count) {
+        return true;
+    }
+
+    for (const [name, channel] of Object.entries(config.channels)) {
+        const series = getChannelSeries(channel);
+        if (series !== undefined && retained.series[name] !== series) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * @param {any} config
+ * @returns {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>}
+ */
+function collectSeries(config) {
+    /** @type {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} */
+    const series = {};
+    for (const [name, channel] of Object.entries(config.channels)) {
+        const channelSeries = getChannelSeries(channel);
+        if (channelSeries !== undefined) {
+            series[name] = channelSeries;
+        }
+    }
+    return series;
+}
+
+/** @param {any} channel */
+function getChannelSeries(channel) {
+    if (ArrayBuffer.isView(channel.data) || Array.isArray(channel.data)) {
+        return channel.data;
+    } else if (typeof channel.value == "string") {
+        return channel.value;
+    } else {
+        return undefined;
+    }
 }
 
 /**
  * @typedef {object} RetainedMark
  * @prop {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
  * @prop {import("@genome-spy/webgpu-renderer").MarkHandle} handle
+ * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
+ * @prop {number} count
  */

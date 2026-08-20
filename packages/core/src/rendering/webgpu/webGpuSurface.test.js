@@ -155,15 +155,48 @@ describe("WebGpuSurface", () => {
             2
         );
     });
+
+    test("retains series when only scales and values change", async () => {
+        const container = document.createElement("div");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({})
+        );
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "point" })
+            );
+        const x = new Float32Array([1, 2]);
+
+        surface.useMark(mark, definition, createConfig(0, x));
+        surface.useMark(mark, definition, createConfig(1, x));
+
+        expect(mocks.handle.series.replace).not.toHaveBeenCalled();
+        expect(mocks.handle.scales.x.default.setDomain).toHaveBeenCalledWith([
+            1, 11,
+        ]);
+        expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
+    });
 });
 
-/** @param {number} offset */
-function createConfig(offset) {
+/**
+ * @param {number} offset
+ * @param {Float32Array} [x]
+ */
+function createConfig(offset, x = new Float32Array([offset, offset + 1])) {
     return {
         count: 2,
         channels: {
             x: {
-                data: new Float32Array([offset, offset + 1]),
+                data: x,
                 type: "f32",
                 scale: {
                     domain: [offset, offset + 10],
