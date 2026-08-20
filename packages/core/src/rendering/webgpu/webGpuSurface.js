@@ -1,4 +1,4 @@
-import { createRenderer } from "@genome-spy/webgpu-renderer/compatibility";
+import { createRenderer } from "@genome-spy/webgpu-renderer";
 
 import CanvasSizeHelper from "../canvasSizeHelper.js";
 
@@ -9,7 +9,7 @@ export default class WebGpuSurface {
     /** @type {CanvasSizeHelper} */
     #sizeHelper;
 
-    /** @type {import("@genome-spy/webgpu-renderer/compatibility").CompatibilityRenderer | undefined} */
+    /** @type {import("@genome-spy/webgpu-renderer").Renderer | undefined} */
     #renderer;
 
     /** @type {Set<import("@genome-spy/webgpu-renderer").MarkId>} */
@@ -96,17 +96,14 @@ export default class WebGpuSurface {
     }
 
     /**
-     * @param {import("@genome-spy/webgpu-renderer").MarkType} type
+     * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any>} definition
      * @param {object} config
      */
-    createMark(type, config) {
+    createMark(definition, config) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
-        const handle = this.#renderer.createMark(
-            /** @type {any} */ (type),
-            /** @type {any} */ (config)
-        );
+        const handle = this.#renderer.createMark(definition, config);
         this.#markIds.add(handle.markId);
         return handle;
     }

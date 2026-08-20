@@ -81,8 +81,8 @@ without expanding vertices on the CPU.
 
 Type definitions live in `packages/webgpu-renderer/src/index.d.ts`.
 
-The code-first surface currently provides `pointMark` and `linearScale` as the
-first migration slice:
+Built-in marks and scales are selected through side-effect-free subpath
+imports:
 
 ```js
 import { createRenderer } from "@genome-spy/webgpu-renderer";
@@ -90,8 +90,12 @@ import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
 import { linearScale } from "@genome-spy/webgpu-renderer/scales/linear";
 ```
 
-Importing these subpaths does not include unrelated marks, scales, or font
-support. Other built-ins will move to definition subpaths incrementally.
+Mark subpaths are available for point, rect, rule, link, and text. Every
+implemented scale has a factory subpath: identity, linear, log, pow, sqrt,
+symlog, quantize, band, index, ordinal, and threshold. Identity is implicit when
+a channel and its mark default have no scale; use `identityScale()` to override
+a scaled mark default. Importing one feature does not include unrelated marks,
+scales, or font support.
 
 ## Definition contract (experimental)
 
@@ -101,29 +105,8 @@ planning, and WGSL emission. Definitions contain no device, buffer, texture, or
 other mutable renderer state, so callers can reuse them across marks.
 
 The exact custom-definition authoring API is not stable. Built-in definition
-values are the supported entry point during this migration.
-
-## Compatibility entry
-
-The existing string-based API remains temporarily available from a separate
-entry while marks and examples migrate:
-
-```js
-import { createRenderer } from "@genome-spy/webgpu-renderer/compatibility";
-
-const renderer = await createRenderer(canvas);
-renderer.createMark("rect", {
-  channels: {
-    x: { value: 10 },
-    x2: { value: 100 },
-    y: { value: 10 },
-    y2: { value: 80 },
-  },
-});
-```
-
-This entry imports every built-in mark and scale and is therefore not
-tree-shakeable. It is a migration aid rather than the long-term public API.
+values are the supported entry point during this migration. There is no global
+registry or string-based compatibility entry.
 
 ## Quick Example
 

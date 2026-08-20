@@ -1,6 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 
 import Rectangle from "../../view/layout/rectangle.js";
+import { identityScaleDefinition } from "@genome-spy/webgpu-renderer/scales/identity";
+import { linearScaleDefinition } from "@genome-spy/webgpu-renderer/scales/linear";
 import { createWebGpuMarkConfig } from "./webGpuMarkAdapter.js";
 
 describe("WebGPU mark adapter", () => {
@@ -37,13 +39,14 @@ describe("WebGPU mark adapter", () => {
             throw new Error("Expected a translated point mark.");
         }
 
-        expect(translated.type).toBe("point");
+        expect(translated.definition.type).toBe("point");
         const channels = /** @type {any} */ (translated.config).channels;
         expect(channels.x).toEqual({
             data: new Float32Array([0, 2]),
             type: "f32",
             scale: {
                 type: "linear",
+                definition: linearScaleDefinition,
                 domain: [0, 2],
                 range: [10, 110],
                 clamp: false,
@@ -54,6 +57,7 @@ describe("WebGPU mark adapter", () => {
             type: "f32",
             scale: {
                 type: "linear",
+                definition: linearScaleDefinition,
                 domain: [-1, 1],
                 range: [220, 20],
                 clamp: false,
@@ -108,11 +112,17 @@ describe("WebGPU mark adapter", () => {
         const config = /** @type {any} */ (translated.config);
         expect(config.channels.x).toEqual({
             value: 60,
-            scale: { type: "identity" },
+            scale: {
+                type: "identity",
+                definition: identityScaleDefinition,
+            },
         });
         expect(config.channels.y).toEqual({
             value: 20,
-            scale: { type: "identity" },
+            scale: {
+                type: "identity",
+                definition: identityScaleDefinition,
+            },
         });
         expect(config.channels.text).toEqual({ data: ["A", "B"] });
         expect(config.channels.dx).toEqual({

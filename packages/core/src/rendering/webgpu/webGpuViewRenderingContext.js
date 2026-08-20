@@ -83,7 +83,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             this.currentCoords
         );
         if (translated) {
-            this.surface.createMark(translated.type, translated.config);
+            this.surface.createMark(translated.definition, translated.config);
         }
     }
 

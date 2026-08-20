@@ -1,4 +1,9 @@
 import { color as parseColor } from "d3-color";
+import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
+import { ruleMark } from "@genome-spy/webgpu-renderer/marks/rule";
+import { textMark } from "@genome-spy/webgpu-renderer/marks/text";
+import { identityScale } from "@genome-spy/webgpu-renderer/scales/identity";
+import { linearScale } from "@genome-spy/webgpu-renderer/scales/linear";
 
 import { getMarkData } from "../immediate/markData.js";
 
@@ -46,7 +51,7 @@ const STROKE_CAP_CODES = new Map([
  * @param {import("../../marks/mark.js").default} mark
  * @param {import("../../types/rendering.js").RenderingOptions} options
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @returns {{type: import("@genome-spy/webgpu-renderer").MarkType, config: object} | undefined}
+ * @returns {{definition: import("@genome-spy/webgpu-renderer").MarkDefinition<any>, config: object} | undefined}
  */
 export function createWebGpuMarkConfig(mark, options, coords) {
     if (options.sampleFacetRenderingOptions || mark.encoders.facetIndex) {
@@ -60,11 +65,20 @@ export function createWebGpuMarkConfig(mark, options, coords) {
 
     const markType = mark.getType();
     if (markType == "point") {
-        return { type: "point", config: createPointConfig(mark, data, coords) };
+        return {
+            definition: pointMark,
+            config: createPointConfig(mark, data, coords),
+        };
     } else if (markType == "rule" || markType == "tick") {
-        return { type: "rule", config: createRuleConfig(mark, data, coords) };
+        return {
+            definition: ruleMark,
+            config: createRuleConfig(mark, data, coords),
+        };
     } else if (markType == "text") {
-        return { type: "text", config: createTextConfig(mark, data, coords) };
+        return {
+            definition: textMark,
+            config: createTextConfig(mark, data, coords),
+        };
     }
 
     throw unsupported(mark, `Mark type "${markType}" is not supported.`);
@@ -234,7 +248,7 @@ function createPositionChannel(mark, channel, data, coords, offset = 0) {
         }
         return {
             value: range[0] + unitPosition * (range[1] - range[0]),
-            scale: { type: "identity" },
+            scale: identityScale(),
         };
     }
 
@@ -403,11 +417,11 @@ function getAbsoluteRange(channel, coords, offset) {
  * @param {string} channel
  * @param {import("../../types/encoder.js").VegaScale | undefined} scale
  * @param {[number, number]} range
- * @returns {import("@genome-spy/webgpu-renderer").ChannelScale}
+ * @returns {import("@genome-spy/webgpu-renderer").ConfiguredScale<"linear">}
  */
 function createPositionScale(mark, channel, scale, range) {
     if (!scale || scale.type == "null") {
-        return { type: "linear", domain: [0, 1], range };
+        return linearScale({ domain: [0, 1], range });
     }
     if (scale.type != "linear") {
         throw unsupported(
@@ -416,29 +430,28 @@ function createPositionScale(mark, channel, scale, range) {
         );
     }
     const configurableScale = /** @type {any} */ (scale);
-    return {
-        type: "linear",
+    return linearScale({
         domain: scale.domain().map(Number),
         range,
         clamp:
             typeof configurableScale.clamp == "function"
                 ? configurableScale.clamp()
                 : false,
-    };
+    });
 }
 
 /**
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {import("../../types/encoder.js").VegaScale | undefined} scale
- * @returns {import("@genome-spy/webgpu-renderer").ChannelScale | undefined}
+ * @returns {import("@genome-spy/webgpu-renderer").ConfiguredScale<"identity" | "linear"> | undefined}
  */
 function createNonPositionalScale(mark, channel, scale) {
     if (!scale || scale.type == "null") {
         return undefined;
     }
     if (scale.type == "identity") {
-        return { type: "identity" };
+        return identityScale();
     }
     if (scale.type != "linear") {
         throw unsupported(
@@ -447,15 +460,14 @@ function createNonPositionalScale(mark, channel, scale) {
         );
     }
     const configurableScale = /** @type {any} */ (scale);
-    return {
-        type: "linear",
+    return linearScale({
         domain: scale.domain().map(Number),
         range: scale.range().map(Number),
         clamp:
             typeof configurableScale.clamp == "function"
                 ? configurableScale.clamp()
                 : false,
-    };
+    });
 }
 
 /**

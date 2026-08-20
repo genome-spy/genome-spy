@@ -1,4 +1,6 @@
 import { createExampleRenderer, setupResize } from "./utils.js";
+import { textMark } from "../src/marks/text.js";
+import { indexScale } from "../src/scales/index.js";
 
 /**
  * Ranged text demo: each string is constrained by x/x2 and y/y2 extents.
@@ -38,55 +40,51 @@ export default async function runRangedTextScene(canvas, options = {}) {
         }
     }
 
-    const { markId, scales, values } = renderer.createMark("text", {
+    const { markId, scales, values } = renderer.createMark(textMark, {
         channels: {
             x: {
                 data: x,
                 type: "u32",
-                scale: {
-                    type: "index",
+                scale: indexScale({
                     domain: xDomain,
                     paddingInner,
                     paddingOuter: 0,
                     align: 0,
                     band: 0,
-                },
+                }),
             },
             x2: {
                 data: x2,
                 type: "u32",
-                scale: {
-                    type: "index",
+                scale: indexScale({
                     domain: xDomain,
                     paddingInner,
                     paddingOuter: 0,
                     align: 0,
                     band: 1,
-                },
+                }),
             },
             y: {
                 data: y,
                 type: "u32",
-                scale: {
-                    type: "index",
+                scale: indexScale({
                     domain: yDomain,
                     paddingInner,
                     paddingOuter: 0,
                     align: 0,
                     band: 0,
-                },
+                }),
             },
             y2: {
                 data: y2,
                 type: "u32",
-                scale: {
-                    type: "index",
+                scale: indexScale({
                     domain: yDomain,
                     paddingInner,
                     paddingOuter: 0,
                     align: 0,
                     band: 1,
-                },
+                }),
             },
             text: { data: strings },
             angle: { data: angles, type: "f32" },

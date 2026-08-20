@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { Renderer, RendererError } from "./renderer.js";
+import { Renderer } from "./renderer.js";
 
 describe("Renderer mark definitions", () => {
     test("creates a mark through an imported definition", () => {
@@ -20,22 +20,10 @@ describe("Renderer mark definitions", () => {
         expect(handle.scales).toEqual({});
         expect(renderer._marks.get(handle.markId)).toBe(program);
     });
-
-    test("does not resolve string mark names without compatibility features", () => {
-        const renderer = createRendererHarness();
-
-        expect(() =>
-            renderer.createMark(
-                /** @type {any} */ ("point"),
-                /** @type {any} */ ({ channels: {} })
-            )
-        ).toThrow(RendererError);
-    });
 });
 
 function createRendererHarness() {
     const renderer = Object.create(Renderer.prototype);
-    renderer._legacyMarkDefinitions = new Map();
     renderer._marks = new Map();
     renderer._nextMarkId = 1;
     renderer._pickingDirty = false;

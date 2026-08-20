@@ -25,8 +25,8 @@ Follow the monorepo-wide conventions in `AGENTS.md`.
 - Scale system:
   - Definitions live in `src/marks/scales/defs/*` and export `ScaleDef`
     metadata plus a WGSL snippet.
-  - Registry/helpers live in `src/marks/scales/scaleDefs.js` and
-    `src/marks/scales/scaleUtils.js`.
+  - Public scale factories live in `src/scales/*`; renderer internals consume
+    the attached definitions directly without a production registry.
   - Validation/normalization lives in `src/marks/scales/scaleValidation.js`,
     `src/marks/scales/scaleStops.js`, and `src/marks/scales/ordinalDomain.js`.
   - WGSL assembly happens in `src/marks/scales/scaleWgsl.js` with shared

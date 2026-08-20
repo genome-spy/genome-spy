@@ -1,4 +1,6 @@
 import { createExampleRenderer, setupResize } from "./utils.js";
+import { textMark } from "../src/marks/text.js";
+import { indexScale } from "../src/scales/index.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -22,31 +24,29 @@ export default async function runTextScene(canvas, options = {}) {
         y[i] = 0;
     }
 
-    const { markId, scales, values } = renderer.createMark("text", {
+    const { markId, scales, values } = renderer.createMark(textMark, {
         channels: {
             x: {
                 data: x,
                 type: "u32",
-                scale: {
-                    type: "index",
+                scale: indexScale({
                     domain: [0, count],
                     paddingInner: 0.2,
                     paddingOuter: 0.2,
                     align: 0.5,
                     band: 0.6,
-                },
+                }),
             },
             y: {
                 data: y,
                 type: "u32",
-                scale: {
-                    type: "index",
+                scale: indexScale({
                     domain: [0, 1],
                     paddingInner: 0.2,
                     paddingOuter: 0.2,
                     align: 0.5,
                     band: 0.6,
-                },
+                }),
             },
             text: { data: strings },
             size: { value: initialSize, type: "f32", dynamic: true },

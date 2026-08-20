@@ -1,9 +1,6 @@
 /* global window */
 
-import {
-    createRenderer,
-    setDebugResourcesEnabled,
-} from "../src/compatibility.js";
+import { createRenderer, setDebugResourcesEnabled } from "../src/index.js";
 
 // Examples opt into resource debugging so buffer usage is visible in the console.
 setDebugResourcesEnabled(true);
@@ -17,10 +14,10 @@ export async function createExampleRenderer(canvas) {
     const labels = new Map();
 
     const createMark = renderer.createMark.bind(renderer);
-    renderer.createMark = (type, config) => {
-        const handle = createMark(type, config);
+    renderer.createMark = (definition, config) => {
+        const handle = createMark(definition, config);
         const { markId } = handle;
-        labels.set(markId, type);
+        labels.set(markId, definition.type);
         return handle;
     };
 

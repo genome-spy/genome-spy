@@ -1,4 +1,5 @@
 import { linearScaleDef } from "../marks/scales/defs/linear.js";
+import { createScale } from "./createScale.js";
 
 /** Immutable linear-scale behavior shared by configured scale values. */
 export const linearScaleDefinition = linearScaleDef;
@@ -12,9 +13,7 @@ export const linearScaleDefinition = linearScaleDef;
  * @returns {import("../index.d.ts").DefinedChannelScale}
  */
 export function linearScale(options = {}) {
-    return {
-        ...options,
-        type: "linear",
-        definition: linearScaleDefinition,
-    };
+    return /** @type {import("../index.d.ts").ConfiguredScale<"linear">} */ (
+        createScale(linearScaleDefinition, options)
+    );
 }

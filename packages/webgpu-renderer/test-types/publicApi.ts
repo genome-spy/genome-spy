@@ -3,7 +3,43 @@ import {
     type MarkDefinition,
 } from "@genome-spy/webgpu-renderer";
 import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
+import { linkMark } from "@genome-spy/webgpu-renderer/marks/link";
+import { rectMark } from "@genome-spy/webgpu-renderer/marks/rect";
+import { ruleMark } from "@genome-spy/webgpu-renderer/marks/rule";
+import { textMark } from "@genome-spy/webgpu-renderer/marks/text";
+import { bandScale } from "@genome-spy/webgpu-renderer/scales/band";
+import { identityScale } from "@genome-spy/webgpu-renderer/scales/identity";
+import { indexScale } from "@genome-spy/webgpu-renderer/scales/index";
 import { linearScale } from "@genome-spy/webgpu-renderer/scales/linear";
+import { logScale } from "@genome-spy/webgpu-renderer/scales/log";
+import { ordinalScale } from "@genome-spy/webgpu-renderer/scales/ordinal";
+import { powScale } from "@genome-spy/webgpu-renderer/scales/pow";
+import { quantizeScale } from "@genome-spy/webgpu-renderer/scales/quantize";
+import { sqrtScale } from "@genome-spy/webgpu-renderer/scales/sqrt";
+import { symlogScale } from "@genome-spy/webgpu-renderer/scales/symlog";
+import { thresholdScale } from "@genome-spy/webgpu-renderer/scales/threshold";
+
+export const builtInMarks = [
+    pointMark,
+    rectMark,
+    ruleMark,
+    linkMark,
+    textMark,
+] as const;
+
+export const configuredScales = [
+    linearScale(),
+    identityScale(),
+    bandScale(),
+    indexScale(),
+    ordinalScale(),
+    thresholdScale(),
+    logScale(),
+    powScale(),
+    sqrtScale(),
+    symlogScale(),
+    quantizeScale(),
+] as const;
 
 export async function createPointExample(
     canvas: HTMLCanvasElement

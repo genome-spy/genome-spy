@@ -1,4 +1,7 @@
 import { createExampleRenderer, setupResize } from "./utils.js";
+import { pointMark } from "../src/marks/point.js";
+import { indexScale } from "../src/scales/index.js";
+import { ordinalScale } from "../src/scales/ordinal.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -45,32 +48,30 @@ export default async function runPointScene(canvas) {
         fill[i] = xField % palette.length;
     }
 
-    const { markId, scales } = renderer.createMark("point", {
+    const { markId, scales } = renderer.createMark(pointMark, {
         count,
         channels: {
             x: {
                 data: x,
                 type: "u32",
-                scale: {
-                    type: "index",
+                scale: indexScale({
                     domain: [0, cols],
                     paddingInner: 0.1,
                     paddingOuter: 0.2,
                     align: 0.5,
                     band: 0.5,
-                },
+                }),
             },
             y: {
                 data: y,
                 type: "u32",
-                scale: {
-                    type: "index",
+                scale: indexScale({
                     domain: [0, rows],
                     paddingInner: 0.1,
                     paddingOuter: 0.2,
                     align: 0.5,
                     band: 0.5,
-                },
+                }),
             },
             size: { data: size, type: "f32" },
             shape: { data: shape, type: "u32" },
@@ -78,11 +79,10 @@ export default async function runPointScene(canvas) {
                 data: fill,
                 type: "u32",
                 inputComponents: 1,
-                scale: {
-                    type: "ordinal",
+                scale: ordinalScale({
                     domain: fillDomain,
                     range: palette,
-                },
+                }),
             },
             stroke: { value: [0.0, 0.0, 0.0, 1.0] },
             strokeWidth: { value: 1.0 },

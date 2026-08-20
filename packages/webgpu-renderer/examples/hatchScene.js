@@ -1,4 +1,6 @@
 import { createExampleRenderer, setupResize } from "./utils.js";
+import { rectMark } from "../src/marks/rect.js";
+import { indexScale } from "../src/scales/index.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -31,56 +33,52 @@ export default async function runHatchScene(canvas) {
         }
     }
 
-    const { markId: hatchMarkId, scales } = renderer.createMark("rect", {
+    const { markId: hatchMarkId, scales } = renderer.createMark(rectMark, {
         count: hatchCount,
         channels: {
             x: {
                 data: hx,
                 type: "u32",
-                scale: {
-                    type: "index",
+                scale: indexScale({
                     domain: xDomain,
                     paddingInner,
                     paddingOuter: 0,
                     align: 0,
                     band: 0,
-                },
+                }),
             },
             x2: {
                 data: hx,
                 type: "u32",
-                scale: {
-                    type: "index",
+                scale: indexScale({
                     domain: xDomain,
                     paddingInner,
                     paddingOuter: 0,
                     align: 0,
                     band: 1,
-                },
+                }),
             },
             y: {
                 data: hy,
                 type: "u32",
-                scale: {
-                    type: "index",
+                scale: indexScale({
                     domain: yDomain,
                     paddingInner,
                     paddingOuter: 0,
                     align: 0,
                     band: 0,
-                },
+                }),
             },
             y2: {
                 data: hy,
                 type: "u32",
-                scale: {
-                    type: "index",
+                scale: indexScale({
                     domain: yDomain,
                     paddingInner,
                     paddingOuter: 0,
                     align: 0,
                     band: 1,
-                },
+                }),
             },
             fill: { value: [0.98, 0.98, 0.98, 1.0] },
             stroke: { value: [0.1, 0.1, 0.1, 1.0] },

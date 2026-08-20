@@ -9,8 +9,8 @@ This plan focuses on the remaining work. Completed items are omitted.
 - Viewport/scissor management.
 - Worker-friendly update path (transfer buffers, no object reconstruction).
 - Optional vector backend compatibility (stable mark instance schema).
-- Review and stabilize the first code-first definition slice before migrating
-  the remaining built-ins.
+- Add ordered frame submission and stabilize the remaining renderer lifecycle
+  contracts using the Core proof of concept.
 
 #### Picking implementation plan (incremental)
 
@@ -77,7 +77,7 @@ main pass untouched and keep per-frame work minimal.
 ### Scale + shader codegen: remaining gaps
 
 - Param/expr-driven accessors (`uParam_*`) and integration with core.
-- Discretizing scales (quantile/quantize) and temporal scales (time/utc).
+- Quantile and temporal scales (time/utc).
 - Null handling behavior for numeric/color channels.
 
 ### Selections: remaining gaps
@@ -95,42 +95,40 @@ Decision: use explicitly imported immutable definition values. Runtime state
 lives in renderer-created programs and slots, so definitions are reusable and
 contain no device resources.
 
-First slice — complete, awaiting API review:
+Definition migration — complete:
 
 - the generic renderer accepts `MarkDefinition` values and imports no built-in
   mark switch;
-- `pointMark` and `linearScale` have side-effect-free public subpaths;
+- all built-in marks and scales have side-effect-free public subpaths;
 - shader, validation, and resource helpers consume scale definitions directly;
 - a bundle fixture proves that point plus linear excludes unrelated marks,
-  scales, the registry, and font support;
-- the existing string API is isolated in the all-builtins `compatibility`
-  entry used temporarily by examples and the Core PoC.
+  scales, and font support;
+- the string API, compatibility entry, and production scale registry have been
+  removed after migrating examples and the Core PoC.
 
-Next review question: confirm the minimal mark extension protocol and the scale
-factory/config relationship before adding ordered frame submission. Do not
-migrate the remaining built-ins until that review is complete.
+The next integration slice is ordered frame submission. The exact custom mark
+extension and scale-authoring contracts remain experimental, but they no longer
+block migration of built-in features.
 
-### ScaleDef registry consolidation
+### ScaleDef consolidation history
 
-Phase 1: **Document the ScaleDef contract** — OK. Expand the contract in
-`scaleDefs.js` and centralize helper accessors (no behavior change).
+Phase 1: **Document the ScaleDef contract** — OK. Define scale metadata and
+centralize helper accessors without changing behavior.
 
-Phase 2: **Use ScaleDef for validation** — OK. `channelAnalysis` now carries
-scale metadata from the registry, and `channelConfigResolver` consumes it with
-fallbacks.
+Phase 2: **Use ScaleDef for validation** — OK. `channelAnalysis` carries scale
+metadata from imported definitions, and `channelConfigResolver` consumes it.
 
-Phase 3: **Move resource requirements into ScaleDef** — OK. Scale resource
-requirements are resolved from the registry and consumed in `scaleResources`.
+Phase 3: **Move resource requirements into ScaleDef** — OK. Imported
+definitions provide the requirements consumed in `scaleResources`.
 
-Phase 4: **Move WGSL emission into ScaleDef** — OK. Scale emitters now live
-alongside the registry; `scaleCodegen` delegates to per-def emitters.
+Phase 4: **Move WGSL emission into ScaleDef** — OK. Scale emitters live beside
+their definitions; `scaleCodegen` delegates to per-definition emitters.
 
 Phase 5: **Consolidate helpers** — OK. Shared WGSL literal helpers and piecewise
 utilities live in dedicated modules (`wgsl/literals.js`, `scales/scaleUtils.js`).
 
 Phase 6: **Per-scale modules + centralized validation** — OK. Each scale lives
-in `scales/defs/*` and `scaleValidation.js` owns shared config checks; the
-registry in `scaleDefs.js` just imports the per-scale defs.
+in `scales/defs/*`, while `scaleValidation.js` owns shared config checks.
 
 Phase 7: **ScaleDef-driven validation hooks** — OK. Each scale exposes a
 `validate` hook and `scaleValidation.js` delegates scale-specific checks to it.
@@ -141,7 +139,7 @@ definition in `scales/defs/*`, with shared helpers in `scaleEmitUtils.js` and
 
 #### Current State / Context (handoff)
 
-- ScaleDef registry now owns resource rules, WGSL snippets, and emitters;
+- Imported ScaleDef values own resource rules, WGSL snippets, and emitters;
   `scaleCodegen` delegates to `ScaleDef.emit`, and `scaleResources` consumes
   `getScaleResourceRequirements`.
 - WGSL scale helpers are assembled from `wgsl/scaleCommon.wgsl.js` plus
@@ -150,7 +148,7 @@ definition in `scales/defs/*`, with shared helpers in `scaleEmitUtils.js` and
   `validate` hooks) and is invoked from `channelConfigResolver` / `scaleCodegen`.
 - `scaleStops.js` now consults `getScaleResourceRequirements` for stop-array
   kinds.
-- Tests updated: `scaleDefs.test.js` now checks resource requirements.
+- Test-only fixtures import the scale definitions they exercise directly.
 - Slot handles for values/scales are in place; updates route through slots and
   avoid name-based update APIs.
 
@@ -207,8 +205,8 @@ scale-type conditionals.
      `resources` (stopKind, needsDomainMap, needsOrdinalRange), `stopRules`
      (min/max lengths, piecewise behavior), `rangePolicy`
      (allowsColor, allowsFunction, requiresVec4).
-   - File: `src/marks/scales/scaleDefs.js` + per-scale defs in
-     `src/marks/scales/defs/*`.
+   - Files: per-scale definitions in `src/marks/scales/defs/*` and generic
+     accessors in `src/marks/scales/scaleDefinition.js`.
 
 2. **Refactor `channelAnalysis.js`**
    - Replace local logic (`rangeIsFunction`, `rangeIsColor`,

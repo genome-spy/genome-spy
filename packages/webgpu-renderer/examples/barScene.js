@@ -1,4 +1,7 @@
 import { createExampleRenderer, setupResize } from "./utils.js";
+import { rectMark } from "../src/marks/rect.js";
+import { bandScale } from "../src/scales/band.js";
+import { linearScale } from "../src/scales/linear.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -22,48 +25,44 @@ export default async function runBarScene(canvas) {
         y[i] = data[i];
     }
 
-    const { markId, scales } = renderer.createMark("rect", {
+    const { markId, scales } = renderer.createMark(rectMark, {
         count,
         channels: {
             x: {
                 data: x,
                 type: "u32",
-                scale: {
-                    type: "band",
+                scale: bandScale({
                     domain: xDomain,
                     paddingInner: 0.3,
                     paddingOuter: 0.3,
                     align: 0.5,
                     band: 0.0,
-                },
+                }),
             },
             x2: {
                 data: x2,
                 type: "u32",
-                scale: {
-                    type: "band",
+                scale: bandScale({
                     domain: xDomain,
                     paddingInner: 0.3,
                     paddingOuter: 0.3,
                     align: 0.5,
                     band: 1.0,
-                },
+                }),
             },
             y: {
                 data: y,
                 type: "f32",
-                scale: {
-                    type: "linear",
+                scale: linearScale({
                     domain: [0, Math.max(...data)],
-                },
+                }),
             },
             y2: {
                 value: 0,
                 type: "f32",
-                scale: {
-                    type: "linear",
+                scale: linearScale({
                     domain: [0, Math.max(...data)],
-                },
+                }),
             },
             fill: { value: [0.2, 0.45, 0.85, 1.0] },
             stroke: { value: [0.0, 0.0, 0.0, 1.0] },

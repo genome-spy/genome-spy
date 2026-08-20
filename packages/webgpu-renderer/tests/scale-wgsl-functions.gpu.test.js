@@ -14,7 +14,7 @@ import {
     scaleSymlog,
 } from "d3-scale";
 import { buildScaleWgsl } from "../src/marks/scales/scaleWgsl.js";
-import { getScaleDefs } from "../src/marks/scales/scaleDefs.js";
+import { getTestScaleDefinitions } from "../testUtils/scaleDefinitions.js";
 import {
     BASE,
     packHighPrecisionDomain,
@@ -25,7 +25,7 @@ import { ensureWebGPU } from "./gpuTestUtils.js";
 const WORKGROUP_SIZE = 64;
 const LOW_MASK = BASE - 1;
 const f32 = Math.fround;
-const ALL_SCALE_DEFINITIONS = Object.values(getScaleDefs());
+const ALL_SCALE_DEFINITIONS = getTestScaleDefinitions();
 
 /**
  * @param {number} value
