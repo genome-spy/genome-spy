@@ -207,10 +207,10 @@ selection.
 If multiple channels reference the same `TypedArray` at mark creation, the
 renderer treats them as a shared series buffer and reuses a single GPU binding.
 Sharing is determined by `TypedArray` identity and stays fixed for the mark.
-`series.replace()` requires every series-backed channel configured on the mark.
-Channels in a shared group must still use the same array instance (you can swap
-to a new array as long as the group stays shared). Array lengths may change. If
-you need a different sharing pattern, recreate the mark.
+`series.replace()` requires every series-backed logical channel configured on
+the mark. Channels in a shared group must still use the same array instance
+(you can swap to a new array as long as the group stays shared). Array lengths
+may change. If you need a different sharing pattern, recreate the mark.
 
 Text handles accept logical strings in the `text` series. The text definition
 rebuilds glyph layout and expands the other per-string series as a complete set
@@ -233,6 +233,11 @@ domain space.
 Conditional channel branches are normalized into internal synthetic channels
 (`fill__cond0`, etc.) for shader generation; users only define conditions on
 the original channel.
+
+When the default and conditional branches of a logical channel contain exactly
+one series-backed branch, replace it using the original channel name. Multiple
+series-backed branches remain valid for mark creation and rendering, but public
+series replacement for that channel is not supported yet.
 
 Update selection state via slot handles (`selections.brush.set(...)`), which
 write the selection uniforms/buffers without rebuilding the mark.

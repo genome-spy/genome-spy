@@ -137,6 +137,97 @@ describe("BaseProgram slot handles", () => {
             program._uniformBufferState.view.getFloat32(fillEntry.offset, true)
         ).toBeCloseTo(0.2);
     });
+
+    it("replaces a single conditional series through its logical channel", () => {
+        const program = createSlotProgram(createMockRenderer(), {
+            channels: {
+                uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
+                x: { data: new Float32Array([0, 1]), type: "f32" },
+                size: { value: 1, type: "f32" },
+                fill: {
+                    value: [0, 0, 0, 1],
+                    type: "f32",
+                    components: 4,
+                    conditions: [
+                        {
+                            when: {
+                                selection: "brush",
+                                type: "single",
+                            },
+                            channel: {
+                                data: new Float32Array(8),
+                                type: "f32",
+                                components: 4,
+                            },
+                        },
+                    ],
+                },
+            },
+        });
+        const nextFill = new Float32Array([1, 0, 0, 1, 0, 1, 0, 1]);
+
+        program.getSlotHandles().series.replace({
+            uniqueId: new Uint32Array([2, 3]),
+            x: new Float32Array([2, 3]),
+            fill: nextFill,
+        });
+
+        expect(program._channels.fill__cond0.data).toBe(nextFill);
+        expect(program._channels.fill.value).toEqual([0, 0, 0, 1]);
+    });
+
+    it("keeps multiple conditional series renderable but not replaceable", () => {
+        const first = new Float32Array(8);
+        const second = new Float32Array(8);
+        const program = createSlotProgram(createMockRenderer(), {
+            channels: {
+                uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
+                x: { data: new Float32Array([0, 1]), type: "f32" },
+                size: { value: 1, type: "f32" },
+                fill: {
+                    value: [0, 0, 0, 1],
+                    type: "f32",
+                    components: 4,
+                    conditions: [
+                        {
+                            when: {
+                                selection: "first",
+                                type: "single",
+                            },
+                            channel: {
+                                data: first,
+                                type: "f32",
+                                components: 4,
+                            },
+                        },
+                        {
+                            when: {
+                                selection: "second",
+                                type: "single",
+                            },
+                            channel: {
+                                data: second,
+                                type: "f32",
+                                components: 4,
+                            },
+                        },
+                    ],
+                },
+            },
+        });
+
+        expect(program._channels.fill__cond0.data).toBe(first);
+        expect(program._channels.fill__cond1.data).toBe(second);
+        expect(() =>
+            program.getSlotHandles().series.replace({
+                uniqueId: new Uint32Array([2, 3]),
+                x: new Float32Array([2, 3]),
+                fill: new Float32Array(8),
+            })
+        ).toThrow(
+            'Series replacement for channel "fill" is not supported because it has multiple series-backed branches.'
+        );
+    });
 });
 
 /**
