@@ -26,6 +26,8 @@ const SHAPE_CODES = new Map(
         "tick-right",
         "tick-down",
         "tick-left",
+        "x",
+        "+",
     ].map((shape, index) => [shape, index])
 );
 
@@ -247,6 +249,8 @@ function createPointConfig(mark, data, coords, viewOpacity) {
  * @returns {object}
  */
 function createRuleConfig(mark, data, coords, viewOpacity) {
+    const strokeDash = readProperty(mark, "strokeDash");
+
     return {
         count: data.length,
         channels: {
@@ -269,7 +273,9 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
             strokeDashOffset: {
                 value: readNumericProperty(mark, "strokeDashOffset"),
             },
+            strokeDash: { value: 0, type: "u32" },
         },
+        dashPatterns: strokeDash == null ? null : [strokeDash],
     };
 }
 
