@@ -12,8 +12,9 @@ before the work is merged, as required by the repository workflow.
 
 The companion [renderer API direction](webgpu-renderer-api-direction.md) records
 the code-first, tree-shakeable public API direction inferred from the PoC. Its
-built-in definition migration and compatibility cleanup are complete; ordered
-frame submission is the next reviewable step.
+built-in definition migration, compatibility cleanup, and explicit draw-frame
+submission are complete. Occurrence-specific scale state and deterministic
+lifecycle are the next reviewable contracts.
 
 ## Context
 
@@ -82,16 +83,19 @@ The package already provides:
 
 The package is not yet a production-ready Core backend:
 
-- `render()` draws every registered mark in insertion order. It cannot accept
-  Core's per-frame paint order or draw the same semantic mark in multiple view
-  occurrences.
-- There is no per-draw view rectangle, scissor/clip rectangle, opacity, or data
-  range. These are required for nested views and facets.
+- `render({ draws, clearColor })` accepts ordered retained-handle occurrences
+  with logical-pixel viewports, scissors, and instance ranges. Visible and
+  picking passes reuse the same normalized frame.
+- Per-draw opacity and occurrence-specific scale state are still missing. Core
+  therefore cannot yet draw a retained semantic mark in repeated views whose
+  pixel scale ranges differ.
 - Width, height, range, and device-pixel-ratio semantics are ambiguous. The
   examples appear to mix physical canvas dimensions with logical pixel ranges.
-- The clear color is hardcoded to white.
+- The frame accepts a clear color, although the current Core PoC still validates
+  and uses only its default white background.
 - Whole-renderer destruction is missing and lower-level resource destruction is
-  incomplete.
+  incomplete. Asynchronous text preparation now invalidates the host instead of
+  submitting an implicit creation-order frame.
 - Runtime dependencies are declared by the renderer package, and its migration
   note records the code-first definition API.
 - The scale set is not yet at Core parity. Notable missing or incompatible areas
@@ -422,13 +426,13 @@ selection did not request either module tree. The backend unit test additionally
 asserts that explicit WebGPU selection calls neither the WebGL helper nor the
 Canvas backend.
 
-Milestone 1 retains the following deliberate workarounds for review in
+Milestone 1 retained the following deliberate workarounds for review in
 Milestone 2:
 
 - mark handles are rebuilt in traversal order for every painted frame;
 - the surface destroys rebuilt mark handles, its resize observer, and canvas,
   but whole-renderer/device disposal remains unavailable in the low-level API;
-- only a white/default clear color is accepted because the renderer hardcodes
+- only a white/default clear color was accepted because the renderer hardcoded
   white;
 - Core's generic `sans-serif` default is mapped to the embedded Lato atlas;
 - the adapter supports only the point, rule/tick, text, scale, and property
@@ -453,8 +457,9 @@ Verification completed for the slice:
 
 ### Milestone 2: Harden only the renderer contracts validated by the PoC
 
-Implementation status: Built-in definition migration and bundle-proof slice
-complete on 2026-08-20; ordered frame submission is next.
+Implementation status: Built-in definition migration, bundle proof, and the
+explicit draw-frame slice completed on 2026-08-20. Occurrence-specific scale
+state and lifecycle work remain.
 
 Outcome: the successful vertical slice no longer depends on accidental or
 ambiguous renderer behavior, while unused generality remains deferred.
@@ -469,14 +474,25 @@ Completed definition slice:
   production bundle;
 - keep the existing typed-column and slot-update model.
 
+Completed explicit frame slice:
+
+- replace ordered mark IDs with retained-handle draw commands;
+- preserve caller paint order and reuse the same normalized frame for picking;
+- support logical-pixel viewports and scissors, clear color, and instance
+  ranges, converting occurrence geometry to physical pixels once using DPR;
+- verify two occurrences of one retained handle with distinct viewports,
+  scissors, ranges, and pick IDs;
+- route asynchronous text-atlas readiness through host invalidation so it
+  cannot overwrite Core's frame order or picking descriptors;
+- migrate the Core surface to the draw-command API while retaining its current
+  full-canvas absolute-coordinate bridge.
+
 Remaining implementation:
 
-- formalize logical-size, physical attachment, and DPR semantics demonstrated by
-  the slice;
-- replace the rebuild-in-creation-order workaround with the explicit ordered
-  draw-list direction described in the companion API note;
-- define clearing/background and resize ownership only to the extent exercised
-  by Core and the standalone examples;
+- extend the explicit ordered draw list with per-occurrence opacity and the
+  scale state required by repeated Core layout instances;
+- finish resize and physical-attachment ownership beyond the now-documented
+  logical-pixel and DPR conversion contract;
 - add whole-renderer destruction and complete cleanup for resources owned by the
   integrated path;
 - replace PoC-specific API workarounds in the Core adapter with the validated
@@ -644,9 +660,9 @@ layer would add weight without removing the Core semantic adapter.
   lazy loading, and ordered guide drawing in addition to the initial pixels.
 - **Unit/logical/physical coordinates become mixed.** Define one logical-pixel
   contract and confine the temporary unit-range bridge to one module.
-- **Persistent handles lose Core paint order.** Isolate creation-order reliance
-  in the vertical slice and rebuild handles deterministically; add explicit frame
-  order during hardening if updates make that assumption invalid.
+- **Repeated handles silently reuse the wrong scale ranges.** Keep Core's
+  repeated-occurrence guard until draw-time scale state or an equivalent
+  layout-instance contract is implemented and covered.
 - **Facets appear to work while drawing wrong data.** Fail on repeated
   occurrences until data ranges and per-draw state are implemented.
 - **Core internals leak into the generic package.** Keep all Core imports and

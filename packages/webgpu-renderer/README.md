@@ -85,16 +85,31 @@ without expanding vertices on the CPU.
 
 ## API (Public Surface)
 
-- `createRenderer(canvas, options)`
+- `createRenderer(canvas, { format?, alphaMode?, onInvalidate? })`
 - `renderer.createMark(definition, config)` (returns `{ markId, series, scales, values, selections }`)
 - `handle.series.replace(channels, count?)`
 - `renderer.updateGlobals({ width, height, dpr })`
-- `renderer.render(markIds?)`
+- `renderer.render({ draws?, clearColor? })`
 - `renderer.destroyMark(markId)`
 
-Type definitions live in `packages/webgpu-renderer/src/index.d.ts`.
-Pass retained mark IDs to `render()` to set frame and picking order without
-recreating their resources. Omitting the argument uses creation order.
+Type definitions live in `packages/webgpu-renderer/src/index.d.ts`. A draw
+command references a retained handle and may provide a logical-pixel viewport,
+scissor rectangle, and instance range. The ordered commands define both visible
+and picking order without recreating mark resources. Omitting `draws` uses
+creation order and a full-canvas viewport.
+
+`updateGlobals({ width, height, dpr })` uses logical CSS-pixel dimensions. The
+host owns the canvas backing size and should set it to `width * dpr` by
+`height * dpr`; the renderer converts viewports and scissors to physical pixels
+once when encoding the frame.
+
+Asynchronous resource preparation never submits a frame implicitly. When text
+atlas loading changes visible output, `onInvalidate` asks the host to schedule
+and submit its current frame again.
+
+Viewport-local position ranges are the caller's responsibility. This lets one
+handle be reused in several same-shaped viewport occurrences; varying scale
+ranges per occurrence will require a separate draw-time scale-state contract.
 
 Built-in marks and scales are selected through side-effect-free subpath
 imports:
@@ -146,7 +161,7 @@ import { linearScale } from "@genome-spy/webgpu-renderer/scales/linear";
 const renderer = await createRenderer(canvas);
 const x = new Float32Array([0, 0.5, 1]);
 const y = new Float32Array([0.2, 0.8, 0.4]);
-const { markId, series, scales } = renderer.createMark(pointMark, {
+const points = renderer.createMark(pointMark, {
   channels: {
     x: {
       data: x,
@@ -162,9 +177,17 @@ const { markId, series, scales } = renderer.createMark(pointMark, {
   },
 });
 
-scales.x.setDomain([0.1, 0.9]);
-series.replace({ x, y });
-renderer.render();
+points.scales.x.setDomain([0.1, 0.9]);
+points.series.replace({ x, y });
+renderer.render({
+  draws: [
+    {
+      mark: points,
+      viewport: { x: 0, y: 0, width: 640, height: 440 },
+      scissor: { x: 20, y: 20, width: 600, height: 400 },
+    },
+  ],
+});
 ```
 
 `count` is optional when at least one series channel is provided. The renderer

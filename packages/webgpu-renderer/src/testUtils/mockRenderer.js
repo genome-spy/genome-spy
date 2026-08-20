@@ -13,8 +13,12 @@ export function createMockRenderer() {
         createRenderPipeline: () => ({}),
         createBindGroup: () => ({}),
         createSampler: () => ({}),
-        createTexture: () => ({ createView: () => ({}) }),
-        queue: { writeBuffer: () => {}, writeTexture: () => {} },
+        createTexture: () => ({ createView: () => ({}), destroy: () => {} }),
+        queue: {
+            writeBuffer: () => {},
+            writeTexture: () => {},
+            copyExternalImageToTexture: () => {},
+        },
     };
 
     return /** @type {import("../renderer.js").Renderer} */ (
@@ -26,6 +30,7 @@ export function createMockRenderer() {
             _globalBindGroup: {},
             _globals: { width: 1, height: 1, dpr: 1 },
             markPickingDirty: () => {},
+            _invalidate: () => {},
         })
     );
 }

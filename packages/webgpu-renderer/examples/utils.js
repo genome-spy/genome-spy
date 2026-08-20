@@ -10,7 +10,11 @@ setDebugResourcesEnabled(true);
  * @returns {Promise<import("../src/renderer.js").Renderer>}
  */
 export async function createExampleRenderer(canvas) {
-    const renderer = await createRenderer(canvas);
+    /** @type {import("../src/renderer.js").Renderer} */
+    let renderer;
+    renderer = await createRenderer(canvas, {
+        onInvalidate: () => renderer.render(),
+    });
 
     const createMark = renderer.createMark.bind(renderer);
     renderer.createMark = (definition, config) => {
@@ -35,15 +39,17 @@ export function setupResize(canvas, renderer, onResize) {
         const rect = canvas.getBoundingClientRect();
         canvas.width = Math.max(1, Math.floor(rect.width * dpr));
         canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+        const width = canvas.width / dpr;
+        const height = canvas.height / dpr;
 
         renderer.updateGlobals({
-            width: canvas.width,
-            height: canvas.height,
+            width,
+            height,
             dpr,
         });
 
         if (onResize) {
-            onResize({ width: canvas.width, height: canvas.height, dpr });
+            onResize({ width, height, dpr });
         }
 
         renderer.render();

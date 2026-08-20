@@ -36,6 +36,7 @@ export default class BaseProgram {
     constructor(renderer, config) {
         this.renderer = renderer;
         this.device = renderer.device;
+        this._destroyed = false;
         /** @type {{ channels: Record<string, ChannelConfigInput>, count?: number, [key: string]: unknown }} */
         this._markConfig = config;
 
@@ -800,26 +801,27 @@ export default class BaseProgram {
 
     /**
      * @param {GPURenderPassEncoder} pass
+     * @param {import("../../../index.d.ts").ProgramDrawOptions} options
      */
-    draw(pass) {
+    draw(pass, options) {
         pass.setPipeline(this._pipeline);
-        pass.setBindGroup(0, this.renderer._globalBindGroup);
         pass.setBindGroup(1, this._bindGroup);
-        pass.draw(6, this.count, 0, 0);
+        pass.draw(6, options.instanceCount, 0, options.firstInstance);
     }
 
     /**
      * @param {GPURenderPassEncoder} pass
+     * @param {import("../../../index.d.ts").ProgramDrawOptions} options
      * @returns {void}
      */
-    drawPick(pass) {
+    drawPick(pass, options) {
         pass.setPipeline(this._pickPipeline);
-        pass.setBindGroup(0, this.renderer._globalBindGroup);
         pass.setBindGroup(1, this._bindGroup);
-        pass.draw(6, this.count, 0, 0);
+        pass.draw(6, options.instanceCount, 0, options.firstInstance);
     }
 
     destroy() {
+        this._destroyed = true;
         // TODO: Track and destroy buffers once GPUBuffer.destroy is supported in all targets.
     }
     // Type guards live in src/types.js to keep runtime checks consistent across modules.

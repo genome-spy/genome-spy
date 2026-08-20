@@ -1038,6 +1038,9 @@ export default class TextProgram extends BaseProgram {
      * @returns {void}
      */
     _setAtlasFromBitmap(image) {
+        if (this._destroyed) {
+            return;
+        }
         const texture = this.device.createTexture({
             size: {
                 width: image.width,
@@ -1065,7 +1068,7 @@ export default class TextProgram extends BaseProgram {
         if (this._bindGroupLayout) {
             this._rebuildBindGroup();
         }
-        this.renderer.render();
+        this.renderer._invalidate();
     }
 
     /**

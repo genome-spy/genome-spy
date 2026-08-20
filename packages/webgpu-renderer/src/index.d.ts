@@ -779,6 +779,8 @@ export type MarkConfig<T extends MarkType = MarkType> = {
 export type RendererOptions = {
     alphaMode?: GPUCanvasAlphaMode;
     format?: GPUTextureFormat;
+    /** Called when asynchronous renderer work requires the host to draw again. */
+    onInvalidate?: () => void;
 };
 
 export type GlobalUniforms = {
@@ -787,17 +789,53 @@ export type GlobalUniforms = {
     dpr: number;
 };
 
+export type DrawRect = {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+};
+
+export type DrawCommand = {
+    /** Retained mark whose resources are reused for this occurrence. */
+    mark: Pick<MarkHandle, "markId">;
+    /**
+     * Logical-pixel viewport. Mark position ranges are local to this rectangle.
+     * Defaults to the full logical canvas.
+     */
+    viewport?: DrawRect;
+    /** Logical-pixel clipping rectangle. Defaults to the full canvas. */
+    scissor?: DrawRect;
+    /** First retained instance to draw. Defaults to zero. */
+    firstInstance?: number;
+    /** Number of retained instances to draw. Defaults to the remaining count. */
+    instanceCount?: number;
+};
+
+export type RenderFrame = {
+    /** Ordered mark occurrences. Defaults to all retained marks in creation order. */
+    draws?: Iterable<DrawCommand>;
+    /** Canvas clear color. Defaults to opaque white. */
+    clearColor?: GPUColor;
+};
+
+export type ProgramDrawOptions = {
+    firstInstance: number;
+    instanceCount: number;
+};
+
 export class RendererError extends Error {}
 
 export type MarkProgram<
     TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
 > = {
+    readonly count: number;
     getSlotHandles(): Omit<MarkHandle<TSeries>, "markId">;
     replaceSeries(channels: TSeries, count?: number): void;
     updateValues(values: Record<string, number | number[]>): void;
     debugResources(label?: string): void;
-    draw(pass: GPURenderPassEncoder): void;
-    drawPick(pass: GPURenderPassEncoder): void;
+    draw(pass: GPURenderPassEncoder, options: ProgramDrawOptions): void;
+    drawPick(pass: GPURenderPassEncoder, options: ProgramDrawOptions): void;
     destroy(): void;
 };
 
@@ -828,8 +866,8 @@ export class Renderer {
      */
     pick(x: number, y: number): Promise<number | null>;
 
-    /** Draw the current frame in the requested retained-mark order. */
-    render(markIds?: Iterable<MarkId>): void;
+    /** Draw an ordered frame of retained mark occurrences. */
+    render(frame?: RenderFrame): void;
 
     /** Destroy GPU resources associated with a mark. */
     destroyMark(markId: MarkId): void;

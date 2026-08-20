@@ -36,6 +36,7 @@ import { exportCanvas, exportRaster } from "../genomeSpy/canvasExport.js";
  * @property {() => { width: number | undefined, height: number | undefined }} sizeSource
  * @property {WebGLPowerPreference} powerPreference
  * @property {() => void} onCanvasResize
+ * @property {() => void} [onRenderInvalidated]
  */
 
 /**

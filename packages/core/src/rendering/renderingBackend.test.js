@@ -46,6 +46,7 @@ const baseOptions = {
     sizeSource: () => ({ width: 100, height: 50 }),
     powerPreference: /** @type {const} */ ("default"),
     onCanvasResize: /** @returns {void} */ () => undefined,
+    onRenderInvalidated: /** @returns {void} */ () => undefined,
 };
 
 describe("createRenderingBackend", () => {
