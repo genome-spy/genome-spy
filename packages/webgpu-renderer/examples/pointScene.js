@@ -48,7 +48,7 @@ export default async function runPointScene(canvas) {
         fill[i] = xField % palette.length;
     }
 
-    const { markId, scales } = renderer.createMark(pointMark, {
+    const { markId, series, scales } = renderer.createMark(pointMark, {
         count,
         channels: {
             x: {
@@ -97,8 +97,7 @@ export default async function runPointScene(canvas) {
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);
 
-    renderer.updateSeries(
-        markId,
+    series.replace(
         {
             x,
             y,

@@ -25,7 +25,7 @@ export default async function runBarScene(canvas) {
         y[i] = data[i];
     }
 
-    const { markId, scales } = renderer.createMark(rectMark, {
+    const { markId, series, scales } = renderer.createMark(rectMark, {
         count,
         channels: {
             x: {
@@ -80,8 +80,7 @@ export default async function runBarScene(canvas) {
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);
 
-    renderer.updateSeries(
-        markId,
+    series.replace(
         {
             x,
             x2,

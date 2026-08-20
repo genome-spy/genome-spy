@@ -47,6 +47,7 @@ export default async function runIndexScene(canvas) {
     }
 
     let markId = null;
+    let series = null;
     let scales = null;
     let values = null;
     let activeKey = "u32";
@@ -105,10 +106,11 @@ export default async function runIndexScene(canvas) {
             },
         });
         markId = handle.markId;
+        series = handle.series;
         scales = handle.scales;
         values = handle.values;
 
-        renderer.updateSeries(markId, { x: activeValues }, count);
+        series.replace({ x: activeValues }, count);
         updateRanges({
             width: canvas.width,
             height: canvas.height,

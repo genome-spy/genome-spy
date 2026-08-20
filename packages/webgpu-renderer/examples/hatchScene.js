@@ -33,7 +33,11 @@ export default async function runHatchScene(canvas) {
         }
     }
 
-    const { markId: hatchMarkId, scales } = renderer.createMark(rectMark, {
+    const {
+        markId: hatchMarkId,
+        series,
+        scales,
+    } = renderer.createMark(rectMark, {
         count: hatchCount,
         channels: {
             x: {
@@ -101,8 +105,7 @@ export default async function runHatchScene(canvas) {
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);
 
-    renderer.updateSeries(
-        hatchMarkId,
+    series.replace(
         {
             x: hx,
             y: hy,

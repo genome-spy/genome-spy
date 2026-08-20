@@ -51,7 +51,7 @@ const STROKE_CAP_CODES = new Map([
  * @param {import("../../marks/mark.js").default} mark
  * @param {import("../../types/rendering.js").RenderingOptions} options
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @returns {{definition: import("@genome-spy/webgpu-renderer").MarkDefinition<any>, config: object} | undefined}
+ * @returns {{definition: import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>, config: object} | undefined}
  */
 export function createWebGpuMarkConfig(mark, options, coords) {
     if (options.sampleFacetRenderingOptions || mark.encoders.facetIndex) {

@@ -125,9 +125,10 @@ export class Renderer {
 
     /**
      * @template TConfig
-     * @param {import("./index.d.ts").MarkDefinition<TConfig>} definition
+     * @template {Record<string, import("./index.d.ts").SeriesData>} TSeries
+     * @param {import("./index.d.ts").MarkDefinition<TConfig, TSeries>} definition
      * @param {TConfig} config
-     * @returns {import("./index.d.ts").MarkHandle}
+     * @returns {import("./index.d.ts").MarkHandle<TSeries>}
      */
     createMark(definition, config) {
         const mark = definition.createProgram(this, config);
@@ -138,24 +139,11 @@ export class Renderer {
         const slotHandles = mark.getSlotHandles();
         return {
             markId,
+            series: slotHandles.series,
             scales: slotHandles.scales,
             values: slotHandles.values,
             selections: slotHandles.selections,
         };
-    }
-
-    /**
-     * @param {import("./index.d.ts").MarkId} markId
-     * @param {Record<string, TypedArray>} channels
-     * @param {number} [count]
-     * @returns {void}
-     */
-    updateSeries(markId, channels, count) {
-        const mark = this._marks.get(markId);
-        if (!mark) {
-            throw new RendererError(`No such mark: ${markId}`);
-        }
-        mark.updateSeries(channels, count);
     }
 
     /**

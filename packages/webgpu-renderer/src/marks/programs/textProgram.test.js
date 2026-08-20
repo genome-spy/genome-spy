@@ -1,0 +1,142 @@
+import { describe, expect, it } from "vitest";
+
+import { createMockRenderer } from "../../testUtils/mockRenderer.js";
+import { identityScale } from "../../scales/identity.js";
+import TextProgram from "./textProgram.js";
+
+describe("TextProgram series replacement", () => {
+    it("rebuilds glyph layout from logical strings without recreating the pipeline", () => {
+        const renderer = createMockRenderer();
+        const program = new TextProgram(renderer, {
+            count: 2,
+            channels: {
+                text: { data: ["0", "0"] },
+                x: {
+                    data: new Float32Array([0, 0]),
+                    type: "f32",
+                    scale: identityScale(),
+                },
+                y: {
+                    data: new Float32Array([5, 6]),
+                    type: "f32",
+                    scale: identityScale(),
+                },
+            },
+        });
+        const pipeline = program._pipeline;
+        const fontAtlas = program._extraTextures.get("fontAtlas")?.texture;
+
+        program.getSlotHandles().series.replace({
+            text: ["-1", "2"],
+            x: new Float32Array([10, 20]),
+            y: new Float32Array([30, 40]),
+        });
+
+        expect(program.count).toBe(3);
+        expect(program._textLayout.glyphIds).toHaveLength(3);
+        expect(program._channels.x.data).toEqual(
+            new Float32Array([10, 10, 20])
+        );
+        expect(program._channels.y.data).toEqual(
+            new Float32Array([30, 30, 40])
+        );
+        expect(program._pipeline).toBe(pipeline);
+        expect(program._extraTextures.get("fontAtlas")?.texture).toBe(
+            fontAtlas
+        );
+    });
+
+    it("requires a count when replacing scalar text", () => {
+        const program = new TextProgram(createMockRenderer(), {
+            count: 1,
+            channels: {
+                text: { value: "x" },
+                x: { value: 0, scale: identityScale() },
+                y: { value: 0, scale: identityScale() },
+            },
+        });
+
+        expect(() =>
+            program.getSlotHandles().series.replace({ text: "y" })
+        ).toThrow("Replacing a scalar text series requires an explicit count.");
+
+        program.getSlotHandles().series.replace({ text: "y" }, 2);
+        expect(program._textLayout.textWidth).toHaveLength(2);
+    });
+
+    it("preserves aliases while expanding logical per-string arrays", () => {
+        const shared = new Float32Array([1, 2]);
+        const program = new TextProgram(createMockRenderer(), {
+            count: 2,
+            channels: {
+                text: { data: ["aa", "b"] },
+                x: { data: shared, type: "f32", scale: identityScale() },
+                y: { data: shared, type: "f32", scale: identityScale() },
+            },
+        });
+
+        expect(program._channels.x.data).toBe(program._channels.y.data);
+
+        const next = new Float32Array([10, 20]);
+        program.getSlotHandles().series.replace({
+            text: ["ccc", "d"],
+            x: next,
+            y: next,
+        });
+
+        expect(program._channels.x.data).toBe(program._channels.y.data);
+        expect(program._channels.x.data).toEqual(
+            new Float32Array([10, 10, 10, 20])
+        );
+    });
+
+    it("rejects glyph-length arrays in the logical replacement API", () => {
+        const program = new TextProgram(createMockRenderer(), {
+            count: 2,
+            channels: {
+                text: { data: ["a", "b"] },
+                x: {
+                    data: new Float32Array([1, 2]),
+                    type: "f32",
+                    scale: identityScale(),
+                },
+                y: { value: 0, scale: identityScale() },
+            },
+        });
+
+        expect(() =>
+            program.getSlotHandles().series.replace({
+                text: ["ab", "cd"],
+                x: new Float32Array([1, 2, 3, 4]),
+            })
+        ).toThrow('Text channel "x" expects 2 values, got 4.');
+    });
+
+    it("supports logical strings that produce no glyphs", () => {
+        const program = new TextProgram(createMockRenderer(), {
+            count: 2,
+            channels: {
+                text: { data: ["", ""] },
+                x: {
+                    data: new Float32Array([1, 2]),
+                    type: "f32",
+                    scale: identityScale(),
+                },
+                y: {
+                    data: new Float32Array([3, 4]),
+                    type: "f32",
+                    scale: identityScale(),
+                },
+            },
+        });
+
+        expect(program.count).toBe(0);
+        expect(program._channels.x.data).toHaveLength(0);
+        expect(program._extraBuffers.get("glyphs")?.size).toBe(4);
+        expect(
+            Array.from(program._seriesBuffers._packedBuffers.values()).map(
+                ({ buffer }) => buffer.size
+            )
+        ).toEqual([4, 4]);
+    });
+});

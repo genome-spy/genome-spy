@@ -4,7 +4,10 @@ import { linearScale } from "../../scales/linear.js";
 import { buildTextLayout } from "../../fonts/layout.js";
 import BmFontManager from "../../fonts/bmFontManager.js";
 import { SDF_PADDING } from "../../fonts/bmFontMetrics.js";
-import { createTextureFromData } from "../../utils/webgpuTextureUtils.js";
+import {
+    asGpuBufferSource,
+    createTextureFromData,
+} from "../../utils/webgpuTextureUtils.js";
 
 /**
  * Text rendering overview (SDF + per-glyph instancing).
@@ -422,7 +425,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 
 /**
  * @param {TextConfigInput} [params]
- * @returns {{ normalized: { channels: Record<string, ChannelConfigInput>, count?: number }, textLayout: import("../../fonts/layout.js").TextLayout, fontEntry: FontEntry }}
+ * @returns {{ normalized: { channels: Record<string, ChannelConfigInput>, count?: number }, textLayout: import("../../fonts/layout.js").TextLayout, fontEntry: FontEntry, fontManager: BmFontManager }}
  */
 function normalizeTextConfig({
     channels = {},
@@ -483,6 +486,7 @@ function normalizeTextConfig({
             },
             textLayout: layout,
             fontEntry,
+            fontManager,
         };
     }
 
@@ -516,17 +520,14 @@ function normalizeTextConfig({
         strings = Array.from({ length: repeat }, () => "");
     }
 
-    const layout = buildTextLayout({
-        strings,
+    const layout = buildConfiguredTextLayout(strings, {
         fontManager,
-        font: {
-            family: typeof font === "string" ? font : "Lato",
-            style: resolvedStyle,
-            weight: resolvedWeight,
-        },
-        fontSize: typeof fontSize === "number" ? fontSize : 12,
-        lineHeight: typeof lineHeight === "number" ? lineHeight : 1.0,
-        letterSpacing: typeof letterSpacing === "number" ? letterSpacing : 0.0,
+        font,
+        fontStyle,
+        fontWeight,
+        fontSize,
+        lineHeight,
+        letterSpacing,
     });
     normalizedChannels.text = {
         data: layout.glyphIds,
@@ -545,7 +546,50 @@ function normalizeTextConfig({
         },
         textLayout: layout,
         fontEntry,
+        fontManager,
     };
+}
+
+/**
+ * @param {string[]} strings
+ * @param {object} options
+ * @param {BmFontManager} options.fontManager
+ * @param {unknown} [options.font]
+ * @param {unknown} [options.fontStyle]
+ * @param {unknown} [options.fontWeight]
+ * @param {unknown} [options.fontSize]
+ * @param {unknown} [options.lineHeight]
+ * @param {unknown} [options.letterSpacing]
+ */
+function buildConfiguredTextLayout(
+    strings,
+    {
+        fontManager,
+        font,
+        fontStyle,
+        fontWeight,
+        fontSize,
+        lineHeight,
+        letterSpacing,
+    }
+) {
+    const resolvedStyle = fontStyle === "italic" ? "italic" : "normal";
+    const resolvedWeight =
+        typeof fontWeight === "number" || typeof fontWeight === "string"
+            ? /** @type {FontWeightInput} */ (fontWeight)
+            : 400;
+    return buildTextLayout({
+        strings,
+        fontManager,
+        font: {
+            family: typeof font === "string" ? font : "Lato",
+            style: resolvedStyle,
+            weight: resolvedWeight,
+        },
+        fontSize: typeof fontSize === "number" ? fontSize : 12,
+        lineHeight: typeof lineHeight === "number" ? lineHeight : 1.0,
+        letterSpacing: typeof letterSpacing === "number" ? letterSpacing : 0.0,
+    });
 }
 
 /**
@@ -555,8 +599,12 @@ function normalizeTextConfig({
  * @returns {void}
  */
 function expandTextSeries(channels, stringIndex, stringCount) {
-    const glyphCount = stringIndex.length;
+    /** @type {Map<TypedArray, Map<number, TypedArray>>} */
+    const expandedBySource = new Map();
     for (const [name, channel] of Object.entries(channels)) {
+        if (name === "text") {
+            continue;
+        }
         if (!channel || typeof channel !== "object") {
             continue;
         }
@@ -570,26 +618,14 @@ function expandTextSeries(channels, stringIndex, stringCount) {
                 : (spec?.components ?? 1);
         const data = channel.data;
         if (ArrayBuffer.isView(data)) {
-            if (data.length === glyphCount * components) {
-                continue;
-            }
-            if (data.length !== stringCount * components) {
-                throw new Error(
-                    `Text channel "${name}" expects ${stringCount} values, got ${data.length / components}.`
-                );
-            }
-            const Expanded = /** @type {new (length: number) => TypedArray} */ (
-                data.constructor
+            channel.data = expandLogicalTextArray(
+                name,
+                data,
+                components,
+                stringIndex,
+                stringCount,
+                expandedBySource
             );
-            const expanded = new Expanded(glyphCount * components);
-            for (let i = 0; i < glyphCount; i++) {
-                const src = stringIndex[i] * components;
-                const dest = i * components;
-                for (let c = 0; c < components; c++) {
-                    expanded[dest + c] = data[src + c];
-                }
-            }
-            channel.data = expanded;
         }
     }
 }
@@ -601,37 +637,79 @@ function expandTextSeries(channels, stringIndex, stringCount) {
  * @returns {Record<string, TypedArray>}
  */
 function expandTextSeriesArrays(channels, stringIndex, stringCount) {
-    const glyphCount = stringIndex.length;
     /** @type {Record<string, TypedArray>} */
-    const expanded = {};
+    const expanded = { text: channels.text };
+    /** @type {Map<TypedArray, Map<number, TypedArray>>} */
+    const expandedBySource = new Map();
     for (const [name, data] of Object.entries(channels)) {
+        if (name === "text") {
+            continue;
+        }
         if (!ArrayBuffer.isView(data)) {
             continue;
         }
         const spec = TEXT_CHANNEL_SPECS[name];
         const components = spec?.components ?? 1;
-        if (data.length === glyphCount * components) {
-            expanded[name] = data;
-            continue;
-        }
-        if (data.length !== stringCount * components) {
-            throw new Error(
-                `Text channel "${name}" expects ${stringCount} values, got ${data.length / components}.`
-            );
-        }
-        const Expanded = /** @type {new (length: number) => TypedArray} */ (
-            data.constructor
+        expanded[name] = expandLogicalTextArray(
+            name,
+            data,
+            components,
+            stringIndex,
+            stringCount,
+            expandedBySource
         );
-        const next = new Expanded(glyphCount * components);
-        for (let i = 0; i < glyphCount; i++) {
-            const src = stringIndex[i] * components;
-            const dest = i * components;
-            for (let c = 0; c < components; c++) {
-                next[dest + c] = data[src + c];
-            }
-        }
-        expanded[name] = next;
     }
+    return expanded;
+}
+
+/**
+ * Expand a logical per-string array into per-glyph data. Expansions are shared
+ * when channels use the same source array and component count.
+ *
+ * @param {string} name
+ * @param {TypedArray} data
+ * @param {number} components
+ * @param {Uint32Array} stringIndex
+ * @param {number} stringCount
+ * @param {Map<TypedArray, Map<number, TypedArray>>} expandedBySource
+ * @returns {TypedArray}
+ */
+function expandLogicalTextArray(
+    name,
+    data,
+    components,
+    stringIndex,
+    stringCount,
+    expandedBySource
+) {
+    if (data.length !== stringCount * components) {
+        throw new Error(
+            `Text channel "${name}" expects ${stringCount} values, got ${data.length / components}.`
+        );
+    }
+
+    let byComponents = expandedBySource.get(data);
+    if (!byComponents) {
+        byComponents = new Map();
+        expandedBySource.set(data, byComponents);
+    }
+    const cached = byComponents.get(components);
+    if (cached) {
+        return cached;
+    }
+
+    const Expanded = /** @type {new (length: number) => TypedArray} */ (
+        data.constructor
+    );
+    const expanded = new Expanded(stringIndex.length * components);
+    for (let i = 0; i < stringIndex.length; i++) {
+        const src = stringIndex[i] * components;
+        const dest = i * components;
+        for (let c = 0; c < components; c++) {
+            expanded[dest + c] = data[src + c];
+        }
+    }
+    byComponents.set(components, expanded);
     return expanded;
 }
 
@@ -641,11 +719,12 @@ export default class TextProgram extends BaseProgram {
      * @param {import("../../index.js").MarkConfig<"text">} config
      */
     constructor(renderer, config) {
-        const { normalized, textLayout, fontEntry } =
+        const { normalized, textLayout, fontEntry, fontManager } =
             normalizeTextConfig(config);
         super(renderer, { ...config, ...normalized, textLayout, fontEntry });
         this._textLayout = textLayout;
         this._fontEntry = fontEntry;
+        this._fontManager = fontManager;
     }
 
     /**
@@ -805,37 +884,7 @@ export default class TextProgram extends BaseProgram {
         this._setUniformValue("uFlushY", flushY ? 1 : 0);
         this._setUniformValue("uSqueeze", squeeze ? 1 : 0);
 
-        const glyphCount = layout.glyphIds.length;
-        const glyphData = new ArrayBuffer(glyphCount * 16);
-        const glyphU32 = new Uint32Array(glyphData);
-        const glyphF32 = new Float32Array(glyphData);
-        for (let i = 0; i < glyphCount; i++) {
-            const base = i * 4;
-            glyphU32[base] = layout.stringIndex[i];
-            glyphF32[base + 1] = layout.xOffset[i];
-            glyphF32[base + 2] = layout.yOffset ? layout.yOffset[i] : 0;
-            glyphF32[base + 3] = 0;
-        }
-        const glyphBuffer = this.device.createBuffer({
-            size: glyphData.byteLength,
-            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-        });
-        this.device.queue.writeBuffer(glyphBuffer, 0, glyphData);
-        this._extraBuffers.set("glyphs", glyphBuffer);
-
-        const stringCount = layout.textWidth.length;
-        const stringData = new Float32Array(stringCount * 2);
-        for (let i = 0; i < stringCount; i++) {
-            const base = i * 2;
-            stringData[base] = layout.textWidth[i];
-            stringData[base + 1] = layout.textHeight[i];
-        }
-        const stringBuffer = this.device.createBuffer({
-            size: stringData.byteLength,
-            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-        });
-        this.device.queue.writeBuffer(stringBuffer, 0, stringData);
-        this._extraBuffers.set("stringMetrics", stringBuffer);
+        this._updateTextLayoutBuffers(layout);
 
         const glyphMetricsLength = metrics.maxCharId + 1;
         const glyphMetricsData = new Float32Array(glyphMetricsLength * 8);
@@ -878,6 +927,60 @@ export default class TextProgram extends BaseProgram {
         });
 
         this._uploadFontAtlas(fontEntry.bitmap);
+    }
+
+    /**
+     * @param {import("../../fonts/layout.js").TextLayout} layout
+     * @returns {void}
+     */
+    _updateTextLayoutBuffers(layout) {
+        const glyphCount = layout.glyphIds.length;
+        const glyphData = new ArrayBuffer(glyphCount * 16);
+        const glyphU32 = new Uint32Array(glyphData);
+        const glyphF32 = new Float32Array(glyphData);
+        for (let i = 0; i < glyphCount; i++) {
+            const base = i * 4;
+            glyphU32[base] = layout.stringIndex[i];
+            glyphF32[base + 1] = layout.xOffset[i];
+            glyphF32[base + 2] = layout.yOffset ? layout.yOffset[i] : 0;
+            glyphF32[base + 3] = 0;
+        }
+        this._writeExtraBuffer("glyphs", glyphData);
+
+        const stringCount = layout.textWidth.length;
+        const stringData = new Float32Array(stringCount * 2);
+        for (let i = 0; i < stringCount; i++) {
+            const base = i * 2;
+            stringData[base] = layout.textWidth[i];
+            stringData[base + 1] = layout.textHeight[i];
+        }
+        this._writeExtraBuffer("stringMetrics", stringData);
+    }
+
+    /**
+     * @param {string} name
+     * @param {ArrayBuffer | ArrayBufferView} data
+     * @returns {void}
+     */
+    _writeExtraBuffer(name, data) {
+        const byteLength = data.byteLength;
+        const requiredSize = Math.max(4, byteLength);
+        let buffer = this._extraBuffers.get(name);
+        if (!buffer || buffer.size < requiredSize) {
+            buffer?.destroy();
+            buffer = this.device.createBuffer({
+                size: requiredSize,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+            });
+            this._extraBuffers.set(name, buffer);
+        }
+        if (byteLength > 0) {
+            this.device.queue.writeBuffer(
+                buffer,
+                0,
+                ArrayBuffer.isView(data) ? asGpuBufferSource(data) : data
+            );
+        }
     }
 
     /**
@@ -951,22 +1054,59 @@ export default class TextProgram extends BaseProgram {
     }
 
     /**
-     * @param {Record<string, TypedArray>} channels
+     * Rebuild logical string layout and replace all per-string series
+     * as a complete set while retaining the mark pipeline and font atlas.
+     *
+     * @param {import("../../index.d.ts").TextSeries} channels
      * @param {number} [count]
      * @returns {void}
      */
-    updateSeries(channels, count) {
-        const layout = this._textLayout;
-        if (layout && layout.stringIndex.length > 0) {
-            const stringCount = layout.textWidth.length;
-            const next = expandTextSeriesArrays(
-                channels,
-                layout.stringIndex,
-                stringCount
+    replaceSeries(channels, count) {
+        const text = channels.text;
+        /** @type {string[]} */
+        let strings;
+        if (typeof text === "string") {
+            if (count === undefined) {
+                throw new Error(
+                    "Replacing a scalar text series requires an explicit count."
+                );
+            }
+            strings = Array.from({ length: count }, () => text);
+        } else if (Array.isArray(text)) {
+            strings = text;
+            if (count !== undefined && count !== strings.length) {
+                throw new Error(
+                    `Text series count (${strings.length}) does not match count (${count}).`
+                );
+            }
+        } else {
+            throw new Error(
+                'Text series replacement requires a string or string[] "text" channel.'
             );
-            super.updateSeries(next, layout.glyphIds.length);
-            return;
         }
-        super.updateSeries(channels, count);
+
+        const layout = buildConfiguredTextLayout(strings, {
+            fontManager: this._fontManager,
+            font: this._markConfig.font,
+            fontStyle: this._markConfig.fontStyle,
+            fontWeight: this._markConfig.fontWeight,
+            fontSize: this._markConfig.fontSize,
+            lineHeight: this._markConfig.lineHeight,
+            letterSpacing: this._markConfig.letterSpacing,
+        });
+        const logicalSeries = {
+            ...channels,
+            text: layout.glyphIds,
+        };
+        const expanded = expandTextSeriesArrays(
+            /** @type {Record<string, TypedArray>} */ (logicalSeries),
+            layout.stringIndex,
+            strings.length
+        );
+
+        this._textLayout = layout;
+        this._markConfig.textLayout = layout;
+        this._updateTextLayoutBuffers(layout);
+        super.replaceSeries(expanded, layout.glyphIds.length);
     }
 }

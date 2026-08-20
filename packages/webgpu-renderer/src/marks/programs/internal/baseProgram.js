@@ -84,8 +84,16 @@ export default class BaseProgram {
         /** @type {Map<string, GPUBuffer>} */
         this._extraBuffers = new Map();
 
-        /** @type {{ scales: Record<string, import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ScaleSlotHandle>>, values: Record<string, import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ValueSlotHandle>>, selections: Record<string, import("../../../index.d.ts").SelectionSlotHandle> }} */
-        this._slotHandles = { scales: {}, values: {}, selections: {} };
+        /** @type {Omit<import("../../../index.d.ts").MarkHandle, "markId">} */
+        this._slotHandles = {
+            series: {
+                replace: (channels, count) =>
+                    this.replaceSeries(channels, count),
+            },
+            scales: {},
+            values: {},
+            selections: {},
+        };
 
         // Build a per-mark uniform layout. The layout can differ between marks,
         // but is stable for the lifetime of the mark.
@@ -255,6 +263,30 @@ export default class BaseProgram {
     }
 
     /**
+     * Replace the complete logical series set exposed through the public handle.
+     *
+     * @param {Record<string, import("../../../index.d.ts").SeriesData>} channels
+     * @param {number} [count]
+     * @returns {void}
+     */
+    replaceSeries(channels, count) {
+        for (const [name, channel] of Object.entries(this._channels)) {
+            if (
+                isSeriesChannelConfig(channel) &&
+                channels[name] === undefined
+            ) {
+                throw new Error(
+                    `Series replacement is missing channel "${name}".`
+                );
+            }
+        }
+        this.updateSeries(
+            /** @type {Record<string, TypedArray>} */ (channels),
+            count
+        );
+    }
+
+    /**
      * @returns {void}
      */
     _rebuildBindGroup() {
@@ -398,7 +430,7 @@ export default class BaseProgram {
     /**
      * Slot handles for scale/value/selection updates (default + conditional branches).
      *
-     * @returns {{ scales: Record<string, import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ScaleSlotHandle>>, values: Record<string, import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ValueSlotHandle>>, selections: Record<string, import("../../../index.d.ts").SelectionSlotHandle> }}
+     * @returns {Omit<import("../../../index.d.ts").MarkHandle, "markId">}
      */
     getSlotHandles() {
         return this._slotHandles;

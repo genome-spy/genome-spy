@@ -24,7 +24,7 @@ export default async function runBasicScene(canvas) {
         y2[i] = y[i] + 20;
     }
 
-    const { markId, values } = renderer.createMark(rectMark, {
+    const { markId, series, values } = renderer.createMark(rectMark, {
         count,
         channels: {
             x: { data: x, type: "f32", scale: identityScale() },
@@ -42,7 +42,7 @@ export default async function runBasicScene(canvas) {
 
     const cleanupResize = setupResize(canvas, renderer);
 
-    renderer.updateSeries(markId, { x, x2, y, y2 }, count);
+    series.replace({ x, x2, y, y2 }, count);
 
     let start = performance.now();
     let dynamicCount = count;
@@ -78,11 +78,7 @@ export default async function runBasicScene(canvas) {
         if (now >= nextDataUpdate) {
             dynamicCount = 80 + Math.floor(Math.random() * 240);
             const { nx, ny, nx2, ny2 } = rebuildData(dynamicCount);
-            renderer.updateSeries(
-                markId,
-                { x: nx, x2: nx2, y: ny, y2: ny2 },
-                dynamicCount
-            );
+            series.replace({ x: nx, x2: nx2, y: ny, y2: ny2 }, dynamicCount);
             nextDataUpdate = now + 1500;
         }
 

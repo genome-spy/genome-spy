@@ -105,8 +105,23 @@ export type ChannelSlotGroup<T> = Partial<T> & {
     conditions?: Record<string, T>;
 };
 
-export type MarkHandle = {
+export type SeriesData = TypedArray | string | string[];
+
+export type SeriesSlotHandle<
+    TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
+> = {
+    /**
+     * Replace every series-backed channel configured on the mark.
+     * Mark definitions may preprocess logical inputs before uploading them.
+     */
+    replace(series: TSeries, count?: number): void;
+};
+
+export type MarkHandle<
+    TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
+> = {
     markId: MarkId;
+    series: SeriesSlotHandle<TSeries>;
     scales: Record<string, ChannelSlotGroup<ScaleSlotHandle>>;
     values: Record<string, ChannelSlotGroup<ValueSlotHandle>>;
     selections: Record<string, SelectionSlotHandle>;
@@ -669,6 +684,10 @@ export type TextChannels = Omit<
     "text"
 > & { text?: ChannelConfigInput | TextStringChannelConfigInput };
 
+export type TextSeries = Record<string, TypedArray | string | string[]> & {
+    text: string | string[];
+};
+
 export type TextLayout = {
     glyphIds: Uint32Array;
     stringIndex: Uint32Array;
@@ -770,9 +789,11 @@ export type GlobalUniforms = {
 
 export class RendererError extends Error {}
 
-export type MarkProgram = {
-    getSlotHandles(): Omit<MarkHandle, "markId">;
-    updateSeries(channels: Record<string, TypedArray>, count?: number): void;
+export type MarkProgram<
+    TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
+> = {
+    getSlotHandles(): Omit<MarkHandle<TSeries>, "markId">;
+    replaceSeries(channels: TSeries, count?: number): void;
     updateValues(values: Record<string, number | number[]>): void;
     debugResources(label?: string): void;
     draw(pass: GPURenderPassEncoder): void;
@@ -780,10 +801,13 @@ export type MarkProgram = {
     destroy(): void;
 };
 
-export type MarkDefinition<TConfig = MarkConfig> = Readonly<{
+export type MarkDefinition<
+    TConfig = MarkConfig,
+    TSeries extends Record<string, SeriesData> = Record<string, TypedArray>,
+> = Readonly<{
     /** Diagnostic name; dispatch uses the definition value, not this string. */
     type: string;
-    createProgram(renderer: Renderer, config: TConfig): MarkProgram;
+    createProgram(renderer: Renderer, config: TConfig): MarkProgram<TSeries>;
 }>;
 
 export class Renderer {
@@ -791,27 +815,10 @@ export class Renderer {
     updateGlobals(globals: GlobalUniforms): void;
 
     /** Create a retained mark from an explicitly imported definition. */
-    createMark<TConfig>(
-        definition: MarkDefinition<TConfig>,
+    createMark<TConfig, TSeries extends Record<string, SeriesData>>(
+        definition: MarkDefinition<TConfig, TSeries>,
         config: TConfig
-    ): MarkHandle;
-
-    /**
-     * Upload columnar series data (storage buffers) for a mark.
-     *
-     * If multiple channels share the same `TypedArray` at mark creation, the
-     * renderer treats them as a shared buffer. Updates must keep those channels
-     * shared by providing the same array instance for the group.
-     *
-     * The count defaults to the inferred series length when omitted. If the mark
-     * has no series channels, the count remains unchanged (or defaults to 1 only
-     * when the mark was created without series data and without an explicit count).
-     */
-    updateSeries(
-        markId: MarkId,
-        channels: Record<string, TypedArray>,
-        count?: number
-    ): void;
+    ): MarkHandle<TSeries>;
 
     /** Log the GPU resources reserved by a mark to the console. */
     debugResources(markId: MarkId, label?: string): void;

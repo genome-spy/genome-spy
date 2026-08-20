@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => {
     const handle = {
         markId: 7,
+        series: { replace: vi.fn() },
         scales: {
             x: {
                 default: {
@@ -22,7 +23,6 @@ const mocks = vi.hoisted(() => {
         handle,
         renderer: {
             createMark: vi.fn(() => handle),
-            updateSeries: vi.fn(),
             updateGlobals: vi.fn(),
             destroyMark: vi.fn(),
             render: vi.fn(),
@@ -71,7 +71,7 @@ describe("WebGpuSurface", () => {
             /** @type {unknown} */ ({})
         );
         const definition =
-            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any>} */ (
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
                 /** @type {unknown} */ ({ type: "point" })
             );
 
@@ -83,7 +83,11 @@ describe("WebGpuSurface", () => {
         surface.render();
 
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
-        expect(mocks.renderer.updateSeries).toHaveBeenCalledOnce();
+        expect(mocks.handle.series.replace).toHaveBeenCalledOnce();
+        expect(mocks.handle.series.replace).toHaveBeenCalledWith(
+            { x: new Float32Array([1, 2]) },
+            2
+        );
         expect(mocks.handle.scales.x.default.setDomain).toHaveBeenCalledWith([
             1, 11,
         ]);
@@ -94,6 +98,39 @@ describe("WebGpuSurface", () => {
 
         surface.finalize();
         expect(mocks.renderer.destroyMark).toHaveBeenCalledWith(7);
+    });
+
+    test("replaces logical text and position series on retained text marks", async () => {
+        const container = document.createElement("div");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({})
+        );
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "text" })
+            );
+
+        surface.beginFrame();
+        surface.useMark(mark, definition, createTextConfig(["0.00000"]));
+        surface.beginFrame();
+        surface.useMark(mark, definition, createTextConfig(["-1.0", "1.0"]));
+
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+        expect(mocks.handle.series.replace).toHaveBeenCalledWith(
+            {
+                text: ["-1.0", "1.0"],
+                x: new Float32Array([10, 20]),
+            },
+            2
+        );
     });
 });
 
@@ -111,6 +148,21 @@ function createConfig(offset) {
                 },
             },
             size: { value: 5 + offset },
+        },
+    };
+}
+
+/** @param {string[]} text */
+function createTextConfig(text) {
+    return {
+        count: text.length,
+        channels: {
+            text: { data: text },
+            x: {
+                data: new Float32Array([10, 20].slice(0, text.length)),
+                type: "f32",
+            },
+            size: { value: 10 },
         },
     };
 }

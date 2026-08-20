@@ -113,6 +113,14 @@ Ordered frame submission — complete:
   view traversal;
 - compatible Core marks reuse their renderer handles and update public series,
   scale, and value slots between frames;
+- `handle.series.replace()` replaces complete logical series through a
+  definition-owned updater; text rebuilds glyph layout and expanded channels
+  without recreating its pipeline or font atlas;
+- logical text arrays are strictly per-string and preserve source-array aliases
+  during glyph expansion; empty series use valid minimum-sized GPU buffers;
+- growing packed series destroy the superseded GPU buffer;
+- the former renderer-level `updateSeries(markId, ...)` compatibility surface
+  has been removed;
 - frame order is independent of allocation order, so z-order changes do not
   require resource recreation.
 

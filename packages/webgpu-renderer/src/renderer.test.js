@@ -17,6 +17,7 @@ describe("Renderer mark definitions", () => {
 
         expect(definition.createProgram).toHaveBeenCalledWith(renderer, config);
         expect(handle.markId).toBe(1);
+        expect(handle.series).toBe(program.getSlotHandles().series);
         expect(handle.scales).toEqual({});
         expect(renderer._marks.get(handle.markId)).toBe(program);
     });
@@ -65,9 +66,15 @@ function createRendererHarness() {
 }
 
 function createProgram() {
+    const series = { replace: vi.fn() };
     return {
-        getSlotHandles: () => ({ scales: {}, values: {}, selections: {} }),
-        updateSeries: vi.fn(),
+        getSlotHandles: () => ({
+            series,
+            scales: {},
+            values: {},
+            selections: {},
+        }),
+        replaceSeries: series.replace,
         updateValues: vi.fn(),
         debugResources: vi.fn(),
         draw: vi.fn(),

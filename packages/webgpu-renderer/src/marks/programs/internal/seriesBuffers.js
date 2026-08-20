@@ -278,18 +278,23 @@ export class SeriesBufferManager {
      */
     _ensurePackedBuffer(name, array) {
         const existing = this._packedBuffers.get(name);
+        const requiredSize = Math.max(4, array.byteLength);
         let buffer = existing?.buffer ?? null;
-        if (!buffer || existing.byteLength < array.byteLength) {
+        if (!buffer || existing.byteLength < requiredSize) {
+            const previous = buffer;
             buffer = this._device.createBuffer({
-                size: array.byteLength,
+                size: requiredSize,
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
             });
             this._packedBuffers.set(name, {
                 buffer,
-                byteLength: array.byteLength,
+                byteLength: requiredSize,
             });
+            previous?.destroy();
         }
 
-        this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(array));
+        if (array.byteLength > 0) {
+            this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(array));
+        }
     }
 }

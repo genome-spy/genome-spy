@@ -19,7 +19,7 @@ export default async function runPiecewiseScene(canvas) {
         x[i] = i;
     }
 
-    const { markId, scales, values } = renderer.createMark(pointMark, {
+    const { markId, series, scales, values } = renderer.createMark(pointMark, {
         count,
         channels: {
             x: {
@@ -60,7 +60,7 @@ export default async function runPiecewiseScene(canvas) {
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);
 
-    renderer.updateSeries(markId, { x }, count);
+    series.replace({ x, fill: x }, count);
 
     renderer.render();
 

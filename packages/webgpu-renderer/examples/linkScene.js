@@ -32,7 +32,7 @@ export default async function runLinkScene(canvas) {
         size[i] = 1.5 + Math.pow(Math.random(), 2) * 2.5;
     }
 
-    const { markId, scales } = renderer.createMark(linkMark, {
+    const { markId, series, scales } = renderer.createMark(linkMark, {
         count,
         segments: 64,
         linkShape: "arc",
@@ -78,7 +78,7 @@ export default async function runLinkScene(canvas) {
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);
 
-    renderer.updateSeries(markId, { x, x2, y, y2, size }, count);
+    series.replace({ x, x2, y, y2, size }, count);
     renderer.render();
 
     return () => {
