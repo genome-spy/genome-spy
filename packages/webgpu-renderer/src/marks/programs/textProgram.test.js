@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createMockRenderer } from "../../testUtils/mockRenderer.js";
 import { identityScale } from "../../scales/identity.js";
+import { indexScale } from "../../scales/index.js";
+import { thresholdScale } from "../../scales/threshold.js";
 import TextProgram from "./textProgram.js";
 
 describe("TextProgram series replacement", () => {
@@ -112,6 +114,69 @@ describe("TextProgram series replacement", () => {
         expect(program._channels.x.data).toEqual(
             new Float32Array([10, 10, 10, 20])
         );
+    });
+
+    it("expands scalar scale inputs for vector color outputs", () => {
+        const program = new TextProgram(createMockRenderer(), {
+            count: 2,
+            channels: {
+                text: { data: ["aa", "b"] },
+                x: {
+                    data: new Float32Array([1, 2]),
+                    type: "f32",
+                    scale: identityScale(),
+                },
+                y: { value: 0, scale: identityScale() },
+                fill: {
+                    data: new Float32Array([0, 1]),
+                    type: "f32",
+                    inputComponents: 1,
+                    scale: thresholdScale({
+                        domain: [0.5],
+                        range: ["white", "black"],
+                    }),
+                },
+            },
+        });
+
+        expect(program._channels.fill.data).toEqual(
+            new Float32Array([0, 0, 1])
+        );
+
+        program.getSlotHandles().series.replace({
+            text: ["c", "dd"],
+            x: new Float32Array([3, 4]),
+            fill: new Float32Array([2, 3]),
+        });
+
+        expect(program._channels.fill.data).toEqual(
+            new Float32Array([2, 3, 3])
+        );
+    });
+
+    it("expands logical Float64 index values before high-precision packing", () => {
+        const program = new TextProgram(createMockRenderer(), {
+            count: 2,
+            channels: {
+                text: { data: ["aa", "b"] },
+                x: {
+                    data: new Float64Array([1, 2]),
+                    type: "u32",
+                    inputComponents: 2,
+                    scale: indexScale({ domain: [0, 10] }),
+                },
+                y: { value: 0, scale: identityScale() },
+            },
+        });
+
+        expect(program._channels.x.data).toEqual(new Float64Array([1, 1, 2]));
+
+        program.getSlotHandles().series.replace({
+            text: ["c", "dd"],
+            x: new Float64Array([3, 4]),
+        });
+
+        expect(program._channels.x.data).toEqual(new Float64Array([3, 4, 4]));
     });
 
     it("rejects glyph-length arrays in the logical replacement API", () => {

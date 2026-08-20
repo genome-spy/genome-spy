@@ -62,14 +62,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     renderMark(mark, options) {
-        if (mark.unitView.getEffectiveOpacity() <= 0) {
+        const viewOpacity = mark.unitView.getEffectiveOpacity();
+        if (viewOpacity <= 0) {
             return;
-        }
-        if (mark.unitView.getEffectiveOpacity() != 1) {
-            throw createViewError(
-                mark,
-                "The WebGPU proof of concept does not support view opacity."
-            );
         }
         if (this.#marks.has(mark)) {
             throw createViewError(
@@ -80,7 +75,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         this.#marks.add(mark);
 
         const coords = this.currentCoords;
-        const translated = createWebGpuMarkConfig(mark, options, coords);
+        const translated = createWebGpuMarkConfig(
+            mark,
+            options,
+            coords,
+            viewOpacity
+        );
         if (translated) {
             const clip = prepareMarkClipOptionsFromClip(
                 normalizeClipOptions(options),

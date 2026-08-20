@@ -606,10 +606,11 @@ function expandTextSeries(channels, stringIndex, stringCount) {
             return;
         }
         const spec = TEXT_CHANNEL_SPECS[name];
-        const components =
-            "components" in channel && channel.components != null
-                ? channel.components
-                : (spec?.components ?? 1);
+        const components = getLogicalTextComponents(
+            channel,
+            channel.data,
+            spec
+        );
         channel.data = expandLogicalTextArray(
             name,
             channel.data,
@@ -643,9 +644,15 @@ function expandTextSeries(channels, stringIndex, stringCount) {
  * @param {Record<string, TypedArray>} channels
  * @param {Uint32Array} stringIndex
  * @param {number} stringCount
+ * @param {Record<string, ChannelConfigInput>} channelConfigs
  * @returns {Record<string, TypedArray>}
  */
-function expandTextSeriesArrays(channels, stringIndex, stringCount) {
+function expandTextSeriesArrays(
+    channels,
+    stringIndex,
+    stringCount,
+    channelConfigs
+) {
     /** @type {Record<string, TypedArray>} */
     const expanded = { text: channels.text };
     /** @type {Map<TypedArray, Map<number, TypedArray>>} */
@@ -658,7 +665,8 @@ function expandTextSeriesArrays(channels, stringIndex, stringCount) {
             continue;
         }
         const spec = TEXT_CHANNEL_SPECS[name];
-        const components = spec?.components ?? 1;
+        const config = channelConfigs[name];
+        const components = getLogicalTextComponents(config, data, spec);
         expanded[name] = expandLogicalTextArray(
             name,
             data,
@@ -669,6 +677,33 @@ function expandTextSeriesArrays(channels, stringIndex, stringCount) {
         );
     }
     return expanded;
+}
+
+/**
+ * Resolves the number of source-array entries per logical text item. Float64
+ * index data is supplied as one value per item and packed into two u32
+ * components later by the series-buffer layer.
+ *
+ * @param {ChannelConfigInput | ConditionalChannelConfigInput | TextStringChannelConfigInput | undefined} channel
+ * @param {TypedArray} data
+ * @param {import("../utils/channelSpecUtils.js").ChannelSpec | undefined} spec
+ */
+function getLogicalTextComponents(channel, data, spec) {
+    if (
+        data instanceof Float64Array &&
+        channel &&
+        "scale" in channel &&
+        channel.scale?.type === "index"
+    ) {
+        return 1;
+    }
+    const inputComponents =
+        channel && "inputComponents" in channel
+            ? channel.inputComponents
+            : undefined;
+    const components =
+        channel && "components" in channel ? channel.components : undefined;
+    return inputComponents ?? components ?? spec?.components ?? 1;
 }
 
 /**
@@ -1114,7 +1149,8 @@ export default class TextProgram extends BaseProgram {
         const expanded = expandTextSeriesArrays(
             /** @type {Record<string, TypedArray>} */ (logicalSeries),
             layout.stringIndex,
-            strings.length
+            strings.length,
+            this._markConfig.channels
         );
 
         this._textLayout = layout;
