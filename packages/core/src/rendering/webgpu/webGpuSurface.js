@@ -115,8 +115,9 @@ export default class WebGpuSurface {
      * @param {import("../../marks/mark.js").default} mark
      * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
      * @param {object} config
+     * @param {{scissor?: import("@genome-spy/webgpu-renderer").DrawRect}} [options]
      */
-    useMark(mark, definition, config) {
+    useMark(mark, definition, config, options = {}) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
@@ -137,8 +138,11 @@ export default class WebGpuSurface {
         }
 
         // Core still bakes absolute canvas coordinates into scale ranges, so
-        // occurrence viewports and scissors remain intentionally omitted here.
-        this.#frameDraws.push({ mark: retained.handle });
+        // occurrence viewports remain intentionally omitted here.
+        this.#frameDraws.push({
+            mark: retained.handle,
+            ...(options.scissor ? { scissor: options.scissor } : {}),
+        });
     }
 
     render() {
