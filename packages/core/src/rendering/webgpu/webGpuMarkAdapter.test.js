@@ -278,6 +278,47 @@ describe("WebGPU mark adapter", () => {
         expect(config.channels.strokeDashOffset).toEqual({ value: 1 });
     });
 
+    test("translates link geometry and rendering properties", () => {
+        const mark = createMark(
+            "link",
+            [{}],
+            {
+                x: createConstantEncoder(0),
+                x2: createConstantEncoder(1),
+                y: createConstantEncoder(0),
+                y2: createConstantEncoder(1),
+                xOffset: createConstantEncoder(2),
+                x2Offset: createConstantEncoder(3),
+                yOffset: createConstantEncoder(4),
+                y2Offset: createConstantEncoder(5),
+                size: createConstantEncoder(2),
+                color: createConstantEncoder("#336699"),
+                opacity: createConstantEncoder(1),
+            },
+            {
+                linkShape: "dome",
+                orient: "horizontal",
+                arcFadingDistance: [10, 20],
+                arcHeightFactor: 0.75,
+                minArcHeight: 3,
+                clampApex: true,
+                maxChordLength: 100,
+                segments: 25,
+            }
+        );
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const config = /** @type {any} */ (translated).config;
+
+        expect(translated.definition.type).toBe("link");
+        expect(config.channels.xOffset).toEqual({ value: 2 });
+        expect(config.channels.y2Offset).toEqual({ value: 5 });
+        expect(config.linkShape).toBe(1);
+        expect(config.orient).toBe(1);
+        expect(config.arcFadingDistance).toEqual([10, 20]);
+        expect(config.segments).toBe(25);
+    });
+
     test.each([
         ["x", 12],
         ["+", 13],
@@ -605,7 +646,7 @@ describe("WebGPU mark adapter", () => {
         );
     });
 
-    test.each(["link", "arrow"])(
+    test.each(["arrow"])(
         "reports unsupported mark type %s with the Core view path",
         (type) => {
             const mark = createMark(type, [{ value: 1 }], {});
