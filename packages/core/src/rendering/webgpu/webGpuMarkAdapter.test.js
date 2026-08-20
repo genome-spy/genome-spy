@@ -260,6 +260,48 @@ describe("WebGPU mark adapter", () => {
         expect(channels.hatchPattern).toEqual({ value: 0, type: "u32" });
     });
 
+    test.each([
+        ["alphabetic", 0],
+        ["baseline", 0],
+        ["middle", 1],
+        ["top", 2],
+        ["bottom", 3],
+    ])("maps the %s text baseline to renderer code %i", (baseline, code) => {
+        const mark = createMark(
+            "text",
+            [{ label: "3.0" }],
+            {
+                x: createConstantEncoder(0),
+                y: createConstantEncoder(0),
+                text: createEncoder((datum) => datum.label),
+                size: createConstantEncoder(12),
+                angle: createConstantEncoder(0),
+                xOffset: createConstantEncoder(0),
+                yOffset: createConstantEncoder(0),
+                color: createConstantEncoder("black"),
+                opacity: createConstantEncoder(1),
+            },
+            {
+                align: "left",
+                baseline,
+                font: "sans-serif",
+                fontStyle: "normal",
+                fontWeight: 400,
+                paddingX: 0,
+                paddingY: 0,
+                flushX: false,
+                flushY: false,
+                squeeze: false,
+            }
+        );
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+
+        expect(
+            /** @type {any} */ (translated).config.channels.baseline
+        ).toEqual({ value: code, type: "u32" });
+    });
+
     test("reports unsupported semantics with the Core view path", () => {
         const mark = createMark("point", [{ color: "red" }], {
             fill: createEncoder((datum) => datum.color),
