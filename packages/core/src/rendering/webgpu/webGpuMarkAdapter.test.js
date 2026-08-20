@@ -508,6 +508,45 @@ describe("WebGPU mark adapter", () => {
         expect(channels.yOffset.scale.range).toEqual([0, 20]);
     });
 
+    test("maps independent rectangle corner radii", () => {
+        const mark = createMark(
+            "rect",
+            [{}],
+            {
+                x: createConstantEncoder(0),
+                x2: createConstantEncoder(1),
+                y: createConstantEncoder(0),
+                y2: createConstantEncoder(1),
+                xOffset: createConstantEncoder(0),
+                x2Offset: createConstantEncoder(0),
+                yOffset: createConstantEncoder(0),
+                y2Offset: createConstantEncoder(0),
+                fill: createConstantEncoder("black"),
+                stroke: createConstantEncoder(null),
+                fillOpacity: createConstantEncoder(1),
+                strokeOpacity: createConstantEncoder(1),
+                strokeWidth: createConstantEncoder(0),
+            },
+            {
+                cornerRadius: 4,
+                cornerRadiusTopRight: 1,
+                cornerRadiusBottomRight: 2,
+                cornerRadiusTopLeft: 3,
+                cornerRadiusBottomLeft: 4,
+                minWidth: 0,
+                minHeight: 0,
+                minOpacity: 0,
+            }
+        );
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const channels = /** @type {any} */ (translated).config.channels;
+
+        expect(channels.cornerRadiusTopRight).toEqual({ value: 1 });
+        expect(channels.cornerRadiusBottomRight).toEqual({ value: 2 });
+        expect(channels.cornerRadiusTopLeft).toEqual({ value: 3 });
+        expect(channels.cornerRadiusBottomLeft).toEqual({ value: 4 });
+    });
+
     test.each([
         ["alphabetic", 0],
         ["baseline", 0],

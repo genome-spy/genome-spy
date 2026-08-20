@@ -22,7 +22,10 @@ export const RECT_CHANNEL_SPECS = {
     fillOpacity: { type: "f32", components: 1, default: 1.0 },
     strokeOpacity: { type: "f32", components: 1, default: 1.0 },
     strokeWidth: { type: "f32", components: 1, default: 1.0 },
-    cornerRadius: { type: "f32", components: 1, default: 0.0 },
+    cornerRadiusTopRight: { type: "f32", components: 1, default: 0.0 },
+    cornerRadiusBottomRight: { type: "f32", components: 1, default: 0.0 },
+    cornerRadiusTopLeft: { type: "f32", components: 1, default: 0.0 },
+    cornerRadiusBottomLeft: { type: "f32", components: 1, default: 0.0 },
     minWidth: { type: "f32", components: 1, default: 0.0 },
     minHeight: { type: "f32", components: 1, default: 0.0 },
     minOpacity: { type: "f32", components: 1, default: 0.0 },
@@ -58,9 +61,11 @@ fn sort(a: ptr<function, f32>, b: ptr<function, f32>) {
     }
 }
 
-fn sdRoundedBox(p: vec2<f32>, b: vec2<f32>, r: f32) -> f32 {
-    let q = abs(p) - b + r;
-    return min(max(q.x, q.y), 0.0) + length(max(q, vec2<f32>(0.0))) - r;
+fn sdRoundedBox(p: vec2<f32>, b: vec2<f32>, r: vec4<f32>) -> f32 {
+    let pair = select(r.zw, r.xy, p.x > 0.0);
+    let radius = select(pair.y, pair.x, p.y > 0.0);
+    let q = abs(p) - b + radius;
+    return min(max(q.x, q.y), 0.0) + length(max(q, vec2<f32>(0.0))) - radius;
 }
 
 fn distanceToRatio(d: f32) -> f32 {
@@ -75,12 +80,63 @@ fn distanceToColor(d: f32, fill: vec4<f32>, stroke: vec4<f32>, background: vec4<
     return mix(background, fill, distanceToRatio(-d));
 }
 
-fn shadowAlpha(d: f32, blur: f32) -> f32 {
-    // TODO: Port the full Gaussian shadow from GLSL. This is a simple fallback.
-    if (blur <= 0.0) {
-        return select(0.0, 1.0, d <= 0.0);
+fn gaussian(x: f32, sigma: f32) -> f32 {
+    let pi = 3.141592653589793;
+    return exp(-(x * x) / (2.0 * sigma * sigma)) /
+        (sqrt(2.0 * pi) * sigma);
+}
+
+fn erf(x: vec2<f32>) -> vec2<f32> {
+    let s = sign(x);
+    var a = abs(x);
+    a = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;
+    a = a * a;
+    return s - s / (a * a);
+}
+
+fn roundedBoxShadowX(
+    x: f32,
+    y: f32,
+    sigma: f32,
+    corner: f32,
+    halfSize: vec2<f32>
+) -> f32 {
+    let delta = min(halfSize.y - corner - abs(y), 0.0);
+    let curved = halfSize.x - corner +
+        sqrt(max(0.0, corner * corner - delta * delta));
+    let integral = 0.5 + 0.5 * erf((x + vec2<f32>(-curved, curved)) *
+        (sqrt(0.5) / sigma));
+    return integral.y - integral.x;
+}
+
+fn roundedBoxShadow(
+    lower: vec2<f32>,
+    upper: vec2<f32>,
+    point: vec2<f32>,
+    sigma: f32,
+    corner: f32
+) -> f32 {
+    let center = (lower + upper) * 0.5;
+    let halfSize = (upper - lower) * 0.5;
+    let centeredPoint = point - center;
+    let low = centeredPoint.y - halfSize.y;
+    let high = centeredPoint.y + halfSize.y;
+    let start = clamp(-3.0 * sigma, low, high);
+    let end = clamp(3.0 * sigma, low, high);
+    let sampleStep = (end - start) / 4.0;
+    var y = start + sampleStep * 0.5;
+    var value = 0.0;
+    for (var i = 0; i < 4; i++) {
+        value += roundedBoxShadowX(
+            centeredPoint.x,
+            centeredPoint.y - y,
+            sigma,
+            corner,
+            halfSize
+        ) * gaussian(y, sigma) * sampleStep;
+        y += sampleStep;
     }
-    return clamp(1.0 - smoothstep(0.0, blur, d), 0.0, 1.0);
+    return value;
 }
 
 fn modf(x: f32, y: f32) -> f32 {
@@ -161,7 +217,7 @@ struct VSOut {
     @location(4) fillOpacity: f32,
     @location(5) strokeOpacity: f32,
     @location(6) strokeWidth: f32,
-    @location(7) cornerRadius: f32,
+    @location(7) cornerRadii: vec4<f32>,
     @location(8) shadowOffset: vec2<f32>,
     @location(9) shadowBlur: f32,
     @location(10) shadowOpacity: f32,
@@ -216,7 +272,16 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.fillOpacity = getScaled_fillOpacity(i) * opaFactor;
     out.strokeOpacity = getScaled_strokeOpacity(i) * opaFactor;
     out.strokeWidth = getScaled_strokeWidth(i);
-    out.cornerRadius = getScaled_cornerRadius(i);
+    let halfMinSize = min(w, h) * 0.5;
+    out.cornerRadii = min(
+        vec4<f32>(
+            getScaled_cornerRadiusTopRight(i),
+            getScaled_cornerRadiusBottomRight(i),
+            getScaled_cornerRadiusTopLeft(i),
+            getScaled_cornerRadiusBottomLeft(i)
+        ),
+        vec4<f32>(halfMinSize)
+    );
     out.shadowOffset = vec2<f32>(getScaled_shadowOffsetX(i), getScaled_shadowOffsetY(i));
     out.shadowBlur = getScaled_shadowBlur(i);
     out.shadowOpacity = getScaled_shadowOpacity(i);
@@ -236,14 +301,14 @@ fn shade(in: VSOut) -> vec4<f32> {
 
     // Adjacent plain rectangles must share an exact rasterized edge. Applying
     // SDF coverage here would introduce translucent seams in dense heatmaps.
-    if (in.cornerRadius <= 0.0 && in.strokeWidth <= 0.0 &&
+    if (all(in.cornerRadii <= vec4<f32>(0.0)) && in.strokeWidth <= 0.0 &&
             in.shadowOpacity <= 0.0 && in.hatchPattern == 0u) {
         return fillColor;
     }
 
     let halfSize = in.size * 0.5;
     let centered = (in.local - vec2<f32>(0.5)) * in.size;
-    var d = sdRoundedBox(centered, halfSize, in.cornerRadius);
+    var d = sdRoundedBox(centered, halfSize, in.cornerRadii);
 
     var strokeColor = in.stroke;
     strokeColor.a = strokeColor.a * in.strokeOpacity;
@@ -251,9 +316,19 @@ fn shade(in: VSOut) -> vec4<f32> {
 
     var background = vec4<f32>(0.0, 0.0, 0.0, 0.0);
     if (in.shadowOpacity > 0.0) {
-        let sd = sdRoundedBox(centered - in.shadowOffset, halfSize, in.cornerRadius);
-        let alpha = shadowAlpha(sd, in.shadowBlur) * in.shadowOpacity;
-        background = premultiplyAlpha(vec4<f32>(in.shadowColor.rgb, alpha));
+        let maxCornerRadius = max(
+            in.cornerRadii.x,
+            max(in.cornerRadii.y, max(in.cornerRadii.z, in.cornerRadii.w))
+        );
+        let sigma = max(in.shadowBlur / 2.5, 0.25);
+        let shadow = roundedBoxShadow(
+            -halfSize - vec2<f32>(in.strokeWidth * 0.5),
+            halfSize + vec2<f32>(in.strokeWidth * 0.5),
+            centered - in.shadowOffset,
+            sigma,
+            maxCornerRadius + in.strokeWidth * 0.5
+        ) * in.shadowOpacity;
+        background = vec4<f32>(in.shadowColor.rgb * shadow, shadow);
     }
 
     let halfStrokeWidth = in.strokeWidth * 0.5;

@@ -139,6 +139,7 @@ export function createWebGpuMarkConfig(mark, options, coords, viewOpacity = 1) {
  * @returns {object}
  */
 function createRectConfig(mark, data, coords, viewOpacity) {
+    const cornerRadii = readCornerRadii(mark);
     return {
         count: data.length,
         channels: {
@@ -165,7 +166,10 @@ function createRectConfig(mark, data, coords, viewOpacity) {
                 viewOpacity
             ),
             strokeWidth: createNumericChannel(mark, "strokeWidth", data),
-            cornerRadius: { value: readCornerRadius(mark) },
+            cornerRadiusTopRight: { value: cornerRadii.topRight },
+            cornerRadiusBottomRight: { value: cornerRadii.bottomRight },
+            cornerRadiusTopLeft: { value: cornerRadii.topLeft },
+            cornerRadiusBottomLeft: { value: cornerRadii.bottomLeft },
             minWidth: { value: readNumericProperty(mark, "minWidth") },
             minHeight: { value: readNumericProperty(mark, "minHeight") },
             minOpacity: { value: readNumericProperty(mark, "minOpacity") },
@@ -922,23 +926,30 @@ function readOptionalNumericProperty(mark, property, fallback) {
 }
 
 /** @param {import("../../marks/mark.js").default} mark */
-function readCornerRadius(mark) {
+function readCornerRadii(mark) {
     const radius = readNumericProperty(mark, "cornerRadius");
-    for (const property of [
-        "cornerRadiusTopLeft",
-        "cornerRadiusTopRight",
-        "cornerRadiusBottomLeft",
-        "cornerRadiusBottomRight",
-    ]) {
-        const corner = readProperty(mark, property);
-        if (corner != null && corner !== radius) {
-            throw unsupported(
-                mark,
-                "Per-corner rectangle radii are not supported."
-            );
-        }
-    }
-    return radius;
+    return {
+        topRight: readOptionalNumericProperty(
+            mark,
+            "cornerRadiusTopRight",
+            radius
+        ),
+        bottomRight: readOptionalNumericProperty(
+            mark,
+            "cornerRadiusBottomRight",
+            radius
+        ),
+        topLeft: readOptionalNumericProperty(
+            mark,
+            "cornerRadiusTopLeft",
+            radius
+        ),
+        bottomLeft: readOptionalNumericProperty(
+            mark,
+            "cornerRadiusBottomLeft",
+            radius
+        ),
+    };
 }
 
 /**
