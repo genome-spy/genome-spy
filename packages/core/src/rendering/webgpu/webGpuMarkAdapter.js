@@ -1,7 +1,9 @@
 import { color as parseColor } from "d3-color";
 import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
+import { rectMark } from "@genome-spy/webgpu-renderer/marks/rect";
 import { ruleMark } from "@genome-spy/webgpu-renderer/marks/rule";
 import { textMark } from "@genome-spy/webgpu-renderer/marks/text";
+import { bandScale } from "@genome-spy/webgpu-renderer/scales/band";
 import { identityScale } from "@genome-spy/webgpu-renderer/scales/identity";
 import { linearScale } from "@genome-spy/webgpu-renderer/scales/linear";
 
@@ -44,6 +46,21 @@ const STROKE_CAP_CODES = new Map([
     ["round", 2],
 ]);
 
+const HATCH_CODES = new Map(
+    [
+        "none",
+        "diagonal",
+        "antiDiagonal",
+        "cross",
+        "vertical",
+        "horizontal",
+        "grid",
+        "dots",
+        "rings",
+        "ringsLarge",
+    ].map((hatch, index) => [hatch, index])
+);
+
 /**
  * Materialized collector batch identity acts as the data revision. Only field
  * accessors are cached because expression accessors may depend on parameters
@@ -54,9 +71,18 @@ const STROKE_CAP_CODES = new Map([
 const SERIES_CACHE = new WeakMap();
 
 /**
+ * The renderer represents categorical values as u32 identifiers. Keep the
+ * identifiers stable for each mark channel so cached columns remain valid when
+ * a band-scale domain changes.
+ *
+ * @type {WeakMap<import("../../marks/mark.js").default, Map<string, Map<import("../../spec/channel.js").Scalar, number>>>}
+ */
+const CATEGORY_IDS = new WeakMap();
+
+/**
  * Converts one Core mark occurrence into the low-level configuration used by
  * the WebGPU PoC. The adapter intentionally supports only the current
- * point/rule/text integration slice.
+ * point/rect/rule/text integration slice.
  *
  * @param {import("../../marks/mark.js").default} mark
  * @param {import("../../types/rendering.js").RenderingOptions} options
@@ -79,6 +105,11 @@ export function createWebGpuMarkConfig(mark, options, coords) {
             definition: pointMark,
             config: createPointConfig(mark, data, coords),
         };
+    } else if (markType == "rect") {
+        return {
+            definition: rectMark,
+            config: createRectConfig(mark, data, coords),
+        };
     } else if (markType == "rule" || markType == "tick") {
         return {
             definition: ruleMark,
@@ -92,6 +123,79 @@ export function createWebGpuMarkConfig(mark, options, coords) {
     }
 
     throw unsupported(mark, `Mark type "${markType}" is not supported.`);
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {object[]} data
+ * @param {import("../../view/layout/rectangle.js").default} coords
+ * @returns {object}
+ */
+function createRectConfig(mark, data, coords) {
+    return {
+        count: data.length,
+        channels: {
+            x: createPositionChannel(
+                mark,
+                "x",
+                data,
+                coords,
+                readConstantOffset(mark, "xOffset", data)
+            ),
+            x2: createPositionChannel(
+                mark,
+                "x2",
+                data,
+                coords,
+                readConstantOffset(mark, "x2Offset", data)
+            ),
+            y: createPositionChannel(
+                mark,
+                "y",
+                data,
+                coords,
+                readConstantOffset(mark, "yOffset", data)
+            ),
+            y2: createPositionChannel(
+                mark,
+                "y2",
+                data,
+                coords,
+                readConstantOffset(mark, "y2Offset", data)
+            ),
+            fill: createColorChannel(mark, "fill", data),
+            stroke: createColorChannel(mark, "stroke", data),
+            fillOpacity: createNumericChannel(mark, "fillOpacity", data),
+            strokeOpacity: createNumericChannel(mark, "strokeOpacity", data),
+            strokeWidth: createNumericChannel(mark, "strokeWidth", data),
+            cornerRadius: { value: readCornerRadius(mark) },
+            minWidth: { value: readNumericProperty(mark, "minWidth") },
+            minHeight: { value: readNumericProperty(mark, "minHeight") },
+            minOpacity: { value: readNumericProperty(mark, "minOpacity") },
+            shadowOffsetX: {
+                value: readOptionalNumericProperty(mark, "shadowOffsetX", 0),
+            },
+            shadowOffsetY: {
+                value: readOptionalNumericProperty(mark, "shadowOffsetY", 0),
+            },
+            shadowBlur: {
+                value: readOptionalNumericProperty(mark, "shadowBlur", 0),
+            },
+            shadowOpacity: {
+                value: readOptionalNumericProperty(mark, "shadowOpacity", 0),
+            },
+            shadowColor: {
+                value: toRgba(
+                    mark,
+                    readProperty(mark, "shadowColor") ?? "black"
+                ),
+            },
+            hatchPattern: {
+                value: mapProperty(mark, "hatch", HATCH_CODES, "none"),
+                type: "u32",
+            },
+        },
+    };
 }
 
 /**
@@ -263,12 +367,52 @@ function createPositionChannel(mark, channel, data, coords, offset = 0) {
     }
 
     const accessor = encoder.branches[0].accessor;
+    if (encoder.scale?.type == "band") {
+        const { values, domain } = toCategoricalArray(
+            mark,
+            channel,
+            data,
+            accessor,
+            encoder.scale
+        );
+        return {
+            data: values,
+            type: "u32",
+            scale: createBandPositionScale(
+                encoder.scale,
+                range,
+                domain,
+                /** @type {import("../../spec/channel.js").BandMixins} */ (
+                    accessor.channelDef
+                ).band ?? 0.5
+            ),
+        };
+    }
+
     const values = toFloat32Array(mark, channel, data, accessor);
     return {
         data: values,
         type: "f32",
         scale: createPositionScale(mark, channel, encoder.scale, range),
     };
+}
+
+/**
+ * @param {import("../../types/encoder.js").VegaScale} scale
+ * @param {[number, number]} range
+ * @param {number[]} domain
+ * @param {number} band
+ */
+function createBandPositionScale(scale, range, domain, band) {
+    const configurableScale = /** @type {any} */ (scale);
+    return bandScale({
+        domain,
+        range,
+        paddingInner: configurableScale.paddingInner(),
+        paddingOuter: configurableScale.paddingOuter(),
+        align: configurableScale.align(),
+        band,
+    });
 }
 
 /**
@@ -537,6 +681,43 @@ function toFloat32Array(mark, channel, data, accessor) {
 }
 
 /**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {object[]} data
+ * @param {import("../../types/encoder.js").Accessor} accessor
+ * @param {import("../../types/encoder.js").VegaScale} scale
+ */
+function toCategoricalArray(mark, channel, data, accessor, scale) {
+    let markCategories = CATEGORY_IDS.get(mark);
+    if (!markCategories) {
+        markCategories = new Map();
+        CATEGORY_IDS.set(mark, markCategories);
+    }
+
+    let categoryIds = markCategories.get(channel);
+    if (!categoryIds) {
+        categoryIds = new Map();
+        markCategories.set(channel, categoryIds);
+    }
+
+    /** @param {import("../../spec/channel.js").Scalar} value */
+    const intern = (value) => {
+        let id = categoryIds.get(value);
+        if (id === undefined) {
+            id = categoryIds.size;
+            categoryIds.set(value, id);
+        }
+        return id;
+    };
+
+    const domain = scale.domain().map(intern);
+    const values = getCachedSeries(mark, channel, data, accessor, () =>
+        Uint32Array.from(data, (datum) => intern(accessor(datum)))
+    );
+    return { values, domain };
+}
+
+/**
  * @template {import("@genome-spy/webgpu-renderer").SeriesData} T
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
@@ -584,10 +765,47 @@ function readNumericProperty(mark, property) {
 /**
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} property
- * @param {Map<string, number>} values
+ * @param {number} fallback
  */
-function mapProperty(mark, property, values) {
-    const raw = String(readProperty(mark, property));
+function readOptionalNumericProperty(mark, property, fallback) {
+    const value = readProperty(mark, property) ?? fallback;
+    if (typeof value != "number") {
+        throw unsupported(
+            mark,
+            `Property "${property}" must be a number in the WebGPU proof of concept.`
+        );
+    }
+    return value;
+}
+
+/** @param {import("../../marks/mark.js").default} mark */
+function readCornerRadius(mark) {
+    const radius = readNumericProperty(mark, "cornerRadius");
+    for (const property of [
+        "cornerRadiusTopLeft",
+        "cornerRadiusTopRight",
+        "cornerRadiusBottomLeft",
+        "cornerRadiusBottomRight",
+    ]) {
+        const corner = readProperty(mark, property);
+        if (corner != null && corner !== radius) {
+            throw unsupported(
+                mark,
+                "Per-corner rectangle radii are not supported."
+            );
+        }
+    }
+    return radius;
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} property
+ * @param {Map<string, number>} values
+ * @param {string} [fallback]
+ */
+function mapProperty(mark, property, values, fallback) {
+    const raw = String(readProperty(mark, property) ?? fallback);
     const value = values.get(raw);
     if (value === undefined) {
         throw unsupported(mark, `Unsupported ${property}: ${raw}`);
