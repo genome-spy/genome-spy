@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { getScaleDefs } from "./scaleDefs.js";
 import { buildScaleWgsl } from "./scaleWgsl.js";
+
+const ALL_SCALE_DEFINITIONS = Object.values(getScaleDefs());
 
 describe("scaleWgsl", () => {
     it("includes common helpers and per-scale WGSL snippets", () => {
-        const code = buildScaleWgsl();
+        const code = buildScaleWgsl(ALL_SCALE_DEFINITIONS);
 
         expect(code).toContain("fn clampToDomain");
         expect(code).toContain("fn scaleLinear");
@@ -13,7 +16,7 @@ describe("scaleWgsl", () => {
     });
 
     it("emits scale helpers in dependency order", () => {
-        const code = buildScaleWgsl();
+        const code = buildScaleWgsl(ALL_SCALE_DEFINITIONS);
         const linearIndex = code.indexOf("fn scaleLinear");
         const powIndex = code.indexOf("fn scalePow");
         const symlogIndex = code.indexOf("fn scaleSymlog");
@@ -26,7 +29,7 @@ describe("scaleWgsl", () => {
     });
 
     it("emits each WGSL snippet once", () => {
-        const code = buildScaleWgsl();
+        const code = buildScaleWgsl(ALL_SCALE_DEFINITIONS);
         const matches = code.match(/fn scaleLinear\b/g) ?? [];
 
         expect(matches).toHaveLength(1);

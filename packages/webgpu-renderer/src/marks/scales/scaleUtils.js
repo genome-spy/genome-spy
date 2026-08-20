@@ -1,4 +1,4 @@
-import { getScaleDef } from "./scaleDefs.js";
+import { getScaleDefinition } from "./scaleDefinition.js";
 
 /**
  * @param {import("../../index.d.ts").ChannelScale | undefined} scale
@@ -8,7 +8,7 @@ export function isPiecewiseScale(scale) {
     if (!scale) {
         return false;
     }
-    const def = getScaleDef(scale.type ?? "identity");
+    const def = getScaleDefinition(scale);
     if (!def.resources.supportsPiecewise) {
         return false;
     }

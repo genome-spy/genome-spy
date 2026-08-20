@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import BaseProgram from "./baseProgram.js";
 import { createMockRenderer } from "../../../testUtils/mockRenderer.js";
+import { attachScaleDefinitions } from "../../../../testUtils/scaleDefinitions.js";
 
 class SlotProgram extends BaseProgram {
     get channelOrder() {
@@ -38,13 +39,17 @@ struct VSOut {
 describe("BaseProgram slot handles", () => {
     it("updates scale domains through slots", () => {
         const renderer = createMockRenderer();
-        const program = new SlotProgram(renderer, {
+        const program = createSlotProgram(renderer, {
             channels: {
                 uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
                 x: {
                     data: new Float32Array([0, 1]),
                     type: "f32",
-                    scale: { type: "linear", domain: [0, 1], range: [0, 1] },
+                    scale: {
+                        type: "linear",
+                        domain: [0, 1],
+                        range: [0, 1],
+                    },
                 },
                 size: { value: 1, type: "f32", dynamic: true },
                 fill: {
@@ -78,13 +83,17 @@ describe("BaseProgram slot handles", () => {
 
     it("updates dynamic values through slots", () => {
         const renderer = createMockRenderer();
-        const program = new SlotProgram(renderer, {
+        const program = createSlotProgram(renderer, {
             channels: {
                 uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
                 x: {
                     data: new Float32Array([0, 1]),
                     type: "f32",
-                    scale: { type: "linear", domain: [0, 1], range: [0, 1] },
+                    scale: {
+                        type: "linear",
+                        domain: [0, 1],
+                        range: [0, 1],
+                    },
                 },
                 size: { value: 1, type: "f32", dynamic: true },
                 fill: {
@@ -129,3 +138,15 @@ describe("BaseProgram slot handles", () => {
         ).toBeCloseTo(0.2);
     });
 });
+
+/**
+ * Keep legacy-shaped fixtures readable while exercising definition-driven
+ * program internals.
+ *
+ * @param {ReturnType<typeof createMockRenderer>} renderer
+ * @param {{channels: Record<string, import("../../../index.d.ts").ChannelConfigInput>}} config
+ */
+function createSlotProgram(renderer, config) {
+    attachScaleDefinitions(config.channels);
+    return new SlotProgram(renderer, config);
+}

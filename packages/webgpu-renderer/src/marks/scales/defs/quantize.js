@@ -14,6 +14,7 @@ import { isRangeFunction, normalizeDiscreteRangeValue } from "../scaleStops.js";
  * @type {import("../../../index.d.ts").ScaleDef}
  */
 export const quantizeScaleDef = {
+    type: "quantize",
     input: "numeric",
     output: "same",
     params: [],
@@ -29,6 +30,7 @@ export const quantizeScaleDef = {
     validate: validateQuantizeScale,
     emit: emitQuantizeScale,
 };
+Object.freeze(quantizeScaleDef);
 
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params

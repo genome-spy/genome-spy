@@ -1,3 +1,5 @@
+/* global navigator, GPUBufferUsage, GPUMapMode */
+
 /*
  * GPU tests for the low-level WGSL scale functions. These validate the raw
  * WGSL helpers independent of codegen and higher-level resource wiring.
@@ -12,6 +14,7 @@ import {
     scaleSymlog,
 } from "d3-scale";
 import { buildScaleWgsl } from "../src/marks/scales/scaleWgsl.js";
+import { getScaleDefs } from "../src/marks/scales/scaleDefs.js";
 import {
     BASE,
     packHighPrecisionDomain,
@@ -22,6 +25,7 @@ import { ensureWebGPU } from "./gpuTestUtils.js";
 const WORKGROUP_SIZE = 64;
 const LOW_MASK = BASE - 1;
 const f32 = Math.fround;
+const ALL_SCALE_DEFINITIONS = Object.values(getScaleDefs());
 
 /**
  * @param {number} value
@@ -126,7 +130,7 @@ function computeBandHpUExpected({ value, domainExtent, range, config }) {
  * @returns {string}
  */
 function buildComputeShader(scaleExpr, inputLength) {
-    const scalesWgsl = buildScaleWgsl();
+    const scalesWgsl = buildScaleWgsl(ALL_SCALE_DEFINITIONS);
     return `
 struct Globals {
     width: f32,
@@ -168,7 +172,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
  * @returns {string}
  */
 function buildBandHpComputeShader(inputLength) {
-    const scalesWgsl = buildScaleWgsl();
+    const scalesWgsl = buildScaleWgsl(ALL_SCALE_DEFINITIONS);
     return `
 struct Globals {
     width: f32,
@@ -219,7 +223,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
  * @returns {string}
  */
 function buildBandHpUComputeShader(inputLength) {
-    const scalesWgsl = buildScaleWgsl();
+    const scalesWgsl = buildScaleWgsl(ALL_SCALE_DEFINITIONS);
     return `
 struct Globals {
     width: f32,
@@ -271,7 +275,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
  * @returns {string}
  */
 function buildBandComputeShader(inputLength) {
-    const scalesWgsl = buildScaleWgsl();
+    const scalesWgsl = buildScaleWgsl(ALL_SCALE_DEFINITIONS);
     return `
 struct Globals {
     width: f32,

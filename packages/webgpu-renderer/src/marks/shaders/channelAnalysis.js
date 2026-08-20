@@ -5,11 +5,11 @@ import {
 } from "../scales/scaleStops.js";
 import { isPiecewiseScale } from "../scales/scaleUtils.js";
 import {
-    getScaleDef,
+    getScaleDefinition,
     getScaleOutputType,
     getScaleResourceRequirements,
-    isContinuousScale,
-} from "../scales/scaleDefs.js";
+    getScaleType,
+} from "../scales/scaleDefinition.js";
 
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
@@ -27,7 +27,7 @@ import {
  *   channel: ChannelConfigInput,
  *   sourceKind: ChannelSourceKind,
  *   scaleType: ScaleType,
- *   scaleDef: import("../scales/scaleDefs.js").ScaleDef,
+ *   scaleDef: import("../../index.d.ts").ScaleDef,
  *   useRangeTexture: boolean,
  *   isPiecewise: boolean,
  *   needsScaleFunction: boolean,
@@ -74,14 +74,14 @@ function getSourceKind(channel) {
  */
 export function buildChannelAnalysis(name, channel) {
     const sourceKind = getSourceKind(channel);
-    /** @type {ScaleType} */
-    const scaleType = channel.scale?.type ?? "identity";
-    const scaleDef = getScaleDef(scaleType);
+    /** @type {import("../../index.d.ts").ScaleDef} */
+    const scaleDef = getScaleDefinition(channel.scale);
+    const scaleType = getScaleType(channel.scale);
     const outputComponents = channel.components ?? 1;
     const scalarType = normalizeScalarType(channel.type);
     const outputScalarType =
         outputComponents === 1
-            ? getScaleOutputType(scaleType, scalarType)
+            ? getScaleOutputType(scaleDef, scalarType)
             : "f32";
     const defaultInputComponents =
         sourceKind === "series" || scaleType === "identity"
@@ -100,7 +100,7 @@ export function buildChannelAnalysis(name, channel) {
     const useRangeTexture = usesRangeTexture(channel.scale, outputComponents);
     const isPiecewise = isPiecewiseScale(channel.scale);
     const resourceRequirements = getScaleResourceRequirements(
-        scaleType,
+        scaleDef,
         isPiecewise
     );
     const needsScaleFunction =
@@ -110,7 +110,7 @@ export function buildChannelAnalysis(name, channel) {
         outputComponents !== inputComponents;
     const needsOrdinalRange = resourceRequirements.needsOrdinalRange;
     const needsDomainMap = resourceRequirements.needsDomainMap;
-    const continuous = isContinuousScale(scaleType);
+    const continuous = scaleDef.continuous;
     const vectorOutputMode = scaleDef.vectorOutput ?? "never";
     const allowsScalarToVector =
         outputComponents > 1 &&

@@ -28,6 +28,8 @@ monorepo to satisfy GenomeSpy’s requirements, but it may grow beyond them.
 - **Value channels** are uniforms (scalar or vectors). If `dynamic: false`, the
   value is inlined into WGSL to enable shader optimizations.
 - **Scales** run on the GPU. Domains and ranges are updated per mark.
+- **Definitions** are immutable imported values that provide mark or scale
+  behavior. Renderer-created programs and slots own all mutable GPU state.
 
 ## Scales (d3 Mental Model)
 
@@ -35,6 +37,7 @@ Scales follow d3/Vega-Lite semantics, but they are not d3 objects. The renderer
 compiles scale logic into WGSL and updates GPU resources directly.
 
 Similarities:
+
 - Same core families: `linear`, `log`, `pow`, `sqrt`, `symlog`, `identity`,
   `band`, `threshold`, `quantize`, `ordinal`.
 - `domain` and `range` have the same intent as in d3.
@@ -43,6 +46,7 @@ Similarities:
   range (a color ramp texture is generated and sampled in WGSL).
 
 Differences:
+
 - No runtime scale objects or methods like `ticks`, `nice`, or `invert`; those
   are outside the renderer’s scope.
 - Categorical domains are explicit `u32` arrays (string categories are
@@ -69,53 +73,85 @@ without expanding vertices on the CPU.
 ## API (Public Surface)
 
 - `createRenderer(canvas, options)`
-- `renderer.createMark(type, config)` (returns `{ markId, scales, values, selections }`)
+- `renderer.createMark(definition, config)` (returns `{ markId, scales, values, selections }`)
 - `renderer.updateSeries(markId, channels, count?)`
-- `renderer.updateValues(markId, values)`
 - `renderer.updateGlobals({ width, height, dpr })`
 - `renderer.render()`
 - `renderer.destroyMark(markId)`
 
 Type definitions live in `packages/webgpu-renderer/src/index.d.ts`.
 
-## Custom Scales (Experimental)
-
-You can register custom scale metadata with:
+The code-first surface currently provides `pointMark` and `linearScale` as the
+first migration slice:
 
 ```js
-import { registerScaleDef } from "@genome-spy/webgpu-renderer";
+import { createRenderer } from "@genome-spy/webgpu-renderer";
+import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
+import { linearScale } from "@genome-spy/webgpu-renderer/scales/linear";
+```
 
-registerScaleDef("myScale", {
-    input: "numeric",
-    output: "f32",
-    domainRange: true,
-    params: [],
-    continuous: true,
+Importing these subpaths does not include unrelated marks, scales, or font
+support. Other built-ins will move to definition subpaths incrementally.
+
+## Definition contract (experimental)
+
+A mark definition exposes its diagnostic type and a `createProgram` factory. A
+scale config carries an immutable scale definition used by validation, resource
+planning, and WGSL emission. Definitions contain no device, buffer, texture, or
+other mutable renderer state, so callers can reuse them across marks.
+
+The exact custom-definition authoring API is not stable. Built-in definition
+values are the supported entry point during this migration.
+
+## Compatibility entry
+
+The existing string-based API remains temporarily available from a separate
+entry while marks and examples migrate:
+
+```js
+import { createRenderer } from "@genome-spy/webgpu-renderer/compatibility";
+
+const renderer = await createRenderer(canvas);
+renderer.createMark("rect", {
+  channels: {
+    x: { value: 10 },
+    x2: { value: 100 },
+    y: { value: 10 },
+    y2: { value: 80 },
+  },
 });
 ```
 
-This registers the scale in the validation registry. WGSL emission hooks will
-be added in later phases of the scale-def consolidation.
+This entry imports every built-in mark and scale and is therefore not
+tree-shakeable. It is a migration aid rather than the long-term public API.
 
 ## Quick Example
 
 ```js
 import { createRenderer } from "@genome-spy/webgpu-renderer";
+import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
+import { linearScale } from "@genome-spy/webgpu-renderer/scales/linear";
 
 const renderer = await createRenderer(canvas);
-const { markId, scales } = renderer.createMark("rect", {
-    channels: {
-        x: {
-            data: new Uint32Array([0, 1, 2]),
-            type: "u32",
-            scale: { type: "band", domain: [0, 1, 2] },
-        },
-        y: { value: 0, type: "f32", dynamic: true },
-        fill: { value: [0.2, 0.5, 0.8, 1.0] },
+const x = new Float32Array([0, 0.5, 1]);
+const y = new Float32Array([0.2, 0.8, 0.4]);
+const { markId, scales } = renderer.createMark(pointMark, {
+  channels: {
+    x: {
+      data: x,
+      type: "f32",
+      scale: linearScale({ domain: [0, 1], range: [20, 620] }),
     },
+    y: {
+      data: y,
+      type: "f32",
+      scale: linearScale({ domain: [0, 1], range: [420, 20] }),
+    },
+    size: { value: 100 },
+  },
 });
 
-scales.x.setRange([0, canvas.width]);
+scales.x.setDomain([0.1, 0.9]);
 renderer.render();
 ```
 
@@ -132,8 +168,10 @@ define a scale or dynamic value for that channel, so you can treat it as
 present in your own mark configs.
 
 ```js
-const { scales, values, selections } = renderer.createMark("point", {
-    channels: { ... },
+const { scales, values, selections } = renderer.createMark(pointMark, {
+  channels: {
+    // ...
+  },
 });
 
 const brushColor = scales.color.conditions.brush;
@@ -217,5 +255,6 @@ fully published yet. The upgrade notice is safe to ignore.
 ## Tests
 
 - GPU tests: `npm -w @genome-spy/webgpu-renderer run test:gpu`
+- Tree-shaking contract: `npm -w @genome-spy/webgpu-renderer run test:bundle`
 - Type checks: `npm -w @genome-spy/webgpu-renderer run test:tsc`
 - Unit tests: `npx vitest --run --config vitest.config.js --root packages/webgpu-renderer`

@@ -28,6 +28,8 @@ import { formatLiteral } from "../../wgsl/literals.js";
  *   Scalar type of the scaled output when outputComponents is 1.
  * @prop {ScaleType} scaleType
  *   Scale type name used by codegen (e.g., linear, band, threshold).
+ * @prop {import("../../index.d.ts").ScaleDef} scaleDef
+ *   Imported behavior used by scale code generation and resource planning.
  * @prop {boolean} useRangeTexture
  *   True when the scale output is sampled from a color ramp texture.
  * @prop {boolean} needsScaleFunction
@@ -54,6 +56,7 @@ function buildChannelIR(name, channel) {
         scalarType,
         outputScalarType,
         scaleType,
+        scaleDef,
         useRangeTexture,
         needsScaleFunction,
         needsOrdinalRange,
@@ -71,6 +74,7 @@ function buildChannelIR(name, channel) {
             inputComponents,
             outputScalarType,
             scaleType,
+            scaleDef,
             useRangeTexture,
             needsScaleFunction,
             needsOrdinalRange,
@@ -95,6 +99,7 @@ function buildChannelIR(name, channel) {
         inputComponents,
         outputScalarType,
         scaleType,
+        scaleDef,
         useRangeTexture,
         needsScaleFunction,
         needsOrdinalRange,

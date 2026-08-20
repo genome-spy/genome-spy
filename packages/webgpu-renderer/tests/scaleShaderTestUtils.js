@@ -1,4 +1,4 @@
-/* global globalThis, GPUShaderStage, GPUBufferUsage, GPUTextureUsage, GPUMapMode, process */
+/* global GPUShaderStage, GPUBufferUsage, GPUTextureUsage, GPUMapMode, process, navigator, console */
 globalThis.GPUShaderStage ??= {
     VERTEX: 0x1,
     FRAGMENT: 0x2,
@@ -7,6 +7,7 @@ globalThis.GPUShaderStage ??= {
 import fs from "node:fs";
 import path from "node:path";
 import { buildMarkShader } from "../src/marks/shaders/markShaderBuilder.js";
+import { attachScaleDefinitions } from "../testUtils/scaleDefinitions.js";
 import {
     buildPackedSeriesLayout,
     packSeriesArrays,
@@ -606,6 +607,7 @@ export async function runScaleCase(
         logSeriesBuffers = process.env.SCALE_TEST_LOG_BUFFERS === "1",
     }
 ) {
+    attachScaleDefinitions(channels);
     const shouldReadSeriesOnly =
         readSeriesOnly || process.env.SCALE_TEST_READ_SERIES === "1";
     const hasUniforms = uniformLayout.length > 0;

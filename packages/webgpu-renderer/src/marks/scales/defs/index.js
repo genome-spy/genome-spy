@@ -122,6 +122,7 @@ fn scaleBandHpU(value: vec2<u32>, domainExtent: vec3<f32>, range: vec2<f32>,
  * @type {import("../../../index.d.ts").ScaleDef}
  */
 export const indexScaleDef = {
+    type: "index",
     input: "u32",
     output: "f32",
     params: [
@@ -154,6 +155,7 @@ export const indexScaleDef = {
     normalizeDomain: normalizeIndexDomain,
     emit: emitIndexScale,
 };
+Object.freeze(indexScaleDef);
 
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params

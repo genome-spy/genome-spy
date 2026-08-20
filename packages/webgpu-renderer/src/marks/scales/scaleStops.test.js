@@ -5,14 +5,16 @@ import {
     normalizeScaleStops,
     normalizeOrdinalRange,
 } from "./scaleStops.js";
+import { createTestScale } from "../../../testUtils/scaleDefinitions.js";
 
 describe("scaleStops", () => {
     it("detects piecewise scales from linear configs", () => {
-        const kind = getScaleStopKind({
-            type: "linear",
-            domain: [0, 1, 2],
-            range: [0, 1, 2],
-        });
+        const kind = getScaleStopKind(
+            createTestScale("linear", {
+                domain: [0, 1, 2],
+                range: [0, 1, 2],
+            })
+        );
 
         expect(kind).toBe("piecewise");
     });
@@ -27,7 +29,7 @@ describe("scaleStops", () => {
         const result = normalizeScaleStops(
             "x",
             channel,
-            { type: "linear" },
+            createTestScale("linear"),
             "continuous",
             () => [2, 4]
         );
@@ -48,11 +50,10 @@ describe("scaleStops", () => {
         const result = normalizeScaleStops(
             "fill",
             channel,
-            {
-                type: "threshold",
+            createTestScale("threshold", {
                 domain: [0],
                 range: ["#000000", "#ffffff"],
-            },
+            }),
             "threshold",
             () => [0, 1]
         );

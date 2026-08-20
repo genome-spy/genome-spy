@@ -12,7 +12,6 @@
  *    so the renderer can update data without regenerating WGSL unnecessarily.
  */
 
-import { getScaleDef, getScaleOutputType } from "./scaleDefs.js";
 import { isPiecewiseScale } from "./scaleUtils.js";
 
 /**
@@ -27,7 +26,7 @@ import { isPiecewiseScale } from "./scaleUtils.js";
  */
 export function buildScaledFunction({
     name,
-    scale,
+    scaleDef,
     functionName,
     rawValueExpr,
     scalarType,
@@ -57,8 +56,7 @@ export function buildScaledFunction({
         outputComponents === 1 &&
         !useRangeTexture;
 
-    const def = getScaleDef(scale);
-    return def.emit({
+    return scaleDef.emit({
         name,
         functionName,
         scaleConfig,
@@ -84,4 +82,3 @@ export { validateScaleConfig } from "./scaleValidation.js";
  * @param {"f32"|"u32"|"i32"} scalarType
  * @returns {"f32"|"u32"|"i32"}
  */
-export { getScaleOutputType };

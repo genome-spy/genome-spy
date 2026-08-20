@@ -53,6 +53,7 @@ fn scaleBand(value: u32, domainExtent: vec2<f32>, range: vec2<f32>,
  * @type {import("../../../index.d.ts").ScaleDef}
  */
 export const bandScaleDef = {
+    type: "band",
     input: "u32",
     output: "f32",
     params: [
@@ -83,6 +84,7 @@ export const bandScaleDef = {
     validate: validateBandScale,
     emit: emitBandScale,
 };
+Object.freeze(bandScaleDef);
 
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params

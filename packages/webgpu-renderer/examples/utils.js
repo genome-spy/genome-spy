@@ -1,4 +1,9 @@
-import { createRenderer, setDebugResourcesEnabled } from "../src/index.js";
+/* global window */
+
+import {
+    createRenderer,
+    setDebugResourcesEnabled,
+} from "../src/compatibility.js";
 
 // Examples opt into resource debugging so buffer usage is visible in the console.
 setDebugResourcesEnabled(true);

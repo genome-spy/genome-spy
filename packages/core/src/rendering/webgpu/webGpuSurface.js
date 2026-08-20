@@ -1,4 +1,4 @@
-import { createRenderer } from "@genome-spy/webgpu-renderer";
+import { createRenderer } from "@genome-spy/webgpu-renderer/compatibility";
 
 import CanvasSizeHelper from "../canvasSizeHelper.js";
 
@@ -9,7 +9,7 @@ export default class WebGpuSurface {
     /** @type {CanvasSizeHelper} */
     #sizeHelper;
 
-    /** @type {import("@genome-spy/webgpu-renderer").Renderer | undefined} */
+    /** @type {import("@genome-spy/webgpu-renderer/compatibility").CompatibilityRenderer | undefined} */
     #renderer;
 
     /** @type {Set<import("@genome-spy/webgpu-renderer").MarkId>} */

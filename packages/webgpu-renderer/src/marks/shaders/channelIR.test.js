@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildChannelIRs } from "./channelIR.js";
+import { buildChannelIRs as buildDefinedChannelIRs } from "./channelIR.js";
+import { attachScaleDefinitions } from "../../../testUtils/scaleDefinitions.js";
+
+/** @param {Record<string, import("../../index.d.ts").ChannelConfigResolved>} channels */
+function buildChannelIRs(channels) {
+    return buildDefinedChannelIRs(attachScaleDefinitions(channels));
+}
 
 describe("channelIR", () => {
     it("keeps value-backed threshold inputs scalar", () => {

@@ -1,6 +1,9 @@
 import { cssColorToArray } from "../../utils/colorUtils.js";
 import { isPiecewiseScale } from "./scaleUtils.js";
-import { getScaleDef, getScaleResourceRequirements } from "./scaleDefs.js";
+import {
+    getScaleDefinition,
+    getScaleResourceRequirements,
+} from "./scaleDefinition.js";
 
 /**
  * Scale stops are the per-scale domain/range arrays that shader helpers read
@@ -16,11 +19,14 @@ import { getScaleDef, getScaleResourceRequirements } from "./scaleDefs.js";
  */
 
 /**
- * @param {string} scaleType
+ * @param {import("../../index.d.ts").ChannelScale | undefined} scale
  * @returns {boolean}
  */
-export function scaleUsesStopArrays(scaleType) {
-    return getScaleResourceRequirements(scaleType, false).stopKind !== null;
+export function scaleUsesStopArrays(scale) {
+    return (
+        getScaleResourceRequirements(getScaleDefinition(scale), false)
+            .stopKind !== null
+    );
 }
 
 /**
@@ -32,7 +38,7 @@ export function getScaleStopKind(scale) {
         return null;
     }
     return getScaleResourceRequirements(
-        scale.type ?? "identity",
+        getScaleDefinition(scale),
         isPiecewiseScale(scale)
     ).stopKind;
 }
@@ -173,7 +179,7 @@ function getStopKindRules(kind) {
  * @returns {{ domainLength: number, rangeLength: number }}
  */
 export function getScaleStopLengths(name, kind, scale) {
-    const def = getScaleDef(scale.type ?? "identity");
+    const def = getScaleDefinition(scale);
     if (def.getStopLengths) {
         const lengths = def.getStopLengths({ name, kind, scale });
         if (lengths) {
@@ -192,7 +198,7 @@ export function usesOrdinalDomainMap(scale) {
         return false;
     }
     return getScaleResourceRequirements(
-        scale.type ?? "identity",
+        getScaleDefinition(scale),
         isPiecewiseScale(scale)
     ).needsDomainMap;
 }
@@ -212,7 +218,7 @@ export function normalizeScaleStops(
     kind,
     getDefaultScaleRange
 ) {
-    const def = getScaleDef(scale.type ?? "identity");
+    const def = getScaleDefinition(scale);
     const rangeFn = isRangeFunction(scale.range);
     if (def.normalizeStops) {
         const normalized = def.normalizeStops({
@@ -409,7 +415,7 @@ export function usesRangeTexture(scale, outputComponents) {
     if (!scale) {
         return false;
     }
-    const def = getScaleDef(scale.type ?? "identity");
+    const def = getScaleDefinition(scale);
     const rangeFn = isRangeFunction(scale.range);
     const colorRange = isColorRange(scale.range);
     const interpolateEnabled =

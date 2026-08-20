@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.json",
 
-  "include": ["src/**/*", "../../external-typings/**/*"],
+  "include": ["src/**/*", "test-types/**/*", "../../external-typings/**/*"],
   "exclude": ["node_modules"],
 
   "compilerOptions": {

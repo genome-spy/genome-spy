@@ -2,7 +2,7 @@ import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import {
     getScaleResourceRequirements,
     getScaleUniformDef,
-} from "../../scales/scaleDefs.js";
+} from "../../scales/scaleDefinition.js";
 import {
     getScaleStopLengths,
     isColorRange,
@@ -149,9 +149,8 @@ export class ScaleResourceManager {
      */
     addScaleUniforms(layout, name, channel) {
         const analysis = this._getAnalysis(name);
-        const scaleType = analysis.scaleType;
         const requirements = getScaleResourceRequirements(
-            scaleType,
+            analysis.scaleDef,
             analysis.isPiecewise
         );
         const kind = requirements.stopKind;
@@ -180,7 +179,7 @@ export class ScaleResourceManager {
                 arrayLength: rangeLength,
             });
         }
-        const def = getScaleUniformDef(scaleType);
+        const def = getScaleUniformDef(analysis.scaleDef);
         for (const param of def.params) {
             layout.push({
                 name: `${param.prefix}${name}`,
@@ -213,7 +212,7 @@ export class ScaleResourceManager {
     initializeScale(name, channel, scale) {
         const analysis = this._getAnalysis(name);
         const requirements = getScaleResourceRequirements(
-            analysis.scaleType,
+            analysis.scaleDef,
             analysis.isPiecewise
         );
         const kind = requirements.stopKind;
@@ -239,7 +238,7 @@ export class ScaleResourceManager {
                 );
             }
         }
-        const def = getScaleUniformDef(scale.type);
+        const def = getScaleUniformDef(analysis.scaleDef);
         for (const param of def.params) {
             let value = param.defaultValue;
             if (param.prop && scale[param.prop] !== undefined) {

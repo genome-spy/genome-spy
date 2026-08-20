@@ -9,6 +9,7 @@ import { makeFnHeader } from "../scaleEmitUtils.js";
  * @type {import("../../../index.d.ts").ScaleDef}
  */
 export const identityScaleDef = {
+    type: "identity",
     input: "any",
     output: "same",
     params: [],
@@ -21,6 +22,7 @@ export const identityScaleDef = {
     },
     emit: emitIdentity,
 };
+Object.freeze(identityScaleDef);
 
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params

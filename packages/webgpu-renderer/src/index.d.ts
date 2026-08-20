@@ -112,20 +112,25 @@ export type MarkHandle = {
     selections: Record<string, SelectionSlotHandle>;
 };
 
+export type BuiltInScaleType =
+    | "identity"
+    | "linear"
+    | "log"
+    | "pow"
+    | "sqrt"
+    | "symlog"
+    | "quantize"
+    | "band"
+    | "index"
+    | "threshold"
+    | "ordinal";
+
 export type ChannelScale = {
+    /** Imported implementation used by shader generation and resource planning. */
+    definition?: ScaleDef;
+
     /** Which scale function to apply before mapping to range values. */
-    type:
-        | "identity"
-        | "linear"
-        | "log"
-        | "pow"
-        | "sqrt"
-        | "symlog"
-        | "quantize"
-        | "band"
-        | "index"
-        | "threshold"
-        | "ordinal";
+    type: string;
 
     /** Domain for scale mapping; band/ordinal domains list category IDs. */
     domain?: number[];
@@ -167,6 +172,15 @@ export type ChannelScale = {
     /** Band position within the step (0..1). */
     band?: number;
 };
+
+export type DefinedChannelScale = ChannelScale & {
+    definition: ScaleDef;
+};
+
+export type LinearScaleOptions = Pick<
+    ChannelScale,
+    "domain" | "range" | "interpolate" | "clamp" | "round"
+>;
 
 /** Input typing rules used by channel validation and scale metadata. */
 export type ScaleInputRule = "any" | "numeric" | "u32";
@@ -327,8 +341,8 @@ export type ScaleIOContext = {
  * Parameters for `getScaled_*` WGSL emission.
  */
 export type ScaleFunctionParams = ScaleIOContext & {
-    /** Scale type that selects which WGSL helper is emitted. */
-    scale: ChannelScale["type"];
+    /** Imported behavior that emits the scale's WGSL helper. */
+    scaleDef: ScaleDef;
     /** Override for the generated function name (defaults to name). */
     functionName?: string;
     /** WGSL expression for the raw value (buffer read or literal/uniform). */
@@ -415,6 +429,9 @@ export type ScaleDomainMapUpdate = {
  * and the WGSL emitter used for scale-specific shader code.
  */
 export type ScaleDef = {
+    /** Diagnostic name; dispatch uses the definition value, not this string. */
+    readonly type: string;
+
     input: ScaleInputRule;
     output: ScaleOutputRule;
     /** Extra uniforms required by the scale (e.g. base, exponent, padding). */
@@ -455,7 +472,7 @@ export type ScaleDef = {
     /**
      * Optional list of scale names whose WGSL must be emitted before this scale.
      */
-    wgslDeps?: string[];
+    wgslDeps?: ScaleDef[];
 
     /** Optional scale-specific validation hook. */
     validate?: (context: ScaleValidationContext) => ScaleValidationResult;
@@ -730,9 +747,9 @@ export type MarkConfig<T extends MarkType = MarkType> = {
            */
           dashPatterns?: number[][];
       }
-    : Record<string, never>) &
-    (T extends "link" ? LinkMarkOptions : Record<string, never>) &
-    (T extends "text" ? TextMarkOptions : Record<string, never>);
+    : unknown) &
+    (T extends "link" ? LinkMarkOptions : unknown) &
+    (T extends "text" ? TextMarkOptions : unknown);
 
 export type RendererOptions = {
     alphaMode?: GPUCanvasAlphaMode;
@@ -747,12 +764,31 @@ export type GlobalUniforms = {
 
 export class RendererError extends Error {}
 
+export type MarkProgram = {
+    getSlotHandles(): Omit<MarkHandle, "markId">;
+    updateSeries(channels: Record<string, TypedArray>, count?: number): void;
+    updateValues(values: Record<string, number | number[]>): void;
+    debugResources(label?: string): void;
+    draw(pass: GPURenderPassEncoder): void;
+    drawPick(pass: GPURenderPassEncoder): void;
+    destroy(): void;
+};
+
+export type MarkDefinition<TConfig = MarkConfig> = Readonly<{
+    /** Diagnostic name; dispatch uses the definition value, not this string. */
+    type: string;
+    createProgram(renderer: Renderer, config: TConfig): MarkProgram;
+}>;
+
 export class Renderer {
     /** Update global viewport-related uniforms (pixel size + device pixel ratio). */
     updateGlobals(globals: GlobalUniforms): void;
 
-    /** Create a new mark program and return its id. */
-    createMark<T extends MarkType>(type: T, config: MarkConfig<T>): MarkHandle;
+    /** Create a retained mark from an explicitly imported definition. */
+    createMark<TConfig>(
+        definition: MarkDefinition<TConfig>,
+        config: TConfig
+    ): MarkHandle;
 
     /**
      * Upload columnar series data (storage buffers) for a mark.
@@ -769,14 +805,6 @@ export class Renderer {
         markId: MarkId,
         channels: Record<string, TypedArray>,
         count?: number
-    ): void;
-
-    /**
-     * Update value-based uniforms for a mark.
-     */
-    updateValues(
-        markId: MarkId,
-        values: Record<string, number | number[]>
     ): void;
 
     /** Log the GPU resources reserved by a mark to the console. */
@@ -801,9 +829,6 @@ export function createRenderer(
 
 /** Enable or disable renderer resource debug logging. */
 export function setDebugResourcesEnabled(enabled: boolean): void;
-
-/** Register a custom scale definition in the renderer registry. */
-export function registerScaleDef(name: string, def: ScaleDef): void;
 
 /** Build the WGSL function header for a channel's getScaled helper. */
 export function makeFnHeader(

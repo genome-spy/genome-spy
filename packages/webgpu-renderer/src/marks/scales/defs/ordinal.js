@@ -15,6 +15,7 @@ import { normalizeOrdinalDomain } from "../ordinalDomain.js";
  * @type {import("../../../index.d.ts").ScaleDef}
  */
 export const ordinalScaleDef = {
+    type: "ordinal",
     input: "u32",
     output: "same",
     params: [],
@@ -30,6 +31,7 @@ export const ordinalScaleDef = {
     validate: validateOrdinalScale,
     emit: emitOrdinalScale,
 };
+Object.freeze(ordinalScaleDef);
 
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params

@@ -4,6 +4,7 @@ import {
     emitContinuousScale,
     rangeVec2,
 } from "../scaleEmitUtils.js";
+import { linearScaleDef } from "./linear.js";
 
 const logWgsl = /* wgsl */ `
 fn scaleLog(value: f32, domain: vec2<f32>, range: vec2<f32>, base: f32) -> f32 {
@@ -23,12 +24,13 @@ fn scaleLog(value: f32, domain: vec2<f32>, range: vec2<f32>, base: f32) -> f32 {
  * @type {import("../../../index.d.ts").ScaleDef}
  */
 export const logScaleDef = {
+    type: "log",
     input: "numeric",
     output: "f32",
     params: [{ prefix: SCALE_BASE_PREFIX, defaultValue: 10, prop: "base" }],
     continuous: true,
     vectorOutput: "interpolated",
-    wgslDeps: ["linear"],
+    wgslDeps: [linearScaleDef],
     wgsl: logWgsl,
     resources: {
         stopKind: "continuous",
@@ -37,6 +39,7 @@ export const logScaleDef = {
     },
     emit: emitLogScale,
 };
+Object.freeze(logScaleDef);
 
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params

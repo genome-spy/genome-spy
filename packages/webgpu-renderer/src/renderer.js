@@ -1,9 +1,3 @@
-import RectProgram from "./marks/programs/rectProgram.js";
-import PointProgram from "./marks/programs/pointProgram.js";
-import RuleProgram from "./marks/programs/ruleProgram.js";
-import LinkProgram from "./marks/programs/linkProgram.js";
-import TextProgram from "./marks/programs/textProgram.js";
-
 /**
  * Renderer-level error for unsupported environments or invalid operations.
  */
@@ -17,6 +11,18 @@ export class RendererError extends Error {}
  * @returns {Promise<Renderer>}
  */
 export async function createRenderer(canvas, options = {}) {
+    return createRendererWithFeatures(canvas, options, {});
+}
+
+/**
+ * Internal factory used by the temporary all-builtins compatibility entry.
+ *
+ * @param {HTMLCanvasElement} canvas
+ * @param {import("./index.d.ts").RendererOptions} options
+ * @param {{ legacyMarkDefinitions?: Map<string, import("./index.d.ts").MarkDefinition<any>> }} features
+ * @returns {Promise<Renderer>}
+ */
+export async function createRendererWithFeatures(canvas, options, features) {
     if (!navigator.gpu) {
         throw new RendererError("WebGPU is not supported in this browser.");
     }
@@ -49,7 +55,7 @@ export async function createRenderer(canvas, options = {}) {
         alphaMode: options.alphaMode ?? "premultiplied",
     });
 
-    return new Renderer({ device, context, format, canvas });
+    return new Renderer({ device, context, format, canvas, features });
 }
 
 /**
@@ -62,9 +68,9 @@ export class Renderer {
      */
 
     /**
-     * @param {{ device: GPUDevice, context: GPUCanvasContext, format: GPUTextureFormat, canvas: HTMLCanvasElement }} params
+     * @param {{ device: GPUDevice, context: GPUCanvasContext, format: GPUTextureFormat, canvas: HTMLCanvasElement, features?: { legacyMarkDefinitions?: Map<string, import("./index.d.ts").MarkDefinition<any>> } }} params
      */
-    constructor({ device, context, format, canvas }) {
+    constructor({ device, context, format, canvas, features = {} }) {
         this.device = device;
         this.context = context;
         this.format = format;
@@ -72,8 +78,10 @@ export class Renderer {
         // TODO: Use r32uint picking when available on all targets.
         this.pickFormat = /** @type {GPUTextureFormat} */ ("rgba8unorm");
 
-        /** @type {Map<MarkId, import("./marks/programs/rectProgram.js").default | import("./marks/programs/pointProgram.js").default | import("./marks/programs/ruleProgram.js").default | import("./marks/programs/linkProgram.js").default | import("./marks/programs/textProgram.js").default>} */
+        /** @type {Map<MarkId, import("./index.d.ts").MarkProgram>} */
         this._marks = new Map();
+        this._legacyMarkDefinitions =
+            features.legacyMarkDefinitions ?? new Map();
         this._nextMarkId = 1;
         this._pickingDirty = true;
         this._pickTexture = null;
@@ -128,51 +136,22 @@ export class Renderer {
     }
 
     /**
-     * @template {import("./index.d.ts").MarkType} T
-     * @param {T} type
-     * @param {import("./index.d.ts").MarkConfig<T>} config
+     * @template TConfig
+     * @param {import("./index.d.ts").MarkDefinition<TConfig> | import("./index.d.ts").MarkType} definitionOrType
+     * @param {TConfig} config
      * @returns {import("./index.d.ts").MarkHandle}
      */
-    createMark(type, config) {
-        let mark;
-        if (type === "rect") {
-            mark = new RectProgram(
-                this,
-                /** @type {import("./index.d.ts").MarkConfig<"rect">} */ (
-                    config
-                )
+    createMark(definitionOrType, config) {
+        const definition =
+            typeof definitionOrType == "string"
+                ? this._legacyMarkDefinitions.get(definitionOrType)
+                : definitionOrType;
+        if (!definition) {
+            throw new RendererError(
+                `No mark definition for: ${String(definitionOrType)}`
             );
-        } else if (type === "point") {
-            mark = new PointProgram(
-                this,
-                /** @type {import("./index.d.ts").MarkConfig<"point">} */ (
-                    config
-                )
-            );
-        } else if (type === "rule") {
-            mark = new RuleProgram(
-                this,
-                /** @type {import("./index.d.ts").MarkConfig<"rule">} */ (
-                    config
-                )
-            );
-        } else if (type === "link") {
-            mark = new LinkProgram(
-                this,
-                /** @type {import("./index.d.ts").MarkConfig<"link">} */ (
-                    config
-                )
-            );
-        } else if (type === "text") {
-            mark = new TextProgram(
-                this,
-                /** @type {import("./index.d.ts").MarkConfig<"text">} */ (
-                    config
-                )
-            );
-        } else {
-            throw new RendererError(`Unknown mark type: ${type}`);
         }
+        const mark = definition.createProgram(this, config);
 
         const markId = /** @type {MarkId} */ (this._nextMarkId++);
         this._marks.set(markId, mark);

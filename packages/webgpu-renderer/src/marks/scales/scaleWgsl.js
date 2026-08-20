@@ -1,59 +1,44 @@
 import SCALE_COMMON_WGSL from "../../wgsl/scaleCommon.wgsl.js";
-import { getScaleDefs } from "./scaleDefs.js";
 
 /**
  * Assemble WGSL snippets from scale definitions, honoring dependencies.
  *
- * @param {Iterable<string> | null} [requiredScales]
- *   When omitted or null, all known scales are emitted. Otherwise only the
- *   provided scale names (and their dependencies) are included.
+ * @param {Iterable<import("../../index.d.ts").ScaleDef>} requiredScales
+ *   Scale definitions whose WGSL snippets and dependencies are required.
  * @returns {string}
  */
-export function buildScaleWgsl(requiredScales = null) {
-    const defs = getScaleDefs();
-    const requested = requiredScales == null ? null : new Set(requiredScales);
-    /** @type {Set<string>} */
+export function buildScaleWgsl(requiredScales) {
+    /** @type {Set<import("../../index.d.ts").ScaleDef>} */
     const visiting = new Set();
-    /** @type {Set<string>} */
+    /** @type {Set<import("../../index.d.ts").ScaleDef>} */
     const visited = new Set();
     /** @type {string[]} */
     const fragments = [];
 
     /**
-     * @param {string} name
+     * @param {import("../../index.d.ts").ScaleDef} definition
      * @returns {void}
      */
-    function visit(name) {
-        if (visited.has(name)) {
+    function visit(definition) {
+        if (visited.has(definition)) {
             return;
         }
-        if (visiting.has(name)) {
-            throw new Error(`Scale WGSL dependency cycle: ${name}`);
+        if (visiting.has(definition)) {
+            throw new Error(`Scale WGSL dependency cycle: ${definition.type}`);
         }
-        const def = defs[name];
-        if (!def) {
-            throw new Error(`Unknown scale dependency "${name}".`);
+        visiting.add(definition);
+        for (const dependency of definition.wgslDeps ?? []) {
+            visit(dependency);
         }
-        visiting.add(name);
-        for (const dep of def.wgslDeps ?? []) {
-            visit(dep);
+        if (definition.wgsl) {
+            fragments.push(definition.wgsl);
         }
-        if (def.wgsl) {
-            fragments.push(def.wgsl);
-        }
-        visiting.delete(name);
-        visited.add(name);
+        visiting.delete(definition);
+        visited.add(definition);
     }
 
-    if (!requested) {
-        for (const name of Object.keys(defs)) {
-            visit(name);
-        }
-        return `${SCALE_COMMON_WGSL}\n${fragments.join("\n")}`;
-    }
-
-    for (const name of requested) {
-        visit(name);
+    for (const definition of requiredScales) {
+        visit(definition);
     }
 
     return `${SCALE_COMMON_WGSL}\n${fragments.join("\n")}`;

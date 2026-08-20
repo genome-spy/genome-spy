@@ -4,6 +4,7 @@ import {
     emitContinuousScale,
     rangeVec2,
 } from "../scaleEmitUtils.js";
+import { linearScaleDef } from "./linear.js";
 
 const powWgsl = /* wgsl */ `
 fn scalePow(value: f32, domain: vec2<f32>, range: vec2<f32>, exponent: f32) -> f32 {
@@ -27,6 +28,7 @@ fn scalePow(value: f32, domain: vec2<f32>, range: vec2<f32>, exponent: f32) -> f
  * @type {import("../../../index.d.ts").ScaleDef}
  */
 export const powScaleDef = {
+    type: "pow",
     input: "numeric",
     output: "f32",
     params: [
@@ -38,7 +40,7 @@ export const powScaleDef = {
     ],
     continuous: true,
     vectorOutput: "interpolated",
-    wgslDeps: ["linear"],
+    wgslDeps: [linearScaleDef],
     wgsl: powWgsl,
     resources: {
         stopKind: "continuous",
@@ -47,6 +49,7 @@ export const powScaleDef = {
     },
     emit: emitPowScale,
 };
+Object.freeze(powScaleDef);
 
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params

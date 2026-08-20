@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import BaseProgram from "./baseProgram.js";
 import { createMockRenderer } from "../../../testUtils/mockRenderer.js";
+import { attachScaleDefinitions } from "../../../../testUtils/scaleDefinitions.js";
 
 const TEST_SHADER_BODY = /* wgsl */ `
 struct VSOut {
@@ -49,7 +50,10 @@ class TestProgram extends BaseProgram {
  * @param {Record<string, import("../../../index.js").ChannelConfigInput>} channels
  */
 function createProgram(channels) {
-    return new TestProgram(createMockRenderer(), { channels, count: 1 });
+    return new TestProgram(createMockRenderer(), {
+        channels: attachScaleDefinitions(channels),
+        count: 1,
+    });
 }
 
 /** @type {Record<string, import("../../utils/channelSpecUtils.js").ChannelSpec>} */
@@ -78,7 +82,10 @@ class SeriesTypeProgram extends BaseProgram {
  * @param {number} count
  */
 function createSeriesProgram(channels, count) {
-    return new SeriesTypeProgram(createMockRenderer(), { channels, count });
+    return new SeriesTypeProgram(createMockRenderer(), {
+        channels: attachScaleDefinitions(channels),
+        count,
+    });
 }
 
 describe("BaseProgram channel validation", () => {

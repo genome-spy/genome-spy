@@ -1,5 +1,6 @@
 import BaseProgram from "./internal/baseProgram.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
+import { linearScale } from "../../scales/linear.js";
 import { buildTextLayout } from "../../fonts/layout.js";
 import BmFontManager from "../../fonts/bmFontManager.js";
 import { SDF_PADDING } from "../../fonts/bmFontMetrics.js";
@@ -41,10 +42,10 @@ import { createTextureFromData } from "../../utils/webgpuTextureUtils.js";
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 export const TEXT_CHANNEL_SPECS = {
     uniqueId: { type: "u32", components: 1, optional: true },
-    x: { components: 1, scale: "linear", default: 0.5 },
-    x2: { components: 1, scale: "linear", optional: true },
-    y: { components: 1, scale: "linear", default: 0.5 },
-    y2: { components: 1, scale: "linear", optional: true },
+    x: { components: 1, scale: linearScale(), default: 0.5 },
+    x2: { components: 1, scale: linearScale(), optional: true },
+    y: { components: 1, scale: linearScale(), default: 0.5 },
+    y2: { components: 1, scale: linearScale(), optional: true },
     text: { type: "u32", components: 1, default: 0 },
     size: { type: "f32", components: 1, default: 12.0 },
     angle: { type: "f32", components: 1, default: 0.0 },

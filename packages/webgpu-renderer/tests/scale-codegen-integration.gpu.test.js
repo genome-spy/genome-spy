@@ -1,3 +1,5 @@
+/* global navigator, GPUBufferUsage, GPUTextureUsage, GPUMapMode */
+
 /*
  * GPU integration tests for scale codegen. These build WGSL from JS scale
  * definitions, run compute shaders, and compare GPU results to d3 references.
@@ -14,15 +16,18 @@ import {
     scaleThreshold,
 } from "d3-scale";
 import { buildScaleWgsl } from "../src/marks/scales/scaleWgsl.js";
+import { buildScaledFunction } from "../src/marks/scales/scaleCodegen.js";
 import {
-    buildScaledFunction,
+    getScaleDef,
+    getScaleDefs,
     getScaleOutputType,
-} from "../src/marks/scales/scaleCodegen.js";
+} from "../src/marks/scales/scaleDefs.js";
 import { createSchemeTexture } from "../src/utils/colorUtils.js";
 import { normalizeRangePositions } from "../src/marks/scales/scaleStops.js";
 import { ensureWebGPU, packTextureData } from "./gpuTestUtils.js";
 
 const WORKGROUP_SIZE = 64;
+const ALL_SCALE_DEFINITIONS = Object.values(getScaleDefs());
 
 /**
  * @param {object} params
@@ -49,6 +54,10 @@ function buildScaleFn({
     useRangeTexture = false,
 }) {
     const resolvedScale = scaleConfig?.type ?? scale;
+    const scaleDef = getScaleDef(resolvedScale);
+    const definedScaleConfig = scaleConfig
+        ? { ...scaleConfig, definition: scaleDef }
+        : undefined;
     const resolvedOutputScalar =
         outputComponents === 1
             ? (outputScalarType ??
@@ -56,13 +65,13 @@ function buildScaleFn({
             : "f32";
     return buildScaledFunction({
         name,
-        scale,
+        scaleDef,
         rawValueExpr,
-        inputScalarType,
+        scalarType: inputScalarType,
         inputComponents,
         outputComponents,
         outputScalarType: resolvedOutputScalar,
-        scaleConfig,
+        scaleConfig: definedScaleConfig,
         useRangeTexture,
     });
 }
@@ -85,7 +94,7 @@ function buildScaleCodegenShader({
     rangeLength = 2,
     extraUniformFields = [],
 }) {
-    const scalesWgsl = buildScaleWgsl();
+    const scalesWgsl = buildScaleWgsl(ALL_SCALE_DEFINITIONS);
     const outputType = outputComponents === 1 ? "f32" : "vec4<f32>";
     const guardExpr = outputComponents === 1 ? "guard" : "vec4<f32>(guard)";
     const extraFields = extraUniformFields.length
@@ -143,7 +152,7 @@ function buildScaleCodegenRampShader({
     domainLength = 2,
     rangeLength = 2,
 }) {
-    const scalesWgsl = buildScaleWgsl();
+    const scalesWgsl = buildScaleWgsl(ALL_SCALE_DEFINITIONS);
     return `
 struct Globals {
     width: f32,
@@ -208,7 +217,7 @@ function buildScaleCodegenTextureShader({
     domainLength = 2,
     rangeLength = 2,
 }) {
-    const scalesWgsl = buildScaleWgsl();
+    const scalesWgsl = buildScaleWgsl(ALL_SCALE_DEFINITIONS);
     return `
 struct Globals {
     width: f32,
