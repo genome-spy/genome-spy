@@ -77,26 +77,66 @@ fn segmentDistance(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
     return length(p - (a + t * ab));
 }
 
-fn triangleDistance(p: vec2<f32>, tip: f32, base: f32, halfWidth: f32) -> f32 {
+fn stemDistance(p: vec2<f32>, halfLength: f32, halfWidth: f32, notchSlope: f32) -> f32 {
     if (halfWidth <= 0.0) {
         return 1e20;
     }
-    let edgeSlope = halfWidth / max(tip - base, 0.0001);
-    let top = vec2<f32>(base, halfWidth);
-    let bottom = vec2<f32>(base, -halfWidth);
-    let tipPoint = vec2<f32>(tip, 0.0);
-    let edgeDistance = min(
-        segmentDistance(p, tipPoint, top),
-        segmentDistance(p, tipPoint, bottom)
+    var notchLength = 0.0;
+    if (params.uStartNotch != 0u) {
+        notchLength = min(halfWidth * notchSlope, max(2.0 * halfLength - params.uMinStemLength, 0.0));
+    }
+    return polygonDistance(
+        p,
+        array<vec2<f32>, 6>(
+            vec2<f32>(-halfLength, 0.0),
+            vec2<f32>(-halfLength + notchLength, halfWidth),
+            vec2<f32>(halfLength, halfWidth),
+            vec2<f32>(halfLength, -halfWidth),
+            vec2<f32>(-halfLength + notchLength, -halfWidth),
+            vec2<f32>(-halfLength, 0.0)
+        )
     );
-    let inside = p.x >= base && p.x <= tip && abs(p.y) <= (tip - p.x) * edgeSlope;
-    return select(edgeDistance, -edgeDistance, inside);
 }
 
-fn headDistance(p: vec2<f32>, tip: f32, halfWidth: f32, slope: f32, shape: u32) -> f32 {
+fn polygonDistance(p: vec2<f32>, vertices: array<vec2<f32>, 6>) -> f32 {
+    var distance = length(p - vertices[0]);
+    var inside = false;
+    for (var i = 0u; i < 6u; i++) {
+        let j = (i + 1u) % 6u;
+        let a = vertices[i];
+        let b = vertices[j];
+        let edge = b - a;
+        let projection = a + edge * clamp(dot(p - a, edge) / max(dot(edge, edge), 0.0001), 0.0, 1.0);
+        distance = min(distance, length(p - projection));
+        if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / max(b.y - a.y, 0.0001) + a.x) {
+            inside = !inside;
+        }
+    }
+    return select(distance, -distance, inside);
+}
+
+fn triangleDistance(p: vec2<f32>, tip: f32, base: f32, halfWidth: f32, notchSlope: f32) -> f32 {
+    if (halfWidth <= 0.0) {
+        return 1e20;
+    }
+    let notch = vec2<f32>(tip - halfWidth * notchSlope, 0.0);
+    return polygonDistance(
+        p,
+        array<vec2<f32>, 6>(
+            vec2<f32>(tip, 0.0),
+            vec2<f32>(base, halfWidth),
+            notch,
+            vec2<f32>(base, -halfWidth),
+            vec2<f32>(tip, 0.0),
+            vec2<f32>(tip, 0.0)
+        )
+    );
+}
+
+fn headDistance(p: vec2<f32>, tip: f32, halfWidth: f32, slope: f32, notchSlope: f32, shape: u32) -> f32 {
     let axisLength = halfWidth * slope;
     let base = tip - axisLength;
-    let triangle = triangleDistance(p, tip, base, halfWidth);
+    let triangle = triangleDistance(p, tip, base, halfWidth, notchSlope);
     if (shape == HEAD_TRIANGLE) {
         return triangle;
     }
@@ -115,10 +155,7 @@ fn shade(in: VSOut) -> vec4<f32> {
     let halfStroke = in.strokeWidth * 0.5;
     var stem = 1e20;
     if (in.stemHalfWidth > 0.0) {
-        stem = boxDistance(
-            p - vec2<f32>(-in.headHalfWidth * in.headSlope * 0.5, 0.0),
-            vec2<f32>(in.halfLength, in.stemHalfWidth)
-        );
+        stem = stemDistance(p, in.halfLength, in.stemHalfWidth, in.notchSlope);
     }
 
     var head = headDistance(
@@ -126,6 +163,7 @@ fn shade(in: VSOut) -> vec4<f32> {
         in.halfLength + select(0.0, in.headHalfWidth * in.headSlope, params.uHeadPlacement != PLACEMENT_INSIDE),
         in.headHalfWidth,
         in.headSlope,
+        in.notchSlope,
         in.headShape
     );
     if (in.headSpacing >= 0.0) {
@@ -134,7 +172,7 @@ fn shade(in: VSOut) -> vec4<f32> {
             if (tip < -in.halfLength) {
                 break;
             }
-            head = min(head, headDistance(p, tip, in.headHalfWidth, in.headSlope, in.headShape));
+            head = min(head, headDistance(p, tip, in.headHalfWidth, in.headSlope, in.notchSlope, in.headShape));
         }
     }
 

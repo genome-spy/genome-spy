@@ -1103,7 +1103,7 @@ function readNullableNumericProperty(mark, property) {
 /** @param {number} angle */
 function headAngleToSlope(angle) {
     const clamped = Math.min(Math.max(angle, 1), 90);
-    return Math.max(Math.tan((clamped * Math.PI) / 180), 1e-6);
+    return 1 / Math.max(Math.tan((clamped * Math.PI) / 180), 1e-6);
 }
 
 /**
