@@ -22,6 +22,12 @@
   logging is necessary.
 - Prefer explicit scale contracts, including required domains for ordinal and
   band scales.
+- Keep `@genome-spy/webgpu-renderer` imports inside `src/rendering/webgpu/` and
+  use only its documented root, mark, and scale entry points. Do not import its
+  implementation modules or inspect definition internals.
+- Treat WebGPU integration friction as evidence about the unpublished renderer
+  API. State inadequate contracts explicitly and propose improvements instead
+  of accumulating Core-side workarounds solely to preserve the current API.
 - Views normally created through `ViewFactory.createOrImportView` receive
   lifecycle wiring that directly constructed views may need to register
   explicitly. Check the view/dataflow architecture before adding direct view
