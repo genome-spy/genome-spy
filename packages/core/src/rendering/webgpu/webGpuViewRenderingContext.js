@@ -1,5 +1,9 @@
 import { peek } from "../../utils/arrayUtils.js";
 import ViewRenderingContext from "../../view/renderingContext/viewRenderingContext.js";
+import {
+    normalizeClipOptions,
+    prepareMarkClipOptionsFromClip,
+} from "../../view/renderingContext/clipOptions.js";
 import { createWebGpuMarkConfig } from "./webGpuMarkAdapter.js";
 
 /**
@@ -75,18 +79,38 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         this.#marks.add(mark);
 
-        const translated = createWebGpuMarkConfig(
-            mark,
-            options,
-            this.currentCoords
-        );
+        const coords = this.currentCoords;
+        const translated = createWebGpuMarkConfig(mark, options, coords);
         if (translated) {
+            const clip = prepareMarkClipOptionsFromClip(
+                normalizeClipOptions(options),
+                mark.properties.clip,
+                coords
+            );
             this.surface.useMark(
                 mark,
                 translated.definition,
-                translated.config
+                translated.config,
+                { scissor: clip && this.#createScissor(clip) }
             );
         }
+    }
+
+    /**
+     * Expands unclipped dimensions to the full canvas. The renderer intersects
+     * the resulting logical-pixel scissor with the canvas bounds.
+     *
+     * @param {import("../../types/rendering.js").ClipOptions} clip
+     * @returns {import("@genome-spy/webgpu-renderer").DrawRect}
+     */
+    #createScissor(clip) {
+        const canvas = this.surface.getLogicalCanvasSize();
+        return {
+            x: clip.clipX ? clip.rect.x : 0,
+            y: clip.clipY ? clip.rect.y : 0,
+            width: clip.clipX ? clip.rect.width : canvas.width,
+            height: clip.clipY ? clip.rect.height : canvas.height,
+        };
     }
 
     get currentCoords() {
