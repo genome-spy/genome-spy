@@ -10,8 +10,9 @@ This plan focuses on the remaining work. Completed items are omitted.
   ranges differ.
 - Worker-friendly update path (transfer buffers, no object reconstruction).
 - Optional vector backend compatibility (stable mark instance schema).
-- Define explicit mark disposal for dynamically removed Core views without
-  coupling the renderer to Core lifecycle types.
+- Split development-only validation from always-on public safety checks and
+  prove production dead-code elimination with dual bundle fixtures, following
+  the API direction note's production validation policy.
 
 #### Picking implementation plan (incremental)
 
@@ -132,6 +133,20 @@ Ordered frame submission — complete:
   has been removed;
 - frame order is independent of allocation order, so z-order changes do not
   require resource recreation.
+
+Deterministic resource lifetime — complete:
+
+- `destroyMark(markId)` disposes a retained mark without importing Core
+  lifecycle types;
+- idempotent `renderer.destroy()` disposes all marks, global and picking
+  resources, unconfigures the canvas context, and destroys the renderer-owned
+  device;
+- mark disposal releases current series, scale, selection, uniform, and extra
+  resources, while resource replacement releases superseded allocations;
+- retained update slots and renderer entry points fail after destruction, and
+  late text-atlas completion cannot upload or invalidate the host;
+- Core surfaces and standalone examples use whole-renderer destruction for
+  terminal cleanup.
 
 The exact custom mark extension and scale-authoring contracts remain
 experimental, but they no longer block migration of built-in features.

@@ -679,6 +679,9 @@ export class ScaleResourceManager {
             height: prepared.height,
             format: prepared.format,
         };
+        if (needsNewTexture) {
+            prev?.texture.destroy();
+        }
         return needsNewTexture;
     }
 
@@ -726,10 +729,12 @@ export class ScaleResourceManager {
             !buffer || !prev || prev.size.byteLength !== nextBytes;
 
         if (needsNewBuffer) {
+            const previous = buffer;
             buffer = this._device.createBuffer({
                 size: nextBytes,
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
             });
+            previous?.destroy();
         }
 
         this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(data));
@@ -781,10 +786,12 @@ export class ScaleResourceManager {
             !buffer || !prev || prev.size.byteLength !== nextBytes;
 
         if (needsNewBuffer) {
+            const previous = buffer;
             buffer = this._device.createBuffer({
                 size: nextBytes,
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
             });
+            previous?.destroy();
         }
 
         this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(data));
@@ -794,5 +801,18 @@ export class ScaleResourceManager {
         };
         this._setUniformValue(RANGE_COUNT_PREFIX + name, length);
         return needsNewBuffer;
+    }
+
+    /**
+     * @returns {void}
+     */
+    destroy() {
+        for (const resources of this._channelResources.values()) {
+            resources.ordinalRange?.buffer.destroy();
+            resources.domainMap?.buffer.destroy();
+            resources.rangeTexture?.texture.destroy();
+        }
+        this._channelResources.clear();
+        this._scaleUpdaters.clear();
     }
 }

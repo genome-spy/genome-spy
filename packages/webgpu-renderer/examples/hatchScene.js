@@ -33,11 +33,7 @@ export default async function runHatchScene(canvas) {
         }
     }
 
-    const {
-        markId: hatchMarkId,
-        series,
-        scales,
-    } = renderer.createMark(rectMark, {
+    const { series, scales } = renderer.createMark(rectMark, {
         count: hatchCount,
         channels: {
             x: {
@@ -121,6 +117,6 @@ export default async function runHatchScene(canvas) {
 
     return () => {
         cleanupResize();
-        renderer.destroyMark(hatchMarkId);
+        renderer.destroy();
     };
 }

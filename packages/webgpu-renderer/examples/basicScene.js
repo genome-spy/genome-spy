@@ -24,7 +24,7 @@ export default async function runBasicScene(canvas) {
         y2[i] = y[i] + 20;
     }
 
-    const { markId, series, values } = renderer.createMark(rectMark, {
+    const { series, values } = renderer.createMark(rectMark, {
         count,
         channels: {
             x: { data: x, type: "f32", scale: identityScale() },
@@ -92,6 +92,6 @@ export default async function runBasicScene(canvas) {
     return () => {
         running = false;
         cleanupResize();
-        renderer.destroyMark(markId);
+        renderer.destroy();
     };
 }

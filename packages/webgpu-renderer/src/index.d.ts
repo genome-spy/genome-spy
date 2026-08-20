@@ -871,6 +871,9 @@ export class Renderer {
 
     /** Destroy GPU resources associated with a mark. */
     destroyMark(markId: MarkId): void;
+
+    /** Destroy every renderer-owned GPU resource. Safe to call repeatedly. */
+    destroy(): void;
 }
 
 export function createRenderer(

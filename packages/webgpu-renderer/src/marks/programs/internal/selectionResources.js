@@ -272,6 +272,7 @@ export class SelectionResourceManager {
                     buffer,
                     byteLength: table.byteLength,
                 });
+                existing?.buffer.destroy();
                 needsRebind = true;
             }
             const buffer = this._selectionBuffers.get(name)?.buffer;

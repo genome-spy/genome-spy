@@ -168,11 +168,9 @@ export default async function runIndexScene(canvas) {
         if (toolbar && toolbar.contains(modeLabel)) {
             toolbar.removeChild(modeLabel);
         }
-        if (markId) {
-            renderer.destroyMark(markId);
-            markId = null;
-            scales = null;
-            values = null;
-        }
+        renderer.destroy();
+        markId = null;
+        scales = null;
+        values = null;
     };
 }

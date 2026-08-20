@@ -13,8 +13,8 @@ before the work is merged, as required by the repository workflow.
 The companion [renderer API direction](webgpu-renderer-api-direction.md) records
 the code-first, tree-shakeable public API direction inferred from the PoC. Its
 built-in definition migration, compatibility cleanup, and explicit draw-frame
-submission are complete. Occurrence-specific scale state and deterministic
-lifecycle are the next reviewable contracts.
+submission are complete. Deterministic renderer destruction is also complete;
+occurrence-specific scale state is the next reviewable contract.
 
 ## Context
 
@@ -93,8 +93,11 @@ The package is not yet a production-ready Core backend:
   examples appear to mix physical canvas dimensions with logical pixel ranges.
 - The frame accepts a clear color, although the current Core PoC still validates
   and uses only its default white background.
-- Whole-renderer destruction is missing and lower-level resource destruction is
-  incomplete. Asynchronous text preparation now invalidates the host instead of
+- `renderer.destroy()` now deterministically disposes every retained mark,
+  renderer-level buffers and picking resources, the canvas context, and the
+  renderer-owned device. Superseded series, scale, selection, and text-atlas
+  resources are released when replaced. Asynchronous text preparation now
+  stops after destruction and otherwise invalidates the host instead of
   submitting an implicit creation-order frame.
 - Runtime dependencies are declared by the renderer package, and its migration
   note records the code-first definition API.
@@ -102,9 +105,10 @@ The package is not yet a production-ready Core backend:
   include point, locus, time/UTC, quantile, bin-ordinal behavior, null handling,
   expression/parameter accessors, and complete color and range semantics.
 - GPU tests cover scale/code-generation, imported point/linear rendering,
-  picking, hash, and selection paths. Browser smoke tests cover the PoC and all
-  standalone mark scenes, but retained occurrence ordering and lifecycle still
-  need dedicated coverage.
+  picking, hash, and selection paths. Unit tests cover retained occurrence
+  ordering, replacement cleanup, idempotent renderer destruction, and stale
+  handle rejection. Browser smoke tests cover the PoC and all standalone mark
+  scenes.
 
 ### What `first.json` actually requires
 
@@ -458,8 +462,8 @@ Verification completed for the slice:
 ### Milestone 2: Harden only the renderer contracts validated by the PoC
 
 Implementation status: Built-in definition migration, bundle proof, and the
-explicit draw-frame slice completed on 2026-08-20. Occurrence-specific scale
-state and lifecycle work remain.
+explicit draw-frame and deterministic destruction slices completed on
+2026-08-20. Occurrence-specific scale state and resize ownership remain.
 
 Outcome: the successful vertical slice no longer depends on accidental or
 ambiguous renderer behavior, while unused generality remains deferred.
@@ -487,14 +491,25 @@ Completed explicit frame slice:
 - migrate the Core surface to the draw-command API while retaining its current
   full-canvas absolute-coordinate bridge.
 
+Completed deterministic destruction slice:
+
+- add idempotent whole-renderer destruction that owns mark disposal, picking
+  resources, global uniforms, canvas unconfiguration, and device destruction;
+- destroy superseded series, scale, selection, and text-atlas resources during
+  updates instead of retaining them until device teardown;
+- make retained handle updates fail fast after their mark is destroyed and
+  suppress late asynchronous text invalidation after teardown;
+- make the Core WebGPU surface and standalone examples dispose their renderer
+  as the terminal lifecycle operation;
+- cover resource replacement, renderer ownership, repeated destruction, and
+  stale handles with focused unit tests.
+
 Remaining implementation:
 
 - extend the explicit ordered draw list with per-occurrence opacity and the
   scale state required by repeated Core layout instances;
 - finish resize and physical-attachment ownership beyond the now-documented
   logical-pixel and DPR conversion contract;
-- add whole-renderer destruction and complete cleanup for resources owned by the
-  integrated path;
 - replace PoC-specific API workarounds in the Core adapter with the validated
   public renderer contracts;
 - do not add picking, facets, or scale parity merely to make the API appear

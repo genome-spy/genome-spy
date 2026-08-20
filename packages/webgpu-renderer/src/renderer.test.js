@@ -94,18 +94,61 @@ describe("Renderer mark definitions", () => {
             second.markId,
         ]);
     });
+
+    test("destroys owned resources exactly once and rejects later work", () => {
+        const firstProgram = createProgram();
+        const secondProgram = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi
+                .fn()
+                .mockReturnValueOnce(firstProgram)
+                .mockReturnValueOnce(secondProgram),
+        });
+        const { renderer } = createRendererHarness();
+        renderer.createMark(definition, { channels: {} });
+        renderer.createMark(definition, { channels: {} });
+        const pickTexture =
+            /** @type {GPUTexture & { destroy: ReturnType<typeof vi.fn> }} */ (
+                /** @type {unknown} */ ({ destroy: vi.fn() })
+            );
+        const pickReadbackBuffer =
+            /** @type {GPUBuffer & { destroy: ReturnType<typeof vi.fn> }} */ (
+                /** @type {unknown} */ ({ destroy: vi.fn() })
+            );
+        renderer._pickTexture = pickTexture;
+        renderer._pickReadbackBuffer = pickReadbackBuffer;
+
+        renderer.destroy();
+        renderer.destroy();
+
+        expect(firstProgram.destroy).toHaveBeenCalledOnce();
+        expect(secondProgram.destroy).toHaveBeenCalledOnce();
+        expect(renderer._marks).toHaveLength(0);
+        expect(renderer._globalUniformBuffer.destroy).toHaveBeenCalledOnce();
+        expect(pickTexture.destroy).toHaveBeenCalledOnce();
+        expect(pickReadbackBuffer.destroy).toHaveBeenCalledOnce();
+        expect(renderer.context.unconfigure).toHaveBeenCalledOnce();
+        expect(renderer.device.destroy).toHaveBeenCalledOnce();
+        expect(() => renderer.render()).toThrow("Renderer has been destroyed.");
+        expect(() => renderer.createMark(definition, { channels: {} })).toThrow(
+            "Renderer has been destroyed."
+        );
+    });
 });
 
 function createRendererHarness() {
     const renderer = Object.create(Renderer.prototype);
     renderer._marks = new Map();
     renderer._nextMarkId = 1;
+    renderer._destroyed = false;
+    renderer._onInvalidate = vi.fn();
     renderer._pickingDirty = false;
     renderer._renderFrame = null;
     renderer._globals = { width: 100, height: 50, dpr: 2 };
     renderer._globalUniformStride = 256;
     renderer._globalUniformCapacity = 4;
-    renderer._globalUniformBuffer = {};
+    renderer._globalUniformBuffer = { destroy: vi.fn() };
     renderer._globalBindGroup = {};
     const pass = {
         end: vi.fn(),
@@ -119,9 +162,11 @@ function createRendererHarness() {
             finish: vi.fn(),
         }),
         queue: { submit: vi.fn(), writeBuffer: vi.fn() },
+        destroy: vi.fn(),
     };
     renderer.context = {
         getCurrentTexture: () => ({ createView: vi.fn() }),
+        unconfigure: vi.fn(),
     };
     return { renderer: /** @type {Renderer} */ (renderer), pass };
 }

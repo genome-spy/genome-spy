@@ -90,8 +90,10 @@ export default class BaseProgram {
         /** @type {Omit<import("../../../index.d.ts").MarkHandle, "markId">} */
         this._slotHandles = {
             series: {
-                replace: (channels, count) =>
-                    this.replaceSeries(channels, count),
+                replace: (channels, count) => {
+                    this._assertAlive();
+                    this.replaceSeries(channels, count);
+                },
             },
             scales: {},
             values: {},
@@ -610,6 +612,7 @@ export default class BaseProgram {
         const updater = this._scaleResources.getScaleUpdater(name);
         return {
             setDomain: (domain) => {
+                this._assertAlive();
                 const needsRebind = updater.updateDomain(domain);
                 this._writeUniforms();
                 if (needsRebind) {
@@ -618,6 +621,7 @@ export default class BaseProgram {
                 this.renderer.markPickingDirty();
             },
             setRange: (range) => {
+                this._assertAlive();
                 const needsRebind = updater.updateRange(range);
                 this._writeUniforms();
                 if (needsRebind) {
@@ -641,6 +645,7 @@ export default class BaseProgram {
         }
         return {
             set: (value) => {
+                this._assertAlive();
                 this._setUniformValue(uniformName, value);
                 this._writeUniforms();
                 this.renderer.markPickingDirty();
@@ -657,6 +662,7 @@ export default class BaseProgram {
          * @param {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", min: number, max: number }} next
          */
         const update = (next) => {
+            this._assertAlive();
             const needsRebind = this._selectionResources.updateSelection(
                 def.name,
                 next,
@@ -821,8 +827,30 @@ export default class BaseProgram {
     }
 
     destroy() {
+        if (this._destroyed) {
+            return;
+        }
         this._destroyed = true;
-        // TODO: Track and destroy buffers once GPUBuffer.destroy is supported in all targets.
+        this._uniformBuffer.destroy();
+        this._seriesBuffers.destroy();
+        this._scaleResources.destroy();
+        for (const buffer of this._extraBuffers.values()) {
+            buffer.destroy();
+        }
+        this._extraBuffers.clear();
+        for (const { texture } of this._extraTextures.values()) {
+            texture.destroy();
+        }
+        this._extraTextures.clear();
+    }
+
+    /**
+     * @returns {void}
+     */
+    _assertAlive() {
+        if (this._destroyed) {
+            throw new Error(`${this.constructor.name} has been destroyed.`);
+        }
     }
     // Type guards live in src/types.js to keep runtime checks consistent across modules.
 }

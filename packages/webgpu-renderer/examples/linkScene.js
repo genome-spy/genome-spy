@@ -32,7 +32,7 @@ export default async function runLinkScene(canvas) {
         size[i] = 1.5 + Math.pow(Math.random(), 2) * 2.5;
     }
 
-    const { markId, series, scales } = renderer.createMark(linkMark, {
+    const { series, scales } = renderer.createMark(linkMark, {
         count,
         segments: 64,
         linkShape: "arc",
@@ -83,6 +83,6 @@ export default async function runLinkScene(canvas) {
 
     return () => {
         cleanupResize();
-        renderer.destroyMark(markId);
+        renderer.destroy();
     };
 }

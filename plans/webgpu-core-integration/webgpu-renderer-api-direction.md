@@ -1,7 +1,7 @@
 # WebGPU renderer API direction
 
-Status: In progress — explicit draw frames and host invalidation implemented;
-occurrence scale state and destruction contracts next
+Status: In progress — explicit draw frames, host invalidation, and deterministic
+destruction implemented; occurrence scale state and resize ownership next
 
 Date: 2026-08-20
 
@@ -73,8 +73,8 @@ architectural rather than a missing mark feature:
   with different viewports, clips, opacities, or instance ranges;
 - clear color, logical size, physical attachment size, and DPR are not yet a
   coherent public frame contract;
-- destruction stops at individual marks, and some internal work can initiate
-  rendering outside the host's frame schedule;
+- destruction initially stopped at individual marks, and some internal work
+  could initiate rendering outside the host's frame schedule;
 - the package root exposes scale-code-generation internals even though the
   intended public surface is described as small.
 
@@ -230,7 +230,8 @@ an equivalent layout-instance contract is designed.
 
 ### Surface, sizing, and lifecycle
 
-The public surface contract should use logical CSS pixels consistently:
+The public surface contract uses the following lifecycle rules, while resize
+ownership remains to be completed:
 
 - `resize({ width, height, dpr })` receives logical dimensions and makes
   physical attachment sizing explicit;
@@ -242,8 +243,14 @@ The public surface contract should use logical CSS pixels consistently:
   visible frame behind the host's back;
 - asynchronous preparation should signal readiness or invalidation so the host
   can schedule another frame;
-- `destroy()` releases renderer-owned buffers, textures, layouts, observers,
-  and contexts, while each retained handle has deterministic destruction.
+- `destroyMark(markId)` releases one retained mark while the renderer remains
+  usable;
+- idempotent `destroy()` releases all renderer-owned marks, buffers, textures,
+  picking resources, the canvas context, and the renderer-owned device;
+- retained update slots fail after their mark is destroyed, and renderer entry
+  points fail after whole-renderer destruction;
+- late asynchronous font work neither uploads resources nor invalidates the
+  host after destruction.
 
 The convenience factory can continue to acquire and configure a device for a
 canvas. An advanced construction path may later accept an existing device and
@@ -283,6 +290,43 @@ Add a small production bundle fixture that asserts module inclusion or size for
 representative imports. Tree-shaking is a tested contract, not an assumption
 based on source layout. The Core lazy chunk should also be measured after each
 migration slice.
+
+### Production validation policy
+
+The renderer currently favors descriptive validation and fail-fast internal
+invariants because its contracts are still evolving. This is useful during
+integration, but repeated checks and their error strings should not become a
+permanent production bundle cost.
+
+Apply the following policy in a later optimization slice:
+
+- keep small checks at externally reachable lifecycle and resource boundaries
+  when removing them could turn a caller error into invalid GPU work or silent
+  corruption;
+- delete checks duplicated by an already-guarded public operation instead of
+  hiding them behind a build flag;
+- move exhaustive configuration, shape, and internal-consistency validation
+  into side-effect-free validation modules;
+- guard development-only validation at its call sites with a compile-time
+  development constant so production dead-code elimination removes the call,
+  validator module, and diagnostic strings together;
+- do not use a runtime-only flag in hot paths or assume that a conditional
+  inside the validation function will make its imports tree-shakeable;
+- keep unexpected enum branches and conditions required to construct valid GPU
+  resources as always-on failures unless measurement shows a material cost and
+  a production-safe alternative exists.
+
+The package currently exports source modules, so the compile-time constant must
+first be defined consistently for the repository builds and documented for
+supported downstream bundlers. Until that build contract exists, validation
+remains enabled rather than depending on an unresolved global or silently
+changing behavior between consumers.
+
+Verification for this slice must build both development and production bundle
+fixtures. Development output must retain representative diagnostics and reject
+invalid configurations. Production output must render valid input while
+excluding representative validator modules and error messages. Bundle-size
+measurements should determine whether the additional mode is worthwhile.
 
 ## Core integration boundary
 
@@ -432,9 +476,9 @@ standalone renderer scene.
 
 Implementation status: Partially complete on 2026-08-20. Ordered draw commands,
 logical-pixel viewports and scissors, instance ranges, clear color, shared
-visible/picking order, host-controlled asynchronous invalidation, and Core
-surface migration are implemented. Per-draw opacity, occurrence-specific scale
-state, resize ownership, and whole-renderer destruction remain.
+visible/picking order, host-controlled asynchronous invalidation, Core surface
+migration, and deterministic destruction are implemented. Per-draw opacity,
+occurrence-specific scale state, and resize ownership remain.
 
 Outcome: Core renders `first.json` without rebuilding retained handles merely to
 establish paint order.
@@ -446,6 +490,14 @@ establish paint order.
 - keep the Core adapter on imported definitions while migrating it to the new
   frame API;
 - retain the isolated unit-to-pixel shim until Core's pixel-range migration.
+
+The lifecycle slice establishes a single ownership chain: Core disposes its
+`WebGpuSurface`, the surface destroys its renderer, the renderer destroys its
+marks and global/picking resources, and each mark destroys current buffers and
+textures. Resource managers also destroy superseded allocations immediately.
+The renderer owns the device acquired by `createRenderer`, so terminal teardown
+unconfigures the canvas and destroys that device. Advanced shared-device
+construction remains deferred.
 
 Affected areas: renderer frame/lifecycle API, Core WebGPU surface and
 coordinator, adapter tests, and the `first.json` browser fixture.

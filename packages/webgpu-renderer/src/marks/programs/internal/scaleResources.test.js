@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ScaleResourceManager } from "./scaleResources.js";
 import { attachScaleDefinitions } from "../../../../testUtils/scaleDefinitions.js";
 import {
@@ -9,17 +9,30 @@ import {
 
 /**
  * @param {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} channels
- * @returns {{ manager: ScaleResourceManager, uniforms: Map<string, number[] | number> }}
+ * @returns {{ manager: ScaleResourceManager, uniforms: Map<string, number[] | number>, buffers: Array<GPUBuffer & { destroy: ReturnType<typeof vi.fn> }>, textures: Array<GPUTexture & { destroy: ReturnType<typeof vi.fn> }> }}
  */
 function createManager(channels) {
     attachScaleDefinitions(channels);
     const uniforms = new Map();
+    /** @type {Array<GPUBuffer & { destroy: ReturnType<typeof vi.fn> }>} */
+    const buffers = [];
+    /** @type {Array<GPUTexture & { destroy: ReturnType<typeof vi.fn> }>} */
+    const textures = [];
     const device = /** @type {GPUDevice} */ (
         /** @type {unknown} */ ({
             createBuffer:
                 /** @type {(descriptor: GPUBufferDescriptor) => GPUBuffer} */ (
-                    (descriptor) =>
-                        /** @type {unknown} */ ({ size: descriptor.size })
+                    (descriptor) => {
+                        const buffer =
+                            /** @type {GPUBuffer & { destroy: ReturnType<typeof vi.fn> }} */ (
+                                /** @type {unknown} */ ({
+                                    size: descriptor.size,
+                                    destroy: vi.fn(),
+                                })
+                            );
+                        buffers.push(buffer);
+                        return buffer;
+                    }
                 ),
             createTexture:
                 /** @type {(descriptor: GPUTextureDescriptor) => GPUTexture} */ (
@@ -34,11 +47,17 @@ function createManager(channels) {
                         const height = Array.isArray(size)
                             ? size[1]
                             : size.height;
-                        return /** @type {unknown} */ ({
-                            width,
-                            height,
-                            format: descriptor.format,
-                        });
+                        const texture =
+                            /** @type {GPUTexture & { destroy: ReturnType<typeof vi.fn> }} */ (
+                                /** @type {unknown} */ ({
+                                    width,
+                                    height,
+                                    format: descriptor.format,
+                                    destroy: vi.fn(),
+                                })
+                            );
+                        textures.push(texture);
+                        return texture;
                     }
                 ),
             createSampler: () => /** @type {unknown} */ ({}),
@@ -56,7 +75,7 @@ function createManager(channels) {
             uniforms.set(name, value);
         },
     });
-    return { manager, uniforms };
+    return { manager, uniforms, buffers, textures };
 }
 
 describe("ScaleResourceManager", () => {
@@ -125,5 +144,57 @@ describe("ScaleResourceManager", () => {
             0
         );
         expect(uniforms.get(RANGE_COUNT_PREFIX + "fill")).toBe(2);
+    });
+
+    it("destroys superseded and current scale resources exactly once", () => {
+        const channels =
+            /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ ({
+                fill: {
+                    data: new Uint32Array([0]),
+                    type: "u32",
+                    components: 4,
+                    inputComponents: 1,
+                    scale: {
+                        type: "ordinal",
+                        domain: [0, 1],
+                        range: [
+                            [0, 0, 0, 1],
+                            [1, 1, 1, 1],
+                        ],
+                    },
+                },
+            });
+        const { manager, buffers, textures } = createManager(channels);
+        manager.initializeScale("fill", channels.fill, channels.fill.scale);
+        const updater = manager.getScaleUpdater("fill");
+
+        updater.updateRange(channels.fill.scale.range);
+        updater.updateRange([[0, 0, 0, 1]]);
+        expect(buffers[0].destroy).toHaveBeenCalledOnce();
+
+        manager._setDomainMapBuffer("fill", new Uint32Array([0, 0]), 1);
+        manager._setDomainMapBuffer("fill", new Uint32Array([0, 0, 1, 1]), 2);
+        expect(buffers[2].destroy).toHaveBeenCalledOnce();
+
+        manager._setRangeTexture("fill", {
+            width: 1,
+            height: 1,
+            format: "rgba8unorm",
+            data: new Uint8Array(4),
+        });
+        manager._setRangeTexture("fill", {
+            width: 2,
+            height: 1,
+            format: "rgba8unorm",
+            data: new Uint8Array(8),
+        });
+        expect(textures[0].destroy).toHaveBeenCalledOnce();
+
+        manager.destroy();
+        manager.destroy();
+
+        expect(buffers[1].destroy).toHaveBeenCalledOnce();
+        expect(buffers[3].destroy).toHaveBeenCalledOnce();
+        expect(textures[1].destroy).toHaveBeenCalledOnce();
     });
 });

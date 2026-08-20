@@ -297,4 +297,14 @@ export class SeriesBufferManager {
             this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(array));
         }
     }
+
+    /**
+     * @returns {void}
+     */
+    destroy() {
+        for (const { buffer } of this._packedBuffers.values()) {
+            buffer.destroy();
+        }
+        this._packedBuffers.clear();
+    }
 }

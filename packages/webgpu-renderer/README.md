@@ -91,6 +91,7 @@ without expanding vertices on the CPU.
 - `renderer.updateGlobals({ width, height, dpr })`
 - `renderer.render({ draws?, clearColor? })`
 - `renderer.destroyMark(markId)`
+- `renderer.destroy()`
 
 Type definitions live in `packages/webgpu-renderer/src/index.d.ts`. A draw
 command references a retained handle and may provide a logical-pixel viewport,
@@ -106,6 +107,12 @@ once when encoding the frame.
 Asynchronous resource preparation never submits a frame implicitly. When text
 atlas loading changes visible output, `onInvalidate` asks the host to schedule
 and submit its current frame again.
+
+The renderer owns its WebGPU device and all resources created for retained
+marks. Call `destroyMark(markId)` when removing one mark while keeping the
+renderer alive, and call `destroy()` when disposing the canvas integration.
+`destroy()` is idempotent, releases every renderer-owned resource, unconfigures
+the canvas context, and prevents subsequent rendering or handle updates.
 
 Viewport-local position ranges are the caller's responsibility. This lets one
 handle be reused in several same-shaped viewport occurrences; varying scale

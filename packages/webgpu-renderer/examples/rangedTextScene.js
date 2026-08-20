@@ -40,7 +40,7 @@ export default async function runRangedTextScene(canvas, options = {}) {
         }
     }
 
-    const { markId, scales, values } = renderer.createMark(textMark, {
+    const { scales, values } = renderer.createMark(textMark, {
         channels: {
             x: {
                 data: x,
@@ -114,7 +114,7 @@ export default async function runRangedTextScene(canvas, options = {}) {
     return {
         cleanup: () => {
             cleanupResize();
-            renderer.destroyMark(markId);
+            renderer.destroy();
         },
         update: (next) => {
             let hasUpdate = false;

@@ -141,17 +141,6 @@ export default class WebGpuSurface {
         this.#frameDraws.push({ mark: retained.handle });
     }
 
-    destroyMarks() {
-        if (!this.#renderer) {
-            return;
-        }
-        for (const { handle } of this.#marks.values()) {
-            this.#renderer.destroyMark(handle.markId);
-        }
-        this.#marks.clear();
-        this.#frameDraws.length = 0;
-    }
-
     render() {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
@@ -160,8 +149,10 @@ export default class WebGpuSurface {
     }
 
     finalize() {
-        this.destroyMarks();
+        this.#renderer?.destroy();
         this.#renderer = undefined;
+        this.#marks.clear();
+        this.#frameDraws.length = 0;
         this.#sizeHelper.finalize();
         this.canvas.remove();
     }

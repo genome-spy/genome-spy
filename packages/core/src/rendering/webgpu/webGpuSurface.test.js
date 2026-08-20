@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => {
         createMark: vi.fn(() => handle),
         updateGlobals: vi.fn(),
         destroyMark: vi.fn(),
+        destroy: vi.fn(),
         render: vi.fn(),
     };
     return {
@@ -115,7 +116,8 @@ describe("WebGpuSurface", () => {
         expect(mocks.renderer.destroyMark).not.toHaveBeenCalled();
 
         surface.finalize();
-        expect(mocks.renderer.destroyMark).toHaveBeenCalledWith(7);
+        expect(mocks.renderer.destroy).toHaveBeenCalledOnce();
+        expect(mocks.renderer.destroyMark).not.toHaveBeenCalled();
         onInvalidate();
         expect(onRenderInvalidated).not.toHaveBeenCalled();
     });

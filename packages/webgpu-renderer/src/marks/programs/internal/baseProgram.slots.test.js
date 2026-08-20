@@ -228,6 +228,46 @@ describe("BaseProgram slot handles", () => {
             'Series replacement for channel "fill" is not supported because it has multiple series-backed branches.'
         );
     });
+
+    it("rejects updates through retained handles after destruction", () => {
+        const program = createSlotProgram(createMockRenderer(), {
+            channels: {
+                uniqueId: { data: new Uint32Array([0]), type: "u32" },
+                x: {
+                    data: new Float32Array([0]),
+                    type: "f32",
+                    scale: {
+                        type: "linear",
+                        domain: [0, 1],
+                        range: [0, 1],
+                    },
+                },
+                size: { value: 1, type: "f32", dynamic: true },
+                fill: {
+                    value: [0, 0, 0, 1],
+                    type: "f32",
+                    components: 4,
+                },
+            },
+        });
+        const slots = program.getSlotHandles();
+
+        program.destroy();
+        program.destroy();
+
+        expect(() =>
+            slots.series.replace({
+                uniqueId: new Uint32Array([1]),
+                x: new Float32Array([1]),
+            })
+        ).toThrow("SlotProgram has been destroyed.");
+        expect(() => slots.scales.x.setDomain([1, 2])).toThrow(
+            "SlotProgram has been destroyed."
+        );
+        expect(() => slots.values.size.set(2)).toThrow(
+            "SlotProgram has been destroyed."
+        );
+    });
 });
 
 /**
