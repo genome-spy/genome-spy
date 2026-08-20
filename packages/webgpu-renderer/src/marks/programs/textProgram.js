@@ -8,6 +8,7 @@ import {
     asGpuBufferSource,
     createTextureFromData,
 } from "../../utils/webgpuTextureUtils.js";
+import { TEXT_GEOMETRY_WGSL } from "./textGeometry.wgsl.js";
 
 /**
  * Text rendering overview (SDF + per-glyph instancing).
@@ -94,10 +95,7 @@ const ALIGN_AXIS_LEFT: i32 = -1;
 const ALIGN_AXIS_CENTER: i32 = 0;
 const ALIGN_AXIS_RIGHT: i32 = 1;
 
-const BASELINE_ALPHABETIC: u32 = 0u;
-const BASELINE_MIDDLE: u32 = 1u;
-const BASELINE_TOP: u32 = 2u;
-const BASELINE_BOTTOM: u32 = 3u;
+${TEXT_GEOMETRY_WGSL}
 
 struct VSOut {
     @builtin(position) pos: vec4<f32>,
@@ -116,18 +114,6 @@ fn alignOffset(align: u32, width: f32) -> f32 {
         return -width;
     }
     return 0.0;
-}
-
-fn baselineOffset(baseline: u32) -> f32 {
-    var offset = -params.uSdfPadding;
-    if (baseline == BASELINE_TOP) {
-        offset = offset + params.uCapHeight;
-    } else if (baseline == BASELINE_MIDDLE) {
-        offset = offset + params.uCapHeight * 0.5;
-    } else if (baseline == BASELINE_BOTTOM) {
-        offset = offset - params.uDescent;
-    }
-    return offset;
 }
 
 // Linear ramp used for squeeze fading (smoothstep is too soft for SDFs).
@@ -266,7 +252,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     // Rotation is applied both to range fitting and glyph placement.
     let angleDegrees = getScaled_angle(i);
-    let angle = -angleDegrees * 3.14159265 / 180.0;
+    let angle = angleDegrees * 3.14159265 / 180.0;
     let sinTheta = sin(angle);
     let cosTheta = cos(angle);
     let rot = mat2x2<f32>(cosTheta, sinTheta, -sinTheta, cosTheta);
@@ -356,16 +342,24 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let sizeScale = size / params.uFontBase;
     let sizeRatio = size / params.uLayoutFontSize;
 
-    var local = quad[v];
-    local.y = 1.0 - local.y;
+    let local = quad[v];
     let width = metrics.texRect.z * sizeScale;
     let height = metrics.texRect.w * sizeScale;
-    let baseline = baselineOffset(u32(getScaled_baseline(i)));
-    let bottom = -(metrics.texRect.w + metrics.metrics.x + baseline) * sizeScale;
     let x = alignOffset(u32(getScaled_align(i)), textMetrics.width * sizeRatio) +
         glyph.xOffset * sizeRatio;
-    let y = glyph.yOffset * sizeRatio;
-    let localPos = vec2<f32>(x + local.x * width, y + bottom + local.y * height);
+    let y = glyphVertexY(
+        local.y,
+        glyph.yOffset,
+        metrics.texRect.w,
+        metrics.metrics.x,
+        sizeScale,
+        sizeRatio,
+        u32(getScaled_baseline(i)),
+        params.uSdfPadding,
+        params.uCapHeight,
+        params.uDescent
+    );
+    let localPos = vec2<f32>(x + local.x * width, y);
     let d = vec2<f32>(getScaled_dx(i), getScaled_dy(i));
     let rotated = rot * (localPos + d);
     let pixel = anchor + rotated;
