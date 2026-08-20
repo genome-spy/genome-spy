@@ -25,10 +25,11 @@ committed independently.
 
 ### Mark dispatch
 
-The Core adapter currently dispatches only `point`, `rect`, `rule`/`tick`, and
-`text`. The low-level renderer already has a `link` definition and program, but
-Core never imports or creates it. There is no WebGPU arrow definition or
-program, although WebGL has a complete `ArrowMark` and dedicated arrow GLSL.
+The Core adapter now dispatches `point`, `rect`, `rule`/`tick`, `text`, `link`,
+and `arrow`. The low-level link program is integrated, and arrows have a public
+definition plus retained WGSL program. Core-level picking, faceting,
+conditional encodings, and some property/scale forms remain explicit follow-up
+gaps documented in `packages/webgpu-renderer/MIGRATION_PLAN.md`.
 
 ### Positional offsets
 
@@ -456,10 +457,56 @@ documented as a separately tracked limitation.
 ### Milestone 1
 
 - Status: complete
-- Commit: pending
+- Commit: `481fb47eb`
 - Tests: Core WebGPU adapter suite passed with the baseline unsupported-mark
   inventory and contextual error assertions.
 - Browser/GPU result: not applicable; this milestone changes only test coverage
   and migration documentation.
 - Accepted differences: link and arrow remain unsupported until Milestones 5
   and 6.
+
+### Milestone 2
+
+- Status: complete
+- Commit: `b882baa8a`
+- Tests: Core adapter, channel normalization, text-program tests, TypeScript,
+  lint, and formatting passed.
+- Browser/GPU result: existing WebGPU GPU suite passed.
+
+### Milestone 3
+
+- Status: complete
+- Commit: `c5fe435b0`
+- Tests: Core adapter, renderer unit, TypeScript, lint, formatting, and all 44
+  WebGPU GPU tests passed.
+
+### Milestone 4
+
+- Status: complete
+- Commit: `a337bb86b`
+- Tests: Core adapter, renderer TypeScript, lint, formatting, and all 44
+  WebGPU GPU tests passed.
+
+### Milestone 5
+
+- Status: complete
+- Commit: `6a714d897`
+- Tests: Link adapter/config tests and all 44 WebGPU GPU tests passed.
+- Accepted differences: selection-aware arc fading is documented as a generic
+  selection-predicate follow-up.
+
+### Milestone 6
+
+- Status: complete
+- Commits: `8530851e5`, `c398c4e54`
+- Tests: Arrow adapter tests, focused arrow GPU rendering, renderer TypeScript,
+  lint, and formatting passed.
+- Accepted differences: numerical antialiasing may differ from WebGL; Core
+  picking and remaining adapter-wide limitations are tracked separately.
+
+### Milestone 7
+
+- Status: complete
+- Commit: pending
+- Result: migration documentation names the remaining adapter and selection
+  limitations instead of treating the listed mark features as unsupported.

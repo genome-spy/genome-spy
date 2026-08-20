@@ -1,6 +1,19 @@
 ## WebGPU Migration Plan
 
-This plan focuses on the remaining work. Completed items are omitted.
+This plan focuses on the remaining work. The feature-parity milestones are
+implemented in commits recorded in
+`plans/webgpu-core-integration/webgpu-renderer-parity-plan.md`.
+
+### Completed mark parity
+
+- Endpoint offsets are explicit pixel-valued channels for rectangles, rules,
+  ranged text, links, and arrows.
+- Rules support dash atlases and point marks support the `x` and `+` line
+  shapes.
+- Rectangles support independent corner radii, hatch patterns, and rounded-box
+  shadows.
+- Core dispatches link marks and arrow marks through public retained renderer
+  definitions.
 
 ### Renderer package: remaining work
 
@@ -8,6 +21,9 @@ This plan focuses on the remaining work. Completed items are omitted.
   `plans/webgpu-core-integration/webgpu-renderer-parity-plan.md`; the current
   inventory covers endpoint offsets, rule dashes, point line shapes, rectangle
   radii/shadows, links, arrows, and remaining adapter rejection paths.
+- The link property `noFadingOnPointSelection` is currently retained in Core
+  configuration but is not applied by the WebGPU link shader because the
+  renderer has no generic point-selection aggregate predicate yet.
 - Text: baseline alignment + vertical flip fix, edge fade, gamma, picking.
 - Picking pass (offscreen ID buffer + readback).
 - Per-occurrence opacity and scale state for repeated views whose positional
@@ -183,6 +199,25 @@ definition in `scales/defs/*`, with shared helpers in `scaleEmitUtils.js` and
 `scalePipeline.js`.
 
 #### Current State / Context (handoff)
+
+### Core adapter limitations still requiring follow-up
+
+The following are intentionally explicit gaps, rather than silently ignored
+WebGL behavior:
+
+- Faceted rendering is rejected by the Core adapter.
+- Conditional channel encodings are rejected by the Core adapter, although the
+  standalone renderer has lower-level conditional-resource support.
+- Data-driven enum properties such as point shape, rule cap, and arrow
+  direction require constant values; data-driven colors require a supported
+  scale.
+- Unsupported scale families (including quantile and temporal scales) and
+  non-Lato text fonts are rejected with contextual errors.
+- Core does not yet forward `uniqueId` channels to the WebGPU definitions, so
+  Core-level picking parity is incomplete even though the renderer has pick-ID
+  plumbing.
+- Link selection-aware arc fading and full Core selection semantics remain a
+  follow-up to generic selection predicates in mark shaders.
 
 - Imported ScaleDef values own resource rules, WGSL snippets, and emitters;
   `scaleCodegen` delegates to `ScaleDef.emit`, and `scaleResources` consumes
