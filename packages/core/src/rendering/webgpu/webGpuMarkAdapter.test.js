@@ -137,6 +137,45 @@ describe("WebGPU mark adapter", () => {
         expect(config.font).toBe("Lato");
     });
 
+    test("applies the text channel number format", () => {
+        const data = [{ value: 1.2345 }, { value: -0.5 }];
+        const mark = createMark(
+            "text",
+            data,
+            {
+                x: createConstantEncoder(0),
+                y: createConstantEncoder(0),
+                text: createEncoder((datum) => datum.value, {
+                    channelDef: { field: "value", format: ".2f" },
+                }),
+                size: createConstantEncoder(11),
+                angle: createConstantEncoder(0),
+                xOffset: createConstantEncoder(0),
+                yOffset: createConstantEncoder(0),
+                color: createConstantEncoder("black"),
+                opacity: createConstantEncoder(1),
+            },
+            {
+                align: "center",
+                baseline: "middle",
+                font: "sans-serif",
+                fontStyle: "normal",
+                fontWeight: 400,
+                paddingX: 0,
+                paddingY: 0,
+                flushX: false,
+                flushY: false,
+                squeeze: false,
+            }
+        );
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+
+        expect(
+            /** @type {any} */ (translated).config.channels.text.data
+        ).toEqual(["1.23", "−0.50"]);
+    });
+
     test("maps categorical positions to stable band-scale identifiers", () => {
         const data = [{ category: "A" }, { category: "B" }];
         const domain = ["A", "B"];

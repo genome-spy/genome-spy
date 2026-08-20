@@ -75,6 +75,7 @@ describe("buildMarkShader", () => {
         expect(shaderCode).toContain("fn getScaled_x");
         expect(shaderCode).toContain("uDomain_x");
         expect(shaderCode).toContain("uRange_x");
+        expect(shaderCode).toContain("fn premultiplyAlpha(color: vec4<f32>)");
     });
 
     it("emits packed series accessors when layout metadata is provided", () => {

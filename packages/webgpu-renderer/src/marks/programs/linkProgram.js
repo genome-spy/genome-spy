@@ -213,7 +213,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     var out: VSOut;
     out.pos = vec4<f32>(clip, 0.0, 1.0);
     let color = getScaled_color(i);
-    out.color = vec4<f32>(color.rgb * opacity, color.a * opacity);
+    out.color = premultiplyAlpha(vec4<f32>(color.rgb, color.a * opacity));
     out.normalDistance = normalDistance;
     out.size = paddedSize;
     out.pickId = 0u;
