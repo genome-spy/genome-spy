@@ -1,6 +1,6 @@
 # Phase 5: Semantic Visibility for Persistent Concat Children
 
-Status: Early draft; revise after the Phase 4 review
+Status: Discarded as an implementation plan; replace after Phase 4 is replanned
 
 Tentative PR title: `feat(core): transition semantic track visibility`
 

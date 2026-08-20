@@ -1,6 +1,6 @@
 # Optional Phase: Profile-Guided Layout and Rendering Optimization
 
-Status: Opportunity record; do not schedule without measurements
+Status: Discarded from this sequence; reconsider only with new measurements
 
 Tentative PR title: select only after profiling identifies a focused change
 

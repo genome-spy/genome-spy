@@ -1,6 +1,6 @@
 # Phase 3: Retain Backend Work Across Geometry Changes
 
-Status: Draft; revise after the Phase 2 review
+Status: Discarded as an implementation plan; replace after Phase 2 is replanned
 
 Tentative PR title: `perf(core): retain renderer work across layout changes`
 

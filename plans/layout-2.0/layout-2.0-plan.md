@@ -1,6 +1,6 @@
 # Layout 2.0
 
-Status: Draft summary
+Status: Phase 1 complete; remaining draft phases discarded pending new plans
 
 This document is the current high-level roadmap for Layout 2.0. High-level draft
 plans preserve findings and questions for each phase, but each draft must be
@@ -238,9 +238,9 @@ stopped after review.
 
 ### Phase 1: Clarify the lifecycle
 
-Implementation is complete on `refactor/layout-2.0-phase-1`. The dependent
-WebGPU adaptation is validated on `integration/layout-2.0-phase-1-webgpu`. The
-phase review gate remains before Phase 2 planning is revised.
+Implementation and review are complete on `refactor/layout-2.0-phase-1`. The
+dependent WebGPU adaptation is validated on
+`integration/layout-2.0-phase-1-webgpu`.
 
 Refactor naming and responsibilities so layout, backend-work collection, and
 drawing are distinguishable. Remove the misleading `View.render()` name while
@@ -253,6 +253,9 @@ Implementation plan:
 
 ### Phase 2: Establish stable layout instances
 
+This draft is discarded as an implementation plan. Any Phase 2 work must start
+from a new plan based on the merged Phase 1 result.
+
 Introduce the smallest representation needed to identify repeated layout
 instances and associate them with geometry. Define identity for ordinary views,
 facets, axes, legends, decorations, and App-specific repeated sample views.
@@ -263,6 +266,9 @@ deterministic output, not animation or partial layout.
 Draft plan: [Phase 2: Establish stable layout instances](phase-2-layout-instances.md)
 
 ### Phase 3: Retain backend work across geometry changes
+
+This draft is discarded as an implementation plan. Revisit backend retention
+only after a replacement Phase 2 plan establishes the required ownership.
 
 Allow a completed full layout to update stable geometry without recreating
 expensive backend work. WebGL should begin retaining normal and picking batches.
@@ -276,6 +282,9 @@ Draft plan: [Phase 3: Retain backend work across geometry changes](phase-3-retai
 
 ### Phase 4: Separate target and presented geometry
 
+This draft is discarded as an implementation plan. Transition work requires a
+new proposal based on the preceding implemented phases.
+
 Add non-structural layout transitions for persistent instances. A layout commit
 computes targets once; animation updates presentation without layout or command
 collection on every frame. Define interruption, picking, clipping, headless,
@@ -284,6 +293,9 @@ and reduced-motion behavior before adding visibility transitions.
 Draft plan: [Phase 4: Separate target and presented geometry](phase-4-layout-transitions.md)
 
 ### Phase 5: Add semantic visibility for persistent concat children
+
+This draft is discarded as an implementation plan. Semantic visibility remains
+a product goal, but its implementation must be replanned from measured needs.
 
 Separate target layout participation from presentation visibility for views
 that remain in the configured hierarchy. Animate concat-child entry, exit, and

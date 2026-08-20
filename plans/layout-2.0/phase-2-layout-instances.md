@@ -1,6 +1,6 @@
 # Phase 2: Establish Stable Layout Instances
 
-Status: Draft; revise after the Phase 1 review
+Status: Discarded as an implementation plan; replace after Phase 1 merges
 
 Tentative PR title: `refactor(core): identify persistent layout instances`
 

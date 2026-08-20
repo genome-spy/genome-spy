@@ -1,6 +1,6 @@
 # Layout 2.0
 
-Status: Draft
+Status: Rejected draft preserved as design history
 Working branch: `perf/layout-2.0`
 
 ## Summary

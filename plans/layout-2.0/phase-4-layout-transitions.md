@@ -1,6 +1,6 @@
 # Phase 4: Separate Target and Presented Geometry
 
-Status: Early draft; revise after the Phase 3 review
+Status: Discarded as an implementation plan; replace after Phase 3 is replanned
 
 Tentative PR title: `feat(core): animate persistent layout geometry`
 

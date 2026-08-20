@@ -1,6 +1,6 @@
 # Phase 1: Clarify the Layout and Rendering Lifecycle
 
-Status: Implemented and validated; phase review pending
+Status: Complete; implementation and review gates passed
 
 Tentative PR title: `refactor(core): separate layout from rendering collection`
 
@@ -14,6 +14,9 @@ Implementation record (2026-08-20):
 - Core/App validation: workspace type checks, lint, and 3,257 unit tests passed.
 - WebGPU validation: Core and renderer type checks, 2,437 Core tests, 94 renderer
   tests, 42 Chromium GPU tests, and the live `first.json` smoke passed.
+- Final KISS review: the explicit arrange/consume boundary is cleaner than the
+  previous repeated traversal, and no speculative identity or invalidation
+  machinery entered Core.
 
 ## Purpose
 
