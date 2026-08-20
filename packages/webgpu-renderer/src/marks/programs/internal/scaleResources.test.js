@@ -5,6 +5,7 @@ import {
     DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_PREFIX,
     RANGE_COUNT_PREFIX,
+    RANGE_PREFIX,
 } from "../../../wgsl/prefixes.js";
 
 /**
@@ -144,6 +145,28 @@ describe("ScaleResourceManager", () => {
             0
         );
         expect(uniforms.get(RANGE_COUNT_PREFIX + "fill")).toBe(2);
+    });
+
+    it("normalizes continuous color-texture ranges to unit coordinates", () => {
+        const channels =
+            /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ ({
+                fill: {
+                    data: new Float32Array([-1, 1]),
+                    type: "f32",
+                    components: 4,
+                    inputComponents: 1,
+                    scale: {
+                        type: "linear",
+                        domain: [-1, 1],
+                        range: (t) => (t < 0.5 ? "purple" : "yellow"),
+                    },
+                },
+            });
+        const { manager, uniforms } = createManager(channels);
+
+        manager.initializeScale("fill", channels.fill, channels.fill.scale);
+
+        expect(uniforms.get(RANGE_PREFIX + "fill")).toEqual([0, 1]);
     });
 
     it("destroys superseded and current scale resources exactly once", () => {

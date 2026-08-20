@@ -3,7 +3,9 @@ import { describe, expect, test, vi } from "vitest";
 import Rectangle from "../../view/layout/rectangle.js";
 import { bandScaleDefinition } from "@genome-spy/webgpu-renderer/scales/band";
 import { identityScaleDefinition } from "@genome-spy/webgpu-renderer/scales/identity";
+import { indexScaleDefinition } from "@genome-spy/webgpu-renderer/scales/index";
 import { linearScaleDefinition } from "@genome-spy/webgpu-renderer/scales/linear";
+import { thresholdScaleDefinition } from "@genome-spy/webgpu-renderer/scales/threshold";
 import { createWebGpuMarkConfig } from "./webGpuMarkAdapter.js";
 
 describe("WebGPU mark adapter", () => {
@@ -34,7 +36,8 @@ describe("WebGPU mark adapter", () => {
         const translated = createWebGpuMarkConfig(
             mark,
             /** @type {any} */ ({}),
-            Rectangle.create(10, 20, 100, 200)
+            Rectangle.create(10, 20, 100, 200),
+            0.5
         );
         if (!translated) {
             throw new Error("Expected a translated point mark.");
@@ -65,7 +68,7 @@ describe("WebGPU mark adapter", () => {
             },
         });
         expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
-        expect(channels.fillOpacity).toEqual({ value: 0.75 });
+        expect(channels.fillOpacity).toEqual({ value: 0.375 });
     });
 
     test("combines text offsets and uses the embedded font for Core defaults", () => {
@@ -198,6 +201,102 @@ describe("WebGPU mark adapter", () => {
         });
         expect(updatedX.data).toBe(x.data);
         expect(updatedX.scale.domain).toEqual([1, 0]);
+    });
+
+    test("maps index positions to packed high-precision series", () => {
+        const data = [{ x: 4 }, { x: 9 }];
+        const mark = createMark("point", data, {
+            x: createEncoder((datum) => datum.x, {
+                scale: createIndexScale([3, 10]),
+                channelDef: {
+                    field: "x",
+                    type: "index",
+                    band: 0.25,
+                },
+            }),
+        });
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(10, 20, 100, 200)
+        );
+        const x = /** @type {any} */ (translated).config.channels.x;
+
+        expect(x).toEqual({
+            data: new Float64Array([4, 9]),
+            type: "u32",
+            inputComponents: 2,
+            scale: {
+                type: "index",
+                definition: indexScaleDefinition,
+                domain: [3, 10],
+                range: [10, 110],
+                paddingInner: 0.2,
+                paddingOuter: 0.1,
+                align: 0.5,
+                band: 0.25,
+            },
+        });
+    });
+
+    test("maps sequential and threshold color encodings", () => {
+        const data = [{ value: -1 }, { value: 1 }];
+        const interpolator = (/** @type {number} */ t) =>
+            t < 0.5 ? "purple" : "yellow";
+        const sequentialMark = createMark("point", data, {
+            fill: createEncoder((datum) => datum.value, {
+                scale: createSequentialScale([-1, 1], interpolator),
+                channelDef: {
+                    field: "value",
+                    type: "quantitative",
+                },
+            }),
+        });
+        const thresholdMark = createMark("point", data, {
+            fill: createEncoder((datum) => datum.value, {
+                scale: createThresholdScale([0], ["white", "black"]),
+                channelDef: {
+                    field: "value",
+                    type: "quantitative",
+                },
+            }),
+        });
+
+        const sequential = createWebGpuMarkConfig(
+            sequentialMark,
+            {},
+            Rectangle.ZERO
+        );
+        const threshold = createWebGpuMarkConfig(
+            thresholdMark,
+            {},
+            Rectangle.ZERO
+        );
+
+        expect(/** @type {any} */ (sequential).config.channels.fill).toEqual({
+            data: new Float32Array([-1, 1]),
+            type: "f32",
+            inputComponents: 1,
+            scale: {
+                type: "linear",
+                definition: linearScaleDefinition,
+                domain: [-1, 1],
+                range: interpolator,
+                clamp: true,
+            },
+        });
+        expect(/** @type {any} */ (threshold).config.channels.fill).toEqual({
+            data: new Float32Array([-1, 1]),
+            type: "f32",
+            inputComponents: 1,
+            scale: {
+                type: "threshold",
+                definition: thresholdScaleDefinition,
+                domain: [0],
+                range: ["white", "black"],
+            },
+        });
     });
 
     test("translates a categorical bar to the generic rect mark", () => {
@@ -483,5 +582,41 @@ function createBandScale(domain) {
         paddingInner: () => 0.2,
         paddingOuter: () => 0.1,
         align: () => 0.5,
+    };
+}
+
+/** @param {[number, number]} domain */
+function createIndexScale(domain) {
+    return {
+        type: "index",
+        domain: () => domain,
+        paddingInner: () => 0.2,
+        paddingOuter: () => 0.1,
+        align: () => 0.5,
+    };
+}
+
+/**
+ * @param {[number, number]} domain
+ * @param {(t: number) => string} interpolator
+ */
+function createSequentialScale(domain, interpolator) {
+    return {
+        type: "sequential-linear",
+        domain: () => domain,
+        interpolator: () => interpolator,
+        clamp: () => true,
+    };
+}
+
+/**
+ * @param {number[]} domain
+ * @param {string[]} range
+ */
+function createThresholdScale(domain, range) {
+    return {
+        type: "threshold",
+        domain: () => domain,
+        range: () => range,
     };
 }

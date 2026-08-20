@@ -227,11 +227,7 @@ export class ScaleResourceManager {
                 domainLength,
                 rangeLength,
             };
-            if (
-                kind === "piecewise" &&
-                analysis.useRangeTexture &&
-                rangeLength
-            ) {
+            if (analysis.useRangeTexture && rangeLength) {
                 this._setUniformValue(
                     RANGE_PREFIX + name,
                     normalizeRangePositions(rangeLength)

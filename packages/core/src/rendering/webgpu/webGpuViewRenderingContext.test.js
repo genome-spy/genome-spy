@@ -29,7 +29,7 @@ describe("WebGpuViewRenderingContext", () => {
         const mark = {
             properties: { clip: "x" },
             unitView: {
-                getEffectiveOpacity: () => 1,
+                getEffectiveOpacity: () => 0.25,
             },
         };
         const coords = Rectangle.create(20, 30, 100, 80);
@@ -42,6 +42,12 @@ describe("WebGpuViewRenderingContext", () => {
                 clipY: true,
             },
         });
+
+        const adapterCalls = /** @type {any[][]} */ (
+            mocks.createWebGpuMarkConfig.mock.calls
+        );
+        expect(adapterCalls[0][2]).toBe(coords);
+        expect(adapterCalls[0][3]).toBe(0.25);
 
         expect(surface.useMark).toHaveBeenCalledWith(
             mark,
