@@ -20,6 +20,28 @@ describe("Renderer mark definitions", () => {
         expect(handle.scales).toEqual({});
         expect(renderer._marks.get(handle.markId)).toBe(program);
     });
+
+    test("draws retained marks in the requested order", () => {
+        const firstProgram = createProgram();
+        const secondProgram = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi
+                .fn()
+                .mockReturnValueOnce(firstProgram)
+                .mockReturnValueOnce(secondProgram),
+        });
+        const renderer = createRendererHarness();
+        const first = renderer.createMark(definition, { channels: {} });
+        const second = renderer.createMark(definition, { channels: {} });
+
+        renderer.render([second.markId, first.markId]);
+
+        expect(secondProgram.draw.mock.invocationCallOrder[0]).toBeLessThan(
+            firstProgram.draw.mock.invocationCallOrder[0]
+        );
+        expect(renderer._renderOrder).toEqual([second.markId, first.markId]);
+    });
 });
 
 function createRendererHarness() {
@@ -27,6 +49,18 @@ function createRendererHarness() {
     renderer._marks = new Map();
     renderer._nextMarkId = 1;
     renderer._pickingDirty = false;
+    renderer._renderOrder = null;
+    const pass = { end: vi.fn() };
+    renderer.device = {
+        createCommandEncoder: () => ({
+            beginRenderPass: () => pass,
+            finish: vi.fn(),
+        }),
+        queue: { submit: vi.fn() },
+    };
+    renderer.context = {
+        getCurrentTexture: () => ({ createView: vi.fn() }),
+    };
     return /** @type {Renderer} */ (renderer);
 }
 

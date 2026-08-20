@@ -821,8 +821,8 @@ export class Renderer {
      */
     pick(x: number, y: number): Promise<number | null>;
 
-    /** Draw the current frame. */
-    render(): void;
+    /** Draw the current frame in the requested retained-mark order. */
+    render(markIds?: Iterable<MarkId>): void;
 
     /** Destroy GPU resources associated with a mark. */
     destroyMark(markId: MarkId): void;

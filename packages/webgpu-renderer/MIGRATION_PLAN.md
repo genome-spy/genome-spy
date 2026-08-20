@@ -9,8 +9,8 @@ This plan focuses on the remaining work. Completed items are omitted.
 - Viewport/scissor management.
 - Worker-friendly update path (transfer buffers, no object reconstruction).
 - Optional vector backend compatibility (stable mark instance schema).
-- Add ordered frame submission and stabilize the remaining renderer lifecycle
-  contracts using the Core proof of concept.
+- Define explicit mark disposal for dynamically removed Core views without
+  coupling the renderer to Core lifecycle types.
 
 #### Picking implementation plan (incremental)
 
@@ -106,9 +106,18 @@ Definition migration — complete:
 - the string API, compatibility entry, and production scale registry have been
   removed after migrating examples and the Core PoC.
 
-The next integration slice is ordered frame submission. The exact custom mark
-extension and scale-authoring contracts remain experimental, but they no longer
-block migration of built-in features.
+Ordered frame submission — complete:
+
+- `renderer.render(markIds)` draws retained programs in caller-provided order;
+- the Core proof of concept consumes completed layout results without another
+  view traversal;
+- compatible Core marks reuse their renderer handles and update public series,
+  scale, and value slots between frames;
+- frame order is independent of allocation order, so z-order changes do not
+  require resource recreation.
+
+The exact custom mark extension and scale-authoring contracts remain
+experimental, but they no longer block migration of built-in features.
 
 ### ScaleDef consolidation history
 

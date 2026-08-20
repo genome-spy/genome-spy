@@ -3,8 +3,7 @@ import ViewRenderingContext from "../../view/renderingContext/viewRenderingConte
 import { createWebGpuMarkConfig } from "./webGpuMarkAdapter.js";
 
 /**
- * Translates one ordinary, non-faceted Core traversal into low-level WebGPU
- * marks. Rebuilding marks per frame is an intentional Milestone 1 shortcut.
+ * Translates one completed, non-faceted Core layout into retained WebGPU marks.
  */
 export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     /** @type {{view: import("../../view/view.js").default, coords: import("../../view/layout/rectangle.js").default}[]} */
@@ -18,12 +17,11 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
-     * @param {{surface: import("./webGpuSurface.js").default, paint: boolean}} options
+     * @param {{surface: import("./webGpuSurface.js").default}} options
      */
     constructor(globalOptions, options) {
         super(globalOptions);
         this.surface = options.surface;
-        this.paint = options.paint;
     }
 
     getDevicePixelRatio() {
@@ -36,7 +34,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     pushView(view, coords) {
-        if (this.paint && !this.#views.has(view)) {
+        if (!this.#views.has(view)) {
             view.onBeforeRender();
             this.#views.add(view);
         }
@@ -60,7 +58,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     renderMark(mark, options) {
-        if (!this.paint || mark.unitView.getEffectiveOpacity() <= 0) {
+        if (mark.unitView.getEffectiveOpacity() <= 0) {
             return;
         }
         if (mark.unitView.getEffectiveOpacity() != 1) {
@@ -83,7 +81,11 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             this.currentCoords
         );
         if (translated) {
-            this.surface.createMark(translated.definition, translated.config);
+            this.surface.useMark(
+                mark,
+                translated.definition,
+                translated.config
+            );
         }
     }
 
