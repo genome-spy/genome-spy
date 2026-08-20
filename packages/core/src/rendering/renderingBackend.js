@@ -31,7 +31,7 @@ import { exportCanvas, exportRaster } from "../genomeSpy/canvasExport.js";
 
 /**
  * @typedef {object} RenderingBackendOptions
- * @property {"auto" | "webgl" | "canvas"} renderer
+ * @property {"auto" | "webgl" | "canvas" | "webgpu"} renderer
  * @property {HTMLElement} container
  * @property {() => { width: number | undefined, height: number | undefined }} sizeSource
  * @property {WebGLPowerPreference} powerPreference
@@ -45,6 +45,8 @@ import { exportCanvas, exportRaster } from "../genomeSpy/canvasExport.js";
 export async function createRenderingBackend(options) {
     if (options.renderer == "canvas") {
         return createCanvas2DBackend(options);
+    } else if (options.renderer == "webgpu") {
+        return createWebGpuBackend(options);
     } else if (options.renderer != "auto" && options.renderer != "webgl") {
         throw new Error("Unknown renderer: " + options.renderer);
     }
@@ -111,4 +113,13 @@ async function createCanvas2DBackend(options) {
     const { createCanvas2DRenderingBackend } =
         await import("./canvas2d/index.js");
     return createCanvas2DRenderingBackend(options);
+}
+
+/**
+ * @param {RenderingBackendOptions} options
+ * @returns {Promise<RenderingBackend>}
+ */
+async function createWebGpuBackend(options) {
+    const { createWebGpuRenderingBackend } = await import("./webgpu/index.js");
+    return createWebGpuRenderingBackend(options);
 }

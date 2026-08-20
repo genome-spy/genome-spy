@@ -83,7 +83,7 @@ function installCanvasMocks() {
     const contexts = [];
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
         function (type) {
-            if (type != "2d") {
+            if (String(type) != "2d") {
                 throw new Error("Unexpected GPU context request: " + type);
             }
             const context = createContext(this);

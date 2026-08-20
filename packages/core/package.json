@@ -47,6 +47,7 @@
     "postpack": "node scripts/postpack.mjs"
   },
   "dependencies": {
+    "@genome-spy/webgpu-renderer": "^0.64.0",
     "@gmod/bam": "^7.1.19",
     "@gmod/bbi": "^9.2.0",
     "@gmod/bed": "^2.1.10",
