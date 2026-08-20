@@ -507,6 +507,6 @@ documented as a separately tracked limitation.
 ### Milestone 7
 
 - Status: complete
-- Commit: pending
+- Commit: `756046f73`
 - Result: migration documentation names the remaining adapter and selection
   limitations instead of treating the listed mark features as unsupported.
