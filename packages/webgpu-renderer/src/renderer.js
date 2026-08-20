@@ -43,7 +43,13 @@ export async function createRenderer(canvas, options = {}) {
         alphaMode: options.alphaMode ?? "premultiplied",
     });
 
-    return new Renderer({ device, context, format, canvas });
+    return new Renderer({
+        device,
+        context,
+        format,
+        canvas,
+        onInvalidate: options.onInvalidate,
+    });
 }
 
 /**
@@ -56,20 +62,21 @@ export class Renderer {
      */
 
     /**
-     * @param {{ device: GPUDevice, context: GPUCanvasContext, format: GPUTextureFormat, canvas: HTMLCanvasElement }} params
+     * @param {{ device: GPUDevice, context: GPUCanvasContext, format: GPUTextureFormat, canvas: HTMLCanvasElement, onInvalidate?: () => void }} params
      */
-    constructor({ device, context, format, canvas }) {
+    constructor({ device, context, format, canvas, onInvalidate }) {
         this.device = device;
         this.context = context;
         this.format = format;
         this.canvas = canvas;
+        this._onInvalidate = onInvalidate ?? (() => {});
         // TODO: Use r32uint picking when available on all targets.
         this.pickFormat = /** @type {GPUTextureFormat} */ ("rgba8unorm");
 
         /** @type {Map<MarkId, import("./index.d.ts").MarkProgram>} */
         this._marks = new Map();
-        /** @type {MarkId[] | null} */
-        this._renderOrder = null;
+        /** @type {NormalizedDraw[] | null} */
+        this._renderFrame = null;
         this._nextMarkId = 1;
         this._pickingDirty = true;
         this._pickTexture = null;
@@ -77,9 +84,15 @@ export class Renderer {
         this._pickReadbackBuffer = null;
         this._pickTextureSize = { width: 0, height: 0 };
 
-        // Global uniforms are shared by all marks (e.g., viewport size).
+        this._globalUniformStride = Math.max(
+            16,
+            device.limits.minUniformBufferOffsetAlignment
+        );
+        this._globalUniformCapacity = 1;
+
+        // Each occurrence gets viewport-local globals at a dynamic offset.
         this._globalUniformBuffer = device.createBuffer({
-            size: 4 * 4,
+            size: this._globalUniformStride,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -89,7 +102,11 @@ export class Renderer {
                 {
                     binding: 0,
                     visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-                    buffer: { type: "uniform" },
+                    buffer: {
+                        type: "uniform",
+                        hasDynamicOffset: true,
+                        minBindingSize: 4 * 4,
+                    },
                 },
             ],
         });
@@ -99,15 +116,19 @@ export class Renderer {
             entries: [
                 {
                     binding: 0,
-                    resource: { buffer: this._globalUniformBuffer },
+                    resource: {
+                        buffer: this._globalUniformBuffer,
+                        size: 4 * 4,
+                    },
                 },
             ],
         });
 
+        const dpr = window.devicePixelRatio ?? 1;
         this.updateGlobals({
-            width: canvas.width || 1,
-            height: canvas.height || 1,
-            dpr: window.devicePixelRatio ?? 1,
+            width: (canvas.width || 1) / dpr,
+            height: (canvas.height || 1) / dpr,
+            dpr,
         });
     }
 
@@ -117,10 +138,74 @@ export class Renderer {
      */
     updateGlobals(globals) {
         const { width, height, dpr } = globals;
-        const data = new Float32Array([width, height, dpr, 0]);
-        this.device.queue.writeBuffer(this._globalUniformBuffer, 0, data);
+        assertPositiveFinite("width", width);
+        assertPositiveFinite("height", height);
+        assertPositiveFinite("dpr", dpr);
         this._globals = { width, height, dpr };
         this.markPickingDirty();
+    }
+
+    /**
+     * @param {number} drawCount
+     * @returns {void}
+     */
+    _ensureGlobalUniformCapacity(drawCount) {
+        if (drawCount <= this._globalUniformCapacity) {
+            return;
+        }
+
+        let capacity = this._globalUniformCapacity;
+        while (capacity < drawCount) {
+            capacity *= 2;
+        }
+
+        const oldBuffer = this._globalUniformBuffer;
+        this._globalUniformBuffer = this.device.createBuffer({
+            size: capacity * this._globalUniformStride,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+        this._globalBindGroup = this.device.createBindGroup({
+            layout: this._globalBindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: {
+                        buffer: this._globalUniformBuffer,
+                        size: 4 * 4,
+                    },
+                },
+            ],
+        });
+        this._globalUniformCapacity = capacity;
+        oldBuffer.destroy();
+    }
+
+    /**
+     * @param {NormalizedDraw[]} draws
+     * @returns {void}
+     */
+    _writeDrawGlobals(draws) {
+        if (!draws.length) {
+            return;
+        }
+
+        this._ensureGlobalUniformCapacity(draws.length);
+        const data = new Float32Array(
+            (draws.length * this._globalUniformStride) / 4
+        );
+        for (let i = 0; i < draws.length; i++) {
+            const offset = (i * this._globalUniformStride) / 4;
+            data.set(
+                [
+                    draws[i].viewport.width,
+                    draws[i].viewport.height,
+                    this._globals.dpr,
+                    0,
+                ],
+                offset
+            );
+        }
+        this.device.queue.writeBuffer(this._globalUniformBuffer, 0, data);
     }
 
     /**
@@ -154,11 +239,22 @@ export class Renderer {
     }
 
     /**
+     * Signals that asynchronous resource preparation changed visible output.
+     * The host remains responsible for submitting the next frame.
+     *
+     * @returns {void}
+     */
+    _invalidate() {
+        this.markPickingDirty();
+        this._onInvalidate();
+    }
+
+    /**
      * @returns {void}
      */
     _ensurePickTarget() {
-        const width = Math.max(1, this._globals?.width ?? 1);
-        const height = Math.max(1, this._globals?.height ?? 1);
+        const width = Math.max(1, this.canvas.width);
+        const height = Math.max(1, this.canvas.height);
         const needsResize =
             !this._pickTexture ||
             this._pickTextureSize.width !== width ||
@@ -200,10 +296,10 @@ export class Renderer {
             ],
         });
 
-        const markIds = this._renderOrder ?? this._marks.keys();
-        for (const markId of markIds) {
-            this._marks.get(markId)?.drawPick(pass);
-        }
+        const draws =
+            this._renderFrame ?? this._normalizeDraws(this._marks.keys());
+        this._writeDrawGlobals(draws);
+        this._encodeDraws(pass, draws, true);
 
         pass.end();
         this.device.queue.submit([commandEncoder.finish()]);
@@ -278,11 +374,12 @@ export class Renderer {
     }
 
     /**
-     * @param {Iterable<MarkId>} [markIds]
+     * @param {import("./index.d.ts").RenderFrame} [frame]
      * @returns {void}
      */
-    render(markIds = this._marks.keys()) {
-        const renderOrder = Array.from(markIds);
+    render(frame = {}) {
+        const draws = this._normalizeDraws(frame.draws ?? this._marks.keys());
+        this._writeDrawGlobals(draws);
         const commandEncoder = this.device.createCommandEncoder();
         const view = this.context.getCurrentTexture().createView();
 
@@ -291,25 +388,124 @@ export class Renderer {
             colorAttachments: [
                 {
                     view,
-                    clearValue: { r: 1, g: 1, b: 1, a: 1 },
+                    clearValue: frame.clearColor ?? {
+                        r: 1,
+                        g: 1,
+                        b: 1,
+                        a: 1,
+                    },
                     loadOp: "clear",
                     storeOp: "store",
                 },
             ],
         });
 
-        // Core layout order can change without changing retained resources.
-        for (const markId of renderOrder) {
+        this._encodeDraws(pass, draws, false);
+
+        pass.end();
+        this.device.queue.submit([commandEncoder.finish()]);
+        this._renderFrame = draws;
+        this._pickingDirty = true;
+    }
+
+    /**
+     * @param {Iterable<import("./index.d.ts").DrawCommand | MarkId>} draws
+     * @returns {NormalizedDraw[]}
+     */
+    _normalizeDraws(draws) {
+        const canvas = {
+            x: 0,
+            y: 0,
+            width: this._globals.width,
+            height: this._globals.height,
+        };
+        return Array.from(draws, (draw) => {
+            const command =
+                typeof draw == "number" ? { mark: { markId: draw } } : draw;
+            const markId = command.mark.markId;
             const mark = this._marks.get(markId);
             if (!mark) {
                 throw new RendererError(`No such mark: ${markId}`);
             }
-            mark.draw(pass);
-        }
 
-        pass.end();
-        this.device.queue.submit([commandEncoder.finish()]);
-        this._renderOrder = renderOrder;
+            const viewport = { ...(command.viewport ?? canvas) };
+            assertRect("viewport", viewport);
+            if (
+                viewport.x < 0 ||
+                viewport.y < 0 ||
+                viewport.x + viewport.width > canvas.width ||
+                viewport.y + viewport.height > canvas.height
+            ) {
+                throw new RendererError(
+                    "Viewport must be contained within the logical canvas."
+                );
+            }
+
+            const scissor = intersectRects(command.scissor ?? canvas, canvas);
+            const firstInstance = command.firstInstance ?? 0;
+            assertNonNegativeInteger("firstInstance", firstInstance);
+            const instanceCount =
+                command.instanceCount ?? mark.count - firstInstance;
+            assertNonNegativeInteger("instanceCount", instanceCount);
+            if (firstInstance + instanceCount > mark.count) {
+                throw new RendererError(
+                    `Instance range exceeds mark count: ${mark.count}.`
+                );
+            }
+
+            return {
+                markId,
+                viewport,
+                scissor,
+                firstInstance,
+                instanceCount,
+            };
+        }).filter((draw) => draw.scissor.width > 0 && draw.scissor.height > 0);
+    }
+
+    /**
+     * @param {GPURenderPassEncoder} pass
+     * @param {NormalizedDraw[]} draws
+     * @param {boolean} picking
+     * @returns {void}
+     */
+    _encodeDraws(pass, draws, picking) {
+        const dpr = this._globals.dpr;
+        for (let i = 0; i < draws.length; i++) {
+            const draw = draws[i];
+            const mark = this._marks.get(draw.markId);
+            if (!mark) {
+                continue;
+            }
+
+            pass.setViewport(
+                draw.viewport.x * dpr,
+                draw.viewport.y * dpr,
+                draw.viewport.width * dpr,
+                draw.viewport.height * dpr,
+                0,
+                1
+            );
+            const scissor = toPhysicalScissor(draw.scissor, dpr);
+            pass.setScissorRect(
+                scissor.x,
+                scissor.y,
+                scissor.width,
+                scissor.height
+            );
+            pass.setBindGroup(0, this._globalBindGroup, [
+                i * this._globalUniformStride,
+            ]);
+            const options = {
+                firstInstance: draw.firstInstance,
+                instanceCount: draw.instanceCount,
+            };
+            if (picking) {
+                mark.drawPick(pass, options);
+            } else {
+                mark.draw(pass, options);
+            }
+        }
     }
 
     /**
@@ -324,4 +520,84 @@ export class Renderer {
             this.markPickingDirty();
         }
     }
+}
+
+/**
+ * @typedef {{
+ *   markId: import("./index.d.ts").MarkId,
+ *   viewport: import("./index.d.ts").DrawRect,
+ *   scissor: import("./index.d.ts").DrawRect,
+ *   firstInstance: number,
+ *   instanceCount: number,
+ * }} NormalizedDraw
+ */
+
+/**
+ * @param {string} name
+ * @param {number} value
+ */
+function assertPositiveFinite(name, value) {
+    if (!Number.isFinite(value) || value <= 0) {
+        throw new RendererError(`${name} must be a positive finite number.`);
+    }
+}
+
+/**
+ * @param {string} name
+ * @param {number} value
+ */
+function assertNonNegativeInteger(name, value) {
+    if (!Number.isInteger(value) || value < 0) {
+        throw new RendererError(`${name} must be a non-negative integer.`);
+    }
+}
+
+/**
+ * @param {string} name
+ * @param {import("./index.d.ts").DrawRect} rect
+ */
+function assertRect(name, rect) {
+    if (
+        !Number.isFinite(rect.x) ||
+        !Number.isFinite(rect.y) ||
+        !Number.isFinite(rect.width) ||
+        !Number.isFinite(rect.height) ||
+        rect.width <= 0 ||
+        rect.height <= 0
+    ) {
+        throw new RendererError(
+            `${name} must have finite coordinates and positive dimensions.`
+        );
+    }
+}
+
+/**
+ * @param {import("./index.d.ts").DrawRect} rect
+ * @param {import("./index.d.ts").DrawRect} bounds
+ * @returns {import("./index.d.ts").DrawRect}
+ */
+function intersectRects(rect, bounds) {
+    assertRect("scissor", rect);
+    const x = Math.max(rect.x, bounds.x);
+    const y = Math.max(rect.y, bounds.y);
+    const right = Math.min(rect.x + rect.width, bounds.x + bounds.width);
+    const bottom = Math.min(rect.y + rect.height, bounds.y + bounds.height);
+    return {
+        x,
+        y,
+        width: Math.max(0, right - x),
+        height: Math.max(0, bottom - y),
+    };
+}
+
+/**
+ * @param {import("./index.d.ts").DrawRect} rect
+ * @param {number} dpr
+ */
+function toPhysicalScissor(rect, dpr) {
+    const x = Math.floor(rect.x * dpr);
+    const y = Math.floor(rect.y * dpr);
+    const right = Math.ceil((rect.x + rect.width) * dpr);
+    const bottom = Math.ceil((rect.y + rect.height) * dpr);
+    return { x, y, width: right - x, height: bottom - y };
 }

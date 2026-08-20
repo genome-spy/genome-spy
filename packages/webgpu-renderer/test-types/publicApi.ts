@@ -76,6 +76,20 @@ export async function createPointExample(
         x: new Float32Array([0, 100]),
         y: new Float32Array([50, 50]),
     });
+
+    renderer.render({
+        clearColor: [1, 1, 1, 1],
+        draws: [
+            {
+                mark: points,
+                viewport: { x: 0, y: 0, width: 100, height: 100 },
+                scissor: { x: 10, y: 10, width: 80, height: 80 },
+                firstInstance: 0,
+                instanceCount: 2,
+            },
+            { mark: labels },
+        ],
+    });
 }
 
 type CustomConfig = { radius: number };

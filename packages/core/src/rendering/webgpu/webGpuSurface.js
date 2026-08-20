@@ -15,8 +15,8 @@ export default class WebGpuSurface {
     /** @type {Map<import("../../marks/mark.js").default, RetainedMark>} */
     #marks = new Map();
 
-    /** @type {import("@genome-spy/webgpu-renderer").MarkId[]} */
-    #frameMarkIds = [];
+    /** @type {import("@genome-spy/webgpu-renderer").DrawCommand[]} */
+    #frameDraws = [];
 
     /** @type {{logicalWidth: number, logicalHeight: number, physicalWidth: number, physicalHeight: number} | undefined} */
     #appliedSize;
@@ -43,7 +43,13 @@ export default class WebGpuSurface {
     }
 
     async initialize() {
-        this.#renderer = await createRenderer(this.canvas);
+        this.#renderer = await createRenderer(this.canvas, {
+            onInvalidate: () => {
+                if (this.#renderer) {
+                    this.options.onRenderInvalidated?.();
+                }
+            },
+        });
         this.#updateRendererGlobals();
     }
 
@@ -102,7 +108,7 @@ export default class WebGpuSurface {
      * Starts a new ordered frame without releasing retained marks.
      */
     beginFrame() {
-        this.#frameMarkIds.length = 0;
+        this.#frameDraws.length = 0;
     }
 
     /**
@@ -130,7 +136,9 @@ export default class WebGpuSurface {
             updateRetainedMark(retained.handle, config);
         }
 
-        this.#frameMarkIds.push(retained.handle.markId);
+        // Core still bakes absolute canvas coordinates into scale ranges, so
+        // occurrence viewports and scissors remain intentionally omitted here.
+        this.#frameDraws.push({ mark: retained.handle });
     }
 
     destroyMarks() {
@@ -141,18 +149,19 @@ export default class WebGpuSurface {
             this.#renderer.destroyMark(handle.markId);
         }
         this.#marks.clear();
-        this.#frameMarkIds.length = 0;
+        this.#frameDraws.length = 0;
     }
 
     render() {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
-        this.#renderer.render(this.#frameMarkIds);
+        this.#renderer.render({ draws: this.#frameDraws });
     }
 
     finalize() {
         this.destroyMarks();
+        this.#renderer = undefined;
         this.#sizeHelper.finalize();
         this.canvas.remove();
     }

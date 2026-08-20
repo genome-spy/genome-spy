@@ -1,10 +1,34 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createMockRenderer } from "../../testUtils/mockRenderer.js";
 import { identityScale } from "../../scales/identity.js";
 import TextProgram from "./textProgram.js";
 
 describe("TextProgram series replacement", () => {
+    it("invalidates the host when the font atlas becomes ready", () => {
+        const renderer = createMockRenderer();
+        renderer._invalidate = vi.fn();
+        const program = new TextProgram(renderer, {
+            channels: {
+                text: { value: "x" },
+                x: { value: 0, scale: identityScale() },
+                y: { value: 0, scale: identityScale() },
+            },
+        });
+
+        program._setAtlasFromBitmap(
+            /** @type {ImageBitmap} */ ({ width: 2, height: 2 })
+        );
+
+        expect(renderer._invalidate).toHaveBeenCalledOnce();
+
+        program.destroy();
+        program._setAtlasFromBitmap(
+            /** @type {ImageBitmap} */ ({ width: 2, height: 2 })
+        );
+        expect(renderer._invalidate).toHaveBeenCalledOnce();
+    });
+
     it("rebuilds glyph layout from logical strings without recreating the pipeline", () => {
         const renderer = createMockRenderer();
         const program = new TextProgram(renderer, {

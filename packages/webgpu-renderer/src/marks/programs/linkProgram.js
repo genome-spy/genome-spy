@@ -315,13 +315,13 @@ export default class LinkProgram extends BaseProgram {
 
     /**
      * @param {GPURenderPassEncoder} pass
+     * @param {import("../../index.d.ts").ProgramDrawOptions} options
      */
-    draw(pass) {
+    draw(pass, options) {
         const segmentCount = Math.max(1, this._segmentCount ?? 1);
         const vertexCount = (segmentCount + 1) * 2;
         pass.setPipeline(this._pipeline);
-        pass.setBindGroup(0, this.renderer._globalBindGroup);
         pass.setBindGroup(1, this._bindGroup);
-        pass.draw(vertexCount, this.count, 0, 0);
+        pass.draw(vertexCount, options.instanceCount, 0, options.firstInstance);
     }
 }

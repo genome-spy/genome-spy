@@ -19,19 +19,26 @@ const mocks = vi.hoisted(() => {
         },
         selections: {},
     };
+    const renderer = {
+        createMark: vi.fn(() => handle),
+        updateGlobals: vi.fn(),
+        destroyMark: vi.fn(),
+        render: vi.fn(),
+    };
     return {
         handle,
-        renderer: {
-            createMark: vi.fn(() => handle),
-            updateGlobals: vi.fn(),
-            destroyMark: vi.fn(),
-            render: vi.fn(),
-        },
+        renderer,
+        createRenderer: vi.fn(
+            async (
+                /** @type {HTMLCanvasElement} */ _canvas,
+                /** @type {import("@genome-spy/webgpu-renderer").RendererOptions} */ _options
+            ) => renderer
+        ),
     };
 });
 
 vi.mock("@genome-spy/webgpu-renderer", () => ({
-    createRenderer: vi.fn(async () => mocks.renderer),
+    createRenderer: mocks.createRenderer,
 }));
 
 vi.mock("../canvasSizeHelper.js", () => ({
@@ -59,14 +66,21 @@ beforeEach(() => {
 describe("WebGpuSurface", () => {
     test("updates and reorders a retained mark without recreating it", async () => {
         const container = document.createElement("div");
+        const onRenderInvalidated = vi.fn();
         const surface = new WebGpuSurface(
             /** @type {any} */ ({
                 container,
                 sizeSource: {},
                 onCanvasResize: vi.fn(),
+                onRenderInvalidated,
             })
         );
         await surface.initialize();
+        const onInvalidate = mocks.createRenderer.mock.calls[0][1].onInvalidate;
+        expect(onInvalidate).toEqual(expect.any(Function));
+        onInvalidate();
+        expect(onRenderInvalidated).toHaveBeenCalledOnce();
+        onRenderInvalidated.mockClear();
         const mark = /** @type {import("../../marks/mark.js").default} */ (
             /** @type {unknown} */ ({})
         );
@@ -92,12 +106,18 @@ describe("WebGpuSurface", () => {
             1, 11,
         ]);
         expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
-        expect(mocks.renderer.render).toHaveBeenNthCalledWith(1, [7]);
-        expect(mocks.renderer.render).toHaveBeenNthCalledWith(2, [7]);
+        expect(mocks.renderer.render).toHaveBeenNthCalledWith(1, {
+            draws: [{ mark: mocks.handle }],
+        });
+        expect(mocks.renderer.render).toHaveBeenNthCalledWith(2, {
+            draws: [{ mark: mocks.handle }],
+        });
         expect(mocks.renderer.destroyMark).not.toHaveBeenCalled();
 
         surface.finalize();
         expect(mocks.renderer.destroyMark).toHaveBeenCalledWith(7);
+        onInvalidate();
+        expect(onRenderInvalidated).not.toHaveBeenCalled();
     });
 
     test("replaces logical text and position series on retained text marks", async () => {
@@ -107,6 +127,7 @@ describe("WebGpuSurface", () => {
                 container,
                 sizeSource: {},
                 onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
             })
         );
         await surface.initialize();

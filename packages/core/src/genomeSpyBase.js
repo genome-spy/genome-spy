@@ -307,6 +307,7 @@ export default class GenomeSpy {
             // Physical backing-store changes do not affect layout, but they
             // clear the canvas and require repainting the existing render batch.
             onCanvasResize: () => this.#renderCoordinator?.renderAll(),
+            onRenderInvalidated: () => this.animator.requestRender(),
         });
 
         canvasWrapper.appendChild(loadingIndicatorsElement);

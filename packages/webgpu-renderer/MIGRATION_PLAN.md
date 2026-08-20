@@ -6,7 +6,8 @@ This plan focuses on the remaining work. Completed items are omitted.
 
 - Text: baseline alignment + vertical flip fix, edge fade, gamma, picking.
 - Picking pass (offscreen ID buffer + readback).
-- Viewport/scissor management.
+- Per-occurrence opacity and scale state for repeated views whose positional
+  ranges differ.
 - Worker-friendly update path (transfer buffers, no object reconstruction).
 - Optional vector backend compatibility (stable mark instance schema).
 - Define explicit mark disposal for dynamically removed Core views without
@@ -108,7 +109,12 @@ Definition migration — complete:
 
 Ordered frame submission — complete:
 
-- `renderer.render(markIds)` draws retained programs in caller-provided order;
+- `renderer.render({ draws, clearColor })` draws retained-handle occurrences in
+  caller-provided order, with logical-pixel viewports, scissors, and instance
+  ranges;
+- the visible and picking passes consume the same normalized draw list;
+- one retained handle can be drawn multiple times without duplicating its GPU
+  resources;
 - the Core proof of concept consumes completed layout results without another
   view traversal;
 - compatible Core marks reuse their renderer handles and update public series,

@@ -1,6 +1,7 @@
 # WebGPU renderer API direction
 
-Status: In progress — definition migration complete; ordered frames next
+Status: In progress — explicit draw frames and host invalidation implemented;
+occurrence scale state and destruction contracts next
 
 Date: 2026-08-20
 
@@ -66,8 +67,8 @@ architectural rather than a missing mark feature:
   switch, which statically imports every built-in mark program;
 - the scale registry likewise imports every built-in scale definition and
   selects one by a runtime `type` string;
-- `render()` draws every registered mark in creation order, so Core currently
-  rebuilds all handles each frame to recover paint order;
+- the initial `render()` API drew every registered mark in creation order, so
+  the first PoC rebuilt handles each frame to recover paint order;
 - a semantic mark cannot be submitted naturally for several view occurrences
   with different viewports, clips, opacities, or instance ranges;
 - clear color, logical size, physical attachment size, and DPR are not yet a
@@ -220,9 +221,12 @@ change visible ordering. The descriptor should remain GPU-oriented and generic:
 it should not contain Core views, facets, mark classes, or scale-resolution
 objects.
 
-An explicit list solves the PoC's rebuild-per-frame workaround and supports
-faceted or repeated Core occurrences without duplicating buffers and pipelines.
-It also gives standalone users direct control over paint order and clipping.
+The explicit list now solves the PoC's rebuild-per-frame workaround and lets
+standalone users draw one retained handle repeatedly with viewport, scissor,
+and instance-range state. Core has adopted the draw-list shape, but it still
+stores scale ranges on the retained handle. Repeated Core occurrences whose
+pixel ranges differ therefore remain unsupported until draw-time scale state or
+an equivalent layout-instance contract is designed.
 
 ### Surface, sizing, and lifecycle
 
@@ -426,6 +430,12 @@ standalone renderer scene.
 
 ### Step 2: Add ordered frame submission and migrate the PoC
 
+Implementation status: Partially complete on 2026-08-20. Ordered draw commands,
+logical-pixel viewports and scissors, instance ranges, clear color, shared
+visible/picking order, host-controlled asynchronous invalidation, and Core
+surface migration are implemented. Per-draw opacity, occurrence-specific scale
+state, resize ownership, and whole-renderer destruction remain.
+
 Outcome: Core renders `first.json` without rebuilding retained handles merely to
 establish paint order.
 
@@ -567,7 +577,8 @@ from a separate entry so consumers do not pay for it accidentally.
 - Core's adapter translates `first.json` into retained handles and an ordered
   frame without recreating all handles on every paint.
 - One retained handle can be drawn multiple times with distinct viewports,
-  scissors, opacities, and instance ranges.
+  scissors, and instance ranges. Opacity and occurrence-specific scale state
+  remain acceptance work for repeated Core views.
 - The public contract defines logical pixels, DPR, clear color, caller-controlled
   frame submission, invalidation, and deterministic destruction.
 - The renderer contains no Core imports or Core-specific view, facet, encoder,
