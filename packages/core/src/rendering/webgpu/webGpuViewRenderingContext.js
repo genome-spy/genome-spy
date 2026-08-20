@@ -4,6 +4,7 @@ import {
     normalizeClipOptions,
     prepareMarkClipOptionsFromClip,
 } from "../../view/renderingContext/clipOptions.js";
+import { RASTER_COORDINATE_OFFSET } from "../renderingConstants.js";
 import { createWebGpuMarkConfig } from "./webGpuMarkAdapter.js";
 
 /**
@@ -75,10 +76,14 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         this.#marks.add(mark);
 
         const coords = this.currentCoords;
+        const markCoords = coords.translate(
+            RASTER_COORDINATE_OFFSET,
+            RASTER_COORDINATE_OFFSET
+        );
         const translated = createWebGpuMarkConfig(
             mark,
             options,
-            coords,
+            markCoords,
             viewOpacity
         );
         if (translated) {

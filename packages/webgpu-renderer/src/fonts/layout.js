@@ -109,6 +109,9 @@ export function buildTextLayout({
             }
             const charCode = ch.codePointAt(0);
             const glyph = metrics.getCharByCode(charCode);
+            if (lineGlyphs === 0) {
+                penX -= (glyph.width - glyph.xadvance) / 2;
+            }
             glyphIds[cursor] = glyph.id >>> 0;
             stringIndex[cursor] = i;
             xOffset[cursor] = penX * scale;

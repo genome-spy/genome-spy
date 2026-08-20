@@ -110,14 +110,15 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     // Add an extra pixel to stroke width to accommodate edge antialiasing.
     let aaPadding = pixelSize;
-    let halfWidth = 0.5 * (width + aaPadding);
+    let paddedWidth = width + aaPadding;
+    let halfWidth = 0.5 * width;
     let side = local.y - 0.5;
 
     // Apply caps and minimum length by spreading the vertices along the tangent.
     var position = a + tangent * (local.x + offset);
 
     // Extrude the quad along the normal direction.
-    position = position + normal * side * (width + aaPadding);
+    position = position + normal * side * paddedWidth;
     let clip = vec2<f32>(
         (position.x / globals.width) * 2.0 - 1.0,
         1.0 - (position.y / globals.height) * 2.0
@@ -126,7 +127,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     var out: VSOut;
     out.pos = vec4<f32>(clip, 0.0, 1.0);
     out.color = getScaled_color(i);
-    out.normalDistance = side * (width + aaPadding);
+    out.normalDistance = side * paddedWidth;
     out.halfWidth = halfWidth;
     out.opacity = opacity;
     // Distances from the line endings (pixels). Used for round caps.
@@ -152,8 +153,7 @@ fn shade(in: VSOut) -> vec4<f32> {
     } else {
         distance = abs(in.normalDistance);
     }
-    let pixelSize = 1.0 / globals.dpr;
-    let width = max(0.0, in.halfWidth * 2.0 - pixelSize);
+    let width = in.halfWidth * 2.0;
     let dash = dashMask(
         dashAtlas,
         in.dashIndex,
