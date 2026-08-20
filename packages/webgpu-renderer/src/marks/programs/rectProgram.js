@@ -13,6 +13,10 @@ export const RECT_CHANNEL_SPECS = {
     x2: { type: "f32", components: 1, scale: linearScale(), default: 10 },
     y: { type: "f32", components: 1, scale: linearScale(), default: 0 },
     y2: { type: "f32", components: 1, scale: linearScale(), default: 10 },
+    xOffset: { type: "f32", components: 1, default: 0 },
+    x2Offset: { type: "f32", components: 1, default: 0 },
+    yOffset: { type: "f32", components: 1, default: 0 },
+    y2Offset: { type: "f32", components: 1, default: 0 },
     fill: { type: "f32", components: 4, default: [0.27, 0.49, 0.8, 1.0] },
     stroke: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
     fillOpacity: { type: "f32", components: 1, default: 1.0 },
@@ -177,10 +181,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         vec2<f32>(1.0, 1.0)
     );
 
-    var x = getScaled_x(i);
-    var x2 = getScaled_x2(i);
-    var y = getScaled_y(i);
-    var y2 = getScaled_y2(i);
+    var x = getScaled_x(i) + getScaled_xOffset(i);
+    var x2 = getScaled_x2(i) + getScaled_x2Offset(i);
+    var y = getScaled_y(i) + getScaled_yOffset(i);
+    var y2 = getScaled_y2(i) + getScaled_y2Offset(i);
     sort(&x, &x2);
     sort(&y, &y2);
     let w = x2 - x;

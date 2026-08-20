@@ -15,6 +15,10 @@ export const RULE_CHANNEL_SPECS = {
     x2: { type: "f32", components: 1 },
     y: { type: "f32", components: 1 },
     y2: { type: "f32", components: 1 },
+    xOffset: { type: "f32", components: 1, default: 0 },
+    x2Offset: { type: "f32", components: 1, default: 0 },
+    yOffset: { type: "f32", components: 1, default: 0 },
+    y2Offset: { type: "f32", components: 1, default: 0 },
     size: { type: "f32", components: 1, default: 1.0 },
     color: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
     opacity: { type: "f32", components: 1, default: 1.0 },
@@ -81,8 +85,14 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     }
 
     // Start/end points in pixel coordinates.
-    let a = vec2<f32>(getScaled_x(i), getScaled_y(i));
-    let b = vec2<f32>(getScaled_x2(i), getScaled_y2(i));
+    let a = vec2<f32>(
+        getScaled_x(i) + getScaled_xOffset(i),
+        getScaled_y(i) + getScaled_yOffset(i)
+    );
+    let b = vec2<f32>(
+        getScaled_x2(i) + getScaled_x2Offset(i),
+        getScaled_y2(i) + getScaled_y2Offset(i)
+    );
 
     // Avoid artifacts in degenerate rules by falling back to a unit tangent.
     var tangent = b - a;

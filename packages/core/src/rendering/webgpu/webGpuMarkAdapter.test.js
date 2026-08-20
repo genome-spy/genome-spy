@@ -398,6 +398,60 @@ describe("WebGPU mark adapter", () => {
         expect(channels.hatchPattern).toEqual({ value: 0, type: "u32" });
     });
 
+    test("keeps rectangle endpoint offsets as independently scaled channels", () => {
+        const data = [
+            { xOffset: -1, x2Offset: 0.5, yOffset: 0.25, y2Offset: 1 },
+        ];
+        const offsetScale = {
+            type: "linear",
+            domain: () => [0, 1],
+            range: () => [0, 20],
+            clamp: () => false,
+        };
+        const mark = createMark(
+            "rect",
+            data,
+            {
+                x: createConstantEncoder(0),
+                x2: createConstantEncoder(1),
+                y: createConstantEncoder(0),
+                y2: createConstantEncoder(1),
+                xOffset: createEncoder((datum) => datum.xOffset, {
+                    scale: offsetScale,
+                }),
+                x2Offset: createEncoder((datum) => datum.x2Offset, {
+                    scale: offsetScale,
+                }),
+                yOffset: createEncoder((datum) => datum.yOffset, {
+                    scale: offsetScale,
+                }),
+                y2Offset: createEncoder((datum) => datum.y2Offset, {
+                    scale: offsetScale,
+                }),
+                fill: createConstantEncoder("black"),
+                stroke: createConstantEncoder(null),
+                fillOpacity: createConstantEncoder(1),
+                strokeOpacity: createConstantEncoder(1),
+                strokeWidth: createConstantEncoder(0),
+            },
+            { cornerRadius: 0, minWidth: 0, minHeight: 0, minOpacity: 0 }
+        );
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(10, 20, 100, 200)
+        );
+        const channels = /** @type {any} */ (translated).config.channels;
+
+        expect(channels.x.value).toBe(10);
+        expect(channels.x2.value).toBe(110);
+        expect(channels.xOffset.data).toEqual(new Float32Array([-1]));
+        expect(channels.x2Offset.data).toEqual(new Float32Array([0.5]));
+        expect(channels.xOffset.scale.range).toEqual([0, 20]);
+        expect(channels.yOffset.scale.range).toEqual([0, 20]);
+    });
+
     test.each([
         ["alphabetic", 0],
         ["baseline", 0],

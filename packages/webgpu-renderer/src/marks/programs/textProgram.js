@@ -51,6 +51,8 @@ export const TEXT_CHANNEL_SPECS = {
     x2: { components: 1, scale: linearScale(), optional: true },
     y: { components: 1, scale: linearScale(), default: 0.5 },
     y2: { components: 1, scale: linearScale(), optional: true },
+    x2Offset: { type: "f32", components: 1, default: 0 },
+    y2Offset: { type: "f32", components: 1, default: 0 },
     text: { type: "u32", components: 1, default: 0 },
     size: { type: "f32", components: 1, default: 12.0 },
     angle: { type: "f32", components: 1, default: 0.0 },
@@ -277,7 +279,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     var rangeScale = 1.0;
 
 #if defined(x2_DEFINED)
-    let x2 = getScaled_x2(i);
+    let x2 = getScaled_x2(i) + getScaled_x2Offset(i);
     let xRange = positionInsideRange(
         min(anchor.x, x2),
         max(anchor.x, x2),
@@ -292,7 +294,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 #endif
 
 #if defined(y2_DEFINED)
-    let y2 = getScaled_y2(i);
+    let y2 = getScaled_y2(i) + getScaled_y2Offset(i);
     let yRange = positionInsideRange(
         min(anchor.y, y2),
         max(anchor.y, y2),

@@ -140,34 +140,14 @@ function createRectConfig(mark, data, coords, viewOpacity) {
     return {
         count: data.length,
         channels: {
-            x: createPositionChannel(
-                mark,
-                "x",
-                data,
-                coords,
-                readConstantOffset(mark, "xOffset", data)
-            ),
-            x2: createPositionChannel(
-                mark,
-                "x2",
-                data,
-                coords,
-                readConstantOffset(mark, "x2Offset", data)
-            ),
-            y: createPositionChannel(
-                mark,
-                "y",
-                data,
-                coords,
-                readConstantOffset(mark, "yOffset", data)
-            ),
-            y2: createPositionChannel(
-                mark,
-                "y2",
-                data,
-                coords,
-                readConstantOffset(mark, "y2Offset", data)
-            ),
+            x: createPositionChannel(mark, "x", data, coords),
+            x2: createPositionChannel(mark, "x2", data, coords),
+            y: createPositionChannel(mark, "y", data, coords),
+            y2: createPositionChannel(mark, "y2", data, coords),
+            xOffset: createNumericChannel(mark, "xOffset", data),
+            x2Offset: createNumericChannel(mark, "x2Offset", data),
+            yOffset: createNumericChannel(mark, "yOffset", data),
+            y2Offset: createNumericChannel(mark, "y2Offset", data),
             fill: createColorChannel(mark, "fill", data),
             stroke: createColorChannel(mark, "stroke", data),
             fillOpacity: createOpacityChannel(
@@ -267,41 +247,17 @@ function createPointConfig(mark, data, coords, viewOpacity) {
  * @returns {object}
  */
 function createRuleConfig(mark, data, coords, viewOpacity) {
-    if (readProperty(mark, "strokeDash") != null) {
-        throw unsupported(mark, "Dashed rules are not supported.");
-    }
-
     return {
         count: data.length,
         channels: {
-            x: createPositionChannel(
-                mark,
-                "x",
-                data,
-                coords,
-                readConstantOffset(mark, "xOffset", data)
-            ),
-            x2: createPositionChannel(
-                mark,
-                "x2",
-                data,
-                coords,
-                readConstantOffset(mark, "x2Offset", data)
-            ),
-            y: createPositionChannel(
-                mark,
-                "y",
-                data,
-                coords,
-                readConstantOffset(mark, "yOffset", data)
-            ),
-            y2: createPositionChannel(
-                mark,
-                "y2",
-                data,
-                coords,
-                readConstantOffset(mark, "y2Offset", data)
-            ),
+            x: createPositionChannel(mark, "x", data, coords),
+            x2: createPositionChannel(mark, "x2", data, coords),
+            y: createPositionChannel(mark, "y", data, coords),
+            y2: createPositionChannel(mark, "y2", data, coords),
+            xOffset: createNumericChannel(mark, "xOffset", data),
+            x2Offset: createNumericChannel(mark, "x2Offset", data),
+            yOffset: createNumericChannel(mark, "yOffset", data),
+            y2Offset: createNumericChannel(mark, "y2Offset", data),
             size: createNumericChannel(mark, "size", data),
             color: createColorChannel(mark, "color", data),
             opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
@@ -332,25 +288,13 @@ function createTextConfig(mark, data, coords, viewOpacity) {
             x: createPositionChannel(mark, "x", data, coords),
             ...(mark.encoders.x2
                 ? {
-                      x2: createPositionChannel(
-                          mark,
-                          "x2",
-                          data,
-                          coords,
-                          readOptionalConstantOffset(mark, "x2Offset", data)
-                      ),
+                      x2: createPositionChannel(mark, "x2", data, coords),
                   }
                 : {}),
             y: createPositionChannel(mark, "y", data, coords),
             ...(mark.encoders.y2
                 ? {
-                      y2: createPositionChannel(
-                          mark,
-                          "y2",
-                          data,
-                          coords,
-                          readOptionalConstantOffset(mark, "y2Offset", data)
-                      ),
+                      y2: createPositionChannel(mark, "y2", data, coords),
                   }
                 : {}),
             text: createTextChannel(mark, data),
@@ -358,6 +302,12 @@ function createTextConfig(mark, data, coords, viewOpacity) {
             angle: createNumericChannel(mark, "angle", data),
             dx: createCombinedOffsetChannel(mark, "x", data),
             dy: createCombinedOffsetChannel(mark, "y", data),
+            ...(mark.encoders.x2Offset
+                ? { x2Offset: createNumericChannel(mark, "x2Offset", data) }
+                : {}),
+            ...(mark.encoders.y2Offset
+                ? { y2Offset: createNumericChannel(mark, "y2Offset", data) }
+                : {}),
             align: {
                 value: mapProperty(mark, "align", ALIGN_CODES),
                 type: "u32",
@@ -400,13 +350,12 @@ function resolveFont(mark) {
  * @param {"x" | "x2" | "y" | "y2"} channel
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {number} [offset]
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createPositionChannel(mark, channel, data, coords, offset = 0) {
+function createPositionChannel(mark, channel, data, coords) {
     const encoder = requireEncoder(mark, channel);
     assertUnconditional(mark, channel, encoder);
-    const range = getAbsoluteRange(channel, coords, offset);
+    const range = getAbsoluteRange(channel, coords);
     if (encoder.constant) {
         const unitPosition = Number(encoder(data[0]));
         if (!Number.isFinite(unitPosition)) {
@@ -715,33 +664,6 @@ function createCombinedOffsetChannel(mark, axis, data) {
  * @param {string} channel
  * @param {object[]} data
  */
-function readConstantOffset(mark, channel, data) {
-    const encoder = requireEncoder(mark, channel);
-    assertUnconditional(mark, channel, encoder);
-    if (!encoder.constant) {
-        throw unsupported(mark, `Data-driven "${channel}" is not supported.`);
-    }
-    return Number(encoder(data[0]));
-}
-
-/**
- * @param {import("../../marks/mark.js").default} mark
- * @param {string} channel
- * @param {object[]} data
- */
-function readOptionalConstantOffset(mark, channel, data) {
-    const encoders =
-        /** @type {Record<string, import("../../types/encoder.js").Encoder | undefined>} */ (
-            mark.encoders
-        );
-    return encoders[channel] ? readConstantOffset(mark, channel, data) : 0;
-}
-
-/**
- * @param {import("../../marks/mark.js").default} mark
- * @param {string} channel
- * @param {object[]} data
- */
 function readConstantEncoder(mark, channel, data) {
     const encoder = requireEncoder(mark, channel);
     assertUnconditional(mark, channel, encoder);
@@ -757,13 +679,10 @@ function readConstantEncoder(mark, channel, data) {
  *
  * @param {string} channel
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {number} offset
  * @returns {[number, number]}
  */
-function getAbsoluteRange(channel, coords, offset) {
-    return channel[0] == "x"
-        ? [coords.x + offset, coords.x2 + offset]
-        : [coords.y2 + offset, coords.y + offset];
+function getAbsoluteRange(channel, coords) {
+    return channel[0] == "x" ? [coords.x, coords.x2] : [coords.y2, coords.y];
 }
 
 /**
