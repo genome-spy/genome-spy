@@ -450,6 +450,9 @@ Verification completed for the slice:
 
 ### Milestone 2: Harden only the renderer contracts validated by the PoC
 
+Implementation status: Definition and bundle-proof slice complete on
+2026-08-20; API review pending before ordered frame submission.
+
 Outcome: the successful vertical slice no longer depends on accidental or
 ambiguous renderer behavior, while unused generality remains deferred.
 

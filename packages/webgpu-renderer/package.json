@@ -8,11 +8,24 @@
   "license": "MIT",
   "version": "0.64.0",
   "type": "module",
+  "sideEffects": false,
   "types": "src/index.d.ts",
   "exports": {
     ".": {
       "types": "./src/index.d.ts",
       "default": "./src/index.js"
+    },
+    "./compatibility": {
+      "types": "./src/compatibility.d.ts",
+      "default": "./src/compatibility.js"
+    },
+    "./marks/point": {
+      "types": "./src/marks/point.d.ts",
+      "default": "./src/marks/point.js"
+    },
+    "./scales/linear": {
+      "types": "./src/scales/linear.d.ts",
+      "default": "./src/scales/linear.js"
     },
     "./*": "./src/*"
   },
@@ -32,12 +45,15 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "prepublishOnly": "npm run build",
+    "test:bundle": "node scripts/verifyTreeShaking.mjs",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
     "test:gpu": "playwright test -c playwright.config.js"
   },
   "dependencies": {
     "@webgpu/types": "^0.1.68",
-    "d3-color": "^3.1.0"
+    "d3-color": "^3.1.0",
+    "d3-interpolate": "^3.0.1",
+    "internmap": "^2.0.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

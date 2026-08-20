@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { buildMarkShader } from "./markShaderBuilder.js";
+import { buildMarkShader as buildDefinedMarkShader } from "./markShaderBuilder.js";
 import RectProgram from "../programs/rectProgram.js";
 import { createMockRenderer } from "../../testUtils/mockRenderer.js";
+import { attachScaleDefinitions } from "../../../testUtils/scaleDefinitions.js";
+
+/** @param {import("./markShaderBuilder.js").ShaderBuildParams} params */
+function buildMarkShader(params) {
+    attachScaleDefinitions(params.channels);
+    return buildDefinedMarkShader(params);
+}
 
 const shaderBody = `
 @vertex

@@ -13,6 +13,7 @@ import {
  * @type {import("../../../index.d.ts").ScaleDef}
  */
 export const thresholdScaleDef = {
+    type: "threshold",
     input: "numeric",
     output: "same",
     params: [],
@@ -26,6 +27,7 @@ export const thresholdScaleDef = {
     validate: validateThresholdScale,
     emit: emitThresholdScale,
 };
+Object.freeze(thresholdScaleDef);
 
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params

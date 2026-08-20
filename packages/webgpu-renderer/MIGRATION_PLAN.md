@@ -9,7 +9,8 @@ This plan focuses on the remaining work. Completed items are omitted.
 - Viewport/scissor management.
 - Worker-friendly update path (transfer buffers, no object reconstruction).
 - Optional vector backend compatibility (stable mark instance schema).
-- Decide code-first API direction (defs vs. instances), then align public types.
+- Review and stabilize the first code-first definition slice before migrating
+  the remaining built-ins.
 
 #### Picking implementation plan (incremental)
 
@@ -90,20 +91,24 @@ main pass untouched and keep per-frame work minimal.
 
 ### Code-first API direction (classes vs. defs)
 
-Goal: decide whether users pass scale/mark instances (tree-shakeable,
-typed, code-first) or use the current name/registry approach.
+Decision: use explicitly imported immutable definition values. Runtime state
+lives in renderer-created programs and slots, so definitions are reusable and
+contain no device resources.
 
-- **If instance-based**: scale/mark instances are immutable definitions that
-  expose minimal hooks (`emitWGSL`, `validate`, `resourceRequirements`, and
-  default config). Instances hold no mutable GPU state. Runtime state lives in
-  slots/program instances, so reusing an instance across marks is safe. Any
-  change that alters resource shapes (array lengths, output arity, range kind)
-  requires recreating the mark/pipeline; runtime updates happen via slots.
-- **If def-based**: keep registry for built-ins but provide per-scale entry
-  points to improve tree-shaking. Consider explicit registration to avoid
-  side-effect imports.
-- Avoid supporting both paths unless needed; dual-path support adds surface
-  area and maintenance cost.
+First slice — complete, awaiting API review:
+
+- the generic renderer accepts `MarkDefinition` values and imports no built-in
+  mark switch;
+- `pointMark` and `linearScale` have side-effect-free public subpaths;
+- shader, validation, and resource helpers consume scale definitions directly;
+- a bundle fixture proves that point plus linear excludes unrelated marks,
+  scales, the registry, and font support;
+- the existing string API is isolated in the all-builtins `compatibility`
+  entry used temporarily by examples and the Core PoC.
+
+Next review question: confirm the minimal mark extension protocol and the scale
+factory/config relationship before adding ordered frame submission. Do not
+migrate the remaining built-ins until that review is complete.
 
 ### ScaleDef registry consolidation
 
@@ -163,6 +168,7 @@ definition in `scales/defs/*`, with shared helpers in `scaleEmitUtils.js` and
 ### Codebase review: findings & opportunities
 
 Findings (issues to address):
+
 - **Selections lack GPU/integration tests** — codegen tests exist, but there is
   no GPU coverage for predicate evaluation + resource updates across the three
   selection types. Add at least one GPU test per selection type.
@@ -177,6 +183,7 @@ Findings (issues to address):
   normalization; rename or split validation/normalization helpers.
 
 Opportunities (cleanup/structure):
+
 - **Centralize scale capabilities in `ScaleDef`** — derive output rules,
   vector output, stop kinds, and resource needs directly from defs to reduce
   scattered checks.
@@ -315,12 +322,14 @@ This section is a handoff for a fresh chat or a smaller model to continue
 debugging quickly without reading the whole codebase.
 
 ### Symptom
+
 - `packages/webgpu-renderer/tests/mark-shader-builder.gpu.test.js` fails.
 - The test "markShaderBuilder executes series-backed scales in a compute pass"
   returns all zeros instead of scaled values.
 - Example failing assertion: expected 5, received 0.
 
 ### What was verified
+
 - The generated WGSL looks correct and compiles.
 - `getScaled_x(i)` is correct in shader output.
 - Even when the compute shader is forced to return `read_x(i)` directly,
@@ -332,11 +341,13 @@ Conclusion: the issue is **not** in scale logic or shader code. The series
 buffer data is not reaching the GPU buffer or not being copied back correctly.
 
 ### Commands used (single-test repro)
+
 ```
 DUMP_MARK_SHADER=1 npx playwright test -c packages/webgpu-renderer/playwright.config.js --grep "executes series-backed scales in a compute pass" --timeout 120000
 ```
 
 Debug flags (added in `tests/scaleShaderTestUtils.js`):
+
 ```
 SCALE_TEST_READ_SERIES=1    # compute writes read_x(i) instead of getScaled_x(i)
 SCALE_TEST_COPY_SERIES=1    # copy series buffer directly to readback (bypass output)
@@ -344,6 +355,7 @@ SCALE_TEST_DUMP_OUTPUT=1    # dump output JSON to test-results/
 ```
 
 ### Relevant files
+
 - `packages/webgpu-renderer/tests/mark-shader-builder.gpu.test.js`
 - `packages/webgpu-renderer/tests/scaleShaderTestUtils.js`
 - `packages/webgpu-renderer/tests/gpuTestUtils.js`
@@ -351,45 +363,52 @@ SCALE_TEST_DUMP_OUTPUT=1    # dump output JSON to test-results/
 - `packages/webgpu-renderer/src/marks/programs/internal/packedSeriesLayout.js`
 
 ### Expected vs. actual dump artifacts
+
 Dumped WGSL/JSON files live in repo-root `test-results/` when `DUMP_MARK_SHADER=1`.
 The debug output file (when `SCALE_TEST_DUMP_OUTPUT=1`) is:
+
 ```
 test-results/markshaderbuilder-executes-series-backed-scales-in-a-compute-pass-output.json
 ```
+
 It shows `output: [0, 0, 0]`.
 
 ### Likely culprits to investigate (most to least likely)
-1. **Series buffer upload / visibility**  
+
+1. **Series buffer upload / visibility**
    - `runScaleCompute` creates the series buffers and writes data via
      `device.queue.writeBuffer`, but the readback remains zero.
    - The buffers might not be in the right bind group or their bindings could
      be misaligned with the shader layout.
-2. **Bind group layout mismatch**  
+2. **Bind group layout mismatch**
    - Compute harness uses group(0)/group(1) layouts; the binding order in
      `markShaderBuilder` may not match the test harness assumptions.
-3. **Resource binding numbering**  
+3. **Resource binding numbering**
    - The output binding is `initial.resourceBindings.length + 1`, and the
      series buffer binding comes from `resourceBindings`. A mismatch could
      yield a valid pipeline that reads from the wrong buffer.
-4. **ArrayBuffer serialization in Playwright**  
+4. **ArrayBuffer serialization in Playwright**
    - The test harness converts typed arrays to plain arrays for `page.evaluate`.
      If this serialization is flawed (e.g., wrong type or empty array), the
      GPU buffer would contain zeros.
-5. **Buffer usage flags**  
+5. **Buffer usage flags**
    - Series buffers need `COPY_SRC` when `SCALE_TEST_COPY_SERIES=1`.
      This was added, but if not applied consistently it can result in zeros.
 
 ### Suggested next diagnostic step (low-cost)
+
 Add a micro GPU test that does **only**:
 `writeBuffer → copyBufferToBuffer → mapAsync`, without any shader.  
 If that fails, the harness is broken. If it passes, the bind group layout or
 shader bindings are the issue.
 
 ### Incremental workflow
+
 Run only one test with grep and a single debug switch at a time. Keep dumps
 enabled only when needed to avoid extra churn.
 
 ### Debug instrumentation added
+
 - `tests/harness-queue-copy.gpu.test.js` and `tests/storage-buffer-write.gpu.test.js` verify `writeBuffer → copyBufferToBuffer → mapAsync` works even when buffers are declared as `STORAGE`, covering the exact usage that plagued the compute pass.
 - `scaleShaderTestUtils.js` now normalizes uniforms (injecting `__scale_dummy` when none exist), emits stub `VSOut`/`shade` helpers so compute entry points always compile, logs series payloads when `SCALE_TEST_LOG_BUFFERS=1`, and exposes `runSeriesCopyCase` which copies `seriesF32` straight into the output for binding verification.
 - `tests/series-buffer-binding.gpu.test.js` uses `runSeriesCopyCase` to prove `seriesF32` retains the expected values before any scaling logic runs; these helpers/dumps stay so future GPU failures can be triaged with the documented flags (`SCALE_TEST_LOG_BUFFERS`, `SCALE_TEST_COPY_SERIES`, `SCALE_TEST_READ_SERIES`, `SCALE_TEST_DUMP_OUTPUT`).

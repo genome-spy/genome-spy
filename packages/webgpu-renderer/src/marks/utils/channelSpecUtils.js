@@ -3,7 +3,7 @@
  * @prop {import("../../types.js").ScalarType} [type]
  * @prop {1|2|4} [components]
  * @prop {number|number[]} [default]
- * @prop {"identity"|"linear"} [scale]
+ * @prop {import("../../index.d.ts").ChannelScale} [scale]
  * @prop {boolean} [optional]
  */
 
@@ -40,7 +40,7 @@ export function buildChannelMaps(specs) {
             config.components = spec.components;
         }
         if (spec.scale) {
-            config.scale = { type: spec.scale };
+            config.scale = spec.scale;
         }
         if (spec.default !== undefined) {
             config.value = spec.default;

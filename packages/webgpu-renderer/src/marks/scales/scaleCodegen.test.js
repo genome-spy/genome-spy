@@ -1,14 +1,68 @@
 import { describe, expect, it } from "vitest";
-import { buildScaledFunction, validateScaleConfig } from "./scaleCodegen.js";
+import {
+    buildScaledFunction,
+    validateScaleConfig as validateDefinedScaleConfig,
+} from "./scaleCodegen.js";
+import { getScaleDef } from "./scaleDefs.js";
+import {
+    attachScaleDefinitions,
+    createTestScale,
+} from "../../../testUtils/scaleDefinitions.js";
+
+/**
+ * @param {string} name
+ * @param {import("../../index.d.ts").ChannelConfigInput} channel
+ */
+function validateScaleConfig(name, channel) {
+    attachScaleDefinitions({ channel });
+    return validateDefinedScaleConfig(name, channel);
+}
 
 describe("scaleCodegen validation", () => {
-    it("rejects unknown scale types", () => {
-        const error = validateScaleConfig("x", {
-            scale: /** @type {any} */ ({ type: "mystery" }),
-            type: "f32",
+    it("accepts an attached custom definition without registration", () => {
+        /** @type {import("../../index.d.ts").ScaleDef} */
+        const definition = Object.freeze({
+            type: "custom",
+            input: "numeric",
+            output: "f32",
+            params: [],
+            continuous: true,
+            vectorOutput: "always",
+            resources: {
+                stopKind: null,
+                needsDomainMap: false,
+                needsOrdinalRange: false,
+            },
+            emit: ({ name }) => `fn getScaled_${name}() -> f32 { return 7.0; }`,
         });
+        const scale = { type: "custom", definition };
 
-        expect(error).toBe('Channel "x" uses unsupported scale "mystery".');
+        expect(
+            validateDefinedScaleConfig("x", { scale, type: "f32" })
+        ).toBeNull();
+        expect(
+            buildScaledFunction({
+                name: "x",
+                scaleDef: definition,
+                rawValueExpr: "read_x(i)",
+                scalarType: "f32",
+                inputComponents: 1,
+                outputComponents: 1,
+                outputScalarType: "f32",
+                scaleConfig: scale,
+            })
+        ).toContain("return 7.0");
+    });
+
+    it("rejects unknown scale types", () => {
+        expect(() =>
+            validateDefinedScaleConfig("x", {
+                scale: /** @type {any} */ ({ type: "mystery" }),
+                type: "f32",
+            })
+        ).toThrow(
+            'Scale "mystery" has no definition. Import its scale factory or use the compatibility renderer.'
+        );
     });
 
     it("rejects vector components on unsupported scales", () => {
@@ -152,13 +206,16 @@ describe("scaleCodegen codegen", () => {
     it("uses domain hash maps for band scales with ordinal domains", () => {
         const code = buildScaledFunction({
             name: "x",
-            scale: "band",
+            scaleDef: getScaleDef("band"),
             rawValueExpr: "read_x(i)",
             scalarType: "u32",
             inputComponents: 1,
             outputComponents: 1,
             outputScalarType: "f32",
-            scaleConfig: { type: "band", domain: [10, 20, 30], range: [0, 1] },
+            scaleConfig: createTestScale("band", {
+                domain: [10, 20, 30],
+                range: [0, 1],
+            }),
             domainMapName: "domainMap_x",
         });
 
@@ -169,21 +226,20 @@ describe("scaleCodegen codegen", () => {
     it("uses domain hash maps for ordinal scales with explicit domains", () => {
         const code = buildScaledFunction({
             name: "fill",
-            scale: "ordinal",
+            scaleDef: getScaleDef("ordinal"),
             rawValueExpr: "read_fill(i)",
             scalarType: "u32",
             inputComponents: 1,
             outputComponents: 4,
             outputScalarType: "f32",
-            scaleConfig: {
-                type: "ordinal",
+            scaleConfig: createTestScale("ordinal", {
                 domain: [3, 5, 7],
                 range: [
                     [0, 0, 0, 1],
                     [1, 0, 0, 1],
                     [0, 1, 0, 1],
                 ],
-            },
+            }),
             domainMapName: "domainMap_fill",
         });
 

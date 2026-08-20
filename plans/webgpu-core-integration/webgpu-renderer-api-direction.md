@@ -1,6 +1,6 @@
 # WebGPU renderer API direction
 
-Status: Proposed after the Core PoC
+Status: In progress — Step 1 implemented, awaiting API review
 
 Date: 2026-08-20
 
@@ -287,6 +287,8 @@ parity work at once.
 
 ### Step 1: Establish definitions and bundle proof
 
+Implementation status: Complete on 2026-08-20; review gate pending.
+
 Outcome: one mark and one scale can be imported without the built-in registries
 or unrelated implementations.
 
@@ -312,6 +314,62 @@ Tentative commit: `refactor(webgpu): introduce importable renderer definitions`
 
 Review gate: confirm the definition shape supports a built-in and a small custom
 definition without global registration.
+
+#### Step 1 implementation record
+
+The first slice uses small value-based protocols:
+
+- `pointMark` is a frozen object with a diagnostic `type` and a
+  `createProgram` hook. It holds no renderer or GPU state.
+- `linearScale(options)` returns a channel-scale config carrying one shared,
+  frozen `ScaleDef`. The config remains ordinary caller-owned data; renderer
+  slots own mutable GPU updates.
+- identity remains the only implicit scale. Every other generic scale config
+  must carry a definition.
+
+The ordinary renderer no longer imports built-in mark programs or the scale
+registry. Shader generation, validation, and resource planning consume the
+definition attached to each scale config. WGSL dependencies are definition
+references rather than registry names. The old string-based creation path now
+lives in `@genome-spy/webgpu-renderer/compatibility`, which explicitly imports
+all built-ins and attaches definitions before program construction. Existing
+examples and the Core PoC use this temporary entry until their marks migrate.
+
+Public subpaths now expose:
+
+```text
+@genome-spy/webgpu-renderer
+@genome-spy/webgpu-renderer/marks/point
+@genome-spy/webgpu-renderer/scales/linear
+@genome-spy/webgpu-renderer/compatibility
+```
+
+The production Rollup fixture for the first three entries contains point and
+linear implementations but excludes the compatibility module, rect, rule,
+link, text, the built-in scale registry, every unrelated scale definition, and
+font support. Its current unminified output is approximately 225 kB across 40
+included modules. This is a module-selection baseline, not a bundle-size target:
+the point program still uses substantial generic channel, resource, selection,
+color, and picking infrastructure.
+
+Verification completed for the slice:
+
+- public-package TypeScript fixture: passed;
+- renderer unit tests: 24 files and 101 tests passed, including custom mark and
+  scale definitions that require no global registration;
+- renderer GPU tests: 42 passed, including a new imported point/linear render
+  and picking smoke;
+- point/linear module-graph assertion: passed;
+- Core and renderer TypeScript checks: passed;
+- focused Core WebGPU adapter/backend tests: 11 passed;
+- browser smoke of `first.json`: complete point and guide rendering; the only
+  console error was the development server's missing favicon.
+
+The review should focus on whether `MarkDefinition.createProgram` is an
+appropriately small extension protocol and whether the scale factory should
+continue returning a config that carries its definition. Custom scale authoring
+remains intentionally undocumented until this shape is approved. No production
+global registration is needed by the code-first path.
 
 ### Step 2: Add ordered frame submission and migrate the PoC
 

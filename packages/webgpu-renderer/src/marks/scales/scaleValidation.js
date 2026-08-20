@@ -1,5 +1,4 @@
 import { buildChannelAnalysis } from "../shaders/channelAnalysis.js";
-import { isScaleSupported } from "./scaleDefs.js";
 
 /**
  * @param {import("../../types.js").ScalarType} type
@@ -32,10 +31,6 @@ export function validateScaleConfig(name, channel, analysis) {
         scaleDef,
         interpolateEnabled,
     } = resolved;
-
-    if (scaleType !== "identity" && !isScaleSupported(scaleType)) {
-        return `Channel "${name}" uses unsupported scale "${scaleType}".`;
-    }
 
     const vectorOutputMode = scaleDef?.vectorOutput ?? "never";
     const allowsVectorOutputFlag =

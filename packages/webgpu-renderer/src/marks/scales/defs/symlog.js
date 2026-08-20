@@ -4,6 +4,7 @@ import {
     emitContinuousScale,
     rangeVec2,
 } from "../scaleEmitUtils.js";
+import { linearScaleDef } from "./linear.js";
 
 const symlogWgsl = /* wgsl */ `
 fn symlog(value: f32, constant: f32) -> f32 {
@@ -30,6 +31,7 @@ fn scaleSymlog(value: f32, domain: vec2<f32>, range: vec2<f32>, constant: f32) -
  * @type {import("../../../index.d.ts").ScaleDef}
  */
 export const symlogScaleDef = {
+    type: "symlog",
     input: "numeric",
     output: "f32",
     params: [
@@ -41,7 +43,7 @@ export const symlogScaleDef = {
     ],
     continuous: true,
     vectorOutput: "interpolated",
-    wgslDeps: ["linear"],
+    wgslDeps: [linearScaleDef],
     wgsl: symlogWgsl,
     resources: {
         stopKind: "continuous",
@@ -50,6 +52,7 @@ export const symlogScaleDef = {
     },
     emit: emitSymlogScale,
 };
+Object.freeze(symlogScaleDef);
 
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params

@@ -1,5 +1,6 @@
 import BaseProgram from "./internal/baseProgram.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
+import { linearScale } from "../../scales/linear.js";
 
 /**
  * @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput
@@ -8,10 +9,10 @@ import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 export const RECT_CHANNEL_SPECS = {
     uniqueId: { type: "u32", components: 1, optional: true },
-    x: { type: "f32", components: 1, scale: "linear", default: 0 },
-    x2: { type: "f32", components: 1, scale: "linear", default: 10 },
-    y: { type: "f32", components: 1, scale: "linear", default: 0 },
-    y2: { type: "f32", components: 1, scale: "linear", default: 10 },
+    x: { type: "f32", components: 1, scale: linearScale(), default: 0 },
+    x2: { type: "f32", components: 1, scale: linearScale(), default: 10 },
+    y: { type: "f32", components: 1, scale: linearScale(), default: 0 },
+    y2: { type: "f32", components: 1, scale: linearScale(), default: 10 },
     fill: { type: "f32", components: 4, default: [0.27, 0.49, 0.8, 1.0] },
     stroke: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
     fillOpacity: { type: "f32", components: 1, default: 1.0 },

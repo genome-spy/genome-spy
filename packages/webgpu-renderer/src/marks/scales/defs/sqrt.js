@@ -4,6 +4,7 @@ import {
     emitContinuousScale,
     rangeVec2,
 } from "../scaleEmitUtils.js";
+import { powScaleDef } from "./pow.js";
 
 /**
  * Sqrt scale: power scale with exponent fixed to 0.5.
@@ -14,6 +15,7 @@ import {
  * @type {import("../../../index.d.ts").ScaleDef}
  */
 export const sqrtScaleDef = {
+    type: "sqrt",
     input: "numeric",
     output: "f32",
     params: [
@@ -25,7 +27,7 @@ export const sqrtScaleDef = {
     ],
     continuous: true,
     vectorOutput: "interpolated",
-    wgslDeps: ["pow"],
+    wgslDeps: [powScaleDef],
     resources: {
         stopKind: "continuous",
         needsDomainMap: false,
@@ -33,6 +35,7 @@ export const sqrtScaleDef = {
     },
     emit: emitSqrtScale,
 };
+Object.freeze(sqrtScaleDef);
 
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params

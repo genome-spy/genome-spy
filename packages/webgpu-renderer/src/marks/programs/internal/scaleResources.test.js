@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ScaleResourceManager } from "./scaleResources.js";
+import { attachScaleDefinitions } from "../../../../testUtils/scaleDefinitions.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_PREFIX,
@@ -11,6 +12,7 @@ import {
  * @returns {{ manager: ScaleResourceManager, uniforms: Map<string, number[] | number> }}
  */
 function createManager(channels) {
+    attachScaleDefinitions(channels);
     const uniforms = new Map();
     const device = /** @type {GPUDevice} */ (
         /** @type {unknown} */ ({

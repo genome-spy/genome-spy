@@ -1,5 +1,6 @@
 import BaseProgram from "./internal/baseProgram.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
+import { linearScale } from "../../scales/linear.js";
 
 /**
  * @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput
@@ -8,8 +9,8 @@ import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 export const POINT_CHANNEL_SPECS = {
     uniqueId: { type: "u32", components: 1, optional: true },
-    x: { components: 1, scale: "linear", default: 0.5 },
-    y: { components: 1, scale: "linear", default: 0.5 },
+    x: { components: 1, scale: linearScale(), default: 0.5 },
+    y: { components: 1, scale: linearScale(), default: 0.5 },
     size: { type: "f32", components: 1, default: 100.0 },
     shape: { type: "u32", components: 1, default: 0 },
     strokeWidth: { type: "f32", components: 1, default: 2.0 },

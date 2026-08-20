@@ -459,7 +459,7 @@ ${clauses.join("\n")}
                 buildScaledFunction({
                     name,
                     functionName: baseFunctionName,
-                    scale: channelIR.scaleType,
+                    scaleDef: channelIR.scaleDef,
                     rawValueExpr: channelIR.rawValueExpr,
                     scalarType: channelIR.scalarType,
                     inputComponents: channelIR.inputComponents,
@@ -655,7 +655,7 @@ ${clauses.join("\n")}
                 buildScaledFunction({
                     name,
                     functionName: baseFunctionName,
-                    scale: channelIR.scaleType,
+                    scaleDef: channelIR.scaleDef,
                     rawValueExpr: channelIR.rawValueExpr,
                     scalarType: channelIR.scalarType,
                     inputComponents: channelIR.inputComponents,
@@ -728,7 +728,7 @@ ${clauses.join("\n")}
     const requiredScales = new Set(
         channelIRs
             .filter((channelIR) => channelIR.needsScaleFunction)
-            .map((channelIR) => channelIR.scaleType)
+            .map((channelIR) => channelIR.scaleDef)
     );
     const scalesWgsl = buildScaleWgsl(requiredScales);
     const needsHashTable =

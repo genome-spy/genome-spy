@@ -9,6 +9,11 @@ import { quantizeScaleDef } from "./defs/quantize.js";
 import { sqrtScaleDef } from "./defs/sqrt.js";
 import { symlogScaleDef } from "./defs/symlog.js";
 import { thresholdScaleDef } from "./defs/threshold.js";
+import {
+    getScaleOutputType as getDefinitionOutputType,
+    getScaleResourceRequirements as getDefinitionResourceRequirements,
+    getScaleUniformDef as getDefinitionUniformDef,
+} from "./scaleDefinition.js";
 
 /** @typedef {import("../../index.d.ts").ScaleDef} ScaleDef */
 /** @typedef {import("../../index.d.ts").ScaleInputRule} ScaleInputRule */
@@ -64,7 +69,13 @@ export function isScaleSupported(scaleType) {
  * @returns {void}
  */
 export function registerScaleDef(name, def) {
-    SCALE_DEFS[name] = def;
+    SCALE_DEFS[name] = Object.freeze({
+        ...def,
+        type: name,
+        wgslDeps: def.wgslDeps?.map((dependency) =>
+            typeof dependency == "string" ? getScaleDef(dependency) : dependency
+        ),
+    });
 }
 
 /**
@@ -73,17 +84,10 @@ export function registerScaleDef(name, def) {
  * @returns {ScaleResourceRequirements}
  */
 export function getScaleResourceRequirements(scaleType, isPiecewise) {
-    const def = getScaleDef(scaleType);
-    const rules = def.resources;
-    const stopKind =
-        rules.stopKind && rules.supportsPiecewise && isPiecewise
-            ? "piecewise"
-            : rules.stopKind;
-    return {
-        stopKind,
-        needsDomainMap: Boolean(rules.needsDomainMap),
-        needsOrdinalRange: Boolean(rules.needsOrdinalRange),
-    };
+    return getDefinitionResourceRequirements(
+        getScaleDef(scaleType),
+        isPiecewise
+    );
 }
 
 /**
@@ -91,11 +95,7 @@ export function getScaleResourceRequirements(scaleType, isPiecewise) {
  * @returns {ScaleUniformDef}
  */
 export function getScaleUniformDef(scaleType) {
-    const def = getScaleDef(scaleType);
-    return {
-        stopArrays: def.resources.stopKind !== null,
-        params: def.params,
-    };
+    return getDefinitionUniformDef(getScaleDef(scaleType));
 }
 
 /**
@@ -120,6 +120,5 @@ export function isContinuousScale(scaleType) {
  * @returns {"f32"|"u32"|"i32"}
  */
 export function getScaleOutputType(scaleType, scalarType) {
-    const output = getScaleDef(scaleType).output;
-    return output === "same" ? scalarType : "f32";
+    return getDefinitionOutputType(getScaleDef(scaleType), scalarType);
 }

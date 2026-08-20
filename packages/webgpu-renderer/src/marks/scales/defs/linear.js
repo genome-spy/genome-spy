@@ -29,6 +29,7 @@ fn scaleLinear(value: f32, domain: vec2<f32>, range: vec2<f32>) -> f32 {
  * @type {import("../../../index.d.ts").ScaleDef}
  */
 export const linearScaleDef = {
+    type: "linear",
     input: "numeric",
     output: "f32",
     params: [],
@@ -44,6 +45,7 @@ export const linearScaleDef = {
     validate: validateLinearScale,
     emit: emitLinearScale,
 };
+Object.freeze(linearScaleDef);
 
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params
@@ -171,5 +173,3 @@ function validateLinearScale({
 
     return null;
 }
-
-/** @type {import("../../../index.d.ts").ScaleDef} */
