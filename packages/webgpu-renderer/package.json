@@ -19,6 +19,10 @@
       "types": "./src/marks/link.d.ts",
       "default": "./src/marks/link.js"
     },
+    "./marks/arrow": {
+      "types": "./src/marks/arrow.d.ts",
+      "default": "./src/marks/arrow.js"
+    },
     "./marks/point": {
       "types": "./src/marks/point.d.ts",
       "default": "./src/marks/point.js"

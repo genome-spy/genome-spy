@@ -1,6 +1,6 @@
 /// <reference types="@webgpu/types" />
 
-export type MarkType = "rect" | "point" | "rule" | "link" | "text";
+export type MarkType = "rect" | "point" | "rule" | "link" | "arrow" | "text";
 export type MarkId = number & { __brand: "MarkId" };
 
 export type ScalarType = "f32" | "u32" | "i32";

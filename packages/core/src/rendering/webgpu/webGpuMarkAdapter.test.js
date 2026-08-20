@@ -319,6 +319,50 @@ describe("WebGPU mark adapter", () => {
         expect(config.segments).toBe(25);
     });
 
+    test("translates arrow geometry and rendering properties", () => {
+        const mark = createMark(
+            "arrow",
+            [{}],
+            {
+                x: createConstantEncoder(0),
+                x2: createConstantEncoder(1),
+                y: createConstantEncoder(0),
+                y2: createConstantEncoder(1),
+                xOffset: createConstantEncoder(2),
+                x2Offset: createConstantEncoder(3),
+                yOffset: createConstantEncoder(4),
+                y2Offset: createConstantEncoder(5),
+                fill: createConstantEncoder("#336699"),
+                stroke: createConstantEncoder("black"),
+                fillOpacity: createConstantEncoder(0.8),
+                strokeOpacity: createConstantEncoder(0.7),
+                strokeWidth: createConstantEncoder(2),
+                size: createConstantEncoder(8),
+                direction: createConstantEncoder("reverse"),
+            },
+            {
+                headAngle: 45,
+                headNotchAngle: 90,
+                headShape: "open",
+                headPlacement: "outside",
+                headWidth: 3,
+                headSpacing: 10,
+                stem: true,
+            }
+        );
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const config = /** @type {any} */ (translated).config;
+
+        expect(translated.definition.type).toBe("arrow");
+        expect(config.channels.xOffset).toEqual({ value: 2 });
+        expect(config.channels.y2Offset).toEqual({ value: 5 });
+        expect(config.channels.direction).toEqual({ value: 1, type: "u32" });
+        expect(config.headShape).toBe(1);
+        expect(config.headPlacement).toBe(1);
+        expect(config.headSpacing).toBe(10);
+    });
+
     test.each([
         ["x", 12],
         ["+", 13],
@@ -645,23 +689,6 @@ describe("WebGPU mark adapter", () => {
             'Data-driven "fill" is not supported. Mark: point. View: root/plot'
         );
     });
-
-    test.each(["arrow"])(
-        "reports unsupported mark type %s with the Core view path",
-        (type) => {
-            const mark = createMark(type, [{ value: 1 }], {});
-
-            expect(() =>
-                createWebGpuMarkConfig(
-                    mark,
-                    /** @type {any} */ ({}),
-                    Rectangle.ZERO
-                )
-            ).toThrow(
-                `Mark type "${type}" is not supported. Mark: ${type}. View: root/plot`
-            );
-        }
-    );
 
     test("reuses field-backed columns across scale-only updates", () => {
         const data = [
