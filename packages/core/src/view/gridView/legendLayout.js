@@ -106,7 +106,7 @@ export function translateLegendCoords(
  * @param {(zindex: number, order: number, callback: () => void) => void} queueDecoration
  * @param {number} order
  */
-export function renderLocalLegends(
+export function arrangeLocalLegends(
     legends,
     axes,
     viewportCoords,
@@ -134,7 +134,7 @@ export function renderLocalLegends(
             offset
         );
         queueDecoration(LEGEND_ZINDEX, order, () =>
-            legendView.render(context, legendCoords, options)
+            legendView.arrange(context, legendCoords, options)
         );
     }
 }

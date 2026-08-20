@@ -1,3 +1,4 @@
+import { createLayoutResult } from "../../view/layout/layoutResult.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import SvgViewRenderingContext from "./svgViewRenderingContext.js";
 
@@ -26,11 +27,12 @@ export function createSvg({
         }
     );
 
-    viewRoot.render(
-        renderingContext,
+    const layoutResult = createLayoutResult(
+        viewRoot,
         Rectangle.create(0, 0, logicalWidth, logicalHeight),
-        { firstFacet: true }
+        { renderingOptions: { firstFacet: true } }
     );
+    layoutResult.collectRenderCommands(renderingContext);
 
     return {
         svg: renderingContext.getSvg(),
@@ -59,11 +61,12 @@ export function analyzeSvgExport({ viewRoot, logicalWidth, logicalHeight }) {
     );
 
     renderingContext.beginInstanceCounting();
-    viewRoot.render(
-        renderingContext,
+    const layoutResult = createLayoutResult(
+        viewRoot,
         Rectangle.create(0, 0, logicalWidth, logicalHeight),
-        { firstFacet: true }
+        { renderingOptions: { firstFacet: true } }
     );
+    layoutResult.collectRenderCommands(renderingContext);
     renderingContext.endInstanceCounting();
 
     return {
@@ -153,18 +156,22 @@ export async function createRasterizedSvg({
         }
     );
     const coords = Rectangle.create(0, 0, logicalWidth, logicalHeight);
+    const layoutResult = createLayoutResult(viewRoot, coords, {
+        renderingOptions: { firstFacet: true },
+    });
 
     renderingContext.beginInstanceCounting();
-    viewRoot.render(renderingContext, coords, { firstFacet: true });
+    layoutResult.collectRenderCommands(renderingContext);
     renderingContext.endInstanceCounting();
 
-    viewRoot.render(renderingContext, coords, { firstFacet: true });
+    layoutResult.collectRenderCommands(renderingContext);
     const runs = renderingContext.getRasterRuns();
     if (runs.length) {
         const { rasterizeSvgRuns } = await import("./raster/webgl.js");
         rasterizeSvgRuns({
             runs,
             viewRoot,
+            layoutResult,
             webGLHelper,
             logicalWidth,
             logicalHeight,

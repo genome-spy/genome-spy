@@ -26,7 +26,7 @@ import UnitView from "../unitView.js";
 import { interactionToZoom } from "../zoom.js";
 import GridChild from "./gridChild.js";
 import KeyboardZoomController from "./keyboardZoomController.js";
-import { renderLocalLegends } from "./legendLayout.js";
+import { arrangeLocalLegends } from "./legendLayout.js";
 import {
     addLegendView,
     createGridChildLegend,
@@ -972,8 +972,8 @@ export default class GridView extends ContainerView {
      * @param {import("../layout/rectangle.js").default} coords
      * @param {import("../../types/rendering.js").RenderingOptions} [options]
      */
-    render(context, coords, options = {}) {
-        super.render(context, coords, options);
+    arrange(context, coords, options = {}) {
+        super.arrange(context, coords, options);
 
         if (!this.isConfiguredVisible()) {
             return;
@@ -1089,8 +1089,8 @@ export default class GridView extends ContainerView {
             Math.round(x * devicePixelRatio) / devicePixelRatio;
 
         // Compute layout once and then dispatch decorations around the content
-        // render pass without recomputing per-child coordinates.
-        const renderItems = [];
+        // arrangement pass without recomputing per-child coordinates.
+        const layoutItems = [];
 
         for (const [i, gridChild] of this.#visibleChildren.entries()) {
             const {
@@ -1188,7 +1188,7 @@ export default class GridView extends ContainerView {
             const parentClip = normalizeClipOptions(options);
             const visibleChildCoords = clipCoords(viewportCoords, parentClip);
 
-            renderItems.push({
+            layoutItems.push({
                 col,
                 row,
                 view,
@@ -1212,33 +1212,33 @@ export default class GridView extends ContainerView {
 
         const gridOverhang = this.#getGridOverhang();
         const gridViewCoords = getUnionCoords(
-            renderItems.map((item) => item.viewCoords)
+            layoutItems.map((item) => item.viewCoords)
         );
 
-        /** @type {{ zindex: number, order: number, sequence: number, render: () => void }[]} */
+        /** @type {{ zindex: number, order: number, sequence: number, arrange: () => void }[]} */
         const underlays = [];
-        /** @type {{ zindex: number, order: number, sequence: number, render: () => void }[]} */
+        /** @type {{ zindex: number, order: number, sequence: number, arrange: () => void }[]} */
         const overlays = [];
-        /** @type {{ zindex: number, render: () => void }[]} */
+        /** @type {{ zindex: number, arrange: () => void }[]} */
         const contents = [];
         let sequence = 0;
 
         const queueDecoration = (
             /** @type {number} */ zindex,
             /** @type {number} */ order,
-            /** @type {() => void} */ render
+            /** @type {() => void} */ arrange
         ) => {
             const target = zindex > 0 ? overlays : underlays;
             target.push({
                 zindex,
                 order,
                 sequence: sequence++,
-                render,
+                arrange,
             });
         };
 
-        const renderDecorations = (
-            /** @type {{ zindex: number, order: number, sequence: number, render: () => void }[]} */ items
+        const arrangeDecorations = (
+            /** @type {{ zindex: number, order: number, sequence: number, arrange: () => void }[]} */ items
         ) => {
             items.sort(
                 (a, b) =>
@@ -1248,17 +1248,17 @@ export default class GridView extends ContainerView {
             );
 
             for (const item of items) {
-                item.render();
+                item.arrange();
             }
         };
 
-        for (const item of renderItems) {
+        for (const item of layoutItems) {
             if (item.background) {
                 queueDecoration(
                     item.gridChild.backgroundZindex,
                     DECORATION_ORDER.background,
                     () =>
-                        item.background?.render(
+                        item.background?.arrange(
                             context,
                             item.visibleChildCoords,
                             {
@@ -1283,7 +1283,7 @@ export default class GridView extends ContainerView {
             queueDecoration(
                 verticalSeparator.getZindex(),
                 DECORATION_ORDER.separator,
-                () => verticalSeparator.render(context, coords, options)
+                () => verticalSeparator.arrange(context, coords, options)
             );
         }
 
@@ -1300,19 +1300,19 @@ export default class GridView extends ContainerView {
             queueDecoration(
                 horizontalSeparator.getZindex(),
                 DECORATION_ORDER.separator,
-                () => horizontalSeparator.render(context, coords, options)
+                () => horizontalSeparator.arrange(context, coords, options)
             );
         }
 
         if (gridViewCoords) {
             for (const { overlay, order } of this.#containerOverlays) {
                 queueDecoration(overlay.zindex, order, () =>
-                    overlay.view.render(context, gridViewCoords, options)
+                    overlay.view.arrange(context, gridViewCoords, options)
                 );
             }
         }
 
-        for (const item of renderItems) {
+        for (const item of layoutItems) {
             const {
                 view,
                 axes,
@@ -1341,7 +1341,7 @@ export default class GridView extends ContainerView {
                 queueDecoration(
                     gridLineView.axisProps.zindex ?? 0,
                     DECORATION_ORDER.grid,
-                    () => gridLineView.render(context, viewportCoords, options)
+                    () => gridLineView.arrange(context, viewportCoords, options)
                 );
             }
 
@@ -1358,8 +1358,8 @@ export default class GridView extends ContainerView {
                   )
                 : options.clip;
 
-            const renderContent = () =>
-                view.render(
+            const arrangeContent = () =>
+                view.arrange(
                     context,
                     viewCoords,
                     clipped
@@ -1373,7 +1373,7 @@ export default class GridView extends ContainerView {
 
             contents.push({
                 zindex: view.getZindex(),
-                render: renderContent,
+                arrange: arrangeContent,
             });
 
             if (backgroundStroke) {
@@ -1384,7 +1384,7 @@ export default class GridView extends ContainerView {
                     ),
                     DECORATION_ORDER.backgroundStroke,
                     () =>
-                        backgroundStroke?.render(context, visibleChildCoords, {
+                        backgroundStroke?.arrange(context, visibleChildCoords, {
                             ...options,
                             clipRect: undefined,
                         })
@@ -1449,7 +1449,7 @@ export default class GridView extends ContainerView {
                     defaultAxisZindex(axisView.axisProps, clippedDecorations),
                     DECORATION_ORDER.axis,
                     () =>
-                        axisView.render(context, translatedCoords, {
+                        axisView.arrange(context, translatedCoords, {
                             ...options,
                             clipRect,
                             clip,
@@ -1457,7 +1457,7 @@ export default class GridView extends ContainerView {
                 );
             }
 
-            renderLocalLegends(
+            arrangeLocalLegends(
                 gridChild.legends,
                 this.#getLegendOffsetAxes(axes, col, row, grid),
                 viewportCoords,
@@ -1486,7 +1486,7 @@ export default class GridView extends ContainerView {
                         ),
                         DECORATION_ORDER.axis,
                         () =>
-                            axisView.render(
+                            axisView.arrange(
                                 context,
                                 translateAxisCoords(
                                     viewportCoords.shrink(
@@ -1506,20 +1506,20 @@ export default class GridView extends ContainerView {
                     selectionRect.zindex,
                     DECORATION_ORDER.selectionRect,
                     () =>
-                        selectionRect.view.render(context, viewCoords, options)
+                        selectionRect.view.arrange(context, viewCoords, options)
                 );
             }
 
             for (const overlay of rulerOverlays) {
                 queueDecoration(overlay.zindex, DECORATION_ORDER.ruler, () =>
-                    overlay.view.render(context, viewCoords, options)
+                    overlay.view.arrange(context, viewCoords, options)
                 );
             }
 
             for (const scrollbar of Object.values(gridChild.scrollbars)) {
                 queueDecoration(1, DECORATION_ORDER.scrollbar, () => {
                     scrollbar.updateScrollbar(viewportCoords, viewCoords);
-                    scrollbar.render(context, coords, options);
+                    scrollbar.arrange(context, coords, options);
                 });
             }
 
@@ -1528,12 +1528,12 @@ export default class GridView extends ContainerView {
                     gridChild.getTitleZindex(),
                     DECORATION_ORDER.title,
                     () =>
-                        gridChild.renderTitle(context, viewportCoords, options)
+                        gridChild.arrangeTitle(context, viewportCoords, options)
                 );
             }
         }
 
-        renderLocalLegends(
+        arrangeLocalLegends(
             this.#sharedLegends,
             this.#getSharedAxesByOrient(),
             coords,
@@ -1543,15 +1543,15 @@ export default class GridView extends ContainerView {
             DECORATION_ORDER.legend
         );
 
-        renderDecorations(underlays);
+        arrangeDecorations(underlays);
 
         for (const content of contents.toSorted(
             (a, b) => a.zindex - b.zindex
         )) {
-            content.render();
+            content.arrange();
         }
 
-        renderDecorations(overlays);
+        arrangeDecorations(overlays);
 
         context.popView(this);
     }
@@ -1560,7 +1560,7 @@ export default class GridView extends ContainerView {
      * Local legends are GridChild-owned, but shared axes are GridView-owned.
      * When they share an orient, the axis should remain next to the plot and
      * the legend should move outside it. Give legend placement the applicable
-     * shared edge axes so `renderLocalLegends()` can apply the same offset it
+     * shared edge axes so `arrangeLocalLegends()` can apply the same offset it
      * already uses for local axes.
      *
      * @param {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisView>>} axes

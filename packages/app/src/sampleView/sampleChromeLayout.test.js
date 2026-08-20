@@ -14,7 +14,7 @@ describe("SampleChromeLayout", () => {
         expect(layout.getPlotCoords(plotCoords)).toBe(plotCoords);
 
         expect(() =>
-            layout.renderVerticalAxes(/** @type {any} */ (context), plotCoords)
+            layout.arrangeVerticalAxes(/** @type {any} */ (context), plotCoords)
         ).not.toThrow();
     });
 
@@ -48,7 +48,7 @@ describe("SampleChromeLayout", () => {
         const plotCoords = Rectangle.create(10, 20, 300, 120);
         const locations = createLocations(60);
 
-        layout.renderVerticalAxes(
+        layout.arrangeVerticalAxes(
             /** @type {any} */ ({}),
             plotCoords,
             locations
@@ -56,8 +56,8 @@ describe("SampleChromeLayout", () => {
 
         expect(layout.getLeftReserve(locations)).toBe(0);
         expect(layout.getPlotCoords(plotCoords, locations)).toBe(plotCoords);
-        expect(axisView.render).toHaveBeenCalledTimes(1);
-        expect(axisView.render.mock.calls[0][1].x).toBe(12);
+        expect(axisView.arrange).toHaveBeenCalledTimes(1);
+        expect(axisView.arrange.mock.calls[0][1].x).toBe(12);
     });
 
     test("does not reserve lanes below the minimum sample height", () => {
@@ -83,13 +83,13 @@ describe("SampleChromeLayout", () => {
 
         expect(peek.getLeftReserve(locations)).toBe(32);
 
-        peek.renderVerticalAxes(
+        peek.arrangeVerticalAxes(
             /** @type {any} */ ({}),
             Rectangle.create(50, 100, 200, 120),
             locations
         );
 
-        expect(axisView.render).not.toHaveBeenCalled();
+        expect(axisView.arrange).not.toHaveBeenCalled();
     });
 
     test("renders an axis for every eligible sample in all mode", () => {
@@ -102,18 +102,18 @@ describe("SampleChromeLayout", () => {
         const plotCoords = Rectangle.create(50, 100, 200, 120);
         const locations = createLocations([60, 40, 70]);
 
-        layout.renderVerticalAxes(
+        layout.arrangeVerticalAxes(
             /** @type {any} */ ({}),
             plotCoords,
             locations
         );
 
-        expect(axisView.render).toHaveBeenCalledTimes(2);
-        expect(axisView.render.mock.calls[0][1].x).toBe(38);
-        expect(axisView.render.mock.calls[0][1].y).toBe(100);
-        expect(axisView.render.mock.calls[0][1].height).toBe(60);
-        expect(axisView.render.mock.calls[1][1].y).toBe(200);
-        expect(axisView.render.mock.calls[1][1].height).toBe(70);
+        expect(axisView.arrange).toHaveBeenCalledTimes(2);
+        expect(axisView.arrange.mock.calls[0][1].x).toBe(38);
+        expect(axisView.arrange.mock.calls[0][1].y).toBe(100);
+        expect(axisView.arrange.mock.calls[0][1].height).toBe(60);
+        expect(axisView.arrange.mock.calls[1][1].y).toBe(200);
+        expect(axisView.arrange.mock.calls[1][1].height).toBe(70);
     });
 
     test("renders the midpoint sample in middle mode", () => {
@@ -126,15 +126,15 @@ describe("SampleChromeLayout", () => {
         const plotCoords = Rectangle.create(50, 100, 200, 120);
         const locations = createLocations([30, 30, 30]);
 
-        layout.renderVerticalAxes(
+        layout.arrangeVerticalAxes(
             /** @type {any} */ ({}),
             plotCoords,
             locations
         );
 
-        expect(axisView.render).toHaveBeenCalledTimes(1);
-        expect(axisView.render.mock.calls[0][1].y).toBe(130);
-        expect(axisView.render.mock.calls[0][1].height).toBe(30);
+        expect(axisView.arrange).toHaveBeenCalledTimes(1);
+        expect(axisView.arrange.mock.calls[0][1].y).toBe(130);
+        expect(axisView.arrange.mock.calls[0][1].height).toBe(30);
     });
 
     test("prefers the upper middle sample in middle mode near-ties", () => {
@@ -147,15 +147,15 @@ describe("SampleChromeLayout", () => {
         const plotCoords = Rectangle.create(50, 100, 200, 120);
         const locations = createLocations([25, 25, 24.999999998, 25.000000002]);
 
-        layout.renderVerticalAxes(
+        layout.arrangeVerticalAxes(
             /** @type {any} */ ({}),
             plotCoords,
             locations
         );
 
-        expect(axisView.render).toHaveBeenCalledTimes(1);
-        expect(axisView.render.mock.calls[0][1].y).toBe(125);
-        expect(axisView.render.mock.calls[0][1].height).toBe(25);
+        expect(axisView.arrange).toHaveBeenCalledTimes(1);
+        expect(axisView.arrange.mock.calls[0][1].y).toBe(125);
+        expect(axisView.arrange.mock.calls[0][1].height).toBe(25);
     });
 
     test("uses the active axis candidate", () => {
@@ -167,14 +167,14 @@ describe("SampleChromeLayout", () => {
         });
         const locations = createLocations(60);
 
-        layout.renderVerticalAxes(
+        layout.arrangeVerticalAxes(
             /** @type {any} */ ({}),
             Rectangle.create(50, 100, 200, 120),
             locations
         );
 
         expect(layout.getLeftReserve(locations)).toBe(34);
-        expect(axisView.render).toHaveBeenCalledTimes(1);
+        expect(axisView.arrange).toHaveBeenCalledTimes(1);
     });
 
     test("uses all mode and default min sample height by default", () => {
@@ -185,14 +185,14 @@ describe("SampleChromeLayout", () => {
         });
         const locations = createLocations([60, 59, 61]);
 
-        layout.renderVerticalAxes(
+        layout.arrangeVerticalAxes(
             /** @type {any} */ ({}),
             Rectangle.create(50, 100, 200, 120),
             locations
         );
 
         expect(layout.getLeftReserve(locations)).toBe(12);
-        expect(axisView.render).toHaveBeenCalledTimes(2);
+        expect(axisView.arrange).toHaveBeenCalledTimes(2);
     });
 
     test("does not reserve or render when sampleYAxis is null", () => {
@@ -204,14 +204,14 @@ describe("SampleChromeLayout", () => {
         });
         const locations = createLocations(60);
 
-        layout.renderVerticalAxes(
+        layout.arrangeVerticalAxes(
             /** @type {any} */ ({}),
             Rectangle.create(50, 100, 200, 120),
             locations
         );
 
         expect(layout.getLeftReserve(locations)).toBe(0);
-        expect(axisView.render).not.toHaveBeenCalled();
+        expect(axisView.arrange).not.toHaveBeenCalled();
     });
 });
 
@@ -248,7 +248,7 @@ function createAxisView(size, offset, placement) {
     return /** @type {any} */ ({
         axisProps: { offset, placement },
         getPerpendicularSize: () => size,
-        render: vi.fn(),
+        arrange: vi.fn(),
     });
 }
 

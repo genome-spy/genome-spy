@@ -149,13 +149,13 @@ describe("SVG link renderer", () => {
         );
         const coords = Rectangle.create(0, 0, 200, 100);
 
-        view.render(context, coords, {
+        view.arrange(context, coords, {
             sampleFacetRenderingOptions: {
                 locSize: { location: 10, size: 30 },
                 pixelToUnit: 0.01,
             },
         });
-        view.render(context, coords, {
+        view.arrange(context, coords, {
             sampleFacetRenderingOptions: {
                 locSize: { location: 60, size: 20 },
                 pixelToUnit: 0.01,

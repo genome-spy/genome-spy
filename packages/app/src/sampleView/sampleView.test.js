@@ -924,7 +924,7 @@ describe("layout and group column", () => {
         });
         const renderContext = new InspectRenderingContext({ picking: false });
 
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -952,7 +952,7 @@ describe("layout and group column", () => {
         const renderContext = new NoOpRenderingContext({
             picking: false,
         });
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -978,7 +978,7 @@ describe("layout and group column", () => {
         });
 
         const renderContext = new NoOpRenderingContext({ picking: false });
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -1013,7 +1013,7 @@ describe("layout and group column", () => {
         const renderContext = new InspectRenderingContext({
             picking: false,
         });
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -1052,7 +1052,7 @@ describe("layout and group column", () => {
         const renderContext = new InspectRenderingContext({
             picking: false,
         });
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -1088,7 +1088,7 @@ describe("layout and group column", () => {
 
         const { view } = await createSampleViewForTest({ spec });
         const renderContext = new InspectRenderingContext({ picking: false });
-        view.render(renderContext, Rectangle.create(0, 0, 360, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 360, 220), {
             firstFacet: true,
         });
 
@@ -1181,7 +1181,7 @@ describe("layout and group column", () => {
         expect(inside.getLayoutAncestors()).toContain(summaryContainer);
 
         const renderContext = new InspectRenderingContext({ picking: false });
-        view.render(renderContext, Rectangle.create(0, 0, 360, 240), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 360, 240), {
             firstFacet: true,
         });
         expect(
@@ -1271,7 +1271,7 @@ describe("layout and group column", () => {
 
         expect(view.prepareLayoutSize(360, 40)).toBe(true);
         const wrappedContext = new InspectRenderingContext({ picking: false });
-        view.render(wrappedContext, Rectangle.create(0, 0, 360, 220), {
+        view.arrange(wrappedContext, Rectangle.create(0, 0, 360, 220), {
             firstFacet: true,
         });
         expect(wrappedContext.legendCoords).toHaveLength(2);
@@ -1287,7 +1287,7 @@ describe("layout and group column", () => {
         view.prepareLayoutSize(360, 220);
 
         const renderContext = new InspectRenderingContext({ picking: false });
-        view.render(renderContext, Rectangle.create(0, 0, 360, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 360, 220), {
             firstFacet: true,
         });
 
@@ -1362,7 +1362,7 @@ describe("layout and group column", () => {
         });
 
         const renderContext = new InspectRenderingContext({ picking: false });
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -1431,7 +1431,7 @@ describe("layout and group column", () => {
             const renderContext = new InspectRenderingContext({
                 picking: false,
             });
-            view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
                 firstFacet: true,
             });
 
@@ -1601,7 +1601,7 @@ describe("interaction routing", () => {
         const renderContext = new NoOpRenderingContext({
             picking: false,
         });
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -1678,7 +1678,7 @@ describe("interaction routing", () => {
         const renderContext = new NoOpRenderingContext({
             picking: false,
         });
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -1742,7 +1742,7 @@ describe("interaction routing", () => {
             const renderContext = new NoOpRenderingContext({
                 picking: false,
             });
-            view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
                 firstFacet: true,
             });
 
@@ -1944,7 +1944,7 @@ describe("axis layout and visibility", () => {
             const renderContext = new NoOpRenderingContext({
                 picking: false,
             });
-            view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
                 firstFacet: true,
             });
         }
@@ -2065,7 +2065,7 @@ describe("axis layout and visibility", () => {
         view.sampleGroupView.updateGroups();
 
         const renderContext = new InspectRenderingContext({ picking: false });
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -2130,7 +2130,7 @@ describe("axis layout and visibility", () => {
         const renderContext = new InspectRenderingContext({ picking: false });
 
         expect(() =>
-            view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
                 firstFacet: true,
             })
         ).not.toThrow();
@@ -2184,7 +2184,7 @@ describe("axis layout and visibility", () => {
         });
 
         const renderContext = new InspectRenderingContext({ picking: false });
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -2227,7 +2227,7 @@ describe("axis layout and visibility", () => {
             picking: false,
         });
 
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -2280,7 +2280,7 @@ describe("axis layout and visibility", () => {
             picking: false,
         });
 
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -2338,7 +2338,7 @@ describe("axis layout and visibility", () => {
             picking: false,
         });
 
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -2394,7 +2394,7 @@ describe("axis layout and visibility", () => {
             picking: false,
         });
 
-        view.render(renderContext, Rectangle.create(0, 0, 300, 300), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 300), {
             firstFacet: true,
         });
 
@@ -2454,7 +2454,7 @@ describe("axis layout and visibility", () => {
         const renderContext = new NoOpRenderingContext({
             picking: false,
         });
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -2561,7 +2561,7 @@ describe("axis layout and visibility", () => {
         });
 
         visibleLayerName = "signal-a";
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -2574,8 +2574,8 @@ describe("axis layout and visibility", () => {
             throw new Error("Expected both layer y-axis candidates!");
         }
 
-        const renderASpy = vi.spyOn(axisA, "render");
-        const renderBSpy = vi.spyOn(axisB, "render");
+        const renderASpy = vi.spyOn(axisA, "arrange");
+        const renderBSpy = vi.spyOn(axisB, "arrange");
 
         expect(axisA.coords).toBeDefined();
         expect(axisB.coords).toBeUndefined();
@@ -2584,7 +2584,7 @@ describe("axis layout and visibility", () => {
         renderASpy.mockClear();
         renderBSpy.mockClear();
         view.invalidateSizeCache();
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -2668,7 +2668,7 @@ describe("axis layout and visibility", () => {
         const renderContext = new NoOpRenderingContext({
             picking: false,
         });
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -2683,8 +2683,8 @@ describe("axis layout and visibility", () => {
             context.fontManager
         );
 
-        const renderBSpy = vi.spyOn(axisB, "render");
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        const renderBSpy = vi.spyOn(axisB, "arrange");
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 
@@ -2760,12 +2760,12 @@ describe("axis layout and visibility", () => {
             throw new Error("Expected LOH y-axis candidate!");
         }
 
-        const renderSpy = vi.spyOn(axis, "render");
+        const renderSpy = vi.spyOn(axis, "arrange");
         const renderContext = new NoOpRenderingContext({
             picking: false,
         });
 
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
         expect(renderSpy).toHaveBeenCalledTimes(1);
@@ -2773,7 +2773,7 @@ describe("axis layout and visibility", () => {
         lohVisible = false;
         renderSpy.mockClear();
         view.invalidateSizeCache();
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
 

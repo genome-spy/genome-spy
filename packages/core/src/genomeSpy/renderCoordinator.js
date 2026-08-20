@@ -1,5 +1,6 @@
 import BufferedViewRenderingContext from "../view/renderingContext/bufferedViewRenderingContext.js";
 import CompositeViewRenderingContext from "../view/renderingContext/compositeViewRenderingContext.js";
+import { createLayoutResult } from "../view/layout/layoutResult.js";
 import Rectangle from "../view/layout/rectangle.js";
 
 export default class RenderCoordinator {
@@ -62,8 +63,14 @@ export default class RenderCoordinator {
         // change so buffered render commands use current dimensions.
         this.#glHelper.invalidateSize();
         let remainingPasses = 5;
-        while (this.#computeLayoutPass()) {
+        while (true) {
+            const pass = this.#computeLayoutPass();
+            if (!pass) {
+                return;
+            }
+
             if (!this.#glHelper.invalidateSize()) {
+                this.#collectLayout(pass);
                 this.#onLayoutComputed();
                 this.#broadcast("layoutComputed");
                 return;
@@ -90,20 +97,32 @@ export default class RenderCoordinator {
             return false;
         }
 
+        const devicePixelRatio = this.#glHelper.getDevicePixelRatio(canvasSize);
+        const layoutResult = createLayoutResult(
+            root,
+            Rectangle.create(0, 0, canvasSize.width, canvasSize.height),
+            { devicePixelRatio }
+        );
+
+        return { layoutResult, canvasSize, devicePixelRatio };
+    }
+
+    /** @param {CompletedLayoutPass} pass */
+    #collectLayout({ layoutResult, canvasSize, devicePixelRatio }) {
         const commonOptions = {
             webGLHelper: this.#glHelper,
             canvasSize,
-            devicePixelRatio: this.#glHelper.getDevicePixelRatio(canvasSize),
+            devicePixelRatio,
         };
 
-        this.#renderingContext = new BufferedViewRenderingContext(
+        const renderingContext = new BufferedViewRenderingContext(
             { picking: false },
             {
                 ...commonOptions,
                 clearColor: this.#getBackground(),
             }
         );
-        this.#pickingContext = new BufferedViewRenderingContext(
+        const pickingContext = new BufferedViewRenderingContext(
             { picking: true },
             {
                 ...commonOptions,
@@ -111,16 +130,11 @@ export default class RenderCoordinator {
             }
         );
 
-        root.render(
-            new CompositeViewRenderingContext(
-                this.#renderingContext,
-                this.#pickingContext
-            ),
-            // Canvas should now be sized based on the root view or the container
-            Rectangle.create(0, 0, canvasSize.width, canvasSize.height)
+        layoutResult.collectRenderCommands(
+            new CompositeViewRenderingContext(renderingContext, pickingContext)
         );
-
-        return true;
+        this.#renderingContext = renderingContext;
+        this.#pickingContext = pickingContext;
     }
 
     renderAll() {
@@ -138,3 +152,10 @@ export default class RenderCoordinator {
         this.#dirtyPickingBuffer = false;
     }
 }
+
+/**
+ * @typedef {object} CompletedLayoutPass
+ * @prop {import("../view/layout/layoutResult.js").default} layoutResult
+ * @prop {{width: number, height: number}} canvasSize
+ * @prop {number} devicePixelRatio
+ */

@@ -135,7 +135,7 @@ function render(
     /** @type {import("../../view/view.js").default} */ view,
     /** @type {CanvasRenderingContext2D} */ context
 ) {
-    view.render(
+    view.arrange(
         new Canvas2DViewRenderingContext(
             { picking: false },
             {
@@ -353,7 +353,7 @@ describe("Canvas2DViewRenderingContext", () => {
             { location: 20, size: 40 },
             { location: 60, size: 20 },
         ]) {
-            view.render(context, Rectangle.create(0, 0, 100, 100), {
+            view.arrange(context, Rectangle.create(0, 0, 100, 100), {
                 sampleFacetRenderingOptions: {
                     locSize,
                     pixelToUnit: 0.01,

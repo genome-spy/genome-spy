@@ -271,8 +271,8 @@ export default class UnitView extends View {
      * @param {import("./layout/rectangle.js").default} coords
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
-    render(context, coords, options = {}) {
-        super.render(context, coords, options);
+    arrange(context, coords, options = {}) {
+        super.arrange(context, coords, options);
 
         if (!this.isConfiguredVisible()) {
             return;

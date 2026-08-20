@@ -1,6 +1,7 @@
 import { createFramebufferInfo } from "twgl.js";
 
 import BufferedViewRenderingContext from "../view/renderingContext/bufferedViewRenderingContext.js";
+import { createLayoutResult } from "../view/layout/layoutResult.js";
 import Rectangle from "../view/layout/rectangle.js";
 import {
     framebufferToBlob,
@@ -151,10 +152,12 @@ function renderToFramebuffer({
             }
         );
 
-        viewRoot.render(
-            renderingContext,
-            Rectangle.create(0, 0, logicalWidth, logicalHeight)
+        const layoutResult = createLayoutResult(
+            viewRoot,
+            Rectangle.create(0, 0, logicalWidth, logicalHeight),
+            { devicePixelRatio: pixelRatio }
         );
+        layoutResult.collectRenderCommands(renderingContext);
         renderingContext.render();
 
         gl.bindFramebuffer(

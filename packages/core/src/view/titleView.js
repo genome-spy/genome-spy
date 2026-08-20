@@ -568,8 +568,8 @@ export default class TitleView extends ContainerView {
      * @param {import("./layout/rectangle.js").default} coords
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
-    render(context, coords, options = {}) {
-        super.render(context, coords, options);
+    arrange(context, coords, options = {}) {
+        super.arrange(context, coords, options);
 
         if (!this.isConfiguredVisible()) {
             return;
@@ -577,7 +577,7 @@ export default class TitleView extends ContainerView {
 
         context.pushView(this, coords);
         for (const child of this.#children) {
-            child.render(context, coords, options);
+            child.arrange(context, coords, options);
         }
         context.popView(this);
     }

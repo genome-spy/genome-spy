@@ -133,14 +133,14 @@ export class SampleLabelView extends UnitView {
     }
 
     /**
-     * @type {import("@genome-spy/core/types/rendering.js").RenderMethod}
+     * @type {import("@genome-spy/core/types/rendering.js").ArrangeMethod}
      */
-    render(context, coords, options = {}) {
+    arrange(context, coords, options = {}) {
         if (!this.isConfiguredVisible()) {
             return;
         }
 
-        super.render(context, coords, {
+        super.arrange(context, coords, {
             ...options,
             // Labels should disappear behind the sticky summary area, but the
             // rest of the sidebar, such as group markers, must remain visible.

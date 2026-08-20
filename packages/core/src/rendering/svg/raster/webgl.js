@@ -1,6 +1,7 @@
 import { createFramebufferInfo } from "twgl.js";
 
 import { framebufferToDataUrl } from "../../../gl/framebufferReadback.js";
+import { createLayoutResult } from "../../../view/layout/layoutResult.js";
 import BufferedViewRenderingContext from "../../../view/renderingContext/bufferedViewRenderingContext.js";
 import Rectangle from "../../../view/layout/rectangle.js";
 import { formatSvgNumber } from "../svgNumber.js";
@@ -12,6 +13,7 @@ import { formatSvgNumber } from "../svgNumber.js";
  * @param {object} options
  * @param {import("../svgViewRenderingContext.js").SvgRasterRun[]} options.runs
  * @param {import("../../../view/view.js").default} options.viewRoot
+ * @param {import("../../../view/layout/layoutResult.js").default} [options.layoutResult]
  * @param {import("../../../gl/webGLHelper.js").default} options.webGLHelper
  * @param {number} options.logicalWidth
  * @param {number} options.logicalHeight
@@ -20,6 +22,7 @@ import { formatSvgNumber } from "../svgNumber.js";
 export function rasterizeSvgRuns({
     runs,
     viewRoot,
+    layoutResult,
     webGLHelper,
     logicalWidth,
     logicalHeight,
@@ -29,6 +32,17 @@ export function rasterizeSvgRuns({
     const width = Math.ceil(logicalWidth * pixelRatio);
     const height = Math.ceil(logicalHeight * pixelRatio);
     validateFramebufferSize(gl, width, height);
+    const rasterLayoutResult =
+        pixelRatio == 1 && layoutResult
+            ? layoutResult
+            : createLayoutResult(
+                  viewRoot,
+                  Rectangle.create(0, 0, logicalWidth, logicalHeight),
+                  {
+                      devicePixelRatio: pixelRatio,
+                      renderingOptions: { firstFacet: true },
+                  }
+              );
 
     const framebufferInfo = createFramebufferInfo(
         gl,
@@ -60,11 +74,7 @@ export function rasterizeSvgRuns({
                     pixelOffset: 0,
                 }
             );
-            viewRoot.render(
-                renderingContext,
-                Rectangle.create(0, 0, logicalWidth, logicalHeight),
-                { firstFacet: true }
-            );
+            rasterLayoutResult.collectRenderCommands(renderingContext);
             renderingContext.render();
 
             const crop = getPhysicalCrop(run.bounds, pixelRatio, width, height);

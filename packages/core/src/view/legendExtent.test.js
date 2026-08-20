@@ -88,7 +88,7 @@ async function createAndInitializeRoot(spec, context) {
  * @param {BroadcastingViewContext} context
  */
 function reflow(root, context) {
-    root.render(
+    root.arrange(
         new NoOpRenderingContext({ picking: false }),
         Rectangle.create(0, 0, 320, 240),
         {
@@ -237,7 +237,7 @@ describe("Legend extent measurement", () => {
         });
         await flushMicrotasks();
         const canvasSize = calculateCanvasSize(view);
-        view.render(
+        view.arrange(
             new NoOpRenderingContext({ picking: false }),
             Rectangle.create(
                 0,

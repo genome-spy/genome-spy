@@ -44,7 +44,7 @@ import { getExternalAxisOverhang } from "@genome-spy/core/view/axisView.js";
 import { isAggregateSamplesSpec } from "./specGuards.js";
 import getViewAttributeInfo from "./viewAttributeInfoSource.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
-import { renderLocalLegends } from "@genome-spy/core/view/gridView/legendLayout.js";
+import { arrangeLocalLegends } from "@genome-spy/core/view/gridView/legendLayout.js";
 import { getLegendResolutionOwners } from "@genome-spy/core/view/gridView/legendCollection.js";
 import { isInsideLegend } from "@genome-spy/core/view/gridView/gridChildLegends.js";
 import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
@@ -1013,14 +1013,14 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @type {import("@genome-spy/core/types/rendering.js").RenderMethod}
+     * @type {import("@genome-spy/core/types/rendering.js").ArrangeMethod}
      */
-    #renderChild(context, coords, options = {}) {
+    #arrangeChild(context, coords, options = {}) {
         const gridChild = this.#gridChild;
         const plotOptions = options;
 
-        const renderLocationIndependentDecorations = () => {
-            renderLocalLegends(
+        const arrangeLocationIndependentDecorations = () => {
+            arrangeLocalLegends(
                 gridChild.legends,
                 gridChild.axes,
                 coords,
@@ -1030,7 +1030,7 @@ export default class SampleView extends ContainerView {
                 0
             );
 
-            gridChild.renderTitle(context, coords, plotOptions);
+            gridChild.arrangeTitle(context, coords, plotOptions);
         };
 
         // Background and grid rendering --------
@@ -1041,10 +1041,10 @@ export default class SampleView extends ContainerView {
                 : [];
 
         for (const { coords, clipRect } of backgroundRects) {
-            gridChild.groupBackground?.render(context, coords, options);
+            gridChild.groupBackground?.arrange(context, coords, options);
 
             for (const gridLine of Object.values(gridChild.gridLines)) {
-                gridLine.render(context, coords, { ...options, clipRect });
+                gridLine.arrange(context, coords, { ...options, clipRect });
             }
         }
 
@@ -1056,7 +1056,7 @@ export default class SampleView extends ContainerView {
 
         const locations = this.locationManager.getLocations();
         if (!locations) {
-            renderLocationIndependentDecorations();
+            arrangeLocationIndependentDecorations();
             return;
         }
 
@@ -1086,9 +1086,9 @@ export default class SampleView extends ContainerView {
                 }
                 opt.clip = clip;
 
-                gridChild.background?.render(context, coords, opt);
-                gridChild.view.render(context, coords, opt);
-                gridChild.backgroundStroke?.render(context, coords, opt);
+                gridChild.background?.arrange(context, coords, opt);
+                gridChild.view.arrange(context, coords, opt);
+                gridChild.backgroundStroke?.arrange(context, coords, opt);
             }
         } finally {
             context.endSampleFacetBatch();
@@ -1097,7 +1097,7 @@ export default class SampleView extends ContainerView {
         // Background stroke and axis rendering --------
 
         for (const { coords } of backgroundRects) {
-            gridChild.groupBackgroundStroke?.render(context, coords, options);
+            gridChild.groupBackgroundStroke?.arrange(context, coords, options);
         }
 
         for (const [orient, axisView] of Object.entries(gridChild.axes)) {
@@ -1105,12 +1105,12 @@ export default class SampleView extends ContainerView {
                 continue;
             }
 
-            axisView.render(
+            axisView.arrange(
                 context,
                 translateAxisCoords(coords, orient, axisView)
             );
         }
-        gridChild.sampleChromeLayout.renderVerticalAxes(
+        gridChild.sampleChromeLayout.arrangeVerticalAxes(
             context,
             coords,
             locations,
@@ -1150,23 +1150,23 @@ export default class SampleView extends ContainerView {
                 .modify({ y, height: summaryHeight })
                 .expand(summaryOverhang);
 
-            summaryViews.render(context, summaryCoords, {
+            summaryViews.arrange(context, summaryCoords, {
                 ...options,
                 facetId: [i],
                 firstFacet: i == 0,
             });
         }
 
-        renderLocationIndependentDecorations();
+        arrangeLocationIndependentDecorations();
 
-        gridChild.selectionRect?.view.render(context, coords, options);
+        gridChild.selectionRect?.view.arrange(context, coords, options);
     }
 
     /**
-     * @type {import("@genome-spy/core/types/rendering.js").RenderMethod}
+     * @type {import("@genome-spy/core/types/rendering.js").ArrangeMethod}
      */
-    render(context, coords, options = {}) {
-        super.render(context, coords, options);
+    arrange(context, coords, options = {}) {
+        super.arrange(context, coords, options);
 
         if (!this.isConfiguredVisible()) {
             return;
@@ -1209,17 +1209,17 @@ export default class SampleView extends ContainerView {
             locations
         );
 
-        this.#sidebarView.render(
+        this.#sidebarView.arrange(
             context,
             this.sidebarCoords.expand(alignedOverhangs.sidebarVerticalOverhang),
             options
         );
 
-        this.#renderChild(context, this.childCoords, options);
+        this.#arrangeChild(context, this.childCoords, options);
 
         const vScrollbar = this.#gridChild.scrollbars.vertical;
         if (vScrollbar) {
-            vScrollbar.render(context, coords, options);
+            vScrollbar.arrange(context, coords, options);
         }
 
         context.popView(this);

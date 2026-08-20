@@ -1,3 +1,5 @@
+import { createLayoutResult } from "../../view/layout/layoutResult.js";
+import Rectangle from "../../view/layout/rectangle.js";
 import renderCanvas2D from "./renderCanvas2D.js";
 
 /**
@@ -63,8 +65,16 @@ function renderToCanvas(options) {
         throw new Error("Unable to initialize a Canvas2D export context.");
     }
 
+    const layoutResult = createLayoutResult(
+        options.viewRoot,
+        Rectangle.create(0, 0, logicalWidth, logicalHeight),
+        {
+            devicePixelRatio: pixelRatio,
+            renderingOptions: { firstFacet: true },
+        }
+    );
     renderCanvas2D({
-        viewRoot: options.viewRoot,
+        layoutResult,
         context,
         width: logicalWidth,
         height: logicalHeight,

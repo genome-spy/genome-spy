@@ -1,11 +1,19 @@
 # Rendering, Shaders, and Resources
 
-## Two-phase rendering
+## Arrangement and rendering
 
-1. The layout phase computes view coordinates and hierarchy and builds an
-   optimized render batch that minimizes state changes.
-2. The rendering phase executes the batch by binding programs, setting uniforms,
-   and drawing.
+Rendering starts with two backend-neutral stages:
+
+1. A full `View.arrange()` traversal computes view coordinates and produces a
+   completed `LayoutResult` containing ordered view and mark placements.
+2. A backend consumes that result. Canvas2D and SVG draw while consuming it;
+   WebGL builds optimized normal and picking batches and draws them afterward.
+
+Arrangement receives the logical viewport and device pixel ratio because layout
+uses both for pixel alignment. The result contains placement order and current
+layout references, but no backend resources or retained placement identity.
+Canvas2D retains the latest live result for repainting. WebGL consumes and
+discards it after building fresh batches.
 
 Zoom and pan update scale domains and rerun rendering. Vertex buffers update
 only when data changes.
@@ -14,10 +22,12 @@ only when data changes.
 
 - `BufferedViewRenderingContext`
   (`src/view/renderingContext/bufferedViewRenderingContext.js`) buffers mark
-  render calls and builds an ordered batch.
+  placements and builds an ordered batch.
 - `CompositeViewRenderingContext` combines contexts, including picking.
-- Contexts call `mark.render()` to obtain draw callbacks, which the batch
-  executes while minimizing state changes.
+- `LayoutResult.collectRenderCommands()` replays placements into a context
+  without traversing the view hierarchy again.
+- Contexts call `mark.render()` during consumption to obtain draw callbacks,
+  which the WebGL batch executes while minimizing state changes.
 - `Animator` (`src/utils/animator.js`) centralizes render requests. Many reactive
   updates call `animator.requestRender()` directly.
 
@@ -87,9 +97,11 @@ WebGL-specific behavior is concentrated in `src/gl/`, mark buffer/program code
 under `src/marks/`, and render-context batch execution. WebGL and a modular
 WebGPU renderer may coexist while the transition is incomplete. During that
 period, WebGL continues to call `mark.render()`, while WebGPU dispatches marks
-through renderer-owned implementations and resources. A migration can retain
-the dataflow, view hierarchy, mark abstraction, and encoding logic while
-replacing:
+through renderer-owned implementations and resources. WebGPU may consume the
+latest `LayoutResult` on each paint to preserve placement order while retaining
+compatible pipelines, buffers, textures, and bind groups between frames. Core
+does not prescribe those resource lifetimes. A migration can retain the
+dataflow, view hierarchy, mark abstraction, and encoding logic while replacing:
 
 - `WebGLHelper` with WebGPU device and surface setup
 - TWGL buffer/texture operations with WebGPU resources

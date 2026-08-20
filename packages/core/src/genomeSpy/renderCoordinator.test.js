@@ -6,9 +6,13 @@ import RenderCoordinator from "./renderCoordinator.js";
  * @param {object} options
  * @param {() => { width: number, height: number }} options.getLogicalCanvasSize
  * @param {() => boolean} options.invalidateSize
- * @param {(pass: number) => void} [options.onRender]
+ * @param {(pass: number) => void} [options.onArrange]
  */
-function createCoordinator({ getLogicalCanvasSize, invalidateSize, onRender }) {
+function createCoordinator({
+    getLogicalCanvasSize,
+    invalidateSize,
+    onArrange,
+}) {
     /** @type {{ width: number, height: number }[]} */
     const renderedSizes = [];
 
@@ -17,12 +21,12 @@ function createCoordinator({ getLogicalCanvasSize, invalidateSize, onRender }) {
          * @param {import("../view/renderingContext/viewRenderingContext.js").default} _context
          * @param {import("../view/layout/rectangle.js").default} coords
          */
-        render(_context, coords) {
+        arrange(_context, coords) {
             renderedSizes.push({
                 width: coords.width,
                 height: coords.height,
             });
-            onRender?.(renderedSizes.length);
+            onArrange?.(renderedSizes.length);
         },
     };
 
@@ -76,7 +80,7 @@ describe("RenderCoordinator", () => {
                 canvasSize = nextCanvasSize;
                 return changed;
             },
-            onRender: (pass) => {
+            onArrange: (pass) => {
                 if (pass == 1) {
                     nextCanvasSize = { width: 200, height: 50 };
                 }

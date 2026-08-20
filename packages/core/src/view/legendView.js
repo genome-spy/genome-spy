@@ -1151,8 +1151,8 @@ export class LegendRegionView extends ContainerView {
      * @param {import("./layout/rectangle.js").default} coords
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
-    render(context, coords, options = {}) {
-        super.render(context, coords, options);
+    arrange(context, coords, options = {}) {
+        super.arrange(context, coords, options);
 
         if (!this.isConfiguredVisible()) {
             return;
@@ -1220,7 +1220,7 @@ export class LegendRegionView extends ContainerView {
                           () => itemCrossSize,
                           () => itemLocSize.size
                       );
-                legendView.render(context, legendCoords, options);
+                legendView.arrange(context, legendCoords, options);
             }
         }
         context.popView(this);
@@ -1614,15 +1614,15 @@ export default class LegendView extends ContainerView {
      * @param {import("./layout/rectangle.js").default} coords
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
-    render(context, coords, options = {}) {
-        super.render(context, coords, options);
+    arrange(context, coords, options = {}) {
+        super.arrange(context, coords, options);
 
         if (!this.isActive()) {
             return;
         }
 
         context.pushView(this, coords);
-        this.#child?.render(context, coords, options);
+        this.#child?.arrange(context, coords, options);
         context.popView(this);
     }
 

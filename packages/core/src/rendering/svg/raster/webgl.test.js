@@ -72,7 +72,7 @@ describe("rasterizeSvgRuns", () => {
         );
         expect(mocks.contexts).toHaveLength(2);
         expect(mocks.contexts[0].options).toMatchObject({ pixelOffset: 0 });
-        expect(fixture.viewRoot.render).toHaveBeenCalledTimes(2);
+        expect(fixture.viewRoot.arrange).toHaveBeenCalledOnce();
         expect(mocks.framebufferToDataUrl).toHaveBeenNthCalledWith(
             1,
             fixture.gl,
@@ -178,7 +178,7 @@ function createFixture(maxSize = 4096) {
                 /** @type {unknown} */ ({ gl })
             ),
         viewRoot: /** @type {import("../../../view/view.js").default} */ (
-            /** @type {unknown} */ ({ render: vi.fn() })
+            /** @type {unknown} */ ({ arrange: vi.fn() })
         ),
     };
 }

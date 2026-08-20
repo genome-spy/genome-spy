@@ -29,7 +29,7 @@ export default class CompositeViewRenderingContext extends ViewRenderingContext 
     }
 
     /**
-     * Must be called when a view's render() method is entered
+     * Must be called when a view layout placement is entered
      *
      * @param {View} view
      * @param {import("../layout/rectangle.js").default} coords View coordinates
@@ -42,7 +42,7 @@ export default class CompositeViewRenderingContext extends ViewRenderingContext 
     }
 
     /**
-     * Must be called when a view's render() method is being exited
+     * Must be called when a view layout placement is exited
      *
      * @param {View} view
      */

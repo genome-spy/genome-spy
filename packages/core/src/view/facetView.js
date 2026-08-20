@@ -266,7 +266,7 @@ export default class FacetView extends ContainerView {
      * @param {import("./layout/rectangle.js").default} coords
      * @param {import("./view.js").RenderingOptions} [options]
      */
-    render(context, coords, options = {}) {
+    arrange(context, coords, options = {}) {
         if (!this.isConfiguredVisible()) {
             return;
         }
@@ -396,7 +396,7 @@ export default class FacetView extends ContainerView {
                 // Take wrapping labels into account
                 const xCell = columnFlexCoords[(x % nCols) * xStride + xOffset];
                 const yCell = rowFlexCoords[Math.floor(x / nCols) * yStride];
-                this._labelViews.column.render(
+                this._labelViews.column.arrange(
                     context,
                     Rectangle.create(
                         xCell.location + axisSizes.left,
@@ -415,7 +415,7 @@ export default class FacetView extends ContainerView {
             for (let y = 0; y < factors.length; y++) {
                 const xCell = columnFlexCoords[0];
                 const yCell = rowFlexCoords[y * yStride + yOffset];
-                this._labelViews.row.render(
+                this._labelViews.row.arrange(
                     context,
                     Rectangle.create(
                         xCell.location,
@@ -436,7 +436,7 @@ export default class FacetView extends ContainerView {
 
                 const xCell = columnFlexCoords[x * xStride + xOffset];
                 const yCell = rowFlexCoords[y * yStride + yOffset];
-                this.child.render(
+                this.child.arrange(
                     context,
                     new Rectangle(
                         xCell.location,

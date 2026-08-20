@@ -261,9 +261,9 @@ export default class Scrollbar extends UnitView {
      * @param {import("../layout/rectangle.js").default} coords
      * @param {import("../../types/rendering.js").RenderingOptions} [options]
      */
-    render(context, coords, options) {
+    arrange(context, coords, options) {
         // NOTE: This only records layout coordinates for buffered rendering.
-        super.render(context, this.#scrollbarCoords, options);
+        super.arrange(context, this.#scrollbarCoords, options);
     }
 
     /**

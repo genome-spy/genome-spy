@@ -25,6 +25,7 @@ import { VIEW_ROOT_NAME } from "./viewFactory.js";
 import UnitView from "./unitView.js";
 import ContainerView from "./containerView.js";
 import View from "./view.js";
+import { createLayoutResult } from "./layout/layoutResult.js";
 import Rectangle from "./layout/rectangle.js";
 import DebugginViewRenderingContext from "./renderingContext/debuggingViewRenderingContext.js";
 import {
@@ -164,8 +165,8 @@ export async function createAndInitialize(spec, viewClass) {
 }
 
 /**
- * Renders a view hierarchy into a debugging layout tree that records the
- * rendered view coordinates.
+ * Arranges a view hierarchy into a debugging layout tree that records the
+ * view coordinates.
  *
  * @param {View} view
  * @param {import("./layout/rectangle.js").default} [coords]
@@ -183,15 +184,16 @@ export function renderToLayout(view, coords) {
             canvasSize.height ?? 1000
         );
 
-    view.render(renderingContext, rect, {
-        firstFacet: true,
+    const layoutResult = createLayoutResult(view, rect, {
+        renderingOptions: { firstFacet: true },
     });
+    layoutResult.collectRenderCommands(renderingContext);
 
     return renderingContext.getLayout();
 }
 
 /**
- * Creates a wrapped view hierarchy and renders it into a debugging layout tree.
+ * Creates a wrapped view hierarchy and arranges it into a debugging layout tree.
  *
  * @param {RootSpec} spec
  * @param {import("./viewFactory.js").ViewFactoryOptions} [viewFactoryOptions]

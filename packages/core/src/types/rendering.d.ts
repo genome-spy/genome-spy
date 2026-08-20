@@ -80,9 +80,9 @@ export interface BufferedRenderingRequest {
 }
 
 /**
- * Method signature for View.render(). Reduces the amount of JSDoc needed.
+ * Method signature for View.arrange(). Reduces the amount of JSDoc needed.
  */
-export type RenderMethod = (
+export type ArrangeMethod = (
     context: ViewRenderingContext,
     coords: Rectangle,
     options?: RenderingOptions

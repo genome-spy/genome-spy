@@ -82,7 +82,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
     }
 
     /**
-     * Must be called when a view's render() method is entered
+     * Must be called when a view layout placement is entered
      *
      * @param {import("../view.js").default} view
      * @param {import("../layout/rectangle.js").default} coords View coordinates

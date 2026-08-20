@@ -3,6 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
     createFramebufferInfo: vi.fn(),
     framebufferToBlob: vi.fn(),
+    renderingContexts: /** @type {{options: any}[]} */ ([]),
 }));
 
 vi.mock("twgl.js", () => ({
@@ -19,6 +20,7 @@ vi.mock("../view/renderingContext/bufferedViewRenderingContext.js", () => ({
         /** @param {object} _globalOptions @param {any} options */
         constructor(_globalOptions, options) {
             this.options = options;
+            mocks.renderingContexts.push(this);
         }
 
         render() {}
@@ -46,7 +48,7 @@ describe("exportRaster", () => {
             .mockReturnValueOnce(multisampled);
 
         const gl = createGl();
-        const viewRoot = { render: vi.fn() };
+        const viewRoot = { arrange: vi.fn() };
         await exportRaster({
             glHelper: /** @type {any} */ ({ gl }),
             viewRoot: /** @type {any} */ (viewRoot),
@@ -62,7 +64,7 @@ describe("exportRaster", () => {
             300,
             150
         );
-        expect(viewRoot.render.mock.calls[0][0].options.framebufferInfo).toBe(
+        expect(mocks.renderingContexts.at(-1).options.framebufferInfo).toBe(
             multisampled
         );
         expect(gl.blitFramebuffer).toHaveBeenCalledWith(

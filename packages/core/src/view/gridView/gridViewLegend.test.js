@@ -448,7 +448,7 @@ describe("GridView legends", () => {
             const renderContext = new MarkRecordingRenderingContext({
                 picking: false,
             });
-            view.render(renderContext, Rectangle.create(0, 0, 700, 300), {
+            view.arrange(renderContext, Rectangle.create(0, 0, 700, 300), {
                 firstFacet: true,
             });
             expect(renderContext.markNames).toEqual(
@@ -802,7 +802,7 @@ describe("GridView legends", () => {
                 picking: false,
             });
 
-            legendRegion.render(
+            legendRegion.arrange(
                 renderContext,
                 Rectangle.create(0, 0, 120, 160)
             );
@@ -812,7 +812,7 @@ describe("GridView legends", () => {
 
             sizeLayerVisible = false;
             renderContext.markNames = [];
-            legendRegion.render(
+            legendRegion.arrange(
                 renderContext,
                 Rectangle.create(0, 0, 120, 160)
             );
@@ -1267,7 +1267,7 @@ describe("GridView legends", () => {
                 picking: false,
             });
             const regionWidth = Math.max(...legendWidths);
-            region.render(
+            region.arrange(
                 stackedContext,
                 Rectangle.create(
                     0,
@@ -1293,7 +1293,7 @@ describe("GridView legends", () => {
             const context = new LegendRecordingRenderingContext({
                 picking: false,
             });
-            region.render(
+            region.arrange(
                 context,
                 Rectangle.create(0, 0, region.getWidth(), availableHeight)
             );
@@ -1386,7 +1386,7 @@ describe("GridView legends", () => {
             const context = new LegendRecordingRenderingContext({
                 picking: false,
             });
-            region.render(context, Rectangle.create(0, 0, 300, 80));
+            region.arrange(context, Rectangle.create(0, 0, 300, 80));
             const coords = Array.from(context.legendCoords.values());
 
             expect(coords).toHaveLength(2);
@@ -1407,7 +1407,7 @@ describe("GridView legends", () => {
             const wrappedContext = new LegendRecordingRenderingContext({
                 picking: false,
             });
-            region.render(
+            region.arrange(
                 wrappedContext,
                 Rectangle.create(0, 0, Math.max(...legendWidths), wrappedHeight)
             );
@@ -1422,7 +1422,7 @@ describe("GridView legends", () => {
             const layoutContext = new LegendRecordingRenderingContext({
                 picking: false,
             });
-            view.render(
+            view.arrange(
                 layoutContext,
                 Rectangle.create(0, 0, Math.max(...legendWidths) + 40, 200)
             );
@@ -1469,14 +1469,14 @@ describe("GridView legends", () => {
             const wideContext = new LegendRecordingRenderingContext({
                 picking: false,
             });
-            view.render(wideContext, Rectangle.create(0, 0, 1000, 400));
+            view.arrange(wideContext, Rectangle.create(0, 0, 1000, 400));
             expect(wideContext.legendCoords).toHaveLength(3);
             const wideMinimumHeight = getSizeDefMinPx(view.getSize().height);
 
             const narrowContext = new LegendRecordingRenderingContext({
                 picking: false,
             });
-            view.render(narrowContext, Rectangle.create(0, 0, 360, 400));
+            view.arrange(narrowContext, Rectangle.create(0, 0, 360, 400));
 
             expect(narrowContext.legendCoords).toHaveLength(3);
             const narrowCoords = Array.from(
@@ -1536,7 +1536,7 @@ describe("GridView legends", () => {
             const context = new GuideRecordingRenderingContext({
                 picking: false,
             });
-            view.render(context, Rectangle.create(0, 0, 300, 300), {
+            view.arrange(context, Rectangle.create(0, 0, 300, 300), {
                 firstFacet: true,
             });
 
@@ -2976,7 +2976,7 @@ describe("GridView legends", () => {
                     ._legendSymbolSize;
             const context = new NoOpRenderingContext({ picking: false });
 
-            view.render(context, Rectangle.create(0, 0, 400, 160), {
+            view.arrange(context, Rectangle.create(0, 0, 400, 160), {
                 firstFacet: true,
             });
             await view.paramRuntime.whenPropagated();
@@ -2986,7 +2986,7 @@ describe("GridView legends", () => {
             view.context.requestLayoutReflow = requestLayoutReflow;
             const release = legend.suspendLayoutDataUpdates();
 
-            view.render(context, Rectangle.create(0, 0, 400, 320), {
+            view.arrange(context, Rectangle.create(0, 0, 400, 320), {
                 firstFacet: true,
             });
             await view.paramRuntime.whenPropagated();
@@ -3120,7 +3120,7 @@ describe("GridView legends", () => {
             const context = new MarkRecordingRenderingContext({
                 picking: false,
             });
-            view.render(context, Rectangle.create(0, 0, 700, 300), {
+            view.arrange(context, Rectangle.create(0, 0, 700, 300), {
                 firstFacet: true,
             });
             expect(context.markNames).toEqual(
@@ -3248,7 +3248,7 @@ describe("GridView legends", () => {
             const renderContext = new LegendRecordingRenderingContext({
                 picking: false,
             });
-            region.render(renderContext, Rectangle.create(0, 0, 120, 160));
+            region.arrange(renderContext, Rectangle.create(0, 0, 120, 160));
             expect(renderContext.legendCoords.get(legend)?.height).toBe(160);
         });
 

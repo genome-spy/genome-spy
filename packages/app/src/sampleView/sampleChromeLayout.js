@@ -112,7 +112,7 @@ export default class SampleChromeLayout {
      * @param {Locations} [locations]
      * @param {import("@genome-spy/core/types/rendering.js").RenderingOptions} [options]
      */
-    renderVerticalAxes(context, plotCoords, locations, options = {}) {
+    arrangeVerticalAxes(context, plotCoords, locations, options = {}) {
         if (!this.#isEnabled(locations) || this.#getPeekState() !== 0) {
             return;
         }
@@ -137,7 +137,7 @@ export default class SampleChromeLayout {
                     height: sample.locSize.size,
                 });
 
-                axisView.render(
+                axisView.arrange(
                     context,
                     translateAxisCoords(sampleCoords, orient, axisView),
                     axisOptions
