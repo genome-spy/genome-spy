@@ -90,6 +90,7 @@ export async function createPointExample(
             { mark: labels },
         ],
     });
+    renderer.destroy();
 }
 
 type CustomConfig = { radius: number };
@@ -101,4 +102,5 @@ export async function createCustomExample(
 ): Promise<void> {
     const renderer = await createRenderer(canvas);
     renderer.createMark(customMark, { radius: 4 });
+    renderer.destroy();
 }

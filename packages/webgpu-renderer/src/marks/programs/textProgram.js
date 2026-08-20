@@ -1060,6 +1060,7 @@ export default class TextProgram extends BaseProgram {
         );
         const entry = this._extraTextures.get("fontAtlas");
         if (entry) {
+            entry.texture.destroy();
             entry.texture = texture;
             entry.width = image.width;
             entry.height = image.height;

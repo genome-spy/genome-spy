@@ -63,7 +63,7 @@ export default async function runRuleScene(canvas) {
         dash[i] = color[i] % 6;
     }
 
-    const { markId, series, scales } = renderer.createMark(ruleMark, {
+    const { series, scales } = renderer.createMark(ruleMark, {
         count,
         dashPatterns: [
             [1, 0],
@@ -126,6 +126,6 @@ export default async function runRuleScene(canvas) {
 
     return () => {
         cleanupResize();
-        renderer.destroyMark(markId);
+        renderer.destroy();
     };
 }

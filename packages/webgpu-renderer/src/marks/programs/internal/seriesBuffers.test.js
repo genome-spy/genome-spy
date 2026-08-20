@@ -119,6 +119,23 @@ describe("SeriesBufferManager uploads", () => {
         expect(previous.destroy).toHaveBeenCalledOnce();
         expect(buffers[1].size).toBe(8);
     });
+
+    it("destroys current buffers exactly once", () => {
+        const { device, buffers } = createDevice();
+        const data = new Float32Array([1]);
+        const manager = createManager(
+            /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ ({
+                x: { data, type: "f32", components: 1 },
+            }),
+            device
+        );
+        manager.updateSeries({ x: data }, 1);
+
+        manager.destroy();
+        manager.destroy();
+
+        expect(buffers[0].destroy).toHaveBeenCalledOnce();
+    });
 });
 
 function createDevice() {

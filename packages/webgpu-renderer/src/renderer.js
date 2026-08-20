@@ -70,6 +70,7 @@ export class Renderer {
         this.format = format;
         this.canvas = canvas;
         this._onInvalidate = onInvalidate ?? (() => {});
+        this._destroyed = false;
         // TODO: Use r32uint picking when available on all targets.
         this.pickFormat = /** @type {GPUTextureFormat} */ ("rgba8unorm");
 
@@ -137,6 +138,7 @@ export class Renderer {
      * @returns {void}
      */
     updateGlobals(globals) {
+        this._assertAlive();
         const { width, height, dpr } = globals;
         assertPositiveFinite("width", width);
         assertPositiveFinite("height", height);
@@ -216,6 +218,7 @@ export class Renderer {
      * @returns {import("./index.d.ts").MarkHandle<TSeries>}
      */
     createMark(definition, config) {
+        this._assertAlive();
         const mark = definition.createProgram(this, config);
 
         const markId = /** @type {MarkId} */ (this._nextMarkId++);
@@ -235,6 +238,9 @@ export class Renderer {
      * @returns {void}
      */
     markPickingDirty() {
+        if (this._destroyed) {
+            return;
+        }
         this._pickingDirty = true;
     }
 
@@ -245,6 +251,9 @@ export class Renderer {
      * @returns {void}
      */
     _invalidate() {
+        if (this._destroyed) {
+            return;
+        }
         this.markPickingDirty();
         this._onInvalidate();
     }
@@ -312,6 +321,7 @@ export class Renderer {
      * @returns {Promise<number|null>}
      */
     async pick(x, y) {
+        this._assertAlive();
         if (!this._marks.size) {
             return null;
         }
@@ -366,6 +376,7 @@ export class Renderer {
      * @returns {void}
      */
     debugResources(markId, label) {
+        this._assertAlive();
         const mark = this._marks.get(markId);
         if (!mark) {
             throw new RendererError(`No such mark: ${markId}`);
@@ -378,6 +389,7 @@ export class Renderer {
      * @returns {void}
      */
     render(frame = {}) {
+        this._assertAlive();
         const draws = this._normalizeDraws(frame.draws ?? this._marks.keys());
         this._writeDrawGlobals(draws);
         const commandEncoder = this.device.createCommandEncoder();
@@ -513,11 +525,49 @@ export class Renderer {
      * @returns {void}
      */
     destroyMark(markId) {
+        if (this._destroyed) {
+            return;
+        }
         const mark = this._marks.get(markId);
         if (mark) {
             mark.destroy();
             this._marks.delete(markId);
             this.markPickingDirty();
+        }
+    }
+
+    /**
+     * Destroys all renderer-owned GPU resources. Safe to call repeatedly.
+     *
+     * @returns {void}
+     */
+    destroy() {
+        if (this._destroyed) {
+            return;
+        }
+        this._destroyed = true;
+        for (const mark of this._marks.values()) {
+            mark.destroy();
+        }
+        this._marks.clear();
+        this._renderFrame = null;
+        this._globalUniformBuffer.destroy();
+        this._pickTexture?.destroy();
+        this._pickTexture = null;
+        this._pickTextureView = null;
+        this._pickReadbackBuffer?.destroy();
+        this._pickReadbackBuffer = null;
+        this._onInvalidate = () => {};
+        this.context.unconfigure();
+        this.device.destroy();
+    }
+
+    /**
+     * @returns {void}
+     */
+    _assertAlive() {
+        if (this._destroyed) {
+            throw new RendererError("Renderer has been destroyed.");
         }
     }
 }

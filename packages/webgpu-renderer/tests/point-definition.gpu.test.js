@@ -65,7 +65,7 @@ test("one retained point mark renders into two draw occurrences", async ({
         });
         await renderer.device.queue.onSubmittedWorkDone();
         const ids = [await renderer.pick(16, 32), await renderer.pick(48, 32)];
-        renderer.destroyMark(handle.markId);
+        renderer.destroy();
         canvas.remove();
         return ids;
     });
