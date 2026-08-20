@@ -272,7 +272,7 @@ describe("SVG text renderer", () => {
             { width: 200, height: 100 }
         );
 
-        view.render(context, Rectangle.create(0, 0, 200, 100), {
+        view.arrange(context, Rectangle.create(0, 0, 200, 100), {
             sampleFacetRenderingOptions: {
                 locSize: { location: 20, size: 40 },
                 pixelToUnit: 0.01,
@@ -313,7 +313,7 @@ describe("SVG text renderer", () => {
             { width: 100, height: 100 }
         );
 
-        view.render(context, Rectangle.create(0, 0, 100, 100), {
+        view.arrange(context, Rectangle.create(0, 0, 100, 100), {
             clip: {
                 rect: Rectangle.create(25, 25, 50, 50),
                 clipX: true,
@@ -361,14 +361,14 @@ describe("SVG text renderer", () => {
             clipY: true,
         };
 
-        view.render(context, coords, {
+        view.arrange(context, coords, {
             clip,
             sampleFacetRenderingOptions: {
                 locSize: { location: 0, size: 20 },
                 pixelToUnit: 0.01,
             },
         });
-        view.render(context, coords, {
+        view.arrange(context, coords, {
             clip,
             sampleFacetRenderingOptions: {
                 locSize: { location: 40, size: 20 },

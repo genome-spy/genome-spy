@@ -136,7 +136,7 @@ const recordRenderOrder = (spec, labels) => {
      */
     const renderForLayout = (view) => {
         const context = new NoOpRenderingContext({ picking: false });
-        view.render(context, Rectangle.create(0, 0, 200, 200), {
+        view.arrange(context, Rectangle.create(0, 0, 200, 200), {
             firstFacet: true,
         });
     };
@@ -156,8 +156,8 @@ const recordRenderOrder = (spec, labels) => {
                 throw new Error(`Missing view "${label}" in test hierarchy.`);
             }
 
-            const original = target.render.bind(target);
-            target.render = (context, coords, options = {}) => {
+            const original = target.arrange.bind(target);
+            target.arrange = (context, coords, options = {}) => {
                 order.push(target.name);
                 return original(context, coords, options);
             };
@@ -345,7 +345,7 @@ describe("GridView separators", () => {
      */
     const renderForLayout = (view) => {
         const context = new NoOpRenderingContext({ picking: false });
-        view.render(context, Rectangle.create(0, 0, 200, 200), {
+        view.arrange(context, Rectangle.create(0, 0, 200, 200), {
             firstFacet: true,
         });
     };
@@ -356,7 +356,7 @@ describe("GridView separators", () => {
      */
     const renderForLayoutHeight = (view, height) => {
         const context = new NoOpRenderingContext({ picking: false });
-        view.render(context, Rectangle.create(0, 0, 200, height), {
+        view.arrange(context, Rectangle.create(0, 0, 200, height), {
             firstFacet: true,
         });
     };
@@ -846,7 +846,7 @@ describe("GridView separators", () => {
             { layoutSizeParams: "force" }
         );
 
-        child.render(
+        child.arrange(
             new NoOpRenderingContext({ picking: false }),
             Rectangle.create(0, 0, 50, 77),
             { firstFacet: true }
@@ -1011,14 +1011,14 @@ describe("GridView decoration zindex", () => {
 
         /** @type {string[]} */
         const order = [];
-        const original = overlays[0].render.bind(overlays[0]);
-        overlays[0].render = (context, coords, options = {}) => {
+        const original = overlays[0].arrange.bind(overlays[0]);
+        overlays[0].arrange = (context, coords, options = {}) => {
             order.push(overlays[0].name);
             return original(context, coords, options);
         };
 
         const context = new NoOpRenderingContext({ picking: false });
-        view.render(context, Rectangle.create(0, 0, 200, 200), {
+        view.arrange(context, Rectangle.create(0, 0, 200, 200), {
             firstFacet: true,
         });
 
@@ -1133,14 +1133,14 @@ describe("GridView decoration zindex", () => {
 
         /** @type {string[]} */
         const order = [];
-        const original = overlays[0].render.bind(overlays[0]);
-        overlays[0].render = (context, coords, options = {}) => {
+        const original = overlays[0].arrange.bind(overlays[0]);
+        overlays[0].arrange = (context, coords, options = {}) => {
             order.push(overlays[0].name);
             return original(context, coords, options);
         };
 
         const context = new NoOpRenderingContext({ picking: false });
-        view.render(context, Rectangle.create(0, 0, 200, 200), {
+        view.arrange(context, Rectangle.create(0, 0, 200, 200), {
             firstFacet: true,
         });
 
@@ -1842,14 +1842,14 @@ describe("GridView scrollable clipping", () => {
             throw new Error("Missing background stroke view.");
         }
 
-        const original = backgroundStroke.render.bind(backgroundStroke);
-        backgroundStroke.render = (context, coords, options = {}) => {
+        const original = backgroundStroke.arrange.bind(backgroundStroke);
+        backgroundStroke.arrange = (context, coords, options = {}) => {
             strokeCoords = coords;
             return original(context, coords, options);
         };
 
         const context = new NoOpRenderingContext({ picking: false });
-        view.render(context, Rectangle.create(0, 0, 200, 200), {
+        view.arrange(context, Rectangle.create(0, 0, 200, 200), {
             firstFacet: true,
             clip: {
                 rect: Rectangle.create(0, 0, 100, 40),
@@ -1897,14 +1897,14 @@ describe("GridView scrollable clipping", () => {
             throw new Error("Missing scrollable child view.");
         }
 
-        const original = scrollable.render.bind(scrollable);
-        scrollable.render = (context, coords, options = {}) => {
+        const original = scrollable.arrange.bind(scrollable);
+        scrollable.arrange = (context, coords, options = {}) => {
             renderOptions = options;
             return original(context, coords, options);
         };
 
         const context = new NoOpRenderingContext({ picking: false });
-        view.render(context, Rectangle.create(0, 0, 200, 200), {
+        view.arrange(context, Rectangle.create(0, 0, 200, 200), {
             firstFacet: true,
         });
 
@@ -1937,7 +1937,7 @@ describe("GridView scrollable clipping", () => {
         );
 
         const context = new InspectRenderingContext({ picking: false });
-        view.render(context, Rectangle.create(0, 0, 200, 200), {
+        view.arrange(context, Rectangle.create(0, 0, 200, 200), {
             firstFacet: true,
         });
 
@@ -1997,14 +1997,14 @@ describe("GridView scrollable clipping", () => {
             throw new Error("Missing scrollable child view.");
         }
 
-        const original = scrollable.render.bind(scrollable);
-        scrollable.render = (context, coords, options = {}) => {
+        const original = scrollable.arrange.bind(scrollable);
+        scrollable.arrange = (context, coords, options = {}) => {
             renderOptions = options;
             return original(context, coords, options);
         };
 
         const context = new NoOpRenderingContext({ picking: false });
-        view.render(context, Rectangle.create(0, 0, 200, 200), {
+        view.arrange(context, Rectangle.create(0, 0, 200, 200), {
             firstFacet: true,
         });
 
@@ -2021,7 +2021,7 @@ describe("GridView wheel zoom", () => {
      */
     const renderForLayout = (/** @type {ConcatView} */ view) => {
         const context = new NoOpRenderingContext({ picking: false });
-        view.render(context, Rectangle.create(0, 0, 200, 200), {
+        view.arrange(context, Rectangle.create(0, 0, 200, 200), {
             firstFacet: true,
         });
     };
@@ -2489,7 +2489,7 @@ describe("GridView ruler interactions", () => {
             );
             const concatView = /** @type {ConcatView} */ (view);
             const context = new NoOpRenderingContext({ picking: false });
-            concatView.render(context, Rectangle.create(0, 0, 200, 200), {
+            concatView.arrange(context, Rectangle.create(0, 0, 200, 200), {
                 firstFacet: true,
             });
             const requestRender = vi.spyOn(

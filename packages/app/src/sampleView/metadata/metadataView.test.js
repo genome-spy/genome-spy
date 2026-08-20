@@ -385,7 +385,7 @@ describe("MetadataView", () => {
         sampleView.locationManager.clipBySummary = clipBySummary;
 
         const coords = Rectangle.create(10, 20, 120, 80);
-        metadataView.render(
+        metadataView.arrange(
             new NoOpRenderingContext({ picking: false }),
             coords
         );

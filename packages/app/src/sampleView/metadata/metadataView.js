@@ -181,15 +181,15 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * @type {import("@genome-spy/core/types/rendering.js").RenderMethod}
+     * @type {import("@genome-spy/core/types/rendering.js").ArrangeMethod}
      */
-    render(context, coords, options = {}) {
+    arrange(context, coords, options = {}) {
         if (!this.isConfiguredVisible()) {
             return;
         }
 
         const contentCoords = coords.shrink(this.getOverhang());
-        super.render(context, coords, {
+        super.arrange(context, coords, {
             ...options,
             clipRect:
                 this.#sampleView.locationManager.clipBySummary(contentCoords),

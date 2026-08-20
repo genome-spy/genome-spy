@@ -123,7 +123,7 @@ async function createAndInitializeRoot(spec, context) {
  * @param {BroadcastingViewContext} context
  */
 function reflow(root, context) {
-    root.render(
+    root.arrange(
         new NoOpRenderingContext({ picking: false }),
         Rectangle.create(0, 0, 320, 240),
         {

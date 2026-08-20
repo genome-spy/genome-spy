@@ -167,12 +167,12 @@ class InspectRenderingContext extends ViewRenderingContext {
  *     context: ViewRenderingContext,
  *     coords: Rectangle,
  *     options: import("../../types/rendering.js").RenderingOptions
- * ) => void} [render]
+ * ) => void} [arrange]
  * @returns {import("../view.js").default}
  */
-function createView(name, render = () => undefined) {
+function createView(name, arrange = () => undefined) {
     return /** @type {import("../view.js").default} */ (
-        /** @type {unknown} */ ({ name, render })
+        /** @type {unknown} */ ({ name, arrange })
     );
 }
 

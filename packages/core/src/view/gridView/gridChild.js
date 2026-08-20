@@ -882,8 +882,8 @@ export default class GridChild {
      * @param {Rectangle} viewportCoords
      * @param {import("../../types/rendering.js").RenderingOptions} options
      */
-    renderTitle(context, viewportCoords, options) {
-        this.title?.render(
+    arrangeTitle(context, viewportCoords, options) {
+        this.title?.arrange(
             context,
             this.#getTitleCoords(viewportCoords),
             options

@@ -1,3 +1,5 @@
+import { createLayoutResult } from "../../view/layout/layoutResult.js";
+import Rectangle from "../../view/layout/rectangle.js";
 import renderCanvas2D from "./renderCanvas2D.js";
 
 export default class Canvas2DRenderCoordinator {
@@ -17,6 +19,9 @@ export default class Canvas2DRenderCoordinator {
         this.getBackground = options.getBackground;
         this.broadcast = options.broadcast;
         this.onLayoutComputed = options.onLayoutComputed;
+
+        /** @type {import("../../view/layout/layoutResult.js").default | undefined} */
+        this.layoutResult = undefined;
     }
 
     computeLayout() {
@@ -24,8 +29,13 @@ export default class Canvas2DRenderCoordinator {
         this.surface.invalidateSize();
         let remainingPasses = 5;
         while (true) {
-            this.#render(false);
+            const layoutResult = this.#createLayoutResult();
+            if (!layoutResult) {
+                return;
+            }
+
             if (!this.surface.invalidateSize()) {
+                this.layoutResult = layoutResult;
                 this.onLayoutComputed();
                 this.broadcast("layoutComputed");
                 return;
@@ -41,24 +51,40 @@ export default class Canvas2DRenderCoordinator {
     }
 
     renderAll() {
-        this.#render(true);
-    }
-
-    /** @param {boolean} paint */
-    #render(paint) {
+        const layoutResult = this.layoutResult;
+        if (!layoutResult) {
+            return;
+        }
         const size = this.surface.getLogicalCanvasSize();
         if (isNaN(size.width) || isNaN(size.height)) {
             return;
         }
 
         renderCanvas2D({
-            viewRoot: this.viewRoot,
+            layoutResult,
             context: this.context,
             width: size.width,
             height: size.height,
             devicePixelRatio: this.surface.getDevicePixelRatio(),
             background: this.getBackground(),
-            paint,
+            paint: true,
         });
+    }
+
+    /** @returns {import("../../view/layout/layoutResult.js").default | undefined} */
+    #createLayoutResult() {
+        const size = this.surface.getLogicalCanvasSize();
+        if (isNaN(size.width) || isNaN(size.height)) {
+            return undefined;
+        }
+
+        return createLayoutResult(
+            this.viewRoot,
+            Rectangle.create(0, 0, size.width, size.height),
+            {
+                devicePixelRatio: this.surface.getDevicePixelRatio(),
+                renderingOptions: { firstFacet: true },
+            }
+        );
     }
 }

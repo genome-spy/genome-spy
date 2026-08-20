@@ -1136,9 +1136,9 @@ export default class View {
      * Recursively traverses the view hierarchy, computes the view coordinates,
      * and coordinates the mark rendering.
      *
-     * @type {import("../types/rendering.js").RenderMethod}
+     * @type {import("../types/rendering.js").ArrangeMethod}
      */
-    render(context, coords, options = {}) {
+    arrange(context, coords, options = {}) {
         // TODO: When using sample faceting, all facets have the same coords.
         // It would be better to save only single coords with an `undefined` facetId.
         if (options.firstFacet) {

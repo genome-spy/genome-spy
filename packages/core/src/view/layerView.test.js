@@ -81,14 +81,14 @@ describe("LayerView child zindex", () => {
         const order = [];
 
         for (const child of children) {
-            const render = child.render.bind(child);
-            child.render = (context, coords, options) => {
+            const render = child.arrange.bind(child);
+            child.arrange = (context, coords, options) => {
                 order.push(child.name);
                 render(context, coords, options);
             };
         }
 
-        view.render(
+        view.arrange(
             new NoOpRenderingContext({ picking: false }),
             Rectangle.create(0, 0, 200, 100),
             { firstFacet: true }
@@ -144,7 +144,7 @@ describe("LayerView dynamic children", () => {
             LayerView
         );
 
-        view.render(
+        view.arrange(
             new NoOpRenderingContext({ picking: false }),
             Rectangle.create(0, 0, 200, 100),
             {

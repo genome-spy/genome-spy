@@ -752,12 +752,17 @@ export default class GenomeSpy {
         const canvasSize = this.#surface.getLogicalCanvasSize();
         const logicalWidth = options.logicalWidth ?? canvasSize.width;
         const logicalHeight = options.logicalHeight ?? canvasSize.height;
-        const svgModule = await import("./rendering/svg/index.js");
-        return svgModule.analyzeSvgExport({
-            viewRoot: this.viewRoot,
-            logicalWidth,
-            logicalHeight,
-        });
+        try {
+            const svgModule = await import("./rendering/svg/index.js");
+            return svgModule.analyzeSvgExport({
+                viewRoot: this.viewRoot,
+                logicalWidth,
+                logicalHeight,
+            });
+        } finally {
+            this.computeLayout();
+            this.renderAll();
+        }
     }
 
     getLogicalCanvasSize() {

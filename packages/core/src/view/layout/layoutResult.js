@@ -20,7 +20,7 @@ export function createLayoutResult(
     { devicePixelRatio = 1, renderingOptions = {} } = {}
 ) {
     const recorder = new LayoutRecorder(devicePixelRatio);
-    viewRoot.render(recorder, coords, renderingOptions);
+    viewRoot.arrange(recorder, coords, renderingOptions);
     return recorder.complete();
 }
 

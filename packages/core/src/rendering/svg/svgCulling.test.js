@@ -138,7 +138,7 @@ describe("SVG instance culling", () => {
             { width: 100, height: 100, background: null }
         );
         countingContext.beginInstanceCounting();
-        view.render(countingContext, Rectangle.create(0, 0, 100, 100));
+        view.arrange(countingContext, Rectangle.create(0, 0, 100, 100));
         countingContext.endInstanceCounting();
 
         const mark = /** @type {import("../../view/unitView.js").default} */ (

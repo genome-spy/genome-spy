@@ -201,7 +201,7 @@ describe("SvgViewRenderingContext", () => {
         const renderFacets = () => {
             context.beginSampleFacetBatch();
             try {
-                view.render(context, Rectangle.create(0, 0, 100, 100), {
+                view.arrange(context, Rectangle.create(0, 0, 100, 100), {
                     sampleFacetRenderingOptions: {
                         locSize: { location: 20, size: 40 },
                         pixelToUnit: 0.01,
@@ -212,7 +212,7 @@ describe("SvgViewRenderingContext", () => {
                         clipY: true,
                     },
                 });
-                view.render(context, Rectangle.create(0, 0, 100, 100), {
+                view.arrange(context, Rectangle.create(0, 0, 100, 100), {
                     sampleFacetRenderingOptions: {
                         locSize: { location: 60, size: 20 },
                         pixelToUnit: 0.01,
@@ -276,7 +276,7 @@ describe("SvgViewRenderingContext", () => {
         context.beginSampleFacetBatch();
         try {
             for (const y of [10, 20]) {
-                view.render(context, Rectangle.create(0, 0, 100, 100), {
+                view.arrange(context, Rectangle.create(0, 0, 100, 100), {
                     sampleFacetRenderingOptions: {
                         locSize: { location: y, size: 20 },
                         pixelToUnit: 0.01,
@@ -345,9 +345,9 @@ describe("SvgViewRenderingContext", () => {
         const coords = Rectangle.create(0, 0, 100, 100);
 
         context.beginInstanceCounting();
-        view.render(context, coords);
+        view.arrange(context, coords);
         context.endInstanceCounting();
-        view.render(context, coords);
+        view.arrange(context, coords);
 
         const runs = context.getRasterRuns();
         expect(runs).toHaveLength(expectedRunCount);
@@ -410,7 +410,7 @@ describe("SvgViewRenderingContext", () => {
             { width: 100, height: 100 }
         );
 
-        view.render(context, Rectangle.create(0, 0, 100, 100));
+        view.arrange(context, Rectangle.create(0, 0, 100, 100));
 
         expect(
             Array.from(context.getSvg().querySelectorAll("circle"), (circle) =>

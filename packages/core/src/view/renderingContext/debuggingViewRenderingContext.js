@@ -25,7 +25,7 @@ export default class DebugginViewRenderingContext extends ViewRenderingContext {
     }
 
     /**
-     * Must be called when a view's render() method is entered
+     * Must be called when a view layout placement is entered
      *
      * @param {View} view
      * @param {Rectangle} coords View coordinates
@@ -45,7 +45,7 @@ export default class DebugginViewRenderingContext extends ViewRenderingContext {
     }
 
     /**
-     * Must be called when a view's render() method is being exited
+     * Must be called when a view layout placement is exited
      *
      * @param {View} view
      */

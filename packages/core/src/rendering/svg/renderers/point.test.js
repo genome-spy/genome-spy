@@ -193,7 +193,7 @@ describe("SVG point renderer", () => {
             { width: 100, height: 100 }
         );
 
-        view.render(context, Rectangle.create(0, 0, 100, 100), {
+        view.arrange(context, Rectangle.create(0, 0, 100, 100), {
             clip: {
                 rect: Rectangle.create(25, 25, 50, 50),
                 clipX: true,

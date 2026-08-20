@@ -1,11 +1,10 @@
-import Rectangle from "../../view/layout/rectangle.js";
 import Canvas2DViewRenderingContext from "./canvas2DViewRenderingContext.js";
 
 /**
- * Runs one immediate Canvas2D view traversal.
+ * Draws one completed layout into a Canvas2D context.
  *
  * @param {object} options
- * @param {import("../../view/view.js").default} options.viewRoot
+ * @param {import("../../view/layout/layoutResult.js").default} options.layoutResult
  * @param {CanvasRenderingContext2D} options.context
  * @param {number} options.width
  * @param {number} options.height
@@ -18,9 +17,5 @@ export default function renderCanvas2D(options) {
         { picking: false },
         options
     );
-    options.viewRoot.render(
-        renderingContext,
-        Rectangle.create(0, 0, options.width, options.height),
-        { firstFacet: true }
-    );
+    options.layoutResult.collectRenderCommands(renderingContext);
 }
