@@ -4,9 +4,16 @@ This package is a low-level WebGPU renderer extracted from GenomeSpy. It is
 designed to be usable outside the monorepo, but it currently lives here so it
 can track GenomeSpy’s requirements.
 
-This package is a work in progress and nothing in the monorepo depends on it
-yet. Large refactors are welcome; the API can be broken freely and old hooks
-should be removed instead of preserved for compatibility.
+This package is unpublished work in progress. The experimental Core WebGPU
+adapter is its sole consumer. Large refactors are welcome; the API can be broken
+freely and old hooks should be removed instead of preserved for compatibility.
+
+Treat Core integration as design feedback. If the API causes awkward adapter
+workarounds, unclear ownership, unnecessary allocation, or prevents useful
+optimization, state the shortcoming explicitly and propose or implement a
+better renderer contract. Do not contort Core merely to preserve the current
+API. Keep improvements generic: the renderer must not import Core types or
+reproduce Core's visualization grammar.
 
 The renderer is still exploratory: there are guiding goals but the exact
 implementation is open to iteration. Prioritize a clear, extensible

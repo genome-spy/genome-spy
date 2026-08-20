@@ -115,6 +115,19 @@ than a description of the current module graph.
 
 ## Proposed public model
 
+### Integration feedback policy
+
+The renderer is unpublished and Core is its sole consumer. The contracts in
+this note are hypotheses to validate through integration, not compatibility
+requirements. If they force awkward translation, confuse ownership, introduce
+unnecessary work, or prevent important optimizations, call that out explicitly
+and propose a breaking improvement. Do not preserve a poor renderer API by
+burying compensating behavior in the Core adapter.
+
+Integration-driven changes must still keep the package generic. The renderer
+must not import Core types, reproduce the visualization grammar, or adopt a
+Core-specific view hierarchy merely because Core exposed the design problem.
+
 ### Imported immutable definitions
 
 Marks and scales should be concrete imports rather than names resolved by a

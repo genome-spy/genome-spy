@@ -9,6 +9,19 @@ It is designed to be usable outside GenomeSpy: a generic, low-level library
 for GPU-accelerated visualization. It currently lives in the GenomeSpy
 monorepo to satisfy GenomeSpy’s requirements, but it may grow beyond them.
 
+## Development Status
+
+This package is unpublished work in progress. GenomeSpy Core is currently its
+only consumer, and the API has no backward-compatibility commitment. Core
+integration is expected to test the design: when the API forces awkward
+translation, unclear ownership, unnecessary work, or blocks useful
+optimizations, call the problem out explicitly and propose a better contract.
+Breaking changes are preferable to preserving a poor boundary at this stage.
+
+The renderer must remain generic despite this freedom. Improvements motivated
+by Core should express reusable rendering concepts rather than import Core
+types or reproduce its visualization grammar.
+
 ## Purpose
 
 - Provide GPU-accelerated scales and rendering for visualization marks.
@@ -96,6 +109,19 @@ symlog, quantize, band, index, ordinal, and threshold. Identity is implicit when
 a channel and its mark default have no scale; use `identityScale()` to override
 a scaled mark default. Importing one feature does not include unrelated marks,
 scales, or font support.
+
+### GenomeSpy Core integration boundary
+
+Core may use the package-root renderer API, documented mark handles and update
+slots, and built-in definitions from the `marks/*` and `scales/*` subpaths. Its
+imports must remain inside `packages/core/src/rendering/webgpu/`. Core must not
+import renderer `src/*` internals, instantiate program classes, inspect
+definition implementation fields, or depend on WGSL and GPU resource layouts.
+
+This boundary defines the current dependency direction, not an obligation to
+preserve an insufficient API. If integration cannot be expressed cleanly
+through it, revise the renderer API and this section together instead of
+embedding the workaround in Core.
 
 ## Definition contract (experimental)
 

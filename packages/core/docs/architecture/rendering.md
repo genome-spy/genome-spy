@@ -45,10 +45,10 @@ Modular rendering implementations live under `src/rendering/`:
 
 The existing WebGL implementation remains split between `src/marks/` and
 `src/gl/`. This is a transitional exception: WebGL code is not extracted into
-a modular renderer before it is replaced. A future WebGPU implementation
-belongs under `src/rendering/webgpu/` and should own its pipelines, buffers,
-textures, bind groups, and per-mark resource maps rather than storing WebGPU
-state in marks.
+a modular renderer before it is replaced. The experimental WebGPU integration
+lives under `src/rendering/webgpu/`; `@genome-spy/webgpu-renderer` owns its
+pipelines, buffers, textures, bind groups, and per-mark resources rather than
+storing WebGPU state in Core marks.
 
 SVG hybrid export counts visible instances and selects contiguous paint-order
 runs within the SVG subsystem. Its nested `svg/raster/webgl.js` adapter may use
@@ -111,3 +111,20 @@ dataflow, view hierarchy, mark abstraction, and encoding logic while replacing:
 Do not make WebGPU emulate `glHelper` or depend on the immediate-mode CPU
 projection layer. Existing `glHelper` access remains a legacy WebGL escape
 hatch until WebGL-specific mark code is deleted.
+
+### WebGPU integration boundary
+
+Core accesses `@genome-spy/webgpu-renderer` only from `src/rendering/webgpu/`
+through the documented package root and built-in `marks/*` and `scales/*`
+subpaths. The adapter may translate Core encoders, resolved scales, traversal,
+and view coordinates into renderer configs and frame state. It must not import
+renderer implementation modules, instantiate mark programs, inspect definition
+internals, or depend on WGSL and GPU resource layouts.
+
+The renderer is unpublished and Core is its sole consumer. This boundary is a
+design hypothesis, not a compatibility constraint. When integration exposes an
+insufficient abstraction, unclear ownership, unnecessary work, or an obstacle
+to optimization, document the problem explicitly and propose a breaking API
+improvement. Prefer improving the generic renderer contract over accumulating
+Core-only workarounds, while keeping Core grammar and view types out of the
+renderer package.
