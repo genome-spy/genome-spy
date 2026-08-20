@@ -238,13 +238,18 @@ stopped after review.
 
 ### Phase 1: Clarify the lifecycle
 
+Implementation is complete on `refactor/layout-2.0-phase-1`. The dependent
+WebGPU adaptation is validated on `integration/layout-2.0-phase-1-webgpu`. The
+phase review gate remains before Phase 2 planning is revised.
+
 Refactor naming and responsibilities so layout, backend-work collection, and
 drawing are distinguishable. Remove the misleading `View.render()` name while
 preserving behavior and full layout recomputation. The completed layout result
 becomes the sole Core traversal source for WebGL, WebGPU, Canvas/SVG, picking,
 and tests. Do not add speculative transition or performance state.
 
-Draft plan: [Phase 1: Clarify the layout and rendering lifecycle](phase-1-lifecycle.md)
+Implementation plan:
+[Phase 1: Clarify the layout and rendering lifecycle](phase-1-lifecycle.md)
 
 ### Phase 2: Establish stable layout instances
 

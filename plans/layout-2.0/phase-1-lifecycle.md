@@ -1,8 +1,19 @@
 # Phase 1: Clarify the Layout and Rendering Lifecycle
 
-Status: Detailed implementation plan; rebase onto current `master` before coding
+Status: Implemented and validated; phase review pending
 
 Tentative PR title: `refactor(core): separate layout from rendering collection`
+
+Implementation record (2026-08-20):
+
+- Core result contract: `461e8e303`
+- Core/App lifecycle migration: `e601a5850`
+- Architecture documentation: `36583f131`
+- Dependent WebGPU integration validation: `8d4ac9113` on
+  `integration/layout-2.0-phase-1-webgpu`
+- Core/App validation: workspace type checks, lint, and 3,257 unit tests passed.
+- WebGPU validation: Core and renderer type checks, 2,437 Core tests, 94 renderer
+  tests, 42 Chromium GPU tests, and the live `first.json` smoke passed.
 
 ## Purpose
 
