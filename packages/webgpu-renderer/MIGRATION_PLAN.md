@@ -4,6 +4,10 @@ This plan focuses on the remaining work. Completed items are omitted.
 
 ### Renderer package: remaining work
 
+- WebGL mark-feature parity is tracked in
+  `plans/webgpu-core-integration/webgpu-renderer-parity-plan.md`; the current
+  inventory covers endpoint offsets, rule dashes, point line shapes, rectangle
+  radii/shadows, links, arrows, and remaining adapter rejection paths.
 - Text: baseline alignment + vertical flip fix, edge fade, gamma, picking.
 - Picking pass (offscreen ID buffer + readback).
 - Per-occurrence opacity and scale state for repeated views whose positional

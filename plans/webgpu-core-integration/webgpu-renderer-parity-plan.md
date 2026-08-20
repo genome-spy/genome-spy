@@ -453,7 +453,13 @@ documented as a separately tracked limitation.
 
 ## Implementation record
 
-This section is intentionally empty until milestones are implemented. Each
-entry should include the commit hash, tests run, browser/GPU result, and any
-accepted numerical or behavioral differences.
+### Milestone 1
 
+- Status: complete
+- Commit: pending
+- Tests: Core WebGPU adapter suite passed with the baseline unsupported-mark
+  inventory and contextual error assertions.
+- Browser/GPU result: not applicable; this milestone changes only test coverage
+  and migration documentation.
+- Accepted differences: link and arrow remain unsupported until Milestones 5
+  and 6.
