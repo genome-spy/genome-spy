@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import Rectangle from "../../view/layout/rectangle.js";
+import { bandScaleDefinition } from "@genome-spy/webgpu-renderer/scales/band";
 import { identityScaleDefinition } from "@genome-spy/webgpu-renderer/scales/identity";
 import { linearScaleDefinition } from "@genome-spy/webgpu-renderer/scales/linear";
 import { createWebGpuMarkConfig } from "./webGpuMarkAdapter.js";
@@ -131,6 +132,132 @@ describe("WebGPU mark adapter", () => {
         });
         expect(config.channels.dy).toEqual({ value: 9 });
         expect(config.font).toBe("Lato");
+    });
+
+    test("maps categorical positions to stable band-scale identifiers", () => {
+        const data = [{ category: "A" }, { category: "B" }];
+        const domain = ["A", "B"];
+        const xOptions = {
+            scale: createBandScale(domain),
+            channelDef: {
+                field: "category",
+                type: "nominal",
+                band: 0.5,
+            },
+        };
+        const mark = createMark(
+            "rule",
+            data,
+            {
+                x: createEncoder((datum) => datum.category, xOptions),
+                x2: createEncoder((datum) => datum.category, xOptions),
+                y: createConstantEncoder(0),
+                y2: createConstantEncoder(1),
+                xOffset: createConstantEncoder(0),
+                x2Offset: createConstantEncoder(0),
+                yOffset: createConstantEncoder(0),
+                y2Offset: createConstantEncoder(0),
+                size: createConstantEncoder(1),
+                color: createConstantEncoder("black"),
+                opacity: createConstantEncoder(1),
+            },
+            {
+                strokeDash: null,
+                minLength: 0,
+                strokeCap: "butt",
+                strokeDashOffset: 0,
+            }
+        );
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(10, 20, 100, 200)
+        );
+        const x = /** @type {any} */ (translated).config.channels.x;
+
+        domain.reverse();
+        const updated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(10, 20, 100, 200)
+        );
+        const updatedX = /** @type {any} */ (updated).config.channels.x;
+
+        expect(x.data).toEqual(new Uint32Array([0, 1]));
+        expect(x.type).toBe("u32");
+        expect(x.scale).toEqual({
+            type: "band",
+            definition: bandScaleDefinition,
+            domain: [0, 1],
+            range: [10, 110],
+            paddingInner: 0.2,
+            paddingOuter: 0.1,
+            align: 0.5,
+            band: 0.5,
+        });
+        expect(updatedX.data).toBe(x.data);
+        expect(updatedX.scale.domain).toEqual([1, 0]);
+    });
+
+    test("translates a categorical bar to the generic rect mark", () => {
+        const data = [
+            { category: "A", value: 28 },
+            { category: "B", value: 55 },
+        ];
+        /** @param {number} band */
+        const categorical = (band) => ({
+            scale: createBandScale(["A", "B"]),
+            channelDef: {
+                field: "category",
+                type: "nominal",
+                band,
+            },
+        });
+        const mark = createMark(
+            "rect",
+            data,
+            {
+                x: createEncoder((datum) => datum.category, categorical(0)),
+                x2: createEncoder((datum) => datum.category, categorical(1)),
+                y: createEncoder((datum) => datum.value, {
+                    scale: createLinearScale([0, 100]),
+                    channelDef: { field: "value", type: "quantitative" },
+                }),
+                y2: createConstantEncoder(0),
+                xOffset: createConstantEncoder(0),
+                x2Offset: createConstantEncoder(0),
+                yOffset: createConstantEncoder(0),
+                y2Offset: createConstantEncoder(0),
+                fill: createConstantEncoder("#336699"),
+                stroke: createConstantEncoder(null),
+                fillOpacity: createConstantEncoder(1),
+                strokeOpacity: createConstantEncoder(1),
+                strokeWidth: createConstantEncoder(0),
+            },
+            {
+                cornerRadius: 0,
+                minWidth: 0.5,
+                minHeight: 0.5,
+                minOpacity: 1,
+            }
+        );
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(10, 20, 100, 200)
+        );
+        const channels = /** @type {any} */ (translated).config.channels;
+
+        expect(translated?.definition.type).toBe("rect");
+        expect(channels.x.data).toEqual(new Uint32Array([0, 1]));
+        expect(channels.x.scale.band).toBe(0);
+        expect(channels.x2.scale.band).toBe(1);
+        expect(channels.y.data).toEqual(new Float32Array([28, 55]));
+        expect(channels.y2.value).toBe(220);
+        expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
+        expect(channels.hatchPattern).toEqual({ value: 0, type: "u32" });
     });
 
     test("reports unsupported semantics with the Core view path", () => {
@@ -303,5 +430,16 @@ function createLinearScale(domain) {
         type: "linear",
         domain: () => domain,
         clamp: () => false,
+    };
+}
+
+/** @param {string[]} domain */
+function createBandScale(domain) {
+    return {
+        type: "band",
+        domain: () => domain,
+        paddingInner: () => 0.2,
+        paddingOuter: () => 0.1,
+        align: () => 0.5,
     };
 }
