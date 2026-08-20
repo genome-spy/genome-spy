@@ -148,6 +148,75 @@ describe("WebGPU mark adapter", () => {
             'Data-driven "fill" is not supported. Mark: point. View: root/plot'
         );
     });
+
+    test("reuses field-backed columns across scale-only updates", () => {
+        const data = [
+            { x: 1, y: 2 },
+            { x: 3, y: 4 },
+        ];
+        const x = vi.fn((datum) => datum.x);
+        const y = vi.fn((datum) => datum.y);
+        const mark = createMark("point", data, {
+            x: createEncoder(x, {
+                scale: createLinearScale([0, 4]),
+                channelDef: { field: "x", type: "quantitative" },
+            }),
+            y: createEncoder(y, {
+                scale: createLinearScale([0, 4]),
+                channelDef: { field: "y", type: "quantitative" },
+            }),
+        });
+        const first = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(0, 0, 100, 100)
+        );
+        const second = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(10, 0, 100, 100)
+        );
+        if (!first || !second) {
+            throw new Error("Expected translated point marks.");
+        }
+
+        const firstChannels = /** @type {any} */ (first.config).channels;
+        const secondChannels = /** @type {any} */ (second.config).channels;
+        expect(secondChannels.x.data).toBe(firstChannels.x.data);
+        expect(secondChannels.y.data).toBe(firstChannels.y.data);
+        expect(secondChannels.x.scale.range).toEqual([10, 110]);
+        expect(x).toHaveBeenCalledTimes(data.length);
+        expect(y).toHaveBeenCalledTimes(data.length);
+    });
+
+    test("recomputes expression-backed columns for parameter changes", () => {
+        const data = [{ x: 1 }];
+        let offset = 0;
+        const mark = createMark("point", data, {
+            x: createEncoder((datum) => datum.x + offset, {
+                scale: createLinearScale([0, 4]),
+                channelDef: {
+                    expr: "datum.x + offset",
+                    type: "quantitative",
+                },
+            }),
+        });
+        const coords = Rectangle.create(0, 0, 100, 100);
+
+        const first = createWebGpuMarkConfig(mark, {}, coords);
+        offset = 2;
+        const second = createWebGpuMarkConfig(mark, {}, coords);
+        if (!first || !second) {
+            throw new Error("Expected translated point marks.");
+        }
+
+        expect(/** @type {any} */ (first.config).channels.x.data).toEqual(
+            new Float32Array([1])
+        );
+        expect(/** @type {any} */ (second.config).channels.x.data).toEqual(
+            new Float32Array([3])
+        );
+    });
 });
 
 /**
@@ -197,16 +266,18 @@ function createMark(type, data, encoders, properties = {}) {
 
 /**
  * @param {(datum: any) => any} accessor
- * @param {{scale?: any}} [options]
+ * @param {{scale?: any, channelDef?: any}} [options]
  */
 function createEncoder(accessor, options = {}) {
+    const channelDef = options.channelDef ?? {};
+    Object.assign(accessor, { channelDef });
     return /** @type {import("../../types/encoder.js").Encoder} */ (
         /** @type {unknown} */ (
             Object.assign(vi.fn(accessor), {
                 constant: false,
                 scale: options.scale,
                 branches: [{ accessor }],
-                channelDef: {},
+                channelDef,
             })
         )
     );

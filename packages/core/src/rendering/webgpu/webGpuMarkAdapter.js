@@ -45,8 +45,18 @@ const STROKE_CAP_CODES = new Map([
 ]);
 
 /**
+ * Materialized collector batch identity acts as the data revision. Only field
+ * accessors are cached because expression accessors may depend on parameters
+ * that change without replacing the batch.
+ *
+ * @type {WeakMap<import("../../marks/mark.js").default, SeriesCache>}
+ */
+const SERIES_CACHE = new WeakMap();
+
+/**
  * Converts one Core mark occurrence into the low-level configuration used by
- * the WebGPU PoC. The adapter intentionally supports only `first.json`.
+ * the WebGPU PoC. The adapter intentionally supports only the current
+ * point/rule/text integration slice.
  *
  * @param {import("../../marks/mark.js").default} mark
  * @param {import("../../types/rendering.js").RenderingOptions} options
@@ -336,7 +346,15 @@ function createTextChannel(mark, data) {
     };
     return encoder.constant
         ? { value: stringify(data[0]) }
-        : { data: data.map(stringify) };
+        : {
+              data: getCachedSeries(
+                  mark,
+                  "text",
+                  data,
+                  encoder.branches[0].accessor,
+                  () => data.map(stringify)
+              ),
+          };
 }
 
 /**
@@ -507,13 +525,45 @@ function assertUnconditional(mark, channel, encoder) {
  * @param {import("../../types/encoder.js").Accessor} accessor
  */
 function toFloat32Array(mark, channel, data, accessor) {
-    return Float32Array.from(data, (datum) => {
-        const value = Number(accessor(datum));
-        if (!Number.isFinite(value)) {
-            throw unsupported(mark, `Channel "${channel}" is not finite.`);
-        }
-        return value;
-    });
+    return getCachedSeries(mark, channel, data, accessor, () =>
+        Float32Array.from(data, (datum) => {
+            const value = Number(accessor(datum));
+            if (!Number.isFinite(value)) {
+                throw unsupported(mark, `Channel "${channel}" is not finite.`);
+            }
+            return value;
+        })
+    );
+}
+
+/**
+ * @template {import("@genome-spy/webgpu-renderer").SeriesData} T
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {object[]} data
+ * @param {import("../../types/encoder.js").Accessor} accessor
+ * @param {() => T} create
+ * @returns {T}
+ */
+function getCachedSeries(mark, channel, data, accessor, create) {
+    if (!("field" in accessor.channelDef)) {
+        return create();
+    }
+
+    let cache = SERIES_CACHE.get(mark);
+    if (!cache || cache.data !== data) {
+        cache = { data, channels: new Map() };
+        SERIES_CACHE.set(mark, cache);
+    }
+
+    const cached = cache.channels.get(channel);
+    if (cached?.accessor === accessor) {
+        return /** @type {T} */ (cached.series);
+    }
+
+    const series = create();
+    cache.channels.set(channel, { accessor, series });
+    return series;
 }
 
 /**
@@ -581,3 +631,9 @@ function unsupported(mark, message) {
     /** @type {any} */ (error).view = mark.unitView;
     return error;
 }
+
+/**
+ * @typedef {object} SeriesCache
+ * @prop {object[]} data
+ * @prop {Map<string, {accessor: import("../../types/encoder.js").Accessor, series: import("@genome-spy/webgpu-renderer").SeriesData}>} channels
+ */
