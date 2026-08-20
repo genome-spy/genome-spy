@@ -7,7 +7,7 @@
   traversal, and broadcasting.
 - `ViewFactory` (`src/view/viewFactory.js`) creates view subclasses from the
   specification shape:
-  - `UnitView` renders a mark.
+  - `UnitView` owns a mark and arranges its placement.
   - `LayerView`, `ConcatView`, and `GridView` compose layout.
 - `UnitView` (`src/view/unitView.js`) creates a `Mark` such as rect, point, rule,
   link, or text; connects encodings to scales, selections, and axes; and
@@ -24,6 +24,18 @@ Layout sizing uses `View.getSize()` and `getViewportSize()` with a cached
   it explicitly.
 - Size invalidation clears the view's size cache and those of its layout
   ancestors.
+
+`View.arrange()` performs a full depth-first traversal. Views update their
+layout-owned state and emit ordered placements into a private recorder. A
+successful traversal produces a completed `LayoutResult`, which a rendering
+backend consumes without re-entering the view hierarchy. Canvas-size settling
+publishes only the final valid result.
+
+The result is an ephemeral boundary, not a retained scene graph. It has no
+stable placement keys, dirty state, or backend resources. Rendering hooks,
+mark preparation, clipping, culling, picking, and drawing run when a backend
+consumes the result; layout parameters and coordinates update only during
+arrangement.
 
 ## Dataflow graph
 
