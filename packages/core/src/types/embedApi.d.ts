@@ -23,12 +23,13 @@ export type EmbedFunction = (
 export interface EmbedOptions {
     /**
      * Rendering backend. `"auto"` uses WebGL2 when available and falls back to
-     * the Canvas2D compatibility renderer. `"canvas"` does not request WebGL
-     * or WebGPU, but it does not support datum picking.
+     * the Canvas2D compatibility renderer. `"webgpu"` enables an experimental
+     * proof-of-concept renderer for a narrow subset of marks. `"canvas"` does
+     * not request WebGL or WebGPU, but it does not support datum picking.
      *
      * __Default value:__ `"auto"`
      */
-    renderer?: "auto" | "webgl" | "canvas";
+    renderer?: "auto" | "webgl" | "canvas" | "webgpu";
 
     /**
      * A function that allows retrieval of named data. There are two ways to provide named data:

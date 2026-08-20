@@ -1,6 +1,6 @@
 # WebGPU/Core integration plan
 
-Status: Proposed
+Status: In progress — Milestone 1 implemented, awaiting review
 
 Date: 2026-08-20
 
@@ -9,6 +9,10 @@ Scope: `packages/core`, `packages/webgpu-renderer`, and the `first.json` proof o
 This is a temporary implementation plan. It records the integration decisions and
 review gates for an experimental WebGPU backend. It must be reconciled and removed
 before the work is merged, as required by the repository workflow.
+
+The companion [renderer API direction](webgpu-renderer-api-direction.md) records
+the code-first, tree-shakeable public API direction inferred from the PoC. It
+refines Milestone 2 without expanding the scope of Milestone 1.
 
 ## Context
 
@@ -318,6 +322,8 @@ datum may remain backend-independent.
 
 ### Milestone 1: Render `first.json` through the thinnest WebGPU path
 
+Implementation status: Complete on 2026-08-20; review gate pending.
+
 Outcome: selecting `renderer: "webgpu"` produces a browser-visible rendering of
 the complete first example, including generated guides, without first perfecting
 the generic renderer API and without constructing WebGL state.
@@ -378,6 +384,70 @@ Review gate: inspect the rendered result, dependency direction, and workaround
 list before redesigning `webgpu-renderer`. This is the evidence gate that decides
 the scope of Milestone 2.
 
+#### Milestone 1 implementation record
+
+The vertical slice was implemented without changing `webgpu-renderer` runtime
+behavior. Its package export map and declaration entry were corrected so Core's
+downstream TypeScript consumers use the existing public types instead of
+checking the renderer's implementation sources. Core now dynamically imports a
+WebGPU surface, coordinator, traversal context, and mark adapter only for
+explicit `renderer: "webgpu"` selection. The Core development page accepts the
+renderer query parameter, so the unchanged example can be exercised with:
+
+```text
+?spec=examples/core/first.json&renderer=webgpu
+```
+
+The browser result contains all 17 point instances and the generated rule/text
+guides. The adapter sends raw point values and linear scale domains to WebGPU,
+while one isolated compatibility function maps Core's unit ranges to absolute
+logical-pixel ranges. Explicit WebGPU selection does not construct `glHelper` or
+fall back to another renderer. Unsupported semantics report the mark type and
+Core view path.
+
+Observed sizing evidence supports the provisional coordinate contract:
+
+- at DPR 1, a 900 × 660 logical canvas used a 900 × 660 backing store;
+- after viewport resize, the logical and backing sizes both changed to
+  720 × 460;
+- at DPR 2, the approximately 900 × 660 logical canvas used an 1800 × 1320
+  backing store and retained correct mark and guide placement.
+
+Browser request inspection showed the Core WebGPU adapter and
+`webgpu-renderer` entry loading after explicit WebGPU selection. A fresh Canvas
+selection did not request either module tree. The backend unit test additionally
+asserts that explicit WebGPU selection calls neither the WebGL helper nor the
+Canvas backend.
+
+Milestone 1 retains the following deliberate workarounds for review in
+Milestone 2:
+
+- mark handles are rebuilt in traversal order for every painted frame;
+- the surface destroys rebuilt mark handles, its resize observer, and canvas,
+  but whole-renderer/device disposal remains unavailable in the low-level API;
+- only a white/default clear color is accepted because the renderer hardcodes
+  white;
+- Core's generic `sans-serif` default is mapped to the embedded Lato atlas;
+- the adapter supports only the point, rule/tick, text, scale, and property
+  subset exercised by `first.json`; facets, repeated occurrences, view opacity,
+  conditions, picking, and raster export fail explicitly.
+- the renderer's undeclared runtime dependencies remain a Milestone 2 packaging
+  task; the monorepo currently supplies them through Core's dependency graph.
+
+Verification completed for the slice:
+
+- focused Core backend and adapter tests: 11 passed;
+- Core TypeScript check: passed;
+- all workspace TypeScript checks: passed;
+- existing minimal/production bundle verification: passed; WebGPU was emitted as
+  a separate approximately 285 kB asynchronous chunk, confirming that lazy
+  loading works but the current entries are not GPU-free distribution artifacts;
+- `webgpu-renderer` TypeScript check: passed;
+- `webgpu-renderer` unit tests: 97 passed;
+- `webgpu-renderer` GPU tests: 41 passed;
+- WebGPU browser run at DPR 1 and DPR 2: complete rendering, no renderer errors;
+  the only application warning was Lit's development-mode notice.
+
 ### Milestone 2: Harden only the renderer contracts validated by the PoC
 
 Outcome: the successful vertical slice no longer depends on accidental or
@@ -387,19 +457,21 @@ Implementation:
 
 - formalize logical-size, physical attachment, and DPR semantics demonstrated by
   the slice;
-- add explicit frame ordering only if creation order proved insufficient or
-  makes Core updates unmaintainable;
+- replace the rebuild-in-creation-order workaround with the explicit ordered
+  draw-list direction described in the companion API note;
 - define clearing/background and resize ownership only to the extent exercised
   by Core and the standalone examples;
 - add whole-renderer destruction and complete cleanup for resources owned by the
   integrated path;
 - declare all runtime package dependencies;
+- migrate point and linear scale creation to explicitly imported definitions and
+  prove that unrelated features are absent from a focused production bundle;
 - replace PoC-specific API workarounds in the Core adapter with the validated
   public renderer contracts;
-- preserve the current low-level mark API where the PoC did not demonstrate a
-  need to change it;
-- do not add picking, facets, general draw commands, or scale parity merely to
-  make the API appear complete.
+- preserve the current typed-column and slot-update model while changing the
+  creation and frame-submission surface;
+- do not add picking, facets, or scale parity merely to make the API appear
+  complete.
 
 Affected areas and downstream consumers:
 
@@ -414,6 +486,8 @@ Verification:
 - package TypeScript, unit, and GPU tests;
 - targeted visual/offscreen coverage for the coordinate, ordering, resize,
   clearing, and destruction behavior that was actually hardened;
+- a focused bundle fixture that imports point plus linear scale and excludes
+  unrelated marks, scales, and font support;
 - the Milestone 1 browser fixture continues to render the same semantic output;
 - existing renderer examples still initialize, render, resize, and dispose.
 
@@ -584,11 +658,10 @@ layer would add weight without removing the Core semantic adapter.
 1. Should the future CPU-only product be a named entry such as
    `@genome-spy/core/cpu`, or should consumers inject a backend loader registry?
    A named entry is the clearer first implementation.
-2. Should the renderer's public frame API take ordered mark IDs first, or jump
-   directly to complete draw commands? First exercise the current registry in
-   Milestone 1. If it is insufficient, ordered handles are the smallest likely
-   step and should be designed so commands can replace them without changing
-   ownership.
+2. What is the smallest generic draw descriptor that covers Core occurrences?
+   The PoC showed that creation order requires rebuilding every handle, so the
+   companion API note settles on explicit ordered draws. Exact field names and
+   batching rules remain subject to the Step 2 review gate.
 3. Will Core's pixel-range migration land before Milestone 1? If yes, omit the
    compatibility shim and test the native range contract directly.
 4. Where should public font registration and atlas ownership live? The embedded

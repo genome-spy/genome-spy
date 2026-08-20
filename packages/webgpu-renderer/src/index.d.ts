@@ -1,3 +1,5 @@
+/// <reference types="@webgpu/types" />
+
 export type MarkType = "rect" | "point" | "rule" | "link" | "text";
 export type MarkId = number & { __brand: "MarkId" };
 
@@ -540,22 +542,19 @@ export type ValueChannelConfigInput = {
 
 /** User-supplied configs; may be partial because defaults are filled later. */
 export type ChannelConfigWithScaleInput = (
-    | SeriesChannelConfigInput
-    | ValueChannelConfigInput
+    SeriesChannelConfigInput | ValueChannelConfigInput
 ) &
     ChannelConfigWithScale;
 
 /** User-supplied configs; may be partial because defaults are filled later. */
 export type ChannelConfigWithoutScaleInput = (
-    | SeriesChannelConfigInput
-    | ValueChannelConfigInput
+    SeriesChannelConfigInput | ValueChannelConfigInput
 ) &
     ChannelConfigWithoutScale;
 
 /** Any user-facing channel config (may omit data/value until normalized). */
 export type ChannelConfigInput =
-    | ChannelConfigWithScaleInput
-    | ChannelConfigWithoutScaleInput;
+    ChannelConfigWithScaleInput | ChannelConfigWithoutScaleInput;
 
 /** Channel config allowed inside conditions (no defaults or nested conditions). */
 export type ConditionalChannelConfigInput = Omit<

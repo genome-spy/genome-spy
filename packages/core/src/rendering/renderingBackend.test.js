@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
     createWebGLHelper: vi.fn(),
     createCanvas2DRenderingBackend: vi.fn(),
+    createWebGpuRenderingBackend: vi.fn(),
     readPickingPixel: vi.fn(),
     warnOnce: vi.fn(),
     exportCanvas: vi.fn(),
@@ -23,6 +24,10 @@ vi.mock("../gl/webGLHelper.js", () => ({
 
 vi.mock("./canvas2d/index.js", () => ({
     createCanvas2DRenderingBackend: mocks.createCanvas2DRenderingBackend,
+}));
+
+vi.mock("./webgpu/index.js", () => ({
+    createWebGpuRenderingBackend: mocks.createWebGpuRenderingBackend,
 }));
 
 vi.mock("../utils/warning.js", () => ({
@@ -76,6 +81,42 @@ describe("createRenderingBackend", () => {
 
         expect(backend).toBe(canvasBackend);
         expect(mocks.createWebGLHelper).not.toHaveBeenCalled();
+    });
+
+    test("loads WebGPU directly without requesting another renderer", async () => {
+        const container = document.createElement("div");
+        const webGpuBackend = /** @type {any} */ ({ surface: {} });
+        mocks.createWebGpuRenderingBackend.mockResolvedValue(webGpuBackend);
+
+        const backend = await createRenderingBackend({
+            ...baseOptions,
+            renderer: "webgpu",
+            container,
+        });
+
+        expect(backend).toBe(webGpuBackend);
+        expect(mocks.createWebGpuRenderingBackend).toHaveBeenCalledWith({
+            ...baseOptions,
+            renderer: "webgpu",
+            container,
+        });
+        expect(mocks.createWebGLHelper).not.toHaveBeenCalled();
+        expect(mocks.createCanvas2DRenderingBackend).not.toHaveBeenCalled();
+    });
+
+    test("preserves an explicitly requested WebGPU failure", async () => {
+        const failure = new Error("No WebGPU");
+        mocks.createWebGpuRenderingBackend.mockRejectedValue(failure);
+
+        await expect(
+            createRenderingBackend({
+                ...baseOptions,
+                renderer: "webgpu",
+                container: document.createElement("div"),
+            })
+        ).rejects.toBe(failure);
+        expect(mocks.createWebGLHelper).not.toHaveBeenCalled();
+        expect(mocks.createCanvas2DRenderingBackend).not.toHaveBeenCalled();
     });
 
     test("keeps WebGL picking behind the backend boundary", async () => {
