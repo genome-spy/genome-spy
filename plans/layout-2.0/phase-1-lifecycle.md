@@ -2,14 +2,20 @@
 
 Status: Draft
 
-Tentative PR title: `refactor(core): separate layout from render command collection`
+Tentative PR title: `refactor(core): separate layout from backend work collection`
 
 ## Purpose
 
 Remove the misleading `View.render()` operation and make the existing lifecycle
 explainable without changing layout or rendering behavior. This phase should be
 a maintainability refactor with full layout recomputation, fresh render batches,
-and no transition or incremental-layout machinery.
+fresh WebGPU mark handles where that experimental backend is present, and no
+transition or incremental-layout machinery.
+
+The completed layout result must become a renderer-neutral integration surface.
+WebGL, WebGPU, Canvas/SVG, picking, headless, and test consumers may prepare
+different native work from it; they must not require separate recursive view
+traversals.
 
 The earlier prototype showed that the lifecycle can be split, but it also
 allowed later retention and invalidation concerns to enter the same PR. This
@@ -31,6 +37,13 @@ the recursive layout traversal and currently combines several responsibilities:
 - Buffered rendering contexts turn those calls into executable normal and
   picking batches; SVG and test contexts consume the same traversal directly.
 
+The experimental WebGPU proof of concept on the `webgpu` branch exposes the
+same coupling more directly: its Core coordinator traverses `View.render()` once
+to compute layout and again while painting, destroys all mark handles before the
+paint traversal to recover order, and rejects repeated mark occurrences. Phase
+1 should remove the duplicate Core traversal boundary without adding retention
+or solving repetition yet.
+
 Thus, simply renaming `render()` to `layout()` would improve terminology but
 would leave command construction hidden inside layout. Conversely, moving flex
 calculation into rendering contexts would preserve the same coupling under new
@@ -44,11 +57,12 @@ The public concepts should be:
 1. **Arrange:** traverse the hierarchy, calculate rectangles, update
    layout-driven state, and describe the ordered view/mark occurrences produced
    by that layout.
-2. **Collect render commands:** consume the completed description using normal,
-   picking, SVG, debug, or other rendering contexts. This phase must not measure
-   views, calculate flex layouts, or update layout parameters.
-3. **Draw:** execute the prepared rendering batch. Existing mark callbacks and
-   WebGL behavior remain unchanged.
+2. **Collect backend work:** consume the completed description using WebGL,
+   WebGPU, picking, Canvas/SVG, debug, or other rendering contexts. This phase
+   must not measure views, calculate flex layouts, or update layout parameters.
+3. **Draw:** execute the prepared backend work. Existing WebGL callbacks and
+   behavior remain unchanged; WebGPU may submit its current rebuilt mark set,
+   while immediate renderers may draw during consumption where appropriate.
 
 Measurement may continue through the existing cached `getSize()` methods. A
 separate generalized constraint solver is not required merely to remove
@@ -65,6 +79,10 @@ The earlier implementation established a workable migration path:
   simple per-layout result.
 - After arrangement is complete, replay or otherwise consume that result through
   the existing rendering contexts.
+- Keep the result semantic and backend-neutral. It may reference Core views,
+  marks, rendering options, layout occurrences, coordinates, clips, and order,
+  but must not contain WebGL callbacks, WebGPU handles, shader state, or
+  CPU-projected Canvas/SVG channel values.
 - Keep a convenience operation for standalone callers that performs arrange
   followed immediately by command collection. Its name must describe layout,
   such as `computeLayout()`, rather than pretend to draw.
@@ -92,32 +110,47 @@ new traversal with an old traversal or decide whether the scene changed.
   child and manages facet labels.
 - App-specific view subclasses under `packages/app/src/sampleView/`.
 - `packages/core/src/genomeSpy/renderCoordinator.js`.
-- Rendering contexts, SVG/raster export, headless helpers, and layout test
-  utilities that currently call `View.render()` directly.
+- `packages/core/src/rendering/webgpu/` from the `webgpu` branch when the
+  experimental adapter is present; it should collect from the completed result
+  rather than retraverse views.
+- Rendering contexts, Canvas/SVG/raster export, headless helpers, and layout
+  test utilities that currently call `View.render()` directly.
 
 ## Contracts to make explicit
 
 - Arrangement owns measurement, flex calculation, coordinate recording, and
   layout-driven parameter updates.
-- Command collection owns calls that prepare mark drawing callbacks and batches.
-- Drawing owns WebGL execution and must not trigger arrangement.
+- Backend-work collection owns calls that translate semantic occurrences into
+  WebGL callbacks, WebGPU mark descriptions and ordered occurrences, or
+  immediate-renderer input.
+- Drawing owns WebGL/WebGPU execution and must not trigger arrangement or
+  recursive view traversal.
 - Render order remains the order produced by the completed layout, including
   backgrounds, grid lines, axes, selection overlays, rulers, scrollbars, titles,
   facets, and sample facets.
-- Ordinary and picking contexts consume the same occurrences and identities.
-- SVG and headless paths receive the same final geometry as WebGL.
+- Ordinary, picking, and WebGPU contexts consume the same ordered semantic
+  occurrences. Backend-specific batching may optimize execution only when
+  visible order is preserved.
+- Canvas, SVG, WebGPU, and headless paths receive the same final geometry as
+  WebGL for their supported feature intersection.
+- Layout-instance identity is not designed in this phase, but the result must
+  not make traversal position the implicit long-term identity contract.
 - Configured-invisible views behave exactly as before; semantic visibility is
   not introduced here.
 
 ## Verification
 
 - Existing Core and App unit tests and layout snapshots remain unchanged.
-- Add focused tests showing that arrangement completes before any mark command
-  is collected and that command collection cannot change recorded coordinates
-  or layout-driven parameters.
+- Add focused tests showing that arrangement completes before any backend mark
+  work is collected and that collection cannot change recorded coordinates or
+  layout-driven parameters.
 - Cover a grid with decorations and a faceted or repeated view so the test does
   not validate only the trivial unit-view path.
-- Exercise normal, picking, SVG, raster/headless, and test-helper callers.
+- Exercise normal, picking, Canvas/SVG, raster/headless, WebGPU when available,
+  and test-helper callers.
+- Keep `examples/core/first.json` rendering through the experimental WebGPU
+  backend. Assert that one arrangement produces the description consumed for
+  painting and that drawing the collected work does not call arrangement.
 - Treat App `SampleView`, rather than dormant Core `FacetView`, as the mandatory
   repeated-layout integration case. Preserve its sample-facet batch delimiters,
   facet IDs, filtering-driven hierarchy updates, peek rendering, summaries,
@@ -133,6 +166,8 @@ new traversal with an old traversal or decide whether the scene changed.
 ## Non-goals
 
 - Retaining batches across layouts.
+- Retaining WebGPU handles or introducing the ordered-frame API in Core. The
+  existing rebuild behavior is the Phase 1 compatibility baseline.
 - Defining stable layout-instance identity.
 - Separating target and presented coordinates.
 - Dirty-branch measurement or subtree-scoped arrangement.
@@ -147,6 +182,9 @@ new traversal with an old traversal or decide whether the scene changed.
 - `arrange()` may still be a misleading name if it directly exposes methods
   named for rendering. The smallest explicit layout-result interface should be
   chosen during the PR.
+- A layout result shaped around WebGL callback construction would merely move
+  the coupling. Validate the result with WebGPU and an immediate renderer before
+  accepting its interface.
 - App sample faceting has extra begin/end batching operations; these must remain
   ordered without making the Core abstraction App-specific.
 - A stored command description may duplicate information already held in views.
@@ -158,7 +196,8 @@ new traversal with an old traversal or decide whether the scene changed.
 ## Phase acceptance and review gate
 
 The phase is complete when `View.render()` is gone, the three lifecycle stages
-have enforceable responsibilities, and observable output is unchanged.
+have enforceable responsibilities, WebGL and WebGPU drawing no longer require
+recursive arrangement traversal, and observable output is unchanged.
 
 Before Phase 2, evaluate:
 
@@ -170,6 +209,6 @@ Before Phase 2, evaluate:
 
 Tentative commit sequence:
 
-1. `refactor(core): separate view arrangement from command collection`
+1. `refactor(core): separate view arrangement from backend work collection`
 2. `refactor(app): adopt the explicit view layout lifecycle`
 3. `docs(core): document layout and rendering phases`

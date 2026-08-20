@@ -18,7 +18,7 @@ Current configured visibility tends to conflate several different facts:
 
 - whether a view exists in the configured hierarchy;
 - whether it participates in target layout;
-- whether it has render commands/resources;
+- whether it contributes render occurrences and retains backend resources;
 - whether it is currently presented and interactive.
 
 Immediate hide/show can discard the very geometry and render membership needed
@@ -48,8 +48,9 @@ and [exit handling](https://github.com/nicbarker/clay/blob/main/clay.h#L4211-L43
   policy.
 - An entering child obtains render membership before presentation begins and
   animates from a defined parent- or sibling-relative start toward its target.
-- Completion releases temporary exit state and may rebuild the batch once if
-  render membership changes.
+- Completion releases temporary exit state and updates backend occurrence
+  topology once if render membership changes. WebGL may rebuild batches;
+  WebGPU may update its ordered draw list while retaining compatible resources.
 - Reversing direction during a transition continues from current presented
   geometry and opacity without a jump.
 - Threshold hysteresis or an equivalent policy prevents flicker around semantic
@@ -89,11 +90,13 @@ not required to validate the architecture.
 ## Affected areas
 
 - Concat/grid participation and sizing.
-- Visibility and scene-invalidation semantics.
+- Visibility, occurrence-topology, and backend invalidation semantics.
 - Transition matching and lifetime from Phase 4.
 - Picking, interaction routing, clipping, and opacity.
 - Data/resource lifetime for persistently configured but non-participating
   tracks.
+- WebGPU ordered occurrence submission and retained-handle cleanup at semantic
+  enter/exit boundaries.
 
 ## Verification
 
@@ -113,8 +116,11 @@ not required to validate the architecture.
   interaction from the start of its exit.
 - Exiting content follows the selected deterministic paint-order policy while
   siblings reflow through its previous area.
-- Temporary state and obsolete batch commands are cleaned up after completion or
-  cancellation.
+- Temporary state and obsolete backend occurrences are cleaned up after
+  completion or cancellation.
+- WebGPU keeps compatible handles for persistent semantic tracks across exit and
+  re-entry, submits exiting content in the selected paint position, and excludes
+  it from picking according to the shared interaction policy.
 - Disabled transitions, reduced motion, headless rendering, and unsupported
   structural changes use deterministic immediate behavior.
 
@@ -130,12 +136,14 @@ not required to validate the architecture.
 
 - Non-participating persistent views may retain data and GPU memory indefinitely;
   resource policy needs measurement.
-- Batch rebuilding at enter/exit boundaries must not occur on every animation
-  frame.
+- WebGL batch rebuilding and WebGPU occurrence-topology updates at enter/exit
+  boundaries must not occur on every animation frame. Resource reconstruction
+  must remain independent of occurrence reordering.
 - Active pointer capture must be cancelled or transferred deterministically when
   its track begins exiting.
-- Exit paint order must work with retained mark-grouped batches; Clay's ordering
-  choices are cases to evaluate, not an implementation to copy.
+- Exit paint order must work with retained WebGL mark-grouped batches and
+  explicit WebGPU ordered draws; Clay's ordering choices are cases to evaluate,
+  not an implementation to copy.
 - Target layout has no rectangle for an exiting child, so exit geometry must be
   presentation-only and must not leak back into sizing.
 - Semantic thresholds based directly on animated geometry could create feedback;

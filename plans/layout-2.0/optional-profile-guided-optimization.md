@@ -94,6 +94,9 @@ Earlier review identified these candidates, independent of dirty layout:
   explicit identity model from Phase 2.
 - Consider sharing command topology between normal and picking batch
   construction while keeping their executors/render targets separate.
+- For WebGPU, measure retained-handle lookup and ordered-draw materialization
+  separately. Reusing expensive handles does not require retaining every cheap
+  frame descriptor.
 - Replace closure-heavy grouped execution only if profiles show dispatch or
   allocation cost.
 - Cull or virtualize offscreen scroll content before building fine-grained
@@ -126,8 +129,8 @@ array mapping, property reads, and function calls multiply across requests.
 A different Layout 2.0 architecture could emit flat numeric geometry keyed by
 stable layout-instance identity. Layout commits would calculate target
 rectangles and clips once; transition frames would update presented numbers in a
-known order; render commands would retain an index or lightweight slot and read
-scalars directly. This would make batch retention an identity/indirection
+known order; retained backend work would keep an index or lightweight slot and
+read scalars directly. This would make retention an identity/indirection
 property rather than a consequence of closure graphs.
 
 Do not replace `Rectangle` mechanically. First distinguish its roles:
@@ -207,17 +210,20 @@ the sample hierarchy and may require size, layout, guide, sidebar, and scene
 updates; verify that work is coalesced and surviving samples retain identity.
 Peek changes mutable per-sample locations every animation frame without changing
 membership; verify that it performs drawing/presentation updates rather than
-partial or full view layout and does not reconstruct batches per frame.
+partial or full view layout and does not reconstruct WebGL batches or compatible
+WebGPU resources per frame.
 
-For all scenarios, batch retention is a separate assertion: geometry-only changes
-should reuse batches after Phase 3, while actual scene changes should rebuild
-once.
+For all scenarios, backend retention is a separate assertion: geometry-only
+changes should reuse WebGL batches and compatible WebGPU handles after Phase 3.
+Occurrence-topology changes should rebuild WebGL batches or WebGPU draw order
+once without implying unnecessary WebGPU resource reconstruction.
 
 ## Measurement and verification
 
 - Add disabled-by-default counters for distinct views measured and arranged,
-  layout commits/settling passes, changed instances, commands collected, and
-  normal/picking batches built. Disabled instrumentation must not allocate in hot
+  layout commits/settling passes, changed instances, semantic occurrences
+  collected, normal/picking batches built, WebGPU handles created/destroyed, and
+  ordered draws materialized. Disabled instrumentation must not allocate in hot
   paths.
 - Compare the complete incremental result—not only the changed view—with a
   forced deterministic full layout.

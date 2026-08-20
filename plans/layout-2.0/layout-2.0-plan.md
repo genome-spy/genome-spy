@@ -77,10 +77,13 @@ flatter identity and geometry representation.
 
 - Make the view lifecycle easier to understand and maintain.
 - Establish stable semantics for layout instances and their coordinates.
+- Provide a renderer-neutral occurrence and geometry boundary that WebGL,
+  WebGPU, Canvas, SVG, picking, and headless consumers can use without sharing
+  one backend-specific command representation.
 - Support smooth layout changes and semantic visibility for persistent concat
   children.
-- Preserve deterministic canvas, SVG, headless, picking, and interaction
-  behavior.
+- Preserve deterministic WebGL, WebGPU, Canvas, SVG, headless, picking, and
+  interaction behavior.
 - Optimize only where measurements justify the added complexity.
 
 ## Non-goals
@@ -97,8 +100,10 @@ flatter identity and geometry representation.
 
 Layout 2.0 separates concepts that currently change together:
 
-- **Render membership:** whether a persistent view has render commands and GPU
-  resources.
+- **Render membership:** whether a persistent view contributes ordered render
+  occurrences. Backend resource lifetime is related but separate: one retained
+  resource may serve several occurrences, and a hidden persistent view may keep
+  resources without appearing in the current draw list.
 - **Layout participation:** whether the view occupies space in the target
   layout.
 - **Target geometry:** the canonical result of a completed layout calculation.
@@ -134,6 +139,50 @@ evaluate this architectural choice alongside stable layout-instance storage.
 Stable layout-instance identity is a prerequisite for retention and animation.
 It should be based on explicit concepts such as view, facet, and rendering role,
 not traversal order or serialized keys.
+
+The shared layout boundary should stop at semantic occurrences, identity,
+ordering, geometry, clipping, and presentation state. It must not standardize a
+lowest-common-denominator draw command:
+
+- WebGL may compile occurrences into retained normal and picking callback
+  batches;
+- WebGPU may retain mark handles and pipelines while submitting a compact
+  ordered draw list for each frame;
+- Canvas and SVG may consume the same completed occurrences immediately.
+
+The layout result must not contain WebGL callbacks, WebGPU handles, projected
+Canvas values, WGSL/GLSL details, or backend resource objects. Each rendering
+adapter owns translation from Core occurrences to its native work.
+
+### Coordination with WebGPU integration
+
+At the time of this revision, the working WebGPU proof of concept and its
+integration plans live on the `webgpu` branch. That implementation demonstrates
+that the lifecycle split is an integration prerequisite, not only a WebGL
+cleanup: its Core adapter must traverse the view hierarchy during both layout
+and painting, rebuild mark handles to recover paint order, and reject repeated
+occurrences. Layout 2.0 should remove those Core-side constraints without moving
+Core concepts into the generic WebGPU renderer.
+
+Treat `webgpu` as a coordination and integration-fixture reference, not a
+permanent architectural dependency. Before implementing each affected phase,
+inspect or merge the relevant WebGPU changes and remove branch-specific wording
+after the implementations share a history.
+
+Sequencing rules:
+
+1. Implement Phase 1 before further restructuring the Core WebGPU coordinator.
+   Renderer-local ordered-frame, sizing, and destruction work may proceed in
+   parallel because it does not depend on Core layout internals.
+2. Adapt the WebGPU collector to the completed Phase 1 layout result while
+   preserving the PoC's fresh-handle behavior.
+3. Implement Phase 2 before general retained or repeated/faceted WebGPU
+   integration so Core has one occurrence-identity model.
+4. In Phase 3, let each backend respond differently to resource, occurrence
+   topology, geometry, and data changes. Do not make WebGL batch invalidation a
+   universal renderer contract.
+
+### External design evidence
 
 [Clay](https://github.com/nicbarker/clay) provides additional evidence for this
 direction. Its immediate-mode layout output uses stable semantic element IDs to
@@ -183,10 +232,11 @@ stopped after review.
 
 ### Phase 1: Clarify the lifecycle
 
-Refactor naming and responsibilities so layout, render-command collection, and
+Refactor naming and responsibilities so layout, backend-work collection, and
 drawing are distinguishable. Remove the misleading `View.render()` name while
-preserving behavior and full layout recomputation. Do not add speculative
-transition or performance state.
+preserving behavior and full layout recomputation. The completed layout result
+becomes the sole Core traversal source for WebGL, WebGPU, Canvas/SVG, picking,
+and tests. Do not add speculative transition or performance state.
 
 Draft plan: [Phase 1: Clarify the layout and rendering lifecycle](phase-1-lifecycle.md)
 
@@ -195,18 +245,23 @@ Draft plan: [Phase 1: Clarify the layout and rendering lifecycle](phase-1-lifecy
 Introduce the smallest representation needed to identify repeated layout
 instances and associate them with geometry. Define identity for ordinary views,
 facets, axes, legends, decorations, and App-specific repeated sample views.
-Focus on ownership and deterministic output, not animation or partial layout.
+Define render-occurrence identity separately from backend resource identity so
+one WebGPU handle can later serve several placements. Focus on ownership and
+deterministic output, not animation or partial layout.
 
 Draft plan: [Phase 2: Establish stable layout instances](phase-2-layout-instances.md)
 
-### Phase 3: Retain render batches across geometry changes
+### Phase 3: Retain backend work across geometry changes
 
 Allow a completed full layout to update stable geometry without recreating
-normal and picking batches. Separate geometry changes from render-membership or
-command-order changes. Measure batch-construction savings and retained-state
-overhead before planning further optimization.
+expensive backend work. WebGL should retain normal and picking batches; WebGPU
+should retain compatible handles and pipelines while updating or regenerating
+cheap ordered draw descriptors. Separate geometry, occurrence topology,
+resource structure, and data updates rather than representing all of them as
+one shared scene-invalidated flag. Measure savings and retained-state overhead
+before planning further optimization.
 
-Draft plan: [Phase 3: Retain render batches across geometry changes](phase-3-retained-batches.md)
+Draft plan: [Phase 3: Retain backend work across geometry changes](phase-3-retained-batches.md)
 
 ### Phase 4: Separate target and presented geometry
 
@@ -222,7 +277,7 @@ Draft plan: [Phase 4: Separate target and presented geometry](phase-4-layout-tra
 Separate target layout participation from presentation visibility for views
 that remain in the configured hierarchy. Animate concat-child entry, exit, and
 sibling reflow at semantic-zoom thresholds. Arbitrary structural mutation may
-initially remain immediate and rebuild render batches.
+initially remain immediate and update backend occurrence topology.
 
 Draft plan: [Phase 5: Semantic visibility for persistent concat children](phase-5-semantic-visibility.md)
 
@@ -279,16 +334,20 @@ implementation prematurely.
 
 - Representative Core and App specifications retain the same final layout and
   rendering after lifecycle refactors.
-- SVG, canvas export, headless rendering, normal rendering, and picking agree on
-  final geometry.
+- WebGL, WebGPU, SVG, Canvas export, headless rendering, and picking agree on
+  final geometry for their supported feature intersection.
+- Arrangement completes before any backend translates or creates mark work, and
+  drawing an already collected frame does not re-enter view arrangement.
 - The full-layout path remains an obvious correctness baseline.
 
 ### Geometry changes without scene changes
 
 - A nested step-sized view with an index scale changes size when its domain
   changes, and the final layout is correct.
-- Once batch retention exists, persistent commands observe the new geometry
-  without rebuilding normal or picking batches.
+- Once Phase 3 retention exists, persistent WebGL commands and WebGPU handles
+  observe the new geometry without reconstructing normal/picking batches or
+  compatible GPU resources. Regenerating a compact WebGPU ordered draw list is
+  allowed.
 
 ### Repeated and decorated views
 
@@ -300,7 +359,8 @@ implementation prematurely.
 - Equal rectangles belonging to different instances may later diverge without
   accidentally sharing presentation state.
 - Sample filtering updates repeated membership, layout, metadata/sidebar
-  alignment, guides, picking, and batches exactly when their contracts require.
+  alignment, guides, picking, and backend work exactly when their contracts
+  require.
 - The existing SampleView peek transition continues to update sample positions,
   sizes, facet textures, CPU/SVG positions, summaries, scrollbars, chrome, and
   interaction without double interpolation or per-frame batch construction.
@@ -338,7 +398,8 @@ implementation prematurely.
 ### Immediate and structural fallbacks
 
 - Headless rendering, reduced motion, and disabled transitions snap to targets.
-- Actual insertion or removal may rebuild batches and use immediate behavior.
+- Actual insertion or removal may rebuild backend command topology and use
+  immediate behavior.
 - Unsupported cases fall back deterministically without stale coordinates or
   commands.
 
@@ -356,6 +417,9 @@ implementation prematurely.
 - Exit paint order must account for retained mark batching; Clay's underneath,
   natural, and above-sibling policies are useful cases to evaluate, not a public
   API requirement.
+- A shared invalidation vocabulary may accidentally encode WebGL batch
+  assumptions. Core should expose semantic changes and let each backend decide
+  whether to rebuild commands, ordered draws, or GPU resources.
 - Scope may grow toward arbitrary structural transitions; YAGNI review should
   keep those out until a concrete use case requires them.
 

@@ -33,7 +33,7 @@ and [target-change handling](https://github.com/nicbarker/clay/blob/main/clay.h#
 
 A permanently stored `from` rectangle may not be necessary if it can be captured
 by the transition coordinator. The representation should be chosen only after
-Phase 3 establishes how render commands access geometry.
+Phase 3 establishes how retained backend work accesses geometry.
 
 If Phase 2/3 adopts flat numeric instance geometry, transitions can update
 presented scalar fields directly and calculate dependent clips in an explicit
@@ -53,8 +53,9 @@ target/presented interpolation to sample facets.
 
 - **Target geometry** drives subsequent layout, layout-driven width/height
   parameters, scale and axis lengths, lazy-data sizing, and target canvas size.
-- **Presented geometry** drives WebGL viewports, clipping, picking, hit testing,
-  rulers, loading indicators, and other visible interaction bounds.
+- **Presented geometry** drives WebGL and WebGPU viewports/scissors, Canvas
+  drawing, clipping, picking, hit testing, rulers, loading indicators, and other
+  visible interaction bounds.
 - Persistent instances that remain in the target layout remain interactive
   using presented geometry while they move.
 - Outside a transition the two are equal.
@@ -84,10 +85,16 @@ requirement rather than a prescribed local- or absolute-coordinate algorithm;
 the representation chosen after Phase 3 should determine the simplest method.
 
 Clipping should be derived from presented parent/viewport geometry. Pixel
-rounding should occur when applying WebGL viewport/scissor state rather than in
-canonical targets, avoiding accumulated snapping and jitter. Resize the WebGL
-backing store for the target result, not on every interpolated frame; DOM wrapper
-animation, if wanted, is a separate concern.
+rounding should occur when a backend applies viewport/scissor state rather than
+in canonical targets, avoiding accumulated snapping and jitter. Resize WebGL and
+WebGPU backing stores for the target result, not on every interpolated frame;
+DOM wrapper animation, if wanted, is a separate concern.
+
+WebGL may draw transition frames through retained callbacks whose geometry
+slots change. WebGPU may update or regenerate compact ordered draw descriptors
+that reference the same retained handles. Neither path may repeat semantic
+occurrence collection, rebuild compatible pipelines/resources, or re-enter view
+arrangement merely because presented geometry changed.
 
 ## Possible later SampleView migration
 
@@ -114,8 +121,9 @@ required for Phase 4 acceptance.
 
 - Deterministic clock tests cover start, midpoint, completion, cancellation, and
   reversal of a persistent resize/reposition.
-- Transition frames perform no layout, measurement, command collection, or batch
-  construction.
+- Transition frames perform no layout, measurement, semantic occurrence
+  collection, WebGL batch construction, or compatible WebGPU handle/pipeline
+  construction. Cheap WebGPU frame-descriptor materialization is allowed.
 - Picking, clipping, and hit testing follow midpoint presentation geometry.
 - Axis/scale sizing and a subsequent interrupted layout use target geometry.
 - Nested expansion and contraction maintain valid clipping.
@@ -130,6 +138,8 @@ required for Phase 4 acceptance.
   coordinates back into canonical view layout.
 - Headless, SVG/export, reduced-motion, and disabled paths produce final target
   geometry immediately.
+- For the WebGPU supported subset, midpoint frames preserve retained mark
+  handles and paint order while viewport/scissor geometry follows presentation.
 
 ## Non-goals
 
@@ -144,6 +154,9 @@ required for Phase 4 acceptance.
 - How should active pointer capture behave when a persistent target moves
   rapidly or becomes very small?
 - How are nested clips combined when both parent and child interpolate?
+- Should WebGPU occurrence descriptors read shared presented-geometry storage or
+  be regenerated each frame? Choose the simpler measured path without exposing
+  the choice through the shared layout API.
 - What minimal state supports interruption without allocating on every frame?
 - Should the first implementation be opt-in and use a fixed internal duration
   and easing?
