@@ -1,9 +1,9 @@
+import { createLayoutResult } from "../../view/layout/layoutResult.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 
 /**
- * Runs Core layout traversals and rebuilds the narrow PoC mark set for each
- * painted frame.
+ * Publishes settled Core layouts and consumes them with retained WebGPU marks.
  */
 export default class WebGpuRenderCoordinator {
     /**
@@ -20,6 +20,9 @@ export default class WebGpuRenderCoordinator {
         this.getBackground = options.getBackground;
         this.broadcast = options.broadcast;
         this.onLayoutComputed = options.onLayoutComputed;
+
+        /** @type {import("../../view/layout/layoutResult.js").default | undefined} */
+        this.layoutResult = undefined;
     }
 
     computeLayout() {
@@ -27,8 +30,13 @@ export default class WebGpuRenderCoordinator {
         this.surface.invalidateSize();
         let remainingPasses = 5;
         while (true) {
-            this.#traverse(false);
+            const layoutResult = this.#createLayoutResult();
+            if (!layoutResult) {
+                return;
+            }
+
             if (!this.surface.invalidateSize()) {
+                this.layoutResult = layoutResult;
                 this.onLayoutComputed();
                 this.broadcast("layoutComputed");
                 return;
@@ -44,30 +52,36 @@ export default class WebGpuRenderCoordinator {
     }
 
     renderAll() {
-        this.#assertSupportedBackground();
-        this.surface.destroyMarks();
-        this.#traverse(true);
-        this.surface.render();
-    }
-
-    /** @param {boolean} paint */
-    #traverse(paint) {
-        const size = this.surface.getLogicalCanvasSize();
-        if (isNaN(size.width) || isNaN(size.height)) {
+        const layoutResult = this.layoutResult;
+        if (!layoutResult) {
             return;
         }
 
-        const context = new WebGpuViewRenderingContext(
-            { picking: false },
-            {
-                surface: this.surface,
-                paint,
-            }
+        this.#assertSupportedBackground();
+        this.surface.beginFrame();
+        layoutResult.collectRenderCommands(
+            new WebGpuViewRenderingContext(
+                { picking: false },
+                { surface: this.surface }
+            )
         );
-        this.viewRoot.render(
-            context,
+        this.surface.render();
+    }
+
+    /** @returns {import("../../view/layout/layoutResult.js").default | undefined} */
+    #createLayoutResult() {
+        const size = this.surface.getLogicalCanvasSize();
+        if (isNaN(size.width) || isNaN(size.height)) {
+            return undefined;
+        }
+
+        return createLayoutResult(
+            this.viewRoot,
             Rectangle.create(0, 0, size.width, size.height),
-            { firstFacet: true }
+            {
+                devicePixelRatio: this.surface.getDevicePixelRatio(),
+                renderingOptions: { firstFacet: true },
+            }
         );
     }
 

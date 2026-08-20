@@ -89,10 +89,12 @@ without expanding vertices on the CPU.
 - `renderer.createMark(definition, config)` (returns `{ markId, scales, values, selections }`)
 - `renderer.updateSeries(markId, channels, count?)`
 - `renderer.updateGlobals({ width, height, dpr })`
-- `renderer.render()`
+- `renderer.render(markIds?)`
 - `renderer.destroyMark(markId)`
 
 Type definitions live in `packages/webgpu-renderer/src/index.d.ts`.
+Pass retained mark IDs to `render()` to set frame and picking order without
+recreating their resources. Omitting the argument uses creation order.
 
 Built-in marks and scales are selected through side-effect-free subpath
 imports:

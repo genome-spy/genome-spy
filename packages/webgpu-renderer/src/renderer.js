@@ -68,6 +68,8 @@ export class Renderer {
 
         /** @type {Map<MarkId, import("./index.d.ts").MarkProgram>} */
         this._marks = new Map();
+        /** @type {MarkId[] | null} */
+        this._renderOrder = null;
         this._nextMarkId = 1;
         this._pickingDirty = true;
         this._pickTexture = null;
@@ -210,8 +212,9 @@ export class Renderer {
             ],
         });
 
-        for (const mark of this._marks.values()) {
-            mark.drawPick(pass);
+        const markIds = this._renderOrder ?? this._marks.keys();
+        for (const markId of markIds) {
+            this._marks.get(markId)?.drawPick(pass);
         }
 
         pass.end();
@@ -287,9 +290,11 @@ export class Renderer {
     }
 
     /**
+     * @param {Iterable<MarkId>} [markIds]
      * @returns {void}
      */
-    render() {
+    render(markIds = this._marks.keys()) {
+        const renderOrder = Array.from(markIds);
         const commandEncoder = this.device.createCommandEncoder();
         const view = this.context.getCurrentTexture().createView();
 
@@ -305,13 +310,18 @@ export class Renderer {
             ],
         });
 
-        // TODO: Draw order is currently insertion order. Consider safe batching.
-        for (const mark of this._marks.values()) {
+        // Core layout order can change without changing retained resources.
+        for (const markId of renderOrder) {
+            const mark = this._marks.get(markId);
+            if (!mark) {
+                throw new RendererError(`No such mark: ${markId}`);
+            }
             mark.draw(pass);
         }
 
         pass.end();
         this.device.queue.submit([commandEncoder.finish()]);
+        this._renderOrder = renderOrder;
     }
 
     /**
