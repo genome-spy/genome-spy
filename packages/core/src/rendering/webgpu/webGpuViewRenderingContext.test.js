@@ -46,7 +46,13 @@ describe("WebGpuViewRenderingContext", () => {
         const adapterCalls = /** @type {any[][]} */ (
             mocks.createWebGpuMarkConfig.mock.calls
         );
-        expect(adapterCalls[0][2]).toBe(coords);
+        const markCoords = adapterCalls[0][2];
+        expect([
+            markCoords.x,
+            markCoords.y,
+            markCoords.width,
+            markCoords.height,
+        ]).toEqual([20.5, 30.5, 100, 80]);
         expect(adapterCalls[0][3]).toBe(0.25);
 
         expect(surface.useMark).toHaveBeenCalledWith(

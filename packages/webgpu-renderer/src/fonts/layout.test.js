@@ -24,6 +24,16 @@ describe("buildTextLayout", () => {
 
         expect(layout.glyphIds.length).toBe(2);
         expect(layout.stringIndex.length).toBe(2);
+        expect(layout.xOffset[0]).toBeCloseTo(
+            (-(metrics.getChar("a").width - metrics.getChar("a").xadvance) /
+                2) *
+                scale,
+            5
+        );
+        expect(layout.xOffset[1] - layout.xOffset[0]).toBeCloseTo(
+            metrics.getChar("a").xadvance * scale,
+            5
+        );
         expect(layout.textWidth[0]).toBeCloseTo(expected, 5);
         expect(layout.textHeight[0]).toBeGreaterThan(0);
     });
