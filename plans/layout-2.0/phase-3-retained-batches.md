@@ -6,12 +6,13 @@ Tentative PR title: `perf(core): retain renderer work across layout changes`
 
 ## Purpose
 
-Stop recreating expensive backend work when a full layout changes only the
-coordinates or clipping of existing layout instances. WebGL should retain its
-normal and picking batches. WebGPU should retain compatible mark handles and
-pipelines while updating or regenerating a compact ordered draw list. Canvas,
-SVG, and headless consumers need no retained batch merely to conform to this
-phase.
+Ensure expensive backend work survives when a full layout changes only the
+coordinates or clipping of existing layout instances. WebGL should begin
+retaining its normal and picking batches. WebGPU should preserve the compatible
+mark handles, pipelines, buffers, textures, and bind groups that its production
+renderer already retains while updating or regenerating a compact ordered draw
+list. Canvas, SVG, and headless consumers need no retained batch merely to
+conform to this phase.
 
 Retention decisions should be driven by explicit semantic changes, not by the
 fact that layout ran and not by one universal WebGL-shaped scene flag.
@@ -76,7 +77,7 @@ explicit semantic changes. See Clay's
   indirection chosen after Phase 2.
 - Normal and picking WebGL batches keep their identities when render membership
   and ordering are unchanged.
-- WebGPU mark handles and compatible pipelines survive geometry-only and
+- WebGPU's already-retained compatible resources survive geometry-only and
   occurrence-order changes. The adapter may regenerate cheap ordered draw
   descriptors and must preserve exact Core paint order.
 - Occurrence-topology changes rebuild WebGL batches once after a transaction;
@@ -100,8 +101,8 @@ native lifecycle:
 
 - WebGL updates geometry associated with stable IDs when topology is unchanged
   and rebuilds normal/picking batches when it changes;
-- WebGPU maps semantic mark ownership to retained handles, then emits ordered
-  occurrence draws from the completed layout result; and
+- WebGPU continues mapping semantic mark ownership to retained resources, then
+  emits ordered occurrence draws from the completed layout result; and
 - Canvas, SVG, and headless paths may consume the result without retaining a
   compiled command cache.
 
@@ -189,15 +190,15 @@ but preserves closure dispatch and repeated dependency evaluation.
 
 ## Phase acceptance and review gate
 
-The phase succeeds when geometry-only layouts demonstrably reuse WebGL batches
-and compatible WebGPU handles, occurrence reordering does not imply WebGPU
-resource recreation, and the change contract is easier to explain than sequence
-reconciliation. Measure construction savings and retained-state overhead before
-adding target and presented geometry.
+The phase succeeds when geometry-only layouts demonstrably reuse WebGL batches,
+already-retained compatible WebGPU resources survive, occurrence reordering
+does not imply WebGPU resource recreation, and the change contract is easier to
+explain than sequence reconciliation. Measure construction savings and
+retained-state overhead before adding target and presented geometry.
 
 Tentative commit sequence:
 
 1. `refactor(core): distinguish occurrence and geometry changes`
 2. `perf(core): update retained render geometry after layout`
-3. `refactor(core): retain WebGPU handles across ordered frames`
+3. `refactor(core): preserve WebGPU resources across layout changes`
 4. `test(core): distinguish layout, topology, resources, and drawing`

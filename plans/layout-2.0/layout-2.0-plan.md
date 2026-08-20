@@ -146,8 +146,9 @@ lowest-common-denominator draw command:
 
 - WebGL may compile occurrences into retained normal and picking callback
   batches;
-- WebGPU may retain mark handles and pipelines while submitting a compact
-  ordered draw list for each frame;
+- WebGPU retains compatible renderer-owned handles, pipelines, buffers,
+  textures, and bind groups across frames while submitting or regenerating a
+  compact ordered draw list as needed;
 - Canvas and SVG may consume the same completed occurrences immediately.
 
 The layout result must not contain WebGL callbacks, WebGPU handles, projected
@@ -162,7 +163,8 @@ that the lifecycle split is an integration prerequisite, not only a WebGL
 cleanup: its Core adapter must traverse the view hierarchy during both layout
 and painting, rebuild mark handles to recover paint order, and reject repeated
 occurrences. Layout 2.0 should remove those Core-side constraints without moving
-Core concepts into the generic WebGPU renderer.
+Core concepts into the generic WebGPU renderer. Rebuilding handles is only a PoC
+shortcut, not an intended resource-lifetime model for production WebGPU.
 
 Treat `webgpu` as a coordination and integration-fixture reference, not a
 permanent architectural dependency. Before implementing each affected phase,
@@ -174,13 +176,17 @@ Sequencing rules:
 1. Implement Phase 1 before further restructuring the Core WebGPU coordinator.
    Renderer-local ordered-frame, sizing, and destruction work may proceed in
    parallel because it does not depend on Core layout internals.
-2. Adapt the WebGPU collector to the completed Phase 1 layout result while
-   preserving the PoC's fresh-handle behavior.
-3. Implement Phase 2 before general retained or repeated/faceted WebGPU
-   integration so Core has one occurrence-identity model.
-4. In Phase 3, let each backend respond differently to resource, occurrence
-   topology, geometry, and data changes. Do not make WebGL batch invalidation a
-   universal renderer contract.
+2. Adapt the WebGPU collector to the completed Phase 1 layout result without
+   making Core prescribe resource lifetime. A temporary fixture may preserve
+   the PoC's fresh-handle behavior, but production WebGPU should retain
+   compatible resources from its first integration.
+3. Implement Phase 2 before repeated/faceted WebGPU integration so Core has one
+   occurrence-identity model. Basic non-repeated WebGPU resource retention does
+   not wait for Phase 2.
+4. In Phase 3, formalize how retained backend state responds to resource,
+   occurrence-topology, geometry, and data changes. Do not make WebGL batch
+   invalidation a universal renderer contract or treat Phase 3 as the point
+   where WebGPU first begins retaining resources.
 
 ### External design evidence
 
@@ -254,12 +260,12 @@ Draft plan: [Phase 2: Establish stable layout instances](phase-2-layout-instance
 ### Phase 3: Retain backend work across geometry changes
 
 Allow a completed full layout to update stable geometry without recreating
-expensive backend work. WebGL should retain normal and picking batches; WebGPU
-should retain compatible handles and pipelines while updating or regenerating
-cheap ordered draw descriptors. Separate geometry, occurrence topology,
-resource structure, and data updates rather than representing all of them as
-one shared scene-invalidated flag. Measure savings and retained-state overhead
-before planning further optimization.
+expensive backend work. WebGL should begin retaining normal and picking batches.
+WebGPU should preserve its already-retained compatible resources while updating
+or regenerating cheap ordered draw descriptors. Separate geometry, occurrence
+topology, resource structure, and data updates rather than representing all of
+them as one shared scene-invalidated flag. Measure savings and retained-state
+overhead before planning further optimization.
 
 Draft plan: [Phase 3: Retain backend work across geometry changes](phase-3-retained-batches.md)
 
@@ -344,10 +350,10 @@ implementation prematurely.
 
 - A nested step-sized view with an index scale changes size when its domain
   changes, and the final layout is correct.
-- Once Phase 3 retention exists, persistent WebGL commands and WebGPU handles
-  observe the new geometry without reconstructing normal/picking batches or
-  compatible GPU resources. Regenerating a compact WebGPU ordered draw list is
-  allowed.
+- Once the Phase 3 change contract exists, persistent WebGL commands and
+  already-retained WebGPU resources observe the new geometry without
+  reconstructing normal/picking batches or compatible GPU resources.
+  Regenerating a compact WebGPU ordered draw list is allowed.
 
 ### Repeated and decorated views
 
