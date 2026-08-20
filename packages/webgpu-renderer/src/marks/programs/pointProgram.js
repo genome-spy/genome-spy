@@ -50,6 +50,8 @@ const TICK_UP: u32 = 8u;
 const TICK_RIGHT: u32 = 9u;
 const TICK_DOWN: u32 = 10u;
 const TICK_LEFT: u32 = 11u;
+const X: u32 = 12u;
+const PLUS: u32 = 13u;
 
 fn modf(x: f32, y: f32) -> f32 {
     return x - y * floor(x / y);
@@ -96,9 +98,9 @@ fn equilateralTriangle(p: vec2<f32>, r: f32) -> f32 {
     return max((abs(q.x) * k + q.y) / 2.0, -q.y - kr);
 }
 
-fn crossShape(p: vec2<f32>, r: f32) -> f32 {
+fn crossShape(p: vec2<f32>, r: f32, armHalfWidth: f32) -> f32 {
     let q = abs(p);
-    let b = vec2<f32>(0.4, 1.0) * r;
+    let b = vec2<f32>(armHalfWidth, r);
     let v = abs(q) - b.xy;
     let h = abs(q) - b.yx;
     return min(max(v.x, v.y), max(h.x, h.y));
@@ -153,6 +155,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     } else if (shape > TRIANGLE_UP && shape <= TRIANGLE_LEFT) {
         shapeAngle = f32(shape - TRIANGLE_UP) * 90.0;
         shape = TRIANGLE_UP;
+    } else if (shape == X) {
+        shapeAngle = -45.0;
     }
 
     let angleInDegrees = getScaled_angle(i);
@@ -221,13 +225,16 @@ fn shade(in: VSOut) -> vec4<f32> {
     } else if (in.shape == SQUARE) {
         d = square(p, r);
     } else if (in.shape == CROSS) {
-        d = crossShape(p, r);
+        d = crossShape(p, r, r * 0.4);
     } else if (in.shape == DIAMOND) {
         d = diamond(p, r);
     } else if (in.shape == TRIANGLE_UP) {
         d = equilateralTriangle(p, r);
     } else if (in.shape == TICK_UP) {
         d = tickUp(p, r);
+    } else if (in.shape == X || in.shape == PLUS) {
+        let lineLength = select(r, r * 1.41421356237, in.shape == X);
+        d = crossShape(p, lineLength, in.halfStrokeWidth);
     } else {
         d = 0.0;
     }
@@ -245,13 +252,21 @@ fn shade(in: VSOut) -> vec4<f32> {
     fillColor = premultiplyAlpha(fillColor);
     strokeColor = premultiplyAlpha(strokeColor);
 
-    let offset = select(0.0, in.halfStrokeWidth, in.inwardStroke > 0u);
+    let lineShape = in.shape == X || in.shape == PLUS;
+    if (lineShape && strokeColor.a == 0.0) {
+        strokeColor = fillColor;
+    }
+    let offset = select(
+        select(0.0, in.halfStrokeWidth, in.inwardStroke > 0u),
+        0.0,
+        lineShape
+    );
     let color = distanceToColor(
         d + offset,
         fillColor,
         strokeColor,
         vec4<f32>(0.0),
-        in.halfStrokeWidth
+        select(in.halfStrokeWidth, 0.0, lineShape)
     );
 
     if (color.a == 0.0) {

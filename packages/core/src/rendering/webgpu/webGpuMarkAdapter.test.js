@@ -242,6 +242,62 @@ describe("WebGPU mark adapter", () => {
         expect(updatedX.scale.domain).toEqual([1, 0]);
     });
 
+    test("translates a rule dash pattern to the renderer atlas config", () => {
+        const mark = createMark(
+            "rule",
+            [{ x: 0, x2: 1 }],
+            {
+                x: createConstantEncoder(0),
+                x2: createConstantEncoder(1),
+                y: createConstantEncoder(0),
+                y2: createConstantEncoder(1),
+                xOffset: createConstantEncoder(0),
+                x2Offset: createConstantEncoder(0),
+                yOffset: createConstantEncoder(0),
+                y2Offset: createConstantEncoder(0),
+                size: createConstantEncoder(2),
+                color: createConstantEncoder("black"),
+                opacity: createConstantEncoder(1),
+            },
+            {
+                strokeDash: [3, 2],
+                strokeDashOffset: 1,
+                minLength: 0,
+                strokeCap: "round",
+            }
+        );
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const config = /** @type {any} */ (translated).config;
+
+        expect(config.channels.strokeDash).toEqual({
+            value: 0,
+            type: "u32",
+        });
+        expect(config.dashPatterns).toEqual([[3, 2]]);
+        expect(config.channels.strokeDashOffset).toEqual({ value: 1 });
+    });
+
+    test.each([
+        ["x", 12],
+        ["+", 13],
+    ])(
+        "maps the stroke-only point shape %s to renderer code %i",
+        (shape, code) => {
+            const mark = createMark("point", [{}], {
+                shape: createConstantEncoder(shape),
+            });
+            const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+
+            expect(
+                /** @type {any} */ (translated).config.channels.shape
+            ).toEqual({
+                value: code,
+                type: "u32",
+            });
+        }
+    );
+
     test("maps index positions to packed high-precision series", () => {
         const data = [{ x: 4 }, { x: 9 }];
         const mark = createMark("point", data, {
