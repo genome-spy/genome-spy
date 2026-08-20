@@ -4,6 +4,7 @@ import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
 import { rectMark } from "@genome-spy/webgpu-renderer/marks/rect";
 import { ruleMark } from "@genome-spy/webgpu-renderer/marks/rule";
 import { linkMark } from "@genome-spy/webgpu-renderer/marks/link";
+import { arrowMark } from "@genome-spy/webgpu-renderer/marks/arrow";
 import { textMark } from "@genome-spy/webgpu-renderer/marks/text";
 import { bandScale } from "@genome-spy/webgpu-renderer/scales/band";
 import { identityScale } from "@genome-spy/webgpu-renderer/scales/identity";
@@ -62,6 +63,21 @@ const LINK_SHAPE_CODES = new Map([
 const ORIENT_CODES = new Map([
     ["vertical", 0],
     ["horizontal", 1],
+]);
+
+const ARROW_DIRECTION_CODES = new Map([
+    ["forward", 0],
+    ["reverse", 1],
+]);
+
+const ARROW_HEAD_SHAPE_CODES = new Map([
+    ["triangle", 0],
+    ["open", 1],
+]);
+
+const ARROW_HEAD_PLACEMENT_CODES = new Map([
+    ["inside", 0],
+    ["outside", 1],
 ]);
 
 const HATCH_CODES = new Map(
@@ -143,6 +159,11 @@ export function createWebGpuMarkConfig(mark, options, coords, viewOpacity = 1) {
         return {
             definition: linkMark,
             config: createLinkConfig(mark, data, coords, viewOpacity),
+        };
+    } else if (markType == "arrow") {
+        return {
+            definition: arrowMark,
+            config: createArrowConfig(mark, data, coords, viewOpacity),
         };
     }
 
@@ -401,6 +422,77 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
         noFadingOnPointSelection: !!readProperty(
             mark,
             "noFadingOnPointSelection"
+        ),
+    };
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {object[]} data
+ * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {number} viewOpacity
+ * @returns {object}
+ */
+function createArrowConfig(mark, data, coords, viewOpacity) {
+    const headAngle = readOptionalNumericProperty(mark, "headAngle", 45);
+    const headNotchAngle = readOptionalNumericProperty(
+        mark,
+        "headNotchAngle",
+        90
+    );
+    return {
+        count: data.length,
+        channels: {
+            x: createPositionChannel(mark, "x", data, coords),
+            x2: createPositionChannel(mark, "x2", data, coords),
+            y: createPositionChannel(mark, "y", data, coords),
+            y2: createPositionChannel(mark, "y2", data, coords),
+            xOffset: createNumericChannel(mark, "xOffset", data),
+            x2Offset: createNumericChannel(mark, "x2Offset", data),
+            yOffset: createNumericChannel(mark, "yOffset", data),
+            y2Offset: createNumericChannel(mark, "y2Offset", data),
+            fill: createColorChannel(mark, "fill", data),
+            stroke: createColorChannel(mark, "stroke", data),
+            fillOpacity: createOpacityChannel(
+                mark,
+                "fillOpacity",
+                data,
+                viewOpacity
+            ),
+            strokeOpacity: createOpacityChannel(
+                mark,
+                "strokeOpacity",
+                data,
+                viewOpacity
+            ),
+            strokeWidth: createNumericChannel(mark, "strokeWidth", data),
+            size: createNumericChannel(mark, "size", data),
+            direction: createEnumChannel(
+                mark,
+                "direction",
+                data,
+                ARROW_DIRECTION_CODES
+            ),
+        },
+        headAngle: headAngleToSlope(headAngle),
+        headNotchAngle: headAngleToSlope(headNotchAngle),
+        minSize: readOptionalNumericProperty(mark, "minSize", 1),
+        headWidth: readOptionalNumericProperty(mark, "headWidth", 3),
+        startNotch: readProperty(mark, "startNotch") ? 1 : 0,
+        minStemLength: readOptionalNumericProperty(mark, "minStemLength", 0),
+        headSpacing: readNullableNumericProperty(mark, "headSpacing"),
+        stem: readProperty(mark, "stem") !== false ? 1 : 0,
+        headShape: mapProperty(
+            mark,
+            "headShape",
+            ARROW_HEAD_SHAPE_CODES,
+            "triangle"
+        ),
+        headPlacement: mapProperty(
+            mark,
+            "headPlacement",
+            ARROW_HEAD_PLACEMENT_CODES,
+            "inside"
         ),
     };
 }
@@ -987,6 +1079,31 @@ function readOptionalNumericProperty(mark, property, fallback) {
         );
     }
     return value;
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} property
+ * @returns {number | null}
+ */
+function readNullableNumericProperty(mark, property) {
+    const value = readProperty(mark, property);
+    if (value == null) {
+        return null;
+    }
+    if (typeof value != "number") {
+        throw unsupported(
+            mark,
+            `Property "${property}" must be a number in the WebGPU proof of concept.`
+        );
+    }
+    return value;
+}
+
+/** @param {number} angle */
+function headAngleToSlope(angle) {
+    const clamped = Math.min(Math.max(angle, 1), 90);
+    return Math.max(Math.tan((clamped * Math.PI) / 180), 1e-6);
 }
 
 /**
