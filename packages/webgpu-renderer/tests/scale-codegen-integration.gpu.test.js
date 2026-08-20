@@ -17,17 +17,17 @@ import {
 } from "d3-scale";
 import { buildScaleWgsl } from "../src/marks/scales/scaleWgsl.js";
 import { buildScaledFunction } from "../src/marks/scales/scaleCodegen.js";
+import { getScaleOutputType } from "../src/marks/scales/scaleDefinition.js";
 import {
-    getScaleDef,
-    getScaleDefs,
-    getScaleOutputType,
-} from "../src/marks/scales/scaleDefs.js";
+    getTestScaleDefinition,
+    getTestScaleDefinitions,
+} from "../testUtils/scaleDefinitions.js";
 import { createSchemeTexture } from "../src/utils/colorUtils.js";
 import { normalizeRangePositions } from "../src/marks/scales/scaleStops.js";
 import { ensureWebGPU, packTextureData } from "./gpuTestUtils.js";
 
 const WORKGROUP_SIZE = 64;
-const ALL_SCALE_DEFINITIONS = Object.values(getScaleDefs());
+const ALL_SCALE_DEFINITIONS = getTestScaleDefinitions();
 
 /**
  * @param {object} params
@@ -54,14 +54,14 @@ function buildScaleFn({
     useRangeTexture = false,
 }) {
     const resolvedScale = scaleConfig?.type ?? scale;
-    const scaleDef = getScaleDef(resolvedScale);
+    const scaleDef = getTestScaleDefinition(resolvedScale);
     const definedScaleConfig = scaleConfig
         ? { ...scaleConfig, definition: scaleDef }
         : undefined;
     const resolvedOutputScalar =
         outputComponents === 1
             ? (outputScalarType ??
-              getScaleOutputType(resolvedScale, inputScalarType))
+              getScaleOutputType(scaleDef, inputScalarType))
             : "f32";
     return buildScaledFunction({
         name,

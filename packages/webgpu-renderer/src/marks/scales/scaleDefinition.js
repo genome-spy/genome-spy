@@ -4,8 +4,7 @@ import { identityScaleDef } from "./defs/identity.js";
  * Resolve the immutable definition carried by a scale config.
  *
  * Identity is the only implicit scale. All other scales must arrive with an
- * explicitly imported definition, either from a code-first factory or from
- * the temporary compatibility adapter.
+ * explicitly imported definition from a code-first factory.
  *
  * @param {import("../../index.d.ts").ChannelScale | undefined} scale
  * @returns {import("../../index.d.ts").ScaleDef}
@@ -16,7 +15,7 @@ export function getScaleDefinition(scale) {
     }
     if (!scale.definition) {
         throw new Error(
-            `Scale "${scale.type}" has no definition. Import its scale factory or use the compatibility renderer.`
+            `Scale "${scale.type}" has no definition. Import and use its scale factory.`
         );
     }
     return scale.definition;

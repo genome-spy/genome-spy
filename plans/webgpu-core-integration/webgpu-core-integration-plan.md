@@ -1,6 +1,6 @@
 # WebGPU/Core integration plan
 
-Status: In progress — Milestone 1 implemented, awaiting review
+Status: In progress — Milestone 1 complete; Milestone 2 underway
 
 Date: 2026-08-20
 
@@ -11,8 +11,9 @@ review gates for an experimental WebGPU backend. It must be reconciled and remov
 before the work is merged, as required by the repository workflow.
 
 The companion [renderer API direction](webgpu-renderer-api-direction.md) records
-the code-first, tree-shakeable public API direction inferred from the PoC. It
-refines Milestone 2 without expanding the scope of Milestone 1.
+the code-first, tree-shakeable public API direction inferred from the PoC. Its
+built-in definition migration and compatibility cleanup are complete; ordered
+frame submission is the next reviewable step.
 
 ## Context
 
@@ -23,17 +24,18 @@ coupling:
   and TWGL calls are embedded in mark classes and related helpers.
 - Canvas rendering and SVG export live behind the newer rendering boundary and
   consume a backend-neutral, CPU-side mark traversal.
-- `packages/webgpu-renderer` is an early, independent WebGPU library. It already
-  implements several marks, GPU-side scales, selections, and picking primitives,
-  but it has not yet been connected to Core's view tree, dataflow, layout, or
-  interaction lifecycle.
+- `packages/webgpu-renderer` is an early, independent WebGPU library. The PoC
+  now connects it to Core's view traversal, dataflow output, and layout through
+  a narrow adapter, but not yet to the complete interaction or retained-frame
+  lifecycle.
 
-The immediate objective is a narrow proof of concept: explicitly select WebGPU
-and render `examples/core/first.json`, including its generated axes. The broader
-objective is to establish an integration boundary that can grow to full WebGL
-feature parity, while keeping WebGPU out of applications that do not select it
-and making it possible to ship a future GenomeSpy build without WebGL or WebGPU
-code.
+The initial objective—a narrow proof of concept that explicitly selects WebGPU
+and renders `examples/core/first.json`, including its generated axes—is
+complete. The next objective is to harden the renderer contracts demonstrated
+by that slice. The broader objective is to establish an integration boundary
+that can grow to full WebGL feature parity, while keeping WebGPU out of
+applications that do not select it and making it possible to ship a future
+GenomeSpy build without WebGL or WebGPU code.
 
 ## Current state and findings
 
@@ -73,10 +75,12 @@ The package already provides:
 - rect, point, rule, link, and text programs;
 - GPU scale implementations for linear, log, pow, sqrt, symlog, identity, band,
   index, threshold, quantize, and ordinal scales;
+- side-effect-free public definition subpaths for every implemented mark and
+  scale, without a production registry or string dispatch path;
 - typed storage buffers, generated WGSL, a font atlas, blending, and basic GPU
   picking pipelines.
 
-The package is not yet an embeddable Core backend:
+The package is not yet a production-ready Core backend:
 
 - `render()` draws every registered mark in insertion order. It cannot accept
   Core's per-frame paint order or draw the same semantic mark in multiple view
@@ -88,16 +92,15 @@ The package is not yet an embeddable Core backend:
 - The clear color is hardcoded to white.
 - Whole-renderer destruction is missing and lower-level resource destruction is
   incomplete.
-- `internmap` and `d3-interpolate` are imported at runtime but are not declared
-  as package dependencies.
-- The current migration document understates implemented picking support and
-  retains obsolete test status.
+- Runtime dependencies are declared by the renderer package, and its migration
+  note records the code-first definition API.
 - The scale set is not yet at Core parity. Notable missing or incompatible areas
   include point, locus, time/UTC, quantile, bin-ordinal behavior, null handling,
   expression/parameter accessors, and complete color and range semantics.
-- The GPU tests cover scale/code-generation, hash, and selection paths, but do
-  not yet establish visual correctness for point, rule, and text drawing or
-  picking output.
+- GPU tests cover scale/code-generation, imported point/linear rendering,
+  picking, hash, and selection paths. Browser smoke tests cover the PoC and all
+  standalone mark scenes, but retained occurrence ordering and lifecycle still
+  need dedicated coverage.
 
 ### What `first.json` actually requires
 
@@ -322,7 +325,7 @@ datum may remain backend-independent.
 
 ### Milestone 1: Render `first.json` through the thinnest WebGPU path
 
-Implementation status: Complete on 2026-08-20; review gate pending.
+Implementation status: Complete and reviewed on 2026-08-20.
 
 Outcome: selecting `renderer: "webgpu"` produces a browser-visible rendering of
 the complete first example, including generated guides, without first perfecting
@@ -450,13 +453,23 @@ Verification completed for the slice:
 
 ### Milestone 2: Harden only the renderer contracts validated by the PoC
 
-Implementation status: Definition and bundle-proof slice complete on
-2026-08-20; API review pending before ordered frame submission.
+Implementation status: Built-in definition migration and bundle-proof slice
+complete on 2026-08-20; ordered frame submission is next.
 
 Outcome: the successful vertical slice no longer depends on accidental or
 ambiguous renderer behavior, while unused generality remains deferred.
 
-Implementation:
+Completed definition slice:
+
+- declare all runtime package dependencies;
+- expose every implemented mark and scale through side-effect-free definitions;
+- migrate Core and standalone examples away from string creation and the
+  production scale registry;
+- prove that point plus linear exclude unrelated features from a focused
+  production bundle;
+- keep the existing typed-column and slot-update model.
+
+Remaining implementation:
 
 - formalize logical-size, physical attachment, and DPR semantics demonstrated by
   the slice;
@@ -466,13 +479,8 @@ Implementation:
   by Core and the standalone examples;
 - add whole-renderer destruction and complete cleanup for resources owned by the
   integrated path;
-- declare all runtime package dependencies;
-- migrate point and linear scale creation to explicitly imported definitions and
-  prove that unrelated features are absent from a focused production bundle;
 - replace PoC-specific API workarounds in the Core adapter with the validated
   public renderer contracts;
-- preserve the current typed-column and slot-update model while changing the
-  creation and frame-submission surface;
 - do not add picking, facets, or scale parity merely to make the API appear
   complete.
 
@@ -665,8 +673,9 @@ layer would add weight without removing the Core semantic adapter.
    The PoC showed that creation order requires rebuilding every handle, so the
    companion API note settles on explicit ordered draws. Exact field names and
    batching rules remain subject to the Step 2 review gate.
-3. Will Core's pixel-range migration land before Milestone 1? If yes, omit the
-   compatibility shim and test the native range contract directly.
+3. Core's pixel-range migration did not precede the PoC. Keep the isolated
+   unit-to-pixel adapter shim until that migration lands, then remove it and
+   test the native range contract directly.
 4. Where should public font registration and atlas ownership live? The embedded
    default is sufficient for `first.json`, but not for parity.
 5. What asynchronous picking semantics should Core expose for stale pointer

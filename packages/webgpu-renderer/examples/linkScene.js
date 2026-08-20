@@ -1,4 +1,7 @@
 import { createExampleRenderer, setupResize } from "./utils.js";
+import { linkMark } from "../src/marks/link.js";
+import { identityScale } from "../src/scales/identity.js";
+import { linearScale } from "../src/scales/linear.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -29,7 +32,7 @@ export default async function runLinkScene(canvas) {
         size[i] = 1.5 + Math.pow(Math.random(), 2) * 2.5;
     }
 
-    const { markId, scales } = renderer.createMark("link", {
+    const { markId, scales } = renderer.createMark(linkMark, {
         count,
         segments: 64,
         linkShape: "arc",
@@ -41,24 +44,24 @@ export default async function runLinkScene(canvas) {
             x: {
                 data: x,
                 type: "f32",
-                scale: { type: "linear", domain: [0, 1] },
+                scale: linearScale({ domain: [0, 1] }),
             },
             x2: {
                 data: x2,
                 type: "f32",
-                scale: { type: "linear", domain: [0, 1] },
+                scale: linearScale({ domain: [0, 1] }),
             },
             y: {
                 data: y,
                 type: "f32",
-                scale: { type: "linear", domain: [0, 1] },
+                scale: linearScale({ domain: [0, 1] }),
             },
             y2: {
                 data: y2,
                 type: "f32",
-                scale: { type: "linear", domain: [0, 1] },
+                scale: linearScale({ domain: [0, 1] }),
             },
-            size: { data: size, type: "f32", scale: { type: "identity" } },
+            size: { data: size, type: "f32", scale: identityScale() },
             color: { value: [0.25, 0.4, 0.9, 1.0] },
             opacity: { value: 0.7 },
         },

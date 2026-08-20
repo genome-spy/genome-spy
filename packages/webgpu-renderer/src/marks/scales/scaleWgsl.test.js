@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { getScaleDefs } from "./scaleDefs.js";
+import { getTestScaleDefinitions } from "../../../testUtils/scaleDefinitions.js";
 import { buildScaleWgsl } from "./scaleWgsl.js";
 
-const ALL_SCALE_DEFINITIONS = Object.values(getScaleDefs());
+const ALL_SCALE_DEFINITIONS = getTestScaleDefinitions();
 
 describe("scaleWgsl", () => {
     it("includes common helpers and per-scale WGSL snippets", () => {

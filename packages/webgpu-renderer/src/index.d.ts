@@ -177,6 +177,12 @@ export type DefinedChannelScale = ChannelScale & {
     definition: ScaleDef;
 };
 
+export type ConfiguredScale<T extends string> = DefinedChannelScale & {
+    type: T;
+};
+
+export type ScaleOptions = Omit<ChannelScale, "type" | "definition">;
+
 export type LinearScaleOptions = Pick<
     ChannelScale,
     "domain" | "range" | "interpolate" | "clamp" | "round"

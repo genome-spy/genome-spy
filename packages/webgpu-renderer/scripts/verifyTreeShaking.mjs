@@ -42,12 +42,10 @@ try {
     }
 
     const forbidden = [
-        "src/compatibility.js",
         "src/marks/programs/rectProgram.js",
         "src/marks/programs/ruleProgram.js",
         "src/marks/programs/linkProgram.js",
         "src/marks/programs/textProgram.js",
-        "src/marks/scales/scaleDefs.js",
         "src/marks/scales/defs/band.js",
         "src/marks/scales/defs/index.js",
         "src/marks/scales/defs/log.js",

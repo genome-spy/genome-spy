@@ -1,5 +1,9 @@
 import { cssColorToArray } from "../src/utils/colorUtils.js";
 import { createExampleRenderer, setupResize } from "./utils.js";
+import { rectMark } from "../src/marks/rect.js";
+import { indexScale } from "../src/scales/index.js";
+import { linearScale } from "../src/scales/linear.js";
+import { thresholdScale } from "../src/scales/threshold.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -33,58 +37,53 @@ export default async function runThresholdScene(canvas) {
     const belowZero = [...cssColorToArray("#ed553b"), 1];
     const aboveZero = [...cssColorToArray("#20639b"), 1];
 
-    const { markId, scales } = renderer.createMark("rect", {
+    const { markId, scales } = renderer.createMark(rectMark, {
         count,
         channels: {
             x: {
                 data: x,
                 type: "u32",
-                scale: {
-                    type: "index",
+                scale: indexScale({
                     domain: xDomain,
                     paddingInner: 0.1,
                     paddingOuter: 0.1,
                     align: 0.5,
                     band: 0.0,
-                },
+                }),
             },
             x2: {
                 data: x2,
                 type: "u32",
-                scale: {
-                    type: "index",
+                scale: indexScale({
                     domain: xDomain,
                     paddingInner: 0.1,
                     paddingOuter: 0.1,
                     align: 0.5,
                     band: 1.0,
-                },
+                }),
             },
             y: {
                 data: y,
                 type: "f32",
-                scale: {
-                    type: "linear",
+                scale: linearScale({
                     domain: yDomain,
-                },
+                }),
             },
             y2: {
                 value: 0,
                 type: "f32",
-                scale: {
-                    type: "linear",
+                scale: linearScale({
                     domain: yDomain,
-                },
+                }),
             },
             fill: {
                 data: y,
                 type: "f32",
                 inputComponents: 1,
-                scale: {
-                    type: "threshold",
+                scale: thresholdScale({
                     domain: [0],
                     range: [belowZero, aboveZero],
-                },
+                }),
             },
             stroke: { value: [0.1, 0.1, 0.1, 1.0] },
             strokeWidth: { value: 1.0 },

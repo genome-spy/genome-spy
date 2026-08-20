@@ -11,18 +11,6 @@ export class RendererError extends Error {}
  * @returns {Promise<Renderer>}
  */
 export async function createRenderer(canvas, options = {}) {
-    return createRendererWithFeatures(canvas, options, {});
-}
-
-/**
- * Internal factory used by the temporary all-builtins compatibility entry.
- *
- * @param {HTMLCanvasElement} canvas
- * @param {import("./index.d.ts").RendererOptions} options
- * @param {{ legacyMarkDefinitions?: Map<string, import("./index.d.ts").MarkDefinition<any>> }} features
- * @returns {Promise<Renderer>}
- */
-export async function createRendererWithFeatures(canvas, options, features) {
     if (!navigator.gpu) {
         throw new RendererError("WebGPU is not supported in this browser.");
     }
@@ -55,7 +43,7 @@ export async function createRendererWithFeatures(canvas, options, features) {
         alphaMode: options.alphaMode ?? "premultiplied",
     });
 
-    return new Renderer({ device, context, format, canvas, features });
+    return new Renderer({ device, context, format, canvas });
 }
 
 /**
@@ -68,9 +56,9 @@ export class Renderer {
      */
 
     /**
-     * @param {{ device: GPUDevice, context: GPUCanvasContext, format: GPUTextureFormat, canvas: HTMLCanvasElement, features?: { legacyMarkDefinitions?: Map<string, import("./index.d.ts").MarkDefinition<any>> } }} params
+     * @param {{ device: GPUDevice, context: GPUCanvasContext, format: GPUTextureFormat, canvas: HTMLCanvasElement }} params
      */
-    constructor({ device, context, format, canvas, features = {} }) {
+    constructor({ device, context, format, canvas }) {
         this.device = device;
         this.context = context;
         this.format = format;
@@ -80,8 +68,6 @@ export class Renderer {
 
         /** @type {Map<MarkId, import("./index.d.ts").MarkProgram>} */
         this._marks = new Map();
-        this._legacyMarkDefinitions =
-            features.legacyMarkDefinitions ?? new Map();
         this._nextMarkId = 1;
         this._pickingDirty = true;
         this._pickTexture = null;
@@ -137,20 +123,11 @@ export class Renderer {
 
     /**
      * @template TConfig
-     * @param {import("./index.d.ts").MarkDefinition<TConfig> | import("./index.d.ts").MarkType} definitionOrType
+     * @param {import("./index.d.ts").MarkDefinition<TConfig>} definition
      * @param {TConfig} config
      * @returns {import("./index.d.ts").MarkHandle}
      */
-    createMark(definitionOrType, config) {
-        const definition =
-            typeof definitionOrType == "string"
-                ? this._legacyMarkDefinitions.get(definitionOrType)
-                : definitionOrType;
-        if (!definition) {
-            throw new RendererError(
-                `No mark definition for: ${String(definitionOrType)}`
-            );
-        }
+    createMark(definition, config) {
         const mark = definition.createProgram(this, config);
 
         const markId = /** @type {MarkId} */ (this._nextMarkId++);

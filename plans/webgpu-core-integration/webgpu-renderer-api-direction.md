@@ -1,6 +1,6 @@
 # WebGPU renderer API direction
 
-Status: In progress — Step 1 implemented, awaiting API review
+Status: In progress — definition migration complete; ordered frames next
 
 Date: 2026-08-20
 
@@ -59,8 +59,8 @@ renderer model is viable:
 - the unit-to-pixel mismatch can remain an isolated Core adapter concern until
   Core completes its pixel-range migration.
 
-The PoC also exposed integration friction that is architectural rather than a
-missing mark feature:
+At the initial PoC checkpoint, the integration also exposed friction that was
+architectural rather than a missing mark feature:
 
 - `renderer.createMark("point", config)` dispatches through a central string
   switch, which statically imports every built-in mark program;
@@ -77,10 +77,12 @@ missing mark feature:
 - the package root exposes scale-code-generation internals even though the
   intended public surface is described as small.
 
-The current lazy Core integration emits an approximately 285 kB asynchronous
-WebGPU chunk (about 116 kB gzip). Dynamic import keeps it off the Canvas path,
-but the central imports prevent consumers from retaining only the marks,
-scales, and text support that they actually use.
+At that checkpoint, the lazy Core integration emitted an approximately 285 kB
+asynchronous WebGPU chunk (about 116 kB gzip). Dynamic import kept it off the
+Canvas path, but the central imports prevented consumers from retaining only
+the marks, scales, and text support that they used. The definition migration
+below removed those central imports; the old size remains a PoC baseline rather
+than a description of the current module graph.
 
 ## Goals
 
@@ -238,6 +240,7 @@ should have side-effect-free subpath exports, for example:
 @genome-spy/webgpu-renderer/marks/point
 @genome-spy/webgpu-renderer/marks/text
 @genome-spy/webgpu-renderer/scales/linear
+@genome-spy/webgpu-renderer/scales/identity
 @genome-spy/webgpu-renderer/scales/band
 @genome-spy/webgpu-renderer/fonts/lato
 ```
@@ -287,7 +290,7 @@ parity work at once.
 
 ### Step 1: Establish definitions and bundle proof
 
-Implementation status: Complete on 2026-08-20; review gate pending.
+Implementation status: Complete and reviewed on 2026-08-20.
 
 Outcome: one mark and one scale can be imported without the built-in registries
 or unrelated implementations.
@@ -327,28 +330,38 @@ The first slice uses small value-based protocols:
 - identity remains the only implicit scale. Every other generic scale config
   must carry a definition.
 
-The ordinary renderer no longer imports built-in mark programs or the scale
+The ordinary renderer no longer imports built-in mark programs or a scale
 registry. Shader generation, validation, and resource planning consume the
 definition attached to each scale config. WGSL dependencies are definition
-references rather than registry names. The old string-based creation path now
-lives in `@genome-spy/webgpu-renderer/compatibility`, which explicitly imports
-all built-ins and attaches definitions before program construction. Existing
-examples and the Core PoC use this temporary entry until their marks migrate.
+references rather than registry names.
 
 Public subpaths now expose:
 
 ```text
 @genome-spy/webgpu-renderer
 @genome-spy/webgpu-renderer/marks/point
+@genome-spy/webgpu-renderer/marks/rect
+@genome-spy/webgpu-renderer/marks/rule
+@genome-spy/webgpu-renderer/marks/link
+@genome-spy/webgpu-renderer/marks/text
+@genome-spy/webgpu-renderer/scales/identity
 @genome-spy/webgpu-renderer/scales/linear
-@genome-spy/webgpu-renderer/compatibility
+@genome-spy/webgpu-renderer/scales/log
+@genome-spy/webgpu-renderer/scales/pow
+@genome-spy/webgpu-renderer/scales/sqrt
+@genome-spy/webgpu-renderer/scales/symlog
+@genome-spy/webgpu-renderer/scales/quantize
+@genome-spy/webgpu-renderer/scales/band
+@genome-spy/webgpu-renderer/scales/index
+@genome-spy/webgpu-renderer/scales/ordinal
+@genome-spy/webgpu-renderer/scales/threshold
 ```
 
-The production Rollup fixture for the first three entries contains point and
-linear implementations but excludes the compatibility module, rect, rule,
-link, text, the built-in scale registry, every unrelated scale definition, and
-font support. Its current unminified output is approximately 225 kB across 40
-included modules. This is a module-selection baseline, not a bundle-size target:
+The production Rollup fixture for point and linear contains their
+implementations but excludes rect, rule, link, text, every unrelated scale
+definition, and font support. Its current unminified output is approximately
+224 kB across 41 included modules. This is a module-selection baseline, not a
+bundle-size target:
 the point program still uses substantial generic channel, resource, selection,
 color, and picking infrastructure.
 
@@ -365,11 +378,27 @@ Verification completed for the slice:
 - browser smoke of `first.json`: complete point and guide rendering; the only
   console error was the development server's missing favicon.
 
-The review should focus on whether `MarkDefinition.createProgram` is an
-appropriately small extension protocol and whether the scale factory should
-continue returning a config that carries its definition. Custom scale authoring
-remains intentionally undocumented until this shape is approved. No production
-global registration is needed by the code-first path.
+The review accepted imported, value-based definitions and scale configs that
+carry their definition as the built-in migration path. The exact custom
+authoring contract remains intentionally undocumented while
+`MarkDefinition.createProgram` and the breadth of `ScaleOptions` are still
+experimental. No production global registration is needed by the code-first
+path.
+
+#### Compatibility cleanup
+
+After the initial checkpoint, the temporary compatibility entry proved to add
+more maintenance surface than value. All standalone examples and the Core PoC
+were migrated to imported definitions, the string dispatch hooks were removed
+from `Renderer`, and the scale registry was deleted. Tests that need the full
+scale catalog now assemble it in test-only code. No production compatibility
+facade remains.
+
+Every implemented mark and scale now has a side-effect-free public subpath.
+Cleanup verification covers the renderer unit and GPU suites, public-package
+type imports for the complete built-in catalog, the point/linear bundle graph,
+Core type and adapter tests, the `first.json` browser fixture, and every
+standalone renderer scene.
 
 ### Step 2: Add ordered frame submission and migrate the PoC
 
@@ -380,8 +409,8 @@ establish paint order.
 - add an explicit ordered draw list with viewport, scissor, opacity, and
   instance range fields needed by Core;
 - formalize logical size, DPR, clear color, and renderer destruction;
-- migrate the Core adapter to point and linear definitions plus the new frame
-  API;
+- keep the Core adapter on imported definitions while migrating it to the new
+  frame API;
 - retain the isolated unit-to-pixel shim until Core's pixel-range migration.
 
 Affected areas: renderer frame/lifecycle API, Core WebGPU surface and
@@ -399,15 +428,17 @@ Tentative commit: `refactor(webgpu): submit explicit ordered draw frames`
 Review gate: inspect whether the generic draw descriptor covers Core
 occurrences without exposing Core concepts.
 
-### Step 3: Remove registries as feature slices migrate
+### Step 3: Slice optional facilities
 
-Outcome: each supported mark and scale is available through a tree-shakeable
-definition, and the renderer core contains no built-in name switch.
+Implementation status: built-in mark and scale subpaths, registry removal, and
+compatibility removal completed early on 2026-08-20; optional feature slicing
+remains.
 
-- migrate remaining built-ins in feature-parity slices;
+Outcome: optional facilities can be imported independently, while every
+supported mark and scale remains available through a tree-shakeable definition
+and the renderer core contains no built-in name switch.
+
 - separate optional text/font, picking, and advanced scale facilities;
-- delete the built-in mark switch, scale registry, and temporary name-based
-  compatibility path after their consumers migrate;
 - decide whether a declarative convenience facade has demonstrated enough value
   to live in a separate entry or package.
 
@@ -423,8 +454,8 @@ and lifecycle are supportable.
 Tentative commits: one conventional commit per independently reviewable mark,
 scale, or optional facility slice.
 
-Review gate: remove the compatibility path only when the repository contains no
-remaining consumers and its behavior is covered by the new API.
+Review gate: confirm optional facilities can be separated without reintroducing
+a registry or eager feature imports.
 
 ## Alternatives considered
 

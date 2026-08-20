@@ -1,4 +1,8 @@
 import { createExampleRenderer, setupResize } from "./utils.js";
+import { ruleMark } from "../src/marks/rule.js";
+import { identityScale } from "../src/scales/identity.js";
+import { linearScale } from "../src/scales/linear.js";
+import { ordinalScale } from "../src/scales/ordinal.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -59,7 +63,7 @@ export default async function runRuleScene(canvas) {
         dash[i] = color[i] % 6;
     }
 
-    const { markId, scales } = renderer.createMark("rule", {
+    const { markId, scales } = renderer.createMark(ruleMark, {
         count,
         dashPatterns: [
             [1, 0],
@@ -73,32 +77,32 @@ export default async function runRuleScene(canvas) {
             x: {
                 data: x,
                 type: "f32",
-                scale: { type: "linear", domain: [0, 1] },
+                scale: linearScale({ domain: [0, 1] }),
             },
             x2: {
                 data: x2,
                 type: "f32",
-                scale: { type: "linear", domain: [0, 1] },
+                scale: linearScale({ domain: [0, 1] }),
             },
             y: {
                 data: y,
                 type: "f32",
-                scale: { type: "linear", domain: [0, 1] },
+                scale: linearScale({ domain: [0, 1] }),
             },
             y2: {
                 data: y2,
                 type: "f32",
-                scale: { type: "linear", domain: [0, 1] },
+                scale: linearScale({ domain: [0, 1] }),
             },
             size: {
                 data: size,
                 type: "f32",
-                scale: { type: "identity" },
+                scale: identityScale(),
             },
             color: {
                 data: color,
                 type: "u32",
-                scale: { type: "ordinal", domain: colorDomain, range: palette },
+                scale: ordinalScale({ domain: colorDomain, range: palette }),
             },
             strokeDash: { data: dash, type: "u32" },
             opacity: { value: 0.9 },

@@ -1,4 +1,9 @@
+/* global document, window, performance, requestAnimationFrame, cancelAnimationFrame */
+
 import { createExampleRenderer, setupResize } from "./utils.js";
+import { pointMark } from "../src/marks/point.js";
+import { identityScale } from "../src/scales/identity.js";
+import { indexScale } from "../src/scales/index.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -72,27 +77,26 @@ export default async function runIndexScene(canvas) {
             markId = null;
         }
 
-        const handle = renderer.createMark("point", {
+        const handle = renderer.createMark(pointMark, {
             count,
             channels: {
                 x: {
                     data: activeValues,
                     type: "u32",
                     inputComponents: dataset.inputComponents,
-                    scale: {
-                        type: "index",
+                    scale: indexScale({
                         domain: [baseStart, baseStart + baseSpan],
                         paddingInner: 0,
                         paddingOuter: 0,
                         align: 0,
                         band: 0.5,
-                    },
+                    }),
                 },
                 y: {
                     value: 0,
                     type: "f32",
                     dynamic: true,
-                    scale: { type: "identity" },
+                    scale: identityScale(),
                 },
                 size: { value: 120 },
                 fill: { value: [0.2, 0.5, 0.8, 1.0] },

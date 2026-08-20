@@ -3,7 +3,8 @@ import {
     buildScaledFunction,
     validateScaleConfig as validateDefinedScaleConfig,
 } from "./scaleCodegen.js";
-import { getScaleDef } from "./scaleDefs.js";
+import { bandScaleDef } from "./defs/band.js";
+import { ordinalScaleDef } from "./defs/ordinal.js";
 import {
     attachScaleDefinitions,
     createTestScale,
@@ -61,7 +62,7 @@ describe("scaleCodegen validation", () => {
                 type: "f32",
             })
         ).toThrow(
-            'Scale "mystery" has no definition. Import its scale factory or use the compatibility renderer.'
+            'Scale "mystery" has no definition. Import and use its scale factory.'
         );
     });
 
@@ -206,7 +207,7 @@ describe("scaleCodegen codegen", () => {
     it("uses domain hash maps for band scales with ordinal domains", () => {
         const code = buildScaledFunction({
             name: "x",
-            scaleDef: getScaleDef("band"),
+            scaleDef: bandScaleDef,
             rawValueExpr: "read_x(i)",
             scalarType: "u32",
             inputComponents: 1,
@@ -226,7 +227,7 @@ describe("scaleCodegen codegen", () => {
     it("uses domain hash maps for ordinal scales with explicit domains", () => {
         const code = buildScaledFunction({
             name: "fill",
-            scaleDef: getScaleDef("ordinal"),
+            scaleDef: ordinalScaleDef,
             rawValueExpr: "read_fill(i)",
             scalarType: "u32",
             inputComponents: 1,
