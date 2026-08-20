@@ -3,13 +3,18 @@
  */
 export function createMockRenderer() {
     const device = {
-        createBuffer: () => ({}),
+        createBuffer: (/** @type {GPUBufferDescriptor} */ { size }) => ({
+            size,
+            destroy() {},
+        }),
         createBindGroupLayout: () => ({}),
         createPipelineLayout: () => ({}),
         createShaderModule: () => ({}),
         createRenderPipeline: () => ({}),
         createBindGroup: () => ({}),
-        queue: { writeBuffer: () => {} },
+        createSampler: () => ({}),
+        createTexture: () => ({ createView: () => ({}) }),
+        queue: { writeBuffer: () => {}, writeTexture: () => {} },
     };
 
     return /** @type {import("../renderer.js").Renderer} */ (

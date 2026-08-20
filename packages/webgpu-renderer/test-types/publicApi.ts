@@ -45,7 +45,7 @@ export async function createPointExample(
     canvas: HTMLCanvasElement
 ): Promise<void> {
     const renderer = await createRenderer(canvas);
-    renderer.createMark(pointMark, {
+    const points = renderer.createMark(pointMark, {
         channels: {
             x: {
                 data: new Float32Array([0, 1]),
@@ -58,6 +58,23 @@ export async function createPointExample(
                 scale: linearScale({ domain: [0, 1], range: [100, 0] }),
             },
         },
+    });
+    points.series.replace({
+        x: new Float32Array([0.25, 0.75]),
+        y: new Float32Array([0.75, 0.25]),
+    });
+
+    const labels = renderer.createMark(textMark, {
+        channels: {
+            text: { data: ["0.00000"] },
+            x: { data: new Float32Array([0]), scale: identityScale() },
+            y: { data: new Float32Array([0]), scale: identityScale() },
+        },
+    });
+    labels.series.replace({
+        text: ["-1.0", "1.0"],
+        x: new Float32Array([0, 100]),
+        y: new Float32Array([50, 50]),
     });
 }
 

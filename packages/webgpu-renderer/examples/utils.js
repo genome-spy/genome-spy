@@ -11,21 +11,19 @@ setDebugResourcesEnabled(true);
  */
 export async function createExampleRenderer(canvas) {
     const renderer = await createRenderer(canvas);
-    const labels = new Map();
 
     const createMark = renderer.createMark.bind(renderer);
     renderer.createMark = (definition, config) => {
         const handle = createMark(definition, config);
-        const { markId } = handle;
-        labels.set(markId, definition.type);
+        const replaceSeries = handle.series.replace;
+        handle.series.replace = (series, count) => {
+            replaceSeries(series, count);
+            renderer.debugResources(
+                handle.markId,
+                `example:${definition.type}`
+            );
+        };
         return handle;
-    };
-
-    const updateSeries = renderer.updateSeries.bind(renderer);
-    renderer.updateSeries = (markId, channels, count) => {
-        updateSeries(markId, channels, count);
-        const label = labels.get(markId) ?? `mark:${markId}`;
-        renderer.debugResources(markId, `example:${label}`);
     };
 
     return renderer;

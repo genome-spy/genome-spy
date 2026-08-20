@@ -1,3 +1,3 @@
-import type { MarkConfig, MarkDefinition } from "../index.js";
+import type { MarkConfig, MarkDefinition, TextSeries } from "../index.js";
 
-export const textMark: MarkDefinition<MarkConfig<"text">>;
+export const textMark: MarkDefinition<MarkConfig<"text">, TextSeries>;

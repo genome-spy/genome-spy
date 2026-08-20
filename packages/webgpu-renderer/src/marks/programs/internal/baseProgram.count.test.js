@@ -122,4 +122,25 @@ describe("BaseProgram count inference", () => {
 
         expect(program.count).toBe(4);
     });
+
+    it("replaces complete series through the retained handle slot", () => {
+        const renderer = createMockRenderer();
+        const program = new TestSeriesProgram(renderer, {
+            channels: {
+                x: {
+                    data: new Float32Array([0, 1]),
+                    type: "f32",
+                },
+            },
+        });
+
+        program
+            .getSlotHandles()
+            .series.replace({ x: new Float32Array([0, 1, 2]) });
+
+        expect(program.count).toBe(3);
+        expect(() => program.getSlotHandles().series.replace({})).toThrow(
+            'Series replacement is missing channel "x".'
+        );
+    });
 });

@@ -107,7 +107,7 @@ export default class WebGpuSurface {
 
     /**
      * @param {import("../../marks/mark.js").default} mark
-     * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any>} definition
+     * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
      * @param {object} config
      */
     useMark(mark, definition, config) {
@@ -127,12 +127,7 @@ export default class WebGpuSurface {
             retained = { definition, handle };
             this.#marks.set(mark, retained);
         } else {
-            updateRetainedMark(
-                this.#renderer,
-                retained.handle,
-                retained.definition,
-                config
-            );
+            updateRetainedMark(retained.handle, config);
         }
 
         this.#frameMarkIds.push(retained.handle.markId);
@@ -187,18 +182,18 @@ function makeRetainableConfig(config) {
  * Updates the resource slots exposed by the renderer's public mark handle.
  * The PoC grammar keeps channel structure stable after initialization.
  *
- * @param {import("@genome-spy/webgpu-renderer").Renderer} renderer
  * @param {import("@genome-spy/webgpu-renderer").MarkHandle} handle
- * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any>} definition
  * @param {any} config
  */
-function updateRetainedMark(renderer, handle, definition, config) {
-    /** @type {Record<string, import("@genome-spy/webgpu-renderer").TypedArray>} */
+function updateRetainedMark(handle, config) {
+    /** @type {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} */
     const series = {};
 
     for (const [name, channel] of Object.entries(config.channels)) {
-        if (ArrayBuffer.isView(channel.data)) {
+        if (ArrayBuffer.isView(channel.data) || Array.isArray(channel.data)) {
             series[name] = channel.data;
+        } else if (typeof channel.value == "string") {
+            series[name] = channel.value;
         }
 
         const scaleSlot = handle.scales[name]?.default;
@@ -217,15 +212,11 @@ function updateRetainedMark(renderer, handle, definition, config) {
         }
     }
 
-    // Text layout expands series to glyph instances. Updating the source
-    // strings needs a dedicated public renderer slot that the PoC lacks.
-    if (definition.type != "text") {
-        renderer.updateSeries(handle.markId, series, config.count);
-    }
+    handle.series.replace(series, config.count);
 }
 
 /**
  * @typedef {object} RetainedMark
- * @prop {import("@genome-spy/webgpu-renderer").MarkDefinition<any>} definition
+ * @prop {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
  * @prop {import("@genome-spy/webgpu-renderer").MarkHandle} handle
  */

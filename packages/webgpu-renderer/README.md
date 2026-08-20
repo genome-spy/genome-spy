@@ -86,8 +86,8 @@ without expanding vertices on the CPU.
 ## API (Public Surface)
 
 - `createRenderer(canvas, options)`
-- `renderer.createMark(definition, config)` (returns `{ markId, scales, values, selections }`)
-- `renderer.updateSeries(markId, channels, count?)`
+- `renderer.createMark(definition, config)` (returns `{ markId, series, scales, values, selections }`)
+- `handle.series.replace(channels, count?)`
 - `renderer.updateGlobals({ width, height, dpr })`
 - `renderer.render(markIds?)`
 - `renderer.destroyMark(markId)`
@@ -146,7 +146,7 @@ import { linearScale } from "@genome-spy/webgpu-renderer/scales/linear";
 const renderer = await createRenderer(canvas);
 const x = new Float32Array([0, 0.5, 1]);
 const y = new Float32Array([0.2, 0.8, 0.4]);
-const { markId, scales } = renderer.createMark(pointMark, {
+const { markId, series, scales } = renderer.createMark(pointMark, {
   channels: {
     x: {
       data: x,
@@ -163,6 +163,7 @@ const { markId, scales } = renderer.createMark(pointMark, {
 });
 
 scales.x.setDomain([0.1, 0.9]);
+series.replace({ x, y });
 renderer.render();
 ```
 
@@ -170,12 +171,12 @@ renderer.render();
 infers it from the series buffer lengths. For value-only marks, the count
 defaults to `1`, so pass an explicit value when you want a different count.
 
-## Slot Handles for Scales and Values
+## Slot Handles for Series, Scales, and Values
 
-`createMark` returns slot handles that let you update scales and dynamic values
-without string lookups. Slots are prevalidated at mark creation; updates are
-lean and do not re-run full validation. A slot group exists only when you
-define a scale or dynamic value for that channel, so you can treat it as
+`createMark` returns slot handles that replace logical series and update scales
+and dynamic values without looking up the mark through the renderer. Scale and
+value slots are prevalidated at mark creation. A slot group exists only when
+you define a scale or dynamic value for that channel, so you can treat it as
 present in your own mark configs.
 
 ```js
@@ -206,10 +207,17 @@ selection.
 If multiple channels reference the same `TypedArray` at mark creation, the
 renderer treats them as a shared series buffer and reuses a single GPU binding.
 Sharing is determined by `TypedArray` identity and stays fixed for the mark.
-When updating series data, all channels in the group must be updated together
-with the same array instance (you can swap to a new array as long as the group
-stays shared). Array lengths may change. If you need a different sharing
-pattern, recreate the mark.
+`series.replace()` requires every series-backed channel configured on the mark.
+Channels in a shared group must still use the same array instance (you can swap
+to a new array as long as the group stays shared). Array lengths may change. If
+you need a different sharing pattern, recreate the mark.
+
+Text handles accept logical strings in the `text` series. The text definition
+rebuilds glyph layout and expands the other per-string series as a complete set
+while retaining the pipeline and font atlas. Numeric arrays must contain one
+value per logical string; glyph-expanded arrays are renderer internals. Shared
+source arrays remain shared after expansion. Scalar text requires an explicit
+count.
 
 ## Selections & Conditional Encoding
 

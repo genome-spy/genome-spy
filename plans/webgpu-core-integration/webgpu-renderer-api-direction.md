@@ -171,11 +171,16 @@ an ID that must be passed back into renderer methods. The handle should expose
 only updates that preserve its pipeline and resource shape:
 
 ```js
-points.updateSeries({ x: nextX, y: nextY });
+points.series.replace({ x: nextX, y: nextY });
 points.scales.x.setDomain([2, 8]);
 points.values.size.set(144);
 points.destroy();
 ```
+
+Series replacement is definition-owned. Text handles accept logical strings
+and per-string numeric channels through the same slot; the text implementation
+may rebuild glyph layout and derived buffers while retaining its pipeline and
+font atlas. The generic renderer must not dispatch on the text definition.
 
 Changes to structural properties, such as a different mark definition, output
 arity, sharing layout, or stop count baked into a pipeline, may require a new

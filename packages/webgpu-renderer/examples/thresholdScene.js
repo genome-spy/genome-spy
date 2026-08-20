@@ -37,7 +37,7 @@ export default async function runThresholdScene(canvas) {
     const belowZero = [...cssColorToArray("#ed553b"), 1];
     const aboveZero = [...cssColorToArray("#20639b"), 1];
 
-    const { markId, scales } = renderer.createMark(rectMark, {
+    const { markId, series, scales } = renderer.createMark(rectMark, {
         count,
         channels: {
             x: {
@@ -101,7 +101,7 @@ export default async function runThresholdScene(canvas) {
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);
 
-    renderer.updateSeries(markId, { x, x2, y }, count);
+    series.replace({ x, x2, y, fill: y }, count);
 
     renderer.render();
 
