@@ -118,6 +118,9 @@ Ordered frame submission — complete:
   without recreating its pipeline or font atlas;
 - logical text arrays are strictly per-string and preserve source-array aliases
   during glyph expansion; empty series use valid minimum-sized GPU buffers;
+- a single series-backed default or conditional branch is replaced through its
+  stable logical channel name; multiple series branches remain renderable but
+  intentionally reject public replacement until branch IDs are designed;
 - growing packed series destroy the superseded GPU buffer;
 - the former renderer-level `updateSeries(markId, ...)` compatibility surface
   has been removed;

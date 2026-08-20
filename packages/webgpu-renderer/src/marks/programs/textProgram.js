@@ -35,6 +35,7 @@ import {
 
 /**
  * @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput
+ * @typedef {import("../../index.js").ConditionalChannelConfigInput} ConditionalChannelConfigInput
  * @typedef {import("../../index.js").TextChannels} TextChannels
  * @typedef {import("../../index.js").TextStringChannelConfigInput} TextStringChannelConfigInput
  * @typedef {import("../../index.js").TypedArray} TypedArray
@@ -601,6 +602,30 @@ function buildConfiguredTextLayout(
 function expandTextSeries(channels, stringIndex, stringCount) {
     /** @type {Map<TypedArray, Map<number, TypedArray>>} */
     const expandedBySource = new Map();
+
+    /**
+     * @param {string} name
+     * @param {ChannelConfigInput | ConditionalChannelConfigInput | TextStringChannelConfigInput} channel
+     */
+    const expandChannel = (name, channel) => {
+        if (!("data" in channel) || !ArrayBuffer.isView(channel.data)) {
+            return;
+        }
+        const spec = TEXT_CHANNEL_SPECS[name];
+        const components =
+            "components" in channel && channel.components != null
+                ? channel.components
+                : (spec?.components ?? 1);
+        channel.data = expandLogicalTextArray(
+            name,
+            channel.data,
+            components,
+            stringIndex,
+            stringCount,
+            expandedBySource
+        );
+    };
+
     for (const [name, channel] of Object.entries(channels)) {
         if (name === "text") {
             continue;
@@ -608,24 +633,14 @@ function expandTextSeries(channels, stringIndex, stringCount) {
         if (!channel || typeof channel !== "object") {
             continue;
         }
-        if (!("data" in channel) || channel.data === undefined) {
+        expandChannel(name, channel);
+        if (!("conditions" in channel)) {
             continue;
         }
-        const spec = TEXT_CHANNEL_SPECS[name];
-        const components =
-            "components" in channel && channel.components != null
-                ? channel.components
-                : (spec?.components ?? 1);
-        const data = channel.data;
-        if (ArrayBuffer.isView(data)) {
-            channel.data = expandLogicalTextArray(
-                name,
-                data,
-                components,
-                stringIndex,
-                stringCount,
-                expandedBySource
-            );
+        for (const condition of channel.conditions ?? []) {
+            if ("channel" in condition && condition.channel) {
+                expandChannel(name, condition.channel);
+            }
         }
     }
 }

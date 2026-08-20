@@ -49,6 +49,8 @@ export default class BaseProgram {
                 channelSpecs: this.channelSpecs,
             },
         });
+        this._conditionalChannelNames = this._collectConditionalChannelNames();
+        this._logicalSeriesTargets = this._collectLogicalSeriesTargets();
         this._seriesBuffers = new SeriesBufferManager(
             this.device,
             this._channels,
@@ -270,20 +272,71 @@ export default class BaseProgram {
      * @returns {void}
      */
     replaceSeries(channels, count) {
-        for (const [name, channel] of Object.entries(this._channels)) {
-            if (
-                isSeriesChannelConfig(channel) &&
-                channels[name] === undefined
-            ) {
+        /** @type {Record<string, TypedArray>} */
+        const resolved = {};
+        for (const [name, targets] of this._logicalSeriesTargets) {
+            if (targets.length > 1) {
+                throw new Error(
+                    `Series replacement for channel "${name}" is not supported because it has multiple series-backed branches.`
+                );
+            }
+            const data = channels[name];
+            if (data === undefined) {
                 throw new Error(
                     `Series replacement is missing channel "${name}".`
                 );
             }
+            resolved[targets[0]] = /** @type {TypedArray} */ (data);
         }
-        this.updateSeries(
-            /** @type {Record<string, TypedArray>} */ (channels),
-            count
-        );
+        this.updateSeries(resolved, count);
+    }
+
+    /**
+     * @returns {Set<string>}
+     */
+    _collectConditionalChannelNames() {
+        const names = new Set();
+        for (const channel of Object.values(this._channels)) {
+            for (const condition of channel.conditions ?? []) {
+                if (condition.channelName) {
+                    names.add(condition.channelName);
+                }
+            }
+        }
+        return names;
+    }
+
+    /**
+     * Map stable logical channel names to their normalized series branches.
+     * Multiple targets remain representable internally even though public
+     * replacement currently supports only one series branch per channel.
+     *
+     * @returns {Map<string, string[]>}
+     */
+    _collectLogicalSeriesTargets() {
+        const targetsByChannel = new Map();
+        for (const [name, channel] of Object.entries(this._channels)) {
+            if (this._conditionalChannelNames.has(name)) {
+                continue;
+            }
+            const targets = [];
+            if (isSeriesChannelConfig(channel)) {
+                targets.push(name);
+            }
+            for (const condition of channel.conditions ?? []) {
+                if (!condition.channelName) {
+                    continue;
+                }
+                const conditional = this._channels[condition.channelName];
+                if (conditional && isSeriesChannelConfig(conditional)) {
+                    targets.push(condition.channelName);
+                }
+            }
+            if (targets.length > 0) {
+                targetsByChannel.set(name, targets);
+            }
+        }
+        return targetsByChannel;
     }
 
     /**
@@ -442,15 +495,6 @@ export default class BaseProgram {
      * @returns {void}
      */
     _buildSlotHandles() {
-        const conditionalNames = new Set();
-        for (const channel of Object.values(this._channels)) {
-            for (const condition of channel.conditions ?? []) {
-                if (condition.channelName) {
-                    conditionalNames.add(condition.channelName);
-                }
-            }
-        }
-
         /**
          * @param {Record<string, import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ScaleSlotHandle>>} map
          * @param {string} name
@@ -495,7 +539,7 @@ export default class BaseProgram {
         };
 
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (conditionalNames.has(name)) {
+            if (this._conditionalChannelNames.has(name)) {
                 continue;
             }
             if (channel.scale) {

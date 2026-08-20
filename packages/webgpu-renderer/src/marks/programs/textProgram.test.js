@@ -139,4 +139,54 @@ describe("TextProgram series replacement", () => {
             )
         ).toEqual([4, 4]);
     });
+
+    it("expands and replaces a single conditional series by logical name", () => {
+        const program = new TextProgram(createMockRenderer(), {
+            count: 2,
+            channels: {
+                uniqueId: {
+                    data: new Uint32Array([1, 2]),
+                    type: "u32",
+                },
+                text: { data: ["aa", "b"] },
+                x: {
+                    data: new Float32Array([1, 2]),
+                    type: "f32",
+                    scale: identityScale(),
+                },
+                y: { value: 0, scale: identityScale() },
+                fill: {
+                    value: [0, 0, 0, 1],
+                    conditions: [
+                        {
+                            when: {
+                                selection: "selected",
+                                type: "single",
+                            },
+                            channel: {
+                                data: new Float32Array([
+                                    1, 0, 0, 1, 0, 1, 0, 1,
+                                ]),
+                                type: "f32",
+                                components: 4,
+                            },
+                        },
+                    ],
+                },
+            },
+        });
+
+        expect(program._channels.fill__cond0.data).toHaveLength(12);
+
+        program.getSlotHandles().series.replace({
+            uniqueId: new Uint32Array([3, 4]),
+            text: ["ccc", "d"],
+            x: new Float32Array([10, 20]),
+            fill: new Float32Array([1, 0, 0, 1, 0, 0, 1, 1]),
+        });
+
+        expect(program._channels.fill__cond0.data).toEqual(
+            new Float32Array([1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1])
+        );
+    });
 });

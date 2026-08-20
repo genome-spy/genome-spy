@@ -182,6 +182,12 @@ and per-string numeric channels through the same slot; the text implementation
 may rebuild glyph layout and derived buffers while retaining its pipeline and
 font atlas. The generic renderer must not dispatch on the text definition.
 
+Conditional encodings address a single series-backed branch through the
+logical channel name, regardless of whether that series is the default or a
+condition. Multiple series-backed branches may still render, but replacement
+requires a future stable branch-identity API rather than normalized synthetic
+names.
+
 Changes to structural properties, such as a different mark definition, output
 arity, sharing layout, or stop count baked into a pipeline, may require a new
 handle. That distinction should be explicit rather than hidden behind a

@@ -111,7 +111,7 @@ export type SeriesSlotHandle<
     TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
 > = {
     /**
-     * Replace every series-backed channel configured on the mark.
+     * Replace every series-backed logical channel configured on the mark.
      * Mark definitions may preprocess logical inputs before uploading them.
      */
     replace(series: TSeries, count?: number): void;
