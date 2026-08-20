@@ -115,8 +115,8 @@ const CATEGORY_IDS = new WeakMap();
 
 /**
  * Converts one Core mark occurrence into the low-level configuration used by
- * the WebGPU PoC. The adapter intentionally supports only the current
- * point/rect/rule/text integration slice.
+ * the WebGPU renderer. Unsupported Core features fail here with a contextual
+ * error rather than being silently dropped.
  *
  * @param {import("../../marks/mark.js").default} mark
  * @param {import("../../types/rendering.js").RenderingOptions} options
@@ -331,6 +331,7 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
  */
 function createTextConfig(mark, data, coords, viewOpacity) {
     const size = readConstantEncoder(mark, "size", data);
+    const encoders = /** @type {Record<string, any>} */ (mark.encoders);
     return {
         count: data.length,
         channels: {
@@ -351,10 +352,10 @@ function createTextConfig(mark, data, coords, viewOpacity) {
             angle: createNumericChannel(mark, "angle", data),
             dx: createCombinedOffsetChannel(mark, "x", data),
             dy: createCombinedOffsetChannel(mark, "y", data),
-            ...(mark.encoders.x2Offset
+            ...(encoders.x2Offset
                 ? { x2Offset: createNumericChannel(mark, "x2Offset", data) }
                 : {}),
-            ...(mark.encoders.y2Offset
+            ...(encoders.y2Offset
                 ? { y2Offset: createNumericChannel(mark, "y2Offset", data) }
                 : {}),
             align: {
