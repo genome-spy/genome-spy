@@ -165,6 +165,20 @@ focused regression coverage where practical, and one commit per requested fix.
   logo-specific SDF scale. The focused sequence-logo screenshot shows the
   expected stacked letters in both renderers.
 
+### Deferred design work
+
+- The lollipop's angled text mark still has a P1 `dx`/`dy` placement difference.
+  WebGL applies the legacy offset through its rotated glyph transform, but a
+  direct WebGPU translation made the screenshot visibly worse than the existing
+  screen-space baseline. Resolve this with a deterministic one-label fixture
+  covering angle, `dx`, `dy`, alignment, and both renderer pixel coordinates;
+  do not change the current baseline until that fixture identifies whether the
+  discrepancy is in glyph bearings, angle convention, or offset units.
+- `rect_with_params.json` captures its rule-only initial state in the current
+  screenshot harness for both backends. Interactive parameter-state comparison
+  remains broader design work; the underlying decorated-rectangle shader path
+  is covered by the standalone rect, shadow, and hatch examples.
+
 ## Context
 
 GenomeSpy Core currently has three rendering paths with different levels of
