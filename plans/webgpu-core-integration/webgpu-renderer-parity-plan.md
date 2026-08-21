@@ -151,25 +151,7 @@ postponed facet milestone.
 
 ## Current remaining milestones
 
-### 1. Cross-renderer integration audit
-
-Run the complete supported-surface audit after the individual milestones.
-Update this plan to mark only behavior that is actually implemented, and
-record any intentionally unsupported behavior at the adapter boundary.
-
-Verification must include:
-
-- WebGL/WebGPU comparisons at DPR 1 and 2 for supported scale families,
-  categorical values, dynamic properties, selection conditions, and tooltips.
-- The scrollable viewport/grid example that exposed inverted axes, misplaced
-  labels, and missing culling.
-- Representative point, rect, rule/tick, text, link, and arrow examples.
-- Console/page-error checks and retained-resource instrumentation during
-  parameter changes and hover.
-
-Tentative commit: `test(webgpu): verify supported renderer parity`
-
-### 2. Faceted and sample-faceted rendering — postponed
+### 1. Faceted and sample-faceted rendering — postponed
 
 The adapter still rejects `options.sampleFacetRenderingOptions` and
 `mark.encoders.facetIndex`. WebGL renders one occurrence per facet, with
