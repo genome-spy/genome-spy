@@ -32,6 +32,7 @@ export async function createWebGpuRenderingBackend(options) {
                 ...coordinatorOptions,
                 surface,
             }),
+        readPickingId: (x, y) => surface.pick(x, y),
         exportCanvas: unsupportedExport,
         exportRaster: unsupportedExport,
     };

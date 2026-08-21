@@ -78,6 +78,8 @@ export class Renderer {
         this._marks = new Map();
         /** @type {NormalizedDraw[] | null} */
         this._renderFrame = null;
+        /** @type {NormalizedDraw[] | null} */
+        this._pickingFrame = null;
         this._nextMarkId = 1;
         this._pickingDirty = true;
         this._pickTexture = null;
@@ -315,7 +317,9 @@ export class Renderer {
         });
 
         const draws =
-            this._renderFrame ?? this._normalizeDraws(this._marks.keys());
+            this._pickingFrame ??
+            this._renderFrame ??
+            this._normalizeDraws(this._marks.keys());
         this._writeDrawGlobals(draws);
         this._encodeDraws(pass, draws, true);
 
@@ -426,6 +430,22 @@ export class Renderer {
         pass.end();
         this.device.queue.submit([commandEncoder.finish()]);
         this._renderFrame = draws;
+        this._pickingDirty = true;
+    }
+
+    /**
+     * Replace the ordered draw list used by the on-demand pick pass.
+     *
+     * @param {import("./index.d.ts").RenderFrame} [frame]
+     * @returns {void}
+     */
+    renderPicking(frame = {}) {
+        this._assertAlive();
+        this._pickingFrame = frame.draws
+            ? this._normalizeDraws(frame.draws)
+            : (this._pickingFrame ??
+              this._renderFrame ??
+              this._normalizeDraws(this._marks.keys()));
         this._pickingDirty = true;
     }
 

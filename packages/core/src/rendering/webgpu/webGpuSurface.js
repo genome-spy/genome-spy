@@ -18,6 +18,9 @@ export default class WebGpuSurface {
     /** @type {import("@genome-spy/webgpu-renderer").DrawCommand[]} */
     #frameDraws = [];
 
+    /** @type {import("@genome-spy/webgpu-renderer").DrawCommand[]} */
+    #pickingDraws = [];
+
     /** @type {{logicalWidth: number, logicalHeight: number, physicalWidth: number, physicalHeight: number} | undefined} */
     #appliedSize;
 
@@ -109,13 +112,19 @@ export default class WebGpuSurface {
      */
     beginFrame() {
         this.#frameDraws.length = 0;
+        this.#pickingDraws.length = 0;
+    }
+
+    /** Starts collecting the next on-demand pick frame. */
+    beginPickingFrame() {
+        this.#pickingDraws.length = 0;
     }
 
     /**
      * @param {import("../../marks/mark.js").default} mark
      * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
      * @param {any} config
-     * @param {{scissor?: import("@genome-spy/webgpu-renderer").DrawRect, visibleRange?: import("@genome-spy/webgpu-renderer").DrawVisibleRange}} [options]
+     * @param {{scissor?: import("@genome-spy/webgpu-renderer").DrawRect, visibleRange?: import("@genome-spy/webgpu-renderer").DrawVisibleRange, picking?: boolean}} [options]
      */
     useMark(mark, definition, config, options = {}) {
         if (!this.#renderer) {
@@ -152,13 +161,14 @@ export default class WebGpuSurface {
 
         // Core still bakes absolute canvas coordinates into scale ranges, so
         // occurrence viewports remain intentionally omitted here.
-        this.#frameDraws.push({
+        const draw = {
             mark: retained.handle,
             ...(options.scissor ? { scissor: options.scissor } : {}),
             ...(options.visibleRange
                 ? { visibleRange: options.visibleRange }
                 : {}),
-        });
+        };
+        (options.picking ? this.#pickingDraws : this.#frameDraws).push(draw);
     }
 
     /**
@@ -174,11 +184,33 @@ export default class WebGpuSurface {
         });
     }
 
+    renderPicking() {
+        if (!this.#renderer) {
+            throw new Error("The WebGPU surface has not been initialized.");
+        }
+        this.#renderer.renderPicking({ draws: this.#pickingDraws });
+    }
+
+    /**
+     * Reads a unique id in logical canvas coordinates.
+     *
+     * @param {number} x
+     * @param {number} y
+     * @returns {Promise<number | null>}
+     */
+    pick(x, y) {
+        if (!this.#renderer) {
+            throw new Error("The WebGPU surface has not been initialized.");
+        }
+        return this.#renderer.pick(x, y);
+    }
+
     finalize() {
         this.#renderer?.destroy();
         this.#renderer = undefined;
         this.#marks.clear();
         this.#frameDraws.length = 0;
+        this.#pickingDraws.length = 0;
         this.#sizeHelper.finalize();
         this.canvas.remove();
     }

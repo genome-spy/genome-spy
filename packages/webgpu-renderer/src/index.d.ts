@@ -889,6 +889,9 @@ export class Renderer {
     /** Draw an ordered frame of retained mark occurrences. */
     render(frame?: RenderFrame): void;
 
+    /** Replace the ordered draw list used by the on-demand pick pass. */
+    renderPicking(frame?: RenderFrame): void;
+
     /** Destroy GPU resources associated with a mark. */
     destroyMark(markId: MarkId): void;
 
