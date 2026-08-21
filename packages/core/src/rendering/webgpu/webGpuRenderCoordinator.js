@@ -92,7 +92,7 @@ export default class WebGpuRenderCoordinator {
  */
 function toGpuColor(background) {
     if (background == null) {
-        return undefined;
+        return { r: 0, g: 0, b: 0, a: 0 };
     }
     const parsed = parseColor(background);
     if (!parsed) {
