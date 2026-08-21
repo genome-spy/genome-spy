@@ -136,11 +136,13 @@ export default class WebGpuSurface {
                 handle,
                 series: collectSeries(config),
                 count: config.count,
+                selections: new Map(),
             };
             this.#marks.set(mark, retained);
         } else {
             updateRetainedMark(retained, config);
         }
+        updateRetainedSelections(retained, mark, config);
 
         // Core still bakes absolute canvas coordinates into scale ranges, so
         // occurrence viewports remain intentionally omitted here.
@@ -205,19 +207,25 @@ function makeRetainableConfig(config) {
  */
 function updateRetainedMark(retained, config) {
     for (const [name, channel] of Object.entries(config.channels)) {
-        const scaleSlot = retained.handle.scales[name]?.default;
-        if (scaleSlot && channel.scale) {
-            if (channel.scale.domain) {
-                scaleSlot.setDomain(channel.scale.domain);
-            }
-            if (channel.scale.range) {
-                scaleSlot.setRange(channel.scale.range);
-            }
-        }
+        updateChannelSlots(
+            retained.handle.scales[name]?.default,
+            retained.handle.values[name]?.default,
+            channel
+        );
 
-        const valueSlot = retained.handle.values[name]?.default;
-        if (valueSlot && channel.value !== undefined) {
-            valueSlot.set(channel.value);
+        for (const condition of channel.conditions ?? []) {
+            if (!condition.channel) {
+                continue;
+            }
+            updateChannelSlots(
+                retained.handle.scales[name]?.conditions?.[
+                    condition.when.selection
+                ],
+                retained.handle.values[name]?.conditions?.[
+                    condition.when.selection
+                ],
+                condition.channel
+            );
         }
     }
 
@@ -226,6 +234,114 @@ function updateRetainedMark(retained, config) {
         retained.count = config.count;
         retained.handle.series.replace(retained.series, retained.count);
     }
+}
+
+/**
+ * Updates one default or conditional scale/value pair without recreating the
+ * retained mark. The renderer owns the actual slot-resource details.
+ *
+ * @param {import("@genome-spy/webgpu-renderer").ScaleSlotHandle | undefined} scaleSlot
+ * @param {import("@genome-spy/webgpu-renderer").ValueSlotHandle | undefined} valueSlot
+ * @param {any} channel
+ */
+function updateChannelSlots(scaleSlot, valueSlot, channel) {
+    if (scaleSlot && channel.scale) {
+        if (channel.scale.domain) {
+            scaleSlot.setDomain(channel.scale.domain);
+        }
+        if (channel.scale.range) {
+            scaleSlot.setRange(channel.scale.range);
+        }
+    }
+
+    if (valueSlot && channel.value !== undefined) {
+        valueSlot.set(channel.value);
+    }
+}
+
+/**
+ * Synchronizes Core selection values with the retained renderer slots.
+ *
+ * @param {RetainedMark} retained
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {any} config
+ */
+function updateRetainedSelections(retained, mark, config) {
+    const findValue = mark.unitView?.paramRuntime?.findValue;
+    if (!findValue) {
+        return;
+    }
+
+    for (const [name, slot] of Object.entries(
+        retained.handle.selections ?? {}
+    )) {
+        const selection = findValue(name);
+        if (!selection) {
+            continue;
+        }
+
+        if (slot.type == "single") {
+            const id = selection.uniqueId ?? 0;
+            if (retained.selections.get(name) !== id) {
+                slot.set(id);
+                retained.selections.set(name, id);
+            }
+        } else if (slot.type == "multi") {
+            const ids = Uint32Array.from(selection.data.keys());
+            if (!uint32ArraysEqual(retained.selections.get(name), ids)) {
+                slot.set(ids);
+                retained.selections.set(name, ids);
+            }
+        } else if (slot.type == "interval") {
+            const channel = findIntervalSelectionChannel(config, name);
+            const interval = channel
+                ? selection.intervals?.[channel]
+                : undefined;
+            const bounds = interval ?? [1, 0];
+            const previous = retained.selections.get(name);
+            const previousBounds = Array.isArray(previous)
+                ? previous
+                : undefined;
+            if (
+                !previousBounds ||
+                previousBounds[0] != bounds[0] ||
+                previousBounds[1] != bounds[1]
+            ) {
+                slot.set(bounds[0], bounds[1]);
+                retained.selections.set(name, [bounds[0], bounds[1]]);
+            }
+        }
+    }
+}
+
+/**
+ * @param {any} config
+ * @param {string} selectionName
+ * @returns {string | undefined}
+ */
+function findIntervalSelectionChannel(config, selectionName) {
+    for (const channel of Object.values(config.channels)) {
+        for (const condition of channel.conditions ?? []) {
+            if (
+                condition.when.selection == selectionName &&
+                condition.when.type == "interval"
+            ) {
+                return condition.when.channel;
+            }
+        }
+    }
+    return undefined;
+}
+
+/**
+ * @param {unknown} previous
+ * @param {Uint32Array} next
+ */
+function uint32ArraysEqual(previous, next) {
+    if (!(previous instanceof Uint32Array) || previous.length != next.length) {
+        return false;
+    }
+    return previous.every((value, index) => value == next[index]);
 }
 
 /**
@@ -238,7 +354,7 @@ function hasSeriesChanges(retained, config) {
     }
 
     for (const [name, channel] of Object.entries(config.channels)) {
-        const series = getChannelSeries(channel);
+        const series = getLogicalChannelSeries(channel);
         if (series !== undefined && retained.series[name] !== series) {
             return true;
         }
@@ -254,7 +370,7 @@ function collectSeries(config) {
     /** @type {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} */
     const series = {};
     for (const [name, channel] of Object.entries(config.channels)) {
-        const channelSeries = getChannelSeries(channel);
+        const channelSeries = getLogicalChannelSeries(channel);
         if (channelSeries !== undefined) {
             series[name] = channelSeries;
         }
@@ -274,9 +390,33 @@ function getChannelSeries(channel) {
 }
 
 /**
+ * Returns the one series belonging to a logical channel. Core encoders allow
+ * at most one non-constant branch, so a conditional series replaces the
+ * logical channel's fallback series rather than creating a second public
+ * series slot.
+ *
+ * @param {any} channel
+ * @returns {import("@genome-spy/webgpu-renderer").SeriesData | undefined}
+ */
+function getLogicalChannelSeries(channel) {
+    const series = getChannelSeries(channel);
+    if (series !== undefined) {
+        return series;
+    }
+    for (const condition of channel.conditions ?? []) {
+        const conditionalSeries = getChannelSeries(condition.channel);
+        if (conditionalSeries !== undefined) {
+            return conditionalSeries;
+        }
+    }
+    return undefined;
+}
+
+/**
  * @typedef {object} RetainedMark
  * @prop {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
  * @prop {import("@genome-spy/webgpu-renderer").MarkHandle} handle
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
+ * @prop {Map<string, number | Uint32Array | [number, number]>} selections
  */

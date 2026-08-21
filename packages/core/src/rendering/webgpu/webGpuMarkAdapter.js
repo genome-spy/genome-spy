@@ -178,6 +178,129 @@ export function createWebGpuMarkConfig(mark, options, coords, viewOpacity = 1) {
 }
 
 /**
+ * Builds a channel from Core's ordered branches. Core permits at most one
+ * non-constant branch, which matches the renderer's retained series model.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {object[]} data
+ * @param {(encoder: import("../../types/encoder.js").Encoder, branch: import("../../types/encoder.js").EncodingBranch) => any} build
+ * @returns {any}
+ */
+function createConditionalChannel(mark, channel, data, build) {
+    const encoder = requireEncoder(mark, channel);
+    const branches = encoder.branches;
+    const fallback = branches.at(-1);
+    if (!fallback) {
+        throw unsupported(mark, `Channel "${channel}" has no fallback branch.`);
+    }
+
+    const fallbackEncoder = createBranchEncoder(mark, encoder, fallback);
+    const result = build(fallbackEncoder, fallback);
+    if (branches.length == 1) {
+        return result;
+    }
+
+    const conditions = branches.slice(0, -1).map((branch) => {
+        const branchEncoder = createBranchEncoder(mark, encoder, branch);
+        const branchConfig = build(branchEncoder, branch);
+        const when = createSelectionCondition(mark, channel, branch.predicate);
+        if (Object.hasOwn(branchConfig, "value")) {
+            return { when, value: branchConfig.value };
+        }
+        return { when, channel: branchConfig };
+    });
+
+    return { ...result, conditions };
+}
+
+/**
+ * Reconstructs the branch encoder metadata while retaining the raw accessor
+ * for series-backed channel configs. Scales are applied by the low-level
+ * channel config, just as they are for unconditional channels.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {import("../../types/encoder.js").Encoder} encoder
+ * @param {import("../../types/encoder.js").EncodingBranch} branch
+ * @returns {import("../../types/encoder.js").Encoder}
+ */
+function createBranchEncoder(mark, encoder, branch) {
+    const accessor = branch.accessor;
+    const scale = accessor.scaleChannel
+        ? mark.unitView.getScaleResolution(accessor.scaleChannel)?.getScale()
+        : encoder.scale;
+    if (accessor.scaleChannel && !scale) {
+        throw unsupported(
+            mark,
+            `Missing scale for conditional channel "${accessor.channel}".`
+        );
+    }
+
+    return /** @type {import("../../types/encoder.js").Encoder} */ (
+        Object.assign(
+            /**
+             * @param {any} datum
+             */
+            (datum) => accessor(datum),
+            {
+                constant: accessor.constant ?? encoder.constant,
+                branches: [branch],
+                scale,
+                channelDef: accessor.channelDef ?? encoder.channelDef,
+            }
+        )
+    );
+}
+
+/**
+ * Converts a Core selection predicate to the renderer's selection contract.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {import("../../types/encoder.js").Predicate} predicate
+ * @returns {import("@genome-spy/webgpu-renderer").SelectionPredicate}
+ */
+function createSelectionCondition(mark, channel, predicate) {
+    if (!predicate.param) {
+        throw unsupported(
+            mark,
+            `Conditional channel "${channel}" has no selection parameter.`
+        );
+    }
+
+    const selection = mark.unitView.paramRuntime.findValue(predicate.param);
+    if (
+        !selection ||
+        !["single", "multi", "interval"].includes(selection.type)
+    ) {
+        throw unsupported(
+            mark,
+            `Selection "${predicate.param}" is not available for WebGPU.`
+        );
+    }
+
+    /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate} */
+    const when = {
+        selection: predicate.param,
+        type: selection.type,
+        empty: predicate.empty ?? true,
+    };
+
+    if (selection.type == "interval") {
+        const channels = Object.keys(selection.intervals);
+        if (channels.length != 1) {
+            throw unsupported(
+                mark,
+                `Interval selection "${predicate.param}" must target one channel for WebGPU.`
+            );
+        }
+        when.channel = /** @type {string} */ (channels[0]);
+    }
+
+    return when;
+}
+
+/**
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
@@ -533,8 +656,20 @@ function resolveFont(mark) {
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createPositionChannel(mark, channel, data, coords) {
-    const encoder = requireEncoder(mark, channel);
-    assertUnconditional(mark, channel, encoder);
+    return createConditionalChannel(mark, channel, data, (encoder) =>
+        createPositionBranch(mark, channel, data, coords, encoder)
+    );
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {object[]} data
+ * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {import("../../types/encoder.js").Encoder} encoder
+ * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
+ */
+function createPositionBranch(mark, channel, data, coords, encoder) {
     const range = getAbsoluteRange(channel, coords, encoder.scale);
     if (encoder.constant) {
         const unitPosition = Number(encoder(data[0]));
@@ -634,8 +769,19 @@ function createIndexPositionScale(scale, range, band) {
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createNumericChannel(mark, channel, data) {
-    const encoder = requireEncoder(mark, channel);
-    assertUnconditional(mark, channel, encoder);
+    return createConditionalChannel(mark, channel, data, (encoder) =>
+        createNumericBranch(mark, channel, data, encoder)
+    );
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {object[]} data
+ * @param {import("../../types/encoder.js").Encoder} encoder
+ * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
+ */
+function createNumericBranch(mark, channel, data, encoder) {
     if (encoder.constant) {
         return { value: Number(encoder(data[0])) };
     }
@@ -680,8 +826,20 @@ function createNumericChannel(mark, channel, data) {
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createOpacityChannel(mark, channel, data, viewOpacity) {
-    const encoder = requireEncoder(mark, channel);
-    assertUnconditional(mark, channel, encoder);
+    return createConditionalChannel(mark, channel, data, (encoder) =>
+        createOpacityBranch(mark, channel, data, viewOpacity, encoder)
+    );
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {object[]} data
+ * @param {number} viewOpacity
+ * @param {import("../../types/encoder.js").Encoder} encoder
+ * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
+ */
+function createOpacityBranch(mark, channel, data, viewOpacity, encoder) {
     if (encoder.constant) {
         return { value: Number(encoder(data[0])) * viewOpacity };
     }
@@ -744,8 +902,20 @@ function createOpacityChannel(mark, channel, data, viewOpacity) {
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createEnumChannel(mark, channel, data, values) {
-    const encoder = requireEncoder(mark, channel);
-    assertUnconditional(mark, channel, encoder);
+    return createConditionalChannel(mark, channel, data, (encoder) =>
+        createEnumBranch(mark, channel, data, values, encoder)
+    );
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {object[]} data
+ * @param {Map<string, number>} values
+ * @param {import("../../types/encoder.js").Encoder} encoder
+ * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
+ */
+function createEnumBranch(mark, channel, data, values, encoder) {
     if (encoder.constant) {
         return {
             value: getEnumValue(mark, channel, values, encoder(data[0])),
@@ -771,8 +941,19 @@ function createEnumChannel(mark, channel, data, values) {
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createColorChannel(mark, channel, data) {
-    const encoder = requireEncoder(mark, channel);
-    assertUnconditional(mark, channel, encoder);
+    return createConditionalChannel(mark, channel, data, (encoder) =>
+        createColorBranch(mark, channel, data, encoder)
+    );
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {object[]} data
+ * @param {import("../../types/encoder.js").Encoder} encoder
+ * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
+ */
+function createColorBranch(mark, channel, data, encoder) {
     if (encoder.constant) {
         return { value: toRgba(mark, encoder(data[0])) };
     }
@@ -901,27 +1082,38 @@ function createTextChannel(mark, data) {
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createCombinedOffsetChannel(mark, axis, data) {
-    const offset = requireEncoder(mark, axis + "Offset");
-    assertUnconditional(mark, axis + "Offset", offset);
-
     const legacyChannel = axis == "x" ? "dx" : "dy";
     const legacy = mark.encoders[legacyChannel];
     if (legacy) {
         assertUnconditional(mark, legacyChannel, legacy);
     }
-    const propertyValue = legacy ? 0 : readNumericProperty(mark, legacyChannel);
-    /** @param {object} datum */
-    const read = (datum) =>
-        Number(offset(datum)) +
-        (legacy ? Number(legacy(datum)) : propertyValue);
-
-    if (offset.constant && (!legacy || legacy.constant)) {
-        return { value: read(data[0]) };
+    if (legacy && legacy.branches.length != 1) {
+        throw unsupported(
+            mark,
+            `Conditional channel "${legacyChannel}" is not supported.`
+        );
     }
-    return {
-        data: Float32Array.from(data, read),
-        type: "f32",
-    };
+
+    const propertyValue = legacy ? 0 : readNumericProperty(mark, legacyChannel);
+    return createConditionalChannel(
+        mark,
+        axis + "Offset",
+        data,
+        (branchEncoder) => {
+            /** @param {object} datum */
+            const read = (datum) =>
+                Number(branchEncoder(datum)) +
+                (legacy ? Number(legacy(datum)) : propertyValue);
+
+            if (branchEncoder.constant && (!legacy || legacy.constant)) {
+                return { value: read(data[0]) };
+            }
+            return {
+                data: Float32Array.from(data, read),
+                type: "f32",
+            };
+        }
+    );
 }
 
 /**
@@ -931,7 +1123,6 @@ function createCombinedOffsetChannel(mark, axis, data) {
  */
 function readNumericEncoder(mark, channel, datum) {
     const encoder = requireEncoder(mark, channel);
-    assertUnconditional(mark, channel, encoder);
     const value = Number(encoder(datum));
     if (!Number.isFinite(value)) {
         throw unsupported(mark, `Channel "${channel}" is not finite.`);

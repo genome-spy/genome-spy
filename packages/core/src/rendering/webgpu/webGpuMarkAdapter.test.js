@@ -876,6 +876,99 @@ describe("WebGPU mark adapter", () => {
             new Float32Array([3])
         );
     });
+
+    test("translates a selection-driven color branch", () => {
+        const data = [{ color: "red" }, { color: "blue" }];
+        const mark = createMark("point", data, {
+            fill: createConditionalEncoder([
+                {
+                    accessor: createAccessor(
+                        /** @param {{color: string}} datum */
+                        (datum) => datum.color,
+                        { field: "color" }
+                    ),
+                    predicate: { param: "chosen", empty: false },
+                },
+                {
+                    accessor: createAccessor(
+                        () => "black",
+                        { value: "black" },
+                        true
+                    ),
+                    predicate: { empty: false },
+                },
+            ]),
+        });
+        /** @type {any} */ (mark.unitView).paramRuntime = {
+            findValue: () => ({ type: "single", uniqueId: 1 }),
+        };
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            /** @type {any} */ ({}),
+            Rectangle.create(0, 0, 100, 100)
+        );
+        const fill = /** @type {any} */ (translated).config.channels.fill;
+
+        expect(fill.value).toEqual([0, 0, 0, 1]);
+        expect(fill.conditions).toEqual([
+            {
+                when: {
+                    selection: "chosen",
+                    type: "single",
+                    empty: false,
+                },
+                channel: {
+                    data: new Float32Array([1, 0, 0, 1, 0, 0, 1, 1]),
+                    type: "f32",
+                    inputComponents: 4,
+                },
+            },
+        ]);
+    });
+
+    test("translates an interval condition on a numeric channel", () => {
+        const data = [{ x: 1 }, { x: 2 }];
+        const mark = createMark("point", data, {
+            x: createConditionalEncoder([
+                {
+                    accessor: createAccessor(
+                        /** @param {{x: number}} datum */
+                        (datum) => datum.x,
+                        {
+                            field: "x",
+                        }
+                    ),
+                    predicate: { param: "brush", empty: true },
+                },
+                {
+                    accessor: createAccessor(() => 0.5, { value: 0.5 }, true),
+                    predicate: { empty: false },
+                },
+            ]),
+        });
+        /** @type {any} */ (mark.unitView).paramRuntime = {
+            findValue: () => ({
+                type: "interval",
+                intervals: { x: [1, 2] },
+            }),
+        };
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            /** @type {any} */ ({}),
+            Rectangle.create(0, 0, 100, 100)
+        );
+        const x = /** @type {any} */ (translated).config.channels.x;
+
+        expect(x.conditions[0].when).toEqual({
+            selection: "brush",
+            type: "interval",
+            channel: "x",
+            empty: true,
+        });
+        expect(x.conditions[0].channel.data).toEqual(new Float32Array([1, 2]));
+    });
 });
 
 /**
@@ -954,6 +1047,31 @@ function createConstantEncoder(value) {
             })
         )
     );
+}
+
+/**
+ * @param {{accessor: Function, predicate: any}[]} branches
+ */
+function createConditionalEncoder(branches) {
+    const fallbackAccessor = /** @type {any} */ (branches.at(-1).accessor);
+    return /** @type {import("../../types/encoder.js").Encoder} */ (
+        /** @type {unknown} */ (
+            Object.assign(vi.fn(), {
+                constant: false,
+                branches,
+                channelDef: fallbackAccessor.channelDef,
+            })
+        )
+    );
+}
+
+/**
+ * @param {Function} fn
+ * @param {any} channelDef
+ * @param {boolean} [constant]
+ */
+function createAccessor(fn, channelDef, constant = false) {
+    return Object.assign(fn, { channelDef, constant });
 }
 
 /** @param {[number, number]} domain */
