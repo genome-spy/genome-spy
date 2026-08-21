@@ -158,42 +158,7 @@ remains part of the postponed facet milestone.
 
 ## Current remaining milestones
 
-### 1. Conditional encodings and selection-driven channels
-
-The WebGPU renderer supports channel conditions driven by single, multi, and
-interval selections. Core exposes ordered conditional encoder branches, but
-the adapter still rejects encoders with more than one branch.
-
-Implement the translation while retaining the renderer’s generic contract:
-
-- Convert each Core selection predicate to the renderer’s `ChannelCondition`,
-  preserving selection name, type, interval channel, and empty-state behavior.
-- Translate constants and series-backed branches using the same scale and
-  categorical-indexing path as unconditional channels.
-- Preserve branch order and the unconditional fallback.
-- Cover numeric, color, opacity, positional, enum, and text-size channels.
-- Forward `uniqueId` whenever a selection condition needs it.
-- Keep only semantic adapter checks. Channel shape, slot validity, and WGSL
-  constraints belong in `packages/webgpu-renderer`.
-
-Affected areas:
-
-- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
-- Core WebGPU adapter and selection tests
-- Renderer channel-condition and selection-slot tests only where a generic
-  contract is missing
-
-Verification:
-
-- Test constant and series-backed conditional branches for every supported
-  channel class.
-- Test single, multi, and interval selections, including empty selections.
-- Verify selection updates use retained slots and do not rebuild pipelines.
-- Smoke-test a Core selection example against WebGL at DPR 1 and 2.
-
-Tentative commit: `feat(core): translate conditional WebGPU channels`
-
-### 2. Scale boundary, index-width selection, and Core-owned category IDs
+### 1. Scale boundary, index-width selection, and Core-owned category IDs
 
 Make the adapter’s scale surface match the scope table above and align its
 categorical conversion with WebGL’s existing `domainIndexer` machinery.
@@ -256,7 +221,7 @@ Verification:
 
 Tentative commit: `feat(core): align WebGPU scales with WebGL semantics`
 
-### 3. Retained dynamic mark properties
+### 2. Retained dynamic mark properties
 
 Complete the property matrix for mark-local values and implement the update
 path with WebGL-like retention guarantees.
@@ -309,7 +274,7 @@ Verification:
 
 Tentative commit: `feat(webgpu): retain dynamic mark property updates`
 
-### 4. WebGPU picking and tooltip integration
+### 3. WebGPU picking and tooltip integration
 
 Connect the low-level asynchronous pick API to Core’s existing interaction
 controller and tooltip path.
@@ -356,7 +321,7 @@ Verification:
 
 Tentative commit: `feat(core): connect WebGPU picking to tooltips`
 
-### 5. Font resource parity
+### 4. Font resource parity
 
 The WebGPU text program currently resolves the default sans-serif to its
 embedded atlas and rejects other font families. Bring it to the same resource
@@ -386,7 +351,7 @@ Verification:
 
 Tentative commit: `feat(webgpu): support registered text fonts`
 
-### 6. Cross-renderer integration audit
+### 5. Cross-renderer integration audit
 
 Run the complete supported-surface audit after the individual milestones.
 Update this plan to mark only behavior that is actually implemented, and
@@ -404,7 +369,7 @@ Verification must include:
 
 Tentative commit: `test(webgpu): verify supported renderer parity`
 
-### 7. Faceted and sample-faceted rendering — postponed
+### 6. Faceted and sample-faceted rendering — postponed
 
 The adapter still rejects `options.sampleFacetRenderingOptions` and
 `mark.encoders.facetIndex`. WebGL renders one occurrence per facet, with
