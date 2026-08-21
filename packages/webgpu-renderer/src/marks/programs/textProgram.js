@@ -274,8 +274,12 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     alignAxis = fixAlignForAngle(alignAxis, angleDegrees);
 #endif
 
-    // Anchor in pixel coordinates.
-    var anchor = vec2<f32>(getScaled_x(i), getScaled_y(i));
+    // Anchor in pixel coordinates. Core applies positional offsets before
+    // rotating text, so they must remain in screen coordinates as well.
+    var anchor = vec2<f32>(
+        getScaled_x(i) + getScaled_dx(i),
+        getScaled_y(i) + getScaled_dy(i)
+    );
     var rangeScale = 1.0;
 
 #if defined(x2_DEFINED)
@@ -373,8 +377,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         params.uDescent
     );
     let localPos = vec2<f32>(x + local.x * width, y);
-    let d = vec2<f32>(getScaled_dx(i), getScaled_dy(i));
-    let rotated = rot * (localPos + d);
+    let rotated = rot * localPos;
     let pixel = anchor + rotated;
 
     let clip = vec2<f32>(
