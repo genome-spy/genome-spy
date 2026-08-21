@@ -125,7 +125,7 @@ check, with remaining behavioral differences recorded here.
 | -------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------ |
 | P1       | `examples/core/marks/arrow/arrow_diagonal.json`                      | Arrow geometry used stroke/AA padding as the actual arrow length, and polygon winding produced incorrect SDF fill | Separate geometry length from quad padding and use stable polygon winding in the SDF | Fixed  |
 | P1       | `examples/docs/examples/genomic-data/hcc1954-sv-cnv.json`            | Link arcs opened on the opposite side because WebGPU used top-left coordinates with the WebGL normal              | Invert the arc normal in the WebGPU link shader                                      | Fixed  |
-| P1       | `examples/docs/examples/genomic-data/pik3ca-tcga-brca-lollipop.json` | Non-arc link shapes used eased Bezier sampling unlike WebGL's linear sampling                                     | Evaluate diagonal and line link paths with the same linear parameter as WebGL        | Fixed  |
+| P1       | `examples/docs/examples/genomic-data/pik3ca-tcga-brca-lollipop.json` | Non-arc links used eased Bezier sampling and text offsets ignored rotation          | Match linear link sampling and apply `dx`/`dy` in the rotated text-local frame      | Fixed  |
 | P1       | `examples/docs/grammar/mark/rect/shadowed-marks.json`                | Rectangle shadows are not visible                                                                                 | Compare shadow parameters and fragment output                                        | Open   |
 | P1       | `examples/core/marks/rect/rect_with_params.json`                     | Rounded rectangles clip; stroke expansion is missing; dash pattern may mirror                                     | Compare rectangle bounds, stroke padding, dash orientation, and y-axis convention    | Open   |
 | P1       | `examples/docs/grammar/mark/text/sequence-logo.json`                 | Logo letters do not render with WebGPU                                                                            | Compare text layout/logo-letter handling against WebGL                               | Open   |
@@ -144,6 +144,9 @@ focused regression coverage where practical, and one commit per requested fix.
 - Link paths now use linear Bezier sampling for diagonal and line shapes, as in
   WebGL. The focused comparison for `pik3ca-tcga-brca-lollipop.json` verifies
   the non-arc connector geometry.
+- Text `dx`/`dy` offsets now enter the glyph transform before rotation, matching
+  WebGL's local-offset behavior in the lollipop labels. The focused comparison
+  for `pik3ca-tcga-brca-lollipop.json` passes in both renderers.
 
 ## Context
 
