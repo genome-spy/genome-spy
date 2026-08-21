@@ -157,7 +157,7 @@ export default class WebGpuSurface {
             updateRetainedMark(retained, config);
         }
         updateRetainedExtraValues(retained, config);
-        updateRetainedSelections(retained, mark, config);
+        updateRetainedSelections(retained, mark);
 
         // Core still bakes absolute canvas coordinates into scale ranges, so
         // occurrence viewports remain intentionally omitted here.
@@ -336,18 +336,17 @@ function valuesEqual(previous, next) {
  *
  * @param {RetainedMark} retained
  * @param {import("../../marks/mark.js").default} mark
- * @param {any} config
  */
-function updateRetainedSelections(retained, mark, config) {
-    const findValue = mark.unitView?.paramRuntime?.findValue;
-    if (!findValue) {
+function updateRetainedSelections(retained, mark) {
+    const paramRuntime = mark.unitView?.paramRuntime;
+    if (!paramRuntime) {
         return;
     }
 
     for (const [name, slot] of Object.entries(
         retained.handle.selections ?? {}
     )) {
-        const selection = findValue(name);
+        const selection = paramRuntime.findValue(name);
         if (!selection) {
             continue;
         }
@@ -365,44 +364,44 @@ function updateRetainedSelections(retained, mark, config) {
                 retained.selections.set(name, ids);
             }
         } else if (slot.type == "interval") {
-            const channel = findIntervalSelectionChannel(config, name);
-            const interval = channel
-                ? selection.intervals?.[channel]
-                : undefined;
-            const bounds = interval ?? [1, 0];
-            const previous = retained.selections.get(name);
-            const previousBounds = Array.isArray(previous)
-                ? previous
-                : undefined;
-            if (
-                !previousBounds ||
-                previousBounds[0] != bounds[0] ||
-                previousBounds[1] != bounds[1]
-            ) {
-                slot.set(bounds[0], bounds[1]);
-                retained.selections.set(name, [bounds[0], bounds[1]]);
+            let snapshot = /** @type {SelectionSnapshot | undefined} */ (
+                retained.selections.get(name)
+            );
+            if (!snapshot || snapshot.type != "interval") {
+                /** @type {Record<string, [number, number] | null>} */
+                const intervals = {};
+                for (const target of slot.targets) {
+                    intervals[target] = null;
+                }
+                snapshot = {
+                    type: "interval",
+                    intervals,
+                };
+                retained.selections.set(name, snapshot);
             }
-        }
-    }
-}
 
-/**
- * @param {any} config
- * @param {string} selectionName
- * @returns {string | undefined}
- */
-function findIntervalSelectionChannel(config, selectionName) {
-    for (const channel of Object.values(config.channels)) {
-        for (const condition of channel.conditions ?? []) {
-            if (
-                condition.when.selection == selectionName &&
-                condition.when.type == "interval"
-            ) {
-                return condition.when.channel;
+            let changed = false;
+            for (const target of slot.targets) {
+                const interval = selection.intervals?.[target] ?? null;
+                const previous = snapshot.intervals[target];
+                if (
+                    interval == null
+                        ? previous != null
+                        : previous == null ||
+                          previous[0] != interval[0] ||
+                          previous[1] != interval[1]
+                ) {
+                    snapshot.intervals[target] = interval
+                        ? [interval[0], interval[1]]
+                        : null;
+                    changed = true;
+                }
+            }
+            if (changed) {
+                slot.set(snapshot.intervals);
             }
         }
     }
-    return undefined;
 }
 
 /**
@@ -452,6 +451,9 @@ function collectSeries(config) {
 
 /** @param {any} channel */
 function getChannelSeries(channel) {
+    if (!channel) {
+        return undefined;
+    }
     if (ArrayBuffer.isView(channel.data) || Array.isArray(channel.data)) {
         return channel.data;
     } else if (typeof channel.value == "string") {
@@ -476,6 +478,9 @@ function getLogicalChannelSeries(channel) {
         return series;
     }
     for (const condition of channel.conditions ?? []) {
+        if (!condition.channel) {
+            continue;
+        }
         const conditionalSeries = getChannelSeries(condition.channel);
         if (conditionalSeries !== undefined) {
             return conditionalSeries;
@@ -490,6 +495,12 @@ function getLogicalChannelSeries(channel) {
  * @prop {import("@genome-spy/webgpu-renderer").MarkHandle} handle
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
- * @prop {Map<string, number | Uint32Array | [number, number]>} selections
+ * @prop {Map<string, number | Uint32Array | SelectionSnapshot>} selections
  * @prop {Map<string, number | number[]>} dynamicValues
+ */
+
+/**
+ * @typedef {object} SelectionSnapshot
+ * @property {"interval"} type
+ * @property {Record<string, [number, number] | null>} intervals
  */

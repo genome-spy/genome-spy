@@ -23,6 +23,7 @@ import { getMarkData } from "../immediate/markData.js";
 import { resolveMarkProperty } from "../immediate/markEncoding.js";
 import { isLargeGenome } from "../../gl/glslScaleGenerator.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
+import { getSecondaryChannel } from "../../encoder/encoder.js";
 
 const SHAPE_CODES = new Map(
     [
@@ -237,13 +238,21 @@ function createConditionalChannel(mark, channel, data, build) {
         const branchEncoder = createBranchEncoder(mark, encoder, branch);
         const branchConfig = build(branchEncoder, branch);
         const when = createSelectionCondition(mark, channel, branch.predicate);
-        if (Object.hasOwn(branchConfig, "value")) {
-            return { when, value: branchConfig.value };
+        const conditionalConfig = isColorChannel(channel)
+            ? { ...branchConfig, components: 4 }
+            : branchConfig;
+        if (Object.hasOwn(conditionalConfig, "value")) {
+            return { when, ...conditionalConfig };
         }
-        return { when, channel: branchConfig };
+        return { when, channel: conditionalConfig };
     });
 
     return { ...result, conditions };
+}
+
+/** @param {string} channel */
+function isColorChannel(channel) {
+    return channel == "fill" || channel == "stroke" || channel == "color";
 }
 
 /**
@@ -319,14 +328,30 @@ function createSelectionCondition(mark, channel, predicate) {
     };
 
     if (selection.type == "interval") {
-        const channels = Object.keys(selection.intervals);
-        if (channels.length != 1) {
-            throw unsupported(
-                mark,
-                `Interval selection "${predicate.param}" must target one channel for WebGPU.`
+        const intervalWhen =
+            /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate & {type: "interval"}} */ (
+                /** @type {unknown} */ (when)
             );
-        }
-        when.channel = /** @type {string} */ (channels[0]);
+        intervalWhen.targets = Object.keys(selection.intervals).map((input) => {
+            if (input != "x" && input != "y") {
+                throw unsupported(
+                    mark,
+                    `Interval selection "${predicate.param}" has unsupported target "${String(input)}".`
+                );
+            }
+
+            const secondaryInput = getSecondaryChannel(input);
+            const target = { input };
+            if (mark.encoders[secondaryInput]) {
+                return {
+                    ...target,
+                    secondaryInput,
+                    hitTest: mark.defaultHitTestMode,
+                };
+            }
+            return target;
+        });
+        return intervalWhen;
     }
 
     return when;

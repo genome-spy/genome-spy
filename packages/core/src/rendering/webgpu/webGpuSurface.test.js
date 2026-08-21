@@ -254,6 +254,59 @@ describe("WebGpuSurface", () => {
         );
     });
 
+    test("updates all interval targets atomically and preserves inactive targets", async () => {
+        const selectionSet = vi.fn();
+        mocks.handle.selections = {
+            brush: {
+                type: "interval",
+                targets: ["x", "y"],
+                set: selectionSet,
+            },
+        };
+        const container = document.createElement("div");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({
+                unitView: {
+                    paramRuntime: {
+                        findValue: () => ({
+                            type: "interval",
+                            intervals: { x: [1, 2], y: [3, 4] },
+                        }),
+                    },
+                },
+            })
+        );
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "point" })
+            );
+
+        surface.useMark(mark, definition, createConfig(0));
+        expect(selectionSet).toHaveBeenCalledWith({
+            x: [1, 2],
+            y: [3, 4],
+        });
+        selectionSet.mockClear();
+
+        mark.unitView.paramRuntime.findValue = () => ({
+            type: "interval",
+            intervals: { x: [5, 6] },
+        });
+        surface.useMark(mark, definition, createConfig(0));
+
+        expect(selectionSet).toHaveBeenCalledOnce();
+        expect(selectionSet).toHaveBeenCalledWith({ x: [5, 6], y: null });
+    });
+
     test("updates dynamic extra uniforms without recreating a mark", async () => {
         const headWidthSet = vi.fn();
         mocks.handle.extraValues = {
