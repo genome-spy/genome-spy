@@ -20,7 +20,8 @@ adapter already covers mark dispatch for point, rect, rule/tick, text, link,
 and arrow; positional offsets; dashed rules; point shapes; rectangle corner
 radii, hatches, and shadows; supported colors and scales already represented by
 the low-level renderer; data-driven text size; expression-valued properties at
-initial translation; and unique-id forwarding to the renderer pick channel.
+initial translation; and non-faceted tooltip picking through the renderer pick
+channel.
 
 Every active milestone ends with focused tests and one Conventional Commit.
 Faceting remains a separate, final, postponed milestone and must not be
@@ -139,73 +140,18 @@ or rebuild a complete config merely because the expression changed. The
 retained surface/renderer API must receive the smallest update corresponding
 to the changed property.
 
-### Picking is part of the Core backend contract
+### Picking scope
 
-The low-level renderer already has a separate pick texture and pick pipeline,
-and mark programs already emit `uniqueId + 1`. Core does not yet connect that
-facility to its normal interaction path: the WebGPU coordinator renders only
-with `{ picking: false }`, the backend does not expose `readPickingId`, and the
-renderer API is asynchronous while `InteractionController` currently expects a
-synchronous pixel read.
-
-The goal is to reuse Core’s existing hover and tooltip flow, including
+The low-level pick texture and pipeline are connected to Core’s existing
+non-faceted hover and tooltip flow. Core still owns
 `Collector.findDatumByUniqueId`, `Mark.isPickingParticipant`, view-coordinate
-checks, custom tooltip handlers, and click/hover state. Do not create a second
-tooltip implementation in the renderer package.
-
-The initial picking milestone covers non-faceted views. Facet-scoped picking
-remains part of the postponed facet milestone.
+checks, custom tooltip handlers, and click/hover state; the renderer only
+renders and reads the pick texture. Facet-scoped picking remains part of the
+postponed facet milestone.
 
 ## Current remaining milestones
 
-### 1. WebGPU picking and tooltip integration
-
-Connect the low-level asynchronous pick API to Core’s existing interaction
-controller and tooltip path.
-
-Implementation work:
-
-- Render a WebGPU pick frame containing only marks for which
-  `mark.isPickingParticipant()` is true, analogous to WebGL’s second buffered
-  rendering context.
-- Expose a backend/coordinator pick operation that handles the renderer’s
-  `Promise<number | null>` API and converts canvas logical coordinates to the
-  renderer’s expected coordinate system and DPR.
-- Adapt the interaction path for asynchronous reads without allowing stale
-  pointer results to overwrite newer pointer positions. Preserve the existing
-  drag/zoom throttling behavior.
-- Decode the low-level ID convention (`0` means no hit; rendered IDs are
-  `uniqueId + 1`) before passing the Core unique ID to the existing view
-  traversal.
-- Reuse `Collector.findDatumByUniqueId`, view facet-coordinate checks for the
-  non-faceted path, tooltip handlers, cursor state, and click/hover behavior.
-- Ensure scissor and visible-range culling apply to the pick draw just as they
-  do to the visible draw.
-- Keep pick resources separate from normal rendering and avoid rebuilding
-  normal pipelines, bind groups, or series buffers when only the pick pass is
-  requested.
-
-Affected areas:
-
-- `packages/core/src/rendering/renderingBackend.js`
-- `packages/core/src/rendering/webgpu/index.js`
-- `packages/core/src/rendering/webgpu/webGpuSurface.js`
-- `packages/core/src/rendering/webgpu/webGpuRenderCoordinator.js`
-- `packages/core/src/genomeSpy/interactionController.js`
-- WebGPU renderer pick tests where its generic API is incomplete
-
-Verification:
-
-- Unit-test no-hit, hit, stale-result, DPR, out-of-bounds, and coordinate
-  conversion behavior.
-- Test that non-picking marks are absent from the pick pass.
-- Test unique-ID lookup through a collector and the existing tooltip handler.
-- Browser-smoke-test hover, tooltip, click, and tooltip dismissal on a
-  non-faceted point/rect example with WebGL/WebGPU comparison.
-
-Tentative commit: `feat(core): connect WebGPU picking to tooltips`
-
-### 2. Font resource parity
+### 1. Font resource parity
 
 The WebGPU text program currently resolves the default sans-serif to its
 embedded atlas and rejects other font families. Bring it to the same resource
@@ -235,7 +181,7 @@ Verification:
 
 Tentative commit: `feat(webgpu): support registered text fonts`
 
-### 3. Cross-renderer integration audit
+### 2. Cross-renderer integration audit
 
 Run the complete supported-surface audit after the individual milestones.
 Update this plan to mark only behavior that is actually implemented, and
@@ -253,7 +199,7 @@ Verification must include:
 
 Tentative commit: `test(webgpu): verify supported renderer parity`
 
-### 4. Faceted and sample-faceted rendering — postponed
+### 3. Faceted and sample-faceted rendering — postponed
 
 The adapter still rejects `options.sampleFacetRenderingOptions` and
 `mark.encoders.facetIndex`. WebGL renders one occurrence per facet, with
