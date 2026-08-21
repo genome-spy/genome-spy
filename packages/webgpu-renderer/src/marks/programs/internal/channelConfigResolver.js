@@ -278,9 +278,12 @@ export function validateChannel(name, channel, context) {
     const analysis = buildChannelAnalysis(name, channel);
     const { scaleDef, outputComponents } = analysis;
     const allowsTypeOverride =
-        scaleDef.allowsU32InputOverride === true &&
-        spec?.type === "f32" &&
-        channel.type === "u32" &&
+        ((scaleDef.allowsU32InputOverride === true &&
+            spec?.type === "f32" &&
+            channel.type === "u32") ||
+            (scaleDef.allowsF32InputOverride === true &&
+                spec?.type === "u32" &&
+                channel.type === "f32")) &&
         (outputComponents === 1 || outputComponents === 4);
 
     if (

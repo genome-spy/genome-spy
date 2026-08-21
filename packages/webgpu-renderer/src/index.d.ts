@@ -563,6 +563,12 @@ export type ScaleDef = {
     allowsU32InputOverride?: boolean;
 
     /**
+     * Whether the scale can accept f32 input when the mark channel stores
+     * u32 output (useful for numeric threshold encodings of enum channels).
+     */
+    allowsF32InputOverride?: boolean;
+
+    /**
      * Whether the scale can accept packed u32 input (two components) while
      * producing scalar output (used by the high-precision index scale).
      */

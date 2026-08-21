@@ -919,7 +919,10 @@ describe("WebGPU mark adapter", () => {
                 type: "threshold",
                 definition: thresholdScaleDefinition,
                 domain: [0],
-                range: ["white", "black"],
+                range: [
+                    [1, 1, 1, 1],
+                    [0, 0, 0, 1],
+                ],
             },
         });
     });

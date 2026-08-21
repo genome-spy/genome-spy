@@ -257,6 +257,24 @@ describe("BaseProgram channel validation", () => {
         ).not.toThrow();
     });
 
+    it("allows numeric threshold inputs for enum outputs", () => {
+        expect(() =>
+            createProgram({
+                x: { value: 1, type: "f32" },
+                shape: {
+                    data: new Float32Array([0.25]),
+                    type: "f32",
+                    scale: {
+                        type: "threshold",
+                        domain: [0.5],
+                        range: [0, 1],
+                    },
+                },
+                vec: { value: [1, 0, 0, 1], type: "f32", components: 4 },
+            })
+        ).not.toThrow();
+    });
+
     it("allows mismatched input/output components with ordinal scales", () => {
         expect(() =>
             createProgram({

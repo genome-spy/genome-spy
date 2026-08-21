@@ -19,6 +19,7 @@ export const thresholdScaleDef = {
     params: [],
     continuous: false,
     vectorOutput: "always",
+    allowsF32InputOverride: true,
     resources: {
         stopKind: "threshold",
         needsDomainMap: false,

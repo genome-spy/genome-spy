@@ -908,7 +908,10 @@ function createPositionChannel(mark, channel, data, coords) {
 function createPositionBranch(mark, channel, data, coords, encoder) {
     const range = getAbsoluteRange(channel, coords, encoder.scale);
     if (encoder.constant) {
-        const unitPosition = Number(encoder(data[0]));
+        const rawValue = encoder.branches[0].accessor(data[0]);
+        const unitPosition = Number(
+            encoder.scale ? encoder.scale(rawValue) : encoder(data[0])
+        );
         if (!Number.isFinite(unitPosition)) {
             throw unsupported(mark, `Channel "${channel}" is not finite.`);
         }
@@ -1057,7 +1060,11 @@ function createNumericBranch(mark, channel, data, encoder) {
     }
 
     const accessor = encoder.branches[0].accessor;
-    if (encoder.scale?.type == "ordinal") {
+    if (
+        encoder.scale?.type == "ordinal" ||
+        encoder.scale?.type == "band" ||
+        encoder.scale?.type == "point"
+    ) {
         const { values, domain } = toCategoricalArray(
             mark,
             channel,
@@ -1068,13 +1075,21 @@ function createNumericBranch(mark, channel, data, encoder) {
         return {
             data: values,
             type: "u32",
-            scale: createNonPositionalScale(
-                mark,
-                channel,
-                encoder.scale,
-                1,
-                domain
-            ),
+            scale:
+                encoder.scale.type == "ordinal"
+                    ? createNonPositionalScale(
+                          mark,
+                          channel,
+                          encoder.scale,
+                          1,
+                          domain
+                      )
+                    : createBandPositionScale(
+                          encoder.scale,
+                          encoder.scale.range(),
+                          domain,
+                          0.5
+                      ),
         };
     }
     const config = {
@@ -1194,6 +1209,42 @@ function createEnumBranch(mark, channel, data, values, encoder) {
     }
 
     const accessor = encoder.branches[0].accessor;
+    if (encoder.scale?.type == "ordinal") {
+        const { values: categoryValues, domain } = toCategoricalArray(
+            mark,
+            channel,
+            data,
+            accessor,
+            encoder.scale
+        );
+        return {
+            data: categoryValues,
+            type: "u32",
+            scale: ordinalScale({
+                domain,
+                range: encoder.scale
+                    .range()
+                    .map((value) => getEnumValue(mark, channel, values, value)),
+            }),
+        };
+    }
+
+    if (encoder.scale?.type == "threshold") {
+        return {
+            data: toFloat32Array(mark, channel, data, accessor),
+            type: "f32",
+            scale: thresholdScale({
+                domain: encoder.scale.domain().map(Number),
+                range: createEnumThresholdRange(
+                    mark,
+                    channel,
+                    values,
+                    encoder.scale
+                ),
+            }),
+        };
+    }
+
     return {
         data: getCachedSeries(mark, channel, data, accessor, () =>
             Uint32Array.from(data, (datum) =>
@@ -1285,8 +1336,15 @@ function createColorScale(mark, channel, scale, ordinalDomain) {
         scale.type == "diverging-linear"
     ) {
         return linearScale({
-            domain: scale.domain().map(Number),
+            domain: getInterpolatorDomain(scale),
             range: configurableScale.interpolator(),
+            clamp: configurableScale.clamp(),
+        });
+    } else if (scale.type == "sequential-log") {
+        return logScale({
+            domain: getInterpolatorDomain(scale),
+            range: configurableScale.interpolator(),
+            base: configurableScale.base(),
             clamp: configurableScale.clamp(),
         });
     } else if (scale.type == "linear") {
@@ -1299,12 +1357,12 @@ function createColorScale(mark, channel, scale, ordinalDomain) {
     } else if (scale.type == "threshold") {
         return thresholdScale({
             domain: scale.domain().map(Number),
-            range: scale.range(),
+            range: normalizeColorRange(mark, scale.range()),
         });
     } else if (scale.type == "quantize") {
         return quantizeScale({
             domain: scale.domain().map(Number),
-            range: scale.range(),
+            range: normalizeColorRange(mark, scale.range()),
         });
     }
 
@@ -1312,6 +1370,26 @@ function createColorScale(mark, channel, scale, ordinalDomain) {
         mark,
         `Scale type "${scale.type}" on channel "${channel}" is not supported.`
     );
+}
+
+/**
+ * Materialize Core's CSS colors for discrete renderer scales. The renderer
+ * also accepts CSS strings, but passing normalized vectors keeps the scale
+ * output contract explicit for four-component mark channels.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {Array<number | number[] | string>} range
+ */
+function normalizeColorRange(mark, range) {
+    return range.map((value) =>
+        typeof value == "string" ? toRgba(mark, value) : value
+    );
+}
+
+/** @param {import("../../types/encoder.js").VegaScale} scale */
+function getInterpolatorDomain(scale) {
+    const domain = scale.domain().map(Number);
+    return [domain[0], domain.at(-1)];
 }
 
 /**
@@ -1550,6 +1628,27 @@ function getEnumValue(mark, channel, values, raw) {
         throw unsupported(mark, `Unsupported ${channel}: ${String(raw)}`);
     }
     return value;
+}
+
+/**
+ * Core's configurable default shape range has five entries, while a
+ * threshold with five domain breaks needs six slots. WebGL reuses the final
+ * range entry for the open-ended last bucket; make that compatibility explicit.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {Map<string, number>} values
+ * @param {import("../../types/encoder.js").VegaScale} scale
+ */
+function createEnumThresholdRange(mark, channel, values, scale) {
+    const domain = scale.domain();
+    const range = scale
+        .range()
+        .map((value) => getEnumValue(mark, channel, values, value));
+    while (range.length < domain.length + 1) {
+        range.push(range.at(-1));
+    }
+    return range;
 }
 
 /**
@@ -1792,7 +1891,7 @@ function headAngleToSlope(angle) {
  */
 function readDistancePair(mark, property) {
     const value = readProperty(mark, property);
-    if (value == null) {
+    if (value == null || value === false) {
         return [0, 0];
     }
     if (

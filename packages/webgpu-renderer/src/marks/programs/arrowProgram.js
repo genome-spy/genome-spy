@@ -50,6 +50,7 @@ struct VSOut {
     @location(9) @interpolate(flat) direction: u32,
     @location(10) @interpolate(flat) headShape: u32,
     @location(11) @interpolate(flat) headSpacing: f32,
+    @location(12) @interpolate(flat) pickId: u32,
 };
 
 fn culledArrow() -> VSOut {
@@ -67,6 +68,7 @@ fn culledArrow() -> VSOut {
     out.direction = 0u;
     out.headShape = 0u;
     out.headSpacing = 0.0;
+    out.pickId = 0u;
     return out;
 }
 
@@ -247,6 +249,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.direction = u32(getScaled_direction(i));
     out.headShape = params.uHeadShape;
     out.headSpacing = select(-1.0, params.uHeadSpacing * arrowSize, params.uHeadSpacing >= 0.0);
+    out.pickId = getScaled_uniqueId(i) + 1u;
     return out;
 }
 

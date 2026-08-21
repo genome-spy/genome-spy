@@ -189,6 +189,9 @@ async function runExample(
             result.consoleErrors.push(detail);
         } else if (message.type() === "warning") {
             result.consoleWarnings.push(detail);
+            if (isWebGpuValidationWarning(message.text())) {
+                result.renderingFailures.push(detail);
+            }
         }
     });
     page.on("pageerror", (error) => result.pageErrors.push(error.message));
@@ -252,6 +255,12 @@ async function runExample(
     result.durationMs = Date.now() - startedAt;
     console.log(`${result.status === "passed" ? "PASS" : "FAIL"} ${renderer} ${examplePath}`);
     return result;
+}
+
+function isWebGpuValidationWarning(message) {
+    return /WebGPU|WGSL|Invalid Shader|Invalid Render|Invalid Command|validation/i.test(
+        message
+    );
 }
 
 async function inspectCanvas(page, screenshotPath) {
@@ -578,7 +587,7 @@ async function waitForServer(serverOrigin, child) {
     const url = new URL(healthCheckPath, serverOrigin);
     const deadline = Date.now() + 15_000;
     while (Date.now() < deadline) {
-        if (child?.exitCode !== null) {
+        if (child && child.exitCode !== null && child.exitCode !== undefined) {
             throw new Error(`Core dev server exited with code ${child.exitCode}.`);
         }
         try {
