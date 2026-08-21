@@ -527,6 +527,9 @@ postponed facet milestone.
 
 ### 1. Generalize the renderer interval-selection contract and WGSL
 
+**Status: complete.** Implemented in `07b4321f2`. Renderer unit, type, lint,
+and WebGPU GPU suites pass.
+
 **Intended outcome:** `@genome-spy/webgpu-renderer` represents x-only, y-only,
 and x+y intervals through one public contract, one logical slot, and a stable
 uniform layout. Its generated predicate handles explicit empty state, reversed
@@ -624,6 +627,13 @@ require targets to be visual outputs.
 Tentative commit: `feat(webgpu): support multi-channel interval selections`
 
 ### 2. Adapt Core WebGPU selection translation and retained updates
+
+**Status: complete.** Implemented in `8ecd12bc0`; final verification and the
+pick-readback serialization follow-up are included in the completion commit.
+Core selection/filter and WebGPU adapter/surface suites pass. The penguins
+example passes forward and reverse brushing plus clear/restore at DPR 1 and 2
+under WebGPU, with no page or console errors; WebGL comparison is also
+error-free.
 
 **Intended outcome:** the penguins specification initializes and brushes under
 WebGPU. Its point color condition is evaluated on the GPU with x AND y, while

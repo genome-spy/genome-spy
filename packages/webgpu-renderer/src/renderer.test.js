@@ -43,6 +43,26 @@ describe("Renderer mark definitions", () => {
         expect(renderer._pickingFrame).toEqual([]);
     });
 
+    test("serializes concurrent pick readbacks", async () => {
+        const { renderer } = createRendererHarness();
+        /** @type {[number, number][]} */
+        const calls = [];
+        renderer._pickSingle = vi.fn(async (x, y) => {
+            calls.push([x, y]);
+            await Promise.resolve();
+            return x + y;
+        });
+
+        const first = renderer.pick(1, 2);
+        const second = renderer.pick(3, 4);
+
+        await expect(Promise.all([first, second])).resolves.toEqual([3, 7]);
+        expect(calls).toEqual([
+            [1, 2],
+            [3, 4],
+        ]);
+    });
+
     test("draws retained mark occurrences in the requested order", () => {
         const firstProgram = createProgram();
         const secondProgram = createProgram();
@@ -171,6 +191,7 @@ function createRendererHarness() {
     renderer._destroyed = false;
     renderer._onInvalidate = vi.fn();
     renderer._pickingDirty = false;
+    renderer._pickQueue = Promise.resolve();
     renderer._renderFrame = null;
     renderer.canvas = /** @type {HTMLCanvasElement} */ (
         /** @type {unknown} */ ({ width: 200, height: 100 })

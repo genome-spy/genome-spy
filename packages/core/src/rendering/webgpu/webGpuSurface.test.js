@@ -297,6 +297,9 @@ describe("WebGpuSurface", () => {
         });
         selectionSet.mockClear();
 
+        surface.useMark(mark, definition, createConfig(0));
+        expect(selectionSet).not.toHaveBeenCalled();
+
         mark.unitView.paramRuntime.findValue = () => ({
             type: "interval",
             intervals: { x: [5, 6] },
@@ -305,6 +308,78 @@ describe("WebGpuSurface", () => {
 
         expect(selectionSet).toHaveBeenCalledOnce();
         expect(selectionSet).toHaveBeenCalledWith({ x: [5, 6], y: null });
+        selectionSet.mockClear();
+
+        mark.unitView.paramRuntime.findValue = () => ({
+            type: "interval",
+            intervals: { x: null, y: null },
+        });
+        surface.useMark(mark, definition, createConfig(0));
+
+        expect(selectionSet).toHaveBeenCalledOnce();
+        expect(selectionSet).toHaveBeenCalledWith({ x: null, y: null });
+    });
+
+    test("retains literal conditional channels without creating a series", async () => {
+        const selectionSet = vi.fn();
+        mocks.handle.selections = {
+            brush: {
+                type: "interval",
+                targets: ["x", "y"],
+                set: selectionSet,
+            },
+        };
+        const container = document.createElement("div");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({
+                unitView: {
+                    paramRuntime: {
+                        findValue: () => ({
+                            type: "interval",
+                            intervals: { x: [1, 2], y: [3, 4] },
+                        }),
+                    },
+                },
+            })
+        );
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "point" })
+            );
+        const config = {
+            count: 1,
+            channels: {
+                fill: {
+                    value: [0, 0, 0, 1],
+                    conditions: [
+                        {
+                            when: {
+                                selection: "brush",
+                                type: "interval",
+                                targets: [{ input: "x" }, { input: "y" }],
+                            },
+                            value: [1, 0, 0, 1],
+                        },
+                    ],
+                },
+            },
+        };
+
+        surface.useMark(mark, definition, config);
+        surface.useMark(mark, definition, config);
+
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+        expect(mocks.handle.series.replace).not.toHaveBeenCalled();
+        expect(selectionSet).toHaveBeenCalledOnce();
     });
 
     test("updates dynamic extra uniforms without recreating a mark", async () => {
