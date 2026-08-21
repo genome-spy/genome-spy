@@ -1,5 +1,6 @@
 import { color as parseColor } from "d3-color";
 import { format as numberFormat } from "d3-format";
+import { packHighPrecisionU32Array } from "@genome-spy/webgpu-renderer";
 import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
 import { rectMark } from "@genome-spy/webgpu-renderer/marks/rect";
 import { ruleMark } from "@genome-spy/webgpu-renderer/marks/rule";
@@ -20,6 +21,7 @@ import { thresholdScale } from "@genome-spy/webgpu-renderer/scales/threshold";
 
 import { getMarkData } from "../immediate/markData.js";
 import { resolveMarkProperty } from "../immediate/markEncoding.js";
+import { isLargeGenome } from "../../gl/glslScaleGenerator.js";
 
 const SHAPE_CODES = new Map(
     [
@@ -110,15 +112,6 @@ const HATCH_CODES = new Map(
  * @type {WeakMap<import("../../marks/mark.js").default, SeriesCache>}
  */
 const SERIES_CACHE = new WeakMap();
-
-/**
- * The renderer represents categorical values as u32 identifiers. Keep the
- * identifiers stable for each mark channel so cached columns remain valid when
- * a band-scale domain changes.
- *
- * @type {WeakMap<import("../../marks/mark.js").default, Map<string, Map<import("../../spec/channel.js").Scalar, number>>>}
- */
-const CATEGORY_IDS = new WeakMap();
 
 /**
  * Converts one Core mark occurrence into the low-level configuration used by
@@ -703,11 +696,15 @@ function createPositionBranch(mark, channel, data, coords, encoder) {
                 ).band ?? 0.5
             ),
         };
-    } else if (encoder.scale?.type == "index") {
+    } else if (
+        encoder.scale?.type == "index" ||
+        encoder.scale?.type == "locus"
+    ) {
+        const large = isLargeGenome(encoder.scale.domain().map(Number));
         return {
-            data: toIndexArray(mark, channel, data, accessor),
+            data: toIndexArray(mark, channel, data, accessor, large),
             type: "u32",
-            inputComponents: 2,
+            ...(large ? { inputComponents: 2 } : {}),
             scale: createIndexPositionScale(
                 encoder.scale,
                 range,
@@ -1226,8 +1223,6 @@ function createNumericScale(mark, channel, scale, range, domain) {
         case "linear":
         case "sequential-linear":
         case "diverging-linear":
-        case "time":
-        case "utc":
             return linearScale(options);
         case "log":
             return logScale({
@@ -1390,10 +1385,12 @@ function toFloat32Array(mark, channel, data, accessor) {
  * @param {string} channel
  * @param {object[]} data
  * @param {import("../../types/encoder.js").Accessor} accessor
+ * @param {boolean} large
  */
-function toIndexArray(mark, channel, data, accessor) {
-    return getCachedSeries(mark, channel, data, accessor, () =>
-        Float64Array.from(data, (datum) => {
+function toIndexArray(mark, channel, data, accessor, large) {
+    const cacheChannel = `${channel}:${large ? "large" : "regular"}`;
+    return getCachedSeries(mark, cacheChannel, data, accessor, () => {
+        const values = Array.from(data, (datum) => {
             const value = Number(accessor(datum));
             if (!Number.isSafeInteger(value) || value < 0) {
                 throw unsupported(
@@ -1402,8 +1399,11 @@ function toIndexArray(mark, channel, data, accessor) {
                 );
             }
             return value;
-        })
-    );
+        });
+        return large
+            ? packHighPrecisionU32Array(values)
+            : Uint32Array.from(values);
+    });
 }
 
 /**
@@ -1414,27 +1414,10 @@ function toIndexArray(mark, channel, data, accessor) {
  * @param {import("../../types/encoder.js").VegaScale} scale
  */
 function toCategoricalArray(mark, channel, data, accessor, scale) {
-    let markCategories = CATEGORY_IDS.get(mark);
-    if (!markCategories) {
-        markCategories = new Map();
-        CATEGORY_IDS.set(mark, markCategories);
-    }
-
-    let categoryIds = markCategories.get(channel);
-    if (!categoryIds) {
-        categoryIds = new Map();
-        markCategories.set(channel, categoryIds);
-    }
-
+    const indexer = /** @type {any} */ (scale).props?.domainIndexer;
     /** @param {import("../../spec/channel.js").Scalar} value */
-    const intern = (value) => {
-        let id = categoryIds.get(value);
-        if (id === undefined) {
-            id = categoryIds.size;
-            categoryIds.set(value, id);
-        }
-        return id;
-    };
+    const intern = (value) =>
+        readUnsignedInteger(mark, channel, indexer ? indexer(value) : value);
 
     const domain = scale.domain().map(intern);
     const values = getCachedSeries(mark, channel, data, accessor, () =>

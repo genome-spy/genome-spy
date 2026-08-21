@@ -895,6 +895,11 @@ export function createRenderer(
 /** Enable or disable renderer resource debug logging. */
 export function setDebugResourcesEnabled(enabled: boolean): void;
 
+/** Pack non-negative safe integers into high/low u32 series components. */
+export function packHighPrecisionU32Array(
+    values: ArrayLike<number>
+): Uint32Array;
+
 /** Build the WGSL function header for a channel's getScaled helper. */
 export function makeFnHeader(
     name: string,
