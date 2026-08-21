@@ -150,11 +150,17 @@ export default class WebGpuSurface {
         });
     }
 
-    render() {
+    /**
+     * @param {GPUColor} [clearColor]
+     */
+    render(clearColor) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
-        this.#renderer.render({ draws: this.#frameDraws });
+        this.#renderer.render({
+            draws: this.#frameDraws,
+            ...(clearColor ? { clearColor } : {}),
+        });
     }
 
     finalize() {
