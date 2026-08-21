@@ -36,6 +36,17 @@ struct VSOut {
     }
 }
 
+class ExtraSlotProgram extends SlotProgram {
+    /** @returns {{ name: string, type: "f32", components: 1 }[]} */
+    getExtraUniformLayout() {
+        return [{ name: "uExtra", type: "f32", components: 1 }];
+    }
+
+    _initializeExtraUniforms() {
+        this._setUniformValue("uExtra", 1);
+    }
+}
+
 describe("BaseProgram slot handles", () => {
     it("updates scale domains through slots", () => {
         const renderer = createMockRenderer();
@@ -136,6 +147,31 @@ describe("BaseProgram slot handles", () => {
         expect(
             program._uniformBufferState.view.getFloat32(fillEntry.offset, true)
         ).toBeCloseTo(0.2);
+    });
+
+    it("updates dynamic extra uniforms through slots", () => {
+        const renderer = createMockRenderer();
+        const program = new ExtraSlotProgram(renderer, {
+            channels: {
+                uniqueId: { data: new Uint32Array([0]), type: "u32" },
+                x: { data: new Float32Array([0]), type: "f32" },
+                size: { value: 1, type: "f32", dynamic: true },
+                fill: {
+                    value: [0, 0, 0, 1],
+                    type: "f32",
+                    components: 4,
+                },
+            },
+            dynamicValues: { uExtra: { value: 2 } },
+        });
+
+        const entry = program._uniformBufferState.entries.get("uExtra");
+        expect(entry).toBeTruthy();
+        program.getSlotHandles().extraValues.uExtra.set(3);
+
+        expect(
+            program._uniformBufferState.view.getFloat32(entry.offset, true)
+        ).toBe(3);
     });
 
     it("replaces a single conditional series through its logical channel", () => {

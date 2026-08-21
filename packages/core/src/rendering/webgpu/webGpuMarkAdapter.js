@@ -22,6 +22,7 @@ import { thresholdScale } from "@genome-spy/webgpu-renderer/scales/threshold";
 import { getMarkData } from "../immediate/markData.js";
 import { resolveMarkProperty } from "../immediate/markEncoding.js";
 import { isLargeGenome } from "../../gl/glslScaleGenerator.js";
+import { isExprRef } from "../../paramRuntime/paramUtils.js";
 
 const SHAPE_CODES = new Map(
     [
@@ -113,6 +114,9 @@ const HATCH_CODES = new Map(
  */
 const SERIES_CACHE = new WeakMap();
 
+/** @type {WeakMap<import("../../marks/mark.js").default, Set<string>>} */
+const DYNAMIC_PROPERTY_WATCHES = new WeakMap();
+
 /**
  * Converts one Core mark occurrence into the low-level configuration used by
  * the WebGPU renderer. Unsupported Core features fail here with a contextual
@@ -128,6 +132,8 @@ export function createWebGpuMarkConfig(mark, options, coords, viewOpacity = 1) {
     if (options.sampleFacetRenderingOptions || mark.encoders.facetIndex) {
         throw unsupported(mark, "Faceted rendering is not supported.");
     }
+
+    watchDynamicProperties(mark, getDynamicChannelProperties(mark.getType()));
 
     const data = getMarkData(mark, options);
     if (data.length == 0) {
@@ -168,6 +174,39 @@ export function createWebGpuMarkConfig(mark, options, coords, viewOpacity = 1) {
     }
 
     throw unsupported(mark, `Mark type "${markType}" is not supported.`);
+}
+
+/**
+ * Mark properties represented by channel value slots in the renderer.
+ *
+ * @param {string} markType
+ * @returns {string[]}
+ */
+function getDynamicChannelProperties(markType) {
+    if (markType == "point") {
+        return ["fillGradientStrength", "inwardStroke"];
+    } else if (markType == "rect") {
+        return [
+            "cornerRadius",
+            "cornerRadiusTopRight",
+            "cornerRadiusBottomRight",
+            "cornerRadiusTopLeft",
+            "cornerRadiusBottomLeft",
+            "minWidth",
+            "minHeight",
+            "minOpacity",
+            "shadowOffsetX",
+            "shadowOffsetY",
+            "shadowBlur",
+            "shadowOpacity",
+            "shadowColor",
+            "hatch",
+        ];
+    } else if (markType == "rule" || markType == "tick") {
+        return ["minLength", "strokeCap", "strokeDashOffset"];
+    } else {
+        return [];
+    }
 }
 
 /**
@@ -505,6 +544,13 @@ function createTextConfig(mark, data, coords, viewOpacity) {
         flushX: !!readProperty(mark, "flushX"),
         flushY: !!readProperty(mark, "flushY"),
         squeeze: !!readProperty(mark, "squeeze"),
+        dynamicValues: createDynamicValues(mark, {
+            paddingX: ["uPaddingX", (value) => value],
+            paddingY: ["uPaddingY", (value) => value],
+            flushX: ["uFlushX", (value) => (value ? 1 : 0)],
+            flushY: ["uFlushY", (value) => (value ? 1 : 0)],
+            squeeze: ["uSqueeze", (value) => (value ? 1 : 0)],
+        }),
     };
 }
 
@@ -552,6 +598,25 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
             mark,
             "noFadingOnPointSelection"
         ),
+        dynamicValues: createDynamicValues(mark, {
+            arcFadingDistance: [
+                "uArcFadingDistance",
+                (value) => value ?? [0, 0],
+            ],
+            arcHeightFactor: ["uArcHeightFactor", (value) => value],
+            minArcHeight: ["uMinArcHeight", (value) => value],
+            linkShape: [
+                "uShape",
+                () => mapProperty(mark, "linkShape", LINK_SHAPE_CODES, "arc"),
+            ],
+            orient: [
+                "uOrient",
+                () => mapProperty(mark, "orient", ORIENT_CODES, "vertical"),
+            ],
+            clampApex: ["uClampApex", (value) => (value ? 1 : 0)],
+            maxChordLength: ["uMaxChordLength", (value) => value],
+            segments: ["uSegmentBreaks", (value) => Math.round(value)],
+        }),
     };
 }
 
@@ -624,6 +689,39 @@ function createArrowConfig(mark, data, coords, viewOpacity) {
             ARROW_HEAD_PLACEMENT_CODES,
             "inside"
         ),
+        dynamicValues: createDynamicValues(mark, {
+            headAngle: ["uHeadSlope", (value) => headAngleToSlope(value)],
+            headNotchAngle: [
+                "uHeadNotchSlope",
+                (value) => headAngleToSlope(value),
+            ],
+            minSize: ["uMinSize", (value) => value],
+            headWidth: ["uHeadWidth", (value) => value],
+            startNotch: ["uStartNotch", (value) => (value ? 1 : 0)],
+            minStemLength: ["uMinStemLength", (value) => value],
+            headSpacing: ["uHeadSpacing", (value) => value ?? -1],
+            stem: ["uStem", (value) => (value === false ? 0 : 1)],
+            headShape: [
+                "uHeadShape",
+                () =>
+                    mapProperty(
+                        mark,
+                        "headShape",
+                        ARROW_HEAD_SHAPE_CODES,
+                        "triangle"
+                    ),
+            ],
+            headPlacement: [
+                "uHeadPlacement",
+                () =>
+                    mapProperty(
+                        mark,
+                        "headPlacement",
+                        ARROW_HEAD_PLACEMENT_CODES,
+                        "inside"
+                    ),
+            ],
+        }),
     };
 }
 
@@ -1583,6 +1681,71 @@ function readProperty(mark, property) {
         property
     ];
     return resolveMarkProperty(mark, value);
+}
+
+/**
+ * Converts expression-backed mark properties into retained extra-uniform
+ * updates. The renderer already owns the uniform layout; Core only supplies
+ * the WebGL-equivalent adjusted values.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {Record<string, [string, (value: any) => number | number[]]>} definitions
+ * @returns {Record<string, {value: number | number[]}>}
+ */
+function createDynamicValues(mark, definitions) {
+    watchDynamicProperties(mark, Object.keys(definitions));
+
+    const dynamicValues =
+        /** @type {Record<string, {value: number | number[]}>} */ ({});
+    for (const [property, [uniform, adjust]] of Object.entries(definitions)) {
+        const value = /** @type {Record<string, any>} */ (mark.properties)[
+            property
+        ];
+        if (!isExprRef(value)) {
+            continue;
+        }
+        const adjusted = adjust(readProperty(mark, property));
+        if (
+            typeof adjusted != "number" &&
+            (!Array.isArray(adjusted) ||
+                !adjusted.every((entry) => typeof entry == "number"))
+        ) {
+            throw unsupported(
+                mark,
+                `Dynamic property "${property}" must resolve to numeric data.`
+            );
+        }
+        dynamicValues[uniform] = { value: adjusted };
+    }
+    return dynamicValues;
+}
+
+/**
+ * Registers one render invalidation watcher per expression-backed property.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string[]} properties
+ */
+function watchDynamicProperties(mark, properties) {
+    let watched = DYNAMIC_PROPERTY_WATCHES.get(mark);
+    if (!watched) {
+        watched = new Set();
+        DYNAMIC_PROPERTY_WATCHES.set(mark, watched);
+    }
+    for (const property of properties) {
+        if (watched.has(property)) {
+            continue;
+        }
+        const value = /** @type {Record<string, any>} */ (mark.properties)[
+            property
+        ];
+        if (isExprRef(value)) {
+            mark.unitView.paramRuntime.watchExpression(value.expr, () =>
+                mark.unitView.context.animator.requestRender()
+            );
+        }
+        watched.add(property);
+    }
 }
 
 /**

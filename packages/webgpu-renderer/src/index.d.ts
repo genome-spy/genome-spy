@@ -81,6 +81,11 @@ export type ValueSlotHandle = {
     set(value: number | number[]): void;
 };
 
+export type DynamicValueConfig = {
+    /** Initial value for the existing extra uniform. */
+    value: number | number[];
+};
+
 export type SelectionSlotHandle =
     | {
           type: "single";
@@ -124,6 +129,7 @@ export type MarkHandle<
     series: SeriesSlotHandle<TSeries>;
     scales: Record<string, ChannelSlotGroup<ScaleSlotHandle>>;
     values: Record<string, ChannelSlotGroup<ValueSlotHandle>>;
+    extraValues: Record<string, ValueSlotHandle>;
     selections: Record<string, SelectionSlotHandle>;
 };
 
@@ -764,6 +770,9 @@ export type MarkConfig<T extends MarkType = MarkType> = {
      * series buffer lengths when possible.
      */
     count?: number;
+
+    /** Existing mark-program uniforms that may be updated without rebuilding. */
+    dynamicValues?: Record<string, DynamicValueConfig>;
 } & (T extends "rule"
     ? {
           /**

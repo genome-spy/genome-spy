@@ -247,6 +247,17 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 `;
 
 export default class LinkProgram extends BaseProgram {
+    /**
+     * @param {string} name
+     * @param {number | number[]} value
+     */
+    _setExtraUniformValue(name, value) {
+        super._setExtraUniformValue(name, value);
+        if (name == "uSegmentBreaks") {
+            this._segmentCount = Math.round(Number(value));
+        }
+    }
+
     get channelOrder() {
         return CHANNELS;
     }

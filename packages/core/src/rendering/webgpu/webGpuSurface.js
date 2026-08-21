@@ -137,11 +137,17 @@ export default class WebGpuSurface {
                 series: collectSeries(config),
                 count: config.count,
                 selections: new Map(),
+                dynamicValues: new Map(
+                    Object.entries(config.dynamicValues ?? {}).map(
+                        ([name, value]) => [name, value.value]
+                    )
+                ),
             };
             this.#marks.set(mark, retained);
         } else {
             updateRetainedMark(retained, config);
         }
+        updateRetainedExtraValues(retained, config);
         updateRetainedSelections(retained, mark, config);
 
         // Core still bakes absolute canvas coordinates into scale ranges, so
@@ -257,6 +263,40 @@ function updateChannelSlots(scaleSlot, valueSlot, channel) {
     if (valueSlot && channel.value !== undefined) {
         valueSlot.set(channel.value);
     }
+}
+
+/**
+ * Updates mark-program uniforms exposed as retained extra-value slots.
+ *
+ * @param {RetainedMark} retained
+ * @param {any} config
+ */
+function updateRetainedExtraValues(retained, config) {
+    for (const [name, dynamic] of Object.entries(config.dynamicValues ?? {})) {
+        const slot = retained.handle.extraValues?.[name];
+        if (
+            !slot ||
+            valuesEqual(retained.dynamicValues.get(name), dynamic.value)
+        ) {
+            continue;
+        }
+        slot.set(dynamic.value);
+        retained.dynamicValues.set(name, dynamic.value);
+    }
+}
+
+/**
+ * @param {number | number[] | undefined} previous
+ * @param {number | number[]} next
+ */
+function valuesEqual(previous, next) {
+    if (Array.isArray(previous) && Array.isArray(next)) {
+        return (
+            previous.length == next.length &&
+            previous.every((value, index) => value == next[index])
+        );
+    }
+    return previous == next;
 }
 
 /**
@@ -419,4 +459,5 @@ function getLogicalChannelSeries(channel) {
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
  * @prop {Map<string, number | Uint32Array | [number, number]>} selections
+ * @prop {Map<string, number | number[]>} dynamicValues
  */

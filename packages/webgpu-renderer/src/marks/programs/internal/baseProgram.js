@@ -97,6 +97,7 @@ export default class BaseProgram {
             },
             scales: {},
             values: {},
+            extraValues: {},
             selections: {},
         };
 
@@ -146,6 +147,13 @@ export default class BaseProgram {
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
         this._initializeUniforms();
+        const dynamicValues =
+            /** @type {Record<string, {value: number | number[]}>} */ (
+                this._markConfig.dynamicValues ?? {}
+            );
+        for (const [name, config] of Object.entries(dynamicValues)) {
+            this._setUniformValue(name, config.value);
+        }
         this._writeUniforms();
         this._buildSlotHandles();
         this._bindGroupLayout = bindGroupLayout;
@@ -598,6 +606,14 @@ export default class BaseProgram {
             }
         }
 
+        const dynamicValues = /** @type {Record<string, unknown>} */ (
+            this._markConfig.dynamicValues ?? {}
+        );
+        for (const name of Object.keys(dynamicValues)) {
+            this._slotHandles.extraValues[name] =
+                this._createExtraValueSlot(name);
+        }
+
         for (const def of this._selectionResources.selectionDefs) {
             this._slotHandles.selections[def.name] =
                 this._createSelectionSlot(def);
@@ -651,6 +667,34 @@ export default class BaseProgram {
                 this.renderer.markPickingDirty();
             },
         };
+    }
+
+    /**
+     * @param {string} name
+     * @returns {import("../../../index.d.ts").ValueSlotHandle}
+     */
+    _createExtraValueSlot(name) {
+        if (!this._uniformBufferState?.entries.has(name)) {
+            throw new Error(`Uniform "${name}" is not available for updates.`);
+        }
+        return {
+            set: (value) => {
+                this._assertAlive();
+                this._setExtraUniformValue(name, value);
+                this._writeUniforms();
+                this.renderer.markPickingDirty();
+            },
+        };
+    }
+
+    /**
+     * Hook for mark programs whose draw parameters mirror an extra uniform.
+     *
+     * @param {string} name
+     * @param {number | number[]} value
+     */
+    _setExtraUniformValue(name, value) {
+        this._setUniformValue(name, value);
     }
 
     /**

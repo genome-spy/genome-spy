@@ -402,6 +402,51 @@ describe("WebGPU mark adapter", () => {
         expect(config.headSpacing).toBe(10);
     });
 
+    test("retains expression-driven arrow properties as extra uniforms", () => {
+        const mark = createMark(
+            "arrow",
+            [{}],
+            {
+                x: createConstantEncoder(0),
+                x2: createConstantEncoder(1),
+                y: createConstantEncoder(0),
+                y2: createConstantEncoder(1),
+                xOffset: createConstantEncoder(0),
+                x2Offset: createConstantEncoder(0),
+                yOffset: createConstantEncoder(0),
+                y2Offset: createConstantEncoder(0),
+                fill: createConstantEncoder("black"),
+                stroke: createConstantEncoder(null),
+                fillOpacity: createConstantEncoder(1),
+                strokeOpacity: createConstantEncoder(1),
+                strokeWidth: createConstantEncoder(1),
+                size: createConstantEncoder(8),
+                direction: createConstantEncoder("forward"),
+            },
+            { headWidth: { expr: "width" } }
+        );
+        const requestRender = vi.fn();
+        const watchExpression = vi.fn();
+        /** @type {any} */ (mark.unitView).paramRuntime = {
+            evaluateAndGet: () => 7,
+            watchExpression,
+        };
+        /** @type {any} */ (mark.unitView).context = {
+            animator: { requestRender },
+        };
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const config = /** @type {any} */ (translated).config;
+
+        expect(config.dynamicValues).toEqual({
+            uHeadWidth: { value: 7 },
+        });
+        expect(watchExpression).toHaveBeenCalledWith(
+            "width",
+            expect.any(Function)
+        );
+    });
+
     test.each([
         ["x", 12],
         ["+", 13],

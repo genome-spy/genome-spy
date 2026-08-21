@@ -179,6 +179,7 @@ function createProgram() {
             series,
             scales: {},
             values: {},
+            extraValues: {},
             selections: {},
         }),
         replaceSeries: series.replace,
