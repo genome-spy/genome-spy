@@ -531,7 +531,12 @@ export class Renderer {
                 0,
                 1
             );
-            const scissor = toPhysicalScissor(draw.scissor, dpr);
+            const scissor = toPhysicalScissor(
+                draw.scissor,
+                dpr,
+                this.canvas.width,
+                this.canvas.height
+            );
             pass.setScissorRect(
                 scissor.x,
                 scissor.y,
@@ -713,11 +718,16 @@ function intersectRects(rect, bounds) {
 /**
  * @param {import("./index.d.ts").DrawRect} rect
  * @param {number} dpr
+ * @param {number} canvasWidth
+ * @param {number} canvasHeight
  */
-function toPhysicalScissor(rect, dpr) {
+function toPhysicalScissor(rect, dpr, canvasWidth, canvasHeight) {
     const x = Math.floor(rect.x * dpr);
     const y = Math.floor(rect.y * dpr);
-    const right = Math.ceil((rect.x + rect.width) * dpr);
-    const bottom = Math.ceil((rect.y + rect.height) * dpr);
+    const right = Math.min(canvasWidth, Math.ceil((rect.x + rect.width) * dpr));
+    const bottom = Math.min(
+        canvasHeight,
+        Math.ceil((rect.y + rect.height) * dpr)
+    );
     return { x, y, width: right - x, height: bottom - y };
 }
