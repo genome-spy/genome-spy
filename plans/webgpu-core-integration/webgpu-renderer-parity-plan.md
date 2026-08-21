@@ -69,7 +69,7 @@ Verification:
   rebuilding the mark pipeline.
 - Smoke-test a Core selection example with WebGL and WebGPU at DPR 1 and 2.
 
-### 2. Faceted and sample-faceted rendering
+### 6. Faceted and sample-faceted rendering — postponed
 
 The adapter still rejects `options.sampleFacetRenderingOptions` and
 `mark.encoders.facetIndex`. WebGL renders one occurrence per facet, with
@@ -77,7 +77,13 @@ facet-specific data and coordinates. The current WebGPU path creates one
 retained configuration for the un-faceted occurrence and does not yet model
 the occurrence traversal contract.
 
-Implement facet occurrence support in the Core WebGPU integration:
+This work is intentionally postponed because it requires additional design
+around occurrence ownership, retained draw lifetimes, facet-local selections,
+and interaction with visible-range culling. Do not implement, redesign, or
+expand this work until the user explicitly authorizes continuation.
+
+When this work is resumed, implement facet occurrence support in the Core
+WebGPU integration:
 
 - Reuse the existing occurrence traversal and facet-coordinate calculations
   instead of duplicating facet grouping logic in the renderer package.
@@ -109,7 +115,7 @@ Verification:
 - Verify facet changes do not leak draw handles or recreate pipelines when the
   mark definition remains unchanged.
 
-### 3. Core scale types without renderer definitions
+### 2. Core scale types without renderer definitions
 
 The adapter now translates the scale types already represented by the generic
 renderer, including linear, log, pow, sqrt, symlog, time/UTC-as-milliseconds,
@@ -157,7 +163,7 @@ Verification:
 - Run renderer scale unit/GPU tests and Core adapter tests for each supported
   scale family.
 
-### 4. Font parity and text resource registration
+### 3. Font parity and text resource registration
 
 The WebGPU text program currently resolves Core's default sans-serif to the
 embedded Lato atlas and rejects other font families. WebGL can use Core's font
@@ -187,7 +193,7 @@ Verification:
 - Verify font changes rebuild only the resources that require rebuilding and do
   not invalidate unrelated mark pipelines.
 
-### 5. Data-driven mark-local properties
+### 4. Data-driven mark-local properties
 
 The generic renderer exposes several properties as mark uniforms because they
 are currently constant for a draw. Core/WebGL can vary some of these through
@@ -242,20 +248,22 @@ renderer cannot perform it.
 
 1. Conditional channel translation and selection resources.
    `feat(core): translate conditional WebGPU channels`
-2. Facet and sample-facet occurrence traversal.
-   `feat(core): render WebGPU facet occurrences`
-3. Remaining generic scale definitions, starting with the scale family needed
+2. Remaining generic scale definitions, starting with the scale family needed
    by the highest-value Core examples.
    `feat(webgpu): add remaining parity scale definitions`
-4. Font resource registration and text-family parity.
+3. Font resource registration and text-family parity.
    `feat(webgpu): support registered text fonts`
-5. Mark-local dynamic/per-instance property parity.
+4. Mark-local dynamic/per-instance property parity.
    `feat(webgpu): support dynamic mark properties`
-6. Cross-renderer audit, migration documentation, and final verification.
+5. Cross-renderer audit, migration documentation, and final verification.
    `test(webgpu): verify remaining renderer parity`
+6. Facet and sample-facet design and implementation, only after explicit
+   authorization to resume the postponed work.
+   `feat(core): render WebGPU facet occurrences`
 
-Each step should include its focused tests and update the migration plan only
-for behavior actually implemented. Keep unrelated fixes out of the commit.
+Each active step should include its focused tests and update the migration plan
+only for behavior actually implemented. Step 6 is inactive until explicitly
+authorized; keep unrelated fixes out of every commit.
 
 ## Verification strategy
 
@@ -277,15 +285,13 @@ Before declaring the remaining parity work complete, run:
 - `npm run lint`;
 - the full relevant Vitest suites;
 - the WebGPU GPU suite when available;
-- representative Core examples for conditionals, facets, scales, and fonts;
+- representative Core examples for conditionals, scales, and fonts;
 - WebGL regression tests plus shared Canvas/SVG tests.
 
 ## Acceptance criteria
 
 - Conditional Core encodings render with the same branch precedence and
   selection behavior as WebGL.
-- Faceted and sample-faceted marks render the correct data and coordinates,
-  including culling, opacity, ordering, and retained updates.
 - Every Core scale used by supported examples either has a generic WebGPU
   definition with matching updates or is explicitly documented as unsupported
   with a follow-up issue/plan.
@@ -296,6 +302,8 @@ Before declaring the remaining parity work complete, run:
   `webgpu-renderer`.
 - Existing completed parity features remain green while these integrations are
   added.
+- Faceting remains explicitly postponed and is not a completion criterion until
+  the user authorizes that work.
 
 ## Baseline implementation references
 
