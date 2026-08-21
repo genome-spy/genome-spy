@@ -422,7 +422,7 @@ describe("WebGPU mark adapter", () => {
         }
     );
 
-    test("maps index positions to packed high-precision series", () => {
+    test("maps regular index positions to a single u32 component", () => {
         const data = [{ x: 4 }, { x: 9 }];
         const mark = createMark("point", data, {
             x: createEncoder((datum) => datum.x, {
@@ -443,9 +443,8 @@ describe("WebGPU mark adapter", () => {
         const x = /** @type {any} */ (translated).config.channels.x;
 
         expect(x).toEqual({
-            data: new Float64Array([4, 9]),
+            data: new Uint32Array([4, 9]),
             type: "u32",
-            inputComponents: 2,
             scale: {
                 type: "index",
                 definition: indexScaleDefinition,
@@ -457,6 +456,30 @@ describe("WebGPU mark adapter", () => {
                 band: 0.25,
             },
         });
+    });
+
+    test("maps large index positions to packed high-precision series", () => {
+        const data = [{ x: 2 ** 32 + 4 }, { x: 2 ** 32 + 9 }];
+        const mark = createMark("point", data, {
+            x: createEncoder((datum) => datum.x, {
+                scale: createIndexScale([2 ** 32, 2 ** 32 + 10]),
+                channelDef: {
+                    field: "x",
+                    type: "index",
+                    band: 0.25,
+                },
+            }),
+        });
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(10, 20, 100, 200)
+        );
+        const x = /** @type {any} */ (translated).config.channels.x;
+
+        expect(x.data).toEqual(new Uint32Array([1048576, 4, 1048576, 9]));
+        expect(x.inputComponents).toBe(2);
     });
 
     test("translates renderer-supported nonlinear position scales", () => {
@@ -490,6 +513,45 @@ describe("WebGPU mark adapter", () => {
         );
     });
 
+    test.each(["time", "utc", "quantile", "bin-ordinal"])(
+        "rejects unsupported %s scales",
+        (scaleType) => {
+            const mark = createMark("point", [{ x: 1 }], {
+                x: createEncoder((datum) => datum.x, {
+                    scale: {
+                        type: scaleType,
+                        domain: () => [0, 2],
+                        range: () => [0, 1],
+                    },
+                    channelDef: { field: "x", type: "quantitative" },
+                }),
+            });
+
+            expect(() =>
+                createWebGpuMarkConfig(mark, {}, Rectangle.ZERO)
+            ).toThrow(`Scale type "${scaleType}"`);
+        }
+    );
+
+    test("rejects raw string categories without a Core domain indexer", () => {
+        const mark = createMark("point", [{ category: "A" }], {
+            x: createEncoder((datum) => datum.category, {
+                scale: {
+                    type: "band",
+                    domain: () => ["A"],
+                    paddingInner: () => 0,
+                    paddingOuter: () => 0,
+                    align: () => 0.5,
+                },
+                channelDef: { field: "category", type: "nominal" },
+            }),
+        });
+
+        expect(() => createWebGpuMarkConfig(mark, {}, Rectangle.ZERO)).toThrow(
+            "must contain u32 integers"
+        );
+    });
+
     test("translates ordinal color channels to renderer ids", () => {
         const data = [{ category: "A" }, { category: "B" }];
         const mark = createMark("point", data, {
@@ -498,6 +560,9 @@ describe("WebGPU mark adapter", () => {
                     type: "ordinal",
                     domain: () => ["A", "B"],
                     range: () => ["red", "blue"],
+                    props: {
+                        domainIndexer: createCategoryIndexer(["A", "B"]),
+                    },
                 },
                 channelDef: { field: "category", type: "nominal" },
             }),
@@ -1088,11 +1153,21 @@ function createBandScale(domain, reverse = false) {
     return {
         type: "band",
         domain: () => domain,
-        props: { reverse },
+        props: {
+            reverse,
+            domainIndexer: createCategoryIndexer(domain),
+        },
         paddingInner: () => 0.2,
         paddingOuter: () => 0.1,
         align: () => 0.5,
     };
+}
+
+/** @param {string[]} domain */
+function createCategoryIndexer(domain) {
+    const ids = new Map(domain.map((value, index) => [value, index]));
+    /** @param {string} value */
+    return (value) => ids.get(value);
 }
 
 /** @param {[number, number]} domain */
