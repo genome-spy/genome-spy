@@ -128,7 +128,7 @@ check, with remaining behavioral differences recorded here.
 | P1       | `examples/docs/examples/genomic-data/pik3ca-tcga-brca-lollipop.json` | Non-arc links and angled text labels still differ visually from WebGL               | Keep text offsets at the verified baseline and reconcile the link shader with GLSL  | Open   |
 | P1       | `examples/docs/grammar/mark/rect/shadowed-marks.json`                | Rectangle shadows were not visible                                                                                 | Expand the pixel-space quad and match WebGL's shadow offset convention               | Fixed  |
 | P1       | `examples/core/marks/rect/rect_with_params.json`                     | Rounded rectangles clipped decorated geometry and hatch orientation was mirrored                                 | Expand decorated geometry in pixels and flip hatch coordinates to the GLSL axis      | Fixed  |
-| P1       | `examples/docs/grammar/mark/text/sequence-logo.json`                 | Logo letters do not render with WebGPU                                                                            | Compare text layout/logo-letter handling against WebGL                               | Open   |
+| P1       | `examples/docs/grammar/mark/text/sequence-logo.json`                 | Logo letters initially rendered as ordinary fixed-size glyphs                                                      | Port Core's logo-letter band sizing and verify stacked glyph screenshots              | Fixed  |
 
 Acceptance for this section is visual inspection of both renderer screenshots,
 focused regression coverage where practical, and one commit per requested fix.
@@ -159,6 +159,10 @@ focused regression coverage where practical, and one commit per requested fix.
   the focused `hatch-patterns.json` screenshot now matches WebGL's diagonal
   orientation. The parameterized example remains visually sparse in the
   screenshot harness because both backends capture its rule-only initial state.
+- Text marks now pass the `logoLetters` mode into WebGPU, fit each glyph's
+  height to its encoded band, preserve the normal font glyph width, and use the
+  logo-specific SDF scale. The focused sequence-logo screenshot shows the
+  expected stacked letters in both renderers.
 
 ## Context
 

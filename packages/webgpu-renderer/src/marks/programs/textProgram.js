@@ -296,35 +296,45 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         getScaled_y(i) + getScaled_dy(i)
     );
     var rangeScale = 1.0;
+    var logoSize = vec2<f32>(size);
 
 #if defined(x2_DEFINED)
     let x2 = getScaled_x2(i) + getScaled_x2Offset(i);
-    let xRange = positionInsideRange(
-        min(anchor.x, x2),
-        max(anchor.x, x2),
-        flushSize.x * rangeScale,
-        params.uPaddingX,
-        alignAxis.x,
-        params.uFlushX != 0u,
-        globals.width
-    );
-    anchor.x = xRange.pos;
-    rangeScale = rangeScale * xRange.scale;
+    if (params.uLogoLetters != 0u) {
+        logoSize.x = abs(x2 - anchor.x);
+    } else {
+        let xRange = positionInsideRange(
+            min(anchor.x, x2),
+            max(anchor.x, x2),
+            flushSize.x * rangeScale,
+            params.uPaddingX,
+            alignAxis.x,
+            params.uFlushX != 0u,
+            globals.width
+        );
+        anchor.x = xRange.pos;
+        rangeScale = rangeScale * xRange.scale;
+    }
 #endif
 
 #if defined(y2_DEFINED)
     let y2 = getScaled_y2(i) + getScaled_y2Offset(i);
-    let yRange = positionInsideRange(
-        min(anchor.y, y2),
-        max(anchor.y, y2),
-        flushSize.y * rangeScale,
-        params.uPaddingY,
-        alignAxis.y,
-        params.uFlushY != 0u,
-        globals.height
-    );
-    anchor.y = yRange.pos;
-    rangeScale = rangeScale * yRange.scale;
+    if (params.uLogoLetters != 0u) {
+        logoSize.y = abs(y2 - anchor.y);
+        anchor.y = (anchor.y + y2) * 0.5;
+    } else {
+        let yRange = positionInsideRange(
+            min(anchor.y, y2),
+            max(anchor.y, y2),
+            flushSize.y * rangeScale,
+            params.uPaddingY,
+            alignAxis.y,
+            params.uFlushY != 0u,
+            globals.height
+        );
+        anchor.y = yRange.pos;
+        rangeScale = rangeScale * yRange.scale;
+    }
 #endif
 
     if (isOutsideVisibleRange(anchor)) {
@@ -354,11 +364,11 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let sizeRatio = size / params.uLayoutFontSize;
 
     let local = quad[v];
-    let width = metrics.texRect.z * sizeScale;
-    let height = metrics.texRect.w * sizeScale;
-    let x = alignOffset(u32(getScaled_align(i)), textMetrics.width * sizeRatio) +
+    var width = metrics.texRect.z * sizeScale;
+    var height = metrics.texRect.w * sizeScale;
+    var x = alignOffset(u32(getScaled_align(i)), textMetrics.width * sizeRatio) +
         glyph.xOffset * sizeRatio;
-    let y = glyphVertexY(
+    var y = glyphVertexY(
         local.y,
         glyph.yOffset,
         metrics.texRect.w,
@@ -370,6 +380,16 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         params.uCapHeight,
         params.uDescent
     );
+    if (params.uLogoLetters != 0u) {
+        width = logoSize.x * 0.5 *
+            (metrics.texRect.z + 2.0 * params.uSdfPadding) /
+            metrics.texRect.z;
+        height = logoSize.y *
+            (metrics.texRect.w + 2.0 * params.uSdfPadding) /
+            metrics.texRect.w;
+        x = (local.x - 0.5) * width;
+        y = (local.y - 0.5) * height;
+    }
     let localPos = vec2<f32>(x + local.x * width, y);
     let rotated = rot * localPos;
     let pixel = anchor + rotated;
@@ -427,6 +447,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
  * @prop {unknown} [fontSize]
  * @prop {unknown} [lineHeight]
  * @prop {unknown} [letterSpacing]
+ * @prop {unknown} [logoLetters]
  */
 
 /**
@@ -854,6 +875,7 @@ export default class TextProgram extends BaseProgram {
             { name: "uFlushX", type: "u32", components: 1 },
             { name: "uFlushY", type: "u32", components: 1 },
             { name: "uSqueeze", type: "u32", components: 1 },
+            { name: "uLogoLetters", type: "u32", components: 1 },
         ];
     }
 
@@ -938,6 +960,10 @@ export default class TextProgram extends BaseProgram {
             typeof this._markConfig.squeeze === "boolean"
                 ? this._markConfig.squeeze
                 : true;
+        const logoLetters =
+            typeof this._markConfig.logoLetters === "boolean"
+                ? this._markConfig.logoLetters
+                : false;
 
         this._setUniformValue("uFontBase", metrics.common.base);
         this._setUniformValue("uLayoutFontSize", layout.fontSize);
@@ -945,12 +971,16 @@ export default class TextProgram extends BaseProgram {
         this._setUniformValue("uCapHeight", metrics.capHeight);
         this._setUniformValue("uDescent", metrics.descent);
         this._setUniformValue("uSdfPadding", SDF_PADDING);
-        this._setUniformValue("uSdfNumerator", metrics.common.base * 0.35);
+        this._setUniformValue(
+            "uSdfNumerator",
+            metrics.common.base * 0.35 * (logoLetters ? 0.5 : 1)
+        );
         this._setUniformValue("uPaddingX", paddingX);
         this._setUniformValue("uPaddingY", paddingY);
         this._setUniformValue("uFlushX", flushX ? 1 : 0);
         this._setUniformValue("uFlushY", flushY ? 1 : 0);
         this._setUniformValue("uSqueeze", squeeze ? 1 : 0);
+        this._setUniformValue("uLogoLetters", logoLetters ? 1 : 0);
 
         this._updateTextLayoutBuffers(layout);
 
