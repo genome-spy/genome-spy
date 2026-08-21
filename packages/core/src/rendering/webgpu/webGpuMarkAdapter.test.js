@@ -242,6 +242,41 @@ describe("WebGPU mark adapter", () => {
         expect(updatedX.scale.domain).toEqual([1, 0]);
     });
 
+    test("keeps reversed discrete Y scales top-to-bottom", () => {
+        const data = [{ category: "A" }, { category: "B" }];
+        const yOptions = {
+            scale: createBandScale(["A", "B"], true),
+            channelDef: {
+                field: "category",
+                type: "nominal",
+                band: 0.5,
+            },
+        };
+        const mark = createMark("point", data, {
+            x: createConstantEncoder(0.5),
+            y: createEncoder((datum) => datum.category, yOptions),
+            size: createConstantEncoder(4),
+            shape: createConstantEncoder("circle"),
+            strokeWidth: createConstantEncoder(0),
+            xOffset: createConstantEncoder(0),
+            yOffset: createConstantEncoder(0),
+            fill: createConstantEncoder("black"),
+            stroke: createConstantEncoder(null),
+            fillOpacity: createConstantEncoder(1),
+            strokeOpacity: createConstantEncoder(1),
+            angle: createConstantEncoder(0),
+        });
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(10, 20, 100, 200)
+        );
+        const y = /** @type {any} */ (translated).config.channels.y;
+
+        expect(y.scale.range).toEqual([20, 220]);
+    });
+
     test("translates a rule dash pattern to the renderer atlas config", () => {
         const mark = createMark(
             "rule",
@@ -847,11 +882,12 @@ function createLinearScale(domain) {
     };
 }
 
-/** @param {string[]} domain */
-function createBandScale(domain) {
+/** @param {string[]} domain @param {boolean} [reverse] */
+function createBandScale(domain, reverse = false) {
     return {
         type: "band",
         domain: () => domain,
+        props: { reverse },
         paddingInner: () => 0.2,
         paddingOuter: () => 0.1,
         align: () => 0.5,

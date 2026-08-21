@@ -522,7 +522,7 @@ function resolveFont(mark) {
 function createPositionChannel(mark, channel, data, coords) {
     const encoder = requireEncoder(mark, channel);
     assertUnconditional(mark, channel, encoder);
-    const range = getAbsoluteRange(channel, coords);
+    const range = getAbsoluteRange(channel, coords, encoder.scale);
     if (encoder.constant) {
         const unitPosition = Number(encoder(data[0]));
         if (!Number.isFinite(unitPosition)) {
@@ -846,10 +846,21 @@ function readConstantEncoder(mark, channel, data) {
  *
  * @param {string} channel
  * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {import("../../types/encoder.js").VegaScale | undefined} scale
  * @returns {[number, number]}
  */
-function getAbsoluteRange(channel, coords) {
-    return channel[0] == "x" ? [coords.x, coords.x2] : [coords.y2, coords.y];
+function getAbsoluteRange(channel, coords, scale) {
+    if (channel[0] == "x") {
+        return [coords.x, coords.x2];
+    }
+
+    // Continuous Y scales use the canvas coordinate direction. Core reverses
+    // discrete Y scales by default, so their categorical range must remain
+    // ascending in pixel space to keep the first category at the top.
+    const discreteY = scale?.type == "band" || scale?.type == "index";
+    return discreteY && scale.props?.reverse
+        ? [coords.y, coords.y2]
+        : [coords.y2, coords.y];
 }
 
 /**
