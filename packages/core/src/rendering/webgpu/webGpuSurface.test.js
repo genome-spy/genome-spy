@@ -420,6 +420,39 @@ describe("WebGpuSurface", () => {
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
     });
 
+    test("updates retained extra uniforms when their values change", async () => {
+        const viewportSet = vi.fn();
+        mocks.handle.extraValues = { uViewport: { set: viewportSet } };
+        const container = document.createElement("div");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({})
+        );
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "text" })
+            );
+        const config = (viewport) => ({
+            count: 1,
+            channels: {},
+            dynamicValues: { uViewport: { value: viewport } },
+        });
+
+        surface.useMark(mark, definition, config([10, 20, 110, 220]));
+        surface.useMark(mark, definition, config([48, 16, 110, 220]));
+
+        expect(viewportSet).toHaveBeenCalledWith([48, 16, 110, 220]);
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+    });
+
     test("updates retained scalar slots without recreating a mark", async () => {
         const thresholdSet = vi.fn();
         mocks.handle.scalarSlots = {

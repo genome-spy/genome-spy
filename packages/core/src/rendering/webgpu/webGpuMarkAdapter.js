@@ -687,14 +687,20 @@ function createTextConfig(mark, data, coords, viewOpacity) {
         flushY: !!readProperty(mark, "flushY"),
         squeeze: !!readProperty(mark, "squeeze"),
         logoLetters: !!readProperty(mark, "logoLetters"),
-        dynamicValues: createDynamicValues(mark, {
-            paddingX: ["uPaddingX", (value) => value],
-            paddingY: ["uPaddingY", (value) => value],
-            flushX: ["uFlushX", (value) => (value ? 1 : 0)],
-            flushY: ["uFlushY", (value) => (value ? 1 : 0)],
-            squeeze: ["uSqueeze", (value) => (value ? 1 : 0)],
-            logoLetters: ["uLogoLetters", (value) => (value ? 1 : 0)],
-        }),
+        // The view rectangle can change while a retained mark is reused.
+        dynamicValues: {
+            uViewport: {
+                value: [coords.x, coords.y, coords.x2, coords.y2],
+            },
+            ...createDynamicValues(mark, {
+                paddingX: ["uPaddingX", (value) => value],
+                paddingY: ["uPaddingY", (value) => value],
+                flushX: ["uFlushX", (value) => (value ? 1 : 0)],
+                flushY: ["uFlushY", (value) => (value ? 1 : 0)],
+                squeeze: ["uSqueeze", (value) => (value ? 1 : 0)],
+                logoLetters: ["uLogoLetters", (value) => (value ? 1 : 0)],
+            }),
+        },
     };
 }
 
