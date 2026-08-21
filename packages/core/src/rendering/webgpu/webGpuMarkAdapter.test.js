@@ -71,6 +71,35 @@ describe("WebGPU mark adapter", () => {
         expect(channels.fillOpacity).toEqual({ value: 0.375 });
     });
 
+    test("reverses continuous Y scale ranges when requested", () => {
+        const mark = createMark("point", [{ y: 0 }], {
+            x: createConstantEncoder(0.5),
+            y: createEncoder((datum) => datum.y, {
+                scale: createLinearScale([0, 1], true),
+            }),
+            size: createConstantEncoder(4),
+            shape: createConstantEncoder("circle"),
+            strokeWidth: createConstantEncoder(0),
+            fill: createConstantEncoder("black"),
+            stroke: createConstantEncoder(null),
+            fillOpacity: createConstantEncoder(1),
+            strokeOpacity: createConstantEncoder(1),
+            angle: createConstantEncoder(0),
+        });
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            /** @type {any} */ ({}),
+            Rectangle.create(10, 20, 100, 200)
+        );
+        if (!translated) {
+            throw new Error("Expected a translated point mark.");
+        }
+
+        const channels = /** @type {any} */ (translated.config).channels;
+        expect(channels.y.scale.range).toEqual([20, 220]);
+    });
+
     test("combines text offsets and uses the embedded font for Core defaults", () => {
         const data = [
             { label: "A", offset: 2 },
@@ -1541,12 +1570,13 @@ function createAccessor(fn, channelDef, constant = false) {
     return Object.assign(fn, { channelDef, constant });
 }
 
-/** @param {[number, number]} domain */
-function createLinearScale(domain) {
+/** @param {[number, number]} domain @param {boolean} [reverse] */
+function createLinearScale(domain, reverse = false) {
     return {
         type: "linear",
         domain: () => domain,
         clamp: () => false,
+        props: { reverse },
     };
 }
 

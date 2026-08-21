@@ -42,6 +42,7 @@ below. Visual parity work is tracked separately in the focused table below.
 | WebGPU                  | `examples/docs/**`                                           |    107 |      3 |              3 | 2026-08-21    |
 | WebGL comparison        | Docs failure selections                                      |     11 |      1 |              1 | 2026-08-21    |
 | WebGPU/WebGL comparison | `examples/core/genomic/bedBlocks.json` at extreme locus zoom |  1 / 1 |  0 / 0 |          0 / 0 | 2026-08-21    |
+| WebGPU/WebGL comparison | `examples/core/layout/grid/concat_zindex_lollipops.json`     |  1 / 1 |  0 / 0 |          0 / 0 | 2026-08-21    |
 
 The initial core sweep found 20 failures and empty-canvas cases across ordinal
 positions, categorical channels, arrows, links, offsets, and piecewise colors.
@@ -57,6 +58,8 @@ picking, and scissors are also fixed; only the three cases above remain.
   the functional and focused visual checks.
 - WebGPU follows the current GLSL behavior for link geometry, repeated
   arrowheads, ranged-text viewport flushing, and high-zoom locus labels.
+- The z-index lollipop comparison found and fixed a continuous reversed-Y range
+  mismatch; WebGPU now places the lower lollipops like WebGL.
 - The renderer now has explicit ordered draws, retained updates, invalidation,
   deterministic destruction, multi-channel interval selections, and scalar
   visibility predicates. The detailed API notes remain in the companion files.
