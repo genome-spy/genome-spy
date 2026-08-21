@@ -149,6 +149,10 @@ focused regression coverage where practical, and one commit per requested fix.
   visible-chord parameter remapping, dome chord clamping, and de Casteljau
   evaluation. The final lollipop comparison visually aligns the non-arc
   connectors with WebGL; angled text offset parity remains a separate open item.
+- The adapter supplies numeric link-shape and orientation enums. The renderer
+  now accepts those numeric values instead of indexing them as strings (which
+  previously produced `-1` and silently selected the arc fallback). The
+  lollipop comparison confirms the diagonal branch is now selected.
 - The attempted text-local `dx`/`dy` change was reverted after screenshot review:
   it made the lollipop labels visibly worse. The original screen-space behavior
   remains the better baseline while the exact text parity issue stays open.

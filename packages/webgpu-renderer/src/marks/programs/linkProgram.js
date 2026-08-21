@@ -420,8 +420,14 @@ export default class LinkProgram extends BaseProgram {
         const maxChordLength = props.maxChordLength ?? 50000;
         const clampApex = props.clampApex ? 1 : 0;
         const segments = Math.round(props.segments ?? 101);
-        const shapeIndex = LINK_SHAPES.indexOf(props.linkShape ?? "arc");
-        const orientIndex = ORIENTS.indexOf(props.orient ?? "vertical");
+        const shapeIndex =
+            typeof props.linkShape === "number"
+                ? props.linkShape
+                : LINK_SHAPES.indexOf(props.linkShape ?? "arc");
+        const orientIndex =
+            typeof props.orient === "number"
+                ? props.orient
+                : ORIENTS.indexOf(props.orient ?? "vertical");
 
         this._segmentCount = segments;
 
