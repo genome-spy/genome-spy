@@ -249,7 +249,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.direction = u32(getScaled_direction(i));
     out.headShape = params.uHeadShape;
     out.headSpacing = select(-1.0, params.uHeadSpacing * arrowSize, params.uHeadSpacing >= 0.0);
+    out.pickId = 0u;
+#if defined(uniqueId_DEFINED)
     out.pickId = getScaled_uniqueId(i) + 1u;
+#endif
     return out;
 }
 

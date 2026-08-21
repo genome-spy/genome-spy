@@ -705,6 +705,7 @@ describe("WebGPU mark adapter", () => {
             expect.objectContaining({
                 data: new Uint32Array([0, 1]),
                 type: "u32",
+                inputComponents: 1,
                 scale: expect.objectContaining({
                     type: "ordinal",
                     domain: [0, 1],

@@ -1,6 +1,6 @@
 # WebGPU/Core integration plan
 
-Status: In progress — core examples pass; docs examples under investigation
+Status: In progress — core examples pass; 3 docs cases intentionally deferred
 
 Date: 2026-08-20
 
@@ -31,36 +31,38 @@ same `renderer` query parameter, including:
 The discovery pass found 212 JSON examples: 102 under `examples/core/` and 110
 under `examples/docs/`. The complete core baseline initially passed 82/102 and
 reported 20 failures, including empty canvases. After the fixes below, the
-complete core pass is 102/102 with no empty canvases. The docs baseline remains
-open; every failure will be recorded here with its root cause, fix, or an
-intentional prioritized deferral. Screenshots and reports are diagnostic
-artifacts only and must not be committed.
+complete core pass is 102/102 with no empty canvases. The docs baseline now
+passes 107/110. The three remaining cases are recorded below as intentional
+deferrals with WebGL reference results and follow-up work. Screenshots and
+reports are diagnostic artifacts only and must not be committed.
 
 ### Prioritized example failure list
 
-| Priority | Example(s) | Symptom / root cause | Action | Status |
-| --- | --- | --- | --- | --- |
-| P0 | `examples/core/**` | Initial sweep: 20 failures / empty canvases across ordinal positions, categorical shapes, discrete color ranges, arrows, links, offsets, and piecewise color scales | Implemented compatibility translations and reran all 102 core examples | Fixed: 102/102 |
-| P0 | `examples/docs/**` | Complete docs sweep has not yet been classified | Run the docs subset and record every failure or empty canvas | Open |
-| P1 | `examples/core/scales/ordinal_position_test.json` | Positional ordinal encodings fell through to f32 input although the renderer requires u32 categorical ids | Convert Core's normalized ordinal range to absolute pixel range and add u32 input | Fixed |
-| P1 | `examples/core/layout/layer/lollipop.json`, `examples/core/scales/threshold_test.json` | Enum channels use numeric threshold inputs but renderer channel specs require u32 storage | Permit the threshold scale's f32-to-u32 input override and translate enum thresholds | Fixed |
-| P1 | `examples/core/marks/arrow/*.json` | Arrow pipeline validation failed because the shared picking fragment expected a missing `pickId` varying | Supply a flat pick id from the arrow vertex shader and rerun all four arrow examples | Fixed |
-| P1 | `examples/core/legends/quantize-gradient.json` | CSS color strings reached a four-component uniform range unchanged | Normalize discrete Core colors to RGBA vectors in the adapter | Fixed |
-| P1 | `examples/core/legends/log-gradient.json` | `sequential-log` was not translated to a renderer log scale | Preserve log base, interpolator, and clamp in the adapter | Fixed |
-| P1 | `examples/core/legends/root-collected-legends.json`, `examples/core/scales/diverging_test.json` | Core interpolator domains contain multiple stops while renderer interpolators require two endpoints | Use the first and last Core domain values for the renderer interpolator scale | Fixed |
-| P1 | `examples/core/marks/rect/grouped-bars-layered.json`, `examples/core/scales/band_test2.json` | Band/point categorical positions and constant categorical positions were not materialized in renderer-compatible ranges | Translate categorical position data to u32 ids and apply the scale to constants | Fixed |
-| P1 | `examples/core/genomic/bedpeColumns.json`, `examples/core/marks/link/link.json` | Core uses `false` to disable arc fading; the adapter required a pair | Treat `false` as the WebGL-compatible `[0, 0]` pair | Fixed |
-| P1 | `examples/core/legends/redundant-encoding.json`, `examples/core/legends/region-layout-directions.json`, `examples/core/legends/region-wrapping.json`, `examples/core/marks/point/point.json`, `examples/core/marks/point/point2d.json`, `examples/core/scales/parameterized_range_test.json` | Enum values such as `0`, `1`, `USA`, and `Gain` were treated as renderer shape names | Map ordinal enum values to numeric renderer ranges | Fixed |
-| P2 | Concrete docs failures after baseline | Examples may require broader API or architectural work beyond this integration | Keep failing examples in the plan with WebGL reference behavior and a prioritized follow-up; do not silently accept incorrect output | Open |
+| Priority | Example(s)                                                                                                                                                                                                                                                                                   | Symptom / root cause                                                                                                                                                | Action                                                                                                                 | Status                              |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| P0       | `examples/core/**`                                                                                                                                                                                                                                                                           | Initial sweep: 20 failures / empty canvases across ordinal positions, categorical shapes, discrete color ranges, arrows, links, offsets, and piecewise color scales | Implemented compatibility translations and reran all 102 core examples                                                 | Fixed: 102/102                      |
+| P0       | `examples/docs/**`                                                                                                                                                                                                                                                                           | Final sweep: 3 failures / empty canvases remain after low-complexity fixes                                                                                          | Preserve the concrete deferrals below and rerun after the required design work                                         | Deferred: documented                |
+| P1       | `examples/core/scales/ordinal_position_test.json`                                                                                                                                                                                                                                            | Positional ordinal encodings fell through to f32 input although the renderer requires u32 categorical ids                                                           | Convert Core's normalized ordinal range to absolute pixel range and add u32 input                                      | Fixed                               |
+| P1       | `examples/core/layout/layer/lollipop.json`, `examples/core/scales/threshold_test.json`                                                                                                                                                                                                       | Enum channels use numeric threshold inputs but renderer channel specs require u32 storage                                                                           | Permit the threshold scale's f32-to-u32 input override and translate enum thresholds                                   | Fixed                               |
+| P1       | `examples/core/marks/arrow/*.json`                                                                                                                                                                                                                                                           | Arrow pipeline validation failed because the shared picking fragment expected a missing `pickId` varying                                                            | Supply a flat pick id from the arrow vertex shader and rerun all four arrow examples                                   | Fixed                               |
+| P1       | `examples/core/legends/quantize-gradient.json`                                                                                                                                                                                                                                               | CSS color strings reached a four-component uniform range unchanged                                                                                                  | Normalize discrete Core colors to RGBA vectors in the adapter                                                          | Fixed                               |
+| P1       | `examples/core/legends/log-gradient.json`                                                                                                                                                                                                                                                    | `sequential-log` was not translated to a renderer log scale                                                                                                         | Preserve log base, interpolator, and clamp in the adapter                                                              | Fixed                               |
+| P1       | `examples/core/legends/root-collected-legends.json`, `examples/core/scales/diverging_test.json`                                                                                                                                                                                              | Core interpolator domains contain multiple stops while renderer interpolators require two endpoints                                                                 | Use the first and last Core domain values for the renderer interpolator scale                                          | Fixed                               |
+| P1       | `examples/core/marks/rect/grouped-bars-layered.json`, `examples/core/scales/band_test2.json`                                                                                                                                                                                                 | Band/point categorical positions and constant categorical positions were not materialized in renderer-compatible ranges                                             | Translate categorical position data to u32 ids and apply the scale to constants                                        | Fixed                               |
+| P1       | `examples/core/genomic/bedpeColumns.json`, `examples/core/marks/link/link.json`                                                                                                                                                                                                              | Core uses `false` to disable arc fading; the adapter required a pair                                                                                                | Treat `false` as the WebGL-compatible `[0, 0]` pair                                                                    | Fixed                               |
+| P1       | `examples/core/legends/redundant-encoding.json`, `examples/core/legends/region-layout-directions.json`, `examples/core/legends/region-wrapping.json`, `examples/core/marks/point/point.json`, `examples/core/marks/point/point2d.json`, `examples/core/scales/parameterized_range_test.json` | Enum values such as `0`, `1`, `USA`, and `Gain` were treated as renderer shape names                                                                                | Map ordinal enum values to numeric renderer ranges                                                                     | Fixed                               |
+| P1       | `examples/docs/grammar/composition/concat/shared-axes.json`, `examples/docs/grammar/mark/link/link-shapes-and-orientations.json`                                                                                                                                                             | WebGPU reports repeated `rule` occurrences for shared axes and produces an empty canvas; WebGL passes with visible content                                          | Add occurrence-specific retained draw state and repeated mark traversal to the renderer/API, then rerun both examples  | Deferred: architecture follow-up    |
+| P2       | `examples/docs/grammar/mark/arrow/arrow-playground.json`                                                                                                                                                                                                                                     | The screenshot harness computes a zero-height canvas for both WebGL and WebGPU; WebGPU additionally rejects the non-positive renderer height                        | Fix the example/harness sizing contract independently, then rerun both renderers; this is not a WebGPU-only regression | Deferred: upstream sizing follow-up |
 
 ### Tested examples
 
-| Renderer | Scope | Passed | Failed | Empty canvas | Last verified |
-| --- | --- | ---: | ---: | ---: | --- |
-| WebGPU | `examples/core/**` | 102 | 0 | 0 | 2026-08-21 |
-| WebGL comparison | `examples/core/scales/ordinal_position_test.json` | 1 | 0 | 0 | 2026-08-21 |
-| WebGPU | `examples/core/scales/ordinal_position_test.json` | 1 | 0 | 0 | 2026-08-21 |
-| WebGPU | `examples/docs/**` | Pending | Pending | Pending | — |
+| Renderer         | Scope                                             | Passed | Failed | Empty canvas | Last verified |
+| ---------------- | ------------------------------------------------- | -----: | -----: | -----------: | ------------- |
+| WebGPU           | `examples/core/**`                                |    102 |      0 |            0 | 2026-08-21    |
+| WebGL comparison | `examples/core/scales/ordinal_position_test.json` |      1 |      0 |            0 | 2026-08-21    |
+| WebGPU           | `examples/core/scales/ordinal_position_test.json` |      1 |      0 |            0 | 2026-08-21    |
+| WebGPU           | `examples/docs/**` final                          |    107 |      3 |            3 | 2026-08-21    |
+| WebGL comparison | 12 failing docs selections                        |     11 |      1 |            1 | 2026-08-21    |
 
 ### Completed fixes
 
@@ -80,6 +82,13 @@ artifacts only and must not be committed.
   shader.
 - The runner now promotes WebGPU/WGSL/pipeline validation warnings to rendering
   failures, preventing invalid GPU work from being reported as a pass.
+- Text color channels now declare scalar input components when ordinal scales
+  expand them to RGBA, so glyph expansion uses source string counts.
+- Fractional locus positions used by text labels are rounded to the renderer's
+  integer index input, preserving visible label placement at midpoint anchors.
+- Empty or clipped WebGPU scissors are skipped instead of being submitted as
+  invalid positive rectangles; this fixes the genome-browser composition.
+- Optional arrow `uniqueId` picking code is emitted only when the channel exists.
 
 ### Core baseline error ledger
 
@@ -89,6 +98,20 @@ region-wrapping, arrow, link, point, grouped-bars, diverging, and parameterized
 range failures; each disappeared in the final 102-example pass. The machine
 readable evidence is in the ignored `output/webgpu-core/core-baseline/`,
 `core-after-translation-2/`, and `core-final/` reports.
+
+### Docs baseline error ledger and deferrals
+
+The initial docs failures were text color expansion errors (cytobands,
+genome-browser, MSA, and the text/sequence-logo examples), fractional locus
+label errors (sashimi plot and scored RefSeq genes), an optional arrow picking
+shader error (indexed-fasta-six-frame-translation), an invalid scissor family
+(genome-browser), two repeated-occurrence failures (shared axes and link shapes),
+and one zero-height example (arrow playground). The first seven are fixed and
+the final rerun verifies them. The two repeated-occurrence cases remain P1
+architecture work; the arrow playground remains P2 because WebGL also produces
+a zero-height canvas in the same harness. Comparison artifacts are in ignored
+`output/webgpu-core/docs-comparison/`; the final docs summary is in
+`output/webgpu-core/docs-final/`.
 
 ## Context
 

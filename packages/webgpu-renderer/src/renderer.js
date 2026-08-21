@@ -768,7 +768,19 @@ function normalizeVisibleRange(visibleRange, canvas) {
  * @returns {import("./index.d.ts").DrawRect}
  */
 function intersectRects(rect, bounds) {
-    assertRect("scissor", rect);
+    if (
+        !Number.isFinite(rect.x) ||
+        !Number.isFinite(rect.y) ||
+        !Number.isFinite(rect.width) ||
+        !Number.isFinite(rect.height)
+    ) {
+        throw new RendererError(
+            "scissor must have finite coordinates and positive dimensions."
+        );
+    }
+    if (rect.width <= 0 || rect.height <= 0) {
+        return { x: rect.x, y: rect.y, width: 0, height: 0 };
+    }
     const x = Math.max(rect.x, bounds.x);
     const y = Math.max(rect.y, bounds.y);
     const right = Math.min(rect.x + rect.width, bounds.x + bounds.width);

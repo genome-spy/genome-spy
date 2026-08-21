@@ -156,6 +156,22 @@ describe("Renderer mark definitions", () => {
         expect(pass.setScissorRect).toHaveBeenCalledWith(0, 0, 99, 100);
     });
 
+    test("skips zero-sized scissors from empty clipped views", () => {
+        const { renderer } = createRendererHarness();
+        const program = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi.fn(() => program),
+        });
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        expect(
+            renderer._normalizeDraws([
+                { mark, scissor: { x: 0, y: 0, width: 0, height: 50 } },
+            ])
+        ).toEqual([]);
+    });
+
     test("destroys owned resources exactly once and rejects later work", () => {
         const firstProgram = createProgram();
         const secondProgram = createProgram();
