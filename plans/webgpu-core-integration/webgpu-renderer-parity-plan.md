@@ -158,70 +158,7 @@ remains part of the postponed facet milestone.
 
 ## Current remaining milestones
 
-### 1. Scale boundary, index-width selection, and Core-owned category IDs
-
-Make the adapter’s scale surface match the scope table above and align its
-categorical conversion with WebGL’s existing `domainIndexer` machinery.
-
-Implementation work:
-
-- Add the Core adapter mapping for `locus` to the renderer’s existing `index`
-  representation. Core must provide already-resolved numeric locus values and
-  domain/range semantics.
-- Select the index representation from the resolved numeric domain using the
-  same boundary as WebGL. Use one `Uint32Array` component for normal domains;
-  use two packed `Uint32Array` components containing the high/low split only
-  for the large-coordinate path. Do not use `Float64Array` as the normal Core
-  representation.
-- Keep `quantile` and `bin-ordinal` rejected. Add tests proving no low-level
-  definition is selected for either type.
-- Remove or reject `time` and `utc`; GenomeSpy does not support time scales.
-- Audit every other adapter case against the WebGL scale generator and
-  `webGLHelper`; remove any WebGPU-only scale exposure outside the supported
-  table.
-- Replace the adapter-local categorical identity map with the resolved Core
-  `domainIndexer`, or introduce the smallest Core helper needed to expose that
-  existing identity without duplicating scale-resolution state.
-- Ensure each categorical series contains the stable Core IDs, including when
-  a new batch introduces a category that was absent from the previous batch.
-- Pass the current Core IDs as the renderer scale domain. Retain the renderer’s
-  existing integer-domain map for sparse IDs; do not add another identity
-  assignment in WebGPU.
-- Verify categorical data in positional, color, opacity, enum, and conditional
-  channels, including strings and numeric categories.
-- Preserve stable IDs during domain updates and shared-scale resolution.
-
-Affected areas:
-
-- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
-- `packages/core/src/scales/scaleResolution.js` or a focused Core scale/indexer
-  helper, only if the existing indexer needs a supported access path
-- WebGPU scale and adapter tests
-- `packages/webgpu-renderer` only for generic index-scale width and integer
-  domain-map behavior; do not add string support or a second category indexer
-
-Verification:
-
-- Compare categorical positions/colors and locus positions with WebGL.
-- Test explicit and implicit domains, unknown categories, domain growth, and
-  shared scales.
-- Test reversed ranges, clamping, domain updates, normal-width indices, and
-  high-precision loci.
-- Assert quantile and bin-ordinal remain unsupported with useful errors.
-- Assert time and UTC remain unsupported.
-- Assert category conversion produces the stable Core integer IDs in numeric
-  typed arrays before renderer creation and does not introduce renderer-side
-  string handling.
-- Test the sequence `apple/pear/orange -> 1/2/3`, then
-  `pear/orange/plum -> 2/3/4`, including the renderer’s sparse integer domain
-  map and unchanged pipeline layout.
-- Assert normal index data uses one `u32` component and large-coordinate index
-  data uses two packed `u32` components, with no unnecessary float64 source
-  series.
-
-Tentative commit: `feat(core): align WebGPU scales with WebGL semantics`
-
-### 2. Retained dynamic mark properties
+### 1. Retained dynamic mark properties
 
 Complete the property matrix for mark-local values and implement the update
 path with WebGL-like retention guarantees.
@@ -274,7 +211,7 @@ Verification:
 
 Tentative commit: `feat(webgpu): retain dynamic mark property updates`
 
-### 3. WebGPU picking and tooltip integration
+### 2. WebGPU picking and tooltip integration
 
 Connect the low-level asynchronous pick API to Core’s existing interaction
 controller and tooltip path.
@@ -321,7 +258,7 @@ Verification:
 
 Tentative commit: `feat(core): connect WebGPU picking to tooltips`
 
-### 4. Font resource parity
+### 3. Font resource parity
 
 The WebGPU text program currently resolves the default sans-serif to its
 embedded atlas and rejects other font families. Bring it to the same resource
@@ -351,7 +288,7 @@ Verification:
 
 Tentative commit: `feat(webgpu): support registered text fonts`
 
-### 5. Cross-renderer integration audit
+### 4. Cross-renderer integration audit
 
 Run the complete supported-surface audit after the individual milestones.
 Update this plan to mark only behavior that is actually implemented, and
@@ -369,7 +306,7 @@ Verification must include:
 
 Tentative commit: `test(webgpu): verify supported renderer parity`
 
-### 6. Faceted and sample-faceted rendering — postponed
+### 5. Faceted and sample-faceted rendering — postponed
 
 The adapter still rejects `options.sampleFacetRenderingOptions` and
 `mark.encoders.facetIndex`. WebGL renders one occurrence per facet, with
