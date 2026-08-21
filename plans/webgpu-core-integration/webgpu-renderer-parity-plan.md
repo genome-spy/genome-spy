@@ -158,60 +158,7 @@ remains part of the postponed facet milestone.
 
 ## Current remaining milestones
 
-### 1. Retained dynamic mark properties
-
-Complete the property matrix for mark-local values and implement the update
-path with WebGL-like retention guarantees.
-
-Audit each property on point, rect, rule/tick, text, link, and arrow against
-the Core mark classes, WebGL uniform registration, conditional encoders, and
-the renderer’s current value-slot/channel APIs.
-
-Classify each property as:
-
-- a retained scalar/vector value slot for parameter- or selection-driven
-  values;
-- a typed data-driven channel whose series can be replaced independently;
-- a structural pipeline property whose changes legitimately require a new
-  program/pipeline; or
-- unsupported until a generic renderer contract is designed.
-
-Do not encode a per-datum property as one constant value. Conversely, do not
-promote a structurally uniform shader option to a per-instance buffer merely
-to avoid a clear error. Preserve the smallest resource update possible:
-
-- expression changes update a value slot and request rendering;
-- channel data changes replace only that channel’s series;
-- scale changes update scale slots;
-- pipeline/bind-group layout changes are reserved for real structural changes.
-
-The adapter and retained surface must preserve expression identity or register
-Core parameter watchers so a change does not require reconstructing every mark
-config. Add instrumentation tests around program, pipeline, bind-group, and
-buffer creation counts for repeated expression updates.
-
-Affected areas:
-
-- Core mark property and encoder setup
-- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
-- `packages/core/src/rendering/webgpu/webGpuSurface.js`
-- Relevant renderer value/channel slot APIs and WGSL programs
-- Mark property and retention tests
-
-Verification:
-
-- Test constant, parameter-expression, selection-dependent, and per-datum
-  cases for every property claiming support.
-- Test updates over multiple frames and assert no unnecessary pipeline,
-  bind-group, program, or unrelated series-buffer churn.
-- Compare arrow/link geometry, point/rect geometry, text size, and colors with
-  WebGL.
-- Verify unsupported structural properties fail at the renderer contract
-  boundary with a contextual error.
-
-Tentative commit: `feat(webgpu): retain dynamic mark property updates`
-
-### 2. WebGPU picking and tooltip integration
+### 1. WebGPU picking and tooltip integration
 
 Connect the low-level asynchronous pick API to Core’s existing interaction
 controller and tooltip path.
@@ -258,7 +205,7 @@ Verification:
 
 Tentative commit: `feat(core): connect WebGPU picking to tooltips`
 
-### 3. Font resource parity
+### 2. Font resource parity
 
 The WebGPU text program currently resolves the default sans-serif to its
 embedded atlas and rejects other font families. Bring it to the same resource
@@ -288,7 +235,7 @@ Verification:
 
 Tentative commit: `feat(webgpu): support registered text fonts`
 
-### 4. Cross-renderer integration audit
+### 3. Cross-renderer integration audit
 
 Run the complete supported-surface audit after the individual milestones.
 Update this plan to mark only behavior that is actually implemented, and
@@ -306,7 +253,7 @@ Verification must include:
 
 Tentative commit: `test(webgpu): verify supported renderer parity`
 
-### 5. Faceted and sample-faceted rendering — postponed
+### 4. Faceted and sample-faceted rendering — postponed
 
 The adapter still rejects `options.sampleFacetRenderingOptions` and
 `mark.encoders.facetIndex`. WebGL renders one occurrence per facet, with
