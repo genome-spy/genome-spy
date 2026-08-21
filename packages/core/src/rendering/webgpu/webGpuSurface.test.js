@@ -62,6 +62,7 @@ import WebGpuSurface from "./webGpuSurface.js";
 
 beforeEach(() => {
     vi.clearAllMocks();
+    mocks.handle.selections = {};
 });
 
 describe("WebGpuSurface", () => {
@@ -184,6 +185,69 @@ describe("WebGpuSurface", () => {
             1, 11,
         ]);
         expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
+    });
+
+    test("updates selection slots and conditional series through retention", async () => {
+        const selectionSet = vi.fn();
+        mocks.handle.selections = {
+            chosen: { type: "single", set: selectionSet },
+        };
+        const container = document.createElement("div");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({
+                unitView: {
+                    paramRuntime: {
+                        findValue: () => ({ type: "single", uniqueId: 42 }),
+                    },
+                },
+            })
+        );
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "point" })
+            );
+        const first = new Float32Array([1, 2]);
+        const second = new Float32Array([3, 4]);
+        /** @param {Float32Array} data */
+        const config = (data) => ({
+            count: 2,
+            channels: {
+                fill: {
+                    value: [0, 0, 0, 1],
+                    conditions: [
+                        {
+                            when: { selection: "chosen", type: "single" },
+                            channel: { data, type: "f32", components: 4 },
+                        },
+                    ],
+                },
+            },
+        });
+
+        surface.useMark(mark, definition, config(first));
+        expect(selectionSet).toHaveBeenCalledWith(42);
+        selectionSet.mockClear();
+
+        mark.unitView.paramRuntime.findValue = () => ({
+            type: "single",
+            uniqueId: 43,
+        });
+        surface.useMark(mark, definition, config(second));
+
+        expect(selectionSet).toHaveBeenCalledWith(43);
+        expect(mocks.handle.series.replace).toHaveBeenCalledWith(
+            { fill: second },
+            2
+        );
     });
 });
 
