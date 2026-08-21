@@ -80,6 +80,51 @@ unsupported scale types, non-Lato fonts, data-driven enum properties, and
 backend-specific picking. These are not silently considered solved by the mark
 parity milestones below.
 
+### Adapter audit: capabilities hidden by the PoC checks (2026-08-21)
+
+The original adapter was intentionally narrow because it only needed to render
+`examples/core/first.json`. Its checks must not be treated as the WebGPU
+renderer contract. The low-level mark programs already expose the following
+capabilities and the adapter should pass them through:
+
+| Area | Renderer capability | Adapter action |
+| --- | --- | --- |
+| Arrow `direction` | `u32` channel, read per instance by the arrow vertex shader | Encode constant and data-driven values |
+| Enum channels | Point shapes, rule caps, text alignment/baseline, link shape/orientation, arrow head options, and rectangle hatches have numeric renderer codes | Materialize series-backed enum channels where the renderer declares a channel; keep mark uniforms constant |
+| Colors | `f32` vec4 values and linear, ordinal, quantize, and threshold color scales | Parse data-driven unscaled colors and translate supported scale ranges |
+| Position scales | Renderer definitions exist for linear, log, pow, sqrt, symlog, band, index, and identity | Translate matching Core scales instead of accepting only linear scales; map point scales to zero-width bands where semantics match |
+| Numeric non-position scales | Renderer definitions exist for continuous and discretizing scalar outputs | Translate supported Core scale types for size, opacity, stroke width, and similar channels |
+| Text size | Text shader reads a per-instance `size` channel and scales glyph metrics from a layout base size | Pass a numeric size channel and use a representative base size for layout |
+| Mark properties | Core resolves expression-valued properties before a draw configuration is consumed | Resolve `ExprRef` properties instead of rejecting them as non-numeric objects |
+| Picking identity | Every retained mark program has an optional `uniqueId` channel and pick path | Forward Core's generated unique-id column when present |
+
+The following are genuine remaining gaps after comparing Core's scale and mark
+surface with the renderer's public definitions:
+
+- Conditional Core encoders are selection predicates plus ordered branches;
+  the renderer supports selection conditions, but the adapter does not yet
+  translate Core branches into renderer condition configs.
+- Faceted and sample-faceted rendering requires occurrence traversal, facet
+  indices, and per-occurrence view ranges that the retained adapter path does
+  not yet provide.
+- Core `locus`, `quantile`, `bin-ordinal`, and other scale types without a
+  corresponding renderer definition remain unsupported. Core `time`/`utc`
+  scales are numerically equivalent to linear milliseconds and can be
+  translated where the channel data is numeric-convertible.
+- The renderer currently embeds the Lato atlas only; other font families and
+  Core font registration remain unsupported in WebGPU.
+- Data-driven values for mark-local uniforms (for example arrow head shape or
+  link geometry options) cannot be represented by the current renderer
+  programs, which expose those as uniforms rather than channels.
+
+Adapter checks should therefore be limited to semantic translation boundaries:
+missing required Core encoders, enum values that cannot be mapped, values that
+cannot be represented by the renderer's typed arrays, and Core features with
+no renderer representation. Channel shape, scale compatibility, and resource
+validation belong in `webgpu-renderer`, where the generic contract is already
+validated. New adapter checks require a test showing why the renderer cannot
+perform the validation itself.
+
 ## Goals
 
 1. Make every WebGL built-in mark type available through the WebGPU Core
