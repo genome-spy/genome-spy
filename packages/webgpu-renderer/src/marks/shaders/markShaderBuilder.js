@@ -6,6 +6,8 @@ import { __DEV__ } from "../../utils/dev.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_MAP_PREFIX,
+    intervalSelectionActiveName,
+    intervalSelectionBoundsName,
     RANGE_COUNT_PREFIX,
     RANGE_SAMPLER_PREFIX,
     RANGE_TEXTURE_PREFIX,
@@ -44,9 +46,7 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  * @typedef {object} SelectionDef
  * @prop {string} name
  * @prop {"single"|"multi"|"interval"} type
- * @prop {string} [channel]
- * @prop {string} [secondaryChannel]
- * @prop {import("../../types.js").ScalarType} [scalarType]
+ * @prop {{ input: string, secondaryInput?: string, hitTest?: "intersects"|"encloses"|"endpoints", scalarType?: import("../../types.js").ScalarType, secondaryScalarType?: import("../../types.js").ScalarType }[]} [targets]
  */
 
 /**
@@ -226,40 +226,87 @@ fn ${fnName}(i: u32, allowEmpty: bool) -> bool {
 `;
             }
             case "interval": {
-                const channelName = def.channel ?? "";
-                const channelIR = channelIRByName.get(channelName);
-                const secondaryIR = def.secondaryChannel
-                    ? channelIRByName.get(def.secondaryChannel)
-                    : null;
-                if (__DEV__ && !channelIR) {
+                const targets = def.targets ?? [];
+                if (__DEV__ && targets.length === 0) {
                     throw new Error(
-                        `Selection "${def.name}" references missing channel "${channelName}".`
+                        `Interval selection "${def.name}" must have at least one target.`
                     );
                 }
-                const valueExpr = channelIR?.rawValueExpr ?? "0.0";
-                const secondaryExpr = secondaryIR?.rawValueExpr ?? null;
-                const boundsName = `${SELECTION_PREFIX}${def.name}`;
-                const rangeCheck = secondaryExpr
-                    ? /* wgsl */ `
-    let v0 = ${valueExpr};
-    let v1 = ${secondaryExpr};
-    let lo = min(v0, v1);
-    let hi = max(v0, v1);
-    return hi >= minSel && lo <= maxSel;
-`
-                    : /* wgsl */ `
-    let v = ${valueExpr};
-    return v >= minSel && v <= maxSel;
-`;
+
+                const targetChecks = targets.map((target, index) => {
+                    const channelIR = channelIRByName.get(target.input);
+                    const secondaryIR = target.secondaryInput
+                        ? channelIRByName.get(target.secondaryInput)
+                        : null;
+                    if (__DEV__ && !channelIR) {
+                        throw new Error(
+                            `Selection "${def.name}" references missing input "${target.input}".`
+                        );
+                    }
+                    if (__DEV__ && target.secondaryInput && !secondaryIR) {
+                        throw new Error(
+                            `Selection "${def.name}" references missing input "${target.secondaryInput}".`
+                        );
+                    }
+                    if (
+                        __DEV__ &&
+                        target.hitTest !== undefined &&
+                        target.hitTest !== "intersects" &&
+                        !target.secondaryInput
+                    ) {
+                        throw new Error(
+                            `Selection "${def.name}" cannot specify a hit-test mode without a secondary input.`
+                        );
+                    }
+
+                    const activeName = intervalSelectionActiveName(
+                        def.name,
+                        index
+                    );
+                    const boundsName = intervalSelectionBoundsName(
+                        def.name,
+                        index
+                    );
+                    const valueExpr = channelIR?.rawValueExpr ?? "0.0";
+                    const secondaryExpr = secondaryIR?.rawValueExpr ?? null;
+                    const hitTest = target.hitTest ?? "intersects";
+                    let test;
+                    if (!secondaryExpr) {
+                        test = `${boundsName}_lo <= ${valueExpr} && ${valueExpr} <= ${boundsName}_hi`;
+                    } else if (hitTest === "encloses") {
+                        test = `${boundsName}_lo <= ${boundsName}_dLo && ${boundsName}_dHi <= ${boundsName}_hi`;
+                    } else if (hitTest === "endpoints") {
+                        test = `(${boundsName}_lo <= ${boundsName}_d0 && ${boundsName}_d0 <= ${boundsName}_hi) || (${boundsName}_lo <= ${boundsName}_d1 && ${boundsName}_d1 <= ${boundsName}_hi)`;
+                    } else if (hitTest === "intersects") {
+                        test = `${boundsName}_dHi >= ${boundsName}_lo && ${boundsName}_dLo <= ${boundsName}_hi`;
+                    } else {
+                        throw new Error(
+                            `Selection "${def.name}" has unsupported hit-test mode "${hitTest}".`
+                        );
+                    }
+
+                    const secondaryDeclarations = secondaryExpr
+                        ? `
+        let ${boundsName}_d0 = ${valueExpr};
+        let ${boundsName}_d1 = ${secondaryExpr};
+        let ${boundsName}_dLo = min(${boundsName}_d0, ${boundsName}_d1);
+        let ${boundsName}_dHi = max(${boundsName}_d0, ${boundsName}_d1);`
+                        : "";
+                    return /* wgsl */ `
+    if (params.${activeName} == 0u) {
+        matches = matches && allowEmpty;
+    } else {
+        let ${boundsName}_lo = min(params.${boundsName}.x, params.${boundsName}.y);
+        let ${boundsName}_hi = max(params.${boundsName}.x, params.${boundsName}.y);${secondaryDeclarations}
+        matches = matches && (${test});
+    }`;
+                });
 
                 return /* wgsl */ `
 fn ${fnName}(i: u32, allowEmpty: bool) -> bool {
-    let bounds = params.${boundsName};
-    let minSel = min(bounds.x, bounds.y);
-    let maxSel = max(bounds.x, bounds.y);
-    if (allowEmpty && minSel > maxSel) { return true; }
-    if (minSel > maxSel) { return false; }
-${rangeCheck}
+    var matches = true;
+${targetChecks.join("\n")}
+    return matches;
 }
 `;
             }

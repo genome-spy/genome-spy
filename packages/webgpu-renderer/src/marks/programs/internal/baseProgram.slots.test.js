@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import BaseProgram from "./baseProgram.js";
 import { createMockRenderer } from "../../../testUtils/mockRenderer.js";
 import { attachScaleDefinitions } from "../../../../testUtils/scaleDefinitions.js";
@@ -48,6 +48,67 @@ class ExtraSlotProgram extends SlotProgram {
 }
 
 describe("BaseProgram slot handles", () => {
+    it("updates interval targets atomically through a retained slot", () => {
+        const renderer = createMockRenderer();
+        const program = createSlotProgram(renderer, {
+            channels: {
+                uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
+                x: { data: new Float32Array([0, 1]), type: "f32" },
+                size: { value: 1, type: "f32" },
+                fill: {
+                    value: [0, 0, 0, 1],
+                    type: "f32",
+                    components: 4,
+                    conditions: [
+                        {
+                            when: {
+                                selection: "brush",
+                                type: "interval",
+                                targets: [{ input: "x" }],
+                            },
+                            value: [1, 0, 0, 1],
+                        },
+                    ],
+                },
+            },
+        });
+        const writeBuffer = vi.spyOn(renderer.device.queue, "writeBuffer");
+        const markPickingDirty = vi.spyOn(renderer, "markPickingDirty");
+        const createPipeline = vi.spyOn(
+            renderer.device,
+            "createRenderPipeline"
+        );
+        const createBindGroup = vi.spyOn(renderer.device, "createBindGroup");
+        const slot = program.getSlotHandles().selections.brush;
+
+        expect(slot.type).toBe("interval");
+        if (slot.type !== "interval") {
+            throw new Error("Expected an interval selection slot.");
+        }
+        expect(slot.targets).toEqual(["x"]);
+
+        slot.set({ x: [4, 1] });
+
+        expect(writeBuffer).toHaveBeenCalledOnce();
+        expect(markPickingDirty).toHaveBeenCalledOnce();
+        expect(createPipeline).not.toHaveBeenCalled();
+        expect(createBindGroup).not.toHaveBeenCalled();
+
+        writeBuffer.mockClear();
+        markPickingDirty.mockClear();
+        slot.set({});
+        expect(writeBuffer).toHaveBeenCalledOnce();
+        expect(markPickingDirty).toHaveBeenCalledOnce();
+
+        writeBuffer.mockClear();
+        markPickingDirty.mockClear();
+        expect(() => slot.set({ unknown: [0, 1] })).toThrow(
+            'cannot update unknown target "unknown"'
+        );
+        expect(writeBuffer).not.toHaveBeenCalled();
+        expect(markPickingDirty).not.toHaveBeenCalled();
+    });
+
     it("updates scale domains through slots", () => {
         const renderer = createMockRenderer();
         const program = createSlotProgram(renderer, {

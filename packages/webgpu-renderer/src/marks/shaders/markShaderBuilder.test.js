@@ -258,7 +258,7 @@ describe("buildMarkShader", () => {
                             when: {
                                 selection: "brush",
                                 type: "interval",
-                                channel: "x",
+                                targets: [{ input: "x" }],
                             },
                             value: [0, 1, 0, 1],
                         },
@@ -279,7 +279,12 @@ describe("buildMarkShader", () => {
                     arrayLength: 2,
                 },
                 {
-                    name: "uSelection_brush",
+                    name: "uSelection_brush_0_active",
+                    type: "u32",
+                    components: 1,
+                },
+                {
+                    name: "uSelection_brush_0",
                     type: "f32",
                     components: 2,
                 },
@@ -290,8 +295,7 @@ describe("buildMarkShader", () => {
                 {
                     name: "brush",
                     type: "interval",
-                    channel: "x",
-                    scalarType: "f32",
+                    targets: [{ input: "x", scalarType: "f32" }],
                 },
             ],
         });
@@ -300,6 +304,82 @@ describe("buildMarkShader", () => {
         expect(shaderCode).toContain("fn getScaled_fill_base");
         expect(shaderCode).toContain("fn getScaled_fill");
         expect(shaderCode).toContain("checkSelection_brush");
+    });
+
+    it("emits independent active checks and ranged hit-test formulas", () => {
+        const { shaderCode } = buildMarkShader({
+            channels: {
+                x: { value: 2, type: "f32", components: 1 },
+                x2: { value: 4, type: "f32", components: 1 },
+                y: { value: 3, type: "u32", components: 1 },
+                fill: {
+                    value: 0,
+                    type: "f32",
+                    components: 1,
+                    conditions: [
+                        {
+                            when: {
+                                selection: "brush",
+                                type: "interval",
+                                targets: [
+                                    {
+                                        input: "x",
+                                        secondaryInput: "x2",
+                                        hitTest: "endpoints",
+                                    },
+                                    { input: "y" },
+                                ],
+                            },
+                            value: 1,
+                        },
+                    ],
+                },
+            },
+            uniformLayout: [
+                {
+                    name: "uSelection_brush_0_active",
+                    type: "u32",
+                    components: 1,
+                },
+                {
+                    name: "uSelection_brush_0",
+                    type: "f32",
+                    components: 2,
+                },
+                {
+                    name: "uSelection_brush_1_active",
+                    type: "u32",
+                    components: 1,
+                },
+                {
+                    name: "uSelection_brush_1",
+                    type: "u32",
+                    components: 2,
+                },
+            ],
+            shaderBody,
+            selectionDefs: [
+                {
+                    name: "brush",
+                    type: "interval",
+                    targets: [
+                        {
+                            input: "x",
+                            secondaryInput: "x2",
+                            hitTest: "endpoints",
+                        },
+                        { input: "y" },
+                    ],
+                },
+            ],
+        });
+
+        expect(shaderCode).toContain("params.uSelection_brush_0_active");
+        expect(shaderCode).toContain("params.uSelection_brush_1_active");
+        expect(shaderCode).toContain("matches = matches && allowEmpty");
+        expect(shaderCode).toContain("uSelection_brush_0_d0");
+        expect(shaderCode).toContain("uSelection_brush_0_d1");
+        expect(shaderCode).toContain("uSelection_brush_1_lo");
     });
 
     it("throws when updating non-dynamic uniforms", () => {

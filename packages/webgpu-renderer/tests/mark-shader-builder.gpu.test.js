@@ -280,7 +280,6 @@ test("markShaderBuilder returns zero for missing ordinal categories", async ({
     const dumpLabel = test.info().title;
 
     const input = [1, 99];
-    const inputData = new Uint32Array(input);
     const domainMap = buildHashTableMap([[1, 0]]);
     const rangeData = [0, 1, 0, 1];
 
@@ -468,7 +467,7 @@ test("markShaderBuilder applies interval selections to conditional values", asyn
                     when: {
                         selection: "brush",
                         type: "interval",
-                        channel: "x",
+                        targets: [{ input: "x" }],
                     },
                     value: 1,
                 },
@@ -476,14 +475,14 @@ test("markShaderBuilder applies interval selections to conditional values", asyn
         },
     };
     const uniformLayout = [
-        { name: "uSelection_brush", type: "f32", components: 2 },
+        { name: "uSelection_brush_0_active", type: "u32", components: 1 },
+        { name: "uSelection_brush_0", type: "f32", components: 2 },
     ];
     const selectionDefs = [
         {
             name: "brush",
             type: "interval",
-            channel: "x",
-            scalarType: "f32",
+            targets: [{ input: "x", scalarType: "f32" }],
         },
     ];
     const output = await runScaleCase(page, {
@@ -493,12 +492,249 @@ test("markShaderBuilder applies interval selections to conditional values", asyn
         outputLength: input.length,
         outputComponents: 1,
         uniformLayout,
-        uniforms: { uSelection_brush: [1, 2] },
+        uniforms: {
+            uSelection_brush_0_active: 1,
+            uSelection_brush_0: [1, 2],
+        },
         selectionDefs,
         dumpLabel,
     });
 
     expect(output).toEqual([0, 1, 1, 0]);
+});
+
+test("markShaderBuilder combines N interval targets with explicit empty state", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
+    const x = new Float32Array([0, 1, 2, 3]);
+    const y = new Uint32Array([0, 10, 20, 30]);
+    const channels = {
+        x: { data: x, type: "f32", components: 1 },
+        y: { data: y, type: "u32", components: 1 },
+        fill: {
+            value: 0,
+            type: "f32",
+            components: 1,
+            conditions: [
+                {
+                    when: {
+                        selection: "brush",
+                        type: "interval",
+                        targets: [{ input: "x" }, { input: "y" }],
+                    },
+                    value: 1,
+                },
+            ],
+        },
+    };
+    const uniformLayout = [
+        { name: "uSelection_brush_0_active", type: "u32", components: 1 },
+        { name: "uSelection_brush_0", type: "f32", components: 2 },
+        { name: "uSelection_brush_1_active", type: "u32", components: 1 },
+        { name: "uSelection_brush_1", type: "u32", components: 2 },
+    ];
+    const selectionDefs = [
+        {
+            name: "brush",
+            type: "interval",
+            targets: [
+                { input: "x", scalarType: "f32" },
+                { input: "y", scalarType: "u32" },
+            ],
+        },
+    ];
+    const base = {
+        channels,
+        channelName: "fill",
+        outputType: "f32",
+        outputLength: x.length,
+        outputComponents: 1,
+        uniformLayout,
+        selectionDefs,
+        dumpLabel,
+    };
+    const channelsWithEmpty = (empty) => ({
+        ...channels,
+        fill: {
+            ...channels.fill,
+            conditions: [
+                {
+                    ...channels.fill.conditions[0],
+                    when: {
+                        ...channels.fill.conditions[0].when,
+                        empty,
+                    },
+                },
+            ],
+        },
+    });
+
+    const bothMatch = await runScaleCase(page, {
+        ...base,
+        uniforms: {
+            uSelection_brush_0_active: 1,
+            uSelection_brush_0: [1, 2],
+            uSelection_brush_1_active: 1,
+            uSelection_brush_1: [15, 25],
+        },
+    });
+    expect(bothMatch).toEqual([0, 0, 1, 0]);
+
+    const onlyX = await runScaleCase(page, {
+        ...base,
+        channels: channelsWithEmpty(true),
+        uniforms: {
+            uSelection_brush_0_active: 1,
+            uSelection_brush_0: [1, 2],
+            uSelection_brush_1_active: 0,
+            uSelection_brush_1: [0, 0],
+        },
+    });
+    expect(onlyX).toEqual([0, 1, 1, 0]);
+
+    const onlyXRejected = await runScaleCase(page, {
+        ...base,
+        channels: channelsWithEmpty(false),
+        uniforms: {
+            uSelection_brush_0_active: 1,
+            uSelection_brush_0: [1, 2],
+            uSelection_brush_1_active: 0,
+            uSelection_brush_1: [0, 0],
+        },
+    });
+    expect(onlyXRejected).toEqual([0, 0, 0, 0]);
+
+    const whollyEmpty = await runScaleCase(page, {
+        ...base,
+        channels: channelsWithEmpty(true),
+        uniforms: {
+            uSelection_brush_0_active: 0,
+            uSelection_brush_0: [0, 0],
+            uSelection_brush_1_active: 0,
+            uSelection_brush_1: [0, 0],
+        },
+    });
+    expect(whollyEmpty).toEqual([1, 1, 1, 1]);
+
+    const whollyEmptyRejected = await runScaleCase(page, {
+        ...base,
+        channels: channelsWithEmpty(false),
+        uniforms: {
+            uSelection_brush_0_active: 0,
+            uSelection_brush_0: [0, 0],
+            uSelection_brush_1_active: 0,
+            uSelection_brush_1: [0, 0],
+        },
+    });
+    expect(whollyEmptyRejected).toEqual([0, 0, 0, 0]);
+
+    const reversed = await runScaleCase(page, {
+        ...base,
+        uniforms: {
+            uSelection_brush_0_active: 1,
+            uSelection_brush_0: [2, 1],
+            uSelection_brush_1_active: 1,
+            uSelection_brush_1: [25, 15],
+        },
+    });
+    expect(reversed).toEqual([0, 0, 1, 0]);
+});
+
+test("markShaderBuilder applies all ranged interval hit-test modes", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
+    const x = new Float32Array([0, 3, 10, 8]);
+    const x2 = new Float32Array([10, 7, 0, 12]);
+    const channels = {
+        x: { data: x, type: "f32", components: 1 },
+        x2: { data: x2, type: "f32", components: 1 },
+        fill: {
+            value: 0,
+            type: "f32",
+            components: 1,
+            conditions: [
+                {
+                    when: {
+                        selection: "span",
+                        type: "interval",
+                        targets: [
+                            {
+                                input: "x",
+                                secondaryInput: "x2",
+                                hitTest: "intersects",
+                            },
+                        ],
+                    },
+                    value: 1,
+                },
+            ],
+        },
+    };
+    const uniformLayout = [
+        { name: "uSelection_span_0_active", type: "u32", components: 1 },
+        { name: "uSelection_span_0", type: "f32", components: 2 },
+    ];
+    /**
+     * @param {"intersects"|"encloses"|"endpoints"} hitTest
+     * @returns {Promise<number[]>}
+     */
+    const runMode = (hitTest) =>
+        runScaleCase(page, {
+            channels: {
+                ...channels,
+                fill: {
+                    ...channels.fill,
+                    conditions: [
+                        {
+                            ...channels.fill.conditions[0],
+                            when: {
+                                selection: "span",
+                                type: "interval",
+                                targets: [
+                                    {
+                                        input: "x",
+                                        secondaryInput: "x2",
+                                        hitTest,
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            },
+            channelName: "fill",
+            outputType: "f32",
+            outputLength: x.length,
+            outputComponents: 1,
+            uniformLayout,
+            uniforms: {
+                uSelection_span_0_active: 1,
+                uSelection_span_0: [2, 8],
+            },
+            selectionDefs: [
+                {
+                    name: "span",
+                    type: "interval",
+                    targets: [
+                        {
+                            input: "x",
+                            secondaryInput: "x2",
+                            hitTest,
+                            scalarType: "f32",
+                        },
+                    ],
+                },
+            ],
+            dumpLabel: `${dumpLabel}-${hitTest}`,
+        });
+
+    expect(await runMode("intersects")).toEqual([1, 1, 1, 1]);
+    expect(await runMode("encloses")).toEqual([0, 1, 0, 0]);
+    expect(await runMode("endpoints")).toEqual([0, 1, 0, 1]);
 });
 
 test("markShaderBuilder applies single selections to conditional values", async ({
@@ -576,8 +812,12 @@ test("markShaderBuilder applies interval selections over ranged channels", async
                     when: {
                         selection: "span",
                         type: "interval",
-                        channel: "x",
-                        secondaryChannel: "x2",
+                        targets: [
+                            {
+                                input: "x",
+                                secondaryInput: "x2",
+                            },
+                        ],
                     },
                     value: 1,
                 },
@@ -585,15 +825,20 @@ test("markShaderBuilder applies interval selections over ranged channels", async
         },
     };
     const uniformLayout = [
-        { name: "uSelection_span", type: "f32", components: 2 },
+        { name: "uSelection_span_0_active", type: "u32", components: 1 },
+        { name: "uSelection_span_0", type: "f32", components: 2 },
     ];
     const selectionDefs = [
         {
             name: "span",
             type: "interval",
-            channel: "x",
-            secondaryChannel: "x2",
-            scalarType: "f32",
+            targets: [
+                {
+                    input: "x",
+                    secondaryInput: "x2",
+                    scalarType: "f32",
+                },
+            ],
         },
     ];
     const output = await runScaleCase(page, {
@@ -603,7 +848,10 @@ test("markShaderBuilder applies interval selections over ranged channels", async
         outputLength: x.length,
         outputComponents: 1,
         uniformLayout,
-        uniforms: { uSelection_span: [2.5, 4.5] },
+        uniforms: {
+            uSelection_span_0_active: 1,
+            uSelection_span_0: [2.5, 4.5],
+        },
         selectionDefs,
         dumpLabel,
     });

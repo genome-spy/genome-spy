@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import BaseProgram from "./baseProgram.js";
 import { createMockRenderer } from "../../../testUtils/mockRenderer.js";
 import { attachScaleDefinitions } from "../../../../testUtils/scaleDefinitions.js";
@@ -224,6 +224,146 @@ describe("BaseProgram channel validation", () => {
                 },
             })
         ).toThrow('Ordinal scale on "vec" requires a non-empty range.');
+    });
+
+    it("normalizes interval targets and defaults hit testing", () => {
+        const program = createProgram({
+            x: { value: 0.5, type: "f32" },
+            vec: {
+                value: [1, 0, 0, 1],
+                type: "f32",
+                components: 4,
+                conditions: [
+                    {
+                        when: {
+                            selection: "brush",
+                            type: "interval",
+                            targets: [{ input: "x" }],
+                        },
+                        value: [0, 1, 0, 1],
+                    },
+                ],
+            },
+        });
+
+        const when = program._channels.vec.conditions[0].when;
+        expect(when.type).toBe("interval");
+        if (when.type === "interval") {
+            expect(when.targets).toEqual([
+                { input: "x", hitTest: "intersects" },
+            ]);
+        }
+    });
+
+    it.each(
+        /** @type {Array<[string, Record<string, unknown>, string]>} */ ([
+            [
+                "empty target arrays",
+                { targets: [] },
+                "must specify a non-empty targets array",
+            ],
+            [
+                "duplicate targets",
+                { targets: [{ input: "x" }, { input: "x" }] },
+                'cannot target "x" more than once',
+            ],
+            [
+                "unknown targets",
+                { targets: [{ input: "missing" }] },
+                "references unknown selection input",
+            ],
+            [
+                "hit tests without endpoints",
+                { targets: [{ input: "x", hitTest: "endpoints" }] },
+                "cannot specify a hit-test mode without a secondary input",
+            ],
+        ])
+    )("rejects %s", (_label, interval, message) => {
+        const when =
+            /** @type {import("../../../index.d.ts").SelectionPredicate} */ (
+                /** @type {unknown} */ ({
+                    selection: "brush",
+                    type: "interval",
+                    ...interval,
+                })
+            );
+        expect(() =>
+            createProgram({
+                x: { value: 0.5, type: "f32" },
+                vec: {
+                    value: [1, 0, 0, 1],
+                    type: "f32",
+                    components: 4,
+                    conditions: [
+                        {
+                            when,
+                            value: [0, 1, 0, 1],
+                        },
+                    ],
+                },
+            })
+        ).toThrow(message);
+    });
+
+    it("rejects the obsolete singular interval channel form", () => {
+        expect(() =>
+            createProgram({
+                x: { value: 0.5, type: "f32" },
+                vec: {
+                    value: [1, 0, 0, 1],
+                    type: "f32",
+                    components: 4,
+                    conditions: [
+                        {
+                            when: /** @type {import("../../../index.d.ts").SelectionPredicate} */ (
+                                /** @type {unknown} */ ({
+                                    selection: "brush",
+                                    type: "interval",
+                                    channel: "x",
+                                })
+                            ),
+                            value: [0, 1, 0, 1],
+                        },
+                    ],
+                },
+            })
+        ).toThrow('uses the obsolete "channel" form');
+    });
+
+    it("rejects an interval uniform layout over the device limit", () => {
+        const renderer = createMockRenderer();
+        Object.defineProperty(renderer.device, "limits", {
+            value: { maxUniformBufferBindingSize: 15 },
+        });
+        const createBuffer = vi.spyOn(renderer.device, "createBuffer");
+
+        expect(
+            () =>
+                new TestProgram(renderer, {
+                    channels: attachScaleDefinitions({
+                        x: { value: 0.5, type: "f32" },
+                        vec: {
+                            value: [1, 0, 0, 1],
+                            type: "f32",
+                            components: 4,
+                            conditions: [
+                                {
+                                    when: {
+                                        selection: "brush",
+                                        type: "interval",
+                                        targets: [{ input: "x" }],
+                                    },
+                                    value: [0, 1, 0, 1],
+                                },
+                            ],
+                        },
+                    }),
+                    count: 1,
+                })
+        ).toThrow(
+            'interval selection "brush" (1 targets) requires 16 bytes, exceeding the device limit of 15 bytes'
+        );
+        expect(createBuffer).not.toHaveBeenCalled();
     });
 });
 

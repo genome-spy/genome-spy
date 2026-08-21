@@ -2,6 +2,8 @@ import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import { buildHashTableSet } from "../../../utils/hashTable.js";
 import { asGpuBufferSource } from "../../../utils/webgpuTextureUtils.js";
 import {
+    intervalSelectionActiveName,
+    intervalSelectionBoundsName,
     SELECTION_BUFFER_PREFIX,
     SELECTION_COUNT_PREFIX,
     SELECTION_PREFIX,
@@ -12,15 +14,133 @@ import {
  * @typedef {import("../../../index.d.ts").SelectionType} SelectionType
  * @typedef {import("../../../types.js").ScalarType} ScalarType
  *
- * @typedef {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", min: number, max: number }} SelectionUpdate
+ * @typedef {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", intervals: Readonly<Partial<Record<string, readonly [number, number] | null>>> }} SelectionUpdate
+ *
+ * @typedef {object} IntervalTargetDef
+ * @prop {string} input
+ * @prop {string} [secondaryInput]
+ * @prop {"intersects"|"encloses"|"endpoints"} hitTest
+ * @prop {ScalarType} scalarType
+ * @prop {ScalarType} [secondaryScalarType]
  *
  * @typedef {object} SelectionDef
  * @prop {string} name
  * @prop {SelectionType} type
- * @prop {string} [channel]
- * @prop {string} [secondaryChannel]
- * @prop {ScalarType} [scalarType]
+ * @prop {IntervalTargetDef[]} [targets]
  */
+
+/**
+ * @param {unknown} value
+ * @returns {value is readonly [number, number]}
+ */
+function isIntervalBounds(value) {
+    return (
+        Array.isArray(value) &&
+        value.length === 2 &&
+        typeof value[0] === "number" &&
+        typeof value[1] === "number"
+    );
+}
+
+/**
+ * @param {IntervalTargetDef} a
+ * @param {IntervalTargetDef} b
+ * @returns {boolean}
+ */
+function sameIntervalTarget(a, b) {
+    return (
+        a.input === b.input &&
+        a.secondaryInput === b.secondaryInput &&
+        a.hitTest === b.hitTest
+    );
+}
+
+/**
+ * @param {IntervalTargetDef[]} a
+ * @param {IntervalTargetDef[]} b
+ * @returns {boolean}
+ */
+function sameIntervalTargets(a, b) {
+    return (
+        a.length === b.length &&
+        a.every((target, index) => sameIntervalTarget(target, b[index]))
+    );
+}
+
+/**
+ * Resolve and validate one interval predicate's target descriptors.
+ *
+ * @param {string} selectionName
+ * @param {import("../../../index.d.ts").SelectionPredicate} when
+ * @param {Record<string, ChannelConfigResolved>} channels
+ * @returns {IntervalTargetDef[]}
+ */
+function resolveIntervalTargets(selectionName, when, channels) {
+    if (when.type !== "interval") {
+        throw new Error(`Selection "${selectionName}" is not an interval.`);
+    }
+    if (!Array.isArray(when.targets) || when.targets.length === 0) {
+        throw new Error(
+            `Interval selection "${selectionName}" must specify a non-empty targets array.`
+        );
+    }
+
+    const names = new Set();
+    return when.targets.map((target) => {
+        if (names.has(target.input)) {
+            throw new Error(
+                `Interval selection "${selectionName}" cannot target "${target.input}" more than once.`
+            );
+        }
+        names.add(target.input);
+
+        const primary = channels[target.input];
+        if (!primary) {
+            throw new Error(
+                `Interval selection "${selectionName}" references unknown input "${target.input}".`
+            );
+        }
+        const analysis = buildChannelAnalysis(target.input, primary);
+        if (analysis.inputComponents !== 1) {
+            throw new Error(
+                `Interval selection "${selectionName}" requires scalar input "${target.input}".`
+            );
+        }
+
+        let secondaryScalarType;
+        if (target.secondaryInput !== undefined) {
+            const secondary = channels[target.secondaryInput];
+            if (!secondary) {
+                throw new Error(
+                    `Interval selection "${selectionName}" references unknown input "${target.secondaryInput}".`
+                );
+            }
+            const secondaryAnalysis = buildChannelAnalysis(
+                target.secondaryInput,
+                secondary
+            );
+            if (secondaryAnalysis.inputComponents !== 1) {
+                throw new Error(
+                    `Interval selection "${selectionName}" requires scalar input "${target.secondaryInput}".`
+                );
+            }
+            if (secondaryAnalysis.scalarType !== analysis.scalarType) {
+                throw new Error(
+                    `Interval selection "${selectionName}" requires matching scalar types for inputs "${target.input}" and "${target.secondaryInput}".`
+                );
+            }
+            secondaryScalarType = secondaryAnalysis.scalarType;
+        }
+
+        return {
+            input: target.input,
+            secondaryInput: target.secondaryInput,
+            hitTest: target.hitTest ?? "intersects",
+            scalarType: analysis.scalarType,
+            secondaryScalarType,
+        };
+    });
+}
 
 /**
  * Build a normalized set of selection definitions from channel conditions.
@@ -34,8 +154,7 @@ function collectSelectionDefs(channels) {
     const hasUniqueId = !!channels.uniqueId;
 
     for (const channel of Object.values(channels)) {
-        const conditions = channel.conditions ?? [];
-        for (const condition of conditions) {
+        for (const condition of channel.conditions ?? []) {
             const when = condition.when;
             const selectionName = when.selection;
             const type = when.type;
@@ -46,53 +165,37 @@ function collectSelectionDefs(channels) {
                         `Selection "${selectionName}" must keep a single type.`
                     );
                 }
-                if (
-                    existing.type === "interval" &&
-                    existing.channel &&
-                    existing.channel !== when.channel
-                ) {
-                    throw new Error(
-                        `Selection "${selectionName}" must target a single interval channel.`
+                if (type === "interval") {
+                    const targets = resolveIntervalTargets(
+                        selectionName,
+                        when,
+                        channels
                     );
+                    if (
+                        !existing.targets ||
+                        !sameIntervalTargets(existing.targets, targets)
+                    ) {
+                        throw new Error(
+                            `Selection "${selectionName}" must keep the same interval targets.`
+                        );
+                    }
                 }
                 continue;
             }
 
             if (type === "interval") {
-                if (!when.channel) {
-                    throw new Error(
-                        `Interval selection "${selectionName}" must specify a channel.`
-                    );
-                }
-                const target = channels[when.channel];
-                if (!target) {
-                    throw new Error(
-                        `Interval selection "${selectionName}" references unknown channel "${when.channel}".`
-                    );
-                }
-                const analysis = buildChannelAnalysis(when.channel, target);
-                if (analysis.inputComponents !== 1) {
-                    throw new Error(
-                        `Interval selection "${selectionName}" requires scalar channel "${when.channel}".`
-                    );
-                }
-                const secondaryChannel =
-                    when.channel === "x" && channels.x2
-                        ? "x2"
-                        : when.channel === "y" && channels.y2
-                          ? "y2"
-                          : undefined;
                 defs.set(selectionName, {
                     name: selectionName,
                     type,
-                    channel: when.channel,
-                    secondaryChannel,
-                    scalarType: analysis.scalarType,
+                    targets: resolveIntervalTargets(
+                        selectionName,
+                        when,
+                        channels
+                    ),
                 });
-                continue;
+            } else {
+                defs.set(selectionName, { name: selectionName, type });
             }
-
-            defs.set(selectionName, { name: selectionName, type });
         }
     }
 
@@ -151,11 +254,18 @@ export class SelectionResourceManager {
                     components: 1,
                 });
             } else if (def.type === "interval") {
-                layout.push({
-                    name: SELECTION_PREFIX + def.name,
-                    type: def.scalarType ?? "f32",
-                    components: 2,
-                });
+                for (const [index, target] of def.targets.entries()) {
+                    layout.push({
+                        name: intervalSelectionActiveName(def.name, index),
+                        type: "u32",
+                        components: 1,
+                    });
+                    layout.push({
+                        name: intervalSelectionBoundsName(def.name, index),
+                        type: target.scalarType,
+                        components: 2,
+                    });
+                }
             } else if (def.type === "multi") {
                 layout.push({
                     name: SELECTION_COUNT_PREFIX + def.name,
@@ -205,7 +315,16 @@ export class SelectionResourceManager {
             if (def.type === "single") {
                 this._setUniformValue(SELECTION_PREFIX + def.name, 0);
             } else if (def.type === "interval") {
-                this._setUniformValue(SELECTION_PREFIX + def.name, [1, 0]);
+                for (const [index] of def.targets.entries()) {
+                    this._setUniformValue(
+                        intervalSelectionActiveName(def.name, index),
+                        0
+                    );
+                    this._setUniformValue(
+                        intervalSelectionBoundsName(def.name, index),
+                        [0, 0]
+                    );
+                }
             } else if (def.type === "multi") {
                 this._setUniformValue(SELECTION_COUNT_PREFIX + def.name, 0);
                 const bufferName = SELECTION_BUFFER_PREFIX + def.name;
@@ -249,14 +368,48 @@ export class SelectionResourceManager {
             );
         }
 
-        let needsRebind = false;
         if (update.type === "single") {
             this._setUniformValue(SELECTION_PREFIX + name, update.id);
         } else if (update.type === "interval") {
-            this._setUniformValue(SELECTION_PREFIX + name, [
-                update.min,
-                update.max,
-            ]);
+            const intervals = update.intervals ?? {};
+            const declaredInputs = new Set(
+                def.targets?.map((target) => target.input) ?? []
+            );
+            for (const input of Object.keys(intervals)) {
+                if (!declaredInputs.has(input)) {
+                    throw new Error(
+                        `Selection "${name}" cannot update unknown target "${input}".`
+                    );
+                }
+            }
+
+            const staged = (def.targets ?? []).map((target) => {
+                const hasInterval = Object.hasOwn(intervals, target.input);
+                const interval = intervals[target.input];
+                if (!hasInterval || interval === null) {
+                    return { active: 0, bounds: [0, 0] };
+                }
+                if (!isIntervalBounds(interval)) {
+                    throw new Error(
+                        `Selection "${name}" target "${target.input}" requires two numeric bounds or null.`
+                    );
+                }
+                return {
+                    active: 1,
+                    bounds: [interval[0], interval[1]],
+                };
+            });
+
+            for (const [index, { active, bounds }] of staged.entries()) {
+                this._setUniformValue(
+                    intervalSelectionActiveName(name, index),
+                    active
+                );
+                this._setUniformValue(
+                    intervalSelectionBoundsName(name, index),
+                    bounds
+                );
+            }
         } else if (update.type === "multi") {
             const { table, size } = buildHashTableSet(update.ids);
             this._setUniformValue(SELECTION_COUNT_PREFIX + name, size);
@@ -273,20 +426,22 @@ export class SelectionResourceManager {
                     byteLength: table.byteLength,
                 });
                 existing?.buffer.destroy();
-                needsRebind = true;
-            }
-            const buffer = this._selectionBuffers.get(name)?.buffer;
-            if (buffer) {
                 this._device.queue.writeBuffer(
                     buffer,
                     0,
                     asGpuBufferSource(table)
                 );
+                return true;
             }
+            this._device.queue.writeBuffer(
+                existing.buffer,
+                0,
+                asGpuBufferSource(table)
+            );
         } else {
             throw new Error(`Selection "${name}" has unsupported type.`);
         }
 
-        return needsRebind;
+        return false;
     }
 }

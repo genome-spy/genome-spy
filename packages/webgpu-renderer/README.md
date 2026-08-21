@@ -222,7 +222,7 @@ const brush = selections.brush;
 scales.x.setDomain([0, 10]);
 brushColor.setRange(["#000", "#f00"]);
 values.size.set(4);
-brush.set(0, 10);
+brush.set({ x: [0, 10] });
 ```
 
 `default` refers to the unconditional branch of a channel. The group also
@@ -258,7 +258,9 @@ domain space.
 
 - `single`: a selected `uniqueId` (u32 uniform).
 - `multi`: a set of selected IDs (hash-table buffer).
-- `interval`: numeric range over a specified channel (vec2 uniform).
+- `interval`: one or more scalar input ranges evaluated with AND semantics.
+  Each target has an input name and may declare a ranged-datum endpoint with
+  `intersects`, `encloses`, or `endpoints` hit testing.
 
 Conditional channel branches are normalized into internal synthetic channels
 (`fill__cond0`, etc.) for shader generation; users only define conditions on
@@ -269,8 +271,12 @@ one series-backed branch, replace it using the original channel name. Multiple
 series-backed branches remain valid for mark creation and rendering, but public
 series replacement for that channel is not supported yet.
 
-Update selection state via slot handles (`selections.brush.set(...)`), which
-write the selection uniforms/buffers without rebuilding the mark.
+Update selection state via slot handles (`selections.brush.set(...)`). Interval
+slots expose their stable `targets` order and accept a complete replacement;
+omitted or `null` targets are inactive, and unknown target names are rejected.
+Selection updates write the existing uniforms/buffers without rebuilding the
+mark or bind group. For example, an x+y brush uses
+`selections.brush.set({ x: [0, 10], y: [2, 8] })`.
 
 ## High-Precision Index Scale
 
