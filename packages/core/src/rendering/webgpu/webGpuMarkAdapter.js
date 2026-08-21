@@ -910,7 +910,9 @@ function createPositionBranch(mark, channel, data, coords, encoder) {
     if (encoder.constant) {
         const rawValue = encoder.branches[0].accessor(data[0]);
         const unitPosition = Number(
-            encoder.scale ? encoder.scale(rawValue) : encoder(data[0])
+            encoder.scale
+                ? /** @type {any} */ (encoder.scale)(rawValue)
+                : encoder(data[0])
         );
         if (!Number.isFinite(unitPosition)) {
             throw unsupported(mark, `Channel "${channel}" is not finite.`);
@@ -1093,7 +1095,9 @@ function createNumericBranch(mark, channel, data, encoder) {
                       )
                     : createBandPositionScale(
                           encoder.scale,
-                          encoder.scale.range(),
+                          /** @type {[number, number]} */ (
+                              encoder.scale.range()
+                          ),
                           domain,
                           0.5
                       ),

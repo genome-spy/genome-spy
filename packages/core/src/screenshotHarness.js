@@ -35,7 +35,10 @@ const screenshotWindow = /** @type {ScreenshotWindow} */ (window);
 
 const query = new URLSearchParams(window.location.search);
 const specUrl = query.get("spec");
-const renderer = query.get("renderer") ?? "auto";
+const renderer =
+    /** @type {"auto" | "webgl" | "canvas" | "webgpu" | null} */ (
+        query.get("renderer")
+    ) ?? "auto";
 const lazyReadyTimeoutMs = parseTimeoutMs(
     query.get("lazy-timeout-ms"),
     DEFAULT_LAZY_READY_TIMEOUT_MS
