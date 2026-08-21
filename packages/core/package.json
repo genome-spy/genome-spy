@@ -37,6 +37,7 @@
     "dev": "node dev-server.mjs",
     "capture:screenshots": "node scripts/captureScreenshots.mjs",
     "smoke:examples": "node scripts/captureScreenshots.mjs --all --check",
+    "smoke:examples:webgpu": "node scripts/runWebGpuExamples.mjs --all",
     "verify:bundle:minimal": "node scripts/verifyMinimalBundle.mjs",
     "build": "rm -rf dist && mkdir -p dist && node scripts/build.mjs && vite build && npm run build:schema && npm run build:typings",
     "prepublishOnly": "npm run build",

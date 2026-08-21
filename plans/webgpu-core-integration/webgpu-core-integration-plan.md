@@ -1,10 +1,11 @@
 # WebGPU/Core integration plan
 
-Status: In progress — Milestone 1 complete; Milestone 2 underway
+Status: In progress — example coverage and parity runner underway
 
 Date: 2026-08-20
 
-Scope: `packages/core`, `packages/webgpu-renderer`, and the `first.json` proof of concept
+Scope: `packages/core`, `packages/webgpu-renderer`, and every JSON example under
+`examples/core/` and `examples/docs/`
 
 This is a temporary implementation plan. It records the integration decisions and
 review gates for an experimental WebGPU backend. It must be reconciled and removed
@@ -15,6 +16,38 @@ the code-first, tree-shakeable public API direction inferred from the PoC. Its
 built-in definition migration, compatibility cleanup, and explicit draw-frame
 submission are complete. Deterministic renderer destruction is also complete;
 occurrence-specific scale state is the next reviewable contract.
+
+## Example coverage checkpoint
+
+The reusable browser runner is `packages/core/scripts/runWebGpuExamples.mjs`.
+It discovers both target trees, runs the selected renderer, captures browser
+errors and uncaught exceptions, verifies canvas geometry and non-uniform pixels,
+writes screenshots plus `summary.json` and `failure-report.md` under the ignored
+`output/webgpu-core/` directory, and can run an individual path, `--match`
+subset, or `--compare-webgl` pass. The existing screenshot harness accepts the
+same `renderer` query parameter, including:
+`?spec=examples/core/scales/ordinal_position_test.json&renderer=webgpu`.
+
+The first complete baseline is still pending. Every baseline failure must be
+copied into the prioritized table below with its root cause, fix or intentional
+deferral, and verification command. Screenshots and reports are diagnostic
+artifacts only and must not be committed.
+
+### Prioritized example failure list
+
+| Priority | Example(s) | Symptom / root cause | Action | Status |
+| --- | --- | --- | --- | --- |
+| P0 | — | Complete WebGPU baseline not yet run with the reusable runner | Run all discovered examples and classify every result | Open |
+| P1 | `examples/core/scales/ordinal_position_test.json` | User-reported WebGPU example currently does not render correctly; baseline error and WebGL comparison are pending | Reproduce first, then fix the smallest adapter/renderer contract issue | Open |
+| P1 | — | Unsupported scale, mark, data, layout, or interaction contracts may affect additional examples | Classify as implementation fix or documented API/architecture deferral | Open |
+| P2 | — | Faceted/repeated occurrences and synchronous interaction contracts may exceed the current renderer boundary | Document concrete examples and follow-up design without silently accepting incorrect output | Open |
+
+### Tested examples
+
+| Renderer | Scope | Passed | Failed | Empty canvas | Last verified |
+| --- | --- | ---: | ---: | ---: | --- |
+| WebGPU | — | — | — | — | Pending runner baseline |
+| WebGL comparison | — | — | — | — | Pending runner baseline |
 
 ## Context
 

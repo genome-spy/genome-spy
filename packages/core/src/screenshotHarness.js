@@ -35,6 +35,7 @@ const screenshotWindow = /** @type {ScreenshotWindow} */ (window);
 
 const query = new URLSearchParams(window.location.search);
 const specUrl = query.get("spec");
+const renderer = query.get("renderer") ?? "auto";
 const lazyReadyTimeoutMs = parseTimeoutMs(
     query.get("lazy-timeout-ms"),
     DEFAULT_LAZY_READY_TIMEOUT_MS
@@ -68,6 +69,7 @@ async function initializeHarness(url) {
 
         setState("embedding", "Embedding visualization…");
         const api = await embed(frameElement, url, {
+            renderer,
             onError(error) {
                 throw error;
             },
