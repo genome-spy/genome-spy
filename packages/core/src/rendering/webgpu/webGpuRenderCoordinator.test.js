@@ -23,6 +23,7 @@ describe("WebGpuRenderCoordinator", () => {
             context.popView(viewRoot);
         });
         const viewRoot = { arrange };
+        let background = /** @type {string | undefined} */ ("#336699");
         const surface = {
             invalidateSize: vi.fn(() => false),
             getLogicalCanvasSize: () => ({ width: 100, height: 50 }),
@@ -33,7 +34,7 @@ describe("WebGpuRenderCoordinator", () => {
         const coordinator = new WebGpuRenderCoordinator({
             viewRoot: /** @type {any} */ (viewRoot),
             surface: /** @type {any} */ (surface),
-            getBackground: () => "#336699",
+            getBackground: () => background,
             broadcast: vi.fn(),
             onLayoutComputed: vi.fn(),
         });
@@ -52,7 +53,16 @@ describe("WebGpuRenderCoordinator", () => {
             b: 0x99 / 255,
             a: 1,
         });
-        expect(mocks.contexts).toHaveLength(2);
+        background = undefined;
+        coordinator.renderAll();
+
+        expect(surface.render).toHaveBeenNthCalledWith(3, {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 0,
+        });
+        expect(mocks.contexts).toHaveLength(3);
         expect(mocks.contexts[0].pushView).toHaveBeenCalledWith(
             viewRoot,
             expect.objectContaining({ width: 100, height: 50 })
