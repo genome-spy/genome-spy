@@ -144,6 +144,10 @@ focused regression coverage where practical, and one commit per requested fix.
 - Link paths now use linear Bezier sampling for diagonal and line shapes, as in
   WebGL. The focused comparison for `pik3ca-tcga-brca-lollipop.json` verifies
   the non-arc connector geometry.
+- The WebGPU link shader now also follows the current GLSL implementation for
+  visible-chord parameter remapping, dome chord clamping, and de Casteljau
+  evaluation. The focused arc and dome examples render, but the lollipop still
+  needs another screenshot-reviewed pass for exact non-arc parity.
 - The attempted text-local `dx`/`dy` change was reverted after screenshot review:
   it made the lollipop labels visibly worse. The original screen-space behavior
   remains the better baseline while the exact text parity issue stays open.

@@ -74,6 +74,91 @@ fn isInsideViewport(p: vec2<f32>, marginFactor: f32) -> bool {
         p.y <= globals.height + margin.y;
 }
 
+fn inverseSmoothstep(t: f32) -> f32 {
+    let clamped = clamp(t, 0.0, 1.0);
+    return 0.5 - sin(asin(1.0 - 2.0 * clamped) / 3.0);
+}
+
+fn remapVisibleChordParameter(
+    stripT: f32,
+    chordStart: f32,
+    chordEnd: f32,
+    viewportLength: f32
+) -> f32 {
+    let chordMin = min(chordStart, chordEnd);
+    let chordMax = max(chordStart, chordEnd);
+    let chordSpan = chordMax - chordMin;
+    if (chordSpan <= 0.0) {
+        return 0.0;
+    }
+
+    let visibleChordMin = max(chordMin, 0.0);
+    let visibleChordMax = min(chordMax, viewportLength);
+    if (visibleChordMax <= visibleChordMin) {
+        return stripT;
+    }
+
+    let visibleTMin = inverseSmoothstep(
+        (visibleChordMin - chordMin) / chordSpan
+    );
+    let visibleTMax = inverseSmoothstep(
+        (visibleChordMax - chordMin) / chordSpan
+    );
+    let visibleTSpan = visibleTMax - visibleTMin;
+    let offscreenTSpan = visibleTMin + (1.0 - visibleTMax);
+    if (offscreenTSpan <= 0.0) {
+        return stripT;
+    }
+
+    let visibleShare = clamp(0.75 + (1.0 - visibleTSpan) * 0.2, 0.75, 0.95);
+    let offscreenShare = 1.0 - visibleShare;
+    let leftShare = offscreenShare * visibleTMin / offscreenTSpan;
+    let rightShare = offscreenShare * (1.0 - visibleTMax) / offscreenTSpan;
+
+    if (stripT <= leftShare) {
+        if (leftShare > 0.0) {
+            return mix(0.0, visibleTMin, stripT / leftShare);
+        }
+        return visibleTMin;
+    }
+
+    let visibleStart = leftShare;
+    let visibleEnd = visibleStart + visibleShare;
+    if (stripT <= visibleEnd) {
+        if (visibleShare > 0.0) {
+            return mix(
+                visibleTMin,
+                visibleTMax,
+                (stripT - visibleStart) / visibleShare
+            );
+        }
+        return visibleTMin;
+    }
+
+    if (rightShare > 0.0) {
+        return mix(visibleTMax, 1.0, (stripT - visibleEnd) / rightShare);
+    }
+    return visibleTMax;
+}
+
+fn clampChordToViewport(
+    p1: ptr<function, vec2<f32>>,
+    p4: ptr<function, vec2<f32>>,
+    chordLength: ptr<function, f32>
+) {
+    if (*chordLength > params.uMaxChordLength) {
+        let chordVector = *p4 - *p1;
+        let unitChordVector = normalize(chordVector);
+        if (isInsideViewport(*p1, 2.0)) {
+            (*chordLength) = params.uMaxChordLength;
+            (*p4) = *p1 + unitChordVector * params.uMaxChordLength;
+        } else if (isInsideViewport(*p4, 2.0)) {
+            (*chordLength) = params.uMaxChordLength;
+            (*p1) = *p4 - unitChordVector * params.uMaxChordLength;
+        }
+    }
+}
+
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
     if (!isInstanceVisible(i)) {
@@ -84,7 +169,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let side = f32(v % 2u) - 0.5;
     let segmentCount = max(1u, u32(params.uSegmentBreaks));
     let tRaw = f32(segment) / f32(segmentCount);
-    let t = tRaw;
+    var t = tRaw;
 
     let pixelSize = 1.0 / globals.dpr;
     var opacity = getScaled_opacity(i);
@@ -111,21 +196,23 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
                 p1 = vec2<f32>(min(a.x, b.x), b.y);
                 p4 = vec2<f32>(max(a.x, b.x), b.y);
                 height = vec2<f32>(0.0, a.y - b.y);
+            } else {
+                p1 = vec2<f32>(b.x, min(a.y, b.y));
+                p4 = vec2<f32>(b.x, max(a.y, b.y));
+                height = vec2<f32>(a.x - b.x, 0.0);
+            }
 
-                if (params.uClampApex != 0u) {
+            var chordLength = length(p4 - p1);
+            clampChordToViewport(&p1, &p4, &chordLength);
+            if (params.uClampApex != 0u) {
+                if (params.uOrient == ORIENT_VERTICAL) {
                     if (p4.x > 0.0) {
                         p1.x = max(p1.x, -p4.x);
                     }
                     if (p1.x < globals.width) {
                         p4.x = min(p4.x, 2.0 * globals.width - p1.x);
                     }
-                }
-            } else {
-                p1 = vec2<f32>(b.x, min(a.y, b.y));
-                p4 = vec2<f32>(b.x, max(a.y, b.y));
-                height = vec2<f32>(a.x - b.x, 0.0);
-
-                if (params.uClampApex != 0u) {
+                } else {
                     if (p4.y > 0.0) {
                         p1.y = max(p1.y, -p4.y);
                     }
@@ -150,15 +237,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
             let chordNormal = vec2<f32>(unitChordVector.y, -unitChordVector.x);
             var chordLength = length(chordVector);
 
-            if (chordLength > params.uMaxChordLength) {
-                if (isInsideViewport(p1, 2.0)) {
-                    chordLength = params.uMaxChordLength;
-                    p4 = p1 + unitChordVector * params.uMaxChordLength;
-                } else if (isInsideViewport(p4, 2.0)) {
-                    chordLength = params.uMaxChordLength;
-                    p1 = p4 - unitChordVector * params.uMaxChordLength;
-                }
-            }
+            clampChordToViewport(&p1, &p4, &chordLength);
 
             let height = max(chordLength / 2.0 * params.uArcHeightFactor, params.uMinArcHeight);
             let controlOffset = chordNormal * height / 0.75;
@@ -185,23 +264,28 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         p4 = b;
     }
 
-    // https://stackoverflow.com/a/31317254/1547896
-    let c1 = p4 - 3.0 * p3 + 3.0 * p2 - p1;
-    let c2 = 3.0 * p3 - 6.0 * p2 + 3.0 * p1;
-    let c3 = 3.0 * p2 - 3.0 * p1;
-    let c4 = p1;
-
-    var p: vec2<f32>;
-    // Skip computation at endpoints to maintain precision.
-    if (t == 0.0) {
-        p = p1;
-    } else if (t == 1.0) {
-        p = p4;
-    } else {
-        p = c1 * t * t * t + c2 * t * t + c3 * t + c4;
+    if (params.uShape == SHAPE_DOME) {
+        if (params.uOrient == ORIENT_VERTICAL) {
+            t = remapVisibleChordParameter(tRaw, p1.x, p4.x, globals.width);
+        } else {
+            t = remapVisibleChordParameter(tRaw, p1.y, p4.y, globals.height);
+        }
+    } else if (params.uShape == SHAPE_ARC) {
+        if (a.y == b.y) {
+            t = remapVisibleChordParameter(tRaw, p1.x, p4.x, globals.width);
+        } else if (a.x == b.x) {
+            t = remapVisibleChordParameter(tRaw, p1.y, p4.y, globals.height);
+        }
     }
 
-    let tangent = normalize(3.0 * c1 * t * t + 2.0 * c2 * t + c3);
+    // Match Core's de Casteljau evaluation for stable long links.
+    let q1 = mix(p1, p2, t);
+    let q2 = mix(p2, p3, t);
+    let q3 = mix(p3, p4, t);
+    let r1 = mix(q1, q2, t);
+    let r2 = mix(q2, q3, t);
+    var p = mix(r1, r2, t);
+    let tangent = normalize(3.0 * (r2 - r1));
     let normal = vec2<f32>(-tangent.y, tangent.x);
 
     var size = getScaled_size(i);
