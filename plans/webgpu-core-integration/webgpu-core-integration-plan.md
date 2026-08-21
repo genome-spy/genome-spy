@@ -125,7 +125,7 @@ check, with remaining behavioral differences recorded here.
 | -------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------ |
 | P1       | `examples/core/marks/arrow/arrow_diagonal.json`                      | Arrow geometry used stroke/AA padding as the actual arrow length, and polygon winding produced incorrect SDF fill | Separate geometry length from quad padding and use stable polygon winding in the SDF | Fixed  |
 | P1       | `examples/docs/examples/genomic-data/hcc1954-sv-cnv.json`            | Link arcs opened on the opposite side because WebGPU used top-left coordinates with the WebGL normal              | Invert the arc normal in the WebGPU link shader                                      | Fixed  |
-| P1       | `examples/docs/examples/genomic-data/pik3ca-tcga-brca-lollipop.json` | Non-arc link shapes may not be supported; text `dx`/`dy` also differs                                             | Compare all link shapes and text offsets against WebGL                               | Open   |
+| P1       | `examples/docs/examples/genomic-data/pik3ca-tcga-brca-lollipop.json` | Non-arc link shapes used eased Bezier sampling unlike WebGL's linear sampling                                     | Evaluate diagonal and line link paths with the same linear parameter as WebGL        | Fixed  |
 | P1       | `examples/docs/grammar/mark/rect/shadowed-marks.json`                | Rectangle shadows are not visible                                                                                 | Compare shadow parameters and fragment output                                        | Open   |
 | P1       | `examples/core/marks/rect/rect_with_params.json`                     | Rounded rectangles clip; stroke expansion is missing; dash pattern may mirror                                     | Compare rectangle bounds, stroke padding, dash orientation, and y-axis convention    | Open   |
 | P1       | `examples/docs/grammar/mark/text/sequence-logo.json`                 | Logo letters do not render with WebGPU                                                                            | Compare text layout/logo-letter handling against WebGL                               | Open   |
@@ -141,6 +141,9 @@ focused regression coverage where practical, and one commit per requested fix.
   WebGPU/WebGL comparison for `arrow_diagonal.json` is visually aligned.
 - Link arc normals now account for WebGPU's top-left coordinate system. The
   focused comparison for `hcc1954-sv-cnv.json` matches WebGL's arc direction.
+- Link paths now use linear Bezier sampling for diagonal and line shapes, as in
+  WebGL. The focused comparison for `pik3ca-tcga-brca-lollipop.json` verifies
+  the non-arc connector geometry.
 
 ## Context
 

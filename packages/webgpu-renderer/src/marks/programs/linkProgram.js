@@ -84,7 +84,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let side = f32(v % 2u) - 0.5;
     let segmentCount = max(1u, u32(params.uSegmentBreaks));
     let tRaw = f32(segment) / f32(segmentCount);
-    let t = smoothstep(0.0, 1.0, tRaw);
+    let t = tRaw;
 
     let pixelSize = 1.0 / globals.dpr;
     var opacity = getScaled_opacity(i);
