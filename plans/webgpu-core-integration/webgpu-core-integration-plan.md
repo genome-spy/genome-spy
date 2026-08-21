@@ -125,6 +125,7 @@ check, with remaining behavioral differences recorded here.
 | -------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------ |
 | P1       | `examples/core/marks/arrow/arrow_diagonal.json`                      | Arrow geometry used stroke/AA padding as the actual arrow length, and polygon winding produced incorrect SDF fill | Separate geometry length from quad padding and use stable polygon winding in the SDF | Fixed  |
 | P1       | `examples/docs/grammar/mark/arrow/arrow-styles.json`                 | WebGPU triangle heads collapsed to outlines; open heads, outside placement, and start notches diverged from WebGL | Port the current GLSL head/stem geometry and compare all four style screenshots | Fixed  |
+| P1       | `examples/docs/grammar/mark/arrow/arrow-styles.json`                 | Repeated heads stopped after 64 instances and used the opposite repeat direction | Port GLSL's modulo-based repeated-head placement and compare a wide viewport | Fixed  |
 | P1       | `examples/docs/examples/genomic-data/hcc1954-sv-cnv.json`            | Link arcs opened on the opposite side because WebGPU used top-left coordinates with the WebGL normal              | Invert the arc normal in the WebGPU link shader                                      | Fixed  |
 | P1       | `examples/docs/examples/genomic-data/pik3ca-tcga-brca-lollipop.json` | Non-arc link shapes differed visually from WebGL                                        | Port the current link GLSL behavior and compare connector screenshots                  | Fixed  |
 | P1       | `examples/docs/examples/genomic-data/pik3ca-tcga-brca-lollipop.json` | Angled text `dx`/`dy` placement differs; the attempted local transform was worse       | Reconcile WebGPU text offsets with WebGL's angled-label transform                      | Open   |
@@ -145,6 +146,9 @@ focused regression coverage where practical, and one commit per requested fix.
 - Arrow heads now follow the current GLSL geometry for base-relative triangle
   notches, open-head coverage, outside placement, and start notches. The
   `arrow-styles.json` comparison matches WebGL across all four built-in styles.
+- Repeated arrowheads now use the GLSL modulo placement and continue across
+  arbitrarily long arrows instead of stopping at a fixed loop limit. The wide
+  `arrow-styles.json` comparison matches WebGL.
 - Link arc normals now account for WebGPU's top-left coordinate system. The
   focused comparison for `hcc1954-sv-cnv.json` matches WebGL's arc direction.
 - Link paths now use linear Bezier sampling for diagonal and line shapes, as in
