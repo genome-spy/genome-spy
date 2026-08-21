@@ -21,7 +21,7 @@ and arrow; positional offsets; dashed rules; point shapes; rectangle corner
 radii, hatches, and shadows; supported colors and scales already represented by
 the low-level renderer; data-driven text size; expression-valued properties at
 initial translation; and non-faceted tooltip picking through the renderer pick
-channel.
+channel; and Core-loaded text font metrics, styles, weights, and atlases.
 
 Every active milestone ends with focused tests and one Conventional Commit.
 Faceting remains a separate, final, postponed milestone and must not be
@@ -151,37 +151,7 @@ postponed facet milestone.
 
 ## Current remaining milestones
 
-### 1. Font resource parity
-
-The WebGPU text program currently resolves the default sans-serif to its
-embedded atlas and rejects other font families. Bring it to the same resource
-contract as WebGL without disturbing unrelated mark pipelines.
-
-Implementation work:
-
-- Define how Core supplies font family, style, weight, and atlas identity.
-- Extend the renderer font/atlas lifecycle to load or receive the required
-  glyph metrics and texture resources.
-- Preserve data-driven text size, layout-base sizing, padding, squeeze, and
-  glyph expansion.
-- Handle unavailable fonts consistently with WebGL.
-
-Affected areas:
-
-- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
-- `packages/webgpu-renderer/src/marks/programs/textProgram.js`
-- `packages/webgpu-renderer/src/fonts/`
-- Text resource, layout, and browser tests
-
-Verification:
-
-- Compare default sans-serif, Lato, another registered family, italic, and
-  multiple weights with WebGL.
-- Confirm changing a text atlas rebuilds only the dependent text resources.
-
-Tentative commit: `feat(webgpu): support registered text fonts`
-
-### 2. Cross-renderer integration audit
+### 1. Cross-renderer integration audit
 
 Run the complete supported-surface audit after the individual milestones.
 Update this plan to mark only behavior that is actually implemented, and
@@ -199,7 +169,7 @@ Verification must include:
 
 Tentative commit: `test(webgpu): verify supported renderer parity`
 
-### 3. Faceted and sample-faceted rendering — postponed
+### 2. Faceted and sample-faceted rendering — postponed
 
 The adapter still rejects `options.sampleFacetRenderingOptions` and
 `mark.encoders.facetIndex`. WebGL renders one occurrence per facet, with
@@ -275,7 +245,6 @@ remain rejected throughout.
   without unnecessary pipeline, bind-group, program, or buffer churn.
 - WebGPU picking drives the existing Core hover and tooltip behavior for
   non-faceted views, including asynchronous reads and DPR conversion.
-- Registered text fonts, styles, weights, and dynamic sizes match WebGL.
 - Adapter checks are limited to semantic translation and contextual
   unsupported-capability reporting.
 - Faceting remains postponed and is not a completion criterion until explicitly
