@@ -17,3 +17,21 @@ export const SELECTION_PREFIX = "uSelection_";
 export const SELECTION_COUNT_PREFIX = "uSelectionCount_";
 export const SELECTION_BUFFER_PREFIX = "selection_";
 export const SELECTION_CHECKER_PREFIX = "checkSelection_";
+
+/**
+ * @param {string} name
+ * @param {number} targetIndex
+ * @returns {string}
+ */
+export function intervalSelectionActiveName(name, targetIndex) {
+    return `${SELECTION_PREFIX}${name}_${targetIndex}_active`;
+}
+
+/**
+ * @param {string} name
+ * @param {number} targetIndex
+ * @returns {string}
+ */
+export function intervalSelectionBoundsName(name, targetIndex) {
+    return `${SELECTION_PREFIX}${name}_${targetIndex}`;
+}

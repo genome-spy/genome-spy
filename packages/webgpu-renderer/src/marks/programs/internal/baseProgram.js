@@ -107,6 +107,7 @@ export default class BaseProgram {
         // and the selected scale types. This keeps GPU programs minimal but makes
         // shader generation dynamic.
         this._buildUniformLayout();
+        this._validateUniformBufferCapacity();
         this._initializeExtraResources();
         this._selectionResources.initializeSelections(this._extraBuffers);
         const extraResources = [
@@ -698,12 +699,12 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {{ name: string, type: import("../../../index.d.ts").SelectionType }} def
+     * @param {{ name: string, type: import("../../../index.d.ts").SelectionType, targets?: Array<{ input: string }> }} def
      * @returns {import("../../../index.d.ts").SelectionSlotHandle}
      */
     _createSelectionSlot(def) {
         /**
-         * @param {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", min: number, max: number }} next
+         * @param {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", intervals: Readonly<Partial<Record<string, readonly [number, number] | null>>> }} next
          */
         const update = (next) => {
             this._assertAlive();
@@ -733,8 +734,33 @@ export default class BaseProgram {
         }
         return {
             type: "interval",
-            set: (min, max) => update({ type: "interval", min, max }),
+            targets: (def.targets ?? []).map((target) => target.input),
+            set: (intervals) => update({ type: "interval", intervals }),
         };
+    }
+
+    /**
+     * Reject a mark whose uniform block exceeds the device's binding limit
+     * before allocating any mark GPU resources.
+     *
+     * @returns {void}
+     */
+    _validateUniformBufferCapacity() {
+        const limit = this.device.limits?.maxUniformBufferBindingSize;
+        const byteLength = this._uniformBufferState?.byteLength ?? 0;
+        if (limit === undefined || byteLength <= limit) {
+            return;
+        }
+
+        const intervalDefs = this._selectionResources.selectionDefs.filter(
+            (def) => def.type === "interval"
+        );
+        const details = intervalDefs
+            .map((def) => `"${def.name}" (${def.targets?.length ?? 0} targets)`)
+            .join(", ");
+        throw new Error(
+            `Uniform buffer for interval selection ${details || "mark"} requires ${byteLength} bytes, exceeding the device limit of ${limit} bytes.`
+        );
     }
 
     /**

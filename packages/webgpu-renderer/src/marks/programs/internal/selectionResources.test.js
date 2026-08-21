@@ -1,9 +1,247 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { SelectionResourceManager } from "./selectionResources.js";
-import { SELECTION_BUFFER_PREFIX } from "../../../wgsl/prefixes.js";
+import {
+    intervalSelectionActiveName,
+    intervalSelectionBoundsName,
+    SELECTION_BUFFER_PREFIX,
+} from "../../../wgsl/prefixes.js";
+
+/**
+ * @param {Array<{ input: string, secondaryInput?: string, hitTest?: "intersects"|"encloses"|"endpoints" }>} targets
+ */
+function makeIntervalChannels(targets) {
+    return /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ (
+        /** @type {unknown} */ ({
+            x: {
+                data: new Float32Array([0, 1]),
+                type: "f32",
+                components: 1,
+            },
+            y: {
+                data: new Uint32Array([0, 1]),
+                type: "u32",
+                components: 1,
+            },
+            z: {
+                data: new Int32Array([0, 1]),
+                type: "i32",
+                components: 1,
+            },
+            vec: {
+                data: new Float32Array([0, 1, 2, 3]),
+                type: "f32",
+                components: 2,
+            },
+            fill: {
+                value: 0,
+                type: "f32",
+                components: 1,
+                conditions: [
+                    {
+                        when: {
+                            selection: "brush",
+                            type: "interval",
+                            targets,
+                        },
+                        value: 1,
+                    },
+                ],
+            },
+        })
+    );
+}
+
+function createDevice() {
+    return /** @type {GPUDevice} */ (
+        /** @type {unknown} */ ({
+            createBuffer: (/** @type {GPUBufferDescriptor} */ { size }) => ({
+                size,
+                destroy: vi.fn(),
+            }),
+            queue: { writeBuffer: vi.fn() },
+        })
+    );
+}
 
 describe("SelectionResourceManager", () => {
+    it("allocates independently typed fields for an N-target interval", () => {
+        const setUniformValue = vi.fn();
+        const manager = new SelectionResourceManager({
+            device: createDevice(),
+            channels: makeIntervalChannels([
+                { input: "x" },
+                { input: "y" },
+                { input: "z" },
+            ]),
+            setUniformValue,
+        });
+        const layout =
+            /** @type {Array<{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4 }>} */ ([]);
+
+        manager.addSelectionUniforms(layout);
+
+        expect(layout).toEqual([
+            {
+                name: intervalSelectionActiveName("brush", 0),
+                type: "u32",
+                components: 1,
+            },
+            {
+                name: intervalSelectionBoundsName("brush", 0),
+                type: "f32",
+                components: 2,
+            },
+            {
+                name: intervalSelectionActiveName("brush", 1),
+                type: "u32",
+                components: 1,
+            },
+            {
+                name: intervalSelectionBoundsName("brush", 1),
+                type: "u32",
+                components: 2,
+            },
+            {
+                name: intervalSelectionActiveName("brush", 2),
+                type: "u32",
+                components: 1,
+            },
+            {
+                name: intervalSelectionBoundsName("brush", 2),
+                type: "i32",
+                components: 2,
+            },
+        ]);
+
+        const extraBuffers = new Map();
+        manager.initializeSelections(extraBuffers);
+        expect(setUniformValue).toHaveBeenCalledWith(
+            intervalSelectionActiveName("brush", 0),
+            0
+        );
+        expect(setUniformValue).toHaveBeenCalledWith(
+            intervalSelectionBoundsName("brush", 2),
+            [0, 0]
+        );
+    });
+
+    it("updates all interval targets atomically without a rebind", () => {
+        const setUniformValue = vi.fn();
+        const manager = new SelectionResourceManager({
+            device: createDevice(),
+            channels: makeIntervalChannels([{ input: "x" }, { input: "y" }]),
+            setUniformValue,
+        });
+        manager.addSelectionUniforms([]);
+        manager.initializeSelections(new Map());
+        setUniformValue.mockClear();
+
+        expect(
+            manager.updateSelection(
+                "brush",
+                {
+                    type: "interval",
+                    intervals: { x: [4, 1], y: null },
+                },
+                new Map()
+            )
+        ).toBe(false);
+
+        expect(setUniformValue).toHaveBeenCalledTimes(4);
+        expect(setUniformValue).toHaveBeenCalledWith(
+            intervalSelectionActiveName("brush", 0),
+            1
+        );
+        expect(setUniformValue).toHaveBeenCalledWith(
+            intervalSelectionBoundsName("brush", 0),
+            [4, 1]
+        );
+        expect(setUniformValue).toHaveBeenCalledWith(
+            intervalSelectionActiveName("brush", 1),
+            0
+        );
+    });
+
+    it("rejects invalid interval updates before mutating uniforms", () => {
+        const setUniformValue = vi.fn();
+        const manager = new SelectionResourceManager({
+            device: createDevice(),
+            channels: makeIntervalChannels([{ input: "x" }, { input: "y" }]),
+            setUniformValue,
+        });
+        manager.addSelectionUniforms([]);
+        manager.initializeSelections(new Map());
+        setUniformValue.mockClear();
+
+        expect(() =>
+            manager.updateSelection(
+                "brush",
+                {
+                    type: "interval",
+                    intervals: { unknown: [0, 1] },
+                },
+                new Map()
+            )
+        ).toThrow('cannot update unknown target "unknown"');
+        expect(setUniformValue).not.toHaveBeenCalled();
+
+        const invalidUpdate =
+            /** @type {import("./selectionResources.js").SelectionUpdate} */ (
+                /** @type {unknown} */ ({
+                    type: "interval",
+                    intervals: { x: [0] },
+                })
+            );
+        expect(() =>
+            manager.updateSelection("brush", invalidUpdate, new Map())
+        ).toThrow("requires two numeric bounds or null");
+        expect(setUniformValue).not.toHaveBeenCalled();
+    });
+
+    it("rejects inconsistent duplicate interval declarations", () => {
+        const channels = makeIntervalChannels([{ input: "x" }]);
+        channels.fill.conditions.push({
+            when: {
+                selection: "brush",
+                type: "interval",
+                targets: [{ input: "y" }],
+            },
+            value: 2,
+        });
+
+        expect(
+            () =>
+                new SelectionResourceManager({
+                    device: createDevice(),
+                    channels,
+                    setUniformValue: vi.fn(),
+                })
+        ).toThrow("must keep the same interval targets");
+    });
+
+    it("rejects unknown and non-scalar interval inputs", () => {
+        expect(
+            () =>
+                new SelectionResourceManager({
+                    device: createDevice(),
+                    channels: makeIntervalChannels([
+                        { input: "x", secondaryInput: "missing" },
+                    ]),
+                    setUniformValue: vi.fn(),
+                })
+        ).toThrow('references unknown input "missing"');
+
+        expect(
+            () =>
+                new SelectionResourceManager({
+                    device: createDevice(),
+                    channels: makeIntervalChannels([{ input: "vec" }]),
+                    setUniformValue: vi.fn(),
+                })
+        ).toThrow('requires scalar input "vec"');
+    });
+
     it("destroys a superseded multi-selection buffer", () => {
         /** @type {Array<{ size: number, destroy: ReturnType<typeof vi.fn> }>} */
         const buffers = [];

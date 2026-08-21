@@ -331,14 +331,94 @@ export function validateChannel(name, channel, context) {
                     `Channel "${name}" has invalid selection type "${when.type}".`
                 );
             }
-            if (when.type === "interval" && !when.channel) {
+            if (Object.hasOwn(when, "channel")) {
                 throw new Error(
-                    `Interval selection "${when.selection}" must specify a channel.`
+                    `Selection "${when.selection}" uses the obsolete "channel" form; specify targets.`
                 );
             }
-            if (when.channel && !channelOrder.includes(when.channel)) {
+            if (Object.hasOwn(when, "secondaryChannel")) {
                 throw new Error(
-                    `Channel "${name}" references unknown selection channel "${when.channel}".`
+                    `Selection "${when.selection}" uses the obsolete "secondaryChannel" form; specify secondaryInput.`
+                );
+            }
+            if (when.type === "interval") {
+                if (!Array.isArray(when.targets) || when.targets.length === 0) {
+                    throw new Error(
+                        `Interval selection "${when.selection}" must specify a non-empty targets array.`
+                    );
+                }
+                const names = new Set();
+                when.targets = when.targets.map((target) => {
+                    if (!target || typeof target !== "object") {
+                        throw new Error(
+                            `Interval selection "${when.selection}" has an invalid target.`
+                        );
+                    }
+                    if (
+                        typeof target.input !== "string" ||
+                        target.input.length === 0
+                    ) {
+                        throw new Error(
+                            `Interval selection "${when.selection}" targets require an input name.`
+                        );
+                    }
+                    if (names.has(target.input)) {
+                        throw new Error(
+                            `Interval selection "${when.selection}" cannot target "${target.input}" more than once.`
+                        );
+                    }
+                    names.add(target.input);
+                    if (
+                        target.secondaryInput !== undefined &&
+                        (typeof target.secondaryInput !== "string" ||
+                            target.secondaryInput.length === 0)
+                    ) {
+                        throw new Error(
+                            `Interval selection "${when.selection}" has an invalid secondary input.`
+                        );
+                    }
+                    if (
+                        target.hitTest !== undefined &&
+                        target.hitTest !== "intersects" &&
+                        target.hitTest !== "encloses" &&
+                        target.hitTest !== "endpoints"
+                    ) {
+                        throw new Error(
+                            `Interval selection "${when.selection}" has invalid hit-test mode "${target.hitTest}".`
+                        );
+                    }
+                    if (
+                        target.hitTest !== undefined &&
+                        target.secondaryInput === undefined
+                    ) {
+                        throw new Error(
+                            `Interval selection "${when.selection}" cannot specify a hit-test mode without a secondary input.`
+                        );
+                    }
+                    if (
+                        target.input !== undefined &&
+                        !channelOrder.includes(target.input)
+                    ) {
+                        throw new Error(
+                            `Channel "${name}" references unknown selection input "${target.input}".`
+                        );
+                    }
+                    if (
+                        target.secondaryInput !== undefined &&
+                        !channelOrder.includes(target.secondaryInput)
+                    ) {
+                        throw new Error(
+                            `Channel "${name}" references unknown selection input "${target.secondaryInput}".`
+                        );
+                    }
+                    return {
+                        ...target,
+                        hitTest: target.hitTest ?? "intersects",
+                    };
+                });
+            } else if (Object.hasOwn(when, "targets")) {
+                throw new Error(
+                    `Selection "${when.selection}" may only specify targets for interval selections.`
                 );
             }
             if (when.empty !== undefined && typeof when.empty !== "boolean") {

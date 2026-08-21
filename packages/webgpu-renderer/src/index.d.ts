@@ -23,16 +23,34 @@ export type TypedArray =
 
 export type SelectionType = "single" | "multi" | "interval";
 
-export type SelectionPredicate = {
-    /** Selection name declared in channel conditions. */
-    selection: string;
-    /** Fixed selection kind (cannot change after mark creation). */
-    type: SelectionType;
-    /** Data channel used for interval tests (required for interval selections). */
-    channel?: string;
-    /** Treat empty selections as true when set (useful for brushing). */
-    empty?: boolean;
-};
+export type IntervalSelectionTarget = Readonly<{
+    /** Primary scalar input tested by this interval dimension. */
+    input: string;
+    /** Optional second endpoint of the same ranged datum. */
+    secondaryInput?: string;
+    /** Hit-test mode for ranged data; omitted means intersects. */
+    hitTest?: "intersects" | "encloses" | "endpoints";
+}>;
+
+export type SelectionPredicate =
+    | {
+          /** Selection name declared in channel conditions. */
+          selection: string;
+          /** Fixed selection kind (cannot change after mark creation). */
+          type: "single" | "multi";
+          /** Treat empty selections as true when set. */
+          empty?: boolean;
+      }
+    | {
+          /** Selection name declared in channel conditions. */
+          selection: string;
+          /** Fixed selection kind (cannot change after mark creation). */
+          type: "interval";
+          /** Ordered, non-empty scalar target descriptors. */
+          targets: readonly IntervalSelectionTarget[];
+          /** Treat inactive targets as matching when set. */
+          empty?: boolean;
+      };
 
 export type ChannelCondition =
     | {
@@ -97,7 +115,14 @@ export type SelectionSlotHandle =
       }
     | {
           type: "interval";
-          set(min: number, max: number): void;
+          /** Stable target declaration order. */
+          targets: readonly string[];
+          /** Replace the complete interval state; omitted keys are inactive. */
+          set(
+              intervals: Readonly<
+                  Partial<Record<string, readonly [number, number] | null>>
+              >
+          ): void;
       };
 
 export type ChannelSlotGroup<T> = Partial<T> & {

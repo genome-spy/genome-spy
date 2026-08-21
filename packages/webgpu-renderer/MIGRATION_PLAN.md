@@ -52,8 +52,8 @@ faceted rendering.
   channel names are currently internal).
 - Optional selection-driven filtering/masking (skip drawing non-selected
   instances without requiring core-side filtering).
-- Explicit selection docs in public API (uniqueId requirements, predicate
-  ordering semantics).
+- Generic point visibility predicates and semantic-zoom selection bypasses are
+  tracked separately in the parity plan.
 
 ### Code-first API direction (classes vs. defs)
 
@@ -190,9 +190,6 @@ WebGL behavior:
 
 Findings (issues to address):
 
-- **Selections lack GPU/integration tests** — codegen tests exist, but there is
-  no GPU coverage for predicate evaluation + resource updates across the three
-  selection types. Add at least one GPU test per selection type.
 - **Scale rules are spread across multiple files** — `channelAnalysis.js`,
   `scaleValidation.js`, `scaleStops.js`, and `scaleResources.js` each encode
   pieces of scale behavior; drift is likely.
