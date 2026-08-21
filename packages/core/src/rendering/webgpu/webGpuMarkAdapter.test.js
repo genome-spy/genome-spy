@@ -355,9 +355,10 @@ describe("WebGPU mark adapter", () => {
     });
 
     test("translates arrow geometry and rendering properties", () => {
+        const data = [{ direction: "forward" }, { direction: "reverse" }];
         const mark = createMark(
             "arrow",
-            [{}],
+            data,
             {
                 x: createConstantEncoder(0),
                 x2: createConstantEncoder(1),
@@ -373,7 +374,7 @@ describe("WebGPU mark adapter", () => {
                 strokeOpacity: createConstantEncoder(0.7),
                 strokeWidth: createConstantEncoder(2),
                 size: createConstantEncoder(8),
-                direction: createConstantEncoder("reverse"),
+                direction: createEncoder((datum) => datum.direction),
             },
             {
                 headAngle: 45,
@@ -392,7 +393,10 @@ describe("WebGPU mark adapter", () => {
         expect(translated.definition.type).toBe("arrow");
         expect(config.channels.xOffset).toEqual({ value: 2 });
         expect(config.channels.y2Offset).toEqual({ value: 5 });
-        expect(config.channels.direction).toEqual({ value: 1, type: "u32" });
+        expect(config.channels.direction).toEqual({
+            data: new Uint32Array([0, 1]),
+            type: "u32",
+        });
         expect(config.headShape).toBe(1);
         expect(config.headPlacement).toBe(1);
         expect(config.headSpacing).toBe(10);
@@ -709,20 +713,22 @@ describe("WebGPU mark adapter", () => {
         ).toEqual({ value: code, type: "u32" });
     });
 
-    test("reports unsupported semantics with the Core view path", () => {
+    test("translates data-driven colors without a scale", () => {
         const mark = createMark("point", [{ color: "red" }], {
             fill: createEncoder((datum) => datum.color),
         });
 
-        expect(() =>
-            createWebGpuMarkConfig(
-                mark,
-                /** @type {any} */ ({}),
-                Rectangle.ZERO
-            )
-        ).toThrow(
-            'Data-driven "fill" is not supported. Mark: point. View: root/plot'
+        const translated = createWebGpuMarkConfig(
+            mark,
+            /** @type {any} */ ({}),
+            Rectangle.ZERO
         );
+
+        expect(/** @type {any} */ (translated).config.channels.fill).toEqual({
+            data: new Float32Array([1, 0, 0, 1]),
+            type: "f32",
+            inputComponents: 4,
+        });
     });
 
     test("reuses field-backed columns across scale-only updates", () => {

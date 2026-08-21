@@ -9,10 +9,17 @@ import { textMark } from "@genome-spy/webgpu-renderer/marks/text";
 import { bandScale } from "@genome-spy/webgpu-renderer/scales/band";
 import { identityScale } from "@genome-spy/webgpu-renderer/scales/identity";
 import { indexScale } from "@genome-spy/webgpu-renderer/scales/index";
+import { logScale } from "@genome-spy/webgpu-renderer/scales/log";
 import { linearScale } from "@genome-spy/webgpu-renderer/scales/linear";
+import { ordinalScale } from "@genome-spy/webgpu-renderer/scales/ordinal";
+import { powScale } from "@genome-spy/webgpu-renderer/scales/pow";
+import { quantizeScale } from "@genome-spy/webgpu-renderer/scales/quantize";
+import { sqrtScale } from "@genome-spy/webgpu-renderer/scales/sqrt";
+import { symlogScale } from "@genome-spy/webgpu-renderer/scales/symlog";
 import { thresholdScale } from "@genome-spy/webgpu-renderer/scales/threshold";
 
 import { getMarkData } from "../immediate/markData.js";
+import { resolveMarkProperty } from "../immediate/markEncoding.js";
 
 const SHAPE_CODES = new Map(
     [
@@ -182,6 +189,7 @@ function createRectConfig(mark, data, coords, viewOpacity) {
     return {
         count: data.length,
         channels: {
+            ...createUniqueIdChannel(mark, data),
             x: createPositionChannel(mark, "x", data, coords),
             x2: createPositionChannel(mark, "x2", data, coords),
             y: createPositionChannel(mark, "y", data, coords),
@@ -251,6 +259,7 @@ function createPointConfig(mark, data, coords, viewOpacity) {
     return {
         count: data.length,
         channels: {
+            ...createUniqueIdChannel(mark, data),
             x: createPositionChannel(mark, "x", data, coords),
             y: createPositionChannel(mark, "y", data, coords),
             size: createNumericChannel(mark, "size", data),
@@ -297,6 +306,7 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
     return {
         count: data.length,
         channels: {
+            ...createUniqueIdChannel(mark, data),
             x: createPositionChannel(mark, "x", data, coords),
             x2: createPositionChannel(mark, "x2", data, coords),
             y: createPositionChannel(mark, "y", data, coords),
@@ -330,11 +340,12 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
  * @returns {object}
  */
 function createTextConfig(mark, data, coords, viewOpacity) {
-    const size = readConstantEncoder(mark, "size", data);
+    const size = readNumericEncoder(mark, "size", data[0]);
     const encoders = /** @type {Record<string, any>} */ (mark.encoders);
     return {
         count: data.length,
         channels: {
+            ...createUniqueIdChannel(mark, data),
             x: createPositionChannel(mark, "x", data, coords),
             ...(mark.encoders.x2
                 ? {
@@ -348,7 +359,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
                   }
                 : {}),
             text: createTextChannel(mark, data),
-            size: { value: size },
+            size: createNumericChannel(mark, "size", data),
             angle: createNumericChannel(mark, "angle", data),
             dx: createCombinedOffsetChannel(mark, "x", data),
             dy: createCombinedOffsetChannel(mark, "y", data),
@@ -392,6 +403,7 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
     return {
         count: data.length,
         channels: {
+            ...createUniqueIdChannel(mark, data),
             x: createPositionChannel(mark, "x", data, coords),
             x2: createPositionChannel(mark, "x2", data, coords),
             y: createPositionChannel(mark, "y", data, coords),
@@ -444,6 +456,7 @@ function createArrowConfig(mark, data, coords, viewOpacity) {
     return {
         count: data.length,
         channels: {
+            ...createUniqueIdChannel(mark, data),
             x: createPositionChannel(mark, "x", data, coords),
             x2: createPositionChannel(mark, "x2", data, coords),
             y: createPositionChannel(mark, "y", data, coords),
@@ -535,7 +548,7 @@ function createPositionChannel(mark, channel, data, coords) {
     }
 
     const accessor = encoder.branches[0].accessor;
-    if (encoder.scale?.type == "band") {
+    if (encoder.scale?.type == "band" || encoder.scale?.type == "point") {
         const { values, domain } = toCategoricalArray(
             mark,
             channel,
@@ -589,7 +602,8 @@ function createBandPositionScale(scale, range, domain, band) {
     return bandScale({
         domain,
         range,
-        paddingInner: configurableScale.paddingInner(),
+        paddingInner:
+            scale.type == "point" ? 1 : configurableScale.paddingInner(),
         paddingOuter: configurableScale.paddingOuter(),
         align: configurableScale.align(),
         band,
@@ -627,6 +641,26 @@ function createNumericChannel(mark, channel, data) {
     }
 
     const accessor = encoder.branches[0].accessor;
+    if (encoder.scale?.type == "ordinal") {
+        const { values, domain } = toCategoricalArray(
+            mark,
+            channel,
+            data,
+            accessor,
+            encoder.scale
+        );
+        return {
+            data: values,
+            type: "u32",
+            scale: createNonPositionalScale(
+                mark,
+                channel,
+                encoder.scale,
+                1,
+                domain
+            ),
+        };
+    }
     const config = {
         data: toFloat32Array(mark, channel, data, accessor),
         type: /** @type {const} */ ("f32"),
@@ -653,6 +687,26 @@ function createOpacityChannel(mark, channel, data, viewOpacity) {
     }
 
     const accessor = encoder.branches[0].accessor;
+    if (encoder.scale?.type == "ordinal") {
+        const { values, domain } = toCategoricalArray(
+            mark,
+            channel,
+            data,
+            accessor,
+            encoder.scale
+        );
+        return {
+            data: values,
+            type: "u32",
+            scale: createNonPositionalScale(
+                mark,
+                channel,
+                encoder.scale,
+                viewOpacity,
+                domain
+            ),
+        };
+    }
     const scale =
         encoder.scale?.type == "identity"
             ? undefined
@@ -692,17 +746,22 @@ function createOpacityChannel(mark, channel, data, viewOpacity) {
 function createEnumChannel(mark, channel, data, values) {
     const encoder = requireEncoder(mark, channel);
     assertUnconditional(mark, channel, encoder);
-    if (!encoder.constant) {
-        throw unsupported(mark, `Data-driven "${channel}" is not supported.`);
+    if (encoder.constant) {
+        return {
+            value: getEnumValue(mark, channel, values, encoder(data[0])),
+            type: "u32",
+        };
     }
-    const value = values.get(String(encoder(data[0])));
-    if (value === undefined) {
-        throw unsupported(
-            mark,
-            `Unsupported ${channel}: ${String(encoder(data[0]))}`
-        );
-    }
-    return { value, type: "u32" };
+
+    const accessor = encoder.branches[0].accessor;
+    return {
+        data: getCachedSeries(mark, channel, data, accessor, () =>
+            Uint32Array.from(data, (datum) =>
+                getEnumValue(mark, channel, values, accessor(datum))
+            )
+        ),
+        type: "u32",
+    };
 }
 
 /**
@@ -718,12 +777,37 @@ function createColorChannel(mark, channel, data) {
         return { value: toRgba(mark, encoder(data[0])) };
     }
 
+    const accessor = encoder.branches[0].accessor;
     const scale = encoder.scale;
     if (!scale) {
-        throw unsupported(mark, `Data-driven "${channel}" is not supported.`);
+        return {
+            data: getCachedSeries(mark, channel, data, accessor, () => {
+                const colors = new Float32Array(data.length * 4);
+                data.forEach((datum, index) => {
+                    colors.set(toRgba(mark, accessor(datum)), index * 4);
+                });
+                return colors;
+            }),
+            type: "f32",
+            inputComponents: 4,
+        };
     }
 
-    const accessor = encoder.branches[0].accessor;
+    if (scale.type == "ordinal") {
+        const { values, domain } = toCategoricalArray(
+            mark,
+            channel,
+            data,
+            accessor,
+            scale
+        );
+        return {
+            data: values,
+            type: "u32",
+            scale: createColorScale(mark, channel, scale, domain),
+        };
+    }
+
     return {
         data: toFloat32Array(mark, channel, data, accessor),
         type: "f32",
@@ -736,10 +820,19 @@ function createColorChannel(mark, channel, data) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {import("../../types/encoder.js").VegaScale} scale
+ * @param {number[]} [ordinalDomain]
  */
-function createColorScale(mark, channel, scale) {
+function createColorScale(mark, channel, scale, ordinalDomain) {
     const configurableScale = /** @type {any} */ (scale);
-    if (scale.type == "sequential-linear") {
+    if (scale.type == "ordinal") {
+        return ordinalScale({
+            domain: ordinalDomain,
+            range: scale.range(),
+        });
+    } else if (
+        scale.type == "sequential-linear" ||
+        scale.type == "diverging-linear"
+    ) {
         return linearScale({
             domain: scale.domain().map(Number),
             range: configurableScale.interpolator(),
@@ -754,6 +847,11 @@ function createColorScale(mark, channel, scale) {
         });
     } else if (scale.type == "threshold") {
         return thresholdScale({
+            domain: scale.domain().map(Number),
+            range: scale.range(),
+        });
+    } else if (scale.type == "quantize") {
+        return quantizeScale({
             domain: scale.domain().map(Number),
             range: scale.range(),
         });
@@ -829,15 +927,16 @@ function createCombinedOffsetChannel(mark, axis, data) {
 /**
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
- * @param {object[]} data
+ * @param {object} datum
  */
-function readConstantEncoder(mark, channel, data) {
+function readNumericEncoder(mark, channel, datum) {
     const encoder = requireEncoder(mark, channel);
     assertUnconditional(mark, channel, encoder);
-    if (!encoder.constant) {
-        throw unsupported(mark, `Data-driven "${channel}" is not supported.`);
+    const value = Number(encoder(datum));
+    if (!Number.isFinite(value)) {
+        throw unsupported(mark, `Channel "${channel}" is not finite.`);
     }
-    return Number(encoder(data[0]));
+    return value;
 }
 
 /**
@@ -857,7 +956,10 @@ function getAbsoluteRange(channel, coords, scale) {
     // Continuous Y scales use the canvas coordinate direction. Core reverses
     // discrete Y scales by default, so their categorical range must remain
     // ascending in pixel space to keep the first category at the top.
-    const discreteY = scale?.type == "band" || scale?.type == "index";
+    const discreteY =
+        scale?.type == "band" ||
+        scale?.type == "point" ||
+        scale?.type == "index";
     const reverse =
         /** @type {{ props?: { reverse?: boolean } } | undefined} */ (
             /** @type {unknown} */ (scale)
@@ -876,21 +978,7 @@ function createPositionScale(mark, channel, scale, range) {
     if (!scale || scale.type == "null") {
         return linearScale({ domain: [0, 1], range });
     }
-    if (scale.type != "linear") {
-        throw unsupported(
-            mark,
-            `Scale type "${scale.type}" on channel "${channel}" is not supported.`
-        );
-    }
-    const configurableScale = /** @type {any} */ (scale);
-    return linearScale({
-        domain: scale.domain().map(Number),
-        range,
-        clamp:
-            typeof configurableScale.clamp == "function"
-                ? configurableScale.clamp()
-                : false,
-    });
+    return createNumericScale(mark, channel, scale, range);
 }
 
 /**
@@ -898,30 +986,160 @@ function createPositionScale(mark, channel, scale, range) {
  * @param {string} channel
  * @param {import("../../types/encoder.js").VegaScale | undefined} scale
  * @param {number} [rangeMultiplier]
+ * @param {number[]} [domain]
  * @returns {import("@genome-spy/webgpu-renderer").ConfiguredScale<"identity" | "linear"> | undefined}
  */
-function createNonPositionalScale(mark, channel, scale, rangeMultiplier = 1) {
+function createNonPositionalScale(
+    mark,
+    channel,
+    scale,
+    rangeMultiplier = 1,
+    domain
+) {
     if (!scale || scale.type == "null") {
         return undefined;
     }
     if (scale.type == "identity") {
         return identityScale();
     }
-    if (scale.type != "linear") {
+    return createNumericScale(
+        mark,
+        channel,
+        scale,
+        scale.range().map((value) => Number(value) * rangeMultiplier),
+        domain
+    );
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {import("../../types/encoder.js").VegaScale} scale
+ * @param {number[]} range
+ * @param {number[]} [domain]
+ * @returns {import("@genome-spy/webgpu-renderer").ConfiguredScale<any>}
+ */
+function createNumericScale(mark, channel, scale, range, domain) {
+    const configurableScale = /** @type {any} */ (scale);
+    const options = /** @type {Record<string, any>} */ ({
+        domain: domain ?? scale.domain().map(Number),
+        range,
+        clamp: getScaleProperty(configurableScale, "clamp", false),
+    });
+    const round = getScaleProperty(configurableScale, "round", false);
+    if (round) {
+        options.round = true;
+    }
+
+    switch (scale.type) {
+        case "linear":
+        case "sequential-linear":
+        case "diverging-linear":
+        case "time":
+        case "utc":
+            return linearScale(options);
+        case "log":
+            return logScale({
+                ...options,
+                base: getScaleProperty(configurableScale, "base", 10),
+            });
+        case "pow":
+            return powScale({
+                ...options,
+                exponent: getScaleProperty(configurableScale, "exponent", 1),
+            });
+        case "sqrt":
+            return sqrtScale(options);
+        case "symlog":
+            return symlogScale({
+                ...options,
+                constant: getScaleProperty(configurableScale, "constant", 1),
+            });
+        case "quantize":
+            return quantizeScale(options);
+        case "threshold":
+            return thresholdScale(options);
+        case "ordinal":
+            return ordinalScale(options);
+        default:
+            throw unsupported(
+                mark,
+                `Scale type "${scale.type}" on channel "${channel}" is not supported.`
+            );
+    }
+}
+
+/**
+ * @param {Record<string, any>} scale
+ * @param {string} property
+ * @param {any} fallback
+ */
+function getScaleProperty(scale, property, fallback) {
+    const value = scale[property];
+    return typeof value == "function" ? value() : (value ?? fallback);
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {Map<string, number>} values
+ * @param {unknown} raw
+ */
+function getEnumValue(mark, channel, values, raw) {
+    const value = values.get(String(raw));
+    if (value === undefined) {
+        throw unsupported(mark, `Unsupported ${channel}: ${String(raw)}`);
+    }
+    return value;
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {object[]} data
+ * @returns {Record<string, import("@genome-spy/webgpu-renderer").ChannelConfigInput>}
+ */
+function createUniqueIdChannel(mark, data) {
+    const encoder = mark.encoders.uniqueId;
+    if (!encoder) {
+        return {};
+    }
+    assertUnconditional(mark, "uniqueId", encoder);
+    if (encoder.constant) {
+        return {
+            uniqueId: {
+                value: readUnsignedInteger(mark, "uniqueId", encoder(data[0])),
+                type: "u32",
+            },
+        };
+    }
+
+    const accessor = encoder.branches[0].accessor;
+    return {
+        uniqueId: {
+            data: getCachedSeries(mark, "uniqueId", data, accessor, () =>
+                Uint32Array.from(data, (datum) =>
+                    readUnsignedInteger(mark, "uniqueId", accessor(datum))
+                )
+            ),
+            type: "u32",
+        },
+    };
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {unknown} raw
+ */
+function readUnsignedInteger(mark, channel, raw) {
+    const value = Number(raw);
+    if (!Number.isSafeInteger(value) || value < 0 || value > 0xffffffff) {
         throw unsupported(
             mark,
-            `Scale type "${scale.type}" on channel "${channel}" is not supported.`
+            `Channel "${channel}" must contain u32 integers.`
         );
     }
-    const configurableScale = /** @type {any} */ (scale);
-    return linearScale({
-        domain: scale.domain().map(Number),
-        range: scale.range().map((value) => Number(value) * rangeMultiplier),
-        clamp:
-            typeof configurableScale.clamp == "function"
-                ? configurableScale.clamp()
-                : false,
-    });
+    return value;
 }
 
 /**
@@ -1187,7 +1405,10 @@ function mapProperty(mark, property, values, fallback) {
  * @param {string} property
  */
 function readProperty(mark, property) {
-    return /** @type {Record<string, any>} */ (mark.properties)[property];
+    const value = /** @type {Record<string, any>} */ (mark.properties)[
+        property
+    ];
+    return resolveMarkProperty(mark, value);
 }
 
 /**
