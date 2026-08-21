@@ -375,7 +375,16 @@ fn shade(in: VSOut) -> vec4<f32> {
     let halfStrokeWidth = in.strokeWidth * 0.5;
     let patternType = i32(in.hatchPattern);
     if (halfStrokeWidth > 0.0 && patternType > 0) {
-        d = max(d, -hatchPattern(centered, halfStrokeWidth, patternType));
+        // Hatch coordinates in Core's GLSL rect shader use a bottom-left Y
+        // axis, while WebGPU's pixel coordinates grow downward.
+        d = max(
+            d,
+            -hatchPattern(
+                vec2<f32>(centered.x, -centered.y),
+                halfStrokeWidth,
+                patternType
+            )
+        );
     }
 
     return distanceToColor(d, fillColor, strokeColor, background, halfStrokeWidth);

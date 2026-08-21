@@ -127,7 +127,7 @@ check, with remaining behavioral differences recorded here.
 | P1       | `examples/docs/examples/genomic-data/hcc1954-sv-cnv.json`            | Link arcs opened on the opposite side because WebGPU used top-left coordinates with the WebGL normal              | Invert the arc normal in the WebGPU link shader                                      | Fixed  |
 | P1       | `examples/docs/examples/genomic-data/pik3ca-tcga-brca-lollipop.json` | Non-arc links and angled text labels still differ visually from WebGL               | Keep text offsets at the verified baseline and reconcile the link shader with GLSL  | Open   |
 | P1       | `examples/docs/grammar/mark/rect/shadowed-marks.json`                | Rectangle shadows were not visible                                                                                 | Expand the pixel-space quad and match WebGL's shadow offset convention               | Fixed  |
-| P1       | `examples/core/marks/rect/rect_with_params.json`                     | Rounded rectangles clip; stroke expansion is missing; dash pattern may mirror                                     | Compare rectangle bounds, stroke padding, dash orientation, and y-axis convention    | Open   |
+| P1       | `examples/core/marks/rect/rect_with_params.json`                     | Rounded rectangles clipped decorated geometry and hatch orientation was mirrored                                 | Expand decorated geometry in pixels and flip hatch coordinates to the GLSL axis      | Fixed  |
 | P1       | `examples/docs/grammar/mark/text/sequence-logo.json`                 | Logo letters do not render with WebGPU                                                                            | Compare text layout/logo-letter handling against WebGL                               | Open   |
 
 Acceptance for this section is visual inspection of both renderer screenshots,
@@ -154,6 +154,11 @@ focused regression coverage where practical, and one commit per requested fix.
 - Rectangle shadows now expand the quad in pixel units, use the WebGPU Y-axis
   convention for offsets, and render the existing rounded-box blur kernel. The
   focused shadowed-marks comparison visibly matches WebGL's shadow direction.
+- Decorated rectangles now retain enough pixel-space quad padding for rounded
+  corners and strokes. Hatch SDF coordinates flip Y before pattern evaluation;
+  the focused `hatch-patterns.json` screenshot now matches WebGL's diagonal
+  orientation. The parameterized example remains visually sparse in the
+  screenshot harness because both backends capture its rule-only initial state.
 
 ## Context
 
