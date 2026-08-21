@@ -48,9 +48,9 @@ struct VSOut {
     @location(7) @interpolate(flat) stroke: vec4<f32>,
     @location(8) @interpolate(flat) strokeWidth: f32,
     @location(9) @interpolate(flat) direction: u32,
-    @location(10) @interpolate(flat) headShape: u32,
-    @location(11) @interpolate(flat) headSpacing: f32,
-    @location(12) @interpolate(flat) pickId: u32,
+    @location(10) @interpolate(flat) headSpacing: f32,
+    @location(11) @interpolate(flat) pickId: u32,
+    @location(12) @interpolate(flat) headStrokeWidth: f32,
 };
 
 fn culledArrow() -> VSOut {
@@ -66,9 +66,9 @@ fn culledArrow() -> VSOut {
     out.stroke = vec4<f32>(0.0);
     out.strokeWidth = 0.0;
     out.direction = 0u;
-    out.headShape = 0u;
     out.headSpacing = 0.0;
     out.pickId = 0u;
+    out.headStrokeWidth = 0.0;
     return out;
 }
 
@@ -91,29 +91,32 @@ fn boxDistance(p: vec2<f32>, halfSize: vec2<f32>) -> f32 {
     return length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0);
 }
 
-fn segmentDistance(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
-    let ab = b - a;
-    let t = clamp(dot(p - a, ab) / max(dot(ab, ab), 0.0001), 0.0, 1.0);
-    return length(p - (a + t * ab));
-}
-
-fn stemDistance(p: vec2<f32>, halfLength: f32, halfWidth: f32, notchSlope: f32) -> f32 {
+fn stemDistance(
+    p: vec2<f32>,
+    halfLength: f32,
+    halfWidth: f32,
+    headSlope: f32
+) -> f32 {
     if (halfWidth <= 0.0) {
         return 1e20;
     }
-    var notchLength = 0.0;
+    let headSideLength = halfWidth * headSlope;
+    var startNotchLength = 0.0;
     if (params.uStartNotch != 0u) {
-        notchLength = min(halfWidth * notchSlope, max(2.0 * halfLength - params.uMinStemLength, 0.0));
+        startNotchLength = min(
+            halfWidth * headSlope,
+            max(2.0 * halfLength - params.uMinStemLength, 0.0)
+        );
     }
     return polygonDistance(
         p,
         array<vec2<f32>, 6>(
-            vec2<f32>(-halfLength, 0.0),
-            vec2<f32>(-halfLength + notchLength, halfWidth),
-            vec2<f32>(halfLength, halfWidth),
-            vec2<f32>(halfLength, -halfWidth),
-            vec2<f32>(-halfLength + notchLength, -halfWidth),
-            vec2<f32>(-halfLength, 0.0)
+            vec2<f32>(halfLength, 0.0),
+            vec2<f32>(halfLength - headSideLength, halfWidth),
+            vec2<f32>(-halfLength, halfWidth),
+            vec2<f32>(-halfLength + startNotchLength, 0.0),
+            vec2<f32>(-halfLength, -halfWidth),
+            vec2<f32>(halfLength - headSideLength, -halfWidth)
         )
     );
 }
@@ -135,34 +138,131 @@ fn polygonDistance(p: vec2<f32>, vertices: array<vec2<f32>, 6>) -> f32 {
     return select(distance, -distance, inside);
 }
 
-fn triangleDistance(p: vec2<f32>, tip: f32, base: f32, halfWidth: f32, notchSlope: f32) -> f32 {
+fn headNotchOffset(
+    halfWidth: f32,
+    headSlope: f32,
+    notchSlope: f32,
+    strokeWidth: f32
+) -> f32 {
+    if (halfWidth <= 0.0) {
+        return 0.0;
+    }
+    let headAxisLength = halfWidth * headSlope;
+    let topOuter = vec2<f32>(headAxisLength, halfWidth);
+    let normalOffset = strokeWidth * normalize(vec2<f32>(halfWidth, -headAxisLength));
+    let topInner = topOuter + normalOffset;
+    return topInner.x - topInner.y * notchSlope;
+}
+
+fn headDistance(
+    p: vec2<f32>,
+    tip: f32,
+    halfWidth: f32,
+    headSlope: f32,
+    notchSlope: f32,
+    strokeWidth: f32
+) -> f32 {
     if (halfWidth <= 0.0) {
         return 1e20;
     }
-    let notch = vec2<f32>(tip - halfWidth * notchSlope, 0.0);
+    let headAxisLength = halfWidth * headSlope;
+    let topOuter = vec2<f32>(headAxisLength, halfWidth);
+    let bottomOuter = vec2<f32>(headAxisLength, -halfWidth);
+    let normalOffset = strokeWidth * normalize(vec2<f32>(halfWidth, -headAxisLength));
+    let topInner = topOuter + normalOffset;
+    let bottomInner = bottomOuter + vec2<f32>(normalOffset.x, -normalOffset.y);
+    let notch = headNotchOffset(
+        halfWidth,
+        headSlope,
+        notchSlope,
+        strokeWidth
+    );
+    let headPosition = vec2<f32>(tip - p.x, p.y);
+    if (strokeWidth <= 0.0) {
+        return polygonDistance(
+            headPosition,
+            array<vec2<f32>, 6>(
+                vec2<f32>(0.0, 0.0),
+                topOuter,
+                vec2<f32>(notch, 0.0),
+                bottomOuter,
+                vec2<f32>(-0.0001, -0.0001),
+                vec2<f32>(-0.0001, 0.0001)
+            )
+        );
+    }
     return polygonDistance(
-        p,
+        headPosition,
         array<vec2<f32>, 6>(
-            vec2<f32>(tip, 0.0),
-            vec2<f32>(base, halfWidth),
-            notch,
-            vec2<f32>(base, -halfWidth),
-            vec2<f32>(tip, 0.0),
-            vec2<f32>(tip, 0.0)
+            vec2<f32>(0.0, 0.0),
+            topOuter,
+            topInner,
+            vec2<f32>(notch, 0.0),
+            bottomInner,
+            bottomOuter
         )
     );
 }
 
-fn headDistance(p: vec2<f32>, tip: f32, halfWidth: f32, slope: f32, notchSlope: f32, shape: u32) -> f32 {
-    let axisLength = halfWidth * slope;
-    let base = tip - axisLength;
-    let triangle = triangleDistance(p, tip, base, halfWidth, notchSlope);
-    if (shape == HEAD_TRIANGLE) {
-        return triangle;
+fn triangleHeadStemJoinLength(
+    stemHalfWidth: f32,
+    headHalfWidth: f32,
+    headSlope: f32,
+    notchSlope: f32
+) -> f32 {
+    let clampedNotchSlope = min(notchSlope, headSlope);
+    return headHalfWidth * headSlope
+        - (headHalfWidth - stemHalfWidth) * clampedNotchSlope;
+}
+
+fn effectiveHeadSlope(
+    halfLength: f32,
+    headHalfWidth: f32,
+    stemHalfWidth: f32,
+    configuredHeadSlope: f32,
+    configuredNotchSlope: f32,
+    headRepeat: bool
+) -> f32 {
+    if (headRepeat || stemHalfWidth < 0.0) {
+        return configuredHeadSlope;
     }
-    return min(
-        segmentDistance(p, vec2<f32>(tip, 0.0), vec2<f32>(base, halfWidth)),
-        segmentDistance(p, vec2<f32>(tip, 0.0), vec2<f32>(base, -halfWidth))
+    if (params.uHeadPlacement != PLACEMENT_INSIDE) {
+        if (params.uStartNotch == 0u || stemHalfWidth <= 0.0) {
+            return configuredHeadSlope;
+        }
+        let maxStartNotchLength = max(
+            halfLength * 2.0 - params.uMinStemLength,
+            0.0
+        );
+        return min(configuredHeadSlope, maxStartNotchLength / stemHalfWidth);
+    }
+    if (params.uHeadShape != HEAD_TRIANGLE) {
+        return configuredHeadSlope;
+    }
+
+    let maxJoinLength = max(
+        halfLength * 2.0 - params.uMinStemLength,
+        0.0
+    );
+    let configuredJoinLength = triangleHeadStemJoinLength(
+        stemHalfWidth,
+        headHalfWidth,
+        configuredHeadSlope,
+        configuredNotchSlope
+    );
+    if (configuredJoinLength <= maxJoinLength) {
+        return configuredHeadSlope;
+    }
+
+    let boundaryJoinLength = stemHalfWidth * configuredNotchSlope;
+    if (maxJoinLength < boundaryJoinLength) {
+        return clamp(maxJoinLength / stemHalfWidth, 0.0, configuredHeadSlope);
+    }
+    return clamp(
+        (maxJoinLength + (headHalfWidth - stemHalfWidth) * configuredNotchSlope)
+            / headHalfWidth,
+        0.0,
+        configuredHeadSlope
     );
 }
 
@@ -175,16 +275,21 @@ fn shade(in: VSOut) -> vec4<f32> {
     let halfStroke = in.strokeWidth * 0.5;
     var stem = 1e20;
     if (in.stemHalfWidth > 0.0) {
-        stem = stemDistance(p, in.halfLength, in.stemHalfWidth, in.notchSlope);
+        stem = stemDistance(
+            p,
+            in.halfLength,
+            in.stemHalfWidth,
+            in.headSlope
+        );
     }
 
     var head = headDistance(
         p,
-        in.halfLength + select(0.0, in.headHalfWidth * in.headSlope, params.uHeadPlacement != PLACEMENT_INSIDE),
+        in.halfLength,
         in.headHalfWidth,
         in.headSlope,
         in.notchSlope,
-        in.headShape
+        in.headStrokeWidth
     );
     if (in.headSpacing >= 0.0) {
         for (var n = 1u; n < 64u; n++) {
@@ -192,7 +297,17 @@ fn shade(in: VSOut) -> vec4<f32> {
             if (tip < -in.halfLength) {
                 break;
             }
-            head = min(head, headDistance(p, tip, in.headHalfWidth, in.headSlope, in.notchSlope, in.headShape));
+            head = min(
+                head,
+                headDistance(
+                    p,
+                    tip,
+                    in.headHalfWidth,
+                    in.headSlope,
+                    in.notchSlope,
+                    in.headStrokeWidth
+                )
+            );
         }
     }
 
@@ -225,31 +340,56 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let arrowSize = max(getScaled_size(i), params.uMinSize);
     let headHalfWidth = max(params.uHeadWidth * arrowSize * 0.5, 0.0);
     let stemHalfWidth = select(-arrowSize * 0.5, arrowSize * 0.5, params.uStem != 0u);
-    let headAxisLength = headHalfWidth * params.uHeadSlope;
+    let headRepeat = params.uHeadSpacing >= 0.0;
+    let headSlope = effectiveHeadSlope(
+        lengthInPixels * 0.5,
+        headHalfWidth,
+        stemHalfWidth,
+        params.uHeadSlope,
+        params.uHeadNotchSlope,
+        headRepeat
+    );
+    let notchSlope = select(
+        min(params.uHeadNotchSlope, headSlope),
+        headSlope,
+        params.uHeadShape == HEAD_OPEN
+    );
+    let headStrokeWidth = select(0.0, abs(stemHalfWidth) * 2.0, params.uHeadShape == HEAD_OPEN);
+    let outsideHeadOffset = select(
+        0.0,
+        headNotchOffset(
+            headHalfWidth,
+            headSlope,
+            notchSlope,
+            headStrokeWidth
+        ),
+        params.uHeadPlacement != PLACEMENT_INSIDE
+    );
     let padding = 1.0 / globals.dpr + getScaled_strokeWidth(i) * 0.5 + max(headHalfWidth, abs(stemHalfWidth));
-    let geometryHalfLength = lengthInPixels * 0.5;
+    let geometryHalfLength = lengthInPixels * 0.5 + outsideHeadOffset * 0.5;
+    let geometryCenter = outsideHeadOffset * 0.5;
     let quadHalfLength = geometryHalfLength + padding;
     let centre = (a + b) * 0.5;
-    let axisPosition = (local.x - 0.5) * (quadHalfLength * 2.0);
+    let axisPosition = geometryCenter + (local.x - 0.5) * (quadHalfLength * 2.0);
     let normalPosition = (local.y - 0.5) * (max(headHalfWidth, abs(stemHalfWidth)) * 2.0 + padding * 2.0);
     let position = centre + axis * axisPosition + normal * normalPosition;
     let clip = vec2<f32>((position.x / globals.width) * 2.0 - 1.0, 1.0 - (position.y / globals.height) * 2.0);
     var out: VSOut;
     out.pos = vec4<f32>(clip, 0.0, 1.0);
-    out.local = vec2<f32>(axisPosition, normalPosition);
+    out.local = vec2<f32>(axisPosition - geometryCenter, normalPosition);
     out.halfLength = geometryHalfLength;
     out.headHalfWidth = headHalfWidth;
     out.stemHalfWidth = stemHalfWidth;
-    out.headSlope = params.uHeadSlope;
-    out.notchSlope = params.uHeadNotchSlope;
+    out.headSlope = headSlope;
+    out.notchSlope = notchSlope;
     let fill = getScaled_fill(i);
     let stroke = getScaled_stroke(i);
     out.fill = vec4<f32>(fill.rgb, fill.a * getScaled_fillOpacity(i));
     out.stroke = vec4<f32>(stroke.rgb, stroke.a * getScaled_strokeOpacity(i));
     out.strokeWidth = getScaled_strokeWidth(i);
     out.direction = u32(getScaled_direction(i));
-    out.headShape = params.uHeadShape;
     out.headSpacing = select(-1.0, params.uHeadSpacing * arrowSize, params.uHeadSpacing >= 0.0);
+    out.headStrokeWidth = headStrokeWidth;
     out.pickId = 0u;
 #if defined(uniqueId_DEFINED)
     out.pickId = getScaled_uniqueId(i) + 1u;
