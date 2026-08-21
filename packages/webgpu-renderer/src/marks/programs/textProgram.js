@@ -150,7 +150,6 @@ fn positionInsideRange(
     lower: f32,
     upper: f32
 ) -> RangeResult {
-    let span = b - a;
     let paddedWidth = width + 2.0 * padding;
 
     // Text clearly outside the viewport.
@@ -158,13 +157,25 @@ fn positionInsideRange(
         return RangeResult(0.0, 0.0);
     }
 
+    // Keep the range arithmetic close to the viewport. WebGPU positional
+    // scales use absolute logical pixels, so a chromosome-wide range can put
+    // an endpoint billions of pixels from the viewport at extreme zoom. The
+    // subsequent flush calculation would then lose the viewport origin in
+    // f32 cancellation (for example, producing canvas x=padding instead of
+    // viewport x=lower+padding). A text-sized margin preserves enough of an
+    // offscreen range for fitting while keeping the arithmetic precise.
+    let rangeMargin = max(paddedWidth, 1.0);
+    let safeA = clamp(a, lower - rangeMargin, upper + rangeMargin);
+    let safeB = clamp(b, lower - rangeMargin, upper + rangeMargin);
+    let span = safeB - safeA;
+
     // Extra room for keeping text inside the range.
     let extra = max(0.0, span - paddedWidth);
     var pos = 0.0;
 
     if (align == ALIGN_AXIS_CENTER) {
         // Centered: slide within the range if flush is enabled.
-        var centre = a + b;
+        var centre = safeA + safeB;
         if (flush) {
             let leftOver = max(0.0, paddedWidth - (centre - 2.0 * lower));
             centre = centre + min(leftOver, extra);
@@ -175,7 +186,7 @@ fn positionInsideRange(
         pos = centre / 2.0;
     } else if (align == ALIGN_AXIS_LEFT) {
         // Left aligned.
-        var edge = a;
+        var edge = safeA;
         if (flush) {
             let over = max(0.0, lower - edge);
             edge = edge + min(over, extra);
@@ -183,7 +194,7 @@ fn positionInsideRange(
         pos = edge + padding;
     } else {
         // Right aligned.
-        var edge = b;
+        var edge = safeB;
         if (flush) {
             let over = max(0.0, edge - upper);
             edge = edge - min(over, extra);

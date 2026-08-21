@@ -61,6 +61,8 @@ reports are diagnostic artifacts only and must not be committed.
 | WebGPU           | `examples/core/**`                                |    102 |      0 |            0 | 2026-08-21    |
 | WebGL comparison | `examples/core/scales/ordinal_position_test.json` |      1 |      0 |            0 | 2026-08-21    |
 | WebGPU           | `examples/core/scales/ordinal_position_test.json` |      1 |      0 |            0 | 2026-08-21    |
+| WebGPU           | `examples/core/genomic/bedBlocks.json` extreme locus zoom |      1 |      0 |            0 | 2026-08-21    |
+| WebGL comparison | `examples/core/genomic/bedBlocks.json` extreme locus zoom |      1 |      0 |            0 | 2026-08-21    |
 | WebGPU           | `examples/docs/**` final                          |    107 |      3 |            3 | 2026-08-21    |
 | WebGL comparison | 12 failing docs selections                        |     11 |      1 |            1 | 2026-08-21    |
 
@@ -133,6 +135,7 @@ check, with remaining behavioral differences recorded here.
 | P1       | `examples/core/marks/rect/rect_with_params.json`                     | Rounded rectangles clipped decorated geometry and hatch orientation was mirrored                                 | Expand decorated geometry in pixels and flip hatch coordinates to the GLSL axis      | Fixed  |
 | P1       | `examples/docs/grammar/mark/text/sequence-logo.json`                 | Logo letters initially rendered as ordinary fixed-size glyphs                                                      | Port Core's logo-letter band sizing and verify stacked glyph screenshots              | Fixed  |
 | P1       | `examples/core/genomic/bedBlocks.json`                                | Ranged chromosome labels used a stale initial viewport after the hashed zoom changed the retained view bounds | Refresh the absolute view rectangle through the retained `uViewport` value and compare the hashed viewport screenshots | Fixed  |
+| P1       | `examples/core/genomic/bedBlocks.json`                                | At extreme locus zoom, the leftmost chromosome label jumped between the canvas edge and the plot edge because absolute-pixel range endpoints lost the viewport origin during f32 cancellation | Bound intersecting ranged-text endpoints to a text-sized margin around the viewport before flush and squeeze calculations; compare repeated zoom/pan states with WebGL | Fixed  |
 
 Acceptance for this section is visual inspection of both renderer screenshots,
 focused regression coverage where practical, and one commit per requested fix.
@@ -181,6 +184,10 @@ focused regression coverage where practical, and one commit per requested fix.
   retained `uViewport` value, refreshing it when layout changes. The hashed
   `bedBlocks.json` comparison places `chr1` at the same padded left viewport
   edge in WebGPU and WebGL.
+- Ranged WebGPU text now clamps intersecting range endpoints to a text-sized
+  viewport margin before calculating flush positions and squeeze factors. This
+  prevents f32 cancellation from dropping the plot origin at extreme locus
+  zoom, keeping the leftmost chromosome label stable during zoom and pan.
 
 ### Deferred design work
 
