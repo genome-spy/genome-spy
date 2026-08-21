@@ -43,11 +43,10 @@ The intended Core-to-renderer mapping is:
 | log | `log` | Supported scope |
 | pow, sqrt | `pow`, `sqrt` | Supported scope |
 | symlog | `symlog` | Supported scope |
-| time, utc | numeric milliseconds through `linear` | Supported scope |
 | ordinal | integer category input through `ordinal` | Supported scope |
 | band, point | integer category input through `band` | Supported scope |
-| index | high-precision `index` | Supported scope |
-| locus | Core-normalized high-precision `index` | Supported scope |
+| index | `index` with 1- or 2-component `u32` input | Supported scope |
+| locus | Core-normalized `index` with 1- or 2-component `u32` input | Supported scope |
 | quantize | `quantize`, only where WebGL supports the same use | Supported scope |
 | threshold | `threshold`, only where WebGL supports the same use | Supported scope |
 | quantile | none | Explicitly unsupported |
@@ -56,9 +55,24 @@ The intended Core-to-renderer mapping is:
 `locus` is not a request for a new low-level genomic scale. Core already owns
 assembly, contig, complex-locus parsing, domain resolution, zooming, and
 conversion to numeric positions. The adapter should translate the resolved
-locus scale at the renderer boundary to the existing high-precision index
-contract. No locus-specific types, genome stores, or contig logic belong in
+locus scale at the renderer boundary to the existing index contract. No
+locus-specific types, genome stores, or contig logic belong in
 `packages/webgpu-renderer`.
+
+WebGL has two index input representations. For an index or resolved locus
+domain that fits the normal 32-bit address space, it supplies one `uint` per
+datum. For a domain that needs the large-coordinate path, it supplies a
+`uvec2` containing the split high/low parts. WebGPU must select the same mode
+from the resolved numeric domain and use the smallest matching storage:
+`Uint32Array` with `inputComponents: 1` for the normal mode, or a packed
+`Uint32Array` with `inputComponents: 2` for the large-coordinate mode. A
+`Float64Array` is an accepted renderer convenience for packing, but it is not
+the target Core representation because it doubles the source-side storage and
+forces an avoidable conversion.
+
+GenomeSpy does not support time scales. Do not add `time` or `utc` scale
+handling to Core or WebGPU, and remove any adapter mapping that would expose
+those types as supported.
 
 Quantile and bin-ordinal must remain unsupported in WebGPU. Do not add scale
 definitions, WGSL, or adapter fallbacks for them. They should fail with a
@@ -76,19 +90,25 @@ The source of truth is the existing Core machinery used by WebGL:
 `ScaleResolution` maintains a categorical `domainIndexer`, and
 `packages/core/src/gl/dataToVertices.js` uses that indexer, or creates one from
 the resolved domain, before constructing GPU attributes. The WebGPU adapter’s
-private category map is only a temporary implementation detail and must not
-become a second category-domain system.
+private category map is only a temporary implementation detail and must be
+removed; it must not become a second category-domain system.
 
 The eventual contract is:
 
-- Core supplies a stable indexer associated with the resolved scale/domain.
-- The adapter uses that indexer for all categorical channels, including
-  positional band/point inputs, ordinal values, ordinal colors, enum-like
-  properties, and conditional branches.
-- The mapping preserves WebGL behavior for explicit domains, implicit domains,
-  unknown values, domain updates, and shared scale resolutions.
+- Core assigns each category one stable integer for the lifetime of the
+  resolved scale. For example, `apple`, `pear`, and `orange` may become
+  `1`, `2`, and `3`; a later batch containing `pear`, `orange`, and `plum`
+  becomes `2`, `3`, and `4`.
+- Core supplies those integers in every categorical series and supplies the
+  current integer IDs as the categorical scale domain. Updated data reuses the
+  existing Core assignments; it does not re-index from zero for each batch.
+- The adapter uses that Core mapping for band/point inputs, ordinal values,
+  ordinal colors, enum-like properties, and conditional branches.
 - The renderer receives integer typed arrays or integer value slots only. It
   never interns strings or interprets Core categorical objects.
+- The existing renderer domain map is retained when needed. It is not a
+  second category identity system: it maps Core IDs such as `2`, `3`, and `4`
+  to the current scale’s range slots and supports sparse integer domains.
 - Mapping changes update the relevant series or scale resources without
   changing pipeline layout. A capacity reallocation is acceptable when the
   domain grows, but it must not trigger an unrelated pipeline rebuild.
@@ -173,25 +193,35 @@ Verification:
 
 Tentative commit: `feat(core): translate conditional WebGPU channels`
 
-### 2. Scale boundary and Core-owned categorical indexing
+### 2. Scale boundary, index-width selection, and Core-owned category IDs
 
 Make the adapter’s scale surface match the scope table above and align its
 categorical conversion with WebGL’s existing `domainIndexer` machinery.
 
 Implementation work:
 
-- Add the Core adapter mapping for `locus` to the renderer’s existing
-  high-precision `index` representation. Core must provide already-resolved
-  numeric locus values and domain/range semantics.
+- Add the Core adapter mapping for `locus` to the renderer’s existing `index`
+  representation. Core must provide already-resolved numeric locus values and
+  domain/range semantics.
+- Select the index representation from the resolved numeric domain using the
+  same boundary as WebGL. Use one `Uint32Array` component for normal domains;
+  use two packed `Uint32Array` components containing the high/low split only
+  for the large-coordinate path. Do not use `Float64Array` as the normal Core
+  representation.
 - Keep `quantile` and `bin-ordinal` rejected. Add tests proving no low-level
   definition is selected for either type.
+- Remove or reject `time` and `utc`; GenomeSpy does not support time scales.
 - Audit every other adapter case against the WebGL scale generator and
   `webGLHelper`; remove any WebGPU-only scale exposure outside the supported
   table.
 - Replace the adapter-local categorical identity map with the resolved Core
   `domainIndexer`, or introduce the smallest Core helper needed to expose that
   existing identity without duplicating scale-resolution state.
-- Use one mapping per resolved scale, not one mapping per mark/channel.
+- Ensure each categorical series contains the stable Core IDs, including when
+  a new batch introduces a category that was absent from the previous batch.
+- Pass the current Core IDs as the renderer scale domain. Retain the renderer’s
+  existing integer-domain map for sparse IDs; do not add another identity
+  assignment in WebGPU.
 - Verify categorical data in positional, color, opacity, enum, and conditional
   channels, including strings and numeric categories.
 - Preserve stable IDs during domain updates and shared-scale resolution.
@@ -202,17 +232,27 @@ Affected areas:
 - `packages/core/src/scales/scaleResolution.js` or a focused Core scale/indexer
   helper, only if the existing indexer needs a supported access path
 - WebGPU scale and adapter tests
-- `packages/webgpu-renderer` only for generic index-scale resource behavior
+- `packages/webgpu-renderer` only for generic index-scale width and integer
+  domain-map behavior; do not add string support or a second category indexer
 
 Verification:
 
 - Compare categorical positions/colors and locus positions with WebGL.
 - Test explicit and implicit domains, unknown categories, domain growth, and
   shared scales.
-- Test reversed ranges, clamping, domain updates, and high-precision loci.
+- Test reversed ranges, clamping, domain updates, normal-width indices, and
+  high-precision loci.
 - Assert quantile and bin-ordinal remain unsupported with useful errors.
-- Assert category conversion produces numeric typed arrays before renderer
-  creation and does not introduce renderer-side string handling.
+- Assert time and UTC remain unsupported.
+- Assert category conversion produces the stable Core integer IDs in numeric
+  typed arrays before renderer creation and does not introduce renderer-side
+  string handling.
+- Test the sequence `apple/pear/orange -> 1/2/3`, then
+  `pear/orange/plum -> 2/3/4`, including the renderer’s sparse integer domain
+  map and unchanged pipeline layout.
+- Assert normal index data uses one `u32` component and large-coordinate index
+  data uses two packed `u32` components, with no unnecessary float64 source
+  series.
 
 Tentative commit: `feat(core): align WebGPU scales with WebGL semantics`
 
@@ -426,10 +466,15 @@ remain rejected throughout.
 
 - Supported Core scales have matching WebGPU behavior, with `locus` translated
   to the renderer’s index contract and locus-specific logic remaining in Core.
+- Index and locus channels use one `u32` component for normal domains and two
+  packed `u32` components only for large-coordinate domains, matching WebGL’s
+  representation and minimizing series memory.
 - Quantile and bin-ordinal are explicitly unsupported in WebGPU and have no
   low-level renderer definitions or silent fallback.
-- Categorical strings and other scalar categories are indexed by existing Core
-  machinery and reach WebGPU as stable integer data.
+- Time and UTC scales remain unsupported.
+- Categorical strings and other scalar categories are indexed once by existing
+  Core machinery and reach WebGPU as stable integer data. Renderer domain maps
+  may map those IDs to current range slots, but do not assign new identities.
 - Conditional encodings match WebGL branch precedence and selection behavior.
 - Parameter/expression-driven dynamic properties update retained resources
   without unnecessary pipeline, bind-group, program, or buffer churn.
@@ -449,9 +494,11 @@ The open milestones above are based on the current Core WebGL paths:
 
 - `packages/core/src/gl/dataToVertices.js` for category indexing;
 - `packages/core/src/scales/scaleResolution.js` for stable categorical
-  domains and Core locus resolution;
+  domains, indexer lifetime, and Core locus resolution;
 - `packages/core/src/gl/glslScaleGenerator.js` and `webGLHelper.js` for the
-  WebGL scale capability reference;
+  WebGL scale capability and normal/large index attribute reference;
+- `packages/webgpu-renderer/src/marks/scales/defs/band.js` and `ordinal.js`
+  for the existing integer-input and sparse-domain-map contract;
 - `packages/core/src/marks/mark.js` for retained expression/uniform updates
   and picking participation; and
 - `packages/core/src/genomeSpy/renderCoordinator.js` and
