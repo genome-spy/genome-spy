@@ -24,7 +24,7 @@ import { exportCanvas, exportRaster } from "../genomeSpy/canvasExport.js";
  * @property {RenderingSurface} surface
  * @property {WebGLHelper | undefined} glHelper
  * @property {(options: Omit<ConstructorParameters<typeof RenderCoordinator>[0], "glHelper">) => RenderingCoordinator} createRenderCoordinator
- * @property {(x: number, y: number) => number} [readPickingId]
+ * @property {(x: number, y: number) => number | null | Promise<number | null>} [readPickingId]
  * @property {(options: Omit<Parameters<typeof exportCanvas>[0], "glHelper">) => string} exportCanvas
  * @property {(options: Omit<Parameters<typeof exportRaster>[0], "glHelper">) => Promise<Blob>} exportRaster
  */

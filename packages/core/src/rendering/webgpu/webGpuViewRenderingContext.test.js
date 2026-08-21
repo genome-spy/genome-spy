@@ -60,6 +60,7 @@ describe("WebGpuViewRenderingContext", () => {
             {},
             {},
             {
+                picking: false,
                 scissor: { x: 20, y: 40, width: 100, height: 50 },
             }
         );
@@ -98,6 +99,7 @@ describe("WebGpuViewRenderingContext", () => {
             {},
             {},
             {
+                picking: false,
                 visibleRange: {
                     x1: 0,
                     y1: 40,
@@ -108,5 +110,27 @@ describe("WebGpuViewRenderingContext", () => {
                 },
             }
         );
+    });
+
+    test("omits non-picking marks from the pick draw list", () => {
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            useMark: vi.fn(),
+        };
+        const context = new WebGpuViewRenderingContext(
+            { picking: true },
+            { surface: /** @type {any} */ (surface) }
+        );
+        const view = { onBeforeRender: vi.fn() };
+        const mark = {
+            isPickingParticipant: () => false,
+            unitView: { getEffectiveOpacity: () => 1 },
+        };
+
+        context.pushView(/** @type {any} */ (view), Rectangle.ZERO);
+        context.renderMark(/** @type {any} */ (mark), {});
+
+        expect(surface.useMark).not.toHaveBeenCalled();
     });
 });

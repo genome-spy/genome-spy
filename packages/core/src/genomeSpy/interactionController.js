@@ -23,7 +23,7 @@ export default class InteractionController {
     #tooltipHandlers;
     /** @type {() => void} */
     #renderPickingFramebuffer;
-    /** @type {((x: number, y: number) => number) | undefined} */
+    /** @type {((x: number, y: number) => number | null | Promise<number | null>) | undefined} */
     #readPickingId;
     /** @type {InteractionDispatcher} */
     #interactionDispatcher;
@@ -44,6 +44,7 @@ export default class InteractionController {
     #suppressTooltipUntilMouseMove = false;
     #hoverTrackingSuspensionCount = 0;
     #postRenderHoverRefreshRequested = false;
+    #pickingRequestId = 0;
 
     #dismissStickyTooltip() {
         this.#tooltip.sticky = false;
@@ -60,7 +61,7 @@ export default class InteractionController {
      * @param {(type: string, event: any) => void} options.emitEvent
      * @param {Record<string, import("../tooltip/tooltipHandler.js").TooltipHandler>} options.tooltipHandlers
      * @param {() => void} [options.renderPickingFramebuffer]
-     * @param {(x: number, y: number) => number} [options.readPickingId]
+     * @param {(x: number, y: number) => number | null | Promise<number | null>} [options.readPickingId]
      */
     constructor({
         viewRoot,
@@ -646,6 +647,7 @@ export default class InteractionController {
             this.#cursorManager.clear();
             this.#tooltip.clear();
             this.#currentHover = null;
+            this.#pickingRequestId++;
         });
 
         return () => {
@@ -737,8 +739,30 @@ export default class InteractionController {
      * @param {number} y
      */
     #handlePicking(x, y) {
-        const uniqueId = this.#readPickingId?.(x, y) ?? 0;
+        const requestId = ++this.#pickingRequestId;
+        const result = this.#readPickingId?.(x, y) ?? 0;
+        if (result instanceof Promise) {
+            void result.then((uniqueId) => {
+                if (
+                    requestId != this.#pickingRequestId ||
+                    this.#lastPointerPoint?.x != x ||
+                    this.#lastPointerPoint?.y != y
+                ) {
+                    return;
+                }
+                this.#applyPickingResult(x, y, uniqueId ?? 0);
+            });
+            return;
+        }
+        this.#applyPickingResult(x, y, result);
+    }
 
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {number} uniqueId
+     */
+    #applyPickingResult(x, y, uniqueId) {
         if (uniqueId == 0) {
             this.#currentHover = null;
             return;

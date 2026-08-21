@@ -282,6 +282,94 @@ describe("InteractionController", () => {
         expect(canvas.style.cursor).toBe("");
     });
 
+    it("ignores stale asynchronous picking results", async () => {
+        installEventTargetDocument();
+        vi.spyOn(performance, "now")
+            .mockReturnValueOnce(1000)
+            .mockReturnValue(2000);
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (
+                class MouseEvent extends Event {
+                    constructor(
+                        /** @type {string} */ type,
+                        /** @type {Record<string, any>} */ init = {}
+                    ) {
+                        super(type);
+                        Object.assign(this, {
+                            buttons: 0,
+                            clientX: 0,
+                            clientY: 0,
+                            ...init,
+                        });
+                    }
+                }
+            )
+        );
+        const canvas = new CanvasStub();
+        /** @type {((value: number) => void)[]} */
+        const pending = [];
+        readPickingId.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    pending.push(resolve);
+                })
+        );
+
+        const mark = {
+            isPickingParticipant: () => true,
+            properties: { tooltip: /** @type {null} */ (null) },
+        };
+        const pickerUnitView = Object.create(UnitView.prototype);
+        pickerUnitView.mark = mark;
+        pickerUnitView.facetCoords = new Map([
+            ["facet", { containsPoint: () => true }],
+        ]);
+        pickerUnitView.getCollector = () => ({
+            findDatumByUniqueId: (/** @type {number} */ uniqueId) =>
+                uniqueId == 2 ? { id: "datum-2" } : undefined,
+        });
+        const viewRoot = {
+            propagateInteraction() {},
+            visit(/** @type {(view: UnitView) => any} */ visitor) {
+                return visitor(pickerUnitView);
+            },
+        };
+
+        const controller = new InteractionController({
+            viewRoot: /** @type {any} */ (viewRoot),
+            canvas: /** @type {any} */ (canvas),
+            tooltip: /** @type {any} */ ({
+                clear() {},
+                containsEvent() {
+                    return false;
+                },
+                handleMouseMove() {},
+                pushEnabledState() {},
+                popEnabledState() {},
+                updateWithDatum() {},
+                visible: false,
+                sticky: false,
+            }),
+            animator: /** @type {any} */ ({ requestRender() {} }),
+            emitEvent() {},
+            tooltipHandlers: {},
+            renderPickingFramebuffer() {},
+            readPickingId,
+        });
+        controller.registerInteractionEvents();
+
+        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 10 }));
+        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 20 }));
+        expect(pending).toHaveLength(2);
+        pending[0](1);
+        await Promise.resolve();
+        expect(controller.getCurrentHover()).toBeUndefined();
+
+        pending[1](2);
+        await Promise.resolve();
+        expect(controller.getCurrentHover()?.uniqueId).toBe(2);
+    });
+
     it("freezes hover-derived cursor state while interactions are frozen", () => {
         const frozenInteractionClasses = new Set();
         globalThis.document = /** @type {Document} */ (

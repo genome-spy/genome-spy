@@ -68,6 +68,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (viewOpacity <= 0) {
             return;
         }
+        if (this.globalOptions.picking && !mark.isPickingParticipant()) {
+            return;
+        }
         if (this.#marks.has(mark)) {
             throw createViewError(
                 mark,
@@ -106,6 +109,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 {
                     ...(clip ? { scissor: this.#createScissor(clip) } : {}),
                     ...(visibleRange ? { visibleRange } : {}),
+                    picking: this.globalOptions.picking,
                 }
             );
         }

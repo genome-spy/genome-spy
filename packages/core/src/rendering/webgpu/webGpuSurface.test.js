@@ -26,6 +26,8 @@ const mocks = vi.hoisted(() => {
         destroyMark: vi.fn(),
         destroy: vi.fn(),
         render: vi.fn(),
+        renderPicking: vi.fn(),
+        pick: vi.fn(async () => 42),
     };
     return {
         handle,
@@ -286,6 +288,42 @@ describe("WebGpuSurface", () => {
 
         expect(headWidthSet).toHaveBeenCalledWith(5);
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+    });
+
+    test("keeps picking draws separate from the visible frame", async () => {
+        const container = document.createElement("div");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({})
+        );
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "point" })
+            );
+
+        surface.beginFrame();
+        surface.useMark(mark, definition, createConfig(0));
+        surface.render();
+        surface.beginPickingFrame();
+        surface.useMark(mark, definition, createConfig(0), { picking: true });
+        surface.renderPicking();
+
+        expect(mocks.renderer.render).toHaveBeenCalledWith({
+            draws: [{ mark: mocks.handle }],
+        });
+        expect(mocks.renderer.renderPicking).toHaveBeenCalledWith({
+            draws: [{ mark: mocks.handle }],
+        });
+        await expect(surface.pick(10, 20)).resolves.toBe(42);
+        expect(mocks.renderer.pick).toHaveBeenCalledWith(10, 20);
     });
 });
 

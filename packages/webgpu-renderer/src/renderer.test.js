@@ -35,6 +35,14 @@ describe("Renderer mark definitions", () => {
         expect(renderer._marks.get(handle.markId)).toBe(program);
     });
 
+    test("accepts a separate ordered pick draw list", () => {
+        const { renderer } = createRendererHarness();
+
+        renderer.renderPicking({ draws: [] });
+
+        expect(renderer._pickingFrame).toEqual([]);
+    });
+
     test("draws retained mark occurrences in the requested order", () => {
         const firstProgram = createProgram();
         const secondProgram = createProgram();

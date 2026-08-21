@@ -68,6 +68,20 @@ export default class WebGpuRenderCoordinator {
         this.surface.render(toGpuColor(this.getBackground()));
     }
 
+    renderPickingFramebuffer() {
+        if (!this.layoutResult) {
+            return;
+        }
+        this.surface.beginPickingFrame();
+        this.layoutResult.collectRenderCommands(
+            new WebGpuViewRenderingContext(
+                { picking: true },
+                { surface: this.surface }
+            )
+        );
+        this.surface.renderPicking();
+    }
+
     /** @returns {import("../../view/layout/layoutResult.js").default | undefined} */
     #createLayoutResult() {
         const size = this.surface.getLogicalCanvasSize();
