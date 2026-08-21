@@ -44,6 +44,7 @@ const DEFAULT_FONT_KEY = {
  * @typedef {object} FontEntry
  * @prop {BMFontMetrics} metrics
  * @prop {WebGLTexture} texture
+ * @prop {string} bitmapUrl
  */
 export default class BmFontManager {
     /**
@@ -78,6 +79,7 @@ export default class BmFontManager {
             texture: webGLHelper
                 ? this._createTextureNow(latoRegularBitmap)
                 : undefined,
+            bitmapUrl: latoRegularBitmap,
         };
         this._fonts.set(DEFAULT_FONT_KEY, this._defaultFontEntry);
     }
@@ -101,6 +103,7 @@ export default class BmFontManager {
             fontEntry = {
                 metrics: undefined,
                 texture: undefined,
+                bitmapUrl: undefined,
             };
             this._fonts.set(key, fontEntry);
 
@@ -125,6 +128,7 @@ export default class BmFontManager {
                 simplifyFamily(key.family) +
                 "/" +
                 filename.replace(/\.\w+/, "");
+            fontEntry.bitmapUrl = urlBase + ".png";
 
             const metricsPromise = this._loadFont(urlBase + ".json");
             const texturePromise = this._webGLHelper
@@ -140,6 +144,7 @@ export default class BmFontManager {
 
             fontEntry.metrics = this._defaultFontEntry.metrics;
             fontEntry.texture = this._defaultFontEntry.texture;
+            fontEntry.bitmapUrl = this._defaultFontEntry.bitmapUrl;
         }
     }
 

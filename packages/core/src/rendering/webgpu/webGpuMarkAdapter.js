@@ -497,6 +497,7 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
 function createTextConfig(mark, data, coords, viewOpacity) {
     const size = readNumericEncoder(mark, "size", data[0]);
     const encoders = /** @type {Record<string, any>} */ (mark.encoders);
+    const fontEntry = /** @type {any} */ (mark).font;
     return {
         count: data.length,
         channels: {
@@ -536,6 +537,14 @@ function createTextConfig(mark, data, coords, viewOpacity) {
             opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
         },
         font: resolveFont(mark),
+        ...(fontEntry?.metrics && fontEntry.bitmapUrl
+            ? {
+                  fontResource: {
+                      metrics: fontEntry.metrics,
+                      bitmap: fontEntry.bitmapUrl,
+                  },
+              }
+            : {}),
         fontStyle: readProperty(mark, "fontStyle"),
         fontWeight: readProperty(mark, "fontWeight"),
         fontSize: size,
@@ -726,15 +735,19 @@ function createArrowConfig(mark, data, coords, viewOpacity) {
 }
 
 /**
- * Core's generic sans-serif default is intentionally mapped to the renderer's
- * embedded Lato atlas. Font registration is deferred beyond the PoC.
+ * Core's generic sans-serif default is normalized to Lato by its font manager.
+ * The loaded metrics and atlas are passed separately so the renderer does not
+ * need to duplicate Core's font-loading and fallback policy.
  *
  * @param {import("../../marks/mark.js").default} mark
  */
 function resolveFont(mark) {
     const font = readProperty(mark, "font");
-    if (font == null || font == "sans-serif" || font == "Lato") {
+    if (font == null || font == "sans-serif") {
         return "Lato";
+    }
+    if (typeof font == "string") {
+        return font;
     }
     throw unsupported(mark, `Font "${String(font)}" is not supported.`);
 }

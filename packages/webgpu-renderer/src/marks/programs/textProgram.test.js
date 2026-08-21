@@ -1,12 +1,32 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createMockRenderer } from "../../testUtils/mockRenderer.js";
+import BmFontManager from "../../fonts/bmFontManager.js";
 import { identityScale } from "../../scales/identity.js";
 import { indexScale } from "../../scales/index.js";
 import { thresholdScale } from "../../scales/threshold.js";
 import TextProgram from "./textProgram.js";
 
 describe("TextProgram series replacement", () => {
+    it("uses Core-provided font metrics and atlas resources", () => {
+        const renderer = createMockRenderer();
+        const fontEntry = new BmFontManager().getDefaultFont();
+        const program = new TextProgram(renderer, {
+            font: "Test Sans",
+            fontResource: {
+                metrics: fontEntry.metrics,
+                bitmap: /** @type {any} */ ({}),
+            },
+            channels: {
+                text: { value: "x" },
+                x: { value: 0, scale: identityScale() },
+                y: { value: 0, scale: identityScale() },
+            },
+        });
+
+        expect(program._fontEntry.metrics).toBe(fontEntry.metrics);
+    });
+
     it("invalidates the host when the font atlas becomes ready", () => {
         const renderer = createMockRenderer();
         renderer._invalidate = vi.fn();
