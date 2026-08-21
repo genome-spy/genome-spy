@@ -939,6 +939,19 @@ function createPositionBranch(mark, channel, data, coords, encoder) {
                 ).band ?? 0.5
             ),
         };
+    } else if (encoder.scale?.type == "ordinal") {
+        const { values, domain } = toCategoricalArray(
+            mark,
+            channel,
+            data,
+            accessor,
+            encoder.scale
+        );
+        return {
+            data: values,
+            type: "u32",
+            scale: createOrdinalPositionScale(encoder.scale, range, domain),
+        };
     } else if (
         encoder.scale?.type == "index" ||
         encoder.scale?.type == "locus"
@@ -982,6 +995,23 @@ function createBandPositionScale(scale, range, domain, band) {
         paddingOuter: configurableScale.paddingOuter(),
         align: configurableScale.align(),
         band,
+    });
+}
+
+/**
+ * Core represents ordinal positional ranges in unit coordinates. Convert
+ * those outputs to the absolute logical-pixel range used by WebGPU.
+ *
+ * @param {import("../../types/encoder.js").VegaScale} scale
+ * @param {[number, number]} range
+ * @param {number[]} domain
+ */
+function createOrdinalPositionScale(scale, range, domain) {
+    return ordinalScale({
+        domain,
+        range: scale
+            .range()
+            .map((value) => range[0] + Number(value) * (range[1] - range[0])),
     });
 }
 

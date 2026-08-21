@@ -612,6 +612,38 @@ describe("WebGPU mark adapter", () => {
         );
     });
 
+    test("translates ordinal position scales to u32 inputs and pixel ranges", () => {
+        const data = [{ y: 0 }, { y: 2 }];
+        const mark = createMark("point", data, {
+            y: createEncoder((datum) => datum.y, {
+                scale: {
+                    type: "ordinal",
+                    domain: () => [0, 1, 2],
+                    range: () => [0, 0.5, 1],
+                },
+                channelDef: { field: "y", type: "nominal" },
+            }),
+        });
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(10, 20, 100, 200)
+        );
+
+        expect(/** @type {any} */ (translated).config.channels.y).toEqual(
+            expect.objectContaining({
+                data: new Uint32Array([0, 2]),
+                type: "u32",
+                scale: expect.objectContaining({
+                    type: "ordinal",
+                    domain: [0, 1, 2],
+                    range: [220, 120, 20],
+                }),
+            })
+        );
+    });
+
     test.each(["time", "utc", "quantile", "bin-ordinal"])(
         "rejects unsupported %s scales",
         (scaleType) => {

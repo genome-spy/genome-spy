@@ -38,7 +38,7 @@ artifacts only and must not be committed.
 | Priority | Example(s) | Symptom / root cause | Action | Status |
 | --- | --- | --- | --- | --- |
 | P0 | — | Complete WebGPU baseline not yet run with the reusable runner | Run all discovered examples and classify every result | Open |
-| P1 | `examples/core/scales/ordinal_position_test.json` | User-reported WebGPU example currently does not render correctly; baseline error and WebGL comparison are pending | Reproduce first, then fix the smallest adapter/renderer contract issue | Open |
+| P1 | `examples/core/scales/ordinal_position_test.json` | Positional ordinal encodings fell through to f32 input although the renderer requires u32 categorical ids | Convert Core's normalized ordinal range to absolute pixel range and add u32 input | Fixed |
 | P1 | — | Unsupported scale, mark, data, layout, or interaction contracts may affect additional examples | Classify as implementation fix or documented API/architecture deferral | Open |
 | P2 | — | Faceted/repeated occurrences and synchronous interaction contracts may exceed the current renderer boundary | Document concrete examples and follow-up design without silently accepting incorrect output | Open |
 
@@ -46,8 +46,16 @@ artifacts only and must not be committed.
 
 | Renderer | Scope | Passed | Failed | Empty canvas | Last verified |
 | --- | --- | ---: | ---: | ---: | --- |
-| WebGPU | — | — | — | — | Pending runner baseline |
-| WebGL comparison | — | — | — | — | Pending runner baseline |
+| WebGPU | `examples/core/scales/ordinal_position_test.json` | 1 | 0 | 0 | 2026-08-21 |
+| WebGL comparison | `examples/core/scales/ordinal_position_test.json` | 1 | 0 | 0 | 2026-08-21 |
+
+### Completed fixes
+
+- Positional ordinal scales now use the same categorical u32 identifiers as
+  ordinal color channels. Their unit-space output range is mapped to the
+  occurrence's absolute logical-pixel range in the Core adapter. Focused
+  adapter tests and the WebGPU/WebGL runner pass for
+  `examples/core/scales/ordinal_position_test.json`.
 
 ## Context
 
