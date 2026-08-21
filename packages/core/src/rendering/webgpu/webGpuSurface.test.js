@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => {
         values: {
             size: { default: { set: vi.fn() } },
         },
+        extraValues: {},
         selections: {},
     };
     const renderer = {
@@ -62,6 +63,7 @@ import WebGpuSurface from "./webGpuSurface.js";
 
 beforeEach(() => {
     vi.clearAllMocks();
+    mocks.handle.extraValues = {};
     mocks.handle.selections = {};
 });
 
@@ -248,6 +250,42 @@ describe("WebGpuSurface", () => {
             { fill: second },
             2
         );
+    });
+
+    test("updates dynamic extra uniforms without recreating a mark", async () => {
+        const headWidthSet = vi.fn();
+        mocks.handle.extraValues = {
+            uHeadWidth: { set: headWidthSet },
+        };
+        const container = document.createElement("div");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({})
+        );
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "arrow" })
+            );
+        /** @param {number} value */
+        const config = (value) => ({
+            count: 1,
+            channels: {},
+            dynamicValues: { uHeadWidth: { value } },
+        });
+
+        surface.useMark(mark, definition, config(3));
+        surface.useMark(mark, definition, config(5));
+
+        expect(headWidthSet).toHaveBeenCalledWith(5);
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
     });
 });
 
