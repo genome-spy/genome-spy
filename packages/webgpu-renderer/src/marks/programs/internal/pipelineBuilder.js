@@ -10,6 +10,10 @@ import { buildMarkShader } from "../../shaders/markShaderBuilder.js";
  * @property {string} shaderBody
  * @property {Map<string, import("./packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
  * @property {Array<{ name: string, type: import("../../../index.d.ts").SelectionType, targets?: Array<{ input: string, secondaryInput?: string, hitTest?: "intersects"|"encloses"|"endpoints", scalarType?: import("../../../types.js").ScalarType, secondaryScalarType?: import("../../../types.js").ScalarType }> }>} [selectionDefs]
+ * @property {import("../../../index.d.ts").VisibilityPredicate} [visibleWhen]
+ * @property {Record<string, import("../../../index.d.ts").ScalarSlotConfig>} [scalarSlots]
+ * @property {Set<string>} [channelNames]
+ * @property {Set<string>} [inputNames]
  * @property {import("../../shaders/markShaderBuilder.js").ExtraResourceDef[]} [extraResources]
  * @property {GPUPrimitiveTopology} [primitiveTopology]
  * @property {string} [fragmentEntry]
@@ -36,6 +40,10 @@ export function buildPipeline({
     shaderBody,
     packedSeriesLayout,
     selectionDefs,
+    visibleWhen,
+    scalarSlots = {},
+    channelNames,
+    inputNames,
     extraResources,
     primitiveTopology = "triangle-list",
     fragmentEntry = "fs_main",
@@ -47,6 +55,10 @@ export function buildPipeline({
         shaderBody,
         packedSeriesLayout,
         selectionDefs,
+        visibleWhen,
+        scalarSlots,
+        channelNames,
+        inputNames,
         extraResources,
     });
 

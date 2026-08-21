@@ -49,6 +49,16 @@ struct VSOut {
     @location(3) @interpolate(flat) pickId: u32,
 };
 
+fn culledLink() -> VSOut {
+    var out: VSOut;
+    out.pos = vec4<f32>(0.0);
+    out.color = vec4<f32>(0.0);
+    out.normalDistance = 0.0;
+    out.size = 0.0;
+    out.pickId = 0u;
+    return out;
+}
+
 fn distanceFromLine(a: vec2<f32>, b: vec2<f32>, p: vec2<f32>) -> f32 {
     let ap = p - a;
     let ab = b - a;
@@ -66,6 +76,10 @@ fn isInsideViewport(p: vec2<f32>, marginFactor: f32) -> bool {
 
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
+    if (!isInstanceVisible(i)) {
+        return culledLink();
+    }
+
     let segment = v / 2u;
     let side = f32(v % 2u) - 0.5;
     let segmentCount = max(1u, u32(params.uSegmentBreaks));

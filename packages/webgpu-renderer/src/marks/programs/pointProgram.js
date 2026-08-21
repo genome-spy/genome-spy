@@ -130,8 +130,33 @@ struct VSOut {
     @location(14) @interpolate(flat) pickId: u32,
 };
 
+fn culledPoint() -> VSOut {
+    var out: VSOut;
+    out.pos = vec4<f32>(0.0);
+    out.local = vec2<f32>(0.0);
+    out.size = 0.0;
+    out.radius = 0.0;
+    out.radiusWithPadding = 0.0;
+    out.fill = vec4<f32>(0.0);
+    out.stroke = vec4<f32>(0.0);
+    out.fillOpacity = 0.0;
+    out.strokeOpacity = 0.0;
+    out.halfStrokeWidth = 0.0;
+    out.shape = 0u;
+    out.gradientStrength = 0.0;
+    out.inwardStroke = 0u;
+    out.rot0 = vec2<f32>(0.0);
+    out.rot1 = vec2<f32>(0.0);
+    out.pickId = 0u;
+    return out;
+}
+
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
+    if (!isInstanceVisible(i)) {
+        return culledPoint();
+    }
+
     var quad = array<vec2<f32>, 6>(
         vec2<f32>(0.0, 0.0),
         vec2<f32>(1.0, 0.0),
@@ -190,24 +215,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         getScaled_x(i) + getScaled_dx(i),
         getScaled_y(i) + getScaled_dy(i)
     ))) {
-        var out: VSOut;
-        out.pos = vec4<f32>(0.0);
-        out.local = vec2<f32>(0.0);
-        out.size = 0.0;
-        out.radius = 0.0;
-        out.radiusWithPadding = 0.0;
-        out.fill = vec4<f32>(0.0);
-        out.stroke = vec4<f32>(0.0);
-        out.fillOpacity = 0.0;
-        out.strokeOpacity = 0.0;
-        out.halfStrokeWidth = 0.0;
-        out.shape = 0u;
-        out.gradientStrength = 0.0;
-        out.inwardStroke = 0u;
-        out.rot0 = vec2<f32>(0.0);
-        out.rot1 = vec2<f32>(0.0);
-        out.pickId = 0u;
-        return out;
+        return culledPoint();
     }
 
     let clip = vec2<f32>(

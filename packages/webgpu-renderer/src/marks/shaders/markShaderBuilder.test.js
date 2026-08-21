@@ -306,6 +306,106 @@ describe("buildMarkShader", () => {
         expect(shaderCode).toContain("checkSelection_brush");
     });
 
+    it("emits visibility predicates over scalar inputs and slots", () => {
+        const packedSeriesLayout = new Map(
+            /** @type {[string, import("../programs/internal/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */
+            ([
+                [
+                    "score",
+                    {
+                        name: "score",
+                        scalarType: "f32",
+                        components: 1,
+                        offset: 0,
+                        stride: 1,
+                    },
+                ],
+            ])
+        );
+        const { shaderCode } = buildMarkShader({
+            channels: {
+                score: {
+                    data: new Float32Array([0, 1]),
+                    type: "f32",
+                    components: 1,
+                },
+            },
+            uniformLayout: [
+                { name: "u_scalar_threshold", type: "f32", components: 1 },
+            ],
+            shaderBody,
+            packedSeriesLayout,
+            channelNames: new Set(),
+            inputNames: new Set(["score"]),
+            scalarSlots: {
+                threshold: { value: 0.5, type: "f32" },
+            },
+            visibleWhen: {
+                any: [
+                    {
+                        compare: ">=",
+                        left: { input: "score" },
+                        right: { slot: "threshold" },
+                    },
+                    {
+                        all: [
+                            {
+                                compare: "<",
+                                left: { input: "score" },
+                                right: { slot: "threshold" },
+                            },
+                        ],
+                    },
+                ],
+            },
+        });
+
+        expect(shaderCode).toContain("fn isInstanceVisible");
+        expect(shaderCode).toContain("read_score(i)");
+        expect(shaderCode).toContain("params.u_scalar_threshold");
+        expect(shaderCode).toContain(">=");
+        expect(shaderCode).toContain("<");
+    });
+
+    it("rejects invalid visibility predicate operands", () => {
+        expect(() =>
+            buildMarkShader({
+                channels: {
+                    score: {
+                        data: new Float32Array([0, 1]),
+                        type: "f32",
+                        components: 1,
+                    },
+                },
+                uniformLayout: [],
+                shaderBody,
+                visibleWhen: {
+                    compare: ">=",
+                    left: { input: "score" },
+                    right: { slot: "missing" },
+                },
+                inputNames: new Set(["score"]),
+                scalarSlots: {},
+            })
+        ).toThrow('unknown slot "missing"');
+
+        expect(() =>
+            buildMarkShader({
+                channels: {
+                    score: {
+                        data: new Float32Array([0, 1]),
+                        type: "f32",
+                        components: 1,
+                    },
+                },
+                uniformLayout: [],
+                shaderBody,
+                visibleWhen: { all: [] },
+                inputNames: new Set(["score"]),
+            })
+        ).toThrow("all nodes must not be empty");
+    });
+
     it("emits independent active checks and ranged hit-test formulas", () => {
         const { shaderCode } = buildMarkShader({
             channels: {

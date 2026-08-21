@@ -151,12 +151,18 @@ export default class WebGpuSurface {
                         ([name, value]) => [name, value.value]
                     )
                 ),
+                scalarSlots: new Map(
+                    Object.entries(config.scalarSlots ?? {}).map(
+                        ([name, value]) => [name, value.value]
+                    )
+                ),
             };
             this.#marks.set(mark, retained);
         } else {
             updateRetainedMark(retained, config);
         }
         updateRetainedExtraValues(retained, config);
+        updateRetainedScalarSlots(retained, config);
         updateRetainedSelections(retained, mark);
 
         // Core still bakes absolute canvas coordinates into scale ranges, so
@@ -318,6 +324,26 @@ function updateRetainedExtraValues(retained, config) {
 }
 
 /**
+ * Updates retained predicate scalar slots without rebuilding the mark.
+ *
+ * @param {RetainedMark} retained
+ * @param {any} config
+ */
+function updateRetainedScalarSlots(retained, config) {
+    for (const [name, scalar] of Object.entries(config.scalarSlots ?? {})) {
+        const slot = retained.handle.scalarSlots?.[name];
+        if (
+            !slot ||
+            valuesEqual(retained.scalarSlots.get(name), scalar.value)
+        ) {
+            continue;
+        }
+        slot.set(scalar.value);
+        retained.scalarSlots.set(name, scalar.value);
+    }
+}
+
+/**
  * @param {number | number[] | undefined} previous
  * @param {number | number[]} next
  */
@@ -430,6 +456,11 @@ function hasSeriesChanges(retained, config) {
             return true;
         }
     }
+    for (const [name, input] of Object.entries(config.inputs ?? {})) {
+        if (retained.series[name] !== input.data) {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -445,6 +476,9 @@ function collectSeries(config) {
         if (channelSeries !== undefined) {
             series[name] = channelSeries;
         }
+    }
+    for (const [name, input] of Object.entries(config.inputs ?? {})) {
+        series[name] = input.data;
     }
     return series;
 }
@@ -497,6 +531,7 @@ function getLogicalChannelSeries(channel) {
  * @prop {number} count
  * @prop {Map<string, number | Uint32Array | SelectionSnapshot>} selections
  * @prop {Map<string, number | number[]>} dynamicValues
+ * @prop {Map<string, number>} scalarSlots
  */
 
 /**

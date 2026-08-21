@@ -247,6 +247,7 @@ export class Renderer {
             scales: slotHandles.scales,
             values: slotHandles.values,
             extraValues: slotHandles.extraValues,
+            scalarSlots: slotHandles.scalarSlots,
             selections: slotHandles.selections,
         };
     }

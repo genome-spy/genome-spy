@@ -246,6 +246,7 @@ function createProgram() {
             scales: {},
             values: {},
             extraValues: {},
+            scalarSlots: {},
             selections: {},
         }),
         replaceSeries: series.replace,

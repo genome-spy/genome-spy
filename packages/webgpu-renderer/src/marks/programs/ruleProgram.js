@@ -59,8 +59,27 @@ struct VSOut {
     @location(8) @interpolate(flat) pickId: u32,
 };
 
+fn culledRule() -> VSOut {
+    var out: VSOut;
+    out.pos = vec4<f32>(0.0);
+    out.color = vec4<f32>(0.0);
+    out.normalDistance = 0.0;
+    out.halfWidth = 0.0;
+    out.opacity = 0.0;
+    out.posInPixels = vec2<f32>(0.0);
+    out.strokeCap = 0u;
+    out.dashIndex = 0u;
+    out.dashOffset = 0.0;
+    out.pickId = 0u;
+    return out;
+}
+
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
+    if (!isInstanceVisible(i)) {
+        return culledRule();
+    }
+
     var quad = array<vec2<f32>, 6>(
         vec2<f32>(0.0, 0.0),
         vec2<f32>(1.0, 0.0),

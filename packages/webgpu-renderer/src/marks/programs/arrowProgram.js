@@ -52,6 +52,24 @@ struct VSOut {
     @location(11) @interpolate(flat) headSpacing: f32,
 };
 
+fn culledArrow() -> VSOut {
+    var out: VSOut;
+    out.pos = vec4<f32>(0.0);
+    out.local = vec2<f32>(0.0);
+    out.halfLength = 0.0;
+    out.headHalfWidth = 0.0;
+    out.stemHalfWidth = 0.0;
+    out.headSlope = 0.0;
+    out.notchSlope = 0.0;
+    out.fill = vec4<f32>(0.0);
+    out.stroke = vec4<f32>(0.0);
+    out.strokeWidth = 0.0;
+    out.direction = 0u;
+    out.headShape = 0u;
+    out.headSpacing = 0.0;
+    return out;
+}
+
 fn distanceToRatio(d: f32) -> f32 {
     return clamp(d * globals.dpr + 0.5, 0.0, 1.0);
 }
@@ -184,6 +202,10 @@ fn shade(in: VSOut) -> vec4<f32> {
 
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
+    if (!isInstanceVisible(i)) {
+        return culledArrow();
+    }
+
     var quad = array<vec2<f32>, 6>(
         vec2<f32>(0, 0), vec2<f32>(1, 0), vec2<f32>(0, 1),
         vec2<f32>(0, 1), vec2<f32>(1, 0), vec2<f32>(1, 1)

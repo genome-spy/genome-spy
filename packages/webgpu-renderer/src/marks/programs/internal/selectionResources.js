@@ -12,6 +12,7 @@ import {
 /**
  * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
  * @typedef {import("../../../index.d.ts").SelectionType} SelectionType
+ * @typedef {import("../../../index.d.ts").VisibilityPredicate} VisibilityPredicate
  * @typedef {import("../../../types.js").ScalarType} ScalarType
  *
  * @typedef {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", intervals: Readonly<Partial<Record<string, readonly [number, number] | null>>> }} SelectionUpdate
@@ -146,64 +147,98 @@ function resolveIntervalTargets(selectionName, when, channels) {
 }
 
 /**
- * Build a normalized set of selection definitions from channel conditions.
+ * Add one selection declaration to the normalized definition map.
+ *
+ * @param {Map<string, SelectionDef>} defs
+ * @param {import("../../../index.d.ts").SelectionPredicate} when
+ * @param {Record<string, ChannelConfigResolved>} channels
+ * @returns {void}
+ */
+function addSelectionDef(defs, when, channels) {
+    const selectionName = when.selection;
+    const type = when.type;
+    const existing = defs.get(selectionName);
+    if (existing) {
+        if (existing.type !== type) {
+            throw new Error(
+                `Selection "${selectionName}" must keep a single type.`
+            );
+        }
+        if (type === "interval") {
+            const targets = resolveIntervalTargets(
+                selectionName,
+                when,
+                channels
+            );
+            if (
+                !existing.targets ||
+                !sameIntervalTargets(existing.targets, targets)
+            ) {
+                throw new Error(
+                    `Selection "${selectionName}" must keep the same interval targets.`
+                );
+            }
+        }
+        return;
+    }
+
+    if (type === "interval") {
+        defs.set(selectionName, {
+            name: selectionName,
+            type,
+            targets: resolveIntervalTargets(selectionName, when, channels),
+        });
+    } else {
+        defs.set(selectionName, { name: selectionName, type });
+    }
+}
+
+/**
+ * Collect selection leaves from an immutable visibility tree.
+ *
+ * @param {VisibilityPredicate | undefined} node
+ * @param {Map<string, SelectionDef>} defs
+ * @param {Record<string, ChannelConfigResolved>} channels
+ * @returns {void}
+ */
+function collectVisibilitySelections(node, defs, channels) {
+    if (!node || typeof node !== "object") {
+        return;
+    }
+    if ("selection" in node) {
+        addSelectionDef(defs, node, channels);
+    } else if ("all" in node) {
+        for (const child of node.all) {
+            collectVisibilitySelections(child, defs, channels);
+        }
+    } else if ("any" in node) {
+        for (const child of node.any) {
+            collectVisibilitySelections(child, defs, channels);
+        }
+    }
+}
+
+/**
+ * Build a normalized set of selection definitions from channel conditions and
+ * visibility predicates.
  *
  * @param {Record<string, ChannelConfigResolved>} channels
+ * @param {VisibilityPredicate | undefined} visibleWhen
  * @returns {Map<string, SelectionDef>}
  */
-function collectSelectionDefs(channels) {
+function collectSelectionDefs(channels, visibleWhen) {
     /** @type {Map<string, SelectionDef>} */
     const defs = new Map();
-    const hasUniqueId = !!channels.uniqueId;
 
     for (const channel of Object.values(channels)) {
         for (const condition of channel.conditions ?? []) {
-            const when = condition.when;
-            const selectionName = when.selection;
-            const type = when.type;
-            const existing = defs.get(selectionName);
-            if (existing) {
-                if (existing.type !== type) {
-                    throw new Error(
-                        `Selection "${selectionName}" must keep a single type.`
-                    );
-                }
-                if (type === "interval") {
-                    const targets = resolveIntervalTargets(
-                        selectionName,
-                        when,
-                        channels
-                    );
-                    if (
-                        !existing.targets ||
-                        !sameIntervalTargets(existing.targets, targets)
-                    ) {
-                        throw new Error(
-                            `Selection "${selectionName}" must keep the same interval targets.`
-                        );
-                    }
-                }
-                continue;
-            }
-
-            if (type === "interval") {
-                defs.set(selectionName, {
-                    name: selectionName,
-                    type,
-                    targets: resolveIntervalTargets(
-                        selectionName,
-                        when,
-                        channels
-                    ),
-                });
-            } else {
-                defs.set(selectionName, { name: selectionName, type });
-            }
+            addSelectionDef(defs, condition.when, channels);
         }
     }
+    collectVisibilitySelections(visibleWhen, defs, channels);
 
     if (
-        !hasUniqueId &&
+        !channels.uniqueId &&
         Array.from(defs.values()).some(
             (def) => def.type === "single" || def.type === "multi"
         )
@@ -224,15 +259,16 @@ export class SelectionResourceManager {
      * @param {object} params
      * @param {GPUDevice} params.device
      * @param {Record<string, ChannelConfigResolved>} params.channels
+     * @param {VisibilityPredicate} [params.visibleWhen]
      * @param {(name: string, value: number|number[]) => void} params.setUniformValue
      */
-    constructor({ device, channels, setUniformValue }) {
+    constructor({ device, channels, visibleWhen, setUniformValue }) {
         this._device = device;
         this._channels = channels;
         this._setUniformValue = setUniformValue;
 
         /** @type {Map<string, SelectionDef>} */
-        this._selectionDefs = collectSelectionDefs(channels);
+        this._selectionDefs = collectSelectionDefs(channels, visibleWhen);
         /** @type {Map<string, { buffer: GPUBuffer, byteLength: number }>} */
         this._selectionBuffers = new Map();
     }

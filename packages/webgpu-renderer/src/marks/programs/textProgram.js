@@ -108,6 +108,17 @@ struct VSOut {
     @location(4) @interpolate(flat) pickId: u32,
 };
 
+fn culledText() -> VSOut {
+    var out: VSOut;
+    out.pos = vec4<f32>(0.0);
+    out.uv = vec2<f32>(0.0);
+    out.color = vec4<f32>(0.0);
+    out.opacity = 0.0;
+    out.slope = 0.0;
+    out.pickId = 0u;
+    return out;
+}
+
 fn alignOffset(align: u32, width: f32) -> f32 {
     if (align == ALIGN_CENTER) {
         return -0.5 * width;
@@ -234,6 +245,10 @@ fn fixAlignForAngle(align: vec2<i32>, angleInDegrees: f32) -> vec2<i32> {
 
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
+    if (!isInstanceVisible(i)) {
+        return culledText();
+    }
+
     var quad = array<vec2<f32>, 6>(
         vec2<f32>(0.0, 0.0),
         vec2<f32>(1.0, 0.0),
@@ -313,14 +328,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 #endif
 
     if (isOutsideVisibleRange(anchor)) {
-        var out: VSOut;
-        out.pos = vec4<f32>(0.0);
-        out.uv = vec2<f32>(0.0);
-        out.color = vec4<f32>(0.0);
-        out.opacity = 0.0;
-        out.slope = 0.0;
-        out.pickId = 0u;
-        return out;
+        return culledText();
     }
 
     // Optional squeeze: scale down text or drop it if it no longer fits.
@@ -328,14 +336,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         if (params.uSqueeze != 0u) {
             let scaleFadeExtent = vec2<f32>(3.0, 6.0) / vec2<f32>(size);
             if (rangeScale < scaleFadeExtent.x) {
-                var out: VSOut;
-                out.pos = vec4<f32>(0.0);
-                out.uv = vec2<f32>(0.0);
-                out.color = vec4<f32>(0.0);
-                out.opacity = 0.0;
-                out.slope = 0.0;
-                out.pickId = 0u;
-                return out;
+                return culledText();
             }
             size = size * rangeScale;
             opacity = opacity * linearstep(
@@ -344,14 +345,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
                 rangeScale
             );
         } else {
-            var out: VSOut;
-            out.pos = vec4<f32>(0.0);
-            out.uv = vec2<f32>(0.0);
-            out.color = vec4<f32>(0.0);
-            out.opacity = 0.0;
-            out.slope = 0.0;
-            out.pickId = 0u;
-            return out;
+            return culledText();
         }
     }
 

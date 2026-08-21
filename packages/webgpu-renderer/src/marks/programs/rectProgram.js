@@ -226,8 +226,32 @@ struct VSOut {
     @location(13) @interpolate(flat) pickId: u32,
 };
 
+fn culledRect() -> VSOut {
+    var out: VSOut;
+    out.pos = vec4<f32>(0.0);
+    out.local = vec2<f32>(0.0);
+    out.size = vec2<f32>(0.0);
+    out.fill = vec4<f32>(0.0);
+    out.stroke = vec4<f32>(0.0);
+    out.fillOpacity = 0.0;
+    out.strokeOpacity = 0.0;
+    out.strokeWidth = 0.0;
+    out.cornerRadii = vec4<f32>(0.0);
+    out.shadowOffset = vec2<f32>(0.0);
+    out.shadowBlur = 0.0;
+    out.shadowOpacity = 0.0;
+    out.shadowColor = vec4<f32>(0.0);
+    out.hatchPattern = 0u;
+    out.pickId = 0u;
+    return out;
+}
+
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
+    if (!isInstanceVisible(i)) {
+        return culledRect();
+    }
+
     var quad = array<vec2<f32>, 6>(
         vec2<f32>(0.0, 0.0),
         vec2<f32>(1.0, 0.0),

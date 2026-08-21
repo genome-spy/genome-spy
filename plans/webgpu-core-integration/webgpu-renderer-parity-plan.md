@@ -431,8 +431,8 @@ The initial contract should separate three concepts:
    explicit empty policy. Interior nodes are only `all` and `any`. The tree and
    operand types are fixed at mark creation; input buffers, threshold slots,
    and selection resources retain their existing independent update paths.
-3. **One initial consumer:** optional point-instance `visibleWhen`. It must cull
-   before expensive point geometry and fragment work and run identically in
+3. **One initial consumer:** optional built-in-mark `visibleWhen`. It must cull
+   before expensive mark geometry and fragment work and run identically in
    normal and picking pipelines.
 
 #### Milestone 3 public contract
@@ -444,55 +444,55 @@ must preserve the discriminants, namespaces, and update ownership shown here:
 ```ts
 /** A non-visual, per-instance scalar series available to predicates. */
 export type ScalarInputConfig = Readonly<{
-    /** Per-instance values in mark-series order. */
-    data: TypedArray;
-    /** WGSL scalar type used to pack and read the values. */
-    type: ScalarType;
+  /** Per-instance values in mark-series order. */
+  data: TypedArray;
+  /** WGSL scalar type used to pack and read the values. */
+  type: ScalarType;
 }>;
 
 /** A retained scalar uniform whose value may change without recompilation. */
 export type ScalarSlotConfig = Readonly<{
-    /** Initial uniform value, including IEEE infinities but excluding NaN. */
-    value: number;
-    /** WGSL scalar type of the retained uniform. */
-    type: ScalarType;
+  /** Initial uniform value, including IEEE infinities but excluding NaN. */
+  value: number;
+  /** WGSL scalar type of the retained uniform. */
+  type: ScalarType;
 }>;
 
 /** A scalar value read by an ordered comparison. */
 export type ScalarOperand =
-    /** Raw input of an existing visual channel, before its scale. */
-    | { channel: string }
-    /** Per-instance series declared in MarkConfig.inputs. */
-    | { input: string }
-    /** Retained uniform declared in MarkConfig.scalarSlots. */
-    | { slot: string };
+  /** Raw input of an existing visual channel, before its scale. */
+  | { channel: string }
+  /** Per-instance series declared in MarkConfig.inputs. */
+  | { input: string }
+  /** Retained uniform declared in MarkConfig.scalarSlots. */
+  | { slot: string };
 
 /** An ordered comparison between two scalar operands of the same type. */
 export type ScalarComparisonPredicate = Readonly<{
-    /** Ordered comparison operator emitted into WGSL. */
-    compare: "<" | "<=" | ">" | ">=";
-    /** Value on the left side of the ordered comparison. */
-    left: ScalarOperand;
-    /** Value on the right side of the ordered comparison. */
-    right: ScalarOperand;
+  /** Ordered comparison operator emitted into WGSL. */
+  compare: "<" | "<=" | ">" | ">=";
+  /** Value on the left side of the ordered comparison. */
+  left: ScalarOperand;
+  /** Value on the right side of the ordered comparison. */
+  right: ScalarOperand;
 }>;
 
 /** An immutable selection, comparison, or Boolean visibility expression. */
 export type VisibilityPredicate =
-    | SelectionPredicate
-    | ScalarComparisonPredicate
-    /** Logical AND over a non-empty child array. */
-    | Readonly<{ all: readonly VisibilityPredicate[] }>
-    /** Logical OR over a non-empty child array. */
-    | Readonly<{ any: readonly VisibilityPredicate[] }>;
+  | SelectionPredicate
+  | ScalarComparisonPredicate
+  /** Logical AND over a non-empty child array. */
+  | Readonly<{ all: readonly VisibilityPredicate[] }>
+  /** Logical OR over a non-empty child array. */
+  | Readonly<{ any: readonly VisibilityPredicate[] }>;
 
 /** Updates one declared scalar slot without recreating renderer resources. */
 export type ScalarSlotHandle = {
-    set(value: number): void;
+  set(value: number): void;
 };
 ```
 
-`MarkConfig<"point">` gains optional
+`MarkConfig` gains optional
 `inputs?: Record<string, ScalarInputConfig>`,
 `scalarSlots?: Record<string, ScalarSlotConfig>`, and
 `visibleWhen?: VisibilityPredicate`. `MarkHandle` gains
@@ -828,12 +828,17 @@ brush update reuses the retained mark and bind group.
 
 Tentative commit: `fix(core): support multi-channel WebGPU interval selections`
 
-### 3. Add scalar visibility predicates for point marks
+### 3. Add scalar visibility predicates for built-in marks
+
+**Status: complete.** Implemented in the milestone commit below. Added the immutable scalar predicate tree,
+retained scalar slots, non-visual inputs, and visibility/picking culls for all
+built-in mark programs. Core semantic zoom is translated through the generic
+contract and verified against the semantic-zoom browser example.
 
 **Intended outcome:** `@genome-spy/webgpu-renderer` exposes a generic,
 statically compiled visibility predicate tree over visual or non-visual scalar
-inputs, retained `scalarSlots`, and existing selection tests. Point marks use it
-to cull instances from both visible and picking passes. Core uses this
+inputs, retained `scalarSlots`, and existing selection tests. Every built-in
+mark uses it to cull instances from both visible and picking passes. Core uses this
 abstraction to match WebGL score-based semantic zoom—including the
 selected-point bypass—while the renderer remains unaware of `semanticScore`,
 zoom levels, quantiles, and GenomeSpy selection grammar. The first version is
@@ -843,7 +848,7 @@ an immutable tree, not a named predicate graph or general expression language.
 
 - `packages/webgpu-renderer/src/index.d.ts`: add public non-visual scalar-input,
   `scalarSlots`, selection-test leaf, ordered-comparison leaf,
-  `all`/`any`, point `visibleWhen`, and `MarkHandle.scalarSlots` contracts using
+  `all`/`any`, mark `visibleWhen`, and `MarkHandle.scalarSlots` contracts using
   the exact namespaces and discriminants in the public-contract subsection.
   Add brief documentation to every non-trivial exported type and non-obvious
   member or union variant. Do not add named predicate definitions or
@@ -879,22 +884,17 @@ an immutable tree, not a named predicate graph or general expression language.
   `pipelineBuilder.js`: pack declared non-visual inputs through the existing
   series manager, create `scalarSlots` in the existing uniform buffer, expose
   their dedicated handles, collect the predicate's existing channel/input and
-  selection resources, pass the immutable tree to normal and picking point
+  selection resources, pass the immutable tree to normal and picking mark
   pipeline generation, and update slot values without rebuilding pipelines or
   bind groups. Preserve `dynamicValues`/`extraValues` as the separate
   built-in-program uniform mechanism.
-- `packages/webgpu-renderer/src/marks/shaders/markShaderBuilder.js` and
-  `packages/webgpu-renderer/src/marks/programs/pointProgram.js`: expose
-  `isInstanceVisible(i)` and invoke it before expensive point geometry. When
-  `visibleWhen` is absent, emit the trivial true path. On false, produce a
-  fully initialized result using the existing culled-point representation:
-  zero every varying, including `pos = vec4<f32>(0.0)`, sizes, radii, and
-  opacities, set `pickId = 0u`, and return. The shared picking fragment path
-  already discards pick ID zero. Prefer extracting one mark-local constructor
-  used by both visibility and visible-range culling over duplicating the output
-  assignments. Do not design a custom-mark visibility hook or modify every
-  built-in program in this milestone; extend the same predicate tree to another
-  program only with its first real consumer.
+- `packages/webgpu-renderer/src/marks/shaders/markShaderBuilder.js` and the
+  built-in mark programs: expose `isInstanceVisible(i)` and invoke it before
+  expensive mark geometry. When `visibleWhen` is absent, emit the trivial true
+  path. On false, produce a fully initialized zeroed result for the mark,
+  including `pos = vec4<f32>(0.0)` and `pickId = 0u` where the mark exposes a
+  pick ID. The shared picking fragment path already discards pick ID zero.
+  Keep the cull constructor mark-local and reuse it for existing cull paths.
 - `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`: when a point mark
   has a data-driven `semanticScore`, provide its raw numeric series as a
   non-visual renderer input, expose `mark.getSemanticThreshold()` as a retained
@@ -975,7 +975,7 @@ predicate graphs, speculative operators or consumers, arbitrary WGSL injection,
 Core-specific predicate types, per-update predicate recompilation, and
 opacity-only pseudo-filtering.
 
-Tentative commit: `feat(webgpu): add point visibility predicates`
+Commit: `feat(webgpu): add mark visibility predicates`
 
 ### 4. Faceted and sample-faceted rendering — postponed
 
@@ -1228,9 +1228,9 @@ remain rejected throughout.
   declarations share one resource and conflicting types or interval targets
   fail mark creation. A visibility-only selection remains updateable through
   the normal selection slot.
-- Point `visibleWhen` removes a false instance from normal and picking passes
-  before expensive geometry work using the fully initialized zeroed point
-  output and pick ID zero. Other mark programs and predicate-driven conditional
+- `visibleWhen` removes a false instance from every built-in mark's normal and
+  picking passes before expensive geometry work using a fully initialized
+  zeroed output and pick ID zero where supported. Predicate-driven conditional
   encodings remain outside this milestone.
 - Visibility selection leaves call the same selection checker used by existing
   conditional encodings; they do not duplicate selection semantics or require
@@ -1298,7 +1298,7 @@ The open milestones above are based on the current Core WebGL paths:
   `seriesBuffers.js`, and `packedSeriesLayout.js`, plus
   `src/marks/shaders/channelAnalysis.js` and `channelIR.js`, for extending the
   existing typed series pipeline to non-visual predicate inputs;
-- `packages/webgpu-renderer/src/marks/programs/pointProgram.js` for the initial
-  point-only visibility hook; and
+- `packages/webgpu-renderer/src/marks/programs/{point,rect,rule,link,arrow,text}Program.js`
+  for the built-in mark visibility hooks; and
 - `packages/core/src/genomeSpy/renderCoordinator.js` and
   `interactionController.js` for the WebGL pick/tooltip flow.

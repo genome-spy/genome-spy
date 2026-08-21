@@ -48,11 +48,13 @@ class TestProgram extends BaseProgram {
 
 /**
  * @param {Record<string, import("../../../index.js").ChannelConfigInput>} channels
+ * @param {Record<string, unknown>} [options]
  */
-function createProgram(channels) {
+function createProgram(channels, options = {}) {
     return new TestProgram(createMockRenderer(), {
         channels: attachScaleDefinitions(channels),
         count: 1,
+        ...options,
     });
 }
 
@@ -89,6 +91,35 @@ function createSeriesProgram(channels, count) {
 }
 
 describe("BaseProgram channel validation", () => {
+    it("retains scalar inputs and validates scalar slot updates", () => {
+        const program = createProgram(
+            {
+                x: { value: 0.5, type: "f32" },
+                vec: { value: [1, 0, 0, 1], type: "f32", components: 4 },
+            },
+            {
+                inputs: {
+                    score: {
+                        data: new Float32Array([0]),
+                        type: "f32",
+                    },
+                },
+                scalarSlots: {
+                    threshold: { value: 0.5, type: "f32" },
+                },
+            }
+        );
+
+        expect(program._channels.score.type).toBe("f32");
+        expect(program.getSlotHandles().scalarSlots.threshold).toBeDefined();
+        expect(() =>
+            program.getSlotHandles().scalarSlots.threshold.set(Number.NaN)
+        ).toThrow("must not contain NaN");
+        expect(() =>
+            program.getSlotHandles().scalarSlots.threshold.set(Infinity)
+        ).not.toThrow();
+    });
+
     it("allows optional channels to be omitted", () => {
         expect(() =>
             createProgram({

@@ -86,7 +86,7 @@ without expanding vertices on the CPU.
 ## API (Public Surface)
 
 - `createRenderer(canvas, { format?, alphaMode?, onInvalidate? })`
-- `renderer.createMark(definition, config)` (returns `{ markId, series, scales, values, selections }`)
+- `renderer.createMark(definition, config)` (returns `{ markId, series, scales, values, extraValues, scalarSlots, selections }`)
 - `handle.series.replace(channels, count?)`
 - `renderer.updateGlobals({ width, height, dpr })`
 - `renderer.render({ draws?, clearColor? })`
@@ -231,6 +231,40 @@ the default slot, so `scales.x.setDomain(...)` and `scales.x.default.setDomain(.
 are equivalent. Conditional slots are keyed by selection name
 (`conditions.brush`, etc.) and always refer to the branch guarded by that
 selection.
+
+## Visibility Predicates
+
+Every built-in mark accepts an optional immutable `visibleWhen` predicate. It
+can compare scalar channel inputs, non-visual per-instance `inputs`, and
+retained `scalarSlots`, then combine leaves with non-empty `all` and `any`
+nodes. The same predicate runs in the normal and picking vertex pipelines, so
+hidden instances produce neither fragments nor pick IDs.
+
+```js
+const mark = renderer.createMark(pointMark, {
+  count: scores.length,
+  channels: {/* ... */},
+  inputs: {
+    score: { data: scores, type: "f32" },
+  },
+  scalarSlots: {
+    threshold: { value: 0.5, type: "f32" },
+  },
+  visibleWhen: {
+    compare: ">=",
+    left: { input: "score" },
+    right: { slot: "threshold" },
+  },
+});
+
+mark.scalarSlots.threshold.set(0.75);
+```
+
+`inputs` share the mark's existing series replacement path and do not create a
+second upload mechanism. Scalar slot updates write the existing uniform
+buffer without rebuilding the mark, pipeline, bind group, or predicate tree.
+Visibility is a rendering concern only: it does not filter data, aggregates,
+or scale domains.
 
 ## Series Buffer Sharing
 
