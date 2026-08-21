@@ -858,9 +858,11 @@ function getAbsoluteRange(channel, coords, scale) {
     // discrete Y scales by default, so their categorical range must remain
     // ascending in pixel space to keep the first category at the top.
     const discreteY = scale?.type == "band" || scale?.type == "index";
-    return discreteY && scale.props?.reverse
-        ? [coords.y, coords.y2]
-        : [coords.y2, coords.y];
+    const reverse =
+        /** @type {{ props?: { reverse?: boolean } } | undefined} */ (
+            /** @type {unknown} */ (scale)
+        )?.props?.reverse;
+    return discreteY && reverse ? [coords.y, coords.y2] : [coords.y2, coords.y];
 }
 
 /**
