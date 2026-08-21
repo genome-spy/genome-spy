@@ -130,6 +130,7 @@ check, with remaining behavioral differences recorded here.
 | P1       | `examples/docs/grammar/mark/rect/shadowed-marks.json`                | Rectangle shadows were not visible                                                                                 | Expand the pixel-space quad and match WebGL's shadow offset convention               | Fixed  |
 | P1       | `examples/core/marks/rect/rect_with_params.json`                     | Rounded rectangles clipped decorated geometry and hatch orientation was mirrored                                 | Expand decorated geometry in pixels and flip hatch coordinates to the GLSL axis      | Fixed  |
 | P1       | `examples/docs/grammar/mark/text/sequence-logo.json`                 | Logo letters initially rendered as ordinary fixed-size glyphs                                                      | Port Core's logo-letter band sizing and verify stacked glyph screenshots              | Fixed  |
+| P1       | `examples/core/genomic/bedBlocks.json`                                | Ranged chromosome labels flushed to the canvas edge instead of the zoomed view's edge                             | Pass the absolute view rectangle to WebGPU text range fitting and compare the hashed viewport screenshots | Fixed  |
 
 Acceptance for this section is visual inspection of both renderer screenshots,
 focused regression coverage where practical, and one commit per requested fix.
@@ -168,6 +169,9 @@ focused regression coverage where practical, and one commit per requested fix.
   height to its encoded band, preserve the normal font glyph width, and use the
   logo-specific SDF scale. The focused sequence-logo screenshot shows the
   expected stacked letters in both renderers.
+- Ranged WebGPU text now receives the mark's absolute view rectangle and uses
+  its edges for flush fitting. The hashed `bedBlocks.json` comparison places
+  `chr1` at the same padded left viewport edge in WebGPU and WebGL.
 
 ### Deferred design work
 

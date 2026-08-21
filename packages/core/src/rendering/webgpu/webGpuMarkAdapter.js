@@ -680,6 +680,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
         fontStyle: readProperty(mark, "fontStyle"),
         fontWeight: readProperty(mark, "fontWeight"),
         fontSize: size,
+        viewport: [coords.x, coords.y, coords.x2, coords.y2],
         paddingX: readNumericProperty(mark, "paddingX"),
         paddingY: readNumericProperty(mark, "paddingY"),
         flushX: !!readProperty(mark, "flushX"),

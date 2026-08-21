@@ -147,13 +147,14 @@ fn positionInsideRange(
     padding: f32,
     align: i32,
     flush: bool,
-    limit: f32
+    lower: f32,
+    upper: f32
 ) -> RangeResult {
     let span = b - a;
     let paddedWidth = width + 2.0 * padding;
 
     // Text clearly outside the viewport.
-    if (a > limit || b < 0.0) {
+    if (a > upper || b < lower) {
         return RangeResult(0.0, 0.0);
     }
 
@@ -165,10 +166,10 @@ fn positionInsideRange(
         // Centered: slide within the range if flush is enabled.
         var centre = a + b;
         if (flush) {
-            let leftOver = max(0.0, paddedWidth - centre);
+            let leftOver = max(0.0, paddedWidth - (centre - 2.0 * lower));
             centre = centre + min(leftOver, extra);
 
-            let rightOver = max(0.0, paddedWidth + centre - 2.0 * limit);
+            let rightOver = max(0.0, paddedWidth + centre - 2.0 * upper);
             centre = centre - min(rightOver, extra);
         }
         pos = centre / 2.0;
@@ -176,7 +177,7 @@ fn positionInsideRange(
         // Left aligned.
         var edge = a;
         if (flush) {
-            let over = max(0.0, -edge);
+            let over = max(0.0, lower - edge);
             edge = edge + min(over, extra);
         }
         pos = edge + padding;
@@ -184,7 +185,7 @@ fn positionInsideRange(
         // Right aligned.
         var edge = b;
         if (flush) {
-            let over = max(0.0, edge - limit);
+            let over = max(0.0, edge - upper);
             edge = edge - min(over, extra);
         }
         pos = edge - padding;
@@ -310,7 +311,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
             params.uPaddingX,
             alignAxis.x,
             params.uFlushX != 0u,
-            globals.width
+            params.uViewport.x,
+            params.uViewport.z
         );
         anchor.x = xRange.pos;
         rangeScale = rangeScale * xRange.scale;
@@ -330,7 +332,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
             params.uPaddingY,
             alignAxis.y,
             params.uFlushY != 0u,
-            globals.height
+            params.uViewport.y,
+            params.uViewport.w
         );
         anchor.y = yRange.pos;
         rangeScale = rangeScale * yRange.scale;
@@ -448,6 +451,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
  * @prop {unknown} [lineHeight]
  * @prop {unknown} [letterSpacing]
  * @prop {unknown} [logoLetters]
+ * @prop {[number, number, number, number]} [viewport]
  */
 
 /**
@@ -876,6 +880,7 @@ export default class TextProgram extends BaseProgram {
             { name: "uFlushY", type: "u32", components: 1 },
             { name: "uSqueeze", type: "u32", components: 1 },
             { name: "uLogoLetters", type: "u32", components: 1 },
+            { name: "uViewport", type: "f32", components: 4 },
         ];
     }
 
@@ -964,6 +969,16 @@ export default class TextProgram extends BaseProgram {
             typeof this._markConfig.logoLetters === "boolean"
                 ? this._markConfig.logoLetters
                 : false;
+        const viewport =
+            Array.isArray(this._markConfig.viewport) &&
+            this._markConfig.viewport.length === 4
+                ? this._markConfig.viewport
+                : [
+                      0,
+                      0,
+                      this.renderer._globals.width,
+                      this.renderer._globals.height,
+                  ];
 
         this._setUniformValue("uFontBase", metrics.common.base);
         this._setUniformValue("uLayoutFontSize", layout.fontSize);
@@ -981,6 +996,7 @@ export default class TextProgram extends BaseProgram {
         this._setUniformValue("uFlushY", flushY ? 1 : 0);
         this._setUniformValue("uSqueeze", squeeze ? 1 : 0);
         this._setUniformValue("uLogoLetters", logoLetters ? 1 : 0);
+        this._setUniformValue("uViewport", viewport);
 
         this._updateTextLayoutBuffers(layout);
 

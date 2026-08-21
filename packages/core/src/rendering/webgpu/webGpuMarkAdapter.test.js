@@ -135,6 +135,7 @@ describe("WebGPU mark adapter", () => {
         });
         expect(config.channels.dy).toEqual({ value: 9 });
         expect(config.font).toBe("Lato");
+        expect(config.viewport).toEqual([10, 20, 110, 220]);
     });
 
     test("passes Core-loaded custom font resources to the renderer", () => {
