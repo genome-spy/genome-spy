@@ -86,8 +86,12 @@ export class Renderer {
         this._pickTextureView = null;
         this._pickReadbackBuffer = null;
         this._pickTextureSize = { width: 0, height: 0 };
-        /** @type {Promise<unknown>} */
-        this._pickQueue = Promise.resolve();
+        /**
+         * @type {{ x: number, y: number, resolve: (value: number|null) => void, reject: (reason: unknown) => void } | null}
+         */
+        this._pickPending = null;
+        /** @type {Promise<unknown> | null} */
+        this._pickInFlight = null;
 
         this._globalUniformStride = Math.max(
             16,
@@ -337,11 +341,53 @@ export class Renderer {
      */
     pick(x, y) {
         this._assertAlive();
-        const result = this._pickQueue.then(() => this._pickSingle(x, y));
-        this._pickQueue = result.catch(
-            /** @returns {undefined} */ () => undefined
+        return new Promise((resolve, reject) => {
+            this._pickPending?.resolve(null);
+            this._pickPending = { x, y, resolve, reject };
+            this._startNextPick();
+        });
+    }
+
+    /**
+     * Start the latest queued pick when no GPU readback is in flight.
+     *
+     * @returns {void}
+     */
+    _startNextPick() {
+        if (this._pickInFlight || !this._pickPending) {
+            return;
+        }
+
+        const request = this._pickPending;
+        this._pickPending = null;
+        const operation = Promise.resolve().then(() =>
+            this._pickSingle(request.x, request.y)
         );
-        return result;
+        this._pickInFlight = operation;
+        operation.then(
+            (value) => {
+                request.resolve(value);
+                this._finishPick(operation);
+            },
+            (reason) => {
+                request.reject(reason);
+                this._finishPick(operation);
+            }
+        );
+    }
+
+    /**
+     * Complete one readback and service the latest pending request.
+     *
+     * @param {Promise<unknown>} operation
+     * @returns {void}
+     */
+    _finishPick(operation) {
+        if (this._pickInFlight !== operation) {
+            return;
+        }
+        this._pickInFlight = null;
+        this._startNextPick();
     }
 
     /**
@@ -612,6 +658,8 @@ export class Renderer {
         this._pickTextureView = null;
         this._pickReadbackBuffer?.destroy();
         this._pickReadbackBuffer = null;
+        this._pickPending?.resolve(null);
+        this._pickPending = null;
         this._onInvalidate = () => {};
         this.context.unconfigure();
         this.device.destroy();

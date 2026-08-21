@@ -42,6 +42,9 @@ function isIntervalBounds(value) {
     );
 }
 
+/** @type {number[]} */
+const INACTIVE_INTERVAL_BOUNDS = [0, 0];
+
 /**
  * @param {IntervalTargetDef} a
  * @param {IntervalTargetDef} b
@@ -372,42 +375,51 @@ export class SelectionResourceManager {
             this._setUniformValue(SELECTION_PREFIX + name, update.id);
         } else if (update.type === "interval") {
             const intervals = update.intervals ?? {};
-            const declaredInputs = new Set(
-                def.targets?.map((target) => target.input) ?? []
-            );
+            const targets = def.targets ?? [];
             for (const input of Object.keys(intervals)) {
-                if (!declaredInputs.has(input)) {
+                let declared = false;
+                for (const target of targets) {
+                    if (target.input === input) {
+                        declared = true;
+                        break;
+                    }
+                }
+                if (!declared) {
                     throw new Error(
                         `Selection "${name}" cannot update unknown target "${input}".`
                     );
                 }
             }
 
-            const staged = (def.targets ?? []).map((target) => {
+            for (const target of targets) {
                 const hasInterval = Object.hasOwn(intervals, target.input);
                 const interval = intervals[target.input];
-                if (!hasInterval || interval === null) {
-                    return { active: 0, bounds: [0, 0] };
-                }
-                if (!isIntervalBounds(interval)) {
+                if (
+                    hasInterval &&
+                    interval !== null &&
+                    !isIntervalBounds(interval)
+                ) {
                     throw new Error(
                         `Selection "${name}" target "${target.input}" requires two numeric bounds or null.`
                     );
                 }
-                return {
-                    active: 1,
-                    bounds: [interval[0], interval[1]],
-                };
-            });
+            }
 
-            for (const [index, { active, bounds }] of staged.entries()) {
+            for (const [index, target] of targets.entries()) {
+                const interval = intervals[target.input];
+                const active =
+                    interval !== undefined && interval !== null ? 1 : 0;
                 this._setUniformValue(
                     intervalSelectionActiveName(name, index),
                     active
                 );
                 this._setUniformValue(
                     intervalSelectionBoundsName(name, index),
-                    bounds
+                    active
+                        ? /** @type {number[]} */ (
+                              /** @type {unknown} */ (interval)
+                          )
+                        : INACTIVE_INTERVAL_BOUNDS
                 );
             }
         } else if (update.type === "multi") {

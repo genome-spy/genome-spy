@@ -238,21 +238,13 @@ function createConditionalChannel(mark, channel, data, build) {
         const branchEncoder = createBranchEncoder(mark, encoder, branch);
         const branchConfig = build(branchEncoder, branch);
         const when = createSelectionCondition(mark, channel, branch.predicate);
-        const conditionalConfig = isColorChannel(channel)
-            ? { ...branchConfig, components: 4 }
-            : branchConfig;
-        if (Object.hasOwn(conditionalConfig, "value")) {
-            return { when, ...conditionalConfig };
+        if (Object.hasOwn(branchConfig, "value")) {
+            return { when, ...branchConfig };
         }
-        return { when, channel: conditionalConfig };
+        return { when, channel: branchConfig };
     });
 
     return { ...result, conditions };
-}
-
-/** @param {string} channel */
-function isColorChannel(channel) {
-    return channel == "fill" || channel == "stroke" || channel == "color";
 }
 
 /**

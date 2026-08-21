@@ -422,10 +422,10 @@ without pretending that they are the same concept.
 
 The initial contract should separate three concepts:
 
-1. **Scalar operands:** a predicate may read a typed per-instance scalar input
-   or a retained dynamic scalar slot. An input may also feed a visual channel,
-   but non-visual inputs such as a score must not require a scale or visual
-   output.
+1. **Scalar operands:** a predicate may read the raw scalar input of an existing
+   visual channel, a typed non-visual per-instance scalar input, or a retained
+   scalar slot. Non-visual inputs such as a score must not require a scale or
+   visual output.
 2. **An immutable predicate tree:** leaves are an ordered scalar comparison
    (`<`, `<=`, `>`, or `>=`) or a call to an existing selection test with an
    explicit empty policy. Interior nodes are only `all` and `any`. The tree and
@@ -435,9 +435,114 @@ The initial contract should separate three concepts:
    before expensive point geometry and fragment work and run identically in
    normal and picking pipelines.
 
+#### Milestone 3 public contract
+
+Milestone 3 uses the following public names and shapes. These are conceptual
+TypeScript declarations; implementation may factor shared utility types, but it
+must preserve the discriminants, namespaces, and update ownership shown here:
+
+```ts
+/** A non-visual, per-instance scalar series available to predicates. */
+export type ScalarInputConfig = Readonly<{
+    /** Per-instance values in mark-series order. */
+    data: TypedArray;
+    /** WGSL scalar type used to pack and read the values. */
+    type: ScalarType;
+}>;
+
+/** A retained scalar uniform whose value may change without recompilation. */
+export type ScalarSlotConfig = Readonly<{
+    /** Initial uniform value, including IEEE infinities but excluding NaN. */
+    value: number;
+    /** WGSL scalar type of the retained uniform. */
+    type: ScalarType;
+}>;
+
+/** A scalar value read by an ordered comparison. */
+export type ScalarOperand =
+    /** Raw input of an existing visual channel, before its scale. */
+    | { channel: string }
+    /** Per-instance series declared in MarkConfig.inputs. */
+    | { input: string }
+    /** Retained uniform declared in MarkConfig.scalarSlots. */
+    | { slot: string };
+
+/** An ordered comparison between two scalar operands of the same type. */
+export type ScalarComparisonPredicate = Readonly<{
+    /** Ordered comparison operator emitted into WGSL. */
+    compare: "<" | "<=" | ">" | ">=";
+    /** Value on the left side of the ordered comparison. */
+    left: ScalarOperand;
+    /** Value on the right side of the ordered comparison. */
+    right: ScalarOperand;
+}>;
+
+/** An immutable selection, comparison, or Boolean visibility expression. */
+export type VisibilityPredicate =
+    | SelectionPredicate
+    | ScalarComparisonPredicate
+    /** Logical AND over a non-empty child array. */
+    | Readonly<{ all: readonly VisibilityPredicate[] }>
+    /** Logical OR over a non-empty child array. */
+    | Readonly<{ any: readonly VisibilityPredicate[] }>;
+
+/** Updates one declared scalar slot without recreating renderer resources. */
+export type ScalarSlotHandle = {
+    set(value: number): void;
+};
+```
+
+`MarkConfig<"point">` gains optional
+`inputs?: Record<string, ScalarInputConfig>`,
+`scalarSlots?: Record<string, ScalarSlotConfig>`, and
+`visibleWhen?: VisibilityPredicate`. `MarkHandle` gains
+`scalarSlots: Record<string, ScalarSlotHandle>`. Slot keys are stable for the
+mark lifetime; `mark.scalarSlots[name].set(value)` accepts the slot's declared
+scalar type and updates retained uniform state. Unknown operand names, unknown
+slot updates, non-scalar channel operands, comparison type mismatches, `NaN`
+slot values, and empty `all`/`any` arrays fail with contextual errors during
+mark creation or at the relevant update boundary. IEEE `-Infinity` and
+`Infinity` are valid `f32` slot values and retain their WGSL ordered-comparison
+semantics.
+
+The three operand namespaces are deliberate:
+
+- `{ channel: name }` reads the raw scalar input of an existing visual channel,
+  before its scale. It supports literal or series-backed scalar channels. A
+  future need to compare range-space output must add an explicit operand rather
+  than silently changing this definition.
+- `{ input: name }` reads a scalar series declared in `inputs`. Non-visual
+  inputs do not participate in mark channel defaults, scales, conditional
+  encodings, or visual output. They are packed and replaced through the same
+  `SeriesBufferManager` and `mark.series.replace(...)` path as visual series;
+  there is no second GPU upload or update API. Callers use a channel operand
+  instead of redundantly declaring an input when the compared data already
+  backs a visual channel.
+- `{ slot: name }` reads a uniform declared in `scalarSlots`. The renderer uses
+  the existing `UniformBuffer` implementation internally, but does not
+  reinterpret the current `dynamicValues`/`extraValues` contract, which names
+  uniforms already owned by built-in mark programs.
+
+Every exported non-trivial TypeScript type and every non-obvious property or
+union variant added for this contract must have a brief doc comment. Internal
+JSDoc typedefs for normalized operands, predicate nodes, resource references,
+and validator/emitter results must likewise state their purpose and ownership;
+do not leave complex structural types as unexplained inline object shapes.
+
+A selection leaf is exactly the existing `SelectionPredicate` union, including
+`selection`, `type`, `empty`, and interval `targets`; visibility does not add a
+shorter or Core-specific selection-reference shape. Selection resource
+discovery traverses both normalized channel conditions and `visibleWhen`, then
+merges definitions by selection name. Equal type and interval target
+descriptors share one `SelectionResourceManager` entry, slot, uniform/buffer
+resource, and checker. A conflicting type or target declaration fails mark
+creation. Per-leaf `empty` is evaluation policy and is not part of resource
+identity. A selection referenced only by `visibleWhen` is still allocated and
+updated normally.
+
 Represent predicates as inline immutable trees, not named definitions or a
 reference graph. Recursively validate and emit each small tree. Share the input
-series, dynamic slots, and selection resources it reads, but do not add
+series, scalar slots, and selection resources it reads, but do not add
 predicate references, cycle detection, or subexpression deduplication. Existing
 selection-driven conditional encodings continue to use the selection checker
 introduced by the penguins milestones. The new selection leaf must call that
@@ -477,13 +582,29 @@ lower `selected || semanticScore >= threshold` as follows:
   a pick ID.
 
 For one relevant selection, the retained renderer configuration is
-conceptually:
+concretely shaped as:
 
 ```ts
 {
+    inputs: {
+        semanticScoreInput: {
+            data: semanticScores,
+            type: "f32",
+        },
+    },
+    scalarSlots: {
+        semanticThreshold: {
+            value: mark.getSemanticThreshold(),
+            type: "f32",
+        },
+    },
     visibleWhen: {
         any: [
-            { selection: "brush", empty: false },
+            {
+                selection: "selectedPoints",
+                type: "multi",
+                empty: false,
+            },
             {
                 compare: ">=",
                 left: { input: "semanticScoreInput" },
@@ -494,11 +615,15 @@ conceptually:
 }
 ```
 
-The public field names may follow renderer conventions; the tree shape and
-resource ownership are the contract. `selected` is not uploaded as a new
-per-datum Boolean mask. It is evaluated from the existing selection resource
-against the current datum, while the other branch reads the score series and
-one threshold uniform.
+`selected` is not uploaded as a new per-datum Boolean mask. It is evaluated
+from the existing selection resource against the current datum, while the
+other branch reads the score series and one threshold uniform.
+
+The Core `semanticScore` encoding is a `FieldDefWithoutScale`. Although the
+WebGL shader calls its generated accessor `getScaled_semanticScore()`, that
+accessor is a raw pass-through for this channel. Supplying the raw numeric
+series therefore preserves WebGL behavior; the adapter must not invent a scale
+or compare the threshold in a different value space.
 
 A brush update changes only its selection resource, and a zoom update changes
 only the threshold uniform. The score series changes only when mark data
@@ -707,7 +832,7 @@ Tentative commit: `fix(core): support multi-channel WebGPU interval selections`
 
 **Intended outcome:** `@genome-spy/webgpu-renderer` exposes a generic,
 statically compiled visibility predicate tree over visual or non-visual scalar
-inputs, dynamic scalar slots, and existing selection tests. Point marks use it
+inputs, retained `scalarSlots`, and existing selection tests. Point marks use it
 to cull instances from both visible and picking passes. Core uses this
 abstraction to match WebGL score-based semantic zoom—including the
 selected-point bypass—while the renderer remains unaware of `semanticScore`,
@@ -717,52 +842,73 @@ an immutable tree, not a named predicate graph or general expression language.
 **Affected areas and downstream consumers:**
 
 - `packages/webgpu-renderer/src/index.d.ts`: add public non-visual scalar-input,
-  dynamic scalar-slot, selection-test leaf, ordered-comparison leaf,
-  `all`/`any`, and point `visibleWhen` contracts. Do not add named predicate
-  definitions or references, equality, `not`, arbitrary range expressions, or
-  caller-supplied WGSL. Predicate topology is immutable for a retained mark;
-  only declared inputs, slots, and selection state receive updates.
+  `scalarSlots`, selection-test leaf, ordered-comparison leaf,
+  `all`/`any`, point `visibleWhen`, and `MarkHandle.scalarSlots` contracts using
+  the exact namespaces and discriminants in the public-contract subsection.
+  Add brief documentation to every non-trivial exported type and non-obvious
+  member or union variant. Do not add named predicate definitions or
+  references, equality, `not`, arbitrary range expressions, or caller-supplied
+  WGSL. Predicate topology is immutable for a retained mark; only declared
+  inputs, slots, and selection state receive updates. Keep the existing visual
+  `channels` and program-owned `dynamicValues` meanings unchanged.
 - `packages/webgpu-renderer/src/marks/programs/internal/channelConfigResolver.js`,
   `seriesBuffers.js`, and `packedSeriesLayout.js`, plus
   `packages/webgpu-renderer/src/marks/shaders/channelAnalysis.js` and
   `channelIR.js`: admit non-visual scalar inputs, validate their component and
-  scalar types, reuse their series buffers when the same input is already
-  visual, and expose raw values to predicate codegen without requiring a scale
-  or visual output channel. Do not introduce a second series-upload path.
+  scalar types, let channel operands reuse existing visual channel accessors,
+  and expose raw values to predicate codegen without requiring a scale or
+  visual output channel. Do not introduce a second series-upload path or
+  identity-based typed-array deduplication contract.
 - Add one focused renderer-owned predicate validator/emitter under
   `packages/webgpu-renderer/src/marks/shaders/`. It should recursively walk the
   small inline tree, validate scalar operand types and non-empty `all`/`any`
   nodes, register the existing resources encountered by its leaves, and emit
-  one visibility helper. It should not assign predicate identities, build a
-  dependency graph, detect cycles, or deduplicate predicate subexpressions.
+  one visibility helper. Give its non-trivial normalized-node and result
+  typedefs brief JSDoc explaining purpose and ownership. It should not assign
+  predicate identities, build a dependency graph, detect cycles, or deduplicate
+  predicate subexpressions.
 - `packages/webgpu-renderer/src/marks/programs/internal/selectionResources.js`:
   retain ownership of selection state and expose the existing generated
-  selection checker to visibility leaves. Resource discovery must include
-  selections referenced only by `visibleWhen`, while the leaf uses
-  `empty: false` for semantic-zoom bypass. Do not create a second selection evaluator
-  or migrate working conditional encodings merely to use the new tree.
+  selection checker to visibility leaves. Collect definitions from both
+  conditional channels and `visibleWhen`, deduplicate them by selection name,
+  and validate that repeated declarations have the same type and interval
+  targets. `empty` remains per-leaf policy rather than resource identity. Do
+  not create a second selection evaluator or migrate working conditional
+  encodings merely to use the new tree.
 - `packages/webgpu-renderer/src/marks/programs/internal/baseProgram.js` and
-  `pipelineBuilder.js`: create retained dynamic scalar slots, collect the
-  predicate's existing input/selection resources, pass the immutable tree to
-  normal and picking point pipeline generation, and update slot values without
-  rebuilding pipelines or bind groups.
+  `pipelineBuilder.js`: pack declared non-visual inputs through the existing
+  series manager, create `scalarSlots` in the existing uniform buffer, expose
+  their dedicated handles, collect the predicate's existing channel/input and
+  selection resources, pass the immutable tree to normal and picking point
+  pipeline generation, and update slot values without rebuilding pipelines or
+  bind groups. Preserve `dynamicValues`/`extraValues` as the separate
+  built-in-program uniform mechanism.
 - `packages/webgpu-renderer/src/marks/shaders/markShaderBuilder.js` and
   `packages/webgpu-renderer/src/marks/programs/pointProgram.js`: expose
   `isInstanceVisible(i)` and invoke it before expensive point geometry. When
   `visibleWhen` is absent, emit the trivial true path. On false, produce a
-  valid zero-size/offscreen point result and return. Do not design a custom-mark
-  visibility hook or modify every built-in program in this milestone; extend
-  the same predicate tree to another program only with its first real consumer.
+  fully initialized result using the existing culled-point representation:
+  zero every varying, including `pos = vec4<f32>(0.0)`, sizes, radii, and
+  opacities, set `pickId = 0u`, and return. The shared picking fragment path
+  already discards pick ID zero. Prefer extracting one mark-local constructor
+  used by both visibility and visible-range culling over duplicating the output
+  assignments. Do not design a custom-mark visibility hook or modify every
+  built-in program in this milestone; extend the same predicate tree to another
+  program only with its first real consumer.
 - `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`: when a point mark
   has a data-driven `semanticScore`, provide its raw numeric series as a
   non-visual renderer input, expose `mark.getSemanticThreshold()` as a retained
-  dynamic scalar slot, collect exactly the selection resources used by WebGL's
+  `scalarSlots` entry, collect exactly the selection resources used by WebGL's
   `isPointSelected()` when `uniqueId` is available, and build a flat
   `any(relevantSelectionLeaves, score >= threshold)` for `visibleWhen`. Omit the
-  selection alternatives when none apply. Do not move score sampling, quantile
-  calculation, zoom policy, or grammar interpretation out of Core.
+  selection alternatives when none apply. Record that `semanticScore` is a
+  no-scale Core channel and its WebGL `getScaled_semanticScore()` accessor is a
+  raw pass-through; do not add an adapter-side scale. Do not move score
+  sampling, quantile calculation, zoom policy, or grammar interpretation out
+  of Core.
 - `packages/core/src/rendering/webgpu/webGpuSurface.js`: update the semantic
-  threshold operand through the existing retained dynamic-value pattern and
+  threshold through `mark.scalarSlots.semanticThreshold`, preserve
+  `-Infinity` and `Infinity`, reject `NaN` at the renderer slot boundary, and
   suppress unchanged writes. Normal zoom/render scheduling already supplies
   the latest threshold and should not need a new renderer lifecycle.
 - `packages/core/src/marks/point.js`, `point.vertex.glsl`, and
@@ -774,18 +920,26 @@ an immutable tree, not a named predicate graph or general expression language.
 **Verification:**
 
 - Add renderer unit tests for unknown or non-scalar inputs, ordered-comparison
-  operand type mismatches, empty Boolean nodes, nested `all`/`any`, selection
-  leaves with explicit empty policy, and rejection of unsupported predicate
-  shapes. There are no predicate references or cycles to test.
+  operand type mismatches, unknown channel/input/slot names, empty Boolean
+  nodes, nested `all`/`any`, selection leaves using the complete existing
+  `SelectionPredicate` shape, `NaN` slot rejection, and rejection of
+  unsupported predicate shapes. There are no predicate references or cycles to
+  test.
 - Add slot/resource tests proving dynamic comparison thresholds update one
   uniform buffer, dirty picking, and do not recreate a mark, pipeline,
-  bind-group layout, bind group, or series buffer.
+  bind-group layout, bind group, or series buffer. Verify `-Infinity` makes the
+  comparison true for every finite score, `Infinity` makes it false for every
+  finite score, and both values survive the `f32` uniform write.
 - Add focused GPU truth tables for `<`, `<=`, `>`, `>=`, `all`, and `any`; a
   non-visual input used only by point `visibleWhen`; and the exact
   `any(selectionWithEmptyFalse, score >= threshold)` tree. Assert hidden points
-  produce neither visible fragments nor pick IDs, an empty selection does not
-  bypass the threshold, and reversed active interval bounds still follow the
-  selection checker.
+  return the fully initialized zeroed point output, produce neither visible
+  fragments nor pick IDs, an empty selection does not bypass the threshold,
+  and reversed active interval bounds still follow the selection checker.
+- Add selection resource tests for a selection referenced only by
+  `visibleWhen`, one shared by a channel condition and visibility, repeated
+  equal declarations deduplicating to one resource and slot, and conflicting
+  type or interval-target declarations failing mark creation.
 - Re-run the existing single-, multi-, and interval-selection conditional
   tests because visibility shares their selection resources. The penguins x+y
   behavior, empty policy, secondary endpoints, and update performance must
@@ -806,7 +960,7 @@ an immutable tree, not a named predicate graph or general expression language.
   backend-neutral semantic zoom or dataflow filtering behavior.
 
 **Documentation and migration:** document non-visual scalar inputs, immutable
-visibility trees, dynamic scalar slots, point visibility, picking behavior, and
+visibility trees, `scalarSlots`, point visibility, picking behavior, and
 the distinction between GPU visibility and data filtering in
 `packages/webgpu-renderer/README.md`. Reconcile the selection and dynamic
 property gaps in `packages/webgpu-renderer/MIGRATION_PLAN.md`. Core's existing
@@ -957,13 +1111,15 @@ explaining why the generic renderer cannot perform it.
   declared up front so zoom and brush updates cannot accidentally trigger WGSL
   regeneration.
 
-There are no blocking design questions for scalar x/y interval parity. Before
-milestone 3 implementation, settle the exact public naming for scalar inputs
-and dynamic slots during its review gate; there are intentionally no predicate
-references or custom-mark visibility hook to settle. Those choices do not block
-milestones 1 and 2. Any proposal to expand this plan to high-precision interval
-inputs, a public Core predicate grammar, or faceted selection scope requires a
-separate decision.
+There are no blocking design questions for scalar x/y interval parity. The
+Milestone 3 public names, operand value spaces, selection discovery, scalar-slot
+update contract, infinity behavior, and hidden point output are fixed by its
+public-contract subsection; its review gate validates that implementation
+against the contract rather than choosing those semantics. There are
+intentionally no predicate references or custom-mark visibility hook to
+settle. Any proposal to expand this plan to high-precision interval inputs, a
+public Core predicate grammar, or faceted selection scope requires a separate
+decision.
 
 ## Verification strategy
 
@@ -1061,13 +1217,21 @@ remain rejected throughout.
 - The penguins WebGPU example colors points selected by both axes and filters
   both linked bar charts from the same current parameter value; clear restores
   the expected empty behavior.
-- The renderer accepts typed visual and non-visual scalar predicate inputs and
-  validates immutable trees containing ordered comparisons, selection leaves,
-  and `all`/`any`, without named references, speculative operators, arbitrary
-  WGSL, or Core grammar types.
+- The renderer exposes the documented `channel`, `input`, and `slot` operand
+  namespaces, `inputs`, `scalarSlots`, `visibleWhen`, and
+  `MarkHandle.scalarSlots`; it validates immutable trees containing ordered
+  comparisons, complete existing selection leaves, and `all`/`any`, without
+  named references, speculative operators, arbitrary WGSL, or Core grammar
+  types. Added non-trivial public TypeScript types and internal JSDoc typedefs
+  have brief purpose and ownership documentation.
+- Selection discovery includes channel conditions and `visibleWhen`; equal
+  declarations share one resource and conflicting types or interval targets
+  fail mark creation. A visibility-only selection remains updateable through
+  the normal selection slot.
 - Point `visibleWhen` removes a false instance from normal and picking passes
-  before expensive geometry work. Other mark programs and predicate-driven
-  conditional encodings remain outside this milestone.
+  before expensive geometry work using the fully initialized zeroed point
+  output and pick ID zero. Other mark programs and predicate-driven conditional
+  encodings remain outside this milestone.
 - Visibility selection leaves call the same selection checker used by existing
   conditional encodings; they do not duplicate selection semantics or require
   a conditional-encoding migration.
@@ -1078,7 +1242,9 @@ remain rejected throughout.
   relevant selected points visible only under the same `uniqueId` precondition
   as WebGL.
 - Semantic threshold updates write retained uniform state without rebuilding
-  predicate WGSL, pipelines, bind groups, marks, or series buffers.
+  predicate WGSL, pipelines, bind groups, marks, or series buffers. IEEE
+  infinities retain their ordered-comparison behavior, while `NaN` slot values
+  are rejected.
 - GPU visibility does not change collectors, aggregates, scale domains, or
   linked dataflow; Core filter transforms retain those responsibilities.
 - Two-component large index/locus channels remain explicitly unsupported as
