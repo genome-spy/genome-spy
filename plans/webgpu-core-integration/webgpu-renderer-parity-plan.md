@@ -27,58 +27,54 @@ committed independently.
 
 The Core adapter now dispatches `point`, `rect`, `rule`/`tick`, `text`, `link`,
 and `arrow`. The low-level link program is integrated, and arrows have a public
-definition plus retained WGSL program. Core-level picking, faceting,
-conditional encodings, and some property/scale forms remain explicit follow-up
-gaps documented in `packages/webgpu-renderer/MIGRATION_PLAN.md`.
+definition plus retained WGSL program. Unique-id forwarding for the renderer's
+pick path is now part of the adapter. Faceting, conditional encodings, and
+some property/scale forms remain explicit follow-up gaps documented in
+`packages/webgpu-renderer/MIGRATION_PLAN.md`.
 
 ### Positional offsets
 
 WebGL applies `xOffset`, `yOffset`, `x2Offset`, and `y2Offset` after positional
-scaling in pixel space. The WebGPU adapter currently bakes endpoint offsets into
-the positional scale range and requires them to be constant for rectangles and
-rules. This loses data-driven and scale-driven offsets. Point and text primary
-offsets have separate `dx`/`dy` handling, while ranged text still treats the
-secondary offsets as constants.
+scaling in pixel space. The WebGPU adapter now forwards endpoint offsets as
+numeric channels for rectangles, rules, ranged text, links, and arrows. Point
+and text primary offsets retain their combined `dx`/`dy` handling.
 
 ### Rules and dashes
 
 The WebGPU rule program already contains a dash atlas, `dashMask`, and a
-`strokeDash` channel. The Core adapter nevertheless rejects every non-null
-`strokeDash` property and does not provide the dash pattern list or pattern
-index. This is an adapter plumbing gap, not a new rendering algorithm.
+`strokeDash` channel. The Core adapter now supplies the pattern list and
+pattern index; remaining differences are renderer-level visual verification
+items.
 
 ### Point shapes
 
 WebGL supports the twelve mapped shapes plus the stroke-only `x` and `+`
-shapes. The WebGPU adapter maps only the first twelve and the WGSL point
-program has no line-shape distance path. The WebGPU implementation must keep
-the WebGL distinction between filled shapes and stroke-only shapes, including
-stroke-width behavior when fill/stroke is absent.
+shapes. The WebGPU adapter and WGSL point program now preserve that full set,
+including the WebGL distinction between filled shapes and stroke-only shapes.
 
 ### Rectangles
 
-The WebGPU rectangle program supports a scalar corner radius, hatch patterns,
-and a simple shadow approximation. WebGL supports four independent corner
-radii and a Gaussian-style rounded-box shadow. The adapter currently rejects
-per-corner radii. The parity implementation should use a four-component radius
-value and port the existing shadow behavior, preserving the fast path for
-plain opaque rectangles.
+The WebGPU rectangle program supports four independent corner radii, hatch
+patterns, and a simple shadow approximation. WebGL supports the same corner
+surface and a Gaussian-style rounded-box shadow. The implementation retains the
+existing shadow behavior and the fast path for plain opaque rectangles.
 
 ### Links and arrows
 
 The low-level link program covers WebGL's arc, dome, diagonal, and line link
-shapes, but its Core adapter path is missing. Arrow requires a new low-level
-definition/program and Core translation of direction, head geometry, placement,
-repeat spacing, and endpoint offsets. The existing WebGL arrow shader is the
-behavioral reference; no external source code is being copied.
+shapes and the Core adapter path is integrated. Arrows have a public definition,
+retained WGSL program, Core translation, and per-instance direction support.
+The existing WebGL arrow shader remains the behavioral reference; no external
+source code is being copied.
 
 ### Other explicit adapter limitations
 
 The audit must keep tracking, and either implement or explicitly document with
-tests, the current rejection points for conditional encodings, faceting,
-unsupported scale types, non-Lato fonts, data-driven enum properties, and
-backend-specific picking. These are not silently considered solved by the mark
-parity milestones below.
+tests, the remaining rejection points for conditional encodings, faceting,
+unsupported scale types, non-Lato fonts, and mark-local data-driven uniforms.
+Renderer-supported data-driven enums, colors, scales, text sizes, expression
+properties, and unique-id picking are now adapter responsibilities covered by
+the follow-up audit commits below.
 
 ### Adapter audit: capabilities hidden by the PoC checks (2026-08-21)
 
@@ -555,3 +551,17 @@ documented as a separately tracked limitation.
 - Commit: `756046f73`
 - Result: migration documentation names the remaining adapter and selection
   limitations instead of treating the listed mark features as unsupported.
+
+### Adapter audit follow-up
+
+- Status: partial; renderer-supported paths enabled
+- Commits: `068e3cb30`, `43006bf27`
+- Enabled: data-driven arrow direction and mapped enums, unscaled and
+  ordinal/quantized/threshold colors, supported nonlinear and point scales,
+  data-driven text size, expression-valued mark properties, and unique-id
+  series for picking.
+- Tests: 26 Core WebGPU adapter tests and the Core TypeScript check passed;
+  the WebGPU renderer unit suite remained green with 115 tests.
+- Remaining: conditional branch translation, faceting/sample facets, Core
+  scale types without renderer definitions, non-Lato fonts, and data-driven
+  mark-local uniform properties.
