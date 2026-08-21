@@ -4,6 +4,7 @@ import {
     normalizeClipOptions,
     prepareMarkClipOptionsFromClip,
 } from "../../view/renderingContext/clipOptions.js";
+import { createAnchorCullBounds } from "../immediate/bounds.js";
 import { RASTER_COORDINATE_OFFSET } from "../renderingConstants.js";
 import { createWebGpuMarkConfig } from "./webGpuMarkAdapter.js";
 
@@ -87,16 +88,25 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             viewOpacity
         );
         if (translated) {
+            const inheritedClip = normalizeClipOptions(options);
             const clip = prepareMarkClipOptionsFromClip(
-                normalizeClipOptions(options),
+                inheritedClip,
                 mark.properties.clip,
                 coords
+            );
+            const visibleRange = createVisibleRange(
+                coords,
+                inheritedClip,
+                mark.properties.cullByVisibleRange
             );
             this.surface.useMark(
                 mark,
                 translated.definition,
                 translated.config,
-                { scissor: clip && this.#createScissor(clip) }
+                {
+                    ...(clip ? { scissor: this.#createScissor(clip) } : {}),
+                    ...(visibleRange ? { visibleRange } : {}),
+                }
             );
         }
     }
@@ -125,6 +135,34 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         return entry.coords;
     }
+}
+
+/**
+ * Converts Core's absolute anchor-culling bounds to the renderer's draw
+ * contract. Unselected axes use harmless finite values because their flags
+ * disable those comparisons in WGSL.
+ *
+ * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {import("../../types/rendering.js").ClipOptions | undefined} clip
+ * @param {import("../../spec/mark.js").MarkProps["cullByVisibleRange"]} cull
+ * @returns {import("@genome-spy/webgpu-renderer").DrawVisibleRange | undefined}
+ */
+function createVisibleRange(coords, clip, cull) {
+    const cullX = cull === true || cull === "x";
+    const cullY = cull === true || cull === "y";
+    if (!cullX && !cullY) {
+        return undefined;
+    }
+
+    const bounds = createAnchorCullBounds(coords, clip, cull);
+    return {
+        x1: cullX ? bounds.x1 : 0,
+        y1: cullY ? bounds.y1 : 0,
+        x2: cullX ? bounds.x2 : coords.x2,
+        y2: cullY ? bounds.y2 : coords.y2,
+        cullX,
+        cullY,
+    };
 }
 
 /**

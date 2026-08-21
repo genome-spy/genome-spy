@@ -767,9 +767,20 @@ struct Globals {
     height: f32,
     dpr: f32,
     uZero: f32,
+    logicalVisibleRect: vec4<f32>,
+    cullByVisibleRange: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> globals: Globals;
+
+fn isOutsideVisibleRange(pos: vec2<f32>) -> bool {
+    return (globals.cullByVisibleRange.x > 0.5 &&
+                (pos.x < globals.logicalVisibleRect.x ||
+                 pos.x > globals.logicalVisibleRect.z)) ||
+           (globals.cullByVisibleRange.y > 0.5 &&
+                (pos.y < globals.logicalVisibleRect.y ||
+                 pos.y > globals.logicalVisibleRect.w));
+}
 
 ${scalesWgsl}
 ${needsHashTable ? HASH_TABLE_WGSL : ""}

@@ -106,7 +106,7 @@ export class Renderer {
                     buffer: {
                         type: "uniform",
                         hasDynamicOffset: true,
-                        minBindingSize: 4 * 4,
+                        minBindingSize: 4 * 12,
                     },
                 },
             ],
@@ -119,7 +119,7 @@ export class Renderer {
                     binding: 0,
                     resource: {
                         buffer: this._globalUniformBuffer,
-                        size: 4 * 4,
+                        size: 4 * 12,
                     },
                 },
             ],
@@ -173,7 +173,7 @@ export class Renderer {
                     binding: 0,
                     resource: {
                         buffer: this._globalUniformBuffer,
-                        size: 4 * 4,
+                        size: 4 * 12,
                     },
                 },
             ],
@@ -202,6 +202,14 @@ export class Renderer {
                     draws[i].viewport.width,
                     draws[i].viewport.height,
                     this._globals.dpr,
+                    0,
+                    draws[i].visibleRange.x1,
+                    draws[i].visibleRange.y1,
+                    draws[i].visibleRange.x2,
+                    draws[i].visibleRange.y2,
+                    draws[i].visibleRange.cullX ? 1 : 0,
+                    draws[i].visibleRange.cullY ? 1 : 0,
+                    0,
                     0,
                 ],
                 offset
@@ -469,6 +477,10 @@ export class Renderer {
                 markId,
                 viewport,
                 scissor,
+                visibleRange: normalizeVisibleRange(
+                    command.visibleRange,
+                    canvas
+                ),
                 firstInstance,
                 instanceCount,
             };
@@ -577,6 +589,7 @@ export class Renderer {
  *   markId: import("./index.d.ts").MarkId,
  *   viewport: import("./index.d.ts").DrawRect,
  *   scissor: import("./index.d.ts").DrawRect,
+ *   visibleRange: import("./index.d.ts").DrawVisibleRange,
  *   firstInstance: number,
  *   instanceCount: number,
  * }} NormalizedDraw
@@ -619,6 +632,42 @@ function assertRect(name, rect) {
             `${name} must have finite coordinates and positive dimensions.`
         );
     }
+}
+
+/**
+ * @param {import("./index.d.ts").DrawVisibleRange | undefined} visibleRange
+ * @param {import("./index.d.ts").DrawRect} canvas
+ * @returns {import("./index.d.ts").DrawVisibleRange}
+ */
+function normalizeVisibleRange(visibleRange, canvas) {
+    if (!visibleRange) {
+        return {
+            x1: canvas.x,
+            y1: canvas.y,
+            x2: canvas.x + canvas.width,
+            y2: canvas.y + canvas.height,
+            cullX: false,
+            cullY: false,
+        };
+    }
+
+    const { x1, y1, x2, y2, cullX, cullY } = visibleRange;
+    if (
+        !Number.isFinite(x1) ||
+        !Number.isFinite(y1) ||
+        !Number.isFinite(x2) ||
+        !Number.isFinite(y2) ||
+        x1 > x2 ||
+        y1 > y2 ||
+        typeof cullX != "boolean" ||
+        typeof cullY != "boolean"
+    ) {
+        throw new RendererError(
+            "visibleRange must have finite ordered bounds and boolean flags."
+        );
+    }
+
+    return visibleRange;
 }
 
 /**

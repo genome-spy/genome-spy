@@ -796,6 +796,15 @@ export type DrawRect = {
     height: number;
 };
 
+export type DrawVisibleRange = {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    cullX: boolean;
+    cullY: boolean;
+};
+
 export type DrawCommand = {
     /** Retained mark whose resources are reused for this occurrence. */
     mark: Pick<MarkHandle, "markId">;
@@ -806,6 +815,8 @@ export type DrawCommand = {
     viewport?: DrawRect;
     /** Logical-pixel clipping rectangle. Defaults to the full canvas. */
     scissor?: DrawRect;
+    /** Optional directional anchor-culling bounds in logical pixels. */
+    visibleRange?: DrawVisibleRange;
     /** First retained instance to draw. Defaults to zero. */
     firstInstance?: number;
     /** Number of retained instances to draw. Defaults to the remaining count. */
