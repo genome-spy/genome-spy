@@ -282,6 +282,21 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         clampMinSize(&py, local.y, h, minH)
     ));
 
+    // Keep the SDF decoration outside the nominal rectangle. WebGL expands
+    // decorated rects for stroke antialiasing and the shadow kernel's support.
+    let strokeWidth = getScaled_strokeWidth(i);
+    let shadowOffset = vec2<f32>(
+        getScaled_shadowOffsetX(i),
+        getScaled_shadowOffsetY(i)
+    );
+    let shadowBlur = getScaled_shadowBlur(i);
+    let shadowPadding = shadowBlur + max(abs(shadowOffset.x), abs(shadowOffset.y));
+    let decorationPadding = strokeWidth + 1.0 / globals.dpr + shadowPadding * 2.0;
+    let centeredFrac = local - vec2<f32>(0.5);
+    let expansion = centeredFrac * decorationPadding;
+    px += expansion.x;
+    py += expansion.y;
+
     let clip = vec2<f32>(
         (px / globals.width) * 2.0 - 1.0,
         1.0 - (py / globals.height) * 2.0
@@ -289,13 +304,13 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     var out: VSOut;
     out.pos = vec4<f32>(clip, 0.0, 1.0);
-    out.local = local;
+    out.local = centeredFrac * vec2<f32>(w, h) + expansion;
     out.size = vec2<f32>(w, h);
     out.fill = getScaled_fill(i);
     out.stroke = getScaled_stroke(i);
     out.fillOpacity = getScaled_fillOpacity(i) * opaFactor;
     out.strokeOpacity = getScaled_strokeOpacity(i) * opaFactor;
-    out.strokeWidth = getScaled_strokeWidth(i);
+    out.strokeWidth = strokeWidth;
     let halfMinSize = min(w, h) * 0.5;
     out.cornerRadii = min(
         vec4<f32>(
@@ -306,8 +321,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         ),
         vec4<f32>(halfMinSize)
     );
-    out.shadowOffset = vec2<f32>(getScaled_shadowOffsetX(i), getScaled_shadowOffsetY(i));
-    out.shadowBlur = getScaled_shadowBlur(i);
+    out.shadowOffset = shadowOffset;
+    out.shadowBlur = shadowBlur;
     out.shadowOpacity = getScaled_shadowOpacity(i);
     out.shadowColor = getScaled_shadowColor(i);
     out.hatchPattern = getScaled_hatchPattern(i);
@@ -331,7 +346,7 @@ fn shade(in: VSOut) -> vec4<f32> {
     }
 
     let halfSize = in.size * 0.5;
-    let centered = (in.local - vec2<f32>(0.5)) * in.size;
+    let centered = in.local;
     var d = sdRoundedBox(centered, halfSize, in.cornerRadii);
 
     var strokeColor = in.stroke;
@@ -345,14 +360,16 @@ fn shade(in: VSOut) -> vec4<f32> {
             max(in.cornerRadii.y, max(in.cornerRadii.z, in.cornerRadii.w))
         );
         let sigma = max(in.shadowBlur / 2.5, 0.25);
-        let shadow = roundedBoxShadow(
-            -halfSize - vec2<f32>(in.strokeWidth * 0.5),
-            halfSize + vec2<f32>(in.strokeWidth * 0.5),
-            centered - in.shadowOffset,
-            sigma,
-            maxCornerRadius + in.strokeWidth * 0.5
-        ) * in.shadowOpacity;
-        background = vec4<f32>(in.shadowColor.rgb * shadow, shadow);
+        if (d >= in.strokeWidth * 0.5 - 1.0) {
+            let shadow = roundedBoxShadow(
+                -halfSize - vec2<f32>(in.strokeWidth * 0.5),
+                halfSize + vec2<f32>(in.strokeWidth * 0.5),
+                centered - in.shadowOffset,
+                sigma,
+                maxCornerRadius + in.strokeWidth * 0.5
+            ) * in.shadowOpacity;
+            background = vec4<f32>(in.shadowColor.rgb * shadow, shadow);
+        }
     }
 
     let halfStrokeWidth = in.strokeWidth * 0.5;

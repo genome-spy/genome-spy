@@ -126,7 +126,7 @@ check, with remaining behavioral differences recorded here.
 | P1       | `examples/core/marks/arrow/arrow_diagonal.json`                      | Arrow geometry used stroke/AA padding as the actual arrow length, and polygon winding produced incorrect SDF fill | Separate geometry length from quad padding and use stable polygon winding in the SDF | Fixed  |
 | P1       | `examples/docs/examples/genomic-data/hcc1954-sv-cnv.json`            | Link arcs opened on the opposite side because WebGPU used top-left coordinates with the WebGL normal              | Invert the arc normal in the WebGPU link shader                                      | Fixed  |
 | P1       | `examples/docs/examples/genomic-data/pik3ca-tcga-brca-lollipop.json` | Non-arc links and angled text labels still differ visually from WebGL               | Keep text offsets at the verified baseline and reconcile the link shader with GLSL  | Open   |
-| P1       | `examples/docs/grammar/mark/rect/shadowed-marks.json`                | Rectangle shadows are not visible                                                                                 | Compare shadow parameters and fragment output                                        | Open   |
+| P1       | `examples/docs/grammar/mark/rect/shadowed-marks.json`                | Rectangle shadows were not visible                                                                                 | Expand the pixel-space quad and match WebGL's shadow offset convention               | Fixed  |
 | P1       | `examples/core/marks/rect/rect_with_params.json`                     | Rounded rectangles clip; stroke expansion is missing; dash pattern may mirror                                     | Compare rectangle bounds, stroke padding, dash orientation, and y-axis convention    | Open   |
 | P1       | `examples/docs/grammar/mark/text/sequence-logo.json`                 | Logo letters do not render with WebGPU                                                                            | Compare text layout/logo-letter handling against WebGL                               | Open   |
 
@@ -151,6 +151,9 @@ focused regression coverage where practical, and one commit per requested fix.
 - The attempted text-local `dx`/`dy` change was reverted after screenshot review:
   it made the lollipop labels visibly worse. The original screen-space behavior
   remains the better baseline while the exact text parity issue stays open.
+- Rectangle shadows now expand the quad in pixel units, use the WebGPU Y-axis
+  convention for offsets, and render the existing rounded-box blur kernel. The
+  focused shadowed-marks comparison visibly matches WebGL's shadow direction.
 
 ## Context
 
