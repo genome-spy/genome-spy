@@ -147,8 +147,12 @@ function normalizeChannelConditions(channels, context) {
         /** @type {ChannelCondition[]} */
         const resolvedConditions = [];
         for (const condition of conditions) {
+            const normalizedCondition = /** @type {ChannelCondition} */ ({
+                ...condition,
+                when: normalizeSelectionPredicate(condition.when),
+            });
             if (!("channel" in condition) || !condition.channel) {
-                resolvedConditions.push(condition);
+                resolvedConditions.push(normalizedCondition);
                 continue;
             }
             const conditionName = `${name}__cond${conditionIndex++}`;
@@ -160,7 +164,7 @@ function normalizeChannelConditions(channels, context) {
             channels[conditionName] = resolved;
             resolvedConditions.push(
                 /** @type {ChannelCondition} */ ({
-                    ...condition,
+                    ...normalizedCondition,
                     channelName: conditionName,
                 })
             );
@@ -168,6 +172,30 @@ function normalizeChannelConditions(channels, context) {
         channel.conditions = resolvedConditions;
     }
     return channels;
+}
+
+/**
+ * Copy a selection predicate while adding the ranged-target default only when
+ * a second input makes the target a ranged datum.
+ *
+ * @param {ChannelCondition["when"]} when
+ * @returns {ChannelCondition["when"]}
+ */
+function normalizeSelectionPredicate(when) {
+    if (when.type !== "interval") {
+        return { ...when };
+    }
+
+    return {
+        ...when,
+        targets: when.targets.map((target) => ({
+            ...target,
+            ...(target.secondaryInput !== undefined &&
+            target.hitTest === undefined
+                ? { hitTest: "intersects" }
+                : {}),
+        })),
+    };
 }
 
 /**
@@ -198,7 +226,7 @@ function normalizeConditionChannel({ name, configChannel, context }) {
         );
     }
     if (!merged.components) {
-        merged.components = 1;
+        merged.components = channelSpecs[name]?.components ?? 1;
     }
     if (isSeriesChannelConfig(merged) && !merged.inputComponents) {
         const scaleType = merged.scale?.type ?? "identity";
@@ -348,7 +376,7 @@ export function validateChannel(name, channel, context) {
                     );
                 }
                 const names = new Set();
-                when.targets = when.targets.map((target) => {
+                for (const target of when.targets) {
                     if (!target || typeof target !== "object") {
                         throw new Error(
                             `Interval selection "${when.selection}" has an invalid target.`
@@ -411,11 +439,7 @@ export function validateChannel(name, channel, context) {
                             `Channel "${name}" references unknown selection input "${target.secondaryInput}".`
                         );
                     }
-                    return {
-                        ...target,
-                        hitTest: target.hitTest ?? "intersects",
-                    };
-                });
+                }
             } else if (Object.hasOwn(when, "targets")) {
                 throw new Error(
                     `Selection "${when.selection}" may only specify targets for interval selections.`

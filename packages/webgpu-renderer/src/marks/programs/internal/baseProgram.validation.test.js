@@ -226,7 +226,37 @@ describe("BaseProgram channel validation", () => {
         ).toThrow('Ordinal scale on "vec" requires a non-empty range.');
     });
 
-    it("normalizes interval targets and defaults hit testing", () => {
+    it("copies interval targets without adding hit testing to scalar inputs", () => {
+        const targets = Object.freeze([Object.freeze({ input: "x" })]);
+        const predicate = Object.freeze({
+            selection: "brush",
+            type: "interval",
+            targets,
+        });
+        const program = createProgram({
+            x: { value: 0.5, type: "f32" },
+            vec: {
+                value: [1, 0, 0, 1],
+                type: "f32",
+                components: 4,
+                conditions: [
+                    {
+                        when: predicate,
+                        value: [0, 1, 0, 1],
+                    },
+                ],
+            },
+        });
+
+        const when = program._channels.vec.conditions[0].when;
+        expect(when.type).toBe("interval");
+        if (when.type === "interval") {
+            expect(when.targets).toEqual([{ input: "x" }]);
+        }
+        expect(predicate.targets).toEqual([{ input: "x" }]);
+    });
+
+    it("inherits logical channel components for conditional channels", () => {
         const program = createProgram({
             x: { value: 0.5, type: "f32" },
             vec: {
@@ -240,19 +270,17 @@ describe("BaseProgram channel validation", () => {
                             type: "interval",
                             targets: [{ input: "x" }],
                         },
-                        value: [0, 1, 0, 1],
+                        channel: {
+                            data: new Float32Array([0, 1, 0, 1]),
+                            type: "f32",
+                            inputComponents: 4,
+                        },
                     },
                 ],
             },
         });
 
-        const when = program._channels.vec.conditions[0].when;
-        expect(when.type).toBe("interval");
-        if (when.type === "interval") {
-            expect(when.targets).toEqual([
-                { input: "x", hitTest: "intersects" },
-            ]);
-        }
+        expect(program._channels.vec__cond0.components).toBe(4);
     });
 
     it.each(

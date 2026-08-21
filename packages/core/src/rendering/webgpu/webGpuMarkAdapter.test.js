@@ -1086,7 +1086,6 @@ describe("WebGPU mark adapter", () => {
                     data: new Float32Array([1, 0, 0, 1, 0, 0, 1, 1]),
                     type: "f32",
                     inputComponents: 4,
-                    components: 4,
                 },
             },
         ]);
