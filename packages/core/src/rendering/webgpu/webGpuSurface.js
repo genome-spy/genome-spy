@@ -115,7 +115,7 @@ export default class WebGpuSurface {
      * @param {import("../../marks/mark.js").default} mark
      * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
      * @param {any} config
-     * @param {{scissor?: import("@genome-spy/webgpu-renderer").DrawRect}} [options]
+     * @param {{scissor?: import("@genome-spy/webgpu-renderer").DrawRect, visibleRange?: import("@genome-spy/webgpu-renderer").DrawVisibleRange}} [options]
      */
     useMark(mark, definition, config, options = {}) {
         if (!this.#renderer) {
@@ -147,6 +147,9 @@ export default class WebGpuSurface {
         this.#frameDraws.push({
             mark: retained.handle,
             ...(options.scissor ? { scissor: options.scissor } : {}),
+            ...(options.visibleRange
+                ? { visibleRange: options.visibleRange }
+                : {}),
         });
     }
 

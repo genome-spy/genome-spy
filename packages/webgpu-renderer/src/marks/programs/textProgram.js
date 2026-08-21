@@ -308,6 +308,17 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     rangeScale = rangeScale * yRange.scale;
 #endif
 
+    if (isOutsideVisibleRange(anchor)) {
+        var out: VSOut;
+        out.pos = vec4<f32>(0.0);
+        out.uv = vec2<f32>(0.0);
+        out.color = vec4<f32>(0.0);
+        out.opacity = 0.0;
+        out.slope = 0.0;
+        out.pickId = 0u;
+        return out;
+    }
+
     // Optional squeeze: scale down text or drop it if it no longer fits.
     if (rangeScale < 1.0) {
         if (params.uSqueeze != 0u) {
