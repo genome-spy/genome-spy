@@ -58,4 +58,21 @@ describe("channelIR", () => {
         expect(ir.sourceKind).toBe("uniform");
         expect(ir.rawValueExpr).toBe("params.u_x");
     });
+
+    it("emits numeric ordinal ranges as floating-point outputs", () => {
+        const [ir] = buildChannelIRs({
+            opacity: {
+                data: new Uint32Array([1]),
+                type: "u32",
+                scale: {
+                    type: "ordinal",
+                    domain: [1],
+                    range: [0.5],
+                },
+            },
+        });
+
+        expect(ir.scalarType).toBe("u32");
+        expect(ir.outputScalarType).toBe("f32");
+    });
 });

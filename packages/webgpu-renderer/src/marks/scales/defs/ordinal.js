@@ -17,7 +17,7 @@ import { normalizeOrdinalDomain } from "../ordinalDomain.js";
 export const ordinalScaleDef = {
     type: "ordinal",
     input: "u32",
-    output: "same",
+    output: "f32",
     params: [],
     continuous: false,
     vectorOutput: "always",

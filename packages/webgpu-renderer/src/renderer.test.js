@@ -103,6 +103,25 @@ describe("Renderer mark definitions", () => {
         ]);
     });
 
+    test("clamps physical scissors to the render target", () => {
+        const program = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi.fn(() => program),
+        });
+        const { renderer, pass } = createRendererHarness();
+        renderer.canvas = /** @type {HTMLCanvasElement} */ (
+            /** @type {unknown} */ ({ width: 99, height: 100 })
+        );
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            draws: [{ mark, scissor: { x: 0, y: 0, width: 100, height: 50 } }],
+        });
+
+        expect(pass.setScissorRect).toHaveBeenCalledWith(0, 0, 99, 100);
+    });
+
     test("destroys owned resources exactly once and rejects later work", () => {
         const firstProgram = createProgram();
         const secondProgram = createProgram();
@@ -153,6 +172,9 @@ function createRendererHarness() {
     renderer._onInvalidate = vi.fn();
     renderer._pickingDirty = false;
     renderer._renderFrame = null;
+    renderer.canvas = /** @type {HTMLCanvasElement} */ (
+        /** @type {unknown} */ ({ width: 200, height: 100 })
+    );
     renderer._globals = { width: 100, height: 50, dpr: 2 };
     renderer._globalUniformStride = 256;
     renderer._globalUniformCapacity = 4;
