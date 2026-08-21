@@ -1291,7 +1291,7 @@ function readNumericProperty(mark, property) {
     if (typeof value != "number") {
         throw unsupported(
             mark,
-            `Property "${property}" must be a number in the WebGPU proof of concept.`
+            `Property "${property}" must be a number for the WebGPU renderer.`
         );
     }
     return value;
@@ -1307,7 +1307,7 @@ function readOptionalNumericProperty(mark, property, fallback) {
     if (typeof value != "number") {
         throw unsupported(
             mark,
-            `Property "${property}" must be a number in the WebGPU proof of concept.`
+            `Property "${property}" must be a number for the WebGPU renderer.`
         );
     }
     return value;
@@ -1326,7 +1326,7 @@ function readNullableNumericProperty(mark, property) {
     if (typeof value != "number") {
         throw unsupported(
             mark,
-            `Property "${property}" must be a number in the WebGPU proof of concept.`
+            `Property "${property}" must be a number for the WebGPU renderer.`
         );
     }
     return value;

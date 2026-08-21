@@ -459,6 +459,83 @@ describe("WebGPU mark adapter", () => {
         });
     });
 
+    test("translates renderer-supported nonlinear position scales", () => {
+        const data = [{ x: 1 }, { x: 10 }];
+        const mark = createMark("point", data, {
+            x: createEncoder((datum) => datum.x, {
+                scale: {
+                    type: "log",
+                    domain: () => [1, 100],
+                    base: () => 10,
+                    clamp: () => true,
+                },
+                channelDef: { field: "x", type: "quantitative" },
+            }),
+        });
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(10, 20, 100, 200)
+        );
+
+        expect(/** @type {any} */ (translated).config.channels.x.scale).toEqual(
+            expect.objectContaining({
+                type: "log",
+                domain: [1, 100],
+                range: [10, 110],
+                base: 10,
+                clamp: true,
+            })
+        );
+    });
+
+    test("translates ordinal color channels to renderer ids", () => {
+        const data = [{ category: "A" }, { category: "B" }];
+        const mark = createMark("point", data, {
+            fill: createEncoder((datum) => datum.category, {
+                scale: {
+                    type: "ordinal",
+                    domain: () => ["A", "B"],
+                    range: () => ["red", "blue"],
+                },
+                channelDef: { field: "category", type: "nominal" },
+            }),
+        });
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+
+        expect(/** @type {any} */ (translated).config.channels.fill).toEqual(
+            expect.objectContaining({
+                data: new Uint32Array([0, 1]),
+                type: "u32",
+                scale: expect.objectContaining({
+                    type: "ordinal",
+                    domain: [0, 1],
+                    range: ["red", "blue"],
+                }),
+            })
+        );
+    });
+
+    test("forwards unique ids for renderer picking", () => {
+        const data = [{ id: 4 }, { id: 9 }];
+        const mark = createMark("point", data, {
+            uniqueId: createEncoder((datum) => datum.id, {
+                channelDef: { field: "id", type: "quantitative" },
+            }),
+        });
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+
+        expect(
+            /** @type {any} */ (translated).config.channels.uniqueId
+        ).toEqual({
+            data: new Uint32Array([4, 9]),
+            type: "u32",
+        });
+    });
+
     test("maps sequential and threshold color encodings", () => {
         const data = [{ value: -1 }, { value: 1 }];
         const interpolator = (/** @type {number} */ t) =>
