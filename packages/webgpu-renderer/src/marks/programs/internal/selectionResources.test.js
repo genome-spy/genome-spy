@@ -65,6 +65,59 @@ function createDevice() {
 }
 
 describe("SelectionResourceManager", () => {
+    it("discovers visibility-only and shared interval selections", () => {
+        const visibleWhen =
+            /** @type {import("../../../index.d.ts").VisibilityPredicate} */ ({
+                selection: "brush",
+                type: "interval",
+                targets: [{ input: "x" }],
+            });
+        const manager = new SelectionResourceManager({
+            device: createDevice(),
+            channels: makeIntervalChannels([{ input: "x" }]),
+            visibleWhen,
+            setUniformValue: vi.fn(),
+        });
+
+        expect(manager.selectionDefs).toHaveLength(1);
+        expect(manager.selectionDefs[0].targets).toEqual([
+            { input: "x", hitTest: "intersects", scalarType: "f32" },
+        ]);
+    });
+
+    it("rejects conflicting visibility-only selection declarations", () => {
+        expect(
+            () =>
+                new SelectionResourceManager({
+                    device: createDevice(),
+                    channels: makeIntervalChannels([{ input: "x" }]),
+                    visibleWhen: {
+                        selection: "brush",
+                        type: "interval",
+                        targets: [{ input: "y" }],
+                    },
+                    setUniformValue: vi.fn(),
+                })
+        ).toThrow("must keep the same interval targets");
+    });
+
+    it("rejects predicate nodes with multiple union members before discovery", () => {
+        expect(
+            () =>
+                new SelectionResourceManager({
+                    device: createDevice(),
+                    channels: makeIntervalChannels([{ input: "x" }]),
+                    visibleWhen: {
+                        selection: "brush",
+                        type: "interval",
+                        targets: [{ input: "x" }],
+                        any: [],
+                    },
+                    setUniformValue: vi.fn(),
+                })
+        ).toThrow("exactly one of compare, selection, all, or any");
+    });
+
     it("allocates independently typed fields for an N-target interval", () => {
         const setUniformValue = vi.fn();
         const manager = new SelectionResourceManager({

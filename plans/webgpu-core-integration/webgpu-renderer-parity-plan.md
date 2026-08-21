@@ -830,9 +830,10 @@ Tentative commit: `fix(core): support multi-channel WebGPU interval selections`
 
 ### 3. Add scalar visibility predicates for built-in marks
 
-**Status: complete.** Implemented in the milestone commit below. Added the immutable scalar predicate tree,
-retained scalar slots, non-visual inputs, and visibility/picking culls for all
-built-in mark programs. Core semantic zoom is translated through the generic
+**Status: complete.** Implemented in the milestone commit below and completed
+with follow-up validation and coverage. Added the immutable scalar predicate
+tree, retained scalar slots, non-visual inputs, and visibility/picking culls for
+all built-in mark programs. Core semantic zoom is translated through the generic
 contract and verified against the semantic-zoom browser example.
 
 **Intended outcome:** `@genome-spy/webgpu-renderer` exposes a generic,
@@ -921,10 +922,11 @@ an immutable tree, not a named predicate graph or general expression language.
 
 - Add renderer unit tests for unknown or non-scalar inputs, ordered-comparison
   operand type mismatches, unknown channel/input/slot names, empty Boolean
-  nodes, nested `all`/`any`, selection leaves using the complete existing
-  `SelectionPredicate` shape, `NaN` slot rejection, and rejection of
-  unsupported predicate shapes. There are no predicate references or cycles to
-  test.
+  nodes, nested `all`/`any`, mutually exclusive predicate-node validation,
+  selection leaves using the complete existing `SelectionPredicate` shape,
+  rejection of internal conditional-channel aliases, `NaN` slot rejection, and
+  rejection of unsupported predicate shapes. There are no predicate references
+  or cycles to test.
 - Add slot/resource tests proving dynamic comparison thresholds update one
   uniform buffer, dirty picking, and do not recreate a mark, pipeline,
   bind-group layout, bind group, or series buffer. Verify `-Infinity` makes the
@@ -935,7 +937,9 @@ an immutable tree, not a named predicate graph or general expression language.
   `any(selectionWithEmptyFalse, score >= threshold)` tree. Assert hidden points
   return the fully initialized zeroed point output, produce neither visible
   fragments nor pick IDs, an empty selection does not bypass the threshold,
-  and reversed active interval bounds still follow the selection checker.
+  and reversed active interval bounds still follow the selection checker. Assert
+  the normal framebuffer changes when point visibility changes, and cover the
+  false-visibility cull constructors for rect, rule, link, arrow, and text.
 - Add selection resource tests for a selection referenced only by
   `visibleWhen`, one shared by a channel condition and visibility, repeated
   equal declarations deduplicating to one resource and slot, and conflicting
@@ -947,8 +951,9 @@ an immutable tree, not a named predicate graph or general expression language.
 - Expand `webGpuMarkAdapter.test.js` and `webGpuSurface.test.js` to cover
   semantic-score series translation, absence of score input when the channel is
   not configured, threshold changes across zoom levels, unchanged-threshold
-  suppression, one and several selection-bypass leaves, and suppression of the
-  bypass when `uniqueId` is unavailable.
+  suppression, one and several selection-bypass leaves, no-selection and
+  multiple-selection adapter cases, and suppression of the bypass when
+  `uniqueId` is unavailable.
 - Run `examples/core/techniques/semantic_zoom.json` and
   `examples/docs/grammar/mark/point/semantic-zoom.json` under WebGL and WebGPU
   at representative zoom levels. Compare visible population trends, verify

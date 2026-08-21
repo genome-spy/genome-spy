@@ -16,6 +16,52 @@ export function scalarSlotUniformName(name) {
 }
 
 /**
+ * Validate the structural union shape before any predicate consumer traverses it.
+ *
+ * @param {VisibilityPredicate | undefined} predicate
+ * @returns {VisibilityPredicate | undefined}
+ */
+export function normalizeVisibilityPredicate(predicate) {
+    if (predicate === undefined) {
+        return undefined;
+    }
+
+    /**
+     * @param {unknown} node
+     * @returns {VisibilityPredicate}
+     */
+    function normalizeNode(node) {
+        if (!node || typeof node !== "object" || Array.isArray(node)) {
+            throw new Error("Visibility predicate nodes must be objects.");
+        }
+
+        const nodeRecord = /** @type {Record<string, unknown>} */ (node);
+        const kinds = ["compare", "selection", "all", "any"].filter((key) =>
+            Object.hasOwn(nodeRecord, key)
+        );
+        if (kinds.length !== 1) {
+            throw new Error(
+                "Visibility predicate nodes must specify exactly one of compare, selection, all, or any."
+            );
+        }
+
+        const kind = kinds[0];
+        if (kind === "all" || kind === "any") {
+            const children = nodeRecord[kind];
+            if (!Array.isArray(children) || children.length === 0) {
+                throw new Error(
+                    `Visibility predicate ${kind} nodes must not be empty.`
+                );
+            }
+            children.forEach(normalizeNode);
+        }
+        return /** @type {VisibilityPredicate} */ (node);
+    }
+
+    return normalizeNode(predicate);
+}
+
+/**
  * @typedef {object} VisibilityBuildParams
  * @property {VisibilityPredicate} [predicate]
  * @property {ChannelIR[]} channelIRs
@@ -39,6 +85,7 @@ export function buildVisibilityPredicate({
     scalarSlots,
     selectionDefs,
 }) {
+    predicate = normalizeVisibilityPredicate(predicate);
     const channelIRByName = new Map(
         channelIRs.map((channelIR) => [channelIR.name, channelIR])
     );
@@ -131,10 +178,6 @@ export function buildVisibilityPredicate({
      * @returns {string}
      */
     function emitNode(node) {
-        if (!node || typeof node !== "object") {
-            throw new Error("Visibility predicate nodes must be objects.");
-        }
-
         if ("compare" in node) {
             if (
                 node.compare !== "<" &&
@@ -176,11 +219,6 @@ export function buildVisibilityPredicate({
         if ("all" in node || "any" in node) {
             const operator = "all" in node ? "&&" : "||";
             const children = "all" in node ? node.all : node.any;
-            if (!Array.isArray(children) || children.length === 0) {
-                throw new Error(
-                    `Visibility predicate ${operator === "&&" ? "all" : "any"} nodes must not be empty.`
-                );
-            }
             return `(${children.map(emitNode).join(` ${operator} `)})`;
         }
 

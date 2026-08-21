@@ -1,4 +1,4 @@
-/* global document */
+/* global document, window */
 
 import { expect, test } from "@playwright/test";
 
@@ -78,7 +78,7 @@ test("visibility predicates cull point instances from rendering and picking", as
 }) => {
     await ensureWebGPU(page);
 
-    const pickedIds = await page.evaluate(async () => {
+    await page.evaluate(async () => {
         const [{ createRenderer }, { pointMark }, { linearScale }] =
             await Promise.all([
                 import("/src/index.js"),
@@ -89,6 +89,7 @@ test("visibility predicates cull point instances from rendering and picking", as
         const canvas = document.createElement("canvas");
         canvas.width = 128;
         canvas.height = 128;
+        canvas.dataset.test = "visibility-point";
         document.body.appendChild(canvas);
 
         const renderer = await createRenderer(canvas);
@@ -126,6 +127,16 @@ test("visibility predicates cull point instances from rendering and picking", as
 
         renderer.render({ draws: [{ mark: handle }] });
         await renderer.device.queue.onSubmittedWorkDone();
+        window.__visibilityPointRenderer = renderer;
+        window.__visibilityPointHandle = handle;
+    });
+
+    const visibleFramebuffer = await page
+        .locator('canvas[data-test="visibility-point"]')
+        .screenshot();
+    const pickedIds = await page.evaluate(async () => {
+        const renderer = window.__visibilityPointRenderer;
+        const handle = window.__visibilityPointHandle;
         const ids = [await renderer.pick(16, 32), await renderer.pick(48, 32)];
         handle.scalarSlots.threshold.set(Infinity);
         renderer.render({ draws: [{ mark: handle }] });
@@ -134,13 +145,19 @@ test("visibility predicates cull point instances from rendering and picking", as
             await renderer.pick(16, 32),
             await renderer.pick(48, 32),
         ];
-        renderer.destroy();
-        canvas.remove();
         return { ids, afterInfinity };
+    });
+    const hiddenFramebuffer = await page
+        .locator('canvas[data-test="visibility-point"]')
+        .screenshot();
+    await page.evaluate(() => {
+        window.__visibilityPointRenderer.destroy();
+        document.querySelector('canvas[data-test="visibility-point"]').remove();
     });
 
     expect(pickedIds).toEqual({
         ids: [null, 42],
         afterInfinity: [null, null],
     });
+    expect(visibleFramebuffer).not.toEqual(hiddenFramebuffer);
 });
