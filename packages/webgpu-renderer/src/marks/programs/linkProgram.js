@@ -144,7 +144,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
             var chordVector = p4 - p1;
             let unitChordVector = normalize(chordVector);
-            let chordNormal = vec2<f32>(-unitChordVector.y, unitChordVector.x);
+            // Core's WebGL link geometry is expressed in bottom-left
+            // coordinates. WebGPU positions use top-left coordinates, so the
+            // arc normal must be inverted to keep the bow on the same side.
+            let chordNormal = vec2<f32>(unitChordVector.y, -unitChordVector.x);
             var chordLength = length(chordVector);
 
             if (chordLength > params.uMaxChordLength) {
