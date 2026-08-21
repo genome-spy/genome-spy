@@ -1,567 +1,304 @@
-# WebGPU renderer feature parity plan
+# WebGPU renderer parity plan: remaining work
 
 ## Purpose
 
-Bring the experimental WebGPU backend materially closer to the existing WebGL
-backend so that a specification does not lose visible mark behavior merely by
-selecting `renderer: "webgpu"`.
+Finish the parity work between the WebGPU and WebGL Core backends. The plan
+now contains only unresolved work. Point, rect, rule/tick, text, link, and
+arrow dispatch; positional offsets; dashed rules; all point shapes; rectangle
+corner radii, hatches, and shadows; supported colors and scales; data-driven
+text size; expression-valued properties; and unique-id forwarding are already
+implemented and are not repeated as milestones here.
 
-This plan is focused on the current GenomeSpy architecture:
+The architecture remains split at the existing boundary:
 
-- Core remains the owner of the declarative grammar, encoders, resolved scales,
-  mark properties, and view traversal.
+- Core owns the declarative grammar, encoders, resolved scales, mark
+  properties, view traversal, selections, and facet occurrences.
 - `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js` translates those
-  semantic values into the low-level renderer contract.
-- `packages/webgpu-renderer` owns WGSL, pipelines, storage buffers, uniforms,
-  textures, and retained mark resources.
-- WebGL remains the behavioral reference implementation in
-  `packages/core/src/marks/*.js` and the adjacent GLSL files.
+  semantic values into generic retained-renderer definitions and channel
+  configurations.
+- `packages/webgpu-renderer` owns mark programs, WGSL, scale definitions,
+  selection resources, pipelines, and retained GPU data.
+- WebGL in `packages/core/src/marks/` and its GLSL files remains the behavioral
+  reference.
 
-The current worktree contains unrelated, pre-existing WebGPU fixes. They must
-remain intact while this plan is implemented; each parity milestone should be
-committed independently.
+Each milestone should end with focused tests and one Conventional Commit.
+Do not re-open completed mark milestones unless a remaining feature exposes a
+regression in them.
 
-## Current findings
+## Current remaining gaps
 
-### Mark dispatch
+### 1. Conditional encodings and selection-driven channels
 
-The Core adapter now dispatches `point`, `rect`, `rule`/`tick`, `text`, `link`,
-and `arrow`. The low-level link program is integrated, and arrows have a public
-definition plus retained WGSL program. Unique-id forwarding for the renderer's
-pick path is now part of the adapter. Faceting, conditional encodings, and
-some property/scale forms remain explicit follow-up gaps documented in
-`packages/webgpu-renderer/MIGRATION_PLAN.md`.
+The WebGPU renderer already supports channel conditions driven by single,
+multi, and interval selections. Core encoders expose the same semantics as
+ordered branches, where each branch contains an accessor and a selection
+predicate, followed by a fallback branch. The adapter still rejects any
+encoder with more than one branch instead of translating it.
 
-### Positional offsets
+Implement the Core-to-renderer translation for conditional channels:
 
-WebGL applies `xOffset`, `yOffset`, `x2Offset`, and `y2Offset` after positional
-scaling in pixel space. The WebGPU adapter now forwards endpoint offsets as
-numeric channels for rectangles, rules, ranged text, links, and arrows. Point
-and text primary offsets retain their combined `dx`/`dy` handling.
+- Convert each selection predicate to the renderer's `ChannelCondition`
+  shape, preserving selection name, type, interval channel, and empty-state
+  behavior.
+- Translate branch accessors using the same raw-data and scale handling as
+  unconditional channels. A conditional branch may be a constant value or a
+  series-backed channel with its own scale.
+- Preserve ordered branch precedence and the unconditional fallback.
+- Ensure conditional color, opacity, numeric, positional, enum, and text-size
+  channels use the correct renderer component/type contract.
+- Forward `uniqueId` whenever single or multi selection conditions require it.
+- Keep generic validation in `webgpu-renderer`; the adapter should only reject
+  a Core branch when it cannot express that branch as a renderer channel or
+  value.
 
-### Rules and dashes
+Affected areas:
 
-The WebGPU rule program already contains a dash atlas, `dashMask`, and a
-`strokeDash` channel. The Core adapter now supplies the pattern list and
-pattern index; remaining differences are renderer-level visual verification
-items.
+- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
+- Core WebGPU adapter and selection tests
+- `packages/webgpu-renderer/src/marks/programs/internal/channelConfigResolver.js`
+  only if a generic contract is missing
+- Selection slot/resource tests and representative selection examples
 
-### Point shapes
+Verification:
 
-WebGL supports the twelve mapped shapes plus the stroke-only `x` and `+`
-shapes. The WebGPU adapter and WGSL point program now preserve that full set,
-including the WebGL distinction between filled shapes and stroke-only shapes.
+- Test constant and series-backed conditional branches for numeric, color,
+  enum, positional, and text channels.
+- Test single, multi, and interval selections, including empty selections and
+  fallback behavior.
+- Verify selection updates change values through retained slots without
+  rebuilding the mark pipeline.
+- Smoke-test a Core selection example with WebGL and WebGPU at DPR 1 and 2.
 
-### Rectangles
+### 2. Faceted and sample-faceted rendering
 
-The WebGPU rectangle program supports four independent corner radii, hatch
-patterns, and a simple shadow approximation. WebGL supports the same corner
-surface and a Gaussian-style rounded-box shadow. The implementation retains the
-existing shadow behavior and the fast path for plain opaque rectangles.
+The adapter still rejects `options.sampleFacetRenderingOptions` and
+`mark.encoders.facetIndex`. WebGL renders one occurrence per facet, with
+facet-specific data and coordinates. The current WebGPU path creates one
+retained configuration for the un-faceted occurrence and does not yet model
+the occurrence traversal contract.
 
-### Links and arrows
+Implement facet occurrence support in the Core WebGPU integration:
 
-The low-level link program covers WebGL's arc, dome, diagonal, and line link
-shapes and the Core adapter path is integrated. Arrows have a public definition,
-retained WGSL program, Core translation, and per-instance direction support.
-The existing WebGL arrow shader remains the behavioral reference; no external
-source code is being copied.
+- Reuse the existing occurrence traversal and facet-coordinate calculations
+  instead of duplicating facet grouping logic in the renderer package.
+- Create one WebGPU draw/configuration per visible facet occurrence, with the
+  correct data batch, view rectangle, opacity, and visible-range culling
+  bounds.
+- Preserve stable draw ordering and retained resource reuse when only facet
+  data or layout changes.
+- Handle missing or empty facets the same way as the WebGL path.
+- Define how facet-local unique IDs and selection conditions are scoped, then
+  test the chosen behavior against WebGL.
+- Keep facet placement and grouping in Core; do not add Core-specific facet
+  concepts to `packages/webgpu-renderer`.
 
-### Other explicit adapter limitations
+Affected areas:
 
-The audit must keep tracking, and either implement or explicitly document with
-tests, the remaining rejection points for conditional encodings, faceting,
-unsupported scale types, non-Lato fonts, and mark-local data-driven uniforms.
-Renderer-supported data-driven enums, colors, scales, text sizes, expression
-properties, and unique-id picking are now adapter responsibilities covered by
-the follow-up audit commits below.
+- `packages/core/src/rendering/webgpu/webGpuSurface.js`
+- `packages/core/src/rendering/webgpu/webGpuRenderCoordinator.js`
+- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
+- `packages/core/src/rendering/immediate/markData.js` and occurrence tests
+- WebGPU retained draw/resource lifecycle tests
 
-### Adapter audit: capabilities hidden by the PoC checks (2026-08-21)
+Verification:
 
-The original adapter was intentionally narrow because it only needed to render
-`examples/core/first.json`. Its checks must not be treated as the WebGPU
-renderer contract. The low-level mark programs already expose the following
-capabilities and the adapter should pass them through:
+- Render ordinary facet-index data, sample facets, missing facets, and empty
+  facet batches.
+- Compare facet positions, clipping/culling, opacity, and draw order with
+  WebGL.
+- Verify facet changes do not leak draw handles or recreate pipelines when the
+  mark definition remains unchanged.
 
-| Area | Renderer capability | Adapter action |
-| --- | --- | --- |
-| Arrow `direction` | `u32` channel, read per instance by the arrow vertex shader | Encode constant and data-driven values |
-| Enum channels | Point shapes, rule caps, text alignment/baseline, link shape/orientation, arrow head options, and rectangle hatches have numeric renderer codes | Materialize series-backed enum channels where the renderer declares a channel; keep mark uniforms constant |
-| Colors | `f32` vec4 values and linear, ordinal, quantize, and threshold color scales | Parse data-driven unscaled colors and translate supported scale ranges |
-| Position scales | Renderer definitions exist for linear, log, pow, sqrt, symlog, band, index, and identity | Translate matching Core scales instead of accepting only linear scales; map point scales to zero-width bands where semantics match |
-| Numeric non-position scales | Renderer definitions exist for continuous and discretizing scalar outputs | Translate supported Core scale types for size, opacity, stroke width, and similar channels |
-| Text size | Text shader reads a per-instance `size` channel and scales glyph metrics from a layout base size | Pass a numeric size channel and use a representative base size for layout |
-| Mark properties | Core resolves expression-valued properties before a draw configuration is consumed | Resolve `ExprRef` properties instead of rejecting them as non-numeric objects |
-| Picking identity | Every retained mark program has an optional `uniqueId` channel and pick path | Forward Core's generated unique-id column when present |
+### 3. Core scale types without renderer definitions
 
-The following are genuine remaining gaps after comparing Core's scale and mark
-surface with the renderer's public definitions:
+The adapter now translates the scale types already represented by the generic
+renderer, including linear, log, pow, sqrt, symlog, time/UTC-as-milliseconds,
+point, band, index, ordinal, quantize, and threshold forms. The remaining Core
+scale families have no equivalent low-level definition:
 
-- Conditional Core encoders are selection predicates plus ordered branches;
-  the renderer supports selection conditions, but the adapter does not yet
-  translate Core branches into renderer condition configs.
-- Faceted and sample-faceted rendering requires occurrence traversal, facet
-  indices, and per-occurrence view ranges that the retained adapter path does
-  not yet provide.
-- Core `locus`, `quantile`, `bin-ordinal`, and other scale types without a
-  corresponding renderer definition remain unsupported. Core `time`/`utc`
-  scales are numerically equivalent to linear milliseconds and can be
-  translated where the channel data is numeric-convertible.
-- The renderer currently embeds the Lato atlas only; other font families and
-  Core font registration remain unsupported in WebGPU.
-- Data-driven values for mark-local uniforms (for example arrow head shape or
-  link geometry options) cannot be represented by the current renderer
-  programs, which expose those as uniforms rather than channels.
+- `locus`, whose input may contain genomic coordinates and assembly/contig
+  semantics;
+- `quantile`, whose bucket boundaries depend on the resolved data domain;
+- `bin-ordinal`, whose discrete domain and range are generated from bins; and
+- any future Core scale type without a public renderer definition.
 
-Adapter checks should therefore be limited to semantic translation boundaries:
-missing required Core encoders, enum values that cannot be mapped, values that
-cannot be represented by the renderer's typed arrays, and Core features with
-no renderer representation. Channel shape, scale compatibility, and resource
-validation belong in `webgpu-renderer`, where the generic contract is already
-validated. New adapter checks require a test showing why the renderer cannot
-perform the validation itself.
+For each remaining scale family, choose and implement the correct generic
+contract rather than adding another adapter-only special case:
 
-## Goals
+- Define the scale input type, domain/range resources, update behavior, and
+  WGSL mapping in `packages/webgpu-renderer/src/marks/scales/defs/`.
+- Add a public scale factory and type declaration.
+- Normalize Core domains and ranges in the adapter without losing precision or
+  ordinal identity.
+- Add domain/range update handling to retained scale slots.
+- For locus scales, explicitly decide whether Core must materialize numeric
+  range-space values or the renderer should receive a generic packed genomic
+  representation. Preserve high-precision index behavior.
+- For quantile and bin-ordinal scales, test domain recomputation and changes
+  to bucket count/range length.
 
-1. Make every WebGL built-in mark type available through the WebGPU Core
-   backend: point, rect, rule, tick, text, link, and arrow.
-2. Match WebGL's visible behavior for the listed positional, stroke, shape,
-   rectangle, shadow, link, and arrow features within the precision and
-   antialiasing differences inherent to WebGPU.
-3. Keep renderer code generic. `packages/webgpu-renderer` must not import Core
-   mark classes, Core channel types, or Core property-resolution logic.
-4. Preserve retained-program reuse: changing series, scales, or ordinary
-   dynamic values must not recreate a pipeline when the channel structure is
-   unchanged.
-5. Add representative regression tests at the adapter, shader-generation,
-   resource, and browser/GPU levels.
-6. Produce one coherent Conventional Commit per implementation milestone.
+If a scale cannot be supported without a larger data/coordinate subsystem,
+record that decision in the migration plan and keep its error in the generic
+renderer boundary. Do not silently fall back to linear behavior.
 
-## Non-goals
+Affected areas:
 
-- Replacing the existing WebGL renderer or changing automatic backend
-  selection.
-- Reworking Core's declarative grammar or changing the semantics of WebGL,
-  Canvas2D, or SVG.
-- Adding a Core-side universal scene graph or making the renderer emulate
-  `glHelper`.
-- Treating unsupported scales, conditional branches, faceting, or font
-  families as acceptable forever. Those are tracked follow-ups and must be
-  surfaced explicitly if they remain after the mark work.
-- Copying external shader code. Existing GenomeSpy GLSL is the source of truth;
-  any future external reference must be license-checked and credited in code
-  and this plan before adaptation.
-
-## Design decisions
-
-### Preserve the renderer contract boundary
-
-Core will continue to send explicit mark definitions and normalized channel
-configs. New renderer channels such as endpoint offsets, per-corner radii,
-arrow direction, and dash indices are generic numeric channels or mark-local
-uniforms. The renderer will not learn about `Mark`, `Encoding`, `ExprRef`, or
-Core property defaults.
-
-### Represent pixel offsets as channels, not range mutations
-
-Positional channels remain responsible for mapping data to pixel coordinates.
-Offset channels are separate pixel-valued channels consumed in the vertex
-shader. Constant offsets may use value slots; data-driven offsets use series and
-the same scale machinery as other numeric channels. This keeps endpoint range
-updates correct and makes `x2Offset`/`y2Offset` symmetric with primary offsets.
-
-### Use immutable definitions for mark selection
-
-Add `arrowMark` as a side-effect-free public definition and import `linkMark`
-and `arrowMark` only from the Core WebGPU adapter. Keep one program class per
-mark family. The Core adapter remains responsible for mapping Core enums and
-properties to numeric codes; the renderer owns the corresponding WGSL.
-
-### Make visual fast paths explicit
-
-Rectangles without corner radii, strokes, hatches, or shadows should continue
-to use the exact opaque fill path. Decorated rectangles use the SDF path. Arrow
-and link programs should retain the existing segment-count and instance-based
-draw model rather than expanding geometry on the CPU.
-
-## Milestones and commit strategy
-
-Each milestone below is intended to end with focused tests passing and one
-separate commit. Do not combine unrelated worktree changes into these commits.
-
-### Milestone 1: Establish the parity inventory and regression harness
-
-**Intended outcome:** A durable feature matrix and focused tests make the
-remaining gaps observable before shader changes begin.
-
-**Affected areas:**
-
-- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.test.js`
-- `packages/webgpu-renderer/src/marks/programs/*.test.js` or adjacent focused
+- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
+- `packages/webgpu-renderer/src/scales/`
+- Scale definitions, shader-generation, scale-resource, and retained-update
   tests
-- `packages/webgpu-renderer/MIGRATION_PLAN.md`
-- This plan's implementation record
+- Core examples using genomic, quantile, and binned scales
 
-**Work:**
+Verification:
 
-- Add adapter tests for currently supported and currently rejected mark types,
-  including explicit contextual errors.
-- Add configuration-shape tests for offsets, dashes, rectangle radii/shadows,
-  and the mark definition imports that later milestones will fill in.
-- Record the baseline focused unit, TypeScript, lint, and GPU/browser commands.
-- Do not alter behavior solely to make the inventory pass.
+- Compare mapped positions, colors, and sizes with WebGL for representative
+  domains, reversed ranges, clamping, domain updates, and high-precision
+  coordinates.
+- Run renderer scale unit/GPU tests and Core adapter tests for each supported
+  scale family.
 
-**Verification:** Run the focused Core adapter suite, WebGPU unit suite, and
-renderer TypeScript check. Confirm the baseline failures are attributable to
-missing parity behavior rather than the pre-existing dirty changes.
+### 4. Font parity and text resource registration
 
-**Documentation/migration:** Add a short parity-progress entry to the WebGPU
-migration plan, without marking any feature complete prematurely.
+The WebGPU text program currently resolves Core's default sans-serif to the
+embedded Lato atlas and rejects other font families. WebGL can use Core's font
+manager and registered font resources.
 
-**Tentative commit:**
-`test(webgpu): establish renderer feature parity coverage`
+Bring the WebGPU font path to the same resource contract:
 
-### Milestone 2: Add generic endpoint-offset channels
+- Define how a text mark requests a family, style, and weight from Core.
+- Pass a font resource or atlas identity through the generic text mark config.
+- Extend the renderer's font manager/atlas lifecycle to load or receive the
+  required glyph metrics and texture resources.
+- Preserve data-driven text size, layout-base sizing, padding, squeeze, and
+  glyph expansion when the selected font changes.
+- Handle unavailable fonts explicitly and consistently with WebGL.
 
-**Intended outcome:** Rectangles, rules/ticks, ranged text, links, and arrows
-can consume constant, series-backed, and linear-scale-backed endpoint offsets
-in pixel space.
-
-**Affected areas:**
-
-- `packages/webgpu-renderer/src/marks/programs/{rect,rule,text,link}.js`
-- New arrow program channel definitions, if introduced before the arrow
-  milestone
-- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
-- Adapter tests and renderer channel/resource tests
-
-**Work:**
-
-- Add the needed optional/default offset channels to renderer mark specs.
-- Update vertex shaders to add primary and secondary offsets after positional
-  scale evaluation, with the same y-direction convention as Core/WebGL.
-- Replace `readConstantOffset` use for endpoint geometry with numeric channel
-  creation that preserves data and scale information.
-- Keep point's existing combined `dx`/`dy` behavior without double-applying
-  primary offsets.
-- Ensure ranged text adds secondary offsets before range fitting.
-- Verify retained updates replace offset series without rebuilding pipelines.
-
-**Verification:** Assert exact translated configs for constant and series
-offsets, including scaled pixel ranges. Add shader-generation assertions for
-all four endpoint offset accessors. Run renderer unit tests, Core adapter tests,
-and a GPU smoke case with visibly displaced endpoints.
-
-**Documentation/migration:** Document that offset channels are pixel-valued
-after their optional numeric scale, and update the migration checklist.
-
-**Tentative commit:**
-`feat(webgpu): support data-driven positional endpoint offsets`
-
-### Milestone 3: Enable dashed rules and complete point shapes
-
-**Intended outcome:** Rule/tick marks accept WebGL-compatible dash patterns,
-and point marks support `x` and `+` as stroke-only shapes.
-
-**Affected areas:**
+Affected areas:
 
 - `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
-- `packages/webgpu-renderer/src/marks/programs/ruleProgram.js`
-- `packages/webgpu-renderer/src/marks/programs/pointProgram.js`
-- Dash atlas tests and adapter/GPU tests
+- `packages/webgpu-renderer/src/marks/programs/textProgram.js`
+- `packages/webgpu-renderer/src/fonts/`
+- Text resource, layout, and browser tests
 
-**Work:**
+Verification:
 
-- Translate Core's `strokeDash` property into a renderer-owned dash atlas and
-  a pattern index, retaining validation for even, positive integer segments.
-- Preserve `strokeDashOffset`, cap behavior, thin-line opacity, and dash
-  behavior for both rules and ticks.
-- Add point shape codes for `x` and `+`, rotate the `x` geometry consistently
-  with WebGL, and make the line-shape path use stroke geometry rather than a
-  filled-shape stroke inset.
-- Confirm picking coverage for line-only shapes and dash gaps follows the
-  intended contract.
+- Compare default sans-serif, Lato, an additional registered family, italic,
+  and multiple weights with WebGL.
+- Verify font changes rebuild only the resources that require rebuilding and do
+  not invalidate unrelated mark pipelines.
 
-**Verification:** Add adapter tests proving dashed rules no longer reject and
-carry their atlas configuration. Add WGSL/source tests for both shapes. Run a
-GPU screenshot/readback smoke case for dashed, round-capped rules and all point
-shape codes.
+### 5. Data-driven mark-local properties
 
-**Documentation/migration:** Update the renderer migration plan to remove the
-dash gap and point-shape gap once GPU tests pass.
+The generic renderer exposes several properties as mark uniforms because they
+are currently constant for a draw. Core/WebGL can vary some of these through
+conditional encodings or property expressions. The remaining examples include
+arrow head shape/placement/stem options and link geometry options. They must
+not be encoded as a single value when the Core specification supplies a
+per-datum or selection-dependent value.
 
-**Tentative commit:**
-`feat(webgpu): match rule dashes and point line shapes`
+Audit each mark-local property against Core's actual encoding surface:
 
-### Milestone 4: Match rectangle radii, hatches, and shadows
+- If the property is genuinely per-instance, promote it to a typed renderer
+  channel and consume it in WGSL.
+- If it is selection-dependent but not per-instance, represent it as a generic
+  conditional value slot.
+- If it is a view/parameter expression, ensure updates use retained dynamic
+  values rather than rebuilding a pipeline unnecessarily.
+- Keep properties that are structurally uniform (for example shader branch
+  configuration) as uniforms and document that contract.
+- Do not add Core-specific property types to the renderer package.
 
-**Intended outcome:** Rectangles support independent corner radii and a
-WebGL-compatible rounded-box shadow while retaining the undecorated fast path.
+Affected areas:
 
-**Affected areas:**
-
-- `packages/webgpu-renderer/src/marks/programs/rectProgram.js`
+- Core mark property/encoder setup
 - `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
-- Rectangle shader/source and GPU tests
+- Relevant mark channel specs and WGSL programs
+- Generic value/condition slot handling in `packages/webgpu-renderer`
 
-**Work:**
+Verification:
 
-- Replace the scalar corner-radius varying with four radii in WebGPU order and
-  clamp each radius to the available half-size as WebGL does.
-- Translate `cornerRadius`, `cornerRadiusTopLeft`,
-  `cornerRadiusTopRight`, `cornerRadiusBottomLeft`, and
-  `cornerRadiusBottomRight` with the same precedence and default semantics as
-  Core/WebGL.
-- Port the existing rounded-box shadow approximation used by WebGL, including
-  blur, offset sign conventions, opacity, color, and the region where the
-  shadow must not overwrite the fill/stroke.
-- Keep hatch patterns and decorated-rectangle antialiasing behavior intact.
-- Preserve exact adjacent-edge rendering for plain opaque rectangles.
+- Build a property matrix from WebGL mark attributes and Core mark types.
+- Test constant, parameter-expression, conditional, and per-datum cases for
+  each property that claims support.
+- Assert that unsupported structural properties fail at the renderer contract
+  boundary with a useful error.
 
-**Verification:** Add tests for mixed per-corner radii, radius clamping,
-shadow offsets in both directions, zero blur, and the plain-rectangle fast
-path. Compare representative WebGL/WebGPU screenshots with a tolerance suited
-to antialiasing, and run the GPU suite.
+## Adapter boundary rules
 
-**Documentation/migration:** Remove the adapter's explicit per-corner rejection
-and replace the shadow TODO with a precise note if any intentional numerical
-difference remains.
+The adapter is a semantic translator, not a second renderer validator. Keep
+only checks required to translate Core values:
 
-**Tentative commit:**
-`feat(webgpu): match rectangle corners and shadows`
+- required Core encoders are present;
+- enum values have a defined numeric mapping;
+- raw data can be represented by the renderer's declared typed array;
+- Core features with no renderer representation are reported contextually.
 
-### Milestone 5: Integrate links through Core
+Channel component counts, scale compatibility, resource shape, selection slot
+validity, and WGSL/pipeline constraints belong in `packages/webgpu-renderer`.
+When a new adapter check is proposed, add a test explaining why the generic
+renderer cannot perform it.
 
-**Intended outcome:** Core WebGPU renders arc, dome, diagonal, and line links
-using the existing retained WebGPU link program.
+## Implementation sequence and commits
 
-**Affected areas:**
+1. Conditional channel translation and selection resources.
+   `feat(core): translate conditional WebGPU channels`
+2. Facet and sample-facet occurrence traversal.
+   `feat(core): render WebGPU facet occurrences`
+3. Remaining generic scale definitions, starting with the scale family needed
+   by the highest-value Core examples.
+   `feat(webgpu): add remaining parity scale definitions`
+4. Font resource registration and text-family parity.
+   `feat(webgpu): support registered text fonts`
+5. Mark-local dynamic/per-instance property parity.
+   `feat(webgpu): support dynamic mark properties`
+6. Cross-renderer audit, migration documentation, and final verification.
+   `test(webgpu): verify remaining renderer parity`
 
-- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
-- `packages/webgpu-renderer/src/marks/link*`
-- Core adapter tests and browser/GPU smoke specs
+Each step should include its focused tests and update the migration plan only
+for behavior actually implemented. Keep unrelated fixes out of the commit.
 
-**Work:**
+## Verification strategy
 
-- Import the public `linkMark` definition in the adapter.
-- Translate endpoint channels, endpoint offsets, size, color, opacity, shape,
-  orientation, clamping, arc fading, minimum height, maximum chord length, and
-  segment count.
-- Match WebGL's defaulting and endpoint inference rules instead of introducing
-  WebGPU-only defaults.
-- Ensure link draw ranges, pick IDs, and retained series updates use the same
-  instance contract as other marks.
+During implementation, run the narrowest relevant suite:
 
-**Verification:** Add adapter config assertions for every link shape and a GPU
-  smoke test covering vertical/horizontal links, arc fading, and overlap order.
-  Run a Core browser example containing link marks.
+- `npx vitest run packages/core/src/rendering/webgpu/<test>.test.js --reporter=agent`
+- `npx vitest run --root packages/webgpu-renderer --reporter=agent`
+- `npm -w @genome-spy/core run test:tsc --if-present`
+- `npm -w @genome-spy/webgpu-renderer run test:tsc --if-present`
 
-**Documentation/migration:** Mark the existing low-level-link-but-no-Core-path
-  gap complete in the migration plan.
+For each user-visible feature, compare WebGL and WebGPU at DPR 1 and DPR 2,
+using representative examples and browser console/page-error checks. GPU tests
+must cover the renderer-level shader/resource contract; browser tests must
+cover Core traversal, updates, and visible output.
 
-**Tentative commit:**
-`feat(core): integrate WebGPU link marks`
+Before declaring the remaining parity work complete, run:
 
-### Milestone 6: Implement and integrate arrow marks
-
-**Intended outcome:** Core arrow marks render in WebGPU with the WebGL property
-  surface, including block and transcript-style arrows.
-
-**Affected areas:**
-
-- New `packages/webgpu-renderer/src/marks/arrow.js`
-- New arrow program and WGSL under `packages/webgpu-renderer/src/marks/programs/`
-- Public renderer exports and `index.d.ts`
-- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
-- Arrow adapter, shader, and GPU tests
-
-**Work:**
-
-- Port the existing GenomeSpy arrow distance/geometry logic from
-  `packages/core/src/marks/arrow.*.glsl` to WGSL, keeping the source's geometry
-  decisions and documenting that it is an internal GenomeSpy port.
-- Support direction, filled/open heads, head angle and notch angle, stem,
-  head width, start notch, minimum stem length, repeat spacing, and inside vs.
-  outside placement.
-- Support endpoint offsets and fill/stroke/opacity/size channels, plus unique
-  IDs for picking.
-- Add `arrowMark` as a side-effect-free public definition and include `arrow`
-  in the renderer's mark type declarations.
-- Add Core dispatch and property/enum translation without importing Core code
-  into the renderer package.
-
-**Verification:** Add unit tests for angle clamping and enum translation, WGSL
-source/build tests for both head shapes and directions, and GPU tests for
-ordinary arrows, short arrows, repeated heads, open heads, and outside
-placement. Run existing Core arrow examples in a WebGPU browser.
-
-**Documentation/migration:** Document the renderer-level arrow config and mark
-the Core arrow path complete only after browser smoke coverage passes.
-
-**Tentative commit:**
-`feat(webgpu): add arrow mark rendering`
-
-### Milestone 7: Close the remaining adapter parity gaps and final integration
-
-**Intended outcome:** The feature matrix has an explicit result for every
-WebGL mark/property path, with unsupported behavior either implemented or
-documented as a separately tracked limitation.
-
-**Affected areas:**
-
-- Remaining Core WebGPU adapter and renderer mark/scale resources
-- `packages/core/src/rendering/webgpu/`
-- `packages/webgpu-renderer/MIGRATION_PLAN.md`
-- Representative examples and browser test fixtures
-
-**Work:**
-
-- Re-run the inventory against all WebGL mark attributes, properties,
-  conditional branches, selection/picking behavior, faceting, scale types,
-  font behavior, and lifecycle paths.
-- Implement small remaining gaps that are required for the stated parity goal;
-  split any larger subsystem (for example full conditional/faceted rendering)
-  into a follow-up plan with a concrete status rather than hiding it in the
-  adapter.
-- Remove stale `unsupported` branches only when behavior and tests replace
-  them.
-- Update migration documentation with completed milestones and remaining
-  limitations.
-
-**Verification:** Run focused suites after each fix, then:
-
-- `npm test -- --reporter=agent` when the cross-renderer risk warrants it;
 - `npm --workspaces run test:tsc --if-present`;
 - `npm run lint`;
-- `npm -w @genome-spy/webgpu-renderer run test:gpu`;
-- representative browser smoke tests for point, rect, rule/tick, text, link,
-  and arrow examples at DPR 1 and DPR 2;
-- WebGL regression tests and existing Canvas/SVG tests to verify that shared
-  Core semantics were not changed.
-
-**Documentation/migration:** Reconcile every completed or discarded item in
-  this plan and the WebGPU migration plan. This plan is temporary and should
-  be committed for historical traceability, then deleted in a later cleanup
-  commit before a pull request is created.
-
-**Tentative commit:**
-`test(webgpu): complete renderer parity verification`
-
-## Review gates
-
-1. **Shared channel contract gate:** Review Milestone 2 together with every
-   affected mark program, Core adapter path, series replacement path, and
-   picking path. Offset mistakes can silently affect multiple marks.
-2. **Shader geometry gate:** Review Milestones 3 and 4 with GPU output, not
-   source inspection alone. Dash coverage, stroke-only shapes, corner SDFs, and
-   shadows are sensitive to DPR and antialiasing.
-3. **New mark API gate:** Review Milestones 5 and 6 for public definition shape,
-   tree-shaking, retained resource lifetime, and Core/renderer dependency
-   direction.
-4. **Final cross-backend gate:** Compare representative WebGL and WebGPU
-   renders and inspect all explicit adapter rejection paths before declaring
-   parity complete.
-
-## Risks and mitigations
-
-- **WGSL and GLSL antialiasing differ:** use geometry-aware tolerances and
-  inspect screenshots at multiple DPRs; do not weaken tests to exact-match
-  unrelated edge pixels.
-- **Offset channels change scale/resource layouts:** make offsets explicit in
-  channel specs and test retained updates and packed-series replacement.
-- **Arrow port is the largest shader change:** isolate it in its own definition
-  and commit, port behavior from the existing internal GLSL, and require GPU
-  tests for each geometry mode before integration.
-- **Core adapter remains a narrow translation layer:** when a limitation is
-  caused by an inadequate renderer contract, improve the generic renderer API
-  rather than adding Core-only resource workarounds.
-- **Dirty worktree changes are mixed with parity work:** inspect diffs before
-  every commit and stage only the files belonging to the current milestone.
+- the full relevant Vitest suites;
+- the WebGPU GPU suite when available;
+- representative Core examples for conditionals, facets, scales, and fonts;
+- WebGL regression tests plus shared Canvas/SVG tests.
 
 ## Acceptance criteria
 
-- WebGPU Core dispatch supports point, rect, rule, tick, text, link, and arrow
-  marks.
-- Endpoint offsets work for constant and representative data/scale-backed
-  cases without being baked into positional scale ranges.
-- Dashed rules, point `x`/`+` shapes, independent rectangle corners, and
-  rectangle shadows have focused tests and GPU/browser coverage.
-- Links and arrows preserve Core/WebGL property defaults and endpoint behavior.
-- Existing retained handles update series, scales, and dynamic values without
-  unnecessary pipeline recreation.
-- Existing WebGL, Canvas2D, SVG, and non-WebGPU tests remain green.
-- Every remaining WebGPU limitation is named in the migration documentation
-  and covered by a contextual test or a follow-up plan.
+- Conditional Core encodings render with the same branch precedence and
+  selection behavior as WebGL.
+- Faceted and sample-faceted marks render the correct data and coordinates,
+  including culling, opacity, ordering, and retained updates.
+- Every Core scale used by supported examples either has a generic WebGPU
+  definition with matching updates or is explicitly documented as unsupported
+  with a follow-up issue/plan.
+- Registered text fonts, styles, weights, and dynamic sizes behave like WebGL.
+- Mark-local properties are either correctly channelized/conditionalized or
+  explicitly constrained by a documented generic renderer contract.
+- No remaining adapter check merely duplicates validation already provided by
+  `webgpu-renderer`.
+- Existing completed parity features remain green while these integrations are
+  added.
 
-## Implementation record
+## Baseline implementation references
 
-### Milestone 1
-
-- Status: complete
-- Commit: `481fb47eb`
-- Tests: Core WebGPU adapter suite passed with the baseline unsupported-mark
-  inventory and contextual error assertions.
-- Browser/GPU result: not applicable; this milestone changes only test coverage
-  and migration documentation.
-- Accepted differences: link and arrow remain unsupported until Milestones 5
-  and 6.
-
-### Milestone 2
-
-- Status: complete
-- Commit: `b882baa8a`
-- Tests: Core adapter, channel normalization, text-program tests, TypeScript,
-  lint, and formatting passed.
-- Browser/GPU result: existing WebGPU GPU suite passed.
-
-### Milestone 3
-
-- Status: complete
-- Commit: `c5fe435b0`
-- Tests: Core adapter, renderer unit, TypeScript, lint, formatting, and all 44
-  WebGPU GPU tests passed.
-
-### Milestone 4
-
-- Status: complete
-- Commit: `a337bb86b`
-- Tests: Core adapter, renderer TypeScript, lint, formatting, and all 44
-  WebGPU GPU tests passed.
-
-### Milestone 5
-
-- Status: complete
-- Commit: `6a714d897`
-- Tests: Link adapter/config tests and all 44 WebGPU GPU tests passed.
-- Accepted differences: selection-aware arc fading is documented as a generic
-  selection-predicate follow-up.
-
-### Milestone 6
-
-- Status: complete
-- Commits: `8530851e5`, `c398c4e54`
-- Tests: Arrow adapter tests, focused arrow GPU rendering, renderer TypeScript,
-  lint, and formatting passed.
-- Accepted differences: numerical antialiasing may differ from WebGL; Core
-  picking and remaining adapter-wide limitations are tracked separately.
-
-### Milestone 7
-
-- Status: complete
-- Commit: `756046f73`
-- Result: migration documentation names the remaining adapter and selection
-  limitations instead of treating the listed mark features as unsupported.
-
-### Adapter audit follow-up
-
-- Status: partial; renderer-supported paths enabled
-- Commits: `068e3cb30`, `43006bf27`
-- Enabled: data-driven arrow direction and mapped enums, unscaled and
-  ordinal/quantized/threshold colors, supported nonlinear and point scales,
-  data-driven text size, expression-valued mark properties, and unique-id
-  series for picking.
-- Tests: 26 Core WebGPU adapter tests and the Core TypeScript check passed;
-  the WebGPU renderer unit suite remained green with 115 tests.
-- Remaining: conditional branch translation, faceting/sample facets, Core
-  scale types without renderer definitions, non-Lato fonts, and data-driven
-  mark-local uniform properties.
+The completed work that this plan builds on is recorded in git history,
+including the adapter audit commits `068e3cb30` and `43006bf27`. It is
+intentionally not listed as open work here.
