@@ -2,7 +2,7 @@ import BaseProgram from "./internal/baseProgram.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import { linearScale } from "../../scales/linear.js";
 import { buildTextLayout } from "../../fonts/layout.js";
-import BmFontManager from "../../fonts/bmFontManager.js";
+import BmFontManager, { fetchBmFontBitmap } from "../../fonts/bmFontManager.js";
 import { SDF_PADDING } from "../../fonts/bmFontMetrics.js";
 import {
     asGpuBufferSource,
@@ -427,6 +427,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
  * @prop {number} [count]
  * @prop {unknown} [textLayout]
  * @prop {unknown} [font]
+ * @prop {{metrics: unknown, bitmap: string | ImageBitmap}} [fontResource]
  * @prop {unknown} [fontStyle]
  * @prop {unknown} [fontWeight]
  * @prop {unknown} [fontSize]
@@ -443,6 +444,7 @@ function normalizeTextConfig({
     count,
     textLayout,
     font,
+    fontResource,
     fontStyle,
     fontWeight,
     fontSize,
@@ -457,6 +459,18 @@ function normalizeTextConfig({
             ? /** @type {FontWeightInput} */ (fontWeight)
             : 400;
     const fontManager = new BmFontManager();
+    if (fontResource) {
+        fontManager.registerFont({
+            family: typeof font === "string" ? font : "Lato",
+            style: resolvedStyle,
+            weight: resolvedWeight,
+            metrics:
+                /** @type {import("../../fonts/bmFontMetrics.js").BMFontMetrics} */ (
+                    fontResource.metrics
+                ),
+            bitmap: fontResource.bitmap,
+        });
+    }
     const fontEntry = fontManager.getFont(
         typeof font === "string" ? font : "Lato",
         resolvedStyle,
@@ -986,7 +1000,7 @@ export default class TextProgram extends BaseProgram {
             format: "rgba8unorm",
         });
 
-        this._uploadFontAtlas(fontEntry.bitmap);
+        void this._uploadFontAtlas(fontEntry.bitmap);
     }
 
     /**
@@ -1045,9 +1059,9 @@ export default class TextProgram extends BaseProgram {
 
     /**
      * @param {string | ImageBitmap} bitmap
-     * @returns {void}
+     * @returns {Promise<void>}
      */
-    _uploadFontAtlas(bitmap) {
+    async _uploadFontAtlas(bitmap) {
         if (
             typeof ImageBitmap !== "undefined" &&
             bitmap instanceof ImageBitmap
@@ -1057,6 +1071,14 @@ export default class TextProgram extends BaseProgram {
         }
         if (typeof bitmap !== "string") {
             return;
+        }
+
+        try {
+            this._setAtlasFromBitmap(await fetchBmFontBitmap(bitmap));
+            return;
+        } catch {
+            // Fall back to the browser image loader for environments without
+            // fetch/CORS support for the atlas URL.
         }
         if (typeof Image === "undefined") {
             return;

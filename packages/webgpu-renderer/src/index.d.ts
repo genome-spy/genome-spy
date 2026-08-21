@@ -710,6 +710,10 @@ export type TextLayout = {
 export type TextMarkOptions = {
     textLayout?: TextLayout;
     font?: string;
+    fontResource?: {
+        metrics: unknown;
+        bitmap: string | ImageBitmap;
+    };
     fontStyle?: "normal" | "italic";
     fontWeight?: number | string;
     fontSize?: number;

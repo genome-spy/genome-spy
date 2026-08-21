@@ -137,6 +137,60 @@ describe("WebGPU mark adapter", () => {
         expect(config.font).toBe("Lato");
     });
 
+    test("passes Core-loaded custom font resources to the renderer", () => {
+        const mark = createMark(
+            "text",
+            [{ label: "A" }],
+            {
+                x: createConstantEncoder(0),
+                y: createConstantEncoder(0),
+                text: createEncoder((datum) => datum.label),
+                size: createConstantEncoder(11),
+                angle: createConstantEncoder(0),
+                xOffset: createConstantEncoder(0),
+                yOffset: createConstantEncoder(0),
+                color: createConstantEncoder("black"),
+                opacity: createConstantEncoder(1),
+            },
+            {
+                font: "Test Sans",
+                fontStyle: "italic",
+                fontWeight: 700,
+                align: "center",
+                baseline: "middle",
+                paddingX: 0,
+                paddingY: 0,
+                flushX: false,
+                flushY: false,
+                squeeze: false,
+            }
+        );
+        const fontResource = {
+            metrics: /** @type {any} */ ({}),
+            bitmapUrl: "test-sans.png",
+        };
+        Object.assign(mark, { font: fontResource });
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            /** @type {any} */ ({}),
+            Rectangle.ZERO
+        );
+        if (!translated) {
+            throw new Error("Expected a translated text mark.");
+        }
+
+        expect(translated.config).toMatchObject({
+            font: "Test Sans",
+            fontResource: {
+                metrics: fontResource.metrics,
+                bitmap: "test-sans.png",
+            },
+            fontStyle: "italic",
+            fontWeight: 700,
+        });
+    });
+
     test("applies the text channel number format", () => {
         const data = [{ value: 1.2345 }, { value: -0.5 }];
         const mark = createMark(
