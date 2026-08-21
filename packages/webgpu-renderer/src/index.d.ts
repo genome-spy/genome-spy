@@ -52,6 +52,58 @@ export type SelectionPredicate =
           empty?: boolean;
       };
 
+/** A non-visual, per-instance scalar series available to visibility predicates. */
+export type ScalarInputConfig = Readonly<{
+    /** Per-instance values in mark-series order. */
+    data: TypedArray;
+    /** WGSL scalar type used to pack and read the values. */
+    type: ScalarType;
+}>;
+
+/** A retained scalar uniform whose value may change without recompilation. */
+export type ScalarSlotConfig = Readonly<{
+    /** Initial uniform value, including IEEE infinities but excluding NaN. */
+    value: number;
+    /** WGSL scalar type of the retained uniform. */
+    type: ScalarType;
+}>;
+
+/** A scalar value read by an ordered visibility comparison. */
+export type ScalarOperand =
+    /** Raw input of an existing visual channel, before its scale. */
+    | { channel: string }
+    /** Per-instance series declared in MarkConfig.inputs. */
+    | { input: string }
+    /** Retained uniform declared in MarkConfig.scalarSlots. */
+    | { slot: string };
+
+/** An ordered comparison between two scalar operands of the same type. */
+export type ScalarComparisonPredicate = Readonly<{
+    /** Ordered comparison operator emitted into WGSL. */
+    compare: "<" | "<=" | ">" | ">=";
+    /** Value on the left side of the ordered comparison. */
+    left: ScalarOperand;
+    /** Value on the right side of the ordered comparison. */
+    right: ScalarOperand;
+}>;
+
+/** An immutable selection, comparison, or Boolean visibility expression. */
+export type VisibilityPredicate =
+    /** Existing named selection test. */
+    | SelectionPredicate
+    /** Ordered scalar comparison. */
+    | ScalarComparisonPredicate
+    /** Logical AND over a non-empty child array. */
+    | Readonly<{ all: readonly VisibilityPredicate[] }>
+    /** Logical OR over a non-empty child array. */
+    | Readonly<{ any: readonly VisibilityPredicate[] }>;
+
+/** Updates one declared scalar slot without recreating renderer resources. */
+export type ScalarSlotHandle = {
+    /** Set the slot value using its declared scalar type. */
+    set(value: number): void;
+};
+
 export type ChannelCondition =
     | {
           /** Selection predicate that guards the conditional branch. */
@@ -155,6 +207,7 @@ export type MarkHandle<
     scales: Record<string, ChannelSlotGroup<ScaleSlotHandle>>;
     values: Record<string, ChannelSlotGroup<ValueSlotHandle>>;
     extraValues: Record<string, ValueSlotHandle>;
+    scalarSlots: Record<string, ScalarSlotHandle>;
     selections: Record<string, SelectionSlotHandle>;
 };
 
@@ -810,8 +863,14 @@ export type MarkConfig<T extends MarkType = MarkType> = {
            */
           dashPatterns?: number[][];
       }
-    : unknown) &
-    (T extends "link" ? LinkMarkOptions : unknown) &
+    : unknown) & {
+        /** Non-visual scalar series used by visibility predicates. */
+        inputs?: Record<string, ScalarInputConfig>;
+        /** Retained scalar uniforms used by visibility predicates. */
+        scalarSlots?: Record<string, ScalarSlotConfig>;
+        /** Immutable predicate controlling mark visibility and picking. */
+        visibleWhen?: VisibilityPredicate;
+    } & (T extends "link" ? LinkMarkOptions : unknown) &
     (T extends "text" ? TextMarkOptions : unknown);
 
 export type RendererOptions = {

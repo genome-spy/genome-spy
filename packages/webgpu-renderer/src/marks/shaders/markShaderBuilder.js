@@ -19,6 +19,7 @@ import {
 } from "../../wgsl/prefixes.js";
 import { buildChannelIRs } from "./channelIR.js";
 import { buildScaledFunction } from "../scales/scaleCodegen.js";
+import { buildVisibilityPredicate } from "./visibilityPredicate.js";
 
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -58,6 +59,10 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  * @prop {string} shaderBody
  * @prop {Map<string, import("../programs/internal/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
  * @prop {SelectionDef[]} [selectionDefs]
+ * @prop {import("../../index.d.ts").VisibilityPredicate} [visibleWhen]
+ * @prop {Record<string, import("../../index.d.ts").ScalarSlotConfig>} [scalarSlots]
+ * @prop {Set<string>} [channelNames]
+ * @prop {Set<string>} [inputNames]
  * @prop {ExtraResourceDef[]} [extraResources]
  */
 
@@ -98,6 +103,10 @@ export function buildMarkShader({
     shaderBody,
     packedSeriesLayout,
     selectionDefs = [],
+    visibleWhen,
+    scalarSlots = {},
+    channelNames = new Set(Object.keys(channels)),
+    inputNames = new Set(),
     extraResources = [],
 }) {
     // Dynamic shader generation: each mark variant emits only the helpers it
@@ -173,6 +182,14 @@ export function buildMarkShader({
     const selectionDefsByName = new Map(
         selectionDefs.map((def) => [def.name, def])
     );
+    const visibilityPredicate = buildVisibilityPredicate({
+        predicate: visibleWhen,
+        channelIRs,
+        channelNames,
+        inputNames,
+        scalarSlots,
+        selectionDefs,
+    });
 
     /**
      * @param {string} name
@@ -847,6 +864,8 @@ ${selectionFns.join("\n")}
 ${channelFns.join("\n")}
 
 ${extraDecls.join("\n")}
+
+${visibilityPredicate}
 
 fn premultiplyAlpha(color: vec4<f32>) -> vec4<f32> {
     return vec4<f32>(color.rgb * color.a, color.a);

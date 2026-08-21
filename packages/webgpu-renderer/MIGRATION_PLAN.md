@@ -52,8 +52,8 @@ faceted rendering.
   channel names are currently internal).
 - Optional selection-driven filtering/masking (skip drawing non-selected
   instances without requiring core-side filtering).
-- Generic point visibility predicates and semantic-zoom selection bypasses are
-  tracked separately in the parity plan.
+- Generic visibility predicates, retained scalar slots, and semantic-zoom
+  selection bypasses are implemented through the parity plan.
 
 ### Code-first API direction (classes vs. defs)
 

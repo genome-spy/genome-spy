@@ -458,6 +458,7 @@ function createRectConfig(mark, data, coords, viewOpacity) {
  * @returns {object}
  */
 function createPointConfig(mark, data, coords, viewOpacity) {
+    const visibility = createPointVisibilityConfig(mark, data);
     return {
         count: data.length,
         channels: {
@@ -492,7 +493,91 @@ function createPointConfig(mark, data, coords, viewOpacity) {
                 type: "u32",
             },
         },
+        ...visibility,
     };
+}
+
+/**
+ * Translate Core point semantic zoom into the renderer's generic visibility
+ * contract while keeping score sampling, zoom policy, and selection grammar in
+ * Core.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {object[]} data
+ * @returns {object}
+ */
+function createPointVisibilityConfig(mark, data) {
+    const encoder = /** @type {Record<string, any>} */ (mark.encoders)
+        .semanticScore;
+    if (!encoder) {
+        return {};
+    }
+    assertUnconditional(mark, "semanticScore", encoder);
+    if (encoder.constant) {
+        return {};
+    }
+
+    const accessor = encoder.branches[0].accessor;
+    const scoreData = toFloat32Array(mark, "semanticScore", data, accessor);
+    const selections = createPointVisibilitySelections(mark);
+    const scorePredicate = {
+        compare: ">=",
+        left: { input: "semanticScoreInput" },
+        right: { slot: "semanticThreshold" },
+    };
+    const visibleWhen =
+        selections.length > 0
+            ? { any: [...selections, scorePredicate] }
+            : scorePredicate;
+
+    return {
+        inputs: {
+            semanticScoreInput: {
+                data: scoreData,
+                type: "f32",
+            },
+        },
+        scalarSlots: {
+            semanticThreshold: {
+                value: /** @type {import("../../marks/point.js").default} */ (
+                    mark
+                ).getSemanticThreshold(),
+                type: "f32",
+            },
+        },
+        visibleWhen,
+    };
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @returns {object[]}
+ */
+function createPointVisibilitySelections(mark) {
+    if (!mark.encoders.uniqueId) {
+        return [];
+    }
+
+    const selections = [];
+    const names = new Set();
+    for (const encoder of Object.values(
+        /** @type {Record<string, any>} */ (mark.encoders)
+    )) {
+        for (const branch of encoder.branches ?? []) {
+            const predicate = branch.predicate;
+            if (!predicate?.param || names.has(predicate.param)) {
+                continue;
+            }
+            const selection = createSelectionCondition(
+                mark,
+                "semanticScore",
+                predicate
+            );
+            selections.push({ ...selection, empty: false });
+            names.add(predicate.param);
+        }
+    }
+    return selections;
 }
 
 /**

@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => {
             size: { default: { set: vi.fn() } },
         },
         extraValues: {},
+        scalarSlots: {},
         selections: {},
     };
     const renderer = {
@@ -66,6 +67,7 @@ import WebGpuSurface from "./webGpuSurface.js";
 beforeEach(() => {
     vi.clearAllMocks();
     mocks.handle.extraValues = {};
+    mocks.handle.scalarSlots = {};
     mocks.handle.selections = {};
 });
 
@@ -416,6 +418,50 @@ describe("WebGpuSurface", () => {
 
         expect(headWidthSet).toHaveBeenCalledWith(5);
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+    });
+
+    test("updates retained scalar slots without recreating a mark", async () => {
+        const thresholdSet = vi.fn();
+        mocks.handle.scalarSlots = {
+            threshold: { set: thresholdSet },
+        };
+        const container = document.createElement("div");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({})
+        );
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "point" })
+            );
+        const x = new Float32Array([0, 1]);
+        /** @param {number} value */
+        const config = (value) => ({
+            count: 2,
+            channels: {
+                x: { data: x, type: "f32" },
+            },
+            scalarSlots: {
+                threshold: { value, type: "f32" },
+            },
+        });
+
+        surface.useMark(mark, definition, config(0.5));
+        surface.useMark(mark, definition, config(0.5));
+        surface.useMark(mark, definition, config(0.75));
+
+        expect(thresholdSet).toHaveBeenCalledOnce();
+        expect(thresholdSet).toHaveBeenCalledWith(0.75);
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+        expect(mocks.handle.series.replace).not.toHaveBeenCalled();
     });
 
     test("keeps picking draws separate from the visible frame", async () => {

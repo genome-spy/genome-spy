@@ -700,6 +700,72 @@ describe("WebGPU mark adapter", () => {
         });
     });
 
+    test("translates point semantic zoom into generic visibility predicates", () => {
+        const data = [
+            { id: 4, score: 0.25 },
+            { id: 9, score: 0.75 },
+        ];
+        const mark = createMark("point", data, {
+            uniqueId: createEncoder((datum) => datum.id),
+            semanticScore: createEncoder((datum) => datum.score, {
+                channelDef: { field: "score", type: "quantitative" },
+            }),
+            fill: createConditionalEncoder([
+                {
+                    accessor: createAccessor(
+                        () => "red",
+                        { value: "red" },
+                        true
+                    ),
+                    predicate: { param: "selected", empty: true },
+                },
+                {
+                    accessor: createAccessor(
+                        () => "black",
+                        { value: "black" },
+                        true
+                    ),
+                    predicate: { empty: false },
+                },
+            ]),
+        });
+        Object.assign(mark, {
+            getSemanticThreshold: () => 0.5,
+            unitView: {
+                ...mark.unitView,
+                paramRuntime: {
+                    findValue: () => ({ type: "multi" }),
+                },
+            },
+        });
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const config = /** @type {any} */ (translated).config;
+
+        expect(config.inputs.semanticScoreInput).toEqual({
+            data: new Float32Array([0.25, 0.75]),
+            type: "f32",
+        });
+        expect(config.scalarSlots.semanticThreshold).toEqual({
+            value: 0.5,
+            type: "f32",
+        });
+        expect(config.visibleWhen).toEqual({
+            any: [
+                {
+                    selection: "selected",
+                    type: "multi",
+                    empty: false,
+                },
+                {
+                    compare: ">=",
+                    left: { input: "semanticScoreInput" },
+                    right: { slot: "semanticThreshold" },
+                },
+            ],
+        });
+    });
+
     test("maps sequential and threshold color encodings", () => {
         const data = [{ value: -1 }, { value: 1 }];
         const interpolator = (/** @type {number} */ t) =>

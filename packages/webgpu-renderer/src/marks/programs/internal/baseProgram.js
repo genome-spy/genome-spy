@@ -6,8 +6,133 @@ import { ScaleResourceManager } from "./scaleResources.js";
 import { normalizeChannels } from "./channelConfigResolver.js";
 import { buildPipeline } from "./pipelineBuilder.js";
 import { SelectionResourceManager } from "./selectionResources.js";
+import { scalarSlotUniformName } from "../../shaders/visibilityPredicate.js";
 
 let debugResourcesEnabled = false;
+
+/**
+ * @param {unknown} inputs
+ * @param {Set<string>} channelNames
+ * @returns {Record<string, import("../../../index.d.ts").ChannelConfigResolved>}
+ */
+function normalizeScalarInputs(inputs, channelNames) {
+    if (inputs == null) {
+        return {};
+    }
+    if (typeof inputs !== "object" || Array.isArray(inputs)) {
+        throw new Error('Mark "inputs" must be an object.');
+    }
+
+    /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */
+    const normalized = {};
+    const inputConfigs =
+        /** @type {Record<string, import("../../../index.d.ts").ScalarInputConfig>} */ (
+            inputs
+        );
+    for (const [name, config] of Object.entries(inputConfigs)) {
+        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+            throw new Error(
+                `Scalar input "${name}" must be a valid identifier.`
+            );
+        }
+        if (channelNames.has(name)) {
+            throw new Error(
+                `Scalar input "${name}" conflicts with a visual channel.`
+            );
+        }
+        if (
+            !config ||
+            typeof config !== "object" ||
+            !ArrayBuffer.isView(config.data) ||
+            config.data instanceof DataView
+        ) {
+            throw new Error(
+                `Scalar input "${name}" must specify typed-array data.`
+            );
+        }
+        if (
+            config.type !== "f32" &&
+            config.type !== "u32" &&
+            config.type !== "i32"
+        ) {
+            throw new Error(
+                `Scalar input "${name}" must specify type "f32", "u32", or "i32".`
+            );
+        }
+        normalized[name] =
+            /** @type {import("../../../index.d.ts").ChannelConfigResolved} */ (
+                /** @type {unknown} */ ({
+                    data: config.data,
+                    type: config.type,
+                    components: 1,
+                    inputComponents: 1,
+                })
+            );
+    }
+    return normalized;
+}
+
+/**
+ * @param {unknown} slots
+ * @returns {Record<string, import("../../../index.d.ts").ScalarSlotConfig>}
+ */
+function normalizeScalarSlots(slots) {
+    if (slots == null) {
+        return {};
+    }
+    if (typeof slots !== "object" || Array.isArray(slots)) {
+        throw new Error('Mark "scalarSlots" must be an object.');
+    }
+
+    /** @type {Record<string, import("../../../index.d.ts").ScalarSlotConfig>} */
+    const normalized = {};
+    const slotConfigs =
+        /** @type {Record<string, import("../../../index.d.ts").ScalarSlotConfig>} */ (
+            slots
+        );
+    for (const [name, config] of Object.entries(slotConfigs)) {
+        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+            throw new Error(
+                `Scalar slot "${name}" must be a valid identifier.`
+            );
+        }
+        if (!config || typeof config !== "object") {
+            throw new Error(`Scalar slot "${name}" must be an object.`);
+        }
+        validateScalarSlotValue(name, config.type, config.value);
+        normalized[name] = config;
+    }
+    return normalized;
+}
+
+/**
+ * @param {string} name
+ * @param {unknown} type
+ * @param {unknown} value
+ * @returns {void}
+ */
+function validateScalarSlotValue(name, type, value) {
+    if (type !== "f32" && type !== "u32" && type !== "i32") {
+        throw new Error(
+            `Scalar slot "${name}" must specify type "f32", "u32", or "i32".`
+        );
+    }
+    if (typeof value !== "number" || Number.isNaN(value)) {
+        throw new Error(`Scalar slot "${name}" must not contain NaN.`);
+    }
+    if (
+        type === "u32" &&
+        (!Number.isInteger(value) || value < 0 || value > 0xffffffff)
+    ) {
+        throw new Error(`Scalar slot "${name}" requires a valid u32 value.`);
+    }
+    if (
+        type === "i32" &&
+        (!Number.isInteger(value) || value < -0x80000000 || value > 0x7fffffff)
+    ) {
+        throw new Error(`Scalar slot "${name}" requires a valid i32 value.`);
+    }
+}
 
 /**
  * @param {boolean} enabled
@@ -50,6 +175,13 @@ export default class BaseProgram {
                 channelSpecs: this.channelSpecs,
             },
         });
+        this._visualChannelNames = new Set(Object.keys(this._channels));
+        this._inputs = normalizeScalarInputs(
+            config.inputs,
+            this._visualChannelNames
+        );
+        this._scalarSlots = normalizeScalarSlots(config.scalarSlots);
+        this._channels = { ...this._channels, ...this._inputs };
         this._conditionalChannelNames = this._collectConditionalChannelNames();
         this._logicalSeriesTargets = this._collectLogicalSeriesTargets();
         this._seriesBuffers = new SeriesBufferManager(
@@ -68,6 +200,10 @@ export default class BaseProgram {
         this._selectionResources = new SelectionResourceManager({
             device: this.device,
             channels: this._channels,
+            visibleWhen:
+                /** @type {import("../../../index.d.ts").VisibilityPredicate | undefined} */ (
+                    config.visibleWhen
+                ),
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
         });
@@ -98,6 +234,7 @@ export default class BaseProgram {
             scales: {},
             values: {},
             extraValues: {},
+            scalarSlots: {},
             selections: {},
         };
 
@@ -124,6 +261,13 @@ export default class BaseProgram {
             packedSeriesLayout:
                 this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
             selectionDefs: this._selectionResources.selectionDefs,
+            visibleWhen:
+                /** @type {import("../../../index.d.ts").VisibilityPredicate | undefined} */ (
+                    config.visibleWhen
+                ),
+            scalarSlots: this._scalarSlots,
+            channelNames: this._visualChannelNames,
+            inputNames: new Set(Object.keys(this._inputs)),
             extraResources,
             primitiveTopology: this.primitiveTopology,
         });
@@ -137,6 +281,13 @@ export default class BaseProgram {
             packedSeriesLayout:
                 this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
             selectionDefs: this._selectionResources.selectionDefs,
+            visibleWhen:
+                /** @type {import("../../../index.d.ts").VisibilityPredicate | undefined} */ (
+                    config.visibleWhen
+                ),
+            scalarSlots: this._scalarSlots,
+            channelNames: this._visualChannelNames,
+            inputNames: new Set(Object.keys(this._inputs)),
             extraResources,
             primitiveTopology: this.primitiveTopology,
             fragmentEntry: "fs_pick",
@@ -154,6 +305,9 @@ export default class BaseProgram {
             );
         for (const [name, config] of Object.entries(dynamicValues)) {
             this._setUniformValue(name, config.value);
+        }
+        for (const [name, config] of Object.entries(this._scalarSlots)) {
+            this._setUniformValue(scalarSlotUniformName(name), config.value);
         }
         this._writeUniforms();
         this._buildSlotHandles();
@@ -615,6 +769,10 @@ export default class BaseProgram {
                 this._createExtraValueSlot(name);
         }
 
+        for (const name of Object.keys(this._scalarSlots)) {
+            this._slotHandles.scalarSlots[name] = this._createScalarSlot(name);
+        }
+
         for (const def of this._selectionResources.selectionDefs) {
             this._slotHandles.selections[def.name] =
                 this._createSelectionSlot(def);
@@ -682,6 +840,32 @@ export default class BaseProgram {
             set: (value) => {
                 this._assertAlive();
                 this._setExtraUniformValue(name, value);
+                this._writeUniforms();
+                this.renderer.markPickingDirty();
+            },
+        };
+    }
+
+    /**
+     * @param {string} name
+     * @returns {import("../../../index.d.ts").ScalarSlotHandle}
+     */
+    _createScalarSlot(name) {
+        const config = this._scalarSlots[name];
+        if (!config) {
+            throw new Error(`Unknown scalar slot "${name}".`);
+        }
+        const uniformName = scalarSlotUniformName(name);
+        if (!this._uniformBufferState?.entries.has(uniformName)) {
+            throw new Error(
+                `Uniform "${uniformName}" is not available for updates.`
+            );
+        }
+        return {
+            set: (value) => {
+                this._assertAlive();
+                validateScalarSlotValue(name, config.type, value);
+                this._setUniformValue(uniformName, value);
                 this._writeUniforms();
                 this.renderer.markPickingDirty();
             },
@@ -785,6 +969,14 @@ export default class BaseProgram {
             if (isValueChannelConfig(channel) && channel.scale) {
                 this._scaleResources.addScaleUniforms(layout, name, channel);
             }
+        }
+
+        for (const [name, config] of Object.entries(this._scalarSlots)) {
+            layout.push({
+                name: scalarSlotUniformName(name),
+                type: config.type,
+                components: 1,
+            });
         }
 
         this._selectionResources.addSelectionUniforms(layout);
