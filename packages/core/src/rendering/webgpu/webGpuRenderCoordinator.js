@@ -1,3 +1,4 @@
+import { color as parseColor } from "d3-color";
 import { createLayoutResult } from "../../view/layout/layoutResult.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
@@ -57,7 +58,6 @@ export default class WebGpuRenderCoordinator {
             return;
         }
 
-        this.#assertSupportedBackground();
         this.surface.beginFrame();
         layoutResult.collectRenderCommands(
             new WebGpuViewRenderingContext(
@@ -65,7 +65,7 @@ export default class WebGpuRenderCoordinator {
                 { surface: this.surface }
             )
         );
-        this.surface.render();
+        this.surface.render(toGpuColor(this.getBackground()));
     }
 
     /** @returns {import("../../view/layout/layoutResult.js").default | undefined} */
@@ -84,16 +84,27 @@ export default class WebGpuRenderCoordinator {
             }
         );
     }
+}
 
-    #assertSupportedBackground() {
-        const background = this.getBackground();
-        if (
-            background != null &&
-            !["white", "#fff", "#ffffff"].includes(background.toLowerCase())
-        ) {
-            throw new Error(
-                "The experimental WebGPU renderer currently supports only its default white canvas background."
-            );
-        }
+/**
+ * @param {string | undefined} background
+ * @returns {GPUColor | undefined}
+ */
+function toGpuColor(background) {
+    if (background == null) {
+        return undefined;
     }
+    const parsed = parseColor(background);
+    if (!parsed) {
+        throw new Error(
+            `Invalid WebGPU canvas background color: ${background}`
+        );
+    }
+    const rgb = parsed.rgb();
+    return {
+        r: rgb.r / 255,
+        g: rgb.g / 255,
+        b: rgb.b / 255,
+        a: rgb.opacity,
+    };
 }

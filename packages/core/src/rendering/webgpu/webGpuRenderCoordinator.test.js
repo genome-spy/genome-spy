@@ -33,7 +33,7 @@ describe("WebGpuRenderCoordinator", () => {
         const coordinator = new WebGpuRenderCoordinator({
             viewRoot: /** @type {any} */ (viewRoot),
             surface: /** @type {any} */ (surface),
-            getBackground: () => "white",
+            getBackground: () => "#336699",
             broadcast: vi.fn(),
             onLayoutComputed: vi.fn(),
         });
@@ -46,6 +46,12 @@ describe("WebGpuRenderCoordinator", () => {
         expect(arrange.mock.calls[0][0].getDevicePixelRatio()).toBe(2);
         expect(surface.beginFrame).toHaveBeenCalledTimes(2);
         expect(surface.render).toHaveBeenCalledTimes(2);
+        expect(surface.render).toHaveBeenNthCalledWith(1, {
+            r: 0x33 / 255,
+            g: 0x66 / 255,
+            b: 0x99 / 255,
+            a: 1,
+        });
         expect(mocks.contexts).toHaveLength(2);
         expect(mocks.contexts[0].pushView).toHaveBeenCalledWith(
             viewRoot,
