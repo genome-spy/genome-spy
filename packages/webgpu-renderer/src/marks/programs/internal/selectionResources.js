@@ -8,6 +8,7 @@ import {
     SELECTION_COUNT_PREFIX,
     SELECTION_PREFIX,
 } from "../../../wgsl/prefixes.js";
+import { normalizeVisibilityPredicate } from "../../shaders/visibilityPredicate.js";
 
 /**
  * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -235,7 +236,11 @@ function collectSelectionDefs(channels, visibleWhen) {
             addSelectionDef(defs, condition.when, channels);
         }
     }
-    collectVisibilitySelections(visibleWhen, defs, channels);
+    collectVisibilitySelections(
+        normalizeVisibilityPredicate(visibleWhen),
+        defs,
+        channels
+    );
 
     if (
         !channels.uniqueId &&

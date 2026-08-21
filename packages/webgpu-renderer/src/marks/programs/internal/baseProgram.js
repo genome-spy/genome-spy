@@ -6,7 +6,10 @@ import { ScaleResourceManager } from "./scaleResources.js";
 import { normalizeChannels } from "./channelConfigResolver.js";
 import { buildPipeline } from "./pipelineBuilder.js";
 import { SelectionResourceManager } from "./selectionResources.js";
-import { scalarSlotUniformName } from "../../shaders/visibilityPredicate.js";
+import {
+    normalizeVisibilityPredicate,
+    scalarSlotUniformName,
+} from "../../shaders/visibilityPredicate.js";
 
 let debugResourcesEnabled = false;
 
@@ -176,13 +179,22 @@ export default class BaseProgram {
             },
         });
         this._visualChannelNames = new Set(Object.keys(this._channels));
+        this._conditionalChannelNames = this._collectConditionalChannelNames();
+        this._publicChannelNames = new Set(this._visualChannelNames);
+        for (const name of this._conditionalChannelNames) {
+            this._publicChannelNames.delete(name);
+        }
         this._inputs = normalizeScalarInputs(
             config.inputs,
             this._visualChannelNames
         );
         this._scalarSlots = normalizeScalarSlots(config.scalarSlots);
+        this._visibleWhen = normalizeVisibilityPredicate(
+            /** @type {import("../../../index.d.ts").VisibilityPredicate | undefined} */ (
+                config.visibleWhen
+            )
+        );
         this._channels = { ...this._channels, ...this._inputs };
-        this._conditionalChannelNames = this._collectConditionalChannelNames();
         this._logicalSeriesTargets = this._collectLogicalSeriesTargets();
         this._seriesBuffers = new SeriesBufferManager(
             this.device,
@@ -200,10 +212,7 @@ export default class BaseProgram {
         this._selectionResources = new SelectionResourceManager({
             device: this.device,
             channels: this._channels,
-            visibleWhen:
-                /** @type {import("../../../index.d.ts").VisibilityPredicate | undefined} */ (
-                    config.visibleWhen
-                ),
+            visibleWhen: this._visibleWhen,
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
         });
@@ -261,12 +270,9 @@ export default class BaseProgram {
             packedSeriesLayout:
                 this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
             selectionDefs: this._selectionResources.selectionDefs,
-            visibleWhen:
-                /** @type {import("../../../index.d.ts").VisibilityPredicate | undefined} */ (
-                    config.visibleWhen
-                ),
+            visibleWhen: this._visibleWhen,
             scalarSlots: this._scalarSlots,
-            channelNames: this._visualChannelNames,
+            channelNames: this._publicChannelNames,
             inputNames: new Set(Object.keys(this._inputs)),
             extraResources,
             primitiveTopology: this.primitiveTopology,
@@ -281,12 +287,9 @@ export default class BaseProgram {
             packedSeriesLayout:
                 this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
             selectionDefs: this._selectionResources.selectionDefs,
-            visibleWhen:
-                /** @type {import("../../../index.d.ts").VisibilityPredicate | undefined} */ (
-                    config.visibleWhen
-                ),
+            visibleWhen: this._visibleWhen,
             scalarSlots: this._scalarSlots,
-            channelNames: this._visualChannelNames,
+            channelNames: this._publicChannelNames,
             inputNames: new Set(Object.keys(this._inputs)),
             extraResources,
             primitiveTopology: this.primitiveTopology,

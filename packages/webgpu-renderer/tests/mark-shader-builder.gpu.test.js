@@ -95,6 +95,141 @@ test("markShaderBuilder passes through identity values for series data", async (
     });
 });
 
+test("visibility predicates execute ordered comparisons and Boolean composition", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
+    const score = new Float32Array([0.25, 0.5, 0.75]);
+    const channels = {
+        score: { data: score, type: "f32", components: 1 },
+    };
+    const uniformLayout = [
+        { name: "u_scalar_threshold", type: "f32", components: 1 },
+    ];
+    const operand = { channel: "score" };
+    const threshold = { slot: "threshold" };
+    /**
+     * @param {import("../src/index.d.ts").VisibilityPredicate} visibleWhen
+     * @param {number} [thresholdValue]
+     */
+    const run = (visibleWhen, thresholdValue = 0.5) =>
+        runScaleCase(page, {
+            channels,
+            channelName: "score",
+            outputType: "f32",
+            outputLength: score.length,
+            outputComponents: 1,
+            uniformLayout,
+            uniforms: { u_scalar_threshold: thresholdValue },
+            scalarSlots: {
+                threshold: { value: thresholdValue, type: "f32" },
+            },
+            channelNames: new Set(["score"]),
+            visibleWhen,
+            readVisibility: true,
+            dumpLabel,
+        });
+
+    await expect(
+        run({ compare: "<", left: operand, right: threshold })
+    ).resolves.toEqual([1, 0, 0]);
+    await expect(
+        run({ compare: "<=", left: operand, right: threshold })
+    ).resolves.toEqual([1, 1, 0]);
+    await expect(
+        run({ compare: ">", left: operand, right: threshold })
+    ).resolves.toEqual([0, 0, 1]);
+    await expect(
+        run({ compare: ">=", left: operand, right: threshold })
+    ).resolves.toEqual([0, 1, 1]);
+    await expect(
+        run({
+            all: [
+                { compare: ">=", left: operand, right: threshold },
+                { compare: "<=", left: operand, right: threshold },
+            ],
+        })
+    ).resolves.toEqual([0, 1, 0]);
+    await expect(
+        run({
+            any: [
+                { compare: "<", left: operand, right: threshold },
+                { compare: ">=", left: operand, right: threshold },
+            ],
+        })
+    ).resolves.toEqual([1, 1, 1]);
+
+    await expect(
+        run(
+            { compare: ">=", left: operand, right: { slot: "threshold" } },
+            -Infinity
+        )
+    ).resolves.toEqual([1, 1, 1]);
+    await expect(
+        run(
+            { compare: ">=", left: operand, right: { slot: "threshold" } },
+            Infinity
+        )
+    ).resolves.toEqual([0, 0, 0]);
+});
+
+test("visibility predicates combine a non-empty selection bypass with a threshold", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const score = new Float32Array([0.25, 0.5, 0.75]);
+    const channels = {
+        uniqueId: {
+            data: new Uint32Array([10, 11, 12]),
+            type: "u32",
+            components: 1,
+        },
+        score: { data: score, type: "f32", components: 1 },
+    };
+    const selectionDefs = [{ name: "picked", type: "single" }];
+    const visibleWhen = {
+        any: [
+            {
+                selection: "picked",
+                type: "single",
+                empty: false,
+            },
+            {
+                compare: ">=",
+                left: { channel: "score" },
+                right: { slot: "threshold" },
+            },
+        ],
+    };
+    const run = (selectedId) =>
+        runScaleCase(page, {
+            channels,
+            channelName: "score",
+            outputType: "f32",
+            outputLength: score.length,
+            outputComponents: 1,
+            uniformLayout: [
+                { name: "uSelection_picked", type: "u32", components: 1 },
+                { name: "u_scalar_threshold", type: "f32", components: 1 },
+            ],
+            uniforms: {
+                uSelection_picked: selectedId,
+                u_scalar_threshold: 0.5,
+            },
+            scalarSlots: {
+                threshold: { value: 0.5, type: "f32" },
+            },
+            selectionDefs,
+            visibleWhen,
+            channelNames: new Set(["uniqueId", "score"]),
+            readVisibility: true,
+        });
+
+    await expect(run(10)).resolves.toEqual([1, 1, 1]);
+    await expect(run(0)).resolves.toEqual([0, 1, 1]);
+});
+
 test("markShaderBuilder reads dynamic value uniforms", async ({ page }) => {
     await ensureWebGPU(page);
     const dumpLabel = test.info().title;

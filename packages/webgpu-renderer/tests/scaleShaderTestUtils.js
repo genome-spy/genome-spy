@@ -65,6 +65,7 @@ function dumpScaleShader(name, result) {
  * @param {number} params.outputLength
  * @param {string} params.channelName
  * @param {boolean} [params.readSeriesOnly]
+ * @param {boolean} [params.readVisibility]
  * @returns {string}
  */
 function buildComputeBody({
@@ -73,10 +74,13 @@ function buildComputeBody({
     outputLength,
     channelName,
     readSeriesOnly = false,
+    readVisibility = false,
 }) {
-    const outputExpr = readSeriesOnly
-        ? `read_${channelName}(i)`
-        : `getScaled_${channelName}(i)`;
+    const outputExpr = readVisibility
+        ? "select(0.0, 1.0, isInstanceVisible(i))"
+        : readSeriesOnly
+          ? `read_${channelName}(i)`
+          : `getScaled_${channelName}(i)`;
     return /* wgsl */ `
 struct VSOut {
     @location(0) @interpolate(flat) pickId: u32,
@@ -156,7 +160,12 @@ function getStorageByteLength(data) {
  * @param {number} params.outputLength
  * @param {string} params.channelName
  * @param {boolean} [params.readSeriesOnly]
+ * @param {boolean} [params.readVisibility]
  * @param {import("../src/marks/shaders/markShaderBuilder.js").SelectionDef[]} [params.selectionDefs]
+ * @param {import("../src/index.d.ts").VisibilityPredicate} [params.visibleWhen]
+ * @param {Record<string, import("../src/index.d.ts").ScalarSlotConfig>} [params.scalarSlots]
+ * @param {Set<string>} [params.channelNames]
+ * @param {Set<string>} [params.inputNames]
  * @param {import("../src/marks/shaders/markShaderBuilder.js").ExtraResourceDef[]} [params.extraResources]
  * @param {string} [params.dumpLabel]
  * @returns {import("../src/marks/shaders/markShaderBuilder.js").ShaderBuildResult & { outputBinding: number }}
@@ -168,8 +177,13 @@ export function buildScaleComputeShader({
     outputLength,
     channelName,
     selectionDefs = [],
+    visibleWhen,
+    scalarSlots = {},
+    channelNames,
+    inputNames,
     extraResources = [],
     readSeriesOnly = false,
+    readVisibility = false,
     dumpLabel,
 }) {
     const packedSeriesLayout = buildPackedSeriesLayout(channels, {}).entries;
@@ -179,6 +193,10 @@ export function buildScaleComputeShader({
         shaderBody: "",
         packedSeriesLayout,
         selectionDefs,
+        visibleWhen,
+        scalarSlots,
+        channelNames,
+        inputNames,
         extraResources,
     });
     const outputBinding = initial.resourceBindings.length + 1;
@@ -188,6 +206,7 @@ export function buildScaleComputeShader({
         outputLength,
         channelName,
         readSeriesOnly,
+        readVisibility,
     });
     const result = buildMarkShader({
         channels,
@@ -195,6 +214,10 @@ export function buildScaleComputeShader({
         shaderBody,
         packedSeriesLayout,
         selectionDefs,
+        visibleWhen,
+        scalarSlots,
+        channelNames,
+        inputNames,
         extraResources,
     });
     const scaleLabel =
@@ -579,11 +602,16 @@ export async function runScaleCompute(
  * @param {import("../src/marks/shaders/markShaderBuilder.js").ShaderBuildParams["uniformLayout"]} [params.uniformLayout]
  * @param {Record<string, number|number[]|Array<number|number[]>>} [params.uniforms]
  * @param {import("../src/marks/shaders/markShaderBuilder.js").SelectionDef[]} [params.selectionDefs]
+ * @param {import("../src/index.d.ts").VisibilityPredicate} [params.visibleWhen]
+ * @param {Record<string, import("../src/index.d.ts").ScalarSlotConfig>} [params.scalarSlots]
+ * @param {Set<string>} [params.channelNames]
+ * @param {Set<string>} [params.inputNames]
  * @param {import("../src/marks/shaders/markShaderBuilder.js").ExtraResourceDef[]} [params.extraResources]
  * @param {{ name: string, data: number[] | ArrayBufferView, role?: string }[]} [params.extraBuffers]
  * @param {{ binding: number, samplerBinding: number, texture: { format: string, width: number, height: number, bytesPerRow: number, data: number[] } }} [params.texture]
  * @param {number} [params.count]
  * @param {boolean} [params.readSeriesOnly]
+ * @param {boolean} [params.readVisibility]
  * @param {string} [params.dumpLabel]
  * @returns {Promise<number[]>}
  */
@@ -598,11 +626,16 @@ export async function runScaleCase(
         uniformLayout = [],
         uniforms = {},
         selectionDefs = [],
+        visibleWhen,
+        scalarSlots = {},
+        channelNames,
+        inputNames,
         extraResources = [],
         extraBuffers = [],
         texture,
         count = outputLength,
         readSeriesOnly = false,
+        readVisibility = false,
         dumpLabel,
         logSeriesBuffers = process.env.SCALE_TEST_LOG_BUFFERS === "1",
     }
@@ -621,11 +654,16 @@ export async function runScaleCase(
         channels,
         uniformLayout: normalizedUniformLayout,
         selectionDefs,
+        visibleWhen,
+        scalarSlots,
+        channelNames,
+        inputNames,
         extraResources,
         outputType,
         outputLength,
         channelName,
         readSeriesOnly: shouldReadSeriesOnly,
+        readVisibility,
         dumpLabel,
     });
     const debugCopySeries = process.env.SCALE_TEST_COPY_SERIES === "1";

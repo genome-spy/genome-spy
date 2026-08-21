@@ -766,6 +766,73 @@ describe("WebGPU mark adapter", () => {
         });
     });
 
+    test("omits semantic selection bypasses when unique ids are unavailable", () => {
+        const mark = createMark("point", [{ score: 0.25 }], {
+            semanticScore: createEncoder((datum) => datum.score),
+        });
+        Object.assign(mark, { getSemanticThreshold: () => 0.5 });
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        expect(/** @type {any} */ (translated).config.visibleWhen).toEqual({
+            compare: ">=",
+            left: { input: "semanticScoreInput" },
+            right: { slot: "semanticThreshold" },
+        });
+    });
+
+    test("translates every relevant selection into a semantic zoom bypass", () => {
+        const mark = createMark("point", [{ id: 4, score: 0.25 }], {
+            uniqueId: createEncoder((datum) => datum.id),
+            semanticScore: createEncoder((datum) => datum.score),
+            fill: createConditionalEncoder([
+                {
+                    accessor: createAccessor(
+                        () => "red",
+                        { value: "red" },
+                        true
+                    ),
+                    predicate: { param: "first", empty: false },
+                },
+                {
+                    accessor: createAccessor(
+                        () => "blue",
+                        { value: "blue" },
+                        true
+                    ),
+                    predicate: { param: "second", empty: false },
+                },
+                {
+                    accessor: createAccessor(
+                        () => "black",
+                        { value: "black" },
+                        true
+                    ),
+                    predicate: { empty: false },
+                },
+            ]),
+        });
+        Object.assign(mark, {
+            getSemanticThreshold: () => 0.5,
+            unitView: {
+                ...mark.unitView,
+                paramRuntime: {
+                    findValue: () => ({ type: "single", uniqueId: 4 }),
+                },
+            },
+        });
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        expect(/** @type {any} */ (translated).config.visibleWhen.any).toEqual([
+            { selection: "first", type: "single", empty: false },
+            { selection: "second", type: "single", empty: false },
+            {
+                compare: ">=",
+                left: { input: "semanticScoreInput" },
+                right: { slot: "semanticThreshold" },
+            },
+        ]);
+    });
+
     test("maps sequential and threshold color encodings", () => {
         const data = [{ value: -1 }, { value: 1 }];
         const interpolator = (/** @type {number} */ t) =>

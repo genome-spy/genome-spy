@@ -404,6 +404,80 @@ describe("buildMarkShader", () => {
                 inputNames: new Set(["score"]),
             })
         ).toThrow("all nodes must not be empty");
+
+        expect(() =>
+            buildMarkShader({
+                channels: {
+                    score: {
+                        data: new Float32Array([0, 1]),
+                        type: "f32",
+                        components: 1,
+                    },
+                },
+                uniformLayout: [],
+                shaderBody,
+                visibleWhen: {
+                    compare: ">=",
+                    left: { input: "score" },
+                    right: { input: "score" },
+                    any: [
+                        {
+                            compare: ">=",
+                            left: { input: "score" },
+                            right: { input: "score" },
+                        },
+                    ],
+                },
+                inputNames: new Set(["score"]),
+            })
+        ).toThrow("exactly one of compare, selection, all, or any");
+
+        expect(() =>
+            buildMarkShader({
+                channels: {
+                    score: {
+                        data: new Float32Array([0, 1]),
+                        type: "f32",
+                        components: 1,
+                    },
+                },
+                uniformLayout: [],
+                shaderBody,
+                visibleWhen: {
+                    any: [
+                        {
+                            compare: ">=",
+                            left: { input: "score" },
+                            right: { input: "score" },
+                        },
+                    ],
+                    all: [
+                        {
+                            compare: ">=",
+                            left: { input: "score" },
+                            right: { input: "score" },
+                        },
+                    ],
+                },
+                inputNames: new Set(["score"]),
+            })
+        ).toThrow("exactly one of compare, selection, all, or any");
+
+        expect(() =>
+            buildMarkShader({
+                channels: {
+                    fill: { value: 0, type: "f32", components: 1 },
+                },
+                uniformLayout: [],
+                shaderBody,
+                channelNames: new Set(["fill"]),
+                visibleWhen: {
+                    compare: ">=",
+                    left: { channel: "fill__cond0" },
+                    right: { channel: "fill" },
+                },
+            })
+        ).toThrow('unknown channel "fill__cond0"');
     });
 
     it("emits independent active checks and ranged hit-test formulas", () => {

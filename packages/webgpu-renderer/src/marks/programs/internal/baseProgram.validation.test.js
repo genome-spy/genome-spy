@@ -120,6 +120,43 @@ describe("BaseProgram channel validation", () => {
         ).not.toThrow();
     });
 
+    it("does not expose synthetic conditional channels to predicates", () => {
+        expect(() =>
+            createProgram(
+                {
+                    id: { value: 1, type: "u32" },
+                    x: { value: 0.5, type: "f32" },
+                    vec: {
+                        value: [1, 0, 0, 1],
+                        type: "f32",
+                        components: 4,
+                        conditions: [
+                            {
+                                when: {
+                                    selection: "chosen",
+                                    type: "interval",
+                                    targets: [{ input: "x" }],
+                                },
+                                channel: {
+                                    value: [0, 1, 0, 1],
+                                    type: "f32",
+                                    components: 4,
+                                },
+                            },
+                        ],
+                    },
+                },
+                {
+                    visibleWhen: {
+                        compare: ">=",
+                        left: { channel: "vec__cond0" },
+                        right: { channel: "x" },
+                    },
+                }
+            )
+        ).toThrow('unknown channel "vec__cond0"');
+    });
+
     it("allows optional channels to be omitted", () => {
         expect(() =>
             createProgram({
