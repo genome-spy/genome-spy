@@ -1134,6 +1134,135 @@ describe("WebGPU mark adapter", () => {
         });
         expect(x.conditions[0].channel.data).toEqual(new Float32Array([1, 2]));
     });
+
+    test.each(["x", "y"])("translates a %s-only interval target", (channel) => {
+        const mark = createMark("point", [{ x: 1, y: 2 }], {
+            [channel]: createConditionalEncoder([
+                {
+                    accessor: createAccessor(
+                        /** @param {Record<string, number>} datum */
+                        (datum) => datum[channel],
+                        { field: channel }
+                    ),
+                    predicate: { param: "brush", empty: false },
+                },
+                {
+                    accessor: createAccessor(() => 0.5, { value: 0.5 }, true),
+                    predicate: { empty: false },
+                },
+            ]),
+        });
+        /** @type {any} */ (mark.unitView).paramRuntime = {
+            findValue: () => ({
+                type: "interval",
+                intervals: { [channel]: [0, 3] },
+            }),
+        };
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+
+        expect(
+            /** @type {any} */ (translated).config.channels[channel]
+                .conditions[0].when.targets
+        ).toEqual([{ input: channel }]);
+    });
+
+    test("carries secondary endpoint hit testing for ranged marks", () => {
+        const mark = createMark(
+            "rect",
+            [{ x: 1, x2: 3, y: 1, y2: 3, color: "red" }],
+            {
+                x: createEncoder((datum) => datum.x),
+                x2: createEncoder((datum) => datum.x2),
+                y: createEncoder((datum) => datum.y),
+                y2: createEncoder((datum) => datum.y2),
+                xOffset: createConstantEncoder(0),
+                x2Offset: createConstantEncoder(0),
+                yOffset: createConstantEncoder(0),
+                y2Offset: createConstantEncoder(0),
+                fill: createConditionalEncoder([
+                    {
+                        accessor: createAccessor(
+                            /** @param {{color: string}} datum */
+                            (datum) => datum.color,
+                            { field: "color" }
+                        ),
+                        predicate: { param: "brush", empty: true },
+                    },
+                    {
+                        accessor: createAccessor(
+                            () => "gray",
+                            { value: "gray" },
+                            true
+                        ),
+                        predicate: { empty: false },
+                    },
+                ]),
+                stroke: createConstantEncoder(null),
+                fillOpacity: createConstantEncoder(1),
+                strokeOpacity: createConstantEncoder(1),
+                strokeWidth: createConstantEncoder(0),
+            },
+            { cornerRadius: 0, minWidth: 0, minHeight: 0, minOpacity: 1 }
+        );
+        /** @type {any} */ (mark.unitView).paramRuntime = {
+            findValue: () => ({
+                type: "interval",
+                intervals: { x: [1, 2] },
+            }),
+        };
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+
+        expect(
+            /** @type {any} */ (translated).config.channels.fill.conditions[0]
+                .when.targets
+        ).toEqual([
+            { input: "x", secondaryInput: "x2", hitTest: "intersects" },
+        ]);
+    });
+
+    test("rejects a two-component interval target contextually", () => {
+        const mark = createMark("point", [{ x: 1, color: "red" }], {
+            x: createEncoder((datum) => datum.x, {
+                scale: {
+                    type: "index",
+                    domain: () => [0, 2 ** 32 + 1],
+                    paddingInner: () => 0,
+                    paddingOuter: () => 0,
+                    align: () => 0.5,
+                },
+            }),
+            fill: createConditionalEncoder([
+                {
+                    accessor: createAccessor(
+                        /** @param {{color: string}} datum */
+                        (datum) => datum.color,
+                        { field: "color" }
+                    ),
+                    predicate: { param: "brush", empty: true },
+                },
+                {
+                    accessor: createAccessor(
+                        () => "gray",
+                        { value: "gray" },
+                        true
+                    ),
+                    predicate: { empty: false },
+                },
+            ]),
+        });
+        /** @type {any} */ (mark.unitView).paramRuntime = {
+            findValue: () => ({
+                type: "interval",
+                intervals: { x: [1, 2] },
+            }),
+        };
+
+        expect(() => createWebGpuMarkConfig(mark, {}, Rectangle.ZERO)).toThrow(
+            'cannot target two-component channel "x"'
+        );
+    });
 });
 
 /**
@@ -1171,6 +1300,7 @@ function createMark(type, data, encoders, properties = {}) {
                 ...properties,
             },
             getType: () => type,
+            defaultHitTestMode: "intersects",
             unitView: {
                 getCollector: () => ({
                     facetBatches: new Map([[undefined, data]]),

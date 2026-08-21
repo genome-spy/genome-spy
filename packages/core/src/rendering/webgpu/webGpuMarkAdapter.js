@@ -340,9 +340,16 @@ function createSelectionCondition(mark, channel, predicate) {
                 );
             }
 
+            assertScalarIntervalInput(mark, predicate.param, input);
+
             const secondaryInput = getSecondaryChannel(input);
             const target = { input };
             if (mark.encoders[secondaryInput]) {
+                assertScalarIntervalInput(
+                    mark,
+                    predicate.param,
+                    secondaryInput
+                );
                 return {
                     ...target,
                     secondaryInput,
@@ -355,6 +362,29 @@ function createSelectionCondition(mark, channel, predicate) {
     }
 
     return when;
+}
+
+/**
+ * Large index and locus values use two packed u32 components in ordinary
+ * rendering, but interval predicates currently require one scalar component.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} selectionName
+ * @param {string} channel
+ */
+function assertScalarIntervalInput(mark, selectionName, channel) {
+    const encoder = /** @type {Record<string, any>} */ (mark.encoders)[channel];
+    const scale = encoder?.scale;
+    if (
+        scale &&
+        (scale.type == "index" || scale.type == "locus") &&
+        isLargeGenome(scale.domain().map(Number))
+    ) {
+        throw unsupported(
+            mark,
+            `Interval selection "${selectionName}" cannot target two-component channel "${channel}".`
+        );
+    }
 }
 
 /**

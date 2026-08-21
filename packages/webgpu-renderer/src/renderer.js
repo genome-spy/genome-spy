@@ -86,6 +86,8 @@ export class Renderer {
         this._pickTextureView = null;
         this._pickReadbackBuffer = null;
         this._pickTextureSize = { width: 0, height: 0 };
+        /** @type {Promise<unknown>} */
+        this._pickQueue = Promise.resolve();
 
         this._globalUniformStride = Math.max(
             16,
@@ -333,8 +335,23 @@ export class Renderer {
      * @param {number} y
      * @returns {Promise<number|null>}
      */
-    async pick(x, y) {
+    pick(x, y) {
         this._assertAlive();
+        const result = this._pickQueue.then(() => this._pickSingle(x, y));
+        this._pickQueue = result.catch(
+            /** @returns {undefined} */ () => undefined
+        );
+        return result;
+    }
+
+    /**
+     * Performs one serialized pick readback.
+     *
+     * @param {number} x
+     * @param {number} y
+     * @returns {Promise<number|null>}
+     */
+    async _pickSingle(x, y) {
         if (!this._marks.size) {
             return null;
         }
