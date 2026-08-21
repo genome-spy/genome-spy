@@ -2,182 +2,334 @@
 
 ## Purpose
 
-Finish the parity work between the WebGPU and WebGL Core backends. The plan
-now contains only unresolved work. Point, rect, rule/tick, text, link, and
-arrow dispatch; positional offsets; dashed rules; all point shapes; rectangle
-corner radii, hatches, and shadows; supported colors and scales; data-driven
-text size; expression-valued properties; and unique-id forwarding are already
-implemented and are not repeated as milestones here.
+Bring the WebGPU Core backend to the supported feature level of the current
+WebGL backend while keeping the rendering boundary intentional:
 
-The architecture remains split at the existing boundary:
+- Core owns the declarative grammar, encoders, resolved scales, locus
+  conversion, category indexing, view traversal, selections, tooltips, and
+  facet occurrences.
+- `packages/core/src/rendering/webgpu/` translates those semantic values into
+  generic retained-renderer definitions and draw commands.
+- `packages/webgpu-renderer` owns mark programs, WGSL, pipelines, bind groups,
+  scale resources, value slots, series buffers, and the low-level pick pass.
+- WebGL in `packages/core/src/marks/`, `packages/core/src/gl/`, and the
+  interaction controller remains the behavioral reference.
 
-- Core owns the declarative grammar, encoders, resolved scales, mark
-  properties, view traversal, selections, and facet occurrences.
-- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js` translates those
-  semantic values into generic retained-renderer definitions and channel
-  configurations.
-- `packages/webgpu-renderer` owns mark programs, WGSL, scale definitions,
-  selection resources, pipelines, and retained GPU data.
-- WebGL in `packages/core/src/marks/` and its GLSL files remains the behavioral
-  reference.
+Completed work is intentionally omitted from the open milestones. The current
+adapter already covers mark dispatch for point, rect, rule/tick, text, link,
+and arrow; positional offsets; dashed rules; point shapes; rectangle corner
+radii, hatches, and shadows; supported colors and scales already represented by
+the low-level renderer; data-driven text size; expression-valued properties at
+initial translation; and unique-id forwarding to the renderer pick channel.
 
-Each milestone should end with focused tests and one Conventional Commit.
-Do not re-open completed mark milestones unless a remaining feature exposes a
-regression in them.
+Every active milestone ends with focused tests and one Conventional Commit.
+Faceting remains a separate, final, postponed milestone and must not be
+implemented or redesigned until explicitly authorized.
 
-## Current remaining gaps
+## Scope decisions and non-goals
+
+### Scale scope follows WebGL semantics, with explicit unsupported types
+
+WebGPU must expose only scale behavior that Core’s current WebGL path can
+translate and that this migration explicitly elects to support. The renderer
+package must not acquire a scale merely because Vega or the low-level API can
+represent it.
+
+The intended Core-to-renderer mapping is:
+
+| Core scale | Renderer representation | Status |
+| --- | --- | --- |
+| linear, sequential-linear, diverging-linear | `linear` or corresponding range stops | Supported scope |
+| log | `log` | Supported scope |
+| pow, sqrt | `pow`, `sqrt` | Supported scope |
+| symlog | `symlog` | Supported scope |
+| time, utc | numeric milliseconds through `linear` | Supported scope |
+| ordinal | integer category input through `ordinal` | Supported scope |
+| band, point | integer category input through `band` | Supported scope |
+| index | high-precision `index` | Supported scope |
+| locus | Core-normalized high-precision `index` | Supported scope |
+| quantize | `quantize`, only where WebGL supports the same use | Supported scope |
+| threshold | `threshold`, only where WebGL supports the same use | Supported scope |
+| quantile | none | Explicitly unsupported |
+| bin-ordinal | none | Explicitly unsupported |
+
+`locus` is not a request for a new low-level genomic scale. Core already owns
+assembly, contig, complex-locus parsing, domain resolution, zooming, and
+conversion to numeric positions. The adapter should translate the resolved
+locus scale at the renderer boundary to the existing high-precision index
+contract. No locus-specific types, genome stores, or contig logic belong in
+`packages/webgpu-renderer`.
+
+Quantile and bin-ordinal must remain unsupported in WebGPU. Do not add scale
+definitions, WGSL, or adapter fallbacks for them. They should fail with a
+contextual unsupported-capability error at the Core WebGPU boundary, while
+generic renderer validation remains responsible for renderer-internal shape
+errors. A future scale type is not automatically part of WebGPU parity.
+
+### Category identity remains in Core
+
+WebGPU storage and WGSL inputs remain numeric. Strings, numbers, and other
+categorical scalar values must be converted to stable integer IDs before they
+reach `packages/webgpu-renderer`.
+
+The source of truth is the existing Core machinery used by WebGL:
+`ScaleResolution` maintains a categorical `domainIndexer`, and
+`packages/core/src/gl/dataToVertices.js` uses that indexer, or creates one from
+the resolved domain, before constructing GPU attributes. The WebGPU adapter’s
+private category map is only a temporary implementation detail and must not
+become a second category-domain system.
+
+The eventual contract is:
+
+- Core supplies a stable indexer associated with the resolved scale/domain.
+- The adapter uses that indexer for all categorical channels, including
+  positional band/point inputs, ordinal values, ordinal colors, enum-like
+  properties, and conditional branches.
+- The mapping preserves WebGL behavior for explicit domains, implicit domains,
+  unknown values, domain updates, and shared scale resolutions.
+- The renderer receives integer typed arrays or integer value slots only. It
+  never interns strings or interprets Core categorical objects.
+- Mapping changes update the relevant series or scale resources without
+  changing pipeline layout. A capacity reallocation is acceptable when the
+  domain grows, but it must not trigger an unrelated pipeline rebuild.
+
+### Dynamic properties are a performance contract
+
+Parameter- and expression-driven mark properties must remain retained and
+cheap to update. WebGL’s reference behavior is `Mark.registerMarkUniformValue`:
+it watches the expression through `paramRuntime`, calls a raw uniform setter
+when the value changes, marks uniforms dirty, and requests a render. It does
+not rebuild the shader, vertex attributes, or mark buffers for a scalar
+uniform update.
+
+WebGPU should preserve the same distinction:
+
+- Dynamic scalar, color, enum, and selection values use retained value slots or
+  uniform resources.
+- Data-driven series values replace only the affected series buffer when the
+  channel shape remains unchanged.
+- Scale domain/range changes update retained scale resources.
+- Mark type, channel presence, scalar/vector component count, text atlas
+  identity, and other shader-layout changes may recreate a program/pipeline.
+- A parameter change must not recreate a mark program, pipeline, bind-group
+  layout, or unrelated channel buffers.
+
+The adapter must not eagerly turn every `ExprRef` into a new per-frame series
+or rebuild a complete config merely because the expression changed. The
+retained surface/renderer API must receive the smallest update corresponding
+to the changed property.
+
+### Picking is part of the Core backend contract
+
+The low-level renderer already has a separate pick texture and pick pipeline,
+and mark programs already emit `uniqueId + 1`. Core does not yet connect that
+facility to its normal interaction path: the WebGPU coordinator renders only
+with `{ picking: false }`, the backend does not expose `readPickingId`, and the
+renderer API is asynchronous while `InteractionController` currently expects a
+synchronous pixel read.
+
+The goal is to reuse Core’s existing hover and tooltip flow, including
+`Collector.findDatumByUniqueId`, `Mark.isPickingParticipant`, view-coordinate
+checks, custom tooltip handlers, and click/hover state. Do not create a second
+tooltip implementation in the renderer package.
+
+The initial picking milestone covers non-faceted views. Facet-scoped picking
+remains part of the postponed facet milestone.
+
+## Current remaining milestones
 
 ### 1. Conditional encodings and selection-driven channels
 
-The WebGPU renderer already supports channel conditions driven by single,
-multi, and interval selections. Core encoders expose the same semantics as
-ordered branches, where each branch contains an accessor and a selection
-predicate, followed by a fallback branch. The adapter still rejects any
-encoder with more than one branch instead of translating it.
+The WebGPU renderer supports channel conditions driven by single, multi, and
+interval selections. Core exposes ordered conditional encoder branches, but
+the adapter still rejects encoders with more than one branch.
 
-Implement the Core-to-renderer translation for conditional channels:
+Implement the translation while retaining the renderer’s generic contract:
 
-- Convert each selection predicate to the renderer's `ChannelCondition`
-  shape, preserving selection name, type, interval channel, and empty-state
-  behavior.
-- Translate branch accessors using the same raw-data and scale handling as
-  unconditional channels. A conditional branch may be a constant value or a
-  series-backed channel with its own scale.
-- Preserve ordered branch precedence and the unconditional fallback.
-- Ensure conditional color, opacity, numeric, positional, enum, and text-size
-  channels use the correct renderer component/type contract.
-- Forward `uniqueId` whenever single or multi selection conditions require it.
-- Keep generic validation in `webgpu-renderer`; the adapter should only reject
-  a Core branch when it cannot express that branch as a renderer channel or
-  value.
+- Convert each Core selection predicate to the renderer’s `ChannelCondition`,
+  preserving selection name, type, interval channel, and empty-state behavior.
+- Translate constants and series-backed branches using the same scale and
+  categorical-indexing path as unconditional channels.
+- Preserve branch order and the unconditional fallback.
+- Cover numeric, color, opacity, positional, enum, and text-size channels.
+- Forward `uniqueId` whenever a selection condition needs it.
+- Keep only semantic adapter checks. Channel shape, slot validity, and WGSL
+  constraints belong in `packages/webgpu-renderer`.
 
 Affected areas:
 
 - `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
 - Core WebGPU adapter and selection tests
-- `packages/webgpu-renderer/src/marks/programs/internal/channelConfigResolver.js`
-  only if a generic contract is missing
-- Selection slot/resource tests and representative selection examples
+- Renderer channel-condition and selection-slot tests only where a generic
+  contract is missing
 
 Verification:
 
-- Test constant and series-backed conditional branches for numeric, color,
-  enum, positional, and text channels.
-- Test single, multi, and interval selections, including empty selections and
-  fallback behavior.
-- Verify selection updates change values through retained slots without
-  rebuilding the mark pipeline.
-- Smoke-test a Core selection example with WebGL and WebGPU at DPR 1 and 2.
+- Test constant and series-backed conditional branches for every supported
+  channel class.
+- Test single, multi, and interval selections, including empty selections.
+- Verify selection updates use retained slots and do not rebuild pipelines.
+- Smoke-test a Core selection example against WebGL at DPR 1 and 2.
 
-### 6. Faceted and sample-faceted rendering — postponed
+Tentative commit: `feat(core): translate conditional WebGPU channels`
 
-The adapter still rejects `options.sampleFacetRenderingOptions` and
-`mark.encoders.facetIndex`. WebGL renders one occurrence per facet, with
-facet-specific data and coordinates. The current WebGPU path creates one
-retained configuration for the un-faceted occurrence and does not yet model
-the occurrence traversal contract.
+### 2. Scale boundary and Core-owned categorical indexing
 
-This work is intentionally postponed because it requires additional design
-around occurrence ownership, retained draw lifetimes, facet-local selections,
-and interaction with visible-range culling. Do not implement, redesign, or
-expand this work until the user explicitly authorizes continuation.
+Make the adapter’s scale surface match the scope table above and align its
+categorical conversion with WebGL’s existing `domainIndexer` machinery.
 
-When this work is resumed, implement facet occurrence support in the Core
-WebGPU integration:
+Implementation work:
 
-- Reuse the existing occurrence traversal and facet-coordinate calculations
-  instead of duplicating facet grouping logic in the renderer package.
-- Create one WebGPU draw/configuration per visible facet occurrence, with the
-  correct data batch, view rectangle, opacity, and visible-range culling
-  bounds.
-- Preserve stable draw ordering and retained resource reuse when only facet
-  data or layout changes.
-- Handle missing or empty facets the same way as the WebGL path.
-- Define how facet-local unique IDs and selection conditions are scoped, then
-  test the chosen behavior against WebGL.
-- Keep facet placement and grouping in Core; do not add Core-specific facet
-  concepts to `packages/webgpu-renderer`.
+- Add the Core adapter mapping for `locus` to the renderer’s existing
+  high-precision `index` representation. Core must provide already-resolved
+  numeric locus values and domain/range semantics.
+- Keep `quantile` and `bin-ordinal` rejected. Add tests proving no low-level
+  definition is selected for either type.
+- Audit every other adapter case against the WebGL scale generator and
+  `webGLHelper`; remove any WebGPU-only scale exposure outside the supported
+  table.
+- Replace the adapter-local categorical identity map with the resolved Core
+  `domainIndexer`, or introduce the smallest Core helper needed to expose that
+  existing identity without duplicating scale-resolution state.
+- Use one mapping per resolved scale, not one mapping per mark/channel.
+- Verify categorical data in positional, color, opacity, enum, and conditional
+  channels, including strings and numeric categories.
+- Preserve stable IDs during domain updates and shared-scale resolution.
 
 Affected areas:
 
+- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
+- `packages/core/src/scales/scaleResolution.js` or a focused Core scale/indexer
+  helper, only if the existing indexer needs a supported access path
+- WebGPU scale and adapter tests
+- `packages/webgpu-renderer` only for generic index-scale resource behavior
+
+Verification:
+
+- Compare categorical positions/colors and locus positions with WebGL.
+- Test explicit and implicit domains, unknown categories, domain growth, and
+  shared scales.
+- Test reversed ranges, clamping, domain updates, and high-precision loci.
+- Assert quantile and bin-ordinal remain unsupported with useful errors.
+- Assert category conversion produces numeric typed arrays before renderer
+  creation and does not introduce renderer-side string handling.
+
+Tentative commit: `feat(core): align WebGPU scales with WebGL semantics`
+
+### 3. Retained dynamic mark properties
+
+Complete the property matrix for mark-local values and implement the update
+path with WebGL-like retention guarantees.
+
+Audit each property on point, rect, rule/tick, text, link, and arrow against
+the Core mark classes, WebGL uniform registration, conditional encoders, and
+the renderer’s current value-slot/channel APIs.
+
+Classify each property as:
+
+- a retained scalar/vector value slot for parameter- or selection-driven
+  values;
+- a typed data-driven channel whose series can be replaced independently;
+- a structural pipeline property whose changes legitimately require a new
+  program/pipeline; or
+- unsupported until a generic renderer contract is designed.
+
+Do not encode a per-datum property as one constant value. Conversely, do not
+promote a structurally uniform shader option to a per-instance buffer merely
+to avoid a clear error. Preserve the smallest resource update possible:
+
+- expression changes update a value slot and request rendering;
+- channel data changes replace only that channel’s series;
+- scale changes update scale slots;
+- pipeline/bind-group layout changes are reserved for real structural changes.
+
+The adapter and retained surface must preserve expression identity or register
+Core parameter watchers so a change does not require reconstructing every mark
+config. Add instrumentation tests around program, pipeline, bind-group, and
+buffer creation counts for repeated expression updates.
+
+Affected areas:
+
+- Core mark property and encoder setup
+- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
+- `packages/core/src/rendering/webgpu/webGpuSurface.js`
+- Relevant renderer value/channel slot APIs and WGSL programs
+- Mark property and retention tests
+
+Verification:
+
+- Test constant, parameter-expression, selection-dependent, and per-datum
+  cases for every property claiming support.
+- Test updates over multiple frames and assert no unnecessary pipeline,
+  bind-group, program, or unrelated series-buffer churn.
+- Compare arrow/link geometry, point/rect geometry, text size, and colors with
+  WebGL.
+- Verify unsupported structural properties fail at the renderer contract
+  boundary with a contextual error.
+
+Tentative commit: `feat(webgpu): retain dynamic mark property updates`
+
+### 4. WebGPU picking and tooltip integration
+
+Connect the low-level asynchronous pick API to Core’s existing interaction
+controller and tooltip path.
+
+Implementation work:
+
+- Render a WebGPU pick frame containing only marks for which
+  `mark.isPickingParticipant()` is true, analogous to WebGL’s second buffered
+  rendering context.
+- Expose a backend/coordinator pick operation that handles the renderer’s
+  `Promise<number | null>` API and converts canvas logical coordinates to the
+  renderer’s expected coordinate system and DPR.
+- Adapt the interaction path for asynchronous reads without allowing stale
+  pointer results to overwrite newer pointer positions. Preserve the existing
+  drag/zoom throttling behavior.
+- Decode the low-level ID convention (`0` means no hit; rendered IDs are
+  `uniqueId + 1`) before passing the Core unique ID to the existing view
+  traversal.
+- Reuse `Collector.findDatumByUniqueId`, view facet-coordinate checks for the
+  non-faceted path, tooltip handlers, cursor state, and click/hover behavior.
+- Ensure scissor and visible-range culling apply to the pick draw just as they
+  do to the visible draw.
+- Keep pick resources separate from normal rendering and avoid rebuilding
+  normal pipelines, bind groups, or series buffers when only the pick pass is
+  requested.
+
+Affected areas:
+
+- `packages/core/src/rendering/renderingBackend.js`
+- `packages/core/src/rendering/webgpu/index.js`
 - `packages/core/src/rendering/webgpu/webGpuSurface.js`
 - `packages/core/src/rendering/webgpu/webGpuRenderCoordinator.js`
-- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
-- `packages/core/src/rendering/immediate/markData.js` and occurrence tests
-- WebGPU retained draw/resource lifecycle tests
+- `packages/core/src/genomeSpy/interactionController.js`
+- WebGPU renderer pick tests where its generic API is incomplete
 
 Verification:
 
-- Render ordinary facet-index data, sample facets, missing facets, and empty
-  facet batches.
-- Compare facet positions, clipping/culling, opacity, and draw order with
-  WebGL.
-- Verify facet changes do not leak draw handles or recreate pipelines when the
-  mark definition remains unchanged.
+- Unit-test no-hit, hit, stale-result, DPR, out-of-bounds, and coordinate
+  conversion behavior.
+- Test that non-picking marks are absent from the pick pass.
+- Test unique-ID lookup through a collector and the existing tooltip handler.
+- Browser-smoke-test hover, tooltip, click, and tooltip dismissal on a
+  non-faceted point/rect example with WebGL/WebGPU comparison.
 
-### 2. Core scale types without renderer definitions
+Tentative commit: `feat(core): connect WebGPU picking to tooltips`
 
-The adapter now translates the scale types already represented by the generic
-renderer, including linear, log, pow, sqrt, symlog, time/UTC-as-milliseconds,
-point, band, index, ordinal, quantize, and threshold forms. The remaining Core
-scale families have no equivalent low-level definition:
+### 5. Font resource parity
 
-- `locus`, whose input may contain genomic coordinates and assembly/contig
-  semantics;
-- `quantile`, whose bucket boundaries depend on the resolved data domain;
-- `bin-ordinal`, whose discrete domain and range are generated from bins; and
-- any future Core scale type without a public renderer definition.
+The WebGPU text program currently resolves the default sans-serif to its
+embedded atlas and rejects other font families. Bring it to the same resource
+contract as WebGL without disturbing unrelated mark pipelines.
 
-For each remaining scale family, choose and implement the correct generic
-contract rather than adding another adapter-only special case:
+Implementation work:
 
-- Define the scale input type, domain/range resources, update behavior, and
-  WGSL mapping in `packages/webgpu-renderer/src/marks/scales/defs/`.
-- Add a public scale factory and type declaration.
-- Normalize Core domains and ranges in the adapter without losing precision or
-  ordinal identity.
-- Add domain/range update handling to retained scale slots.
-- For locus scales, explicitly decide whether Core must materialize numeric
-  range-space values or the renderer should receive a generic packed genomic
-  representation. Preserve high-precision index behavior.
-- For quantile and bin-ordinal scales, test domain recomputation and changes
-  to bucket count/range length.
-
-If a scale cannot be supported without a larger data/coordinate subsystem,
-record that decision in the migration plan and keep its error in the generic
-renderer boundary. Do not silently fall back to linear behavior.
-
-Affected areas:
-
-- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
-- `packages/webgpu-renderer/src/scales/`
-- Scale definitions, shader-generation, scale-resource, and retained-update
-  tests
-- Core examples using genomic, quantile, and binned scales
-
-Verification:
-
-- Compare mapped positions, colors, and sizes with WebGL for representative
-  domains, reversed ranges, clamping, domain updates, and high-precision
-  coordinates.
-- Run renderer scale unit/GPU tests and Core adapter tests for each supported
-  scale family.
-
-### 3. Font parity and text resource registration
-
-The WebGPU text program currently resolves Core's default sans-serif to the
-embedded Lato atlas and rejects other font families. WebGL can use Core's font
-manager and registered font resources.
-
-Bring the WebGPU font path to the same resource contract:
-
-- Define how a text mark requests a family, style, and weight from Core.
-- Pass a font resource or atlas identity through the generic text mark config.
-- Extend the renderer's font manager/atlas lifecycle to load or receive the
-  required glyph metrics and texture resources.
+- Define how Core supplies font family, style, weight, and atlas identity.
+- Extend the renderer font/atlas lifecycle to load or receive the required
+  glyph metrics and texture resources.
 - Preserve data-driven text size, layout-base sizing, padding, squeeze, and
-  glyph expansion when the selected font changes.
-- Handle unavailable fonts explicitly and consistently with WebGL.
+  glyph expansion.
+- Handle unavailable fonts consistently with WebGL.
 
 Affected areas:
 
@@ -188,125 +340,119 @@ Affected areas:
 
 Verification:
 
-- Compare default sans-serif, Lato, an additional registered family, italic,
-  and multiple weights with WebGL.
-- Verify font changes rebuild only the resources that require rebuilding and do
-  not invalidate unrelated mark pipelines.
+- Compare default sans-serif, Lato, another registered family, italic, and
+  multiple weights with WebGL.
+- Confirm changing a text atlas rebuilds only the dependent text resources.
 
-### 4. Data-driven mark-local properties
+Tentative commit: `feat(webgpu): support registered text fonts`
 
-The generic renderer exposes several properties as mark uniforms because they
-are currently constant for a draw. Core/WebGL can vary some of these through
-conditional encodings or property expressions. The remaining examples include
-arrow head shape/placement/stem options and link geometry options. They must
-not be encoded as a single value when the Core specification supplies a
-per-datum or selection-dependent value.
+### 6. Cross-renderer integration audit
 
-Audit each mark-local property against Core's actual encoding surface:
+Run the complete supported-surface audit after the individual milestones.
+Update this plan to mark only behavior that is actually implemented, and
+record any intentionally unsupported behavior at the adapter boundary.
 
-- If the property is genuinely per-instance, promote it to a typed renderer
-  channel and consume it in WGSL.
-- If it is selection-dependent but not per-instance, represent it as a generic
-  conditional value slot.
-- If it is a view/parameter expression, ensure updates use retained dynamic
-  values rather than rebuilding a pipeline unnecessarily.
-- Keep properties that are structurally uniform (for example shader branch
-  configuration) as uniforms and document that contract.
-- Do not add Core-specific property types to the renderer package.
+Verification must include:
 
-Affected areas:
+- WebGL/WebGPU comparisons at DPR 1 and 2 for supported scale families,
+  categorical values, dynamic properties, selection conditions, and tooltips.
+- The scrollable viewport/grid example that exposed inverted axes, misplaced
+  labels, and missing culling.
+- Representative point, rect, rule/tick, text, link, and arrow examples.
+- Console/page-error checks and retained-resource instrumentation during
+  parameter changes and hover.
 
-- Core mark property/encoder setup
-- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
-- Relevant mark channel specs and WGSL programs
-- Generic value/condition slot handling in `packages/webgpu-renderer`
+Tentative commit: `test(webgpu): verify supported renderer parity`
 
-Verification:
+### 7. Faceted and sample-faceted rendering — postponed
 
-- Build a property matrix from WebGL mark attributes and Core mark types.
-- Test constant, parameter-expression, conditional, and per-datum cases for
-  each property that claims support.
-- Assert that unsupported structural properties fail at the renderer contract
-  boundary with a useful error.
+The adapter still rejects `options.sampleFacetRenderingOptions` and
+`mark.encoders.facetIndex`. WebGL renders one occurrence per facet, with
+facet-specific data and coordinates. The current WebGPU path does not yet
+model occurrence ownership, retained draw lifetimes, facet-local selections,
+or facet-scoped picking.
+
+This work is intentionally postponed. Do not implement, redesign, or expand
+it until the user explicitly authorizes continuation. When resumed, the work
+must:
+
+- reuse Core’s existing occurrence traversal and facet-coordinate calculations;
+- create one retained draw/configuration per visible facet occurrence;
+- preserve draw ordering, clipping, visible-range culling, opacity, and empty
+  facet behavior;
+- define facet-local unique-ID and selection scoping before implementing
+  facet picking; and
+- keep facet grouping and placement in Core, with no Core-specific concepts in
+  `packages/webgpu-renderer`.
+
+Tentative commit, only after authorization: `feat(core): render WebGPU facet occurrences`
 
 ## Adapter boundary rules
 
-The adapter is a semantic translator, not a second renderer validator. Keep
-only checks required to translate Core values:
+The adapter is a semantic translator, not a duplicate renderer validator. It
+may check:
 
-- required Core encoders are present;
-- enum values have a defined numeric mapping;
-- raw data can be represented by the renderer's declared typed array;
-- Core features with no renderer representation are reported contextually.
+- required Core encoders and mark semantics are present;
+- a Core feature has an intentional renderer representation;
+- categorical values have a Core-owned integer mapping;
+- an unsupported Core scale is reported contextually; and
+- raw values can be represented by the renderer’s declared typed array.
 
-Channel component counts, scale compatibility, resource shape, selection slot
-validity, and WGSL/pipeline constraints belong in `packages/webgpu-renderer`.
-When a new adapter check is proposed, add a test explaining why the generic
-renderer cannot perform it.
-
-## Implementation sequence and commits
-
-1. Conditional channel translation and selection resources.
-   `feat(core): translate conditional WebGPU channels`
-2. Remaining generic scale definitions, starting with the scale family needed
-   by the highest-value Core examples.
-   `feat(webgpu): add remaining parity scale definitions`
-3. Font resource registration and text-family parity.
-   `feat(webgpu): support registered text fonts`
-4. Mark-local dynamic/per-instance property parity.
-   `feat(webgpu): support dynamic mark properties`
-5. Cross-renderer audit, migration documentation, and final verification.
-   `test(webgpu): verify remaining renderer parity`
-6. Facet and sample-facet design and implementation, only after explicit
-   authorization to resume the postponed work.
-   `feat(core): render WebGPU facet occurrences`
-
-Each active step should include its focused tests and update the migration plan
-only for behavior actually implemented. Step 6 is inactive until explicitly
-authorized; keep unrelated fixes out of every commit.
+The adapter must not independently duplicate validation for channel component
+counts, scale resource layout, selection slot validity, bind-group limits, or
+WGSL/pipeline constraints. Those belong in `packages/webgpu-renderer`. Any new
+adapter check needs a test explaining why the generic renderer cannot perform
+it.
 
 ## Verification strategy
 
-During implementation, run the narrowest relevant suite:
+Use the narrowest relevant suite during each milestone:
 
 - `npx vitest run packages/core/src/rendering/webgpu/<test>.test.js --reporter=agent`
 - `npx vitest run --root packages/webgpu-renderer --reporter=agent`
 - `npm -w @genome-spy/core run test:tsc --if-present`
 - `npm -w @genome-spy/webgpu-renderer run test:tsc --if-present`
 
-For each user-visible feature, compare WebGL and WebGPU at DPR 1 and DPR 2,
-using representative examples and browser console/page-error checks. GPU tests
-must cover the renderer-level shader/resource contract; browser tests must
-cover Core traversal, updates, and visible output.
+For browser work, use the GenomeSpy browser-debugging workflow and compare
+WebGL and WebGPU at DPR 1 and DPR 2. Include console/page-error checks and
+the interaction examples needed for picking and tooltips.
 
-Before declaring the remaining parity work complete, run:
-
-- `npm --workspaces run test:tsc --if-present`;
-- `npm run lint`;
-- the full relevant Vitest suites;
-- the WebGPU GPU suite when available;
-- representative Core examples for conditionals, scales, and fonts;
-- WebGL regression tests plus shared Canvas/SVG tests.
+Before declaring this parity work complete, run the relevant full Vitest
+suites, workspace TypeScript checks, lint, the WebGPU GPU suite when
+available, and representative Core examples. Quantile and bin-ordinal must
+remain rejected throughout.
 
 ## Acceptance criteria
 
-- Conditional Core encodings render with the same branch precedence and
-  selection behavior as WebGL.
-- Every Core scale used by supported examples either has a generic WebGPU
-  definition with matching updates or is explicitly documented as unsupported
-  with a follow-up issue/plan.
-- Registered text fonts, styles, weights, and dynamic sizes behave like WebGL.
-- Mark-local properties are either correctly channelized/conditionalized or
-  explicitly constrained by a documented generic renderer contract.
-- No remaining adapter check merely duplicates validation already provided by
-  `webgpu-renderer`.
-- Existing completed parity features remain green while these integrations are
-  added.
-- Faceting remains explicitly postponed and is not a completion criterion until
-  the user authorizes that work.
+- Supported Core scales have matching WebGPU behavior, with `locus` translated
+  to the renderer’s index contract and locus-specific logic remaining in Core.
+- Quantile and bin-ordinal are explicitly unsupported in WebGPU and have no
+  low-level renderer definitions or silent fallback.
+- Categorical strings and other scalar categories are indexed by existing Core
+  machinery and reach WebGPU as stable integer data.
+- Conditional encodings match WebGL branch precedence and selection behavior.
+- Parameter/expression-driven dynamic properties update retained resources
+  without unnecessary pipeline, bind-group, program, or buffer churn.
+- WebGPU picking drives the existing Core hover and tooltip behavior for
+  non-faceted views, including asynchronous reads and DPR conversion.
+- Registered text fonts, styles, weights, and dynamic sizes match WebGL.
+- Adapter checks are limited to semantic translation and contextual
+  unsupported-capability reporting.
+- Faceting remains postponed and is not a completion criterion until explicitly
+  authorized.
 
 ## Baseline implementation references
 
 The completed work that this plan builds on is recorded in git history,
-including the adapter audit commits `068e3cb30` and `43006bf27`. It is
-intentionally not listed as open work here.
+including the adapter audit and the explicit faceting-postponement commits.
+The open milestones above are based on the current Core WebGL paths:
+
+- `packages/core/src/gl/dataToVertices.js` for category indexing;
+- `packages/core/src/scales/scaleResolution.js` for stable categorical
+  domains and Core locus resolution;
+- `packages/core/src/gl/glslScaleGenerator.js` and `webGLHelper.js` for the
+  WebGL scale capability reference;
+- `packages/core/src/marks/mark.js` for retained expression/uniform updates
+  and picking participation; and
+- `packages/core/src/genomeSpy/renderCoordinator.js` and
+  `interactionController.js` for the WebGL pick/tooltip flow.
