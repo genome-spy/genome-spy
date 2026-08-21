@@ -1,8 +1,8 @@
 # WebGPU/Core integration plan
 
-Status: In progress — core examples pass; 3 docs cases intentionally deferred
+Status: Complete — 209/212 examples pass; 3 docs cases intentionally deferred
 
-Date: 2026-08-20
+Date: 2026-08-21
 
 Scope: `packages/core`, `packages/webgpu-renderer`, and every JSON example under
 `examples/core/` and `examples/docs/`
