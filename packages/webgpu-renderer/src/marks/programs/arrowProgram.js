@@ -128,7 +128,7 @@ fn polygonDistance(p: vec2<f32>, vertices: array<vec2<f32>, 6>) -> f32 {
         let edge = b - a;
         let projection = a + edge * clamp(dot(p - a, edge) / max(dot(edge, edge), 0.0001), 0.0, 1.0);
         distance = min(distance, length(p - projection));
-        if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / max(b.y - a.y, 0.0001) + a.x) {
+        if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) {
             inside = !inside;
         }
     }
@@ -227,16 +227,17 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let stemHalfWidth = select(-arrowSize * 0.5, arrowSize * 0.5, params.uStem != 0u);
     let headAxisLength = headHalfWidth * params.uHeadSlope;
     let padding = 1.0 / globals.dpr + getScaled_strokeWidth(i) * 0.5 + max(headHalfWidth, abs(stemHalfWidth));
-    let halfLength = lengthInPixels * 0.5 + padding;
+    let geometryHalfLength = lengthInPixels * 0.5;
+    let quadHalfLength = geometryHalfLength + padding;
     let centre = (a + b) * 0.5;
-    let axisPosition = (local.x - 0.5) * (halfLength * 2.0);
+    let axisPosition = (local.x - 0.5) * (quadHalfLength * 2.0);
     let normalPosition = (local.y - 0.5) * (max(headHalfWidth, abs(stemHalfWidth)) * 2.0 + padding * 2.0);
     let position = centre + axis * axisPosition + normal * normalPosition;
     let clip = vec2<f32>((position.x / globals.width) * 2.0 - 1.0, 1.0 - (position.y / globals.height) * 2.0);
     var out: VSOut;
     out.pos = vec4<f32>(clip, 0.0, 1.0);
     out.local = vec2<f32>(axisPosition, normalPosition);
-    out.halfLength = halfLength;
+    out.halfLength = geometryHalfLength;
     out.headHalfWidth = headHalfWidth;
     out.stemHalfWidth = stemHalfWidth;
     out.headSlope = params.uHeadSlope;

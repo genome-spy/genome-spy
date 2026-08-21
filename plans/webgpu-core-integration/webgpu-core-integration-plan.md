@@ -113,6 +113,33 @@ a zero-height canvas in the same harness. Comparison artifacts are in ignored
 `output/webgpu-core/docs-comparison/`; the final docs summary is in
 `output/webgpu-core/docs-final/`.
 
+## Follow-up visual parity investigation
+
+The first functional sweep verifies visibility and runtime errors, but it does
+not prove visual parity. This follow-up compares WebGPU and WebGL screenshots
+for the reported arrow, link, text, rectangle, shadow, dash, and sequence-logo
+cases. Each item is fixed and committed independently after a focused browser
+check, with remaining behavioral differences recorded here.
+
+| Priority | Example                                                              | Reported difference                                                                                               | Baseline evidence                                                                    | Status |
+| -------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------ |
+| P1       | `examples/core/marks/arrow/arrow_diagonal.json`                      | Arrow geometry used stroke/AA padding as the actual arrow length, and polygon winding produced incorrect SDF fill | Separate geometry length from quad padding and use stable polygon winding in the SDF | Fixed  |
+| P1       | `examples/docs/examples/genomic-data/hcc1954-sv-cnv.json`            | Link arcs open in the wrong direction                                                                             | Compare arc orientation against WebGL link geometry                                  | Open   |
+| P1       | `examples/docs/examples/genomic-data/pik3ca-tcga-brca-lollipop.json` | Non-arc link shapes may not be supported; text `dx`/`dy` also differs                                             | Compare all link shapes and text offsets against WebGL                               | Open   |
+| P1       | `examples/docs/grammar/mark/rect/shadowed-marks.json`                | Rectangle shadows are not visible                                                                                 | Compare shadow parameters and fragment output                                        | Open   |
+| P1       | `examples/core/marks/rect/rect_with_params.json`                     | Rounded rectangles clip; stroke expansion is missing; dash pattern may mirror                                     | Compare rectangle bounds, stroke padding, dash orientation, and y-axis convention    | Open   |
+| P1       | `examples/docs/grammar/mark/text/sequence-logo.json`                 | Logo letters do not render with WebGPU                                                                            | Compare text layout/logo-letter handling against WebGL                               | Open   |
+
+Acceptance for this section is visual inspection of both renderer screenshots,
+focused regression coverage where practical, and one commit per requested fix.
+
+### Follow-up completed fixes
+
+- Arrow SDF geometry now keeps stroke/antialias padding in the vertex quad only;
+  the arrow stem and head use the encoded segment length. Polygon winding no
+  longer turns parts of triangle heads into broad fill artifacts. The focused
+  WebGPU/WebGL comparison for `arrow_diagonal.json` is visually aligned.
+
 ## Context
 
 GenomeSpy Core currently has three rendering paths with different levels of
