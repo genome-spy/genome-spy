@@ -1086,6 +1086,7 @@ describe("WebGPU mark adapter", () => {
                     data: new Float32Array([1, 0, 0, 1, 0, 0, 1, 1]),
                     type: "f32",
                     inputComponents: 4,
+                    components: 4,
                 },
             },
         ]);
@@ -1114,7 +1115,7 @@ describe("WebGPU mark adapter", () => {
         /** @type {any} */ (mark.unitView).paramRuntime = {
             findValue: () => ({
                 type: "interval",
-                intervals: { x: [1, 2] },
+                intervals: { x: [1, 2], y: [3, 4] },
             }),
         };
 
@@ -1128,7 +1129,7 @@ describe("WebGPU mark adapter", () => {
         expect(x.conditions[0].when).toEqual({
             selection: "brush",
             type: "interval",
-            channel: "x",
+            targets: [{ input: "x" }, { input: "y" }],
             empty: true,
         });
         expect(x.conditions[0].channel.data).toEqual(new Float32Array([1, 2]));
