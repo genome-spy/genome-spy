@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import "./lato.js";
 import BmFontManager from "./bmFontManager.js";
 import { buildTextLayout } from "./layout.js";
 

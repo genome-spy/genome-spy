@@ -1,6 +1,7 @@
 import { createExampleRenderer, setupResize } from "./utils.js";
 import { textMark } from "../src/marks/text.js";
 import { indexScale } from "../src/scales/index.js";
+import "../src/fonts/lato.js";
 
 /**
  * @param {HTMLCanvasElement} canvas

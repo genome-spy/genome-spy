@@ -5,7 +5,6 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// eslint-disable-next-line no-undef
 const args = process.argv.slice(2);
 const portIndex = args.indexOf("--port");
 const port =

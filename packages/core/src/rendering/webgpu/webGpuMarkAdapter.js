@@ -1,6 +1,6 @@
 import { color as parseColor } from "d3-color";
 import { format as numberFormat } from "d3-format";
-import { packHighPrecisionU32Array } from "@genome-spy/webgpu-renderer";
+import { packHighPrecisionU32Array } from "@genome-spy/webgpu-renderer/high-precision";
 import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
 import { rectMark } from "@genome-spy/webgpu-renderer/marks/rect";
 import { ruleMark } from "@genome-spy/webgpu-renderer/marks/rule";

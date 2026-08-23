@@ -440,7 +440,7 @@ describe("WebGpuSurface", () => {
             /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
                 /** @type {unknown} */ ({ type: "text" })
             );
-        const config = (viewport) => ({
+        const config = /** @param {number[]} viewport */ (viewport) => ({
             count: 1,
             channels: {},
             dynamicValues: { uViewport: { value: viewport } },

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createMockRenderer } from "../../testUtils/mockRenderer.js";
+import "../../fonts/lato.js";
 import BmFontManager from "../../fonts/bmFontManager.js";
 import { identityScale } from "../../scales/identity.js";
 import { indexScale } from "../../scales/index.js";

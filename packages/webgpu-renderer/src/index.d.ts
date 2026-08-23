@@ -722,26 +722,115 @@ export type ChannelConfigResolved =
 export type ChannelConfig = ChannelConfigInput;
 
 export type RectChannelName =
-    keyof typeof import("./marks/programs/rectProgram.js").RECT_CHANNEL_SPECS;
+    | "uniqueId"
+    | "x"
+    | "x2"
+    | "y"
+    | "y2"
+    | "xOffset"
+    | "x2Offset"
+    | "yOffset"
+    | "y2Offset"
+    | "fill"
+    | "stroke"
+    | "fillOpacity"
+    | "strokeOpacity"
+    | "strokeWidth"
+    | "cornerRadiusTopRight"
+    | "cornerRadiusBottomRight"
+    | "cornerRadiusTopLeft"
+    | "cornerRadiusBottomLeft"
+    | "minWidth"
+    | "minHeight"
+    | "minOpacity"
+    | "shadowOffsetX"
+    | "shadowOffsetY"
+    | "shadowBlur"
+    | "shadowOpacity"
+    | "shadowColor"
+    | "hatchPattern";
 
 export type RectChannels = Partial<Record<RectChannelName, ChannelConfigInput>>;
 
 export type PointChannelName =
-    keyof typeof import("./marks/programs/pointProgram.js").POINT_CHANNEL_SPECS;
+    | "uniqueId"
+    | "x"
+    | "y"
+    | "size"
+    | "shape"
+    | "strokeWidth"
+    | "dx"
+    | "dy"
+    | "fill"
+    | "stroke"
+    | "fillOpacity"
+    | "strokeOpacity"
+    | "angle"
+    | "gradientStrength"
+    | "inwardStroke"
+    | "minPickingSize";
 
 export type PointChannels = Partial<
     Record<PointChannelName, ChannelConfigInput>
 >;
 
 export type RuleChannelName =
-    keyof typeof import("./marks/programs/ruleProgram.js").RULE_CHANNEL_SPECS;
+    | "uniqueId"
+    | "x"
+    | "x2"
+    | "y"
+    | "y2"
+    | "xOffset"
+    | "x2Offset"
+    | "yOffset"
+    | "y2Offset"
+    | "size"
+    | "color"
+    | "opacity"
+    | "minLength"
+    | "strokeCap"
+    | "strokeDash"
+    | "strokeDashOffset";
 
 export type RuleChannels = Partial<Record<RuleChannelName, ChannelConfigInput>>;
 
 export type LinkChannelName =
-    keyof typeof import("./marks/programs/linkProgram.js").LINK_CHANNEL_SPECS;
+    | "uniqueId"
+    | "x"
+    | "x2"
+    | "y"
+    | "y2"
+    | "xOffset"
+    | "x2Offset"
+    | "yOffset"
+    | "y2Offset"
+    | "size"
+    | "color"
+    | "opacity";
 
 export type LinkChannels = Partial<Record<LinkChannelName, ChannelConfigInput>>;
+
+export type ArrowChannelName =
+    | "uniqueId"
+    | "x"
+    | "x2"
+    | "y"
+    | "y2"
+    | "xOffset"
+    | "x2Offset"
+    | "yOffset"
+    | "y2Offset"
+    | "fill"
+    | "stroke"
+    | "fillOpacity"
+    | "strokeOpacity"
+    | "strokeWidth"
+    | "size"
+    | "direction";
+
+export type ArrowChannels = Partial<
+    Record<ArrowChannelName, ChannelConfigInput>
+>;
 
 export type TextChannelName =
     | "uniqueId"
@@ -791,13 +880,15 @@ export type TextLayout = {
     descent: number;
 };
 
+export type FontResource = {
+    metrics: unknown;
+    bitmap: string | ImageBitmap;
+};
+
 export type TextMarkOptions = {
     textLayout?: TextLayout;
     font?: string;
-    fontResource?: {
-        metrics: unknown;
-        bitmap: string | ImageBitmap;
-    };
+    fontResource?: FontResource;
     fontStyle?: "normal" | "italic";
     fontWeight?: number | string;
     fontSize?: number;
@@ -849,9 +940,11 @@ export type MarkConfig<T extends MarkType = MarkType> = {
             ? RuleChannels
             : T extends "link"
               ? LinkChannels
-              : T extends "text"
-                ? TextChannels
-                : Record<string, ChannelConfigInput>;
+              : T extends "arrow"
+                ? ArrowChannels
+                : T extends "text"
+                  ? TextChannels
+                  : Record<string, ChannelConfigInput>;
 
     /**
      * Number of instances to draw. If omitted, the count is inferred from
@@ -997,90 +1090,3 @@ export function createRenderer(
     canvas: HTMLCanvasElement,
     options?: RendererOptions
 ): Promise<Renderer>;
-
-/** Enable or disable renderer resource debug logging. */
-export function setDebugResourcesEnabled(enabled: boolean): void;
-
-/** Pack non-negative safe integers into high/low u32 series components. */
-export function packHighPrecisionU32Array(
-    values: ArrayLike<number>
-): Uint32Array;
-
-/** Build the WGSL function header for a channel's getScaled helper. */
-export function makeFnHeader(
-    name: string,
-    returnType: string,
-    functionName?: string
-): string;
-
-/** Resolve the packed domain uniform to a vec2 expression. */
-export function domainVec2(name: string): string;
-
-/** Resolve the packed domain uniform to a vec3 expression. */
-export function domainVec3(name: string): string;
-
-/** Resolve the packed range uniform to a vec2 expression. */
-export function rangeVec2(name: string): string;
-
-/** Emit a WGSL expression that coerces raw values to u32. */
-export function toU32Expr(
-    rawValueExpr: string,
-    inputScalarType: ScalarType
-): string;
-
-/** Emit WGSL for a continuous scale helper with optional clamp/round logic. */
-export function emitContinuousScale(
-    params: ContinuousEmitParams,
-    valueExprFn: (params: { name: string; valueExpr: string }) => string
-): string;
-
-/** Emit WGSL for a scale pipeline built from reusable steps. */
-export function emitScalePipeline(pipeline: ScalePipeline): string;
-
-/** Pipeline step: cast raw input to f32. */
-export function castToF32Step(inputScalarType: ScalarType): ScalePipelineStep;
-
-/** Pipeline step: clamp to a domain expression. */
-export function clampToDomainStep(domainExpr: string): ScalePipelineStep;
-
-/** Pipeline step: apply a scale function. */
-export function applyScaleStep(
-    name: string,
-    valueExprFn: (params: { name: string; valueExpr: string }) => string
-): ScalePipelineStep;
-
-/** Pipeline step: round away from zero (d3 rangeRound). */
-export function roundStep(): ScalePipelineStep;
-
-/** Pipeline step: apply piecewise linear interpolation. */
-export function piecewiseLinearStep(params: {
-    name: string;
-    domainLength: number;
-    outputComponents: 1 | 2 | 4;
-    outputScalarType: ScalarType;
-    useRangeTexture?: boolean;
-}): ScalePipelineStep;
-
-/** Pipeline step: apply threshold scale mapping. */
-export function thresholdStep(params: {
-    name: string;
-    domainLength: number;
-    outputComponents: 1 | 2 | 4;
-    outputScalarType: ScalarType;
-}): ScalePipelineStep;
-
-export function isChannelConfigWithScale(
-    config: ChannelConfigInput
-): config is ChannelConfigWithScaleInput;
-
-export function isChannelConfigWithoutScale(
-    config: ChannelConfigInput
-): config is ChannelConfigWithoutScaleInput;
-
-export function isSeriesChannelConfig(
-    config: ChannelConfigInput
-): config is SeriesChannelConfigInput;
-
-export function isValueChannelConfig(
-    config: ChannelConfigInput
-): config is ValueChannelConfigInput;

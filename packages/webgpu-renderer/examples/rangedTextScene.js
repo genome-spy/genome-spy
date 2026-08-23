@@ -1,6 +1,7 @@
 import { createExampleRenderer, setupResize } from "./utils.js";
 import { textMark } from "../src/marks/text.js";
 import { indexScale } from "../src/scales/index.js";
+import "../src/fonts/lato.js";
 
 /**
  * Ranged text demo: each string is constrained by x/x2 and y/y2 extents.

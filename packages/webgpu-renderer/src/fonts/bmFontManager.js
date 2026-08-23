@@ -1,17 +1,9 @@
-import { InternMap } from "internmap";
-import latoRegular from "../fonts/Lato-Regular.json" with { type: "json" };
-import latoRegularBitmap from "../fonts/Lato-Regular.png";
 import getMetrics from "./bmFontMetrics.js";
-
-const WEIGHTS = {
-    thin: 100,
-    light: 300,
-    regular: 400,
-    normal: 400,
-    medium: 500,
-    bold: 700,
-    black: 900,
-};
+import {
+    getFontKey,
+    getRegisteredDefaultFont,
+    getRegisteredFonts,
+} from "./fontRegistry.js";
 
 /**
  * Loader for A-Frame fonts.
@@ -25,57 +17,30 @@ const WEIGHTS = {
  * @typedef {import("./bmFontMetrics.js").BMFontMetrics} BMFontMetrics
  *
  * @typedef {"normal" | "italic"} FontStyle
- * @typedef {number} FontWeight
+ * @typedef {import("./fontRegistry.js").FontWeight} FontWeight
  *
- * @typedef {object} FontKey
- * @prop {string} family
- * @prop {FontStyle} style
- * @prop {FontWeight} weight
- *
- * @typedef {object} FontEntry
- * @prop {BMFontMetrics} metrics
- * @prop {string | ImageBitmap} bitmap
+ * @typedef {import("./fontRegistry.js").FontEntry} FontEntry
  */
 export default class BmFontManager {
     constructor() {
-        /**
-         * @type {Map<FontKey, FontEntry>}
-         */
-        this._fonts = new InternMap([], JSON.stringify);
+        /** @type {Map<string, FontEntry>} */
+        this._fonts = new Map(getRegisteredFonts());
 
         /**
          * A default/fallback font to be used when font loading fails
-         * @type {FontEntry}
+         * @type {FontEntry | undefined}
          */
-        this._defaultFontEntry = {
-            metrics: getMetrics(latoRegular),
-            bitmap: latoRegularBitmap,
-        };
-
-        this.registerFont({
-            family: "Lato",
-            style: "normal",
-            weight: 400,
-            metrics: this._defaultFontEntry.metrics,
-            bitmap: latoRegularBitmap,
-        });
+        this._defaultFontEntry = getRegisteredDefaultFont();
     }
 
     /**
      * @param {string} family
      * @param {FontStyle} style
-     * @param {FontWeight | keyof WEIGHTS} weight
-     * @returns {FontKey}
+     * @param {FontWeight} weight
+     * @returns {string}
      */
     _getKey(family, style, weight) {
-        const resolvedWeight =
-            typeof weight === "string"
-                ? WEIGHTS[/** @type {keyof WEIGHTS} */ (weight.toLowerCase())]
-                : weight;
-        if (!resolvedWeight) {
-            throw new Error("Unknown font weight: " + weight);
-        }
-        return { family, style, weight: resolvedWeight };
+        return getFontKey(family, style, weight);
     }
 
     /**
@@ -84,7 +49,7 @@ export default class BmFontManager {
      * @param {object} params
      * @param {string} params.family
      * @param {FontStyle} [params.style]
-     * @param {FontWeight | keyof WEIGHTS} [params.weight]
+     * @param {FontWeight} [params.weight]
      * @param {BMFontMetrics} params.metrics
      * @param {string | ImageBitmap} params.bitmap
      * @returns {void}
@@ -103,15 +68,20 @@ export default class BmFontManager {
     /**
      * @param {string} family For example: "Lato"
      * @param {FontStyle} style
-     * @param {FontWeight | keyof WEIGHTS} weight
+     * @param {FontWeight} weight
      * @returns {FontEntry}
      */
     getFont(family, style = "normal", weight = "regular") {
         const key = this._getKey(family, style, weight);
         const fontEntry = this._fonts.get(key);
         if (!fontEntry) {
+            if (!this._defaultFontEntry) {
+                throw new Error(
+                    `Cannot find font: "${family}". Import a font preset or provide a font resource.`
+                );
+            }
             console.warn(
-                `Cannot find font: "${key.family}". Using the embedded default font.`
+                `Cannot find font: "${family}". Using the registered default font.`
             );
             return this._defaultFontEntry;
         }
@@ -119,6 +89,11 @@ export default class BmFontManager {
     }
 
     getDefaultFont() {
+        if (!this._defaultFontEntry) {
+            throw new Error(
+                "No default font is registered. Import a font preset before using the default font."
+            );
+        }
         return this._defaultFontEntry;
     }
 }

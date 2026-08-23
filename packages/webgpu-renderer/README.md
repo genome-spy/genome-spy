@@ -85,6 +85,8 @@ without expanding vertices on the CPU.
 
 ## API (Public Surface)
 
+- The package root exports `createRenderer` and `RendererError`. Marks, scales,
+  and advanced helpers use explicit subpaths.
 - `createRenderer(canvas, { format?, alphaMode?, onInvalidate? })`
 - `renderer.createMark(definition, config)` (returns `{ markId, series, scales, values, extraValues, scalarSlots, selections }`)
 - `handle.series.replace(channels, count?)`
@@ -92,6 +94,17 @@ without expanding vertices on the CPU.
 - `renderer.render({ draws?, clearColor? })`
 - `renderer.destroyMark(markId)`
 - `renderer.destroy()`
+
+Advanced helpers are available through explicit typed subpaths:
+`@genome-spy/webgpu-renderer/high-precision`,
+`@genome-spy/webgpu-renderer/scale-authoring`,
+`@genome-spy/webgpu-renderer/debug`, and
+`@genome-spy/webgpu-renderer/fonts/lato`.
+
+- `high-precision` packs large integer series and index-scale domains.
+- `debug` exposes `setDebugResourcesEnabled` for renderer resource logging.
+- `fonts/lato` registers the embedded Lato Regular font as the default preset.
+- `scale-authoring` exposes experimental WGSL scale-emission helpers.
 
 Type definitions live in `packages/webgpu-renderer/src/index.d.ts`. A draw
 command references a retained handle and may provide a logical-pixel viewport,
@@ -127,12 +140,29 @@ import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
 import { linearScale } from "@genome-spy/webgpu-renderer/scales/linear";
 ```
 
-Mark subpaths are available for point, rect, rule, link, and text. Every
+Mark subpaths are available for point, rect, rule, link, arrow, and text. Every
 implemented scale has a factory subpath: identity, linear, log, pow, sqrt,
 symlog, quantize, band, index, ordinal, and threshold. Identity is implicit when
 a channel and its mark default have no scale; use `identityScale()` to override
 a scaled mark default. Importing one feature does not include unrelated marks,
-scales, or font support.
+scales, or font presets. To use the embedded default font, import its
+side-effect entry point:
+
+```js
+import { textMark } from "@genome-spy/webgpu-renderer/marks/text";
+import "@genome-spy/webgpu-renderer/fonts/lato";
+
+renderer.createMark(textMark, {
+  channels: {
+    // text, x, and y channel definitions go here
+  },
+  font: "Lato",
+});
+```
+
+The renderer also accepts host-provided font resources at the Core integration
+boundary, but standalone users do not need to construct or expose font metrics
+and bitmap resources for the bundled preset.
 
 ### GenomeSpy Core integration boundary
 
@@ -326,7 +356,15 @@ genomes and much larger ones such as axolotl or wheat), where integer indices
 exceed the precision of f32.
 
 Domain updates accept JS numbers. For advanced usage, you can pre-pack domains
-or series with the helpers exported from `src/index.js`:
+or series with the helpers exported from the explicit high-precision subpath:
+
+```js
+import {
+  packHighPrecisionU32,
+  packHighPrecisionU32Array,
+  packHighPrecisionDomain,
+} from "@genome-spy/webgpu-renderer/high-precision";
+```
 
 - `packHighPrecisionU32`, `packHighPrecisionU32Array`
 - `packHighPrecisionDomain`
@@ -348,6 +386,7 @@ fully published yet. The upgrade notice is safe to ignore.
 
 ## Tests
 
+- Package delivery checks: [scripts/README.md](scripts/README.md)
 - GPU tests: `npm -w @genome-spy/webgpu-renderer run test:gpu`
 - Tree-shaking contract: `npm -w @genome-spy/webgpu-renderer run test:bundle`
 - Type checks: `npm -w @genome-spy/webgpu-renderer run test:tsc`

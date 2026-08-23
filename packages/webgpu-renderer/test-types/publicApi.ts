@@ -2,6 +2,14 @@ import {
     createRenderer,
     type MarkDefinition,
 } from "@genome-spy/webgpu-renderer";
+import { setDebugResourcesEnabled } from "@genome-spy/webgpu-renderer/debug";
+import "@genome-spy/webgpu-renderer/fonts/lato";
+import { packHighPrecisionU32Array } from "@genome-spy/webgpu-renderer/high-precision";
+import {
+    emitScalePipeline,
+    type ScalePipeline,
+} from "@genome-spy/webgpu-renderer/scale-authoring";
+import { arrowMark } from "@genome-spy/webgpu-renderer/marks/arrow";
 import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
 import { linkMark } from "@genome-spy/webgpu-renderer/marks/link";
 import { rectMark } from "@genome-spy/webgpu-renderer/marks/rect";
@@ -24,6 +32,7 @@ export const builtInMarks = [
     rectMark,
     ruleMark,
     linkMark,
+    arrowMark,
     textMark,
 ] as const;
 
@@ -104,3 +113,13 @@ export async function createCustomExample(
     renderer.createMark(customMark, { radius: 4 });
     renderer.destroy();
 }
+
+export const publicApiSmokeValues = {
+    debug: setDebugResourcesEnabled,
+    packed: packHighPrecisionU32Array([1, 2]),
+    emit: emitScalePipeline,
+} satisfies {
+    debug: (enabled: boolean) => void;
+    packed: Uint32Array;
+    emit: (pipeline: ScalePipeline) => string;
+};

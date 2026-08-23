@@ -1,6 +1,6 @@
 # WebGPU renderer simplification and footprint plan
 
-Status: Proposed; implementation not started.
+Status: Milestone 1 complete; Milestones 2–5 pending.
 
 Date: 2026-08-23
 
@@ -223,7 +223,7 @@ maintaining two layouts and shader-reader modes.
 
 ## Milestone 1: Package contract and reproducible footprint gates
 
-Status: Pending.
+Status: Complete.
 
 ### Intended outcome
 
