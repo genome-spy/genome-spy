@@ -184,10 +184,20 @@ export default class BaseProgram {
         for (const name of this._conditionalChannelNames) {
             this._publicChannelNames.delete(name);
         }
-        this._inputs = normalizeScalarInputs(
-            config.inputs,
-            this._visualChannelNames
-        );
+        this._placementIndex =
+            /** @type {import("../../../index.d.ts").MarkConfig["placementIndex"]} */ (
+                config.placementIndex
+            );
+        const inputs =
+            this._placementIndex && "data" in this._placementIndex
+                ? {
+                      .../** @type {Record<string, unknown>} */ (
+                          config.inputs ?? {}
+                      ),
+                      __placementIndex: this._placementIndex,
+                  }
+                : config.inputs;
+        this._inputs = normalizeScalarInputs(inputs, this._visualChannelNames);
         this._scalarSlots = normalizeScalarSlots(config.scalarSlots);
         this._visibleWhen = normalizeVisibilityPredicate(
             /** @type {import("../../../index.d.ts").VisibilityPredicate | undefined} */ (
@@ -276,6 +286,8 @@ export default class BaseProgram {
             inputNames: new Set(Object.keys(this._inputs)),
             extraResources,
             primitiveTopology: this.primitiveTopology,
+            placementBindGroupLayout: renderer._placementBindGroupLayout,
+            placementIndex: this._placementIndex,
         });
         const { pipeline: pickPipeline } = buildPipeline({
             device: this.device,
@@ -295,6 +307,8 @@ export default class BaseProgram {
             primitiveTopology: this.primitiveTopology,
             fragmentEntry: "fs_pick",
             enableBlend: false,
+            placementBindGroupLayout: renderer._placementBindGroupLayout,
+            placementIndex: this._placementIndex,
         });
         this._resourceLayout = resourceLayout;
         this._uniformBuffer = this.device.createBuffer({
@@ -1077,6 +1091,9 @@ export default class BaseProgram {
     draw(pass, options) {
         pass.setPipeline(this._pipeline);
         pass.setBindGroup(1, this._bindGroup);
+        if (options.placement) {
+            pass.setBindGroup(2, options.placement.bindGroup);
+        }
         pass.draw(6, options.instanceCount, 0, options.firstInstance);
     }
 
@@ -1088,6 +1105,9 @@ export default class BaseProgram {
     drawPick(pass, options) {
         pass.setPipeline(this._pickPipeline);
         pass.setBindGroup(1, this._bindGroup);
+        if (options.placement) {
+            pass.setBindGroup(2, options.placement.bindGroup);
+        }
         pass.draw(6, options.instanceCount, 0, options.firstInstance);
     }
 

@@ -34,7 +34,13 @@ export async function createExampleRenderer(canvas) {
     return renderer;
 }
 
-export function setupResize(canvas, renderer, onResize) {
+/**
+ * @param {HTMLCanvasElement} canvas
+ * @param {import("../src/renderer.js").Renderer} renderer
+ * @param {(size: {width: number, height: number, dpr: number}) => void} [onResize]
+ * @param {() => import("../src/index.d.ts").RenderFrame} [getFrame]
+ */
+export function setupResize(canvas, renderer, onResize, getFrame) {
     const resize = () => {
         const dpr = window.devicePixelRatio ?? 1;
         const rect = canvas.getBoundingClientRect();
@@ -53,7 +59,7 @@ export function setupResize(canvas, renderer, onResize) {
             onResize({ width, height, dpr });
         }
 
-        renderer.render();
+        renderer.render(getFrame?.());
     };
 
     resize();

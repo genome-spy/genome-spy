@@ -121,7 +121,7 @@ export function getXIndexOffsetBound(encoders) {
  * @typedef {object} _MarkRenderingOptions
  * @prop {boolean} [skipViewportSetup] Don't configure viewport. Allows for
  *      optimized faceted rendering
- * @typedef {RenderingOptions & _MarkRenderingOptions} MarkRenderingOptions
+ * @typedef {RenderingOptions & import("../types/rendering.js").GlobalRenderingOptions & _MarkRenderingOptions} MarkRenderingOptions
  *
  * @callback DrawFunction
  * @param {number} offset
@@ -656,14 +656,9 @@ export default class Mark {
         if (this.encoders.facetIndex) {
             return SAMPLE_FACET_TEXTURE;
         } else if (
-            // If the UnitView is inside app's SampleView.
-            // TODO: This may break if non-faceted stuff is added to SampleView,
-            // e.g., view background or an x axis.
-            // This could also be more generic and work with other faceting views
-            // that will be available in the future.
             this.unitView
                 .getLayoutAncestors()
-                .find((view) => "samples" in view.spec)
+                .find((view) => view.getPlacementSource?.())
         ) {
             return SAMPLE_FACET_UNIFORM;
         }
@@ -1458,7 +1453,7 @@ export default class Mark {
      * views, i.e., multiple views share the uniforms (such as mark properties
      * and scales) and buffers.
      *
-     * @param {import("../types/rendering.js").GlobalRenderingOptions} options
+     * @param {MarkRenderingOptions} options
      * @returns {(() => void)[]}
      */
     prepareRender(options) {
@@ -1495,21 +1490,22 @@ export default class Mark {
 
         if (this.getSampleFacetMode() == SAMPLE_FACET_TEXTURE) {
             ops.push(() => {
-                /** @type {WebGLTexture} */
-                let facetTexture;
+                /** @type {import("../view/layout/placementSource.js").default | undefined} */
+                let source = options.placement?.source;
                 for (const view of this.unitView.getLayoutAncestors()) {
-                    facetTexture = view.getSampleFacetTexture();
-                    if (facetTexture) {
+                    source ??= view.getPlacementSource?.();
+                    if (source) {
                         break;
                     }
                 }
 
-                if (!facetTexture) {
-                    throw new Error("No facet texture available. This is bug.");
+                if (!source) {
+                    throw new Error("No placement source available.");
                 }
 
                 setUniforms(this.programInfo, {
-                    uSampleFacetTexture: facetTexture,
+                    uSampleFacetTexture:
+                        this.glHelper.getPlacementTexture(source),
                 });
             });
         }

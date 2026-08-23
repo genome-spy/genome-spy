@@ -10,6 +10,10 @@ import runRuleScene from "../examples/ruleScene.js";
 import runLinkScene from "../examples/linkScene.js";
 import runTextScene from "../examples/textScene.js";
 import runRangedTextScene from "../examples/rangedTextScene.js";
+import {
+    runIndexedPlacementScene,
+    runRepeatedPlacementScene,
+} from "../examples/placementScene.js";
 
 export default {
     title: "WebGPU Renderer/Scenes",
@@ -110,5 +114,17 @@ export const RangedText = withSource(
             },
         },
         render: (args) => renderScene(runRangedTextScene, args),
+    }
+);
+
+export const IndexedPlacements = withSource("runIndexedPlacementScene", null, {
+    render: (args) => renderScene(runIndexedPlacementScene, args),
+});
+
+export const RepeatedRangePlacements = withSource(
+    "runRepeatedPlacementScene",
+    null,
+    {
+        render: (args) => renderScene(runRepeatedPlacementScene, args),
     }
 );

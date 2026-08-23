@@ -3,6 +3,127 @@
  */
 export class RendererError extends Error {}
 
+class PlacementSet {
+    /** @param {Renderer} renderer @param {number} id @param {import("./index.d.ts").PlacementSetData} data */
+    constructor(renderer, id, data) {
+        this.renderer = renderer;
+        this.placementSetId = id;
+        this._destroyed = false;
+        this._rectangles = validatePlacementData(data);
+        this._buffer = createPlacementBuffer(renderer.device, this._rectangles);
+        this._bindGroup = this._createBindGroup();
+    }
+
+    get count() {
+        return this._rectangles.length / 4;
+    }
+
+    get bindGroup() {
+        if (this._destroyed) {
+            throw new RendererError("Placement set has been destroyed.");
+        }
+        return this._bindGroup;
+    }
+
+    _createBindGroup() {
+        return this.renderer.device.createBindGroup({
+            layout: this.renderer._placementBindGroupLayout,
+            entries: [{ binding: 0, resource: { buffer: this._buffer } }],
+        });
+    }
+
+    /** @param {import("./index.d.ts").PlacementSetData} data */
+    replace(data) {
+        if (this._destroyed) {
+            throw new RendererError("Placement set has been destroyed.");
+        }
+        const rectangles = validatePlacementData(data);
+        if (rectangles.byteLength > this._buffer.size) {
+            const oldBuffer = this._buffer;
+            this._buffer = createPlacementBuffer(
+                this.renderer.device,
+                rectangles
+            );
+            this._bindGroup = this._createBindGroup();
+            oldBuffer.destroy();
+        } else if (rectangles.byteLength) {
+            this.renderer.device.queue.writeBuffer(
+                this._buffer,
+                0,
+                /** @type {Float32Array<ArrayBuffer>} */ (rectangles)
+            );
+        }
+        this._rectangles = rectangles;
+        this.renderer.markPickingDirty();
+    }
+
+    destroy() {
+        if (this._destroyed) {
+            return;
+        }
+        this._destroyed = true;
+        this._buffer.destroy();
+        this.renderer._placementSets.delete(this.placementSetId);
+        this.renderer._renderFrame = null;
+        this.renderer._pickingFrame = null;
+        this.renderer.markPickingDirty();
+    }
+}
+
+/** @param {import("./index.d.ts").PlacementSetData} data @returns {Float32Array} */
+function validatePlacementData(data) {
+    if (!data || !(data.rectangles instanceof Float32Array)) {
+        throw new RendererError(
+            "Placement data must contain Float32Array rectangles."
+        );
+    }
+    if (data.rectangles.length % 4 !== 0) {
+        throw new RendererError(
+            "Placement rectangles must contain four values per entry."
+        );
+    }
+    for (let index = 0; index < data.rectangles.length; index += 4) {
+        const x = data.rectangles[index];
+        const y = data.rectangles[index + 1];
+        const width = data.rectangles[index + 2];
+        const height = data.rectangles[index + 3];
+        if (
+            !Number.isFinite(x) ||
+            !Number.isFinite(y) ||
+            !Number.isFinite(width) ||
+            !Number.isFinite(height) ||
+            width < 0 ||
+            height < 0
+        ) {
+            throw new RendererError(
+                "Placement rectangles must contain finite coordinates and non-negative sizes."
+            );
+        }
+    }
+    return new Float32Array(data.rectangles);
+}
+
+/** @param {GPUDevice} device @param {Float32Array} rectangles @returns {GPUBuffer} */
+function createPlacementBuffer(device, rectangles) {
+    const buffer = device.createBuffer({
+        size: Math.max(16, rectangles.byteLength),
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    if (rectangles.byteLength) {
+        device.queue.writeBuffer(
+            buffer,
+            0,
+            /** @type {Float32Array<ArrayBuffer>} */ (rectangles)
+        );
+    }
+    return buffer;
+}
+
+/** @param {"x" | "y" | "xy" | undefined} value */
+function placementClipMode(value) {
+    return value === "x" ? 1 : value === "y" ? 2 : value === "xy" ? 3 : 0;
+}
+
 /**
  * Create a renderer instance and WebGPU device/context for a canvas.
  *
@@ -76,11 +197,14 @@ export class Renderer {
 
         /** @type {Map<MarkId, import("./index.d.ts").MarkProgram>} */
         this._marks = new Map();
+        /** @type {Map<number, PlacementSet>} */
+        this._placementSets = new Map();
         /** @type {NormalizedDraw[] | null} */
         this._renderFrame = null;
         /** @type {NormalizedDraw[] | null} */
         this._pickingFrame = null;
         this._nextMarkId = 1;
+        this._nextPlacementSetId = 1;
         this._pickingDirty = true;
         this._pickTexture = null;
         this._pickTextureView = null;
@@ -94,7 +218,7 @@ export class Renderer {
         this._pickInFlight = null;
 
         this._globalUniformStride = Math.max(
-            16,
+            80,
             device.limits.minUniformBufferOffsetAlignment
         );
         this._globalUniformCapacity = 1;
@@ -114,7 +238,7 @@ export class Renderer {
                     buffer: {
                         type: "uniform",
                         hasDynamicOffset: true,
-                        minBindingSize: 4 * 12,
+                        minBindingSize: 80,
                     },
                 },
             ],
@@ -127,8 +251,18 @@ export class Renderer {
                     binding: 0,
                     resource: {
                         buffer: this._globalUniformBuffer,
-                        size: 4 * 12,
+                        size: 80,
                     },
+                },
+            ],
+        });
+
+        this._placementBindGroupLayout = device.createBindGroupLayout({
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.VERTEX,
+                    buffer: { type: "read-only-storage" },
                 },
             ],
         });
@@ -181,7 +315,7 @@ export class Renderer {
                     binding: 0,
                     resource: {
                         buffer: this._globalUniformBuffer,
-                        size: 4 * 12,
+                        size: 80,
                     },
                 },
             ],
@@ -203,6 +337,7 @@ export class Renderer {
         const data = new Float32Array(
             (draws.length * this._globalUniformStride) / 4
         );
+        const integerData = new Uint32Array(data.buffer);
         for (let i = 0; i < draws.length; i++) {
             const offset = (i * this._globalUniformStride) / 4;
             data.set(
@@ -219,9 +354,16 @@ export class Renderer {
                     draws[i].visibleRange.cullY ? 1 : 0,
                     0,
                     0,
+                    draws[i].viewport.x,
+                    draws[i].viewport.y,
+                    draws[i].viewport.width,
+                    draws[i].viewport.height,
                 ],
                 offset
             );
+            integerData[offset + 16] = draws[i].placement?.index ?? 0;
+            integerData[offset + 17] = draws[i].placement?.clipMode ?? 0;
+            integerData[offset + 18] = draws[i].placement?.count ?? 0;
         }
         this.device.queue.writeBuffer(this._globalUniformBuffer, 0, data);
     }
@@ -250,6 +392,14 @@ export class Renderer {
             scalarSlots: slotHandles.scalarSlots,
             selections: slotHandles.selections,
         };
+    }
+
+    /** @param {import("./index.d.ts").PlacementSetData} data */
+    createPlacementSet(data) {
+        this._assertAlive();
+        const set = new PlacementSet(this, this._nextPlacementSetId++, data);
+        this._placementSets.set(set.placementSetId, set);
+        return set;
     }
 
     /**
@@ -546,7 +696,7 @@ export class Renderer {
                 );
             }
 
-            const scissor = intersectRects(command.scissor ?? canvas, canvas);
+            let scissor = intersectRects(command.scissor ?? canvas, canvas);
             const firstInstance = command.firstInstance ?? 0;
             assertNonNegativeInteger("firstInstance", firstInstance);
             const instanceCount =
@@ -555,6 +705,78 @@ export class Renderer {
             if (firstInstance + instanceCount > mark.count) {
                 throw new RendererError(
                     `Instance range exceeds mark count: ${mark.count}.`
+                );
+            }
+
+            const placementConfig = mark._placementIndex;
+            let placement;
+            if (placementConfig) {
+                if (!command.placement) {
+                    throw new RendererError(
+                        "Placement-enabled marks require a placement binding."
+                    );
+                }
+                const set = this._placementSets.get(
+                    command.placement.set.placementSetId
+                );
+                if (!set) {
+                    throw new RendererError(
+                        `No such placement set: ${command.placement.set.placementSetId}`
+                    );
+                }
+                const index = command.placement.index;
+                if (
+                    "source" in placementConfig &&
+                    placementConfig.source === "draw"
+                ) {
+                    if (!Number.isInteger(index) || index < 0) {
+                        throw new RendererError(
+                            "Draw placement marks require a non-negative index."
+                        );
+                    }
+                    if (index >= set.count) {
+                        throw new RendererError(
+                            `Placement index ${index} exceeds set count ${set.count}.`
+                        );
+                    }
+                } else if (index !== undefined) {
+                    throw new RendererError(
+                        "Per-instance placement marks forbid a draw-level index."
+                    );
+                }
+                placement = {
+                    bindGroup: set.bindGroup,
+                    count: set.count,
+                    index,
+                    clipToPlacement: command.placement.clipToPlacement,
+                    clipMode: placementClipMode(
+                        command.placement.clipToPlacement
+                    ),
+                };
+                if (index !== undefined && placement.clipToPlacement) {
+                    const base = index * 4;
+                    const rectangles = set._rectangles;
+                    const placementRect = {
+                        x: viewport.x + rectangles[base] * viewport.width,
+                        y: viewport.y + rectangles[base + 1] * viewport.height,
+                        width: rectangles[base + 2] * viewport.width,
+                        height: rectangles[base + 3] * viewport.height,
+                    };
+                    const clip = placement.clipToPlacement;
+                    scissor = intersectRects(scissor, {
+                        x: clip.includes("x") ? placementRect.x : canvas.x,
+                        y: clip.includes("y") ? placementRect.y : canvas.y,
+                        width: clip.includes("x")
+                            ? placementRect.width
+                            : canvas.width,
+                        height: clip.includes("y")
+                            ? placementRect.height
+                            : canvas.height,
+                    });
+                }
+            } else if (command.placement) {
+                throw new RendererError(
+                    "Placement bindings require a placement-enabled mark."
                 );
             }
 
@@ -568,6 +790,7 @@ export class Renderer {
                 ),
                 firstInstance,
                 instanceCount,
+                placement,
             };
         }).filter((draw) => draw.scissor.width > 0 && draw.scissor.height > 0);
     }
@@ -610,10 +833,14 @@ export class Renderer {
             pass.setBindGroup(0, this._globalBindGroup, [
                 i * this._globalUniformStride,
             ]);
+            /** @type {import("./index.d.ts").ProgramDrawOptions} */
             const options = {
                 firstInstance: draw.firstInstance,
                 instanceCount: draw.instanceCount,
             };
+            if (draw.placement) {
+                options.placement = draw.placement;
+            }
             if (picking) {
                 mark.drawPick(pass, options);
             } else {
@@ -652,6 +879,10 @@ export class Renderer {
             mark.destroy();
         }
         this._marks.clear();
+        for (const set of this._placementSets?.values() ?? []) {
+            set.destroy();
+        }
+        this._placementSets?.clear();
         this._renderFrame = null;
         this._globalUniformBuffer.destroy();
         this._pickTexture?.destroy();
@@ -684,6 +915,7 @@ export class Renderer {
  *   visibleRange: import("./index.d.ts").DrawVisibleRange,
  *   firstInstance: number,
  *   instanceCount: number,
+ *   placement?: { bindGroup: GPUBindGroup, count: number, index?: number, clipToPlacement?: "x"|"y"|"xy", clipMode?: number },
  * }} NormalizedDraw
  */
 

@@ -1,6 +1,7 @@
 # WebGPU renderer parity plan: faceted rendering
 
-Status: Authorized; investigation complete and implementation proposed.
+Status: Authorized; Milestones 1–2 implemented in the working tree; Milestones
+3–5 remain pending.
 
 Date: 2026-08-21
 
@@ -979,6 +980,33 @@ the two placement stories to the renderer's existing Storybook scene catalog.
 No Core grammar migration is required.
 
 Tentative commit: `feat(webgpu-renderer): add indexed placement transforms`.
+
+### Implementation checkpoint (2026-08-23)
+
+Milestones 1–2 are implemented together in this working tree. The concrete
+contracts are slightly simpler than the proposal: `PlacementSource` publishes
+immutable copied rectangles and complete topology, while `WebGLHelper` and the
+WebGPU renderer own their derived resources. SampleView keeps its existing
+range-mode uniform path for compatibility, but its indexed path now consumes
+the same source. Canvas2D, SVG, and immediate mark projection read the CPU
+snapshot directly; App sample-layout code no longer imports WebGL helpers or
+retains `WebGLTexture` values.
+
+The WebGPU API now has retained `PlacementSet` handles, fixed mark capability
+modes, draw-level and per-instance indices, normalized placement transforms,
+directional placement clipping, shared normal/picking bindings, and retained
+replacement/destruction. The standalone Indexed placements and Repeated range
+placements stories exercise the generic API. Packed repeated Core occurrences,
+App WebGPU integration, and full GPU/browser parity remain Milestones 3–5 and
+are intentionally not implied by this checkpoint.
+
+Completed verification includes focused Core/App tests, the complete WebGPU
+renderer unit suite, targeted lint and TypeScript checks, and a successful
+renderer Storybook build. GPU execution, DPR screenshot comparison, and the
+complete Core/docs WebGPU inventory still require the browser/device checks in
+the remaining milestones. The master-first commit split described above is
+also still a delivery step; this uncommitted working tree is the implementation
+checkpoint, not the final merge record.
 
 ## Milestone 3: Packed repeated and facet-range occurrences
 

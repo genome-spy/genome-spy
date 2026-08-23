@@ -208,12 +208,14 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     let total = diameter + padding;
     let local = quad[v];
-    let px = (getScaled_x(i) + getScaled_dx(i)) + (local.x - 0.5) * total;
-    let py = (getScaled_y(i) + getScaled_dy(i)) + (local.y - 0.5) * total;
+    let centerX = getScaled_x(i) + getScaled_dx(i);
+    let centerY = getScaled_y(i) + getScaled_dy(i);
+    let px = centerX + (local.x - 0.5) * total;
+    let py = centerY + (local.y - 0.5) * total;
 
     if (isOutsideVisibleRange(vec2<f32>(
-        getScaled_x(i) + getScaled_dx(i),
-        getScaled_y(i) + getScaled_dy(i)
+        centerX,
+        centerY
     ))) {
         return culledPoint();
     }
@@ -222,9 +224,17 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         (px / globals.width) * 2.0 - 1.0,
         1.0 - (py / globals.height) * 2.0
     );
+    let centerClip = vec2<f32>(
+        (centerX / globals.width) * 2.0 - 1.0,
+        1.0 - (centerY / globals.height) * 2.0
+    );
 
     var out: VSOut;
-    out.pos = vec4<f32>(clip, 0.0, 1.0);
+    out.pos = vec4<f32>(
+        applyPlacementClipForPoint(clip, centerClip, i),
+        0.0,
+        1.0
+    );
     out.local = local;
     out.size = total;
     out.radius = diameter * 0.5;

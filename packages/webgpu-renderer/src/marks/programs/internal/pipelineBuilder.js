@@ -18,6 +18,8 @@ import { buildMarkShader } from "../../shaders/markShaderBuilder.js";
  * @property {GPUPrimitiveTopology} [primitiveTopology]
  * @property {string} [fragmentEntry]
  * @property {boolean} [enableBlend]
+ * @property {GPUBindGroupLayout} [placementBindGroupLayout]
+ * @property {import("../../../index.d.ts").MarkConfig["placementIndex"]} [placementIndex]
  *
  * @typedef {object} PipelineBuildResult
  * @property {GPUBindGroupLayout} bindGroupLayout
@@ -48,6 +50,8 @@ export function buildPipeline({
     primitiveTopology = "triangle-list",
     fragmentEntry = "fs_main",
     enableBlend = true,
+    placementBindGroupLayout,
+    placementIndex,
 }) {
     const { shaderCode, resourceBindings, resourceLayout } = buildMarkShader({
         channels,
@@ -60,6 +64,7 @@ export function buildPipeline({
         channelNames,
         inputNames,
         extraResources,
+        placementIndex,
     });
 
     const bindGroupLayout = device.createBindGroupLayout({
@@ -90,7 +95,13 @@ export function buildPipeline({
     };
     const pipeline = device.createRenderPipeline({
         layout: device.createPipelineLayout({
-            bindGroupLayouts: [globalBindGroupLayout, bindGroupLayout],
+            bindGroupLayouts: [
+                globalBindGroupLayout,
+                bindGroupLayout,
+                ...(placementIndex && placementBindGroupLayout
+                    ? [placementBindGroupLayout]
+                    : []),
+            ],
         }),
         vertex: {
             module,

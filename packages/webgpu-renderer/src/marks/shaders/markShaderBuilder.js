@@ -64,6 +64,7 @@ import { buildVisibilityPredicate } from "./visibilityPredicate.js";
  * @prop {Set<string>} [channelNames]
  * @prop {Set<string>} [inputNames]
  * @prop {ExtraResourceDef[]} [extraResources]
+ * @prop {import("../../index.d.ts").MarkConfig["placementIndex"]} [placementIndex]
  */
 
 /**
@@ -108,7 +109,12 @@ export function buildMarkShader({
     channelNames = new Set(Object.keys(channels)),
     inputNames = new Set(),
     extraResources = [],
+    placementIndex,
 }) {
+    const drawPlacement =
+        placementIndex &&
+        "source" in placementIndex &&
+        placementIndex.source === "draw";
     // Dynamic shader generation: each mark variant emits only the helpers it
     // needs. This keeps WGSL small, avoids unused bindings, and lets us
     // specialize per-mark scale logic without a single "uber" shader.
@@ -383,6 +389,33 @@ ${clauses.join("\n")}
         shaderDefines[`${name}_DEFINED`] = true;
     }
     const processedShaderBody = preprocessShader(shaderBody, shaderDefines);
+    const placementShaderBody = placementIndex
+        ? processedShaderBody
+              .replace(
+                  "struct VSOut {",
+                  "struct VSOut {\n    @location(15) @interpolate(flat) placementClip: vec4<f32>,"
+              )
+              .replaceAll(
+                  "var out: VSOut;",
+                  "var out: VSOut;\n    out.placementClip = vec4<f32>(-1e9);"
+              )
+              .replaceAll(
+                  "if (!isInstanceVisible(i)) {",
+                  "if (!isInstanceVisible(i) || !isPlacementVisible(i)) {"
+              )
+              .replaceAll(
+                  "out.pos = vec4<f32>(\n        applyPlacementClipForPoint(clip, centerClip, i),\n        0.0,\n        1.0\n    );",
+                  "out.placementClip = placementClipBounds(i);\n    out.pos = vec4<f32>(\n        applyPlacementClipForPoint(clip, centerClip, i),\n        0.0,\n        1.0\n    );"
+              )
+              .replaceAll(
+                  "out.pos = vec4<f32>(clip, 0.0, 1.0);",
+                  "out.placementClip = placementClipBounds(i);\n    out.pos = vec4<f32>(applyPlacementClip(clip, i), 0.0, 1.0);"
+              )
+              .replaceAll(
+                  "fn fs_main(in: VSOut) -> @location(0) vec4<f32> {",
+                  "fn fs_main(in: VSOut) -> @location(0) vec4<f32> {\n    if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }"
+              )
+        : processedShaderBody;
 
     // First pass: series-backed channels must map to packed series buffers and
     // emit read_* accessors plus getScaled_* wrappers.
@@ -815,6 +848,7 @@ fn encodePickId(id: u32) -> vec4<f32> {
 
 @fragment
 fn fs_pick(in: VSOut) -> @location(0) vec4<f32> {
+${placementIndex ? "    if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }" : ""}
     if (in.pickId == 0u) {
         discard;
     }
@@ -833,9 +867,106 @@ struct Globals {
     uZero: f32,
     logicalVisibleRect: vec4<f32>,
     cullByVisibleRange: vec4<f32>,
+    viewport: vec4<f32>,
+    placementIndex: u32,
+    placementClipMode: u32,
+    placementCount: u32,
+    placementPadding: u32,
 };
 
 @group(0) @binding(0) var<uniform> globals: Globals;
+
+${placementIndex ? `@group(2) @binding(0) var<storage, read> placementRectangles: array<vec4<f32>>;` : ""}
+
+${
+    placementIndex
+        ? /* wgsl */ `
+fn getPlacementIndex(i: u32) -> u32 {
+    ${drawPlacement ? "return globals.placementIndex;" : "return u32(getScaled___placementIndex(i));"}
+}
+
+fn isPlacementVisible(i: u32) -> bool {
+    let placementIndex = getPlacementIndex(i);
+    if (placementIndex >= globals.placementCount) {
+        return false;
+    }
+    let rect = placementRectangles[placementIndex];
+    return rect.z > 0.0 && rect.w > 0.0;
+}
+
+fn placementClipBounds(i: u32) -> vec4<f32> {
+    let placementIndex = getPlacementIndex(i);
+    if (placementIndex >= globals.placementCount) {
+        return vec4<f32>(-1e9);
+    }
+    let rect = placementRectangles[placementIndex];
+    return vec4<f32>(
+        globals.viewport.x + rect.x * globals.viewport.z,
+        globals.viewport.y + rect.y * globals.viewport.w,
+        globals.viewport.x + (rect.x + rect.z) * globals.viewport.z,
+        globals.viewport.y + (rect.y + rect.w) * globals.viewport.w
+    );
+}
+
+fn isInsidePlacementClip(position: vec4<f32>, placementClip: vec4<f32>) -> bool {
+    let logicalPosition = position.xy / globals.dpr;
+    return ((globals.placementClipMode & 1u) == 0u ||
+        (logicalPosition.x >= placementClip.x && logicalPosition.x <= placementClip.z)) &&
+        ((globals.placementClipMode & 2u) == 0u ||
+        (logicalPosition.y >= placementClip.y && logicalPosition.y <= placementClip.w));
+}
+
+fn applyPlacementClip(clip: vec2<f32>, i: u32) -> vec2<f32> {
+    let placementIndex = getPlacementIndex(i);
+    if (placementIndex >= globals.placementCount) {
+        return vec2<f32>(0.0);
+    }
+    let rect = placementRectangles[placementIndex];
+    let pixel = vec2<f32>(
+        (clip.x + 1.0) * globals.width * 0.5,
+        (1.0 - clip.y) * globals.height * 0.5
+    );
+    let placed = rect.xy * globals.viewport.zw + pixel * rect.zw;
+    return vec2<f32>(
+        (placed.x / globals.width) * 2.0 - 1.0,
+        1.0 - (placed.y / globals.height) * 2.0
+    );
+}
+
+fn applyPlacementClipForPoint(clip: vec2<f32>, anchor: vec2<f32>, i: u32) -> vec2<f32> {
+    let placementIndex = getPlacementIndex(i);
+    if (placementIndex >= globals.placementCount) {
+        return vec2<f32>(0.0);
+    }
+    let rect = placementRectangles[placementIndex];
+    let pixel = vec2<f32>(
+        (clip.x + 1.0) * globals.width * 0.5,
+        (1.0 - clip.y) * globals.height * 0.5
+    );
+    let anchorPixel = vec2<f32>(
+        (anchor.x + 1.0) * globals.width * 0.5,
+        (1.0 - anchor.y) * globals.height * 0.5
+    );
+    let placed = rect.xy * globals.viewport.zw +
+        anchorPixel * rect.zw + (pixel - anchorPixel);
+    return vec2<f32>(
+        (placed.x / globals.width) * 2.0 - 1.0,
+        1.0 - (placed.y / globals.height) * 2.0
+    );
+}
+`
+        : ""
+}
+
+${
+    placementIndex
+        ? ""
+        : /* wgsl */ `
+fn applyPlacementClipForPoint(clip: vec2<f32>, anchor: vec2<f32>, i: u32) -> vec2<f32> {
+    return clip;
+}
+`
+}
 
 fn isOutsideVisibleRange(pos: vec2<f32>) -> bool {
     return (globals.cullByVisibleRange.x > 0.5 &&
@@ -871,7 +1002,7 @@ fn premultiplyAlpha(color: vec4<f32>) -> vec4<f32> {
     return vec4<f32>(color.rgb * color.a, color.a);
 }
 
-${processedShaderBody}
+${placementShaderBody}
 ${pickFns}
 `;
 

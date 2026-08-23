@@ -2,6 +2,7 @@ import Mark from "../marks/mark.js";
 import { LocSize } from "../view/layout/flexLayout.js";
 import Rectangle from "../view/layout/rectangle.js";
 import ViewRenderingContext from "../view/renderingContext/viewRenderingContext.js";
+import PlacementSource from "../view/layout/placementSource.js";
 
 /**
  * Describes the location of a sample facet. Left is the primary pos, right is for
@@ -18,6 +19,22 @@ export interface SampleFacetRenderingOptions {
      * Multiply pixel-based locSize values to unit scale.
      */
     pixelToUnit: number;
+
+    /** Renderer-neutral source used by repeated placement consumers. */
+    placementSource?: PlacementSource;
+
+    /** Dense index into placementSource. */
+    placementIndex?: number;
+
+    /** Topology revision captured while resolving the placement index. */
+    placementTopologyRevision?: number;
+}
+
+export interface PlacementRenderingOptions {
+    source: PlacementSource;
+    index?: number;
+    topologyRevision?: number;
+    clipToPlacement?: "x" | "y" | "xy";
 }
 
 export interface RenderingOptions {
@@ -33,6 +50,9 @@ export interface RenderingOptions {
     firstFacet?: boolean;
 
     sampleFacetRenderingOptions?: SampleFacetRenderingOptions;
+
+    /** Generic repeated placement information shared by all backends. */
+    placement?: PlacementRenderingOptions;
 
     /**
      * Convenience shorthand for clipping rendering to the given rectangle in

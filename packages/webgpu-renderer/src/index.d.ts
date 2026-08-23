@@ -952,6 +952,9 @@ export type MarkConfig<T extends MarkType = MarkType> = {
      */
     count?: number;
 
+    /** Fixed placement selection mode for the retained mark. */
+    placementIndex?: { source: "draw" } | { data: Uint32Array; type: "u32" };
+
     /** Existing mark-program uniforms that may be updated without rebuilding. */
     dynamicValues?: Record<string, DynamicValueConfig>;
 } & (T extends "rule"
@@ -1001,6 +1004,24 @@ export type DrawVisibleRange = {
     cullY: boolean;
 };
 
+export type PlacementSetData = {
+    /** Packed viewport-local normalized [x, y, width, height] rectangles. */
+    rectangles: Float32Array;
+};
+
+export type PlacementSetHandle = {
+    readonly placementSetId: number;
+    readonly count: number;
+    replace(data: PlacementSetData): void;
+    destroy(): void;
+};
+
+export type DrawPlacement = {
+    set: Pick<PlacementSetHandle, "placementSetId">;
+    index?: number;
+    clipToPlacement?: "x" | "y" | "xy";
+};
+
 export type DrawCommand = {
     /** Retained mark whose resources are reused for this occurrence. */
     mark: Pick<MarkHandle, "markId">;
@@ -1017,6 +1038,7 @@ export type DrawCommand = {
     firstInstance?: number;
     /** Number of retained instances to draw. Defaults to the remaining count. */
     instanceCount?: number;
+    placement?: DrawPlacement;
 };
 
 export type RenderFrame = {
@@ -1029,6 +1051,13 @@ export type RenderFrame = {
 export type ProgramDrawOptions = {
     firstInstance: number;
     instanceCount: number;
+    placement?: {
+        bindGroup: GPUBindGroup;
+        count: number;
+        index?: number;
+        clipToPlacement?: "x" | "y" | "xy";
+        clipMode?: number;
+    };
 };
 
 export class RendererError extends Error {}
@@ -1037,6 +1066,7 @@ export type MarkProgram<
     TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
 > = {
     readonly count: number;
+    readonly _placementIndex?: MarkConfig["placementIndex"];
     getSlotHandles(): Omit<MarkHandle<TSeries>, "markId">;
     replaceSeries(channels: TSeries, count?: number): void;
     updateValues(values: Record<string, number | number[]>): void;
@@ -1064,6 +1094,9 @@ export class Renderer {
         definition: MarkDefinition<TConfig, TSeries>,
         config: TConfig
     ): MarkHandle<TSeries>;
+
+    /** Create a retained, renderer-owned placement table. */
+    createPlacementSet(data: PlacementSetData): PlacementSetHandle;
 
     /** Log the GPU resources reserved by a mark to the console. */
     debugResources(markId: MarkId, label?: string): void;

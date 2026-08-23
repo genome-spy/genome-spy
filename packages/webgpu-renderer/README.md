@@ -117,6 +117,25 @@ host owns the canvas backing size and should set it to `width * dpr` by
 `height * dpr`; the renderer converts viewports and scissors to physical pixels
 once when encoding the frame.
 
+Placement sets are retained renderer resources containing normalized
+`[x, y, width, height]` rectangles relative to a draw's viewport. A mark opts
+into either a draw-level index (`{ source: "draw" }`) or a per-instance `u32`
+index series. The same placement binding is used for normal and picking passes;
+replace or destroy the set independently of the retained mark.
+
+```js
+const placements = renderer.createPlacementSet({
+  rectangles: new Float32Array([0, 0, 0.5, 1, 0.5, 0, 0.5, 1]),
+});
+const mark = renderer.createMark(pointMark, {
+  placementIndex: { source: "draw" },
+  channels: { /* ... */ },
+});
+renderer.render({
+  draws: [{ mark, placement: { set: placements, index: 1 } }],
+});
+```
+
 Asynchronous resource preparation never submits a frame implicitly. When text
 atlas loading changes visible output, `onInvalidate` asks the host to schedule
 and submit its current frame again.

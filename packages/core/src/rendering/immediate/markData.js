@@ -89,6 +89,17 @@ function getSampleFacetCoords(coords, facet) {
  */
 function getSampleFacetPosition(mark, index) {
     for (const view of mark.unitView.getLayoutAncestors()) {
+        const source = view.getPlacementSource?.();
+        if (source) {
+            const rectangles = source.getSnapshot().rectangles;
+            const offset = index * 4;
+            if (offset + 3 < rectangles.length) {
+                return {
+                    location: rectangles[offset + 1],
+                    size: rectangles[offset + 3],
+                };
+            }
+        }
         const position = view.getSampleFacetPosition(index);
         if (position) {
             return position;

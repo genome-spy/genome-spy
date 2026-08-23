@@ -168,6 +168,9 @@ function snapshotRenderingOptions(options) {
             ...options.sampleFacetRenderingOptions,
         };
     }
+    if (options.placement) {
+        snapshot.placement = { ...options.placement };
+    }
     if (options.clip) {
         snapshot.clip = { ...options.clip };
     }

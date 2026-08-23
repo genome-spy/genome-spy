@@ -35,6 +35,78 @@ describe("Renderer mark definitions", () => {
         expect(renderer._marks.get(handle.markId)).toBe(program);
     });
 
+    test("retains placement-set identity while replacing and destroying data", () => {
+        const { renderer } = createRendererHarness();
+        renderer._placementSets = new Map();
+        renderer._nextPlacementSetId = 1;
+        renderer._placementBindGroupLayout = /** @type {GPUBindGroupLayout} */ (
+            /** @type {unknown} */ ({})
+        );
+
+        const placements = renderer.createPlacementSet({
+            rectangles: new Float32Array([0, 0, 1, 1]),
+        });
+        const initialBuffer = placements._buffer;
+
+        expect(placements.placementSetId).toBe(1);
+        expect(placements.count).toBe(1);
+        expect(() =>
+            placements.replace({ rectangles: new Float32Array([0, 0, 1]) })
+        ).toThrow("four values per entry");
+
+        placements.replace({
+            rectangles: new Float32Array([0, 0, 0.5, 1, 0.5, 0, 0.5, 1]),
+        });
+
+        expect(placements.placementSetId).toBe(1);
+        expect(placements.count).toBe(2);
+        expect(initialBuffer.destroy).toHaveBeenCalledOnce();
+
+        renderer._pickingDirty = false;
+        placements.destroy();
+        placements.destroy();
+        expect(placements._buffer.destroy).toHaveBeenCalledOnce();
+        expect(renderer._placementSets.size).toBe(0);
+        expect(renderer._pickingDirty).toBe(true);
+        expect(renderer._renderFrame).toBeNull();
+        expect(renderer._pickingFrame).toBeNull();
+        expect(() =>
+            placements.replace({ rectangles: new Float32Array() })
+        ).toThrow("destroyed");
+    });
+
+    test("uses logical placement count after a set shrinks", () => {
+        const { renderer } = createRendererHarness();
+        renderer._placementSets = new Map();
+        renderer._nextPlacementSetId = 1;
+        renderer._placementBindGroupLayout = /** @type {GPUBindGroupLayout} */ (
+            /** @type {unknown} */ ({})
+        );
+        const placements = renderer.createPlacementSet({
+            rectangles: new Float32Array([0, 0, 1, 1, 0, 0, 1, 1]),
+        });
+        const program = Object.assign(createProgram(), {
+            _placementIndex:
+                /** @type {import("./index.d.ts").MarkConfig["placementIndex"]} */ ({
+                    source: "draw",
+                }),
+        });
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi.fn(() => program),
+        });
+        const mark = renderer.createMark(definition, { channels: {} });
+        const draw = { mark, placement: { set: placements, index: 1 } };
+
+        expect(renderer._normalizeDraws([draw])).toHaveLength(1);
+        placements.replace({
+            rectangles: new Float32Array([0, 0, 1, 1]),
+        });
+        expect(() => renderer._normalizeDraws([draw])).toThrow(
+            "exceeds set count"
+        );
+    });
+
     test("accepts a separate ordered pick draw list", () => {
         const { renderer } = createRendererHarness();
 
@@ -239,6 +311,11 @@ function createRendererHarness() {
         setBindGroup: vi.fn(),
     };
     renderer.device = {
+        createBuffer: (/** @type {GPUBufferDescriptor} */ { size }) => ({
+            size,
+            destroy: vi.fn(),
+        }),
+        createBindGroup: vi.fn(() => ({})),
         createCommandEncoder: () => ({
             beginRenderPass: () => pass,
             finish: vi.fn(),

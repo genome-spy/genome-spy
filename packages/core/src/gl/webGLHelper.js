@@ -76,6 +76,9 @@ export default class WebGLHelper {
         /** @type {WeakMap<import("../types/encoder.js").VegaScale, WebGLTexture>} */
         this.rangeTextures = new WeakMap();
 
+        /** @type {WeakMap<import("../view/layout/placementSource.js").default, { texture: WebGLTexture, geometryRevision: number, data: Float32Array }>} */
+        this.placementTextures = new WeakMap();
+
         /**
          * @type {WeakMap<import("../types/selectionTypes.js").MultiPointSelection, WebGLTexture>}
          */
@@ -163,6 +166,51 @@ export default class WebGLHelper {
             canvas.remove();
             throw error;
         }
+    }
+
+    /**
+     * Returns the WebGL texture derived from a renderer-neutral placement
+     * source. The helper owns the texture and releases it with the context.
+     *
+     * @param {import("../view/layout/placementSource.js").default} source
+     * @returns {WebGLTexture}
+     */
+    getPlacementTexture(source) {
+        const snapshot = source.getSnapshot();
+        const cached = this.placementTextures.get(source);
+        if (cached?.geometryRevision === snapshot.geometryRevision) {
+            return cached.texture;
+        }
+
+        const data =
+            cached?.data.length === snapshot.rectangles.length / 2
+                ? cached.data
+                : new Float32Array(snapshot.rectangles.length / 2);
+        for (let i = 0; i < snapshot.rectangles.length / 4; i++) {
+            data[i * 2] = snapshot.rectangles[i * 4 + 1];
+            data[i * 2 + 1] = snapshot.rectangles[i * 4 + 3];
+        }
+        const texture = createOrUpdateTexture(
+            this.gl,
+            { internalFormat: this.gl.RG32F, format: this.gl.RG, height: 1 },
+            data,
+            cached?.texture
+        );
+        this.placementTextures.set(source, {
+            texture,
+            geometryRevision: snapshot.geometryRevision,
+            data,
+        });
+        if (!cached) {
+            source.onDispose(() => {
+                const current = this.placementTextures.get(source);
+                if (current) {
+                    this.gl.deleteTexture(current.texture);
+                    this.placementTextures.delete(source);
+                }
+            });
+        }
+        return texture;
     }
 
     invalidateSize() {

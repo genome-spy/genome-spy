@@ -18,6 +18,17 @@ discards it after building fresh batches.
 Zoom and pan update scale domains and rerun rendering. Vertex buffers update
 only when data changes.
 
+### Renderer-neutral placement sources
+
+Views that lay out repeated panels may publish a `PlacementSource`: an
+immutable snapshot containing complete placement topology and normalized
+`[x, y, width, height]` rectangles. Geometry-only updates advance the geometry
+revision while retaining the topology; topology changes replace both together.
+Backends resolve the source into their own representation, and disposal only
+releases those derived resources. App and Core layout code do not own WebGL or
+WebGPU resources. This keeps filtering and presentation changes separate from
+the complete membership used to index retained mark data.
+
 ## Rendering contexts and scheduling
 
 - `BufferedViewRenderingContext`
