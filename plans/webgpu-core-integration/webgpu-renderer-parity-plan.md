@@ -122,6 +122,8 @@ work with separate decision gates.
 - Keep scale domains and columnar series resident across layout-only changes.
 - Support about 2,000 sample facets without per-facet pipelines, bind groups,
   text atlases, buffers, or full mark configurations.
+- Provide standalone WebGPU renderer Storybook scenes for indexed 2D placement
+  and repeated range placement without importing Core concepts.
 - Keep indexed labels and metadata coalescible to one draw per logical mark,
   including the approximately 2,000-facet case.
 - Suppress draw-level sample ranges whose placements do not intersect the
@@ -761,12 +763,15 @@ The renderer exposes retained `PlacementSet` creation, replacement, binding,
 and destruction. One retained mark handle can draw instances with different 2D
 placement indices through a renderer-private indexed resource. Position scales
 remain shared and normalized; normal and picking pipelines produce identical
-placement. Ordered repeated draws remain valid for paint-order boundaries.
+placement. Ordered repeated draws remain valid for paint-order boundaries. Two
+standalone Storybook scenes demonstrate the generic indexed and draw-level
+placement contracts without a Core adapter.
 
 ### Affected areas and downstream consumers
 
 - `packages/webgpu-renderer/src/index.d.ts`, `renderer.js`, shared WGSL globals,
   and renderer tests
+- `packages/webgpu-renderer/examples/` and `stories/` placement scenes
 - point, rect, rule, text, link, and arrow programs
 - renderer README, migration plan, and API-direction note
 - Core adapter positional ranges, text viewport state, and visible-range
@@ -792,11 +797,24 @@ placement. Ordered repeated draws remain valid for paint-order boundaries.
   bindings or select the private texture representation if necessary.
 - Run the current 102 Core and 110 docs WebGPU inventory to catch regressions
   in offsets, text flushing, links, arrows, scales, and clipping.
+- Add an **Indexed placements** Storybook scene that uses one retained mark and
+  one coalesced draw to populate an unequal 2D rectangle grid through
+  per-instance placement indices. Demonstrate a zero-area placement,
+  directional clipping, and retained placement replacement through controls.
+- Add a **Repeated range placements** Storybook scene that reuses one retained
+  mark in ordered draw commands with different data ranges, draw-level
+  placement indices, viewports, and clips. A control may change the generic
+  active subset, but the scene must not model facets, samples, or interaction
+  modes.
+- Build Storybook with
+  `npm -w @genome-spy/webgpu-renderer run build-storybook`. The stories must use
+  renderer data and APIs directly and import no Core modules.
 
 ### Documentation and migration
 
-Document viewport-local normalized positions and per-instance placement. No
-Core grammar migration is required.
+Document viewport-local normalized positions and per-instance placement. Add
+the two placement stories to the renderer's existing Storybook scene catalog.
+No Core grammar migration is required.
 
 Tentative commit: `feat(webgpu-renderer): add indexed placement transforms`.
 
@@ -836,6 +854,12 @@ The two failing docs examples render under WebGPU.
   - a Core-generated 2D row/column facet with shared x/y domains, sparse and
     unequal panel data, an empty panel, unequal panel rectangles, and axes or
     labels outside the mark panels
+- For the link example, inspect the resolved occurrence plan and rendered
+  output. `GridView` arranges each shared `AxisView` repeatedly at eligible grid
+  edges; every child axis mark must retain one logical renderer handle while
+  drawing all ordered occurrences with their own viewport and clip. No
+  occurrence may overwrite or deduplicate another merely because the Core mark
+  identity is the same.
 - Verify that visible and picking frames use identical ranges and order.
 
 ### Documentation and migration
@@ -936,7 +960,7 @@ repeatable without manual browser inspection.
   the useful checks in `runWebGpuExamples.mjs`.
 - Run the complete Core/docs inventory, App sample smoke selection, WebGPU
   renderer unit/GPU tests, Core focused tests, workspace TypeScript checks,
-  and lint.
+  the renderer Storybook build, and lint.
 
 ### Documentation and migration
 
@@ -1007,8 +1031,14 @@ Tentative commit: `test(app): cover WebGPU sample facet rendering`.
 
 ## Acceptance criteria
 
-- Both user-reported examples render non-empty, WebGL-compatible output with
-  `renderer=webgpu`.
+- `examples/docs/grammar/mark/link/link-shapes-and-orientations.json` renders
+  non-empty, WebGL-compatible output with `renderer=webgpu`, including all link
+  panels and shared x/y axes. The marks inside each shared `AxisView` are
+  retained once per logical Core mark and rendered at every `GridView`-owned
+  repeated occurrence with the correct viewport, clip, and paint order; no
+  repeated occurrence is overwritten or deduplicated by mark identity.
+- `examples/app/expression-zscores.json` renders non-empty, WebGL-compatible
+  output with `renderer=webgpu`.
 - One retained renderer mark is used per logical Core mark regardless of facet
   count.
 - Semantic sample/facet keys map deterministically to the topology revision's
@@ -1017,6 +1047,11 @@ Tentative commit: `test(app): cover WebGPU sample facet rendering`.
 - `PlacementSet` creation, replacement, binding, clipping, and destruction
   follow the typed contract; coordinate mapping is top-left, owner-viewport
   relative, normalized, and identical in visible and picking frames.
+- Renderer Storybook includes standalone **Indexed placements** and **Repeated
+  range placements** scenes. Together they demonstrate a retained mark reused
+  across unequal 2D placements, both placement-index modes, range selection,
+  clipping, and retained geometry updates without importing Core. The
+  production Storybook build succeeds.
 - App sample-layout code owns only CPU placement data. WebGL textures and
   WebGPU placement resources are created, updated, and destroyed by their
   respective backends; no mark discovers SampleView through ancestor spec

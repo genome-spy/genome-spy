@@ -54,7 +54,9 @@ Follow the monorepo-wide conventions in `AGENTS.md`.
   - Series are packed into f32/u32 storage buffers; dedupe behavior must remain
     consistent across updates.
 
-## Commit messages- Use conventional commits style (see `AGENTS.md`).
+## Commit messages
+
+- Use conventional commits style (see `AGENTS.md`).
 
 - When working in a feature branch (i.e., not "main" or "master"),
   ignore the scope in commit messages unless the change is large and
@@ -66,6 +68,24 @@ Follow the monorepo-wide conventions in `AGENTS.md`.
 - Unit tests: `npx vitest --run --config vitest.config.js --root packages/webgpu-renderer`
 - Lint: `npx eslint packages/webgpu-renderer/`
 - GPU tests (Playwright): `npm -w @genome-spy/webgpu-renderer run test:gpu`
+
+## Storybook examples
+
+- Treat Storybook as an executable showcase of the renderer's key public
+  features. A substantial visual API or rendering capability should add or
+  update a focused story unless an existing story already demonstrates it
+  clearly.
+- Keep stories renderer-generic. Use typed arrays, renderer handles, draw
+  commands, viewports, and clips directly; do not import Core types or reproduce
+  GenomeSpy grammar, views, facets, or interaction modes.
+- Prefer stories that show realistic composition, retained updates, reuse, and
+  cleanup over isolated static output. Add controls when they materially expose
+  dynamic behavior or edge cases.
+- Reuse the scene runner and example modules under `stories/` and `examples/`.
+  Stories complement unit and GPU tests; they do not replace behavioral
+  assertions.
+- Build Storybook when adding or changing stories:
+  `npm -w @genome-spy/webgpu-renderer run build-storybook`.
 
 ## Migration plan
 
