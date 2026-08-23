@@ -25,8 +25,13 @@ implemented in commits recorded in
   configuration but is not applied by the WebGPU link shader because the
   renderer has no generic point-selection aggregate predicate yet.
 - Text: baseline alignment + vertical flip fix, edge fade, gamma.
-- Per-occurrence opacity and scale state for repeated views whose positional
-  ranges differ.
+- Retained 2D `PlacementSet` handles with draw-level or per-instance indices,
+  shared by ordinary and high-cardinality facet occurrences. Placement remains
+  separate from future per-occurrence opacity and x/y scale-state indices.
+  Draw-level placement must allow Core to omit offscreen range draws, while
+  per-instance placement keeps the coalesced path for labels and metadata.
+  Renderer handles and dense placement indices are not semantic facet IDs or a
+  general Core layout-instance identity model.
 - Worker-friendly update path (transfer buffers, no object reconstruction).
 - Optional vector backend compatibility (stable mark instance schema).
 - Split development-only validation from always-on public safety checks and
