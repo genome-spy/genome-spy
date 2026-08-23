@@ -145,9 +145,16 @@ work with separate decision gates.
   renderer migration.
 - Do not implement independent scale domains per facet now. The architecture
   must leave an extension point for them on the same logical mark.
-- Do not require indirect multi-draw. Standard WebGPU indirect draw commands
-  consume one argument block per call. The initial range-mode path uses direct
-  draws for visible ranges; the indexed path does not need multiple draws.
+- Do not depend on indirect multi-draw or require render bundles. Standard
+  WebGPU indirect draw commands consume one argument block per call. The
+  initial range-mode path uses direct draws for the Core-resolved active ranges;
+  the indexed path does not need multiple draws. A profiler-gated cached
+  submission path may record individual indirect draws, but it must not change
+  Core's ownership of placement, clipping, or occurrence visibility.
+- Do not add GPU visibility computation during parity work. Core already has
+  the presentation geometry and effective clips needed to resolve active
+  occurrences without readback. GPU compaction requires a separate measured
+  justification.
 - Do not implement ordinary-facet grammar, grid/wrap layout, headers, axes,
   margins, data grouping, or scale-resolution policy in the low-level renderer.
   Core remains responsible for producing placement rectangles.
@@ -488,10 +495,10 @@ rectangles remain visible.
 
 For a mark configured with a draw-level placement index, the frame assembler
 drops an invisible occurrence before encoding its draw command. Range-mode
-sample facets use this form initially, preserving the current closeup behavior
-and ensuring that the vertex cost of a data-heavy offscreen facet is zero. Data
-series and GPU buffers remain retained; scrolling changes only the visible draw
-list and placement data.
+sample facets use this form initially, preserving Core's current offscreen
+suppression and ensuring that the vertex cost of a data-heavy inactive facet is
+zero. Data series and GPU buffers remain retained; presentation changes update
+only the active draw list and placement data.
 
 For a mark configured with per-instance placement indices, one coalesced draw
 remains preferable. Its vertex entry point validates the index and rejects a
@@ -506,6 +513,50 @@ Thus one `PlacementSet` mechanism supports both existing WebGL execution
 shapes. The mark/data characteristics and visibility cost determine draw-level
 versus per-instance indexing; the renderer API contains no sample, peek, row,
 or grid concepts.
+
+Core owns the semantic visibility decision. The WebGPU adapter resolves each
+occurrence against its owner viewport, effective clip, placement rectangle, and
+paint-order constraints before low-level submission. The direct path passes
+only active draw commands. An optional cached indirect path may instead pass a
+stable generic range-command topology plus dense numeric active/count values
+aligned with it, but those values are already resolved by Core. The renderer
+must not inspect views, infer an interaction mode, interpret why a placement is
+inactive, or implement a distinct closeup path.
+
+### Profile cached indirect range submission without exposing Core semantics
+
+After the direct range path is correct, Milestone 4 will compare it with an
+optional renderer-private command cache for the high-active-count case. A
+compatible ordered range sequence may be recorded in a render bundle with one
+`drawIndirect` or `drawIndexedIndirect` command per topology occurrence. All
+argument records for that sequence must occupy one packed `GPUBuffer`, selected
+by byte offset; never allocate an indirect buffer per placement. Core-provided
+inactive entries use a zero vertex, index, or instance count. Placement data,
+range data, and indirect arguments remain dense arrays with no per-frame
+semantic-key lookup.
+
+This optimization amortizes JavaScript, validation, and native command-recording
+cost; it is not multi-draw and does not reduce the backend draw-command count.
+The renderer may select it using only generic facts such as compatible command
+topology, active draw count, and measured cost. When only a small subset is
+active, the CPU-pruned direct command list remains available so the renderer
+does not execute a large bundle of empty indirect commands.
+
+Bundle and indirect-argument resources are cached per compatible ordered draw
+sequence and render-pass kind, not per placement. Normal and picking need
+separate compatible bundles. Updating placement rectangles, ranges, or active
+counts in existing buffers must not rebuild a bundle. A topology/order change,
+pipeline change, render-pass compatibility change, or replacement of a bound
+resource identity may rebuild it. Coarse spatial chunking is an experiment only
+if one large bundle prevents profitable skipping; it must not introduce
+renderer-visible sample, panel, or interaction concepts.
+
+Do not assume that indirect `firstInstance` can carry the placement index. A
+nonzero value requires WebGPU's optional `indirect-first-instance` feature. The
+portable implementation must retain a recorded draw-level placement selection,
+a series/range mapping available to the shader, or the direct-draw fallback.
+The generic placement API must work without requesting that optional feature:
+<https://www.w3.org/TR/webgpu/#indirect-first-instance>.
 
 ### Separate placement from scale state
 
@@ -603,6 +654,17 @@ commands:
 <https://www.w3.org/TR/webgpu/#rendering-operations>,
 <https://github.com/gpuweb/gpuweb/issues/5175>.
 
+WebGPU render bundles can cache repeated render commands while buffers bound by
+those commands remain updateable. Brandon Jones's WebGPU guidance also records
+an important Dawn/D3D12 implementation constraint: indirect arguments from one
+buffer can be validated together, whereas one buffer per draw may trigger many
+hidden validation dispatches. The Milestone 4 experiment therefore uses one
+packed argument buffer and measures end-to-end frame/trace cost rather than
+assuming render-pass timestamps include implementation-injected validation.
+This is design guidance only; no source code is copied or adapted:
+<https://toji.dev/webgpu-best-practices/render-bundles>,
+<https://toji.dev/webgpu-best-practices/indirect-draws.html>.
+
 ## Alternatives considered
 
 - **Retained mark per facet:** rejected. With 2,000 facets it would multiply
@@ -616,15 +678,23 @@ commands:
   command count scale to about 2,000 and discard the current one-draw advantage
   for labels and metadata.
 - **Always pack range facets into one draw:** rejected for the initial path. In
-  closeup mode it would process every datum in offscreen sample ranges, losing
-  the current CPU draw suppression. Reconsider only with a visible-range or
-  source-index indirection justified by profiling.
+  a frame where Core resolves only a small intersecting subset, it would process
+  every datum in inactive sample ranges and lose the current CPU draw
+  suppression. Reconsider only with a visible-range or source-index indirection
+  justified by profiling.
 - **Use a transform texture:** retained as a renderer-private fallback only if
   portable storage-binding limits require it. It must not split the public or
   Core integration contract.
 - **Use indirect multi-draw:** rejected as both unavailable in standard WebGPU
   and unnecessary for packed, disjoint facets. Single indirect draws do not
-  reduce the number of encoded draw commands.
+  reduce the backend draw-command count.
+- **Cache individual indirect draws in a render bundle:** retained as a
+  profiling-gated range-submission optimization, not as the initial or only
+  path. One packed argument buffer can make a stable high-count sequence cheap
+  to resubmit, but executing many zero-count commands may lose to the direct
+  Core-pruned list when few occurrences are active. The choice is generic
+  renderer submission policy and does not expose SampleView or interaction
+  modes.
 - **CPU projection:** rejected because it would rebuild position arrays for
   scale-domain and layout changes.
 - **Renderer facet objects or a retained scene graph:** rejected because either
@@ -782,11 +852,15 @@ Tentative commit: `feat(core): render WebGPU facet ranges`.
 Both `facetIndex` and `sampleFacetRenderingOptions` feed the same indexed
 placement contract. Each sample-faceted logical mark uses one retained mark.
 Labels and metadata retain a coalesced draw; range-mode main plots submit only
-visible facet ranges. Both paths remain viable with about 2,000 samples.
+Core-resolved active facet ranges. Both paths remain viable with about 2,000
+samples. The milestone also records whether a generic cached indirect sequence
+materially improves the high-active-count case; it does not introduce a
+renderer-visible sample interaction mode.
 
 ### Affected areas and downstream consumers
 
 - renderer placement-table ownership and update API
+- optional renderer-private ordered-command and packed indirect-argument cache
 - the standard placement-index input in built-in mark shaders
 - Core range-batch packing, `facetIndex` translation, and App sample-coordinate
   updates
@@ -805,6 +879,22 @@ visible facet ranges. Both paths remain viable with about 2,000 samples.
   Assert that range draw count equals the visible, non-empty facet count rather
   than total facet count. Verify the same suppression in normal and picking
   passes, including a partially visible first and last facet.
+- Benchmark the generic range-submission paths with the same 2,000-occurrence
+  topology in two Core-produced frame plans: one with nearly every occurrence
+  active and one with only a small intersecting subset. Compare the CPU-pruned
+  direct list with a render bundle containing individual indirect draws backed
+  by one packed argument buffer. Measure JavaScript/command-encoding time and
+  end-to-end frame or browser trace time; do not rely only on render-pass
+  timestamp queries. Record the decision and retain the direct path unless the
+  cached path provides a repeatable material win in its target regime.
+- If the cached path is retained, assert that geometry-only and active-count
+  updates do not rebuild its bundles, inactive Core-resolved entries have zero
+  work counts, and normal and picking use separate compatible caches with the
+  same active set. Assert one packed indirect buffer per compatible ordered
+  sequence, no per-placement indirect buffer, and correct operation without
+  the optional `indirect-first-instance` feature. Changes in topology, paint
+  order, pipeline, pass compatibility, or bound resource identity must
+  invalidate the affected cache explicitly.
 - Assert one placement resource per source, no per-facet pipeline/bind group,
   text atlas, buffer, or mark configuration, and one draw for coalescible
   labels/metadata. Record packed-series and expanded glyph placement-index byte
@@ -862,7 +952,8 @@ Tentative commit: `test(app): cover WebGPU sample facet rendering`.
    replaces it.
 2. Review Milestones 2–4 together for renderer API shape, packed data
    ownership, retained lifetimes, 2,000-facet storage limits, draw counts,
-   text, shader clipping, and paint-order splitting.
+   text, shader clipping, paint-order splitting, and the evidence for retaining
+   or discarding cached indirect submission.
 3. Perform final integration review after App interactions and browser coverage
    are complete.
 
@@ -880,6 +971,21 @@ Tentative commit: `test(app): cover WebGPU sample facet rendering`.
 - A coalesced per-instance draw can cheaply reject offscreen labels and
   metadata, but cannot avoid its vertex-prefix cost. Keep data-heavy range mode
   CPU-pruned until measurements justify a compact visible-instance indirection.
+- Render bundles reduce CPU submission work but still execute one backend draw
+  command per recorded indirect call. A bundle covering mostly inactive ranges
+  may lose to the direct active-command list; retain both only if measurements
+  justify the added cache and invalidation logic.
+- Some WebGPU implementations inject indirect-argument validation outside the
+  native render pass, so pass timestamp queries alone may hide material cost.
+  Keep all arguments for a compatible sequence in one packed buffer and include
+  end-to-end frame or browser trace measurements.
+- Nonzero indirect `firstInstance` is optional in WebGPU. Placement indexing
+  must have a portable path that neither requests `indirect-first-instance` nor
+  creates per-placement bindings or resources.
+- Render bundles are compatible with specific attachment formats, sample
+  counts, pipelines, and bound resource identities. Normal/picking separation
+  and cache invalidation must be explicit, and a buffer capacity increase must
+  not leave a bundle referring to a replaced allocation.
 - Flat placement bounds consume inter-stage components in every clipped mark;
   verify portable inter-stage limits and avoid mark-specific duplicate varyings.
 - The initial coexistence of closure-backed ordinary rectangles and flat
@@ -919,6 +1025,14 @@ Tentative commit: `test(app): cover WebGPU sample facet rendering`.
   contract and one retained mark per logical mark. Coalescible indexed marks
   use one draw; range-mode draws are bounded by visible, non-empty placements,
   not total placement count, in the 2,000-sample closeup fixture.
+- Core alone resolves occurrence visibility from layout, placement, and clips.
+  The renderer receives only generic active commands or dense active/count
+  values and has no SampleView, peek, closeup, row, column, or grid mode.
+- The 2,000-occurrence benchmark records whether cached bundled indirect
+  submission is retained. If retained, it uses one packed argument buffer per
+  compatible ordered sequence, works without `indirect-first-instance`, keeps
+  normal and picking active sets identical, and does not rebuild bundles for
+  geometry-only or active-count updates.
 - Batches that may overlap preserve original order and coalesce only adjacent
   compatible occurrences; they never create per-facet retained marks.
 - Layout-only and peek/scroll geometry updates do not replace stable mark
