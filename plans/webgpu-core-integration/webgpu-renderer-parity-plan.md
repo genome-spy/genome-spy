@@ -4,6 +4,8 @@ Status: Authorized; investigation complete and implementation proposed.
 
 Date: 2026-08-21
 
+Last reconciled review: 2026-08-23
+
 Core owns grammar, dataflow, scale resolution, selection semantics, occurrence
 traversal, and facet placement. The WebGPU adapter translates those semantics
 to the generic retained renderer. WebGL remains the behavioral reference.
@@ -35,6 +37,9 @@ to the generic retained renderer. WebGL remains the behavioral reference.
   `Mark.getSampleFacetMode()` identifies `SampleView` by looking for a
   `samples` property in an ancestor spec. `MetadataView` itself does not own
   rendering resources; it only emits the `facetIndex` semantic channel.
+- Core's old `FacetView` is disabled in `ViewFactory`, marked `@ts-nocheck`, and
+  still has unimplemented layout methods. Reviving the public ordinary-facet
+  grammar is therefore a separate Core feature, not renderer-parity work.
 
 The failures are architectural, not missing link or text geometry.
 
@@ -63,6 +68,21 @@ thousand-sample layout may intersect the viewport. In indexed mode, the
 coordinate table retains offscreen coordinates and a zero height denotes a
 missing or filtered sample; normal shader and viewport clipping suppress the
 offscreen geometry.
+
+App filtering does not replace the sample collection. `sampleData.ids` and its
+stable `indexNumber` values describe every known sample, while the mutable
+sample hierarchy describes the currently presented subset and order. The
+current WebGL texture is sized from the complete `sampleData.ids` collection,
+cleared to zero, and populated only for samples with current locations. WebGPU
+must preserve this distinction: collection membership defines placement and
+packed-data topology; filtering, grouping, sorting, and restored provenance
+change presentation only.
+
+Likewise, absence from the active or visible occurrence list is not a resource
+lifetime signal. A configured logical mark may have no submitted draws because
+all of its samples are filtered, clipped, or offscreen. Core view/mark ownership
+and explicit disposal determine lifetime; presentation determines only the
+current draw list.
 
 The proposed WebGPU path unifies the placement representation, not necessarily
 the submission strategy. A renderer-owned placement resource maps a generic
@@ -114,12 +134,17 @@ work with separate decision gates.
 
 ## Goals
 
-- Render ordinary facets and both Core sample-facet inputs under WebGPU with
-  WebGL-compatible data ranges, placement, order, clipping, culling,
-  transitions, and empty-facet behavior.
+- Render current repeated mark occurrences and both Core sample-facet inputs
+  under WebGPU with WebGL-compatible data ranges, placement, order, clipping,
+  culling, transitions, and empty-facet behavior.
+- Provide the generic Core 2D placement and repeated-range contracts needed by
+  a future ordinary-facet implementation without enabling facet grammar now.
 - Keep exactly one retained renderer mark per logical Core mark, regardless of
   facet count.
 - Keep scale domains and columnar series resident across layout-only changes.
+- Keep complete sample membership and collector ranges resident across
+  filtering, grouping, sorting, and restored initially filtered state; those
+  operations change presentation rather than sample topology.
 - Support about 2,000 sample facets without per-facet pipelines, bind groups,
   text atlases, buffers, or full mark configurations.
 - Provide standalone WebGPU renderer Storybook scenes for indexed 2D placement
@@ -130,6 +155,8 @@ work with separate decision gates.
   effective viewport and clip, particularly in closeup/peek mode.
 - Use the same packed data and occurrence placement in normal and picking
   passes.
+- Establish WebGL parity for every JSON specification discovered recursively
+  under `examples/app/`, not only the focused sample-facet fixture.
 - Keep facet grouping and placement in Core and keep the renderer free of Core
   and App types.
 - Remove WebGL resource ownership and renderer detection from App sample-layout
@@ -160,6 +187,9 @@ work with separate decision gates.
 - Do not implement ordinary-facet grammar, grid/wrap layout, headers, axes,
   margins, data grouping, or scale-resolution policy in the low-level renderer.
   Core remains responsible for producing placement rectangles.
+- Do not enable or repair the dormant Core `FacetView` in this plan. Its future
+  Core-owned grid/wrap, grouping, headers, axes, and scale-resolution work will
+  consume the renderer-neutral placement contract established here.
 - Do not extract the transitional WebGL implementation into a new renderer
   package or introduce a universal WebGL/WebGPU renderer interface as part of
   facet placement.
@@ -177,11 +207,12 @@ Implement Milestone 1 as one coherent master-first change, then merge it into
 the `webgpu` branch. Do not develop the shared Core/App contract on the WebGPU
 branch and later back-port it.
 
-The master change publishes revisioned CPU placement geometry owned by
-`FacetView` and SampleView, replaces sample-specific batch hooks with a generic
+The master change publishes generic revisioned CPU placement primitives used by
+SampleView, replaces sample-specific batch hooks with a generic
 repeated-placement scope, and adapts WebGL, Canvas2D, and SVG. It preserves
 WebGL range-mode visibility pruning and SampleView's layout-free peek
-presentation updates. It does not implement discarded Layout 2.0 phases.
+presentation updates. It neither enables the dormant `FacetView` nor
+implements discarded Layout 2.0 phases.
 
 This is an evolution of the existing `View.arrange()` -> `LayoutResult`
 boundary, not a replacement for it. Keep the depth-first traversal and
@@ -197,19 +228,81 @@ choices, and App WebGPU coverage. This split gives the shared abstraction
 multiple production backend consumers before the experimental renderer relies
 on it and keeps the master commit independently testable and revertible.
 
+## Milestone execution and reconciliation
+
+Treat this plan as a sequence of reviewed hypotheses, not as an API
+specification that implementation must preserve at any cost. Complete and
+verify one milestone before starting the next. At the end of every milestone,
+the implementer must:
+
+1. Compare the implemented ownership, data shape, invalidation, resource
+   lifetime, draw order, clipping, and measured cost with the assumptions in
+   this plan.
+2. Record any contract that became simpler, more complex, impossible, or
+   unnecessary. Prefer correcting a generic Core or renderer boundary over
+   retaining an adapter workaround merely to match the original wording.
+3. Reconcile the remaining key decisions, milestone outcomes, verification,
+   risks, and acceptance criteria before continuing. Remove superseded work;
+   do not leave both the old and new paths as implied requirements.
+4. Re-run earlier cross-backend tests affected by the change. A later milestone
+   must not silently weaken an invariant established by an earlier one.
+5. Commit the verified implementation and the reconciled planning record. For
+   the master-first Milestone 1, land the implementation on `master`, then
+   update and commit this plan on the `webgpu` branch after merging master and
+   before Milestone 2. For Milestones 2–5, the plan reconciliation may accompany
+   or immediately follow the milestone's clean implementation commit.
+
+Do not start the next milestone while a failed verification, unexplained
+performance regression, ownership ambiguity, or stale downstream plan remains.
+Minor wording and test-fixture corrections need no independent review; a change
+to a shared contract, public renderer API, resource lifetime, clipping/order
+semantics, or performance strategy re-enters the applicable review gate below.
+
 ## Key decisions
 
 ### Publish one renderer-neutral placement source
 
 `LocationManager` will own only sample layout and presentation computation. A
-stable `PlacementSource` publishes immutable snapshots containing a
-monotonically increasing geometry revision and a CPU `Float32Array` of
-normalized placement rectangles. Values for a published revision are never
-mutated; the source atomically replaces its current snapshot. Backends cache
-resources by source identity and update them when the captured geometry
-revision changes. The current vertical layout fills `x = 0` and `width = 1`;
-using rectangles keeps the semantic contract usable for a two-dimensional
-facet layout without exposing a GPU representation.
+stable `PlacementSource` publishes immutable topology and geometry as one
+atomically replaceable current snapshot. The Core-side conceptual shape is:
+
+```ts
+type PlacementTopology = {
+  revision: number;
+  /** Array position is the dense placement index. */
+  facetIds: readonly (readonly Scalar[] | undefined)[];
+};
+
+type PlacementSnapshot = {
+  topology: PlacementTopology;
+  geometryRevision: number;
+  rectangles: Float32Array;
+  overlap: "disjoint" | "may-overlap";
+};
+```
+
+`facetIds` enumerate complete collector topology, including members that have
+no active occurrence. An entry may be `undefined` for a placement that is not
+collector-faceted. Semantic keys used by the owner to construct or update this
+aligned array are not renderer data. In App, the entries are derived from the
+complete `sampleData.ids` collection, not from the filtered hierarchy.
+
+The rectangle array has exactly four values per topology entry. It contains
+normalized `[x, y, width, height]` rectangles and uses a monotonically
+increasing geometry revision. Values for a published snapshot are never
+mutated. A topology change publishes a new topology and matching geometry
+atomically; a geometry-only update reuses the same topology object and
+revision. Publishing geometry with a mismatched count or topology revision is
+an error. Backends cache resources by source identity and update them when the
+captured geometry revision changes. The current vertical layout fills `x = 0`
+and `width = 1`; using rectangles keeps the semantic contract usable for a
+two-dimensional facet layout without exposing a GPU representation.
+
+`PlacementSource` also exposes a renderer-neutral disposal notification. Its
+owning view or App layout helper disposes it through the existing Core view
+lifecycle; backend caches subscribe and release only their own derived
+resources. Disposal is idempotent. App never receives those backend resources,
+and absence from a snapshot's active presentation is not disposal.
 
 Rectangles are ordered `[x, y, width, height]`, use a top-left origin with y
 increasing downward, and are normalized against an explicitly identified owner
@@ -237,6 +330,21 @@ general layout-instance identities, and are never assumed to preserve a
 semantic identifier. SampleView's current dense `indexNumber` is one possible
 mapping, not a renderer requirement.
 
+For an App sample placement source, the topology builder enumerates the complete
+`sampleData.ids` membership in its stable source order, even when the initial
+restored hierarchy is already filtered. Every known sample receives a placement
+index and a packed collector range; a sample without data receives an empty
+range. The current hierarchy must never be used as the topology source because
+doing so would remap indices and repack mark data when a filter is undone.
+Only adding, removing, or replacing members of `sampleData.ids` advances the
+sample placement topology revision.
+
+This complete topology is the adapter's authoritative enumeration when it packs
+range-mode collector batches. Active `LayoutResult` occurrences select which
+ranges are currently submitted, but they never define which ranges exist. This
+keeps an initially fully filtered hierarchy valid and prevents undo from
+discovering previously absent topology mid-frame.
+
 Semantic-key resolution occurs only while building or changing facet topology,
 not while publishing geometry or drawing frames. The topology builder assigns
 each facet a dense index and stores that integer directly in repeated occurrence
@@ -255,13 +363,15 @@ semantic-key lookup.
 
 Arrangement captures placement-source identity, topology revision, and resolved
 numeric placement indices in `LayoutResult`; it does not freeze presentation
-geometry or require a key-to-index map in the render hot path. A layout or
-topology change publishes a new completed result. A geometry-only SampleView
-peek/scroll frame may publish a new immutable current snapshot with the same
-topology after arrangement, preserving the existing layout-free animation path.
-Each backend captures one source revision at frame collection and uses it
-consistently for normal/picking work produced for that frame. App code updates
-CPU presentation state but never backend GPU resources.
+geometry or require a key-to-index map in the render hot path. Filtering,
+grouping, sorting, and provenance restoration publish a new completed result
+and resolved occurrence order while retaining the membership topology and
+packed mark series. A geometry-only SampleView peek/scroll frame may publish a
+new immutable current snapshot with the same topology after arrangement,
+preserving the existing layout-free animation path. Each backend captures one
+source revision at frame collection and uses it consistently for normal/picking
+work produced for that frame. App code updates CPU presentation state but never
+backend GPU resources.
 
 A snapshot also declares whether its non-empty rectangles are pairwise
 disjoint. Core may set this only when its layout guarantees the invariant;
@@ -339,6 +449,11 @@ filtered/missing facets without an unsafe buffer read. A mark without placement
 capability rejects a placement binding, while a placement-enabled mark requires
 one. Normal and picking frames use the identical normalized binding.
 
+The Core adapter passes only `PlacementSetData.rectangles` and dense indices
+through this package boundary. `PlacementTopology`, semantic keys, collector
+facet IDs, and topology revision policy remain Core-side and must not appear in
+the renderer API.
+
 `replace()` preserves handle identity and never rebuilds mark pipelines. It may
 replace the GPU allocation and dependent bind groups when capacity grows.
 Replacement validates a length divisible by four and finite non-negative
@@ -411,8 +526,23 @@ or replacement of closure-based rectangles requires a separate measured plan.
 ### Retain logical marks and index packed placements
 
 `WebGpuSurface` will retain resources by logical Core mark. A frame assembler
-will collect all occurrences before updating the retained mark, pack each
-distinct collector batch once, and record a placement index for its instances.
+will collect all occurrences before updating the retained mark. It produces two
+separately invalidated artifacts:
+
+1. A packed mark topology concatenates each distinct collector batch once and
+   records stable range offsets plus per-instance placement indices. It changes
+   only with collector data/batch revision, placement topology revision, or
+   channel shape.
+2. A resolved occurrence plan records ordered direct range indices, owner
+   viewports, clips, and draw-level placement indices. It may be rebuilt cheaply
+   when `LayoutResult` identity or presentation order changes without replacing
+   the packed topology.
+
+For App sample-faceted marks, the packed topology enumerates collector batches
+from the placement topology's complete `facetIds`, not only batches referenced
+by the current filtered occurrence list. Missing batches become empty ranges.
+Thus a filter changes submitted occurrences without changing channel-series
+contents or range offsets.
 
 The Core adapter compiles semantic `LayoutResult` commands into a resolved
 occurrence plan only when the layout-result identity, collector data/batch
@@ -462,9 +592,11 @@ alone.
 
 Facet-specific batches will be concatenated into one retained series. The
 packing cache will be keyed by source batch identity and shape so viewports,
-clipping, and sample layout transitions do not replace stable channel series.
-The placement index can be packed into the existing `u32` series allocation;
-the facet rectangles use one shared renderer-owned placement resource.
+clipping, filtering, grouping, sorting, and sample layout transitions do not
+replace stable channel series. An initially filtered hierarchy still packs the
+complete membership once. The placement index can be packed into the existing
+`u32` series allocation; the facet rectangles use one shared renderer-owned
+placement resource.
 
 Inside a repeated batch declared `disjoint`, the assembler may regroup
 occurrences by logical mark while preserving each panel's local mark order;
@@ -475,10 +607,15 @@ coalesced and all intervening paint order is preserved. A fixture such as
 packed range but follows the same ordering rule. Ordinary facets may use either
 form; neither creates another retained mark.
 
-At frame completion, the surface sweeps logical marks and placement sets absent
-from both normal and picking occurrence sets, destroys their handles, and
-invalidates cache entries. Dynamic view removal must not leak GPU resources
-until surface finalization.
+Resource lifetime is ownership-driven rather than inferred from frame
+participation. When the WebGPU adapter first retains a logical mark, it binds
+handle cleanup to the owning `UnitView`/`Mark` disposal lifecycle; when a
+backend first caches a placement source, it likewise binds resource cleanup to
+that source's owner/disposal lifecycle. `View.disposeSubtree()` therefore
+releases removed marks and placement resources, while filtering, clipping,
+offscreen culling, and a frame with zero active occurrences do not. Surface
+finalization destroys any remaining resources. Do not add a sweep whose only
+liveness evidence is the normal or picking draw list.
 
 The occurrence record is ephemeral and preserves the completed layout's order.
 Logical `Mark` identity remains the WebGPU resource key when several
@@ -495,21 +632,31 @@ canvas bounds and cull clip. A rectangle with zero width or height, or one with
 an empty intersection, is not visible. Partially intersecting and transitioning
 rectangles remain visible.
 
+An App sample placement snapshot always contains one rectangle per complete
+sample member. Publication initializes all rectangles to zero and writes
+nonzero geometry only for samples present in the current hierarchy. Filtering
+therefore turns removed samples into zero-area placements without deleting
+their indices or GPU-resident data. This applies equally when the first rendered
+hierarchy is already filtered.
+
 For a mark configured with a draw-level placement index, the frame assembler
 drops an invisible occurrence before encoding its draw command. Range-mode
 sample facets use this form initially, preserving Core's current offscreen
 suppression and ensuring that the vertex cost of a data-heavy inactive facet is
-zero. Data series and GPU buffers remain retained; presentation changes update
-only the active draw list and placement data.
+zero. Filtered samples produce no range draw. Data series and GPU buffers remain
+retained; filtering and other presentation changes update only the active draw
+list and placement data.
 
 For a mark configured with per-instance placement indices, one coalesced draw
 remains preferable. Its vertex entry point validates the index and rejects a
 zero-area or wholly offscreen rectangle before evaluating ordinary channel and
 geometry work; placement clipping then prevents fragments and picks outside a
 partially visible rectangle. This is the initial path for labels and metadata.
-It still invokes a small vertex prefix for offscreen instances, but avoids
-per-facet commands and resources. A compact visible-instance indirection is a
-future profiling-driven optimization, not part of the public placement API.
+It still invokes a small vertex prefix for filtered and offscreen instances,
+but their zero-area or nonintersecting placements prevent geometry and fragment
+work. This avoids per-facet commands and resources. A compact visible-instance
+indirection is a future profiling-driven optimization, not part of the public
+placement API.
 
 Thus one `PlacementSet` mechanism supports both existing WebGL execution
 shapes. The mark/data characteristics and visibility cost determine draw-level
@@ -706,26 +853,34 @@ This is design guidance only; no source code is copied or adapted:
 
 ### Intended outcome
 
-On a branch from `master`, `FacetView` and `SampleView` publish CPU placement
-semantics through `LayoutResult`; SampleView no longer owns a WebGL texture or
-exposes renderer-specific accessors. WebGL, Canvas2D, and SVG consume the new
-contract with unchanged visible behavior. Merge this milestone to `master`
-before integrating it into the `webgpu` branch.
+On a branch from `master`, Core gains renderer-neutral placement primitives and
+SampleView publishes them through `LayoutResult`; SampleView no longer owns a
+WebGL texture or exposes renderer-specific accessors. WebGL, Canvas2D, and SVG
+consume the new contract with unchanged visible behavior. Merge this milestone
+to `master` before integrating it into the `webgpu` branch. Do not enable or
+repair dormant `FacetView` grammar in this milestone.
 
 ### Affected areas and downstream consumers
 
 - App `LocationManager`, `SampleView`, generated label/metadata specs, and their
   layout tests
-- Core `RenderingOptions`, `LayoutResult`, repeated-batch commands, and
-  immediate occurrence helpers
+- Core `PlacementSource` topology/snapshot/lifecycle, `RenderingOptions`,
+  `LayoutResult`, repeated-batch commands, and immediate occurrence helpers
 - `View.getSampleFacetTexture()`, `View.getSampleFacetPosition()`,
   `Mark.getSampleFacetMode()`, sample-facet GLSL inputs, and `WebGLHelper`
 - WebGL normal/picking batches plus Canvas2D and SVG sample-facet consumers
 
 ### Verification
 
-- Unit-test stable placement-source identity, revision changes, index mapping,
-  filtered/zero-height samples, reorder transitions, and layout snapshots.
+- Unit-test stable placement-source identity, complete-membership index mapping,
+  filtered/zero-height samples, reorder transitions, and layout snapshots. A
+  hierarchy initially restored with a filter must still allocate entries for
+  every `sampleData.ids` member and preserve their stable source indices.
+- Filter, group, sort, undo, and redo the current hierarchy. Assert that they
+  publish new presentation geometry and occurrence order without advancing the
+  membership topology revision. Filtered entries are zero, restored entries
+  reuse their previous indices, and the WebGL texture remains sized to the
+  complete sample collection.
 - Verify that peek and scrolling can publish geometry revisions after
   arrangement without changing topology, rebuilding WebGL batches, or causing
   normal/picking to mix placement revisions.
@@ -747,6 +902,11 @@ before integrating it into the `webgpu` branch.
 - Assert that App sample-layout modules neither import WebGL helpers nor retain
   `WebGLTexture` values, and that Core marks no longer identify SampleView from
   spec shape.
+- Dispose a dynamic SampleView or a focused generic placement-source test owner
+  and assert that every backend-owned resource derived from its placement
+  sources is released. Also filter the hierarchy to zero active samples and
+  assert that the same resources remain live until undo or actual owner
+  disposal.
 
 ### Documentation and migration
 
@@ -795,8 +955,10 @@ placement contracts without a Core adapter.
   device requested without an elevated `maxStorageBuffersPerShaderStage`.
   Placement must not raise the portable binding requirement; consolidate
   bindings or select the private texture representation if necessary.
-- Run the current 102 Core and 110 docs WebGPU inventory to catch regressions
-  in offsets, text flushing, links, arrows, scales, and clipping.
+- Run the complete Core and docs WebGPU inventory discovered at execution time
+  to catch regressions in offsets, text flushing, links, arrows, scales, and
+  clipping. The investigation baseline was 102 Core and 110 docs specs; do not
+  turn those counts into an allowlist.
 - Add an **Indexed placements** Storybook scene that uses one retained mark and
   one coalesced draw to populate an unequal 2D rectangle grid through
   per-instance placement indices. Demonstrate a zero-area placement,
@@ -818,7 +980,7 @@ No Core grammar migration is required.
 
 Tentative commit: `feat(webgpu-renderer): add indexed placement transforms`.
 
-## Milestone 3: Packed ordinary and range-mode facets
+## Milestone 3: Packed repeated and facet-range occurrences
 
 ### Intended outcome
 
@@ -839,8 +1001,15 @@ The two failing docs examples render under WebGPU.
 
 - Unit-test repeated un-faceted data, facet-specific data, empty facets,
   changing facet sets, conditional-series packing, collector data revisions,
-  unique IDs, paint order, scissors, retained updates, and stale mark/placement
-  destruction.
+  unique IDs, paint order, scissors, retained updates, and explicit
+  mark/placement owner disposal.
+- Build a renderer-neutral Core occurrence plan whose placement topology
+  contains more collector facets than its active occurrence list. Assert that
+  packing follows the complete topology in stable index order, inactive
+  members receive stable or empty ranges, and later activating an occurrence
+  does not replace channel series, recompute range offsets, or remap placement
+  indices. The actual initially filtered SampleView case is exercised in
+  Milestone 4.
 - Assert that replaying an unchanged resolved occurrence plan performs zero
   collector facet-map and semantic/composite-key lookups. A collector revision
   or topology revision rebuilds the resolution once, after which repeated
@@ -851,9 +1020,11 @@ The two failing docs examples render under WebGPU.
 - Compare WebGPU and WebGL for:
   - `examples/docs/grammar/mark/link/link-shapes-and-orientations.json`
   - `examples/docs/grammar/composition/concat/shared-axes.json`
-  - a Core-generated 2D row/column facet with shared x/y domains, sparse and
-    unequal panel data, an empty panel, unequal panel rectangles, and axes or
-    labels outside the mark panels
+  - a focused Core integration fixture that emits one logical mark into a 2D
+    row/column placement topology with shared x/y domains, sparse and unequal
+    panel data, an empty panel, unequal panel rectangles, and axes or labels
+    outside the mark panels; this is a renderer-contract fixture, not enabled
+    facet grammar
 - For the link example, inspect the resolved occurrence plan and rendered
   output. `GridView` arranges each shared `AxisView` repeatedly at eligible grid
   edges; every child axis mark must retain one logical renderer handle while
@@ -861,11 +1032,15 @@ The two failing docs examples render under WebGPU.
   occurrence may overwrite or deduplicate another merely because the Core mark
   identity is the same.
 - Verify that visible and picking frames use identical ranges and order.
+- Submit a frame with zero active occurrences for a still-owned repeated mark,
+  then submit it again. Its retained handle and packed series must survive; only
+  disposing the owning view/mark or changing an incompatible definition may
+  destroy or replace them.
 
 ### Documentation and migration
 
-Update the Core/renderer integration notes. Existing facet grammar does not
-need user-facing documentation changes.
+Update the Core/renderer integration notes. No user-facing facet grammar is
+enabled or documented by this milestone.
 
 Tentative commit: `feat(core): render WebGPU facet ranges`.
 
@@ -892,17 +1067,31 @@ renderer-visible sample interaction mode.
 
 ### Verification
 
-- Test missing positions, zero-height filtered samples, reorder and transition
-  updates, partial clipping, and text glyph placement.
-- Add a synthetic 2,000-sample fixture with labels, metadata rectangles, and a
-  representative range-mode multi-datum mark. Assert one retained renderer
-  mark per logical mark, one draw for coalescible indexed labels/metadata, and
-  no range draw for a placement outside the effective viewport/clip.
-  Layout-only changes must not replace ordinary channel series.
-- Exercise closeup/peek with about 2,000 placements and a small visible window.
-  Assert that range draw count equals the visible, non-empty facet count rather
-  than total facet count. Verify the same suppression in normal and picking
-  passes, including a partially visible first and last facet.
+- Test missing positions, zero-height filtered samples, initial filtered state,
+  filter/undo/redo, reorder and transition updates, partial clipping, and text
+  glyph placement. Range-mode marks submit no draws for filtered samples;
+  indexed labels and metadata retain the coalesced full-membership draw and
+  reject zero-area placements in the shader. No presentation-only operation may
+  replace mark series, placement mappings, pipelines, or bind groups.
+- After first rendering a non-empty hierarchy, filter every sample, render the
+  zero-occurrence state, and undo the filter. Existing placement resources,
+  retained mark handles, complete packed ranges, and dense indices must remain
+  identical across the transition; only geometry and the active occurrence list
+  change. A view that starts with zero occurrences may create a mark lazily on
+  its first later occurrence; do not add eager GPU mark creation merely for
+  this edge case.
+- Add a deterministic, repository-owned 2,000-sample App harness fixture with
+  labels, metadata rectangles, and a representative range-mode multi-datum
+  mark. It may generate its data at test time instead of adding a large
+  user-facing example. Assert one retained renderer mark per logical mark, one
+  draw for coalescible indexed labels/metadata, and no range draw for a
+  placement outside the effective viewport/clip. Layout-only changes must not
+  replace ordinary channel series.
+- Drive the actual App SampleView into closeup/peek with the 2,000-sample
+  fixture and a small visible window. Assert that range draw count equals the
+  visible, non-empty facet count rather than total facet count. Verify the same
+  suppression in normal and picking passes, including a partially visible
+  first and last facet.
 - Benchmark the generic range-submission paths with the same 2,000-occurrence
   topology in two Core-produced frame plans: one with nearly every occurrence
   active and one with only a small intersecting subset. Compare the CPU-pruned
@@ -940,46 +1129,86 @@ Tentative commit: `feat(core): pack WebGPU sample facets`.
 
 Range-mode sample plots and facet-indexed sidebar marks work together;
 tooltips and selections resolve the correct data; the App regression is
-repeatable without manual browser inspection.
+repeatable without manual browser inspection. Every JSON specification under
+`examples/app/` participates in an automated WebGPU/WebGL parity sweep.
 
 ### Affected areas and downstream consumers
 
 - WebGPU handling of the generic repeated-placement occurrence scope
 - App sample labels, metadata, main plots, summaries, transitions, and clips
 - Core WebGPU picking frame assembly
-- an App-aware WebGPU smoke harness with deterministic App/sample readiness
+- an App-aware WebGPU/WebGL comparison harness with deterministic App/sample
+  readiness and recursive `examples/app/` discovery
 
 ### Verification
 
-- Compare `examples/app/expression-zscores.json` under WebGPU and WebGL,
-  including labels, cells, aggregate summary, axes, filtering/reordering, and
-  DPR 1 and 2.
-- Test tooltip and selection hits in ordinary and sample facets, overlapping
-  paint order, repeated un-faceted data, and empty facets.
-- Make the App runner fail on console/page errors and empty canvases, matching
-  the useful checks in `runWebGpuExamples.mjs`.
-- Run the complete Core/docs inventory, App sample smoke selection, WebGPU
-  renderer unit/GPU tests, Core focused tests, workspace TypeScript checks,
-  the renderer Storybook build, and lint.
+- Recursively discover every `*.json` specification under `examples/app/` at
+  execution time; do not maintain an allowlist. The current inventory is
+  `copy-numbers.json`, `expression-zscores.json`, `metadata-data-source.json`,
+  `metadata-hierarchy.json`, `samples-identity.json`, and `samples.json`.
+- Run every discovered App specification under WebGPU and WebGL with identical
+  dimensions, DPR, data availability, and deterministic readiness. Fail on
+  console/page errors, failed requests, WebGPU validation errors, missing or
+  empty canvases, and material screenshot differences outside a documented
+  cross-backend tolerance. Save a per-example comparison report; do not
+  silently skip or approve renderer-specific discrepancies.
+- Treat this inventory sweep as breadth coverage, not evidence for
+  closeup/peek performance: the current checked-in App examples have too few
+  samples to exercise that path. Run the repository-owned 2,000-sample App
+  fixture under both renderers for the high-cardinality acceptance assertions.
+- When the ignored private MCCA checkout is available, compare
+  `private/MCCA-visualization/web/specs/spec.json` under WebGPU and WebGL. Its
+  current sample table contains 590 rows, enough to exercise realistic
+  overview-to-closeup transitions. Record initial overview, closeup/peek,
+  scrolling, filtering/reordering, metadata/labels, summaries, and picking in
+  the final comparison report. Do not copy private specifications or data into
+  the repository; this developer validation supplements rather than replaces
+  the reproducible 2,000-sample fixture.
+- Exercise `examples/app/expression-zscores.json` more deeply under both
+  renderers, including labels, cells, aggregate summary, axes,
+  filtering/reordering, picking, and DPR 1 and 2.
+- Test tooltip and selection hits in the focused repeated-placement fixture and
+  in sample facets, plus overlapping paint order, repeated un-faceted data, and
+  empty ranges.
+- Reuse the failure categories and report shape from `runWebGpuExamples.mjs`
+  so the App inventory is not a separate, weaker smoke gate.
+- Run the complete Core/docs inventory, complete App WebGPU/WebGL parity sweep,
+  WebGPU renderer unit/GPU tests, Core focused tests, workspace TypeScript
+  checks, the renderer Storybook build, and lint.
 
 ### Documentation and migration
 
-Document the App WebGPU smoke command. No public grammar changes are expected.
+Document the App WebGPU/WebGL parity command. No public grammar changes are
+expected.
 
-Tentative commit: `test(app): cover WebGPU sample facet rendering`.
+Tentative commit: `test(app): cover WebGPU App example parity`.
 
 ## Review gates
 
-1. Review Milestone 1 across App layout production, `LayoutResult`, WebGL,
-   Canvas2D, and SVG before removing legacy view accessors. Keep the WebGL
-   uniform range path unless a later, separately verified simplification
-   replaces it.
-2. Review Milestones 2–4 together for renderer API shape, packed data
-   ownership, retained lifetimes, 2,000-facet storage limits, draw counts,
-   text, shader clipping, paint-order splitting, and the evidence for retaining
-   or discarding cached indirect submission.
-3. Perform final integration review after App interactions and browser coverage
-   are complete.
+Every milestone ends with the reconciliation checklist above. Independent
+review is concentrated at these risk boundaries:
+
+1. **After Milestone 1:** review complete-topology production, atomic geometry
+   publication, explicit disposal, hot-path lookup counts, and WebGL/Canvas2D/
+   SVG parity before removing legacy view accessors or merging to `master`.
+   Keep the WebGL uniform range path unless a later, separately verified
+   simplification replaces it.
+2. **After Milestone 2:** review the generic renderer API, portable binding and
+   inter-stage limits, placement clipping/transforms in every built-in shader,
+   retained replacement/destruction, and Storybook evidence before Core begins
+   depending on the API in Milestone 3.
+3. **After Milestone 3:** reconcile occurrence packing, repeated shared-axis
+   behavior, paint order, complete-topology versus active-occurrence semantics,
+   and ownership-driven resource lifetime. A separate independent review is
+   required only if this milestone changes the approved Core/renderer contract;
+   otherwise the implementer records the checkpoint and proceeds.
+4. **After Milestone 4:** independently review the actual SampleView integration,
+   zero-occurrence/filter recovery, 2,000-facet storage and draw counts, text,
+   clipping/culling, normal/picking equivalence, and evidence for retaining or
+   discarding cached indirect submission.
+5. **After Milestone 5:** perform final cross-backend integration review using
+   the complete inventories and named App interactions before reconciling and
+   retiring the plan.
 
 ## Risks and unresolved details
 
@@ -1018,13 +1247,28 @@ Tentative commit: `test(app): cover WebGPU sample facet rendering`.
   different points in a peek transition.
 - The App lacks the Core screenshot harness's readiness signal. Add a real
   App/sample readiness hook instead of relying on a timeout.
+- The realistic MCCA validation case lives under the Git-ignored `private/`
+  tree and is unavailable to CI and most contributors. Keep it as recorded
+  developer validation only; permanent acceptance must remain reproducible
+  from the repository-owned high-cardinality fixture.
 - Future per-facet domains require a separate scale-state design and may revise
   the mark contract. Placement must not encode domains or assume that a
   mark-wide domain is immutable forever.
+- Complete topology cannot be reconstructed from active `LayoutResult`
+  occurrences: a filtered initial hierarchy may contain none. The placement
+  source must publish its aligned full `facetIds` enumeration independently,
+  and geometry publication must reject a count or topology-revision mismatch.
 - A topology-frozen `LayoutResult` and live placement source must not allow
-  geometry-only presentation updates to change instance count or index mapping.
-  Filtering/restructuring requires a new layout result; peek/scroll may only
-  replace rectangles for the existing mapping.
+  presentation updates to change complete-membership count or index mapping.
+  Filtering, grouping, sorting, undo, and redo require a new layout result and
+  occurrence plan but retain the membership topology, packed series, and range
+  offsets; their placement snapshot writes zero rectangles for absent samples.
+  Peek/scroll may replace rectangles without arrangement. Only an actual
+  `sampleData.ids` membership change may publish a new sample topology.
+- Draw-list absence cannot distinguish filtered/offscreen content from disposed
+  content. Retained mark and placement resources must follow explicit Core
+  ownership/disposal and surface finalization, not normal/picking occurrence
+  sweeps.
 - Replacing the WebGL uniform transform with ordinary occurrence coordinates
   changes `uViewportSize`, visible-range culling, and pixel-unit calculations.
   Keep the uniform path until mark-by-mark parity demonstrates equivalence.
@@ -1037,13 +1281,32 @@ Tentative commit: `test(app): cover WebGPU sample facet rendering`.
   retained once per logical Core mark and rendered at every `GridView`-owned
   repeated occurrence with the correct viewport, clip, and paint order; no
   repeated occurrence is overwritten or deduplicated by mark identity.
-- `examples/app/expression-zscores.json` renders non-empty, WebGL-compatible
-  output with `renderer=webgpu`.
+- Every JSON specification discovered recursively under `examples/app/`
+  renders successfully with both WebGPU and WebGL. The App harness uses no
+  example allowlist, reports no console/page/request/validation or empty-canvas
+  failures, and finds no material screenshot difference outside its documented
+  cross-backend tolerance. Adding an App example automatically adds it to this
+  acceptance gate.
+- When `private/MCCA-visualization/web/specs/spec.json` is available in the
+  validation environment, the final report includes its WebGPU/WebGL overview,
+  closeup/peek, scrolling, filtering/reordering, metadata, summary, and picking
+  comparison. A material discrepancy blocks completion in that environment;
+  absence of the ignored private checkout does not replace or weaken the
+  repository-owned 2,000-sample App fixture.
 - One retained renderer mark is used per logical Core mark regardless of facet
   count.
 - Semantic sample/facet keys map deterministically to the topology revision's
   dense placement indices. Neither the dense index nor the ephemeral command
   position is exposed as a general persistent layout identity.
+- A placement topology independently enumerates all aligned collector facet IDs
+  even when the active layout has no occurrences. Its rectangle count always
+  matches that topology, and topology-plus-geometry replacement is atomic.
+- App sample topology and packed collector ranges cover the complete
+  `sampleData.ids` membership even when the initial hierarchy is filtered.
+  Filtering, grouping, sorting, undo, and redo preserve placement indices,
+  range offsets, channel series, pipelines, and bind groups. Filtered samples
+  have zero-area placement entries; they produce no range-mode draws and are
+  rejected from coalesced indexed geometry by the placement shader.
 - `PlacementSet` creation, replacement, binding, clipping, and destruction
   follow the typed contract; coordinate mapping is top-left, owner-viewport
   relative, normalized, and identical in visible and picking frames.
@@ -1059,7 +1322,9 @@ Tentative commit: `test(app): cover WebGPU sample facet rendering`.
 - Both range-mode and `facetIndex` sample facets use the same indexed placement
   contract and one retained mark per logical mark. Coalescible indexed marks
   use one draw; range-mode draws are bounded by visible, non-empty placements,
-  not total placement count, in the 2,000-sample closeup fixture.
+  not total placement count, when the repository-owned 2,000-sample App fixture
+  is driven through actual SampleView closeup/peek behavior. Normal and picking
+  use the same active subset throughout the transition.
 - Core alone resolves occurrence visibility from layout, placement, and clips.
   The renderer receives only generic active commands or dense active/count
   values and has no SampleView, peek, closeup, row, column, or grid mode.
@@ -1073,12 +1338,17 @@ Tentative commit: `test(app): cover WebGPU sample facet rendering`.
 - Layout-only and peek/scroll geometry updates do not replace stable mark
   series, topology mappings, or scale domains. They may publish a new placement
   geometry revision without rerunning arrangement.
+- A still-owned logical mark and placement source survive frames with zero
+  active or visible occurrences. Dynamic subtree disposal releases their
+  backend resources without waiting for surface finalization.
 - Geometry-only frames perform no per-facet hash-map, `InternMap`, entity-map,
   composite-key construction, or serialized-key lookup. Semantic key resolution
   is paid only when facet topology changes; steady-state work uses dense integer
   indices and typed arrays.
-- A Core-generated 2D ordinary-facet fixture passes with shared domains, sparse
-  data, unequal and empty panels, and exterior axes/labels.
+- A focused Core 2D repeated-placement fixture passes with shared domains,
+  sparse data, unequal and empty panels, exterior axes/labels, and one retained
+  logical mark. Passing this fixture does not claim that dormant `FacetView`
+  grammar is enabled.
 - The resource-heavy placement pipeline runs without elevating the adapter's
   default storage-binding limit, regardless of its private buffer/texture
   representation.
@@ -1090,7 +1360,8 @@ Tentative commit: `test(app): cover WebGPU sample facet rendering`.
 - Visible and picking passes use the same ranges and placement; tooltips and
   selections resolve the expected data.
 - Existing non-faceted WebGPU inventory remains green, WebGL is unchanged, and
-  the App example has a repeatable browser smoke check.
+  the complete `examples/app/` inventory has a repeatable WebGPU/WebGL browser
+  parity check.
 
 Before merge, reconcile every milestone as completed or discarded, commit that
 record, and delete this temporary plan with the other integration plans in a
