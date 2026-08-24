@@ -412,6 +412,10 @@ ${clauses.join("\n")}
                   "out.placementClip = placementClipBounds(i);\n    out.pos = vec4<f32>(\n        applyTextPlacementClip(clip, i),\n        0.0,\n        1.0\n    );"
               )
               .replaceAll(
+                  "out.pos = vec4<f32>(applyPlacementClipForRule(clip, i), 0.0, 1.0);",
+                  "out.placementClip = placementClipBounds(i);\n    out.pos = vec4<f32>(applyPlacementClipForRule(clip, i), 0.0, 1.0);"
+              )
+              .replaceAll(
                   "out.pos = vec4<f32>(clip, 0.0, 1.0);",
                   "out.placementClip = placementClipBounds(i);\n    out.pos = vec4<f32>(applyPlacementClip(clip, i), 0.0, 1.0);"
               )
@@ -932,6 +936,10 @@ fn applyTextPlacementClip(clip: vec2<f32>, i: u32) -> vec2<f32> {
     return clip;
 }
 
+fn applyPlacementClipForRule(clip: vec2<f32>, i: u32) -> vec2<f32> {
+    return clip;
+}
+
 fn isInsidePlacementClip(position: vec4<f32>, placementClip: vec4<f32>) -> bool {
     let logicalPosition = position.xy / globals.dpr;
     return ((globals.placementClipMode & 1u) == 0u ||
@@ -995,6 +1003,10 @@ fn applyPlacementPixel(pixel: vec2<f32>, i: u32) -> vec2<f32> {
 }
 
 fn applyTextPlacementClip(clip: vec2<f32>, i: u32) -> vec2<f32> {
+    return clip;
+}
+
+fn applyPlacementClipForRule(clip: vec2<f32>, i: u32) -> vec2<f32> {
     return clip;
 }
 `

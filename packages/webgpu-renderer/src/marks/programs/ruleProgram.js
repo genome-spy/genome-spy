@@ -103,15 +103,16 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         width = pixelSize;
     }
 
-    // Start/end points in pixel coordinates.
-    let a = vec2<f32>(
-        getScaled_x(i) + getScaled_xOffset(i),
-        getScaled_y(i) + getScaled_yOffset(i)
-    );
-    let b = vec2<f32>(
-        getScaled_x2(i) + getScaled_x2Offset(i),
-        getScaled_y2(i) + getScaled_y2Offset(i)
-    );
+    // Place the endpoints before extruding the stroke so that occurrence
+    // scaling does not also scale pixel-sized widths, offsets, or line caps.
+    let a = applyPlacementPixel(
+        vec2<f32>(getScaled_x(i), getScaled_y(i)),
+        i
+    ) + vec2<f32>(getScaled_xOffset(i), getScaled_yOffset(i));
+    let b = applyPlacementPixel(
+        vec2<f32>(getScaled_x2(i), getScaled_y2(i)),
+        i
+    ) + vec2<f32>(getScaled_x2Offset(i), getScaled_y2Offset(i));
 
     // Avoid artifacts in degenerate rules by falling back to a unit tangent.
     var tangent = b - a;
@@ -154,7 +155,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     );
 
     var out: VSOut;
-    out.pos = vec4<f32>(clip, 0.0, 1.0);
+    out.pos = vec4<f32>(applyPlacementClipForRule(clip, i), 0.0, 1.0);
     out.color = getScaled_color(i);
     out.normalDistance = side * paddedWidth;
     out.halfWidth = halfWidth;
