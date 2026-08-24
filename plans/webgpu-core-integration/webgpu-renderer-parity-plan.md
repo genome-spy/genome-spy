@@ -1327,6 +1327,43 @@ passes with 0.02060 mean RGB error and a 0.06860 changed-pixel ratio. Smooth
 sub-index label nudging remains unsupported; an offset-channel design, if
 needed, is separate follow-up work.
 
+## Post-integration review work
+
+The final independent review found the following additional work. Each item is
+implemented and committed independently so correctness, portability, API
+boundaries, and simplification remain separately reviewable.
+
+- [ ] Pack arbitrarily large facet batches without spreading a complete batch
+  into function arguments. Add a regression test above the JavaScript engine's
+  practical argument limit.
+  Tentative commit: `fix(core): pack large WebGPU facet batches safely`.
+- [ ] Invalidate normalized visible and picking frames whenever a retained
+  placement set is replaced. Cover picking after both buffer growth and logical
+  count shrinkage.
+  Tentative commit: `fix(webgpu-renderer): invalidate replaced placements`.
+- [ ] Remove the elevated `maxStorageBuffersPerShaderStage` request and verify
+  the most resource-heavy placement-enabled pipelines against the WebGPU
+  default limit. Consolidate renderer-private bindings if required without
+  changing the public placement contract.
+  Tentative commit: `fix(webgpu-renderer): honor default storage limits`.
+- [ ] Reuse a clean WebGPU picking frame instead of replaying the complete Core
+  command graph and resubmitting the GPU pass for every pointer move. Match the
+  WebGL coordinator's dirty-frame semantics and invalidate on visible renders.
+  Tentative commit: `fix(core): reuse clean WebGPU picking frames`.
+- [ ] Remove placement-source discovery through layout ancestors. Completed
+  layout occurrences must carry placement explicitly; indexed marks that are
+  arranged once for the whole placement set need an explicit owner-provided
+  placement binding rather than renderer-side view discovery.
+  Tentative commit: `refactor(core): make placement ownership explicit`.
+- [ ] Make published placement topology independent of caller-owned mutable
+  facet-ID arrays. Copy and freeze each tuple and cover mutation resistance.
+  Tentative commit: `fix(core): publish immutable placement topology`.
+- [ ] Replace exact mark-shader source rewriting with a small explicit placement
+  hook shared by all supported mark vertex and fragment shaders. Generated
+  placement shaders must fail loudly when the hook is missing and retain
+  mark-specific geometry such as rule stroke width.
+  Tentative commit: `refactor(webgpu-renderer): make placement shader hooks explicit`.
+
 ## Review gates
 
 Every milestone ends with the reconciliation checklist above. Independent
