@@ -11,6 +11,7 @@ import PlacementSource from "../../view/layout/placementSource.js";
 import {
     createWebGpuMarkConfig,
     getWebGpuMarkConfigRevision,
+    getWebGpuMarkResourceRevision,
     getPackedMarkData,
     getPackedMarkRange,
 } from "./webGpuMarkAdapter.js";
@@ -202,6 +203,33 @@ describe("WebGPU mark adapter", () => {
 
         expect(channels.x.scale.domain).toEqual([1, 3]);
         expect(channels.fillOpacity.value).toBe(0.125);
+    });
+
+    test("revisions retained resources from existing scale notifications", () => {
+        const listeners = new Map();
+        const resolution = {
+            addEventListener: vi.fn((type, listener) =>
+                listeners.set(type, listener)
+            ),
+            removeEventListener: vi.fn(),
+        };
+        const mark = createMark("point", [{ x: 1 }], {
+            x: createEncoder((datum) => datum.x, {
+                scale: createLinearScale([0, 2]),
+            }),
+        });
+        /** @type {any} */ (mark.unitView).getScaleResolution = () =>
+            resolution;
+
+        createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        expect(getWebGpuMarkResourceRevision(mark)).toBe(0);
+
+        listeners.get("domain")();
+        listeners.get("range")();
+        expect(getWebGpuMarkResourceRevision(mark)).toBe(2);
+
+        createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        expect(resolution.addEventListener).toHaveBeenCalledTimes(2);
     });
 
     test("applies live view opacity to an unscaled retained series", () => {
@@ -686,6 +714,10 @@ describe("WebGPU mark adapter", () => {
             "width",
             expect.any(Function)
         );
+        const revision = getWebGpuMarkResourceRevision(mark);
+        watchExpression.mock.calls[0][1]();
+        expect(getWebGpuMarkResourceRevision(mark)).toBe(revision + 1);
+        expect(requestRender).toHaveBeenCalledOnce();
     });
 
     test.each([
@@ -1519,6 +1551,7 @@ describe("WebGPU mark adapter", () => {
                 },
             },
         ]);
+        expect(getWebGpuMarkResourceRevision(mark)).toBeUndefined();
     });
 
     test("translates an interval condition on a numeric channel", () => {
@@ -1734,8 +1767,12 @@ function createMark(type, data, encoders, properties = {}) {
                 getCollector: () => ({
                     facetBatches: new Map([[undefined, data]]),
                 }),
+                getScaleResolution: /** @returns {undefined} */ () => undefined,
                 getPathString: () => "root/plot",
-                paramRuntime: { watchExpression: vi.fn() },
+                paramRuntime: {
+                    watchExpression: vi.fn(),
+                },
+                registerDisposer: vi.fn(),
                 context: { animator: { requestRender: vi.fn() } },
             },
         })

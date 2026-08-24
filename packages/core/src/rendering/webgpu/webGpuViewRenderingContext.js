@@ -14,6 +14,7 @@ import {
 import {
     createWebGpuMarkConfig,
     getWebGpuMarkConfigRevision,
+    getWebGpuMarkResourceRevision,
     getPackedMarkData,
     getPackedMarkRange,
 } from "./webGpuMarkAdapter.js";
@@ -101,6 +102,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 definition: undefined,
                 config: undefined,
                 configRevision: -1,
+                resourceRevision: -1,
+                viewOpacity: NaN,
+                resourcesDirty: true,
             };
             this.#marks.set(mark, state);
         }
@@ -295,6 +299,15 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.config = translated?.config;
             state.configRevision = configRevision;
         }
+        const resourceRevision = getWebGpuMarkResourceRevision(state.mark);
+        state.resourcesDirty ||=
+            resourceRevision === undefined ||
+            packedChanged ||
+            expressionChanged ||
+            state.resourceRevision !== resourceRevision ||
+            state.viewOpacity !== viewOpacity;
+        state.resourceRevision = resourceRevision ?? -1;
+        state.viewOpacity = viewOpacity;
         state.active = !!state.config;
     }
 
@@ -369,16 +382,19 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
         let resourceWrites;
         if (!state.updated) {
-            resourceWrites = measurePerformance(
-                "retainedResourceSynchronization",
-                () =>
-                    this.surface.updateMark(
-                        state.mark,
-                        state.definition,
-                        state.config
-                    )
-            );
             state.updated = true;
+            if (state.resourcesDirty) {
+                resourceWrites = measurePerformance(
+                    "retainedResourceSynchronization",
+                    () =>
+                        this.surface.updateMark(
+                            state.mark,
+                            state.definition,
+                            state.config
+                        )
+                );
+                state.resourcesDirty = false;
+            }
         }
 
         this.surface.drawMark(state.mark, {
@@ -535,6 +551,9 @@ function localizeVisibleRange(range, owner) {
  * @property {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any> | undefined} definition
  * @property {object | undefined} config
  * @property {number} configRevision
+ * @property {number} resourceRevision
+ * @property {number} viewOpacity
+ * @property {boolean} resourcesDirty
  */
 
 /**

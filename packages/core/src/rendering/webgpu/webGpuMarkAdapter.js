@@ -23,7 +23,11 @@ import { getMarkData } from "../immediate/markData.js";
 import { resolveMarkProperty } from "../immediate/markEncoding.js";
 import { isLargeGenome } from "../../gl/glslScaleGenerator.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
-import { getSecondaryChannel } from "../../encoder/encoder.js";
+import {
+    findChannelDefWithScale,
+    getSecondaryChannel,
+    isChannelWithScale,
+} from "../../encoder/encoder.js";
 
 const SHAPE_CODES = new Map(
     [
@@ -121,6 +125,9 @@ const DYNAMIC_PROPERTY_WATCHES = new WeakMap();
 /** @type {WeakMap<import("../../marks/mark.js").default, {revision: number, expressions: Set<string>}>} */
 const DYNAMIC_ENCODING_STATE = new WeakMap();
 
+/** @type {WeakMap<import("../../marks/mark.js").default, ResourceRevisionState>} */
+const RESOURCE_REVISION_STATE = new WeakMap();
+
 /** @type {WeakMap<import("../../marks/mark.js").default, PackedMarkData>} */
 const PACKED_DATA_CACHE = new WeakMap();
 
@@ -150,6 +157,7 @@ export function createWebGpuMarkConfig(
 ) {
     watchDynamicProperties(mark, getDynamicChannelProperties(mark.getType()));
     watchDynamicEncodings(mark);
+    watchScaleResolutions(mark);
     const readViewOpacity =
         typeof viewOpacity == "function" ? viewOpacity : () => viewOpacity;
 
@@ -227,6 +235,19 @@ export function createWebGpuMarkConfig(
  */
 export function getWebGpuMarkConfigRevision(mark) {
     return DYNAMIC_ENCODING_STATE.get(mark)?.revision ?? 0;
+}
+
+/**
+ * Returns the revision of live scale, property, and selection resources.
+ * Packed data and view opacity have separate revisions at the call site.
+ * Undefined marks selection-backed resources that remain conservatively live.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @returns {number | undefined}
+ */
+export function getWebGpuMarkResourceRevision(mark) {
+    const state = getResourceRevisionState(mark);
+    return state.volatile ? undefined : state.revision;
 }
 
 /**
@@ -506,6 +527,7 @@ function createSelectionCondition(mark, channel, predicate) {
             `Selection "${predicate.param}" is not available for WebGPU.`
         );
     }
+    getResourceRevisionState(mark).volatile = true;
 
     /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate} */
     const when = {
@@ -2392,12 +2414,64 @@ function watchDynamicProperties(mark, properties) {
             property
         ];
         if (isExprRef(value)) {
-            mark.unitView.paramRuntime.watchExpression(value.expr, () =>
-                mark.unitView.context.animator.requestRender()
-            );
+            mark.unitView.paramRuntime.watchExpression(value.expr, () => {
+                getResourceRevisionState(mark).revision++;
+                mark.unitView.context.animator.requestRender();
+            });
         }
         watched.add(property);
     }
+}
+
+/**
+ * Reuses Core's existing scale notifications as a small mark-level dirty bit.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ */
+function watchScaleResolutions(mark) {
+    const state = getResourceRevisionState(mark);
+    for (const [channel, encoder] of Object.entries(
+        /** @type {Record<string, any>} */ (mark.encoders)
+    )) {
+        if (!encoder.scale) {
+            continue;
+        }
+        const channelDef = findChannelDefWithScale(encoder.channelDef);
+        const resolutionChannel =
+            /** @type {import("../../spec/channel.js").Channel} */ (
+                channelDef?.resolutionChannel ?? channel
+            );
+        if (!isChannelWithScale(resolutionChannel)) {
+            continue;
+        }
+        const resolution = mark.unitView.getScaleResolution(resolutionChannel);
+        if (!resolution || state.scaleResolutions.has(resolution)) {
+            continue;
+        }
+
+        const listener = () => state.revision++;
+        resolution.addEventListener("domain", listener);
+        resolution.addEventListener("range", listener);
+        mark.unitView.registerDisposer(() => {
+            resolution.removeEventListener("domain", listener);
+            resolution.removeEventListener("range", listener);
+        });
+        state.scaleResolutions.add(resolution);
+    }
+}
+
+/** @param {import("../../marks/mark.js").default} mark */
+function getResourceRevisionState(mark) {
+    let state = RESOURCE_REVISION_STATE.get(mark);
+    if (!state) {
+        state = {
+            revision: 0,
+            scaleResolutions: new Set(),
+            volatile: false,
+        };
+        RESOURCE_REVISION_STATE.set(mark, state);
+    }
+    return state;
 }
 
 /**
@@ -2428,6 +2502,13 @@ function unsupported(mark, message) {
     /** @type {any} */ (error).view = mark.unitView;
     return error;
 }
+
+/**
+ * @typedef {object} ResourceRevisionState
+ * @prop {number} revision
+ * @prop {Set<import("../../scales/scaleResolution.js").default>} scaleResolutions
+ * @prop {boolean} volatile
+ */
 
 /**
  * @typedef {object} SeriesCache

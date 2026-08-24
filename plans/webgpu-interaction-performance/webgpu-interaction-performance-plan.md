@@ -557,8 +557,7 @@ Implementation commits: `d1f9539d7`, `be73fc73b`, `62f725840`, and
 
 ## Milestone 3: Skip unrelated retained-resource scans
 
-Status: In progress. Check/write counters confirm that most retained marks are
-scanned without mutation.
+Status: Implementation complete; authoritative regression gate pending.
 
 ### Intended outcome
 
@@ -612,6 +611,13 @@ smaller and simpler than a general dependency graph.
   10% to 12%. Control synchronization fell by about 7% to 8%. All samples and
   mutation counts remained unchanged; these timings are diagnostic rather than
   authoritative.
+- A per-mark resource revision now reuses existing Core scale and parameter
+  notifications, plus explicit packed-data and view-opacity checks, to bypass
+  unrelated marks. In the matching diagnostic, MCCA synchronization checks
+  fell from about 92 to 10–11 per frame. Synchronization time fell by about 74%
+  and total mark translation by about 28% to 38%. Control checks fell from 10
+  to 3; its smaller timings improved or stayed within diagnostic noise. WASD,
+  closeup transition, closeup wheel, picking, and resize checks passed.
 - Focused tests assert that domain-only frames update required scale slots,
   skip unrelated retained marks, and submit retained draws without plan
   compilation or data/placement updates.

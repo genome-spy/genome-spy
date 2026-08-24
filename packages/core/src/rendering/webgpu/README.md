@@ -24,9 +24,10 @@ for the backend-neutral lifecycle and the
    logical marks, occurrence order, immutable layout options, and placement
    ownership; it is replaced by the next completed layout.
 3. A visible or picking pass reuses the plan, invokes `onBeforeRender()` once
-   per participating view, synchronizes current packed data and mark state, and
-   resolves live visibility and placement geometry without replaying the
-   `LayoutResult`.
+   per participating view, synchronizes dirty packed data and mark resources,
+   and resolves live visibility and placement geometry without replaying the
+   `LayoutResult`. Existing Core scale and parameter notifications advance a
+   small per-mark resource revision so unrelated marks bypass slot scanning.
 4. `webGpuMarkAdapter.js` translates Core encoders, resolved scales,
    selections, properties, and typed series into a renderer mark definition and
    configuration. The plan caches this shape until packed data or an
@@ -46,9 +47,11 @@ rendering, data, or retained state invalidates it.
 Core mark identity is the retained resource key. Repeated occurrences and
 facets reuse the same renderer mark instead of duplicating pipelines or data.
 Compatible changes update series, scale, value, scalar, and selection slots in
-one batch. `WebGpuSurface` compares live leaves against immutable snapshots, so
-reusing the same config object does not suppress updates. Changing the renderer
-definition recreates the handle.
+one batch. Packed-data/config revisions, scale and parameter notifications, and
+view-opacity changes select the marks that need synchronization.
+`WebGpuSurface` then compares those marks' live leaves against immutable
+snapshots, so reusing the same config object does not suppress updates.
+Changing the renderer definition recreates the handle.
 
 Collector data revision and placement topology control packed-series caches.
 Layout-only geometry changes update placement resources without repacking
