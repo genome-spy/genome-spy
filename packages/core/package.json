@@ -36,6 +36,7 @@
   "scripts": {
     "dev": "node dev-server.mjs",
     "capture:screenshots": "node scripts/captureScreenshots.mjs",
+    "benchmark:interaction": "node scripts/runWebGpuInteractionBenchmark.mjs",
     "smoke:examples": "node scripts/captureScreenshots.mjs --all --check",
     "smoke:examples:webgpu": "node scripts/runWebGpuExamples.mjs --all",
     "verify:bundle:minimal": "node scripts/verifyMinimalBundle.mjs",

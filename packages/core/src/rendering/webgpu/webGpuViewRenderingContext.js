@@ -8,6 +8,10 @@ import { createAnchorCullBounds } from "../immediate/bounds.js";
 import { RASTER_COORDINATE_OFFSET } from "../renderingConstants.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import {
+    countPerformance,
+    measurePerformance,
+} from "../../debug/performanceProfiler.js";
+import {
     createWebGpuMarkConfig,
     getPackedMarkData,
     getPackedMarkRange,
@@ -51,8 +55,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      */
     pushView(view, coords) {
         if (!this.#views.has(view)) {
-            view.onBeforeRender();
+            measurePerformance("onBeforeRender", () => view.onBeforeRender());
             this.#views.add(view);
+            countPerformance("viewsVisited");
         }
         this.#viewStack.push({ view, coords });
     }
@@ -128,6 +133,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         };
         state.occurrences.push(occurrence);
         this.#occurrences.push(occurrence);
+        countPerformance("markOccurrences");
     }
 
     /** Finalizes mark packing and submits occurrences in original paint order. */
@@ -146,7 +152,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         const canvas = Rectangle.create(0, 0, size.width, size.height);
 
         for (const state of this.#marks.values()) {
-            this.#prepareMarkState(state, canvas);
+            measurePerformance("markConfiguration", () =>
+                this.#prepareMarkState(state, canvas)
+            );
         }
         for (const occurrence of this.#occurrences) {
             this.#submitOccurrence(occurrence);
@@ -285,7 +293,13 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
 
         if (!state.updated) {
-            this.surface.updateMark(state.mark, state.definition, state.config);
+            measurePerformance("retainedResourceSynchronization", () =>
+                this.surface.updateMark(
+                    state.mark,
+                    state.definition,
+                    state.config
+                )
+            );
             state.updated = true;
         }
 
@@ -325,6 +339,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             instanceCount: range.instanceCount,
             picking: this.globalOptions.picking,
         });
+        countPerformance("drawCommands");
         if (state.indexed) {
             state.submittedIndexed = true;
         }

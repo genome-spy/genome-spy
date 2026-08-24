@@ -1,6 +1,10 @@
 import { color as parseColor } from "d3-color";
 import { createLayoutResult } from "../../view/layout/layoutResult.js";
 import Rectangle from "../../view/layout/rectangle.js";
+import {
+    getPerformanceProfiler,
+    measurePerformance,
+} from "../../debug/performanceProfiler.js";
 import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 
 /**
@@ -61,30 +65,42 @@ export default class WebGpuRenderCoordinator {
             return;
         }
 
+        const profiler = getPerformanceProfiler();
+        profiler?.beginFrame("webgpu");
         this.surface.beginFrame();
         const context = new WebGpuViewRenderingContext(
             { picking: false },
             { surface: this.surface }
         );
-        layoutResult.collectRenderCommands(context);
-        context.finish();
-        this.surface.render(toGpuColor(this.getBackground()));
+        measurePerformance("layoutReplay", () =>
+            layoutResult.collectRenderCommands(context)
+        );
+        measurePerformance("markTranslation", () => context.finish());
+        measurePerformance("surfaceRender", () =>
+            this.surface.render(toGpuColor(this.getBackground()))
+        );
         this.#dirtyPickingBuffer = true;
+        profiler?.endFrame();
     }
 
     renderPickingFramebuffer() {
         if (!this.layoutResult || !this.#dirtyPickingBuffer) {
             return;
         }
+        const profiler = getPerformanceProfiler();
+        profiler?.beginFrame("webgpu", "picking");
         this.surface.beginPickingFrame();
         const context = new WebGpuViewRenderingContext(
             { picking: true },
             { surface: this.surface }
         );
-        this.layoutResult.collectRenderCommands(context);
-        context.finish();
-        this.surface.renderPicking();
+        measurePerformance("layoutReplay", () =>
+            this.layoutResult.collectRenderCommands(context)
+        );
+        measurePerformance("markTranslation", () => context.finish());
+        measurePerformance("surfaceRender", () => this.surface.renderPicking());
         this.#dirtyPickingBuffer = false;
+        profiler?.endFrame();
     }
 
     /** @returns {import("../../view/layout/layoutResult.js").default | undefined} */
@@ -94,13 +110,15 @@ export default class WebGpuRenderCoordinator {
             return undefined;
         }
 
-        return createLayoutResult(
-            this.viewRoot,
-            Rectangle.create(0, 0, size.width, size.height),
-            {
-                devicePixelRatio: this.surface.getDevicePixelRatio(),
-                renderingOptions: { firstFacet: true },
-            }
+        return measurePerformance("layout", () =>
+            createLayoutResult(
+                this.viewRoot,
+                Rectangle.create(0, 0, size.width, size.height),
+                {
+                    devicePixelRatio: this.surface.getDevicePixelRatio(),
+                    renderingOptions: { firstFacet: true },
+                }
+            )
         );
     }
 }

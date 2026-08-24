@@ -7,6 +7,7 @@ const DEFAULT_READY_TIMEOUT_MS = 30_000;
  * @typedef {Window & typeof globalThis & {
  *   __genomeSpyScreenshot: ScreenshotState,
  *   __genomeSpyAppHarness?: {api: import("@genome-spy/core/types/embedApi.js").EmbedResult}
+ *   __genomeSpyPerformance?: import("@genome-spy/core/debug/performanceProfiler.js").PerformanceProfiler
  * }} ScreenshotWindow
  */
 
@@ -25,6 +26,7 @@ const timeoutMs = parseTimeoutMs(
     query.get("lazy-timeout-ms"),
     DEFAULT_READY_TIMEOUT_MS
 );
+const profilingEnabled = query.get("profile") === "1";
 
 setState("booting", "Booting App screenshot harness");
 
@@ -37,6 +39,12 @@ if (!specUrl) {
 /** @param {string} url */
 async function initialize(url) {
     try {
+        if (profilingEnabled) {
+            const { startPerformanceProfiler } =
+                await import("@genome-spy/core/debug/performanceProfiler.js");
+            screenshotWindow.__genomeSpyPerformance =
+                startPerformanceProfiler();
+        }
         setState("embedding", "Launching GenomeSpy App…");
         const api = await embed(frame, url, {
             embedMode: "embedded",

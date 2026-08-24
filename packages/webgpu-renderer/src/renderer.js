@@ -3,6 +3,38 @@
  */
 export class RendererError extends Error {}
 
+const profilerKey = Symbol.for("genome-spy.performance-profiler");
+
+/** @returns {{enabled: boolean, addPhase: Function, addCount: Function} | undefined} */
+function getProfiler() {
+    return /** @type {any} */ (globalThis)[profilerKey];
+}
+
+/** @param {string} name @param {number} duration */
+function addPhase(name, duration) {
+    getProfiler()?.addPhase(name, duration);
+}
+
+/** @param {string} name @param {number} [value] */
+function addCount(name, value) {
+    getProfiler()?.addCount(name, value);
+}
+
+/** @returns {number} */
+function startPhase() {
+    if (!getProfiler()?.enabled) {
+        return 0;
+    }
+    return performance.now();
+}
+
+/** @param {string} name @param {number} start */
+function finishPhase(name, start) {
+    if (start) {
+        addPhase(name, performance.now() - start);
+    }
+}
+
 class PlacementSet {
     /** @param {Renderer} renderer @param {number} id @param {import("./index.d.ts").PlacementSetData} data */
     constructor(renderer, id, data) {
@@ -39,6 +71,7 @@ class PlacementSet {
         }
         const rectangles = validatePlacementData(data);
         if (rectangles.byteLength > this._buffer.size) {
+            addCount("placementBufferRecreations");
             const oldBuffer = this._buffer;
             this._buffer = createPlacementBuffer(
                 this.renderer.device,
@@ -47,6 +80,9 @@ class PlacementSet {
             this._bindGroup = this._createBindGroup();
             oldBuffer.destroy();
         } else if (rectangles.byteLength) {
+            addCount("placementBufferReplacements");
+            addCount("placementUploadCalls");
+            addCount("placementUploadBytes", rectangles.byteLength);
             this.renderer.device.queue.writeBuffer(
                 this._buffer,
                 0,
@@ -56,6 +92,8 @@ class PlacementSet {
         this._rectangles = rectangles;
         this.renderer._renderFrame = null;
         this.renderer._pickingFrame = null;
+        addCount("retainedNormalFrameInvalidations");
+        addCount("retainedPickingFrameInvalidations");
         this.renderer.markPickingDirty();
     }
 
@@ -102,7 +140,15 @@ function validatePlacementData(data) {
             );
         }
     }
-    return new Float32Array(data.rectangles);
+    const profiler = getProfiler();
+    if (!profiler?.enabled) {
+        return new Float32Array(data.rectangles);
+    }
+    const start = performance.now();
+    const rectangles = new Float32Array(data.rectangles);
+    addCount("placementValidationSnapshotBytes", rectangles.byteLength);
+    addPhase("placementValidationSnapshot", performance.now() - start);
+    return rectangles;
 }
 
 /** @param {GPUDevice} device @param {Float32Array} rectangles @returns {GPUBuffer} */
@@ -112,6 +158,8 @@ function createPlacementBuffer(device, rectangles) {
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
     if (rectangles.byteLength) {
+        addCount("placementUploadCalls");
+        addCount("placementUploadBytes", rectangles.byteLength);
         device.queue.writeBuffer(
             buffer,
             0,
@@ -154,6 +202,7 @@ export async function createRenderer(canvas, options = {}) {
     }
 
     const device = await adapter.requestDevice();
+    instrumentGpuDevice(device);
     const context = canvas.getContext("webgpu");
     if (!context) {
         throw new RendererError("Could not create a WebGPU context.");
@@ -338,7 +387,9 @@ export class Renderer {
      * @returns {void}
      */
     _writeDrawGlobals(draws) {
+        const phaseStart = startPhase();
         if (!draws.length) {
+            finishPhase("drawGlobals", phaseStart);
             return;
         }
 
@@ -371,6 +422,9 @@ export class Renderer {
             0,
             draws.length * this._globalUniformStride
         );
+        addCount("drawGlobalWrites");
+        addCount("drawGlobalBytes", draws.length * this._globalUniformStride);
+        finishPhase("drawGlobals", phaseStart);
     }
 
     /**
@@ -466,6 +520,7 @@ export class Renderer {
      * @returns {void}
      */
     _renderPick() {
+        addCount("pickingRenders");
         this._ensurePickTarget();
         const commandEncoder = this.device.createCommandEncoder();
         const pass = commandEncoder.beginRenderPass({
@@ -624,6 +679,7 @@ export class Renderer {
     render(frame = {}) {
         this._assertAlive();
         const draws = this._normalizeDraws(frame.draws ?? this._marks.keys());
+        addCount("renderDraws", draws.length);
         this._writeDrawGlobals(draws);
         const commandEncoder = this.device.createCommandEncoder();
         const view = this.context.getCurrentTexture().createView();
@@ -645,10 +701,14 @@ export class Renderer {
             ],
         });
 
+        const encodingStart = startPhase();
         this._encodeDraws(pass, draws, false);
+        finishPhase("commandEncoding", encodingStart);
 
         pass.end();
+        const submissionStart = startPhase();
         this.device.queue.submit([commandEncoder.finish()]);
+        finishPhase("submission", submissionStart);
         this._renderFrame = draws;
         this._pickingDirty = true;
     }
@@ -674,13 +734,14 @@ export class Renderer {
      * @returns {NormalizedDraw[]}
      */
     _normalizeDraws(draws) {
+        const phaseStart = startPhase();
         const canvas = {
             x: 0,
             y: 0,
             width: this._globals.width,
             height: this._globals.height,
         };
-        return Array.from(draws, (draw) => {
+        const normalized = Array.from(draws, (draw) => {
             const command =
                 typeof draw == "number" ? { mark: { markId: draw } } : draw;
             const markId = command.mark.markId;
@@ -803,6 +864,9 @@ export class Renderer {
                 placement,
             };
         }).filter((draw) => draw.scissor.width > 0 && draw.scissor.height > 0);
+        addCount("normalizedDraws", normalized.length);
+        finishPhase("drawNormalization", phaseStart);
+        return normalized;
     }
 
     /**
@@ -914,6 +978,66 @@ export class Renderer {
         if (this._destroyed) {
             throw new RendererError("Renderer has been destroyed.");
         }
+    }
+}
+
+/**
+ * Adds counters to the browser WebGPU objects only while the private
+ * benchmark profiler is active. Assignment is best effort because some
+ * implementations expose native methods as non-writable properties.
+ *
+ * @param {GPUDevice} device
+ */
+function instrumentGpuDevice(device) {
+    if (!getProfiler()?.enabled) {
+        return;
+    }
+
+    const queue = device.queue;
+    wrapMethod(queue, "writeBuffer", (args) => {
+        const data = /** @type {{byteLength?: number} | undefined} */ (args[2]);
+        const dataOffset = typeof args[3] === "number" ? args[3] : 0;
+        const requestedSize = args[4];
+        const byteLength =
+            typeof requestedSize === "number"
+                ? requestedSize
+                : Math.max(0, (data?.byteLength ?? 0) - dataOffset);
+        addCount("writeBufferCalls");
+        addCount("writeBufferBytes", byteLength);
+    });
+    wrapMethod(queue, "submit", () => addCount("queueSubmissions"));
+
+    wrapMethod(device, "createBuffer", () => addCount("gpuBuffersCreated"));
+    wrapMethod(device, "createTexture", () => addCount("gpuTexturesCreated"));
+    wrapMethod(device, "createBindGroup", () => addCount("bindGroupsCreated"));
+    wrapMethod(device, "createRenderPipeline", () =>
+        addCount("pipelinesCreated")
+    );
+    wrapMethod(device, "createCommandEncoder", () =>
+        addCount("commandEncodersCreated")
+    );
+}
+
+/**
+ * @param {object} target
+ * @param {string} name
+ * @param {(args: unknown[]) => void} before
+ */
+function wrapMethod(target, name, before) {
+    const object = /** @type {Record<string, any>} */ (target);
+    const original = /** @type {(...args: any[]) => any} */ (object[name]);
+    if (typeof original !== "function") {
+        return;
+    }
+    try {
+        /** @param {any[]} args */
+        object[name] = function (...args) {
+            before(args);
+            return original.apply(this, args);
+        };
+    } catch {
+        // Native GPU objects may reject method replacement. Core counters
+        // remain available, while unsupported device counters are omitted.
     }
 }
 

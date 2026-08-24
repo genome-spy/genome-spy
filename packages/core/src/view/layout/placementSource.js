@@ -5,6 +5,11 @@
  * presented occurrences. Backends derive their own resources from snapshots
  * and subscribe only to the source's disposal notification.
  */
+import {
+    countPerformance,
+    measurePerformance,
+} from "../../debug/performanceProfiler.js";
+
 /** @typedef {{ revision: number, facetIds: readonly (readonly unknown[] | undefined)[] }} PlacementTopology */
 /** @typedef {{ topology: PlacementTopology, geometryRevision: number, rectangles: Float32Array, overlap: "disjoint" | "may-overlap" }} PlacementSnapshot */
 
@@ -55,7 +60,13 @@ export default class PlacementSource {
         this.#snapshot = Object.freeze({
             topology,
             geometryRevision: this.#snapshot.geometryRevision + 1,
-            rectangles: new Float32Array(rectangles),
+            rectangles: measurePerformance("placementSourceSnapshot", () => {
+                countPerformance(
+                    "placementSourceSnapshotBytes",
+                    rectangles.byteLength
+                );
+                return new Float32Array(rectangles);
+            }),
             overlap,
         });
     }
@@ -72,7 +83,13 @@ export default class PlacementSource {
         this.#snapshot = Object.freeze({
             topology: this.#topology,
             geometryRevision: this.#snapshot.geometryRevision + 1,
-            rectangles: new Float32Array(rectangles),
+            rectangles: measurePerformance("placementSourceSnapshot", () => {
+                countPerformance(
+                    "placementSourceSnapshotBytes",
+                    rectangles.byteLength
+                );
+                return new Float32Array(rectangles);
+            }),
             overlap,
         });
     }

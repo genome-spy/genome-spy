@@ -1,4 +1,8 @@
 import PlacementSource from "@genome-spy/core/view/layout/placementSource.js";
+import {
+    countPerformance,
+    measurePerformance,
+} from "@genome-spy/core/debug/performanceProfiler.js";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import clamp from "@genome-spy/core/utils/clamp.js";
 import { mapToPixelCoords } from "@genome-spy/core/view/layout/flexLayout.js";
@@ -401,32 +405,37 @@ export class LocationManager {
             return;
         }
 
-        const arr = this.#placementRectangles;
-        arr.fill(0);
-        for (let index = 0; index < sampleCount; index++) {
-            arr[index * 4 + 2] = 1;
-        }
-
-        // Picking can observe a transient zero-sized view while closeup is
-        // being activated. Keep the complete topology but publish empty
-        // geometry until normalization has a valid owner height.
-        if (hasLocations && Number.isFinite(height) && height > 0) {
-            const sampleLocations = this.#locations.samples;
-
-            for (const sampleLocation of sampleLocations) {
-                const index =
-                    this.#placementLocationIndices.get(sampleLocation);
-                if (index === undefined) {
-                    continue;
-                }
-                arr[index * 4] = 0;
-                arr[index * 4 + 1] = sampleLocation.locSize.location / height;
+        measurePerformance("placementComputation", () => {
+            const arr = this.#placementRectangles;
+            countPerformance("placementComputationSamples", sampleCount);
+            countPerformance("placementComputationBytes", arr.byteLength);
+            arr.fill(0);
+            for (let index = 0; index < sampleCount; index++) {
                 arr[index * 4 + 2] = 1;
-                arr[index * 4 + 3] = sampleLocation.locSize.size / height;
             }
-        }
 
-        this.#placementSource.replaceGeometry(arr);
+            // Picking can observe a transient zero-sized view while closeup is
+            // being activated. Keep the complete topology but publish empty
+            // geometry until normalization has a valid owner height.
+            if (hasLocations && Number.isFinite(height) && height > 0) {
+                const sampleLocations = this.#locations.samples;
+
+                for (const sampleLocation of sampleLocations) {
+                    const index =
+                        this.#placementLocationIndices.get(sampleLocation);
+                    if (index === undefined) {
+                        continue;
+                    }
+                    arr[index * 4] = 0;
+                    arr[index * 4 + 1] =
+                        sampleLocation.locSize.location / height;
+                    arr[index * 4 + 2] = 1;
+                    arr[index * 4 + 3] = sampleLocation.locSize.size / height;
+                }
+            }
+
+            this.#placementSource.replaceGeometry(arr);
+        });
 
         this.#placementInputs.baseVersion = this.#baseLayoutVersion;
         this.#placementInputs.height = height;
