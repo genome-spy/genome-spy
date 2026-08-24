@@ -1,6 +1,6 @@
 # WebGPU renderer migration backlog
 
-Status: Ongoing package work after Core and facet integration.
+Status: Ongoing package work during Core retained-frame optimization.
 
 Active interaction profiling and retained-frame work is specified in
 `plans/webgpu-interaction-performance/webgpu-interaction-performance-plan.md`.

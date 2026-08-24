@@ -167,10 +167,9 @@ class InspectRenderingContext extends ViewRenderingContext {
 }
 
 /**
- * @param {boolean} picking
  * @param {Rectangle} canvas
  */
-function createWebGpuHarness(picking, canvas) {
+function createWebGpuHarness(canvas) {
     /** @type {WeakMap<object, PlacementSource>} */
     const occurrenceSources = new WeakMap();
     const surface = {
@@ -198,10 +197,9 @@ function createWebGpuHarness(picking, canvas) {
     };
     return {
         surface,
-        context: new WebGpuViewRenderingContext(
-            { picking },
-            { surface: /** @type {any} */ (surface) }
-        ),
+        context: new WebGpuViewRenderingContext({
+            surface: /** @type {any} */ (surface),
+        }),
     };
 }
 
@@ -2214,14 +2212,16 @@ describe("axis layout and visibility", () => {
             callback(performance.now() + 1000);
         await view.locationManager.togglePeek(true, 150, samples[1000].id);
 
-        const visibleHarness = createWebGpuHarness(false, coords);
-        const pickingHarness = createWebGpuHarness(true, coords);
+        const visibleHarness = createWebGpuHarness(coords);
+        const pickingHarness = createWebGpuHarness(coords);
         const visibleContext = visibleHarness.context;
         const pickingContext = pickingHarness.context;
         view.arrange(visibleContext, coords, { firstFacet: true });
         view.arrange(pickingContext, coords, { firstFacet: true });
         visibleContext.finish();
         pickingContext.finish();
+        visibleContext.render({ picking: false });
+        pickingContext.render({ picking: true });
 
         const visibleRanges = getSampleRangeDraws(visibleHarness.surface);
         const pickingRanges = getSampleRangeDraws(pickingHarness.surface);

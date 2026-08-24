@@ -18,7 +18,7 @@ import {
 } from "./webGpuMarkAdapter.js";
 
 /**
- * Collects a completed Core layout and submits ordered retained WebGPU draws.
+ * Compiles a completed Core layout into an adapter-owned retained frame plan.
  */
 export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     /** @type {{view: import("../../view/view.js").default, coords: import("../../view/layout/rectangle.js").default}[]} */
@@ -36,11 +36,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     #finished = false;
 
     /**
-     * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
      * @param {{surface: import("./webGpuSurface.js").default}} options
      */
-    constructor(globalOptions, options) {
-        super(globalOptions);
+    constructor(options) {
+        super({});
         this.surface = options.surface;
     }
 
@@ -55,9 +54,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      */
     pushView(view, coords) {
         if (!this.#views.has(view)) {
-            measurePerformance("onBeforeRender", () => view.onBeforeRender());
             this.#views.add(view);
-            countPerformance("viewsVisited");
         }
         this.#viewStack.push({ view, coords });
     }
@@ -81,13 +78,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     renderMark(mark, options) {
         if (this.#finished) {
             throw new Error("Cannot collect WebGPU marks after finishing.");
-        }
-        const viewOpacity = mark.unitView.getEffectiveOpacity();
-        if (viewOpacity <= 0) {
-            return;
-        }
-        if (this.globalOptions.picking && !mark.isPickingParticipant()) {
-            return;
         }
         const coords = this.currentCoords;
         const markCoords = coords.translate(
@@ -116,9 +106,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         const occurrence = {
             state,
             options,
-            coords,
             markCoords,
-            viewOpacity,
             clip: prepareMarkClipOptionsFromClip(
                 inheritedClip,
                 mark.properties.clip,
@@ -136,7 +124,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         countPerformance("markOccurrences");
     }
 
-    /** Finalizes mark packing and submits occurrences in original paint order. */
+    /** Completes frame-plan compilation. */
     finish() {
         if (this.#finished) {
             throw new Error(
@@ -150,19 +138,48 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
         const size = this.surface.getLogicalCanvasSize();
         const canvas = Rectangle.create(0, 0, size.width, size.height);
-
         for (const state of this.#marks.values()) {
-            measurePerformance("markConfiguration", () =>
-                this.#prepareMarkState(state, canvas)
-            );
-        }
-        for (const occurrence of this.#occurrences) {
-            this.#submitOccurrence(occurrence);
+            this.#compileMarkState(state, canvas);
         }
     }
 
-    /** @param {MarkState} state @param {Rectangle} canvas */
-    #prepareMarkState(state, canvas) {
+    /**
+     * Synchronizes live state and submits occurrences in original paint order.
+     *
+     * @param {{picking: boolean}} options
+     */
+    render({ picking }) {
+        if (!this.#finished) {
+            throw new Error("Cannot render an unfinished WebGPU frame plan.");
+        }
+
+        for (const view of this.#views) {
+            measurePerformance("onBeforeRender", () => view.onBeforeRender());
+            countPerformance("viewsVisited");
+        }
+
+        for (const state of this.#marks.values()) {
+            state.submittedIndexed = false;
+            state.updated = false;
+            state.packed = undefined;
+            state.definition = undefined;
+            state.config = undefined;
+            measurePerformance("markConfiguration", () =>
+                this.#prepareMarkState(state, picking)
+            );
+        }
+        for (const occurrence of this.#occurrences) {
+            this.#submitOccurrence(occurrence, picking);
+        }
+    }
+
+    /**
+     * Resolves placement ownership that remains stable until the next layout.
+     *
+     * @param {MarkState} state
+     * @param {Rectangle} canvas
+     */
+    #compileMarkState(state, canvas) {
         const explicitSources = new Set(
             state.occurrences
                 .map((occurrence) => {
@@ -207,19 +224,23 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             );
         }
 
-        if (state.source && !state.generatedSource) {
-            const topologyRevision =
-                state.source.getSnapshot().topology.revision;
-            for (const occurrence of state.occurrences) {
-                const captured = occurrence.options.placement?.topologyRevision;
-                if (captured !== undefined && captured !== topologyRevision) {
-                    throw createViewError(
-                        state.mark,
-                        "Placement topology changed after layout completion."
-                    );
-                }
-            }
+        this.#validatePlacementTopology(state);
+    }
+
+    /**
+     * @param {MarkState} state
+     * @param {boolean} picking
+     */
+    #prepareMarkState(state, picking) {
+        const viewOpacity = state.mark.unitView.getEffectiveOpacity();
+        if (
+            viewOpacity <= 0 ||
+            (picking && !state.mark.isPickingParticipant())
+        ) {
+            return;
         }
+
+        this.#validatePlacementTopology(state);
 
         state.packed = getPackedMarkData(
             state.mark,
@@ -242,7 +263,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.mark,
             first.options,
             configCoords,
-            first.viewOpacity,
+            viewOpacity,
             state.packed.data,
             state.source && !state.indexed ? { source: "draw" } : undefined
         );
@@ -250,8 +271,26 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         state.config = translated?.config;
     }
 
-    /** @param {Occurrence} occurrence */
-    #submitOccurrence(occurrence) {
+    /** @param {MarkState} state */
+    #validatePlacementTopology(state) {
+        if (!state.source || state.generatedSource) {
+            return;
+        }
+
+        const topologyRevision = state.source.getSnapshot().topology.revision;
+        for (const occurrence of state.occurrences) {
+            const captured = occurrence.options.placement?.topologyRevision;
+            if (captured !== undefined && captured !== topologyRevision) {
+                throw createViewError(
+                    state.mark,
+                    "Placement topology changed after layout completion."
+                );
+            }
+        }
+    }
+
+    /** @param {Occurrence} occurrence @param {boolean} picking */
+    #submitOccurrence(occurrence, picking) {
         const state = occurrence.state;
         if (!state.config || !state.definition || !state.packed) {
             return;
@@ -337,7 +376,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 : {}),
             firstInstance: range.firstInstance,
             instanceCount: range.instanceCount,
-            picking: this.globalOptions.picking,
+            picking,
         });
         countPerformance("drawCommands");
         if (state.indexed) {
@@ -460,9 +499,7 @@ function localizeVisibleRange(range, owner) {
  * @typedef {object} Occurrence
  * @property {MarkState} state
  * @property {import("../../types/rendering.js").RenderingOptions} options
- * @property {Rectangle} coords
  * @property {Rectangle} markCoords
- * @property {number} viewOpacity
  * @property {import("../../types/rendering.js").ClipOptions | undefined} clip
  * @property {import("@genome-spy/webgpu-renderer").DrawVisibleRange | undefined} visibleRange
  * @property {number} placementIndex

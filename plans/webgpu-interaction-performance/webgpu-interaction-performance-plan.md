@@ -223,8 +223,8 @@ additional staging storage require evidence from the MCCA workload or a smaller
 reproduction of the same bottleneck.
 
 The baseline selects retained Core-to-WebGPU frame compilation as the first
-optimization target. Layout replay and mark translation/configuration dominate
-the measured WebGPU excess and occur in both large and small workloads.
+optimization target. Render-command replay and mark translation/configuration
+dominate the measured WebGPU excess and occur in both large and small workloads.
 Optimizing retained-resource synchronization alone would leave the larger
 layout and configuration cost intact. Buffer uploads, draw normalization, and
 command encoding remain measured follow-up targets, but their CPU phases are
@@ -392,8 +392,9 @@ Benchmark correction commit: `c7e0c61ff`
 
 ## Milestone 2: Compile and retain the WebGPU frame plan
 
-Status: Next and highest priority. Do not begin implementation until the
-Milestone 1 interaction-coverage assertions are in place.
+Status: In progress. Retained occurrence topology and placement ownership are
+compiled once per settled layout and shared by normal and picking passes.
+Stable mark-configuration synchronization and the benchmark gate remain.
 
 ### Intended outcome
 
@@ -428,6 +429,21 @@ Core computes layout or arranges views.
 - Keep normal and picking plans coherent without eagerly rendering the picking
   pass during navigation.
 
+### Implementation sequence
+
+1. Compile ordered view hooks, logical marks, occurrences, immutable layout
+   options, and placement ownership once per settled layout. Share this typed
+   plan between normal and picking passes while keeping live hooks, opacity,
+   packed data revisions, visibility, and placement geometry fresh. This slice
+   removes per-paint `LayoutResult` replay and occurrence reconstruction.
+2. Retain definition and configuration shape. Replace full per-mark config
+   rebuilding with explicit synchronization of dynamic renderer slots, without
+   adding a callback graph or moving Core scale and selection semantics into the
+   renderer.
+3. Re-run the regression benchmark after both slices. Require zero
+   `layoutReplay`, zero stable occurrence reconstruction, and zero full mark
+   configuration on domain-only frames before marking Milestone 2 complete.
+
 ### Affected areas and downstream consumers
 
 - `packages/core/src/rendering/webgpu/webGpuRenderCoordinator.js`.
@@ -443,6 +459,12 @@ Core computes layout or arranges views.
   `LayoutResult` or rebuild stable configurations.
 - Unit tests prove dynamic hooks retain their current once-per-view ordering and
   every dynamic category remains fresh without render-command replay.
+- Current structural-slice smoke result: six diagnostic headless WebGPU samples
+  covering WASD, closeup toggle, and closeup wheel passed their state, normal
+  frame, repeated-transition, picking, and resize checks. Their normal frames
+  reported zero `layoutReplay`, zero layout, and zero `markOccurrences`.
+  `markConfiguration` remained nonzero as expected and is the next slice; this
+  smoke run is not an authoritative performance comparison.
 - Existing WebGPU Core adapter, surface, placement, picking, and renderer tests
   remain green.
 - Compare WebGL/WebGPU screenshots and picking for representative ordinary,

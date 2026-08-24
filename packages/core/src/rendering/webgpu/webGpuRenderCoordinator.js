@@ -13,6 +13,9 @@ import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 export default class WebGpuRenderCoordinator {
     #dirtyPickingBuffer = true;
 
+    /** @type {WebGpuViewRenderingContext | undefined} */
+    #framePlan;
+
     /**
      * @param {object} options
      * @param {import("../../view/view.js").default} options.viewRoot
@@ -27,9 +30,6 @@ export default class WebGpuRenderCoordinator {
         this.getBackground = options.getBackground;
         this.broadcast = options.broadcast;
         this.onLayoutComputed = options.onLayoutComputed;
-
-        /** @type {import("../../view/layout/layoutResult.js").default | undefined} */
-        this.layoutResult = undefined;
     }
 
     computeLayout() {
@@ -43,7 +43,7 @@ export default class WebGpuRenderCoordinator {
             }
 
             if (!this.surface.invalidateSize()) {
-                this.layoutResult = layoutResult;
+                this.#framePlan = this.#compileFramePlan(layoutResult);
                 this.#dirtyPickingBuffer = true;
                 this.onLayoutComputed();
                 this.broadcast("layoutComputed");
@@ -60,22 +60,17 @@ export default class WebGpuRenderCoordinator {
     }
 
     renderAll() {
-        const layoutResult = this.layoutResult;
-        if (!layoutResult) {
+        const framePlan = this.#framePlan;
+        if (!framePlan) {
             return;
         }
 
         const profiler = getPerformanceProfiler();
         profiler?.beginFrame("webgpu");
         this.surface.beginFrame();
-        const context = new WebGpuViewRenderingContext(
-            { picking: false },
-            { surface: this.surface }
+        measurePerformance("markTranslation", () =>
+            framePlan.render({ picking: false })
         );
-        measurePerformance("layoutReplay", () =>
-            layoutResult.collectRenderCommands(context)
-        );
-        measurePerformance("markTranslation", () => context.finish());
         measurePerformance("surfaceRender", () =>
             this.surface.render(toGpuColor(this.getBackground()))
         );
@@ -84,20 +79,16 @@ export default class WebGpuRenderCoordinator {
     }
 
     renderPickingFramebuffer() {
-        if (!this.layoutResult || !this.#dirtyPickingBuffer) {
+        const framePlan = this.#framePlan;
+        if (!framePlan || !this.#dirtyPickingBuffer) {
             return;
         }
         const profiler = getPerformanceProfiler();
         profiler?.beginFrame("webgpu", "picking");
         this.surface.beginPickingFrame();
-        const context = new WebGpuViewRenderingContext(
-            { picking: true },
-            { surface: this.surface }
+        measurePerformance("markTranslation", () =>
+            framePlan.render({ picking: true })
         );
-        measurePerformance("layoutReplay", () =>
-            this.layoutResult.collectRenderCommands(context)
-        );
-        measurePerformance("markTranslation", () => context.finish());
         measurePerformance("surfaceRender", () => this.surface.renderPicking());
         this.#dirtyPickingBuffer = false;
         profiler?.endFrame();
@@ -120,6 +111,20 @@ export default class WebGpuRenderCoordinator {
                 }
             )
         );
+    }
+
+    /**
+     * @param {import("../../view/layout/layoutResult.js").default} layoutResult
+     */
+    #compileFramePlan(layoutResult) {
+        const framePlan = new WebGpuViewRenderingContext({
+            surface: this.surface,
+        });
+        measurePerformance("framePlanCompilation", () => {
+            layoutResult.collectRenderCommands(framePlan);
+            framePlan.finish();
+        });
+        return framePlan;
     }
 }
 

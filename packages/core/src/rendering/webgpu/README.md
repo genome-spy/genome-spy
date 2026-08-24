@@ -19,11 +19,14 @@ for the backend-neutral lifecycle and the
 
 1. `WebGpuRenderCoordinator.computeLayout()` produces a completed
    `LayoutResult` after canvas sizing has settled.
-2. A visible or picking pass replays that result into a fresh
-   `WebGpuViewRenderingContext`; the view hierarchy is not traversed again.
-3. The context collects occurrences in paint order, groups them by logical Core
-   mark, packs collector batches, and resolves viewports, clips, visible ranges,
-   instance ranges, and placements.
+2. The coordinator consumes that result once to compile an adapter-owned
+   `WebGpuViewRenderingContext` frame plan. The plan retains view-hook order,
+   logical marks, occurrence order, immutable layout options, and placement
+   ownership; it is replaced by the next completed layout.
+3. A visible or picking pass reuses the plan, invokes `onBeforeRender()` once
+   per participating view, synchronizes current packed data and mark state, and
+   resolves live visibility and placement geometry without replaying the
+   `LayoutResult`.
 4. `webGpuMarkAdapter.js` translates Core encoders, resolved scales,
    selections, properties, and typed series into a renderer mark definition and
    configuration. Unsupported behavior fails here with a contextual error.
@@ -31,8 +34,8 @@ for the backend-neutral lifecycle and the
    mark, resolves renderer-owned placement sets, appends ordered draw commands,
    and submits the frame.
 
-Normal and picking collection use the same translation, ranges, placements,
-and order. A completed picking frame is reused for pointer reads until layout,
+Normal and picking passes share the same frame plan, ranges, placements, and
+order. A completed picking frame is reused for pointer reads until layout,
 rendering, data, or retained state invalidates it.
 
 ## Retained state and lifetime
@@ -77,7 +80,7 @@ recreating mark resources.
 | ------------------------------- | ------------------------------------------------------------------ |
 | `index.js`                      | Creates the backend and exposes surface, coordinator, and picking. |
 | `webGpuRenderCoordinator.js`    | Settles layout and coordinates visible and picking passes.         |
-| `webGpuViewRenderingContext.js` | Collects, packs, culls, and orders mark occurrences.               |
+| `webGpuViewRenderingContext.js` | Compiles and executes the retained Core frame plan.                |
 | `webGpuMarkAdapter.js`          | Translates Core marks and encoders to renderer definitions.        |
 | `webGpuSurface.js`              | Owns the canvas integration and retained renderer handles.         |
 

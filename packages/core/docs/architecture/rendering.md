@@ -108,11 +108,13 @@ WebGL-specific behavior is concentrated in `src/gl/`, mark buffer/program code
 under `src/marks/`, and render-context batch execution. WebGL and a modular
 WebGPU renderer may coexist while the transition is incomplete. During that
 period, WebGL continues to call `mark.render()`, while WebGPU dispatches marks
-through renderer-owned implementations and resources. WebGPU may consume the
-latest `LayoutResult` on each paint to preserve placement order while retaining
-compatible pipelines, buffers, textures, and bind groups between frames. Core
-does not prescribe those resource lifetimes. A migration can retain the
-dataflow, view hierarchy, mark abstraction, and encoding logic while replacing:
+through renderer-owned implementations and resources. WebGPU consumes each
+settled `LayoutResult` once to compile an adapter-owned frame plan that
+preserves placement order across paints. Ordinary visible and picking passes
+reuse that plan while retaining compatible pipelines, buffers, textures, and
+bind groups. Core does not prescribe those renderer-resource lifetimes. A
+migration can retain the dataflow, view hierarchy, mark abstraction, and
+encoding logic while replacing:
 
 - `WebGLHelper` with WebGPU device and surface setup
 - TWGL buffer/texture operations with WebGPU resources
@@ -140,10 +142,12 @@ improvement. Prefer improving the generic renderer contract over accumulating
 Core-only workarounds, while keeping Core grammar and view types out of the
 renderer package.
 
-The adapter collects a completed layout before submitting WebGPU draws. It
-packs collector batches once per logical mark, retains one renderer handle,
-and replays occurrence ranges in layout paint order. Repeated ordinary marks
-use an adapter-owned placement source, while renderer-neutral placement
-sources remain owned by their Core or App layout producer. Neither an empty
-draw list nor offscreen placement releases retained resources; mark/view and
-placement-source disposal do.
+The adapter consumes a completed layout into one retained frame plan before
+submitting WebGPU draws. The plan keeps ordered view hooks, logical marks,
+occurrence ranges, immutable layout options, and placement ownership without
+becoming a second view hierarchy. Visible and picking passes share it. The
+adapter packs collector batches once per logical mark and retains one renderer
+handle. Repeated ordinary marks use an adapter-owned placement source, while
+renderer-neutral placement sources remain owned by their Core or App layout
+producer. Neither an empty draw list nor offscreen placement releases retained
+resources; mark/view and placement-source disposal do.
