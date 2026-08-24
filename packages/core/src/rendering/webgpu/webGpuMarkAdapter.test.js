@@ -1033,6 +1033,49 @@ describe("WebGPU mark adapter", () => {
         });
     });
 
+    test("preserves missing quantitative values but rejects infinities", () => {
+        const data = [{ value: undefined }, { value: 1 }];
+        const interpolator = (/** @type {number} */ t) =>
+            t < 0.5 ? "purple" : "yellow";
+        const mark = createMark("point", data, {
+            y: createEncoder((datum) => datum.value, {
+                scale: createLinearScale([0, 1]),
+                channelDef: { field: "value", type: "quantitative" },
+            }),
+            fill: createEncoder((datum) => datum.value, {
+                scale: createSequentialScale([0, 1], interpolator),
+                channelDef: { field: "value", type: "quantitative" },
+            }),
+        });
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const channels = /** @type {any} */ (translated).config.channels;
+        expect(channels.y.data).toEqual(new Float32Array([Number.NaN, 1]));
+        expect(channels.fill.data).toEqual(new Float32Array([Number.NaN, 1]));
+
+        for (const value of [
+            Number.POSITIVE_INFINITY,
+            Number.NEGATIVE_INFINITY,
+        ]) {
+            data[0].value = value;
+            expect(() =>
+                createWebGpuMarkConfig(
+                    createMark("point", data, {
+                        y: createEncoder((datum) => datum.value, {
+                            scale: createLinearScale([0, 1]),
+                            channelDef: {
+                                field: "value",
+                                type: "quantitative",
+                            },
+                        }),
+                    }),
+                    {},
+                    Rectangle.ZERO
+                )
+            ).toThrow('Channel "y" contains an infinite value.');
+        }
+    });
+
     test("translates a categorical bar to the generic rect mark", () => {
         const data = [
             { category: "A", value: 28 },

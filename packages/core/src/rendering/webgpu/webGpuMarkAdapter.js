@@ -1932,8 +1932,11 @@ function toFloat32Array(mark, channel, data, accessor) {
     return getCachedSeries(mark, channel, data, accessor, () =>
         Float32Array.from(data, (datum) => {
             const value = Number(accessor(datum));
-            if (!Number.isFinite(value)) {
-                throw unsupported(mark, `Channel "${channel}" is not finite.`);
+            if (!Number.isFinite(value) && !Number.isNaN(value)) {
+                throw unsupported(
+                    mark,
+                    `Channel "${channel}" contains an infinite value.`
+                );
             }
             return value;
         })

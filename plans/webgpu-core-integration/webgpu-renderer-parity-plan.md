@@ -1309,6 +1309,13 @@ the renderer production Storybook build, lint, and diff checks. Milestone 4's
 repository-owned 2,000-sample fixture remains the reproducible high-cardinality
 gate; the private MCCA check remains supplemental.
 
+Follow-up private-spec validation covered
+`private/genomespy-paper-2024-spec/spec.json`. Its sparse quantitative metadata
+and LOH channels contain legitimate missing values. The WebGPU adapter now
+preserves those series entries as `NaN`, matching the WebGL buffer contract,
+while still rejecting positive and negative infinity. The spec passes under
+both renderers with 0.02061 mean RGB error and a 0.06860 changed-pixel ratio.
+
 ## Review gates
 
 Every milestone ends with the reconciliation checklist above. Independent
