@@ -334,6 +334,15 @@ function createProgram() {
     const series = { replace: vi.fn() };
     return {
         count: 10,
+        drawCount: 10,
+        /**
+         * @param {number} firstInstance
+         * @param {number} instanceCount
+         */
+        resolveDrawRange: (firstInstance, instanceCount) => ({
+            firstInstance,
+            instanceCount,
+        }),
         getSlotHandles: () => ({
             series,
             scales: {},

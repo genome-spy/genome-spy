@@ -1,6 +1,6 @@
 # WebGPU renderer parity plan: faceted rendering
 
-Status: Authorized; Milestones 1–3 implemented; Milestones 4–5 remain pending.
+Status: Authorized; Milestones 1–4 implemented; Milestone 5 remains pending.
 
 Date: 2026-08-21
 
@@ -1173,6 +1173,43 @@ Document the generic per-instance placement-index contract in the renderer
 README. No App spec migration is required.
 
 Tentative commit: `feat(core): pack WebGPU sample facets`.
+
+### Implementation checkpoint (2026-08-24)
+
+Status: Implemented and verified on 2026-08-24.
+
+Reconciliation: `facetIndex` is translated to the renderer's per-instance
+placement-index series while range-mode sample occurrences retain draw-level
+indices. Indexed marks resolve the stable placement source from their layout
+owner and submit one logical draw; range occurrences are rejected from normal
+and picking frames when their dense rectangle is empty or outside the effective
+viewport and clip. Text keeps its public series and draw ranges in logical
+string units, expands placement indices to glyphs internally, and translates
+logical draw ranges to private glyph ranges. Placement-only frames reuse the
+cached index series and ordinary channel series.
+
+The repository-owned high-cardinality evidence is split by responsibility. An
+App `LocationManager` fixture publishes the complete 2,000-sample topology,
+exercises filtering, undo, and actual closeup/peek geometry, and records the
+exact 32,000-byte rectangle payload. An actual `SampleView` fixture generates
+two data per sample, enters closeup around the middle sample, and sends fewer
+than 30 visible range draws with the identical placement-index subset in normal
+and picking contexts. Core separately verifies partially visible first and last
+placements plus the one-draw indexed path. The adapter's logical placement
+index is 8,000 bytes, and the retained text program test records exactly one
+expanded `u32` index per glyph for 2,000 representative long labels. The real
+App expression fixture renders complete sample and gene labels under WebGPU;
+the recursive App browser gate remains Milestone 5.
+
+The cached bundled-indirect experiment is discarded. Two 20-frame median runs
+used a 2,000-command packed indirect buffer in software WebGPU. With 1,900
+active occurrences, direct submission encoded in 0.0–0.1 ms and completed in
+22.0 ms, while the cached bundle completed in 22.2–23.2 ms. With 20 active
+occurrences, the CPU-pruned direct list completed in 2.5 ms and the 2,000-entry
+bundle in 2.6 ms. The bundle produced no repeatable end-to-end win in its target
+regime and necessarily retained all backend draw commands, so the simpler
+portable direct path remains the only implementation. No indirect cache,
+invalidation path, optional feature, or second submission strategy was added.
 
 ## Milestone 5: App sample facets, picking, and browser coverage
 

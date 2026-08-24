@@ -14,6 +14,25 @@ import {
 } from "./webGpuMarkAdapter.js";
 
 describe("WebGPU mark adapter", () => {
+    test("packs and caches a 2,000-instance placement-index series", () => {
+        const data = Array.from({ length: 2000 }, (_, index) => ({ index }));
+        const facetIndex = createEncoder((datum) => datum.index);
+        const mark = createMark("point", data, { facetIndex });
+
+        const first = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const second = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const firstPlacement = /** @type {any} */ (first).config.placementIndex;
+        const secondPlacement = /** @type {any} */ (second).config
+            .placementIndex;
+
+        expect(firstPlacement.data).toBeInstanceOf(Uint32Array);
+        expect(firstPlacement.data).toHaveLength(2000);
+        expect(firstPlacement.data.byteLength).toBe(8000);
+        expect(firstPlacement.data[1999]).toBe(1999);
+        expect(secondPlacement.data).toBe(firstPlacement.data);
+        expect(facetIndex).toHaveBeenCalledTimes(2000);
+    });
+
     test("packs complete topology independently of active occurrences", () => {
         const firstFacet = ["first"];
         const hiddenFacet = ["hidden"];

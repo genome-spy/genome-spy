@@ -97,6 +97,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 packed: undefined,
                 source: undefined,
                 generatedSource: false,
+                indexed: mark.encoders?.facetIndex !== undefined,
+                submittedIndexed: false,
                 ownerCoords: undefined,
                 definition: undefined,
                 config: undefined,
@@ -165,7 +167,21 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
 
         const explicitSource = explicitSources.values().next().value;
-        state.generatedSource = !explicitSource && state.occurrences.length > 1;
+        const indexedSource = state.indexed
+            ? findPlacementSource(state.mark)
+            : undefined;
+        if (
+            explicitSource &&
+            indexedSource &&
+            explicitSource !== indexedSource
+        ) {
+            throw createViewError(
+                state.mark,
+                "Indexed placement disagrees with the occurrence placement source."
+            );
+        }
+        const resolvedSource = explicitSource ?? indexedSource;
+        state.generatedSource = !resolvedSource && state.occurrences.length > 1;
         if (state.generatedSource) {
             const rectangles = new Float32Array(state.occurrences.length * 4);
             for (const occurrence of state.occurrences) {
@@ -180,8 +196,15 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             );
             state.ownerCoords = canvas;
         } else {
-            state.source = explicitSource;
+            state.source = resolvedSource;
             state.ownerCoords = state.occurrences[0].markCoords;
+        }
+
+        if (state.indexed && !state.source) {
+            throw createViewError(
+                state.mark,
+                "Indexed placement requires a placement source."
+            );
         }
 
         if (state.source && !state.generatedSource) {
@@ -213,7 +236,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.ownerCoords,
             first.viewOpacity,
             state.packed.data,
-            state.source ? { source: "draw" } : undefined
+            state.source && !state.indexed ? { source: "draw" } : undefined
         );
         state.definition = translated?.definition;
         state.config = translated?.config;
@@ -223,6 +246,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     #submitOccurrence(occurrence) {
         const state = occurrence.state;
         if (!state.config || !state.definition || !state.packed) {
+            return;
+        }
+        if (state.indexed && state.submittedIndexed) {
             return;
         }
 
@@ -238,11 +264,24 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         const placementIndex = state.generatedSource
             ? occurrence.placementIndex
             : occurrence.options.placement?.index;
-        if (state.source && placementIndex === undefined) {
+        if (state.source && !state.indexed && placementIndex === undefined) {
             throw createViewError(
                 state.mark,
                 "Draw-level placement requires a resolved placement index."
             );
+        }
+        if (
+            state.source &&
+            !state.indexed &&
+            !isPlacementVisible(
+                state.source,
+                placementIndex,
+                state.ownerCoords,
+                occurrence.clip,
+                this.surface.getLogicalCanvasSize()
+            )
+        ) {
+            return;
         }
 
         this.surface.useMark(state.mark, state.definition, state.config, {
@@ -257,7 +296,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 ? {
                       placement: {
                           source: state.source,
-                          index: placementIndex,
+                          ...(placementIndex === undefined
+                              ? {}
+                              : { index: placementIndex }),
                           ...(occurrence.options.placement?.clipToPlacement
                               ? {
                                     clipToPlacement:
@@ -272,6 +313,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             instanceCount: range.instanceCount,
             picking: this.globalOptions.picking,
         });
+        if (state.indexed) {
+            state.submittedIndexed = true;
+        }
     }
 
     /**
@@ -318,12 +362,59 @@ function createCanvasPlacement(canvas, target) {
 }
 
 /**
+ * Resolves draw-index visibility using only dense placement geometry.
+ *
+ * @param {import("../../view/layout/placementSource.js").default} source
+ * @param {number} index
+ * @param {Rectangle} owner
+ * @param {import("../../types/rendering.js").ClipOptions | undefined} clip
+ * @param {{width: number, height: number}} canvas
+ */
+function isPlacementVisible(source, index, owner, clip, canvas) {
+    const rectangles = source.getSnapshot().rectangles;
+    const offset = index * 4;
+    if (offset + 3 >= rectangles.length) {
+        return false;
+    }
+
+    const x = owner.x + rectangles[offset] * owner.width;
+    const y = owner.y + rectangles[offset + 1] * owner.height;
+    const width = rectangles[offset + 2] * owner.width;
+    const height = rectangles[offset + 3] * owner.height;
+    if (width <= 0 || height <= 0) {
+        return false;
+    }
+
+    const x1 = clip?.clipX ? Math.max(0, clip.rect.x) : 0;
+    const y1 = clip?.clipY ? Math.max(0, clip.rect.y) : 0;
+    const x2 = clip?.clipX
+        ? Math.min(canvas.width, clip.rect.x2)
+        : canvas.width;
+    const y2 = clip?.clipY
+        ? Math.min(canvas.height, clip.rect.y2)
+        : canvas.height;
+    return x < x2 && y < y2 && x + width > x1 && y + height > y1;
+}
+
+/** @param {import("../../marks/mark.js").default} mark */
+function findPlacementSource(mark) {
+    for (const view of mark.unitView.getLayoutAncestors()) {
+        const source = view.getPlacementSource?.();
+        if (source) {
+            return source;
+        }
+    }
+}
+
+/**
  * @typedef {object} MarkState
  * @property {import("../../marks/mark.js").default} mark
  * @property {Occurrence[]} occurrences
  * @property {import("./webGpuMarkAdapter.js").PackedMarkData | undefined} packed
  * @property {import("../../view/layout/placementSource.js").default | undefined} source
  * @property {boolean} generatedSource
+ * @property {boolean} indexed
+ * @property {boolean} submittedIndexed
  * @property {Rectangle | undefined} ownerCoords
  * @property {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any> | undefined} definition
  * @property {object | undefined} config

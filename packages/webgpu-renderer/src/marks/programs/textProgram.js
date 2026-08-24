@@ -408,13 +408,21 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let rotated = rot * localPos;
     let pixel = anchor + rotated;
 
+    let centerClip = vec2<f32>(
+        (anchor.x / globals.width) * 2.0 - 1.0,
+        1.0 - (anchor.y / globals.height) * 2.0
+    );
     let clip = vec2<f32>(
         (pixel.x / globals.width) * 2.0 - 1.0,
         1.0 - (pixel.y / globals.height) * 2.0
     );
 
     var out: VSOut;
-    out.pos = vec4<f32>(clip, 0.0, 1.0);
+    out.pos = vec4<f32>(
+        applyPlacementClipForPoint(clip, centerClip, i),
+        0.0,
+        1.0
+    );
     out.uv = (metrics.texRect.xy + local * metrics.texRect.zw) * params.uAtlasScale;
     out.color = getScaled_fill(i);
     out.opacity = opacity;
@@ -825,10 +833,44 @@ export default class TextProgram extends BaseProgram {
     constructor(renderer, config) {
         const { normalized, textLayout, fontEntry, fontManager } =
             normalizeTextConfig(config);
-        super(renderer, { ...config, ...normalized, textLayout, fontEntry });
+        const placementIndex = expandTextPlacementIndex(
+            config.placementIndex,
+            textLayout
+        );
+        super(renderer, {
+            ...config,
+            ...normalized,
+            textLayout,
+            fontEntry,
+            ...(placementIndex ? { placementIndex } : {}),
+        });
         this._textLayout = textLayout;
+        this._glyphOffsets = buildGlyphOffsets(textLayout);
         this._fontEntry = fontEntry;
         this._fontManager = fontManager;
+    }
+
+    /**
+     * Text draw ranges address logical strings, not expanded glyph instances.
+     *
+     * @returns {number}
+     */
+    get drawCount() {
+        return this._glyphOffsets.length - 1;
+    }
+
+    /**
+     * @param {number} firstInstance
+     * @param {number} instanceCount
+     * @returns {{ firstInstance: number, instanceCount: number }}
+     */
+    resolveDrawRange(firstInstance, instanceCount) {
+        const firstGlyph = this._glyphOffsets[firstInstance];
+        const lastGlyph = this._glyphOffsets[firstInstance + instanceCount];
+        return {
+            firstInstance: firstGlyph,
+            instanceCount: lastGlyph - firstGlyph,
+        };
     }
 
     /**
@@ -1243,8 +1285,49 @@ export default class TextProgram extends BaseProgram {
         );
 
         this._textLayout = layout;
+        this._glyphOffsets = buildGlyphOffsets(layout);
         this._markConfig.textLayout = layout;
         this._updateTextLayoutBuffers(layout);
         super.replaceSeries(expanded, layout.glyphIds.length);
     }
+}
+
+/**
+ * Build an exclusive prefix sum from logical strings to glyph instances.
+ *
+ * @param {import("../../fonts/layout.js").TextLayout} textLayout
+ * @returns {Uint32Array}
+ */
+function buildGlyphOffsets(textLayout) {
+    const offsets = new Uint32Array(textLayout.textWidth.length + 1);
+    for (const stringIndex of textLayout.stringIndex) {
+        offsets[stringIndex + 1]++;
+    }
+    for (let i = 1; i < offsets.length; i++) {
+        offsets[i] += offsets[i - 1];
+    }
+    return offsets;
+}
+
+/**
+ * Expands a logical per-string placement index to the glyph instance stream.
+ *
+ * @param {import("../../index.d.ts").MarkConfig["placementIndex"]} placementIndex
+ * @param {import("../../fonts/layout.js").TextLayout} textLayout
+ */
+function expandTextPlacementIndex(placementIndex, textLayout) {
+    if (!placementIndex || !("data" in placementIndex)) {
+        return placementIndex;
+    }
+    return {
+        ...placementIndex,
+        data: expandLogicalTextArray(
+            "__placementIndex",
+            placementIndex.data,
+            1,
+            textLayout.stringIndex,
+            textLayout.textWidth.length,
+            new Map()
+        ),
+    };
 }

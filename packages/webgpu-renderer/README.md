@@ -129,12 +129,30 @@ const placements = renderer.createPlacementSet({
 });
 const mark = renderer.createMark(pointMark, {
   placementIndex: { source: "draw" },
-  channels: { /* ... */ },
+  channels: {/* ... */},
 });
 renderer.render({
   draws: [{ mark, placement: { set: placements, index: 1 } }],
 });
 ```
+
+Per-instance placement uses one logical `u32` index for each mark instance:
+
+```js
+const mark = renderer.createMark(pointMark, {
+  placementIndex: { data: new Uint32Array([0, 1]), type: "u32" },
+  channels: {/* ... */},
+});
+renderer.render({ draws: [{ mark, placement: { set: placements } }] });
+```
+
+The rectangle payload is exactly 16 bytes per placement before buffer-capacity
+alignment. A per-instance index adds four bytes per logical instance. Text
+accepts the same logical per-string index series and expands it to glyphs
+inside the retained text program. Draw command ranges likewise address logical
+strings; the text program translates them to its private glyph-instance range.
+Filtered instances may retain their stable index with a zero-area rectangle,
+which the shared placement shader rejects in both normal and picking passes.
 
 Asynchronous resource preparation never submits a frame implicitly. When text
 atlas loading changes visible output, `onInvalidate` asks the host to schedule

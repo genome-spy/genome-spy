@@ -121,6 +121,9 @@ const DYNAMIC_PROPERTY_WATCHES = new WeakMap();
 /** @type {WeakMap<import("../../marks/mark.js").default, PackedMarkData>} */
 const PACKED_DATA_CACHE = new WeakMap();
 
+/** @type {WeakMap<import("../../marks/mark.js").default, {data: object[], encoder: object, values: Uint32Array}>} */
+const PLACEMENT_INDEX_CACHE = new WeakMap();
+
 /**
  * Converts one Core mark occurrence into the low-level configuration used by
  * the WebGPU renderer. Unsupported Core features fail here with a contextual
@@ -142,10 +145,6 @@ export function createWebGpuMarkConfig(
     dataOverride,
     placementIndex
 ) {
-    if (mark.encoders.facetIndex) {
-        throw unsupported(mark, "Faceted rendering is not supported.");
-    }
-
     watchDynamicProperties(mark, getDynamicChannelProperties(mark.getType()));
 
     const data = dataOverride ?? getMarkData(mark, options);
@@ -153,13 +152,20 @@ export function createWebGpuMarkConfig(
         return undefined;
     }
 
+    const resolvedPlacementIndex = mark.encoders.facetIndex
+        ? {
+              data: toPlacementIndexArray(mark, data),
+              type: "u32",
+          }
+        : placementIndex;
+
     const markType = mark.getType();
     if (markType == "point") {
         return {
             definition: pointMark,
             config: addPlacementIndex(
                 createPointConfig(mark, data, coords, viewOpacity),
-                placementIndex
+                resolvedPlacementIndex
             ),
         };
     } else if (markType == "rect") {
@@ -167,7 +173,7 @@ export function createWebGpuMarkConfig(
             definition: rectMark,
             config: addPlacementIndex(
                 createRectConfig(mark, data, coords, viewOpacity),
-                placementIndex
+                resolvedPlacementIndex
             ),
         };
     } else if (markType == "rule" || markType == "tick") {
@@ -175,7 +181,7 @@ export function createWebGpuMarkConfig(
             definition: ruleMark,
             config: addPlacementIndex(
                 createRuleConfig(mark, data, coords, viewOpacity),
-                placementIndex
+                resolvedPlacementIndex
             ),
         };
     } else if (markType == "text") {
@@ -183,7 +189,7 @@ export function createWebGpuMarkConfig(
             definition: textMark,
             config: addPlacementIndex(
                 createTextConfig(mark, data, coords, viewOpacity),
-                placementIndex
+                resolvedPlacementIndex
             ),
         };
     } else if (markType == "link") {
@@ -191,7 +197,7 @@ export function createWebGpuMarkConfig(
             definition: linkMark,
             config: addPlacementIndex(
                 createLinkConfig(mark, data, coords, viewOpacity),
-                placementIndex
+                resolvedPlacementIndex
             ),
         };
     } else if (markType == "arrow") {
@@ -199,7 +205,7 @@ export function createWebGpuMarkConfig(
             definition: arrowMark,
             config: addPlacementIndex(
                 createArrowConfig(mark, data, coords, viewOpacity),
-                placementIndex
+                resolvedPlacementIndex
             ),
         };
     }
@@ -312,6 +318,28 @@ export function getPackedMarkRange(mark, options, packed) {
 /** @param {object} config @param {unknown} placementIndex */
 function addPlacementIndex(config, placementIndex) {
     return placementIndex ? { ...config, placementIndex } : config;
+}
+
+/** @param {import("../../marks/mark.js").default} mark @param {object[]} data */
+function toPlacementIndexArray(mark, data) {
+    const encoder = mark.encoders.facetIndex;
+    const cached = PLACEMENT_INDEX_CACHE.get(mark);
+    if (cached?.data === data && cached.encoder === encoder) {
+        return cached.values;
+    }
+    const result = new Uint32Array(data.length);
+    for (let index = 0; index < data.length; index++) {
+        const value = Number(encoder(data[index]));
+        if (!Number.isInteger(value) || value < 0 || value > 0xffffffff) {
+            throw unsupported(
+                mark,
+                "Facet indices must be non-negative integers."
+            );
+        }
+        result[index] = value;
+    }
+    PLACEMENT_INDEX_CACHE.set(mark, { data, encoder, values: result });
+    return result;
 }
 
 /**

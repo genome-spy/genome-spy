@@ -344,6 +344,26 @@ export default class BaseProgram {
     }
 
     /**
+     * Number of logical instances accepted by retained draw ranges.
+     *
+     * @returns {number}
+     */
+    get drawCount() {
+        return this.count;
+    }
+
+    /**
+     * Translate a logical retained draw range to GPU instance indices.
+     *
+     * @param {number} firstInstance
+     * @param {number} instanceCount
+     * @returns {{ firstInstance: number, instanceCount: number }}
+     */
+    resolveDrawRange(firstInstance, instanceCount) {
+        return { firstInstance, instanceCount };
+    }
+
+    /**
      * @returns {string[]}
      */
     get channelOrder() {

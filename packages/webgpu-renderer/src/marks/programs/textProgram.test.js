@@ -137,6 +137,78 @@ describe("TextProgram series replacement", () => {
         );
     });
 
+    it("expands and replaces per-string placement indices", () => {
+        const program = new TextProgram(createMockRenderer(), {
+            count: 2,
+            placementIndex: {
+                data: new Uint32Array([5, 8]),
+                type: "u32",
+            },
+            channels: {
+                text: { data: ["aa", "b"] },
+                x: {
+                    data: new Float32Array([1, 2]),
+                    type: "f32",
+                    scale: identityScale(),
+                },
+                y: { value: 0, scale: identityScale() },
+            },
+        });
+
+        expect(program._channels.__placementIndex.data).toEqual(
+            new Uint32Array([5, 5, 8])
+        );
+        expect(program.drawCount).toBe(2);
+        expect(program.resolveDrawRange(1, 1)).toEqual({
+            firstInstance: 2,
+            instanceCount: 1,
+        });
+
+        program.getSlotHandles().series.replace({
+            __placementIndex: new Uint32Array([9, 10]),
+            text: ["c", "dd"],
+            x: new Float32Array([3, 4]),
+        });
+        expect(program._channels.__placementIndex.data).toEqual(
+            new Uint32Array([9, 10, 10])
+        );
+        expect(program.resolveDrawRange(0, 2)).toEqual({
+            firstInstance: 0,
+            instanceCount: 3,
+        });
+    });
+
+    it("keeps 2,000 long labels in one logical mark and one glyph index series", () => {
+        const labels = Array.from(
+            { length: 2000 },
+            (_, index) => `Sample label ${index.toString().padStart(4, "0")}`
+        );
+        const placementIndices = Uint32Array.from(labels, (_, index) => index);
+        const program = new TextProgram(createMockRenderer(), {
+            count: labels.length,
+            placementIndex: { data: placementIndices, type: "u32" },
+            channels: {
+                text: { data: labels },
+                x: { value: 0, scale: identityScale() },
+                y: { value: 0, scale: identityScale() },
+            },
+        });
+        const glyphCount = labels.reduce(
+            (count, label) => count + label.length,
+            0
+        );
+
+        expect(placementIndices.byteLength).toBe(8000);
+        expect(program.drawCount).toBe(2000);
+        expect(program._channels.__placementIndex.data).toHaveLength(
+            glyphCount
+        );
+        expect(program._channels.__placementIndex.data.byteLength).toBe(
+            glyphCount * 4
+        );
+        expect(program._channels.__placementIndex.data.at(-1)).toBe(1999);
+    });
+
     it("expands scalar scale inputs for vector color outputs", () => {
         const program = new TextProgram(createMockRenderer(), {
             count: 2,

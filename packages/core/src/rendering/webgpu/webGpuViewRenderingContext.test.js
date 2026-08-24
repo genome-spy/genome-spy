@@ -19,6 +19,7 @@ vi.mock("./webGpuMarkAdapter.js", () => ({
 }));
 
 import Rectangle from "../../view/layout/rectangle.js";
+import PlacementSource from "../../view/layout/placementSource.js";
 import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 
 beforeEach(() => {
@@ -155,7 +156,19 @@ describe("WebGpuViewRenderingContext", () => {
 
     test("submits repeated occurrences in order through one packed mark", () => {
         const placementSource = {
-            getSnapshot: () => ({ topology: { revision: 1 } }),
+            getSnapshot: () => ({
+                topology: { revision: 1 },
+                rectangles: new Float32Array([
+                    10.5 / 300,
+                    20.5 / 200,
+                    80 / 300,
+                    1 / 200,
+                    160.5 / 300,
+                    120.5 / 200,
+                    100 / 300,
+                    50 / 200,
+                ]),
+            }),
         };
         const surface = {
             getDevicePixelRatio: () => 1,
@@ -218,5 +231,101 @@ describe("WebGpuViewRenderingContext", () => {
         expect(
             surface.useMark.mock.calls.map((call) => call[3].placement.index)
         ).toEqual([0, 1]);
+    });
+
+    test("coalesces facet-indexed data into one placement draw", () => {
+        const source = new PlacementSource();
+        source.replaceTopology(
+            [["first"], ["second"]],
+            new Float32Array([0, 0, 1, 0.5, 0, 0.5, 1, 0.5])
+        );
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 300, height: 200 }),
+            useMark: vi.fn(),
+        };
+        const context = new WebGpuViewRenderingContext(
+            { picking: false },
+            { surface: /** @type {any} */ (surface) }
+        );
+        const sampleView = { getPlacementSource: () => source };
+        const view = { onBeforeRender: vi.fn() };
+        const mark = {
+            encoders: { facetIndex: vi.fn() },
+            properties: {},
+            unitView: {
+                getEffectiveOpacity: () => 1,
+                getCollector: () => ({}),
+                getLayoutAncestors: () => [sampleView],
+            },
+        };
+
+        context.pushView(
+            /** @type {any} */ (view),
+            Rectangle.create(20, 30, 100, 80)
+        );
+        context.renderMark(/** @type {any} */ (mark), {});
+        context.popView(/** @type {any} */ (view));
+        context.finish();
+
+        const adapterCalls = /** @type {any[][]} */ (
+            mocks.createWebGpuMarkConfig.mock.calls
+        );
+        expect(adapterCalls[0][5]).toBeUndefined();
+        expect(surface.useMark).toHaveBeenCalledOnce();
+        expect(surface.useMark.mock.calls[0][3].placement).toEqual({ source });
+    });
+
+    test("submits only visible ranges from a 2,000-placement source", () => {
+        const count = 2_000;
+        const rectangles = new Float32Array(count * 4);
+        for (let index = 0; index < count; index++) {
+            rectangles.set([0, 2 + index, 1, 0.01], index * 4);
+        }
+        rectangles.set([0, 0, 1, 0], 0);
+        rectangles.set([0, 0.99, 1, 0.02], 4);
+        rectangles.set([0, -0.01, 1, 0.02], 8);
+        const source = new PlacementSource();
+        source.replaceTopology(
+            Array.from({ length: count }, (_, index) => [index]),
+            rectangles
+        );
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            useMark: vi.fn(),
+        };
+        const context = new WebGpuViewRenderingContext(
+            { picking: true },
+            { surface: /** @type {any} */ (surface) }
+        );
+        const view = { onBeforeRender: vi.fn() };
+        const mark = {
+            encoders: {},
+            isPickingParticipant: () => true,
+            properties: {},
+            unitView: {
+                getEffectiveOpacity: () => 1,
+                getCollector: () => ({}),
+            },
+        };
+        const coords = Rectangle.create(0, 0, 100, 100);
+
+        for (let index = 0; index < count; index++) {
+            context.pushView(/** @type {any} */ (view), coords);
+            context.renderMark(/** @type {any} */ (mark), {
+                placement: { source, index },
+            });
+            context.popView(/** @type {any} */ (view));
+        }
+        context.finish();
+
+        expect(surface.useMark).toHaveBeenCalledTimes(2);
+        expect(
+            surface.useMark.mock.calls.map((call) => call[3].placement.index)
+        ).toEqual([1, 2]);
+        expect(
+            surface.useMark.mock.calls.every((call) => call[3].picking)
+        ).toBe(true);
     });
 });

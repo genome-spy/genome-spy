@@ -635,6 +635,12 @@ function hasSeriesChanges(retained, config) {
             return true;
         }
     }
+    if (
+        config.placementIndex?.data &&
+        retained.series.__placementIndex !== config.placementIndex.data
+    ) {
+        return true;
+    }
     return false;
 }
 
@@ -653,6 +659,9 @@ function collectSeries(config) {
     }
     for (const [name, input] of Object.entries(config.inputs ?? {})) {
         series[name] = input.data;
+    }
+    if (config.placementIndex?.data) {
+        series.__placementIndex = config.placementIndex.data;
     }
     return series;
 }

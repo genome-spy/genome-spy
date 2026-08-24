@@ -31,9 +31,10 @@ implemented in commits recorded in
   Draw-level placement must allow Core to omit offscreen range draws, while
   per-instance placement keeps the coalesced path for labels and metadata.
   Renderer handles and dense placement indices are not semantic facet IDs or a
-  general Core layout-instance identity model. The initial generic API is now
-  implemented; shader clipping and packed repeated-range submission remain
-  follow-up work.
+  general Core layout-instance identity model. Generic shader clipping,
+  packed repeated ranges, indexed sample labels/metadata, and Core-side
+  visibility pruning are implemented. A measured cached bundled-indirect path
+  did not improve end-to-end frame time and is not retained.
 - Worker-friendly update path (transfer buffers, no object reconstruction).
 - Optional vector backend compatibility (stable mark instance schema).
 - Split development-only validation from always-on public safety checks and

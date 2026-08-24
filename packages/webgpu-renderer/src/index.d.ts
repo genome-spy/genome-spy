@@ -1034,9 +1034,9 @@ export type DrawCommand = {
     scissor?: DrawRect;
     /** Optional directional anchor-culling bounds in logical pixels. */
     visibleRange?: DrawVisibleRange;
-    /** First retained instance to draw. Defaults to zero. */
+    /** First logical retained instance to draw. Defaults to zero. */
     firstInstance?: number;
-    /** Number of retained instances to draw. Defaults to the remaining count. */
+    /** Number of logical instances to draw. Defaults to the remaining count. */
     instanceCount?: number;
     placement?: DrawPlacement;
 };
@@ -1065,8 +1065,15 @@ export class RendererError extends Error {}
 export type MarkProgram<
     TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
 > = {
+    /** Number of logical instances accepted by retained draw ranges. */
+    readonly drawCount: number;
     readonly count: number;
     readonly _placementIndex?: MarkConfig["placementIndex"];
+    /** Translate a logical draw range to GPU instance indices. */
+    resolveDrawRange(
+        firstInstance: number,
+        instanceCount: number
+    ): { firstInstance: number; instanceCount: number };
     getSlotHandles(): Omit<MarkHandle<TSeries>, "markId">;
     replaceSeries(channels: TSeries, count?: number): void;
     updateValues(values: Record<string, number | number[]>): void;

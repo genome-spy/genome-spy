@@ -891,7 +891,13 @@ fn isPlacementVisible(i: u32) -> bool {
         return false;
     }
     let rect = placementRectangles[placementIndex];
-    return rect.z > 0.0 && rect.w > 0.0;
+    let bounds = vec4<f32>(
+        globals.viewport.xy + rect.xy * globals.viewport.zw,
+        globals.viewport.xy + (rect.xy + rect.zw) * globals.viewport.zw
+    );
+    return rect.z > 0.0 && rect.w > 0.0 &&
+        bounds.x < globals.width && bounds.y < globals.height &&
+        bounds.z > 0.0 && bounds.w > 0.0;
 }
 
 fn placementClipBounds(i: u32) -> vec4<f32> {

@@ -700,13 +700,17 @@ export class Renderer {
             const firstInstance = command.firstInstance ?? 0;
             assertNonNegativeInteger("firstInstance", firstInstance);
             const instanceCount =
-                command.instanceCount ?? mark.count - firstInstance;
+                command.instanceCount ?? mark.drawCount - firstInstance;
             assertNonNegativeInteger("instanceCount", instanceCount);
-            if (firstInstance + instanceCount > mark.count) {
+            if (firstInstance + instanceCount > mark.drawCount) {
                 throw new RendererError(
-                    `Instance range exceeds mark count: ${mark.count}.`
+                    `Instance range exceeds mark count: ${mark.drawCount}.`
                 );
             }
+            const resolvedRange = mark.resolveDrawRange(
+                firstInstance,
+                instanceCount
+            );
 
             const placementConfig = mark._placementIndex;
             let placement;
@@ -788,8 +792,8 @@ export class Renderer {
                     command.visibleRange,
                     canvas
                 ),
-                firstInstance,
-                instanceCount,
+                firstInstance: resolvedRange.firstInstance,
+                instanceCount: resolvedRange.instanceCount,
                 placement,
             };
         }).filter((draw) => draw.scissor.width > 0 && draw.scissor.height > 0);
