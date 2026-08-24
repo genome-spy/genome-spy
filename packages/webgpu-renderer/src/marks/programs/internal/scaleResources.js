@@ -81,49 +81,18 @@ export class ScaleResourceManager {
     }
 
     /**
-     * @returns {Map<string, GPUBuffer>}
+     * @param {string} name
+     * @returns {ChannelResources | undefined}
      */
-    get ordinalRangeBuffers() {
-        const buffers = new Map();
-        for (const [name, resources] of this._channelResources) {
-            if (resources.ordinalRange) {
-                buffers.set(name, resources.ordinalRange.buffer);
-            }
-        }
-        return buffers;
-    }
-
-    /**
-     * @returns {Map<string, GPUBuffer>}
-     */
-    get domainMapBuffers() {
-        const buffers = new Map();
-        for (const [name, resources] of this._channelResources) {
-            if (resources.domainMap) {
-                buffers.set(name, resources.domainMap.buffer);
-            }
-        }
-        return buffers;
-    }
-
-    /**
-     * @returns {Map<string, { texture: GPUTexture, sampler: GPUSampler, width: number, height: number, format: GPUTextureFormat }>}
-     */
-    get rangeTextures() {
-        const textures = new Map();
-        for (const [name, resources] of this._channelResources) {
-            if (resources.rangeTexture) {
-                textures.set(name, resources.rangeTexture);
-            }
-        }
-        return textures;
+    getChannelResources(name) {
+        return this._channelResources.get(name);
     }
 
     /**
      * @param {string} name
      * @returns {ChannelResources}
      */
-    _getChannelResources(name) {
+    _ensureChannelResources(name) {
         let resources = this._channelResources.get(name);
         if (!resources) {
             resources = /** @type {ChannelResources} */ ({});
@@ -221,7 +190,7 @@ export class ScaleResourceManager {
                 kind,
                 scale
             );
-            this._getChannelResources(name).scaleStops = {
+            this._ensureChannelResources(name).scaleStops = {
                 kind,
                 domainLength,
                 rangeLength,
@@ -640,7 +609,7 @@ export class ScaleResourceManager {
      */
     _setRangeTexture(name, textureData) {
         const prepared = prepareTextureData(textureData);
-        const resources = this._getChannelResources(name);
+        const resources = this._ensureChannelResources(name);
         const prev = resources.rangeTexture;
         const needsNewTexture =
             !prev ||
@@ -716,7 +685,7 @@ export class ScaleResourceManager {
      * @returns {boolean}
      */
     _setDomainMapBuffer(name, data, length) {
-        const resources = this._getChannelResources(name);
+        const resources = this._ensureChannelResources(name);
         const prev = resources.domainMap;
         const nextBytes = data.byteLength;
         let buffer = resources.domainMap?.buffer;
@@ -773,7 +742,7 @@ export class ScaleResourceManager {
      * @returns {boolean}
      */
     _setOrdinalRangeBuffer(name, data, length) {
-        const resources = this._getChannelResources(name);
+        const resources = this._ensureChannelResources(name);
         const prev = resources.ordinalRange;
         const nextBytes = data.byteLength;
         let buffer = resources.ordinalRange?.buffer;

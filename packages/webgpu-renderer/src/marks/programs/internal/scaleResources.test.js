@@ -107,7 +107,9 @@ describe("ScaleResourceManager", () => {
         ]);
 
         expect(needsRebind).toBe(true);
-        expect(manager.domainMapBuffers.get("x")?.size).toBeGreaterThan(0);
+        expect(
+            manager.getChannelResources("x")?.domainMap?.buffer.size
+        ).toBeGreaterThan(0);
         expect(uniforms.get(DOMAIN_PREFIX + "x")).toEqual([0, 10]);
     });
 
@@ -142,9 +144,9 @@ describe("ScaleResourceManager", () => {
 
         expect(initialRebind).toBe(true);
         expect(needsRebind).toBe(false);
-        expect(manager.ordinalRangeBuffers.get("fill")?.size).toBeGreaterThan(
-            0
-        );
+        expect(
+            manager.getChannelResources("fill")?.ordinalRange?.buffer.size
+        ).toBeGreaterThan(0);
         expect(uniforms.get(RANGE_COUNT_PREFIX + "fill")).toBe(2);
     });
 

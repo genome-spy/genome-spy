@@ -51,9 +51,27 @@ describe("buildBindGroup", () => {
                     ],
                     getSeriesBuffer: (name) =>
                         name === "x" ? seriesBuffer : null,
-                    ordinalRangeBuffers: new Map([["x", ordinalRangeBuffer]]),
-                    domainMapBuffers: new Map([["x", domainMapBuffer]]),
-                    rangeTextures: new Map([["x", { texture, sampler }]]),
+                    getScaleResources: (name) =>
+                        name === "x"
+                            ? {
+                                  scaleStops: undefined,
+                                  ordinalRange: {
+                                      buffer: ordinalRangeBuffer,
+                                      size: { length: 1, byteLength: 4 },
+                                  },
+                                  domainMap: {
+                                      buffer: domainMapBuffer,
+                                      size: { length: 1, byteLength: 8 },
+                                  },
+                                  rangeTexture: {
+                                      texture,
+                                      sampler,
+                                      width: 1,
+                                      height: 1,
+                                      format: "rgba8unorm",
+                                  },
+                              }
+                            : undefined,
                     extraTextures: new Map(),
                     extraBuffers: new Map(),
                 })
@@ -105,9 +123,7 @@ describe("buildBindGroup", () => {
                 ),
                 resourceLayout: [{ name: "x", role: "series" }],
                 getSeriesBuffer: () => null,
-                ordinalRangeBuffers: new Map(),
-                domainMapBuffers: new Map(),
-                rangeTextures: new Map(),
+                getScaleResources: () => undefined,
                 extraTextures: new Map(),
                 extraBuffers: new Map(),
             })

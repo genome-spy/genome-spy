@@ -126,6 +126,16 @@ function placementClipMode(value) {
     return value === "x" ? 1 : value === "y" ? 2 : value === "xy" ? 3 : 0;
 }
 
+/** @param {number} byteLength */
+function createGlobalUniformStaging(byteLength) {
+    const buffer = new ArrayBuffer(byteLength);
+    return {
+        buffer,
+        floats: new Float32Array(buffer),
+        integers: new Uint32Array(buffer),
+    };
+}
+
 /**
  * Create a renderer instance and WebGPU device/context for a canvas.
  *
@@ -215,6 +225,9 @@ export class Renderer {
             device.limits.minUniformBufferOffsetAlignment
         );
         this._globalUniformCapacity = 1;
+        this._globalUniformStaging = createGlobalUniformStaging(
+            this._globalUniformStride
+        );
 
         // Each occurrence gets viewport-local globals at a dynamic offset.
         this._globalUniformBuffer = device.createBuffer({
@@ -301,6 +314,9 @@ export class Renderer {
             size: capacity * this._globalUniformStride,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
+        this._globalUniformStaging = createGlobalUniformStaging(
+            capacity * this._globalUniformStride
+        );
         this._globalBindGroup = this.device.createBindGroup({
             layout: this._globalBindGroupLayout,
             entries: [
@@ -327,38 +343,34 @@ export class Renderer {
         }
 
         this._ensureGlobalUniformCapacity(draws.length);
-        const data = new Float32Array(
-            (draws.length * this._globalUniformStride) / 4
-        );
-        const integerData = new Uint32Array(data.buffer);
+        const { buffer, floats, integers } = this._globalUniformStaging;
         for (let i = 0; i < draws.length; i++) {
             const offset = (i * this._globalUniformStride) / 4;
-            data.set(
-                [
-                    draws[i].viewport.width,
-                    draws[i].viewport.height,
-                    this._globals.dpr,
-                    0,
-                    draws[i].visibleRange.x1,
-                    draws[i].visibleRange.y1,
-                    draws[i].visibleRange.x2,
-                    draws[i].visibleRange.y2,
-                    draws[i].visibleRange.cullX ? 1 : 0,
-                    draws[i].visibleRange.cullY ? 1 : 0,
-                    0,
-                    0,
-                    draws[i].viewport.x,
-                    draws[i].viewport.y,
-                    draws[i].viewport.width,
-                    draws[i].viewport.height,
-                ],
-                offset
-            );
-            integerData[offset + 16] = draws[i].placement?.index ?? 0;
-            integerData[offset + 17] = draws[i].placement?.clipMode ?? 0;
-            integerData[offset + 18] = draws[i].placement?.count ?? 0;
+            const draw = draws[i];
+            floats[offset] = draw.viewport.width;
+            floats[offset + 1] = draw.viewport.height;
+            floats[offset + 2] = this._globals.dpr;
+            floats[offset + 4] = draw.visibleRange.x1;
+            floats[offset + 5] = draw.visibleRange.y1;
+            floats[offset + 6] = draw.visibleRange.x2;
+            floats[offset + 7] = draw.visibleRange.y2;
+            floats[offset + 8] = draw.visibleRange.cullX ? 1 : 0;
+            floats[offset + 9] = draw.visibleRange.cullY ? 1 : 0;
+            floats[offset + 12] = draw.viewport.x;
+            floats[offset + 13] = draw.viewport.y;
+            floats[offset + 14] = draw.viewport.width;
+            floats[offset + 15] = draw.viewport.height;
+            integers[offset + 16] = draw.placement?.index ?? 0;
+            integers[offset + 17] = draw.placement?.clipMode ?? 0;
+            integers[offset + 18] = draw.placement?.count ?? 0;
         }
-        this.device.queue.writeBuffer(this._globalUniformBuffer, 0, data);
+        this.device.queue.writeBuffer(
+            this._globalUniformBuffer,
+            0,
+            buffer,
+            0,
+            draws.length * this._globalUniformStride
+        );
     }
 
     /**

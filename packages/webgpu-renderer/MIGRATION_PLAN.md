@@ -26,6 +26,9 @@ Completed simplification work:
 - Built-in WGSL keeps local `#if defined(...)` blocks, evaluated by a narrow
   immutable-symbol conditional pass instead of the former mutable macro
   preprocessor. Placement uses the same readable shader-local mechanism.
+- Bind-group rebuilds read scale resources from their owning per-channel map,
+  and draw submission reuses capacity-sized CPU uniform staging.
+- The renderer package no longer declares the unused `internmap` dependency.
 
 - WebGL mark-feature parity is tracked in
   `plans/webgpu-core-integration/webgpu-renderer-parity-plan.md`; the current
@@ -197,7 +200,8 @@ WebGL behavior:
 
 #### Refactor candidates (redundancy cleanup)
 
-- **Propagate range-texture decisions** — `buildChannelAnalysis` already computes `useRangeTexture`, but `scaleResources` recomputes it. Carry the analysis result through to avoid duplicated logic.
+- **Propagate range-texture decisions** — OK. One retained channel analysis now
+  supplies `useRangeTexture` to scale resources and shader generation.
 - **Move WGSL literal helpers** — OK. `formatLiteral` lives in `wgsl/literals.js` and is shared across IR/codegen.
 - **Hash parity guard** — `hash32` exists in both JS (`hashTable.js`) and WGSL (`hashTable.wgsl.js`). Consider a parity test or codegen to keep them in sync.
 - **Merge channel normalization paths** — Defaults and normalization are split between `channelSpecUtils.js` and `channelConfigResolver.js`. Pull defaulting/normalization into one place and keep validation separate.
@@ -215,8 +219,8 @@ Findings (issues to address):
   pieces of scale behavior; drift is likely.
 - **Per‑update work still allocates** — range/domain setters still normalize
   data and (re)compute stop data; for per‑frame updates this risks GC churn.
-- **Text rendering lacks GPU tests** — only layout tests exist; sampling +
-  alignment is unverified at the GPU level.
+- **Text rendering needs broader GPU tests** — glyph geometry and baseline modes
+  are covered; atlas sampling and visual alignment remain unverified.
 - **`ordinalDomain.js` naming is misleading** — it is mostly validation, not
   normalization; rename or split validation/normalization helpers.
 

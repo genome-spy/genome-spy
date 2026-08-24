@@ -1,7 +1,7 @@
 # WebGPU renderer simplification and footprint plan
 
-Status: Milestones 1–2 and faceted rendering complete; Milestones 3 and 5
-pending. Milestone 4 is deferred to issue #362.
+Status: Milestones 1–3 and faceted rendering complete; Milestone 5 pending.
+Milestone 4 is deferred to issue #362.
 
 Created: 2026-08-23
 
@@ -357,7 +357,7 @@ conditional syntax, placement blocks, and shader diagnostics before merging.
 
 ## Milestone 3: Stable resource views and retained staging
 
-Status: Pending.
+Status: Complete.
 
 ### Intended outcome
 
@@ -409,6 +409,21 @@ re-deriving policy. The working facet path remains within default limits.
 - Verify the packed package has no `internmap` runtime dependency and production
   graphs contain no reference to it.
 
+Completed verification:
+
+- 160 renderer unit tests, including retained-staging reuse and direct resource
+  binding, and 51 WebGPU GPU tests pass.
+- 124 focused Core/App WebGPU, placement, ordinary-facet, and 2,000-sample
+  facet tests pass.
+- Type checking, lint, bundle verification, package dry-run, and
+  `git diff --check` pass. The package has 111 files, 633,846 unpacked bytes,
+  and 192,588 tarball bytes, with no direct `internmap` dependency.
+- Relative to Milestone 2, `pointLinear` changed from 123,298 / 35,601 to
+  123,148 / 35,622 minified/gzip bytes and `textCustomFont` changed from
+  126,513 / 37,135 to 126,086 / 37,071. `rendererOnly` grew from
+  13,638 / 4,264 to 13,912 / 4,340 because it owns the retained staging path.
+  Production JavaScript decreased from 14,781 to 14,755 lines.
+
 ### Documentation and migration
 
 Update the migration plan's scale-resource and setter follow-ups to describe
@@ -419,7 +434,7 @@ only remaining measured work. No public documentation change is expected.
 Review resource ownership if it changes beyond the local maps and staging
 buffers described here.
 
-### Tentative commit
+### Commit
 
 `refactor(webgpu-renderer): reuse retained resource staging`
 

@@ -225,6 +225,41 @@ describe("Renderer mark definitions", () => {
         ]);
     });
 
+    test("reuses draw-global CPU staging while capacity is unchanged", () => {
+        const { renderer } = createRendererHarness();
+        const staging = renderer._globalUniformStaging;
+        const draw = /** @type {import("./renderer.js").NormalizedDraw} */ ({
+            viewport: { x: 2, y: 3, width: 40, height: 30 },
+            visibleRange: {
+                x1: 4,
+                y1: 5,
+                x2: 20,
+                y2: 25,
+                cullX: true,
+                cullY: false,
+            },
+            placement: { index: 7, clipMode: 3, count: 9 },
+        });
+
+        renderer._writeDrawGlobals([draw]);
+        draw.viewport.width = 50;
+        renderer._writeDrawGlobals([draw]);
+
+        expect(renderer._globalUniformStaging).toBe(staging);
+        expect(staging.floats[0]).toBe(50);
+        expect(Array.from(staging.floats.slice(4, 10))).toEqual([
+            4, 5, 20, 25, 1, 0,
+        ]);
+        expect(Array.from(staging.integers.slice(16, 19))).toEqual([7, 3, 9]);
+        expect(renderer.device.queue.writeBuffer).toHaveBeenLastCalledWith(
+            renderer._globalUniformBuffer,
+            0,
+            staging.buffer,
+            0,
+            renderer._globalUniformStride
+        );
+    });
+
     test("clamps physical scissors to the render target", () => {
         const program = createProgram();
         const definition = Object.freeze({
@@ -320,6 +355,14 @@ function createRendererHarness() {
     renderer._globalUniformStride = 256;
     renderer._globalUniformCapacity = 4;
     renderer._globalUniformBuffer = { destroy: vi.fn() };
+    const globalUniformData = new ArrayBuffer(
+        renderer._globalUniformCapacity * renderer._globalUniformStride
+    );
+    renderer._globalUniformStaging = {
+        buffer: globalUniformData,
+        floats: new Float32Array(globalUniformData),
+        integers: new Uint32Array(globalUniformData),
+    };
     renderer._globalBindGroup = {};
     const pass = {
         end: vi.fn(),

@@ -554,9 +554,8 @@ export default class BaseProgram {
             uniformBuffer: this._uniformBuffer,
             resourceLayout: this._resourceLayout,
             getSeriesBuffer: (name) => this._seriesBuffers.getBuffer(name),
-            ordinalRangeBuffers: this._scaleResources.ordinalRangeBuffers,
-            domainMapBuffers: this._scaleResources.domainMapBuffers,
-            rangeTextures: this._scaleResources.rangeTextures,
+            getScaleResources: (name) =>
+                this._scaleResources.getChannelResources(name),
             extraTextures: this._extraTextures,
             extraBuffers: this._extraBuffers,
         });
@@ -613,10 +612,11 @@ export default class BaseProgram {
                 });
                 continue;
             }
+            const scaleResources = this._scaleResources.getChannelResources(
+                entry.name
+            );
             if (entry.role === "ordinalRange") {
-                const buffer = this._scaleResources.ordinalRangeBuffers.get(
-                    entry.name
-                );
+                const buffer = scaleResources?.ordinalRange?.buffer;
                 storage.push({
                     name: entry.name,
                     role: entry.role,
@@ -625,9 +625,7 @@ export default class BaseProgram {
                 continue;
             }
             if (entry.role === "domainMap") {
-                const buffer = this._scaleResources.domainMapBuffers.get(
-                    entry.name
-                );
+                const buffer = scaleResources?.domainMap?.buffer;
                 storage.push({
                     name: entry.name,
                     role: entry.role,
@@ -636,9 +634,7 @@ export default class BaseProgram {
                 continue;
             }
             if (entry.role === "rangeTexture") {
-                const texture = this._scaleResources.rangeTextures.get(
-                    entry.name
-                );
+                const texture = scaleResources?.rangeTexture;
                 textures.push({
                     name: entry.name,
                     role: entry.role,
