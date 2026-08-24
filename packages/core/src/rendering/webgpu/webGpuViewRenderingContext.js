@@ -99,6 +99,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 generatedSource: false,
                 indexed: mark.encoders?.facetIndex !== undefined,
                 submittedIndexed: false,
+                updated: false,
                 ownerCoords: undefined,
                 definition: undefined,
                 config: undefined,
@@ -292,7 +293,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             return;
         }
 
-        this.surface.useMark(state.mark, state.definition, state.config, {
+        if (!state.updated) {
+            this.surface.updateMark(state.mark, state.definition, state.config);
+            state.updated = true;
+        }
+
+        this.surface.drawMark(state.mark, {
             ...(state.source ? { viewport: state.ownerCoords } : {}),
             ...(occurrence.clip
                 ? { scissor: this.#createScissor(occurrence.clip) }
@@ -448,6 +454,7 @@ function findPlacementSource(mark) {
  * @property {boolean} generatedSource
  * @property {boolean} indexed
  * @property {boolean} submittedIndexed
+ * @property {boolean} updated
  * @property {Rectangle | undefined} ownerCoords
  * @property {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any> | undefined} definition
  * @property {object | undefined} config

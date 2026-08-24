@@ -385,6 +385,7 @@ export class Renderer {
         const slotHandles = mark.getSlotHandles();
         return {
             markId,
+            batchUpdates: slotHandles.batchUpdates,
             series: slotHandles.series,
             scales: slotHandles.scales,
             values: slotHandles.values,

@@ -242,8 +242,14 @@ export default class BaseProgram {
         /** @type {Map<string, GPUBuffer>} */
         this._extraBuffers = new Map();
 
+        this._slotUpdateDepth = 0;
+        this._slotUniformsDirty = false;
+        this._slotBindingsDirty = false;
+        this._slotPickingDirty = false;
+
         /** @type {Omit<import("../../../index.d.ts").MarkHandle, "markId">} */
         this._slotHandles = {
+            batchUpdates: (update) => this._batchSlotUpdates(update),
             series: {
                 replace: (channels, count) => {
                     this._assertAlive();
@@ -826,20 +832,12 @@ export default class BaseProgram {
             setDomain: (domain) => {
                 this._assertAlive();
                 const needsRebind = updater.updateDomain(domain);
-                this._writeUniforms();
-                if (needsRebind) {
-                    this._rebuildBindGroup();
-                }
-                this.renderer.markPickingDirty();
+                this._queueSlotUpdate(needsRebind);
             },
             setRange: (range) => {
                 this._assertAlive();
                 const needsRebind = updater.updateRange(range);
-                this._writeUniforms();
-                if (needsRebind) {
-                    this._rebuildBindGroup();
-                }
-                this.renderer.markPickingDirty();
+                this._queueSlotUpdate(needsRebind);
             },
         };
     }
@@ -859,8 +857,7 @@ export default class BaseProgram {
             set: (value) => {
                 this._assertAlive();
                 this._setUniformValue(uniformName, value);
-                this._writeUniforms();
-                this.renderer.markPickingDirty();
+                this._queueSlotUpdate(false);
             },
         };
     }
@@ -877,8 +874,7 @@ export default class BaseProgram {
             set: (value) => {
                 this._assertAlive();
                 this._setExtraUniformValue(name, value);
-                this._writeUniforms();
-                this.renderer.markPickingDirty();
+                this._queueSlotUpdate(false);
             },
         };
     }
@@ -903,8 +899,7 @@ export default class BaseProgram {
                 this._assertAlive();
                 validateScalarSlotValue(name, config.type, value);
                 this._setUniformValue(uniformName, value);
-                this._writeUniforms();
-                this.renderer.markPickingDirty();
+                this._queueSlotUpdate(false);
             },
         };
     }
@@ -934,11 +929,7 @@ export default class BaseProgram {
                 next,
                 this._extraBuffers
             );
-            this._writeUniforms();
-            if (needsRebind) {
-                this._rebuildBindGroup();
-            }
-            this.renderer.markPickingDirty();
+            this._queueSlotUpdate(needsRebind);
         };
 
         if (def.type === "single") {
@@ -958,6 +949,51 @@ export default class BaseProgram {
             targets: (def.targets ?? []).map((target) => target.input),
             set: (intervals) => update({ type: "interval", intervals }),
         };
+    }
+
+    /**
+     * Applies several public slot mutations as one retained-resource update.
+     * Texture and buffer contents may change immediately, but uniforms, bind
+     * groups, and picking invalidation are committed once at the outer edge.
+     *
+     * @param {() => void} update
+     */
+    _batchSlotUpdates(update) {
+        this._assertAlive();
+        this._slotUpdateDepth++;
+        try {
+            update();
+        } finally {
+            this._slotUpdateDepth--;
+            if (this._slotUpdateDepth === 0) {
+                this._flushSlotUpdates();
+            }
+        }
+    }
+
+    /** @param {boolean} needsRebind */
+    _queueSlotUpdate(needsRebind) {
+        this._slotUniformsDirty = true;
+        this._slotBindingsDirty ||= needsRebind;
+        this._slotPickingDirty = true;
+        if (this._slotUpdateDepth === 0) {
+            this._flushSlotUpdates();
+        }
+    }
+
+    _flushSlotUpdates() {
+        if (this._slotUniformsDirty) {
+            this._writeUniforms();
+        }
+        if (this._slotBindingsDirty) {
+            this._rebuildBindGroup();
+        }
+        if (this._slotPickingDirty) {
+            this.renderer.markPickingDirty();
+        }
+        this._slotUniformsDirty = false;
+        this._slotBindingsDirty = false;
+        this._slotPickingDirty = false;
     }
 
     /**

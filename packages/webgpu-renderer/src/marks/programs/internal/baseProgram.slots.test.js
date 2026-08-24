@@ -210,6 +210,42 @@ describe("BaseProgram slot handles", () => {
         ).toBeCloseTo(0.2);
     });
 
+    it("batches retained slot updates into one uniform upload", () => {
+        const renderer = createMockRenderer();
+        const program = createSlotProgram(renderer, {
+            channels: {
+                uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
+                x: {
+                    data: new Float32Array([0, 1]),
+                    type: "f32",
+                    scale: {
+                        type: "linear",
+                        domain: [0, 1],
+                        range: [0, 1],
+                    },
+                },
+                size: { value: 1, type: "f32", dynamic: true },
+                fill: {
+                    value: [0, 0, 0, 1],
+                    type: "f32",
+                    components: 4,
+                },
+            },
+        });
+        const writeBuffer = vi.spyOn(renderer.device.queue, "writeBuffer");
+        const markPickingDirty = vi.spyOn(renderer, "markPickingDirty");
+        const slots = program.getSlotHandles();
+
+        slots.batchUpdates(() => {
+            slots.scales.x.setDomain([2, 4]);
+            slots.scales.x.setRange([10, 20]);
+            slots.values.size.set(5);
+        });
+
+        expect(writeBuffer).toHaveBeenCalledOnce();
+        expect(markPickingDirty).toHaveBeenCalledOnce();
+    });
+
     it("updates dynamic extra uniforms through slots", () => {
         const renderer = createMockRenderer();
         const program = new ExtraSlotProgram(renderer, {

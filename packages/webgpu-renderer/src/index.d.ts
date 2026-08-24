@@ -203,6 +203,8 @@ export type MarkHandle<
     TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
 > = {
     markId: MarkId;
+    /** Apply several retained slot mutations with one uniform upload/rebind. */
+    batchUpdates(update: () => void): void;
     series: SeriesSlotHandle<TSeries>;
     scales: Record<string, ChannelSlotGroup<ScaleSlotHandle>>;
     values: Record<string, ChannelSlotGroup<ValueSlotHandle>>;

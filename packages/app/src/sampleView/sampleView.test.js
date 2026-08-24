@@ -193,7 +193,8 @@ function createWebGpuHarness(picking, canvas) {
             );
             return source;
         },
-        useMark: vi.fn(),
+        updateMark: vi.fn(),
+        drawMark: vi.fn(),
     };
     return {
         surface,
@@ -204,17 +205,17 @@ function createWebGpuHarness(picking, canvas) {
     };
 }
 
-/** @param {{ useMark: ReturnType<typeof vi.fn> }} surface */
+/** @param {{ drawMark: ReturnType<typeof vi.fn> }} surface */
 function getSampleRangeDraws(surface) {
-    return surface.useMark.mock.calls.filter(
-        ([mark, , , options]) =>
+    return surface.drawMark.mock.calls.filter(
+        ([mark, options]) =>
             options.placement?.index !== undefined && mark.getType() === "rect"
     );
 }
 
 /** @param {any[]} call */
 function getDrawPlacementIndex(call) {
-    return call[3].placement.index;
+    return call[1].placement.index;
 }
 
 /**

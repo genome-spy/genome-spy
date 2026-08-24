@@ -222,9 +222,8 @@ export default class WebGpuSurface {
      * @param {import("../../marks/mark.js").default} mark
      * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
      * @param {any} config
-     * @param {{viewport?: import("@genome-spy/webgpu-renderer").DrawRect, scissor?: import("@genome-spy/webgpu-renderer").DrawRect, visibleRange?: import("@genome-spy/webgpu-renderer").DrawVisibleRange, placement?: {source: import("../../view/layout/placementSource.js").default, index?: number, clipToPlacement?: "x" | "y" | "xy"}, firstInstance?: number, instanceCount?: number, picking?: boolean}} [options]
      */
-    useMark(mark, definition, config, options = {}) {
+    updateMark(mark, definition, config) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
@@ -242,6 +241,7 @@ export default class WebGpuSurface {
             retained = {
                 definition,
                 handle,
+                config,
                 series: collectSeries(config),
                 count: config.count,
                 selections: new Map(),
@@ -257,12 +257,29 @@ export default class WebGpuSurface {
                 ),
             };
             this.#marks.set(mark, retained);
-        } else {
-            updateRetainedMark(retained, config);
         }
-        updateRetainedExtraValues(retained, config);
-        updateRetainedScalarSlots(retained, config);
-        updateRetainedSelections(retained, mark);
+        retained.handle.batchUpdates(() => {
+            if (retained.config !== config) {
+                updateRetainedMark(retained, config);
+            }
+            updateRetainedExtraValues(retained, config);
+            updateRetainedScalarSlots(retained, config);
+            updateRetainedSelections(retained, mark);
+        });
+    }
+
+    /**
+     * @param {import("../../marks/mark.js").default} mark
+     * @param {{viewport?: import("@genome-spy/webgpu-renderer").DrawRect, scissor?: import("@genome-spy/webgpu-renderer").DrawRect, visibleRange?: import("@genome-spy/webgpu-renderer").DrawVisibleRange, placement?: {source: import("../../view/layout/placementSource.js").default, index?: number, clipToPlacement?: "x" | "y" | "xy"}, firstInstance?: number, instanceCount?: number, picking?: boolean}} [options]
+     */
+    drawMark(mark, options = {}) {
+        if (!this.#renderer) {
+            throw new Error("The WebGPU surface has not been initialized.");
+        }
+        const retained = this.#marks.get(mark);
+        if (!retained) {
+            throw new Error("Cannot draw a WebGPU mark before updating it.");
+        }
 
         const draw = {
             mark: retained.handle,
@@ -297,6 +314,21 @@ export default class WebGpuSurface {
                 : {}),
         };
         (options.picking ? this.#pickingDraws : this.#frameDraws).push(draw);
+    }
+
+    /**
+     * Convenience method for callers that update and draw one occurrence.
+     * Repeated occurrence assembly should call updateMark once and drawMark for
+     * each retained draw.
+     *
+     * @param {import("../../marks/mark.js").default} mark
+     * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
+     * @param {any} config
+     * @param {{viewport?: import("@genome-spy/webgpu-renderer").DrawRect, scissor?: import("@genome-spy/webgpu-renderer").DrawRect, visibleRange?: import("@genome-spy/webgpu-renderer").DrawVisibleRange, placement?: {source: import("../../view/layout/placementSource.js").default, index?: number, clipToPlacement?: "x" | "y" | "xy"}, firstInstance?: number, instanceCount?: number, picking?: boolean}} [options]
+     */
+    useMark(mark, definition, config, options = {}) {
+        this.updateMark(mark, definition, config);
+        this.drawMark(mark, options);
     }
 
     /**
@@ -425,10 +457,12 @@ function makeRetainableConfig(config) {
  */
 function updateRetainedMark(retained, config) {
     for (const [name, channel] of Object.entries(config.channels)) {
+        const previousChannel = retained.config.channels[name];
         updateChannelSlots(
             retained.handle.scales[name]?.default,
             retained.handle.values[name]?.default,
-            channel
+            channel,
+            previousChannel
         );
 
         for (const condition of channel.conditions ?? []) {
@@ -442,7 +476,11 @@ function updateRetainedMark(retained, config) {
                 retained.handle.values[name]?.conditions?.[
                     condition.when.selection
                 ],
-                condition.channel
+                condition.channel,
+                previousChannel?.conditions?.find(
+                    (/** @type {any} */ previous) =>
+                        previous.when.selection == condition.when.selection
+                )?.channel
             );
         }
     }
@@ -452,6 +490,7 @@ function updateRetainedMark(retained, config) {
         retained.count = config.count;
         retained.handle.series.replace(retained.series, retained.count);
     }
+    retained.config = config;
 }
 
 /**
@@ -461,18 +500,29 @@ function updateRetainedMark(retained, config) {
  * @param {import("@genome-spy/webgpu-renderer").ScaleSlotHandle | undefined} scaleSlot
  * @param {import("@genome-spy/webgpu-renderer").ValueSlotHandle | undefined} valueSlot
  * @param {any} channel
+ * @param {any} previousChannel
  */
-function updateChannelSlots(scaleSlot, valueSlot, channel) {
+function updateChannelSlots(scaleSlot, valueSlot, channel, previousChannel) {
     if (scaleSlot && channel.scale) {
-        if (channel.scale.domain) {
+        if (
+            channel.scale.domain !== undefined &&
+            !valuesEqual(previousChannel?.scale?.domain, channel.scale.domain)
+        ) {
             scaleSlot.setDomain(channel.scale.domain);
         }
-        if (channel.scale.range) {
+        if (
+            channel.scale.range !== undefined &&
+            !valuesEqual(previousChannel?.scale?.range, channel.scale.range)
+        ) {
             scaleSlot.setRange(channel.scale.range);
         }
     }
 
-    if (valueSlot && channel.value !== undefined) {
+    if (
+        valueSlot &&
+        channel.value !== undefined &&
+        !valuesEqual(previousChannel?.value, channel.value)
+    ) {
         valueSlot.set(channel.value);
     }
 }
@@ -518,17 +568,21 @@ function updateRetainedScalarSlots(retained, config) {
 }
 
 /**
- * @param {number | number[] | undefined} previous
- * @param {number | number[]} next
+ * @param {unknown} previous
+ * @param {unknown} next
+ * @returns {boolean}
  */
 function valuesEqual(previous, next) {
+    if (previous === next) {
+        return true;
+    }
     if (Array.isArray(previous) && Array.isArray(next)) {
         return (
             previous.length == next.length &&
-            previous.every((value, index) => value == next[index])
+            previous.every((value, index) => valuesEqual(value, next[index]))
         );
     }
-    return previous == next;
+    return false;
 }
 
 /**
@@ -710,6 +764,7 @@ function getLogicalChannelSeries(channel) {
  * @typedef {object} RetainedMark
  * @prop {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
  * @prop {import("@genome-spy/webgpu-renderer").MarkHandle} handle
+ * @prop {any} config
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
  * @prop {Map<string, number | Uint32Array | SelectionSnapshot>} selections

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => {
     const handle = {
         markId: 7,
+        batchUpdates: vi.fn((update) => update()),
         series: { replace: vi.fn() },
         scales: {
             x: {
@@ -163,6 +164,7 @@ describe("WebGpuSurface", () => {
         expect(mocks.handle.scales.x.default.setDomain).toHaveBeenCalledWith([
             1, 11,
         ]);
+        expect(mocks.handle.scales.x.default.setRange).not.toHaveBeenCalled();
         expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
         expect(mocks.renderer.render).toHaveBeenNthCalledWith(1, {
             draws: [{ mark: mocks.handle }],
@@ -241,6 +243,69 @@ describe("WebGpuSurface", () => {
             1, 11,
         ]);
         expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
+    });
+
+    test("skips semantically unchanged nested scale ranges", async () => {
+        const container = document.createElement("div");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({})
+        );
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "point" })
+            );
+        const x = new Float32Array([1, 2]);
+        /** @param {number[][]} range */
+        const config = (range) => ({
+            count: 2,
+            channels: {
+                x: {
+                    data: x,
+                    type: "f32",
+                    scale: { domain: [0, 1], range },
+                },
+            },
+        });
+
+        surface.updateMark(
+            mark,
+            definition,
+            config([
+                [0, 0, 0, 1],
+                [1, 1, 1, 1],
+            ])
+        );
+        surface.updateMark(
+            mark,
+            definition,
+            config([
+                [0, 0, 0, 1],
+                [1, 1, 1, 1],
+            ])
+        );
+
+        expect(mocks.handle.scales.x.default.setDomain).not.toHaveBeenCalled();
+        expect(mocks.handle.scales.x.default.setRange).not.toHaveBeenCalled();
+        expect(mocks.handle.series.replace).not.toHaveBeenCalled();
+
+        surface.updateMark(
+            mark,
+            definition,
+            config([
+                [0, 0, 0, 1],
+                [1, 0, 0, 1],
+            ])
+        );
+        expect(mocks.handle.scales.x.default.setRange).toHaveBeenCalledOnce();
     });
 
     test("updates selection slots and conditional series through retention", async () => {

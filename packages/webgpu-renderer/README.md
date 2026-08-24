@@ -88,7 +88,7 @@ without expanding vertices on the CPU.
 - The package root exports `createRenderer` and `RendererError`. Marks, scales,
   and advanced helpers use explicit subpaths.
 - `createRenderer(canvas, { format?, alphaMode?, onInvalidate? })`
-- `renderer.createMark(definition, config)` (returns `{ markId, series, scales, values, extraValues, scalarSlots, selections }`)
+- `renderer.createMark(definition, config)` (returns `{ markId, batchUpdates, series, scales, values, extraValues, scalarSlots, selections }`)
 - `handle.series.replace(channels, count?)`
 - `renderer.updateGlobals({ width, height, dpr })`
 - `renderer.render({ draws?, clearColor? })`
@@ -277,19 +277,22 @@ you define a scale or dynamic value for that channel, so you can treat it as
 present in your own mark configs.
 
 ```js
-const { scales, values, selections } = renderer.createMark(pointMark, {
+const mark = renderer.createMark(pointMark, {
   channels: {
     // ...
   },
 });
+const { scales, values, selections } = mark;
 
 const brushColor = scales.color.conditions.brush;
 const brush = selections.brush;
 
-scales.x.setDomain([0, 10]);
-brushColor.setRange(["#000", "#f00"]);
-values.size.set(4);
-brush.set({ x: [0, 10] });
+mark.batchUpdates(() => {
+  scales.x.setDomain([0, 10]);
+  brushColor.setRange(["#000", "#f00"]);
+  values.size.set(4);
+  brush.set({ x: [0, 10] });
+});
 ```
 
 `default` refers to the unconditional branch of a channel. The group also
@@ -298,6 +301,11 @@ the default slot, so `scales.x.setDomain(...)` and `scales.x.default.setDomain(.
 are equivalent. Conditional slots are keyed by selection name
 (`conditions.brush`, etc.) and always refer to the branch guarded by that
 selection.
+
+Slot mutations take effect immediately when called on their own. Use
+`batchUpdates` for several related mutations so the renderer uploads the mark's
+uniform buffer, rebuilds bindings when needed, and invalidates picking only
+once.
 
 ## Visibility Predicates
 

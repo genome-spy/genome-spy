@@ -344,6 +344,7 @@ function createProgram() {
             instanceCount,
         }),
         getSlotHandles: () => ({
+            batchUpdates: vi.fn((update) => update()),
             series,
             scales: {},
             values: {},
