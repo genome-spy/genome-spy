@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
+import { InternMap } from "internmap";
 
 import Rectangle from "../../view/layout/rectangle.js";
 import { bandScaleDefinition } from "@genome-spy/webgpu-renderer/scales/band";
@@ -41,11 +42,14 @@ describe("WebGPU mark adapter", () => {
         const lastData = [{ x: 2 }, { x: 3 }];
         const collector = {
             dataRevision: 4,
-            facetBatches: new Map([
-                [undefined, []],
-                [firstFacet, firstData],
-                [lastFacet, lastData],
-            ]),
+            facetBatches: new InternMap(
+                [
+                    [undefined, []],
+                    [firstFacet, firstData],
+                    [lastFacet, lastData],
+                ],
+                JSON.stringify
+            ),
         };
         const mark = /** @type {any} */ ({
             unitView: {
@@ -88,7 +92,7 @@ describe("WebGPU mark adapter", () => {
         }));
         const collector = {
             dataRevision: 1,
-            facetBatches: new Map([[facetId, batch]]),
+            facetBatches: new InternMap([[facetId, batch]], JSON.stringify),
         };
         const mark = /** @type {any} */ ({
             unitView: { getCollector: () => collector },

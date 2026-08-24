@@ -1355,7 +1355,7 @@ boundaries, and simplification remain separately reviewable.
   arranged once for the whole placement set need an explicit owner-provided
   placement binding rather than renderer-side view discovery.
   Tentative commit: `refactor(core): make placement ownership explicit`.
-- [ ] Make published placement topology independent of caller-owned mutable
+- [x] Make published placement topology independent of caller-owned mutable
   facet-ID arrays. Copy and freeze each tuple and cover mutation resistance.
   Tentative commit: `fix(core): publish immutable placement topology`.
 - [ ] Replace exact mark-shader source rewriting with a small explicit placement

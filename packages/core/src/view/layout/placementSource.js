@@ -45,7 +45,11 @@ export default class PlacementSource {
         validateRectangles(rectangles, facetIds.length);
         const topology = Object.freeze({
             revision: this.#topology.revision + 1,
-            facetIds: Object.freeze(Array.from(facetIds)),
+            facetIds: Object.freeze(
+                facetIds.map((facetId) =>
+                    facetId ? Object.freeze(Array.from(facetId)) : undefined
+                )
+            ),
         });
         this.#topology = topology;
         this.#snapshot = Object.freeze({

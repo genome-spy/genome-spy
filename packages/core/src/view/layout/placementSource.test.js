@@ -15,6 +15,21 @@ test("publishes atomic topology and geometry revisions", () => {
     expect(second.rectangles).toEqual(new Float32Array([-0.1, 0.25, 1, 0.5]));
 });
 
+test("copies and freezes published facet identifiers", () => {
+    const source = new PlacementSource();
+    const facetId = ["a"];
+    const facetIds = [facetId];
+    source.replaceTopology(facetIds, new Float32Array(4));
+
+    facetId[0] = "changed";
+    facetIds[0] = ["replaced"];
+
+    const published = source.getSnapshot().topology.facetIds;
+    expect(published).toEqual([["a"]]);
+    expect(Object.isFrozen(published)).toBe(true);
+    expect(Object.isFrozen(published[0])).toBe(true);
+});
+
 test("rejects invalid sizes and non-finite coordinates", () => {
     const source = new PlacementSource();
 
