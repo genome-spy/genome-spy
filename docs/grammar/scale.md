@@ -75,7 +75,9 @@ band. Properties such as `padding` work just as in the band scale.
 Indices can be zero-based or one-based. Configure the scale domain to match the
 index values in the data. The numbering of axis labels can also be
 [adjusted](#adjusting-the-indexing-of-axis-labels) without transforming the
-data values.
+data values. Fractional input values are floored before scaling, so `3.9` is
+placed at index 3. Scale domains may still have fractional bounds during smooth
+zooming and panning.
 
 The index scale is used by default when the _field_ type is `"index"`.
 
@@ -139,6 +141,8 @@ is omitted and root `genomes` has exactly one entry, that entry is used as the
 default assembly.
 
 The locus scale is used by default when the field type is `"locus"`.
+Like index inputs, fractional linearized locus values are floored before
+scaling.
 
 !!! note
 

@@ -662,6 +662,25 @@ describe("WebGPU mark adapter", () => {
         });
     });
 
+    test("floors fractional index positions", () => {
+        const data = [{ x: 4.9 }, { x: 9.1 }];
+        const mark = createMark("point", data, {
+            x: createEncoder((datum) => datum.x, {
+                scale: createIndexScale([3, 10]),
+                channelDef: { field: "x", type: "index" },
+            }),
+        });
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(10, 20, 100, 200)
+        );
+        const x = /** @type {any} */ (translated).config.channels.x;
+
+        expect(x.data).toEqual(new Uint32Array([4, 9]));
+    });
+
     test("maps large index positions to packed high-precision series", () => {
         const data = [{ x: 2 ** 32 + 4 }, { x: 2 ** 32 + 9 }];
         const mark = createMark("point", data, {

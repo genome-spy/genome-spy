@@ -18,6 +18,13 @@ test("Scale scales correctly with custom domain and range", () => {
     expect(scale(10)).toEqual(200);
 });
 
+test("Scale floors fractional index inputs", () => {
+    const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0);
+
+    expect(scale(3.1)).toEqual(scale(3));
+    expect(scale(3.9)).toEqual(scale(3));
+});
+
 test("Invert works as expected", () => {
     const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0.0);
 

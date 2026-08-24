@@ -1148,14 +1148,7 @@ function createPositionBranch(mark, channel, data, coords, encoder) {
     ) {
         const large = isLargeGenome(encoder.scale.domain().map(Number));
         return {
-            data: toIndexArray(
-                mark,
-                channel,
-                data,
-                accessor,
-                large,
-                mark.getType() == "text"
-            ),
+            data: toIndexArray(mark, channel, data, accessor, large),
             type: "u32",
             ...(large ? { inputComponents: 2 } : {}),
             scale: createIndexPositionScale(
@@ -1953,25 +1946,17 @@ function toFloat32Array(mark, channel, data, accessor) {
  * @param {object[]} data
  * @param {import("../../types/encoder.js").Accessor} accessor
  * @param {boolean} large
- * @param {boolean} [allowFractional]
  */
-function toIndexArray(
-    mark,
-    channel,
-    data,
-    accessor,
-    large,
-    allowFractional = false
-) {
-    const cacheChannel = `${channel}:${large ? "large" : "regular"}:${allowFractional}`;
+function toIndexArray(mark, channel, data, accessor, large) {
+    const cacheChannel = `${channel}:${large ? "large" : "regular"}`;
     return getCachedSeries(mark, cacheChannel, data, accessor, () => {
         const values = Array.from(data, (datum) => {
             const rawValue = Number(accessor(datum));
-            const value = allowFractional ? Math.round(rawValue) : rawValue;
+            const value = Math.floor(rawValue);
             if (!Number.isSafeInteger(value) || value < 0) {
                 throw unsupported(
                     mark,
-                    `Channel "${channel}" must contain non-negative safe integers.`
+                    `Channel "${channel}" must contain finite non-negative values within the safe integer range.`
                 );
             }
             return value;

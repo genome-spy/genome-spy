@@ -1316,6 +1316,17 @@ preserves those series entries as `NaN`, matching the WebGL buffer contract,
 while still rejecting positive and negative infinity. The spec passes under
 both renderers with 0.02061 mean RGB error and a 0.06860 changed-pixel ratio.
 
+A close-zoom follow-up on the same spec exposed fractional `_midpoint` values
+from `filterScoredLabels`. Index and locus channel inputs are discrete: Core
+now floors them before CPU scaling and WebGPU integer packing, matching WebGL's
+existing typed-array conversion. Float64 series remain only a transport for
+large integers. The deep RefSeq zoom renders its label and strand arrow without
+console errors; the complete 212-example Core/docs WebGPU inventory and the
+six-example App WebGPU/WebGL inventory remain green. The private overview still
+passes with 0.02060 mean RGB error and a 0.06860 changed-pixel ratio. Smooth
+sub-index label nudging remains unsupported; an offset-channel design, if
+needed, is separate follow-up work.
+
 ## Review gates
 
 Every milestone ends with the reconciliation checklist above. Independent

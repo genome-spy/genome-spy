@@ -38,14 +38,14 @@ export default function scaleIndex() {
         const step = getStep();
         return (
             getStart(step) +
-            (x - domain[0]) * step +
+            (Math.floor(x) - domain[0]) * step +
             getSignedBandwidth(step) * align
         );
     };
 
     /**
-     * In principle, the domain consists of integer indices. However,
-     * we accept real numbers so that items can be centered inside a band.
+     * Index inputs are floored to their discrete band. The domain remains
+     * continuous so zooming and panning can use fractional bounds.
      *
      * @type {import("./scaleIndex.js").ScaleIndex}
      */
