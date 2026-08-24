@@ -1,13 +1,18 @@
 # WebGPU renderer simplification and footprint plan
 
-Status: Milestones 1–3 and 5 and faceted rendering complete. Milestone 4 is
-deferred to issue #362.
+Status: Complete and reconciled; ready to retire. Milestones 1–3 and 5 are
+implemented, and Milestone 4 is discarded in favor of issue #362.
 
 Created: 2026-08-23
 
 Revised against the implemented facet baseline: 2026-08-24
 
 Independent review: Luna review completed and incorporated on 2026-08-23.
+
+Final disposition: follow-up low-hanging work releases uploaded text-layout
+arrays and replaces generic D3 piecewise interpolation with a local color-stop
+loop. Font representation remains owned by issue #362. No incomplete work
+remains in this plan.
 
 ## Summary
 

@@ -1,142 +1,69 @@
 # WebGPU renderer API direction
 
-Status: Follow-up design — the core retained-renderer contract is implemented;
-occurrence placement direction is selected and resize ownership remains open.
+Status: Complete and reconciled; ready to retire.
 
 Date: 2026-08-21
 
-This temporary note records only the API decisions that still guide the
-experimental WebGPU integration. Completed migration steps and PoC history have
-been removed; see Git history for those details.
+Final reconciliation: 2026-08-24
 
-## Current contract
+This note records the final disposition of the API questions that guided Core
+integration. The implemented contract and declarations are the source of truth.
+
+## Implemented contract
 
 `@genome-spy/webgpu-renderer` is code-first and retained:
 
 - concrete mark and scale definitions are imported explicitly;
-- Core translates grammar, encoders, resolved scales, and view traversal;
+- Core translates grammar, encoders, resolved scales, and completed layout
+  occurrences;
 - retained marks own pipelines, buffers, textures, and update slots;
-- hosts submit an explicit ordered draw list with per-occurrence viewport,
-  scissor, opacity, and instance-range state;
-- logical pixels and DPR are explicit renderer inputs;
-- asynchronous preparation invalidates the host instead of submitting hidden
-  frames; and
-- renderer and mark destruction is deterministic and idempotent.
+- hosts submit ordered draws with explicit viewport, scissor, opacity, range,
+  and optional placement state;
+- retained `PlacementSet` handles support draw-level and per-instance indices
+  without exposing Core facet concepts;
+- placement geometry remains separate from future occurrence-local scale
+  state;
+- normal and picking frames share normalized placement, ranges, and identity;
+  and
+- resource destruction and asynchronous invalidation are explicit.
 
-The renderer remains independent of Core types, view objects, facet concepts,
-and declarative grammar. No source code was copied from the architectural
-references used during the original design.
+The renderer remains independent of Core types, view objects, declarative
+grammar, grouping, and layout algorithms.
 
-## Remaining design questions
+## Resolved questions
 
-### Occurrence placement and future scale state
+### Occurrence placement
 
-The selected current direction keeps one retained mark and shared scale domains
-while separating placement from channel data:
-
-- App/Core share a renderer-neutral, revisioned CPU placement source through
-  rendering options and `LayoutResult`; App code owns no GPU resource.
-- WebGL derives its facet-coordinate texture from that source inside the
-  WebGL backend, while WebGPU derives a renderer-private indexed resource
-  inside the WebGPU surface/renderer.
-- The renderer exposes retained, updateable `PlacementSet` handles containing
-  generic 2D normalized `[x, y, width, height]` rectangles relative to an
-  explicit owner viewport, with top-left origin and downward y. Mark creation
-  fixes whether draws select one placement or a `u32` series selects per
-  instance; scissoring and directional x/y/xy `clipToPlacement` remain draw
-  state.
-- Core packs facet data once and adds a generic `u32` placement index.
-- A renderer-owned placement resource maps the index to a rectangle; storage
-  is preferred only if it fits the default binding budget.
-- Both range-mode batches and high-cardinality `facetIndex` marks use this same
-  contract. Indexed marks can coalesce to one draw; data-heavy range batches
-  retain draw-level indices so offscreen facets are CPU-pruned in closeup mode.
-- Semantic sample/facet keys are resolved to dense indices only when topology
-  changes. Geometry-only frames, culling, series updates, and draw submission
-  use numeric arrays and direct indexing with no per-facet map or composite-key
-  lookup.
-- Ordered draw splitting is reserved for overlapping occurrences whose paint
-  order would otherwise change.
-- Positional scale output is viewport-local and normalized before placement.
-
-Placement and scale state remain separate. If Core later supports independent
-facet domains, the renderer must add generic draw-time or per-instance scale
-overrides on the same retained mark. Independent domains must not require
-per-facet mark programs or make the renderer aware of Core facet types.
-
-This contract replaces the current `View.getSampleFacetTexture()` escape hatch
-and `Mark.getSampleFacetMode()` ancestor-spec inspection. Canvas2D and SVG read
-the same CPU source directly; sharing placement semantics does not require a
-universal low-level renderer interface.
-
-The layout result freezes occurrence topology and the semantic-key-to-dense-
-index mapping, but the source may publish immutable geometry revisions between
-layout passes. This preserves SampleView peek/scroll as layout-free presentation
-updates. A backend captures one revision per frame; topology changes still
-require a new layout result.
-
-SampleView publishes flat role-specific placement tables for samples,
-summaries, and groups/backgrounds from one presentation revision. Common
-container clips remain directional draw state; mark self clipping intersects
-the placement only when Core requests it. The renderer never receives Core's
-closure-backed `Rectangle` graph.
-
-Core may regroup non-contiguous occurrences only inside a repeated batch whose
-placement snapshot guarantees pairwise-disjoint non-empty rectangles. Batches
-that may overlap retain original order and coalesce only adjacent compatible
-occurrences.
-
-The renderer does not implement facet grammar, grid/wrap algorithms, data
-grouping, headers, axes, or scale-resolution policy. Core supplies rectangles.
-Future per-panel x/y scale state remains a separate, substantial extension
-from placement geometry and may require a revised mark contract.
-
-The detailed design and milestones are in
-`webgpu-renderer-parity-plan.md`.
-
-Layout 2.0 Phase 1 is already merged. The renderer-neutral Core/App/WebGL
-placement contract must be implemented and merged on `master` first. The
-`webgpu` branch then consumes that contract; it must not become the source
-branch for a later Core back-port. Discarded later Layout 2.0 phases are not
-prerequisites.
+Core/App publish immutable renderer-neutral placement topology and geometry.
+WebGL and WebGPU derive and own backend resources. Complete sample membership
+defines stable dense indices; presentation updates may replace geometry without
+repacking mark data. Ordered overlapping occurrences remain separate, while
+indexed labels and metadata may coalesce. Independent facet domains are
+explicitly deferred to a separate scale-state design.
 
 ### Resize ownership
 
-The API accepts logical dimensions and DPR, but ownership of backing-store
-resizing between the host and renderer is not final. Choose one authoritative
-owner and make logical-to-physical conversion happen exactly once. Verify
-viewports, scissors, picking coordinates, and attachment sizes together.
+The host owns CSS and backing-store canvas dimensions. It supplies logical
+width, logical height, and DPR through `Renderer.updateGlobals()`. The renderer
+owns attachments and picking resources derived from those values. Core's
+`WebGpuSurface` implements this split through `CanvasSizeHelper`.
 
 ### Optional construction and validation
 
-An advanced factory accepting an existing `GPUDevice` and context may be useful
-for embedding, but is not required by Core. A production bundle fixture should
-eventually verify that importing only selected marks and scales excludes
-unrelated programs and font code. Validation should remain enabled until the
-repository has a documented compile-time development/production build
-contract.
+An existing-device/context factory is discarded until a concrete embedding
+consumer requires it. Public-import bundle fixtures now verify the export map
+and exclusion of unrelated programs and font assets. Development-only
+diagnostic stripping remains a package backlog item; boundary safety checks
+stay enabled meanwhile.
 
-## Boundaries and non-goals
+## Preserved boundaries
 
-- Do not move Core grammar, encoders, scale resolution, dataflow, or view
-  hierarchy into the renderer.
-- Do not add a renderer scene graph or a Core-specific facet abstraction.
-- Do not disguise asynchronous WebGPU picking as Core's synchronous API.
-- Do not add a declarative compatibility facade until a concrete consumer needs
-  it; if added, keep it outside the code-first core path.
-- Keep feature modules side-effect-free and tree-shakeable.
+- No renderer scene graph or Core-specific facet abstraction.
+- No synchronous facade over asynchronous WebGPU picking.
+- No declarative compatibility layer without a concrete consumer.
+- Feature modules remain side-effect-free except the documented opt-in font
+  registration entry point.
 
-## Acceptance before retiring this note
-
-- One retained mark can be drawn repeatedly at ordered paint boundaries or
-  once with per-instance placement indices; both forms share scale state and
-  retained resources.
-- The placement API leaves a separate extension point for future
-  occurrence-local scale domains on the same retained mark.
-- Resize behavior is explicit and consistent for rendering and picking.
-- Standalone imports and production bundle checks agree with the public export
-  map and declarations.
-- Core, WebGL, Canvas, and SVG behavior remain unchanged for non-WebGPU users.
-
-Before merge, resolve or explicitly discard every open question, commit that
-record, then delete this temporary note with the other plans.
+All API-direction questions are implemented, transferred to the package
+migration backlog, or explicitly discarded. This note can be deleted in the
+next commit with the other temporary plans.

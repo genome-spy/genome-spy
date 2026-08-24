@@ -1,10 +1,15 @@
 # WebGPU renderer parity plan: faceted rendering
 
-Status: Authorized; Milestones 1–5 implemented and verified.
+Status: Complete and reconciled; ready to retire. Milestones 1–5 and all
+post-integration review items are implemented and verified.
 
 Date: 2026-08-21
 
 Last reconciled review: 2026-08-24
+
+Final disposition: cached indirect submission was measured and discarded;
+future independent facet domains remain a separate feature requiring a new
+proposal. No incomplete work remains in this plan.
 
 Core owns grammar, dataflow, scale resolution, selection semantics, occurrence
 traversal, and facet placement. The WebGPU adapter translates those semantics
