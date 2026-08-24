@@ -21,6 +21,31 @@ import { buildChannelIRs } from "./channelIR.js";
 import { buildScaledFunction } from "../scales/scaleCodegen.js";
 import { buildVisibilityPredicate } from "./visibilityPredicate.js";
 
+const PLACEMENT_SHADER_HOOKS = [
+    {
+        marker: "/* @placement-varying */",
+        count: 1,
+        replacement:
+            "@location(15) @interpolate(flat) placementClip: vec4<f32>,",
+    },
+    {
+        marker: "/* @placement-init */",
+        count: 1,
+        replacement: "out.placementClip = vec4<f32>(-1e9);",
+    },
+    {
+        marker: "/* @placement-bounds */",
+        count: 1,
+        replacement: "out.placementClip = placementClipBounds(i);",
+    },
+    {
+        marker: "/* @placement-clip */",
+        count: 1,
+        replacement:
+            "if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }",
+    },
+];
+
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
  */
@@ -390,39 +415,7 @@ ${clauses.join("\n")}
     }
     const processedShaderBody = preprocessShader(shaderBody, shaderDefines);
     const placementShaderBody = placementIndex
-        ? processedShaderBody
-              .replace(
-                  "struct VSOut {",
-                  "struct VSOut {\n    @location(15) @interpolate(flat) placementClip: vec4<f32>,"
-              )
-              .replaceAll(
-                  "var out: VSOut;",
-                  "var out: VSOut;\n    out.placementClip = vec4<f32>(-1e9);"
-              )
-              .replaceAll(
-                  "if (!isInstanceVisible(i)) {",
-                  "if (!isInstanceVisible(i) || !isPlacementVisible(i)) {"
-              )
-              .replaceAll(
-                  "out.pos = vec4<f32>(\n        applyPlacementClipForPoint(clip, centerClip, i),\n        0.0,\n        1.0\n    );",
-                  "out.placementClip = placementClipBounds(i);\n    out.pos = vec4<f32>(\n        applyPlacementClipForPoint(clip, centerClip, i),\n        0.0,\n        1.0\n    );"
-              )
-              .replaceAll(
-                  "out.pos = vec4<f32>(\n        applyTextPlacementClip(clip, i),\n        0.0,\n        1.0\n    );",
-                  "out.placementClip = placementClipBounds(i);\n    out.pos = vec4<f32>(\n        applyTextPlacementClip(clip, i),\n        0.0,\n        1.0\n    );"
-              )
-              .replaceAll(
-                  "out.pos = vec4<f32>(applyPlacementClipForRule(clip, i), 0.0, 1.0);",
-                  "out.placementClip = placementClipBounds(i);\n    out.pos = vec4<f32>(applyPlacementClipForRule(clip, i), 0.0, 1.0);"
-              )
-              .replaceAll(
-                  "out.pos = vec4<f32>(clip, 0.0, 1.0);",
-                  "out.placementClip = placementClipBounds(i);\n    out.pos = vec4<f32>(applyPlacementClip(clip, i), 0.0, 1.0);"
-              )
-              .replaceAll(
-                  "fn fs_main(in: VSOut) -> @location(0) vec4<f32> {",
-                  "fn fs_main(in: VSOut) -> @location(0) vec4<f32> {\n    if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }"
-              )
+        ? applyPlacementShaderHooks(processedShaderBody)
         : processedShaderBody;
 
     // First pass: series-backed channels must map to packed series buffers and
@@ -998,6 +991,14 @@ fn applyPlacementClipForPoint(clip: vec2<f32>, anchor: vec2<f32>, i: u32) -> vec
     return clip;
 }
 
+fn isPlacementVisible(i: u32) -> bool {
+    return true;
+}
+
+fn applyPlacementClip(clip: vec2<f32>, i: u32) -> vec2<f32> {
+    return clip;
+}
+
 fn applyPlacementPixel(pixel: vec2<f32>, i: u32) -> vec2<f32> {
     return pixel;
 }
@@ -1056,4 +1057,24 @@ ${pickFns}
         resourceLayout,
         resourceRequirements,
     };
+}
+
+/**
+ * Resolves the explicit placement extension points required from built-in mark
+ * shaders. Exact counts make a missing or duplicated hook fail before WGSL
+ * compilation instead of silently dropping placement behavior.
+ *
+ * @param {string} shaderBody
+ */
+function applyPlacementShaderHooks(shaderBody) {
+    for (const { marker, count, replacement } of PLACEMENT_SHADER_HOOKS) {
+        const actual = shaderBody.split(marker).length - 1;
+        if (actual !== count) {
+            throw new Error(
+                `Placement shader hook "${marker}" must occur ${count} times; found ${actual}.`
+            );
+        }
+        shaderBody = shaderBody.replaceAll(marker, replacement);
+    }
+    return shaderBody;
 }

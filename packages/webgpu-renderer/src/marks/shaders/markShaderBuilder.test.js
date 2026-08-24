@@ -23,6 +23,17 @@ fn fs_main() -> @location(0) vec4<f32> {
 `;
 
 describe("buildMarkShader", () => {
+    it("rejects placement-enabled shaders without explicit hooks", () => {
+        expect(() =>
+            buildMarkShader({
+                channels: {},
+                uniformLayout: [],
+                shaderBody,
+                placementIndex: { source: "draw" },
+            })
+        ).toThrow("Placement shader hook");
+    });
+
     it("generates buffer bindings and accessors for series data", () => {
         const packedSeriesLayout = new Map(
             /** @type {[string, import("../programs/internal/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */ ([

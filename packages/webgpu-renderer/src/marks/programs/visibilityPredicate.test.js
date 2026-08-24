@@ -20,7 +20,9 @@ describe("built-in mark visibility culls", () => {
             "shaderBody"
         ).get.call({});
 
-        expect(shaderBody).toContain("if (!isInstanceVisible(i))");
+        expect(shaderBody).toContain(
+            "if (!isInstanceVisible(i) || !isPlacementVisible(i))"
+        );
         expect(shaderBody).toMatch(
             /fn culled[A-Za-z]+\(\) -> VSOut \{[\s\S]*?out\.pos = vec4<f32>\(0\.0\);/
         );

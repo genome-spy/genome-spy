@@ -47,6 +47,7 @@ const SQUARE: u32 = 1u;
 const ROUND: u32 = 2u;
 
 struct VSOut {
+    /* @placement-varying */
     @builtin(position) pos: vec4<f32>,
     @location(0) color: vec4<f32>,
     @location(1) normalDistance: f32,
@@ -61,6 +62,7 @@ struct VSOut {
 
 fn culledRule() -> VSOut {
     var out: VSOut;
+    /* @placement-init */
     out.pos = vec4<f32>(0.0);
     out.color = vec4<f32>(0.0);
     out.normalDistance = 0.0;
@@ -76,7 +78,7 @@ fn culledRule() -> VSOut {
 
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
-    if (!isInstanceVisible(i)) {
+    if (!isInstanceVisible(i) || !isPlacementVisible(i)) {
         return culledRule();
     }
 
@@ -155,6 +157,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     );
 
     var out: VSOut;
+    /* @placement-bounds */
     out.pos = vec4<f32>(applyPlacementClipForRule(clip, i), 0.0, 1.0);
     out.color = getScaled_color(i);
     out.normalDistance = side * paddedWidth;
@@ -198,6 +201,7 @@ fn shade(in: VSOut) -> vec4<f32> {
 
 @fragment
 fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+    /* @placement-clip */
     return shade(in);
 }
 `;

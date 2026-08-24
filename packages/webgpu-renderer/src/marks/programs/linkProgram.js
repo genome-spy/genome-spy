@@ -40,6 +40,7 @@ const ORIENT_VERTICAL: u32 = 0u;
 const ORIENT_HORIZONTAL: u32 = 1u;
 
 struct VSOut {
+    /* @placement-varying */
     @builtin(position) pos: vec4<f32>,
     @location(0) color: vec4<f32>,
     // Signed distance from the line center along the normal, in pixels.
@@ -51,6 +52,7 @@ struct VSOut {
 
 fn culledLink() -> VSOut {
     var out: VSOut;
+    /* @placement-init */
     out.pos = vec4<f32>(0.0);
     out.color = vec4<f32>(0.0);
     out.normalDistance = 0.0;
@@ -161,7 +163,7 @@ fn clampChordToViewport(
 
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
-    if (!isInstanceVisible(i)) {
+    if (!isInstanceVisible(i) || !isPlacementVisible(i)) {
         return culledLink();
     }
 
@@ -322,7 +324,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     );
 
     var out: VSOut;
-    out.pos = vec4<f32>(clip, 0.0, 1.0);
+    /* @placement-bounds */
+    out.pos = vec4<f32>(applyPlacementClip(clip, i), 0.0, 1.0);
     let color = getScaled_color(i);
     out.color = premultiplyAlpha(vec4<f32>(color.rgb, color.a * opacity));
     out.normalDistance = normalDistance;
@@ -343,6 +346,7 @@ fn shade(in: VSOut) -> vec4<f32> {
 
 @fragment
 fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+    /* @placement-clip */
     return shade(in);
 }
 `;

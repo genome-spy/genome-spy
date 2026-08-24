@@ -100,6 +100,7 @@ const ALIGN_AXIS_RIGHT: i32 = 1;
 ${TEXT_GEOMETRY_WGSL}
 
 struct VSOut {
+    /* @placement-varying */
     @builtin(position) pos: vec4<f32>,
     @location(0) uv: vec2<f32>,
     @location(1) color: vec4<f32>,
@@ -110,6 +111,7 @@ struct VSOut {
 
 fn culledText() -> VSOut {
     var out: VSOut;
+    /* @placement-init */
     out.pos = vec4<f32>(0.0);
     out.uv = vec2<f32>(0.0);
     out.color = vec4<f32>(0.0);
@@ -257,7 +259,7 @@ fn fixAlignForAngle(align: vec2<i32>, angleInDegrees: f32) -> vec2<i32> {
 
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
-    if (!isInstanceVisible(i)) {
+    if (!isInstanceVisible(i) || !isPlacementVisible(i)) {
         return culledText();
     }
 
@@ -421,6 +423,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     );
 
     var out: VSOut;
+    /* @placement-bounds */
     out.pos = vec4<f32>(
         applyTextPlacementClip(clip, i),
         0.0,
@@ -456,6 +459,7 @@ fn shade(in: VSOut) -> vec4<f32> {
 
 @fragment
 fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+    /* @placement-clip */
     return shade(in);
 }
 `;

@@ -112,6 +112,7 @@ fn diamond(p: vec2<f32>, r: f32) -> f32 {
 }
 
 struct VSOut {
+    /* @placement-varying */
     @builtin(position) pos: vec4<f32>,
     @location(0) local: vec2<f32>,
     @location(1) size: f32,
@@ -132,6 +133,7 @@ struct VSOut {
 
 fn culledPoint() -> VSOut {
     var out: VSOut;
+    /* @placement-init */
     out.pos = vec4<f32>(0.0);
     out.local = vec2<f32>(0.0);
     out.size = 0.0;
@@ -153,7 +155,7 @@ fn culledPoint() -> VSOut {
 
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
-    if (!isInstanceVisible(i)) {
+    if (!isInstanceVisible(i) || !isPlacementVisible(i)) {
         return culledPoint();
     }
 
@@ -230,6 +232,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     );
 
     var out: VSOut;
+    /* @placement-bounds */
     out.pos = vec4<f32>(
         applyPlacementClipForPoint(clip, centerClip, i),
         0.0,
@@ -319,6 +322,7 @@ fn shade(in: VSOut) -> vec4<f32> {
 
 @fragment
 fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+    /* @placement-clip */
     return shade(in);
 }
 `;

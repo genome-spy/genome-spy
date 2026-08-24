@@ -1358,7 +1358,7 @@ boundaries, and simplification remain separately reviewable.
 - [x] Make published placement topology independent of caller-owned mutable
   facet-ID arrays. Copy and freeze each tuple and cover mutation resistance.
   Tentative commit: `fix(core): publish immutable placement topology`.
-- [ ] Replace exact mark-shader source rewriting with a small explicit placement
+- [x] Replace exact mark-shader source rewriting with a small explicit placement
   hook shared by all supported mark vertex and fragment shaders. Generated
   placement shaders must fail loudly when the hook is missing and retain
   mark-specific geometry such as rule stroke width.

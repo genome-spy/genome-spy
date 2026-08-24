@@ -209,6 +209,7 @@ fn hatchPattern(uv: vec2<f32>, halfStrokeWidth: f32, patternType: i32) -> f32 {
 }
 
 struct VSOut {
+    /* @placement-varying */
     @builtin(position) pos: vec4<f32>,
     @location(0) local: vec2<f32>,
     @location(1) size: vec2<f32>,
@@ -228,6 +229,7 @@ struct VSOut {
 
 fn culledRect() -> VSOut {
     var out: VSOut;
+    /* @placement-init */
     out.pos = vec4<f32>(0.0);
     out.local = vec2<f32>(0.0);
     out.size = vec2<f32>(0.0);
@@ -248,7 +250,7 @@ fn culledRect() -> VSOut {
 
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
-    if (!isInstanceVisible(i)) {
+    if (!isInstanceVisible(i) || !isPlacementVisible(i)) {
         return culledRect();
     }
 
@@ -303,7 +305,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     );
 
     var out: VSOut;
-    out.pos = vec4<f32>(clip, 0.0, 1.0);
+    /* @placement-bounds */
+    out.pos = vec4<f32>(applyPlacementClip(clip, i), 0.0, 1.0);
     out.local = centeredFrac * vec2<f32>(w, h) + expansion;
     out.size = vec2<f32>(w, h);
     out.fill = getScaled_fill(i);
@@ -392,6 +395,7 @@ fn shade(in: VSOut) -> vec4<f32> {
 
 @fragment
 fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+    /* @placement-clip */
     return shade(in);
 }
 `;

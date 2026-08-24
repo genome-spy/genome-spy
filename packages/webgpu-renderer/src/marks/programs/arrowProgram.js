@@ -37,6 +37,7 @@ const HEAD_OPEN: u32 = 1u;
 const PLACEMENT_INSIDE: u32 = 0u;
 
 struct VSOut {
+    /* @placement-varying */
     @builtin(position) pos: vec4<f32>,
     @location(0) local: vec2<f32>,
     @location(1) @interpolate(flat) halfLength: f32,
@@ -55,6 +56,7 @@ struct VSOut {
 
 fn culledArrow() -> VSOut {
     var out: VSOut;
+    /* @placement-init */
     out.pos = vec4<f32>(0.0);
     out.local = vec2<f32>(0.0);
     out.halfLength = 0.0;
@@ -339,7 +341,7 @@ fn shade(in: VSOut) -> vec4<f32> {
 
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
-    if (!isInstanceVisible(i)) {
+    if (!isInstanceVisible(i) || !isPlacementVisible(i)) {
         return culledArrow();
     }
 
@@ -395,7 +397,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let position = centre + axis * axisPosition + normal * normalPosition;
     let clip = vec2<f32>((position.x / globals.width) * 2.0 - 1.0, 1.0 - (position.y / globals.height) * 2.0);
     var out: VSOut;
-    out.pos = vec4<f32>(clip, 0.0, 1.0);
+    /* @placement-bounds */
+    out.pos = vec4<f32>(applyPlacementClip(clip, i), 0.0, 1.0);
     out.local = vec2<f32>(axisPosition - geometryCenter, normalPosition);
     out.halfLength = geometryHalfLength;
     out.headHalfWidth = headHalfWidth;
@@ -419,6 +422,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
 @fragment
 fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+    /* @placement-clip */
     return shade(in);
 }
 `;
