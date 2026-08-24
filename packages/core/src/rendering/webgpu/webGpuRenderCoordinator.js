@@ -7,6 +7,8 @@ import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
  * Publishes settled Core layouts and consumes them with retained WebGPU marks.
  */
 export default class WebGpuRenderCoordinator {
+    #dirtyPickingBuffer = true;
+
     /**
      * @param {object} options
      * @param {import("../../view/view.js").default} options.viewRoot
@@ -38,6 +40,7 @@ export default class WebGpuRenderCoordinator {
 
             if (!this.surface.invalidateSize()) {
                 this.layoutResult = layoutResult;
+                this.#dirtyPickingBuffer = true;
                 this.onLayoutComputed();
                 this.broadcast("layoutComputed");
                 return;
@@ -66,10 +69,11 @@ export default class WebGpuRenderCoordinator {
         layoutResult.collectRenderCommands(context);
         context.finish();
         this.surface.render(toGpuColor(this.getBackground()));
+        this.#dirtyPickingBuffer = true;
     }
 
     renderPickingFramebuffer() {
-        if (!this.layoutResult) {
+        if (!this.layoutResult || !this.#dirtyPickingBuffer) {
             return;
         }
         this.surface.beginPickingFrame();
@@ -80,6 +84,7 @@ export default class WebGpuRenderCoordinator {
         this.layoutResult.collectRenderCommands(context);
         context.finish();
         this.surface.renderPicking();
+        this.#dirtyPickingBuffer = false;
     }
 
     /** @returns {import("../../view/layout/layoutResult.js").default | undefined} */

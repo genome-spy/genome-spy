@@ -70,4 +70,38 @@ describe("WebGpuRenderCoordinator", () => {
             expect.objectContaining({ width: 100, height: 50 })
         );
     });
+
+    test("reuses the picking frame until visible output changes", () => {
+        const viewRoot = { arrange: vi.fn() };
+        const surface = {
+            invalidateSize: vi.fn(() => false),
+            getLogicalCanvasSize: () => ({ width: 100, height: 50 }),
+            getDevicePixelRatio: () => 1,
+            beginFrame: vi.fn(),
+            beginPickingFrame: vi.fn(),
+            render: vi.fn(),
+            renderPicking: vi.fn(),
+        };
+        const coordinator = new WebGpuRenderCoordinator({
+            viewRoot: /** @type {any} */ (viewRoot),
+            surface: /** @type {any} */ (surface),
+            getBackground: () => undefined,
+            broadcast: vi.fn(),
+            onLayoutComputed: vi.fn(),
+        });
+
+        coordinator.computeLayout();
+        coordinator.renderPickingFramebuffer();
+        coordinator.renderPickingFramebuffer();
+        expect(surface.beginPickingFrame).toHaveBeenCalledOnce();
+        expect(surface.renderPicking).toHaveBeenCalledOnce();
+
+        coordinator.renderAll();
+        coordinator.renderPickingFramebuffer();
+        expect(surface.renderPicking).toHaveBeenCalledTimes(2);
+
+        coordinator.computeLayout();
+        coordinator.renderPickingFramebuffer();
+        expect(surface.renderPicking).toHaveBeenCalledTimes(3);
+    });
 });

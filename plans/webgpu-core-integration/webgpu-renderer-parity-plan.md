@@ -1346,7 +1346,7 @@ boundaries, and simplification remain separately reviewable.
   default limit. Consolidate renderer-private bindings if required without
   changing the public placement contract.
   Tentative commit: `fix(webgpu-renderer): honor default storage limits`.
-- [ ] Reuse a clean WebGPU picking frame instead of replaying the complete Core
+- [x] Reuse a clean WebGPU picking frame instead of replaying the complete Core
   command graph and resubmitting the GPU pass for every pointer move. Match the
   WebGL coordinator's dirty-frame semantics and invalidate on visible renders.
   Tentative commit: `fix(core): reuse clean WebGPU picking frames`.
