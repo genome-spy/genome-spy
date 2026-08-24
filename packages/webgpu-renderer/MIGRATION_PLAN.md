@@ -2,6 +2,10 @@
 
 Status: Ongoing package work after Core and facet integration.
 
+Active interaction profiling and retained-frame work is specified in
+`plans/webgpu-interaction-performance/webgpu-interaction-performance-plan.md`.
+Keep measurement and milestone detail there rather than duplicating it here.
+
 The retained renderer, Core adapter, ordinary repeated occurrences, and App
 sample facets are implemented. Completed milestone narratives live in Git
 history. This file contains only current work that still has a concrete
