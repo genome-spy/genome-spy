@@ -1,7 +1,6 @@
 /* global console, process */
 
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
@@ -23,6 +22,7 @@ const defaultDurationMs = 1_500;
 const defaultWarmupMs = 500;
 const defaultRuns = 5;
 const defaultViewport = { width: 1200, height: 700 };
+const minimumNormalRenderFrames = 3;
 const allCases = [
     "horizontal-drag",
     "horizontal-wasd",
@@ -30,7 +30,6 @@ const allCases = [
     "wasd-zoom",
     "open-closeup",
     "closeup-wheel",
-    "scrollbar-drag",
 ];
 
 const helpText = `Usage:
@@ -40,7 +39,7 @@ Options:
   --spec PATH             Generic App spec path or URL (required).
   --control-spec PATH     Optional small control spec, measured with the same cases.
   --renderer NAME         webgl, webgpu, or both (default: both).
-  --cases LIST            Comma-separated case names (default: all seven).
+  --cases LIST            Comma-separated case names (default: all six).
   --runs NUMBER           Runs per renderer and case (default: 5).
   --duration-ms NUMBER   Active interaction duration (default: 1500).
   --warmup-ms NUMBER     Settling delay before each recorded run (default: 500).
@@ -263,17 +262,28 @@ async function runSample({
             requestAnimationFrame(tick);
         });
         await page.waitForTimeout(options.warmupMs);
+        const initialState = await captureInteractionState(page);
+        const applicability = getCaseApplicability(caseName, initialState);
+        if (!applicability.applicable) {
+            result.status = "inapplicable";
+            result.inapplicability = applicability.reason;
+            result.environment = await readEnvironment(page, renderer, dpr);
+            return result;
+        }
+
+        await prepareCase(page, caseName);
         await page.evaluate(() => {
             window.__genomeSpyBenchmarkCadence.timestamps.length = 0;
             window.__genomeSpyBenchmarkLongTasks.length = 0;
             window.__genomeSpyPerformance?.reset();
         });
+        await installKeyboardProbe(page);
         if (options.traces) {
             tracingSession = await context.newCDPSession(page);
             await startChromiumTrace(tracingSession);
             tracingStarted = true;
         }
-        await performCase(page, caseName, options);
+        const interaction = await performCase(page, caseName, options);
         await page.waitForTimeout(100);
         const data = await page.evaluate(() => {
             const cadence = window.__genomeSpyBenchmarkCadence;
@@ -289,11 +299,32 @@ async function runSample({
         result.mainThread = summarizeNumbers(data.longTasks);
         result.profile = data.profile;
         result.environment = await readEnvironment(page, renderer, dpr);
+        result.interaction = {
+            ...interaction,
+            keyboardEvents: await readKeyboardEvents(page),
+        };
+        const validation = validateInteractionResult({
+            caseName,
+            before: interaction.before,
+            after: interaction.after,
+            observations: interaction.observations,
+            inputActivation: interaction.inputActivation,
+            keyboardEvents: result.interaction.keyboardEvents,
+            profile: result.profile,
+        });
+        if (!validation.passed) {
+            result.status = "failed";
+            result.errors.push(...validation.errors);
+        }
         if (options.traces) {
             await stopChromiumTrace(tracingSession, tracePath);
             tracingStarted = false;
         }
         result.correctness = await runCorrectnessControls(page, options);
+        if (result.correctness.errors.length) {
+            result.status = "failed";
+            result.errors.push(...result.correctness.errors);
+        }
     } catch (error) {
         result.status = "failed";
         result.errors.push(
@@ -347,6 +378,9 @@ async function performCase(page, caseName, options) {
     if (!box) throw new Error("Benchmark canvas is not visible.");
     const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
     const duration = options.durationMs;
+    const before = await captureInteractionState(page);
+    const observations = [];
+    let inputActivation;
 
     if (caseName === "horizontal-drag") {
         await drag(
@@ -356,25 +390,279 @@ async function performCase(page, caseName, options) {
             duration
         );
     } else if (caseName === "horizontal-wasd") {
-        await holdKey(page, "KeyD", duration);
+        inputActivation = await activateKeyboardInput(page, center);
+        await holdKey(page, "KeyD", duration, observations);
     } else if (caseName === "wheel-zoom") {
         await page.mouse.move(center.x, center.y);
         await wheel(page, center, -120, 0, duration);
     } else if (caseName === "wasd-zoom") {
-        await holdKey(page, "KeyW", duration);
+        inputActivation = await activateKeyboardInput(page, center);
+        await holdKey(page, "KeyW", duration, observations);
     } else if (caseName === "open-closeup") {
-        await toggleCloseup(page, duration);
+        inputActivation = await activateKeyboardInput(page, center);
+        await toggleCloseup(page, duration, observations);
     } else if (caseName === "closeup-wheel") {
-        await openCloseup(page, duration);
+        inputActivation = await activateKeyboardInput(page, center);
+        await page.keyboard.down("KeyE");
+        await page.waitForTimeout(duration);
+        observations.push(await captureInteractionState(page));
         await wheel(page, center, 80, 0, duration);
-    } else if (caseName === "scrollbar-drag") {
-        await openCloseup(page, duration);
-        const start = { x: box.x + box.width - 6, y: box.y + box.height * 0.3 };
-        const end = { x: start.x, y: box.y + box.height * 0.8 };
-        await drag(page, start, end, duration);
+        observations.push(await captureInteractionState(page));
+        await page.keyboard.up("KeyE");
+        await page.waitForTimeout(duration);
     } else {
         throw new Error(`Unknown benchmark case: ${caseName}`);
     }
+
+    return {
+        before,
+        after: await captureInteractionState(page),
+        observations,
+        inputActivation,
+    };
+}
+
+/**
+ * @typedef {object} InteractionState
+ * @property {unknown[][]} domains
+ * @property {number | undefined} peekState
+ * @property {number | undefined} scrollOffset
+ * @property {boolean} sampleView
+ * @property {boolean} closeupSupported
+ */
+
+/**
+ * @param {string} caseName
+ * @param {InteractionState} state
+ */
+export function getCaseApplicability(caseName, state) {
+    if (
+        (caseName === "open-closeup" || caseName === "closeup-wheel") &&
+        !state.closeupSupported
+    ) {
+        return {
+            applicable: false,
+            reason:
+                "The subject does not expose a scrollable SampleView closeup state.",
+        };
+    }
+
+    return { applicable: true };
+}
+
+/**
+ * @param {object} input
+ * @param {string} input.caseName
+ * @param {InteractionState} input.before
+ * @param {InteractionState} input.after
+ * @param {InteractionState[]} input.observations
+ * @param {{focused: boolean, hovered: boolean} | undefined} input.inputActivation
+ * @param {{type: string, code: string}[]} input.keyboardEvents
+ * @param {{frames?: {kind?: string}[], phaseTotals?: Record<string, number>} | undefined} input.profile
+ */
+export function validateInteractionResult({
+    caseName,
+    before,
+    after,
+    observations,
+    inputActivation,
+    keyboardEvents,
+    profile,
+}) {
+    const errors = [];
+    const normalRenderFrames = (profile?.frames ?? []).filter(
+        (frame) => frame.kind === "render"
+    ).length;
+
+    if (normalRenderFrames < minimumNormalRenderFrames) {
+        errors.push(
+            `${caseName} captured ${normalRenderFrames} normal render frames; ` +
+                `at least ${minimumNormalRenderFrames} are required.`
+        );
+    }
+
+    const expectedKey = {
+        "horizontal-wasd": "KeyD",
+        "wasd-zoom": "KeyW",
+        "open-closeup": "KeyE",
+        "closeup-wheel": "KeyE",
+    }[caseName];
+    if (expectedKey) {
+        if (!inputActivation?.focused && !inputActivation?.hovered) {
+            errors.push(
+                `${caseName} did not establish a focused or hovered embed.`
+            );
+        }
+        if (
+            !keyboardEvents.some(
+                (event) =>
+                    event.type === "keydown" && event.code === expectedKey
+            ) ||
+            !keyboardEvents.some(
+                (event) => event.type === "keyup" && event.code === expectedKey
+            )
+        ) {
+            errors.push(
+                `${caseName} did not receive the expected ${expectedKey} ` +
+                    "KeyboardEvent mapping."
+            );
+        }
+    }
+
+    if (
+        caseName === "horizontal-drag" ||
+        caseName === "horizontal-wasd" ||
+        caseName === "wheel-zoom" ||
+        caseName === "wasd-zoom"
+    ) {
+        if (!domainsChanged(before.domains, after.domains)) {
+            errors.push(`${caseName} did not change an x-scale domain.`);
+        }
+    } else if (caseName === "open-closeup") {
+        if (
+            !observations.some(
+                (state) => state.peekState !== before.peekState
+            )
+        ) {
+            errors.push(`${caseName} did not change the closeup/peek state.`);
+        }
+    } else if (caseName === "closeup-wheel") {
+        if (!observations.some((state) => state.peekState === 1)) {
+            errors.push(`${caseName} did not reach closeup state.`);
+        }
+        if (after.scrollOffset === before.scrollOffset) {
+            errors.push(`${caseName} did not change the SampleView scroll offset.`);
+        }
+    }
+
+    if (
+        (caseName === "horizontal-wasd" ||
+            caseName === "wasd-zoom" ||
+            caseName === "open-closeup" ||
+            caseName === "closeup-wheel") &&
+        (profile?.phaseTotals?.layout ?? 0) > 0
+    ) {
+        errors.push(
+            `${caseName} invoked layout computation; keyboard and closeup ` +
+                "interactions must remain layout-free."
+        );
+    }
+
+    return { passed: errors.length === 0, errors };
+}
+
+/** @param {unknown[][]} before @param {unknown[][]} after */
+function domainsChanged(before, after) {
+    if (before.length !== after.length) return true;
+    return before.some(
+        (domain, index) => JSON.stringify(domain) !== JSON.stringify(after[index])
+    );
+}
+
+/** @param {import("playwright").Page} page */
+async function captureInteractionState(page) {
+    return page.evaluate(() => {
+        const root = window.__genomeSpyAppHarness?.api.debug.getViewRoot();
+        const domains = [];
+        const resolutions = new Set();
+        let sampleView;
+
+        root?.visit((view) => {
+            const resolution = view.getScaleResolution?.("x");
+            if (resolution && !resolutions.has(resolution)) {
+                resolutions.add(resolution);
+                const scale = resolution.getScale?.();
+                if (typeof scale?.domain === "function") {
+                    const domain = scale.domain();
+                    domains.push(
+                        Array.from(domain, (value) =>
+                            value instanceof Date ? value.toISOString() : value
+                        )
+                    );
+                }
+            }
+
+            if (
+                typeof view.locationManager?.getPeekState === "function" &&
+                typeof view.locationManager?.getScrollOffset === "function"
+            ) {
+                sampleView = view;
+            }
+        });
+
+        return {
+            domains,
+            peekState: sampleView?.locationManager.getPeekState(),
+            scrollOffset: sampleView?.locationManager.getScrollOffset(),
+            sampleView: Boolean(sampleView),
+            closeupSupported:
+                Boolean(sampleView) &&
+                typeof sampleView.locationManager.getScrollableHeight ===
+                    "function" &&
+                Number.isFinite(sampleView.childCoords?.height) &&
+                sampleView.locationManager.getScrollableHeight() >
+                    sampleView.childCoords.height,
+        };
+    });
+}
+
+/** @param {import("playwright").Page} page @param {string} caseName */
+async function prepareCase(page, caseName) {
+    if (caseName !== "horizontal-wasd") return;
+
+    const canvas = page.locator("#frame canvas");
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error("Benchmark canvas is not visible.");
+    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    const before = await captureInteractionState(page);
+    await activateKeyboardInput(page, point);
+    await page.keyboard.down("KeyW");
+    await page.waitForTimeout(250);
+    await page.keyboard.up("KeyW");
+    await page.waitForTimeout(250);
+    const after = await captureInteractionState(page);
+    if (!domainsChanged(before.domains, after.domains)) {
+        throw new Error(
+            "Could not establish a zoomed domain for horizontal WASD pan."
+        );
+    }
+}
+
+/** @param {import("playwright").Page} page */
+async function installKeyboardProbe(page) {
+    await page.evaluate(() => {
+        const events = [];
+        const record = (event) =>
+            events.push({
+                type: event.type,
+                code: event.code,
+                target: event.target?.nodeName,
+            });
+        document.addEventListener("keydown", record, true);
+        document.addEventListener("keyup", record, true);
+        window.__genomeSpyBenchmarkKeyboard = { events };
+    });
+}
+
+/** @param {import("playwright").Page} page */
+async function readKeyboardEvents(page) {
+    return page.evaluate(
+        () => window.__genomeSpyBenchmarkKeyboard?.events ?? []
+    );
+}
+
+/** @param {import("playwright").Page} page @param {{x: number, y: number}} point */
+async function activateKeyboardInput(page, point) {
+    const canvas = page.locator("#frame canvas");
+    await page.mouse.move(point.x, point.y);
+    await canvas.focus();
+    return page.evaluate(() => {
+        const canvas = document.querySelector("#frame canvas");
+        return {
+            focused: document.activeElement === canvas,
+            hovered: canvas?.matches(":hover") ?? false,
+        };
+    });
 }
 
 /**
@@ -455,28 +743,24 @@ async function runCorrectnessControls(page, options) {
     };
 }
 
-/** @param {import("playwright").Page} page @param {number} duration */
-async function openCloseup(page, duration) {
-    await page.keyboard.down("KeyE");
-    await page.waitForTimeout(duration);
-    await page.keyboard.up("KeyE");
-    await page.waitForTimeout(duration);
+/** @param {import("playwright").Page} page @param {number} duration @param {InteractionState[]} [observations] */
+async function openCloseup(page, duration, observations) {
+    await holdKey(page, "KeyE", duration, observations);
 }
 
-/** @param {import("playwright").Page} page @param {number} duration */
-async function toggleCloseup(page, duration) {
-    await openCloseup(page, duration);
-    await page.keyboard.down("KeyE");
-    await page.waitForTimeout(duration);
-    await page.keyboard.up("KeyE");
-    await page.waitForTimeout(duration);
+/** @param {import("playwright").Page} page @param {number} duration @param {InteractionState[]} [observations] */
+async function toggleCloseup(page, duration, observations) {
+    await openCloseup(page, duration, observations);
+    await holdKey(page, "KeyE", duration, observations);
 }
 
-/** @param {import("playwright").Page} page @param {string} key @param {number} duration */
-async function holdKey(page, key, duration) {
+/** @param {import("playwright").Page} page @param {string} key @param {number} duration @param {InteractionState[]} [observations] */
+async function holdKey(page, key, duration, observations) {
     await page.keyboard.down(key);
     await page.waitForTimeout(duration);
+    if (observations) observations.push(await captureInteractionState(page));
     await page.keyboard.up(key);
+    await page.waitForTimeout(duration);
 }
 
 /** @param {import("playwright").Page} page @param {{x: number, y: number}} start @param {{x: number, y: number}} end @param {number} duration */
@@ -580,6 +864,14 @@ function percentile(sorted, fraction) {
 
 /** @param {{options: BenchmarkOptions, samples: object[]}} input */
 function createReport({ options, samples }) {
+    const passedSamples = samples.filter((sample) => sample.status === "passed");
+    const inapplicableSamples = samples.filter(
+        (sample) => sample.status === "inapplicable"
+    );
+    const failedSamples = samples.filter((sample) => sample.status === "failed");
+    const completed = samples.every(
+        (sample) => sample.status === "passed" || sample.status === "inapplicable"
+    );
     const environment = {};
     for (const sample of samples) {
         if (sample.environment && !environment[sample.renderer]) {
@@ -628,17 +920,27 @@ function createReport({ options, samples }) {
                 "max(5%, same-backend A/A relative noise bound)",
         },
         environment,
+        coverage: {
+            totalSamples: samples.length,
+            passedSamples: passedSamples.length,
+            inapplicableSamples: inapplicableSamples.length,
+            failedSamples: failedSamples.length,
+            inapplicableCases: [
+                ...new Set(inapplicableSamples.map((sample) => sample.case)),
+            ],
+        },
         authoritative:
             options.headed &&
             hardwareBacked &&
-            samples.every((sample) => sample.status === "passed"),
+            completed &&
+            passedSamples.length > 0,
         limitation: !options.headed
             ? "Headless Chromium was requested; use a headed hardware-backed run for final conclusions."
             : !webgpuEnvironments.length
               ? "No WebGPU environment metadata was captured; inspect the failed samples."
               : !hardwareBacked
                 ? "WebGPU adapter appears software-rendered; performance conclusions are not authoritative."
-                : samples.every((sample) => sample.status === "passed")
+                : completed
                   ? undefined
                   : "At least one benchmark sample failed; the matrix is incomplete.",
         sameBackendAa: aa,
@@ -759,6 +1061,9 @@ are attribution evidence and may perturb scheduling.
 Authoritative run: **${report.authoritative ? "yes" : "no"}**<br>
 Limitation: ${limitation}
 
+Coverage: ${report.coverage.passedSamples} passed, ${report.coverage.inapplicableSamples} inapplicable, ${report.coverage.failedSamples} failed out of ${report.coverage.totalSamples} samples.<br>
+Inapplicable cases: ${report.coverage.inapplicableCases.join(", ") || "none"}
+
 The practical CPU equivalence tolerance was fixed before optimization as
 \`max(5%, same-backend A/A relative noise bound)\`. The current bound is
 \`${(report.methodology.practicalEquivalenceTolerance * 100).toFixed(1)}%\`.
@@ -776,6 +1081,9 @@ The JSON summary contains phase timings and counters for layout replay, mark
 configuration, retained-resource synchronization, placement computation and
 copies, renderer draw normalization, draw-global writes, command encoding,
 submission, resource creation, and picking where the browser exposes them.
+The \`layoutReplay\` phase is render-command collection from an existing
+LayoutResult; actual view arrangement and layout computation are recorded as
+the separate \`layout\` phase.
 Those measurements identify costs; explanations about user-visible judder are
 inferences until repeated hardware-backed runs confirm them.
 
