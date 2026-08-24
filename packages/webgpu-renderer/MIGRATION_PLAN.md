@@ -156,7 +156,9 @@ definition in `scales/defs/*`, with shared helpers in `scaleEmitUtils.js` and
 The following are intentionally explicit gaps, rather than silently ignored
 WebGL behavior:
 
-- Faceted rendering is rejected by the Core adapter.
+- The Core adapter packs repeated ordinary and facet-range occurrences into
+  one retained renderer mark and preserves their ordered draw ranges. Indexed
+  sample-facet channels and App parity remain follow-up work.
 - Conditional channel encodings are translated by the Core adapter; multiple
   series-backed branches still require a renderer branch-update contract.
 - Data-driven enum properties such as point shape, rule cap, and arrow

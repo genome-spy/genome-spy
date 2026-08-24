@@ -118,6 +118,9 @@ const SERIES_CACHE = new WeakMap();
 /** @type {WeakMap<import("../../marks/mark.js").default, Set<string>>} */
 const DYNAMIC_PROPERTY_WATCHES = new WeakMap();
 
+/** @type {WeakMap<import("../../marks/mark.js").default, PackedMarkData>} */
+const PACKED_DATA_CACHE = new WeakMap();
+
 /**
  * Converts one Core mark occurrence into the low-level configuration used by
  * the WebGPU renderer. Unsupported Core features fail here with a contextual
@@ -127,16 +130,25 @@ const DYNAMIC_PROPERTY_WATCHES = new WeakMap();
  * @param {import("../../types/rendering.js").RenderingOptions} options
  * @param {import("../../view/layout/rectangle.js").default} coords
  * @param {number} [viewOpacity]
+ * @param {object[]} [dataOverride]
+ * @param {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"]} [placementIndex]
  * @returns {{definition: import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>, config: object} | undefined}
  */
-export function createWebGpuMarkConfig(mark, options, coords, viewOpacity = 1) {
-    if (options.sampleFacetRenderingOptions || mark.encoders.facetIndex) {
+export function createWebGpuMarkConfig(
+    mark,
+    options,
+    coords,
+    viewOpacity = 1,
+    dataOverride,
+    placementIndex
+) {
+    if (mark.encoders.facetIndex) {
         throw unsupported(mark, "Faceted rendering is not supported.");
     }
 
     watchDynamicProperties(mark, getDynamicChannelProperties(mark.getType()));
 
-    const data = getMarkData(mark, options);
+    const data = dataOverride ?? getMarkData(mark, options);
     if (data.length == 0) {
         return undefined;
     }
@@ -145,37 +157,173 @@ export function createWebGpuMarkConfig(mark, options, coords, viewOpacity = 1) {
     if (markType == "point") {
         return {
             definition: pointMark,
-            config: createPointConfig(mark, data, coords, viewOpacity),
+            config: addPlacementIndex(
+                createPointConfig(mark, data, coords, viewOpacity),
+                placementIndex
+            ),
         };
     } else if (markType == "rect") {
         return {
             definition: rectMark,
-            config: createRectConfig(mark, data, coords, viewOpacity),
+            config: addPlacementIndex(
+                createRectConfig(mark, data, coords, viewOpacity),
+                placementIndex
+            ),
         };
     } else if (markType == "rule" || markType == "tick") {
         return {
             definition: ruleMark,
-            config: createRuleConfig(mark, data, coords, viewOpacity),
+            config: addPlacementIndex(
+                createRuleConfig(mark, data, coords, viewOpacity),
+                placementIndex
+            ),
         };
     } else if (markType == "text") {
         return {
             definition: textMark,
-            config: createTextConfig(mark, data, coords, viewOpacity),
+            config: addPlacementIndex(
+                createTextConfig(mark, data, coords, viewOpacity),
+                placementIndex
+            ),
         };
     } else if (markType == "link") {
         return {
             definition: linkMark,
-            config: createLinkConfig(mark, data, coords, viewOpacity),
+            config: addPlacementIndex(
+                createLinkConfig(mark, data, coords, viewOpacity),
+                placementIndex
+            ),
         };
     } else if (markType == "arrow") {
         return {
             definition: arrowMark,
-            config: createArrowConfig(mark, data, coords, viewOpacity),
+            config: addPlacementIndex(
+                createArrowConfig(mark, data, coords, viewOpacity),
+                placementIndex
+            ),
         };
     }
 
     throw unsupported(mark, `Mark type "${markType}" is not supported.`);
 }
+
+/**
+ * Packs a collector once in either its native batch order or the complete
+ * placement topology order. Active occurrences never define packed topology.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {import("../../view/layout/placementSource.js").default} [placementSource]
+ * @returns {PackedMarkData}
+ */
+export function getPackedMarkData(mark, placementSource) {
+    const collector = mark.unitView.getCollector();
+    if (!collector) {
+        throw new Error(
+            `Cannot render an uninitialized mark. View: ${mark.unitView.getPathString()}`
+        );
+    }
+
+    const topology = placementSource?.getSnapshot().topology;
+    const cached = PACKED_DATA_CACHE.get(mark);
+    if (
+        cached?.collector === collector &&
+        cached.revision === collector.dataRevision &&
+        cached.topology === topology
+    ) {
+        return cached;
+    }
+
+    const unFaceted = collector.facetBatches.get(undefined);
+    /** @type {Map<object[], {firstInstance: number, instanceCount: number}>} */
+    const ranges = new Map();
+    /** @type {{firstInstance: number, instanceCount: number}[] | undefined} */
+    let placementRanges;
+    /** @type {object[]} */
+    let data;
+
+    if (unFaceted?.length) {
+        data = unFaceted;
+        ranges.set(unFaceted, {
+            firstInstance: 0,
+            instanceCount: data.length,
+        });
+    } else {
+        data = [];
+        const batches = topology
+            ? topology.facetIds.map((facetId) =>
+                  facetId
+                      ? (collector.facetBatches.get(
+                            /** @type {any} */ (facetId)
+                        ) ?? [])
+                      : []
+              )
+            : Array.from(collector.facetBatches.values());
+        if (topology) {
+            placementRanges = [];
+        }
+        for (const batch of batches) {
+            const range = {
+                firstInstance: data.length,
+                instanceCount: batch.length,
+            };
+            placementRanges?.push(range);
+            ranges.set(batch, range);
+            data.push(...batch);
+        }
+    }
+
+    const packed = {
+        collector,
+        revision: collector.dataRevision,
+        topology,
+        data,
+        ranges,
+        placementRanges,
+        optionRanges: new WeakMap(),
+    };
+    PACKED_DATA_CACHE.set(mark, packed);
+    return packed;
+}
+
+/**
+ * Resolves an occurrence range once per immutable layout option object.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {import("../../types/rendering.js").RenderingOptions} options
+ * @param {PackedMarkData} packed
+ */
+export function getPackedMarkRange(mark, options, packed) {
+    const cached = packed.optionRanges.get(options);
+    if (cached) {
+        return cached;
+    }
+    const placementIndex = options.placement?.index;
+    const range = (placementIndex === undefined
+        ? undefined
+        : packed.placementRanges?.[placementIndex]) ??
+        packed.ranges.get(getMarkData(mark, options)) ?? {
+            firstInstance: 0,
+            instanceCount: 0,
+        };
+    packed.optionRanges.set(options, range);
+    return range;
+}
+
+/** @param {object} config @param {unknown} placementIndex */
+function addPlacementIndex(config, placementIndex) {
+    return placementIndex ? { ...config, placementIndex } : config;
+}
+
+/**
+ * @typedef {object} PackedMarkData
+ * @property {import("../../data/collector.js").default} collector
+ * @property {number} revision
+ * @property {object | undefined} topology
+ * @property {object[]} data
+ * @property {Map<object[], {firstInstance: number, instanceCount: number}>} ranges
+ * @property {{firstInstance: number, instanceCount: number}[] | undefined} placementRanges
+ * @property {WeakMap<object, {firstInstance: number, instanceCount: number}>} optionRanges
+ */
 
 /**
  * Mark properties represented by channel value slots in the renderer.

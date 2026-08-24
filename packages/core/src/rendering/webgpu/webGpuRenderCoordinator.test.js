@@ -9,6 +9,7 @@ vi.mock("./webGpuViewRenderingContext.js", () => ({
         constructor() {
             this.pushView = vi.fn();
             this.popView = vi.fn();
+            this.finish = vi.fn();
             mocks.contexts.push(this);
         }
     },
@@ -63,6 +64,7 @@ describe("WebGpuRenderCoordinator", () => {
             a: 0,
         });
         expect(mocks.contexts).toHaveLength(3);
+        expect(mocks.contexts[0].finish).toHaveBeenCalledOnce();
         expect(mocks.contexts[0].pushView).toHaveBeenCalledWith(
             viewRoot,
             expect.objectContaining({ width: 100, height: 50 })

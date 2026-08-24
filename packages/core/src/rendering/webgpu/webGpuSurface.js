@@ -1,6 +1,7 @@
 import { createRenderer } from "@genome-spy/webgpu-renderer";
 
 import CanvasSizeHelper from "../canvasSizeHelper.js";
+import PlacementSource from "../../view/layout/placementSource.js";
 
 /**
  * Owns the live WebGPU canvas and the low-level renderer used by the PoC.
@@ -14,6 +15,15 @@ export default class WebGpuSurface {
 
     /** @type {Map<import("../../marks/mark.js").default, RetainedMark>} */
     #marks = new Map();
+
+    /** @type {WeakMap<import("../../view/layout/placementSource.js").default, {set: import("@genome-spy/webgpu-renderer").PlacementSetHandle, topologyRevision: number, geometryRevision: number}>} */
+    #placementSets = new WeakMap();
+
+    /** @type {Map<import("../../marks/mark.js").default, PlacementSource>} */
+    #occurrencePlacementSources = new Map();
+
+    /** @type {WeakSet<import("../../marks/mark.js").default>} */
+    #registeredMarkOwners = new WeakSet();
 
     /** @type {import("@genome-spy/webgpu-renderer").DrawCommand[]} */
     #frameDraws = [];
@@ -92,6 +102,14 @@ export default class WebGpuSurface {
         if (!this.#renderer || !this.#appliedSize) {
             return;
         }
+        if (
+            this.#appliedSize.logicalWidth <= 0 ||
+            this.#appliedSize.logicalHeight <= 0
+        ) {
+            // Auto-sized views can expose a transient zero-sized canvas before
+            // the first layout pass establishes their requested dimensions.
+            return;
+        }
         this.#renderer.updateGlobals({
             width: this.#appliedSize.logicalWidth,
             height: this.#appliedSize.logicalHeight,
@@ -121,16 +139,97 @@ export default class WebGpuSurface {
     }
 
     /**
+     * Returns a renderer-owned resource derived from a Core placement source.
+     * Replacement preserves the public handle and mark pipeline identity.
+     *
+     * @param {import("../../view/layout/placementSource.js").default} source
+     */
+    getPlacementSet(source) {
+        if (!this.#renderer) {
+            throw new Error("The WebGPU surface has not been initialized.");
+        }
+
+        const snapshot = source.getSnapshot();
+        const cached = this.#placementSets.get(source);
+        if (!cached) {
+            const set = this.#renderer.createPlacementSet({
+                rectangles: snapshot.rectangles,
+            });
+            const entry = {
+                set,
+                topologyRevision: snapshot.topology.revision,
+                geometryRevision: snapshot.geometryRevision,
+            };
+            this.#placementSets.set(source, entry);
+            source.onDispose(() => {
+                const current = this.#placementSets.get(source);
+                if (current) {
+                    current.set.destroy();
+                    this.#placementSets.delete(source);
+                }
+            });
+            return set;
+        }
+
+        if (
+            cached.topologyRevision !== snapshot.topology.revision ||
+            cached.geometryRevision !== snapshot.geometryRevision
+        ) {
+            cached.set.replace({ rectangles: snapshot.rectangles });
+            cached.topologyRevision = snapshot.topology.revision;
+            cached.geometryRevision = snapshot.geometryRevision;
+        }
+        return cached.set;
+    }
+
+    /**
+     * Publishes adapter-owned placement for repeated ordinary occurrences.
+     * The source follows logical mark ownership and survives empty frames.
+     *
+     * @param {import("../../marks/mark.js").default} mark
+     * @param {Float32Array} rectangles
+     */
+    updateOccurrencePlacements(mark, rectangles) {
+        this.#registerMarkOwner(mark);
+        let source = this.#occurrencePlacementSources.get(mark);
+        if (!source) {
+            source = new PlacementSource();
+            source.replaceTopology(
+                Array.from({ length: rectangles.length / 4 }, (_, index) => [
+                    index,
+                ]),
+                rectangles
+            );
+            this.#occurrencePlacementSources.set(mark, source);
+        } else {
+            const snapshot = source.getSnapshot();
+            if (snapshot.rectangles.length !== rectangles.length) {
+                source.replaceTopology(
+                    Array.from(
+                        { length: rectangles.length / 4 },
+                        (_, index) => [index]
+                    ),
+                    rectangles
+                );
+            } else if (!equalFloat32Arrays(snapshot.rectangles, rectangles)) {
+                source.replaceGeometry(rectangles);
+            }
+        }
+        return source;
+    }
+
+    /**
      * @param {import("../../marks/mark.js").default} mark
      * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
      * @param {any} config
-     * @param {{scissor?: import("@genome-spy/webgpu-renderer").DrawRect, visibleRange?: import("@genome-spy/webgpu-renderer").DrawVisibleRange, picking?: boolean}} [options]
+     * @param {{viewport?: import("@genome-spy/webgpu-renderer").DrawRect, scissor?: import("@genome-spy/webgpu-renderer").DrawRect, visibleRange?: import("@genome-spy/webgpu-renderer").DrawVisibleRange, placement?: {source: import("../../view/layout/placementSource.js").default, index?: number, clipToPlacement?: "x" | "y" | "xy"}, firstInstance?: number, instanceCount?: number, picking?: boolean}} [options]
      */
     useMark(mark, definition, config, options = {}) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
 
+        this.#registerMarkOwner(mark);
         let retained = this.#marks.get(mark);
         if (!retained || retained.definition !== definition) {
             if (retained) {
@@ -165,13 +264,36 @@ export default class WebGpuSurface {
         updateRetainedScalarSlots(retained, config);
         updateRetainedSelections(retained, mark);
 
-        // Core still bakes absolute canvas coordinates into scale ranges, so
-        // occurrence viewports remain intentionally omitted here.
         const draw = {
             mark: retained.handle,
+            ...(options.viewport
+                ? { viewport: toDrawRect(options.viewport) }
+                : {}),
             ...(options.scissor ? { scissor: options.scissor } : {}),
             ...(options.visibleRange
                 ? { visibleRange: options.visibleRange }
+                : {}),
+            ...(options.firstInstance !== undefined
+                ? { firstInstance: options.firstInstance }
+                : {}),
+            ...(options.instanceCount !== undefined
+                ? { instanceCount: options.instanceCount }
+                : {}),
+            ...(options.placement
+                ? {
+                      placement: {
+                          set: this.getPlacementSet(options.placement.source),
+                          ...(options.placement.index !== undefined
+                              ? { index: options.placement.index }
+                              : {}),
+                          ...(options.placement.clipToPlacement
+                              ? {
+                                    clipToPlacement:
+                                        options.placement.clipToPlacement,
+                                }
+                              : {}),
+                      },
+                  }
                 : {}),
         };
         (options.picking ? this.#pickingDraws : this.#frameDraws).push(draw);
@@ -212,14 +334,66 @@ export default class WebGpuSurface {
     }
 
     finalize() {
+        for (const source of this.#occurrencePlacementSources.values()) {
+            source.dispose();
+        }
         this.#renderer?.destroy();
         this.#renderer = undefined;
         this.#marks.clear();
+        this.#placementSets = new WeakMap();
+        this.#occurrencePlacementSources.clear();
+        this.#registeredMarkOwners = new WeakSet();
         this.#frameDraws.length = 0;
         this.#pickingDraws.length = 0;
         this.#sizeHelper.finalize();
         this.canvas.remove();
     }
+
+    /** @param {import("../../marks/mark.js").default} mark */
+    #registerMarkOwner(mark) {
+        if (this.#registeredMarkOwners.has(mark)) {
+            return;
+        }
+        this.#registeredMarkOwners.add(mark);
+        mark.unitView?.registerDisposer?.(() => this.#releaseMark(mark));
+    }
+
+    /** @param {import("../../marks/mark.js").default} mark */
+    #releaseMark(mark) {
+        const retained = this.#marks.get(mark);
+        if (retained) {
+            this.#renderer?.destroyMark(retained.handle.markId);
+            this.#marks.delete(mark);
+        }
+        const source = this.#occurrencePlacementSources.get(mark);
+        if (source) {
+            source.dispose();
+            this.#occurrencePlacementSources.delete(mark);
+        }
+    }
+}
+
+/** @param {Float32Array} first @param {Float32Array} second */
+function equalFloat32Arrays(first, second) {
+    if (first.length !== second.length) {
+        return false;
+    }
+    for (let index = 0; index < first.length; index++) {
+        if (first[index] !== second[index]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/** @param {import("@genome-spy/webgpu-renderer").DrawRect} rect */
+function toDrawRect(rect) {
+    return {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+    };
 }
 
 /**

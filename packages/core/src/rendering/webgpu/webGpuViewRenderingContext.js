@@ -6,10 +6,15 @@ import {
 } from "../../view/renderingContext/clipOptions.js";
 import { createAnchorCullBounds } from "../immediate/bounds.js";
 import { RASTER_COORDINATE_OFFSET } from "../renderingConstants.js";
-import { createWebGpuMarkConfig } from "./webGpuMarkAdapter.js";
+import Rectangle from "../../view/layout/rectangle.js";
+import {
+    createWebGpuMarkConfig,
+    getPackedMarkData,
+    getPackedMarkRange,
+} from "./webGpuMarkAdapter.js";
 
 /**
- * Translates one completed, non-faceted Core layout into retained WebGPU marks.
+ * Collects a completed Core layout and submits ordered retained WebGPU draws.
  */
 export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     /** @type {{view: import("../../view/view.js").default, coords: import("../../view/layout/rectangle.js").default}[]} */
@@ -18,8 +23,13 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     /** @type {Set<import("../../view/view.js").default>} */
     #views = new Set();
 
-    /** @type {Set<import("../../marks/mark.js").default>} */
-    #marks = new Set();
+    /** @type {Map<import("../../marks/mark.js").default, MarkState>} */
+    #marks = new Map();
+
+    /** @type {Occurrence[]} */
+    #occurrences = [];
+
+    #finished = false;
 
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
@@ -64,6 +74,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     renderMark(mark, options) {
+        if (this.#finished) {
+            throw new Error("Cannot collect WebGPU marks after finishing.");
+        }
         const viewOpacity = mark.unitView.getEffectiveOpacity();
         if (viewOpacity <= 0) {
             return;
@@ -71,48 +84,194 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (this.globalOptions.picking && !mark.isPickingParticipant()) {
             return;
         }
-        if (this.#marks.has(mark)) {
-            throw createViewError(
-                mark,
-                "The WebGPU proof of concept does not support repeated mark occurrences."
-            );
-        }
-        this.#marks.add(mark);
-
         const coords = this.currentCoords;
         const markCoords = coords.translate(
             RASTER_COORDINATE_OFFSET,
             RASTER_COORDINATE_OFFSET
         );
-        const translated = createWebGpuMarkConfig(
-            mark,
+        let state = this.#marks.get(mark);
+        if (!state) {
+            state = {
+                mark,
+                occurrences: [],
+                packed: undefined,
+                source: undefined,
+                generatedSource: false,
+                ownerCoords: undefined,
+                definition: undefined,
+                config: undefined,
+            };
+            this.#marks.set(mark, state);
+        }
+
+        const inheritedClip = normalizeClipOptions(options);
+        const occurrence = {
+            state,
             options,
+            coords,
             markCoords,
-            viewOpacity
-        );
-        if (translated) {
-            const inheritedClip = normalizeClipOptions(options);
-            const clip = prepareMarkClipOptionsFromClip(
+            viewOpacity,
+            clip: prepareMarkClipOptionsFromClip(
                 inheritedClip,
                 mark.properties.clip,
                 coords
-            );
-            const visibleRange = createVisibleRange(
+            ),
+            visibleRange: createVisibleRange(
                 coords,
                 inheritedClip,
                 mark.properties.cullByVisibleRange
-            );
-            this.surface.useMark(
-                mark,
-                translated.definition,
-                translated.config,
-                {
-                    ...(clip ? { scissor: this.#createScissor(clip) } : {}),
-                    ...(visibleRange ? { visibleRange } : {}),
-                    picking: this.globalOptions.picking,
-                }
+            ),
+            placementIndex: state.occurrences.length,
+        };
+        state.occurrences.push(occurrence);
+        this.#occurrences.push(occurrence);
+    }
+
+    /** Finalizes mark packing and submits occurrences in original paint order. */
+    finish() {
+        if (this.#finished) {
+            throw new Error(
+                "The WebGPU rendering context is already finished."
             );
         }
+        if (this.#viewStack.length) {
+            throw new Error("Cannot finish with an open WebGPU view scope.");
+        }
+        this.#finished = true;
+
+        const size = this.surface.getLogicalCanvasSize();
+        const canvas = Rectangle.create(0, 0, size.width, size.height);
+
+        for (const state of this.#marks.values()) {
+            this.#prepareMarkState(state, canvas);
+        }
+        for (const occurrence of this.#occurrences) {
+            this.#submitOccurrence(occurrence);
+        }
+    }
+
+    /** @param {MarkState} state @param {Rectangle} canvas */
+    #prepareMarkState(state, canvas) {
+        const explicitSources = new Set(
+            state.occurrences
+                .map((occurrence) => occurrence.options.placement?.source)
+                .filter(Boolean)
+        );
+        if (explicitSources.size > 1) {
+            throw createViewError(
+                state.mark,
+                "One logical mark cannot use several placement sources."
+            );
+        }
+
+        const explicitSource = explicitSources.values().next().value;
+        state.generatedSource = !explicitSource && state.occurrences.length > 1;
+        if (state.generatedSource) {
+            const rectangles = new Float32Array(state.occurrences.length * 4);
+            for (const occurrence of state.occurrences) {
+                rectangles.set(
+                    createCanvasPlacement(canvas, occurrence.markCoords),
+                    occurrence.placementIndex * 4
+                );
+            }
+            state.source = this.surface.updateOccurrencePlacements(
+                state.mark,
+                rectangles
+            );
+            state.ownerCoords = canvas;
+        } else {
+            state.source = explicitSource;
+            state.ownerCoords = state.occurrences[0].markCoords;
+        }
+
+        if (state.source && !state.generatedSource) {
+            const topologyRevision =
+                state.source.getSnapshot().topology.revision;
+            for (const occurrence of state.occurrences) {
+                const captured = occurrence.options.placement?.topologyRevision;
+                if (captured !== undefined && captured !== topologyRevision) {
+                    throw createViewError(
+                        state.mark,
+                        "Placement topology changed after layout completion."
+                    );
+                }
+            }
+        }
+
+        state.packed = getPackedMarkData(
+            state.mark,
+            state.generatedSource ? undefined : state.source
+        );
+        if (!state.packed.data.length) {
+            return;
+        }
+
+        const first = state.occurrences[0];
+        const translated = createWebGpuMarkConfig(
+            state.mark,
+            first.options,
+            state.ownerCoords,
+            first.viewOpacity,
+            state.packed.data,
+            state.source ? { source: "draw" } : undefined
+        );
+        state.definition = translated?.definition;
+        state.config = translated?.config;
+    }
+
+    /** @param {Occurrence} occurrence */
+    #submitOccurrence(occurrence) {
+        const state = occurrence.state;
+        if (!state.config || !state.definition || !state.packed) {
+            return;
+        }
+
+        const range = getPackedMarkRange(
+            state.mark,
+            occurrence.options,
+            state.packed
+        );
+        if (!range.instanceCount) {
+            return;
+        }
+
+        const placementIndex = state.generatedSource
+            ? occurrence.placementIndex
+            : occurrence.options.placement?.index;
+        if (state.source && placementIndex === undefined) {
+            throw createViewError(
+                state.mark,
+                "Draw-level placement requires a resolved placement index."
+            );
+        }
+
+        this.surface.useMark(state.mark, state.definition, state.config, {
+            ...(state.source ? { viewport: state.ownerCoords } : {}),
+            ...(occurrence.clip
+                ? { scissor: this.#createScissor(occurrence.clip) }
+                : {}),
+            ...(occurrence.visibleRange
+                ? { visibleRange: occurrence.visibleRange }
+                : {}),
+            ...(state.source
+                ? {
+                      placement: {
+                          source: state.source,
+                          index: placementIndex,
+                          ...(occurrence.options.placement?.clipToPlacement
+                              ? {
+                                    clipToPlacement:
+                                        occurrence.options.placement
+                                            .clipToPlacement,
+                                }
+                              : {}),
+                      },
+                  }
+                : {}),
+            firstInstance: range.firstInstance,
+            instanceCount: range.instanceCount,
+            picking: this.globalOptions.picking,
+        });
     }
 
     /**
@@ -140,6 +299,47 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         return entry.coords;
     }
 }
+
+/**
+ * Maps an occurrence rectangle into a positive-area canvas-owned placement.
+ * Zero-thickness axis views still need one logical pixel for their strokes.
+ *
+ * @param {Rectangle} canvas
+ * @param {Rectangle} target
+ * @returns {[number, number, number, number]}
+ */
+function createCanvasPlacement(canvas, target) {
+    return [
+        (target.x - canvas.x) / canvas.width,
+        (target.y - canvas.y) / canvas.height,
+        Math.max(target.width, 1) / canvas.width,
+        Math.max(target.height, 1) / canvas.height,
+    ];
+}
+
+/**
+ * @typedef {object} MarkState
+ * @property {import("../../marks/mark.js").default} mark
+ * @property {Occurrence[]} occurrences
+ * @property {import("./webGpuMarkAdapter.js").PackedMarkData | undefined} packed
+ * @property {import("../../view/layout/placementSource.js").default | undefined} source
+ * @property {boolean} generatedSource
+ * @property {Rectangle | undefined} ownerCoords
+ * @property {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any> | undefined} definition
+ * @property {object | undefined} config
+ */
+
+/**
+ * @typedef {object} Occurrence
+ * @property {MarkState} state
+ * @property {import("../../types/rendering.js").RenderingOptions} options
+ * @property {Rectangle} coords
+ * @property {Rectangle} markCoords
+ * @property {number} viewOpacity
+ * @property {import("../../types/rendering.js").ClipOptions | undefined} clip
+ * @property {import("@genome-spy/webgpu-renderer").DrawVisibleRange | undefined} visibleRange
+ * @property {number} placementIndex
+ */
 
 /**
  * Converts Core's absolute anchor-culling bounds to the renderer's draw

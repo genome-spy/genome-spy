@@ -1,11 +1,10 @@
 # WebGPU renderer parity plan: faceted rendering
 
-Status: Authorized; Milestones 1–2 implemented in the working tree; Milestones
-3–5 remain pending.
+Status: Authorized; Milestones 1–3 implemented; Milestones 4–5 remain pending.
 
 Date: 2026-08-21
 
-Last reconciled review: 2026-08-23
+Last reconciled review: 2026-08-24
 
 Core owns grammar, dataflow, scale resolution, selection semantics, occurrence
 traversal, and facet placement. The WebGPU adapter translates those semantics
@@ -983,7 +982,7 @@ Tentative commit: `feat(webgpu-renderer): add indexed placement transforms`.
 
 ### Implementation checkpoint (2026-08-23)
 
-Milestones 1–2 are implemented together in this working tree. The concrete
+Milestones 1–2 are implemented together in foundation commit `ecf3b3b4e`. The concrete
 contracts are slightly simpler than the proposal: `PlacementSource` publishes
 immutable copied rectangles and complete topology, while `WebGLHelper` and the
 WebGPU renderer own their derived resources. SampleView keeps its existing
@@ -996,19 +995,43 @@ The WebGPU API now has retained `PlacementSet` handles, fixed mark capability
 modes, draw-level and per-instance indices, normalized placement transforms,
 directional placement clipping, shared normal/picking bindings, and retained
 replacement/destruction. The standalone Indexed placements and Repeated range
-placements stories exercise the generic API. Packed repeated Core occurrences,
-App WebGPU integration, and full GPU/browser parity remain Milestones 3–5 and
-are intentionally not implied by this checkpoint.
+placements stories exercise the generic API. App sample-facet integration and
+full App GPU/browser parity remain Milestones 4–5 and are intentionally not
+implied by this checkpoint.
 
 Completed verification includes focused Core/App tests, the complete WebGPU
 renderer unit suite, targeted lint and TypeScript checks, and a successful
-renderer Storybook build. GPU execution, DPR screenshot comparison, and the
-complete Core/docs WebGPU inventory still require the browser/device checks in
-the remaining milestones. The master-first commit split described above is
-also still a delivery step; this uncommitted working tree is the implementation
-checkpoint, not the final merge record.
+renderer Storybook build. DPR screenshot comparison and complete inventory
+checks continue at later integration gates.
 
 ## Milestone 3: Packed repeated and facet-range occurrences
+
+Status: Implemented and verified on 2026-08-24.
+
+Reconciliation: the adapter now finishes collection before submission, packs
+complete collector topology once per logical mark, and preserves the original
+global occurrence order. Repeated ordinary marks use one stable adapter-owned
+placement source normalized against the canvas; this also gives zero-thickness
+axis views a valid one-pixel placement without invalid WebGPU viewports.
+Renderer-neutral placement sources remain independently owned and their dense
+indices select cached facet ranges without replay-time semantic lookups.
+Normal and picking collection share the same surface-owned placement resources,
+and mark/view disposal—not draw-list participation—controls retained lifetime.
+
+The proposed disjoint regrouping optimization was unnecessary for correctness
+and is deferred: preserving all encounter order is simpler and satisfies both
+disjoint and overlapping paint semantics. Indexed `facetIndex` coalescing,
+sample visibility pruning, high-cardinality evidence, and App recovery remain
+Milestone 4.
+
+Verification completed with 153 renderer unit tests, 70 focused Core/App
+tests, both package TypeScript checks, and 50 real-GPU renderer tests. The two
+named repeated-axis examples pass WebGPU/WebGL comparison. Recursive discovery
+found 212 Core/docs examples: 210 passed in the full run, the remote FASTA
+fixture passed on an immediate isolated rerun after a transient request abort,
+and the only deterministic failure was a backend-neutral zero-height docs
+playground. Giving that playground an explicit height made it pass under both
+renderers, so all 212 discovered examples have passing evidence.
 
 ### Intended outcome
 

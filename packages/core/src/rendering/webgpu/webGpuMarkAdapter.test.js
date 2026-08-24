@@ -6,9 +6,62 @@ import { identityScaleDefinition } from "@genome-spy/webgpu-renderer/scales/iden
 import { indexScaleDefinition } from "@genome-spy/webgpu-renderer/scales/index";
 import { linearScaleDefinition } from "@genome-spy/webgpu-renderer/scales/linear";
 import { thresholdScaleDefinition } from "@genome-spy/webgpu-renderer/scales/threshold";
-import { createWebGpuMarkConfig } from "./webGpuMarkAdapter.js";
+import PlacementSource from "../../view/layout/placementSource.js";
+import {
+    createWebGpuMarkConfig,
+    getPackedMarkData,
+    getPackedMarkRange,
+} from "./webGpuMarkAdapter.js";
 
 describe("WebGPU mark adapter", () => {
+    test("packs complete topology independently of active occurrences", () => {
+        const firstFacet = ["first"];
+        const hiddenFacet = ["hidden"];
+        const lastFacet = ["last"];
+        const firstData = [{ x: 1 }];
+        const lastData = [{ x: 2 }, { x: 3 }];
+        const collector = {
+            dataRevision: 4,
+            facetBatches: new Map([
+                [undefined, []],
+                [firstFacet, firstData],
+                [lastFacet, lastData],
+            ]),
+        };
+        const mark = /** @type {any} */ ({
+            unitView: {
+                getCollector: () => collector,
+                getPathString: () => "test",
+            },
+        });
+        const source = new PlacementSource();
+        source.replaceTopology(
+            [firstFacet, hiddenFacet, lastFacet],
+            new Float32Array(12)
+        );
+
+        const packed = getPackedMarkData(mark, source);
+        expect(packed.data).toEqual([...firstData, ...lastData]);
+        const facetLookup = vi.spyOn(collector.facetBatches, "get");
+        facetLookup.mockClear();
+        expect(
+            getPackedMarkRange(
+                mark,
+                { placement: { source, index: 1 } },
+                packed
+            )
+        ).toEqual({ firstInstance: 1, instanceCount: 0 });
+        expect(
+            getPackedMarkRange(
+                mark,
+                { placement: { source, index: 2 } },
+                packed
+            )
+        ).toEqual({ firstInstance: 1, instanceCount: 2 });
+        expect(getPackedMarkData(mark, source)).toBe(packed);
+        expect(facetLookup).not.toHaveBeenCalled();
+    });
+
     test("keeps raw point data and maps unit scale ranges to view pixels", () => {
         const data = [
             { x: 0, y: -1 },

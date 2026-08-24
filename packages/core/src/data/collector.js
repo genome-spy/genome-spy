@@ -81,6 +81,9 @@ export default class Collector extends FlowNode {
         /** @type {Set<function(Collector):void>} */
         this.observers = new Set();
 
+        /** Increments whenever the materialized facet batches are replaced. */
+        this.dataRevision = 0;
+
         // TODO: Consider nested maps instead of InternMap
         /** @type {Map<import("../spec/channel.js").Scalar[], Data>} TODO: proper type for key */
         this.facetBatches = new InternMap([], JSON.stringify);
@@ -157,6 +160,8 @@ export default class Collector extends FlowNode {
         this.#propagateToChildren();
 
         super.complete();
+
+        this.dataRevision++;
 
         this.#invalidateDomains();
         this.#notifyObservers();

@@ -59,12 +59,12 @@ export default class WebGpuRenderCoordinator {
         }
 
         this.surface.beginFrame();
-        layoutResult.collectRenderCommands(
-            new WebGpuViewRenderingContext(
-                { picking: false },
-                { surface: this.surface }
-            )
+        const context = new WebGpuViewRenderingContext(
+            { picking: false },
+            { surface: this.surface }
         );
+        layoutResult.collectRenderCommands(context);
+        context.finish();
         this.surface.render(toGpuColor(this.getBackground()));
     }
 
@@ -73,12 +73,12 @@ export default class WebGpuRenderCoordinator {
             return;
         }
         this.surface.beginPickingFrame();
-        this.layoutResult.collectRenderCommands(
-            new WebGpuViewRenderingContext(
-                { picking: true },
-                { surface: this.surface }
-            )
+        const context = new WebGpuViewRenderingContext(
+            { picking: true },
+            { surface: this.surface }
         );
+        this.layoutResult.collectRenderCommands(context);
+        context.finish();
         this.surface.renderPicking();
     }
 

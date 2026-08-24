@@ -139,3 +139,11 @@ to optimization, document the problem explicitly and propose a breaking API
 improvement. Prefer improving the generic renderer contract over accumulating
 Core-only workarounds, while keeping Core grammar and view types out of the
 renderer package.
+
+The adapter collects a completed layout before submitting WebGPU draws. It
+packs collector batches once per logical mark, retains one renderer handle,
+and replays occurrence ranges in layout paint order. Repeated ordinary marks
+use an adapter-owned placement source, while renderer-neutral placement
+sources remain owned by their Core or App layout producer. Neither an empty
+draw list nor offscreen placement releases retained resources; mark/view and
+placement-source disposal do.

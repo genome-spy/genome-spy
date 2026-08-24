@@ -21,8 +21,15 @@ const mocks = vi.hoisted(() => {
         scalarSlots: {},
         selections: {},
     };
+    const placementHandle = {
+        placementSetId: 11,
+        count: 1,
+        replace: vi.fn(),
+        destroy: vi.fn(),
+    };
     const renderer = {
         createMark: vi.fn(() => handle),
+        createPlacementSet: vi.fn(() => placementHandle),
         updateGlobals: vi.fn(),
         destroyMark: vi.fn(),
         destroy: vi.fn(),
@@ -32,6 +39,7 @@ const mocks = vi.hoisted(() => {
     };
     return {
         handle,
+        placementHandle,
         renderer,
         createRenderer: vi.fn(
             async (
@@ -72,6 +80,48 @@ beforeEach(() => {
 });
 
 describe("WebGpuSurface", () => {
+    test("retains repeated mark placement through empty frames until owner disposal", async () => {
+        const container = document.createElement("div");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        let dispose = () => {};
+        const mark = /** @type {any} */ ({
+            unitView: {
+                registerDisposer: (/** @type {() => void} */ disposer) => {
+                    dispose = disposer;
+                },
+            },
+        });
+        const definition = /** @type {any} */ ({ type: "point" });
+        const source = surface.updateOccurrencePlacements(
+            mark,
+            new Float32Array([0, 0, 1, 1])
+        );
+
+        surface.useMark(mark, definition, createConfig(0), {
+            viewport: { x: 0, y: 0, width: 100, height: 50 },
+            placement: { source, index: 0 },
+        });
+        surface.beginFrame();
+        surface.render();
+
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+        expect(mocks.renderer.createPlacementSet).toHaveBeenCalledOnce();
+        expect(mocks.renderer.destroyMark).not.toHaveBeenCalled();
+        expect(mocks.placementHandle.destroy).not.toHaveBeenCalled();
+
+        dispose();
+        expect(mocks.renderer.destroyMark).toHaveBeenCalledWith(7);
+        expect(mocks.placementHandle.destroy).toHaveBeenCalledOnce();
+    });
+
     test("updates and reorders a retained mark without recreating it", async () => {
         const container = document.createElement("div");
         const onRenderInvalidated = vi.fn();
