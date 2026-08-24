@@ -1,5 +1,5 @@
 import { color as d3color } from "d3-color";
-import { interpolateRgb, piecewise } from "d3-interpolate";
+import { interpolateRgb } from "d3-interpolate";
 
 /**
  * CSS-color interpolator function used to build color ramps.
@@ -206,22 +206,25 @@ function normalizeColorStop(stop) {
 }
 
 /**
- * @param {import("../index.d.ts").ColorInterpolatorFactory | undefined} interpolate
- * @returns {(a: string, b: string) => ColorInterpolatorFn}
- */
-function getInterpolatorFactory(interpolate) {
-    return interpolate ?? interpolateRgb;
-}
-
-/**
  * @param {ColorStop[]} colors
  * @param {import("../index.d.ts").ColorInterpolatorFactory | undefined} interpolate
  * @returns {ColorInterpolatorFn}
  */
 function createColorInterpolator(colors, interpolate) {
     const stops = colors.map(normalizeColorStop);
-    const factory = getInterpolatorFactory(interpolate);
-    return piecewise(factory, stops);
+    const factory = interpolate ?? interpolateRgb;
+    const segments = stops
+        .slice(0, -1)
+        .map((stop, index) => factory(stop, stops[index + 1]));
+
+    return (t) => {
+        const scaled = t * segments.length;
+        const segment = Math.max(
+            0,
+            Math.min(segments.length - 1, Math.floor(scaled))
+        );
+        return segments[segment](scaled - segment);
+    };
 }
 
 /**

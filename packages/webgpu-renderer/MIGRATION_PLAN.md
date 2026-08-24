@@ -29,6 +29,8 @@ Completed simplification work:
 - Bind-group rebuilds read scale resources from their owning per-channel map,
   and draw submission reuses capacity-sized CPU uniform staging.
 - The renderer package no longer declares the unused `internmap` dependency.
+- Color ramps assemble adjacent RGB or custom color interpolators locally
+  instead of importing D3's generic value-piecewise machinery.
 - Text keeps visual, conditional, picking, and placement series once per
   logical string. Glyph instances carry their string and glyph ids, and text's
   generated readers map each glyph draw back to logical series without another
