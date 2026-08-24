@@ -245,6 +245,63 @@ describe("WebGpuSurface", () => {
         expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
     });
 
+    test("reads live channel leaves from a retained config object", async () => {
+        const container = document.createElement("div");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({})
+        );
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "point" })
+            );
+        const domain = [0, 10];
+        let size = 5;
+        const config = {
+            count: 2,
+            channels: {
+                x: {
+                    data: new Float32Array([1, 2]),
+                    type: "f32",
+                    scale: {
+                        get domain() {
+                            return domain;
+                        },
+                        range: [0, 100],
+                    },
+                },
+                size: {
+                    get value() {
+                        return size;
+                    },
+                },
+            },
+        };
+
+        surface.useMark(mark, definition, config);
+        domain[0] = 1;
+        domain[1] = 11;
+        size = 6;
+        surface.useMark(mark, definition, config);
+
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+        expect(mocks.handle.scales.x.default.setDomain).toHaveBeenCalledOnce();
+        expect(mocks.handle.scales.x.default.setDomain).toHaveBeenCalledWith([
+            1, 11,
+        ]);
+        expect(mocks.handle.values.size.default.set).toHaveBeenCalledOnce();
+        expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
+        expect(mocks.handle.series.replace).not.toHaveBeenCalled();
+    });
+
     test("skips semantically unchanged nested scale ranges", async () => {
         const container = document.createElement("div");
         const surface = new WebGpuSurface(

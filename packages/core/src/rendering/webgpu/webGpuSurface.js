@@ -241,27 +241,25 @@ export default class WebGpuSurface {
             retained = {
                 definition,
                 handle,
-                config,
+                channelSnapshots: snapshotChannels(config.channels),
                 series: collectSeries(config),
                 count: config.count,
                 selections: new Map(),
                 dynamicValues: new Map(
                     Object.entries(config.dynamicValues ?? {}).map(
-                        ([name, value]) => [name, value.value]
+                        ([name, value]) => [name, snapshotValue(value.value)]
                     )
                 ),
                 scalarSlots: new Map(
                     Object.entries(config.scalarSlots ?? {}).map(
-                        ([name, value]) => [name, value.value]
+                        ([name, value]) => [name, snapshotValue(value.value)]
                     )
                 ),
             };
             this.#marks.set(mark, retained);
         }
         retained.handle.batchUpdates(() => {
-            if (retained.config !== config) {
-                updateRetainedMark(retained, config);
-            }
+            updateRetainedMark(retained, config);
             updateRetainedExtraValues(retained, config);
             updateRetainedScalarSlots(retained, config);
             updateRetainedSelections(retained, mark);
@@ -456,16 +454,18 @@ function makeRetainableConfig(config) {
  * @param {any} config
  */
 function updateRetainedMark(retained, config) {
+    const nextSnapshots = snapshotChannels(config.channels);
     for (const [name, channel] of Object.entries(config.channels)) {
-        const previousChannel = retained.config.channels[name];
+        const nextSnapshot = nextSnapshots[name];
+        const previousSnapshot = retained.channelSnapshots[name];
         updateChannelSlots(
             retained.handle.scales[name]?.default,
             retained.handle.values[name]?.default,
-            channel,
-            previousChannel
+            nextSnapshot,
+            previousSnapshot
         );
 
-        for (const condition of channel.conditions ?? []) {
+        for (const [index, condition] of (channel.conditions ?? []).entries()) {
             if (!condition.channel) {
                 continue;
             }
@@ -476,11 +476,8 @@ function updateRetainedMark(retained, config) {
                 retained.handle.values[name]?.conditions?.[
                     condition.when.selection
                 ],
-                condition.channel,
-                previousChannel?.conditions?.find(
-                    (/** @type {any} */ previous) =>
-                        previous.when.selection == condition.when.selection
-                )?.channel
+                nextSnapshot.conditions[index],
+                previousSnapshot?.conditions[index]
             );
         }
     }
@@ -490,7 +487,7 @@ function updateRetainedMark(retained, config) {
         retained.count = config.count;
         retained.handle.series.replace(retained.series, retained.count);
     }
-    retained.config = config;
+    retained.channelSnapshots = nextSnapshots;
 }
 
 /**
@@ -499,32 +496,70 @@ function updateRetainedMark(retained, config) {
  *
  * @param {import("@genome-spy/webgpu-renderer").ScaleSlotHandle | undefined} scaleSlot
  * @param {import("@genome-spy/webgpu-renderer").ValueSlotHandle | undefined} valueSlot
- * @param {any} channel
- * @param {any} previousChannel
+ * @param {ChannelSnapshot} next
+ * @param {ChannelSnapshot | undefined} previous
  */
-function updateChannelSlots(scaleSlot, valueSlot, channel, previousChannel) {
-    if (scaleSlot && channel.scale) {
+function updateChannelSlots(scaleSlot, valueSlot, next, previous) {
+    if (scaleSlot && next.scale) {
         if (
-            channel.scale.domain !== undefined &&
-            !valuesEqual(previousChannel?.scale?.domain, channel.scale.domain)
+            next.scale.domain !== undefined &&
+            !valuesEqual(previous?.scale?.domain, next.scale.domain)
         ) {
-            scaleSlot.setDomain(channel.scale.domain);
+            scaleSlot.setDomain(next.scale.domain);
         }
         if (
-            channel.scale.range !== undefined &&
-            !valuesEqual(previousChannel?.scale?.range, channel.scale.range)
+            next.scale.range !== undefined &&
+            !valuesEqual(previous?.scale?.range, next.scale.range)
         ) {
-            scaleSlot.setRange(channel.scale.range);
+            scaleSlot.setRange(next.scale.range);
         }
     }
 
     if (
         valueSlot &&
-        channel.value !== undefined &&
-        !valuesEqual(previousChannel?.value, channel.value)
+        next.value !== undefined &&
+        !valuesEqual(previous?.value, next.value)
     ) {
-        valueSlot.set(channel.value);
+        valueSlot.set(next.value);
     }
+}
+
+/**
+ * Captures only updateable channel leaves. Cloning arrays makes comparisons
+ * independent of config identity and in-place scale mutations.
+ *
+ * @param {Record<string, any>} channels
+ * @returns {Record<string, ChannelSnapshot>}
+ */
+function snapshotChannels(channels) {
+    return Object.fromEntries(
+        Object.entries(channels).map(([name, channel]) => [
+            name,
+            snapshotChannel(channel),
+        ])
+    );
+}
+
+/**
+ * @param {any} channel
+ * @returns {ChannelSnapshot}
+ */
+function snapshotChannel(channel) {
+    return {
+        ...(channel.scale
+            ? {
+                  scale: {
+                      domain: snapshotValue(channel.scale.domain),
+                      range: snapshotValue(channel.scale.range),
+                  },
+              }
+            : {}),
+        value: snapshotValue(channel.value),
+        conditions: (channel.conditions ?? []).map(
+            (/** @type {any} */ condition) =>
+                snapshotChannel(condition.channel ?? condition)
+        ),
+    };
 }
 
 /**
@@ -543,7 +578,7 @@ function updateRetainedExtraValues(retained, config) {
             continue;
         }
         slot.set(dynamic.value);
-        retained.dynamicValues.set(name, dynamic.value);
+        retained.dynamicValues.set(name, snapshotValue(dynamic.value));
     }
 }
 
@@ -563,8 +598,16 @@ function updateRetainedScalarSlots(retained, config) {
             continue;
         }
         slot.set(scalar.value);
-        retained.scalarSlots.set(name, scalar.value);
+        retained.scalarSlots.set(name, snapshotValue(scalar.value));
     }
+}
+
+/**
+ * @param {any} value
+ * @returns {any}
+ */
+function snapshotValue(value) {
+    return Array.isArray(value) ? value.map(snapshotValue) : value;
 }
 
 /**
@@ -764,12 +807,19 @@ function getLogicalChannelSeries(channel) {
  * @typedef {object} RetainedMark
  * @prop {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
  * @prop {import("@genome-spy/webgpu-renderer").MarkHandle} handle
- * @prop {any} config
+ * @prop {Record<string, ChannelSnapshot>} channelSnapshots
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
  * @prop {Map<string, number | Uint32Array | SelectionSnapshot>} selections
  * @prop {Map<string, number | number[]>} dynamicValues
  * @prop {Map<string, number>} scalarSlots
+ */
+
+/**
+ * @typedef {object} ChannelSnapshot
+ * @prop {{domain: any, range: any}} [scale]
+ * @prop {any} value
+ * @prop {ChannelSnapshot[]} conditions
  */
 
 /**
