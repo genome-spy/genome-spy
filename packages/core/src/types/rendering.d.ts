@@ -86,6 +86,7 @@ export interface BufferedRenderingRequest {
     mark: Mark;
     callback: () => void;
     coords: Rectangle;
+    placement?: PlacementRenderingOptions;
     clip?: ClipOptions;
     cullClip?: ClipOptions;
 }

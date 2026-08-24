@@ -115,6 +115,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                 mark,
                 callback,
                 coords: this.#coords,
+                placement: options.placement,
                 clip: prepareMarkClipOptionsFromClip(
                     inheritedClip,
                     mark.properties.clip,
@@ -211,10 +212,12 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                 enabled = mark.unitView.getEffectiveOpacity() > 0;
             });
             // Change program, set common uniforms (mark properties, shared domains)
+            const placement = requests[0].placement;
+            const prepareOptions = placement
+                ? { ...this.globalOptions, placement }
+                : this.globalOptions;
             this.#batch.push(
-                ...mark
-                    .prepareRender(this.globalOptions)
-                    .map((op) => ifEnabled(op))
+                ...mark.prepareRender(prepareOptions).map((op) => ifEnabled(op))
             );
 
             /** @type {import("../layout/rectangle.js").default} */

@@ -1363,6 +1363,10 @@ boundaries, and simplification remain separately reviewable.
   placement shaders must fail loudly when the hook is missing and retain
   mark-specific geometry such as rule stroke width.
   Tentative commit: `refactor(webgpu-renderer): make placement shader hooks explicit`.
+- [x] Preserve explicit placement ownership when buffered WebGL converts
+  occurrences into mark-level preparation batches. Cover both visible and
+  picking renders in the MCCA sample-facet visualization.
+  Follow-up commit: `fix(core): forward placement to WebGL mark preparation`.
 
 ## Review gates
 
