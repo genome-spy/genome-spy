@@ -1,6 +1,7 @@
 # WebGPU interaction performance plan
 
-Status: Proposed
+Status: Active. Milestone 1 tooling is implemented; interaction-coverage fixes
+are required before Milestone 2 optimization begins.
 
 ## Context
 
@@ -15,9 +16,11 @@ The backends currently do materially different work during an interaction
 frame. WebGL consumes `LayoutResult` once after layout, builds reusable normal
 and picking batches, and executes those batches on subsequent frames. WebGPU
 retains pipelines, buffers, and mark handles, but Core creates a fresh
-`WebGpuViewRenderingContext`, replays `LayoutResult`, rebuilds occurrence and
-mark configuration objects, diffs retained resources, normalizes draw commands,
-and encodes a new pass on every paint.
+`WebGpuViewRenderingContext`, collects render commands again from the already
+computed `LayoutResult`, rebuilds occurrence and mark configuration objects,
+diffs retained resources, normalizes draw commands, and encodes a new pass on
+every paint. This command collection is currently profiled as `layoutReplay`;
+it is not layout computation or view arrangement.
 
 Normal navigation changes scale domains in principle. Closeup animation and
 vertical scrolling are more involved because SampleView recomputes non-uniform
@@ -28,6 +31,69 @@ facet texture every closeup scroll frame. The plan therefore keeps complete
 placement-buffer updates unless measurement identifies them as a significant
 cost; it does not introduce a SampleView-specific offset or transform into the
 generic WebGPU renderer.
+
+## Measured baseline
+
+Milestone 1 was implemented in commit `53acabc6a` and run on 2026-08-24 with
+hardware-backed Chromium on Apple M5 / Metal 3. The matrix covered the private
+MCCA visualization and a small control, WebGL and WebGPU, DPR 1 and 2, seven
+declared interaction cases, and five repetitions: 280 benchmark processes
+completed without harness-level failure.
+
+The authoritative artifacts are local and ignored:
+
+- `output/webgpu-interaction-benchmark-mcca-awake/summary.json`
+- `output/webgpu-interaction-benchmark-mcca-awake/baseline.md`
+
+The valid recorded render samples establish the following:
+
+- Overall profiled WebGPU/WebGL median CPU frame-time ratio was about `2.0x`
+  with a bootstrap interval of approximately `1.57x` to `2.0x`.
+- MCCA drag, wheel zoom, and closeup-wheel render samples put WebGPU at roughly
+  `1.5x` WebGL. The small control was approximately `2.0x` to `2.33x`, showing
+  a meaningful fixed WebGPU overhead in addition to workload scaling.
+- Median rAF cadence stayed near 16.7 ms for both backends. This does not meet
+  the CPU-efficiency goal and does not disprove intermittent perceived judder.
+- In MCCA wheel zoom, representative per-frame medians were approximately
+  0.63 ms for render-command replay (the profiler's `layoutReplay` phase),
+  1.48 ms for mark translation, and 0.31 ms for surface rendering. Mark
+  translation included about 0.73 ms of mark configuration and 0.30 ms of
+  retained-resource synchronization.
+- Surface subphases were much smaller: approximately 0.07 ms for draw
+  normalization and 0.19 ms for command encoding in the same case. Submission
+  itself was negligible on the measured CPU thread.
+- A representative 278-render wheel-zoom sample accumulated about 245,778 draw
+  commands, 4,291 buffer writes, and 70 MB of uploads. These are cumulative,
+  not per-frame values: roughly 884 draws, 15 writes, and 0.25 MB per render.
+  About 63 MB of the cumulative upload was repeated draw-global data.
+- Closeup wheel samples still spent approximately 0.62 ms in render-command
+  replay and 1.26 ms in mark translation, compared with roughly 0.31 ms in
+  surface rendering. This supports retaining the general frame plan while
+  continuing legitimate placement updates.
+
+The run also exposed a benchmark coverage defect. The summary marked every
+process passed when no browser error occurred, but WASD pan, WASD zoom, and
+open-closeup samples recorded no profiled normal render frames. These cases do
+not yet provide CPU or structural evidence and must not contribute to
+performance conclusions. This is an input-delivery and coverage defect in the
+benchmark: WASD and closeup toggling are intentionally layout-free, but they
+must still change interaction state and request normal paints.
+
+The declared scrollbar-drag case guessed a point six pixels from the full
+canvas edge rather than locating SampleView's canvas-rendered vertical
+scrollbar. It recorded only an on-demand picking frame. Remove this case instead
+of repairing it: closeup wheel scrolling exercises the same placement, range,
+scrollbar-state, and rendering updates without adding another synthetic input
+path. Require the closeup-wheel case to prove that the SampleView scroll offset
+changed.
+Filtering or sorting followed by closeup was not exercised because selectors
+were not supplied.
+
+The 50% practical-noise bound is the maximum A/A deviation and is too broad to
+serve as the only regression criterion. Preserve it in reports, but evaluate
+direction and success using repeated paired results, phase/counter deltas, and
+the structural fast-path assertions in this plan. Do not retroactively tighten
+or reinterpret the original reported interval.
 
 ## Goals
 
@@ -94,8 +160,11 @@ A paint has an explicit dynamic phase before submission. It calls
 `onBeforeRender()` once per participating view in established order, refreshes
 scale and placement revisions, and updates live opacity, scrollbar, viewport,
 clip, visible-range, instance-range, mark-value, and selection state. It then
-submits the retained draw order. Full layout replay and mark translation remain
-the fallback for structural invalidation, not the normal navigation path.
+submits the retained draw order. Full render-command replay from `LayoutResult`
+and mark translation remain the fallback for structural invalidation, not the
+normal navigation path. Existing interaction behavior remains layout-free:
+WASD navigation and closeup toggling must not call layout computation or arrange
+the view hierarchy.
 
 ### Keep invalidation explicit and small
 
@@ -128,6 +197,14 @@ command encoding, GPU completion, or presentation. Renderer API changes and
 additional staging storage require evidence from the MCCA workload or a smaller
 reproduction of the same bottleneck.
 
+The baseline selects retained Core-to-WebGPU frame compilation as the first
+optimization target. Layout replay and mark translation/configuration dominate
+the measured WebGPU excess and occur in both large and small workloads.
+Optimizing retained-resource synchronization alone would leave the larger
+layout and configuration cost intact. Buffer uploads, draw normalization, and
+command encoding remain measured follow-up targets, but their CPU phases are
+currently too small to justify preceding frame retention.
+
 ## Profiling protocol and acceptance baseline
 
 Run WebGL and WebGPU from the same production-like build, Chromium version,
@@ -151,15 +228,15 @@ Profile these cases separately:
 3. Wheel and WASD zoom over the same interval.
 4. Bird's-eye to closeup transition and the reverse transition.
 5. Sustained vertical closeup wheel scrolling after the transition has settled.
-6. Sustained vertical closeup scrollbar dragging.
 
 For each case record, where supported:
 
 - animation-frame interval distribution and counts above 16.7 and 33.3 ms;
 - total main-thread time, instrumented GenomeSpy phase time, and available
   browser renderer-process CPU time per frame at median, p95, and p99;
-- time in layout replay, mark translation, retained-resource synchronization,
-  placement computation/upload, draw normalization, encoding, and submission;
+- time in render-command replay (currently `layoutReplay`), mark translation,
+  retained-resource synchronization, placement computation/upload, draw
+  normalization, encoding, and submission;
 - allocated bytes, allocation rate, and garbage-collection pauses;
 - draw count, `writeBuffer` call count and bytes, placement uploads, pipeline
   creation, buffer recreation, and picking renders;
@@ -183,16 +260,27 @@ The final optimized result must satisfy all of these:
 - A closeup dynamic frame may compute and upload placement geometry, scale
   ranges, scrollbar state, and affected draw state, but does not run unrelated
   mark/data translation.
+- WASD navigation, closeup toggling, and closeup scrolling do not invoke layout
+  computation or view arrangement; this existing design constraint is guarded
+  independently from the render-command replay optimization.
 - No pipeline, bind group, GPU buffer, or texture is recreated during steady
   navigation or scrolling unless a capacity or structural revision requires it.
 - WebGL behavior and performance do not regress materially.
+- Every benchmark interaction used for comparison proves that it changed the
+  expected domain, closeup, scroll, or render state and captured a minimum
+  number of normal render frames. A browser-error-free no-op is not a pass.
 
-If platform noise prevents a strict CPU ordering, record the noise floor and
-require the confidence intervals to overlap while structural counters confirm
-that WebGPU performs only the intended dynamic work. Do not declare success
-solely because average frame time is below 16.7 ms.
+If platform noise prevents a strict CPU ordering, increase or repeat paired runs
+and report the uncertainty while structural counters confirm that WebGPU
+performs only the intended dynamic work. The original 50% maximum A/A bound
+must remain visible, but an optimization does not pass merely because it falls
+inside that broad tolerance. Do not declare success solely because average
+frame time is below 16.7 ms.
 
 ## Milestone 1: Establish the MCCA interaction benchmark
+
+Status: Implemented in `53acabc6a`; interaction-coverage acceptance is
+incomplete.
 
 ### Intended outcome
 
@@ -226,6 +314,13 @@ frames from intermittent stalls.
   and picking frame state.
 - Turn the baseline into explicit optimization priorities. Do not select a
   renderer redesign before this evidence is available.
+- Before using the harness as a regression gate, make each retained case assert
+  its intended state change and normal-render coverage. Fix focus, hover, and
+  closeup targeting for the currently empty/no-op WASD and open-closeup
+  samples. Make closeup wheel assert a changed SampleView scroll offset, and
+  remove the redundant scrollbar-drag case from the harness and reports.
+- Supply stable filter/sort controls for the private MCCA correctness run or
+  keep that control explicitly unverified rather than reporting full coverage.
 
 ### Affected areas and downstream consumers
 
@@ -239,6 +334,10 @@ frames from intermittent stalls.
 ### Verification
 
 - Run every scripted case under WebGL and WebGPU at least five times.
+- Reject a sample that captures no normal render frames or fails to change the
+  expected interaction state.
+- Assert that WASD, closeup toggle, and closeup wheel samples invoke neither
+  layout computation nor view arrangement.
 - Confirm that disabling instrumentation returns the same normal hot path and
   produces no production bundle growth beyond removable debug code.
 - Repeat one case interactively to verify that scripted motion represents the
@@ -248,6 +347,9 @@ frames from intermittent stalls.
   control rather than mixing it into steady-state timing.
 - Review gate: accept the baseline only when another developer or agent can
   reproduce the run and the report separates measurement from inference.
+- Current gate: the drag, wheel-zoom, and closeup-wheel measurements may guide
+  Milestone 2, but the benchmark does not become the complete regression gate
+  until the no-op cases above are corrected and rerun.
 
 ### Documentation or migration
 
@@ -259,12 +361,19 @@ Tentative commit: `perf(webgpu): establish MCCA interaction benchmarks`
 
 ## Milestone 2: Compile and retain the WebGPU frame plan
 
+Status: Next and highest priority. Do not begin implementation until the
+Milestone 1 interaction-coverage assertions are in place.
+
 ### Intended outcome
 
 WebGPU consumes `LayoutResult` and translates stable mark/draw topology only
 after structural invalidation. Ordinary paints reuse an adapter-owned frame
 plan while preserving paint order, picking order, facets, clipping, visibility,
-and resource lifetime behavior.
+and resource lifetime behavior. This targets the measured render-command replay
+and mark translation/configuration phases, which are the largest removable
+WebGPU CPU costs in both MCCA and the small control. The optimization removes
+repeated command collection from an existing layout; it does not change when
+Core computes layout or arranges views.
 
 ### Work
 
@@ -280,10 +389,11 @@ and resource lifetime behavior.
   values they are allowed to update without recompiling topology.
 - Add explicit structural invalidation for layout, mark/data topology,
   definition/pipeline shape, and disposal.
-- Resolve renderer draw normalization ownership in this milestone. Retain
-  renderer-generic normalized draw state or prove from Milestone 1 that repeated
-  normalization is immaterial. Do not leave two indefinitely maintained frame
-  graphs.
+- Keep renderer draw normalization and command encoding unchanged initially so
+  the retained Core plan's effect can be measured in isolation. Their measured
+  CPU cost is much smaller than render-command replay and mark translation;
+  revisit their ownership only in Milestone 5 if the post-retention profile
+  justifies it.
 - Keep normal and picking plans coherent without eagerly rendering the picking
   pass during navigation.
 
@@ -298,15 +408,23 @@ and resource lifetime behavior.
 
 ### Verification
 
-- Unit tests prove repeated paints do not recollect layout commands or rebuild
-  stable configurations.
+- Unit tests prove repeated paints do not recollect render commands from
+  `LayoutResult` or rebuild stable configurations.
 - Unit tests prove dynamic hooks retain their current once-per-view ordering and
-  every dynamic category remains fresh without layout replay.
+  every dynamic category remains fresh without render-command replay.
 - Existing WebGPU Core adapter, surface, placement, picking, and renderer tests
   remain green.
 - Compare WebGL/WebGPU screenshots and picking for representative ordinary,
   repeated, faceted, clipped, conditionally visible, and empty views.
 - Re-run the Milestone 1 benchmark and record allocation and CPU deltas.
+- Require domain-only benchmark frames to report zero render-command replay
+  (the existing `layoutReplay` counter), zero mark configuration, and zero
+  stable occurrence reconstruction after plan compilation. Closeup frames may
+  run their explicit dynamic phase but must not repeat general mark translation.
+  Separately require the existing layout-computation and arrangement counts to
+  remain zero for WASD and closeup interactions.
+- Compare against commit `53acabc6a` using the same hardware matrix. Preserve
+  both raw baseline artifacts and the generic harness as the regression gate.
 - Review gate: review the retained-plan ownership and invalidation contract
   before navigation or closeup implementation. Their profiling and fixtures may
   proceed in parallel when they do not edit the shared integration contract.
@@ -320,6 +438,8 @@ copying milestone detail.
 Tentative commit: `refactor(webgpu): retain compiled frame plans`
 
 ## Milestone 3: Make pan and zoom domain-only updates
+
+Status: Pending Milestone 2.
 
 ### Intended outcome
 
@@ -368,6 +488,8 @@ documentation is expected for an internal optimization.
 Tentative commit: `perf(webgpu): make navigation update scale state only`
 
 ## Milestone 4: Isolate closeup placement updates
+
+Status: Pending Milestone 3 by default.
 
 ### Intended outcome
 
@@ -424,10 +546,13 @@ Tentative commit: `perf(webgpu): isolate dynamic placement updates`
 
 ## Milestone 5: Remove remaining measured renderer hot spots
 
+Status: Pending the combined Milestone 3 and 4 review.
+
 ### Intended outcome
 
-After retained scale and closeup dynamic updates are in place, any remaining WebGPU
-CPU excess identified by the benchmark is removed without speculative layers.
+After retained scale and closeup dynamic updates are in place, any remaining
+WebGPU CPU excess identified by the benchmark is removed without speculative
+layers.
 
 This milestone begins after a combined review of Milestones 3 and 4. It is
 divisible by measured hotspot when the affected files and resource owners do
@@ -436,6 +561,14 @@ reviewable.
 
 ### Work
 
+- Reprofile before choosing work. Current measured follow-up candidates are
+  repeated draw-global uploads, per-mark scale writes, command encoding, draw
+  normalization, and placement copies. Their listed order is not a commitment;
+  choose from the post-retention profile and independent ownership boundaries.
+- Distinguish cumulative headline counts from per-frame cost. The baseline's
+  70 MB upload was accumulated over 278 renders and was dominated by about
+  0.23 MB of draw-global data per frame; do not optimize the headline total
+  without measuring its CPU or queue impact after frame retention.
 - Optimize draw normalization, command encoding, small buffer writes, staging,
   or allocation only where the post-Milestone-4 profile shows a material cost.
 - Batch compatible writes or retain scratch storage when it reduces measured
@@ -468,6 +601,8 @@ backlog for accepted or discarded work.
 Tentative commit: `perf(webgpu-renderer): remove measured interaction overhead`
 
 ## Milestone 6: Integrate, guard, and reconcile
+
+Status: Pending.
 
 ### Intended outcome
 
@@ -518,10 +653,13 @@ Tentative commit: `test(webgpu): guard retained interaction paths`
   Luna task because it requires broad inspection and disciplined repeated
   measurements more than novel renderer design. Luna needs the private fixture,
   local App server, and hardware-backed browser access. Headless or software-GPU
-  results do not replace final observation on the physical 60 Hz display.
+  results do not replace final observation on the physical 60 Hz display. The
+  remaining assignment is to add interaction-state/render-coverage assertions,
+  correct the WASD and closeup-toggle no-op cases, remove scrollbar drag, and
+  rerun the retained cells before optimization starts.
 - **Retained-plan agent (Milestone 2):** owns the Core/renderer lifetime and
-  invalidation contract. Keep this with one agent because it crosses the main
-  architectural boundary.
+  invalidation contract after the Milestone 1 coverage gate. Keep this with one
+  agent because it crosses the main architectural boundary.
 - **Navigation agent (Milestone 3):** begins after the Milestone 2 review gate
   and owns scale-only updates plus pan/zoom verification.
 - **Closeup agent (Milestone 4):** begins after Milestone 3 by default and owns
@@ -597,9 +735,11 @@ scene graph and should be introduced only for a concrete simplification.
   adapter-owned revision?
 - Can normal and picking draws share one retained topology with separate
   dynamic state, or is a small paired-plan representation clearer?
-- Does draw normalization remain material after Core frame retention, and if
-  so, should normalized draws be retained by Core's surface or by the renderer?
+- Does the currently small draw-normalization phase remain material after Core
+  frame retention, and if so, should normalized draws be retained by Core's
+  surface or by the renderer?
 - Are repeated per-mark scale buffer writes material in MCCA, or is a shared
-  scale resource unnecessary complexity?
+  scale resource unnecessary complexity? The wheel-zoom baseline observed about
+  15 writes per render, but did not isolate their CPU/queue cost.
 - Which browser trace or WebGPU timing signals are sufficiently portable for
   the benchmark report?
