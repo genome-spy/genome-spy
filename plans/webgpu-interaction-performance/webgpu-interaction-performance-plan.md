@@ -1,7 +1,7 @@
 # WebGPU interaction performance plan
 
-Status: Active. Milestone 1 tooling is implemented; interaction-coverage fixes
-are required before Milestone 2 optimization begins.
+Status: Milestone 1 is complete; Milestone 2 is unblocked for review and
+implementation.
 
 ## Context
 
@@ -88,6 +88,31 @@ path. Require the closeup-wheel case to prove that the SampleView scroll offset
 changed.
 Filtering or sorting followed by closeup was not exercised because selectors
 were not supplied.
+
+The correction identified three distinct causes. The harness sent keyboard
+events without focusing or hovering the visualization canvas, so Core's real
+keyboard dispatch guard discarded the keydown events. Horizontal WASD pan also
+started at the full x-domain boundary and needed an unmeasured keyboard-zoom
+setup step before `KeyD` could produce a domain change. Finally, `keyup KeyE`
+intentionally closes SampleView's peek state, so closeup wheel input must be
+held while `KeyE` is down and validate the observed open state rather than the
+state after key release. The small control contains a SampleView instance but
+does not have a scrollable closeup; its closeup cases are therefore explicitly
+inapplicable.
+
+The corrected rerun is in
+`output/webgpu-interaction-benchmark-mcca-coverage-corrected/`. It covered the
+four affected cases (`horizontal-wasd`, `wasd-zoom`, `open-closeup`, and
+`closeup-wheel`) on both renderers, both DPR 1 and 2, and five repetitions:
+160 records total, 120 passed applicable samples, 40 inapplicable control
+closeup samples, and zero failures. Every passed sample captured at least 115
+normal render frames. Keyboard probes observed `KeyD`, `KeyW`, or `KeyE` as
+expected; scale-domain, peek-state, and SampleView scroll-offset assertions
+rejected no-ops. The corrected run confirms `phaseTotals.layout === 0` for
+these layout-free interactions while retaining separate `layoutReplay`
+measurements for render-command collection from an existing `LayoutResult`.
+The valid drag and wheel-zoom measurements from the original artifact remain
+unchanged and are not reinterpreted by this affected-case rerun.
 
 The 50% practical-noise bound is the maximum A/A deviation and is too broad to
 serve as the only regression criterion. Preserve it in reports, but evaluate
@@ -279,8 +304,8 @@ frame time is below 16.7 ms.
 
 ## Milestone 1: Establish the MCCA interaction benchmark
 
-Status: Implemented in `53acabc6a`; interaction-coverage acceptance is
-incomplete.
+Status: Complete in `53acabc6a` and correction commit `c7e0c61ff`; the
+interaction-coverage gate is complete.
 
 ### Intended outcome
 
@@ -315,10 +340,11 @@ frames from intermittent stalls.
 - Turn the baseline into explicit optimization priorities. Do not select a
   renderer redesign before this evidence is available.
 - Before using the harness as a regression gate, make each retained case assert
-  its intended state change and normal-render coverage. Fix focus, hover, and
-  closeup targeting for the currently empty/no-op WASD and open-closeup
-  samples. Make closeup wheel assert a changed SampleView scroll offset, and
-  remove the redundant scrollbar-drag case from the harness and reports.
+  its intended state change and normal-render coverage. Completed: the harness
+  establishes the real canvas focus/hover path, verifies keyboard mapping,
+  rejects no-ops, marks unsupported closeups inapplicable, requires normal
+  render frames, and removes the redundant scrollbar-drag case from the
+  harness and reports.
 - Supply stable filter/sort controls for the private MCCA correctness run or
   keep that control explicitly unverified rather than reporting full coverage.
 
@@ -333,23 +359,28 @@ frames from intermittent stalls.
 
 ### Verification
 
-- Run every scripted case under WebGL and WebGPU at least five times.
-- Reject a sample that captures no normal render frames or fails to change the
-  expected interaction state.
-- Assert that WASD, closeup toggle, and closeup wheel samples invoke neither
-  layout computation nor view arrangement.
+- Completed the corrected affected-case rerun under WebGL and WebGPU at DPR 1
+  and 2 with five repetitions on Apple M5 / Metal 3 hardware: 120 applicable
+  samples passed and 40 unsupported control closeup samples were inapplicable.
+- Reject a sample that captures fewer than three normal render frames or fails
+  to change the expected interaction state. Focused tests cover pass, no-op
+  failure, and inapplicable handling.
+- Asserted that WASD, closeup toggle, and closeup wheel samples invoke neither
+  layout computation nor view arrangement. The report keeps `layoutReplay`
+  (render-command collection from an existing `LayoutResult`) separate from
+  actual `layout` computation.
 - Confirm that disabling instrumentation returns the same normal hot path and
   produces no production bundle growth beyond removable debug code.
 - Repeat one case interactively to verify that scripted motion represents the
   observed judder.
-- Compare repeated open/close transitions, hover and picking after motion, and
-  filtering or sorting followed by closeup. Include resize as a correctness
-  control rather than mixing it into steady-state timing.
+- Compared repeated open/close transitions, hover and picking after motion, and
+  resize as correctness controls. Filtering or sorting followed by closeup
+  remains explicitly unverified because no stable selectors were supplied.
 - Review gate: accept the baseline only when another developer or agent can
   reproduce the run and the report separates measurement from inference.
-- Current gate: the drag, wheel-zoom, and closeup-wheel measurements may guide
-  Milestone 2, but the benchmark does not become the complete regression gate
-  until the no-op cases above are corrected and rerun.
+- Current gate: complete for Milestone 1. The original valid drag and
+  wheel-zoom measurements remain available, and the corrected affected cases
+  now provide state-change, render-coverage, and layout-free assertions.
 
 ### Documentation or migration
 
@@ -357,7 +388,7 @@ Document invocation, environment metadata, output format, and interpretation
 in the profiling harness README or script help. Add only a short reference from
 the renderer migration backlog; do not duplicate this plan there.
 
-Tentative commit: `perf(webgpu): establish MCCA interaction benchmarks`
+Benchmark correction commit: `c7e0c61ff`
 
 ## Milestone 2: Compile and retain the WebGPU frame plan
 
