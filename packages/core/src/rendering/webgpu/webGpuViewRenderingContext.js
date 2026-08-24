@@ -157,7 +157,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     #prepareMarkState(state, canvas) {
         const explicitSources = new Set(
             state.occurrences
-                .map((occurrence) => occurrence.options.placement?.source)
+                .map((occurrence) => {
+                    const placement = occurrence.options.placement;
+                    return state.indexed || placement?.index !== undefined
+                        ? placement?.source
+                        : undefined;
+                })
                 .filter(Boolean)
         );
         if (explicitSources.size > 1) {
@@ -167,21 +172,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             );
         }
 
-        const explicitSource = explicitSources.values().next().value;
-        const indexedSource = state.indexed
-            ? findPlacementSource(state.mark)
-            : undefined;
-        if (
-            explicitSource &&
-            indexedSource &&
-            explicitSource !== indexedSource
-        ) {
-            throw createViewError(
-                state.mark,
-                "Indexed placement disagrees with the occurrence placement source."
-            );
-        }
-        const resolvedSource = explicitSource ?? indexedSource;
+        const resolvedSource = explicitSources.values().next().value;
         state.generatedSource = !resolvedSource && state.occurrences.length > 1;
         if (state.generatedSource) {
             const rectangles = new Float32Array(state.occurrences.length * 4);
@@ -433,16 +424,6 @@ function localizeVisibleRange(range, owner) {
         x2: range.x2 - owner.x,
         y2: range.y2 - owner.y,
     };
-}
-
-/** @param {import("../../marks/mark.js").default} mark */
-function findPlacementSource(mark) {
-    for (const view of mark.unitView.getLayoutAncestors()) {
-        const source = view.getPlacementSource?.();
-        if (source) {
-            return source;
-        }
-    }
 }
 
 /**

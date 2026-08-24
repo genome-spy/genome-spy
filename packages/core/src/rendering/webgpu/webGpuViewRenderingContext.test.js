@@ -247,7 +247,6 @@ describe("WebGpuViewRenderingContext", () => {
             { picking: false },
             { surface: /** @type {any} */ (surface) }
         );
-        const sampleView = { getPlacementSource: () => source };
         const view = { onBeforeRender: vi.fn() };
         const mark = {
             encoders: { facetIndex: vi.fn() },
@@ -255,7 +254,6 @@ describe("WebGpuViewRenderingContext", () => {
             unitView: {
                 getEffectiveOpacity: () => 1,
                 getCollector: () => ({}),
-                getLayoutAncestors: () => [sampleView],
             },
         };
 
@@ -263,7 +261,12 @@ describe("WebGpuViewRenderingContext", () => {
             /** @type {any} */ (view),
             Rectangle.create(20, 30, 100, 80)
         );
-        context.renderMark(/** @type {any} */ (mark), {});
+        context.renderMark(/** @type {any} */ (mark), {
+            placement: {
+                source,
+                topologyRevision: source.getSnapshot().topology.revision,
+            },
+        });
         context.popView(/** @type {any} */ (view));
         context.finish();
 

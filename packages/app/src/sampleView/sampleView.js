@@ -1005,11 +1005,6 @@ export default class SampleView extends ContainerView {
                 sampleFacetRenderingOptions: {
                     locSize: sampleLocation.locSize,
                     pixelToUnit,
-                    placementSource,
-                    placementIndex: this.locationManager.getPlacementIndex(
-                        sampleLocation.key
-                    ),
-                    placementTopologyRevision,
                 },
                 placement: {
                     source: placementSource,
@@ -1224,10 +1219,19 @@ export default class SampleView extends ContainerView {
             locations
         );
 
+        const placementSource = this.locationManager.getPlacementSource();
+        const sidebarOptions = {
+            ...options,
+            placement: {
+                source: placementSource,
+                topologyRevision:
+                    placementSource.getSnapshot().topology.revision,
+            },
+        };
         this.#sidebarView.arrange(
             context,
             this.sidebarCoords.expand(alignedOverhangs.sidebarVerticalOverhang),
-            options
+            sidebarOptions
         );
 
         this.#arrangeChild(context, this.childCoords, options);
@@ -1269,16 +1273,9 @@ export default class SampleView extends ContainerView {
         this.#scrollbarOpacitySetter(this.locationManager.getPeekState());
     }
 
-    /** @returns {import("@genome-spy/core/view/layout/placementSource.js").default} */
-    getPlacementSource() {
-        return this.locationManager.getPlacementSource();
-    }
-
-    /**
-     * @param {number} index
-     */
-    getSampleFacetPosition(index) {
-        return this.locationManager.getSampleFacetPosition(index);
+    /** @returns {boolean} */
+    usesSampleFacetRendering() {
+        return true;
     }
 
     /**

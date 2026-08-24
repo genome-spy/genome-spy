@@ -1431,6 +1431,11 @@ describe("layout and group column", () => {
         expect(
             normalizeClipOptions(renderContext.sampleLabels[0])
         ).toBeDefined();
+        expect(renderContext.sampleLabels[0].placement).toMatchObject({
+            source: expect.any(PlacementSource),
+            topologyRevision: 1,
+        });
+        expect(renderContext.sampleLabels[0].placement.index).toBeUndefined();
     });
 
     test("does not clip sample groups to the sticky summary viewport", async () => {

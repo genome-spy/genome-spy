@@ -1235,23 +1235,13 @@ export default class View {
     }
 
     /**
-     * Returns a renderer-neutral placement source owned by this view, if any.
-     * Rendering backends may use it to derive their own resources.
-     * @returns {import("./layout/placementSource.js").default | undefined}
+     * Whether descendant marks need the sample-facet shader transform.
+     * The owning layout view declares this explicitly; renderer resources are
+     * carried separately in rendering options.
+     * @returns {boolean}
      */
-    getPlacementSource() {
-        return undefined;
-    }
-
-    /**
-     * Returns the normalized location of a sample facet for compatibility with
-     * callers that have not migrated to PlacementSource yet.
-     *
-     * @param {number} index
-     * @returns {import("./layout/flexLayout.js").LocSize | undefined}
-     */
-    getSampleFacetPosition(index) {
-        return undefined;
+    usesSampleFacetRendering() {
+        return this.layoutParent?.usesSampleFacetRendering() ?? false;
     }
 
     /**

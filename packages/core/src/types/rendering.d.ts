@@ -19,15 +19,6 @@ export interface SampleFacetRenderingOptions {
      * Multiply pixel-based locSize values to unit scale.
      */
     pixelToUnit: number;
-
-    /** Renderer-neutral source used by repeated placement consumers. */
-    placementSource?: PlacementSource;
-
-    /** Dense index into placementSource. */
-    placementIndex?: number;
-
-    /** Topology revision captured while resolving the placement index. */
-    placementTopologyRevision?: number;
 }
 
 export interface PlacementRenderingOptions {

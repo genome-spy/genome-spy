@@ -655,11 +655,7 @@ export default class Mark {
     getSampleFacetMode() {
         if (this.encoders.facetIndex) {
             return SAMPLE_FACET_TEXTURE;
-        } else if (
-            this.unitView
-                .getLayoutAncestors()
-                .find((view) => view.getPlacementSource?.())
-        ) {
+        } else if (this.unitView.usesSampleFacetRendering()) {
             return SAMPLE_FACET_UNIFORM;
         }
     }
@@ -1490,15 +1486,7 @@ export default class Mark {
 
         if (this.getSampleFacetMode() == SAMPLE_FACET_TEXTURE) {
             ops.push(() => {
-                /** @type {import("../view/layout/placementSource.js").default | undefined} */
-                let source = options.placement?.source;
-                for (const view of this.unitView.getLayoutAncestors()) {
-                    source ??= view.getPlacementSource?.();
-                    if (source) {
-                        break;
-                    }
-                }
-
+                const source = options.placement?.source;
                 if (!source) {
                     throw new Error("No placement source available.");
                 }

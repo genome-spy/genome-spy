@@ -51,7 +51,10 @@ export function visitMarkOccurrences(
             mark.encoders.facetIndex,
             data
         )) {
-            const locSize = getSampleFacetPosition(mark, facetIndex);
+            const locSize = getPlacementPosition(
+                options.placement?.source,
+                facetIndex
+            );
             if (locSize) {
                 visitor(
                     getSampleFacetCoords(coords, {
@@ -83,27 +86,21 @@ function getSampleFacetCoords(coords, facet) {
 }
 
 /**
- * @param {import("../../marks/mark.js").default} mark
+ * @param {import("../../view/layout/placementSource.js").default | undefined} source
  * @param {number} index
  * @returns {import("../../view/layout/flexLayout.js").LocSize | undefined}
  */
-function getSampleFacetPosition(mark, index) {
-    for (const view of mark.unitView.getLayoutAncestors()) {
-        const source = view.getPlacementSource?.();
-        if (source) {
-            const rectangles = source.getSnapshot().rectangles;
-            const offset = index * 4;
-            if (offset + 3 < rectangles.length) {
-                return {
-                    location: rectangles[offset + 1],
-                    size: rectangles[offset + 3],
-                };
-            }
-        }
-        const position = view.getSampleFacetPosition(index);
-        if (position) {
-            return position;
-        }
+function getPlacementPosition(source, index) {
+    if (!source) {
+        return undefined;
+    }
+    const rectangles = source.getSnapshot().rectangles;
+    const offset = index * 4;
+    if (offset + 3 < rectangles.length) {
+        return {
+            location: rectangles[offset + 1],
+            size: rectangles[offset + 3],
+        };
     }
 }
 

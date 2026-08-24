@@ -1350,7 +1350,7 @@ boundaries, and simplification remain separately reviewable.
   command graph and resubmitting the GPU pass for every pointer move. Match the
   WebGL coordinator's dirty-frame semantics and invalidate on visible renders.
   Tentative commit: `fix(core): reuse clean WebGPU picking frames`.
-- [ ] Remove placement-source discovery through layout ancestors. Completed
+- [x] Remove placement-source discovery through layout ancestors. Completed
   layout occurrences must carry placement explicitly; indexed marks that are
   arranged once for the whole placement set need an explicit owner-provided
   placement binding rather than renderer-side view discovery.
