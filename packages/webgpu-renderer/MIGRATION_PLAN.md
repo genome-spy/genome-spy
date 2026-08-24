@@ -1,8 +1,9 @@
 # WebGPU renderer migration backlog
 
-Status: Ongoing package work during Core retained-frame optimization.
+Status: Core retained-frame optimization is complete; the independent package
+parity and cleanup backlog remains ongoing.
 
-Active interaction profiling and retained-frame work is specified in
+Final interaction evidence and the pending manual 60 Hz check are specified in
 `plans/webgpu-interaction-performance/webgpu-interaction-performance-plan.md`.
 Keep measurement and milestone detail there rather than duplicating it here.
 

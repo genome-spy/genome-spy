@@ -1,8 +1,9 @@
 # WebGPU interaction performance plan
 
-Status: Milestones 1 and 2 are complete. Milestone 3 targets the remaining
-fixed retained-resource synchronization cost. The separate closeup placement
-milestone is discarded because its measured cost is immaterial.
+Status: Milestones 1–3 are complete. Milestones 4 and 5 are discarded because
+the final profile does not justify closeup-specific or renderer-level cleanup.
+Milestone 6 automated integration is complete; manual 60 Hz observation and
+plan retirement remain.
 
 ## Context
 
@@ -557,7 +558,7 @@ Implementation commits: `d1f9539d7`, `be73fc73b`, `62f725840`, and
 
 ## Milestone 3: Skip unrelated retained-resource scans
 
-Status: Implementation complete; authoritative regression gate pending.
+Status: Complete in `42b676ce1` and `ac26e1b30`.
 
 ### Intended outcome
 
@@ -618,6 +619,23 @@ smaller and simpler than a general dependency graph.
   and total mark translation by about 28% to 38%. Control checks fell from 10
   to 3; its smaller timings improved or stayed within diagnostic noise. WASD,
   closeup transition, closeup wheel, picking, and resize checks passed.
+- The authoritative DPR 1 navigation gate is in
+  `output/webgpu-interaction-benchmark-m3-dirty-marks-dpr1/`: all 40 samples
+  passed. MCCA WebGPU/WebGL median CPU ratios were `0.71x` for horizontal WASD
+  and `0.75x` for WASD zoom. The control ratios were `1.0x` and `1.25x`; the
+  latter was a 0.1 ms absolute difference. The combined median ratio was
+  `1.0x`, with a 20% A/A bound.
+- The matching closeup gate is in
+  `output/webgpu-interaction-benchmark-m3-closeup-dpr1/`: 20 applicable MCCA
+  samples passed, 20 control samples were inapplicable, and none failed.
+  WebGPU/WebGL ratios were `0.84x` for the transition and `1.07x` for closeup
+  wheel, within its 11% A/A bound. Correctness controls for repeated
+  transitions, hover/picking, and resize passed in both final gates.
+- The final headed Chromium runs used an approximately 8.3 ms rAF cadence,
+  indicating a 120 Hz presentation path rather than the requested 60 Hz
+  display path. Their within-run CPU ratios and structural counters remain
+  valid, but their cadence is not compared with the earlier 60 Hz gate. The
+  earlier Milestone 2 matrix and focused closeup checks retain 60 Hz coverage.
 - Focused tests assert that domain-only frames update required scale slots,
   skip unrelated retained marks, and submit retained draws without plan
   compilation or data/placement updates.
@@ -631,7 +649,7 @@ smaller and simpler than a general dependency graph.
 Document any new renderer-generic shared scale/update contract. No user-facing
 documentation is expected for an internal optimization.
 
-Tentative commit: `perf(core): skip unchanged WebGPU slot scans`
+Implementation commits: `42b676ce1` and `ac26e1b30`
 
 ## Milestone 4: Isolate closeup placement updates
 
@@ -651,6 +669,8 @@ without addressing the measured hotspot. Milestone 3's generic synchronization
 work still applies to closeup frames.
 
 ### Work
+
+The following work is discarded unless later profiling reopens this milestone:
 
 - Preserve App ownership of closeup interpolation, scrolling, group ranges,
   scrollbar state, and `PlacementSource` publication.
@@ -689,11 +709,13 @@ work still applies to closeup frames.
 Update architecture documentation only if placement ownership or revision
 semantics change. Do not document SampleView behavior in the renderer package.
 
-Tentative commit: `perf(webgpu): isolate dynamic placement updates`
+Tentative commit: Discarded.
 
 ## Milestone 5: Remove remaining measured renderer hot spots
 
-Status: Pending Milestone 3.
+Status: Discarded after the Milestone 3 gates. Navigation and closeup are at
+practical CPU parity, and the remaining absolute control difference is too
+small to justify renderer complexity.
 
 ### Intended outcome
 
@@ -707,6 +729,9 @@ not overlap. Each accepted change should remain independently benchmarkable and
 reviewable.
 
 ### Work
+
+The following work is discarded unless a later regression identifies a
+material renderer hotspot:
 
 - Reprofile before choosing work. Current measured follow-up candidates are
   repeated draw-global uploads, per-mark scale writes, command encoding, draw
@@ -745,11 +770,12 @@ reviewable.
 Update renderer documentation for public contract changes and the migration
 backlog for accepted or discarded work.
 
-Tentative commit: `perf(webgpu-renderer): remove measured interaction overhead`
+Tentative commit: Discarded.
 
 ## Milestone 6: Integrate, guard, and reconcile
 
-Status: Pending.
+Status: Automated integration complete. Manual 60 Hz observation and plan
+retirement remain.
 
 ### Intended outcome
 
@@ -760,12 +786,16 @@ the private fixture in automated CI.
 ### Work
 
 - Re-run the complete MCCA profiling matrix and publish the final comparison
-  beside the baseline.
-- Extract a small repository-owned stress fixture that reproduces the dominant
-  retained scale and placement behavior without copying private MCCA data.
+  beside the baseline. Completed as two same-commit DPR 1 gates for navigation
+  and closeup so unsupported control closeups remain explicit.
+- Use the existing repository-owned small control for fixed-overhead
+  regression coverage. A new MCCA-shaped stress fixture is discarded because
+  structural unit tests cover forbidden replay and dirty-mark behavior without
+  copying or approximating private data.
 - Add lightweight structural regression checks for forbidden work on
-  domain-only and closeup dynamic frames. Keep timing thresholds out of
-  ordinary CI unless the runner environment is controlled.
+  domain-only and closeup dynamic frames. Completed with retained-plan reuse,
+  packed/config/resource revision, and stable-mark skip tests. Timing thresholds
+  remain outside ordinary CI because the runner environment is uncontrolled.
 - Reconcile every plan item as completed or discarded and update the renderer
   migration backlog before retiring this plan.
 
@@ -777,11 +807,16 @@ the private fixture in automated CI.
 
 ### Verification
 
-- Run renderer type, unit, lint, GPU, bundle, and package checks.
-- Run focused Core WebGPU adapter/surface/context tests and App SampleView tests.
-- Compare representative WebGL/WebGPU rendering and picking at DPR 1 and 2.
+- Renderer type, lint, build, tree-shaking, and package-content checks passed.
+  The package fixtures remain 4,930 bytes gzip for the renderer-only import and
+  5,010 bytes for a custom identity mark. All 52 hardware GPU tests passed.
+- All 622 focused Core WebGPU, renderer, and App SampleView tests passed. Core
+  and App TypeScript checks passed.
+- Compare representative WebGL/WebGPU rendering and picking at DPR 1. Add a
+  higher-DPR sensitivity run only for pixel-count-dependent changes.
 - Manually verify MCCA pan, zoom, both closeup transitions, vertical scrolling,
-  and picking after motion on the reference 60 Hz display.
+  and picking after motion on the reference 60 Hz display. Pending because the
+  final headed automation presented at 120 Hz.
 - Final review gate: inspect cross-milestone invalidation, disposal, picking,
   performance evidence, KISS conformance, and public API footprint.
 
@@ -795,33 +830,21 @@ Tentative commit: `test(webgpu): guard retained interaction paths`
 
 ## Subagent assignment and dependency map
 
-- **Profiling agent (Milestone 1):** owns the benchmark driver, reproducibility,
-  baseline collection, and attribution report. This is an appropriate bounded
-  Luna task because it requires broad inspection and disciplined repeated
-  measurements more than novel renderer design. Luna needs the private fixture,
-  local App server, and hardware-backed browser access. Headless or software-GPU
-  results do not replace final observation on the physical 60 Hz display. The
-  remaining assignment is to add interaction-state/render-coverage assertions,
-  correct the WASD and closeup-toggle no-op cases, remove scrollbar drag, and
-  rerun the retained cells before optimization starts.
-- **Retained-plan agent (Milestone 2):** owns the Core/renderer lifetime and
-  invalidation contract after the Milestone 1 coverage gate. Keep this with one
-  agent because it crosses the main architectural boundary.
-- **Navigation agent (Milestone 3):** begins after the Milestone 2 review gate
-  and owns scale-only updates plus pan/zoom verification.
-- **Closeup agent (Milestone 4):** begins after Milestone 3 by default and owns
-  App placement behavior plus Core/renderer placement synchronization. Its
-  profiling and fixtures may be prepared earlier without editing the shared
-  integration contract.
-- **Hotspot agents (Milestone 5):** split only by independent measured hotspot;
-  do not assign agents to speculative optimizations.
+- **Profiling agent (Milestone 1):** completed the benchmark driver, corrected
+  interaction coverage, baseline collection, and attribution report.
+- **Retained-plan owner (Milestone 2):** completed the Core/renderer lifetime
+  and invalidation contract as one architectural slice.
+- **Navigation owner (Milestone 3):** completed dirty-mark synchronization and
+  the final navigation and closeup gates.
+- **Closeup agent (Milestone 4):** not assigned; dedicated placement work was
+  discarded after profiling showed immaterial cost.
+- **Hotspot agents (Milestone 5):** not assigned; the final comparison did not
+  justify renderer-level cleanup.
 - **Integration owner (Milestone 6):** reconciles overlapping changes and runs
   the final cross-backend matrix. This should not be delegated piecemeal.
 
-Agents working in parallel must not edit the shared retained-plan contract
-independently. Contract changes discovered by navigation or closeup work return
-to the Milestone 2 owner or are coordinated before implementation. Review
-Milestones 3 and 4 together before starting measured renderer cleanup.
+No remaining milestone should reopen the retained-plan or renderer contract
+without new benchmark evidence.
 
 ## Alternatives considered
 
