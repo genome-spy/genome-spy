@@ -1341,7 +1341,7 @@ boundaries, and simplification remain separately reviewable.
   placement set is replaced. Cover picking after both buffer growth and logical
   count shrinkage.
   Tentative commit: `fix(webgpu-renderer): invalidate replaced placements`.
-- [ ] Remove the elevated `maxStorageBuffersPerShaderStage` request and verify
+- [x] Remove the elevated `maxStorageBuffersPerShaderStage` request and verify
   the most resource-heavy placement-enabled pipelines against the WebGPU
   default limit. Consolidate renderer-private bindings if required without
   changing the public placement contract.

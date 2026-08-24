@@ -7,7 +7,7 @@ import { ensureWebGPU } from "./gpuTestUtils.js";
 test("placed rules preserve their pixel stroke width", async ({ page }) => {
     await ensureWebGPU(page);
 
-    const pickedIds = await page.evaluate(async () => {
+    const result = await page.evaluate(async () => {
         const [{ createRenderer }, { ruleMark }] = await Promise.all([
             import("/src/index.js"),
             import("/src/marks/rule.js"),
@@ -48,8 +48,15 @@ test("placed rules preserve their pixel stroke width", async ({ page }) => {
         const ids = [await renderer.pick(32, 27), await renderer.pick(32, 29)];
         renderer.destroy();
         canvas.remove();
-        return ids;
+        return {
+            ids,
+            maxStorageBuffersPerShaderStage:
+                renderer.device.limits.maxStorageBuffersPerShaderStage,
+        };
     });
 
-    expect(pickedIds).toEqual([17, null]);
+    expect(result).toEqual({
+        ids: [17, null],
+        maxStorageBuffersPerShaderStage: 8,
+    });
 });

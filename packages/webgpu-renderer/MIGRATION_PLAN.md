@@ -311,12 +311,13 @@ set dirty flags, avoiding normalization/rebuild work on hot paths.
 
 ### Binding mitigation (storage buffer limit = 8)
 
-We already hit the vertex-stage storage buffer cap. Mitigation options are
-listed in recommended order:
+Packed series and stage-specific bindings keep the current tested placement
+pipelines within the default vertex-stage storage buffer cap. Further
+mitigation options remain listed in recommended order:
 
-0. **Temporary limit bump (stopgap)** — request
-   `maxStorageBuffersPerShaderStage=10` if the adapter supports it. Remove
-   once packed-series usage keeps us under the default limit.
+0. **Default storage-buffer limit** — OK. The temporary limit bump has been
+   removed; renderer creation requests a default device and placement-enabled
+   GPU tests assert the guaranteed limit of eight bindings.
 1. **Binding dedupe by shared arrays** — OK. Channels that share a
    `TypedArray` at mark creation re-use one binding; updates must keep the
    group shared.
