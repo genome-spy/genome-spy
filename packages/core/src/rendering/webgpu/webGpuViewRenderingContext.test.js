@@ -1,19 +1,25 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-    createWebGpuMarkConfig: vi.fn(() => ({
-        definition: {},
-        config: {},
-    })),
-    getPackedMarkData: vi.fn(() => ({ data: [{}] })),
-    getPackedMarkRange: vi.fn(() => ({
-        firstInstance: 0,
-        instanceCount: 1,
-    })),
-}));
+const mocks = vi.hoisted(() => {
+    const packed = { data: [{}] };
+    return {
+        packed,
+        createWebGpuMarkConfig: vi.fn(() => ({
+            definition: {},
+            config: {},
+        })),
+        getWebGpuMarkConfigRevision: vi.fn(() => 0),
+        getPackedMarkData: vi.fn(() => packed),
+        getPackedMarkRange: vi.fn(() => ({
+            firstInstance: 0,
+            instanceCount: 1,
+        })),
+    };
+});
 
 vi.mock("./webGpuMarkAdapter.js", () => ({
     createWebGpuMarkConfig: mocks.createWebGpuMarkConfig,
+    getWebGpuMarkConfigRevision: mocks.getWebGpuMarkConfigRevision,
     getPackedMarkData: mocks.getPackedMarkData,
     getPackedMarkRange: mocks.getPackedMarkRange,
 }));
@@ -24,6 +30,8 @@ import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 
 beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getPackedMarkData.mockReturnValue(mocks.packed);
+    mocks.getWebGpuMarkConfigRevision.mockReturnValue(0);
 });
 
 describe("WebGpuViewRenderingContext", () => {
@@ -104,7 +112,7 @@ describe("WebGpuViewRenderingContext", () => {
             markCoords.width,
             markCoords.height,
         ]).toEqual([20.5, 30.5, 100, 80]);
-        expect(adapterCalls[0][3]).toBe(0.25);
+        expect(adapterCalls[0][3]()).toBe(0.25);
 
         expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {});
         expect(surface.drawMark).toHaveBeenCalledWith(mark, {
@@ -236,7 +244,7 @@ describe("WebGpuViewRenderingContext", () => {
         context.render({ picking: false });
         context.render({ picking: false });
 
-        expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledTimes(2);
+        expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledOnce();
         const adapterCalls = /** @type {any[][]} */ (
             mocks.createWebGpuMarkConfig.mock.calls
         );
@@ -270,6 +278,14 @@ describe("WebGpuViewRenderingContext", () => {
         expect(
             surface.drawMark.mock.calls.map((call) => call[1].placement.index)
         ).toEqual([0, 1, 0, 1]);
+
+        mocks.getPackedMarkData.mockReturnValue({ data: [{ updated: true }] });
+        context.render({ picking: false });
+        expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledTimes(2);
+
+        mocks.getWebGpuMarkConfigRevision.mockReturnValue(1);
+        context.render({ picking: false });
+        expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledTimes(3);
     });
 
     test("coalesces facet-indexed data into one placement draw", () => {

@@ -438,12 +438,30 @@ function makeRetainableConfig(config) {
         channels: Object.fromEntries(
             Object.entries(config.channels).map(([name, channel]) => [
                 name,
-                channel.value !== undefined && typeof channel.value != "string"
-                    ? { ...channel, dynamic: true }
-                    : channel,
+                makeRetainableChannel(channel),
             ])
         ),
     };
+}
+
+/** @param {any} channel */
+function makeRetainableChannel(channel) {
+    const retained = { ...channel };
+    if (retained.value !== undefined && typeof retained.value != "string") {
+        retained.dynamic = true;
+    }
+    if (retained.conditions) {
+        retained.conditions = retained.conditions.map(
+            (/** @type {any} */ condition) =>
+                condition.channel
+                    ? {
+                          ...condition,
+                          channel: makeRetainableChannel(condition.channel),
+                      }
+                    : condition
+        );
+    }
+    return retained;
 }
 
 /**

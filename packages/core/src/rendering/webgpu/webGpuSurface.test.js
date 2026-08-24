@@ -75,6 +75,9 @@ import WebGpuSurface from "./webGpuSurface.js";
 
 beforeEach(() => {
     vi.clearAllMocks();
+    mocks.handle.values = {
+        size: { default: { set: vi.fn() } },
+    };
     mocks.handle.extraValues = {};
     mocks.handle.scalarSlots = {};
     mocks.handle.selections = {};
@@ -554,6 +557,62 @@ describe("WebGpuSurface", () => {
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
         expect(mocks.handle.series.replace).not.toHaveBeenCalled();
         expect(selectionSet).toHaveBeenCalledOnce();
+    });
+
+    test("updates a live conditional value through its retained slot", async () => {
+        const conditionalSet = vi.fn();
+        /** @type {any} */ (mocks.handle.values).fill = {
+            conditions: { chosen: { set: conditionalSet } },
+        };
+        const container = document.createElement("div");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({})
+        );
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "point" })
+            );
+        let value = 0.25;
+        const config = {
+            count: 1,
+            channels: {
+                fill: {
+                    value: 0,
+                    conditions: [
+                        {
+                            when: { selection: "chosen", type: "single" },
+                            channel: {
+                                get value() {
+                                    return value;
+                                },
+                            },
+                        },
+                    ],
+                },
+            },
+        };
+
+        surface.useMark(mark, definition, config);
+        value = 0.75;
+        surface.useMark(mark, definition, config);
+
+        const rendererConfig = /** @type {any[][]} */ (
+            mocks.renderer.createMark.mock.calls
+        )[0][1];
+        expect(rendererConfig.channels.fill.conditions[0].channel.dynamic).toBe(
+            true
+        );
+        expect(conditionalSet).toHaveBeenCalledOnce();
+        expect(conditionalSet).toHaveBeenCalledWith(0.75);
     });
 
     test("updates dynamic extra uniforms without recreating a mark", async () => {

@@ -29,7 +29,10 @@ for the backend-neutral lifecycle and the
    `LayoutResult`.
 4. `webGpuMarkAdapter.js` translates Core encoders, resolved scales,
    selections, properties, and typed series into a renderer mark definition and
-   configuration. Unsupported behavior fails here with a contextual error.
+   configuration. The plan caches this shape until packed data or an
+   expression-backed series changes; scale, opacity, uniform, scalar, and
+   selection leaves stay live. Unsupported behavior fails here with a
+   contextual error.
 5. `WebGpuSurface` creates or updates one retained renderer handle per logical
    mark, resolves renderer-owned placement sets, appends ordered draw commands,
    and submits the frame.
@@ -43,7 +46,9 @@ rendering, data, or retained state invalidates it.
 Core mark identity is the retained resource key. Repeated occurrences and
 facets reuse the same renderer mark instead of duplicating pipelines or data.
 Compatible changes update series, scale, value, scalar, and selection slots in
-one batch; changing the renderer definition recreates the handle.
+one batch. `WebGpuSurface` compares live leaves against immutable snapshots, so
+reusing the same config object does not suppress updates. Changing the renderer
+definition recreates the handle.
 
 Collector data revision and placement topology control packed-series caches.
 Layout-only geometry changes update placement resources without repacking

@@ -13,6 +13,7 @@ import {
 } from "../../debug/performanceProfiler.js";
 import {
     createWebGpuMarkConfig,
+    getWebGpuMarkConfigRevision,
     getPackedMarkData,
     getPackedMarkRange,
 } from "./webGpuMarkAdapter.js";
@@ -95,9 +96,11 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 indexed: mark.encoders?.facetIndex !== undefined,
                 submittedIndexed: false,
                 updated: false,
+                active: false,
                 ownerCoords: undefined,
                 definition: undefined,
                 config: undefined,
+                configRevision: -1,
             };
             this.#marks.set(mark, state);
         }
@@ -161,12 +164,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         for (const state of this.#marks.values()) {
             state.submittedIndexed = false;
             state.updated = false;
-            state.packed = undefined;
-            state.definition = undefined;
-            state.config = undefined;
-            measurePerformance("markConfiguration", () =>
-                this.#prepareMarkState(state, picking)
-            );
+            state.active = false;
+            this.#prepareMarkState(state, picking);
         }
         for (const occurrence of this.#occurrences) {
             this.#submitOccurrence(occurrence, picking);
@@ -242,33 +241,50 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
         this.#validatePlacementTopology(state);
 
-        state.packed = getPackedMarkData(
+        const packed = getPackedMarkData(
             state.mark,
             state.generatedSource ? undefined : state.source
         );
-        if (!state.packed.data.length) {
+        if (!packed.data.length) {
             return;
         }
 
-        const first = state.occurrences[0];
-        const configCoords = state.source
-            ? Rectangle.create(
-                  0,
-                  0,
-                  state.ownerCoords.width,
-                  state.ownerCoords.height
-              )
-            : state.ownerCoords;
-        const translated = createWebGpuMarkConfig(
-            state.mark,
-            first.options,
-            configCoords,
-            viewOpacity,
-            state.packed.data,
-            state.source && !state.indexed ? { source: "draw" } : undefined
-        );
-        state.definition = translated?.definition;
-        state.config = translated?.config;
+        const configRevision = getWebGpuMarkConfigRevision(state.mark);
+        const packedChanged = state.packed !== packed;
+        const expressionChanged = state.configRevision !== configRevision;
+        if (packedChanged || expressionChanged) {
+            countPerformance(
+                packedChanged
+                    ? "markConfigurationPackedMiss"
+                    : "markConfigurationExpressionMiss"
+            );
+            const first = state.occurrences[0];
+            const configCoords = state.source
+                ? Rectangle.create(
+                      0,
+                      0,
+                      state.ownerCoords.width,
+                      state.ownerCoords.height
+                  )
+                : state.ownerCoords;
+            const translated = measurePerformance("markConfiguration", () =>
+                createWebGpuMarkConfig(
+                    state.mark,
+                    first.options,
+                    configCoords,
+                    () => state.mark.unitView.getEffectiveOpacity(),
+                    packed.data,
+                    state.source && !state.indexed
+                        ? { source: "draw" }
+                        : undefined
+                )
+            );
+            state.packed = packed;
+            state.definition = translated?.definition;
+            state.config = translated?.config;
+            state.configRevision = configRevision;
+        }
+        state.active = !!state.config;
     }
 
     /** @param {MarkState} state */
@@ -292,7 +308,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     /** @param {Occurrence} occurrence @param {boolean} picking */
     #submitOccurrence(occurrence, picking) {
         const state = occurrence.state;
-        if (!state.config || !state.definition || !state.packed) {
+        if (
+            !state.active ||
+            !state.config ||
+            !state.definition ||
+            !state.packed
+        ) {
             return;
         }
         if (state.indexed && state.submittedIndexed) {
@@ -490,9 +511,11 @@ function localizeVisibleRange(range, owner) {
  * @property {boolean} indexed
  * @property {boolean} submittedIndexed
  * @property {boolean} updated
+ * @property {boolean} active
  * @property {Rectangle | undefined} ownerCoords
  * @property {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any> | undefined} definition
  * @property {object | undefined} config
+ * @property {number} configRevision
  */
 
 /**

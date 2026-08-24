@@ -10,6 +10,7 @@ import { thresholdScaleDefinition } from "@genome-spy/webgpu-renderer/scales/thr
 import PlacementSource from "../../view/layout/placementSource.js";
 import {
     createWebGpuMarkConfig,
+    getWebGpuMarkConfigRevision,
     getPackedMarkData,
     getPackedMarkRange,
 } from "./webGpuMarkAdapter.js";
@@ -170,6 +171,57 @@ describe("WebGPU mark adapter", () => {
         });
         expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
         expect(channels.fillOpacity).toEqual({ value: 0.375 });
+    });
+
+    test("keeps navigation and opacity leaves live in one config", () => {
+        const domain = /** @type {[number, number]} */ ([0, 2]);
+        let opacity = 0.75;
+        let viewOpacity = 0.5;
+        const opacityEncoder = createConstantEncoder(opacity);
+        /** @type {any} */ (opacityEncoder).branches[0].accessor = () =>
+            opacity;
+        const mark = createMark("point", [{ x: 1 }], {
+            x: createEncoder((datum) => datum.x, {
+                scale: createLinearScale(domain),
+            }),
+            fillOpacity: opacityEncoder,
+        });
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(0, 0, 100, 100),
+            () => viewOpacity
+        );
+        const channels = /** @type {any} */ (translated).config.channels;
+
+        domain[0] = 1;
+        domain[1] = 3;
+        opacity = 0.5;
+        viewOpacity = 0.25;
+
+        expect(channels.x.scale.domain).toEqual([1, 3]);
+        expect(channels.fillOpacity.value).toBe(0.125);
+    });
+
+    test("applies live view opacity to an unscaled retained series", () => {
+        let viewOpacity = 0.5;
+        const mark = createMark("point", [{ opacity: 0.25 }], {
+            fillOpacity: createEncoder((datum) => datum.opacity),
+        });
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.ZERO,
+            () => viewOpacity
+        );
+        const opacity = /** @type {any} */ (translated).config.channels
+            .fillOpacity;
+
+        expect(opacity.data).toEqual(new Float32Array([0.25]));
+        expect(opacity.scale.range).toEqual([0, 0.5]);
+        viewOpacity = 0.25;
+        expect(opacity.scale.range).toEqual([0, 0.25]);
     });
 
     test("reverses continuous Y scale ranges when requested", () => {
@@ -406,14 +458,6 @@ describe("WebGPU mark adapter", () => {
         );
         const x = /** @type {any} */ (translated).config.channels.x;
 
-        domain.reverse();
-        const updated = createWebGpuMarkConfig(
-            mark,
-            {},
-            Rectangle.create(10, 20, 100, 200)
-        );
-        const updatedX = /** @type {any} */ (updated).config.channels.x;
-
         expect(x.data).toEqual(new Uint32Array([0, 1]));
         expect(x.type).toBe("u32");
         expect(x.scale).toEqual({
@@ -426,6 +470,15 @@ describe("WebGPU mark adapter", () => {
             align: 0.5,
             band: 0.5,
         });
+
+        domain.reverse();
+        expect(x.scale.domain).toEqual([1, 0]);
+        const updated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(10, 20, 100, 200)
+        );
+        const updatedX = /** @type {any} */ (updated).config.channels.x;
         expect(updatedX.data).toBe(x.data);
         expect(updatedX.scale.domain).toEqual([1, 0]);
     });
@@ -1404,6 +1457,18 @@ describe("WebGPU mark adapter", () => {
         expect(/** @type {any} */ (second.config).channels.x.data).toEqual(
             new Float32Array([3])
         );
+        expect(
+            mark.unitView.paramRuntime.watchExpression
+        ).toHaveBeenCalledOnce();
+        expect(getWebGpuMarkConfigRevision(mark)).toBe(0);
+        const invalidate = /** @type {any} */ (
+            mark.unitView.paramRuntime.watchExpression
+        ).mock.calls[0][1];
+        invalidate();
+        expect(getWebGpuMarkConfigRevision(mark)).toBe(1);
+        expect(
+            mark.unitView.context.animator.requestRender
+        ).toHaveBeenCalledOnce();
     });
 
     test("translates a selection-driven color branch", () => {
@@ -1670,6 +1735,8 @@ function createMark(type, data, encoders, properties = {}) {
                     facetBatches: new Map([[undefined, data]]),
                 }),
                 getPathString: () => "root/plot",
+                paramRuntime: { watchExpression: vi.fn() },
+                context: { animator: { requestRender: vi.fn() } },
             },
         })
     );

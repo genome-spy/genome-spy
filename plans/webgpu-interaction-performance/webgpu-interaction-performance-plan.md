@@ -394,7 +394,8 @@ Benchmark correction commit: `c7e0c61ff`
 
 Status: In progress. Retained occurrence topology and placement ownership are
 compiled once per settled layout and shared by normal and picking passes.
-Stable mark-configuration synchronization and the benchmark gate remain.
+Definition and configuration shape are retained across stable packed-data
+revisions. The authoritative benchmark gate remains.
 
 ### Intended outcome
 
@@ -437,12 +438,17 @@ Core computes layout or arranges views.
    packed data revisions, visibility, and placement geometry fresh. This slice
    removes per-paint `LayoutResult` replay and occurrence reconstruction.
 2. Retain definition and configuration shape. Replace full per-mark config
-   rebuilding with explicit synchronization of dynamic renderer slots, without
-   adding a callback graph or moving Core scale and selection semantics into the
-   renderer.
+   rebuilding with direct leaf readers for scale domains/ranges, channel and
+   uniform values, opacity, semantic thresholds, and selections. These readers
+   are local to the cached config; they do not form a general dependency graph
+   or move Core scale and selection semantics into the renderer. Key the cache
+   by packed-data identity and an expression-data revision so actual series
+   changes still rebuild their configuration.
 3. Re-run the regression benchmark after both slices. Require zero
    `layoutReplay`, zero stable occurrence reconstruction, and zero full mark
-   configuration on domain-only frames before marking Milestone 2 complete.
+   configuration for marks whose packed-data and expression revisions remain
+   stable. Record packed-data and expression misses separately instead of
+   treating necessary generated-data updates as cache failures.
 
 ### Affected areas and downstream consumers
 
@@ -465,17 +471,29 @@ Core computes layout or arranges views.
   reported zero `layoutReplay`, zero layout, and zero `markOccurrences`.
   `markConfiguration` remained nonzero as expected and is the next slice; this
   smoke run is not an authoritative performance comparison.
+- Current configuration-slice smoke result: eight diagnostic headless,
+  hardware-backed WebGPU samples covering horizontal WASD, WASD zoom, closeup
+  toggle, and closeup wheel at DPR 1 and 2 passed state, normal-frame,
+  transition, picking, and resize checks. Normal frames retained zero
+  `layoutReplay`, layout, and `markOccurrences`. A focused four-sample WASD
+  rerun attributed all 121–128 per-sample configuration misses to real packed
+  data revisions and none to expression revisions. Stable configs were reused;
+  the remaining data-revision cost must stay distinct in the authoritative
+  comparison. These headless timings are not authoritative.
 - Existing WebGPU Core adapter, surface, placement, picking, and renderer tests
   remain green.
 - Compare WebGL/WebGPU screenshots and picking for representative ordinary,
   repeated, faceted, clipped, conditionally visible, and empty views.
 - Re-run the Milestone 1 benchmark and record allocation and CPU deltas.
 - Require domain-only benchmark frames to report zero render-command replay
-  (the existing `layoutReplay` counter), zero mark configuration, and zero
-  stable occurrence reconstruction after plan compilation. Closeup frames may
-  run their explicit dynamic phase but must not repeat general mark translation.
-  Separately require the existing layout-computation and arrangement counts to
-  remain zero for WASD and closeup interactions.
+  (the existing `layoutReplay` counter), zero stable occurrence reconstruction,
+  and zero configuration misses for marks with unchanged packed-data and
+  expression revisions. Generated axes or other marks with real packed-data
+  revisions may rebuild, but their miss count and cost must be reported
+  separately. Closeup frames may run their explicit dynamic phase but must not
+  repeat general mark translation for stable marks. Separately require the
+  existing layout-computation and arrangement counts to remain zero for WASD
+  and closeup interactions.
 - Compare against commit `53acabc6a` using the same hardware matrix. Preserve
   both raw baseline artifacts and the generic harness as the regression gate.
 - Review gate: review the retained-plan ownership and invalidation contract

@@ -118,6 +118,9 @@ const SERIES_CACHE = new WeakMap();
 /** @type {WeakMap<import("../../marks/mark.js").default, Set<string>>} */
 const DYNAMIC_PROPERTY_WATCHES = new WeakMap();
 
+/** @type {WeakMap<import("../../marks/mark.js").default, {revision: number, expressions: Set<string>}>} */
+const DYNAMIC_ENCODING_STATE = new WeakMap();
+
 /** @type {WeakMap<import("../../marks/mark.js").default, PackedMarkData>} */
 const PACKED_DATA_CACHE = new WeakMap();
 
@@ -132,7 +135,7 @@ const PLACEMENT_INDEX_CACHE = new WeakMap();
  * @param {import("../../marks/mark.js").default} mark
  * @param {import("../../types/rendering.js").RenderingOptions} options
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {number} [viewOpacity]
+ * @param {number | (() => number)} [viewOpacity]
  * @param {object[]} [dataOverride]
  * @param {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"]} [placementIndex]
  * @returns {{definition: import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>, config: object} | undefined}
@@ -146,6 +149,9 @@ export function createWebGpuMarkConfig(
     placementIndex
 ) {
     watchDynamicProperties(mark, getDynamicChannelProperties(mark.getType()));
+    watchDynamicEncodings(mark);
+    const readViewOpacity =
+        typeof viewOpacity == "function" ? viewOpacity : () => viewOpacity;
 
     const data = dataOverride ?? getMarkData(mark, options);
     if (data.length == 0) {
@@ -164,7 +170,7 @@ export function createWebGpuMarkConfig(
         return {
             definition: pointMark,
             config: addPlacementIndex(
-                createPointConfig(mark, data, coords, viewOpacity),
+                createPointConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
             ),
         };
@@ -172,7 +178,7 @@ export function createWebGpuMarkConfig(
         return {
             definition: rectMark,
             config: addPlacementIndex(
-                createRectConfig(mark, data, coords, viewOpacity),
+                createRectConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
             ),
         };
@@ -180,7 +186,7 @@ export function createWebGpuMarkConfig(
         return {
             definition: ruleMark,
             config: addPlacementIndex(
-                createRuleConfig(mark, data, coords, viewOpacity),
+                createRuleConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
             ),
         };
@@ -188,7 +194,7 @@ export function createWebGpuMarkConfig(
         return {
             definition: textMark,
             config: addPlacementIndex(
-                createTextConfig(mark, data, coords, viewOpacity),
+                createTextConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
             ),
         };
@@ -196,7 +202,7 @@ export function createWebGpuMarkConfig(
         return {
             definition: linkMark,
             config: addPlacementIndex(
-                createLinkConfig(mark, data, coords, viewOpacity),
+                createLinkConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
             ),
         };
@@ -204,13 +210,23 @@ export function createWebGpuMarkConfig(
         return {
             definition: arrowMark,
             config: addPlacementIndex(
-                createArrowConfig(mark, data, coords, viewOpacity),
+                createArrowConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
             ),
         };
     }
 
     throw unsupported(mark, `Mark type "${markType}" is not supported.`);
+}
+
+/**
+ * Returns the revision of expression-backed data columns. Scale and property
+ * leaves stay live and therefore do not participate in this revision.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ */
+export function getWebGpuMarkConfigRevision(mark) {
+    return DYNAMIC_ENCODING_STATE.get(mark)?.revision ?? 0;
 }
 
 /**
@@ -419,13 +435,11 @@ function createConditionalChannel(mark, channel, data, build) {
         const branchEncoder = createBranchEncoder(mark, encoder, branch);
         const branchConfig = build(branchEncoder, branch);
         const when = createSelectionCondition(mark, channel, branch.predicate);
-        if (Object.hasOwn(branchConfig, "value")) {
-            return { when, ...branchConfig };
-        }
         return { when, channel: branchConfig };
     });
 
-    return { ...result, conditions };
+    result.conditions = conditions;
+    return result;
 }
 
 /**
@@ -564,11 +578,10 @@ function assertScalarIntervalInput(mark, selectionName, channel) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {number} viewOpacity
+ * @param {() => number} viewOpacity
  * @returns {object}
  */
 function createRectConfig(mark, data, coords, viewOpacity) {
-    const cornerRadii = readCornerRadii(mark);
     return {
         count: data.length,
         channels: {
@@ -596,37 +609,42 @@ function createRectConfig(mark, data, coords, viewOpacity) {
                 viewOpacity
             ),
             strokeWidth: createNumericChannel(mark, "strokeWidth", data),
-            cornerRadiusTopRight: { value: cornerRadii.topRight },
-            cornerRadiusBottomRight: { value: cornerRadii.bottomRight },
-            cornerRadiusTopLeft: { value: cornerRadii.topLeft },
-            cornerRadiusBottomLeft: { value: cornerRadii.bottomLeft },
-            minWidth: { value: readNumericProperty(mark, "minWidth") },
-            minHeight: { value: readNumericProperty(mark, "minHeight") },
-            minOpacity: { value: readNumericProperty(mark, "minOpacity") },
-            shadowOffsetX: {
-                value: readOptionalNumericProperty(mark, "shadowOffsetX", 0),
-            },
-            shadowOffsetY: {
-                value: readOptionalNumericProperty(mark, "shadowOffsetY", 0),
-            },
-            shadowBlur: {
-                value: readOptionalNumericProperty(mark, "shadowBlur", 0),
-            },
-            shadowOpacity: {
-                value:
+            cornerRadiusTopRight: liveValue(
+                () => readCornerRadii(mark).topRight
+            ),
+            cornerRadiusBottomRight: liveValue(
+                () => readCornerRadii(mark).bottomRight
+            ),
+            cornerRadiusTopLeft: liveValue(() => readCornerRadii(mark).topLeft),
+            cornerRadiusBottomLeft: liveValue(
+                () => readCornerRadii(mark).bottomLeft
+            ),
+            minWidth: liveValue(() => readNumericProperty(mark, "minWidth")),
+            minHeight: liveValue(() => readNumericProperty(mark, "minHeight")),
+            minOpacity: liveValue(() =>
+                readNumericProperty(mark, "minOpacity")
+            ),
+            shadowOffsetX: liveValue(() =>
+                readOptionalNumericProperty(mark, "shadowOffsetX", 0)
+            ),
+            shadowOffsetY: liveValue(() =>
+                readOptionalNumericProperty(mark, "shadowOffsetY", 0)
+            ),
+            shadowBlur: liveValue(() =>
+                readOptionalNumericProperty(mark, "shadowBlur", 0)
+            ),
+            shadowOpacity: liveValue(
+                () =>
                     readOptionalNumericProperty(mark, "shadowOpacity", 0) *
-                    viewOpacity,
-            },
-            shadowColor: {
-                value: toRgba(
-                    mark,
-                    readProperty(mark, "shadowColor") ?? "black"
-                ),
-            },
-            hatchPattern: {
-                value: mapProperty(mark, "hatch", HATCH_CODES, "none"),
-                type: "u32",
-            },
+                    viewOpacity()
+            ),
+            shadowColor: liveValue(() =>
+                toRgba(mark, readProperty(mark, "shadowColor") ?? "black")
+            ),
+            hatchPattern: liveValue(
+                () => mapProperty(mark, "hatch", HATCH_CODES, "none"),
+                "u32"
+            ),
         },
     };
 }
@@ -635,7 +653,7 @@ function createRectConfig(mark, data, coords, viewOpacity) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {number} viewOpacity
+ * @param {() => number} viewOpacity
  * @returns {object}
  */
 function createPointConfig(mark, data, coords, viewOpacity) {
@@ -666,13 +684,13 @@ function createPointConfig(mark, data, coords, viewOpacity) {
                 viewOpacity
             ),
             angle: createNumericChannel(mark, "angle", data),
-            gradientStrength: {
-                value: readNumericProperty(mark, "fillGradientStrength"),
-            },
-            inwardStroke: {
-                value: readProperty(mark, "inwardStroke") ? 1 : 0,
-                type: "u32",
-            },
+            gradientStrength: liveValue(() =>
+                readNumericProperty(mark, "fillGradientStrength")
+            ),
+            inwardStroke: liveValue(
+                () => (readProperty(mark, "inwardStroke") ? 1 : 0),
+                "u32"
+            ),
         },
         ...visibility,
     };
@@ -719,12 +737,13 @@ function createPointVisibilityConfig(mark, data) {
             },
         },
         scalarSlots: {
-            semanticThreshold: {
-                value: /** @type {import("../../marks/point.js").default} */ (
-                    mark
-                ).getSemanticThreshold(),
-                type: "f32",
-            },
+            semanticThreshold: liveValue(
+                () =>
+                    /** @type {import("../../marks/point.js").default} */ (
+                        mark
+                    ).getSemanticThreshold(),
+                "f32"
+            ),
         },
         visibleWhen,
     };
@@ -765,7 +784,7 @@ function createPointVisibilitySelections(mark) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {number} viewOpacity
+ * @param {() => number} viewOpacity
  * @returns {object}
  */
 function createRuleConfig(mark, data, coords, viewOpacity) {
@@ -786,14 +805,14 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
             size: createNumericChannel(mark, "size", data),
             color: createColorChannel(mark, "color", data),
             opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
-            minLength: { value: readNumericProperty(mark, "minLength") },
-            strokeCap: {
-                value: mapProperty(mark, "strokeCap", STROKE_CAP_CODES),
-                type: "u32",
-            },
-            strokeDashOffset: {
-                value: readNumericProperty(mark, "strokeDashOffset"),
-            },
+            minLength: liveValue(() => readNumericProperty(mark, "minLength")),
+            strokeCap: liveValue(
+                () => mapProperty(mark, "strokeCap", STROKE_CAP_CODES),
+                "u32"
+            ),
+            strokeDashOffset: liveValue(() =>
+                readNumericProperty(mark, "strokeDashOffset")
+            ),
             strokeDash: { value: 0, type: "u32" },
         },
         dashPatterns: strokeDash == null ? null : [strokeDash],
@@ -804,7 +823,7 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {number} viewOpacity
+ * @param {() => number} viewOpacity
  * @returns {object}
  */
 function createTextConfig(mark, data, coords, viewOpacity) {
@@ -889,7 +908,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {number} viewOpacity
+ * @param {() => number} viewOpacity
  * @returns {object}
  */
 function createLinkConfig(mark, data, coords, viewOpacity) {
@@ -955,7 +974,7 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {number} viewOpacity
+ * @param {() => number} viewOpacity
  * @returns {object}
  */
 function createArrowConfig(mark, data, coords, viewOpacity) {
@@ -1098,24 +1117,29 @@ function createPositionChannel(mark, channel, data, coords) {
 function createPositionBranch(mark, channel, data, coords, encoder) {
     const range = getAbsoluteRange(channel, coords, encoder.scale);
     if (encoder.constant) {
-        const rawValue = encoder.branches[0].accessor(data[0]);
-        const unitPosition = Number(
-            encoder.scale
-                ? /** @type {any} */ (encoder.scale)(rawValue)
-                : encoder(data[0])
+        return Object.assign(
+            liveValue(() => {
+                const rawValue = encoder.branches[0].accessor(data[0]);
+                const unitPosition = Number(
+                    encoder.scale
+                        ? /** @type {any} */ (encoder.scale)(rawValue)
+                        : encoder(data[0])
+                );
+                if (!Number.isFinite(unitPosition)) {
+                    throw unsupported(
+                        mark,
+                        `Channel "${channel}" is not finite.`
+                    );
+                }
+                return range[0] + unitPosition * (range[1] - range[0]);
+            }),
+            { scale: identityScale() }
         );
-        if (!Number.isFinite(unitPosition)) {
-            throw unsupported(mark, `Channel "${channel}" is not finite.`);
-        }
-        return {
-            value: range[0] + unitPosition * (range[1] - range[0]),
-            scale: identityScale(),
-        };
     }
 
     const accessor = encoder.branches[0].accessor;
     if (encoder.scale?.type == "band" || encoder.scale?.type == "point") {
-        const { values, domain } = toCategoricalArray(
+        const { values, readDomain } = toCategoricalArray(
             mark,
             channel,
             data,
@@ -1128,14 +1152,14 @@ function createPositionBranch(mark, channel, data, coords, encoder) {
             scale: createBandPositionScale(
                 encoder.scale,
                 range,
-                domain,
+                readDomain,
                 /** @type {import("../../spec/channel.js").BandMixins} */ (
                     accessor.channelDef
                 ).band ?? 0.5
             ),
         };
     } else if (encoder.scale?.type == "ordinal") {
-        const { values, domain } = toCategoricalArray(
+        const { values, readDomain } = toCategoricalArray(
             mark,
             channel,
             data,
@@ -1145,7 +1169,7 @@ function createPositionBranch(mark, channel, data, coords, encoder) {
         return {
             data: values,
             type: "u32",
-            scale: createOrdinalPositionScale(encoder.scale, range, domain),
+            scale: createOrdinalPositionScale(encoder.scale, range, readDomain),
         };
     } else if (
         encoder.scale?.type == "index" ||
@@ -1177,20 +1201,23 @@ function createPositionBranch(mark, channel, data, coords, encoder) {
 /**
  * @param {import("../../types/encoder.js").VegaScale} scale
  * @param {[number, number]} range
- * @param {number[]} domain
+ * @param {() => number[]} readDomain
  * @param {number} band
  */
-function createBandPositionScale(scale, range, domain, band) {
+function createBandPositionScale(scale, range, readDomain, band) {
     const configurableScale = /** @type {any} */ (scale);
-    return bandScale({
-        domain,
-        range,
-        paddingInner:
-            scale.type == "point" ? 1 : configurableScale.paddingInner(),
-        paddingOuter: configurableScale.paddingOuter(),
-        align: configurableScale.align(),
-        band,
-    });
+    return retainScaleLeaves(
+        bandScale({
+            domain: readDomain(),
+            range,
+            paddingInner:
+                scale.type == "point" ? 1 : configurableScale.paddingInner(),
+            paddingOuter: configurableScale.paddingOuter(),
+            align: configurableScale.align(),
+            band,
+        }),
+        readDomain
+    );
 }
 
 /**
@@ -1199,15 +1226,21 @@ function createBandPositionScale(scale, range, domain, band) {
  *
  * @param {import("../../types/encoder.js").VegaScale} scale
  * @param {[number, number]} range
- * @param {number[]} domain
+ * @param {() => number[]} readDomain
  */
-function createOrdinalPositionScale(scale, range, domain) {
-    return ordinalScale({
-        domain,
-        range: scale
+function createOrdinalPositionScale(scale, range, readDomain) {
+    const readRange = () =>
+        scale
             .range()
-            .map((value) => range[0] + Number(value) * (range[1] - range[0])),
-    });
+            .map((value) => range[0] + Number(value) * (range[1] - range[0]));
+    return retainScaleLeaves(
+        ordinalScale({
+            domain: readDomain(),
+            range: readRange(),
+        }),
+        readDomain,
+        readRange
+    );
 }
 
 /**
@@ -1217,14 +1250,17 @@ function createOrdinalPositionScale(scale, range, domain) {
  */
 function createIndexPositionScale(scale, range, band) {
     const configurableScale = /** @type {any} */ (scale);
-    return indexScale({
-        domain: scale.domain().map(Number),
-        range,
-        paddingInner: configurableScale.paddingInner(),
-        paddingOuter: configurableScale.paddingOuter(),
-        align: configurableScale.align(),
-        band,
-    });
+    return retainScaleLeaves(
+        indexScale({
+            domain: scale.domain().map(Number),
+            range,
+            paddingInner: configurableScale.paddingInner(),
+            paddingOuter: configurableScale.paddingOuter(),
+            align: configurableScale.align(),
+            band,
+        }),
+        () => scale.domain().map(Number)
+    );
 }
 
 /**
@@ -1248,7 +1284,7 @@ function createNumericChannel(mark, channel, data) {
  */
 function createNumericBranch(mark, channel, data, encoder) {
     if (encoder.constant) {
-        return { value: Number(encoder(data[0])) };
+        return liveValue(() => Number(encoder(data[0])));
     }
 
     const accessor = encoder.branches[0].accessor;
@@ -1257,7 +1293,7 @@ function createNumericBranch(mark, channel, data, encoder) {
         encoder.scale?.type == "band" ||
         encoder.scale?.type == "point"
     ) {
-        const { values, domain } = toCategoricalArray(
+        const { values, readDomain } = toCategoricalArray(
             mark,
             channel,
             data,
@@ -1274,14 +1310,14 @@ function createNumericBranch(mark, channel, data, encoder) {
                           channel,
                           encoder.scale,
                           1,
-                          domain
+                          readDomain
                       )
                     : createBandPositionScale(
                           encoder.scale,
                           /** @type {[number, number]} */ (
                               encoder.scale.range()
                           ),
-                          domain,
+                          readDomain,
                           0.5
                       ),
         };
@@ -1301,7 +1337,7 @@ function createNumericBranch(mark, channel, data, encoder) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {object[]} data
- * @param {number} viewOpacity
+ * @param {() => number} viewOpacity
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createOpacityChannel(mark, channel, data, viewOpacity) {
@@ -1314,18 +1350,18 @@ function createOpacityChannel(mark, channel, data, viewOpacity) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {object[]} data
- * @param {number} viewOpacity
+ * @param {() => number} viewOpacity
  * @param {import("../../types/encoder.js").Encoder} encoder
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createOpacityBranch(mark, channel, data, viewOpacity, encoder) {
     if (encoder.constant) {
-        return { value: Number(encoder(data[0])) * viewOpacity };
+        return liveValue(() => Number(encoder(data[0])) * viewOpacity());
     }
 
     const accessor = encoder.branches[0].accessor;
     if (encoder.scale?.type == "ordinal") {
-        const { values, domain } = toCategoricalArray(
+        const { values, readDomain } = toCategoricalArray(
             mark,
             channel,
             data,
@@ -1340,7 +1376,7 @@ function createOpacityBranch(mark, channel, data, viewOpacity, encoder) {
                 channel,
                 encoder.scale,
                 viewOpacity,
-                domain
+                readDomain
             ),
         };
     }
@@ -1362,14 +1398,13 @@ function createOpacityBranch(mark, channel, data, viewOpacity, encoder) {
     }
 
     return {
-        data:
-            viewOpacity == 1
-                ? toFloat32Array(mark, channel, data, accessor)
-                : Float32Array.from(
-                      data,
-                      (datum) => Number(accessor(datum)) * viewOpacity
-                  ),
+        data: toFloat32Array(mark, channel, data, accessor),
         type: "f32",
+        scale: retainScaleLeaves(
+            linearScale({ domain: [0, 1], range: [0, viewOpacity()] }),
+            undefined,
+            () => [0, viewOpacity()]
+        ),
     };
 }
 
@@ -1396,15 +1431,15 @@ function createEnumChannel(mark, channel, data, values) {
  */
 function createEnumBranch(mark, channel, data, values, encoder) {
     if (encoder.constant) {
-        return {
-            value: getEnumValue(mark, channel, values, encoder(data[0])),
-            type: "u32",
-        };
+        return liveValue(
+            () => getEnumValue(mark, channel, values, encoder(data[0])),
+            "u32"
+        );
     }
 
     const accessor = encoder.branches[0].accessor;
     if (encoder.scale?.type == "ordinal") {
-        const { values: categoryValues, domain } = toCategoricalArray(
+        const { values: categoryValues, readDomain } = toCategoricalArray(
             mark,
             channel,
             data,
@@ -1414,12 +1449,23 @@ function createEnumBranch(mark, channel, data, values, encoder) {
         return {
             data: categoryValues,
             type: "u32",
-            scale: ordinalScale({
-                domain,
-                range: encoder.scale
-                    .range()
-                    .map((value) => getEnumValue(mark, channel, values, value)),
-            }),
+            scale: retainScaleLeaves(
+                ordinalScale({
+                    domain: readDomain(),
+                    range: encoder.scale
+                        .range()
+                        .map((value) =>
+                            getEnumValue(mark, channel, values, value)
+                        ),
+                }),
+                readDomain,
+                () =>
+                    encoder.scale
+                        .range()
+                        .map((value) =>
+                            getEnumValue(mark, channel, values, value)
+                        )
+            ),
         };
     }
 
@@ -1427,15 +1473,25 @@ function createEnumBranch(mark, channel, data, values, encoder) {
         return {
             data: toFloat32Array(mark, channel, data, accessor),
             type: "f32",
-            scale: thresholdScale({
-                domain: encoder.scale.domain().map(Number),
-                range: createEnumThresholdRange(
-                    mark,
-                    channel,
-                    values,
-                    encoder.scale
-                ),
-            }),
+            scale: retainScaleLeaves(
+                thresholdScale({
+                    domain: encoder.scale.domain().map(Number),
+                    range: createEnumThresholdRange(
+                        mark,
+                        channel,
+                        values,
+                        encoder.scale
+                    ),
+                }),
+                () => encoder.scale.domain().map(Number),
+                () =>
+                    createEnumThresholdRange(
+                        mark,
+                        channel,
+                        values,
+                        encoder.scale
+                    )
+            ),
         };
     }
 
@@ -1470,7 +1526,7 @@ function createColorChannel(mark, channel, data) {
  */
 function createColorBranch(mark, channel, data, encoder) {
     if (encoder.constant) {
-        return { value: toRgba(mark, encoder(data[0])) };
+        return liveValue(() => toRgba(mark, encoder(data[0])));
     }
 
     const accessor = encoder.branches[0].accessor;
@@ -1490,7 +1546,7 @@ function createColorBranch(mark, channel, data, encoder) {
     }
 
     if (scale.type == "ordinal") {
-        const { values, domain } = toCategoricalArray(
+        const { values, readDomain } = toCategoricalArray(
             mark,
             channel,
             data,
@@ -1501,7 +1557,7 @@ function createColorBranch(mark, channel, data, encoder) {
             data: values,
             type: "u32",
             inputComponents: 1,
-            scale: createColorScale(mark, channel, scale, domain),
+            scale: createColorScale(mark, channel, scale, readDomain),
         };
     }
 
@@ -1517,48 +1573,72 @@ function createColorBranch(mark, channel, data, encoder) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {import("../../types/encoder.js").VegaScale} scale
- * @param {number[]} [ordinalDomain]
+ * @param {(() => number[])} [readOrdinalDomain]
  */
-function createColorScale(mark, channel, scale, ordinalDomain) {
+function createColorScale(mark, channel, scale, readOrdinalDomain) {
     const configurableScale = /** @type {any} */ (scale);
     if (scale.type == "ordinal") {
-        return ordinalScale({
-            domain: ordinalDomain,
-            range: scale.range(),
-        });
+        return retainScaleLeaves(
+            ordinalScale({
+                domain: readOrdinalDomain?.(),
+                range: scale.range(),
+            }),
+            readOrdinalDomain,
+            () => scale.range()
+        );
     } else if (
         scale.type == "sequential-linear" ||
         scale.type == "diverging-linear"
     ) {
-        return linearScale({
-            domain: getInterpolatorDomain(scale),
-            range: configurableScale.interpolator(),
-            clamp: configurableScale.clamp(),
-        });
+        return retainScaleLeaves(
+            linearScale({
+                domain: getInterpolatorDomain(scale),
+                range: configurableScale.interpolator(),
+                clamp: configurableScale.clamp(),
+            }),
+            () => getInterpolatorDomain(scale),
+            () => configurableScale.interpolator()
+        );
     } else if (scale.type == "sequential-log") {
-        return logScale({
-            domain: getInterpolatorDomain(scale),
-            range: configurableScale.interpolator(),
-            base: configurableScale.base(),
-            clamp: configurableScale.clamp(),
-        });
+        return retainScaleLeaves(
+            logScale({
+                domain: getInterpolatorDomain(scale),
+                range: configurableScale.interpolator(),
+                base: configurableScale.base(),
+                clamp: configurableScale.clamp(),
+            }),
+            () => getInterpolatorDomain(scale),
+            () => configurableScale.interpolator()
+        );
     } else if (scale.type == "linear") {
-        return linearScale({
-            domain: scale.domain().map(Number),
-            range: scale.range(),
-            interpolate: configurableScale.interpolate(),
-            clamp: configurableScale.clamp(),
-        });
+        return retainScaleLeaves(
+            linearScale({
+                domain: scale.domain().map(Number),
+                range: scale.range(),
+                interpolate: configurableScale.interpolate(),
+                clamp: configurableScale.clamp(),
+            }),
+            () => scale.domain().map(Number),
+            () => scale.range()
+        );
     } else if (scale.type == "threshold") {
-        return thresholdScale({
-            domain: scale.domain().map(Number),
-            range: normalizeColorRange(mark, scale.range()),
-        });
+        return retainScaleLeaves(
+            thresholdScale({
+                domain: scale.domain().map(Number),
+                range: normalizeColorRange(mark, scale.range()),
+            }),
+            () => scale.domain().map(Number),
+            () => normalizeColorRange(mark, scale.range())
+        );
     } else if (scale.type == "quantize") {
-        return quantizeScale({
-            domain: scale.domain().map(Number),
-            range: normalizeColorRange(mark, scale.range()),
-        });
+        return retainScaleLeaves(
+            quantizeScale({
+                domain: scale.domain().map(Number),
+                range: normalizeColorRange(mark, scale.range()),
+            }),
+            () => scale.domain().map(Number),
+            () => normalizeColorRange(mark, scale.range())
+        );
     }
 
     throw unsupported(
@@ -1649,7 +1729,7 @@ function createCombinedOffsetChannel(mark, axis, data) {
                 (legacy ? Number(legacy(datum)) : propertyValue);
 
             if (branchEncoder.constant && (!legacy || legacy.constant)) {
-                return { value: read(data[0]) };
+                return liveValue(() => read(data[0]));
             }
             return {
                 data: Float32Array.from(data, read),
@@ -1714,8 +1794,8 @@ function createPositionScale(mark, channel, scale, range) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {import("../../types/encoder.js").VegaScale | undefined} scale
- * @param {number} [rangeMultiplier]
- * @param {number[]} [domain]
+ * @param {number | (() => number)} [rangeMultiplier]
+ * @param {number[] | (() => number[])} [domain]
  * @returns {import("@genome-spy/webgpu-renderer").ConfiguredScale<"identity" | "linear"> | undefined}
  */
 function createNonPositionalScale(
@@ -1731,11 +1811,16 @@ function createNonPositionalScale(
     if (scale.type == "identity") {
         return identityScale();
     }
+    const readRangeMultiplier =
+        typeof rangeMultiplier == "function"
+            ? rangeMultiplier
+            : () => rangeMultiplier;
     return createNumericScale(
         mark,
         channel,
         scale,
-        scale.range().map((value) => Number(value) * rangeMultiplier),
+        () =>
+            scale.range().map((value) => Number(value) * readRangeMultiplier()),
         domain
     );
 }
@@ -1744,15 +1829,22 @@ function createNonPositionalScale(
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {import("../../types/encoder.js").VegaScale} scale
- * @param {number[]} range
- * @param {number[]} [domain]
+ * @param {number[] | (() => number[])} range
+ * @param {number[] | (() => number[])} [domain]
  * @returns {import("@genome-spy/webgpu-renderer").ConfiguredScale<any>}
  */
 function createNumericScale(mark, channel, scale, range, domain) {
     const configurableScale = /** @type {any} */ (scale);
+    const readDomain =
+        typeof domain == "function"
+            ? domain
+            : domain
+              ? () => domain
+              : () => scale.domain().map(Number);
+    const readRange = typeof range == "function" ? range : () => range;
     const options = /** @type {Record<string, any>} */ ({
-        domain: domain ?? scale.domain().map(Number),
-        range,
+        domain: readDomain(),
+        range: readRange(),
         clamp: getScaleProperty(configurableScale, "clamp", false),
     });
     const round = getScaleProperty(configurableScale, "round", false);
@@ -1760,40 +1852,79 @@ function createNumericScale(mark, channel, scale, range, domain) {
         options.round = true;
     }
 
+    let configured;
     switch (scale.type) {
         case "linear":
         case "sequential-linear":
         case "diverging-linear":
-            return linearScale(options);
+            configured = linearScale(options);
+            break;
         case "log":
-            return logScale({
+            configured = logScale({
                 ...options,
                 base: getScaleProperty(configurableScale, "base", 10),
             });
+            break;
         case "pow":
-            return powScale({
+            configured = powScale({
                 ...options,
                 exponent: getScaleProperty(configurableScale, "exponent", 1),
             });
+            break;
         case "sqrt":
-            return sqrtScale(options);
+            configured = sqrtScale(options);
+            break;
         case "symlog":
-            return symlogScale({
+            configured = symlogScale({
                 ...options,
                 constant: getScaleProperty(configurableScale, "constant", 1),
             });
+            break;
         case "quantize":
-            return quantizeScale(options);
+            configured = quantizeScale(options);
+            break;
         case "threshold":
-            return thresholdScale(options);
+            configured = thresholdScale(options);
+            break;
         case "ordinal":
-            return ordinalScale(options);
+            configured = ordinalScale(options);
+            break;
         default:
             throw unsupported(
                 mark,
                 `Scale type "${scale.type}" on channel "${channel}" is not supported.`
             );
     }
+    return retainScaleLeaves(configured, readDomain, readRange);
+}
+
+/**
+ * Keeps a renderer scale's updateable leaves connected to its Core source.
+ *
+ * @param {import("@genome-spy/webgpu-renderer").DefinedChannelScale} scale
+ * @param {(() => number[])} [readDomain]
+ * @param {(() => any)} [readRange]
+ */
+function retainScaleLeaves(scale, readDomain, readRange) {
+    Object.defineProperties(scale, {
+        ...(readDomain
+            ? {
+                  domain: {
+                      enumerable: true,
+                      get: readDomain,
+                  },
+              }
+            : {}),
+        ...(readRange
+            ? {
+                  range: {
+                      enumerable: true,
+                      get: readRange,
+                  },
+              }
+            : {}),
+    });
+    return scale;
 }
 
 /**
@@ -1854,10 +1985,10 @@ function createUniqueIdChannel(mark, data) {
     assertUnconditional(mark, "uniqueId", encoder);
     if (encoder.constant) {
         return {
-            uniqueId: {
-                value: readUnsignedInteger(mark, "uniqueId", encoder(data[0])),
-                type: "u32",
-            },
+            uniqueId: liveValue(
+                () => readUnsignedInteger(mark, "uniqueId", encoder(data[0])),
+                "u32"
+            ),
         };
     }
 
@@ -1985,11 +2116,11 @@ function toCategoricalArray(mark, channel, data, accessor, scale) {
     const intern = (value) =>
         readUnsignedInteger(mark, channel, indexer ? indexer(value) : value);
 
-    const domain = scale.domain().map(intern);
+    const readDomain = () => scale.domain().map(intern);
     const values = getCachedSeries(mark, channel, data, accessor, () =>
         Uint32Array.from(data, (datum) => intern(accessor(datum)))
     );
-    return { values, domain };
+    return { values, readDomain };
 }
 
 /**
@@ -2152,6 +2283,21 @@ function readProperty(mark, property) {
 }
 
 /**
+ * Exposes a retained numeric leaf without rebuilding its surrounding config.
+ *
+ * @param {() => number | number[]} read
+ * @param {import("@genome-spy/webgpu-renderer").ScalarType} [type]
+ */
+function liveValue(read, type) {
+    return {
+        get value() {
+            return read();
+        },
+        ...(type ? { type } : {}),
+    };
+}
+
+/**
  * Converts expression-backed mark properties into retained extra-uniform
  * updates. The renderer already owns the uniform layout; Core only supplies
  * the WebGL-equivalent adjusted values.
@@ -2172,20 +2318,58 @@ function createDynamicValues(mark, definitions) {
         if (!isExprRef(value)) {
             continue;
         }
-        const adjusted = adjust(readProperty(mark, property));
-        if (
-            typeof adjusted != "number" &&
-            (!Array.isArray(adjusted) ||
-                !adjusted.every((entry) => typeof entry == "number"))
-        ) {
-            throw unsupported(
-                mark,
-                `Dynamic property "${property}" must resolve to numeric data.`
-            );
-        }
-        dynamicValues[uniform] = { value: adjusted };
+        dynamicValues[uniform] = liveValue(() => {
+            const adjusted = adjust(readProperty(mark, property));
+            if (
+                typeof adjusted != "number" &&
+                (!Array.isArray(adjusted) ||
+                    !adjusted.every((entry) => typeof entry == "number"))
+            ) {
+                throw unsupported(
+                    mark,
+                    `Dynamic property "${property}" must resolve to numeric data.`
+                );
+            }
+            return adjusted;
+        });
     }
     return dynamicValues;
+}
+
+/**
+ * Invalidates retained series only when an expression dependency changes.
+ * Field-backed columns remain tied solely to the collector revision.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ */
+function watchDynamicEncodings(mark) {
+    let state = DYNAMIC_ENCODING_STATE.get(mark);
+    if (!state) {
+        state = { revision: 0, expressions: new Set() };
+        DYNAMIC_ENCODING_STATE.set(mark, state);
+    }
+
+    for (const encoder of Object.values(
+        /** @type {Record<string, any>} */ (mark.encoders)
+    )) {
+        for (const branch of encoder.branches ?? []) {
+            const expression = branch.accessor.channelDef?.expr;
+            if (
+                typeof expression != "string" ||
+                state.expressions.has(expression)
+            ) {
+                continue;
+            }
+            mark.unitView.paramRuntime.watchExpression(expression, () => {
+                const current = DYNAMIC_ENCODING_STATE.get(mark);
+                if (current) {
+                    current.revision++;
+                }
+                mark.unitView.context.animator.requestRender();
+            });
+            state.expressions.add(expression);
+        }
+    }
 }
 
 /**
