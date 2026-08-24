@@ -1,7 +1,8 @@
 # WebGPU interaction performance plan
 
-Status: Milestone 1 is complete; Milestone 2 is unblocked for review and
-implementation.
+Status: Milestones 1 and 2 are complete. Milestone 3 targets the remaining
+fixed retained-resource synchronization cost. The separate closeup placement
+milestone is discarded because its measured cost is immaterial.
 
 ## Context
 
@@ -113,6 +114,29 @@ these layout-free interactions while retaining separate `layoutReplay`
 measurements for render-command collection from an existing `LayoutResult`.
 The valid drag and wheel-zoom measurements from the original artifact remain
 unchanged and are not reinterpreted by this affected-case rerun.
+
+The post-Milestone-2 authoritative DPR 1 gate is in
+`output/webgpu-interaction-benchmark-m2-retained-dpr1/`. It contains 80
+records: 60 applicable samples passed, 20 unsupported control closeup samples
+were inapplicable, and none failed. MCCA WebGPU/WebGL median CPU frame-time
+ratios were `1.08x` for horizontal WASD, `1.13x` for WASD zoom, `1.07x` for
+the closeup toggle, and `1.19x` for closeup wheel. All are within the run's
+20% A/A bound. The small control remained `1.8x` to `2.0x`, although its
+absolute median WebGPU frame time was only 0.9 to 1.0 ms, so a fixed WebGPU
+cost remains visible.
+
+The structural counters are decisive despite cross-run timing noise:
+`layoutReplay`, layout computation, and stable occurrence reconstruction fell
+to zero. MCCA mark-configuration time fell from about 0.65 to 0.07 ms per
+render frame, and every remaining configuration miss was a real packed-data
+revision; expression misses remained zero. Placement computation averaged
+about 0.02 ms per MCCA render frame, with approximately 0.34 uploads and
+3.2 KB uploaded per frame. It is not a useful optimization target. The largest
+remaining measured WebGPU subphase was retained-resource synchronization at
+about 1.64 ms per MCCA render frame and 0.46 ms for the control. Exact phase
+deltas across the two runs are not interpreted because tracing mode and
+machine load differed; the result is used to select the next hotspot, while
+the within-run backend ratios and structural counters remain the gate.
 
 The 50% practical-noise bound is the maximum A/A deviation and is too broad to
 serve as the only regression criterion. Preserve it in reports, but evaluate
@@ -392,10 +416,8 @@ Benchmark correction commit: `c7e0c61ff`
 
 ## Milestone 2: Compile and retain the WebGPU frame plan
 
-Status: In progress. Retained occurrence topology and placement ownership are
-compiled once per settled layout and shared by normal and picking passes.
-Definition and configuration shape are retained across stable packed-data
-revisions. The authoritative benchmark gate remains.
+Status: Complete in `d1f9539d7`, `be73fc73b`, `62f725840`, and `58d54a69d`.
+The authoritative DPR 1 gate passed.
 
 ### Intended outcome
 
@@ -486,6 +508,19 @@ Core computes layout or arranges views.
   0.80 ms per render frame on average, with all samples passing. Preserve this
   change for the authoritative matrix, but do not treat the diagnostic ratio as
   final performance evidence.
+- The authoritative Apple M5 / Metal 3 DPR 1 gate completed 80 samples: 60
+  passed, 20 unsupported control closeup samples were inapplicable, and none
+  failed. Correctness checks for repeated closeup transitions, hover/picking,
+  and resize passed. Filtering/sorting followed by closeup remains explicitly
+  unverified because selectors were not supplied.
+- MCCA WebGPU/WebGL median CPU ratios ranged from `1.07x` to `1.19x`, within
+  the run's 20% A/A bound. The small control remained `1.8x` to `2.0x`, which
+  identifies fixed retained-resource synchronization as the next candidate
+  rather than invalidating the MCCA result.
+- Normal WebGPU frames reported zero `layoutReplay`, layout, and
+  `markOccurrences`. MCCA mark configuration averaged about 0.07 ms per render
+  frame; all remaining misses were packed-data revisions and expression misses
+  were zero.
 - Existing WebGPU Core adapter, surface, placement, picking, and renderer tests
   remain green.
 - Compare WebGL/WebGPU screenshots and picking for representative ordinary,
@@ -517,32 +552,41 @@ Update the Core-WebGPU integration README and renderer README only where the
 runtime ownership contract changes. Update `MIGRATION_PLAN.md` status without
 copying milestone detail.
 
-Tentative commit: `refactor(webgpu): retain compiled frame plans`
+Implementation commits: `d1f9539d7`, `be73fc73b`, `62f725840`, and
+`58d54a69d`
 
-## Milestone 3: Make pan and zoom domain-only updates
+## Milestone 3: Skip unrelated retained-resource scans
 
-Status: Pending Milestone 2.
+Status: Ready.
 
 ### Intended outcome
 
-Horizontal pan and zoom update only affected scale state and dynamic draw state
-before submitting the retained frame. WebGPU navigation CPU usage meets the
-WebGL comparison target.
+Horizontal pan and zoom already change scale domains without layout or frame
+plan replay, and the MCCA comparison target is met. This milestone removes the
+remaining fixed cost of scanning every retained mark's live slots when only a
+small subset of sources changed. It is retained only if the result stays
+smaller and simpler than a general dependency graph.
 
 ### Work
 
-- Bind retained mark scale slots to their Core scale sources without rerunning
-  general mark translation.
-- Use scale identity, revision, or small value snapshots to skip unchanged
-  domain and range writes.
+- Count retained-mark synchronization checks and actual slot writes separately
+  before changing ownership. Confirm how many stable marks are scanned for one
+  domain change in MCCA and the small control.
+- Use existing Core scale domain/range notifications or a small source revision
+  to mark only affected retained scale bindings dirty. Do not add a general
+  reactive dependency graph.
+- Keep snapshot comparison at the renderer boundary for dirty bindings and for
+  dynamic values that lack an explicit revision.
 - Preserve explicit dependencies such as axes, viewport-derived domains,
   semantic zoom, dynamic properties, and selections. Defer expensive secondary
   updates until navigation settles where that is already their contract.
-- Measure whether the same shared Core resolution causing repeated per-mark GPU
-  writes is material. Introduce a generic shared renderer scale resource only
-  if the profile justifies its API and lifetime complexity.
+- Do not introduce a shared renderer scale resource unless repeated writes,
+  rather than repeated checks, are measured as material.
 - Keep wheel, drag, and WASD paths behaviorally identical; the optimization
   begins after they update the scale domain.
+- Discard this milestone if the smallest correct invalidation mechanism costs
+  more code or ownership complexity than the measured sub-millisecond control
+  overhead justifies.
 
 ### Affected areas and downstream consumers
 
@@ -555,8 +599,9 @@ WebGL comparison target.
 
 ### Verification
 
-- Focused tests assert that domain-only frames update required scale slots and
-  submit retained draws without plan compilation or data/placement updates.
+- Focused tests assert that domain-only frames update required scale slots,
+  skip unrelated retained marks, and submit retained draws without plan
+  compilation or data/placement updates.
 - Verify wheel, drag, WASD, animated `zoomTo`, shared scales, axes, selections,
   picking-after-navigation, and viewport-domain settling.
 - Run the MCCA pan and zoom benchmark cases under both backends and enforce the
@@ -567,23 +612,24 @@ WebGL comparison target.
 Document any new renderer-generic shared scale/update contract. No user-facing
 documentation is expected for an internal optimization.
 
-Tentative commit: `perf(webgpu): make navigation update scale state only`
+Tentative commit: `perf(core): skip unchanged WebGPU slot scans`
 
 ## Milestone 4: Isolate closeup placement updates
 
-Status: Pending Milestone 3 by default.
+Status: Discarded after the Milestone 2 benchmark. Reopen only if a later
+fixture makes placement computation or upload material.
 
 ### Intended outcome
 
 The animated closeup transition and steady vertical scrolling reuse the
 retained frame plan. Frames perform the legitimate SampleView placement and
-range work without unrelated mark translation or resource recreation.
+range work without layout replay or stable configuration rebuilding.
 
-This milestone follows Milestone 3 by default because both paths touch dynamic
-state synchronization, coordinator/surface behavior, and renderer draw
-contracts. Its investigation and fixtures may be prepared in parallel, but
-implementation should be parallelized only if Milestone 2 establishes
-non-overlapping file ownership.
+The authoritative gate measured placement computation at about 0.02 ms per
+MCCA render frame and only about 3.2 KB of placement upload per frame. A
+dedicated closeup path would add App-specific or revision-management complexity
+without addressing the measured hotspot. Milestone 3's generic synchronization
+work still applies to closeup frames.
 
 ### Work
 
@@ -628,7 +674,7 @@ Tentative commit: `perf(webgpu): isolate dynamic placement updates`
 
 ## Milestone 5: Remove remaining measured renderer hot spots
 
-Status: Pending the combined Milestone 3 and 4 review.
+Status: Pending Milestone 3.
 
 ### Intended outcome
 
