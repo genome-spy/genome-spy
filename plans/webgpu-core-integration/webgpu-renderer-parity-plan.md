@@ -1337,7 +1337,7 @@ boundaries, and simplification remain separately reviewable.
   into function arguments. Add a regression test above the JavaScript engine's
   practical argument limit.
   Tentative commit: `fix(core): pack large WebGPU facet batches safely`.
-- [ ] Invalidate normalized visible and picking frames whenever a retained
+- [x] Invalidate normalized visible and picking frames whenever a retained
   placement set is replaced. Cover picking after both buffer growth and logical
   count shrinkage.
   Tentative commit: `fix(webgpu-renderer): invalidate replaced placements`.

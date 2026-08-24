@@ -54,6 +54,8 @@ class PlacementSet {
             );
         }
         this._rectangles = rectangles;
+        this.renderer._renderFrame = null;
+        this.renderer._pickingFrame = null;
         this.renderer.markPickingDirty();
     }
 

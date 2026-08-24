@@ -54,6 +54,8 @@ describe("Renderer mark definitions", () => {
             placements.replace({ rectangles: new Float32Array([0, 0, 1]) })
         ).toThrow("four values per entry");
 
+        renderer._renderFrame = /** @type {any} */ ([{}]);
+        renderer._pickingFrame = /** @type {any} */ ([{}]);
         placements.replace({
             rectangles: new Float32Array([0, 0, 0.5, 1, 0.5, 0, 0.5, 1]),
         });
@@ -61,6 +63,8 @@ describe("Renderer mark definitions", () => {
         expect(placements.placementSetId).toBe(1);
         expect(placements.count).toBe(2);
         expect(initialBuffer.destroy).toHaveBeenCalledOnce();
+        expect(renderer._renderFrame).toBeNull();
+        expect(renderer._pickingFrame).toBeNull();
 
         renderer._pickingDirty = false;
         placements.destroy();
@@ -98,13 +102,25 @@ describe("Renderer mark definitions", () => {
         const mark = renderer.createMark(definition, { channels: {} });
         const draw = { mark, placement: { set: placements, index: 1 } };
 
-        expect(renderer._normalizeDraws([draw])).toHaveLength(1);
+        renderer.renderPicking({ draws: [draw] });
+        expect(renderer._pickingFrame).toHaveLength(1);
         placements.replace({
             rectangles: new Float32Array([0, 0, 1, 1]),
         });
+        expect(renderer._renderFrame).toBeNull();
+        expect(renderer._pickingFrame).toBeNull();
         expect(() => renderer._normalizeDraws([draw])).toThrow(
             "exceeds set count"
         );
+
+        renderer.render({
+            draws: [{ mark, placement: { set: placements, index: 0 } }],
+        });
+        expect(renderer._renderFrame?.[0].placement).toMatchObject({
+            bindGroup: placements._bindGroup,
+            count: 1,
+            index: 0,
+        });
     });
 
     test("accepts a separate ordered pick draw list", () => {
@@ -296,6 +312,7 @@ function createRendererHarness() {
     renderer._pickPending = null;
     renderer._pickInFlight = null;
     renderer._renderFrame = null;
+    renderer._pickingFrame = null;
     renderer.canvas = /** @type {HTMLCanvasElement} */ (
         /** @type {unknown} */ ({ width: 200, height: 100 })
     );
