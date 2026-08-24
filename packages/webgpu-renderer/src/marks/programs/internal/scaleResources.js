@@ -1,4 +1,3 @@
-import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import {
     getScaleResourceRequirements,
     getScaleUniformDef,
@@ -44,23 +43,23 @@ export class ScaleResourceManager {
      * @param {object} params
      * @param {GPUDevice} params.device
      * @param {Record<string, ChannelConfigResolved>} params.channels
+     * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} params.analysisByChannel
      * @param {(name: string) => [number, number] | undefined} params.getDefaultScaleRange
      * @param {(name: string, value: number|ArrayLike<number>|Array<number|number[]>) => void} params.setUniformValue
      */
-    constructor({ device, channels, getDefaultScaleRange, setUniformValue }) {
+    constructor({
+        device,
+        channels,
+        analysisByChannel,
+        getDefaultScaleRange,
+        setUniformValue,
+    }) {
         this._device = device;
         this._channels = channels;
         this._getDefaultScaleRange = getDefaultScaleRange;
         this._setUniformValue = setUniformValue;
 
-        /** @type {Map<string, ReturnType<typeof buildChannelAnalysis>>} */
-        this._analysisByChannel = new Map();
-        for (const [name, channel] of Object.entries(channels)) {
-            this._analysisByChannel.set(
-                name,
-                buildChannelAnalysis(name, channel)
-            );
-        }
+        this._analysisByChannel = analysisByChannel;
 
         /** @type {Map<string, ChannelResources>} */
         this._channelResources = new Map();
@@ -71,7 +70,7 @@ export class ScaleResourceManager {
 
     /**
      * @param {string} name
-     * @returns {ReturnType<typeof buildChannelAnalysis>}
+     * @returns {ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>}
      */
     _getAnalysis(name) {
         const analysis = this._analysisByChannel.get(name);
@@ -268,7 +267,7 @@ export class ScaleResourceManager {
      * @param {string} name
      * @param {ChannelConfigResolved} channel
      * @param {ChannelScale} scale
-     * @param {ReturnType<typeof buildChannelAnalysis>} analysis
+     * @param {ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} analysis
      * @param {ReturnType<typeof getScaleResourceRequirements>} requirements
      * @param {"continuous"|"threshold"|"piecewise"|null} kind
      * @returns {void}
@@ -292,7 +291,7 @@ export class ScaleResourceManager {
      * @param {string} params.name
      * @param {ChannelConfigResolved} params.channel
      * @param {ChannelScale} params.scale
-     * @param {ReturnType<typeof buildChannelAnalysis>} params.analysis
+     * @param {ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} params.analysis
      * @param {ReturnType<typeof getScaleResourceRequirements>} params.requirements
      * @param {"continuous"|"threshold"|"piecewise"|null} params.kind
      * @returns {{ updateDomain: (domain: unknown) => boolean, updateRange: (range: unknown) => boolean }}

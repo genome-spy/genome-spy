@@ -39,11 +39,13 @@ import { validateScaleConfig } from "../../scales/scaleValidation.js";
  * @param {object} params
  * @param {Record<string, ChannelConfigInput> | undefined} params.channels
  * @param {ChannelConfigContext} params.context
- * @returns {Record<string, ChannelConfigResolved>}
+ * @returns {{ channels: Record<string, ChannelConfigResolved>, analysisByChannel: Map<string, ReturnType<typeof buildChannelAnalysis>> }}
  */
 export function normalizeChannels({ channels, context }) {
     /** @type {Record<string, ChannelConfigResolved>} */
     const normalized = {};
+    /** @type {Map<string, ReturnType<typeof buildChannelAnalysis>>} */
+    const analysisByChannel = new Map();
     const { channelOrder } = context;
 
     for (const name of channelOrder) {
@@ -53,11 +55,13 @@ export function normalizeChannels({ channels, context }) {
             context,
         });
         if (resolved) {
-            normalized[name] = resolved;
+            normalized[name] = resolved.channel;
+            analysisByChannel.set(name, resolved.analysis);
         }
     }
 
-    return normalizeChannelConditions(normalized, context);
+    normalizeChannelConditions(normalized, analysisByChannel, context);
+    return { channels: normalized, analysisByChannel };
 }
 
 /**
@@ -68,7 +72,7 @@ export function normalizeChannels({ channels, context }) {
  * @param {string} params.name
  * @param {ChannelConfigInput | undefined} params.configChannel
  * @param {ChannelConfigContext} params.context
- * @returns {ChannelConfigResolved | null}
+ * @returns {{ channel: ChannelConfigResolved, analysis: ReturnType<typeof buildChannelAnalysis> } | null}
  */
 export function normalizeChannel({ name, configChannel, context }) {
     const {
@@ -122,22 +126,26 @@ export function normalizeChannel({ name, configChannel, context }) {
         return null;
     }
 
-    validateChannel(name, merged, {
+    const analysis = validateChannel(name, merged, {
         channelOrder,
         optionalChannels,
         channelSpecs,
     });
-    return /** @type {ChannelConfigResolved} */ (merged);
+    return {
+        channel: /** @type {ChannelConfigResolved} */ (merged),
+        analysis,
+    };
 }
 
 /**
  * Normalize conditional channel configs and attach them as synthetic channels.
  *
  * @param {Record<string, ChannelConfigResolved>} channels
+ * @param {Map<string, ReturnType<typeof buildChannelAnalysis>>} analysisByChannel
  * @param {ChannelConfigContext} context
- * @returns {Record<string, ChannelConfigResolved>}
+ * @returns {void}
  */
-function normalizeChannelConditions(channels, context) {
+function normalizeChannelConditions(channels, analysisByChannel, context) {
     let conditionIndex = 0;
     for (const [name, channel] of Object.entries(channels)) {
         const conditions = channel.conditions ?? [];
@@ -158,10 +166,12 @@ function normalizeChannelConditions(channels, context) {
             const conditionName = `${name}__cond${conditionIndex++}`;
             const resolved = normalizeConditionChannel({
                 name,
+                analysisName: conditionName,
                 configChannel: condition.channel,
                 context,
             });
-            channels[conditionName] = resolved;
+            channels[conditionName] = resolved.channel;
+            analysisByChannel.set(conditionName, resolved.analysis);
             resolvedConditions.push(
                 /** @type {ChannelCondition} */ ({
                     ...normalizedCondition,
@@ -171,7 +181,6 @@ function normalizeChannelConditions(channels, context) {
         }
         channel.conditions = resolvedConditions;
     }
-    return channels;
 }
 
 /**
@@ -203,11 +212,17 @@ function normalizeSelectionPredicate(when) {
  *
  * @param {object} params
  * @param {string} params.name
+ * @param {string} params.analysisName
  * @param {ConditionalChannelConfigInput} params.configChannel
  * @param {ChannelConfigContext} params.context
- * @returns {ChannelConfigResolved}
+ * @returns {{ channel: ChannelConfigResolved, analysis: ReturnType<typeof buildChannelAnalysis> }}
  */
-function normalizeConditionChannel({ name, configChannel, context }) {
+function normalizeConditionChannel({
+    name,
+    analysisName,
+    configChannel,
+    context,
+}) {
     const { channelOrder, channelSpecs } = context;
     const merged = /** @type {ChannelConfigInput} */ (
         /** @type {unknown} */ ({
@@ -247,12 +262,20 @@ function normalizeConditionChannel({ name, configChannel, context }) {
         delete merged.value;
         delete merged.default;
     }
-    validateChannel(name, merged, {
-        channelOrder,
-        optionalChannels: [],
-        channelSpecs,
-    });
-    return /** @type {ChannelConfigResolved} */ (merged);
+    const analysis = validateChannel(
+        name,
+        merged,
+        {
+            channelOrder,
+            optionalChannels: [],
+            channelSpecs,
+        },
+        analysisName
+    );
+    return {
+        channel: /** @type {ChannelConfigResolved} */ (merged),
+        analysis,
+    };
 }
 
 /**
@@ -261,9 +284,10 @@ function normalizeConditionChannel({ name, configChannel, context }) {
  * @param {string} name
  * @param {ChannelConfigInput} channel
  * @param {Pick<ChannelConfigContext, "channelOrder"|"optionalChannels"|"channelSpecs">} context
- * @returns {void}
+ * @param {string} [analysisName]
+ * @returns {ReturnType<typeof buildChannelAnalysis>}
  */
-export function validateChannel(name, channel, context) {
+export function validateChannel(name, channel, context, analysisName = name) {
     const { channelOrder, optionalChannels, channelSpecs } = context;
     if (!channelOrder.includes(name)) {
         throw new Error(`Unknown channel: ${name}`);
@@ -275,7 +299,7 @@ export function validateChannel(name, channel, context) {
         );
     }
 
-    const analysis = buildChannelAnalysis(name, channel);
+    const analysis = buildChannelAnalysis(analysisName, channel);
     const { scaleDef, outputComponents } = analysis;
     const allowsTypeOverride =
         ((scaleDef.allowsU32InputOverride === true &&
@@ -309,7 +333,7 @@ export function validateChannel(name, channel, context) {
         !isSeriesChannelConfig(channel) &&
         !isValueChannelConfig(channel)
     ) {
-        return;
+        return analysis;
     }
     if (channel.components && ![1, 2, 4].includes(channel.components)) {
         throw new Error(`Invalid component count for "${name}"`);
@@ -519,4 +543,5 @@ export function validateChannel(name, channel, context) {
             }
         }
     }
+    return analysis;
 }

@@ -1,13 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { buildChannelIRs as buildDefinedChannelIRs } from "./channelIR.js";
-import { attachScaleDefinitions } from "../../../testUtils/scaleDefinitions.js";
+import {
+    analyzeTestChannels,
+    compileTestMarkChannels,
+} from "../../../testUtils/scaleDefinitions.js";
+import { compileMarkChannels } from "./channelIR.js";
 
 /** @param {Record<string, import("../../index.d.ts").ChannelConfigResolved>} channels */
 function buildChannelIRs(channels) {
-    return buildDefinedChannelIRs(attachScaleDefinitions(channels));
+    return compileTestMarkChannels(channels).channelIRs;
 }
 
 describe("channelIR", () => {
+    it("retains the supplied analysis map as the shared source of truth", () => {
+        const channels = {
+            x: /** @type {import("../../index.d.ts").ChannelConfigResolved} */ ({
+                value: 1,
+                type: "f32",
+                components: 1,
+            }),
+        };
+        const analysisByChannel = analyzeTestChannels(channels);
+        const compiled = compileMarkChannels({
+            channels,
+            analysisByChannel,
+            channelNames: new Set(["x"]),
+            inputNames: new Set(),
+        });
+
+        expect(compiled.analysisByChannel).toBe(analysisByChannel);
+        expect(compiled.channelIRs[0].scaleDef).toBe(
+            analysisByChannel.get("x").scaleDef
+        );
+    });
+
     it("keeps value-backed threshold inputs scalar", () => {
         const [ir] = buildChannelIRs({
             fill: {

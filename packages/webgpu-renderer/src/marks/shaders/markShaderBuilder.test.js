@@ -2,12 +2,20 @@ import { describe, expect, it } from "vitest";
 import { buildMarkShader as buildDefinedMarkShader } from "./markShaderBuilder.js";
 import RectProgram from "../programs/rectProgram.js";
 import { createMockRenderer } from "../../testUtils/mockRenderer.js";
-import { attachScaleDefinitions } from "../../../testUtils/scaleDefinitions.js";
+import { compileTestMarkChannels } from "../../../testUtils/scaleDefinitions.js";
 
-/** @param {import("./markShaderBuilder.js").ShaderBuildParams} params */
-function buildMarkShader(params) {
-    attachScaleDefinitions(params.channels);
-    return buildDefinedMarkShader(params);
+/**
+ * @param {Omit<import("./markShaderBuilder.js").ShaderBuildParams, "compiledChannels"> & { channels: Record<string, import("../../index.d.ts").ChannelConfigResolved>, channelNames?: Set<string>, inputNames?: Set<string> }} params
+ */
+function buildMarkShader({ channels, channelNames, inputNames, ...params }) {
+    return buildDefinedMarkShader({
+        ...params,
+        compiledChannels: compileTestMarkChannels(
+            channels,
+            channelNames,
+            inputNames
+        ),
+    });
 }
 
 const shaderBody = `
@@ -23,15 +31,26 @@ fn fs_main() -> @location(0) vec4<f32> {
 `;
 
 describe("buildMarkShader", () => {
-    it("rejects placement-enabled shaders without explicit hooks", () => {
-        expect(() =>
-            buildMarkShader({
-                channels: {},
-                uniformLayout: [],
-                shaderBody,
-                placementIndex: { source: "draw" },
-            })
-        ).toThrow("Placement shader hook");
+    it("evaluates placement conditions from the mark configuration", () => {
+        const conditionalBody = `${shaderBody}
+#if defined(PLACEMENT_ENABLED)
+const placementSentinel = 1u;
+#endif`;
+
+        const withoutPlacement = buildMarkShader({
+            channels: {},
+            uniformLayout: [],
+            shaderBody: conditionalBody,
+        });
+        const withPlacement = buildMarkShader({
+            channels: {},
+            uniformLayout: [],
+            shaderBody: conditionalBody,
+            placementIndex: { source: "draw" },
+        });
+
+        expect(withoutPlacement.shaderCode).not.toContain("placementSentinel");
+        expect(withPlacement.shaderCode).toContain("placementSentinel");
     });
 
     it("generates buffer bindings and accessors for series data", () => {

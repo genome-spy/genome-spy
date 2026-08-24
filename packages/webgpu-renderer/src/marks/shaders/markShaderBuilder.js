@@ -1,6 +1,6 @@
 import { buildScaleWgsl } from "../scales/scaleWgsl.js";
 import HASH_TABLE_WGSL from "../../wgsl/hashTable.wgsl.js";
-import { preprocessShader } from "../../wgsl/preprocess.js";
+import { evaluateShaderConditionals } from "../../wgsl/conditionals.js";
 import { formatLiteral } from "../../wgsl/literals.js";
 import { __DEV__ } from "../../utils/dev.js";
 import {
@@ -17,34 +17,8 @@ import {
     SELECTION_COUNT_PREFIX,
     SELECTION_PREFIX,
 } from "../../wgsl/prefixes.js";
-import { buildChannelIRs } from "./channelIR.js";
 import { buildScaledFunction } from "../scales/scaleCodegen.js";
 import { buildVisibilityPredicate } from "./visibilityPredicate.js";
-
-const PLACEMENT_SHADER_HOOKS = [
-    {
-        marker: "/* @placement-varying */",
-        count: 1,
-        replacement:
-            "@location(15) @interpolate(flat) placementClip: vec4<f32>,",
-    },
-    {
-        marker: "/* @placement-init */",
-        count: 1,
-        replacement: "out.placementClip = vec4<f32>(-1e9);",
-    },
-    {
-        marker: "/* @placement-bounds */",
-        count: 1,
-        replacement: "out.placementClip = placementClipBounds(i);",
-    },
-    {
-        marker: "/* @placement-clip */",
-        count: 1,
-        replacement:
-            "if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }",
-    },
-];
 
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -79,15 +53,13 @@ const PLACEMENT_SHADER_HOOKS = [
  * Inputs needed to generate WGSL and bind group layout for a mark.
  *
  * @typedef {object} ShaderBuildParams
- * @prop {Record<string, ChannelConfigResolved>} channels
+ * @prop {import("./channelIR.js").CompiledMarkChannels} compiledChannels
  * @prop {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} uniformLayout
  * @prop {string} shaderBody
  * @prop {Map<string, import("../programs/internal/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
  * @prop {SelectionDef[]} [selectionDefs]
  * @prop {import("../../index.d.ts").VisibilityPredicate} [visibleWhen]
  * @prop {Record<string, import("../../index.d.ts").ScalarSlotConfig>} [scalarSlots]
- * @prop {Set<string>} [channelNames]
- * @prop {Set<string>} [inputNames]
  * @prop {ExtraResourceDef[]} [extraResources]
  * @prop {import("../../index.d.ts").MarkConfig["placementIndex"]} [placementIndex]
  */
@@ -124,18 +96,17 @@ const PLACEMENT_SHADER_HOOKS = [
  * @returns {ShaderBuildResult}
  */
 export function buildMarkShader({
-    channels,
+    compiledChannels,
     uniformLayout,
     shaderBody,
     packedSeriesLayout,
     selectionDefs = [],
     visibleWhen,
     scalarSlots = {},
-    channelNames = new Set(Object.keys(channels)),
-    inputNames = new Set(),
     extraResources = [],
     placementIndex,
 }) {
+    const { channels, channelIRs, channelNames, inputNames } = compiledChannels;
     const drawPlacement =
         placementIndex &&
         "source" in placementIndex &&
@@ -188,7 +159,6 @@ export function buildMarkShader({
     let bindingIndex = 1;
     const vertexComputeVisibility =
         GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE;
-    const channelIRs = buildChannelIRs(channels);
     const seriesChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.sourceKind === "series"
     );
@@ -408,15 +378,16 @@ ${clauses.join("\n")}
     // Literal formatting is centralized so constants always match the expected
     // WGSL types (e.g., float literals use ".0" when appropriate).
 
-    /** @type {Record<string, boolean>} */
-    const shaderDefines = {};
+    const definedSymbols = new Set();
     for (const name of Object.keys(channels)) {
-        shaderDefines[`${name}_DEFINED`] = true;
+        definedSymbols.add(`${name}_DEFINED`);
     }
-    const processedShaderBody = preprocessShader(shaderBody, shaderDefines);
-    const placementShaderBody = placementIndex
-        ? applyPlacementShaderHooks(processedShaderBody)
-        : processedShaderBody;
+    if (placementIndex) {
+        definedSymbols.add("PLACEMENT_ENABLED");
+        if (drawPlacement) {
+            definedSymbols.add("DRAW_PLACEMENT");
+        }
+    }
 
     // First pass: series-backed channels must map to packed series buffers and
     // emit read_* accessors plus getScaled_* wrappers.
@@ -849,7 +820,9 @@ fn encodePickId(id: u32) -> vec4<f32> {
 
 @fragment
 fn fs_pick(in: VSOut) -> @location(0) vec4<f32> {
-${placementIndex ? "    if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }" : ""}
+#if defined(PLACEMENT_ENABLED)
+    if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }
+#endif
     if (in.pickId == 0u) {
         discard;
     }
@@ -877,13 +850,15 @@ struct Globals {
 
 @group(0) @binding(0) var<uniform> globals: Globals;
 
-${placementIndex ? `@group(2) @binding(0) var<storage, read> placementRectangles: array<vec4<f32>>;` : ""}
+#if defined(PLACEMENT_ENABLED)
+@group(2) @binding(0) var<storage, read> placementRectangles: array<vec4<f32>>;
 
-${
-    placementIndex
-        ? /* wgsl */ `
 fn getPlacementIndex(i: u32) -> u32 {
-    ${drawPlacement ? "return globals.placementIndex;" : "return u32(getScaled___placementIndex(i));"}
+#if defined(DRAW_PLACEMENT)
+    return globals.placementIndex;
+#else
+    return u32(getScaled___placementIndex(i));
+#endif
 }
 
 fn isPlacementVisible(i: u32) -> bool {
@@ -979,14 +954,7 @@ fn applyPlacementClipForPoint(clip: vec2<f32>, anchor: vec2<f32>, i: u32) -> vec
         1.0 - (placed.y / globals.height) * 2.0
     );
 }
-`
-        : ""
-}
-
-${
-    placementIndex
-        ? ""
-        : /* wgsl */ `
+#else
 fn applyPlacementClipForPoint(clip: vec2<f32>, anchor: vec2<f32>, i: u32) -> vec2<f32> {
     return clip;
 }
@@ -1010,8 +978,7 @@ fn applyTextPlacementClip(clip: vec2<f32>, i: u32) -> vec2<f32> {
 fn applyPlacementClipForRule(clip: vec2<f32>, i: u32) -> vec2<f32> {
     return clip;
 }
-`
-}
+#endif
 
 fn isOutsideVisibleRange(pos: vec2<f32>) -> bool {
     return (globals.cullByVisibleRange.x > 0.5 &&
@@ -1047,34 +1014,14 @@ fn premultiplyAlpha(color: vec4<f32>) -> vec4<f32> {
     return vec4<f32>(color.rgb * color.a, color.a);
 }
 
-${placementShaderBody}
+${shaderBody}
 ${pickFns}
 `;
 
     return {
-        shaderCode,
+        shaderCode: evaluateShaderConditionals(shaderCode, definedSymbols),
         resourceBindings,
         resourceLayout,
         resourceRequirements,
     };
-}
-
-/**
- * Resolves the explicit placement extension points required from built-in mark
- * shaders. Exact counts make a missing or duplicated hook fail before WGSL
- * compilation instead of silently dropping placement behavior.
- *
- * @param {string} shaderBody
- */
-function applyPlacementShaderHooks(shaderBody) {
-    for (const { marker, count, replacement } of PLACEMENT_SHADER_HOOKS) {
-        const actual = shaderBody.split(marker).length - 1;
-        if (actual !== count) {
-            throw new Error(
-                `Placement shader hook "${marker}" must occur ${count} times; found ${actual}.`
-            );
-        }
-        shaderBody = shaderBody.replaceAll(marker, replacement);
-    }
-    return shaderBody;
 }

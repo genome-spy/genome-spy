@@ -4,12 +4,14 @@ import { SeriesBufferManager } from "./seriesBuffers.js";
 import { buildBindGroup } from "./bindGroupBuilder.js";
 import { ScaleResourceManager } from "./scaleResources.js";
 import { normalizeChannels } from "./channelConfigResolver.js";
-import { buildPipeline } from "./pipelineBuilder.js";
+import { buildPipelines } from "./pipelineBuilder.js";
 import { SelectionResourceManager } from "./selectionResources.js";
 import {
     normalizeVisibilityPredicate,
     scalarSlotUniformName,
 } from "../../shaders/visibilityPredicate.js";
+import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
+import { compileMarkChannels } from "../../shaders/channelIR.js";
 
 let debugResourcesEnabled = false;
 
@@ -168,7 +170,7 @@ export default class BaseProgram {
         /** @type {{ channels: Record<string, ChannelConfigInput>, count?: number, [key: string]: unknown }} */
         this._markConfig = config;
 
-        this._channels = normalizeChannels({
+        const normalizedChannels = normalizeChannels({
             channels: config.channels,
             context: {
                 channelOrder: this.channelOrder,
@@ -178,6 +180,7 @@ export default class BaseProgram {
                 channelSpecs: this.channelSpecs,
             },
         });
+        this._channels = normalizedChannels.channels;
         this._visualChannelNames = new Set(Object.keys(this._channels));
         this._conditionalChannelNames = this._collectConditionalChannelNames();
         this._publicChannelNames = new Set(this._visualChannelNames);
@@ -205,6 +208,18 @@ export default class BaseProgram {
             )
         );
         this._channels = { ...this._channels, ...this._inputs };
+        for (const [name, channel] of Object.entries(this._inputs)) {
+            normalizedChannels.analysisByChannel.set(
+                name,
+                buildChannelAnalysis(name, channel)
+            );
+        }
+        this._compiledChannels = compileMarkChannels({
+            channels: this._channels,
+            analysisByChannel: normalizedChannels.analysisByChannel,
+            channelNames: this._publicChannelNames,
+            inputNames: new Set(Object.keys(this._inputs)),
+        });
         this._logicalSeriesTargets = this._collectLogicalSeriesTargets();
         this._seriesBuffers = new SeriesBufferManager(
             this.device,
@@ -215,6 +230,7 @@ export default class BaseProgram {
         this._scaleResources = new ScaleResourceManager({
             device: this.device,
             channels: this._channels,
+            analysisByChannel: this._compiledChannels.analysisByChannel,
             getDefaultScaleRange: (name) => this.getDefaultScaleRange(name),
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
@@ -222,6 +238,7 @@ export default class BaseProgram {
         this._selectionResources = new SelectionResourceManager({
             device: this.device,
             channels: this._channels,
+            analysisByChannel: this._compiledChannels.analysisByChannel,
             visibleWhen: this._visibleWhen,
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
@@ -276,46 +293,25 @@ export default class BaseProgram {
             ...this._selectionResources.getExtraResourceDefs(),
             ...this.getExtraResourceDefs(),
         ];
-        const { bindGroupLayout, pipeline, resourceLayout } = buildPipeline({
-            device: this.device,
-            globalBindGroupLayout: renderer._globalBindGroupLayout,
-            format: renderer.format,
-            channels: this._channels,
-            uniformLayout: this._uniformLayout,
-            shaderBody: this.shaderBody,
-            packedSeriesLayout:
-                this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
-            selectionDefs: this._selectionResources.selectionDefs,
-            visibleWhen: this._visibleWhen,
-            scalarSlots: this._scalarSlots,
-            channelNames: this._publicChannelNames,
-            inputNames: new Set(Object.keys(this._inputs)),
-            extraResources,
-            primitiveTopology: this.primitiveTopology,
-            placementBindGroupLayout: renderer._placementBindGroupLayout,
-            placementIndex: this._placementIndex,
-        });
-        const { pipeline: pickPipeline } = buildPipeline({
-            device: this.device,
-            globalBindGroupLayout: renderer._globalBindGroupLayout,
-            format: renderer.pickFormat,
-            channels: this._channels,
-            uniformLayout: this._uniformLayout,
-            shaderBody: this.shaderBody,
-            packedSeriesLayout:
-                this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
-            selectionDefs: this._selectionResources.selectionDefs,
-            visibleWhen: this._visibleWhen,
-            scalarSlots: this._scalarSlots,
-            channelNames: this._publicChannelNames,
-            inputNames: new Set(Object.keys(this._inputs)),
-            extraResources,
-            primitiveTopology: this.primitiveTopology,
-            fragmentEntry: "fs_pick",
-            enableBlend: false,
-            placementBindGroupLayout: renderer._placementBindGroupLayout,
-            placementIndex: this._placementIndex,
-        });
+        const { bindGroupLayout, pipeline, pickPipeline, resourceLayout } =
+            buildPipelines({
+                device: this.device,
+                globalBindGroupLayout: renderer._globalBindGroupLayout,
+                format: renderer.format,
+                pickFormat: renderer.pickFormat,
+                compiledChannels: this._compiledChannels,
+                uniformLayout: this._uniformLayout,
+                shaderBody: this.shaderBody,
+                packedSeriesLayout:
+                    this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
+                selectionDefs: this._selectionResources.selectionDefs,
+                visibleWhen: this._visibleWhen,
+                scalarSlots: this._scalarSlots,
+                extraResources,
+                primitiveTopology: this.primitiveTopology,
+                placementBindGroupLayout: renderer._placementBindGroupLayout,
+                placementIndex: this._placementIndex,
+            });
         this._resourceLayout = resourceLayout;
         this._uniformBuffer = this.device.createBuffer({
             size: this._uniformBufferState?.byteLength ?? 0,

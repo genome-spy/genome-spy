@@ -5,6 +5,7 @@ import {
 } from "./scaleCodegen.js";
 import { bandScaleDef } from "./defs/band.js";
 import { ordinalScaleDef } from "./defs/ordinal.js";
+import { buildChannelAnalysis } from "../shaders/channelAnalysis.js";
 import {
     attachScaleDefinitions,
     createTestScale,
@@ -16,7 +17,11 @@ import {
  */
 function validateScaleConfig(name, channel) {
     attachScaleDefinitions({ channel });
-    return validateDefinedScaleConfig(name, channel);
+    return validateDefinedScaleConfig(
+        name,
+        channel,
+        buildChannelAnalysis(name, channel)
+    );
 }
 
 describe("scaleCodegen validation", () => {
@@ -38,9 +43,7 @@ describe("scaleCodegen validation", () => {
         });
         const scale = { type: "custom", definition };
 
-        expect(
-            validateDefinedScaleConfig("x", { scale, type: "f32" })
-        ).toBeNull();
+        expect(validateScaleConfig("x", { scale, type: "f32" })).toBeNull();
         expect(
             buildScaledFunction({
                 name: "x",
@@ -57,7 +60,7 @@ describe("scaleCodegen validation", () => {
 
     it("rejects unknown scale types", () => {
         expect(() =>
-            validateDefinedScaleConfig("x", {
+            buildChannelAnalysis("x", {
                 scale: /** @type {any} */ ({ type: "mystery" }),
                 type: "f32",
             })

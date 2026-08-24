@@ -1,11 +1,24 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { SelectionResourceManager } from "./selectionResources.js";
+import { SelectionResourceManager as DefinedSelectionResourceManager } from "./selectionResources.js";
+import { analyzeTestChannels } from "../../../../testUtils/scaleDefinitions.js";
 import {
     intervalSelectionActiveName,
     intervalSelectionBoundsName,
     SELECTION_BUFFER_PREFIX,
 } from "../../../wgsl/prefixes.js";
+
+class SelectionResourceManager extends DefinedSelectionResourceManager {
+    /**
+     * @param {Omit<ConstructorParameters<typeof DefinedSelectionResourceManager>[0], "analysisByChannel">} params
+     */
+    constructor(params) {
+        super({
+            ...params,
+            analysisByChannel: analyzeTestChannels(params.channels),
+        });
+    }
+}
 
 /**
  * @param {Array<{ input: string, secondaryInput?: string, hitTest?: "intersects"|"encloses"|"endpoints" }>} targets

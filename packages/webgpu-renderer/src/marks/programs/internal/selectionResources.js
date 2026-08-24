@@ -1,4 +1,3 @@
-import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import { buildHashTableSet } from "../../../utils/hashTable.js";
 import { asGpuBufferSource } from "../../../utils/webgpuTextureUtils.js";
 import {
@@ -77,10 +76,10 @@ function sameIntervalTargets(a, b) {
  *
  * @param {string} selectionName
  * @param {import("../../../index.d.ts").SelectionPredicate} when
- * @param {Record<string, ChannelConfigResolved>} channels
+ * @param {(name: string) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} getAnalysis
  * @returns {IntervalTargetDef[]}
  */
-function resolveIntervalTargets(selectionName, when, channels) {
+function resolveIntervalTargets(selectionName, when, getAnalysis) {
     if (when.type !== "interval") {
         throw new Error(`Selection "${selectionName}" is not an interval.`);
     }
@@ -99,13 +98,7 @@ function resolveIntervalTargets(selectionName, when, channels) {
         }
         names.add(target.input);
 
-        const primary = channels[target.input];
-        if (!primary) {
-            throw new Error(
-                `Interval selection "${selectionName}" references unknown input "${target.input}".`
-            );
-        }
-        const analysis = buildChannelAnalysis(target.input, primary);
+        const analysis = getAnalysis(target.input);
         if (analysis.inputComponents !== 1) {
             throw new Error(
                 `Interval selection "${selectionName}" requires scalar input "${target.input}".`
@@ -114,16 +107,7 @@ function resolveIntervalTargets(selectionName, when, channels) {
 
         let secondaryScalarType;
         if (target.secondaryInput !== undefined) {
-            const secondary = channels[target.secondaryInput];
-            if (!secondary) {
-                throw new Error(
-                    `Interval selection "${selectionName}" references unknown input "${target.secondaryInput}".`
-                );
-            }
-            const secondaryAnalysis = buildChannelAnalysis(
-                target.secondaryInput,
-                secondary
-            );
+            const secondaryAnalysis = getAnalysis(target.secondaryInput);
             if (secondaryAnalysis.inputComponents !== 1) {
                 throw new Error(
                     `Interval selection "${selectionName}" requires scalar input "${target.secondaryInput}".`
@@ -152,10 +136,10 @@ function resolveIntervalTargets(selectionName, when, channels) {
  *
  * @param {Map<string, SelectionDef>} defs
  * @param {import("../../../index.d.ts").SelectionPredicate} when
- * @param {Record<string, ChannelConfigResolved>} channels
+ * @param {(name: string) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} getAnalysis
  * @returns {void}
  */
-function addSelectionDef(defs, when, channels) {
+function addSelectionDef(defs, when, getAnalysis) {
     const selectionName = when.selection;
     const type = when.type;
     const existing = defs.get(selectionName);
@@ -169,7 +153,7 @@ function addSelectionDef(defs, when, channels) {
             const targets = resolveIntervalTargets(
                 selectionName,
                 when,
-                channels
+                getAnalysis
             );
             if (
                 !existing.targets ||
@@ -187,7 +171,7 @@ function addSelectionDef(defs, when, channels) {
         defs.set(selectionName, {
             name: selectionName,
             type,
-            targets: resolveIntervalTargets(selectionName, when, channels),
+            targets: resolveIntervalTargets(selectionName, when, getAnalysis),
         });
     } else {
         defs.set(selectionName, { name: selectionName, type });
@@ -199,22 +183,22 @@ function addSelectionDef(defs, when, channels) {
  *
  * @param {VisibilityPredicate | undefined} node
  * @param {Map<string, SelectionDef>} defs
- * @param {Record<string, ChannelConfigResolved>} channels
+ * @param {(name: string) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} getAnalysis
  * @returns {void}
  */
-function collectVisibilitySelections(node, defs, channels) {
+function collectVisibilitySelections(node, defs, getAnalysis) {
     if (!node || typeof node !== "object") {
         return;
     }
     if ("selection" in node) {
-        addSelectionDef(defs, node, channels);
+        addSelectionDef(defs, node, getAnalysis);
     } else if ("all" in node) {
         for (const child of node.all) {
-            collectVisibilitySelections(child, defs, channels);
+            collectVisibilitySelections(child, defs, getAnalysis);
         }
     } else if ("any" in node) {
         for (const child of node.any) {
-            collectVisibilitySelections(child, defs, channels);
+            collectVisibilitySelections(child, defs, getAnalysis);
         }
     }
 }
@@ -224,22 +208,31 @@ function collectVisibilitySelections(node, defs, channels) {
  * visibility predicates.
  *
  * @param {Record<string, ChannelConfigResolved>} channels
+ * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} analysisByChannel
  * @param {VisibilityPredicate | undefined} visibleWhen
  * @returns {Map<string, SelectionDef>}
  */
-function collectSelectionDefs(channels, visibleWhen) {
+function collectSelectionDefs(channels, analysisByChannel, visibleWhen) {
     /** @type {Map<string, SelectionDef>} */
     const defs = new Map();
+    /** @param {string} name */
+    const getAnalysis = (name) => {
+        const analysis = analysisByChannel.get(name);
+        if (!analysis) {
+            throw new Error(`Selection references unknown input "${name}".`);
+        }
+        return analysis;
+    };
 
     for (const channel of Object.values(channels)) {
         for (const condition of channel.conditions ?? []) {
-            addSelectionDef(defs, condition.when, channels);
+            addSelectionDef(defs, condition.when, getAnalysis);
         }
     }
     collectVisibilitySelections(
         normalizeVisibilityPredicate(visibleWhen),
         defs,
-        channels
+        getAnalysis
     );
 
     if (
@@ -264,16 +257,27 @@ export class SelectionResourceManager {
      * @param {object} params
      * @param {GPUDevice} params.device
      * @param {Record<string, ChannelConfigResolved>} params.channels
+     * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} params.analysisByChannel
      * @param {VisibilityPredicate} [params.visibleWhen]
      * @param {(name: string, value: number|number[]) => void} params.setUniformValue
      */
-    constructor({ device, channels, visibleWhen, setUniformValue }) {
+    constructor({
+        device,
+        channels,
+        analysisByChannel,
+        visibleWhen,
+        setUniformValue,
+    }) {
         this._device = device;
         this._channels = channels;
         this._setUniformValue = setUniformValue;
 
         /** @type {Map<string, SelectionDef>} */
-        this._selectionDefs = collectSelectionDefs(channels, visibleWhen);
+        this._selectionDefs = collectSelectionDefs(
+            channels,
+            analysisByChannel,
+            visibleWhen
+        );
         /** @type {Map<string, { buffer: GPUBuffer, byteLength: number }>} */
         this._selectionBuffers = new Map();
     }

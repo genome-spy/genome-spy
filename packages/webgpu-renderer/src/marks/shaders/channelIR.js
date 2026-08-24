@@ -1,10 +1,10 @@
-import { buildChannelAnalysis } from "./channelAnalysis.js";
 import { formatLiteral } from "../../wgsl/literals.js";
 
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
  * @typedef {import("../../index.d.ts").ChannelScale["type"]} ScaleType
  * @typedef {import("../../types.js").ScalarType} ScalarType
+ * @typedef {ReturnType<typeof import("./channelAnalysis.js").buildChannelAnalysis>} ChannelAnalysis
  *
  * @typedef {"series"|"uniform"|"literal"} ChannelSourceKind
  *
@@ -38,19 +38,25 @@ import { formatLiteral } from "../../wgsl/literals.js";
  *   True when the ordinal range buffer must be bound for this channel.
  * @prop {boolean} needsDomainMap
  *   True when the ordinal domain map buffer must be bound for this channel.
+ *
+ * @typedef {object} CompiledMarkChannels
+ * @prop {Record<string, ChannelConfigResolved>} channels
+ * @prop {ReadonlyMap<string, ChannelAnalysis>} analysisByChannel
+ * @prop {ChannelIR[]} channelIRs
+ * @prop {ReadonlySet<string>} channelNames
+ * @prop {ReadonlySet<string>} inputNames
  */
 
 /**
- * @param {string} name
- * @param {ChannelConfigResolved} channel
+ * @param {ChannelAnalysis} analysis
  * @returns {ChannelIR | null}
  */
-function buildChannelIR(name, channel) {
-    const analysis = buildChannelAnalysis(name, channel);
+function buildChannelIR(analysis) {
     if (analysis.sourceKind === "missing") {
         return null;
     }
     const {
+        name,
         outputComponents,
         inputComponents,
         scalarType,
@@ -62,6 +68,7 @@ function buildChannelIR(name, channel) {
         needsOrdinalRange,
         needsDomainMap,
     } = analysis;
+    const channel = /** @type {ChannelConfigResolved} */ (analysis.channel);
 
     if (analysis.sourceKind === "series") {
         return {
@@ -108,15 +115,15 @@ function buildChannelIR(name, channel) {
 }
 
 /**
- * @param {Record<string, ChannelConfigResolved>} channels
+ * @param {ReadonlyMap<string, ChannelAnalysis>} analysisByChannel
  * @returns {ChannelIR[]}
  */
-export function buildChannelIRs(channels) {
+function buildChannelIRs(analysisByChannel) {
     /** @type {ChannelIR[]} */
     const channelIRs = [];
 
-    for (const [name, channel] of Object.entries(channels)) {
-        const channelIR = buildChannelIR(name, channel);
+    for (const analysis of analysisByChannel.values()) {
+        const channelIR = buildChannelIR(analysis);
         if (!channelIR) {
             continue;
         }
@@ -124,4 +131,29 @@ export function buildChannelIRs(channels) {
     }
 
     return channelIRs;
+}
+
+/**
+ * Build the channel views shared by shader and resource setup.
+ *
+ * @param {object} params
+ * @param {Record<string, ChannelConfigResolved>} params.channels
+ * @param {ReadonlyMap<string, ChannelAnalysis>} params.analysisByChannel
+ * @param {ReadonlySet<string>} params.channelNames
+ * @param {ReadonlySet<string>} params.inputNames
+ * @returns {CompiledMarkChannels}
+ */
+export function compileMarkChannels({
+    channels,
+    analysisByChannel,
+    channelNames,
+    inputNames,
+}) {
+    return {
+        channels,
+        analysisByChannel,
+        channelIRs: buildChannelIRs(analysisByChannel),
+        channelNames,
+        inputNames,
+    };
 }

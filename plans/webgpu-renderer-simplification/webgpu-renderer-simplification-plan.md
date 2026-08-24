@@ -1,7 +1,7 @@
 # WebGPU renderer simplification and footprint plan
 
-Status: Milestone 1 and faceted rendering complete; Milestones 2–3 and 5
-revised and pending. Milestone 4 is deferred to issue #362.
+Status: Milestones 1–2 and faceted rendering complete; Milestones 3 and 5
+pending. Milestone 4 is deferred to issue #362.
 
 Created: 2026-08-23
 
@@ -270,7 +270,7 @@ Core import migration.
 
 ## Milestone 2: Single compilation and minimal shader conditionals
 
-Status: Pending.
+Status: Complete.
 
 ### Intended outcome
 
@@ -328,6 +328,19 @@ narrow conditional language remains.
   general parser must be replaced by the smaller conditional evaluator in every
   applicable production graph.
 
+Completed verification:
+
+- 159 renderer unit tests and 51 WebGPU GPU tests pass.
+- 74 focused Core WebGPU and placement tests pass.
+- Type checking, lint, bundle verification, and `git diff --check` pass.
+- One shader-module and pipeline-layout creation is asserted for both render
+  pipelines, and the compiled channel record retains the supplied analysis map.
+- From the post-facet baseline, `pointLinear` changed from 123,544 / 35,655 to
+  123,298 / 35,601 minified/gzip bytes; `textCustomFont` changed from
+  126,761 / 37,178 to 126,513 / 37,135. Module counts are unchanged. The
+  milestone primarily removes duplicate construction work and reduces
+  production JavaScript from 14,805 to 14,781 lines.
+
 ### Documentation and migration
 
 Update `packages/webgpu-renderer/MIGRATION_PLAN.md` when the milestone starts
@@ -338,7 +351,7 @@ and completes. No public API migration is expected.
 Review the compiled-record boundary, normal/picking parity, generated layouts,
 conditional syntax, placement blocks, and shader diagnostics before merging.
 
-### Tentative commit
+### Commit
 
 `refactor(webgpu-renderer): compile mark shaders once`
 

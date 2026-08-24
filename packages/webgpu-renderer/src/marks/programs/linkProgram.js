@@ -40,7 +40,9 @@ const ORIENT_VERTICAL: u32 = 0u;
 const ORIENT_HORIZONTAL: u32 = 1u;
 
 struct VSOut {
-    /* @placement-varying */
+#if defined(PLACEMENT_ENABLED)
+    @location(15) @interpolate(flat) placementClip: vec4<f32>,
+#endif
     @builtin(position) pos: vec4<f32>,
     @location(0) color: vec4<f32>,
     // Signed distance from the line center along the normal, in pixels.
@@ -52,7 +54,9 @@ struct VSOut {
 
 fn culledLink() -> VSOut {
     var out: VSOut;
-    /* @placement-init */
+#if defined(PLACEMENT_ENABLED)
+    out.placementClip = vec4<f32>(-1e9);
+#endif
     out.pos = vec4<f32>(0.0);
     out.color = vec4<f32>(0.0);
     out.normalDistance = 0.0;
@@ -324,7 +328,9 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     );
 
     var out: VSOut;
-    /* @placement-bounds */
+#if defined(PLACEMENT_ENABLED)
+    out.placementClip = placementClipBounds(i);
+#endif
     out.pos = vec4<f32>(applyPlacementClip(clip, i), 0.0, 1.0);
     let color = getScaled_color(i);
     out.color = premultiplyAlpha(vec4<f32>(color.rgb, color.a * opacity));
@@ -346,7 +352,9 @@ fn shade(in: VSOut) -> vec4<f32> {
 
 @fragment
 fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
-    /* @placement-clip */
+#if defined(PLACEMENT_ENABLED)
+    if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }
+#endif
     return shade(in);
 }
 `;

@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { buildPipeline } from "./pipelineBuilder.js";
+import { buildPipelines } from "./pipelineBuilder.js";
+import { compileTestMarkChannels } from "../../../../testUtils/scaleDefinitions.js";
 
-describe("buildPipeline", () => {
-    it("builds a pipeline with the global bind group layout", () => {
-        let renderPipelineArgs;
+describe("buildPipelines", () => {
+    it("shares shader resources between visible and picking pipelines", () => {
+        /** @type {GPURenderPipelineDescriptor[]} */
+        const renderPipelineArgs = [];
+        let shaderModuleCalls = 0;
+        let pipelineLayoutCalls = 0;
         const bindGroupLayout = /** @type {GPUBindGroupLayout} */ (
             /** @type {unknown} */ ({ id: "bindGroupLayout" })
         );
@@ -18,40 +22,45 @@ describe("buildPipeline", () => {
                     ),
                 createPipelineLayout:
                     /** @type {(args: GPUPipelineLayoutDescriptor) => GPUPipelineLayout} */ (
-                        (args) =>
-                            /** @type {unknown} */ ({
+                        (args) => {
+                            pipelineLayoutCalls += 1;
+                            return /** @type {unknown} */ ({
                                 bindGroupLayouts: args.bindGroupLayouts,
-                            })
+                            });
+                        }
                     ),
                 createShaderModule:
                     /** @type {(args: GPUShaderModuleDescriptor) => GPUShaderModule} */ (
-                        (args) =>
-                            /** @type {unknown} */ ({
+                        (args) => {
+                            shaderModuleCalls += 1;
+                            return /** @type {unknown} */ ({
                                 code: args.code,
-                            })
+                            });
+                        }
                     ),
                 createRenderPipeline:
                     /** @type {(args: GPURenderPipelineDescriptor) => GPURenderPipeline} */ (
                         (args) => {
-                            renderPipelineArgs = args;
+                            renderPipelineArgs.push(args);
                             return /** @type {unknown} */ ({ args });
                         }
                     ),
             })
         );
 
-        const result = buildPipeline({
+        const result = buildPipelines({
             device,
             globalBindGroupLayout,
             format: "rgba8unorm",
-            channels: {
+            pickFormat: "rgba8unorm",
+            compiledChannels: compileTestMarkChannels({
                 x: {
                     data: new Float32Array([0]),
                     type: "f32",
                     components: 1,
                     inputComponents: 1,
                 },
-            },
+            }),
             uniformLayout: [
                 {
                     name: "dummy",
@@ -79,9 +88,8 @@ describe("buildPipeline", () => {
         expect(result.resourceLayout).toEqual([
             { name: "seriesF32", role: "series" },
         ]);
-        const pipelineArgs = /** @type {GPURenderPipelineDescriptor} */ (
-            renderPipelineArgs
-        );
+        const pipelineArgs = renderPipelineArgs[0];
+        const pickPipelineArgs = renderPipelineArgs[1];
         const targets = Array.from(pipelineArgs.fragment.targets ?? []);
         const layout =
             /** @type {{ bindGroupLayouts: GPUBindGroupLayout[] }} */ (
@@ -102,5 +110,10 @@ describe("buildPipeline", () => {
             },
         });
         expect(layout.bindGroupLayouts[0]).toBe(globalBindGroupLayout);
+        expect(pickPipelineArgs.fragment.entryPoint).toBe("fs_pick");
+        expect(pickPipelineArgs.layout).toBe(pipelineArgs.layout);
+        expect(pickPipelineArgs.vertex.module).toBe(pipelineArgs.vertex.module);
+        expect(shaderModuleCalls).toBe(1);
+        expect(pipelineLayoutCalls).toBe(1);
     });
 });

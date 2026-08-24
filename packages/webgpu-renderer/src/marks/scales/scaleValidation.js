@@ -1,5 +1,3 @@
-import { buildChannelAnalysis } from "../shaders/channelAnalysis.js";
-
 /**
  * @param {import("../../types.js").ScalarType} type
  * @returns {boolean}
@@ -11,11 +9,10 @@ function isNumericScalarType(type) {
 /**
  * @param {string} name
  * @param {import("../../index.d.ts").ChannelConfigInput} channel
- * @param {ReturnType<typeof buildChannelAnalysis> | undefined} [analysis]
+ * @param {ReturnType<typeof import("../shaders/channelAnalysis.js").buildChannelAnalysis>} analysis
  * @returns {string | null}
  */
 export function validateScaleConfig(name, channel, analysis) {
-    const resolved = analysis ?? buildChannelAnalysis(name, channel);
     const {
         scaleType,
         outputComponents,
@@ -30,7 +27,7 @@ export function validateScaleConfig(name, channel, analysis) {
         outputScalarType,
         scaleDef,
         interpolateEnabled,
-    } = resolved;
+    } = analysis;
 
     const vectorOutputMode = scaleDef?.vectorOutput ?? "never";
     const allowsVectorOutputFlag =

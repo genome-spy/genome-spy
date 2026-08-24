@@ -17,6 +17,16 @@ implemented in commits recorded in
 
 ### Renderer package: remaining work
 
+Completed simplification work:
+
+- Mark construction now retains one compiled channel-analysis/IR record for
+  validation, scale and selection resources, and shader generation.
+- Visible and picking pipelines share their generated WGSL, shader module,
+  mark bind-group layout, and pipeline layout.
+- Built-in WGSL keeps local `#if defined(...)` blocks, evaluated by a narrow
+  immutable-symbol conditional pass instead of the former mutable macro
+  preprocessor. Placement uses the same readable shader-local mechanism.
+
 - WebGL mark-feature parity is tracked in
   `plans/webgpu-core-integration/webgpu-renderer-parity-plan.md`; the current
   inventory covers endpoint offsets, rule dashes, point line shapes, rectangle

@@ -6,8 +6,11 @@ globalThis.GPUShaderStage ??= {
 };
 import fs from "node:fs";
 import path from "node:path";
-import { buildMarkShader } from "../src/marks/shaders/markShaderBuilder.js";
-import { attachScaleDefinitions } from "../testUtils/scaleDefinitions.js";
+import { buildMarkShader as buildDefinedMarkShader } from "../src/marks/shaders/markShaderBuilder.js";
+import {
+    attachScaleDefinitions,
+    compileTestMarkChannels,
+} from "../testUtils/scaleDefinitions.js";
 import {
     buildPackedSeriesLayout,
     packSeriesArrays,
@@ -16,6 +19,20 @@ import { buildUniformData } from "./gpuTestUtils.js";
 
 const WORKGROUP_SIZE = 64;
 const SHOULD_DUMP = process.env.DUMP_MARK_SHADER === "1";
+
+/**
+ * @param {Omit<import("../src/marks/shaders/markShaderBuilder.js").ShaderBuildParams, "compiledChannels"> & { channels: Record<string, import("../src/index.d.ts").ChannelConfigResolved>, channelNames?: Set<string>, inputNames?: Set<string> }} params
+ */
+function buildMarkShader({ channels, channelNames, inputNames, ...params }) {
+    return buildDefinedMarkShader({
+        ...params,
+        compiledChannels: compileTestMarkChannels(
+            channels,
+            channelNames,
+            inputNames
+        ),
+    });
+}
 
 /**
  * @param {string} name

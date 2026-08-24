@@ -9,6 +9,8 @@ import { quantizeScaleDef } from "../src/marks/scales/defs/quantize.js";
 import { sqrtScaleDef } from "../src/marks/scales/defs/sqrt.js";
 import { symlogScaleDef } from "../src/marks/scales/defs/symlog.js";
 import { thresholdScaleDef } from "../src/marks/scales/defs/threshold.js";
+import { buildChannelAnalysis } from "../src/marks/shaders/channelAnalysis.js";
+import { compileMarkChannels } from "../src/marks/shaders/channelIR.js";
 
 /** @type {Readonly<Record<string, import("../src/index.d.ts").ScaleDef>>} */
 const TEST_SCALE_DEFINITIONS = Object.freeze({
@@ -51,6 +53,38 @@ export function attachScaleDefinitions(channels) {
         }
     }
     return channels;
+}
+
+/**
+ * @param {Record<string, import("../src/index.d.ts").ChannelConfigResolved>} channels
+ * @returns {Map<string, ReturnType<typeof buildChannelAnalysis>>}
+ */
+export function analyzeTestChannels(channels) {
+    attachScaleDefinitions(channels);
+    return new Map(
+        Object.entries(channels).map(([name, channel]) => [
+            name,
+            buildChannelAnalysis(name, channel),
+        ])
+    );
+}
+
+/**
+ * @param {Record<string, import("../src/index.d.ts").ChannelConfigResolved>} channels
+ * @param {ReadonlySet<string>} [channelNames]
+ * @param {ReadonlySet<string>} [inputNames]
+ */
+export function compileTestMarkChannels(
+    channels,
+    channelNames = new Set(Object.keys(channels)),
+    inputNames = new Set()
+) {
+    return compileMarkChannels({
+        channels,
+        analysisByChannel: analyzeTestChannels(channels),
+        channelNames,
+        inputNames,
+    });
 }
 
 /**

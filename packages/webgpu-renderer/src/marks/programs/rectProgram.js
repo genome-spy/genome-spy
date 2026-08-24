@@ -209,7 +209,9 @@ fn hatchPattern(uv: vec2<f32>, halfStrokeWidth: f32, patternType: i32) -> f32 {
 }
 
 struct VSOut {
-    /* @placement-varying */
+#if defined(PLACEMENT_ENABLED)
+    @location(15) @interpolate(flat) placementClip: vec4<f32>,
+#endif
     @builtin(position) pos: vec4<f32>,
     @location(0) local: vec2<f32>,
     @location(1) size: vec2<f32>,
@@ -229,7 +231,9 @@ struct VSOut {
 
 fn culledRect() -> VSOut {
     var out: VSOut;
-    /* @placement-init */
+#if defined(PLACEMENT_ENABLED)
+    out.placementClip = vec4<f32>(-1e9);
+#endif
     out.pos = vec4<f32>(0.0);
     out.local = vec2<f32>(0.0);
     out.size = vec2<f32>(0.0);
@@ -305,7 +309,9 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     );
 
     var out: VSOut;
-    /* @placement-bounds */
+#if defined(PLACEMENT_ENABLED)
+    out.placementClip = placementClipBounds(i);
+#endif
     out.pos = vec4<f32>(applyPlacementClip(clip, i), 0.0, 1.0);
     out.local = centeredFrac * vec2<f32>(w, h) + expansion;
     out.size = vec2<f32>(w, h);
@@ -395,7 +401,9 @@ fn shade(in: VSOut) -> vec4<f32> {
 
 @fragment
 fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
-    /* @placement-clip */
+#if defined(PLACEMENT_ENABLED)
+    if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }
+#endif
     return shade(in);
 }
 `;

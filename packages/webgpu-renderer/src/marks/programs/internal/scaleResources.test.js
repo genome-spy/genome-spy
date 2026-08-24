@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ScaleResourceManager } from "./scaleResources.js";
-import { attachScaleDefinitions } from "../../../../testUtils/scaleDefinitions.js";
+import { analyzeTestChannels } from "../../../../testUtils/scaleDefinitions.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_PREFIX,
@@ -13,7 +13,7 @@ import {
  * @returns {{ manager: ScaleResourceManager, uniforms: Map<string, number[] | number>, buffers: Array<GPUBuffer & { destroy: ReturnType<typeof vi.fn> }>, textures: Array<GPUTexture & { destroy: ReturnType<typeof vi.fn> }> }}
  */
 function createManager(channels) {
-    attachScaleDefinitions(channels);
+    const analysisByChannel = analyzeTestChannels(channels);
     const uniforms = new Map();
     /** @type {Array<GPUBuffer & { destroy: ReturnType<typeof vi.fn> }>} */
     const buffers = [];
@@ -71,6 +71,7 @@ function createManager(channels) {
     const manager = new ScaleResourceManager({
         device,
         channels,
+        analysisByChannel,
         getDefaultScaleRange: () => undefined,
         setUniformValue: (name, value) => {
             uniforms.set(name, value);
