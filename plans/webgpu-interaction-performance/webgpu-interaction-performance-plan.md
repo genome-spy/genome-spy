@@ -480,6 +480,12 @@ Core computes layout or arranges views.
   data revisions and none to expression revisions. Stable configs were reused;
   the remaining data-revision cost must stay distinct in the authoritative
   comparison. These headless timings are not authoritative.
+- Updating retained slot snapshots in place removed per-frame snapshot-tree
+  allocation. In a matching four-sample headless WASD diagnostic,
+  `retainedResourceSynchronization` decreased from approximately 1.02 to
+  0.80 ms per render frame on average, with all samples passing. Preserve this
+  change for the authoritative matrix, but do not treat the diagnostic ratio as
+  final performance evidence.
 - Existing WebGPU Core adapter, surface, placement, picking, and renderer tests
   remain green.
 - Compare WebGL/WebGPU screenshots and picking for representative ordinary,

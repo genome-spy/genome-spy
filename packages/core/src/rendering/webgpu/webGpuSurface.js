@@ -472,15 +472,13 @@ function makeRetainableChannel(channel) {
  * @param {any} config
  */
 function updateRetainedMark(retained, config) {
-    const nextSnapshots = snapshotChannels(config.channels);
     for (const [name, channel] of Object.entries(config.channels)) {
-        const nextSnapshot = nextSnapshots[name];
-        const previousSnapshot = retained.channelSnapshots[name];
+        const snapshot = retained.channelSnapshots[name];
         updateChannelSlots(
             retained.handle.scales[name]?.default,
             retained.handle.values[name]?.default,
-            nextSnapshot,
-            previousSnapshot
+            channel,
+            snapshot
         );
 
         for (const [index, condition] of (channel.conditions ?? []).entries()) {
@@ -494,8 +492,8 @@ function updateRetainedMark(retained, config) {
                 retained.handle.values[name]?.conditions?.[
                     condition.when.selection
                 ],
-                nextSnapshot.conditions[index],
-                previousSnapshot?.conditions[index]
+                condition.channel,
+                snapshot.conditions[index]
             );
         }
     }
@@ -505,7 +503,6 @@ function updateRetainedMark(retained, config) {
         retained.count = config.count;
         retained.handle.series.replace(retained.series, retained.count);
     }
-    retained.channelSnapshots = nextSnapshots;
 }
 
 /**
@@ -514,31 +511,34 @@ function updateRetainedMark(retained, config) {
  *
  * @param {import("@genome-spy/webgpu-renderer").ScaleSlotHandle | undefined} scaleSlot
  * @param {import("@genome-spy/webgpu-renderer").ValueSlotHandle | undefined} valueSlot
- * @param {ChannelSnapshot} next
- * @param {ChannelSnapshot | undefined} previous
+ * @param {any} channel
+ * @param {ChannelSnapshot} snapshot
  */
-function updateChannelSlots(scaleSlot, valueSlot, next, previous) {
-    if (scaleSlot && next.scale) {
+function updateChannelSlots(scaleSlot, valueSlot, channel, snapshot) {
+    if (scaleSlot && channel.scale) {
+        const domain = channel.scale.domain;
         if (
-            next.scale.domain !== undefined &&
-            !valuesEqual(previous?.scale?.domain, next.scale.domain)
+            domain !== undefined &&
+            !valuesEqual(snapshot.scale?.domain, domain)
         ) {
-            scaleSlot.setDomain(next.scale.domain);
+            scaleSlot.setDomain(domain);
+            snapshot.scale.domain = snapshotValue(domain);
         }
-        if (
-            next.scale.range !== undefined &&
-            !valuesEqual(previous?.scale?.range, next.scale.range)
-        ) {
-            scaleSlot.setRange(next.scale.range);
+        const range = channel.scale.range;
+        if (range !== undefined && !valuesEqual(snapshot.scale?.range, range)) {
+            scaleSlot.setRange(range);
+            snapshot.scale.range = snapshotValue(range);
         }
     }
 
+    const value = channel.value;
     if (
         valueSlot &&
-        next.value !== undefined &&
-        !valuesEqual(previous?.value, next.value)
+        value !== undefined &&
+        !valuesEqual(snapshot.value, value)
     ) {
-        valueSlot.set(next.value);
+        valueSlot.set(value);
+        snapshot.value = snapshotValue(value);
     }
 }
 
