@@ -15,7 +15,7 @@ describe("WebGPU interaction benchmark driver", () => {
         expect(options.renderers).toEqual(["webgl", "webgpu"]);
         expect(options.runs).toBe(5);
         expect(options.cases).toHaveLength(6);
-        expect(options.dprs).toEqual([1, 2]);
+        expect(options.dprs).toEqual([1]);
         expect(options.headed).toBe(true);
     });
 
@@ -38,6 +38,19 @@ describe("WebGPU interaction benchmark driver", () => {
         expect(options.runs).toBe(2);
         expect(options.headed).toBe(false);
         expect(options.traces).toBe(false);
+    });
+
+    test("adds an optional DPR sensitivity matrix", () => {
+        const options = parseArgs([
+            "--spec",
+            "example.json",
+            "--dpr",
+            "1",
+            "--sensitivity-dpr",
+            "2",
+        ]);
+
+        expect(options.dprs).toEqual([1, 2]);
     });
 
     test("summarizes cadence thresholds independently from profiler frames", () => {

@@ -491,6 +491,11 @@ Core computes layout or arranges views.
 - Compare WebGL/WebGPU screenshots and picking for representative ordinary,
   repeated, faceted, clipped, conditionally visible, and empty views.
 - Re-run the Milestone 1 benchmark and record allocation and CPU deltas.
+- Use the DPR 1 subset for the Milestone 2 regression gate. The targeted costs
+  are CPU-side and not fill-rate-bound, so repeating DPR 2 would duplicate the
+  matrix without testing the working hypothesis. Keep the existing DPR 2
+  baseline and restore that sensitivity run only if a later change targets
+  raster, attachment, upload-volume, or other pixel-count-dependent work.
 - Require domain-only benchmark frames to report zero render-command replay
   (the existing `layoutReplay` counter), zero stable occurrence reconstruction,
   and zero configuration misses for marks with unchanged packed-data and

@@ -10,18 +10,20 @@ machine:
 ```sh
 node packages/core/scripts/runWebGpuInteractionBenchmark.mjs \
     --spec private/MCCA-visualization/web/specs/spec.json \
-    --control-spec examples/app/first.json \
+    --control-spec examples/app/samples.json \
     --filter-selector '[data-benchmark-filter]' \
     --sort-selector '[data-benchmark-sort]'
 ```
 
 The default matrix uses fresh browser contexts, counterbalances renderer order,
-runs five repetitions, covers all six interaction cases, and records DPR 1
-and DPR 2. Use `--server-url` to point at a production-like build served by a
-separate process. Use `--headless` only for diagnostics; headless or
-SwiftShader results are marked non-authoritative. The non-macOS launch path
-does not request SwiftShader, so the actual adapter must be inspected in the
-JSON output before drawing conclusions.
+runs five repetitions, covers all six interaction cases, and records DPR 1.
+Add `--sensitivity-dpr 2` only when investigating work that may scale with
+pixel count, such as rasterization, attachment traffic, or pixel-sized uploads.
+Use `--server-url` to point at a production-like build served by a separate
+process. Use `--headless` only for diagnostics; headless or SwiftShader results
+are marked non-authoritative. The non-macOS launch path does not request
+SwiftShader, so the actual adapter must be inspected in the JSON output before
+drawing conclusions.
 
 Each cell writes a low-overhead in-page cadence summary, private profiler
 phase/counter data, and (unless `--no-trace` is supplied) a Playwright trace to

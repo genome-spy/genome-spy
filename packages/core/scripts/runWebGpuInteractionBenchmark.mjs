@@ -1134,7 +1134,7 @@ export function parseArgs(args) {
         runs: defaultRuns,
         durationMs: defaultDurationMs,
         warmupMs: defaultWarmupMs,
-        dprs: [1, 2],
+        dprs: [1],
         viewport: defaultViewport,
         serverUrl: undefined,
         outputDir: defaultOutputDir,
