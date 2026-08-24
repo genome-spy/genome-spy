@@ -1,7 +1,7 @@
 # WebGPU renderer simplification and footprint plan
 
-Status: Milestone 1 and faceted rendering complete; Milestones 2–5 revised and
-pending.
+Status: Milestone 1 and faceted rendering complete; Milestones 2–3 and 5
+revised and pending. Milestone 4 is deferred to issue #362.
 
 Created: 2026-08-23
 
@@ -23,13 +23,13 @@ twice, creates duplicate shader modules and pipeline layouts for normal and
 picking passes, and carries a general WGSL conditional parser for a handful of
 built-in conditions. Scale-resource views and draw-global staging allocate
 temporary objects on retained paths. Text uses a package-global font registry
-even though each text program resolves only one font resource, and it expands
+as an opacity boundary around the bundled BMFont representation, and it expands
 every logical string channel—including facet placement—to glyph cardinality.
 
 The remaining work preserves all implemented features while deleting duplicate
-compilation, global registration, broad preprocessing, and avoidable retained-
-path allocation. It does not redesign working facet semantics merely to make
-the implementation prettier.
+compilation, broad preprocessing, unused dependencies, and avoidable retained-
+path allocation. It does not redesign working facet semantics or expose font-
+atlas internals merely to remove a side-effect entry point.
 
 ## Implemented baseline
 
@@ -47,8 +47,11 @@ Commit `71be361af` completed the package-contract milestone:
   entry points.
 
 The optional-font asset goal originally assigned to Milestone 4 therefore
-landed early. Milestone 4 now addresses the unnecessary global registry and
-side-effect entry point introduced by that implementation.
+landed early. The remaining font redesign is deferred to
+[issue #362](https://github.com/genome-spy/genome-spy/issues/362), which tracks
+replacing the current BMFont/aframe-fonts representation. Until that design is
+settled, the side-effect entry point is an intentional opacity boundary rather
+than a public atlas-and-metrics preset.
 
 ### Facet result
 
@@ -65,9 +68,10 @@ remaining simplification must preserve:
 - the default limit of eight vertex-stage storage buffers without an elevated
   device request.
 
-The placement shader markers added by the facet work are an intentional narrow
-template contract. They may be simplified together with shader assembly, but
-must not be replaced by implicit mark-name checks or a generic plugin system.
+The facet work's placement semantics are fixed, but its shader markers are an
+implementation detail. Milestone 2 may replace them with shader-local
+conditional blocks so placement code remains visible at each point of use. It
+must not replace them with implicit mark-name checks or a generic plugin system.
 
 ### Current measurements
 
@@ -102,11 +106,12 @@ necessary feature. It is the honest baseline for all remaining ratchets.
 - Analyze and compile each mark configuration once.
 - Share generated WGSL, shader modules, bind-group layouts, and pipeline layouts
   between normal and picking pipelines.
-- Replace the general WGSL preprocessor with the narrow assembly used by the
-  built-in marks and placement hooks.
+- Narrow the WGSL preprocessor to the shader-local conditional blocks used by
+  built-in marks and placement.
 - Remove repeated scale-resource derivation and temporary retained-path maps and
   typed arrays.
-- Make font presets pure explicit values and remove package-global font state.
+- Remove unused runtime dependencies without exposing or stabilizing BMFont
+  atlas internals.
 - Measure logical-string text storage against the implemented 2,000-sample
   facet path, adopting it only if it simplifies code as well as memory use.
 - Ratchet source and bundle footprint down after each accepted milestone.
@@ -124,6 +129,11 @@ necessary feature. It is the honest baseline for all remaining ratchets.
 - Adding a second series-buffer layout mode for ordinary marks.
 - Adding cross-mark pipeline or font-resource caches without a separate
   measured ownership/lifetime case.
+- Replacing BMFont/aframe-fonts with TTF shaping, generating or caching font
+  atlases at runtime, or choosing between `text-shaper` and another font
+  renderer. Those decisions belong to issue #362.
+- Expanding the transitional `{ metrics, bitmap }` integration shape into the
+  documented way to consume the bundled default font.
 - Generalizing text's string-to-glyph relation into arbitrary joins or dataflow.
 
 ## Key decisions
@@ -145,13 +155,17 @@ layout, and pipeline layout. They remain two render pipelines because their
 fragment targets, entry points, and blending differ. Placement participation is
 fixed in the shared pipeline layout when the mark is created.
 
-### Keep placement hooks; delete the conditional language
+### Keep shader-local ifdefs; narrow the conditional language
 
-The explicit placement markers are simpler than embedding placement logic in
-every mark or branching on mark identity. Keep a small required-marker injector
-for those hooks. Emit optional `uniqueId`, ranged-text x/y, and similar built-in
-fragments directly from JavaScript. Delete the parser for `#define`, nested
-`#if`, `#elif`, Boolean expressions, and macro state.
+Conditional code is easier to understand when it remains beside the WGSL it
+controls. Keep `#if defined(NAME)`, `#else`, `#endif`, nesting, and the `!`,
+`&&`, and `||` expressions used to combine feature symbols. Use the same
+mechanism for placement, `uniqueId`, and ranged-text x/y variants.
+
+Delete `#define`, `#undef`, `#ifdef`, `#ifndef`, `#elif`, numeric/macro values,
+and mutable macro state. Enabled symbols come only from the mark's compiled
+channel and placement configuration. The result is a conditional-block
+evaluator, not a general C-style preprocessor.
 
 ### Do not add a scale-resource strategy layer
 
@@ -164,12 +178,21 @@ resource map through direct lookups; introduce no second dispatch vocabulary.
 Experimental custom `ScaleDef` values keep their current explicit contract and
 must continue to fail loudly when required behavior is absent.
 
-### Make font presets values, not registration effects
+### Keep the bundled font preset opaque; defer its representation
 
-Core already passes its resolved `{ metrics, bitmap }` resource. Standalone
-users should do the same by importing a pure Lato resource value. A global font
-registry, mutable default, per-mark manager clone, and package `sideEffects`
-exception are unnecessary for the implemented one-resource-per-mark API.
+Keep `fonts/lato` as the opt-in registration entry point for now. Although its
+module side effect and registry add machinery, exporting Lato as a
+`FontResource` value would make the current BMFont metrics and bitmap atlas part
+of the practical public contract. That works against issue #362, whose purpose
+is to replace those implementation details with a higher-level font source and
+shaping path.
+
+Do not broaden or document `{ metrics, bitmap }` as the long-term font API.
+Core's current resource adapter is a transitional integration boundary. Issue
+#362 owns the eventual high-level source or handle, the bundled default-font
+mechanism, atlas generation, and caching. Simplification may remove unused
+dependencies around the present implementation, but must not pre-empt that
+design by moving atlas internals onto callers.
 
 ### Keep logical text storage conditional on evidence
 
@@ -195,16 +218,24 @@ gate and the public placement contract is generic. A buffer/texture redesign
 would broaden risk without evidence that it simplifies the common bundle or
 runtime.
 
+### Assemble conditional WGSL from JavaScript snippets
+
+Rejected. Moving small variant branches out of the shader separates related
+logic and makes the final program harder to inspect. Shader-local conditionals
+retain one readable template while the narrow evaluator removes unused code.
+
 ### Add definition-local scale resource strategies
 
 Discarded. Existing `ScaleDef` metadata already drives the working resource
 path. Reusing its compiled results is smaller than adding another interface and
 dispatch layer.
 
-### Keep font registration for convenient defaults
+### Export the bundled Lato atlas as a `FontResource`
 
-Rejected. An explicit exported Lato value is equally convenient, statically
-traceable, and avoids mutable module state and a side-effect package exception.
+Rejected. It would be statically traceable, but it would expose and encourage
+dependence on the BMFont metrics/bitmap representation that issue #362 intends
+to replace. The current side-effect entry point keeps those details private and
+is the smaller compatibility boundary until a high-level font design exists.
 
 ### Implement logical-string text storage unconditionally
 
@@ -237,16 +268,16 @@ Core import migration.
 
 `build(webgpu-renderer): complete Milestone 1 package contract`
 
-## Milestone 2: Single compilation and narrow shader assembly
+## Milestone 2: Single compilation and minimal shader conditionals
 
 Status: Pending.
 
 ### Intended outcome
 
-One mark construction normalizes and analyzes channels once, generates WGSL
-once, creates one shader module and shared layouts, and derives normal and
-picking pipelines from those shared objects. The general WGSL preprocessor is
-gone.
+One mark construction normalizes and analyzes channels once, evaluates
+shader-local conditionals once, creates one shader module and shared layouts,
+and derives normal and picking pipelines from those shared objects. Only the
+narrow conditional language remains.
 
 ### Work
 
@@ -261,10 +292,17 @@ gone.
   normal and picking pipelines from them with different fragment settings.
 - Preserve placement participation in the shared pipeline layout and compile
   both draw-level and per-instance placement paths from the same artifact.
-- Replace built-in `#if defined(...)` blocks with direct fragments or explicit
-  required markers. Retain the four placement hooks and validate each required
-  marker exactly once.
-- Delete `wgsl/preprocess.js` and its implementation-language tests.
+- Replace the four external placement-marker patches with shader-local
+  `#if defined(PLACEMENT_ENABLED)` blocks at the corresponding varying,
+  initialization, bounds, and clipping sites.
+- Replace `wgsl/preprocess.js` with a small conditional evaluator supporting
+  only `#if defined(NAME)`, `#else`, `#endif`, nesting, and `!`/`&&`/`||` over
+  defined symbols. Reject malformed, unknown, and unsupported directives.
+- Preserve existing shader-local `uniqueId` and ranged-text conditions, and
+  supply all enabled symbols explicitly from the compiled mark artifact.
+- Delete tests for macro definition/mutation and other removed syntax; retain
+  focused tests for supported expressions, nesting, inactive blocks, malformed
+  directives, and placement conditions.
 - Keep specialized mark shader bodies; do not introduce a common uber-shader or
   public compiler API.
 
@@ -282,11 +320,13 @@ gone.
 - Pipeline tests prove one shader module and one pipeline layout create both
   render pipelines.
 - Shader tests cover optional `uniqueId`, ranged text x/y variants, selections,
-  draw-level placement, and per-instance placement with hooks present/absent.
+  and draw-level/per-instance placement with the applicable symbols enabled and
+  disabled.
 - Run the full renderer unit and GPU suites and focused Core WebGPU adapter and
   surface suites.
-- Run all bundle fixtures and record source/module/minified/gzip deltas. The
-  preprocessor module must disappear from every production graph.
+- Run all bundle fixtures and record source/module/minified/gzip deltas. The old
+  general parser must be replaced by the smaller conditional evaluator in every
+  applicable production graph.
 
 ### Documentation and migration
 
@@ -296,7 +336,7 @@ and completes. No public API migration is expected.
 ### Review gate
 
 Review the compiled-record boundary, normal/picking parity, generated layouts,
-placement hooks, and shader diagnostics before merging.
+conditional syntax, placement blocks, and shader diagnostics before merging.
 
 ### Tentative commit
 
@@ -323,7 +363,8 @@ re-deriving policy. The working facet path remains within default limits.
   grow both together, and write fields directly instead of allocating a typed
   array and per-draw number array each frame.
 - Remove obvious post-facet duplication and stale state encountered in these
-  paths, including repeated guards or redundant derived collections.
+  paths, including repeated guards, redundant derived collections, and the
+  unused `internmap` runtime dependency.
 - Preserve the defensive copy that gives `PlacementSet` immutable CPU
   ownership; do not trade a clear lifetime contract for one avoided copy.
 - Reuse stop/range scratch arrays or packed-series staging only when a focused
@@ -352,6 +393,8 @@ re-deriving policy. The working facet path remains within default limits.
   and picking through focused Core/App coverage.
 - Record source and bundle deltas; accepted hot-path state must replace more
   allocation/derivation than it adds in ownership complexity.
+- Verify the packed package has no `internmap` runtime dependency and production
+  graphs contain no reference to it.
 
 ### Documentation and migration
 
@@ -360,74 +403,37 @@ only remaining measured work. No public documentation change is expected.
 
 ### Review gate
 
-Review Milestones 3 and 4 together unless resource ownership changes beyond the
-local maps and staging buffers described here.
+Review resource ownership if it changes beyond the local maps and staging
+buffers described here.
 
 ### Tentative commit
 
 `refactor(webgpu-renderer): reuse retained resource staging`
 
-## Milestone 4: Pure explicit font resources
+## Milestone 4: Font boundary cleanup
 
-Status: Pending; optional font asset separation already completed in Milestone 1.
+Status: Discarded from this plan; the optional asset split landed in Milestone
+1 and the remaining redesign is tracked by issue #362.
 
-### Intended outcome
+### Decision and rationale
 
-Text marks receive one explicit font resource. The Lato entry point exports that
-resource as a pure value. The package has no global font registry, implicit
-default mutation, per-mark registry clone, `internmap` dependency, or font-
-related side-effect declaration.
+Preserve the opt-in `fonts/lato` registration entry point, its package
+`sideEffects` exception, and the internal registry until issue #362 defines a
+replacement. These pieces are not ideal in isolation, but deleting them now
+would require exporting the bundled BMFont metrics and bitmap or shifting those
+details onto every caller. That would optimize the current implementation into
+a harder-to-change public convention.
 
-### Work
+Do not export Lato as a `FontResource`, advertise direct BMFont atlas assembly,
+or simplify away the current boundary before the TTF shaping and default-font
+design is known. Keep Core's `{ metrics, bitmap }` adapter working as a
+transitional internal integration, but do not broaden it. Remove the unrelated
+unused `internmap` dependency in Milestone 3.
 
-- Change `fonts/lato` from registration-on-import to an exported immutable
-  `FontResource` value.
-- Pass the imported value explicitly in standalone examples, stories, tests,
-  and bundle fixtures. Keep Core passing the resource resolved by Core's own
-  font manager.
-- Let text normalization and layout consume the supplied metrics directly.
-  Remove `fontRegistry.js` and the per-mark `BmFontManager` lookup/clone when no
-  second in-mark font consumer exists.
-- Preserve `font`, style, and weight as text-layout metadata where needed, but
-  do not use them to consult global renderer state.
-- Keep `textLayout` callers responsible for the atlas and metrics needed at
-  render time.
-- Remove the package `sideEffects` exception and the unused `internmap` runtime
-  dependency.
-
-### Affected areas and downstream consumers
-
-- Font resource/layout helpers, text program, package metadata and exports,
-  standalone examples/stories, public type fixtures, and README.
-- Core's adapter contract remains `{ metrics, bitmap }` and should need no
-  renderer-font import.
-
-### Verification
-
-- Text layout/program tests cover explicit Lato, custom resources, precomputed
-  layouts, atlas invalidation, replacement, and destruction.
-- `textCustomFont` excludes Lato assets and all registry modules;
-  `textLato` includes the resource, JSON, PNG, and license through a named
-  import rather than a side effect.
-- Package and bundle checks pass with `sideEffects: false` and no `internmap`
-  dependency.
-- Core default and custom fonts render through the existing adapter resource
-  translation.
-
-### Documentation and migration
-
-Update the README from side-effect registration to explicit resource import.
-The package is unpublished, so migrate all repository consumers atomically and
-do not retain the registration path.
-
-### Review gate
-
-Combine with the Milestone 3 review unless the public font-resource shape
-changes beyond the already exposed `{ metrics, bitmap }` contract.
-
-### Tentative commit
-
-`refactor(webgpu-renderer): make font presets pure resources`
+When issue #362 is planned, re-evaluate the registry, `BmFontManager`, public
+font input, bundled default, tree shaking, runtime atlas generation, caching,
+and migration together. That work needs its own footprint and runtime-cost
+measurements rather than a premature cleanup milestone here.
 
 ## Milestone 5: Measured logical-string text storage
 
@@ -511,8 +517,8 @@ with an explicit explanation tied to preserved behavior.
 
 Working final targets from the post-facet baseline are:
 
-- `pointLinear`: at or below 117,400 minified and 34,600 gzip bytes;
-- `textCustomFont`: at or below 120,500 minified and 36,100 gzip bytes; and
+- `pointLinear`: at or below 117,900 minified and 34,800 gzip bytes;
+- `textCustomFont`: at or below 124,500 minified and 36,900 gzip bytes; and
 - production JavaScript below the current 14,805 lines.
 
 These targets recover a meaningful part of the implementation growth while
@@ -532,8 +538,9 @@ After accepted milestones are complete:
 - Verify normal/picking order, repeated handles, scissors, viewports, visible
   ranges, logical text ranges, and partial instance ranges.
 - Verify dynamic scale updates, conditional encodings, selections, text
-  replacement, explicit Lato and custom fonts, asynchronous invalidation, and
-  deterministic mark/placement/renderer destruction.
+  replacement, the opaque Lato preset and transitional custom font resources,
+  asynchronous invalidation, and deterministic mark/placement/renderer
+  destruction.
 - Re-run ordinary facets and the approximately 2,000-sample App scenarios,
   including reorder, filtering, closeup/peek, placement replacement, labels,
   metadata, and range marks.
@@ -550,12 +557,14 @@ After accepted milestones are complete:
 - One mark construction creates one compiled-channel record, one generated
   WGSL artifact, one shader module, one mark bind-group layout, and one pipeline
   layout shared by normal and picking pipelines.
-- The general WGSL preprocessor and global font registry are gone.
+- Only the documented narrow WGSL conditional evaluator remains; the general
+  preprocessor is gone.
 - Scale resources consume compiled requirements and bind directly from their
   single resource map without rebuilding derived maps.
 - Repeated equal-capacity frames reuse draw-global CPU staging.
-- The package has pure explicit font resources, `sideEffects: false`, and no
-  unused `internmap` dependency.
+- The package has no unused `internmap` dependency and does not expose the
+  bundled BMFont atlas as a public preset value. The opt-in `fonts/lato`
+  side-effect remains isolated until issue #362 replaces its representation.
 - Milestone 5 is either accepted with its measurement and narrow contract or
   explicitly discarded with evidence.
 - Type, unit, lint, bundle, package, GPU, and focused Core/App facet checks pass.
@@ -564,20 +573,22 @@ After accepted milestones are complete:
 
 ## Risks and mitigations
 
-- **Placement regression during shader cleanup:** Treat the implemented hook
-  contract as first-class and run draw/per-instance placement in normal and
-  picking passes for every mark family.
+- **Placement regression during shader cleanup:** Treat the implemented
+  placement semantics as first-class and run draw/per-instance placement in
+  normal and picking passes for every mark family.
 - **Compilation artifact becomes a framework:** Keep it a plain internal record
   passed explicitly between existing functions.
-- **Shader diagnostics become harder to locate:** Preserve generated-source
-  labels and test required marker counts while removing the preprocessor.
+- **Conditional evaluation hides shader errors:** Preserve generated-source
+  labels, fail loudly on malformed or unsupported directives, and test every
+  placement condition in enabled and disabled variants.
 - **Scale update behavior drifts:** Reuse existing analysis and resource rules;
   do not redesign `ScaleDef` dispatch in this plan.
 - **Retained staging obscures ownership:** Keep capacity and destruction beside
   the GPU resource it mirrors and accept state only when it replaces measured
   allocation.
-- **Font convenience regresses:** Provide one explicit Lato resource import and
-  migrate every standalone consumer in the same milestone.
+- **Premature font cleanup freezes BMFont details:** Keep the current opaque
+  preset boundary and defer registry, shaping, atlas, and caching decisions to
+  issue #362.
 - **Logical text indexing spreads complexity:** Require no new binding, no
   ordinary-mark accessor change, and net source deletion; otherwise discard it.
 
@@ -596,5 +607,8 @@ After accepted milestones are complete:
 - WebGPU exposes shader modules and render pipelines as separate objects,
   allowing one module to serve compatible pipelines:
   <https://www.w3.org/TR/webgpu/#shader-module-creation>
+- GenomeSpy issue #362 tracks replacing aframe/BMFont assets with a higher-level
+  TTF shaping and bundled-default-font design:
+  <https://github.com/genome-spy/genome-spy/issues/362>
 
 No external source code is copied or closely adapted by this plan.
