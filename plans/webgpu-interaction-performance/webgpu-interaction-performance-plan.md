@@ -606,6 +606,12 @@ smaller and simpler than a general dependency graph.
   20 retained resource writes per frame; the control performed about 5 to 6.
   These timings are non-authoritative, but the counts justify investigating a
   smaller mark-level synchronization set.
+- Config identity now skips the redundant series-reference traversal for
+  stable marks. In a matching four-sample headless diagnostic, MCCA retained
+  synchronization fell by about 21% to 23% and total mark translation by about
+  10% to 12%. Control synchronization fell by about 7% to 8%. All samples and
+  mutation counts remained unchanged; these timings are diagnostic rather than
+  authoritative.
 - Focused tests assert that domain-only frames update required scale slots,
   skip unrelated retained marks, and submit retained draws without plan
   compilation or data/placement updates.

@@ -242,6 +242,7 @@ export default class WebGpuSurface {
             retained = {
                 definition,
                 handle,
+                config,
                 channelSnapshots: snapshotChannels(config.channels),
                 series: collectSeries(config),
                 count: config.count,
@@ -503,12 +504,13 @@ function updateRetainedMark(retained, config) {
         }
     }
 
-    if (hasSeriesChanges(retained, config)) {
+    if (retained.config !== config && hasSeriesChanges(retained, config)) {
         retained.series = collectSeries(config);
         retained.count = config.count;
         retained.handle.series.replace(retained.series, retained.count);
         writes++;
     }
+    retained.config = config;
     return writes;
 }
 
@@ -852,6 +854,7 @@ function getLogicalChannelSeries(channel) {
  * @typedef {object} RetainedMark
  * @prop {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
  * @prop {import("@genome-spy/webgpu-renderer").MarkHandle} handle
+ * @prop {any} config
  * @prop {Record<string, ChannelSnapshot>} channelSnapshots
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
