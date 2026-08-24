@@ -693,10 +693,10 @@ export default class TextProgram extends BaseProgram {
                 `Text series data count (${seriesCount}) does not match text count (${normalized.count}).`
             );
         }
-        this._textLayout = textLayout;
         this._glyphOffsets = buildGlyphOffsets(textLayout);
-        this._fontEntry = fontEntry;
         this._fontManager = fontManager;
+        delete this._markConfig.textLayout;
+        delete this._markConfig.fontEntry;
     }
 
     /**
@@ -1145,9 +1145,7 @@ export default class TextProgram extends BaseProgram {
                 `Text series data count (${seriesCount}) does not match text count (${strings.length}).`
             );
         }
-        this._textLayout = layout;
         this._glyphOffsets = buildGlyphOffsets(layout);
-        this._markConfig.textLayout = layout;
         this._updateTextLayoutBuffers(layout);
         this.updateSeries(resolved, strings.length);
     }

@@ -33,6 +33,8 @@ Completed simplification work:
   logical string. Glyph instances carry their string and glyph ids, and text's
   generated readers map each glyph draw back to logical series without another
   GPU binding.
+- Text releases its per-glyph layout arrays after uploading them and retains
+  only the compact offsets needed to map logical draw ranges to glyphs.
 
 - WebGL mark-feature parity is tracked in
   `plans/webgpu-core-integration/webgpu-renderer-parity-plan.md`; the current

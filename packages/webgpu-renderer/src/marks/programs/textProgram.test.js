@@ -25,7 +25,11 @@ describe("TextProgram series replacement", () => {
             },
         });
 
-        expect(program._fontEntry.metrics).toBe(fontEntry.metrics);
+        expect(
+            program._fontManager.getFont("Test Sans", "normal", 400).metrics
+        ).toBe(fontEntry.metrics);
+        // The uploaded per-glyph arrays must not remain reachable through config.
+        expect(program._markConfig.textLayout).toBeUndefined();
     });
 
     it("invalidates the host when the font atlas becomes ready", () => {
@@ -80,7 +84,7 @@ describe("TextProgram series replacement", () => {
         });
 
         expect(program.count).toBe(2);
-        expect(program._textLayout.glyphIds).toHaveLength(3);
+        expect(program._glyphOffsets).toEqual(new Uint32Array([0, 2, 3]));
         expect(program._channels.x.data).toEqual(new Float32Array([10, 20]));
         expect(program._channels.y.data).toEqual(new Float32Array([30, 40]));
         expect(program._pipeline).toBe(pipeline);
@@ -104,7 +108,8 @@ describe("TextProgram series replacement", () => {
         ).toThrow("Replacing a scalar text series requires an explicit count.");
 
         program.getSlotHandles().series.replace({ text: "y" }, 2);
-        expect(program._textLayout.textWidth).toHaveLength(2);
+        expect(program.drawCount).toBe(2);
+        expect(program._glyphOffsets).toEqual(new Uint32Array([0, 1, 2]));
     });
 
     it("preserves aliases between logical per-string arrays", () => {
