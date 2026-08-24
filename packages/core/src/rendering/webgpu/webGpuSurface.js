@@ -222,6 +222,7 @@ export default class WebGpuSurface {
      * @param {import("../../marks/mark.js").default} mark
      * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
      * @param {any} config
+     * @returns {number} Number of retained resource writes.
      */
     updateMark(mark, definition, config) {
         if (!this.#renderer) {
@@ -258,12 +259,14 @@ export default class WebGpuSurface {
             };
             this.#marks.set(mark, retained);
         }
+        let writes = 0;
         retained.handle.batchUpdates(() => {
-            updateRetainedMark(retained, config);
-            updateRetainedExtraValues(retained, config);
-            updateRetainedScalarSlots(retained, config);
-            updateRetainedSelections(retained, mark);
+            writes += updateRetainedMark(retained, config);
+            writes += updateRetainedExtraValues(retained, config);
+            writes += updateRetainedScalarSlots(retained, config);
+            writes += updateRetainedSelections(retained, mark);
         });
+        return writes;
     }
 
     /**
@@ -470,11 +473,13 @@ function makeRetainableChannel(channel) {
  *
  * @param {RetainedMark} retained
  * @param {any} config
+ * @returns {number} Number of retained resource writes.
  */
 function updateRetainedMark(retained, config) {
+    let writes = 0;
     for (const [name, channel] of Object.entries(config.channels)) {
         const snapshot = retained.channelSnapshots[name];
-        updateChannelSlots(
+        writes += updateChannelSlots(
             retained.handle.scales[name]?.default,
             retained.handle.values[name]?.default,
             channel,
@@ -485,7 +490,7 @@ function updateRetainedMark(retained, config) {
             if (!condition.channel) {
                 continue;
             }
-            updateChannelSlots(
+            writes += updateChannelSlots(
                 retained.handle.scales[name]?.conditions?.[
                     condition.when.selection
                 ],
@@ -502,7 +507,9 @@ function updateRetainedMark(retained, config) {
         retained.series = collectSeries(config);
         retained.count = config.count;
         retained.handle.series.replace(retained.series, retained.count);
+        writes++;
     }
+    return writes;
 }
 
 /**
@@ -513,8 +520,10 @@ function updateRetainedMark(retained, config) {
  * @param {import("@genome-spy/webgpu-renderer").ValueSlotHandle | undefined} valueSlot
  * @param {any} channel
  * @param {ChannelSnapshot} snapshot
+ * @returns {number} Number of retained resource writes.
  */
 function updateChannelSlots(scaleSlot, valueSlot, channel, snapshot) {
+    let writes = 0;
     if (scaleSlot && channel.scale) {
         const domain = channel.scale.domain;
         if (
@@ -522,11 +531,13 @@ function updateChannelSlots(scaleSlot, valueSlot, channel, snapshot) {
             !valuesEqual(snapshot.scale?.domain, domain)
         ) {
             scaleSlot.setDomain(domain);
+            writes++;
             snapshot.scale.domain = snapshotValue(domain);
         }
         const range = channel.scale.range;
         if (range !== undefined && !valuesEqual(snapshot.scale?.range, range)) {
             scaleSlot.setRange(range);
+            writes++;
             snapshot.scale.range = snapshotValue(range);
         }
     }
@@ -538,8 +549,10 @@ function updateChannelSlots(scaleSlot, valueSlot, channel, snapshot) {
         !valuesEqual(snapshot.value, value)
     ) {
         valueSlot.set(value);
+        writes++;
         snapshot.value = snapshotValue(value);
     }
+    return writes;
 }
 
 /**
@@ -585,8 +598,10 @@ function snapshotChannel(channel) {
  *
  * @param {RetainedMark} retained
  * @param {any} config
+ * @returns {number} Number of retained resource writes.
  */
 function updateRetainedExtraValues(retained, config) {
+    let writes = 0;
     for (const [name, dynamic] of Object.entries(config.dynamicValues ?? {})) {
         const slot = retained.handle.extraValues?.[name];
         if (
@@ -596,8 +611,10 @@ function updateRetainedExtraValues(retained, config) {
             continue;
         }
         slot.set(dynamic.value);
+        writes++;
         retained.dynamicValues.set(name, snapshotValue(dynamic.value));
     }
+    return writes;
 }
 
 /**
@@ -605,8 +622,10 @@ function updateRetainedExtraValues(retained, config) {
  *
  * @param {RetainedMark} retained
  * @param {any} config
+ * @returns {number} Number of retained resource writes.
  */
 function updateRetainedScalarSlots(retained, config) {
+    let writes = 0;
     for (const [name, scalar] of Object.entries(config.scalarSlots ?? {})) {
         const slot = retained.handle.scalarSlots?.[name];
         if (
@@ -616,8 +635,10 @@ function updateRetainedScalarSlots(retained, config) {
             continue;
         }
         slot.set(scalar.value);
+        writes++;
         retained.scalarSlots.set(name, snapshotValue(scalar.value));
     }
+    return writes;
 }
 
 /**
@@ -651,13 +672,15 @@ function valuesEqual(previous, next) {
  *
  * @param {RetainedMark} retained
  * @param {import("../../marks/mark.js").default} mark
+ * @returns {number} Number of retained resource writes.
  */
 function updateRetainedSelections(retained, mark) {
     const paramRuntime = mark.unitView?.paramRuntime;
     if (!paramRuntime) {
-        return;
+        return 0;
     }
 
+    let writes = 0;
     for (const [name, slot] of Object.entries(
         retained.handle.selections ?? {}
     )) {
@@ -670,12 +693,14 @@ function updateRetainedSelections(retained, mark) {
             const id = selection.uniqueId ?? 0;
             if (retained.selections.get(name) !== id) {
                 slot.set(id);
+                writes++;
                 retained.selections.set(name, id);
             }
         } else if (slot.type == "multi") {
             const ids = Uint32Array.from(selection.data.keys());
             if (!uint32ArraysEqual(retained.selections.get(name), ids)) {
                 slot.set(ids);
+                writes++;
                 retained.selections.set(name, ids);
             }
         } else if (slot.type == "interval") {
@@ -714,9 +739,11 @@ function updateRetainedSelections(retained, mark) {
             }
             if (changed) {
                 slot.set(snapshot.intervals);
+                writes++;
             }
         }
     }
+    return writes;
 }
 
 /**

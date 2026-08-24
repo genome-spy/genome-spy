@@ -557,7 +557,8 @@ Implementation commits: `d1f9539d7`, `be73fc73b`, `62f725840`, and
 
 ## Milestone 3: Skip unrelated retained-resource scans
 
-Status: Ready.
+Status: In progress. Check/write counters confirm that most retained marks are
+scanned without mutation.
 
 ### Intended outcome
 
@@ -599,6 +600,12 @@ smaller and simpler than a general dependency graph.
 
 ### Verification
 
+- A four-sample headless diagnostic covering MCCA and the small control found
+  about 92 retained-mark checks but only 10 to 11 changed marks per MCCA render
+  frame. The control checked 10 marks and changed 3. MCCA performed about 19 to
+  20 retained resource writes per frame; the control performed about 5 to 6.
+  These timings are non-authoritative, but the counts justify investigating a
+  smaller mark-level synchronization set.
 - Focused tests assert that domain-only frames update required scale slots,
   skip unrelated retained marks, and submit retained draws without plan
   compilation or data/placement updates.

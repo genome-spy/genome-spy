@@ -167,9 +167,20 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.active = false;
             this.#prepareMarkState(state, picking);
         }
+        let synchronizedMarks = 0;
+        let changedMarks = 0;
+        let resourceWrites = 0;
         for (const occurrence of this.#occurrences) {
-            this.#submitOccurrence(occurrence, picking);
+            const writes = this.#submitOccurrence(occurrence, picking);
+            if (writes !== undefined) {
+                synchronizedMarks++;
+                changedMarks += writes > 0 ? 1 : 0;
+                resourceWrites += writes;
+            }
         }
+        countPerformance("retainedMarkSyncChecks", synchronizedMarks);
+        countPerformance("retainedMarkSyncChanges", changedMarks);
+        countPerformance("retainedResourceWrites", resourceWrites);
     }
 
     /**
@@ -305,7 +316,11 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
     }
 
-    /** @param {Occurrence} occurrence @param {boolean} picking */
+    /**
+     * @param {Occurrence} occurrence
+     * @param {boolean} picking
+     * @returns {number | undefined} Resource writes, or undefined when unchecked.
+     */
     #submitOccurrence(occurrence, picking) {
         const state = occurrence.state;
         if (
@@ -314,10 +329,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             !state.definition ||
             !state.packed
         ) {
-            return;
+            return undefined;
         }
         if (state.indexed && state.submittedIndexed) {
-            return;
+            return undefined;
         }
 
         const range = getPackedMarkRange(
@@ -326,7 +341,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.packed
         );
         if (!range.instanceCount) {
-            return;
+            return undefined;
         }
 
         const placementIndex = state.generatedSource
@@ -349,16 +364,19 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 this.surface.getLogicalCanvasSize()
             )
         ) {
-            return;
+            return undefined;
         }
 
+        let resourceWrites;
         if (!state.updated) {
-            measurePerformance("retainedResourceSynchronization", () =>
-                this.surface.updateMark(
-                    state.mark,
-                    state.definition,
-                    state.config
-                )
+            resourceWrites = measurePerformance(
+                "retainedResourceSynchronization",
+                () =>
+                    this.surface.updateMark(
+                        state.mark,
+                        state.definition,
+                        state.config
+                    )
             );
             state.updated = true;
         }
@@ -403,6 +421,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (state.indexed) {
             state.submittedIndexed = true;
         }
+        return resourceWrites;
     }
 
     /**
