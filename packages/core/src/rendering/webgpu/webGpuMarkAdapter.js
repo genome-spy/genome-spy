@@ -254,7 +254,6 @@ export function getPackedMarkData(mark, placementSource) {
             instanceCount: data.length,
         });
     } else {
-        data = [];
         const batches = topology
             ? topology.facetIds.map((facetId) =>
                   facetId
@@ -264,17 +263,23 @@ export function getPackedMarkData(mark, placementSource) {
                       : []
               )
             : Array.from(collector.facetBatches.values());
+        data = new Array(
+            batches.reduce((total, batch) => total + batch.length, 0)
+        );
         if (topology) {
             placementRanges = [];
         }
+        let dataIndex = 0;
         for (const batch of batches) {
             const range = {
-                firstInstance: data.length,
+                firstInstance: dataIndex,
                 instanceCount: batch.length,
             };
             placementRanges?.push(range);
             ranges.set(batch, range);
-            data.push(...batch);
+            for (const datum of batch) {
+                data[dataIndex++] = datum;
+            }
         }
     }
 

@@ -1333,7 +1333,7 @@ The final independent review found the following additional work. Each item is
 implemented and committed independently so correctness, portability, API
 boundaries, and simplification remain separately reviewable.
 
-- [ ] Pack arbitrarily large facet batches without spreading a complete batch
+- [x] Pack arbitrarily large facet batches without spreading a complete batch
   into function arguments. Add a regression test above the JavaScript engine's
   practical argument limit.
   Tentative commit: `fix(core): pack large WebGPU facet batches safely`.

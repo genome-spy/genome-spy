@@ -81,6 +81,31 @@ describe("WebGPU mark adapter", () => {
         expect(facetLookup).not.toHaveBeenCalled();
     });
 
+    test("packs facet batches larger than the function argument limit", () => {
+        const facetId = ["large"];
+        const batch = Array.from({ length: 200_000 }, (_, index) => ({
+            index,
+        }));
+        const collector = {
+            dataRevision: 1,
+            facetBatches: new Map([[facetId, batch]]),
+        };
+        const mark = /** @type {any} */ ({
+            unitView: { getCollector: () => collector },
+        });
+        const source = new PlacementSource();
+        source.replaceTopology([facetId], new Float32Array(4));
+
+        const packed = getPackedMarkData(mark, source);
+
+        expect(packed.data).toHaveLength(batch.length);
+        expect(packed.data[0]).toBe(batch[0]);
+        expect(packed.data.at(-1)).toBe(batch.at(-1));
+        expect(packed.placementRanges).toEqual([
+            { firstInstance: 0, instanceCount: batch.length },
+        ]);
+    });
+
     test("keeps raw point data and maps unit scale ranges to view pixels", () => {
         const data = [
             { x: 0, y: -1 },
