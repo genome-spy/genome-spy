@@ -1,695 +1,600 @@
 # WebGPU renderer simplification and footprint plan
 
-Status: Milestone 1 complete; Milestones 2–5 pending.
+Status: Milestone 1 and faceted rendering complete; Milestones 2–5 revised and
+pending.
 
-Date: 2026-08-23
+Created: 2026-08-23
+
+Revised against the implemented facet baseline: 2026-08-24
 
 Independent review: Luna review completed and incorporated on 2026-08-23.
 
 ## Summary
 
-`@genome-spy/webgpu-renderer` has a sound retained, code-first API and good
-coarse-grained feature boundaries. Built-in marks and scales are imported
-explicitly, definitions are immutable, the production dependency graph has no
-cycles, and the existing bundle fixture excludes unrelated marks, scales, and
-font support.
+`@genome-spy/webgpu-renderer` now has an intentional package surface and working
+faceted rendering. Facet support established generic retained placement sets,
+draw-level and per-instance placement indices, placement-aware clipping and
+picking, logical text draw ranges, and operation within WebGPU's default
+storage-buffer limit. Those are implemented contracts, not future prerequisites.
 
-The implementation is nevertheless heavier than the public API suggests. Most
-marks statically pull in a common compilation and resource-management kernel:
-channel normalization and validation, channel analysis and IR, scale resource
-planning, selection handling, WGSL preprocessing and assembly, pipeline
-creation, packed-series management, and retained update slots. Text rendering
-adds an embedded font, a per-mark font manager, logical-to-glyph expansion, and
-mark-local font GPU resources.
+The renderer remains heavier than necessary underneath that API. Mark creation
+still analyzes the same channels in several subsystems, generates the same WGSL
+twice, creates duplicate shader modules and pipeline layouts for normal and
+picking passes, and carries a general WGSL conditional parser for a handful of
+built-in conditions. Scale-resource views and draw-global staging allocate
+temporary objects on retained paths. Text uses a package-global font registry
+even though each text program resolves only one font resource, and it expands
+every logical string channel—including facet placement—to glyph cardinality.
 
-This plan reduces package, JavaScript, startup, and runtime memory footprint
-without removing renderer features or changing the Core/renderer ownership
-boundary. It favors deleting generality and duplicate work over adding
-registries, plugin frameworks, compatibility layers, or additional runtime
-dispatch.
+The remaining work preserves all implemented features while deleting duplicate
+compilation, global registration, broad preprocessing, and avoidable retained-
+path allocation. It does not redesign working facet semantics merely to make
+the implementation prettier.
 
-## Baseline
+## Implemented baseline
 
-Measurements from the repository on 2026-08-23:
+### Milestone 1 package result
 
-- Production JavaScript under `packages/webgpu-renderer/src`: 14,116 lines.
-- Production module graph: 79 modules, 152 internal import edges, no cycles.
-- `npm pack --dry-run`: 145 files, 814,087 bytes unpacked, 227,938 bytes in the
-  tarball.
-- Unit tests and test utilities published through `src/`: approximately
-  145,000 bytes unpacked.
-- Point implementation bundle: 100,575 bytes minified, 29,269 bytes gzip.
-- Renderer + point + linear fixture: 110,413 bytes minified, 32,165 bytes gzip,
-  spanning 42 renderer modules.
-- Text implementation bundle with the embedded Lato resources: 218,084 bytes
-  minified, 106,009 bytes gzip.
-- TypeScript check: passes.
-- Unit tests: 151 pass in 26 files.
-- WebGPU Playwright tests: 50 pass in 10 files.
-- Existing tree-shaking fixture: passes.
-- Production `src/` lint: passes. Package-wide lint currently fails on browser
-  globals in examples and GPU tests.
-- `npm -w @genome-spy/webgpu-renderer run build`: fails because
-  `prepublishOnly` references a missing `build` script.
+Commit `71be361af` completed the package-contract milestone:
 
-These sizes are comparison baselines, not permanent budgets. Milestone 1 will
-make the measurements reproducible and establish checked budgets. Later
-milestones must ratchet those budgets down when their intended reductions land.
+- explicit, typed package entry points replaced the wildcard source escape;
+- tests, test utilities, plans, and migration notes are excluded from packing;
+- reproducible public-import bundle fixtures report minified, gzip, and module
+  counts;
+- the delivery command runs type, bundle, lint, and package-content checks;
+- the embedded Lato assets became opt-in; and
+- Core imports only documented renderer, mark, scale, and high-precision
+  entry points.
 
-## Relationship to existing WebGPU plans
+The optional-font asset goal originally assigned to Milestone 4 therefore
+landed early. Milestone 4 now addresses the unnecessary global registry and
+side-effect entry point introduced by that implementation.
 
-The active `plans/webgpu-core-integration/` documents own renderer/Core
-integration, retained occurrence placement, facet parity, and resize ownership.
-This plan owns renderer-internal simplification and package delivery.
+### Facet result
 
-The work must not:
+The faceted-rendering plan's Milestones 1–5 are implemented and verified. The
+remaining simplification must preserve:
 
-- introduce a renderer scene graph or Core types;
-- change facet placement semantics or revive discarded Layout 2.0 work;
-- move grammar, scale resolution, dataflow, or scheduling into the renderer;
-- make Core depend on renderer implementation modules; or
-- block an already-authorized facet milestone solely to achieve a size target.
+- renderer-neutral immutable placement topology owned by Core/App layout;
+- renderer-owned `PlacementSet` resources and explicit replacement/lifetime;
+- draw-level and per-instance placement selection;
+- ordered occurrence ranges, visibility pruning, clipping, normal rendering,
+  and picking parity;
+- text ranges expressed in logical strings and translated to glyph draws;
+- approximately 2,000-sample App facet behavior; and
+- the default limit of eight vertex-stage storage buffers without an elevated
+  device request.
 
-Milestone 1 may proceed independently because it changes packaging and public
-entry points rather than GPU layout. Before Milestones 2–5 change shared GPU
-contracts, reconcile this plan with the active facet plan in one review of
-`BaseProgram`, shader inputs, draw globals, placement indices, resource layouts,
-and binding limits. Neither plan is treated as fixed: change the facet design or
-this plan wherever that produces the smaller shared contract, then record the
-same decision in both documents.
+The placement shader markers added by the facet work are an intentional narrow
+template contract. They may be simplified together with shader assembly, but
+must not be replaced by implicit mark-name checks or a generic plugin system.
 
-The reconciled design must pass the WebGPU default-binding-limit gate without
-the temporary elevated vertex-stage storage-buffer request. Removal can land in
-either implementation sequence, but the plans must define one transition and
-must not maintain parallel binding layouts.
+### Current measurements
+
+Measurements reproduced on 2026-08-24 with the locked Rollup/esbuild fixture
+and zlib gzip level 9:
+
+| Fixture                       | After Milestone 1 | Current after facets |           Change |
+| ----------------------------- | ----------------: | -------------------: | ---------------: |
+| `rendererOnly` min/gzip       |     9,860 / 3,287 |       13,638 / 4,264 |    +3,778 / +977 |
+| `pointLinear` min/gzip        |  113,243 / 33,399 |     123,544 / 35,655 | +10,301 / +2,256 |
+| `pointOrdinal` min/gzip       |  115,701 / 34,009 |     126,002 / 36,293 | +10,301 / +2,284 |
+| `customIdentityMark` min/gzip |    10,007 / 3,367 |       13,785 / 4,345 |    +3,778 / +978 |
+| `textCustomFont` min/gzip     |  119,621 / 35,601 |     126,761 / 37,178 |  +7,140 / +1,577 |
+| `textLato` min/gzip           | 220,377 / 105,652 |    227,517 / 107,249 |  +7,140 / +1,597 |
+
+Current package and source measurements:
+
+- 14,805 production JavaScript lines across 83 files under `src/`;
+- 111 packed files, 633,970 bytes unpacked, and 193,799 tarball bytes;
+- 157 unit tests pass in 26 files;
+- type checking, bundle verification, lint, and dry-run package-content checks
+  pass; and
+- `internmap` remains declared as a runtime dependency although production code
+  no longer imports it.
+
+The facet-related bundle growth is not itself a regression: it represents a
+necessary feature. It is the honest baseline for all remaining ratchets.
 
 ## Goals
 
-- Keep every currently implemented renderer feature available.
-- Make the package export map an intentional, typed contract rather than an
-  internal-source escape hatch.
-- Stop publishing tests, test utilities, migration notes, and unrelated
-  development artifacts.
-- Generate each mark's WGSL and binding metadata once and reuse them for normal
-  and picking pipelines.
-- Delete the general-purpose WGSL preprocessor in favor of the narrow
-  conditional assembly actually used by built-in marks.
-- Compute normalized channel analysis once per mark construction and reuse it
-  across validation, scale resources, selections, and shader generation.
-- Make scale-specific resource code follow the imported scale definition so
-  unrelated resource modes can be removed by tree shaking.
-- Keep the embedded default font opt-in so custom-font text users do not carry
-  the Lato atlas and metrics.
-- Reduce avoidable per-frame and per-update allocation without adding multiple
-  compatibility paths.
-- Preserve normal rendering, picking, selections, dynamic values, scale
-  updates, text replacement, deterministic destruction, and Core adapter
-  behavior.
+- Preserve every currently implemented renderer and facet feature.
+- Analyze and compile each mark configuration once.
+- Share generated WGSL, shader modules, bind-group layouts, and pipeline layouts
+  between normal and picking pipelines.
+- Replace the general WGSL preprocessor with the narrow assembly used by the
+  built-in marks and placement hooks.
+- Remove repeated scale-resource derivation and temporary retained-path maps and
+  typed arrays.
+- Make font presets pure explicit values and remove package-global font state.
+- Measure logical-string text storage against the implemented 2,000-sample
+  facet path, adopting it only if it simplifies code as well as memory use.
+- Ratchet source and bundle footprint down after each accepted milestone.
 
 ## Non-goals
 
-- Removing marks, scales, selections, picking, text, or high-precision index
-  support.
-- Stabilizing a broad third-party custom-mark or custom-scale plugin API.
-- Adding a global mark or scale registry.
-- Replacing specialized mark shaders with an uber-shader.
-- Adding asynchronous pipeline compilation or a renderer-wide pipeline cache
-  before the duplicate per-mark compilation is removed and measured.
-- Introducing separate packed and unpacked series-buffer modes.
-- Sharing font GPU resources across marks in the initial text milestone;
-  renderer-level caching requires its own ownership and lifetime decision.
-- Redesigning the public retained handle, draw ordering, or occurrence
-  placement API unless implementation exposes a concrete blocker.
-- Optimizing code solely to reduce source line count when runtime behavior or
-  maintainability would become worse.
+- Removing marks, scales, selections, picking, placement, text, or
+  high-precision inputs.
+- Changing Core's ownership of grammar, dataflow, scale resolution, traversal,
+  or placement topology.
+- Reopening the renderer's retained draw or placement API without a concrete
+  simplification or correctness need.
+- Introducing mark/scale registries, service containers, visitor hierarchies,
+  a renderer scene graph, or an uber-shader.
+- Adding a second series-buffer layout mode for ordinary marks.
+- Adding cross-mark pipeline or font-resource caches without a separate
+  measured ownership/lifetime case.
+- Generalizing text's string-to-glyph relation into arbitrary joins or dataflow.
 
 ## Key decisions
 
-### Use explicit package entry points
+### Compile one plain internal artifact
 
-Remove the catch-all `./*` export. Keep the package root focused on renderer
-lifecycle and broadly used runtime API. Keep built-in marks and scales on their
-existing explicit subpaths. Put advanced high-precision helpers and any
-retained experimental scale-authoring helpers on explicit, typed subpaths.
-Undocumented color, texture, hash-table, and compiler helpers remain internal
-unless a concrete external consumer is identified during the export audit.
+Channel normalization will produce one plain immutable
+`CompiledMarkChannels` record containing normalized channels, one analysis per
+channel, channel IR, resource requirements, and the channel/input name sets used
+by selections and shader generation. Existing subsystems consume this record
+instead of calling `buildChannelAnalysis` independently.
 
-This follows Node's documented package-exports model: explicit subpaths define
-the supported interface and prevent accidental imports of other files. npm's
-documented package file filters will be used to exclude development artifacts.
+This is a data record, not a public compiler object or extensibility framework.
 
-### Reuse compiled artifacts without adding a compiler framework
+### Share GPU compilation, not render-pipeline state
 
-Keep the existing `ChannelAnalysis` and `ChannelIR` concepts. Normalization
-will return or retain the analyses it already computes, and later stages will
-consume those values instead of calling `buildChannelAnalysis` again. Shader
-assembly will produce one immutable result containing WGSL, binding entries,
-resource layout, and any diagnostics needed by both render pipelines.
+Normal and picking variants use the same WGSL, shader module, mark bind-group
+layout, and pipeline layout. They remain two render pipelines because their
+fragment targets, entry points, and blending differ. Placement participation is
+fixed in the shared pipeline layout when the mark is created.
 
-Do not add a public compiler object, service container, visitor hierarchy, or
-mutable build context.
+### Keep placement hooks; delete the conditional language
 
-### Reuse one shader module and layout for normal and picking pipelines
+The explicit placement markers are simpler than embedding placement logic in
+every mark or branching on mark identity. Keep a small required-marker injector
+for those hooks. Emit optional `uniqueId`, ranged-text x/y, and similar built-in
+fragments directly from JavaScript. Delete the parser for `#define`, nested
+`#if`, `#elif`, Boolean expressions, and macro state.
 
-Normal and picking pipelines use the same generated WGSL, vertex entry point,
-bind-group layout, and pipeline layout. Build those once. Construct two render
-pipelines with different fragment targets and blend state from the shared
-artifacts. Do not make picking lazy in this milestone: a first-pick compilation
-hitch is a separate tradeoff and should be based on measurement.
+### Do not add a scale-resource strategy layer
 
-The WebGPU specification exposes shader modules and render pipeline creation as
-separate objects/operations, so sharing the module and layouts does not require
-custom behavior or copied implementation.
+The implemented `ScaleDef` contract already owns validation, WGSL emission,
+resource requirements, and update hooks, and facets now pass default binding
+limits with that design. The previously proposed definition-local resource
+strategy is discarded for this plan. Reuse existing analyses and the existing
+resource map through direct lookups; introduce no second dispatch vocabulary.
 
-### Keep optional code beside the definition that selects it
+Experimental custom `ScaleDef` values keep their current explicit contract and
+must continue to fail loudly when required behavior is absent.
 
-Scale definitions already select validation, WGSL emission, stop normalization,
-and domain-map behavior. First reuse cached channel analyses and resource
-requirements, keep stable lookup maps, and split concrete color dependencies
-where the bundle graph proves they are unnecessarily common.
+### Make font presets values, not registration effects
 
-Introduce a small internal resource strategy only if a measured prototype
-removes more code or common bundle weight than it adds. Do not create a second
-dispatch mechanism beside `ScaleDef`, and do not grow it with a large public
-metadata vocabulary. Custom definitions must either use the retained existing
-resource hooks or be intentionally narrowed in Milestone 1; they must not fall
-through to silent or partially functional behavior.
+Core already passes its resolved `{ metrics, bitmap }` resource. Standalone
+users should do the same by importing a pure Lato resource value. A global font
+registry, mutable default, per-mark manager clone, and package `sideEffects`
+exception are unnecessary for the implemented one-resource-per-mark API.
 
-### Make the bundled font an explicit preset
+### Keep logical text storage conditional on evidence
 
-`textMark` will accept caller-provided font metrics and bitmap resources without
-statically importing Lato. A separate `fonts/lato` entry point will export the
-current embedded preset for standalone renderer users. Core must continue to
-resolve fonts through its own font manager and pass the resulting metrics and
-bitmap as `fontResource`; it must not import the renderer's Lato preset. A
-custom-font consumer that does not import the preset must not include the Lato
-PNG or JSON.
-
-Use a normal `Map` with a normalized string key for the small font lookup table;
-the current per-mark `InternMap` is unnecessary.
+Facet implementation made the cost and contract concrete: retained draw ranges
+are logical strings, while visual series and per-instance placement are
+currently copied to glyph count. A text-only logical-series reader could remove
+those copies without adding bindings, but it touches picking, selections,
+replacement, high-precision inputs, and placement. Milestone 5 remains a
+measured go/no-go milestone.
 
 ## Alternatives considered
 
-### Keep the catch-all export and document private paths
+### Keep separate normal and picking compilation because it already works
 
-Rejected. A wildcard keeps tests and internals importable and makes accidental
-usage indistinguishable from a supported extension contract. Explicit entry
-points give tooling and consumers a statically enumerable API.
+Rejected. Both paths use the same generated WGSL and vertex interface. Keeping
+duplicate shader generation, modules, and layouts adds construction work and a
+parity risk without preserving a useful capability.
 
-### Add a feature-plugin system to improve tree shaking
+### Replace placement resources while simplifying shaders
 
-Rejected. Runtime registration and dependency injection would broaden the API
-and complicate construction. Built-in scale definitions already provide a
-static selection point that bundlers can follow.
+Rejected. The implemented storage representation passes the portable binding
+gate and the public placement contract is generic. A buffer/texture redesign
+would broaden risk without evidence that it simplifies the common bundle or
+runtime.
 
-### Add a global pipeline cache immediately
+### Add definition-local scale resource strategies
 
-Deferred. Sharing one shader module and layout inside each mark removes obvious
-duplicate work. Cross-mark caching needs stable keys, lifetime ownership,
-device scoping, and evidence that compatible programs recur often enough to
-justify the complexity.
+Discarded. Existing `ScaleDef` metadata already drives the working resource
+path. Reusing its compiled results is smaller than adding another interface and
+dispatch layer.
 
-### Keep embedded Lato in `textMark` for convenience
+### Keep font registration for convenient defaults
 
-Rejected as the only entry point. The preset remains available, but static
-inclusion makes every custom-font text bundle carry approximately 90 KB of
-font assets before encoding overhead and prevents precise package composition.
+Rejected. An explicit exported Lato value is equally convenient, statically
+traceable, and avoids mutable module state and a side-effect package exception.
 
-### Add an unpacked fast path for simple series
+### Implement logical-string text storage unconditionally
 
-Rejected. The packed path solved binding-limit pressure and provides one
-consistent update contract. Reusing staging capacity is preferable to
-maintaining two layouts and shader-reader modes.
+Rejected. Glyph expansion is correct and now covered by facet tests. The extra
+indexing contract is justified only by measured memory/upload reduction and net
+source simplification.
 
 ## Milestone 1: Package contract and reproducible footprint gates
 
-Status: Complete.
+Status: Complete in `71be361af`.
 
-### Intended outcome
+### Outcome
 
-The tarball contains only intentional runtime files and assets, every public
-runtime export has matching types, internal paths are inaccessible through the
-package export map, and bundle/package measurements are checked automatically.
-
-### Work
-
-- Inventory actual root and subpath imports in Core, examples, stories, tests,
-  and documentation.
-- Define explicit exports for the renderer root, built-in marks, built-in
-  scales, high-precision helpers, optional font presets, and experimental
-  scale authoring if it remains public.
-- Remove the `./*` export and migrate all repository consumers to supported
-  package specifiers or direct relative imports for package-internal tests.
-- Remove undocumented root re-exports that have no external consumer, or move
-  justified advanced exports to typed subpaths.
-- Align JavaScript exports, declaration exports, README examples, and
-  `test-types/publicApi.ts`, including the arrow mark and advanced helper
-  subpaths.
-- Remove public declaration references to implementation files, including the
-  current `keyof typeof import("./marks/programs/...")` channel-name types.
-  Export intentional public channel-name types or define them entirely within
-  the declaration surface.
-- Exclude `*.test.js`, `src/testUtils/`, plan files, test results, and other
-  development-only files from the tarball. Keep required font licenses with
-  exported font assets.
-- Replace the missing `build` hook with one intentional delivery command. It
-  must at least run declaration checks, bundle checks, and `npm pack --dry-run`;
-  it need not transpile source solely to create a `dist/` directory.
-- Make the tree-shaking fixture import public package specifiers and report
-  minified and gzip sizes including bundled runtime dependencies. Store exact
-  fixture sources for `rendererOnly`, `pointLinear`, `pointOrdinal`,
-  `customIdentityMark`, `textCustomFont`, and `textLato`.
-- Pin the measurement implementation: use the repository's locked Rollup
-  version with a locked minifier, ESM/browser output, dependency bundling, and
-  a Rollup module graph; compress the emitted bytes with `gzip -9`. Print tool
-  versions and flags in the report so local and CI results are comparable.
-- Establish checked initial budgets from the reproducible fixture, then record
-  the expected ratchets for Milestones 2–4.
-- Configure lint environments so the documented package-wide lint command is
-  green for source, examples, stories, and browser GPU tests.
+The package exposes intentional typed subpaths, excludes development artifacts,
+and has reproducible bundle and package checks. Custom-font bundles exclude the
+Lato JSON and PNG.
 
 ### Affected areas and downstream consumers
 
-- `packages/webgpu-renderer/package.json`, README, declaration files, bundle
-  scripts, examples, stories, and type fixtures.
-- Core's WebGPU adapter import of high-precision helpers.
-- No runtime renderer behavior or GPU layout changes.
+Package metadata, declarations, delivery/bundle scripts, README examples, and
+Core's renderer imports were migrated together.
 
-### Verification
+### Verification and migration
 
-- `npm -w @genome-spy/webgpu-renderer run test:tsc`
-- `npm -w @genome-spy/webgpu-renderer run test:bundle`
-- The new delivery/build command.
-- `npm pack --dry-run --json --workspace @genome-spy/webgpu-renderer`
-- `npx eslint packages/webgpu-renderer/`
-- Focused Core WebGPU adapter type and unit tests.
-- Verify that the packed file list contains no tests, test utilities, plans, or
-  generated test results.
-- Verify that imports of documented subpaths succeed and representative
-  internal subpaths fail with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+The completed commit added public type fixtures, self-import bundle fixtures,
+package-content validation, package-wide lint coverage, README migration, and
+Core import migration.
 
-### Documentation and migration
+### Commit
 
-- Update the README public-surface and high-precision sections to use package
-  specifiers rather than `src/index.js`.
-- Document advanced/experimental subpaths explicitly and keep internal helpers
-  undocumented.
-- Record the export-map change as breaking but acceptable for the unpublished
-  package.
+`build(webgpu-renderer): complete Milestone 1 package contract`
 
-### Review gate
-
-Review the public export list, declaration coverage, Core imports, and packed
-file list before merging. This is the only public-contract review required for
-the low-risk packaging work.
-
-### Tentative commit
-
-`refactor(webgpu): tighten renderer package exports`
-
-## Milestone 2: Single mark compilation and minimal shader assembly
+## Milestone 2: Single compilation and narrow shader assembly
 
 Status: Pending.
 
 ### Intended outcome
 
-One mark construction performs channel analysis and WGSL assembly once, creates
-one shader module and shared layouts, and derives normal and picking pipelines
-from those artifacts. The general-purpose shader preprocessor is removed.
+One mark construction normalizes and analyzes channels once, generates WGSL
+once, creates one shader module and shared layouts, and derives normal and
+picking pipelines from those shared objects. The general WGSL preprocessor is
+gone.
 
 ### Work
 
-- Start shared GPU-layout work only after the simplification and facet plans
-  record the same accepted `BaseProgram`, placement-index, shader-input, and
-  binding contract. Either plan may change during that reconciliation.
-- Create one immutable internal `CompiledMarkChannels` artifact containing the
-  normalized channels, one `ChannelAnalysis` per normalized channel, channel
-  IR, resource requirements, and public/input name mappings needed downstream.
-- Build that artifact once and pass it into scale validation, selection
-  resolution, resource planning, and shader assembly. Validation performed
-  during normalization must contribute to the same artifact rather than cause
-  later re-analysis.
-- Split pure shader/layout compilation from render-pipeline creation.
-- Create one shader module, mark bind-group layout, and pipeline layout per mark
-  program; use them for both normal and picking pipelines.
-- Replace production `#if defined(...)` blocks with explicit optional shader
-  fragments or a narrow helper that supports only the built-in conditions.
-- Delete `wgsl/preprocess.js` and rewrite its tests around the selected narrow
-  assembly helper or remove them when direct template assembly needs no helper.
-- Keep mark-specific shaders specialized; do not merge shader bodies.
-- Correct the interpolator extent calculation and add focused color utility
-  coverage. Decide and document whether RGBA stop alpha is supported; preserve
-  it if the accepted input type continues to include alpha.
+- Make normalization return or construct `CompiledMarkChannels` and pass the
+  same record through uniform layout, scale resources, selections, packed-series
+  layout, and shader generation.
+- Remove independent analysis construction from `channelIR`,
+  `ScaleResourceManager`, `SelectionResourceManager`, and validation paths.
+- Split the current `buildPipeline` into one compilation/layout step and a small
+  render-pipeline creation step.
+- Create one mark bind-group layout, shader module, and pipeline layout; create
+  normal and picking pipelines from them with different fragment settings.
+- Preserve placement participation in the shared pipeline layout and compile
+  both draw-level and per-instance placement paths from the same artifact.
+- Replace built-in `#if defined(...)` blocks with direct fragments or explicit
+  required markers. Retain the four placement hooks and validate each required
+  marker exactly once.
+- Delete `wgsl/preprocess.js` and its implementation-language tests.
+- Keep specialized mark shader bodies; do not introduce a common uber-shader or
+  public compiler API.
 
 ### Affected areas and downstream consumers
 
-- `BaseProgram`, pipeline builder, mark shader builder, channel analysis/IR,
-  channel config resolver, selection resources, and mark shader bodies.
-- All built-in marks, normal rendering, picking, and GPU shader tests.
-- No public handle or Core adapter shape change.
+- Channel normalization/analysis/IR, shader builder, pipeline builder,
+  `BaseProgram`, scale and selection resource managers.
+- Point, rect, rule, link, arrow, and text programs.
+- Normal rendering, picking, placement clipping, and Core's WebGPU adapter.
 
 ### Verification
 
-- Focused unit suites for channel validation/IR, shader generation, pipeline
-  creation, renderer drawing, and color utilities.
-- A pipeline-builder test proving one compiled shader artifact is reused for
-  both pipeline descriptors without testing private call counts unnecessarily.
-- A focused architecture-contract test proving downstream stages receive the
-  same `CompiledMarkChannels` identity and each normalized channel is analyzed
-  once. Keep this narrow; other tests should assert behavior rather than calls.
-- Full renderer unit suite and all 50 WebGPU Playwright tests.
-- Compare generated WGSL for point, rect, rule, link, arrow, and text with
-  representative optional channels present and absent.
-- Rerun bundle checks and ratchet the point+linear budget to the achieved
-  reduction from deleting unused preprocessor capability.
+- Focused tests prove every normalized channel is analyzed once and downstream
+  stages receive the same compiled record.
+- Pipeline tests prove one shader module and one pipeline layout create both
+  render pipelines.
+- Shader tests cover optional `uniqueId`, ranged text x/y variants, selections,
+  draw-level placement, and per-instance placement with hooks present/absent.
+- Run the full renderer unit and GPU suites and focused Core WebGPU adapter and
+  surface suites.
+- Run all bundle fixtures and record source/module/minified/gzip deltas. The
+  preprocessor module must disappear from every production graph.
 
 ### Documentation and migration
 
-- No user-facing API documentation change is expected.
-- Update `packages/webgpu-renderer/MIGRATION_PLAN.md` when this phase starts and
-  completes; remove obsolete preprocessor or duplicate-pipeline notes.
+Update `packages/webgpu-renderer/MIGRATION_PLAN.md` when the milestone starts
+and completes. No public API migration is expected.
 
 ### Review gate
 
-Review normal/picking parity, generated binding layouts, shader diagnostics,
-and the interaction with the reconciled placement shader inputs before merging.
+Review the compiled-record boundary, normal/picking parity, generated layouts,
+placement hooks, and shader diagnostics before merging.
 
 ### Tentative commit
 
-`refactor(webgpu): compile mark shaders once`
+`refactor(webgpu-renderer): compile mark shaders once`
 
-## Milestone 3: Measured scale-resource and hot-path simplification
+## Milestone 3: Stable resource views and retained staging
 
 Status: Pending.
 
 ### Intended outcome
 
-Repeated scale analysis and lookup work is removed, optional concrete
-dependencies are split where measurement justifies it, and bind-group rebuilds
-and draw-global writes avoid obvious temporary allocation. A new strategy
-boundary exists only if it demonstrates a net simplification.
+Bind-group rebuilds and draw submission reuse stable resource views and staging
+capacity. Scale-resource code consumes the compiled analysis instead of
+re-deriving policy. The working facet path remains within default limits.
 
 ### Work
 
-- Remove repeated `getScaleResourceRequirements`, stop-length, range-texture,
-  and analysis derivation by consuming `CompiledMarkChannels`.
-- Keep stable ordinal-range, domain-map, and range-texture lookup maps instead
-  of rebuilding maps from `_channelResources` during each bind-group rebuild.
-- Split concrete d3 color/interpolation imports from paths that do not need
-  them when the pinned module graph identifies an avoidable common dependency.
-- Prototype definition-local resource strategies only after the preceding
-  deletions. Adopt them only if the diff and bundle report show that they
-  remove real shared code without adding parallel dispatch or more concepts.
-- Preserve one explicit custom-`ScaleDef` resource contract. Use the existing
-  metadata/hooks if sufficient; otherwise narrow the experimental authoring
-  surface in Milestone 1. Fail fast for unsupported custom definitions.
-- Retain a capacity-sized CPU array for draw globals and fill it directly,
-  avoiding a new typed array and per-draw temporary array every frame.
-- Reuse fixed-size stop/range scratch storage when doing so reduces allocation
-  without complicating the slot contract.
-- Keep the packed-series implementation as the only data-buffer path. Reuse
-  packed staging capacity only if a focused benchmark shows series replacement
-  is material and the change does not add a second layout mode.
-- Continue enforcing the reconciled plans' default binding-limit gate. Do not
-  restore the temporary elevated storage-buffer request.
+- Pass compiled analyses and resource requirements into
+  `ScaleResourceManager`; remove its independent channel-analysis pass.
+- Let bind-group construction read ordinal ranges, domain maps, and range
+  textures directly from the existing per-channel resource map. Delete the
+  getters that allocate intermediate maps; do not maintain duplicate indexes.
+- Retain one capacity-sized draw-global `ArrayBuffer` alongside the GPU buffer,
+  grow both together, and write fields directly instead of allocating a typed
+  array and per-draw number array each frame.
+- Remove obvious post-facet duplication and stale state encountered in these
+  paths, including repeated guards or redundant derived collections.
+- Preserve the defensive copy that gives `PlacementSet` immutable CPU
+  ownership; do not trade a clear lifetime contract for one avoided copy.
+- Reuse stop/range scratch arrays or packed-series staging only when a focused
+  update benchmark shows material churn and the change remains local.
+- Do not add scale strategies, alternate binding layouts, or another packed-
+  series mode.
 
 ### Affected areas and downstream consumers
 
-- Scale definitions, scale resources, scale stops, color/texture utilities,
-  bind-group builder, renderer draw globals, and possibly series buffers.
-- Every built-in scale and scale update slot.
-- Core scale-domain/range updates and selection-driven conditional scales.
+- Scale resources, bind-group builder, `BaseProgram`, renderer draw globals,
+  placement-enabled frames, and retained scale slots.
+- Core domain/range updates, conditional scales, normal frames, and on-demand
+  picking frames.
 
 ### Verification
 
-- Focused scale definition, stop, resource, slot, bind-group, and renderer
-  tests.
-- GPU coverage for continuous, piecewise, threshold, quantize, ordinal, band,
-  index, color-ramp, and conditional-scale paths.
-- Run the exact Milestone 1 fixtures and compare both bytes and module graphs.
-  Confirm that `pointLinear` excludes ordinal domain maps/buffers and that the
-  purpose-built `customIdentityMark` fixture excludes d3 color/interpolation.
-  Do not use point+identity as the identity fixture because the built-in point
-  program statically selects linear defaults.
-- Ratchet the pinned `pointLinear` baseline by at least 10% minified and 5%
-  gzip across accepted Milestones 2–3, or record module-level evidence that a
-  smaller reduction is the honest limit. Do not add abstractions or distort the
-  design solely to meet the target.
-- Run Core WebGPU adapter and surface tests to verify retained slot behavior.
+- Focused tests cover direct resource lookup, correct replacement/destruction,
+  and bind-group rebuilds after capacity changes without intermediate maps.
+- A renderer test proves repeated equal-capacity frames reuse draw-global CPU
+  staging while writing correct float/u32 fields.
+- Unit and GPU scale coverage includes continuous, piecewise, threshold,
+  quantize, ordinal, band, index, color-ramp, and conditional paths.
+- Placement-heavy text plus selection and scale configurations continue to run
+  with eight vertex-stage storage buffers.
+- Re-run ordinary facets, approximately 2,000 sample facets, normal rendering,
+  and picking through focused Core/App coverage.
+- Record source and bundle deltas; accepted hot-path state must replace more
+  allocation/derivation than it adds in ownership complexity.
 
 ### Documentation and migration
 
-- Update the experimental scale-authoring documentation only if the resource
-  strategy is intentionally exposed.
-- Update `MIGRATION_PLAN.md` to replace the current scattered scale-resource
-  follow-ups with the completed ownership model.
+Update the migration plan's scale-resource and setter follow-ups to describe
+only remaining measured work. No public documentation change is expected.
 
 ### Review gate
 
-Review cached-analysis ownership, every built-in definition, default-binding
-evidence, public experimental authoring implications, and Core update behavior.
-If a strategy boundary is proposed, review its prototype diff and module graph
-before accepting it.
+Review Milestones 3 and 4 together unless resource ownership changes beyond the
+local maps and staging buffers described here.
 
 ### Tentative commit
 
-`refactor(webgpu): simplify scale resource paths`
+`refactor(webgpu-renderer): reuse retained resource staging`
 
-## Milestone 4: Optional embedded font and smaller text ownership
+## Milestone 4: Pure explicit font resources
 
-Status: Pending.
+Status: Pending; optional font asset separation already completed in Milestone 1.
 
 ### Intended outcome
 
-Importing `textMark` with a caller-provided font does not include the embedded
-Lato PNG, metrics JSON, or `internmap`. Importing the explicit Lato preset
-preserves the current standalone appearance. Core preserves its current
-appearance by continuing to pass the font resource resolved by Core.
+Text marks receive one explicit font resource. The Lato entry point exports that
+resource as a pure value. The package has no global font registry, implicit
+default mutation, per-mark registry clone, `internmap` dependency, or font-
+related side-effect declaration.
 
 ### Work
 
-- Add an explicit, typed `fonts/lato` entry point containing the current metrics
-  and bitmap preset plus its license.
-- Remove the static Lato imports from the generic font manager/text program.
-- Replace `InternMap` with a plain `Map` keyed by normalized
-  family/style/weight.
-- Require an explicit renderable font resource when the renderer performs text
-  layout or rendering. Preserve the existing `textLayout` path, but do not
-  imply that precomputed geometry removes the need for render-time atlas and
-  metrics data.
-- Keep Core's current font ownership: its font manager resolves both default
-  and custom fonts, and the WebGPU adapter passes `{ metrics, bitmap }` as
-  `fontResource`. Core must not import `fonts/lato` from this package.
-- Update standalone text and ranged-text examples.
-- Keep atlas and glyph metrics mark-local in this milestone; record measured
-  duplication before proposing shared renderer-level font resources.
+- Change `fonts/lato` from registration-on-import to an exported immutable
+  `FontResource` value.
+- Pass the imported value explicitly in standalone examples, stories, tests,
+  and bundle fixtures. Keep Core passing the resource resolved by Core's own
+  font manager.
+- Let text normalization and layout consume the supplied metrics directly.
+  Remove `fontRegistry.js` and the per-mark `BmFontManager` lookup/clone when no
+  second in-mark font consumer exists.
+- Preserve `font`, style, and weight as text-layout metadata where needed, but
+  do not use them to consult global renderer state.
+- Keep `textLayout` callers responsible for the atlas and metrics needed at
+  render time.
+- Remove the package `sideEffects` exception and the unused `internmap` runtime
+  dependency.
 
 ### Affected areas and downstream consumers
 
-- Text mark/program, font manager, font assets and licenses, package exports,
-  examples, README, and Core's WebGPU text adapter.
-- Text layout, asynchronous atlas loading, invalidation, text replacement, and
-  destruction.
+- Font resource/layout helpers, text program, package metadata and exports,
+  standalone examples/stories, public type fixtures, and README.
+- Core's adapter contract remains `{ metrics, bitmap }` and should need no
+  renderer-font import.
 
 ### Verification
 
-- Text layout and text-program unit tests for explicit Lato, custom font,
-  precomputed layout, async atlas invalidation, replacement, and destruction.
-- Structured bundle fixtures proving generic `textMark` excludes Lato assets
-  and `internmap`, while `textMark` + `fonts/lato` includes them.
-- Text geometry GPU test plus rendered text and ranged-text smoke examples.
-- Core adapter tests proving default and custom resources both cross the
-  boundary as renderer-neutral `fontResource` values.
-- `npm pack --dry-run` confirms the Lato license accompanies the preset.
+- Text layout/program tests cover explicit Lato, custom resources, precomputed
+  layouts, atlas invalidation, replacement, and destruction.
+- `textCustomFont` excludes Lato assets and all registry modules;
+  `textLato` includes the resource, JSON, PNG, and license through a named
+  import rather than a side effect.
+- Package and bundle checks pass with `sideEffects: false` and no `internmap`
+  dependency.
+- Core default and custom fonts render through the existing adapter resource
+  translation.
 
 ### Documentation and migration
 
-- Document explicit default-font usage and custom font resources in the README.
-- Treat the missing implicit default as a breaking prototype API change and
-  migrate every repository consumer in the same milestone.
+Update the README from side-effect registration to explicit resource import.
+The package is unpublished, so migrate all repository consumers atomically and
+do not retain the registration path.
 
 ### Review gate
 
-Review the text API migration, Core default rendering, asset loading behavior,
-font licensing, and generic/custom-font bundle graphs before merging.
+Combine with the Milestone 3 review unless the public font-resource shape
+changes beyond the already exposed `{ metrics, bitmap }` contract.
 
 ### Tentative commit
 
-`refactor(webgpu): make the embedded font optional`
+`refactor(webgpu-renderer): make font presets pure resources`
 
-## Milestone 5: String-indexed text series
+## Milestone 5: Measured logical-string text storage
 
-Status: Pending; independently discardable if measurements do not justify the
-additional shader/data-layout contract.
+Status: Pending and independently discardable.
 
 ### Intended outcome
 
-Logical per-string channels remain stored once per string instead of being
-expanded to every glyph and then packed again. Text has an explicit dual-count
-contract: glyph count determines drawing, while logical string count determines
-packed visual-channel storage. Glyph instances use `stringIndex` to read their
-parent string's attributes.
+If measurement justifies the change, text keeps logical visual channels and
+per-instance placement once per string while glyph geometry remains per glyph.
+Logical draw ranges, placement, selections, and picking retain current behavior
+without additional GPU bindings or a general mixed-cardinality framework.
 
 ### Work
 
-- Measure CPU allocation, upload bytes, and GPU storage for representative
-  short labels, long labels, and approximately 2,000 sample labels before
-  implementation; keep this measurement within the milestone rather than as a
-  separate phase.
-- Add one text-only series-index indirection. `TextProgram` keeps `drawCount`
-  equal to glyph count and constructs packed series with `logicalCount` equal
-  to string count; this must not become a general join or dataflow feature.
-- Keep glyph IDs, glyph offsets, and `stringIndex` in glyph-level geometry.
-  Keep visual inputs, conditional inputs, unique IDs, and high-precision source
-  values in string-level packed series. Text shader readers translate the draw
-  index through `stringIndex` before reading those series.
-- Define replacement semantics explicitly: new text recomputes both counts,
-  validates every logical series against `logicalCount`, rebuilds glyph
-  geometry, and updates draw bounds from `drawCount`.
-- Ensure all glyphs of one string share its selection/picking identity and that
-  visibility predicates and conditional channels evaluate at string level.
-- Remove `expandTextSeries`, `expandTextSeriesArrays`, their alias caches, and
-  per-glyph copies of logical channel arrays.
-- Preserve conditional series channels, high-precision index inputs, dynamic
-  values, text replacement, empty strings, and picking IDs.
-- If implementation requires mixed cardinalities inside one generic packed
-  buffer, extra per-type logical bindings, changes to every non-text accessor,
-  or ambiguous interaction with placement indexing, mark this milestone
-  discarded with evidence and retain the simpler expansion path.
+- Measure current CPU allocation, upload bytes, packed-series GPU bytes, and
+  replacement time for short labels, long labels, and the implemented
+  approximately 2,000-sample facet scenario.
+- If accepted, store `glyphId` in the existing glyph-instance structure along
+  with `stringIndex` and offsets, reusing its current padding rather than adding
+  another buffer.
+- Keep visual channels, conditional branches, `uniqueId`, high-precision source
+  values, and per-instance `__placementIndex` in logical-string packed series.
+- Give text channel readers one explicit text-only index expression that maps a
+  glyph draw index through `glyphs[i].stringIndex` before reading logical
+  series.
+- Separate text's logical series count from its glyph GPU instance count inside
+  the existing program contract. Keep public draw ranges logical and continue
+  translating them through the implemented glyph-offset table.
+- Define replacement atomically: validate logical arrays, rebuild layout and
+  glyph geometry, update both counts, replace packed logical series, and retain
+  the pipeline and atlas.
+- Ensure every glyph of a string shares placement, selection visibility, and
+  picking identity.
+- Delete `expandTextSeries`, `expandTextSeriesArrays`, placement-index
+  expansion, and their alias caches after the logical path works.
+
+Discard the milestone if it requires mixed cardinalities inside one generic
+packed buffer, extra per-type bindings, changes to ordinary mark accessors, or a
+general indexing abstraction. The implemented glyph-expansion path is correct
+and remains the KISS fallback.
 
 ### Affected areas and downstream consumers
 
-- Text program/layout, packed-series metadata, shader channel readers, picking,
-  conditional branches, and Core sample-label rendering.
-- Potential interaction with the separate facet placement index; the two
-  indices must have distinct names and ownership.
+- Text layout/program, packed-series count handling, shader accessors,
+  placement indexing, conditional channels, selections, picking, and Core/App
+  sample labels.
 
 ### Verification
 
-- Existing text-program unit tests rewritten around logical string-level
-  storage rather than per-glyph implementation details.
-- GPU text geometry, normal rendering, and picking tests with multi-glyph
-  strings and repeated/empty strings.
-- Conditional channels, visibility/selection predicates, shared per-string
-  picking IDs, high-precision inputs, and replacement between different string
-  and glyph counts.
-- Core sample-label example with approximately 2,000 labels after the facet
-  placement milestone is available.
-- Record before/after CPU bytes, GPU bytes, upload bytes, and replacement time.
-  Accept only if memory/upload reduction is material and the accessor contract
-  remains narrow.
+- GPU and unit tests cover multi-glyph, repeated, and empty strings; logical
+  draw subranges; draw/per-instance placement; conditional channels;
+  visibility and selections; shared picking IDs; high-precision inputs; and
+  replacement across different logical/glyph counts.
+- Re-run the approximately 2,000-sample App scenario and record end-to-end text
+  series/upload/GPU bytes before and after.
+- Accept only if representative long-label packed-series bytes fall by at least
+  half, no binding is added, and production code does not grow after expansion
+  helpers are deleted. Otherwise record the evidence and mark this milestone
+  discarded.
 
 ### Documentation and migration
 
-- No public API change is expected.
-- Update internal text architecture comments to describe string-level series
-  and glyph-level geometry.
+No public API change is expected. Update internal text architecture comments to
+distinguish logical series, logical draw ranges, and glyph instances.
 
 ### Review gate
 
-Review the data-layout contract, placement-index interaction, picking identity,
-and measured complexity/performance tradeoff before merging. This milestone may
-be discarded without blocking retirement of Milestones 1–4.
+Review the measured go/no-go decision before implementation. If accepted,
+review the text data-layout contract, picking identity, replacement, and
+placement interaction before merging.
 
 ### Tentative commit
 
-`refactor(webgpu): index text channels by string`
+`refactor(webgpu-renderer): index text channels by string`
+
+## Footprint ratchets
+
+Every accepted milestone must report production source lines, fixture module
+graphs, minified bytes, and gzip bytes before and after. A fixture may grow only
+with an explicit explanation tied to preserved behavior.
+
+Working final targets from the post-facet baseline are:
+
+- `pointLinear`: at or below 117,400 minified and 34,600 gzip bytes;
+- `textCustomFont`: at or below 120,500 minified and 36,100 gzip bytes; and
+- production JavaScript below the current 14,805 lines.
+
+These targets recover a meaningful part of the implementation growth while
+retaining facet capability. Revise them only with module-level evidence; do not
+introduce abstraction or obscure code merely to meet a byte count.
 
 ## Final integration verification
 
-After the accepted milestones are complete:
+After accepted milestones are complete:
 
-- Run all renderer TypeScript, unit, lint, bundle, packaging, and WebGPU GPU
+- Run renderer type, unit, lint, bundle, package, Storybook, and WebGPU GPU
   checks.
-- Run workspace TypeScript checks and focused Core WebGPU adapter, surface,
-  rendering-context, and mark translation tests.
-- Exercise standalone point, piecewise, threshold, index, text, ranged-text,
-  rule, link, arrow, and hatch scenes.
-- Verify normal and picking order with repeated retained handles, scissors,
-  viewports, visible ranges, and partial instance ranges.
-- Verify dynamic scale domains/ranges, conditional encodings, all selection
-  types, text replacement, custom font loading, invalidation, and deterministic
-  mark/renderer destruction.
-- Rerun the reconciled facet plan's representative ordinary-facet and
-  approximately 2,000-sample App scenarios to ensure shader/resource
-  simplification did not change placement or binding budgets.
-- Compare final package and bundle reports with the baseline and explain every
-  remaining large common module. Added code is acceptable only where it clearly
-  replaces duplication, improves ownership, or enables demonstrated
-  tree-shaking.
-- Reconcile every pending milestone as completed or discarded, commit that
-  record, and delete this temporary plan in a later commit before PR merge.
+- Run workspace type checks and focused Core WebGPU adapter, surface,
+  coordinator, rendering-context, mark translation, and placement-source tests.
+- Exercise standalone point, ordinal, piecewise, threshold, index, text,
+  ranged-text, rule, link, arrow, hatch, and placement scenes.
+- Verify normal/picking order, repeated handles, scissors, viewports, visible
+  ranges, logical text ranges, and partial instance ranges.
+- Verify dynamic scale updates, conditional encodings, selections, text
+  replacement, explicit Lato and custom fonts, asynchronous invalidation, and
+  deterministic mark/placement/renderer destruction.
+- Re-run ordinary facets and the approximately 2,000-sample App scenarios,
+  including reorder, filtering, closeup/peek, placement replacement, labels,
+  metadata, and range marks.
+- Confirm the most resource-heavy placement/text/selection/scale case stays at
+  or below default WebGPU binding limits.
+- Compare final reports with both the Milestone 1 and post-facet baselines and
+  explain remaining large common modules.
+- Mark every milestone completed or discarded, commit that record, and delete
+  this temporary plan in a later commit before merge.
 
 ## Overall acceptance criteria
 
-- All current renderer features remain available through intentional entry
-  points and repository consumers use no internal package paths.
-- The packed tarball contains no tests, test utilities, plan files, generated
-  test results, or undocumented source escape hatch.
-- The delivery command, package-wide lint, type checks, unit tests, GPU tests,
-  and bundle checks pass.
-- Runtime exports and declarations agree for every public entry point.
-- One mark construction generates one shader artifact and one shader module;
-  normal and picking pipelines share compatible layouts.
-- The general-purpose WGSL preprocessor is gone.
-- One immutable compiled-channel artifact is reused by validation, resources,
-  selections, and shader generation; each normalized channel is analyzed once.
-- Repeated scale-resource derivation is gone, and representative bundle
-  fixtures exclude unrelated modes and concrete dependencies. Any new strategy
-  boundary has measured net benefit.
-- Custom-font text does not include the embedded Lato assets or `internmap`.
-- Core continues to provide its own resolved font resources and does not import
-  the renderer's standalone Lato preset.
-- Renderer/Core boundaries and the jointly reconciled facet-placement contract
-  remain coherent and within default WebGPU binding limits.
-- Final size reports show a material reduction from the baseline, with the
-  `pointLinear` ratchet from Milestone 3 met or explicitly revised using
-  module-level evidence.
+- All implemented renderer and facet features remain available.
+- One mark construction creates one compiled-channel record, one generated
+  WGSL artifact, one shader module, one mark bind-group layout, and one pipeline
+  layout shared by normal and picking pipelines.
+- The general WGSL preprocessor and global font registry are gone.
+- Scale resources consume compiled requirements and bind directly from their
+  single resource map without rebuilding derived maps.
+- Repeated equal-capacity frames reuse draw-global CPU staging.
+- The package has pure explicit font resources, `sideEffects: false`, and no
+  unused `internmap` dependency.
+- Milestone 5 is either accepted with its measurement and narrow contract or
+  explicitly discarded with evidence.
+- Type, unit, lint, bundle, package, GPU, and focused Core/App facet checks pass.
+- Final footprint reports meet the working ratchets or contain a justified
+  module-level revision.
 
 ## Risks and mitigations
 
-- **Public export breakage:** The package is unpublished, but Core and examples
-  can still drift. Inventory imports first and enforce supported subpaths in
-  type and bundle fixtures.
-- **Shader/picking divergence:** Share one compiled shader artifact and retain
-  full normal/picking GPU coverage.
-- **Scale behavior drift:** Simplify cached analysis and lookup first. If a
-  strategy prototype is accepted, move one resource mode at a time while
-  running unit and GPU parity for every scale family.
-- **Bundle-driven over-abstraction:** Prefer deletion and static definition
-  imports. Do not add runtime registration to satisfy a byte target.
-- **Text default regression:** Keep the same standalone Lato preset, preserve
-  Core's existing font ownership, and migrate renderer examples atomically.
-- **Facet integration conflicts:** Reconcile both mutable plans before shared
-  implementation, record one contract in both, and verify binding layouts and
-  sample scenarios together.
-- **Hot-path optimization increases state:** Accept reusable staging only when
-  ownership and capacity rules stay local and measurable.
+- **Placement regression during shader cleanup:** Treat the implemented hook
+  contract as first-class and run draw/per-instance placement in normal and
+  picking passes for every mark family.
+- **Compilation artifact becomes a framework:** Keep it a plain internal record
+  passed explicitly between existing functions.
+- **Shader diagnostics become harder to locate:** Preserve generated-source
+  labels and test required marker counts while removing the preprocessor.
+- **Scale update behavior drifts:** Reuse existing analysis and resource rules;
+  do not redesign `ScaleDef` dispatch in this plan.
+- **Retained staging obscures ownership:** Keep capacity and destruction beside
+  the GPU resource it mirrors and accept state only when it replaces measured
+  allocation.
+- **Font convenience regresses:** Provide one explicit Lato resource import and
+  migrate every standalone consumer in the same milestone.
+- **Logical text indexing spreads complexity:** Require no new binding, no
+  ordinary-mark accessor change, and net source deletion; otherwise discard it.
 
-## Unresolved questions
+## Unresolved question
 
-- Should experimental scale authoring remain public now, or should only
-  built-in definitions be supported until a second consumer exists?
-- Should `setDebugResourcesEnabled` remain on the package root after its state
-  is moved out of `BaseProgram`, or live on a `debug` subpath?
-- Should `fonts/lato` be the only standalone convenience entry point, or should
-  the package also expose an explicitly named preconfigured text-mark helper?
-- After packed-series and placement work, does any representative mark still
-  require more than the WebGPU default storage-buffer binding limit?
-- Is string-indexed text data sufficiently beneficial after measurement to
-  justify its narrow accessor indirection?
+- Does the implemented 2,000-sample label workload show enough total
+  packed-series and upload reduction to accept Milestone 5 under its no-growth
+  constraints?
 
 ## External design references and provenance
 
-- Node.js package documentation recommends explicit package exports to define
-  supported entry points and encapsulate other subpaths:
-  <https://nodejs.org/api/packages.html#package-entry-points>
-- npm package documentation defines `files` and `.npmignore` controls for the
-  published file set:
+- Node.js package exports define supported entry points and encapsulate other
+  subpaths: <https://nodejs.org/api/packages.html#package-entry-points>
+- npm's package `files` rules define the published file set:
   <https://docs.npmjs.com/files/package.json/>
-- The WebGPU specification defines shader modules and render pipeline creation
-  as separate objects/operations, supporting reuse of one module across
-  compatible pipelines:
+- WebGPU exposes shader modules and render pipelines as separate objects,
+  allowing one module to serve compatible pipelines:
   <https://www.w3.org/TR/webgpu/#shader-module-creation>
 
 No external source code is copied or closely adapted by this plan.
