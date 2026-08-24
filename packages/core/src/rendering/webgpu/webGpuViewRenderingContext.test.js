@@ -271,9 +271,18 @@ describe("WebGpuViewRenderingContext", () => {
         const adapterCalls = /** @type {any[][]} */ (
             mocks.createWebGpuMarkConfig.mock.calls
         );
+        expect(adapterCalls[0][2]).toMatchObject({
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 80,
+        });
         expect(adapterCalls[0][5]).toBeUndefined();
         expect(surface.useMark).toHaveBeenCalledOnce();
-        expect(surface.useMark.mock.calls[0][3].placement).toEqual({ source });
+        expect(surface.useMark.mock.calls[0][3]).toMatchObject({
+            viewport: { x: 20.5, y: 30.5, width: 100, height: 80 },
+            placement: { source },
+        });
     });
 
     test("submits only visible ranges from a 2,000-placement source", () => {

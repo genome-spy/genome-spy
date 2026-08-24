@@ -230,10 +230,18 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
 
         const first = state.occurrences[0];
+        const configCoords = state.source
+            ? Rectangle.create(
+                  0,
+                  0,
+                  state.ownerCoords.width,
+                  state.ownerCoords.height
+              )
+            : state.ownerCoords;
         const translated = createWebGpuMarkConfig(
             state.mark,
             first.options,
-            state.ownerCoords,
+            configCoords,
             first.viewOpacity,
             state.packed.data,
             state.source && !state.indexed ? { source: "draw" } : undefined
@@ -290,7 +298,14 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 ? { scissor: this.#createScissor(occurrence.clip) }
                 : {}),
             ...(occurrence.visibleRange
-                ? { visibleRange: occurrence.visibleRange }
+                ? {
+                      visibleRange: state.source
+                          ? localizeVisibleRange(
+                                occurrence.visibleRange,
+                                state.ownerCoords
+                            )
+                          : occurrence.visibleRange,
+                  }
                 : {}),
             ...(state.source
                 ? {
@@ -394,6 +409,24 @@ function isPlacementVisible(source, index, owner, clip, canvas) {
         ? Math.min(canvas.height, clip.rect.y2)
         : canvas.height;
     return x < x2 && y < y2 && x + width > x1 && y + height > y1;
+}
+
+/**
+ * Placement-enabled mark channels are viewport-local, so anchor-culling bounds
+ * must use the same coordinate system.
+ *
+ * @param {import("@genome-spy/webgpu-renderer").DrawVisibleRange} range
+ * @param {Rectangle} owner
+ * @returns {import("@genome-spy/webgpu-renderer").DrawVisibleRange}
+ */
+function localizeVisibleRange(range, owner) {
+    return {
+        ...range,
+        x1: range.x1 - owner.x,
+        y1: range.y1 - owner.y,
+        x2: range.x2 - owner.x,
+        y2: range.y2 - owner.y,
+    };
 }
 
 /** @param {import("../../marks/mark.js").default} mark */

@@ -1,4 +1,4 @@
-/* global Buffer, console, document, fetch, process, setTimeout, URL, window */
+/* global Buffer, console, document, fetch, getComputedStyle, process, setTimeout, URL, window */
 
 import fs from "node:fs";
 import path from "node:path";
@@ -8,41 +8,53 @@ import { inflateSync } from "node:zlib";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const packageDir = path.resolve(path.dirname(scriptPath), "..");
+const appPackageDir = path.resolve(packageDir, "..", "app");
 const repoRoot = path.resolve(packageDir, "..", "..");
 const examplesDir = path.join(repoRoot, "examples");
 const defaultServerOrigin = "http://127.0.0.1:4173";
 const harnessPath = "/screenshot.html";
 const healthCheckPath = "/__health";
-const defaultOutputDir = path.join(repoRoot, "output", "webgpu-core");
+const defaultCoreOutputDir = path.join(repoRoot, "output", "webgpu-core");
+const defaultAppOutputDir = path.join(repoRoot, "output", "webgpu-app");
 const defaultTimeoutMs = 30_000;
 const harnessTimeoutPaddingMs = 60_000;
+const maxMeanAbsoluteError = 0.06;
+const maxChangedPixelRatio = 0.15;
 
 const helpText = `Usage:
   node packages/core/scripts/runWebGpuExamples.mjs [options] [examples/...json ...]
 
 Options:
-  --all                 Run every JSON example under examples/core and examples/docs.
+  --all                 Run every JSON example in the selected scope.
+  --scope NAME          Example scope: core (default) or app.
   --match REGEXP        Run discovered examples whose path matches REGEXP.
   --renderer NAME       Renderer to test: webgpu (default) or webgl.
   --compare-webgl       Run a WebGL pass and pixel-stat comparison for each selection.
-  --server-url URL      Use an already running Core dev server.
-  --output-dir DIR      Store screenshots and reports in DIR (default: output/webgpu-core).
+  --check-picking       Require a datum-backed hover hit (App only).
+  --server-url URL      Use an already running dev server for the selected scope.
+  --output-dir DIR      Store screenshots and reports in DIR.
+  --dpr NUMBER          Browser device pixel ratio (default: 1).
   --timeout-ms NUMBER   Wait limit for example initialization and visible lazy data.
   --fail-on-warning     Treat browser console warnings as failures.
   --help                Show this help text.
 
-The default output directory is ignored by Git. Positional paths may be full
-examples/... paths or paths relative to examples/.`;
+The default output directory is output/webgpu-core or output/webgpu-app and is
+ignored by Git. App comparisons fail when mean RGB error exceeds 6% or more
+than 15% of pixels differ by over 32/255 in any channel. Positional paths may
+be full examples/... paths, the private MCCA spec, or paths relative to examples/.`;
 
 /**
  * @typedef {object} RunnerOptions
  * @property {boolean} help
  * @property {string[]} examplePaths
  * @property {RegExp | undefined} match
+ * @property {"core" | "app"} scope
  * @property {"webgpu" | "webgl"} renderer
  * @property {boolean} compareWebgl
+ * @property {boolean} checkPicking
  * @property {string | undefined} serverUrl
  * @property {string} outputDir
+ * @property {number} dpr
  * @property {number} timeoutMs
  * @property {boolean} failOnWarning
  */
@@ -63,7 +75,10 @@ export async function main(args = process.argv.slice(2)) {
     const playwright = await loadPlaywright();
     const server =
         options.serverUrl === undefined
-            ? await startDevServer(defaultServerOrigin)
+            ? await startDevServer(
+                  defaultServerOrigin,
+                  options.scope === "app" ? appPackageDir : packageDir
+              )
             : undefined;
     const serverOrigin = options.serverUrl ?? defaultServerOrigin;
 
@@ -83,7 +98,9 @@ export async function main(args = process.argv.slice(2)) {
                         options.renderer,
                         options.outputDir,
                         options.timeoutMs,
-                        options.failOnWarning
+                        options.failOnWarning,
+                        options.dpr,
+                        options.checkPicking
                     )
                 );
             }
@@ -98,13 +115,19 @@ export async function main(args = process.argv.slice(2)) {
                         "webgl",
                         options.outputDir,
                         options.timeoutMs,
-                        options.failOnWarning
+                        options.failOnWarning,
+                        options.dpr,
+                        options.checkPicking
                     );
                     comparisons.push({
                         examplePath: webgpu.examplePath,
                         webgpu,
                         webgl,
-                        comparison: compareScreenshots(webgpu, webgl),
+                        comparison: compareScreenshots(
+                            webgpu,
+                            webgl,
+                            options.scope
+                        ),
                     });
                 }
             }
@@ -112,25 +135,42 @@ export async function main(args = process.argv.slice(2)) {
             const summary = {
                 generatedAt: new Date().toISOString(),
                 serverOrigin,
+                scope: options.scope,
                 selectedCount: examplePaths.length,
                 renderer: options.renderer,
                 compareWebgl: options.compareWebgl,
+                dpr: options.dpr,
                 results,
                 comparisons,
             };
             const summaryPath = path.join(options.outputDir, "summary.json");
-            const reportPath = path.join(options.outputDir, "failure-report.md");
-            fs.writeFileSync(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);
+            const reportPath = path.join(
+                options.outputDir,
+                "failure-report.md"
+            );
+            fs.writeFileSync(
+                summaryPath,
+                `${JSON.stringify(summary, null, 2)}\n`
+            );
             fs.writeFileSync(reportPath, createFailureReport(summary));
 
-            const failed = results.filter((result) => result.status === "failed");
+            const failed = results.filter(
+                (result) => result.status === "failed"
+            );
+            const failedComparisons = comparisons.filter(
+                ({ comparison }) => comparison.status === "failed"
+            );
             console.log(
                 `Checked ${results.length} ${options.renderer} example${results.length === 1 ? "" : "s"}: ` +
                     `${results.length - failed.length} passed, ${failed.length} failed.`
             );
             console.log(`Machine summary: ${summaryPath}`);
             console.log(`Failure report: ${reportPath}`);
-            if (failed.length || comparisons.some(({ webgl }) => webgl.status === "failed")) {
+            if (
+                failed.length ||
+                comparisons.some(({ webgl }) => webgl.status === "failed") ||
+                failedComparisons.length
+            ) {
                 process.exitCode = 1;
             }
         } finally {
@@ -149,6 +189,8 @@ export async function main(args = process.argv.slice(2)) {
  * @param {string} outputDir
  * @param {number} timeoutMs
  * @param {boolean} failOnWarning
+ * @param {number} dpr
+ * @param {boolean} checkPicking
  */
 async function runExample(
     browser,
@@ -157,7 +199,9 @@ async function runExample(
     renderer,
     outputDir,
     timeoutMs,
-    failOnWarning
+    failOnWarning,
+    dpr,
+    checkPicking
 ) {
     const startedAt = Date.now();
     const result = {
@@ -172,12 +216,13 @@ async function runExample(
         requestFailures: [],
         renderingFailures: [],
         canvas: undefined,
+        picking: undefined,
         detail: undefined,
     };
-    const page = await browser.newPage({ deviceScaleFactor: 1 });
+    const page = await browser.newPage({ deviceScaleFactor: dpr });
     const prefix = `${renderer}-${examplePath
         .replaceAll("/", "__")
-        .replace(/\.json$/, "")}`;
+        .replace(/\.json$/, "")}${dpr === 1 ? "" : `-dpr${dpr}`}`;
     const screenshotPath = path.join(outputDir, `${prefix}.png`);
     result.screenshot = path
         .relative(repoRoot, screenshotPath)
@@ -202,7 +247,9 @@ async function runExample(
     });
     page.on("response", (response) => {
         if (response.status() >= 400) {
-            result.requestFailures.push(`${response.status()} ${response.url()}`);
+            result.requestFailures.push(
+                `${response.status()} ${response.url()}`
+            );
         }
     });
 
@@ -211,7 +258,10 @@ async function runExample(
         url.searchParams.set("spec", `/${examplePath}`);
         url.searchParams.set("renderer", renderer);
         url.searchParams.set("lazy-timeout-ms", String(timeoutMs));
-        await page.goto(url.toString(), { waitUntil: "load", timeout: timeoutMs });
+        await page.goto(url.toString(), {
+            waitUntil: "load",
+            timeout: timeoutMs,
+        });
         await page.waitForFunction(
             () =>
                 window.__genomeSpyScreenshot?.status === "ready" ||
@@ -226,7 +276,9 @@ async function runExample(
         }));
         if (state.status !== "ready") {
             result.renderingFailures.push(
-                state.error || state.detail || "Screenshot harness did not become ready."
+                state.error ||
+                    state.detail ||
+                    "Screenshot harness did not become ready."
             );
         }
 
@@ -234,6 +286,10 @@ async function runExample(
             const canvas = await inspectCanvas(page, screenshotPath);
             result.canvas = canvas.metrics;
             result.renderingFailures.push(...canvas.failures);
+            if (checkPicking) {
+                result.picking = await inspectPicking(page);
+                result.renderingFailures.push(...result.picking.failures);
+            }
         }
     } catch (error) {
         result.renderingFailures.push(
@@ -253,8 +309,75 @@ async function runExample(
         result.status = "failed";
     }
     result.durationMs = Date.now() - startedAt;
-    console.log(`${result.status === "passed" ? "PASS" : "FAIL"} ${renderer} ${examplePath}`);
+    console.log(
+        `${result.status === "passed" ? "PASS" : "FAIL"} ${renderer} ${examplePath}`
+    );
     return result;
+}
+
+async function inspectPicking(page) {
+    const canvas = page.locator("#frame canvas");
+    const box = await canvas.boundingBox();
+    if (!box) {
+        return {
+            failures: ["Cannot check picking without a visible canvas."],
+        };
+    }
+
+    const probeFractions = [
+        [0.5, 0.25],
+        [0.35, 0.25],
+        [0.65, 0.25],
+        [0.5, 0.4],
+        [0.35, 0.4],
+        [0.65, 0.4],
+    ];
+    const probes = [];
+    for (const [xFraction, yFraction] of probeFractions) {
+        const x = box.x + box.width * xFraction;
+        const y = box.y + box.height * yFraction;
+        await page.mouse.move(x, y);
+        // SwiftShader readback can take noticeably longer than hardware WebGPU.
+        await page.waitForTimeout(3_000);
+        probes.push(await readPickingState(page, xFraction, yFraction));
+    }
+
+    const hit = probes.find((probe) => probe.hasHover && probe.datum);
+    if (hit) {
+        return { ...hit, probes, failures: [] };
+    }
+    return {
+        probes,
+        failures: ["Picking probes did not resolve a datum-backed hover."],
+    };
+}
+
+async function readPickingState(page, xFraction, yFraction) {
+    return page.evaluate(
+        ([probeX, probeY]) => {
+            const root = window.__genomeSpyAppHarness?.api.debug.getViewRoot();
+            const hover = root?.context.getCurrentHover();
+            const tooltip = document.querySelector(".gs-tooltip");
+            const style = tooltip ? getComputedStyle(tooltip) : undefined;
+            return {
+                xFraction: probeX,
+                yFraction: probeY,
+                hasHover: !!hover,
+                uniqueId: hover?.uniqueId,
+                datum: hover?.datum,
+                tooltipProperty: hover?.mark?.properties?.tooltip,
+                tooltipEncoding: hover?.mark?.encoding?.tooltip,
+                tooltipText: tooltip?.textContent.trim(),
+                tooltipDisplay: style?.display,
+                tooltipVisible:
+                    !!tooltip &&
+                    style.display !== "none" &&
+                    style.visibility !== "hidden" &&
+                    tooltip.textContent.trim().length > 0,
+            };
+        },
+        [xFraction, yFraction]
+    );
 }
 
 function isWebGpuValidationWarning(message) {
@@ -290,7 +413,9 @@ async function inspectCanvas(page, screenshotPath) {
         first.backingWidth <= 0 ||
         first.backingHeight <= 0
     ) {
-        failures.push(`Canvas has no visible size: ${JSON.stringify(first ?? null)}.`);
+        failures.push(
+            `Canvas has no visible size: ${JSON.stringify(first ?? null)}.`
+        );
     }
 
     let metrics;
@@ -315,6 +440,14 @@ async function inspectCanvas(page, screenshotPath) {
 }
 
 function inspectPng(data) {
+    const decoded = decodePng(data);
+    return {
+        distinctColors: decoded.distinctColors,
+        nonDominantRatio: decoded.nonDominantRatio,
+    };
+}
+
+function decodePng(data) {
     const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
     if (!data.subarray(0, 8).equals(signature)) {
         throw new Error("Screenshot is not a PNG.");
@@ -348,7 +481,9 @@ function inspectPng(data) {
         (colorType !== 2 && colorType !== 6) ||
         interlace !== 0
     ) {
-        throw new Error("Only non-interlaced 8-bit RGB/RGBA PNGs are supported.");
+        throw new Error(
+            "Only non-interlaced 8-bit RGB/RGBA PNGs are supported."
+        );
     }
     const bytesPerPixel = colorType === 6 ? 4 : 3;
     const rowBytes = width * bytesPerPixel;
@@ -367,7 +502,13 @@ function inspectPng(data) {
                 y > 0 && x >= bytesPerPixel
                     ? pixels[rowStart - rowBytes + x - bytesPerPixel]
                     : 0;
-            pixels[rowStart + x] = unfilter(filter, raw, left, above, upperLeft);
+            pixels[rowStart + x] = unfilter(
+                filter,
+                raw,
+                left,
+                above,
+                upperLeft
+            );
         }
     }
 
@@ -378,6 +519,10 @@ function inspectPng(data) {
     }
     const dominant = Math.max(...buckets.values());
     return {
+        width,
+        height,
+        bytesPerPixel,
+        pixels,
         distinctColors: buckets.size,
         nonDominantRatio: 1 - dominant / (width * height),
     };
@@ -394,35 +539,128 @@ function unfilter(filter, raw, left, above, upperLeft) {
         const pb = Math.abs(predictor - above);
         const pc = Math.abs(predictor - upperLeft);
         return (
-            raw +
-            (pa <= pb && pa <= pc ? left : pb <= pc ? above : upperLeft)
-        ) & 255;
+            (raw +
+                (pa <= pb && pa <= pc ? left : pb <= pc ? above : upperLeft)) &
+            255
+        );
     }
     throw new Error(`Unsupported PNG filter ${filter}.`);
 }
 
-function compareScreenshots(webgpu, webgl) {
+function compareScreenshots(webgpu, webgl, scope) {
     if (webgpu.status === "failed" || webgl.status === "failed") {
         return { status: "unavailable", reason: "One renderer failed." };
     }
     if (!webgpu.screenshot || !webgl.screenshot) {
         return { status: "unavailable", reason: "A screenshot is missing." };
     }
+    const gpu = decodePng(
+        fs.readFileSync(path.join(repoRoot, webgpu.screenshot))
+    );
+    const gl = decodePng(
+        fs.readFileSync(path.join(repoRoot, webgl.screenshot))
+    );
+    if (gpu.width !== gl.width || gpu.height !== gl.height) {
+        return {
+            status: "failed",
+            reason: `Screenshot dimensions differ: ${gpu.width}x${gpu.height} vs ${gl.width}x${gl.height}.`,
+        };
+    }
+
+    let absoluteError = 0;
+    let changedPixels = 0;
+    const pixelCount = gpu.width * gpu.height;
+    for (let pixel = 0; pixel < pixelCount; pixel++) {
+        const gpuOffset = pixel * gpu.bytesPerPixel;
+        const glOffset = pixel * gl.bytesPerPixel;
+        let maximumDifference = 0;
+        for (let channel = 0; channel < 3; channel++) {
+            const difference = Math.abs(
+                gpu.pixels[gpuOffset + channel] - gl.pixels[glOffset + channel]
+            );
+            absoluteError += difference;
+            maximumDifference = Math.max(maximumDifference, difference);
+        }
+        if (maximumDifference > 32) {
+            changedPixels++;
+        }
+    }
+    const meanAbsoluteError = absoluteError / (pixelCount * 3 * 255);
+    const changedPixelRatio = changedPixels / pixelCount;
+    const picking = comparePicking(webgpu.picking, webgl.picking);
+    const materialDifference =
+        meanAbsoluteError > maxMeanAbsoluteError ||
+        changedPixelRatio > maxChangedPixelRatio ||
+        picking.status === "failed";
     return {
-        status: "available",
-        webgpu: inspectPng(fs.readFileSync(path.join(repoRoot, webgpu.screenshot))),
-        webgl: inspectPng(fs.readFileSync(path.join(repoRoot, webgl.screenshot))),
-        note: "Pixel statistics are diagnostic only; backend antialiasing can differ.",
+        status:
+            scope === "app"
+                ? materialDifference
+                    ? "failed"
+                    : "passed"
+                : "available",
+        meanAbsoluteError,
+        changedPixelRatio,
+        picking,
+        thresholds: {
+            maxMeanAbsoluteError,
+            maxChangedPixelRatio,
+            changedPixelChannelDifference: 32 / 255,
+        },
+        webgpu: {
+            distinctColors: gpu.distinctColors,
+            nonDominantRatio: gpu.nonDominantRatio,
+        },
+        webgl: {
+            distinctColors: gl.distinctColors,
+            nonDominantRatio: gl.nonDominantRatio,
+        },
+    };
+}
+
+function comparePicking(webgpu, webgl) {
+    if (!webgpu && !webgl) {
+        return { status: "not-checked" };
+    }
+    if (!webgpu?.probes || !webgl?.probes) {
+        return { status: "failed", reason: "One picking result is missing." };
+    }
+
+    for (const gpuProbe of webgpu.probes) {
+        const glProbe = webgl.probes.find(
+            (probe) =>
+                probe.xFraction === gpuProbe.xFraction &&
+                probe.yFraction === gpuProbe.yFraction
+        );
+        if (
+            gpuProbe.datum &&
+            glProbe?.datum &&
+            JSON.stringify(gpuProbe.datum) === JSON.stringify(glProbe.datum)
+        ) {
+            return {
+                status: "passed",
+                xFraction: gpuProbe.xFraction,
+                yFraction: gpuProbe.yFraction,
+                datum: gpuProbe.datum,
+            };
+        }
+    }
+    return {
+        status: "failed",
+        reason: "No picking probe resolved the same datum under both renderers.",
     };
 }
 
 function createFailureReport(summary) {
-    const failed = summary.results.filter((result) => result.status === "failed");
+    const failed = summary.results.filter(
+        (result) => result.status === "failed"
+    );
     const lines = [
-        "# WebGPU Core example runner report",
+        `# WebGPU ${summary.scope === "app" ? "App" : "Core"} example runner report`,
         "",
         `Generated: ${summary.generatedAt}`,
         `Renderer: ${summary.renderer}`,
+        `DPR: ${summary.dpr}`,
         `Selected examples: ${summary.selectedCount}`,
         `Passed: ${summary.results.length - failed.length}`,
         `Failed: ${failed.length}`,
@@ -431,7 +669,11 @@ function createFailureReport(summary) {
         "",
     ];
     for (const result of failed) {
-        lines.push(`### ${result.examplePath}`, "", `- Renderer: ${result.renderer}`);
+        lines.push(
+            `### ${result.examplePath}`,
+            "",
+            `- Renderer: ${result.renderer}`
+        );
         addReportItems(lines, "Rendering failures", result.renderingFailures);
         addReportItems(lines, "Console errors", result.consoleErrors);
         addReportItems(lines, "Uncaught exceptions", result.pageErrors);
@@ -443,11 +685,15 @@ function createFailureReport(summary) {
         lines.push(
             "## WebGL comparisons",
             "",
-            "Pixel statistics are diagnostic only; backend antialiasing can differ.",
+            summary.scope === "app"
+                ? "App comparisons enforce the documented material-difference thresholds."
+                : "Core pixel statistics are diagnostic only; backend antialiasing can differ.",
             ""
         );
         for (const comparison of summary.comparisons) {
-            lines.push(`- ${comparison.examplePath}: ${comparison.comparison.status}`);
+            lines.push(
+                `- ${comparison.examplePath}: ${comparison.comparison.status}`
+            );
         }
         lines.push("");
     }
@@ -455,11 +701,12 @@ function createFailureReport(summary) {
 }
 
 function addReportItems(lines, title, items) {
-    if (items.length) lines.push(`- ${title}:`, ...items.map((item) => `  - ${item}`));
+    if (items.length)
+        lines.push(`- ${title}:`, ...items.map((item) => `  - ${item}`));
 }
 
 function selectExamples(options) {
-    const discovered = collectExamples();
+    const discovered = collectExamples(options.scope);
     const requested = options.examplePaths.length
         ? options.examplePaths.map(normalizeExamplePath)
         : discovered;
@@ -467,18 +714,25 @@ function selectExamples(options) {
         (examplePath) => !options.match || options.match.test(examplePath)
     );
     for (const examplePath of selected) {
-        if (!discovered.includes(examplePath)) {
-            throw new Error(
-                `No example spec under examples/core or examples/docs: ${examplePath}`
-            );
+        if (
+            !discovered.includes(examplePath) &&
+            !(
+                options.scope === "app" &&
+                examplePath.startsWith("private/") &&
+                fs.existsSync(path.join(repoRoot, examplePath))
+            )
+        ) {
+            throw new Error(`No ${options.scope} example spec: ${examplePath}`);
         }
     }
     return selected;
 }
 
-function collectExamples() {
+/** @param {"core" | "app"} scope */
+function collectExamples(scope) {
     const paths = [];
-    for (const group of ["core", "docs"]) {
+    const groups = scope === "app" ? ["app"] : ["core", "docs"];
+    for (const group of groups) {
         visit(path.join(examplesDir, group), (absolutePath) => {
             paths.push(
                 path.relative(repoRoot, absolutePath).replaceAll(path.sep, "/")
@@ -492,13 +746,15 @@ function visit(dir, visitor) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const absolutePath = path.join(dir, entry.name);
         if (entry.isDirectory()) visit(absolutePath, visitor);
-        else if (entry.isFile() && entry.name.endsWith(".json")) visitor(absolutePath);
+        else if (entry.isFile() && entry.name.endsWith(".json"))
+            visitor(absolutePath);
     }
 }
 
 function normalizeExamplePath(examplePath) {
     const normalized = examplePath.replaceAll("\\", "/");
-    return normalized.startsWith("examples/")
+    return normalized.startsWith("examples/") ||
+        normalized.startsWith("private/")
         ? normalized
         : `examples/${normalized}`;
 }
@@ -508,10 +764,13 @@ function parseArgs(args) {
         help: false,
         examplePaths: [],
         match: undefined,
+        scope: "core",
         renderer: "webgpu",
         compareWebgl: false,
+        checkPicking: false,
         serverUrl: undefined,
-        outputDir: defaultOutputDir,
+        outputDir: undefined,
+        dpr: 1,
         timeoutMs: defaultTimeoutMs,
         failOnWarning: false,
     };
@@ -519,9 +778,17 @@ function parseArgs(args) {
         const arg = args[index];
         if (arg === "--help" || arg === "-h") options.help = true;
         else if (arg === "--all") continue;
-        else if (arg === "--compare-webgl") options.compareWebgl = true;
+        else if (arg === "--scope") {
+            const scope = requireValue(args, ++index, arg);
+            if (scope !== "core" && scope !== "app") {
+                throw new Error(`Unknown scope: ${scope}`);
+            }
+            options.scope = scope;
+        } else if (arg === "--compare-webgl") options.compareWebgl = true;
+        else if (arg === "--check-picking") options.checkPicking = true;
         else if (arg === "--fail-on-warning") options.failOnWarning = true;
-        else if (arg === "--match") options.match = new RegExp(requireValue(args, ++index, arg));
+        else if (arg === "--match")
+            options.match = new RegExp(requireValue(args, ++index, arg));
         else if (arg === "--renderer") {
             const renderer = requireValue(args, ++index, arg);
             if (renderer !== "webgpu" && renderer !== "webgl") {
@@ -532,6 +799,11 @@ function parseArgs(args) {
             options.serverUrl = requireValue(args, ++index, arg);
         } else if (arg === "--output-dir") {
             options.outputDir = path.resolve(requireValue(args, ++index, arg));
+        } else if (arg === "--dpr") {
+            options.dpr = Number(requireValue(args, ++index, arg));
+            if (!Number.isFinite(options.dpr) || options.dpr <= 0) {
+                throw new Error("--dpr must be positive.");
+            }
         } else if (arg === "--timeout-ms") {
             options.timeoutMs = Number(requireValue(args, ++index, arg));
             if (!Number.isFinite(options.timeoutMs) || options.timeoutMs <= 0) {
@@ -542,6 +814,11 @@ function parseArgs(args) {
         } else {
             options.examplePaths.push(arg);
         }
+    }
+    options.outputDir ??=
+        options.scope === "app" ? defaultAppOutputDir : defaultCoreOutputDir;
+    if (options.checkPicking && options.scope !== "app") {
+        throw new Error("--check-picking is only available with --scope app.");
     }
     return options;
 }
@@ -565,10 +842,10 @@ function getBrowserArgs() {
     return args;
 }
 
-async function startDevServer(serverOrigin) {
+async function startDevServer(serverOrigin, serverPackageDir) {
     const port = String(new URL(serverOrigin).port || "4173");
     const child = spawn("node", ["dev-server.mjs"], {
-        cwd: packageDir,
+        cwd: serverPackageDir,
         env: { ...process.env, PORT: port },
         stdio: ["ignore", "pipe", "pipe"],
     });
@@ -588,7 +865,9 @@ async function waitForServer(serverOrigin, child) {
     const deadline = Date.now() + 15_000;
     while (Date.now() < deadline) {
         if (child && child.exitCode !== null && child.exitCode !== undefined) {
-            throw new Error(`Core dev server exited with code ${child.exitCode}.`);
+            throw new Error(
+                `Core dev server exited with code ${child.exitCode}.`
+            );
         }
         try {
             if ((await fetch(url)).ok) return;
@@ -604,7 +883,9 @@ async function loadPlaywright() {
     try {
         return await import("playwright");
     } catch {
-        throw new Error('The WebGPU example runner requires the "playwright" package.');
+        throw new Error(
+            'The WebGPU example runner requires the "playwright" package.'
+        );
     }
 }
 

@@ -19,7 +19,7 @@ export default defineConfig(({ command }) => ({
     },
     server: {
         host: process.env.HOST || "127.0.0.1",
-        port: 8080,
+        port: Number(process.env.PORT || 8080),
         strictPort: true,
         fs: {
             allow: [repoRoot],

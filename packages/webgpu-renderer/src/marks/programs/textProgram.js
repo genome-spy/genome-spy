@@ -303,15 +303,19 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     // Anchor in pixel coordinates. Positional offsets are applied in screen
     // coordinates to match the current text layout contract.
-    var anchor = vec2<f32>(
-        getScaled_x(i) + getScaled_dx(i),
-        getScaled_y(i) + getScaled_dy(i)
+    let anchorPosition = vec2<f32>(getScaled_x(i), getScaled_y(i));
+    var anchor = applyPlacementPixel(anchorPosition, i) + vec2<f32>(
+        getScaled_dx(i),
+        getScaled_dy(i)
     );
     var rangeScale = 1.0;
     var logoSize = vec2<f32>(size);
 
 #if defined(x2_DEFINED)
-    let x2 = getScaled_x2(i) + getScaled_x2Offset(i);
+    let x2 = applyPlacementPixel(
+        vec2<f32>(getScaled_x2(i), anchorPosition.y),
+        i
+    ).x + getScaled_x2Offset(i);
     if (params.uLogoLetters != 0u) {
         logoSize.x = abs(x2 - anchor.x);
     } else {
@@ -331,7 +335,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 #endif
 
 #if defined(y2_DEFINED)
-    let y2 = getScaled_y2(i) + getScaled_y2Offset(i);
+    let y2 = applyPlacementPixel(
+        vec2<f32>(anchorPosition.x, getScaled_y2(i)),
+        i
+    ).y + getScaled_y2Offset(i);
     if (params.uLogoLetters != 0u) {
         logoSize.y = abs(y2 - anchor.y);
         anchor.y = (anchor.y + y2) * 0.5;
@@ -408,10 +415,6 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let rotated = rot * localPos;
     let pixel = anchor + rotated;
 
-    let centerClip = vec2<f32>(
-        (anchor.x / globals.width) * 2.0 - 1.0,
-        1.0 - (anchor.y / globals.height) * 2.0
-    );
     let clip = vec2<f32>(
         (pixel.x / globals.width) * 2.0 - 1.0,
         1.0 - (pixel.y / globals.height) * 2.0
@@ -419,7 +422,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     var out: VSOut;
     out.pos = vec4<f32>(
-        applyPlacementClipForPoint(clip, centerClip, i),
+        applyTextPlacementClip(clip, i),
         0.0,
         1.0
     );

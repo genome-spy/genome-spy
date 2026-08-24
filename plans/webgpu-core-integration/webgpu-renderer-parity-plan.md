@@ -1,6 +1,6 @@
 # WebGPU renderer parity plan: faceted rendering
 
-Status: Authorized; Milestones 1–4 implemented; Milestone 5 remains pending.
+Status: Authorized; Milestones 1–5 implemented and verified.
 
 Date: 2026-08-21
 
@@ -1270,6 +1270,44 @@ Document the App WebGPU/WebGL parity command. No public grammar changes are
 expected.
 
 Tentative commit: `test(app): cover WebGPU App example parity`.
+
+### Implementation checkpoint (2026-08-24)
+
+Status: Implemented and verified on 2026-08-24.
+
+The App now has a deterministic screenshot harness and the Core runner supports
+an App scope with recursive discovery, identical WebGPU/WebGL dimensions and
+DPR, lazy-data readiness, enforced pixel thresholds, per-example reports, and
+an opt-in same-datum picking comparison. The final six-spec inventory passed
+under both renderers. Its worst mean RGB error was 0.00354 and its worst changed
+pixel ratio was 0.00999, below the documented 0.06 and 0.15 limits. The known
+small backend-specific font offset is accepted by that tolerance and was not
+changed in this milestone.
+
+The App sweep exposed three placement errors rather than cosmetic font drift.
+Core now supplies placement-enabled mark channels and visible-range anchors in
+owner-local coordinates while retaining absolute draw viewports. Ranged text
+maps its anchors and extents through placement before applying pixel offsets,
+and placement visibility compares against an offset owner viewport. These fixes
+remove the doubled App viewport translation, restore the private MCCA metadata
+columns, and cull/squeeze overview labels without changing fine font alignment.
+
+The expression fixture passed WebGPU/WebGL screenshot and same-datum picking
+checks at DPR 1 and 2. A focused action probe produced the same stable topology
+under both renderers and DPRs while filtering `S1`–`S5` to `S1`, `S3`, `S5`,
+sorting to `S5`–`S1`, and undoing both operations. The available private MCCA
+checkout passed its overview screenshot comparison with 0.03223 mean RGB error
+and 0.11140 changed pixels. Its 590-sample closeup/peek and scroll probe kept
+topology revision 1, filtered to 272 and restored to 590, reordered samples,
+and resolved the identical `MCCA0315` chromosome-4 datum and visible tooltip
+under WebGPU and WebGL. No private data was added to the repository.
+
+Final verification passed the complete 212-example Core/docs WebGPU inventory,
+the recursive six-example App WebGPU/WebGL inventory, 602 focused Core/App/
+renderer unit tests, all 50 renderer GPU tests, all workspace TypeScript checks,
+the renderer production Storybook build, lint, and diff checks. Milestone 4's
+repository-owned 2,000-sample fixture remains the reproducible high-cardinality
+gate; the private MCCA check remains supplemental.
 
 ## Review gates
 

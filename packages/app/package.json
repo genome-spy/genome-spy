@@ -61,6 +61,7 @@
     "test:tsc": "npm run test:tsc:src && npm run test:tsc:tests",
     "test:tsc:src": "tsc -p tsconfig.json --noEmit",
     "test:tsc:tests": "tsc -p tsconfig.tests.json --noEmit",
+    "smoke:examples:webgpu": "node ../core/scripts/runWebGpuExamples.mjs --scope app --all --compare-webgl",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "prepublishOnly": "npm run build"

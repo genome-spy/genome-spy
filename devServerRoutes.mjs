@@ -33,6 +33,7 @@ export function createAppDevServerPlugin() {
 
             server.middlewares.use("/", specList);
             registerSharedStaticRoutes(server);
+            server.middlewares.use("/__health", healthCheck);
         },
     };
 }

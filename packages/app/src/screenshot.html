@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>GenomeSpy App Screenshot Harness</title>
+        <style>
+            html,
+            body {
+                margin: 0;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                background: white;
+            }
+
+            #frame {
+                width: 1200px;
+                height: 700px;
+            }
+
+            #status {
+                position: fixed;
+                right: 8px;
+                bottom: 8px;
+                z-index: 10000;
+                padding: 4px 6px;
+                border-radius: 3px;
+                background: rgb(255 255 255 / 85%);
+                color: #555;
+                font:
+                    11px system-ui,
+                    sans-serif;
+                pointer-events: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="frame"></div>
+        <div id="status">Initializing…</div>
+        <script type="module" src="/screenshotHarness.js"></script>
+    </body>
+</html>

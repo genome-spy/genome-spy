@@ -408,6 +408,10 @@ ${clauses.join("\n")}
                   "out.placementClip = placementClipBounds(i);\n    out.pos = vec4<f32>(\n        applyPlacementClipForPoint(clip, centerClip, i),\n        0.0,\n        1.0\n    );"
               )
               .replaceAll(
+                  "out.pos = vec4<f32>(\n        applyTextPlacementClip(clip, i),\n        0.0,\n        1.0\n    );",
+                  "out.placementClip = placementClipBounds(i);\n    out.pos = vec4<f32>(\n        applyTextPlacementClip(clip, i),\n        0.0,\n        1.0\n    );"
+              )
+              .replaceAll(
                   "out.pos = vec4<f32>(clip, 0.0, 1.0);",
                   "out.placementClip = placementClipBounds(i);\n    out.pos = vec4<f32>(applyPlacementClip(clip, i), 0.0, 1.0);"
               )
@@ -896,8 +900,9 @@ fn isPlacementVisible(i: u32) -> bool {
         globals.viewport.xy + (rect.xy + rect.zw) * globals.viewport.zw
     );
     return rect.z > 0.0 && rect.w > 0.0 &&
-        bounds.x < globals.width && bounds.y < globals.height &&
-        bounds.z > 0.0 && bounds.w > 0.0;
+        bounds.x < globals.viewport.x + globals.viewport.z &&
+        bounds.y < globals.viewport.y + globals.viewport.w &&
+        bounds.z > globals.viewport.x && bounds.w > globals.viewport.y;
 }
 
 fn placementClipBounds(i: u32) -> vec4<f32> {
@@ -912,6 +917,19 @@ fn placementClipBounds(i: u32) -> vec4<f32> {
         globals.viewport.x + (rect.x + rect.z) * globals.viewport.z,
         globals.viewport.y + (rect.y + rect.w) * globals.viewport.w
     );
+}
+
+fn applyPlacementPixel(pixel: vec2<f32>, i: u32) -> vec2<f32> {
+    let placementIndex = getPlacementIndex(i);
+    if (placementIndex >= globals.placementCount) {
+        return vec2<f32>(0.0);
+    }
+    let rect = placementRectangles[placementIndex];
+    return rect.xy * globals.viewport.zw + pixel * rect.zw;
+}
+
+fn applyTextPlacementClip(clip: vec2<f32>, i: u32) -> vec2<f32> {
+    return clip;
 }
 
 fn isInsidePlacementClip(position: vec4<f32>, placementClip: vec4<f32>) -> bool {
@@ -969,6 +987,14 @@ ${
         ? ""
         : /* wgsl */ `
 fn applyPlacementClipForPoint(clip: vec2<f32>, anchor: vec2<f32>, i: u32) -> vec2<f32> {
+    return clip;
+}
+
+fn applyPlacementPixel(pixel: vec2<f32>, i: u32) -> vec2<f32> {
+    return pixel;
+}
+
+fn applyTextPlacementClip(clip: vec2<f32>, i: u32) -> vec2<f32> {
     return clip;
 }
 `
