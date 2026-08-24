@@ -17,8 +17,8 @@ import { TEXT_GEOMETRY_WGSL } from "./textGeometry.wgsl.js";
  * - The layout step expands each string into a stream of glyphs. Each glyph
  *   becomes one draw instance (6 vertices for a quad).
  * - Per-glyph buffers:
- *   - glyphs: { stringIndex, xOffset, yOffset } per glyph (stringIndex points
- *     back to the parent string).
+ *   - glyphs: { stringIndex, glyphId, xOffset, yOffset } per glyph
+ *     (stringIndex points back to the parent string).
  *   - glyphMetrics: per glyphId, stores atlas rect (x,y,w,h) and metrics
  *     (yOffset). This is indexed by the glyph id emitted from layout.
  * - Per-string buffer:
@@ -26,9 +26,9 @@ import { TEXT_GEOMETRY_WGSL } from "./textGeometry.wgsl.js";
  * - Texture:
  *   - fontAtlas: msdf atlas texture for the current font (one font per mark).
  *
- * Channel data is expanded so that every glyph instance can read its parent
- * string's attributes (x/y/size/fill/etc.) using the existing series buffer
- * path. This keeps shader generation simple at the cost of duplication.
+ * Channel data remains at logical-string cardinality. Text's generated channel
+ * readers map the glyph instance through glyphs[i].stringIndex, so all glyphs
+ * of a string share visual channels, visibility, placement, and picking id.
  * Alignment and baseline are applied in the vertex shader using stringMetrics,
  * then glyph quads are positioned, rotated, and projected in pixel space.
  * The fragment shader samples the atlas and converts SDF values to alpha.
@@ -36,10 +36,8 @@ import { TEXT_GEOMETRY_WGSL } from "./textGeometry.wgsl.js";
 
 /**
  * @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput
- * @typedef {import("../../index.js").ConditionalChannelConfigInput} ConditionalChannelConfigInput
  * @typedef {import("../../index.js").TextChannels} TextChannels
  * @typedef {import("../../index.js").TextStringChannelConfigInput} TextStringChannelConfigInput
- * @typedef {import("../../index.js").TypedArray} TypedArray
  * @typedef {ReturnType<BmFontManager["getFont"]>} FontEntry
  * @typedef {number|"thin"|"light"|"regular"|"normal"|"medium"|"bold"|"black"} FontWeightInput
  */
@@ -74,9 +72,9 @@ const {
 const TEXT_SHADER_BODY = /* wgsl */ `
 struct GlyphInstance {
     stringIndex: u32,
+    glyphId: u32,
     xOffset: f32,
     yOffset: f32,
-    pad: f32,
 };
 
 struct StringMetrics {
@@ -278,8 +276,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     let glyph = glyphs[i];
     let textMetrics = stringMetrics[glyph.stringIndex];
-    let glyphId = u32(getScaled_text(i));
-    let metrics = glyphMetrics[glyphId];
+    let metrics = glyphMetrics[glyph.glyphId];
 
     // Base font size before range fitting.
     var size = getScaled_size(i);
@@ -490,7 +487,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 
 /**
  * @param {TextConfigInput} [params]
- * @returns {{ normalized: { channels: Record<string, ChannelConfigInput>, count?: number }, textLayout: import("../../fonts/layout.js").TextLayout, fontEntry: FontEntry, fontManager: BmFontManager }}
+ * @returns {{ normalized: { channels: Record<string, ChannelConfigInput>, count: number, seriesIndexExpression: string }, textLayout: import("../../fonts/layout.js").TextLayout, fontEntry: FontEntry, fontManager: BmFontManager }}
  */
 function normalizeTextConfig({
     channels = {},
@@ -548,19 +545,18 @@ function normalizeTextConfig({
             );
         }
         normalizedChannels.text = {
-            data: layout.glyphIds,
+            value: 0,
             type: "u32",
             components: 1,
             scale: { type: "identity" },
         };
-        const glyphCount = layout.glyphIds.length;
-        expandTextSeries(normalizedChannels, layout.stringIndex, stringCount);
         return {
             normalized: {
                 channels: /** @type {Record<string, ChannelConfigInput>} */ (
                     normalizedChannels
                 ),
-                count: glyphCount,
+                count: stringCount,
+                seriesIndexExpression: "glyphs[i].stringIndex",
             },
             textLayout: layout,
             fontEntry,
@@ -608,19 +604,19 @@ function normalizeTextConfig({
         letterSpacing,
     });
     normalizedChannels.text = {
-        data: layout.glyphIds,
+        value: 0,
         type: "u32",
         components: 1,
         scale: { type: "identity" },
     };
-    expandTextSeries(normalizedChannels, layout.stringIndex, strings.length);
 
     return {
         normalized: {
             channels: /** @type {Record<string, ChannelConfigInput>} */ (
                 normalizedChannels
             ),
-            count: layout.glyphIds.length,
+            count: strings.length,
+            seriesIndexExpression: "glyphs[i].stringIndex",
         },
         textLayout: layout,
         fontEntry,
@@ -670,176 +666,6 @@ function buildConfiguredTextLayout(
     });
 }
 
-/**
- * @param {Record<string, ChannelConfigInput | TextStringChannelConfigInput>} channels
- * @param {Uint32Array} stringIndex
- * @param {number} stringCount
- * @returns {void}
- */
-function expandTextSeries(channels, stringIndex, stringCount) {
-    /** @type {Map<TypedArray, Map<number, TypedArray>>} */
-    const expandedBySource = new Map();
-
-    /**
-     * @param {string} name
-     * @param {ChannelConfigInput | ConditionalChannelConfigInput | TextStringChannelConfigInput} channel
-     */
-    const expandChannel = (name, channel) => {
-        if (!("data" in channel) || !ArrayBuffer.isView(channel.data)) {
-            return;
-        }
-        const spec = TEXT_CHANNEL_SPECS[name];
-        const components = getLogicalTextComponents(
-            channel,
-            channel.data,
-            spec
-        );
-        channel.data = expandLogicalTextArray(
-            name,
-            channel.data,
-            components,
-            stringIndex,
-            stringCount,
-            expandedBySource
-        );
-    };
-
-    for (const [name, channel] of Object.entries(channels)) {
-        if (name === "text") {
-            continue;
-        }
-        if (!channel || typeof channel !== "object") {
-            continue;
-        }
-        expandChannel(name, channel);
-        if (!("conditions" in channel)) {
-            continue;
-        }
-        for (const condition of channel.conditions ?? []) {
-            if ("channel" in condition && condition.channel) {
-                expandChannel(name, condition.channel);
-            }
-        }
-    }
-}
-
-/**
- * @param {Record<string, TypedArray>} channels
- * @param {Uint32Array} stringIndex
- * @param {number} stringCount
- * @param {Record<string, ChannelConfigInput>} channelConfigs
- * @returns {Record<string, TypedArray>}
- */
-function expandTextSeriesArrays(
-    channels,
-    stringIndex,
-    stringCount,
-    channelConfigs
-) {
-    /** @type {Record<string, TypedArray>} */
-    const expanded = { text: channels.text };
-    /** @type {Map<TypedArray, Map<number, TypedArray>>} */
-    const expandedBySource = new Map();
-    for (const [name, data] of Object.entries(channels)) {
-        if (name === "text") {
-            continue;
-        }
-        if (!ArrayBuffer.isView(data)) {
-            continue;
-        }
-        const spec = TEXT_CHANNEL_SPECS[name];
-        const config = channelConfigs[name];
-        const components = getLogicalTextComponents(config, data, spec);
-        expanded[name] = expandLogicalTextArray(
-            name,
-            data,
-            components,
-            stringIndex,
-            stringCount,
-            expandedBySource
-        );
-    }
-    return expanded;
-}
-
-/**
- * Resolves the number of source-array entries per logical text item. Float64
- * index data is supplied as one value per item and packed into two u32
- * components later by the series-buffer layer.
- *
- * @param {ChannelConfigInput | ConditionalChannelConfigInput | TextStringChannelConfigInput | undefined} channel
- * @param {TypedArray} data
- * @param {import("../utils/channelSpecUtils.js").ChannelSpec | undefined} spec
- */
-function getLogicalTextComponents(channel, data, spec) {
-    if (
-        data instanceof Float64Array &&
-        channel &&
-        "scale" in channel &&
-        channel.scale?.type === "index"
-    ) {
-        return 1;
-    }
-    const inputComponents =
-        channel && "inputComponents" in channel
-            ? channel.inputComponents
-            : undefined;
-    const components =
-        channel && "components" in channel ? channel.components : undefined;
-    return inputComponents ?? components ?? spec?.components ?? 1;
-}
-
-/**
- * Expand a logical per-string array into per-glyph data. Expansions are shared
- * when channels use the same source array and component count.
- *
- * @param {string} name
- * @param {TypedArray} data
- * @param {number} components
- * @param {Uint32Array} stringIndex
- * @param {number} stringCount
- * @param {Map<TypedArray, Map<number, TypedArray>>} expandedBySource
- * @returns {TypedArray}
- */
-function expandLogicalTextArray(
-    name,
-    data,
-    components,
-    stringIndex,
-    stringCount,
-    expandedBySource
-) {
-    if (data.length !== stringCount * components) {
-        throw new Error(
-            `Text channel "${name}" expects ${stringCount} values, got ${data.length / components}.`
-        );
-    }
-
-    let byComponents = expandedBySource.get(data);
-    if (!byComponents) {
-        byComponents = new Map();
-        expandedBySource.set(data, byComponents);
-    }
-    const cached = byComponents.get(components);
-    if (cached) {
-        return cached;
-    }
-
-    const Expanded = /** @type {new (length: number) => TypedArray} */ (
-        data.constructor
-    );
-    const expanded = new Expanded(stringIndex.length * components);
-    for (let i = 0; i < stringIndex.length; i++) {
-        const src = stringIndex[i] * components;
-        const dest = i * components;
-        for (let c = 0; c < components; c++) {
-            expanded[dest + c] = data[src + c];
-        }
-    }
-    byComponents.set(components, expanded);
-    return expanded;
-}
-
 export default class TextProgram extends BaseProgram {
     /**
      * @param {import("../../renderer.js").Renderer} renderer
@@ -848,17 +674,25 @@ export default class TextProgram extends BaseProgram {
     constructor(renderer, config) {
         const { normalized, textLayout, fontEntry, fontManager } =
             normalizeTextConfig(config);
-        const placementIndex = expandTextPlacementIndex(
-            config.placementIndex,
-            textLayout
-        );
         super(renderer, {
             ...config,
             ...normalized,
             textLayout,
             fontEntry,
-            ...(placementIndex ? { placementIndex } : {}),
         });
+        let seriesCount;
+        try {
+            seriesCount = this._seriesBuffers.inferCount();
+        } catch (error) {
+            this.destroy();
+            throw error;
+        }
+        if (seriesCount !== null && seriesCount !== normalized.count) {
+            this.destroy();
+            throw new Error(
+                `Text series data count (${seriesCount}) does not match text count (${normalized.count}).`
+            );
+        }
         this._textLayout = textLayout;
         this._glyphOffsets = buildGlyphOffsets(textLayout);
         this._fontEntry = fontEntry;
@@ -1123,9 +957,9 @@ export default class TextProgram extends BaseProgram {
         for (let i = 0; i < glyphCount; i++) {
             const base = i * 4;
             glyphU32[base] = layout.stringIndex[i];
-            glyphF32[base + 1] = layout.xOffset[i];
-            glyphF32[base + 2] = layout.yOffset ? layout.yOffset[i] : 0;
-            glyphF32[base + 3] = 0;
+            glyphU32[base + 1] = layout.glyphIds[i];
+            glyphF32[base + 2] = layout.xOffset[i];
+            glyphF32[base + 3] = layout.yOffset ? layout.yOffset[i] : 0;
         }
         this._writeExtraBuffer("glyphs", glyphData);
 
@@ -1288,22 +1122,34 @@ export default class TextProgram extends BaseProgram {
             lineHeight: this._markConfig.lineHeight,
             letterSpacing: this._markConfig.letterSpacing,
         });
-        const logicalSeries = {
-            ...channels,
-            text: layout.glyphIds,
-        };
-        const expanded = expandTextSeriesArrays(
-            /** @type {Record<string, TypedArray>} */ (logicalSeries),
-            layout.stringIndex,
-            strings.length,
-            this._markConfig.channels
-        );
-
+        /** @type {Record<string, import("../../index.js").TypedArray>} */
+        const resolved = {};
+        for (const [name, targets] of this._logicalSeriesTargets) {
+            if (targets.length > 1) {
+                throw new Error(
+                    `Series replacement for channel "${name}" is not supported because it has multiple series-backed branches.`
+                );
+            }
+            const data = channels[name];
+            if (data === undefined) {
+                throw new Error(
+                    `Series replacement is missing channel "${name}".`
+                );
+            }
+            resolved[targets[0]] =
+                /** @type {import("../../index.js").TypedArray} */ (data);
+        }
+        const seriesCount = this._seriesBuffers.inferCount(resolved);
+        if (seriesCount !== null && seriesCount !== strings.length) {
+            throw new Error(
+                `Text series data count (${seriesCount}) does not match text count (${strings.length}).`
+            );
+        }
         this._textLayout = layout;
         this._glyphOffsets = buildGlyphOffsets(layout);
         this._markConfig.textLayout = layout;
         this._updateTextLayoutBuffers(layout);
-        super.replaceSeries(expanded, layout.glyphIds.length);
+        this.updateSeries(resolved, strings.length);
     }
 }
 
@@ -1322,27 +1168,4 @@ function buildGlyphOffsets(textLayout) {
         offsets[i] += offsets[i - 1];
     }
     return offsets;
-}
-
-/**
- * Expands a logical per-string placement index to the glyph instance stream.
- *
- * @param {import("../../index.d.ts").MarkConfig["placementIndex"]} placementIndex
- * @param {import("../../fonts/layout.js").TextLayout} textLayout
- */
-function expandTextPlacementIndex(placementIndex, textLayout) {
-    if (!placementIndex || !("data" in placementIndex)) {
-        return placementIndex;
-    }
-    return {
-        ...placementIndex,
-        data: expandLogicalTextArray(
-            "__placementIndex",
-            placementIndex.data,
-            1,
-            textLayout.stringIndex,
-            textLayout.textWidth.length,
-            new Map()
-        ),
-    };
 }

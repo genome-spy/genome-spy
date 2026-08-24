@@ -84,6 +84,28 @@ describe("channelIR", () => {
         expect(ir.rawValueExpr).toBe("params.u_x");
     });
 
+    it("uses a mark-specific series index expression", () => {
+        const channels = {
+            x: /** @type {import("../../index.d.ts").ChannelConfigResolved} */ ({
+                data: new Float32Array([1]),
+                type: "f32",
+                components: 1,
+                scale: { type: "identity" },
+            }),
+        };
+        const compiled = compileMarkChannels({
+            channels,
+            analysisByChannel: analyzeTestChannels(channels),
+            channelNames: new Set(["x"]),
+            inputNames: new Set(),
+            seriesIndexExpression: "glyphs[i].stringIndex",
+        });
+
+        expect(compiled.channelIRs[0].rawValueExpr).toBe(
+            "read_x(glyphs[i].stringIndex)"
+        );
+    });
+
     it("emits numeric ordinal ranges as floating-point outputs", () => {
         const [ir] = buildChannelIRs({
             opacity: {

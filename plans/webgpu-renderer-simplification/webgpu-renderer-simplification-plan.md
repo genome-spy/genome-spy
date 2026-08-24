@@ -1,7 +1,7 @@
 # WebGPU renderer simplification and footprint plan
 
-Status: Milestones 1–3 and faceted rendering complete; Milestone 5 pending.
-Milestone 4 is deferred to issue #362.
+Status: Milestones 1–3 and 5 and faceted rendering complete. Milestone 4 is
+deferred to issue #362.
 
 Created: 2026-08-23
 
@@ -17,19 +17,16 @@ draw-level and per-instance placement indices, placement-aware clipping and
 picking, logical text draw ranges, and operation within WebGPU's default
 storage-buffer limit. Those are implemented contracts, not future prerequisites.
 
-The renderer remains heavier than necessary underneath that API. Mark creation
-still analyzes the same channels in several subsystems, generates the same WGSL
-twice, creates duplicate shader modules and pipeline layouts for normal and
-picking passes, and carries a general WGSL conditional parser for a handful of
-built-in conditions. Scale-resource views and draw-global staging allocate
-temporary objects on retained paths. Text uses a package-global font registry
-as an opacity boundary around the bundled BMFont representation, and it expands
-every logical string channel—including facet placement—to glyph cardinality.
+The accepted simplifications now compile mark channels and WGSL once, share
+normal/picking shader and layout artifacts, retain draw-global staging, bind
+scale resources from their owning map, and keep text series at logical-string
+cardinality. The former general WGSL preprocessor, text-series expansion
+helpers, derived resource maps, and unused `internmap` dependency are gone.
 
-The remaining work preserves all implemented features while deleting duplicate
-compilation, broad preprocessing, unused dependencies, and avoidable retained-
-path allocation. It does not redesign working facet semantics or expose font-
-atlas internals merely to remove a side-effect entry point.
+The bundled font remains behind the opt-in registration entry point. That
+boundary is intentionally unchanged until issue #362 defines the TTF shaping,
+atlas generation, caching, and default-font design without exposing BMFont
+details prematurely.
 
 ## Implemented baseline
 
@@ -465,7 +462,7 @@ measurements rather than a premature cleanup milestone here.
 
 ## Milestone 5: Measured logical-string text storage
 
-Status: Pending and independently discardable.
+Status: Complete.
 
 ### Intended outcome
 
@@ -522,6 +519,37 @@ and remains the KISS fallback.
   helpers are deleted. Otherwise record the evidence and mark this milestone
   discarded.
 
+Completed decision and measurements:
+
+- Accepted with no new binding or packed-buffer mode. `GlyphInstance` now uses
+  its former padding word for `glyphId`, while generated text readers map the
+  glyph draw index through `glyphs[i].stringIndex`.
+- In the existing 2,000-label fixture (34,000 glyphs), the minimal glyph-id plus
+  placement packed series fell from 272,000 to 8,000 bytes, a 264,000-byte or
+  97.1% reduction. The 544,000-byte glyph geometry buffer is unchanged.
+- A representative x/y/unique-id/placement workload fell from 680,000 to
+  32,000 packed bytes for the same long labels, a 648,000-byte or 95.3%
+  reduction. For one-glyph labels it falls from 40,000 to 32,000 bytes; the
+  benefit intentionally scales with label length.
+- A Node microbenchmark of the removed four-array expansion loop averaged
+  0.153 ms per 2,000-long-label replacement and 0.012 ms for 2,000 one-glyph
+  labels on the measurement host. Layout time is common to both designs and
+  was excluded.
+- 162 renderer unit tests and 52 WebGPU tests pass, including a real text
+  visible/picking-pipeline submission before and after changing glyph count.
+  Seventy-one focused Core/App adapter, surface, placement, and 2,000-sample
+  tests also pass.
+- Relative to Milestone 3, `textCustomFont` changed from 126,086 / 37,071 to
+  125,468 / 36,714 minified/gzip bytes and `textLato` changed from
+  226,842 / 107,193 to 226,224 / 106,841. The shared text-only indexing hook
+  adds 133 / 31 bytes to point fixtures; ordinary marks still emit the same
+  `read_name(i)` expressions and gain no resource or runtime path.
+- Production JavaScript decreased from 14,755 to 14,586 lines. The expansion
+  helpers and alias caches were deleted, and replacement keeps all logical
+  arrays at string count.
+- The packed package remains at 111 files and decreased from 633,846 to
+  629,228 unpacked bytes and from 192,588 to 191,467 tarball bytes.
+
 ### Documentation and migration
 
 No public API change is expected. Update internal text architecture comments to
@@ -529,11 +557,11 @@ distinguish logical series, logical draw ranges, and glyph instances.
 
 ### Review gate
 
-Review the measured go/no-go decision before implementation. If accepted,
-review the text data-layout contract, picking identity, replacement, and
+The measured go/no-go gate accepted the implementation. Final review should
+focus on the text data-layout contract, picking identity, replacement, and
 placement interaction before merging.
 
-### Tentative commit
+### Commit
 
 `refactor(webgpu-renderer): index text channels by string`
 
@@ -543,15 +571,29 @@ Every accepted milestone must report production source lines, fixture module
 graphs, minified bytes, and gzip bytes before and after. A fixture may grow only
 with an explicit explanation tied to preserved behavior.
 
-Working final targets from the post-facet baseline are:
+The original working targets from the post-facet baseline were:
 
 - `pointLinear`: at or below 117,900 minified and 34,800 gzip bytes;
 - `textCustomFont`: at or below 124,500 minified and 36,900 gzip bytes; and
 - production JavaScript below the current 14,805 lines.
 
-These targets recover a meaningful part of the implementation growth while
-retaining facet capability. Revise them only with module-level evidence; do not
-introduce abstraction or obscure code merely to meet a byte count.
+Final evidence revises the byte ratchets rather than adding broader machinery:
+
+- `pointLinear` finishes at 123,281 / 35,653, down 263 minified bytes and two
+  gzip bytes from the post-facet baseline but above its aspirational target.
+  Its 60-module graph still includes the required scale, selection, visibility,
+  retained-placement, and shader-generation paths; removing another roughly
+  5.4 kB would require a new feature or architecture decision, not a
+  low-hanging deletion.
+- `textCustomFont` finishes at 125,468 / 36,714. It meets the gzip target and
+  misses the minified target by 968 bytes while deleting the glyph-expansion
+  path and cutting representative long-label series storage by over 95%.
+- Production JavaScript finishes at 14,586 lines, meeting the source ratchet by
+  219 lines relative to the post-facet baseline.
+
+The final measured fixture values become the delivery ratchets. Further byte
+work should start from a new module-level finding rather than obscuring the
+implemented contracts to reach the original estimates.
 
 ## Final integration verification
 
@@ -620,11 +662,11 @@ After accepted milestones are complete:
 - **Logical text indexing spreads complexity:** Require no new binding, no
   ordinary-mark accessor change, and net source deletion; otherwise discard it.
 
-## Unresolved question
+## Resolved question
 
-- Does the implemented 2,000-sample label workload show enough total
-  packed-series and upload reduction to accept Milestone 5 under its no-growth
-  constraints?
+- The 2,000-sample long-label workload exceeds the Milestone 5 packed-series
+  reduction gate by a wide margin, adds no binding, and deletes production
+  code, so logical-string indexing is accepted.
 
 ## External design references and provenance
 

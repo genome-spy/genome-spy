@@ -29,6 +29,10 @@ Completed simplification work:
 - Bind-group rebuilds read scale resources from their owning per-channel map,
   and draw submission reuses capacity-sized CPU uniform staging.
 - The renderer package no longer declares the unused `internmap` dependency.
+- Text keeps visual, conditional, picking, and placement series once per
+  logical string. Glyph instances carry their string and glyph ids, and text's
+  generated readers map each glyph draw back to logical series without another
+  GPU binding.
 
 - WebGL mark-feature parity is tracked in
   `plans/webgpu-core-integration/webgpu-renderer-parity-plan.md`; the current
@@ -106,10 +110,10 @@ Ordered frame submission — complete:
 - compatible Core marks reuse their renderer handles and update public series,
   scale, and value slots between frames;
 - `handle.series.replace()` replaces complete logical series through a
-  definition-owned updater; text rebuilds glyph layout and expanded channels
+  definition-owned updater; text rebuilds glyph layout and glyph geometry
   without recreating its pipeline or font atlas;
-- logical text arrays are strictly per-string and preserve source-array aliases
-  during glyph expansion; empty series use valid minimum-sized GPU buffers;
+- logical text arrays stay per-string on CPU and GPU, preserve source-array
+  aliases, and support empty glyph streams with valid minimum-sized buffers;
 - a single series-backed default or conditional branch is replaced through its
   stable logical channel name; multiple series branches remain renderable but
   intentionally reject public replacement until branch IDs are designed;

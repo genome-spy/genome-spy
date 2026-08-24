@@ -49,9 +49,10 @@ import { formatLiteral } from "../../wgsl/literals.js";
 
 /**
  * @param {ChannelAnalysis} analysis
+ * @param {string} seriesIndexExpression
  * @returns {ChannelIR | null}
  */
-function buildChannelIR(analysis) {
+function buildChannelIR(analysis, seriesIndexExpression) {
     if (analysis.sourceKind === "missing") {
         return null;
     }
@@ -75,7 +76,7 @@ function buildChannelIR(analysis) {
             name,
             channel,
             sourceKind: "series",
-            rawValueExpr: `read_${name}(i)`,
+            rawValueExpr: `read_${name}(${seriesIndexExpression})`,
             scalarType,
             outputComponents,
             inputComponents,
@@ -116,14 +117,15 @@ function buildChannelIR(analysis) {
 
 /**
  * @param {ReadonlyMap<string, ChannelAnalysis>} analysisByChannel
+ * @param {string} seriesIndexExpression
  * @returns {ChannelIR[]}
  */
-function buildChannelIRs(analysisByChannel) {
+function buildChannelIRs(analysisByChannel, seriesIndexExpression) {
     /** @type {ChannelIR[]} */
     const channelIRs = [];
 
     for (const analysis of analysisByChannel.values()) {
-        const channelIR = buildChannelIR(analysis);
+        const channelIR = buildChannelIR(analysis, seriesIndexExpression);
         if (!channelIR) {
             continue;
         }
@@ -141,6 +143,7 @@ function buildChannelIRs(analysisByChannel) {
  * @param {ReadonlyMap<string, ChannelAnalysis>} params.analysisByChannel
  * @param {ReadonlySet<string>} params.channelNames
  * @param {ReadonlySet<string>} params.inputNames
+ * @param {string} [params.seriesIndexExpression]
  * @returns {CompiledMarkChannels}
  */
 export function compileMarkChannels({
@@ -148,11 +151,12 @@ export function compileMarkChannels({
     analysisByChannel,
     channelNames,
     inputNames,
+    seriesIndexExpression = "i",
 }) {
     return {
         channels,
         analysisByChannel,
-        channelIRs: buildChannelIRs(analysisByChannel),
+        channelIRs: buildChannelIRs(analysisByChannel, seriesIndexExpression),
         channelNames,
         inputNames,
     };

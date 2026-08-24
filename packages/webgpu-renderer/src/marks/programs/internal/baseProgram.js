@@ -219,6 +219,10 @@ export default class BaseProgram {
             analysisByChannel: normalizedChannels.analysisByChannel,
             channelNames: this._publicChannelNames,
             inputNames: new Set(Object.keys(this._inputs)),
+            seriesIndexExpression:
+                typeof config.seriesIndexExpression === "string"
+                    ? config.seriesIndexExpression
+                    : undefined,
         });
         this._logicalSeriesTargets = this._collectLogicalSeriesTargets();
         this._seriesBuffers = new SeriesBufferManager(

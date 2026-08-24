@@ -79,14 +79,10 @@ describe("TextProgram series replacement", () => {
             y: new Float32Array([30, 40]),
         });
 
-        expect(program.count).toBe(3);
+        expect(program.count).toBe(2);
         expect(program._textLayout.glyphIds).toHaveLength(3);
-        expect(program._channels.x.data).toEqual(
-            new Float32Array([10, 10, 20])
-        );
-        expect(program._channels.y.data).toEqual(
-            new Float32Array([30, 30, 40])
-        );
+        expect(program._channels.x.data).toEqual(new Float32Array([10, 20]));
+        expect(program._channels.y.data).toEqual(new Float32Array([30, 40]));
         expect(program._pipeline).toBe(pipeline);
         expect(program._extraTextures.get("fontAtlas")?.texture).toBe(
             fontAtlas
@@ -111,7 +107,7 @@ describe("TextProgram series replacement", () => {
         expect(program._textLayout.textWidth).toHaveLength(2);
     });
 
-    it("preserves aliases while expanding logical per-string arrays", () => {
+    it("preserves aliases between logical per-string arrays", () => {
         const shared = new Float32Array([1, 2]);
         const program = new TextProgram(createMockRenderer(), {
             count: 2,
@@ -132,12 +128,10 @@ describe("TextProgram series replacement", () => {
         });
 
         expect(program._channels.x.data).toBe(program._channels.y.data);
-        expect(program._channels.x.data).toEqual(
-            new Float32Array([10, 10, 10, 20])
-        );
+        expect(program._channels.x.data).toEqual(new Float32Array([10, 20]));
     });
 
-    it("expands and replaces per-string placement indices", () => {
+    it("keeps and replaces per-string placement indices", () => {
         const program = new TextProgram(createMockRenderer(), {
             count: 2,
             placementIndex: {
@@ -156,7 +150,7 @@ describe("TextProgram series replacement", () => {
         });
 
         expect(program._channels.__placementIndex.data).toEqual(
-            new Uint32Array([5, 5, 8])
+            new Uint32Array([5, 8])
         );
         expect(program.drawCount).toBe(2);
         expect(program.resolveDrawRange(1, 1)).toEqual({
@@ -170,7 +164,7 @@ describe("TextProgram series replacement", () => {
             x: new Float32Array([3, 4]),
         });
         expect(program._channels.__placementIndex.data).toEqual(
-            new Uint32Array([9, 10, 10])
+            new Uint32Array([9, 10])
         );
         expect(program.resolveDrawRange(0, 2)).toEqual({
             firstInstance: 0,
@@ -178,7 +172,7 @@ describe("TextProgram series replacement", () => {
         });
     });
 
-    it("keeps 2,000 long labels in one logical mark and one glyph index series", () => {
+    it("keeps 2,000 long labels and placement indices at logical cardinality", () => {
         const labels = Array.from(
             { length: 2000 },
             (_, index) => `Sample label ${index.toString().padStart(4, "0")}`
@@ -200,16 +194,16 @@ describe("TextProgram series replacement", () => {
 
         expect(placementIndices.byteLength).toBe(8000);
         expect(program.drawCount).toBe(2000);
-        expect(program._channels.__placementIndex.data).toHaveLength(
-            glyphCount
-        );
-        expect(program._channels.__placementIndex.data.byteLength).toBe(
-            glyphCount * 4
-        );
+        expect(program._channels.__placementIndex.data).toHaveLength(2000);
+        expect(program._channels.__placementIndex.data.byteLength).toBe(8000);
         expect(program._channels.__placementIndex.data.at(-1)).toBe(1999);
+        expect(
+            program._seriesBuffers._packedBuffers.get("seriesU32")?.byteLength
+        ).toBe(8000);
+        expect(glyphCount * 8 - 8000).toBe(264000);
     });
 
-    it("expands scalar scale inputs for vector color outputs", () => {
+    it("keeps scalar scale inputs logical for vector color outputs", () => {
         const program = new TextProgram(createMockRenderer(), {
             count: 2,
             channels: {
@@ -232,9 +226,7 @@ describe("TextProgram series replacement", () => {
             },
         });
 
-        expect(program._channels.fill.data).toEqual(
-            new Float32Array([0, 0, 1])
-        );
+        expect(program._channels.fill.data).toEqual(new Float32Array([0, 1]));
 
         program.getSlotHandles().series.replace({
             text: ["c", "dd"],
@@ -242,12 +234,10 @@ describe("TextProgram series replacement", () => {
             fill: new Float32Array([2, 3]),
         });
 
-        expect(program._channels.fill.data).toEqual(
-            new Float32Array([2, 3, 3])
-        );
+        expect(program._channels.fill.data).toEqual(new Float32Array([2, 3]));
     });
 
-    it("expands logical Float64 index values before high-precision packing", () => {
+    it("keeps logical Float64 index values before high-precision packing", () => {
         const program = new TextProgram(createMockRenderer(), {
             count: 2,
             channels: {
@@ -262,14 +252,14 @@ describe("TextProgram series replacement", () => {
             },
         });
 
-        expect(program._channels.x.data).toEqual(new Float64Array([1, 1, 2]));
+        expect(program._channels.x.data).toEqual(new Float64Array([1, 2]));
 
         program.getSlotHandles().series.replace({
             text: ["c", "dd"],
             x: new Float64Array([3, 4]),
         });
 
-        expect(program._channels.x.data).toEqual(new Float64Array([3, 4, 4]));
+        expect(program._channels.x.data).toEqual(new Float64Array([3, 4]));
     });
 
     it("rejects glyph-length arrays in the logical replacement API", () => {
@@ -291,7 +281,25 @@ describe("TextProgram series replacement", () => {
                 text: ["ab", "cd"],
                 x: new Float32Array([1, 2, 3, 4]),
             })
-        ).toThrow('Text channel "x" expects 2 values, got 4.');
+        ).toThrow("Text series data count (4) does not match text count (2).");
+    });
+
+    it("rejects glyph-length arrays in the initial logical config", () => {
+        expect(
+            () =>
+                new TextProgram(createMockRenderer(), {
+                    count: 2,
+                    channels: {
+                        text: { data: ["ab", "cd"] },
+                        x: {
+                            data: new Float32Array([1, 2, 3, 4]),
+                            type: "f32",
+                            scale: identityScale(),
+                        },
+                        y: { value: 0, scale: identityScale() },
+                    },
+                })
+        ).toThrow("Text series data count (4) does not match text count (2).");
     });
 
     it("supports logical strings that produce no glyphs", () => {
@@ -312,17 +320,17 @@ describe("TextProgram series replacement", () => {
             },
         });
 
-        expect(program.count).toBe(0);
-        expect(program._channels.x.data).toHaveLength(0);
+        expect(program.count).toBe(2);
+        expect(program._channels.x.data).toHaveLength(2);
         expect(program._extraBuffers.get("glyphs")?.size).toBe(4);
         expect(
             Array.from(program._seriesBuffers._packedBuffers.values()).map(
                 ({ buffer }) => buffer.size
             )
-        ).toEqual([4, 4]);
+        ).toEqual([16]);
     });
 
-    it("expands and replaces a single conditional series by logical name", () => {
+    it("keeps and replaces a conditional series by logical name", () => {
         const program = new TextProgram(createMockRenderer(), {
             count: 2,
             channels: {
@@ -358,7 +366,7 @@ describe("TextProgram series replacement", () => {
             },
         });
 
-        expect(program._channels.fill__cond0.data).toHaveLength(12);
+        expect(program._channels.fill__cond0.data).toHaveLength(8);
 
         program.getSlotHandles().series.replace({
             uniqueId: new Uint32Array([3, 4]),
@@ -368,7 +376,7 @@ describe("TextProgram series replacement", () => {
         });
 
         expect(program._channels.fill__cond0.data).toEqual(
-            new Float32Array([1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1])
+            new Float32Array([1, 0, 0, 1, 0, 0, 1, 1])
         );
     });
 });
