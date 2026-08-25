@@ -1635,9 +1635,11 @@ function createCombinedOffsetChannel(mark, axis, data) {
 }
 
 /**
- * Creates the legacy, glyph-local text offset without mixing it with the
- * positional offset channel. WebGL applies dx/dy to the glyph before rotating
- * it, whereas xOffset/yOffset move the text anchor.
+ * Creates the glyph-local text offset channel. dx/dy move the glyph before
+ * rotation, whereas xOffset/yOffset move the text anchor. Keeping dx/dy as a
+ * channel preserves the existing renderer representation.
+ *
+ * @deprecated Remove the channel representation in GenomeSpy v2.0.
  *
  * @param {import("../../marks/mark.js").default} mark
  * @param {"x" | "y"} axis
