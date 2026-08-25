@@ -82,10 +82,12 @@ facets reuse the same renderer mark instead of duplicating pipelines or data.
 Compatible changes update series, scale, value, semantic property, scalar, and
 selection slots in one batch. Packed-data/config revisions, scale and parameter
 notifications, and view-opacity changes select the marks that need
-synchronization.
-`WebGpuSurface` then compares those marks' live leaves against immutable
-snapshots, so reusing the same config object does not suppress updates.
-Changing the renderer definition recreates the handle.
+synchronization. `WebGpuSurface` compiles scale, value, semantic-property, and
+scalar leaves into a flat list of direct slot updates when configuration shape
+changes. Dirty paints iterate that list without rediscovering configuration
+structure; immutable snapshots still detect in-place array changes. Selection
+slots retain their separate type-specific synchronization. Changing the
+renderer definition recreates the handle.
 
 Collector data revision and placement topology control packed-series caches.
 Layout-only geometry changes update placement resources without repacking

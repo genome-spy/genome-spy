@@ -3,6 +3,9 @@ import { createRenderer } from "@genome-spy/webgpu-renderer";
 import CanvasSizeHelper from "../canvasSizeHelper.js";
 import PlacementSource from "../../view/layout/placementSource.js";
 
+/** @type {Readonly<Record<string, {value: any}>>} */
+const EMPTY_PROPERTIES = Object.freeze({});
+
 /**
  * Owns the live WebGPU canvas and the low-level renderer used by the PoC.
  */
@@ -225,7 +228,7 @@ export default class WebGpuSurface {
      * @param {Record<string, {value: any}>} [properties]
      * @returns {number} Number of retained resource writes.
      */
-    updateMark(mark, definition, config, properties = {}) {
+    updateMark(mark, definition, config, properties = EMPTY_PROPERTIES) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
@@ -241,29 +244,36 @@ export default class WebGpuSurface {
                 definition,
                 handle,
                 config,
-                channelSnapshots: snapshotChannels(config.channels),
+                properties,
+                bindings: compileResourceBindings(handle, config, properties),
                 series: collectSeries(config),
                 count: config.count,
                 selections: new Map(),
-                propertyValues: new Map(
-                    Object.entries(properties).map(([name, value]) => [
-                        name,
-                        snapshotValue(value.value),
-                    ])
-                ),
-                scalarSlots: new Map(
-                    Object.entries(config.scalarSlots ?? {}).map(
-                        ([name, value]) => [name, snapshotValue(value.value)]
-                    )
-                ),
             };
             this.#marks.set(mark, retained);
         }
         let writes = 0;
         retained.handle.batchUpdates(() => {
-            writes += updateRetainedMark(retained, config);
-            writes += updateRetainedProperties(retained, properties);
-            writes += updateRetainedScalarSlots(retained, config);
+            const configChanged = retained.config !== config;
+            if (configChanged && hasSeriesChanges(retained, config)) {
+                retained.series = collectSeries(config);
+                retained.count = config.count;
+                retained.handle.series.replace(retained.series, retained.count);
+                writes++;
+            }
+            if (configChanged || retained.properties !== properties) {
+                // Renderer slot shape is immutable for one definition.
+                // TODO: Recreate the handle if Core relaxes that contract.
+                retained.bindings = compileResourceBindings(
+                    retained.handle,
+                    config,
+                    properties,
+                    retained.bindings
+                );
+                retained.config = config;
+                retained.properties = properties;
+            }
+            writes += updateResourceBindings(retained.bindings);
             writes += updateRetainedSelections(retained, mark);
         });
         return writes;
@@ -384,179 +394,149 @@ function equalFloat32Arrays(first, second) {
 }
 
 /**
- * Updates the resource slots exposed by the renderer's public mark handle.
- * The PoC grammar keeps channel structure stable after initialization.
+ * Compiles Core's live leaves into direct renderer-slot updates. Reusing the
+ * previous values preserves change detection when a translated config is
+ * replaced while keeping dirty-frame work flat and reflection-free.
  *
- * @param {RetainedMark} retained
+ * @param {import("@genome-spy/webgpu-renderer").MarkHandle<any, Record<string, any>>} handle
  * @param {any} config
- * @returns {number} Number of retained resource writes.
+ * @param {Record<string, {value: any}>} properties
+ * @param {ResourceBinding[]} [previousBindings]
+ * @returns {ResourceBinding[]}
  */
-function updateRetainedMark(retained, config) {
-    let writes = 0;
+function compileResourceBindings(
+    handle,
+    config,
+    properties,
+    previousBindings = []
+) {
+    const previousValues = new Map(
+        previousBindings.map((binding) => [binding.key, binding.value])
+    );
+    /** @type {ResourceBinding[]} */
+    const bindings = [];
+
+    /**
+     * @param {string} key
+     * @param {() => any} read
+     * @param {(value: any) => void} write
+     * @param {boolean} [skipUndefined]
+     */
+    const add = (key, read, write, skipUndefined = false) => {
+        bindings.push({
+            key,
+            read,
+            write,
+            value: previousValues.has(key)
+                ? previousValues.get(key)
+                : snapshotValue(read()),
+            skipUndefined,
+        });
+    };
+
     for (const [name, channel] of Object.entries(config.channels)) {
-        const snapshot = retained.channelSnapshots[name];
-        writes += updateChannelSlots(
-            retained.handle.scales[name]?.default,
-            retained.handle.values[name]?.default,
-            channel,
-            snapshot
+        compileChannelBindings(
+            add,
+            `channel:${name}:default`,
+            handle.scales[name]?.default,
+            handle.values[name]?.default,
+            channel
         );
 
-        for (const [index, condition] of (channel.conditions ?? []).entries()) {
+        for (const condition of channel.conditions ?? []) {
             if (!condition.channel) {
                 continue;
             }
-            writes += updateChannelSlots(
-                retained.handle.scales[name]?.conditions?.[
-                    condition.when.selection
-                ],
-                retained.handle.values[name]?.conditions?.[
-                    condition.when.selection
-                ],
-                condition.channel,
-                snapshot.conditions[index]
+            const selection = condition.when.selection;
+            compileChannelBindings(
+                add,
+                `channel:${name}:condition:${selection}`,
+                handle.scales[name]?.conditions?.[condition.when.selection],
+                handle.values[name]?.conditions?.[condition.when.selection],
+                condition.channel
             );
         }
     }
 
-    // Config identity is also the series-revision proof: the adapter rebuilds
-    // it only when packed data or expression-backed columns change. Live leaves
-    // were checked above, so avoid traversing stable series on every frame.
-    if (retained.config !== config && hasSeriesChanges(retained, config)) {
-        retained.series = collectSeries(config);
-        retained.count = config.count;
-        retained.handle.series.replace(retained.series, retained.count);
-        writes++;
-    }
-    retained.config = config;
-    return writes;
-}
-
-/**
- * Updates one default or conditional scale/value pair without recreating the
- * retained mark. The renderer owns the actual slot-resource details.
- *
- * @param {import("@genome-spy/webgpu-renderer").ScaleSlotHandle | undefined} scaleSlot
- * @param {import("@genome-spy/webgpu-renderer").ValueSlotHandle | undefined} valueSlot
- * @param {any} channel
- * @param {ChannelSnapshot} snapshot
- * @returns {number} Number of retained resource writes.
- */
-function updateChannelSlots(scaleSlot, valueSlot, channel, snapshot) {
-    let writes = 0;
-    if (scaleSlot && channel.scale) {
-        const domain = channel.scale.domain;
-        if (
-            domain !== undefined &&
-            !valuesEqual(snapshot.scale?.domain, domain)
-        ) {
-            scaleSlot.setDomain(domain);
-            writes++;
-            snapshot.scale.domain = snapshotValue(domain);
-        }
-        const range = channel.scale.range;
-        if (range !== undefined && !valuesEqual(snapshot.scale?.range, range)) {
-            scaleSlot.setRange(range);
-            writes++;
-            snapshot.scale.range = snapshotValue(range);
-        }
-    }
-
-    const value = channel.value;
-    if (
-        valueSlot &&
-        value !== undefined &&
-        !valuesEqual(snapshot.value, value)
-    ) {
-        valueSlot.set(value);
-        writes++;
-        snapshot.value = snapshotValue(value);
-    }
-    return writes;
-}
-
-/**
- * Captures only updateable channel leaves. Cloning arrays makes comparisons
- * independent of config identity and in-place scale mutations.
- *
- * @param {Record<string, any>} channels
- * @returns {Record<string, ChannelSnapshot>}
- */
-function snapshotChannels(channels) {
-    return Object.fromEntries(
-        Object.entries(channels).map(([name, channel]) => [
-            name,
-            snapshotChannel(channel),
-        ])
-    );
-}
-
-/**
- * @param {any} channel
- * @returns {ChannelSnapshot}
- */
-function snapshotChannel(channel) {
-    return {
-        ...(channel.scale
-            ? {
-                  scale: {
-                      domain: snapshotValue(channel.scale.domain),
-                      range: snapshotValue(channel.scale.range),
-                  },
-              }
-            : {}),
-        value: snapshotValue(channel.value),
-        conditions: (channel.conditions ?? []).map(
-            (/** @type {any} */ condition) =>
-                snapshotChannel(condition.channel ?? condition)
-        ),
-    };
-}
-
-/**
- * Updates built-in renderer properties through their semantic slots.
- *
- * @param {RetainedMark} retained
- * @param {Record<string, {value: any}>} properties
- * @returns {number} Number of retained resource writes.
- */
-function updateRetainedProperties(retained, properties) {
-    let writes = 0;
     for (const [name, property] of Object.entries(properties)) {
-        const slot = retained.handle.properties?.[name];
+        const slot = handle.properties?.[name];
         if (!slot) {
             throw new Error(`Renderer mark has no property slot "${name}".`);
         }
-        if (valuesEqual(retained.propertyValues.get(name), property.value)) {
-            continue;
-        }
-        slot.set(property.value);
-        writes++;
-        retained.propertyValues.set(name, snapshotValue(property.value));
+        add(
+            `property:${name}`,
+            () => property.value,
+            (value) => slot.set(value)
+        );
     }
-    return writes;
+
+    for (const [name, scalar] of Object.entries(config.scalarSlots ?? {})) {
+        const slot = handle.scalarSlots?.[name];
+        if (slot) {
+            add(
+                `scalar:${name}`,
+                () => scalar.value,
+                (value) => slot.set(value)
+            );
+        }
+    }
+    return bindings;
 }
 
 /**
- * Updates retained predicate scalar slots without rebuilding the mark.
- *
- * @param {RetainedMark} retained
- * @param {any} config
+ * @param {(key: string, read: () => any, write: (value: any) => void, skipUndefined?: boolean) => void} add
+ * @param {string} key
+ * @param {import("@genome-spy/webgpu-renderer").ScaleSlotHandle | undefined} scaleSlot
+ * @param {import("@genome-spy/webgpu-renderer").ValueSlotHandle | undefined} valueSlot
+ * @param {any} channel
+ */
+function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
+    if (scaleSlot && channel.scale) {
+        if ("domain" in channel.scale) {
+            add(
+                key + ":domain",
+                () => channel.scale.domain,
+                (value) => scaleSlot.setDomain(value),
+                true
+            );
+        }
+        if ("range" in channel.scale) {
+            add(
+                key + ":range",
+                () => channel.scale.range,
+                (value) => scaleSlot.setRange(value),
+                true
+            );
+        }
+    }
+
+    if (valueSlot && "value" in channel) {
+        add(
+            key + ":value",
+            () => channel.value,
+            (value) => valueSlot.set(value),
+            true
+        );
+    }
+}
+
+/**
+ * @param {ResourceBinding[]} bindings
  * @returns {number} Number of retained resource writes.
  */
-function updateRetainedScalarSlots(retained, config) {
+function updateResourceBindings(bindings) {
     let writes = 0;
-    for (const [name, scalar] of Object.entries(config.scalarSlots ?? {})) {
-        const slot = retained.handle.scalarSlots?.[name];
+    for (const binding of bindings) {
+        const value = binding.read();
         if (
-            !slot ||
-            valuesEqual(retained.scalarSlots.get(name), scalar.value)
+            (binding.skipUndefined && value === undefined) ||
+            valuesEqual(binding.value, value)
         ) {
             continue;
         }
-        slot.set(scalar.value);
+        binding.write(value);
         writes++;
-        retained.scalarSlots.set(name, snapshotValue(scalar.value));
+        binding.value = snapshotValue(value);
     }
     return writes;
 }
@@ -566,6 +546,8 @@ function updateRetainedScalarSlots(retained, config) {
  * @returns {any}
  */
 function snapshotValue(value) {
+    // Typed series and selections have separate revision/copy paths and must
+    // not enter this scalar-or-ordinary-array snapshot path.
     return Array.isArray(value) ? value.map(snapshotValue) : value;
 }
 
@@ -773,19 +755,20 @@ function getLogicalChannelSeries(channel) {
  * @prop {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
  * @prop {import("@genome-spy/webgpu-renderer").MarkHandle<any, Record<string, any>>} handle
  * @prop {any} config
- * @prop {Record<string, ChannelSnapshot>} channelSnapshots
+ * @prop {Record<string, {value: any}>} properties
+ * @prop {ResourceBinding[]} bindings
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
  * @prop {Map<string, number | Uint32Array | SelectionSnapshot>} selections
- * @prop {Map<string, any>} propertyValues
- * @prop {Map<string, number>} scalarSlots
  */
 
 /**
- * @typedef {object} ChannelSnapshot
- * @prop {{domain: any, range: any}} [scale]
- * @prop {any} value
- * @prop {ChannelSnapshot[]} conditions
+ * @typedef {object} ResourceBinding
+ * @property {string} key
+ * @property {() => any} read
+ * @property {(value: any) => void} write
+ * @property {any} value
+ * @property {boolean} skipUndefined
  */
 
 /**

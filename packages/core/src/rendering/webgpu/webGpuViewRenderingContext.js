@@ -531,28 +531,28 @@ function refreshOccurrenceDraw(occurrence, state, draw, canvas) {
         const clip = occurrence.cullClip;
         const x = coords.x;
         const y = coords.y;
-        const x2 = x + coords.width;
-        const y2 = y + coords.height;
-        draw.visibleRange.x1 = draw.visibleRange.cullX
-            ? clip?.clipX
-                ? clip.rect.x
-                : x
-            : 0;
-        draw.visibleRange.y1 = draw.visibleRange.cullY
-            ? clip?.clipY
-                ? clip.rect.y
-                : y
-            : 0;
-        draw.visibleRange.x2 = draw.visibleRange.cullX
-            ? clip?.clipX
-                ? clip.rect.x2
-                : x2
-            : x2;
-        draw.visibleRange.y2 = draw.visibleRange.cullY
-            ? clip?.clipY
-                ? clip.rect.y2
-                : y2
-            : y2;
+        draw.visibleRange.x1 = 0;
+        draw.visibleRange.x2 = x + coords.width;
+        draw.visibleRange.y1 = 0;
+        draw.visibleRange.y2 = y + coords.height;
+        if (draw.visibleRange.cullX) {
+            if (clip?.clipX) {
+                const clipX = clip.rect.x;
+                draw.visibleRange.x1 = clipX;
+                draw.visibleRange.x2 = clipX + clip.rect.width;
+            } else {
+                draw.visibleRange.x1 = x;
+            }
+        }
+        if (draw.visibleRange.cullY) {
+            if (clip?.clipY) {
+                const clipY = clip.rect.y;
+                draw.visibleRange.y1 = clipY;
+                draw.visibleRange.y2 = clipY + clip.rect.height;
+            } else {
+                draw.visibleRange.y1 = y;
+            }
+        }
         if (state.viewport) {
             draw.visibleRange.x1 -= state.viewport.x;
             draw.visibleRange.x2 -= state.viewport.x;

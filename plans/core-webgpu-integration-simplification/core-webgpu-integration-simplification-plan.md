@@ -1,7 +1,7 @@
 # Core–WebGPU integration simplification plan
 
-Status: In progress. Milestones 1 and 2 are implemented, verified, and reviewed.
-Milestones 1 and 2 are complete. Milestone 3 is in progress.
+Status: In progress. Milestones 1 through 4 are implemented, verified, and
+reviewed. Milestone 5 is next.
 
 ## Context
 
@@ -656,6 +656,28 @@ once and owns the adapter's retained synchronization state.
   rectangle boundary, and visible/picking identity reuse. Placeholder renderer
   handle identifiers remain an explicitly documented internal compromise until
   the binding slice owns the complete renderer-facing record.
+- The surface's retained-mark record now is the renderer-resource binding. It
+  compiles scale, value, semantic-property, and scalar leaves into a flat list
+  of direct slot updates only when configuration identity changes. Stable dirty
+  frames no longer traverse channel trees or rediscover dynamic properties.
+  Semantic keys carry immutable snapshots across rare recompilations.
+- Selection synchronization stays separate because single, multi, and interval
+  selections have distinct comparison and snapshot semantics. A trial folding
+  them into the generic compiler increased production size and was discarded.
+- Layout-local packed ranges and occurrence records remain in the frame plan;
+  renderer handles and owner-lifetime resources remain on the surface. Merging
+  those records was rejected because their replacement and disposal lifetimes
+  differ. The adapter's three `WeakMap`s remain narrowly scoped data/column
+  caches rather than duplicate retained renderer state.
+- The compiled-binding slice removes 17 Core WebGPU production lines. Together
+  with stable materialized draws, the integration is 130 lines below the
+  Milestone 2 baseline and only 10 lines above the first Milestone 3 commits.
+- Luna's final review found no blockers and accepted semantic-key snapshot
+  carryover, the reflection-free stable dirty path, array mutation handling,
+  the geometry refresh, and the separate ownership of selections and adapter
+  caches. Milestone 4 is complete. The binding compiler continues to rely on
+  the existing contract that one renderer definition has a stable semantic
+  slot shape; a code TODO guards any future relaxation of that contract.
 
 ### Verification
 
@@ -674,9 +696,9 @@ once and owns the adapter's retained synchronization state.
 - MCCA manual profiling confirms that synchronization remains efficient.
 - Total Core-plus-renderer production size falls; any optional renderer helper
   is absent from a fixture that does not import it.
-- The focused 78-test Core WebGPU suite, the full 2,105-test Core suite, type
-  checking, and linting pass. Hardware-backed smoke checks cover six examples
-  on both backends plus MCCA WebGPU rendering and picking.
+- The focused 78-test Core WebGPU suite, the full 3,526-test repository suite,
+  Core type checking, and focused linting pass. Hardware-backed smoke checks
+  cover six examples on both backends plus MCCA WebGPU rendering and picking.
 - Short DPR 1 MCCA runs cover horizontal WASD, WASD zoom, closeup toggle, and
   closeup wheel. All correctness checks pass, and the layout and layout-replay
   counters remain zero as required.

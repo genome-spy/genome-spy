@@ -340,7 +340,7 @@ describe("WebGpuSurface", () => {
         expect(mocks.handle.series.replace).not.toHaveBeenCalled();
     });
 
-    test("does not inspect series again when config identity is stable", async () => {
+    test("does not inspect config structure again when identity is stable", async () => {
         const container = document.createElement("div");
         const surface = new WebGpuSurface(
             /** @type {any} */ ({
@@ -360,24 +360,35 @@ describe("WebGpuSurface", () => {
             );
         const series = new Float32Array([1, 2]);
         const readSeries = vi.fn(() => series);
+        const inspectChannels = vi.fn();
         const config = {
             count: 2,
-            channels: {
-                x: {
-                    get data() {
-                        return readSeries();
+            channels: new Proxy(
+                {
+                    x: {
+                        get data() {
+                            return readSeries();
+                        },
+                        type: "f32",
+                        scale: { domain: [0, 1], range: [0, 100] },
                     },
-                    type: "f32",
-                    scale: { domain: [0, 1], range: [0, 100] },
                 },
-            },
+                {
+                    ownKeys: (target) => {
+                        inspectChannels();
+                        return Reflect.ownKeys(target);
+                    },
+                }
+            ),
         };
 
         surface.updateMark(mark, definition, config);
         readSeries.mockClear();
+        inspectChannels.mockClear();
         surface.updateMark(mark, definition, config);
 
         expect(readSeries).not.toHaveBeenCalled();
+        expect(inspectChannels).not.toHaveBeenCalled();
         expect(mocks.handle.series.replace).not.toHaveBeenCalled();
     });
 
