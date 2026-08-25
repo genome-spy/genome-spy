@@ -23,11 +23,7 @@ import { getMarkData } from "../immediate/markData.js";
 import { resolveMarkProperty } from "../immediate/markEncoding.js";
 import { isLargeGenome } from "../../gl/glslScaleGenerator.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
-import {
-    findChannelDefWithScale,
-    getSecondaryChannel,
-    isChannelWithScale,
-} from "../../encoder/encoder.js";
+import { getSecondaryChannel } from "../../encoder/encoder.js";
 
 const SHAPE_CODES = new Map(
     [
@@ -97,15 +93,6 @@ const HATCH_CODES = new Map(
  */
 const SERIES_CACHE = new WeakMap();
 
-/** @type {WeakMap<import("../../marks/mark.js").default, Set<string>>} */
-const DYNAMIC_PROPERTY_WATCHES = new WeakMap();
-
-/** @type {WeakMap<import("../../marks/mark.js").default, {revision: number, expressions: Set<string>}>} */
-const DYNAMIC_ENCODING_STATE = new WeakMap();
-
-/** @type {WeakMap<import("../../marks/mark.js").default, ResourceRevisionState>} */
-const RESOURCE_REVISION_STATE = new WeakMap();
-
 /** @type {WeakMap<import("../../marks/mark.js").default, PackedMarkData>} */
 const PACKED_DATA_CACHE = new WeakMap();
 
@@ -133,9 +120,7 @@ export function createWebGpuMarkConfig(
     dataOverride,
     placementIndex
 ) {
-    watchDynamicProperties(mark, getDynamicChannelProperties(mark.getType()));
-    watchDynamicEncodings(mark);
-    watchScaleResolutions(mark);
+    initializeWebGpuMarkRevisions(mark);
     const readViewOpacity =
         typeof viewOpacity == "function" ? viewOpacity : () => viewOpacity;
 
@@ -224,7 +209,8 @@ function createTranslation(definition, config) {
  * @param {import("../../marks/mark.js").default} mark
  */
 export function getWebGpuMarkConfigRevision(mark) {
-    return DYNAMIC_ENCODING_STATE.get(mark)?.revision ?? 0;
+    initializeWebGpuMarkRevisions(mark);
+    return mark.getRenderingRevision("configuration");
 }
 
 /**
@@ -236,8 +222,13 @@ export function getWebGpuMarkConfigRevision(mark) {
  * @returns {number | undefined}
  */
 export function getWebGpuMarkResourceRevision(mark) {
-    const state = getResourceRevisionState(mark);
-    return state.volatile ? undefined : state.revision;
+    initializeWebGpuMarkRevisions(mark);
+    return mark.getRenderingRevision("resources");
+}
+
+/** @param {import("../../marks/mark.js").default} mark */
+function initializeWebGpuMarkRevisions(mark) {
+    mark.initializeRenderingRevisions([]);
 }
 
 /**
@@ -380,39 +371,6 @@ function toPlacementIndexArray(mark, data) {
  */
 
 /**
- * Mark properties represented by channel value slots in the renderer.
- *
- * @param {string} markType
- * @returns {string[]}
- */
-function getDynamicChannelProperties(markType) {
-    if (markType == "point") {
-        return ["fillGradientStrength", "inwardStroke"];
-    } else if (markType == "rect") {
-        return [
-            "cornerRadius",
-            "cornerRadiusTopRight",
-            "cornerRadiusBottomRight",
-            "cornerRadiusTopLeft",
-            "cornerRadiusBottomLeft",
-            "minWidth",
-            "minHeight",
-            "minOpacity",
-            "shadowOffsetX",
-            "shadowOffsetY",
-            "shadowBlur",
-            "shadowOpacity",
-            "shadowColor",
-            "hatch",
-        ];
-    } else if (markType == "rule" || markType == "tick") {
-        return ["minLength", "strokeCap", "strokeDashOffset"];
-    } else {
-        return [];
-    }
-}
-
-/**
  * Builds a channel from Core's ordered branches. Core permits at most one
  * non-constant branch, which matches the renderer's retained series model.
  *
@@ -515,7 +473,7 @@ function createSelectionCondition(mark, channel, predicate) {
     // conservatively dirty instead of building a second dependency graph here.
     // TODO: Use a selection revision once ParamRuntime exposes a complete
     // selection-change notification contract.
-    getResourceRevisionState(mark).volatile = true;
+    mark.makeRenderingResourcesVolatile();
 
     /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate} */
     const when = {
@@ -592,6 +550,22 @@ function assertScalarIntervalInput(mark, selectionName, channel) {
  * @returns {object}
  */
 function createRectConfig(mark, data, coords, viewOpacity) {
+    mark.initializeRenderingRevisions([
+        "cornerRadius",
+        "cornerRadiusTopRight",
+        "cornerRadiusBottomRight",
+        "cornerRadiusTopLeft",
+        "cornerRadiusBottomLeft",
+        "minWidth",
+        "minHeight",
+        "minOpacity",
+        "shadowOffsetX",
+        "shadowOffsetY",
+        "shadowBlur",
+        "shadowOpacity",
+        "shadowColor",
+        "hatch",
+    ]);
     return {
         count: data.length,
         channels: {
@@ -667,6 +641,11 @@ function createRectConfig(mark, data, coords, viewOpacity) {
  * @returns {object}
  */
 function createPointConfig(mark, data, coords, viewOpacity) {
+    mark.initializeRenderingRevisions([
+        "fillGradientStrength",
+        "inwardStroke",
+        "semanticZoomFraction",
+    ]);
     const visibility = createPointVisibilityConfig(mark, data);
     return {
         count: data.length,
@@ -798,6 +777,11 @@ function createPointVisibilitySelections(mark) {
  * @returns {object}
  */
 function createRuleConfig(mark, data, coords, viewOpacity) {
+    mark.initializeRenderingRevisions([
+        "minLength",
+        "strokeCap",
+        "strokeDashOffset",
+    ]);
     const strokeDash = readProperty(mark, "strokeDash");
 
     return {
@@ -2288,8 +2272,7 @@ function retainedPropertyValue(read) {
  * @returns {Record<string, {value: any}>}
  */
 function createDynamicProperties(mark, definitions) {
-    watchDynamicProperties(mark, Object.keys(definitions));
-
+    mark.initializeRenderingRevisions(Object.keys(definitions));
     /** @type {Record<string, {value: any}>} */
     const properties = {};
     for (const [property, adjust] of Object.entries(definitions)) {
@@ -2304,122 +2287,6 @@ function createDynamicProperties(mark, definitions) {
         );
     }
     return properties;
-}
-
-/**
- * Invalidates retained series only when an expression dependency changes.
- * Field-backed columns remain tied solely to the collector revision.
- *
- * @param {import("../../marks/mark.js").default} mark
- */
-function watchDynamicEncodings(mark) {
-    let state = DYNAMIC_ENCODING_STATE.get(mark);
-    if (!state) {
-        state = { revision: 0, expressions: new Set() };
-        DYNAMIC_ENCODING_STATE.set(mark, state);
-    }
-
-    for (const encoder of Object.values(
-        /** @type {Record<string, any>} */ (mark.encoders)
-    )) {
-        for (const branch of encoder.branches ?? []) {
-            const expression = branch.accessor.channelDef?.expr;
-            if (
-                typeof expression != "string" ||
-                state.expressions.has(expression)
-            ) {
-                continue;
-            }
-            mark.unitView.paramRuntime.watchExpression(expression, () => {
-                const current = DYNAMIC_ENCODING_STATE.get(mark);
-                if (current) {
-                    current.revision++;
-                }
-                mark.unitView.context.animator.requestRender();
-            });
-            state.expressions.add(expression);
-        }
-    }
-}
-
-/**
- * Registers one render invalidation watcher per expression-backed property.
- *
- * @param {import("../../marks/mark.js").default} mark
- * @param {string[]} properties
- */
-function watchDynamicProperties(mark, properties) {
-    let watched = DYNAMIC_PROPERTY_WATCHES.get(mark);
-    if (!watched) {
-        watched = new Set();
-        DYNAMIC_PROPERTY_WATCHES.set(mark, watched);
-    }
-    for (const property of properties) {
-        if (watched.has(property)) {
-            continue;
-        }
-        const value = /** @type {Record<string, any>} */ (mark.properties)[
-            property
-        ];
-        if (isExprRef(value)) {
-            mark.unitView.paramRuntime.watchExpression(value.expr, () => {
-                getResourceRevisionState(mark).revision++;
-                mark.unitView.context.animator.requestRender();
-            });
-        }
-        watched.add(property);
-    }
-}
-
-/**
- * Reuses Core's existing scale notifications as a small mark-level dirty bit.
- *
- * @param {import("../../marks/mark.js").default} mark
- */
-function watchScaleResolutions(mark) {
-    const state = getResourceRevisionState(mark);
-    for (const [channel, encoder] of Object.entries(
-        /** @type {Record<string, any>} */ (mark.encoders)
-    )) {
-        if (!encoder.scale) {
-            continue;
-        }
-        const channelDef = findChannelDefWithScale(encoder.channelDef);
-        const resolutionChannel =
-            /** @type {import("../../spec/channel.js").Channel} */ (
-                channelDef?.resolutionChannel ?? channel
-            );
-        if (!isChannelWithScale(resolutionChannel)) {
-            continue;
-        }
-        const resolution = mark.unitView.getScaleResolution(resolutionChannel);
-        if (!resolution || state.scaleResolutions.has(resolution)) {
-            continue;
-        }
-
-        const listener = () => state.revision++;
-        resolution.addEventListener("domain", listener);
-        resolution.addEventListener("range", listener);
-        mark.unitView.registerDisposer(() => {
-            resolution.removeEventListener("domain", listener);
-            resolution.removeEventListener("range", listener);
-        });
-        state.scaleResolutions.add(resolution);
-    }
-}
-
-/** @param {import("../../marks/mark.js").default} mark */
-function getResourceRevisionState(mark) {
-    let state = RESOURCE_REVISION_STATE.get(mark);
-    if (!state) {
-        state = {
-            revision: 0,
-            scaleResolutions: new Set(),
-            volatile: false,
-        };
-        RESOURCE_REVISION_STATE.set(mark, state);
-    }
-    return state;
 }
 
 /**
@@ -2450,13 +2317,6 @@ function unsupported(mark, message) {
     /** @type {any} */ (error).view = mark.unitView;
     return error;
 }
-
-/**
- * @typedef {object} ResourceRevisionState
- * @prop {number} revision
- * @prop {Set<import("../../scales/scaleResolution.js").default>} scaleResolutions
- * @prop {boolean} volatile
- */
 
 /**
  * @typedef {object} SeriesCache

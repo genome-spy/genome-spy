@@ -206,30 +206,18 @@ describe("WebGPU mark adapter", () => {
     });
 
     test("revisions retained resources from existing scale notifications", () => {
-        const listeners = new Map();
-        const resolution = {
-            addEventListener: vi.fn((type, listener) =>
-                listeners.set(type, listener)
-            ),
-            removeEventListener: vi.fn(),
-        };
         const mark = createMark("point", [{ x: 1 }], {
             x: createEncoder((datum) => datum.x, {
                 scale: createLinearScale([0, 2]),
             }),
         });
-        /** @type {any} */ (mark.unitView).getScaleResolution = () =>
-            resolution;
 
         createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
         expect(getWebGpuMarkResourceRevision(mark)).toBe(0);
 
-        listeners.get("domain")();
-        listeners.get("range")();
+        /** @type {any} */ (mark).advanceRenderingRevision("resources");
+        /** @type {any} */ (mark).advanceRenderingRevision("resources");
         expect(getWebGpuMarkResourceRevision(mark)).toBe(2);
-
-        createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
-        expect(resolution.addEventListener).toHaveBeenCalledTimes(2);
     });
 
     test("applies live view opacity to an unscaled retained series", () => {
@@ -710,14 +698,14 @@ describe("WebGPU mark adapter", () => {
         expect(translated.properties).toEqual({
             headWidth: { value: 7 },
         });
-        expect(watchExpression).toHaveBeenCalledWith(
-            "width",
-            expect.any(Function)
+        expect(mark.initializeRenderingRevisions).toHaveBeenCalledWith(
+            expect.arrayContaining(["headWidth"])
         );
         const revision = getWebGpuMarkResourceRevision(mark);
-        watchExpression.mock.calls[0][1]();
+        /** @type {any} */ (mark).advanceRenderingRevision("resources");
         expect(getWebGpuMarkResourceRevision(mark)).toBe(revision + 1);
-        expect(requestRender).toHaveBeenCalledOnce();
+        expect(watchExpression).not.toHaveBeenCalled();
+        expect(requestRender).not.toHaveBeenCalled();
     });
 
     test.each([
@@ -1486,18 +1474,9 @@ describe("WebGPU mark adapter", () => {
         expect(/** @type {any} */ (second.config).channels.x.data).toEqual(
             new Float32Array([3])
         );
-        expect(
-            mark.unitView.paramRuntime.watchExpression
-        ).toHaveBeenCalledOnce();
         expect(getWebGpuMarkConfigRevision(mark)).toBe(0);
-        const invalidate = /** @type {any} */ (
-            mark.unitView.paramRuntime.watchExpression
-        ).mock.calls[0][1];
-        invalidate();
+        /** @type {any} */ (mark).advanceRenderingRevision("configuration");
         expect(getWebGpuMarkConfigRevision(mark)).toBe(1);
-        expect(
-            mark.unitView.context.animator.requestRender
-        ).toHaveBeenCalledOnce();
     });
 
     test("translates a selection-driven color branch", () => {
@@ -1748,6 +1727,10 @@ function createMark(type, data, encoders, properties = {}) {
                   angle: createConstantEncoder(0),
               }
             : {};
+    /** @type {Record<"configuration" | "resources", number>} */
+    const revisions = { configuration: 0, resources: 0 };
+    /** @type {Set<"configuration" | "resources">} */
+    const volatile = new Set();
     return /** @type {import("../../marks/mark.js").default} */ (
         /** @type {unknown} */ ({
             encoders: { ...defaultEncoders, ...encoders },
@@ -1759,6 +1742,14 @@ function createMark(type, data, encoders, properties = {}) {
                 ...properties,
             },
             getType: () => type,
+            initializeRenderingRevisions: vi.fn(),
+            getRenderingRevision: (
+                /** @type {"configuration" | "resources"} */ kind
+            ) => (volatile.has(kind) ? undefined : revisions[kind]),
+            makeRenderingResourcesVolatile: () => volatile.add("resources"),
+            advanceRenderingRevision: (
+                /** @type {"configuration" | "resources"} */ kind
+            ) => revisions[kind]++,
             defaultHitTestMode: "intersects",
             unitView: {
                 getCollector: () => ({

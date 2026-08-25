@@ -1,7 +1,7 @@
 # Core–WebGPU integration simplification plan
 
 Status: In progress. Milestones 1 and 2 are implemented, verified, and reviewed.
-Milestone 3 is next.
+Milestones 1 and 2 are complete. Milestone 3 is in progress.
 
 ## Context
 
@@ -532,6 +532,38 @@ dependencies.
   snapshots.
 - Delete adapter-owned dependency maps and watchers as their owner-provided
   replacements become authoritative.
+
+### Progress and decisions
+
+- Core marks now expose lazy `configuration` and `resources` revisions.
+  Expression-backed data columns advance configuration because their packed
+  values must be rebuilt. Expression-backed channel values, retained mark
+  properties, and scale notifications advance resources because their stable
+  bindings can be synchronized in place.
+- Revision tracking is opt-in and begins only when a retained renderer asks for
+  it. This avoids duplicating WebGL's existing listeners and per-mark state.
+  Retained property dependencies are registered next to the adapter code that
+  creates their live values instead of through a second discovery pass.
+- The adapter-owned dynamic-property, dynamic-encoding, and resource-revision
+  `WeakMap`s and their watcher functions have been deleted. Collector data and
+  placement continue to use their existing owner-provided revisions.
+- Selection resources remain conservatively volatile because `ParamRuntime`
+  does not yet expose a complete selection revision. This state is currently
+  attached to the mark by the WebGPU translation and is a documented
+  transitional bridge, not the final selection-owner contract.
+- The mark-level expression dependency bridge is likewise transitional: it
+  moves subscription lifetime and revision state to the mark, but expression
+  mutation is still observed through `ParamRuntime.watchExpression()`. Do not
+  describe Milestone 3 as complete until geometry ownership and the remaining
+  conservative paths have been reconciled.
+- A Luna review rejected the first eager implementation because it duplicated
+  listeners for WebGL and classified every expression property as a live
+  resource. The accepted implementation is lazy and registers only properties
+  with an actual retained value or semantic slot.
+- Current counts are 3,960 Core WebGPU production lines and 3,308 Core WebGPU
+  test lines. Relative to the Milestone 2 result, the integration directory is
+  down 140 production lines and 9 test lines; including the backend-neutral
+  mark revision code, affected production is down 18 lines overall.
 
 ### Verification
 
