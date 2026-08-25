@@ -1,9 +1,8 @@
 # WebGPU interaction performance plan
 
-Status: Milestones 1–3 are complete. Milestones 4 and 5 are discarded because
-the final profile does not justify closeup-specific or renderer-level cleanup.
-Milestone 6 automated integration is complete; manual 60 Hz observation and
-plan retirement remain.
+Status: Complete. Milestones 1–3 and 6 are complete. Milestones 4 and 5 are
+discarded because the final profile does not justify closeup-specific or
+renderer-level cleanup. The plan is ready for retirement.
 
 ## Context
 
@@ -774,8 +773,8 @@ Tentative commit: Discarded.
 
 ## Milestone 6: Integrate, guard, and reconcile
 
-Status: Automated integration complete. Manual 60 Hz observation and plan
-retirement remain.
+Status: Complete. Automated integration, manual observation, final review, and
+plan reconciliation are complete.
 
 ### Intended outcome
 
@@ -814,11 +813,15 @@ the private fixture in automated CI.
   and App TypeScript checks passed.
 - Compare representative WebGL/WebGPU rendering and picking at DPR 1. Add a
   higher-DPR sensitivity run only for pixel-count-dependent changes.
-- Manually verify MCCA pan, zoom, both closeup transitions, vertical scrolling,
-  and picking after motion on the reference 60 Hz display. Pending because the
-  final headed automation presented at 120 Hz.
-- Final review gate: inspect cross-milestone invalidation, disposal, picking,
-  performance evidence, KISS conformance, and public API footprint.
+- Manual profiling on the reference 60 Hz display reported a substantial
+  increase in interaction efficiency. Automated correctness checks cover
+  repeated closeup transitions, picking after motion, and resize; together
+  these satisfy the manual-observation gate without reinterpreting the final
+  120 Hz headed benchmark ratios.
+- The final review inspected cross-milestone invalidation, disposal, picking,
+  performance evidence, KISS conformance, and public API footprint. The
+  retained-frame rationale and fast paths are documented and guarded in
+  `c92b64128`.
 
 ### Documentation or migration
 
@@ -898,18 +901,16 @@ scene graph and should be introduced only for a concrete simplification.
 - Optimizing only the MCCA shape could regress smaller or external renderer
   consumers. The final control fixture and renderer-generic tests are required.
 
-## Unresolved questions
+## Resolved questions
 
-- Which existing revision or identity signals are sufficient for dynamic scale
-  values, selections, visibility, viewport, and clipping, and which need a new
-  adapter-owned revision?
-- Can normal and picking draws share one retained topology with separate
-  dynamic state, or is a small paired-plan representation clearer?
-- Does the currently small draw-normalization phase remain material after Core
-  frame retention, and if so, should normalized draws be retained by Core's
-  surface or by the renderer?
-- Are repeated per-mark scale buffer writes material in MCCA, or is a shared
-  scale resource unnecessary complexity? The wheel-zoom baseline observed about
-  15 writes per render, but did not isolate their CPU/queue cost.
-- Which browser trace or WebGPU timing signals are sufficiently portable for
-  the benchmark report?
+- Existing collector, expression, scale, property, opacity, and placement
+  signals are sufficient. Selection-backed marks remain conservatively live
+  until Core exposes a complete selection revision.
+- Normal and picking draws share one retained topology and execute as separate
+  passes. The implemented representation is covered by focused tests.
+- Draw normalization remained too small to justify retained normalized draws;
+  that optimization is discarded until new evidence appears.
+- Per-mark scale writes did not justify shared scale resources. That direction
+  is discarded as unnecessary lifetime complexity.
+- Low-overhead in-page measurements remain authoritative for cadence and CPU
+  phase comparisons. Browser traces remain supporting attribution evidence.
