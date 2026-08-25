@@ -235,10 +235,7 @@ export default class WebGpuSurface {
             if (retained) {
                 this.#renderer.destroyMark(retained.handle.markId);
             }
-            const handle = this.#renderer.createMark(
-                definition,
-                makeRetainableConfig(config)
-            );
+            const handle = this.#renderer.createMark(definition, config);
             retained = {
                 definition,
                 handle,
@@ -316,21 +313,6 @@ export default class WebGpuSurface {
                 : {}),
         };
         (options.picking ? this.#pickingDraws : this.#frameDraws).push(draw);
-    }
-
-    /**
-     * Convenience method for callers that update and draw one occurrence.
-     * Repeated occurrence assembly should call updateMark once and drawMark for
-     * each retained draw.
-     *
-     * @param {import("../../marks/mark.js").default} mark
-     * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
-     * @param {any} config
-     * @param {{viewport?: import("@genome-spy/webgpu-renderer").DrawRect, scissor?: import("@genome-spy/webgpu-renderer").DrawRect, visibleRange?: import("@genome-spy/webgpu-renderer").DrawVisibleRange, placement?: {source: import("../../view/layout/placementSource.js").default, index?: number, clipToPlacement?: "x" | "y" | "xy"}, firstInstance?: number, instanceCount?: number, picking?: boolean}} [options]
-     */
-    useMark(mark, definition, config, options = {}) {
-        this.updateMark(mark, definition, config);
-        this.drawMark(mark, options);
     }
 
     /**
@@ -428,44 +410,6 @@ function toDrawRect(rect) {
         width: rect.width,
         height: rect.height,
     };
-}
-
-/**
- * Makes numeric value channels updateable without changing their pipeline
- * shape. Text values remain renderer-owned because they require glyph layout.
- *
- * @param {any} config
- */
-function makeRetainableConfig(config) {
-    return {
-        ...config,
-        channels: Object.fromEntries(
-            Object.entries(config.channels).map(([name, channel]) => [
-                name,
-                makeRetainableChannel(channel),
-            ])
-        ),
-    };
-}
-
-/** @param {any} channel */
-function makeRetainableChannel(channel) {
-    const retained = { ...channel };
-    if (retained.value !== undefined && typeof retained.value != "string") {
-        retained.dynamic = true;
-    }
-    if (retained.conditions) {
-        retained.conditions = retained.conditions.map(
-            (/** @type {any} */ condition) =>
-                condition.channel
-                    ? {
-                          ...condition,
-                          channel: makeRetainableChannel(condition.channel),
-                      }
-                    : condition
-        );
-    }
-    return retained;
 }
 
 /**

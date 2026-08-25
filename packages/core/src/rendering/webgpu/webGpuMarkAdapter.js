@@ -327,34 +327,29 @@ export function getPackedMarkData(mark, placementSource) {
         data,
         ranges,
         placementRanges,
-        optionRanges: new WeakMap(),
     };
     PACKED_DATA_CACHE.set(mark, packed);
     return packed;
 }
 
 /**
- * Resolves an occurrence range once per immutable layout option object.
+ * Resolves an occurrence range when packed data changes.
  *
  * @param {import("../../marks/mark.js").default} mark
  * @param {import("../../types/rendering.js").RenderingOptions} options
  * @param {PackedMarkData} packed
  */
 export function getPackedMarkRange(mark, options, packed) {
-    const cached = packed.optionRanges.get(options);
-    if (cached) {
-        return cached;
-    }
     const placementIndex = options.placement?.index;
-    const range = (placementIndex === undefined
-        ? undefined
-        : packed.placementRanges?.[placementIndex]) ??
+    return (
+        (placementIndex === undefined
+            ? undefined
+            : packed.placementRanges?.[placementIndex]) ??
         packed.ranges.get(getMarkData(mark, options)) ?? {
             firstInstance: 0,
             instanceCount: 0,
-        };
-    packed.optionRanges.set(options, range);
-    return range;
+        }
+    );
 }
 
 /** @param {object} config @param {unknown} placementIndex */
@@ -392,7 +387,6 @@ function toPlacementIndexArray(mark, data) {
  * @property {object[]} data
  * @property {Map<object[], {firstInstance: number, instanceCount: number}>} ranges
  * @property {{firstInstance: number, instanceCount: number}[] | undefined} placementRanges
- * @property {WeakMap<object, {firstInstance: number, instanceCount: number}>} optionRanges
  */
 
 /**
@@ -763,7 +757,7 @@ function createPointVisibilityConfig(mark, data) {
             },
         },
         scalarSlots: {
-            semanticThreshold: liveValue(
+            semanticThreshold: retainedValue(
                 () =>
                     /** @type {import("../../marks/point.js").default} */ (
                         mark
@@ -970,10 +964,6 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
             50000
         ),
         segments: readOptionalNumericProperty(mark, "segments", 101),
-        noFadingOnPointSelection: !!readProperty(
-            mark,
-            "noFadingOnPointSelection"
-        ),
         dynamicValues: createDynamicValues(mark, {
             arcFadingDistance: [
                 "uArcFadingDistance",
@@ -2315,6 +2305,16 @@ function readProperty(mark, property) {
  * @param {import("@genome-spy/webgpu-renderer").ScalarType} [type]
  */
 function liveValue(read, type) {
+    return Object.assign(retainedValue(read, type), { dynamic: true });
+}
+
+/**
+ * Exposes a retained numeric leaf that already has an explicit slot contract.
+ *
+ * @param {() => number | number[]} read
+ * @param {import("@genome-spy/webgpu-renderer").ScalarType} [type]
+ */
+function retainedValue(read, type) {
     return {
         get value() {
             return read();
@@ -2344,7 +2344,7 @@ function createDynamicValues(mark, definitions) {
         if (!isExprRef(value)) {
             continue;
         }
-        dynamicValues[uniform] = liveValue(() => {
+        dynamicValues[uniform] = retainedValue(() => {
             const adjusted = adjust(readProperty(mark, property));
             if (
                 typeof adjusted != "number" &&

@@ -83,6 +83,18 @@ beforeEach(() => {
     mocks.handle.selections = {};
 });
 
+/**
+ * @param {WebGpuSurface} surface
+ * @param {any} mark
+ * @param {any} definition
+ * @param {any} config
+ * @param {any} [options]
+ */
+function useMark(surface, mark, definition, config, options) {
+    surface.updateMark(mark, definition, config);
+    surface.drawMark(mark, options);
+}
+
 describe("WebGpuSurface", () => {
     test("retains repeated mark placement through empty frames until owner disposal", async () => {
         const container = document.createElement("div");
@@ -109,7 +121,7 @@ describe("WebGpuSurface", () => {
             new Float32Array([0, 0, 1, 1])
         );
 
-        surface.useMark(mark, definition, createConfig(0), {
+        useMark(surface, mark, definition, createConfig(0), {
             viewport: { x: 0, y: 0, width: 100, height: 50 },
             placement: { source, index: 0 },
         });
@@ -152,10 +164,10 @@ describe("WebGpuSurface", () => {
             );
 
         surface.beginFrame();
-        surface.useMark(mark, definition, createConfig(0));
+        useMark(surface, mark, definition, createConfig(0));
         surface.render();
         surface.beginFrame();
-        surface.useMark(mark, definition, createConfig(1));
+        useMark(surface, mark, definition, createConfig(1));
         surface.render();
 
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
@@ -204,9 +216,9 @@ describe("WebGpuSurface", () => {
             );
 
         surface.beginFrame();
-        surface.useMark(mark, definition, createTextConfig(["0.00000"]));
+        useMark(surface, mark, definition, createTextConfig(["0.00000"]));
         surface.beginFrame();
-        surface.useMark(mark, definition, createTextConfig(["-1.0", "1.0"]));
+        useMark(surface, mark, definition, createTextConfig(["-1.0", "1.0"]));
 
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
         expect(mocks.handle.series.replace).toHaveBeenCalledWith(
@@ -238,8 +250,8 @@ describe("WebGpuSurface", () => {
             );
         const x = new Float32Array([1, 2]);
 
-        surface.useMark(mark, definition, createConfig(0, x));
-        surface.useMark(mark, definition, createConfig(1, x));
+        useMark(surface, mark, definition, createConfig(0, x));
+        useMark(surface, mark, definition, createConfig(1, x));
 
         expect(mocks.handle.series.replace).not.toHaveBeenCalled();
         expect(mocks.handle.scales.x.default.setDomain).toHaveBeenCalledWith([
@@ -289,11 +301,11 @@ describe("WebGpuSurface", () => {
             },
         };
 
-        surface.useMark(mark, definition, config);
+        useMark(surface, mark, definition, config);
         domain[0] = 1;
         domain[1] = 11;
         size = 6;
-        surface.useMark(mark, definition, config);
+        useMark(surface, mark, definition, config);
 
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
         expect(mocks.handle.scales.x.default.setDomain).toHaveBeenCalledOnce();
@@ -455,7 +467,7 @@ describe("WebGpuSurface", () => {
             },
         });
 
-        surface.useMark(mark, definition, config(first));
+        useMark(surface, mark, definition, config(first));
         expect(selectionSet).toHaveBeenCalledWith(42);
         selectionSet.mockClear();
 
@@ -463,7 +475,7 @@ describe("WebGpuSurface", () => {
             type: "single",
             uniqueId: 43,
         });
-        surface.useMark(mark, definition, config(second));
+        useMark(surface, mark, definition, config(second));
 
         expect(selectionSet).toHaveBeenCalledWith(43);
         expect(mocks.handle.series.replace).toHaveBeenCalledWith(
@@ -508,21 +520,21 @@ describe("WebGpuSurface", () => {
                 /** @type {unknown} */ ({ type: "point" })
             );
 
-        surface.useMark(mark, definition, createConfig(0));
+        useMark(surface, mark, definition, createConfig(0));
         expect(selectionSet).toHaveBeenCalledWith({
             x: [1, 2],
             y: [3, 4],
         });
         selectionSet.mockClear();
 
-        surface.useMark(mark, definition, createConfig(0));
+        useMark(surface, mark, definition, createConfig(0));
         expect(selectionSet).not.toHaveBeenCalled();
 
         mark.unitView.paramRuntime.findValue = () => ({
             type: "interval",
             intervals: { x: [5, 6] },
         });
-        surface.useMark(mark, definition, createConfig(0));
+        useMark(surface, mark, definition, createConfig(0));
 
         expect(selectionSet).toHaveBeenCalledOnce();
         expect(selectionSet).toHaveBeenCalledWith({ x: [5, 6], y: null });
@@ -532,7 +544,7 @@ describe("WebGpuSurface", () => {
             type: "interval",
             intervals: { x: null, y: null },
         });
-        surface.useMark(mark, definition, createConfig(0));
+        useMark(surface, mark, definition, createConfig(0));
 
         expect(selectionSet).toHaveBeenCalledOnce();
         expect(selectionSet).toHaveBeenCalledWith({ x: null, y: null });
@@ -592,15 +604,15 @@ describe("WebGpuSurface", () => {
             },
         };
 
-        surface.useMark(mark, definition, config);
-        surface.useMark(mark, definition, config);
+        useMark(surface, mark, definition, config);
+        useMark(surface, mark, definition, config);
 
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
         expect(mocks.handle.series.replace).not.toHaveBeenCalled();
         expect(selectionSet).toHaveBeenCalledOnce();
     });
 
-    test("updates a live conditional value through its retained slot", async () => {
+    test("updates an explicitly dynamic conditional value", async () => {
         const conditionalSet = vi.fn();
         /** @type {any} */ (mocks.handle.values).fill = {
             conditions: { chosen: { set: conditionalSet } },
@@ -632,6 +644,7 @@ describe("WebGpuSurface", () => {
                         {
                             when: { selection: "chosen", type: "single" },
                             channel: {
+                                dynamic: true,
                                 get value() {
                                     return value;
                                 },
@@ -642,9 +655,9 @@ describe("WebGpuSurface", () => {
             },
         };
 
-        surface.useMark(mark, definition, config);
+        useMark(surface, mark, definition, config);
         value = 0.75;
-        surface.useMark(mark, definition, config);
+        useMark(surface, mark, definition, config);
 
         const rendererConfig = /** @type {any[][]} */ (
             mocks.renderer.createMark.mock.calls
@@ -685,8 +698,8 @@ describe("WebGpuSurface", () => {
             dynamicValues: { uHeadWidth: { value } },
         });
 
-        surface.useMark(mark, definition, config(3));
-        surface.useMark(mark, definition, config(5));
+        useMark(surface, mark, definition, config(3));
+        useMark(surface, mark, definition, config(5));
 
         expect(headWidthSet).toHaveBeenCalledWith(5);
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
@@ -718,8 +731,8 @@ describe("WebGpuSurface", () => {
             dynamicValues: { uViewport: { value: viewport } },
         });
 
-        surface.useMark(mark, definition, config([10, 20, 110, 220]));
-        surface.useMark(mark, definition, config([48, 16, 110, 220]));
+        useMark(surface, mark, definition, config([10, 20, 110, 220]));
+        useMark(surface, mark, definition, config([48, 16, 110, 220]));
 
         expect(viewportSet).toHaveBeenCalledWith([48, 16, 110, 220]);
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
@@ -759,9 +772,9 @@ describe("WebGpuSurface", () => {
             },
         });
 
-        surface.useMark(mark, definition, config(0.5));
-        surface.useMark(mark, definition, config(0.5));
-        surface.useMark(mark, definition, config(0.75));
+        useMark(surface, mark, definition, config(0.5));
+        useMark(surface, mark, definition, config(0.5));
+        useMark(surface, mark, definition, config(0.75));
 
         expect(thresholdSet).toHaveBeenCalledOnce();
         expect(thresholdSet).toHaveBeenCalledWith(0.75);
@@ -789,10 +802,10 @@ describe("WebGpuSurface", () => {
             );
 
         surface.beginFrame();
-        surface.useMark(mark, definition, createConfig(0));
+        useMark(surface, mark, definition, createConfig(0));
         surface.render();
         surface.beginPickingFrame();
-        surface.useMark(mark, definition, createConfig(0), { picking: true });
+        useMark(surface, mark, definition, createConfig(0), { picking: true });
         surface.renderPicking();
 
         expect(mocks.renderer.render).toHaveBeenCalledWith({

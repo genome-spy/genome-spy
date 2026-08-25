@@ -124,6 +124,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 inheritedClip,
                 mark.properties.cullByVisibleRange
             ),
+            range: { firstInstance: 0, instanceCount: 0 },
             placementIndex: state.occurrences.length,
         };
         state.occurrences.push(occurrence);
@@ -299,6 +300,15 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.config = translated?.config;
             state.configRevision = configRevision;
         }
+        if (packedChanged) {
+            for (const occurrence of state.occurrences) {
+                occurrence.range = getPackedMarkRange(
+                    state.mark,
+                    occurrence.options,
+                    packed
+                );
+            }
+        }
         const resourceRevision = getWebGpuMarkResourceRevision(state.mark);
         state.resourcesDirty ||=
             resourceRevision === undefined ||
@@ -348,11 +358,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             return undefined;
         }
 
-        const range = getPackedMarkRange(
-            state.mark,
-            occurrence.options,
-            state.packed
-        );
+        const range = occurrence.range;
         if (!range.instanceCount) {
             return undefined;
         }
@@ -563,6 +569,7 @@ function localizeVisibleRange(range, owner) {
  * @property {Rectangle} markCoords
  * @property {import("../../types/rendering.js").ClipOptions | undefined} clip
  * @property {import("@genome-spy/webgpu-renderer").DrawVisibleRange | undefined} visibleRange
+ * @property {{firstInstance: number, instanceCount: number}} range
  * @property {number} placementIndex
  */
 

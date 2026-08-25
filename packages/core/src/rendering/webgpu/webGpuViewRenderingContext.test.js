@@ -278,6 +278,7 @@ describe("WebGpuViewRenderingContext", () => {
         );
         expect(surface.updateOccurrencePlacements).toHaveBeenCalledOnce();
         expect(surface.updateMark).toHaveBeenCalledOnce();
+        expect(mocks.getPackedMarkRange).toHaveBeenCalledTimes(2);
         expect(
             surface.drawMark.mock.calls.map((call) => call[1].placement.index)
         ).toEqual([0, 1, 0, 1]);
@@ -286,11 +287,13 @@ describe("WebGpuViewRenderingContext", () => {
         context.render({ picking: false });
         expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledTimes(2);
         expect(surface.updateMark).toHaveBeenCalledTimes(2);
+        expect(mocks.getPackedMarkRange).toHaveBeenCalledTimes(4);
 
         mocks.getWebGpuMarkConfigRevision.mockReturnValue(1);
         context.render({ picking: false });
         expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledTimes(3);
         expect(surface.updateMark).toHaveBeenCalledTimes(3);
+        expect(mocks.getPackedMarkRange).toHaveBeenCalledTimes(4);
 
         mocks.getWebGpuMarkResourceRevision.mockReturnValue(1);
         context.render({ picking: false });
