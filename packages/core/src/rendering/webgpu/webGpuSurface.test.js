@@ -95,7 +95,27 @@ beforeEach(() => {
  */
 function useMark(surface, mark, definition, config, options, properties) {
     surface.updateMark(mark, definition, config, properties);
-    surface.drawMark(mark, options);
+    const { placement, picking = false, ...drawOptions } = options ?? {};
+    const draw = {
+        mark: mocks.handle,
+        ...drawOptions,
+        ...(placement
+            ? {
+                  placement: {
+                      set: { placementSetId: -1 },
+                      ...(placement.index === undefined
+                          ? {}
+                          : { index: placement.index }),
+                      ...(placement.clipToPlacement
+                          ? {
+                                clipToPlacement: placement.clipToPlacement,
+                            }
+                          : {}),
+                  },
+              }
+            : {}),
+    };
+    surface.drawMark(mark, draw, placement?.source, picking);
 }
 
 describe("WebGpuSurface", () => {

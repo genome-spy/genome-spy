@@ -271,9 +271,11 @@ export default class WebGpuSurface {
 
     /**
      * @param {import("../../marks/mark.js").default} mark
-     * @param {{viewport?: import("@genome-spy/webgpu-renderer").DrawRect, scissor?: import("@genome-spy/webgpu-renderer").DrawRect, visibleRange?: import("@genome-spy/webgpu-renderer").DrawVisibleRange, placement?: {source: import("../../view/layout/placementSource.js").default, index?: number, clipToPlacement?: "x" | "y" | "xy"}, firstInstance?: number, instanceCount?: number, picking?: boolean}} [options]
+     * @param {import("@genome-spy/webgpu-renderer").DrawCommand} draw
+     * @param {PlacementSource | undefined} placementSource
+     * @param {boolean} picking
      */
-    drawMark(mark, options = {}) {
+    drawMark(mark, draw, placementSource, picking) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
@@ -282,39 +284,16 @@ export default class WebGpuSurface {
             throw new Error("Cannot draw a WebGPU mark before updating it.");
         }
 
-        const draw = {
-            mark: retained.handle,
-            ...(options.viewport
-                ? { viewport: toDrawRect(options.viewport) }
-                : {}),
-            ...(options.scissor ? { scissor: options.scissor } : {}),
-            ...(options.visibleRange
-                ? { visibleRange: options.visibleRange }
-                : {}),
-            ...(options.firstInstance !== undefined
-                ? { firstInstance: options.firstInstance }
-                : {}),
-            ...(options.instanceCount !== undefined
-                ? { instanceCount: options.instanceCount }
-                : {}),
-            ...(options.placement
-                ? {
-                      placement: {
-                          set: this.getPlacementSet(options.placement.source),
-                          ...(options.placement.index !== undefined
-                              ? { index: options.placement.index }
-                              : {}),
-                          ...(options.placement.clipToPlacement
-                              ? {
-                                    clipToPlacement:
-                                        options.placement.clipToPlacement,
-                                }
-                              : {}),
-                      },
-                  }
-                : {}),
-        };
-        (options.picking ? this.#pickingDraws : this.#frameDraws).push(draw);
+        draw.mark = retained.handle;
+        if (placementSource) {
+            if (!draw.placement) {
+                throw new Error(
+                    "Placement source requires a materialized draw placement."
+                );
+            }
+            draw.placement.set = this.getPlacementSet(placementSource);
+        }
+        (picking ? this.#pickingDraws : this.#frameDraws).push(draw);
     }
 
     /**
@@ -402,16 +381,6 @@ function equalFloat32Arrays(first, second) {
         }
     }
     return true;
-}
-
-/** @param {import("@genome-spy/webgpu-renderer").DrawRect} rect */
-function toDrawRect(rect) {
-    return {
-        x: rect.x,
-        y: rect.y,
-        width: rect.width,
-        height: rect.height,
-    };
 }
 
 /**

@@ -556,6 +556,12 @@ dependencies.
   mutation is still observed through `ParamRuntime.watchExpression()`. Do not
   describe Milestone 3 as complete until geometry ownership and the remaining
   conservative paths have been reconciled.
+- Geometry tracing confirmed that explicit sample placement already has a
+  complete owner revision in `PlacementSource`. Closure-backed scrollbar,
+  sticky-summary, clip, and culling rectangles do not yet share a complete
+  mutation signal. A synthetic per-frame geometry revision was rejected
+  because it would merely mirror renderer work; Milestone 4 instead uses the
+  documented allocation-free materialization fallback for those producers.
 - A Luna review rejected the first eager implementation because it duplicated
   listeners for WebGL and classified every expression property as a live
   resource. The accepted implementation is lazy and registers only properties
@@ -628,6 +634,29 @@ once and owns the adapter's retained synchronization state.
   bundle results satisfy the ownership decision above.
 - Keep direct slot use public even if an optional helper is accepted.
 
+### Progress and decisions
+
+- Each occurrence now owns one stable renderer-shaped draw command plus stable
+  viewport, scissor, visible-range, and placement envelopes. Normal and picking
+  submissions reuse their identity instead of rebuilding nested option objects.
+- Closure-backed geometry is evaluated after `onBeforeRender()` and written
+  into those records in place. Generated ordinary-occurrence placement uses a
+  reusable `Float32Array`; explicit placement continues to rely on
+  `PlacementSource.geometryRevision`.
+- `WebGpuSurface` now attaches retained mark and placement handles directly to
+  the materialized command. The deleted path allocated a surface draw object,
+  viewport copy, and nested placement envelope for every submitted occurrence.
+- This is the geometry/draw-record slice of the milestone. Mark bindings,
+  compiled updater records, and deletion of reflected configuration snapshots
+  remain. The slice adds 27 Core WebGPU production lines relative to the first
+  Milestone 3 commits, accepted because it removes steady-state allocations and
+  fixes refresh of generated closure-backed placement geometry. The cumulative
+  integration directory remains 113 production lines below Milestone 2.
+- A Luna review accepted the draw lifetime, refresh timing, materialized
+  rectangle boundary, and visible/picking identity reuse. Placeholder renderer
+  handle identifiers remain an explicitly documented internal compromise until
+  the binding slice owns the complete renderer-facing record.
+
 ### Verification
 
 - Steady-state clean frames perform no mark configuration traversal and create
@@ -645,6 +674,12 @@ once and owns the adapter's retained synchronization state.
 - MCCA manual profiling confirms that synchronization remains efficient.
 - Total Core-plus-renderer production size falls; any optional renderer helper
   is absent from a fixture that does not import it.
+- The focused 78-test Core WebGPU suite, the full 2,105-test Core suite, type
+  checking, and linting pass. Hardware-backed smoke checks cover six examples
+  on both backends plus MCCA WebGPU rendering and picking.
+- Short DPR 1 MCCA runs cover horizontal WASD, WASD zoom, closeup toggle, and
+  closeup wheel. All correctness checks pass, and the layout and layout-replay
+  counters remain zero as required.
 
 ### Tentative commits
 

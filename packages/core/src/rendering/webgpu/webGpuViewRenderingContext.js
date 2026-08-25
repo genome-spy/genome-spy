@@ -4,7 +4,6 @@ import {
     normalizeClipOptions,
     prepareMarkClipOptionsFromClip,
 } from "../../view/renderingContext/clipOptions.js";
-import { createAnchorCullBounds } from "../immediate/bounds.js";
 import { RASTER_COORDINATE_OFFSET } from "../renderingConstants.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import {
@@ -106,27 +105,29 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 resourceRevision: -1,
                 viewOpacity: NaN,
                 resourcesDirty: true,
+                viewport: undefined,
+                generatedRectangles: undefined,
             };
             this.#marks.set(mark, state);
         }
 
         const inheritedClip = normalizeClipOptions(options);
+        /** @type {Occurrence} */
         const occurrence = {
             state,
             options,
+            coords,
             markCoords,
             clip: prepareMarkClipOptionsFromClip(
                 inheritedClip,
                 mark.properties.clip,
                 coords
             ),
-            visibleRange: createVisibleRange(
-                coords,
-                inheritedClip,
-                mark.properties.cullByVisibleRange
-            ),
+            cullClip: inheritedClip,
+            cull: mark.properties.cullByVisibleRange,
             range: { firstInstance: 0, instanceCount: 0 },
             placementIndex: state.occurrences.length,
+            draw: undefined,
         };
         state.occurrences.push(occurrence);
         this.#occurrences.push(occurrence);
@@ -167,17 +168,18 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             countPerformance("viewsVisited");
         }
 
+        const canvas = this.surface.getLogicalCanvasSize();
         for (const state of this.#marks.values()) {
             state.submittedIndexed = false;
             state.updated = false;
             state.active = false;
-            this.#prepareMarkState(state, picking);
+            this.#prepareMarkState(state, picking, canvas);
         }
         let synchronizedMarks = 0;
         let changedMarks = 0;
         let resourceWrites = 0;
         for (const occurrence of this.#occurrences) {
-            const writes = this.#submitOccurrence(occurrence, picking);
+            const writes = this.#submitOccurrence(occurrence, picking, canvas);
             if (writes !== undefined) {
                 synchronizedMarks++;
                 changedMarks += writes > 0 ? 1 : 0;
@@ -216,13 +218,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         const resolvedSource = explicitSources.values().next().value;
         state.generatedSource = !resolvedSource && state.occurrences.length > 1;
         if (state.generatedSource) {
-            const rectangles = new Float32Array(state.occurrences.length * 4);
-            for (const occurrence of state.occurrences) {
-                rectangles.set(
-                    createCanvasPlacement(canvas, occurrence.markCoords),
-                    occurrence.placementIndex * 4
-                );
-            }
+            const rectangles = (state.generatedRectangles = new Float32Array(
+                state.occurrences.length * 4
+            ));
+            writeOccurrencePlacements(state, canvas, rectangles);
             state.source = this.surface.updateOccurrencePlacements(
                 state.mark,
                 rectangles
@@ -240,14 +239,32 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             );
         }
 
+        if (state.source) {
+            state.viewport = createDrawRect();
+        }
+        for (const occurrence of state.occurrences) {
+            occurrence.draw = createOccurrenceDraw(occurrence, state);
+        }
+
         this.#validatePlacementTopology(state);
     }
 
     /**
      * @param {MarkState} state
      * @param {boolean} picking
+     * @param {{width: number, height: number}} canvas
      */
-    #prepareMarkState(state, picking) {
+    #prepareMarkState(state, picking, canvas) {
+        if (state.generatedRectangles) {
+            writeOccurrencePlacements(state, canvas, state.generatedRectangles);
+            this.surface.updateOccurrencePlacements(
+                state.mark,
+                state.generatedRectangles
+            );
+        }
+        if (state.viewport) {
+            writeDrawRect(state.viewport, state.ownerCoords);
+        }
         const viewOpacity = state.mark.unitView.getEffectiveOpacity();
         if (
             viewOpacity <= 0 ||
@@ -344,9 +361,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     /**
      * @param {Occurrence} occurrence
      * @param {boolean} picking
+     * @param {{width: number, height: number}} canvas
      * @returns {number | undefined} Resource writes, or undefined when unchecked.
      */
-    #submitOccurrence(occurrence, picking) {
+    #submitOccurrence(occurrence, picking, canvas) {
         const state = occurrence.state;
         if (
             !state.active ||
@@ -365,6 +383,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             return undefined;
         }
 
+        const draw = occurrence.draw;
+        if (!draw) {
+            throw new Error("Occurrence draw has not been compiled.");
+        }
+        refreshOccurrenceDraw(occurrence, state, draw, canvas);
+
         const placementIndex = state.generatedSource
             ? occurrence.placementIndex
             : occurrence.options.placement?.index;
@@ -380,9 +404,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             !isPlacementVisible(
                 state.source,
                 placementIndex,
-                state.ownerCoords,
-                occurrence.clip,
-                this.surface.getLogicalCanvasSize()
+                state.viewport,
+                draw.scissor,
+                canvas
             )
         ) {
             return undefined;
@@ -406,64 +430,17 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             }
         }
 
-        this.surface.drawMark(state.mark, {
-            ...(state.source ? { viewport: state.ownerCoords } : {}),
-            ...(occurrence.clip
-                ? { scissor: this.#createScissor(occurrence.clip) }
-                : {}),
-            ...(occurrence.visibleRange
-                ? {
-                      visibleRange: state.source
-                          ? localizeVisibleRange(
-                                occurrence.visibleRange,
-                                state.ownerCoords
-                            )
-                          : occurrence.visibleRange,
-                  }
-                : {}),
-            ...(state.source
-                ? {
-                      placement: {
-                          source: state.source,
-                          ...(placementIndex === undefined
-                              ? {}
-                              : { index: placementIndex }),
-                          ...(occurrence.options.placement?.clipToPlacement
-                              ? {
-                                    clipToPlacement:
-                                        occurrence.options.placement
-                                            .clipToPlacement,
-                                }
-                              : {}),
-                      },
-                  }
-                : {}),
-            firstInstance: range.firstInstance,
-            instanceCount: range.instanceCount,
-            picking,
-        });
+        draw.firstInstance = range.firstInstance;
+        draw.instanceCount = range.instanceCount;
+        if (draw.placement) {
+            draw.placement.index = placementIndex;
+        }
+        this.surface.drawMark(state.mark, draw, state.source, picking);
         countPerformance("drawCommands");
         if (state.indexed) {
             state.submittedIndexed = true;
         }
         return resourceWrites;
-    }
-
-    /**
-     * Expands unclipped dimensions to the full canvas. The renderer intersects
-     * the resulting logical-pixel scissor with the canvas bounds.
-     *
-     * @param {import("../../types/rendering.js").ClipOptions} clip
-     * @returns {import("@genome-spy/webgpu-renderer").DrawRect}
-     */
-    #createScissor(clip) {
-        const canvas = this.surface.getLogicalCanvasSize();
-        return {
-            x: clip.clipX ? clip.rect.x : 0,
-            y: clip.clipY ? clip.rect.y : 0,
-            width: clip.clipX ? clip.rect.width : canvas.width,
-            height: clip.clipY ? clip.rect.height : canvas.height,
-        };
     }
 
     get currentCoords() {
@@ -475,21 +452,141 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     }
 }
 
+/** @returns {import("@genome-spy/webgpu-renderer").DrawRect} */
+function createDrawRect() {
+    return { x: 0, y: 0, width: 0, height: 0 };
+}
+
 /**
- * Maps an occurrence rectangle into a positive-area canvas-owned placement.
- * Zero-thickness axis views still need one logical pixel for their strokes.
- *
- * @param {Rectangle} canvas
- * @param {Rectangle} target
- * @returns {[number, number, number, number]}
+ * @param {Occurrence} occurrence
+ * @param {MarkState} state
+ * @returns {import("@genome-spy/webgpu-renderer").DrawCommand}
  */
-function createCanvasPlacement(canvas, target) {
-    return [
-        (target.x - canvas.x) / canvas.width,
-        (target.y - canvas.y) / canvas.height,
-        Math.max(target.width, 1) / canvas.width,
-        Math.max(target.height, 1) / canvas.height,
-    ];
+function createOccurrenceDraw(occurrence, state) {
+    // Surface replaces these placeholder handles immediately before submission.
+    // Keeping the complete renderer shape stable avoids rebuilding its nested
+    // mark and placement envelopes on every paint.
+    /** @type {import("@genome-spy/webgpu-renderer").DrawCommand} */
+    const draw = {
+        mark: {
+            markId: /** @type {import("@genome-spy/webgpu-renderer").MarkId} */ (
+                -1
+            ),
+        },
+        firstInstance: 0,
+        instanceCount: 0,
+    };
+    if (state.viewport) {
+        draw.viewport = state.viewport;
+    }
+    if (occurrence.clip) {
+        draw.scissor = createDrawRect();
+    }
+    if (occurrence.cull) {
+        const cullX = occurrence.cull === true || occurrence.cull === "x";
+        const cullY = occurrence.cull === true || occurrence.cull === "y";
+        draw.visibleRange = {
+            x1: 0,
+            y1: 0,
+            x2: 0,
+            y2: 0,
+            cullX,
+            cullY,
+        };
+    }
+    if (state.source) {
+        draw.placement = {
+            set: { placementSetId: -1 },
+            ...(occurrence.options.placement?.clipToPlacement
+                ? {
+                      clipToPlacement:
+                          occurrence.options.placement.clipToPlacement,
+                  }
+                : {}),
+        };
+    }
+    return draw;
+}
+
+/**
+ * Materializes closure-backed geometry into stable renderer-facing records.
+ * This allocation-free fallback remains necessary until every producer has a
+ * complete geometry revision.
+ *
+ * @param {Occurrence} occurrence
+ * @param {MarkState} state
+ * @param {import("@genome-spy/webgpu-renderer").DrawCommand} draw
+ * @param {{width: number, height: number}} canvas
+ */
+function refreshOccurrenceDraw(occurrence, state, draw, canvas) {
+    if (draw.scissor) {
+        const clip = occurrence.clip;
+        draw.scissor.x = clip.clipX ? clip.rect.x : 0;
+        draw.scissor.y = clip.clipY ? clip.rect.y : 0;
+        draw.scissor.width = clip.clipX ? clip.rect.width : canvas.width;
+        draw.scissor.height = clip.clipY ? clip.rect.height : canvas.height;
+    }
+    if (draw.visibleRange) {
+        const coords = occurrence.coords;
+        const clip = occurrence.cullClip;
+        const x = coords.x;
+        const y = coords.y;
+        const x2 = x + coords.width;
+        const y2 = y + coords.height;
+        draw.visibleRange.x1 = draw.visibleRange.cullX
+            ? clip?.clipX
+                ? clip.rect.x
+                : x
+            : 0;
+        draw.visibleRange.y1 = draw.visibleRange.cullY
+            ? clip?.clipY
+                ? clip.rect.y
+                : y
+            : 0;
+        draw.visibleRange.x2 = draw.visibleRange.cullX
+            ? clip?.clipX
+                ? clip.rect.x2
+                : x2
+            : x2;
+        draw.visibleRange.y2 = draw.visibleRange.cullY
+            ? clip?.clipY
+                ? clip.rect.y2
+                : y2
+            : y2;
+        if (state.viewport) {
+            draw.visibleRange.x1 -= state.viewport.x;
+            draw.visibleRange.x2 -= state.viewport.x;
+            draw.visibleRange.y1 -= state.viewport.y;
+            draw.visibleRange.y2 -= state.viewport.y;
+        }
+    }
+}
+
+/**
+ * @param {import("@genome-spy/webgpu-renderer").DrawRect} target
+ * @param {Rectangle} source
+ */
+function writeDrawRect(target, source) {
+    target.x = source.x;
+    target.y = source.y;
+    target.width = source.width;
+    target.height = source.height;
+}
+
+/**
+ * @param {MarkState} state
+ * @param {{width: number, height: number}} canvas
+ * @param {Float32Array} rectangles
+ */
+function writeOccurrencePlacements(state, canvas, rectangles) {
+    for (const occurrence of state.occurrences) {
+        const target = occurrence.markCoords;
+        const offset = occurrence.placementIndex * 4;
+        rectangles[offset] = target.x / canvas.width;
+        rectangles[offset + 1] = target.y / canvas.height;
+        rectangles[offset + 2] = Math.max(target.width, 1) / canvas.width;
+        rectangles[offset + 3] = Math.max(target.height, 1) / canvas.height;
+    }
 }
 
 /**
@@ -497,11 +594,11 @@ function createCanvasPlacement(canvas, target) {
  *
  * @param {import("../../view/layout/placementSource.js").default} source
  * @param {number} index
- * @param {Rectangle} owner
- * @param {import("../../types/rendering.js").ClipOptions | undefined} clip
+ * @param {import("@genome-spy/webgpu-renderer").DrawRect} owner
+ * @param {import("@genome-spy/webgpu-renderer").DrawRect | undefined} scissor
  * @param {{width: number, height: number}} canvas
  */
-function isPlacementVisible(source, index, owner, clip, canvas) {
+function isPlacementVisible(source, index, owner, scissor, canvas) {
     const rectangles = source.getSnapshot().rectangles;
     const offset = index * 4;
     if (offset + 3 >= rectangles.length) {
@@ -516,33 +613,17 @@ function isPlacementVisible(source, index, owner, clip, canvas) {
         return false;
     }
 
-    const x1 = clip?.clipX ? Math.max(0, clip.rect.x) : 0;
-    const y1 = clip?.clipY ? Math.max(0, clip.rect.y) : 0;
-    const x2 = clip?.clipX
-        ? Math.min(canvas.width, clip.rect.x2)
-        : canvas.width;
-    const y2 = clip?.clipY
-        ? Math.min(canvas.height, clip.rect.y2)
-        : canvas.height;
+    const x1 = Math.max(0, scissor?.x ?? 0);
+    const y1 = Math.max(0, scissor?.y ?? 0);
+    const x2 = Math.min(
+        canvas.width,
+        scissor ? scissor.x + scissor.width : canvas.width
+    );
+    const y2 = Math.min(
+        canvas.height,
+        scissor ? scissor.y + scissor.height : canvas.height
+    );
     return x < x2 && y < y2 && x + width > x1 && y + height > y1;
-}
-
-/**
- * Placement-enabled mark channels are viewport-local, so anchor-culling bounds
- * must use the same coordinate system.
- *
- * @param {import("@genome-spy/webgpu-renderer").DrawVisibleRange} range
- * @param {Rectangle} owner
- * @returns {import("@genome-spy/webgpu-renderer").DrawVisibleRange}
- */
-function localizeVisibleRange(range, owner) {
-    return {
-        ...range,
-        x1: range.x1 - owner.x,
-        y1: range.y1 - owner.y,
-        x2: range.x2 - owner.x,
-        y2: range.y2 - owner.y,
-    };
 }
 
 /**
@@ -564,46 +645,23 @@ function localizeVisibleRange(range, owner) {
  * @property {number} resourceRevision
  * @property {number} viewOpacity
  * @property {boolean} resourcesDirty
+ * @property {import("@genome-spy/webgpu-renderer").DrawRect | undefined} viewport
+ * @property {Float32Array | undefined} generatedRectangles
  */
 
 /**
  * @typedef {object} Occurrence
  * @property {MarkState} state
  * @property {import("../../types/rendering.js").RenderingOptions} options
+ * @property {Rectangle} coords
  * @property {Rectangle} markCoords
  * @property {import("../../types/rendering.js").ClipOptions | undefined} clip
- * @property {import("@genome-spy/webgpu-renderer").DrawVisibleRange | undefined} visibleRange
+ * @property {import("../../types/rendering.js").ClipOptions | undefined} cullClip
+ * @property {import("../../spec/mark.js").MarkProps["cullByVisibleRange"]} cull
  * @property {{firstInstance: number, instanceCount: number}} range
  * @property {number} placementIndex
+ * @property {import("@genome-spy/webgpu-renderer").DrawCommand | undefined} draw
  */
-
-/**
- * Converts Core's absolute anchor-culling bounds to the renderer's draw
- * contract. Unselected axes use harmless finite values because their flags
- * disable those comparisons in WGSL.
- *
- * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {import("../../types/rendering.js").ClipOptions | undefined} clip
- * @param {import("../../spec/mark.js").MarkProps["cullByVisibleRange"]} cull
- * @returns {import("@genome-spy/webgpu-renderer").DrawVisibleRange | undefined}
- */
-function createVisibleRange(coords, clip, cull) {
-    const cullX = cull === true || cull === "x";
-    const cullY = cull === true || cull === "y";
-    if (!cullX && !cullY) {
-        return undefined;
-    }
-
-    const bounds = createAnchorCullBounds(coords, clip, cull);
-    return {
-        x1: cullX ? bounds.x1 : 0,
-        y1: cullY ? bounds.y1 : 0,
-        x2: cullX ? bounds.x2 : coords.x2,
-        y2: cullY ? bounds.y2 : coords.y2,
-        cullX,
-        cullY,
-    };
-}
 
 /**
  * @param {import("../../marks/mark.js").default} mark

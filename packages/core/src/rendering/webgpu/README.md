@@ -25,18 +25,18 @@ for the backend-neutral lifecycle and the
    ownership; it is replaced by the next completed layout.
 3. A visible or picking pass reuses the plan, invokes `onBeforeRender()` once
    per participating view, synchronizes dirty packed data and mark resources,
-   and resolves live visibility and placement geometry without replaying the
-   `LayoutResult`. Existing Core scale and parameter notifications advance a
-   small per-mark resource revision so unrelated marks bypass slot scanning.
+   and refreshes stable materialized draw geometry without replaying the
+   `LayoutResult`. Existing Core scale and parameter notifications advance
+   small per-mark revisions so unrelated marks bypass slot scanning.
 4. `webGpuMarkAdapter.js` translates Core encoders, resolved scales,
    selections, properties, and typed series into a renderer mark definition and
    configuration. The plan caches this shape until packed data or an
    expression-backed series changes; scale, opacity, semantic property, scalar,
    and selection leaves stay live. Unsupported behavior fails here with a
    contextual error.
-5. `WebGpuSurface` creates or updates one retained renderer handle per logical
-   mark, resolves renderer-owned placement sets, appends ordered draw commands,
-   and submits the frame.
+5. The frame plan owns one stable plain draw command per occurrence.
+   `WebGpuSurface` attaches retained mark and placement handles, appends those
+   commands in order, and submits the frame without rebuilding draw envelopes.
 
 Normal and picking passes share the same frame plan, ranges, placements, and
 order. A completed picking frame is reused for pointer reads until layout,
@@ -64,6 +64,10 @@ to the state that changed. Preserve these invariants when refactoring it:
 - Full placement-geometry updates are intentional and have measured as a minor
   interaction cost. Do not replace them with an application-specific common
   offset or another shortcut without new profiling evidence.
+- Closure-backed Core rectangles remain transitional inputs to the frame plan,
+  but they never cross `WebGpuSurface`. Until their producers expose complete
+  geometry revisions, refresh their stable numeric viewport, scissor, culling,
+  and generated-placement records in place after `onBeforeRender()`.
 
 The interaction benchmark under `packages/core/scripts/` is the regression
 gate for these decisions. In layout-free interaction cases, its structural
@@ -85,7 +89,9 @@ Changing the renderer definition recreates the handle.
 
 Collector data revision and placement topology control packed-series caches.
 Layout-only geometry changes update placement resources without repacking
-stable mark data.
+stable mark data. Draw-command, viewport, scissor, visible-range, and placement
+envelope identity remains stable between paints; mutable numeric fields are
+refreshed before culling and submission.
 
 Resource lifetime follows Core ownership, not frame participation. Disposing a
 mark's owning view releases its renderer handle and generated placement source.

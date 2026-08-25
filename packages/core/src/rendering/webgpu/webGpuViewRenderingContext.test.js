@@ -118,12 +118,16 @@ describe("WebGpuViewRenderingContext", () => {
         expect(adapterCalls[0][3]()).toBe(0.25);
 
         expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
-        expect(surface.drawMark).toHaveBeenCalledWith(mark, {
-            firstInstance: 0,
-            instanceCount: 1,
-            picking: false,
-            scissor: { x: 20, y: 40, width: 100, height: 50 },
-        });
+        expect(surface.drawMark).toHaveBeenCalledWith(
+            mark,
+            expect.objectContaining({
+                firstInstance: 0,
+                instanceCount: 1,
+                scissor: { x: 20, y: 40, width: 100, height: 50 },
+            }),
+            undefined,
+            false
+        );
     });
 
     test("passes anchor-culling bounds without enabling a scissor", () => {
@@ -158,19 +162,73 @@ describe("WebGpuViewRenderingContext", () => {
         context.render({ picking: false });
 
         expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
-        expect(surface.drawMark).toHaveBeenCalledWith(mark, {
-            firstInstance: 0,
-            instanceCount: 1,
-            picking: false,
-            visibleRange: {
-                x1: 0,
-                y1: 40,
-                x2: 120,
-                y2: 90,
-                cullX: false,
-                cullY: true,
-            },
+        expect(surface.drawMark).toHaveBeenCalledWith(
+            mark,
+            expect.objectContaining({
+                firstInstance: 0,
+                instanceCount: 1,
+                visibleRange: {
+                    x1: 0,
+                    y1: 40,
+                    x2: 120,
+                    y2: 90,
+                    cullX: false,
+                    cullY: true,
+                },
+            }),
+            undefined,
+            false
+        );
+    });
+
+    test("refreshes closure-backed geometry through stable draw records", () => {
+        let offset = 0;
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 300, height: 200 }),
+            updateMark: vi.fn(),
+            drawMark: vi.fn(),
+        };
+        const context = new WebGpuViewRenderingContext({
+            surface: /** @type {any} */ (surface),
         });
+        const view = { onBeforeRender: () => (offset += 10) };
+        const coords = Rectangle.create(20, 30, 100, 80).translate(
+            () => offset,
+            0
+        );
+        const mark = {
+            isPickingParticipant: () => true,
+            properties: { clip: true, cullByVisibleRange: "x" },
+            unitView: { getEffectiveOpacity: () => 1 },
+        };
+
+        context.pushView(/** @type {any} */ (view), coords);
+        context.renderMark(/** @type {any} */ (mark), {});
+        context.popView(/** @type {any} */ (view));
+        context.finish();
+
+        context.render({ picking: false });
+        const firstDraw = surface.drawMark.mock.calls[0][1];
+        expect(firstDraw.scissor).toEqual({
+            x: 30,
+            y: 30,
+            width: 100,
+            height: 80,
+        });
+        expect(firstDraw.visibleRange).toMatchObject({ x1: 30, x2: 130 });
+
+        context.render({ picking: true });
+        const secondDraw = surface.drawMark.mock.calls[1][1];
+        expect(secondDraw).toBe(firstDraw);
+        expect(surface.drawMark.mock.calls[1][3]).toBe(true);
+        expect(secondDraw.scissor).toEqual({
+            x: 40,
+            y: 30,
+            width: 100,
+            height: 80,
+        });
+        expect(secondDraw.visibleRange).toMatchObject({ x1: 40, x2: 140 });
     });
 
     test("omits non-picking marks from the pick draw list", () => {
@@ -276,9 +334,15 @@ describe("WebGpuViewRenderingContext", () => {
                 50 / 200,
             ])
         );
-        expect(surface.updateOccurrencePlacements).toHaveBeenCalledOnce();
+        expect(surface.updateOccurrencePlacements).toHaveBeenCalledTimes(3);
         expect(surface.updateMark).toHaveBeenCalledOnce();
         expect(mocks.getPackedMarkRange).toHaveBeenCalledTimes(2);
+        expect(surface.drawMark.mock.calls[0][1]).toBe(
+            surface.drawMark.mock.calls[2][1]
+        );
+        expect(surface.drawMark.mock.calls[1][1]).toBe(
+            surface.drawMark.mock.calls[3][1]
+        );
         expect(
             surface.drawMark.mock.calls.map((call) => call[1].placement.index)
         ).toEqual([0, 1, 0, 1]);
@@ -354,8 +418,9 @@ describe("WebGpuViewRenderingContext", () => {
         expect(surface.drawMark).toHaveBeenCalledOnce();
         expect(surface.drawMark.mock.calls[0][1]).toMatchObject({
             viewport: { x: 20.5, y: 30.5, width: 100, height: 80 },
-            placement: { source },
+            placement: { set: { placementSetId: -1 } },
         });
+        expect(surface.drawMark.mock.calls[0][2]).toBe(source);
     });
 
     test("submits only visible ranges from a 2,000-placement source", () => {
@@ -408,8 +473,6 @@ describe("WebGpuViewRenderingContext", () => {
         expect(
             surface.drawMark.mock.calls.map((call) => call[1].placement.index)
         ).toEqual([1, 2]);
-        expect(
-            surface.drawMark.mock.calls.every((call) => call[1].picking)
-        ).toBe(true);
+        expect(surface.drawMark.mock.calls.every((call) => call[3])).toBe(true);
     });
 });
