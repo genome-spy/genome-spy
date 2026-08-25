@@ -46,7 +46,7 @@ import { exportCanvas, exportRaster } from "../genomeSpy/canvasExport.js";
 export async function createRenderingBackend(options) {
     if (options.renderer == "canvas") {
         return createCanvas2DBackend(options);
-    } else if (options.renderer == "webgpu") {
+    } else if (options.renderer == "webgpu" && import.meta.env?.DEV) {
         return createWebGpuBackend(options);
     } else if (options.renderer != "auto" && options.renderer != "webgl") {
         throw new Error("Unknown renderer: " + options.renderer);

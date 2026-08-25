@@ -1,6 +1,7 @@
 {
   "name": "@genome-spy/webgpu-renderer",
   "description": "Prototype WebGPU renderer for GenomeSpy (marks + WGSL + GPU resources only)",
+  "private": true,
   "author": {
     "name": "Kari Lavikka",
     "email": "kari.lavikka@helsinki.fi"

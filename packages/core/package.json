@@ -44,12 +44,11 @@
     "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type CoreRootSpec > dist/schema.json",
-    "build:typings": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/src",
+    "build:typings": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/src && node scripts/removeDevelopmentOnlyArtifacts.mjs",
     "prepack": "node scripts/prepack.mjs",
     "postpack": "node scripts/postpack.mjs"
   },
   "dependencies": {
-    "@genome-spy/webgpu-renderer": "^0.64.0",
     "@gmod/bam": "^7.1.19",
     "@gmod/bbi": "^9.2.0",
     "@gmod/bed": "^2.1.10",
@@ -82,6 +81,7 @@
     "vega-util": "2.1.0"
   },
   "devDependencies": {
+    "@genome-spy/webgpu-renderer": "^0.64.0",
     "@types/long": "^4.0.1"
   }
 }
