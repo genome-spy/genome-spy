@@ -1,8 +1,7 @@
 # Core–WebGPU integration simplification plan
 
-Status: In progress. Milestone 1 seam cleanup and type hardening are implemented
-and verified. Its hardware smoke and final KISS audit remain before the
-milestone is closed.
+Status: In progress. Milestones 1 and 2 are implemented, verified, and reviewed.
+Milestone 3 is next.
 
 ## Context
 
@@ -405,6 +404,10 @@ Confirm that the milestone has a net simplification. Revert or defer helpers
 that merely relocate code. Confirm that no public renderer root export was
 added accidentally.
 
+Milestone 1 is complete. The focused suites, type checks, bundle fixtures, and
+the renderer's 52-test hardware-backed GPU suite pass. The final KISS audit
+retained only changes with an explicit deletion or contract benefit.
+
 ## Milestone 2: Introduce semantic built-in property slots
 
 ### Intended outcome
@@ -428,6 +431,51 @@ while custom shader integrations retain an explicit low-level escape hatch.
 - Check whether semantic slot definitions can replace configuration reflection
   in the surface; do not implement the complete synchronization rewrite yet.
 
+### Progress and decisions
+
+- Added typed, stable `handle.properties` slots for updateable text, link, and
+  arrow options. Initial configuration and later updates share the same
+  renderer-owned descriptors, so semantic conversion has one implementation.
+- Moved arrow degree-to-slope conversion and link/arrow enum codecs into the
+  programs that own their shader representation. Core passes degree angles,
+  strings, Booleans, and numeric values without naming uniforms or renderer
+  codes.
+- Kept `extraValues` as the raw custom-program escape hatch and added the
+  type-only `ExtraValueMarkOptions` mixin for custom configs. Built-in
+  `MarkConfig` no longer advertises raw dynamic uniforms.
+- Kept the descriptor compiler in its own internal module imported only by
+  text, link, and arrow. Point, rect, rule, and custom definitions do not bundle
+  it.
+- Separated Core's live semantic-property readers from the renderer config.
+  `WebGpuSurface` synchronizes them through `handle.properties` and fails loudly
+  if the renderer lacks a declared slot.
+- Luna's required API review found three follow-ups: duplicate Core enum
+  vocabularies, lost numeric boundary validation, and disconnected custom-extra
+  typing. All three were fixed before commit; no architectural re-review was
+  needed.
+
+### Milestone 2 measurements
+
+| Measure                           | Original baseline | After Milestone 2 | Delta |
+| --------------------------------- | ----------------: | ----------------: | ----: |
+| Core WebGPU production JavaScript |             4,199 |             4,100 |   -99 |
+| Core WebGPU tests                 |             3,288 |             3,317 |   +29 |
+| Renderer production JavaScript    |            14,711 |            14,886 |  +175 |
+| Renderer unit tests               |             4,708 |             4,820 |  +112 |
+| Renderer public type exports      |               109 |               116 |    +7 |
+| Renderer package export subpaths  |                22 |                22 |     0 |
+
+The cross-package production total is temporarily 76 lines above the original
+baseline. This is accepted at the public API boundary because it removes
+stringly shader coupling and enables the larger reflection/revision deletions
+in Milestones 3–4. It must be repaid there rather than counted as a completed
+simplification.
+
+Bundle growth stays localized and small: renderer-only is +24 minified/+9 gzip;
+point fixtures are +38/+14–15; custom identity is +24/+5; and text fixtures are
++414/+208–224 with one property-helper module. No export subpath or unrelated
+mark/scale/font module was pulled into a fixture.
+
 ### Verification
 
 - No built-in WGSL uniform names remain under Core's WebGPU integration.
@@ -447,6 +495,10 @@ while custom shader integrations retain an explicit low-level escape hatch.
 Review the public API before proceeding. Confirm that it remains small, that
 slots are canonical, and that Core-specific vocabulary has not entered the
 renderer.
+
+Milestone 2 is complete. Core contains no built-in raw-uniform reference. Luna
+confirmed stable slot-map identity, the custom-program boundary, and the
+tree-shaking result after the review fixes.
 
 ## Milestone 3: Add backend-neutral Core revisions
 

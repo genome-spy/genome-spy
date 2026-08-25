@@ -31,8 +31,8 @@ for the backend-neutral lifecycle and the
 4. `webGpuMarkAdapter.js` translates Core encoders, resolved scales,
    selections, properties, and typed series into a renderer mark definition and
    configuration. The plan caches this shape until packed data or an
-   expression-backed series changes; scale, opacity, uniform, scalar, and
-   selection leaves stay live. Unsupported behavior fails here with a
+   expression-backed series changes; scale, opacity, semantic property, scalar,
+   and selection leaves stay live. Unsupported behavior fails here with a
    contextual error.
 5. `WebGpuSurface` creates or updates one retained renderer handle per logical
    mark, resolves renderer-owned placement sets, appends ordered draw commands,
@@ -51,8 +51,9 @@ to the state that changed. Preserve these invariants when refactoring it:
   occurrences. Only a completed layout replaces the frame plan.
 - Stable packed data and expression revisions must preserve mark-configuration
   identity. That identity proves that series references are unchanged, while
-  live scale, opacity, value, scalar, and selection leaves are checked through
-  renderer slots and immutable snapshots.
+  live scale, opacity, value, property, scalar, and selection leaves are checked
+  through renderer slots and immutable snapshots. Core never names built-in
+  shader uniforms.
 - Existing scale and parameter notifications provide per-mark dirty revisions.
   Marks backed by selections remain conservatively dirty until Core exposes a
   complete selection-change notification contract; do not add a parallel
@@ -74,9 +75,10 @@ See `packages/core/scripts/README.md` for the command and interpretation rules.
 
 Core mark identity is the retained resource key. Repeated occurrences and
 facets reuse the same renderer mark instead of duplicating pipelines or data.
-Compatible changes update series, scale, value, scalar, and selection slots in
-one batch. Packed-data/config revisions, scale and parameter notifications, and
-view-opacity changes select the marks that need synchronization.
+Compatible changes update series, scale, value, semantic property, scalar, and
+selection slots in one batch. Packed-data/config revisions, scale and parameter
+notifications, and view-opacity changes select the marks that need
+synchronization.
 `WebGpuSurface` then compares those marks' live leaves against immutable
 snapshots, so reusing the same config object does not suppress updates.
 Changing the renderer definition recreates the handle.

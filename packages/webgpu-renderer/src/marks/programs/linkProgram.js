@@ -1,4 +1,5 @@
 import BaseProgram from "./internal/baseProgram.js";
+import { initializePropertySlots } from "./internal/propertySlots.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 
 /**
@@ -7,6 +8,24 @@ import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 
 const LINK_SHAPES = ["arc", "dome", "diagonal", "line"];
 const ORIENTS = ["vertical", "horizontal"];
+
+/** @param {string} value */
+function encodeLinkShape(value) {
+    const index = LINK_SHAPES.indexOf(value);
+    if (index < 0) {
+        throw new Error(`Unknown link shape: ${String(value)}`);
+    }
+    return index;
+}
+
+/** @param {string} value */
+function encodeOrient(value) {
+    const index = ORIENTS.indexOf(value);
+    if (index < 0) {
+        throw new Error(`Unknown link orientation: ${String(value)}`);
+    }
+    return index;
+}
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 export const LINK_CHANNEL_SPECS = {
@@ -360,6 +379,46 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 `;
 
 export default class LinkProgram extends BaseProgram {
+    get propertySlotDefinitions() {
+        return {
+            arcFadingDistance: {
+                uniform: "uArcFadingDistance",
+                default: [0, 0],
+            },
+            arcHeightFactor: { uniform: "uArcHeightFactor", default: 1 },
+            minArcHeight: { uniform: "uMinArcHeight", default: 1.5 },
+            linkShape: {
+                uniform: "uShape",
+                default: "arc",
+                encode: encodeLinkShape,
+            },
+            orient: {
+                uniform: "uOrient",
+                default: "vertical",
+                encode: encodeOrient,
+            },
+            clampApex: {
+                uniform: "uClampApex",
+                default: false,
+                encode: (/** @type {boolean} */ value) => (value ? 1 : 0),
+            },
+            maxChordLength: { uniform: "uMaxChordLength", default: 50000 },
+            segments: {
+                uniform: "uSegmentBreaks",
+                default: 101,
+                encode: (/** @type {number} */ value) => {
+                    const segments = Math.round(Number(value));
+                    this._segmentCount = segments;
+                    return segments;
+                },
+            },
+        };
+    }
+
+    _initializeExtraUniforms() {
+        initializePropertySlots(this, this.propertySlotDefinitions);
+    }
+
     /**
      * @param {string} name
      * @param {number | number[]} value
@@ -415,42 +474,6 @@ export default class LinkProgram extends BaseProgram {
             { name: "uSegmentBreaks", type: "f32", components: 1 },
         ];
         return layout;
-    }
-
-    _initializeExtraUniforms() {
-        /** @type {import("../../index.js").LinkMarkOptions} */
-        const props = /** @type {import("../../index.js").LinkMarkOptions} */ (
-            this._markConfig ?? {}
-        );
-        const arcFading =
-            Array.isArray(props.arcFadingDistance) &&
-            props.arcFadingDistance.length === 2
-                ? props.arcFadingDistance
-                : [0, 0];
-        const arcHeightFactor = props.arcHeightFactor ?? 1.0;
-        const minArcHeight = props.minArcHeight ?? 1.5;
-        const maxChordLength = props.maxChordLength ?? 50000;
-        const clampApex = props.clampApex ? 1 : 0;
-        const segments = Math.round(props.segments ?? 101);
-        const shapeIndex =
-            typeof props.linkShape === "number"
-                ? props.linkShape
-                : LINK_SHAPES.indexOf(props.linkShape ?? "arc");
-        const orientIndex =
-            typeof props.orient === "number"
-                ? props.orient
-                : ORIENTS.indexOf(props.orient ?? "vertical");
-
-        this._segmentCount = segments;
-
-        this._setUniformValue("uArcFadingDistance", arcFading);
-        this._setUniformValue("uArcHeightFactor", arcHeightFactor);
-        this._setUniformValue("uMinArcHeight", minArcHeight);
-        this._setUniformValue("uShape", shapeIndex >= 0 ? shapeIndex : 0);
-        this._setUniformValue("uOrient", orientIndex >= 0 ? orientIndex : 0);
-        this._setUniformValue("uClampApex", clampApex);
-        this._setUniformValue("uMaxChordLength", maxChordLength);
-        this._setUniformValue("uSegmentBreaks", segments);
     }
 
     /**

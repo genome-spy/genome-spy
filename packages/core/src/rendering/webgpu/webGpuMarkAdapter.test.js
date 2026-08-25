@@ -346,7 +346,7 @@ describe("WebGPU mark adapter", () => {
         expect(config.channels.dy).toEqual(dynamicValue(9));
         expect(config.font).toBe("Lato");
         expect(config.viewport).toEqual([10, 20, 110, 220]);
-        expect(config.dynamicValues.uViewport).toEqual({
+        expect(translated.properties.viewport).toEqual({
             value: [10, 20, 110, 220],
         });
     });
@@ -617,8 +617,8 @@ describe("WebGPU mark adapter", () => {
         expect(translated.definition.type).toBe("link");
         expect(config.channels.xOffset).toEqual(dynamicValue(2));
         expect(config.channels.y2Offset).toEqual(dynamicValue(5));
-        expect(config.linkShape).toBe(1);
-        expect(config.orient).toBe(1);
+        expect(config.linkShape).toBe("dome");
+        expect(config.orient).toBe("horizontal");
         expect(config.arcFadingDistance).toEqual([10, 20]);
         expect(config.segments).toBe(25);
     });
@@ -666,12 +666,14 @@ describe("WebGPU mark adapter", () => {
             data: new Uint32Array([0, 1]),
             type: "u32",
         });
-        expect(config.headShape).toBe(1);
-        expect(config.headPlacement).toBe(1);
+        expect(config.headAngle).toBe(45);
+        expect(config.headNotchAngle).toBe(90);
+        expect(config.headShape).toBe("open");
+        expect(config.headPlacement).toBe("outside");
         expect(config.headSpacing).toBe(10);
     });
 
-    test("retains expression-driven arrow properties as extra uniforms", () => {
+    test("retains expression-driven arrow properties semantically", () => {
         const mark = createMark(
             "arrow",
             [{}],
@@ -705,10 +707,8 @@ describe("WebGPU mark adapter", () => {
         };
 
         const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
-        const config = /** @type {any} */ (translated).config;
-
-        expect(config.dynamicValues).toEqual({
-            uHeadWidth: { value: 7 },
+        expect(translated.properties).toEqual({
+            headWidth: { value: 7 },
         });
         expect(watchExpression).toHaveBeenCalledWith(
             "width",

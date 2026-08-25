@@ -9,6 +9,27 @@ import { thresholdScale } from "../../scales/threshold.js";
 import TextProgram from "./textProgram.js";
 
 describe("TextProgram series replacement", () => {
+    it("updates coupled text uniforms through semantic properties", () => {
+        const renderer = createMockRenderer();
+        const program = new TextProgram(renderer, {
+            channels: {
+                text: { value: "x" },
+                x: { value: 0, scale: identityScale() },
+                y: { value: 0, scale: identityScale() },
+            },
+        });
+        const writeBuffer = vi.spyOn(renderer.device.queue, "writeBuffer");
+        const properties = program.getSlotHandles().properties;
+
+        properties.logoLetters.set(true);
+
+        expect(readUniform(program, "uLogoLetters", "u32")).toBe(1);
+        expect(readUniform(program, "uSdfNumerator", "f32")).toBeCloseTo(
+            program._sdfNumeratorBase * 0.5
+        );
+        expect(writeBuffer).toHaveBeenCalledOnce();
+    });
+
     it("uses Core-provided font metrics and atlas resources", () => {
         const renderer = createMockRenderer();
         const fontEntry = new BmFontManager().getDefaultFont();
@@ -385,3 +406,18 @@ describe("TextProgram series replacement", () => {
         );
     });
 });
+
+/**
+ * @param {TextProgram} program
+ * @param {string} name
+ * @param {"f32" | "u32"} type
+ */
+function readUniform(program, name, type) {
+    const entry = program._uniformBufferState.entries.get(name);
+    if (!entry) {
+        throw new Error(`Missing test uniform: ${name}`);
+    }
+    return type == "u32"
+        ? program._uniformBufferState.view.getUint32(entry.offset, true)
+        : program._uniformBufferState.view.getFloat32(entry.offset, true);
+}

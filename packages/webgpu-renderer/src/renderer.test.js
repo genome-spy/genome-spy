@@ -408,6 +408,7 @@ function createProgram() {
             series,
             scales: {},
             values: {},
+            properties: {},
             extraValues: {},
             scalarSlots: {},
             selections: {},

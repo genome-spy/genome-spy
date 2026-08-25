@@ -117,7 +117,7 @@ describe("WebGpuViewRenderingContext", () => {
         ]).toEqual([20.5, 30.5, 100, 80]);
         expect(adapterCalls[0][3]()).toBe(0.25);
 
-        expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {});
+        expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
         expect(surface.drawMark).toHaveBeenCalledWith(mark, {
             firstInstance: 0,
             instanceCount: 1,
@@ -157,7 +157,7 @@ describe("WebGpuViewRenderingContext", () => {
         context.finish();
         context.render({ picking: false });
 
-        expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {});
+        expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
         expect(surface.drawMark).toHaveBeenCalledWith(mark, {
             firstInstance: 0,
             instanceCount: 1,

@@ -1,4 +1,5 @@
 import BaseProgram from "./internal/baseProgram.js";
+import { initializePropertySlots } from "./internal/propertySlots.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import { linearScale } from "../../scales/linear.js";
 import { buildTextLayout } from "../../fonts/layout.js";
@@ -667,6 +668,51 @@ function buildConfiguredTextLayout(
 }
 
 export default class TextProgram extends BaseProgram {
+    get propertySlotDefinitions() {
+        return {
+            viewport: {
+                uniform: "uViewport",
+                getDefault: () => [
+                    0,
+                    0,
+                    this.renderer._globals.width,
+                    this.renderer._globals.height,
+                ],
+            },
+            paddingX: { uniform: "uPaddingX", default: 0 },
+            paddingY: { uniform: "uPaddingY", default: 0 },
+            flushX: {
+                uniform: "uFlushX",
+                default: true,
+                encode: (/** @type {boolean} */ value) => (value ? 1 : 0),
+            },
+            flushY: {
+                uniform: "uFlushY",
+                default: true,
+                encode: (/** @type {boolean} */ value) => (value ? 1 : 0),
+            },
+            squeeze: {
+                uniform: "uSqueeze",
+                default: true,
+                encode: (/** @type {boolean} */ value) => (value ? 1 : 0),
+            },
+            logoLetters: {
+                default: false,
+                set: (/** @type {boolean} */ value) => {
+                    this._setUniformValue("uLogoLetters", value ? 1 : 0);
+                    this._setUniformValue(
+                        "uSdfNumerator",
+                        this._sdfNumeratorBase * (value ? 0.5 : 1)
+                    );
+                },
+            },
+        };
+    }
+
+    _initializeExtraUniforms() {
+        initializePropertySlots(this, this.propertySlotDefinitions);
+    }
+
     /**
      * @param {import("../../renderer.js").Renderer} renderer
      * @param {import("../../index.js").MarkConfig<"text">} config
@@ -847,59 +893,14 @@ export default class TextProgram extends BaseProgram {
         const metrics = fontEntry.metrics;
         const atlasWidth = metrics.common.scaleW;
         const atlasHeight = metrics.common.scaleH;
-        const paddingX =
-            typeof this._markConfig.paddingX === "number"
-                ? this._markConfig.paddingX
-                : 0;
-        const paddingY =
-            typeof this._markConfig.paddingY === "number"
-                ? this._markConfig.paddingY
-                : 0;
-        const flushX =
-            typeof this._markConfig.flushX === "boolean"
-                ? this._markConfig.flushX
-                : true;
-        const flushY =
-            typeof this._markConfig.flushY === "boolean"
-                ? this._markConfig.flushY
-                : true;
-        const squeeze =
-            typeof this._markConfig.squeeze === "boolean"
-                ? this._markConfig.squeeze
-                : true;
-        const logoLetters =
-            typeof this._markConfig.logoLetters === "boolean"
-                ? this._markConfig.logoLetters
-                : false;
-        const viewport =
-            Array.isArray(this._markConfig.viewport) &&
-            this._markConfig.viewport.length === 4
-                ? this._markConfig.viewport
-                : [
-                      0,
-                      0,
-                      this.renderer._globals.width,
-                      this.renderer._globals.height,
-                  ];
-
         this._setUniformValue("uFontBase", metrics.common.base);
         this._setUniformValue("uLayoutFontSize", layout.fontSize);
         this._setUniformValue("uAtlasScale", [1 / atlasWidth, 1 / atlasHeight]);
         this._setUniformValue("uCapHeight", metrics.capHeight);
         this._setUniformValue("uDescent", metrics.descent);
         this._setUniformValue("uSdfPadding", SDF_PADDING);
-        this._setUniformValue(
-            "uSdfNumerator",
-            metrics.common.base * 0.35 * (logoLetters ? 0.5 : 1)
-        );
-        this._setUniformValue("uPaddingX", paddingX);
-        this._setUniformValue("uPaddingY", paddingY);
-        this._setUniformValue("uFlushX", flushX ? 1 : 0);
-        this._setUniformValue("uFlushY", flushY ? 1 : 0);
-        this._setUniformValue("uSqueeze", squeeze ? 1 : 0);
-        this._setUniformValue("uLogoLetters", logoLetters ? 1 : 0);
-        this._setUniformValue("uViewport", viewport);
-
+        /** @type {number} */
+        this._sdfNumeratorBase = metrics.common.base * 0.35;
         this._updateTextLayoutBuffers(layout);
 
         const glyphMetricsLength = metrics.maxCharId + 1;

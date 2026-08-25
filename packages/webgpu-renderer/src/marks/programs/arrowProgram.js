@@ -1,7 +1,35 @@
 import BaseProgram from "./internal/baseProgram.js";
+import { initializePropertySlots } from "./internal/propertySlots.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 
 /** @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput */
+
+const HEAD_SHAPES = ["triangle", "open"];
+const HEAD_PLACEMENTS = ["inside", "outside"];
+
+/** @param {number} angle */
+function headAngleToSlope(angle) {
+    const clamped = Math.min(Math.max(angle, 1), 90);
+    return 1 / Math.max(Math.tan((clamped * Math.PI) / 180), 1e-6);
+}
+
+/** @param {string} value */
+function encodeHeadShape(value) {
+    const index = HEAD_SHAPES.indexOf(value);
+    if (index < 0) {
+        throw new Error(`Unknown arrow head shape: ${String(value)}`);
+    }
+    return index;
+}
+
+/** @param {string} value */
+function encodeHeadPlacement(value) {
+    const index = HEAD_PLACEMENTS.indexOf(value);
+    if (index < 0) {
+        throw new Error(`Unknown arrow head placement: ${String(value)}`);
+    }
+    return index;
+}
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 export const ARROW_CHANNEL_SPECS = {
@@ -436,6 +464,54 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 `;
 
 export default class ArrowProgram extends BaseProgram {
+    get propertySlotDefinitions() {
+        return {
+            headAngle: {
+                uniform: "uHeadSlope",
+                default: 45,
+                encode: headAngleToSlope,
+            },
+            headNotchAngle: {
+                uniform: "uHeadNotchSlope",
+                default: 90,
+                encode: headAngleToSlope,
+            },
+            minSize: { uniform: "uMinSize", default: 1 },
+            headWidth: { uniform: "uHeadWidth", default: 3 },
+            startNotch: {
+                uniform: "uStartNotch",
+                default: false,
+                encode: (/** @type {boolean} */ value) => (value ? 1 : 0),
+            },
+            minStemLength: { uniform: "uMinStemLength", default: 0 },
+            headSpacing: {
+                uniform: "uHeadSpacing",
+                default: /** @type {number | null} */ (null),
+                encode: (/** @type {number | null} */ value) => value ?? -1,
+            },
+            stem: {
+                uniform: "uStem",
+                default: true,
+                encode: (/** @type {boolean} */ value) =>
+                    value === false ? 0 : 1,
+            },
+            headShape: {
+                uniform: "uHeadShape",
+                default: "triangle",
+                encode: encodeHeadShape,
+            },
+            headPlacement: {
+                uniform: "uHeadPlacement",
+                default: "inside",
+                encode: encodeHeadPlacement,
+            },
+        };
+    }
+
+    _initializeExtraUniforms() {
+        initializePropertySlots(this, this.propertySlotDefinitions);
+    }
+
     get channelOrder() {
         return CHANNELS;
     }
@@ -479,22 +555,6 @@ export default class ArrowProgram extends BaseProgram {
             { name: "uHeadShape", type: "u32", components: 1 },
             { name: "uHeadPlacement", type: "u32", components: 1 },
         ];
-    }
-
-    _initializeExtraUniforms() {
-        const props = /** @type {import("../../index.js").ArrowMarkOptions} */ (
-            this._markConfig ?? {}
-        );
-        this._setUniformValue("uHeadSlope", props.headAngle ?? 1);
-        this._setUniformValue("uHeadNotchSlope", props.headNotchAngle ?? 1);
-        this._setUniformValue("uMinSize", props.minSize ?? 1);
-        this._setUniformValue("uHeadWidth", props.headWidth ?? 3);
-        this._setUniformValue("uStartNotch", props.startNotch ? 1 : 0);
-        this._setUniformValue("uMinStemLength", props.minStemLength ?? 0);
-        this._setUniformValue("uHeadSpacing", props.headSpacing ?? -1);
-        this._setUniformValue("uStem", props.stem === false ? 0 : 1);
-        this._setUniformValue("uHeadShape", props.headShape ?? 0);
-        this._setUniformValue("uHeadPlacement", props.headPlacement ?? 0);
     }
 
     /**

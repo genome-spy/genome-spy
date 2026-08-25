@@ -193,8 +193,9 @@ domains would require a separate draw-time scale-state contract.
 ### Mark handles and slots
 
 `createMark` returns a handle containing `series`, `scales`, `values`,
-`extraValues`, `scalarSlots`, and `selections`. These handles update retained
-resources directly without looking up the mark through the renderer.
+`properties`, `extraValues`, `scalarSlots`, and `selections`. These handles
+update retained resources directly without looking up the mark through the
+renderer.
 
 Scale and value slots exist only for channels configured with a scale or
 dynamic value. `default` identifies an unconditional channel branch, while
@@ -213,6 +214,25 @@ values.size.set(4);
 Conditional scale and value slots are keyed by selection name. For example,
 `mark.scales.color.conditions.brush.setRange(...)` updates the color scale used
 by a condition guarded by `brush`.
+
+### Built-in mark properties
+
+Built-in marks expose their updateable non-channel options through typed
+`properties` slots. These slots use API values rather than shader
+representations: arrow angles are degrees, enum-like options are strings, and
+Boolean options remain Boolean.
+
+```js
+arrows.properties.headAngle.set(35);
+arrows.properties.headShape.set("open");
+labels.properties.viewport.set([0, 0, 640, 480]);
+```
+
+`extraValues` is the low-level counterpart for custom mark definitions whose
+configuration intentionally names extra uniforms. Compose the custom config
+type with `ExtraValueMarkOptions` to type their initial `dynamicValues`.
+Built-in uniform names are implementation details and are not a public update
+contract.
 
 ### Batched updates
 

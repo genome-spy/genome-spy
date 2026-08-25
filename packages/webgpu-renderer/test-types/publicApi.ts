@@ -1,5 +1,6 @@
 import {
     createRenderer,
+    type ExtraValueMarkOptions,
     type MarkDefinition,
 } from "@genome-spy/webgpu-renderer";
 import { setDebugResourcesEnabled } from "@genome-spy/webgpu-renderer/debug";
@@ -87,6 +88,8 @@ export async function createPointExample(
         x: new Float32Array([0, 100]),
         y: new Float32Array([50, 50]),
     });
+    labels.properties.viewport.set([0, 0, 120, 100]);
+    labels.properties.logoLetters.set(true);
 
     renderer.render({
         clearColor: [1, 1, 1, 1],
@@ -102,23 +105,25 @@ export async function createPointExample(
         ],
     });
 
-    renderer.createMark(arrowMark, {
+    const arrows = renderer.createMark(arrowMark, {
         channels: {},
-        headAngle: 1,
-        headNotchAngle: 0,
+        headAngle: 45,
+        headNotchAngle: 90,
         minSize: 1,
         headWidth: 3,
         startNotch: false,
         minStemLength: 0,
         headSpacing: null,
         stem: true,
-        headShape: 0,
-        headPlacement: 0,
+        headShape: "triangle",
+        headPlacement: "inside",
     });
+    arrows.properties.headAngle.set(30);
+    arrows.properties.headShape.set("open");
     renderer.destroy();
 }
 
-type CustomConfig = { radius: number };
+type CustomConfig = { radius: number } & ExtraValueMarkOptions;
 
 declare const customMark: MarkDefinition<CustomConfig>;
 
@@ -126,7 +131,10 @@ export async function createCustomExample(
     canvas: HTMLCanvasElement
 ): Promise<void> {
     const renderer = await createRenderer(canvas);
-    renderer.createMark(customMark, { radius: 4 });
+    renderer.createMark(customMark, {
+        radius: 4,
+        dynamicValues: { uRadius: { value: 4 } },
+    });
     renderer.destroy();
 }
 

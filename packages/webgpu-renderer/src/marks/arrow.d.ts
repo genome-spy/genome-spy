@@ -1,3 +1,12 @@
-import type { MarkConfig, MarkDefinition } from "../index.js";
+import type {
+    ArrowMarkProperties,
+    MarkConfig,
+    MarkDefinition,
+    TypedArray,
+} from "../index.js";
 
-export const arrowMark: MarkDefinition<MarkConfig<"arrow">>;
+export const arrowMark: MarkDefinition<
+    MarkConfig<"arrow">,
+    Record<string, TypedArray>,
+    ArrowMarkProperties
+>;

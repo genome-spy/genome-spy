@@ -101,6 +101,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 ownerCoords: undefined,
                 definition: undefined,
                 config: undefined,
+                properties: undefined,
                 configRevision: -1,
                 resourceRevision: -1,
                 viewOpacity: NaN,
@@ -298,6 +299,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.packed = packed;
             state.definition = translated?.definition;
             state.config = translated?.config;
+            state.properties = translated?.properties;
             state.configRevision = configRevision;
         }
         if (packedChanged) {
@@ -396,7 +398,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                         this.surface.updateMark(
                             state.mark,
                             state.definition,
-                            state.config
+                            state.config,
+                            state.properties ?? {}
                         )
                 );
                 state.resourcesDirty = false;
@@ -556,6 +559,7 @@ function localizeVisibleRange(range, owner) {
  * @property {Rectangle | undefined} ownerCoords
  * @property {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any> | undefined} definition
  * @property {object | undefined} config
+ * @property {Record<string, {value: any}> | undefined} properties
  * @property {number} configRevision
  * @property {number} resourceRevision
  * @property {number} viewOpacity

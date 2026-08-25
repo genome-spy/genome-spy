@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => {
         values: {
             size: { default: { set: vi.fn() } },
         },
+        properties: {},
         extraValues: {},
         scalarSlots: {},
         selections: {},
@@ -78,6 +79,7 @@ beforeEach(() => {
     mocks.handle.values = {
         size: { default: { set: vi.fn() } },
     };
+    mocks.handle.properties = {};
     mocks.handle.extraValues = {};
     mocks.handle.scalarSlots = {};
     mocks.handle.selections = {};
@@ -89,9 +91,10 @@ beforeEach(() => {
  * @param {any} definition
  * @param {any} config
  * @param {any} [options]
+ * @param {Record<string, {value: any}>} [properties]
  */
-function useMark(surface, mark, definition, config, options) {
-    surface.updateMark(mark, definition, config);
+function useMark(surface, mark, definition, config, options, properties) {
+    surface.updateMark(mark, definition, config, properties);
     surface.drawMark(mark, options);
 }
 
@@ -669,10 +672,10 @@ describe("WebGpuSurface", () => {
         expect(conditionalSet).toHaveBeenCalledWith(0.75);
     });
 
-    test("updates dynamic extra uniforms without recreating a mark", async () => {
+    test("updates semantic properties without recreating a mark", async () => {
         const headWidthSet = vi.fn();
-        mocks.handle.extraValues = {
-            uHeadWidth: { set: headWidthSet },
+        mocks.handle.properties = {
+            headWidth: { set: headWidthSet },
         };
         const container = document.createElement("div");
         const surface = new WebGpuSurface(
@@ -691,23 +694,25 @@ describe("WebGpuSurface", () => {
             /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
                 /** @type {unknown} */ ({ type: "arrow" })
             );
-        /** @param {number} value */
-        const config = (value) => ({
+        const config = {
             count: 1,
             channels: {},
-            dynamicValues: { uHeadWidth: { value } },
-        });
+        };
 
-        useMark(surface, mark, definition, config(3));
-        useMark(surface, mark, definition, config(5));
+        useMark(surface, mark, definition, config, undefined, {
+            headWidth: { value: 3 },
+        });
+        useMark(surface, mark, definition, config, undefined, {
+            headWidth: { value: 5 },
+        });
 
         expect(headWidthSet).toHaveBeenCalledWith(5);
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
     });
 
-    test("updates retained extra uniforms when their values change", async () => {
+    test("updates retained semantic arrays when their values change", async () => {
         const viewportSet = vi.fn();
-        mocks.handle.extraValues = { uViewport: { set: viewportSet } };
+        mocks.handle.properties = { viewport: { set: viewportSet } };
         const container = document.createElement("div");
         const surface = new WebGpuSurface(
             /** @type {any} */ ({
@@ -725,14 +730,17 @@ describe("WebGpuSurface", () => {
             /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
                 /** @type {unknown} */ ({ type: "text" })
             );
-        const config = /** @param {number[]} viewport */ (viewport) => ({
+        const config = {
             count: 1,
             channels: {},
-            dynamicValues: { uViewport: { value: viewport } },
-        });
+        };
 
-        useMark(surface, mark, definition, config([10, 20, 110, 220]));
-        useMark(surface, mark, definition, config([48, 16, 110, 220]));
+        useMark(surface, mark, definition, config, undefined, {
+            viewport: { value: [10, 20, 110, 220] },
+        });
+        useMark(surface, mark, definition, config, undefined, {
+            viewport: { value: [48, 16, 110, 220] },
+        });
 
         expect(viewportSet).toHaveBeenCalledWith([48, 16, 110, 220]);
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();

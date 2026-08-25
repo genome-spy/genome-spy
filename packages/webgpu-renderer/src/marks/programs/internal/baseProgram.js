@@ -247,7 +247,6 @@ export default class BaseProgram {
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
         });
-
         /** @type {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} */
         this._resourceLayout = [];
 
@@ -268,7 +267,7 @@ export default class BaseProgram {
         this._slotBindingsDirty = false;
         this._slotPickingDirty = false;
 
-        /** @type {Omit<import("../../../index.d.ts").MarkHandle, "markId">} */
+        /** @type {Omit<import("../../../index.d.ts").MarkHandle<any, any>, "markId">} */
         this._slotHandles = {
             batchUpdates: (update) => this._batchSlotUpdates(update),
             series: {
@@ -279,6 +278,7 @@ export default class BaseProgram {
             },
             scales: {},
             values: {},
+            properties: {},
             extraValues: {},
             scalarSlots: {},
             selections: {},
@@ -688,7 +688,7 @@ export default class BaseProgram {
     /**
      * Slot handles for scale/value/selection updates (default + conditional branches).
      *
-     * @returns {Omit<import("../../../index.d.ts").MarkHandle, "markId">}
+     * @returns {Omit<import("../../../index.d.ts").MarkHandle<any, any>, "markId">}
      */
     getSlotHandles() {
         return this._slotHandles;

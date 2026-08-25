@@ -151,9 +151,23 @@ export type ValueSlotHandle = {
     set(value: number | number[]): void;
 };
 
+/** Updates one semantic mark property without exposing its shader uniform. */
+export type PropertySlotHandle<T> = {
+    set(value: T): void;
+};
+
+export type PropertySlotHandles<TProperties extends object> = {
+    [TName in keyof TProperties]: PropertySlotHandle<TProperties[TName]>;
+};
+
 export type DynamicValueConfig = {
-    /** Initial value for the existing extra uniform. */
+    /** Initial value for a custom program's existing extra uniform. */
     value: number | number[];
+};
+
+/** Optional raw-uniform configuration for a custom mark program. */
+export type ExtraValueMarkOptions = {
+    dynamicValues?: Record<string, DynamicValueConfig>;
 };
 
 export type SelectionSlotHandle =
@@ -201,6 +215,7 @@ export type SeriesSlotHandle<
 
 export type MarkHandle<
     TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
+    TProperties extends object = Record<never, never>,
 > = {
     markId: MarkId;
     /** Apply several retained slot mutations with one uniform upload/rebind. */
@@ -208,6 +223,8 @@ export type MarkHandle<
     series: SeriesSlotHandle<TSeries>;
     scales: Record<string, ChannelSlotGroup<ScaleSlotHandle>>;
     values: Record<string, ChannelSlotGroup<ValueSlotHandle>>;
+    /** Stable typed slots for renderer-provided mark properties. */
+    properties: PropertySlotHandles<TProperties>;
     extraValues: Record<string, ValueSlotHandle>;
     scalarSlots: Record<string, ScalarSlotHandle>;
     selections: Record<string, SelectionSlotHandle>;
@@ -907,9 +924,9 @@ export type TextMarkOptions = {
 };
 
 export type ArrowMarkOptions = {
-    /** Tangent slope used by the arrow-head shader. */
+    /** Arrow-head angle in degrees. */
     headAngle?: number;
-    /** Tangent slope of the head notch. */
+    /** Arrow-head notch angle in degrees. */
     headNotchAngle?: number;
     minSize?: number;
     headWidth?: number;
@@ -917,11 +934,11 @@ export type ArrowMarkOptions = {
     minStemLength?: number;
     headSpacing?: number | null;
     stem?: boolean;
-    /** Renderer code for triangle or open heads. */
-    headShape?: number;
-    /** Renderer code for inside or outside placement. */
-    headPlacement?: number;
+    headShape?: "triangle" | "open";
+    headPlacement?: "inside" | "outside";
 };
+
+export type ArrowMarkProperties = Required<ArrowMarkOptions>;
 
 export type LinkShape = "arc" | "dome" | "diagonal" | "line";
 
@@ -953,6 +970,18 @@ export type LinkMarkOptions = {
     arcFadingDistance?: [number, number];
 };
 
+export type LinkMarkProperties = Required<LinkMarkOptions>;
+
+export type TextMarkProperties = {
+    viewport: [number, number, number, number];
+    paddingX: number;
+    paddingY: number;
+    flushX: boolean;
+    flushY: boolean;
+    squeeze: boolean;
+    logoLetters: boolean;
+};
+
 export type MarkConfig<T extends MarkType = MarkType> = {
     channels: T extends "rect"
         ? RectChannels
@@ -976,9 +1005,6 @@ export type MarkConfig<T extends MarkType = MarkType> = {
 
     /** Fixed placement selection mode for the retained mark. */
     placementIndex?: { source: "draw" } | { data: Uint32Array; type: "u32" };
-
-    /** Existing mark-program uniforms that may be updated without rebuilding. */
-    dynamicValues?: Record<string, DynamicValueConfig>;
 } & (T extends "rule"
     ? {
           /**
@@ -1087,6 +1113,7 @@ export class RendererError extends Error {}
 
 export type MarkProgram<
     TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
+    TProperties extends object = Record<never, never>,
 > = {
     /** Number of logical instances accepted by retained draw ranges. */
     readonly drawCount: number;
@@ -1097,7 +1124,7 @@ export type MarkProgram<
         firstInstance: number,
         instanceCount: number
     ): { firstInstance: number; instanceCount: number };
-    getSlotHandles(): Omit<MarkHandle<TSeries>, "markId">;
+    getSlotHandles(): Omit<MarkHandle<TSeries, TProperties>, "markId">;
     replaceSeries(channels: TSeries, count?: number): void;
     updateValues(values: Record<string, number | number[]>): void;
     debugResources(label?: string): void;
@@ -1109,10 +1136,14 @@ export type MarkProgram<
 export type MarkDefinition<
     TConfig = MarkConfig,
     TSeries extends Record<string, SeriesData> = Record<string, TypedArray>,
+    TProperties extends object = Record<never, never>,
 > = Readonly<{
     /** Diagnostic name; dispatch uses the definition value, not this string. */
     type: string;
-    createProgram(renderer: Renderer, config: TConfig): MarkProgram<TSeries>;
+    createProgram(
+        renderer: Renderer,
+        config: TConfig
+    ): MarkProgram<TSeries, TProperties>;
 }>;
 
 export class Renderer {
@@ -1120,10 +1151,14 @@ export class Renderer {
     updateGlobals(globals: GlobalUniforms): void;
 
     /** Create a retained mark from an explicitly imported definition. */
-    createMark<TConfig, TSeries extends Record<string, SeriesData>>(
-        definition: MarkDefinition<TConfig, TSeries>,
+    createMark<
+        TConfig,
+        TSeries extends Record<string, SeriesData>,
+        TProperties extends object,
+    >(
+        definition: MarkDefinition<TConfig, TSeries, TProperties>,
         config: TConfig
-    ): MarkHandle<TSeries>;
+    ): MarkHandle<TSeries, TProperties>;
 
     /** Create a retained, renderer-owned placement table. */
     createPlacementSet(data: PlacementSetData): PlacementSetHandle;

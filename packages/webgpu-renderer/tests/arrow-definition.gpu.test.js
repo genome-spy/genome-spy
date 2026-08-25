@@ -40,13 +40,13 @@ test("arrow mark shader renders a retained arrow", async ({ page }) => {
                 size: { value: 6 },
                 direction: { value: 0, type: "u32" },
             },
-            headAngle: 1,
-            headNotchAngle: 0,
-            headShape: 0,
-            headPlacement: 0,
+            headAngle: 45,
+            headNotchAngle: 90,
+            headShape: "triangle",
+            headPlacement: "inside",
             minSize: 1,
             headWidth: 3,
-            stem: 1,
+            stem: true,
             headSpacing: -1,
         });
 

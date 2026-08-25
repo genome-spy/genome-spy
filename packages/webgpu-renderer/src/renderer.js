@@ -430,9 +430,10 @@ export class Renderer {
     /**
      * @template TConfig
      * @template {Record<string, import("./index.d.ts").SeriesData>} TSeries
-     * @param {import("./index.d.ts").MarkDefinition<TConfig, TSeries>} definition
+     * @template {object} TProperties
+     * @param {import("./index.d.ts").MarkDefinition<TConfig, TSeries, TProperties>} definition
      * @param {TConfig} config
-     * @returns {import("./index.d.ts").MarkHandle<TSeries>}
+     * @returns {import("./index.d.ts").MarkHandle<TSeries, TProperties>}
      */
     createMark(definition, config) {
         this._assertAlive();
@@ -448,6 +449,7 @@ export class Renderer {
             series: slotHandles.series,
             scales: slotHandles.scales,
             values: slotHandles.values,
+            properties: slotHandles.properties,
             extraValues: slotHandles.extraValues,
             scalarSlots: slotHandles.scalarSlots,
             selections: slotHandles.selections,

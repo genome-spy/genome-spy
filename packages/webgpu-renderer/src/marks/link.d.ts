@@ -1,3 +1,12 @@
-import type { MarkConfig, MarkDefinition } from "../index.js";
+import type {
+    LinkMarkProperties,
+    MarkConfig,
+    MarkDefinition,
+    TypedArray,
+} from "../index.js";
 
-export const linkMark: MarkDefinition<MarkConfig<"link">>;
+export const linkMark: MarkDefinition<
+    MarkConfig<"link">,
+    Record<string, TypedArray>,
+    LinkMarkProperties
+>;

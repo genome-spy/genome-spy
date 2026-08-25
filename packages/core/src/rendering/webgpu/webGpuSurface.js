@@ -222,9 +222,10 @@ export default class WebGpuSurface {
      * @param {import("../../marks/mark.js").default} mark
      * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
      * @param {any} config
+     * @param {Record<string, {value: any}>} [properties]
      * @returns {number} Number of retained resource writes.
      */
-    updateMark(mark, definition, config) {
+    updateMark(mark, definition, config, properties = {}) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
@@ -244,10 +245,11 @@ export default class WebGpuSurface {
                 series: collectSeries(config),
                 count: config.count,
                 selections: new Map(),
-                dynamicValues: new Map(
-                    Object.entries(config.dynamicValues ?? {}).map(
-                        ([name, value]) => [name, snapshotValue(value.value)]
-                    )
+                propertyValues: new Map(
+                    Object.entries(properties).map(([name, value]) => [
+                        name,
+                        snapshotValue(value.value),
+                    ])
                 ),
                 scalarSlots: new Map(
                     Object.entries(config.scalarSlots ?? {}).map(
@@ -260,7 +262,7 @@ export default class WebGpuSurface {
         let writes = 0;
         retained.handle.batchUpdates(() => {
             writes += updateRetainedMark(retained, config);
-            writes += updateRetainedExtraValues(retained, config);
+            writes += updateRetainedProperties(retained, properties);
             writes += updateRetainedScalarSlots(retained, config);
             writes += updateRetainedSelections(retained, mark);
         });
@@ -543,25 +545,25 @@ function snapshotChannel(channel) {
 }
 
 /**
- * Updates mark-program uniforms exposed as retained extra-value slots.
+ * Updates built-in renderer properties through their semantic slots.
  *
  * @param {RetainedMark} retained
- * @param {any} config
+ * @param {Record<string, {value: any}>} properties
  * @returns {number} Number of retained resource writes.
  */
-function updateRetainedExtraValues(retained, config) {
+function updateRetainedProperties(retained, properties) {
     let writes = 0;
-    for (const [name, dynamic] of Object.entries(config.dynamicValues ?? {})) {
-        const slot = retained.handle.extraValues?.[name];
-        if (
-            !slot ||
-            valuesEqual(retained.dynamicValues.get(name), dynamic.value)
-        ) {
+    for (const [name, property] of Object.entries(properties)) {
+        const slot = retained.handle.properties?.[name];
+        if (!slot) {
+            throw new Error(`Renderer mark has no property slot "${name}".`);
+        }
+        if (valuesEqual(retained.propertyValues.get(name), property.value)) {
             continue;
         }
-        slot.set(dynamic.value);
+        slot.set(property.value);
         writes++;
-        retained.dynamicValues.set(name, snapshotValue(dynamic.value));
+        retained.propertyValues.set(name, snapshotValue(property.value));
     }
     return writes;
 }
@@ -800,13 +802,13 @@ function getLogicalChannelSeries(channel) {
 /**
  * @typedef {object} RetainedMark
  * @prop {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
- * @prop {import("@genome-spy/webgpu-renderer").MarkHandle} handle
+ * @prop {import("@genome-spy/webgpu-renderer").MarkHandle<any, Record<string, any>>} handle
  * @prop {any} config
  * @prop {Record<string, ChannelSnapshot>} channelSnapshots
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
  * @prop {Map<string, number | Uint32Array | SelectionSnapshot>} selections
- * @prop {Map<string, number | number[]>} dynamicValues
+ * @prop {Map<string, any>} propertyValues
  * @prop {Map<string, number>} scalarSlots
  */
 

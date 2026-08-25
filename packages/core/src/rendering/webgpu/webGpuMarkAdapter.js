@@ -68,31 +68,9 @@ const STROKE_CAP_CODES = new Map([
     ["round", 2],
 ]);
 
-const LINK_SHAPE_CODES = new Map([
-    ["arc", 0],
-    ["dome", 1],
-    ["diagonal", 2],
-    ["line", 3],
-]);
-
-const ORIENT_CODES = new Map([
-    ["vertical", 0],
-    ["horizontal", 1],
-]);
-
 const ARROW_DIRECTION_CODES = new Map([
     ["forward", 0],
     ["reverse", 1],
-]);
-
-const ARROW_HEAD_SHAPE_CODES = new Map([
-    ["triangle", 0],
-    ["open", 1],
-]);
-
-const ARROW_HEAD_PLACEMENT_CODES = new Map([
-    ["inside", 0],
-    ["outside", 1],
 ]);
 
 const HATCH_CODES = new Map(
@@ -145,7 +123,7 @@ const PLACEMENT_INDEX_CACHE = new WeakMap();
  * @param {number | (() => number)} [viewOpacity]
  * @param {object[]} [dataOverride]
  * @param {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"]} [placementIndex]
- * @returns {{definition: import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>, config: object} | undefined}
+ * @returns {{definition: import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>, config: object, properties: Record<string, {value: any}>} | undefined}
  */
 export function createWebGpuMarkConfig(
     mark,
@@ -175,56 +153,68 @@ export function createWebGpuMarkConfig(
 
     const markType = mark.getType();
     if (markType == "point") {
-        return {
-            definition: pointMark,
-            config: addPlacementIndex(
+        return createTranslation(
+            pointMark,
+            addPlacementIndex(
                 createPointConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
-            ),
-        };
+            )
+        );
     } else if (markType == "rect") {
-        return {
-            definition: rectMark,
-            config: addPlacementIndex(
+        return createTranslation(
+            rectMark,
+            addPlacementIndex(
                 createRectConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
-            ),
-        };
+            )
+        );
     } else if (markType == "rule" || markType == "tick") {
-        return {
-            definition: ruleMark,
-            config: addPlacementIndex(
+        return createTranslation(
+            ruleMark,
+            addPlacementIndex(
                 createRuleConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
-            ),
-        };
+            )
+        );
     } else if (markType == "text") {
-        return {
-            definition: textMark,
-            config: addPlacementIndex(
+        return createTranslation(
+            textMark,
+            addPlacementIndex(
                 createTextConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
-            ),
-        };
+            )
+        );
     } else if (markType == "link") {
-        return {
-            definition: linkMark,
-            config: addPlacementIndex(
+        return createTranslation(
+            linkMark,
+            addPlacementIndex(
                 createLinkConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
-            ),
-        };
+            )
+        );
     } else if (markType == "arrow") {
-        return {
-            definition: arrowMark,
-            config: addPlacementIndex(
+        return createTranslation(
+            arrowMark,
+            addPlacementIndex(
                 createArrowConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
-            ),
-        };
+            )
+        );
     }
 
     throw unsupported(mark, `Mark type "${markType}" is not supported.`);
+}
+
+/**
+ * Keeps Core's live property readers outside the public renderer config.
+ *
+ * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
+ * @param {Record<string, any>} config
+ */
+function createTranslation(definition, config) {
+    const properties = config.retainedProperties ?? {};
+    delete config.retainedProperties;
+    return { definition, config, properties };
 }
 
 /**
@@ -908,17 +898,20 @@ function createTextConfig(mark, data, coords, viewOpacity) {
         squeeze: !!readProperty(mark, "squeeze"),
         logoLetters: !!readProperty(mark, "logoLetters"),
         // The view rectangle can change while a retained mark is reused.
-        dynamicValues: {
-            uViewport: {
-                value: [coords.x, coords.y, coords.x2, coords.y2],
-            },
-            ...createDynamicValues(mark, {
-                paddingX: ["uPaddingX", (value) => value],
-                paddingY: ["uPaddingY", (value) => value],
-                flushX: ["uFlushX", (value) => (value ? 1 : 0)],
-                flushY: ["uFlushY", (value) => (value ? 1 : 0)],
-                squeeze: ["uSqueeze", (value) => (value ? 1 : 0)],
-                logoLetters: ["uLogoLetters", (value) => (value ? 1 : 0)],
+        retainedProperties: {
+            viewport: retainedPropertyValue(() => [
+                coords.x,
+                coords.y,
+                coords.x2,
+                coords.y2,
+            ]),
+            ...createDynamicProperties(mark, {
+                paddingX: (value) => value,
+                paddingY: (value) => value,
+                flushX: (value) => !!value,
+                flushY: (value) => !!value,
+                squeeze: (value) => !!value,
+                logoLetters: (value) => !!value,
             }),
         },
     };
@@ -948,8 +941,8 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
             color: createColorChannel(mark, "color", data),
             opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
         },
-        linkShape: mapProperty(mark, "linkShape", LINK_SHAPE_CODES, "arc"),
-        orient: mapProperty(mark, "orient", ORIENT_CODES, "vertical"),
+        linkShape: readProperty(mark, "linkShape") ?? "arc",
+        orient: readProperty(mark, "orient") ?? "vertical",
         arcFadingDistance: readDistancePair(mark, "arcFadingDistance"),
         arcHeightFactor: readOptionalNumericProperty(
             mark,
@@ -964,24 +957,15 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
             50000
         ),
         segments: readOptionalNumericProperty(mark, "segments", 101),
-        dynamicValues: createDynamicValues(mark, {
-            arcFadingDistance: [
-                "uArcFadingDistance",
-                (value) => value ?? [0, 0],
-            ],
-            arcHeightFactor: ["uArcHeightFactor", (value) => value],
-            minArcHeight: ["uMinArcHeight", (value) => value],
-            linkShape: [
-                "uShape",
-                () => mapProperty(mark, "linkShape", LINK_SHAPE_CODES, "arc"),
-            ],
-            orient: [
-                "uOrient",
-                () => mapProperty(mark, "orient", ORIENT_CODES, "vertical"),
-            ],
-            clampApex: ["uClampApex", (value) => (value ? 1 : 0)],
-            maxChordLength: ["uMaxChordLength", (value) => value],
-            segments: ["uSegmentBreaks", (value) => Math.round(value)],
+        retainedProperties: createDynamicProperties(mark, {
+            arcFadingDistance: (value) => value ?? [0, 0],
+            arcHeightFactor: (value) => value,
+            minArcHeight: (value) => value,
+            linkShape: (value) => value ?? "arc",
+            orient: (value) => value ?? "vertical",
+            clampApex: (value) => !!value,
+            maxChordLength: (value) => value,
+            segments: (value) => value,
         }),
     };
 }
@@ -1035,58 +1019,27 @@ function createArrowConfig(mark, data, coords, viewOpacity) {
                 ARROW_DIRECTION_CODES
             ),
         },
-        headAngle: headAngleToSlope(headAngle),
-        headNotchAngle: headAngleToSlope(headNotchAngle),
+        headAngle,
+        headNotchAngle,
         minSize: readOptionalNumericProperty(mark, "minSize", 1),
         headWidth: readOptionalNumericProperty(mark, "headWidth", 3),
         startNotch: !!readProperty(mark, "startNotch"),
         minStemLength: readOptionalNumericProperty(mark, "minStemLength", 0),
         headSpacing: readNullableNumericProperty(mark, "headSpacing"),
         stem: readProperty(mark, "stem") !== false,
-        headShape: mapProperty(
-            mark,
-            "headShape",
-            ARROW_HEAD_SHAPE_CODES,
-            "triangle"
-        ),
-        headPlacement: mapProperty(
-            mark,
-            "headPlacement",
-            ARROW_HEAD_PLACEMENT_CODES,
-            "inside"
-        ),
-        dynamicValues: createDynamicValues(mark, {
-            headAngle: ["uHeadSlope", (value) => headAngleToSlope(value)],
-            headNotchAngle: [
-                "uHeadNotchSlope",
-                (value) => headAngleToSlope(value),
-            ],
-            minSize: ["uMinSize", (value) => value],
-            headWidth: ["uHeadWidth", (value) => value],
-            startNotch: ["uStartNotch", (value) => (value ? 1 : 0)],
-            minStemLength: ["uMinStemLength", (value) => value],
-            headSpacing: ["uHeadSpacing", (value) => value ?? -1],
-            stem: ["uStem", (value) => (value === false ? 0 : 1)],
-            headShape: [
-                "uHeadShape",
-                () =>
-                    mapProperty(
-                        mark,
-                        "headShape",
-                        ARROW_HEAD_SHAPE_CODES,
-                        "triangle"
-                    ),
-            ],
-            headPlacement: [
-                "uHeadPlacement",
-                () =>
-                    mapProperty(
-                        mark,
-                        "headPlacement",
-                        ARROW_HEAD_PLACEMENT_CODES,
-                        "inside"
-                    ),
-            ],
+        headShape: readProperty(mark, "headShape") ?? "triangle",
+        headPlacement: readProperty(mark, "headPlacement") ?? "inside",
+        retainedProperties: createDynamicProperties(mark, {
+            headAngle: (value) => value,
+            headNotchAngle: (value) => value,
+            minSize: (value) => value,
+            headWidth: (value) => value,
+            startNotch: (value) => !!value,
+            minStemLength: (value) => value,
+            headSpacing: (value) => value,
+            stem: (value) => value !== false,
+            headShape: (value) => value ?? "triangle",
+            headPlacement: (value) => value ?? "inside",
         }),
     };
 }
@@ -2219,12 +2172,6 @@ function readNullableNumericProperty(mark, property) {
     return value;
 }
 
-/** @param {number} angle */
-function headAngleToSlope(angle) {
-    const clamped = Math.min(Math.max(angle, 1), 90);
-    return 1 / Math.max(Math.tan((clamped * Math.PI) / 180), 1e-6);
-}
-
 /**
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} property
@@ -2323,43 +2270,40 @@ function retainedValue(read, type) {
     };
 }
 
+/** @param {() => any} read */
+function retainedPropertyValue(read) {
+    return {
+        get value() {
+            return read();
+        },
+    };
+}
+
 /**
- * Converts expression-backed mark properties into retained extra-uniform
- * updates. The renderer already owns the uniform layout; Core only supplies
- * the WebGL-equivalent adjusted values.
+ * Converts expression-backed mark properties into semantic slot updates.
+ * Shader representation stays inside the renderer program that owns it.
  *
  * @param {import("../../marks/mark.js").default} mark
- * @param {Record<string, [string, (value: any) => number | number[]]>} definitions
- * @returns {Record<string, {value: number | number[]}>}
+ * @param {Record<string, (value: any) => any>} definitions
+ * @returns {Record<string, {value: any}>}
  */
-function createDynamicValues(mark, definitions) {
+function createDynamicProperties(mark, definitions) {
     watchDynamicProperties(mark, Object.keys(definitions));
 
-    const dynamicValues =
-        /** @type {Record<string, {value: number | number[]}>} */ ({});
-    for (const [property, [uniform, adjust]] of Object.entries(definitions)) {
+    /** @type {Record<string, {value: any}>} */
+    const properties = {};
+    for (const [property, adjust] of Object.entries(definitions)) {
         const value = /** @type {Record<string, any>} */ (mark.properties)[
             property
         ];
         if (!isExprRef(value)) {
             continue;
         }
-        dynamicValues[uniform] = retainedValue(() => {
-            const adjusted = adjust(readProperty(mark, property));
-            if (
-                typeof adjusted != "number" &&
-                (!Array.isArray(adjusted) ||
-                    !adjusted.every((entry) => typeof entry == "number"))
-            ) {
-                throw unsupported(
-                    mark,
-                    `Dynamic property "${property}" must resolve to numeric data.`
-                );
-            }
-            return adjusted;
-        });
+        properties[property] = retainedPropertyValue(() =>
+            adjust(readProperty(mark, property))
+        );
     }
-    return dynamicValues;
+    return properties;
 }
 
 /**
