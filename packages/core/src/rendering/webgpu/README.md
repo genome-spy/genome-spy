@@ -42,6 +42,34 @@ Normal and picking passes share the same frame plan, ranges, placements, and
 order. A completed picking frame is reused for pointer reads until layout,
 rendering, data, or retained state invalidates it.
 
+## Performance invariants
+
+The retained frame path exists to keep ordinary interaction work proportional
+to the state that changed. Preserve these invariants when refactoring it:
+
+- A normal or picking paint must not replay `LayoutResult` or reconstruct mark
+  occurrences. Only a completed layout replaces the frame plan.
+- Stable packed data and expression revisions must preserve mark-configuration
+  identity. That identity proves that series references are unchanged, while
+  live scale, opacity, value, scalar, and selection leaves are checked through
+  renderer slots and immutable snapshots.
+- Existing scale and parameter notifications provide per-mark dirty revisions.
+  Marks backed by selections remain conservatively dirty until Core exposes a
+  complete selection-change notification contract; do not add a parallel
+  dependency graph solely for this adapter.
+- Navigation updates scale domains. Closeup transitions and scrolling may also
+  replace non-uniform placement geometry. Keep those application semantics out
+  of the generic renderer and continue using `PlacementSource` as the boundary.
+- Full placement-geometry updates are intentional and have measured as a minor
+  interaction cost. Do not replace them with an application-specific common
+  offset or another shortcut without new profiling evidence.
+
+The interaction benchmark under `packages/core/scripts/` is the regression
+gate for these decisions. In layout-free interaction cases, its structural
+counters should continue to report no layout replay or occurrence
+reconstruction, and retained-mark checks should stay limited to dirty marks.
+See `packages/core/scripts/README.md` for the command and interpretation rules.
+
 ## Retained state and lifetime
 
 Core mark identity is the retained resource key. Repeated occurrences and

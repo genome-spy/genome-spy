@@ -504,6 +504,9 @@ function updateRetainedMark(retained, config) {
         }
     }
 
+    // Config identity is also the series-revision proof: the adapter rebuilds
+    // it only when packed data or expression-backed columns change. Live leaves
+    // were checked above, so avoid traversing stable series on every frame.
     if (retained.config !== config && hasSeriesChanges(retained, config)) {
         retained.series = collectSeries(config);
         retained.count = config.count;

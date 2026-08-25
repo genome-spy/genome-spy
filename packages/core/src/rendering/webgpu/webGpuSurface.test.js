@@ -305,6 +305,47 @@ describe("WebGpuSurface", () => {
         expect(mocks.handle.series.replace).not.toHaveBeenCalled();
     });
 
+    test("does not inspect series again when config identity is stable", async () => {
+        const container = document.createElement("div");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({})
+        );
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "point" })
+            );
+        const series = new Float32Array([1, 2]);
+        const readSeries = vi.fn(() => series);
+        const config = {
+            count: 2,
+            channels: {
+                x: {
+                    get data() {
+                        return readSeries();
+                    },
+                    type: "f32",
+                    scale: { domain: [0, 1], range: [0, 100] },
+                },
+            },
+        };
+
+        surface.updateMark(mark, definition, config);
+        readSeries.mockClear();
+        surface.updateMark(mark, definition, config);
+
+        expect(readSeries).not.toHaveBeenCalled();
+        expect(mocks.handle.series.replace).not.toHaveBeenCalled();
+    });
+
     test("skips semantically unchanged nested scale ranges", async () => {
         const container = document.createElement("div");
         const surface = new WebGpuSurface(

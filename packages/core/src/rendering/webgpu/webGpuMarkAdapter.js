@@ -527,6 +527,10 @@ function createSelectionCondition(mark, channel, predicate) {
             `Selection "${predicate.param}" is not available for WebGPU.`
         );
     }
+    // Selections lack a complete change-notification contract. Keep the mark
+    // conservatively dirty instead of building a second dependency graph here.
+    // TODO: Use a selection revision once ParamRuntime exposes a complete
+    // selection-change notification contract.
     getResourceRevisionState(mark).volatile = true;
 
     /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate} */
