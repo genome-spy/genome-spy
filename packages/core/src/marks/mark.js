@@ -25,7 +25,6 @@ import {
     generateConstantValueGlsl,
     generateScaleGlsl,
     RANGE_TEXTURE_PREFIX,
-    isHighPrecisionScale,
     toHighPrecisionDomainUniform,
     dedupeEncodingFields,
     generateDynamicValueGlslAndUniform,
@@ -40,6 +39,7 @@ import {
     SELECTION_CHECKER_PREFIX,
     makeAttributeName,
 } from "../gl/glslScaleGenerator.js";
+import { isIndexLikeDomainType } from "../scales/indexLikeDomainUtils.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
 import GLSL_SAMPLE_FACET from "../gl/includes/sampleFacet.glsl";
@@ -1200,7 +1200,7 @@ export default class Mark {
                             }
 
                             domainSetter(
-                                isHighPrecisionScale(scale.type)
+                                isIndexLikeDomainType(scale.type)
                                     ? toHighPrecisionDomainUniform(domain)
                                     : domain
                             );

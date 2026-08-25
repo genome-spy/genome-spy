@@ -21,7 +21,7 @@ import { thresholdScale } from "@genome-spy/webgpu-renderer/scales/threshold";
 
 import { getMarkData } from "../immediate/markData.js";
 import { resolveMarkProperty } from "../immediate/markEncoding.js";
-import { isLargeGenome } from "../../gl/glslScaleGenerator.js";
+import { isLargeIndexDomain } from "../../scales/indexLikeDomainUtils.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import { getSecondaryChannel } from "../../encoder/encoder.js";
 
@@ -418,7 +418,7 @@ function assertScalarIntervalInput(mark, selectionName, channel) {
     if (
         scale &&
         (scale.type == "index" || scale.type == "locus") &&
-        isLargeGenome(scale.domain().map(Number))
+        isLargeIndexDomain(scale.domain().map(Number))
     ) {
         throw unsupported(
             mark,
@@ -1013,7 +1013,7 @@ function createPositionBranch(mark, channel, data, coords, encoder) {
         encoder.scale?.type == "index" ||
         encoder.scale?.type == "locus"
     ) {
-        const large = isLargeGenome(encoder.scale.domain().map(Number));
+        const large = isLargeIndexDomain(encoder.scale.domain().map(Number));
         return {
             data: toIndexArray(mark, channel, data, accessor, large),
             type: "u32",

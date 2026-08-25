@@ -827,6 +827,11 @@ measured, and ready for the temporary plan to be retired.
 - Placement-index packing remains with configuration translation because its
   validation uses encoder and mark-context error semantics. Moving it would
   introduce a callback or reverse dependency into the data module.
+- Index/locus precision predicates now live in
+  `scales/indexLikeDomainUtils.js`. WebGPU no longer imports the GLSL generator,
+  and Core marks reuse the existing backend-neutral index-like type predicate
+  instead of a duplicate `isHighPrecisionScale()`. The move removes five net
+  Core production lines.
 
 ### Verification
 

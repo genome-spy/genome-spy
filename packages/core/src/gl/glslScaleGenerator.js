@@ -18,6 +18,10 @@ import { InternMap } from "internmap";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import scaleNull from "../utils/scaleNull.js";
 import { cssColorToArray } from "./colorUtils.js";
+import {
+    isIndexLikeDomainType,
+    isLargeIndexDomain,
+} from "../scales/indexLikeDomainUtils.js";
 
 export const ATTRIBUTE_PREFIX = "attr_";
 export const DOMAIN_PREFIX = "uDomain_";
@@ -698,8 +702,8 @@ function makeFunctionCall(name, ...args) {
  */
 export function getAttributeAndArrayTypes(scale, channel) {
     const discrete = scale && isDiscrete(scale.type);
-    const hp = scale && isHighPrecisionScale(scale.type);
-    const largeHp = hp && isLargeGenome(scale.domain());
+    const hp = scale && isIndexLikeDomainType(scale.type);
+    const largeHp = hp && isLargeIndexDomain(scale.domain());
 
     /**
      * @type {{attributeType: string, arrayConstructor: Uint32ArrayConstructor | Uint16ArrayConstructor | Float32ArrayConstructor}}
@@ -722,24 +726,6 @@ export function getAttributeAndArrayTypes(scale, channel) {
         hp,
         largeHp,
     });
-}
-
-/**
- * True if scale needs more than 24 bits (float32) of precision.
- *
- * @param {string} type
- */
-export function isHighPrecisionScale(type) {
-    return type == "index" || type == "locus";
-}
-
-/**
- * True if Uint32 cannot represent the domain.
- *
- * @param {number[]} domain
- */
-export function isLargeGenome(domain) {
-    return domain[1] > 2 ** 32;
 }
 
 export const HIGH_PRECISION_SPLIT_BITS = 12;
