@@ -1,7 +1,7 @@
 # Core–WebGPU integration simplification plan
 
 Status: In progress. Milestones 1 through 5 are implemented or reconciled,
-verified, and reviewed. Milestone 6 is next.
+verified, and reviewed. Milestone 6 is in progress.
 
 ## Context
 
@@ -813,6 +813,20 @@ measured, and ready for the temporary plan to be retired.
 - Reconcile every incomplete item as complete or discarded with rationale.
 - Commit the reconciled plan, then delete it in a later integration commit as
   required by the repository workflow.
+
+### Progress and decisions
+
+- Collector/topology packing and occurrence-range lookup moved to
+  `webGpuMarkData.js`. It depends only on renderer-neutral Core mark data and
+  placement snapshots; the frame plan is its sole production consumer.
+- The extraction reduced `webGpuMarkAdapter.js` from 2,325 to 2,210 lines while
+  adding a 116-line module. A one-line import reduction keeps total Core WebGPU
+  production size unchanged at 3,970 lines. The dedicated tests add five net
+  lines. This is accepted as a cohesive ownership improvement rather than a
+  footprint reduction.
+- Placement-index packing remains with configuration translation because its
+  validation uses encoder and mark-context error semantics. Moving it would
+  introduce a callback or reverse dependency into the data module.
 
 ### Verification
 

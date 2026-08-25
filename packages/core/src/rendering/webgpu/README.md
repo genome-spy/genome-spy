@@ -28,13 +28,15 @@ for the backend-neutral lifecycle and the
    and refreshes stable materialized draw geometry without replaying the
    `LayoutResult`. Existing Core scale and parameter notifications advance
    small per-mark revisions so unrelated marks bypass slot scanning.
-4. `webGpuMarkAdapter.js` translates Core encoders, resolved scales,
+4. `webGpuMarkData.js` owns collector/topology packing and occurrence ranges.
+   Its cache is independent of renderer configuration and resources.
+5. `webGpuMarkAdapter.js` translates Core encoders, resolved scales,
    selections, properties, and typed series into a renderer mark definition and
    configuration. The plan caches this shape until packed data or an
    expression-backed series changes; scale, opacity, semantic property, scalar,
    and selection leaves stay live. Unsupported behavior fails here with a
    contextual error.
-5. The frame plan owns one stable plain draw command per occurrence.
+6. The frame plan owns one stable plain draw command per occurrence.
    `WebGpuSurface` attaches retained mark and placement handles, appends those
    commands in order, and submits the frame without rebuilding draw envelopes.
 

@@ -14,9 +14,8 @@ import {
     createWebGpuMarkConfig,
     getWebGpuMarkConfigRevision,
     getWebGpuMarkResourceRevision,
-    getPackedMarkData,
-    getPackedMarkRange,
 } from "./webGpuMarkAdapter.js";
+import { getPackedMarkData, getPackedMarkRange } from "./webGpuMarkData.js";
 
 /**
  * Compiles a completed Core layout into an adapter-owned retained frame plan.
@@ -630,7 +629,7 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
  * @typedef {object} MarkState
  * @property {import("../../marks/mark.js").default} mark
  * @property {Occurrence[]} occurrences
- * @property {import("./webGpuMarkAdapter.js").PackedMarkData | undefined} packed
+ * @property {import("./webGpuMarkData.js").PackedMarkData | undefined} packed
  * @property {import("../../view/layout/placementSource.js").default | undefined} source
  * @property {boolean} generatedSource
  * @property {boolean} indexed

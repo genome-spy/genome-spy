@@ -22,6 +22,9 @@ vi.mock("./webGpuMarkAdapter.js", () => ({
     createWebGpuMarkConfig: mocks.createWebGpuMarkConfig,
     getWebGpuMarkConfigRevision: mocks.getWebGpuMarkConfigRevision,
     getWebGpuMarkResourceRevision: mocks.getWebGpuMarkResourceRevision,
+}));
+
+vi.mock("./webGpuMarkData.js", () => ({
     getPackedMarkData: mocks.getPackedMarkData,
     getPackedMarkRange: mocks.getPackedMarkRange,
 }));
