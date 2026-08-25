@@ -222,7 +222,7 @@ describe("offset-aware x indexing", () => {
         });
         const resolution = {
             getScale: () => scale,
-            getAxisLength: () => 100,
+            getAxisLength: vi.fn(() => 100),
         };
         const rangeEntry = { offset, count: 10, xIndex: lookup };
         const mark = /** @type {any} */ ({
@@ -232,9 +232,15 @@ describe("offset-aware x indexing", () => {
             rangeMap: { get: () => rangeEntry },
         });
 
-        Mark.prototype.createRenderCallback.call(mark, draw, {})();
+        const render = Mark.prototype.createRenderCallback.call(mark, draw, {});
+        render();
 
-        return { draw, lookup };
+        return {
+            draw,
+            lookup,
+            getAxisLength: resolution.getAxisLength,
+            render,
+        };
     }
 
     test("uses scaled and constant pixel bounds", () => {
@@ -255,17 +261,30 @@ describe("offset-aware x indexing", () => {
     });
 
     test("expands an indexed domain by the bounded pixel offset", () => {
-        const { draw, lookup } = createIndexedRenderContext(
-            /** @type {any} */ (
-                Object.assign(() => 0, {
-                    scale: { range: () => [-10, 10] },
-                    constant: false,
-                })
-            )
-        );
+        const { draw, lookup, getAxisLength, render } =
+            createIndexedRenderContext(
+                /** @type {any} */ (
+                    Object.assign(() => 0, {
+                        scale: { range: () => [-10, 10] },
+                        constant: false,
+                    })
+                )
+            );
 
         expect(lookup).toHaveBeenCalledWith(89, 210, [2, 5]);
         expect(draw).toHaveBeenCalledWith(2, 3);
+        render();
+        expect(getAxisLength).toHaveBeenCalledTimes(1);
+    });
+
+    test("does not query axis length for a zero pixel offset", () => {
+        const { draw, lookup, getAxisLength } = createIndexedRenderContext(
+            /** @type {any} */ (Object.assign(() => 0, { constant: true }))
+        );
+
+        expect(lookup).toHaveBeenCalledWith(99, 200, [2, 5]);
+        expect(draw).toHaveBeenCalledWith(2, 3);
+        expect(getAxisLength).not.toHaveBeenCalled();
     });
 
     test("draws the full range when an indexed offset is unbounded", () => {

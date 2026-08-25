@@ -1614,6 +1614,11 @@ export default class Mark {
         const domainStartOffset = ["index", "locus"].includes(scale?.type)
             ? -1
             : 0;
+        const offsetPerPixel =
+            continuous && offsetBound > 0 && Number.isFinite(offsetBound)
+                ? offsetBound /
+                  (this.unitView.getScaleResolution("x").getAxisLength() || 1)
+                : 0;
 
         /** @type {[number, number]} Recycle to ease garbage collector's work */
         const arr = [0, 0];
@@ -1621,11 +1626,8 @@ export default class Mark {
         drawWithRangeEntry = (rangeEntry) => {
             if (continuous && rangeEntry.xIndex && offsetBound !== undefined) {
                 const domain = scale.domain();
-                const axisLength =
-                    this.unitView.getScaleResolution("x").getAxisLength() || 1;
                 const offsetDomainMargin =
-                    (Math.abs(domain[1] - domain[0]) / axisLength) *
-                    offsetBound;
+                    Math.abs(domain[1] - domain[0]) * offsetPerPixel;
                 const vertexIndices = rangeEntry.xIndex(
                     domain[0] + domainStartOffset - offsetDomainMargin,
                     domain[1] + offsetDomainMargin,
