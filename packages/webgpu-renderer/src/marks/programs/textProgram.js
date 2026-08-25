@@ -106,8 +106,9 @@ struct VSOut {
     @location(0) uv: vec2<f32>,
     @location(1) color: vec4<f32>,
     @location(2) opacity: f32,
-    @location(3) slope: f32,
-    @location(4) @interpolate(flat) pickId: u32,
+    @location(3) @interpolate(flat) slope: f32,
+    @location(4) @interpolate(flat) gamma: f32,
+    @location(5) @interpolate(flat) pickId: u32,
 };
 
 fn culledText() -> VSOut {
@@ -120,6 +121,7 @@ fn culledText() -> VSOut {
     out.color = vec4<f32>(0.0);
     out.opacity = 0.0;
     out.slope = 0.0;
+    out.gamma = 1.0;
     out.pickId = 0u;
     return out;
 }
@@ -436,8 +438,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.uv = (metrics.texRect.xy + local * metrics.texRect.zw) * params.uAtlasScale;
     out.color = getScaled_fill(i);
     out.opacity = opacity;
-    let minSize = min(width, height);
-    out.slope = max(1.0, minSize / params.uSdfNumerator * globals.dpr);
+    out.slope = max(1.0, size / params.uSdfNumerator * globals.dpr);
+    out.gamma = getGammaForColor(out.color.rgb);
     out.pickId = 0u;
 #if defined(uniqueId_DEFINED)
     out.pickId = getScaled_uniqueId(i) + 1u;
@@ -454,9 +456,35 @@ fn sampleSdf(uv: vec2<f32>) -> f32 {
     return 1.0 - median(c.r, c.g, c.b);
 }
 
+fn sampleSuperSdf(uv: vec2<f32>) -> f32 {
+    let dx = dpdx(uv);
+    // WebGL derivatives use a bottom-left framebuffer origin, whereas WebGPU
+    // derivatives use a top-left origin. Preserve the WebGL atlas offsets.
+    let dy = -dpdy(uv);
+    return (
+        sampleSdf(uv + 0.25 * dx + 0.25 * dy) +
+        sampleSdf(uv + 0.75 * dx + 0.25 * dy) +
+        sampleSdf(uv + 0.25 * dx + 0.75 * dy) +
+        sampleSdf(uv + 0.75 * dx + 0.75 * dy)
+    ) * 0.25;
+}
+
+fn getGammaForColor(rgb: vec3<f32>) -> f32 {
+    return mix(
+        1.25,
+        0.75,
+        smoothstep(0.0, 1.0, dot(rgb, vec3<f32>(0.299, 0.587, 0.114)))
+    );
+}
+
 fn shade(in: VSOut) -> vec4<f32> {
-    let dist = sampleSdf(in.uv);
-    let alpha = clamp((dist - 0.5) * in.slope + 0.5, 0.0, 1.0);
+    let sigDist = sampleSuperSdf(in.uv);
+    var slope = in.slope;
+    if (params.uLogoLetters != 0u) {
+        slope = 0.7 / length(vec2<f32>(dpdy(sigDist), dpdx(sigDist)));
+    }
+    var alpha = clamp((sigDist - 0.5) * slope + 0.5, 0.0, 1.0);
+    alpha = pow(alpha, in.gamma);
     let color = vec4<f32>(in.color.rgb, in.color.a * in.opacity);
     return premultiplyAlpha(color) * alpha;
 }
