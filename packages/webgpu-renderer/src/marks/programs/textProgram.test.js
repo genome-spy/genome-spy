@@ -9,6 +9,24 @@ import { thresholdScale } from "../../scales/threshold.js";
 import TextProgram from "./textProgram.js";
 
 describe("TextProgram series replacement", () => {
+    it("fits ranged text after applying facet placement", () => {
+        const shaderBody = Object.getOwnPropertyDescriptor(
+            TextProgram.prototype,
+            "shaderBody"
+        ).get.call({});
+
+        // Faceted text must use the placed sample-row range for fitting, like
+        // the WebGL text mark.
+        expect(
+            shaderBody.indexOf("let xRange = positionInsideRange")
+        ).toBeLessThan(
+            shaderBody.indexOf("anchor = params.uViewport.xy + anchor")
+        );
+        expect(shaderBody).toContain(
+            "var anchor = applyPlacementPixel(anchorPosition, i) + screenOffset"
+        );
+    });
+
     it("updates coupled text uniforms through semantic properties", () => {
         const renderer = createMockRenderer();
         const program = new TextProgram(renderer, {

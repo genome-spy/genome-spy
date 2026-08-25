@@ -713,16 +713,28 @@ function createTextConfig(mark, data, coords, viewOpacity) {
         count: data.length,
         channels: {
             ...createUniqueIdChannel(mark, data),
-            x: createPositionChannel(mark, "x", data, coords),
+            x: createPositionChannel(mark, "x", data, coords, getTextRange),
             ...(mark.encoders.x2
                 ? {
-                      x2: createPositionChannel(mark, "x2", data, coords),
+                      x2: createPositionChannel(
+                          mark,
+                          "x2",
+                          data,
+                          coords,
+                          getTextRange
+                      ),
                   }
                 : {}),
-            y: createPositionChannel(mark, "y", data, coords),
+            y: createPositionChannel(mark, "y", data, coords, getTextRange),
             ...(mark.encoders.y2
                 ? {
-                      y2: createPositionChannel(mark, "y2", data, coords),
+                      y2: createPositionChannel(
+                          mark,
+                          "y2",
+                          data,
+                          coords,
+                          getTextRange
+                      ),
                   }
                 : {}),
             text: createTextChannel(mark, data),
@@ -936,11 +948,18 @@ function resolveFont(mark) {
  * @param {"x" | "x2" | "y" | "y2"} channel
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {typeof getAbsoluteRange} getRange
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createPositionChannel(mark, channel, data, coords) {
+function createPositionChannel(
+    mark,
+    channel,
+    data,
+    coords,
+    getRange = getAbsoluteRange
+) {
     return createConditionalChannel(mark, channel, data, (encoder) =>
-        createPositionBranch(mark, channel, data, coords, encoder)
+        createPositionBranch(mark, channel, data, coords, encoder, getRange)
     );
 }
 
@@ -950,10 +969,11 @@ function createPositionChannel(mark, channel, data, coords) {
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
  * @param {import("../../types/encoder.js").Encoder} encoder
+ * @param {typeof getAbsoluteRange} getRange
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createPositionBranch(mark, channel, data, coords, encoder) {
-    const range = getAbsoluteRange(channel, coords, encoder.scale);
+function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
+    const range = getRange(channel, coords, encoder.scale);
     if (encoder.constant) {
         return Object.assign(
             liveValue(() => {
@@ -1059,8 +1079,7 @@ function createBandPositionScale(scale, range, readDomain, band) {
 }
 
 /**
- * Core represents ordinal positional ranges in unit coordinates. Convert
- * those outputs to the absolute logical-pixel range used by WebGPU.
+ * Map Core's ordinal positional outputs into the requested coordinate range.
  *
  * @param {import("../../types/encoder.js").VegaScale} scale
  * @param {[number, number]} range
@@ -1592,8 +1611,7 @@ function readNumericEncoder(mark, channel, datum) {
 }
 
 /**
- * Temporary unit-to-logical-pixel range shim. Delete this function when Core
- * positional encoders use pixel ranges.
+ * Returns the absolute logical-pixel range used by non-text marks.
  *
  * @param {string} channel
  * @param {import("../../view/layout/rectangle.js").default} coords
@@ -1612,6 +1630,28 @@ function getAbsoluteRange(channel, coords, scale) {
             /** @type {unknown} */ (scale)
         )?.props?.reverse;
     return reverse ? [coords.y, coords.y2] : [coords.y2, coords.y];
+}
+
+/**
+ * Returns the viewport-relative pixel range used by text marks. Keeping text
+ * positions local lets the renderer apply facet placement and fit ranges
+ * without losing precision to large canvas coordinates.
+ *
+ * @param {string} channel
+ * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {import("../../types/encoder.js").VegaScale | undefined} scale
+ * @returns {[number, number]}
+ */
+function getTextRange(channel, coords, scale) {
+    if (channel[0] == "x") {
+        return [0, coords.width];
+    }
+
+    const reverse =
+        /** @type {{ props?: { reverse?: boolean } } | undefined} */ (
+            /** @type {unknown} */ (scale)
+        )?.props?.reverse;
+    return reverse ? [0, coords.height] : [coords.height, 0];
 }
 
 /**

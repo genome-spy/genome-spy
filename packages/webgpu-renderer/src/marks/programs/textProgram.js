@@ -146,7 +146,7 @@ struct RangeResult {
     scale: f32,
 }
 
-// Range fitting in pixel space: returns the adjusted anchor and scale.
+// Range fitting in local pixel space: returns the adjusted anchor and scale.
 fn positionInsideRange(
     a: f32,
     b: f32,
@@ -154,27 +154,16 @@ fn positionInsideRange(
     padding: f32,
     align: i32,
     flush: bool,
-    lower: f32,
-    upper: f32
+    viewportSpan: f32
 ) -> RangeResult {
     let paddedWidth = width + 2.0 * padding;
 
     // Text clearly outside the viewport.
-    if (a > upper || b < lower) {
+    if (a > viewportSpan || b < 0.0) {
         return RangeResult(0.0, 0.0);
     }
 
-    // Keep the range arithmetic close to the viewport. WebGPU positional
-    // scales use absolute logical pixels, so a chromosome-wide range can put
-    // an endpoint billions of pixels from the viewport at extreme zoom. The
-    // subsequent flush calculation would then lose the viewport origin in
-    // f32 cancellation (for example, producing canvas x=padding instead of
-    // viewport x=lower+padding). A text-sized margin preserves enough of an
-    // offscreen range for fitting while keeping the arithmetic precise.
-    let rangeMargin = max(paddedWidth, 1.0);
-    let safeA = clamp(a, lower - rangeMargin, upper + rangeMargin);
-    let safeB = clamp(b, lower - rangeMargin, upper + rangeMargin);
-    let span = safeB - safeA;
+    let span = b - a;
 
     // Extra room for keeping text inside the range.
     let extra = max(0.0, span - paddedWidth);
@@ -182,28 +171,28 @@ fn positionInsideRange(
 
     if (align == ALIGN_AXIS_CENTER) {
         // Centered: slide within the range if flush is enabled.
-        var centre = safeA + safeB;
+        var centre = a + b;
         if (flush) {
-            let leftOver = max(0.0, paddedWidth - (centre - 2.0 * lower));
+            let leftOver = max(0.0, paddedWidth - centre);
             centre = centre + min(leftOver, extra);
 
-            let rightOver = max(0.0, paddedWidth + centre - 2.0 * upper);
+            let rightOver = max(0.0, paddedWidth + centre - 2.0 * viewportSpan);
             centre = centre - min(rightOver, extra);
         }
         pos = centre / 2.0;
     } else if (align == ALIGN_AXIS_LEFT) {
         // Left aligned.
-        var edge = safeA;
+        var edge = a;
         if (flush) {
-            let over = max(0.0, lower - edge);
+            let over = max(0.0, -edge);
             edge = edge + min(over, extra);
         }
         pos = edge + padding;
     } else {
         // Right aligned.
-        var edge = safeB;
+        var edge = b;
         if (flush) {
-            let over = max(0.0, edge - upper);
+            let over = max(0.0, edge - viewportSpan);
             edge = edge - min(over, extra);
         }
         pos = edge - padding;
@@ -307,13 +296,15 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     alignAxis = fixAlignForAngle(alignAxis, angleDegrees);
 #endif
 
-    // Anchor in pixel coordinates. Positional offsets are applied in screen
-    // coordinates to match the current text layout contract.
+    // Anchor and ranged endpoints are in the configuration rectangle's local
+    // pixel space. Apply the per-instance placement before fitting so that
+    // faceted text uses the actual sample-row range, like the WebGL mark.
     let anchorPosition = vec2<f32>(getScaled_x(i), getScaled_y(i));
-    var anchor = applyPlacementPixel(anchorPosition, i) + vec2<f32>(
+    let screenOffset = vec2<f32>(
         getScaled_dx(i),
         getScaled_dy(i)
     );
+    var anchor = applyPlacementPixel(anchorPosition, i) + screenOffset;
     var rangeScale = 1.0;
     var logoSize = vec2<f32>(size);
 
@@ -332,8 +323,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
             params.uPaddingX,
             alignAxis.x,
             params.uFlushX != 0u,
-            params.uViewport.x,
-            params.uViewport.z
+            params.uViewport.z - params.uViewport.x
         );
         anchor.x = xRange.pos;
         rangeScale = rangeScale * xRange.scale;
@@ -356,13 +346,18 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
             params.uPaddingY,
             alignAxis.y,
             params.uFlushY != 0u,
-            params.uViewport.y,
-            params.uViewport.w
+            params.uViewport.w - params.uViewport.y
         );
         anchor.y = yRange.pos;
         rangeScale = rangeScale * yRange.scale;
     }
 #endif
+
+    // Range fitting uses viewport-local pixels. Add the configuration
+    // rectangle's origin only for final placement and visible-range culling.
+    // Source-backed draws use a zero-origin configuration rectangle and rely
+    // on the GPU viewport for their canvas offset.
+    anchor = params.uViewport.xy + anchor;
 
     if (isOutsideVisibleRange(anchor)) {
         return culledText();

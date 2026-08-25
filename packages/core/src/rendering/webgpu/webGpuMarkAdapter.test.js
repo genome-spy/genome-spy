@@ -232,14 +232,14 @@ describe("WebGPU mark adapter", () => {
 
         const config = /** @type {any} */ (translated.config);
         expect(config.channels.x).toEqual({
-            ...dynamicValue(60),
+            ...dynamicValue(50),
             scale: {
                 type: "identity",
                 definition: identityScaleDefinition,
             },
         });
         expect(config.channels.y).toEqual({
-            ...dynamicValue(20),
+            ...dynamicValue(0),
             scale: {
                 type: "identity",
                 definition: identityScaleDefinition,
