@@ -482,7 +482,7 @@ export default class ArrowProgram extends BaseProgram {
     }
 
     _initializeExtraUniforms() {
-        const props = /** @type {Record<string, any>} */ (
+        const props = /** @type {import("../../index.js").ArrowMarkOptions} */ (
             this._markConfig ?? {}
         );
         this._setUniformValue("uHeadSlope", props.headAngle ?? 1);

@@ -901,6 +901,26 @@ export type TextMarkOptions = {
     flushX?: boolean;
     flushY?: boolean;
     squeeze?: boolean;
+    logoLetters?: boolean;
+    /** Logical-pixel text bounds as [x1, y1, x2, y2]. */
+    viewport?: [number, number, number, number];
+};
+
+export type ArrowMarkOptions = {
+    /** Tangent slope used by the arrow-head shader. */
+    headAngle?: number;
+    /** Tangent slope of the head notch. */
+    headNotchAngle?: number;
+    minSize?: number;
+    headWidth?: number;
+    startNotch?: boolean;
+    minStemLength?: number;
+    headSpacing?: number | null;
+    stem?: boolean;
+    /** Renderer code for triangle or open heads. */
+    headShape?: number;
+    /** Renderer code for inside or outside placement. */
+    headPlacement?: number;
 };
 
 export type LinkShape = "arc" | "dome" | "diagonal" | "line";
@@ -975,7 +995,8 @@ export type MarkConfig<T extends MarkType = MarkType> = {
         /** Immutable predicate controlling mark visibility and picking. */
         visibleWhen?: VisibilityPredicate;
     } & (T extends "link" ? LinkMarkOptions : unknown) &
-    (T extends "text" ? TextMarkOptions : unknown);
+    (T extends "text" ? TextMarkOptions : unknown) &
+    (T extends "arrow" ? ArrowMarkOptions : unknown);
 
 export type RendererOptions = {
     alphaMode?: GPUCanvasAlphaMode;

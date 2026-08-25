@@ -3,9 +3,10 @@
 Status: Core retained-frame optimization is complete; the independent package
 parity and cleanup backlog remains ongoing.
 
-Final interaction evidence and the pending manual 60 Hz check are specified in
-`plans/webgpu-interaction-performance/webgpu-interaction-performance-plan.md`.
-Keep measurement and milestone detail there rather than duplicating it here.
+The completed interaction-performance plan has been retired. Current adapter
+simplification and regression-gate work is specified in
+`plans/core-webgpu-integration-simplification/core-webgpu-integration-simplification-plan.md`.
+Keep milestone detail there rather than duplicating it here.
 
 The retained renderer, Core adapter, ordinary repeated occurrences, and App
 sample facets are implemented. Completed milestone narratives live in Git

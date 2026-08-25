@@ -1039,10 +1039,10 @@ function createArrowConfig(mark, data, coords, viewOpacity) {
         headNotchAngle: headAngleToSlope(headNotchAngle),
         minSize: readOptionalNumericProperty(mark, "minSize", 1),
         headWidth: readOptionalNumericProperty(mark, "headWidth", 3),
-        startNotch: readProperty(mark, "startNotch") ? 1 : 0,
+        startNotch: !!readProperty(mark, "startNotch"),
         minStemLength: readOptionalNumericProperty(mark, "minStemLength", 0),
         headSpacing: readNullableNumericProperty(mark, "headSpacing"),
-        stem: readProperty(mark, "stem") !== false ? 1 : 0,
+        stem: readProperty(mark, "stem") !== false,
         headShape: mapProperty(
             mark,
             "headShape",

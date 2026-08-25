@@ -79,6 +79,8 @@ export async function createPointExample(
             x: { data: new Float32Array([0]), scale: identityScale() },
             y: { data: new Float32Array([0]), scale: identityScale() },
         },
+        logoLetters: false,
+        viewport: [0, 0, 100, 100],
     });
     labels.series.replace({
         text: ["-1.0", "1.0"],
@@ -98,6 +100,20 @@ export async function createPointExample(
             },
             { mark: labels },
         ],
+    });
+
+    renderer.createMark(arrowMark, {
+        channels: {},
+        headAngle: 1,
+        headNotchAngle: 0,
+        minSize: 1,
+        headWidth: 3,
+        startNotch: false,
+        minStemLength: 0,
+        headSpacing: null,
+        stem: true,
+        headShape: 0,
+        headPlacement: 0,
     });
     renderer.destroy();
 }
