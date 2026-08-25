@@ -1,8 +1,8 @@
 # Core–WebGPU integration simplification plan
 
-Status: Proposed. The interaction-performance work is complete; this plan
-preserves its retained-frame architecture while reducing the weight of the
-Core–WebGPU integration.
+Status: In progress. Milestone 1 seam cleanup and type hardening are implemented
+and verified. Its hardware smoke and final KISS audit remain before the
+milestone is closed.
 
 ## Context
 
@@ -69,6 +69,56 @@ Core integration, with a smaller `webGpuMarkAdapter.js` of roughly 1,700–1,900
 lines after its remaining responsibilities are separated. These are planning
 estimates, not reasons to delete readable code or move it uncounted elsewhere.
 Each milestone must report the net change across Core and the renderer.
+
+### Recorded Milestone 1 baseline
+
+The pre-change baseline was captured on 2026-08-25. Counts use tracked source
+files under the named `src` directories; renderer test lines below exclude the
+separate hardware GPU-test directory.
+
+| Measure                           | Baseline | After current Milestone 1 changes |
+| --------------------------------- | -------: | --------------------------------: |
+| Core WebGPU production JavaScript |    4,199 |                             4,150 |
+| Core WebGPU tests                 |    3,288 |                             3,309 |
+| Renderer production JavaScript    |   14,711 |                            14,711 |
+| Renderer unit tests               |    4,708 |                             4,708 |
+| Renderer public type exports      |      109 |                               110 |
+| Renderer package export subpaths  |       22 |                                22 |
+
+The single added renderer export is the type-only `ArrowMarkOptions`; the root
+runtime API is unchanged. The current Core production reduction is 49 lines.
+The 21-line test increase covers the newly explicit dynamic-value contract and
+replaces the removed production test convenience with a local helper.
+
+The renderer bundle fixtures were unchanged byte for byte:
+
+| Fixture              | Minified bytes | Gzip bytes | Modules |
+| -------------------- | -------------: | ---------: | ------: |
+| `rendererOnly`       |         15,593 |      4,930 |       2 |
+| `pointLinear`        |        123,195 |     35,521 |      52 |
+| `pointOrdinal`       |        125,653 |     36,151 |      55 |
+| `customIdentityMark` |         15,740 |      5,010 |       2 |
+| `textCustomFont`     |        123,644 |     35,998 |      56 |
+| `textLato`           |        224,400 |    106,079 |      59 |
+
+The initial retained-state inventory found six module-level adapter `WeakMap`s;
+four surface owner/resource containers; one frame-plan mark map; and one
+option-range `WeakMap` per packed mark-data record. Milestone 1 removes the
+per-record option-range map. The other containers are candidates for the
+revision and retained-binding milestones, not safe seam deletions.
+
+Core currently contains 25 built-in raw-uniform references. These remain the
+Milestone 2 baseline. Source inspection also establishes at least two fresh
+top-level objects per submitted occurrence before renderer normalization: the
+context options and surface draw command. Conditional viewport, scissor,
+visible-range, and placement records add more. Renderer normalization then
+creates a normalized draw and viewport copy, while rectangle intersections may
+create further records. The retained DPR 1 benchmark recorded 5,210
+`drawNormalization` samples with a 0.10 ms median, 0.20 ms p95, and 0.133 ms
+mean; the wide 4–135,625 normalized-draw range makes source-level allocation
+counts more useful than one aggregate object estimate. Milestone 4 must replace
+these allocations with stable occurrence-owned records before the optimization
+is judged complete.
 
 ## Goals
 
@@ -254,18 +304,18 @@ handles and does not adopt either project's scene or command model.
 
 ## Expected affected areas
 
-| Area | Intended change | Explicit boundary |
-| --- | --- | --- |
-| Core marks and mutable resources | Backend-neutral revisions | No WebGPU imports or callbacks |
-| `ViewRenderingContext` | At most a small shared invalidation contract | No retained GPU state |
-| Core layout geometry | Explicit draw-geometry revisions and snapshots | Closure sources stay transitional |
-| Core WebGPU adapter | Delete dependency maps and compile bindings | Remains the grammar translator |
-| Core WebGPU surface | Consume materialized stable draws and delete duplicate state | No Core `Rectangle` inputs |
-| `webgpu-renderer` handles | Semantic built-in slots and complete types | Slots remain canonical |
-| Renderer draw path | Reuse normalization storage if measurement justifies it | No retained scene graph API by default |
-| Renderer package exports | Optional helper only if proven smaller | Root API stays small by default |
-| WebGL and Canvas2D coordinators | Optional shared settled-layout traversal | Backend lifecycles stay explicit |
-| Core and renderer documentation | Final ownership and migration notes | No App-specific concepts |
+| Area                             | Intended change                                              | Explicit boundary                      |
+| -------------------------------- | ------------------------------------------------------------ | -------------------------------------- |
+| Core marks and mutable resources | Backend-neutral revisions                                    | No WebGPU imports or callbacks         |
+| `ViewRenderingContext`           | At most a small shared invalidation contract                 | No retained GPU state                  |
+| Core layout geometry             | Explicit draw-geometry revisions and snapshots               | Closure sources stay transitional      |
+| Core WebGPU adapter              | Delete dependency maps and compile bindings                  | Remains the grammar translator         |
+| Core WebGPU surface              | Consume materialized stable draws and delete duplicate state | No Core `Rectangle` inputs             |
+| `webgpu-renderer` handles        | Semantic built-in slots and complete types                   | Slots remain canonical                 |
+| Renderer draw path               | Reuse normalization storage if measurement justifies it      | No retained scene graph API by default |
+| Renderer package exports         | Optional helper only if proven smaller                       | Root API stays small by default        |
+| WebGL and Canvas2D coordinators  | Optional shared settled-layout traversal                     | Backend lifecycles stay explicit       |
+| Core and renderer documentation  | Final ownership and migration notes                          | No App-specific concepts               |
 
 ## Milestone 1: Harden the seam and harvest safe deletions
 
@@ -306,6 +356,35 @@ and establish a trustworthy size baseline before changing ownership.
 - Investigate `noFadingOnPointSelection`: either wire its intended renderer
   behavior with a contract test or remove the unused forwarding path and record
   the parity decision.
+
+### Progress and decisions
+
+- Completed in `f1703fda2`: explicit dynamic values made recursive
+  retainability rewriting redundant; the production-only `useMark()` test
+  convenience and packed-data option-range cache were removed; occurrence
+  ranges now update only when packed-data identity changes.
+- Completed in `9ad010a9f`: public text and arrow option types now cover Core's
+  actual configurations, with representative type fixtures and no runtime or
+  bundle change.
+- Discarded reuse of Core's ordinary encoder construction for conditional
+  branches. A trial caused 27 adapter-test failures because that path applies
+  Core scales, whereas WebGPU intentionally passes raw accessor values and
+  delegates scaling to the renderer. Keeping the small branch encoder preserves
+  that semantic boundary more clearly than parameterizing the shared helper.
+- Removed the dead Core forwarding of `noFadingOnPointSelection`. The renderer
+  behavior remains an explicit parity item in its migration backlog; inventing
+  an unmeasured contract in this cleanup would conflate parity work with seam
+  simplification.
+- Deferred `toDrawRect()` removal to Milestone 4, where occurrences gain stable
+  materialized renderer geometry. Passing Core rectangles through the surface
+  now would obscure rather than improve the boundary.
+- Discarded moving renderer-neutral data/property helpers merely to change
+  their module location. Reconsider a move only when a later deletion leaves a
+  cohesive reusable responsibility.
+- No allocation instrumentation was added to production hot paths. The existing
+  benchmark timing plus the reproducible source-level allocation inventory above
+  gives the required baseline without adding temporary machinery that would
+  itself need removal.
 
 ### Verification
 
