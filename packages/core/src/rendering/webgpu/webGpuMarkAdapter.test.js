@@ -171,10 +171,7 @@ describe("WebGPU mark adapter", () => {
             },
         });
         expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
-        expect(channels.fillOpacity).toEqual({
-            value: 0.375,
-            dynamic: true,
-        });
+        expect(channels.fillOpacity).toEqual(dynamicValue(0.375));
     });
 
     test("keeps navigation and opacity leaves live in one config", () => {
@@ -328,16 +325,14 @@ describe("WebGPU mark adapter", () => {
 
         const config = /** @type {any} */ (translated.config);
         expect(config.channels.x).toEqual({
-            value: 60,
-            dynamic: true,
+            ...dynamicValue(60),
             scale: {
                 type: "identity",
                 definition: identityScaleDefinition,
             },
         });
         expect(config.channels.y).toEqual({
-            value: 20,
-            dynamic: true,
+            ...dynamicValue(20),
             scale: {
                 type: "identity",
                 definition: identityScaleDefinition,
@@ -348,7 +343,7 @@ describe("WebGPU mark adapter", () => {
             data: new Float32Array([2, -3]),
             type: "f32",
         });
-        expect(config.channels.dy).toEqual({ value: 9, dynamic: true });
+        expect(config.channels.dy).toEqual(dynamicValue(9));
         expect(config.font).toBe("Lato");
         expect(config.viewport).toEqual([10, 20, 110, 220]);
         expect(config.dynamicValues.uViewport).toEqual({
@@ -584,10 +579,7 @@ describe("WebGPU mark adapter", () => {
             type: "u32",
         });
         expect(config.dashPatterns).toEqual([[3, 2]]);
-        expect(config.channels.strokeDashOffset).toEqual({
-            value: 1,
-            dynamic: true,
-        });
+        expect(config.channels.strokeDashOffset).toEqual(dynamicValue(1));
     });
 
     test("translates link geometry and rendering properties", () => {
@@ -623,14 +615,8 @@ describe("WebGPU mark adapter", () => {
         const config = /** @type {any} */ (translated).config;
 
         expect(translated.definition.type).toBe("link");
-        expect(config.channels.xOffset).toEqual({
-            value: 2,
-            dynamic: true,
-        });
-        expect(config.channels.y2Offset).toEqual({
-            value: 5,
-            dynamic: true,
-        });
+        expect(config.channels.xOffset).toEqual(dynamicValue(2));
+        expect(config.channels.y2Offset).toEqual(dynamicValue(5));
         expect(config.linkShape).toBe(1);
         expect(config.orient).toBe(1);
         expect(config.arcFadingDistance).toEqual([10, 20]);
@@ -674,14 +660,8 @@ describe("WebGPU mark adapter", () => {
         const config = /** @type {any} */ (translated).config;
 
         expect(translated.definition.type).toBe("arrow");
-        expect(config.channels.xOffset).toEqual({
-            value: 2,
-            dynamic: true,
-        });
-        expect(config.channels.y2Offset).toEqual({
-            value: 5,
-            dynamic: true,
-        });
+        expect(config.channels.xOffset).toEqual(dynamicValue(2));
+        expect(config.channels.y2Offset).toEqual(dynamicValue(5));
         expect(config.channels.direction).toEqual({
             data: new Uint32Array([0, 1]),
             type: "u32",
@@ -753,11 +733,7 @@ describe("WebGPU mark adapter", () => {
 
             expect(
                 /** @type {any} */ (translated).config.channels.shape
-            ).toEqual({
-                value: code,
-                type: "u32",
-                dynamic: true,
-            });
+            ).toEqual(dynamicValue(code, "u32"));
         }
     );
 
@@ -1287,11 +1263,7 @@ describe("WebGPU mark adapter", () => {
         expect(channels.y.data).toEqual(new Float32Array([28, 55]));
         expect(channels.y2.value).toBe(220);
         expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
-        expect(channels.hatchPattern).toEqual({
-            value: 0,
-            type: "u32",
-            dynamic: true,
-        });
+        expect(channels.hatchPattern).toEqual(dynamicValue(0, "u32"));
     });
 
     test("keeps rectangle endpoint offsets as independently scaled channels", () => {
@@ -1381,22 +1353,10 @@ describe("WebGPU mark adapter", () => {
         const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
         const channels = /** @type {any} */ (translated).config.channels;
 
-        expect(channels.cornerRadiusTopRight).toEqual({
-            value: 1,
-            dynamic: true,
-        });
-        expect(channels.cornerRadiusBottomRight).toEqual({
-            value: 2,
-            dynamic: true,
-        });
-        expect(channels.cornerRadiusTopLeft).toEqual({
-            value: 3,
-            dynamic: true,
-        });
-        expect(channels.cornerRadiusBottomLeft).toEqual({
-            value: 4,
-            dynamic: true,
-        });
+        expect(channels.cornerRadiusTopRight).toEqual(dynamicValue(1));
+        expect(channels.cornerRadiusBottomRight).toEqual(dynamicValue(2));
+        expect(channels.cornerRadiusTopLeft).toEqual(dynamicValue(3));
+        expect(channels.cornerRadiusBottomLeft).toEqual(dynamicValue(4));
     });
 
     test.each([
@@ -1847,6 +1807,14 @@ function createConstantEncoder(value) {
             })
         )
     );
+}
+
+/**
+ * @param {number} value
+ * @param {import("@genome-spy/webgpu-renderer").ScalarType} [type]
+ */
+function dynamicValue(value, type) {
+    return { value, ...(type ? { type } : {}), dynamic: true };
 }
 
 /**
