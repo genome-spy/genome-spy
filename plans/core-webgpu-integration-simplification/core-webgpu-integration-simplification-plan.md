@@ -26,6 +26,11 @@ and dependency system:
   `uHeadSlope`, leaking renderer implementation details across the boundary;
 - retained state is divided between adapter maps, frame-plan records, surface
   records, renderer handles, and placement resources;
+- the retained frame plan preserves Core's closure-backed `Rectangle` graph so
+  live scrolling geometry remains visible without layout replay, even though
+  the renderer's public `DrawRect` contract is already plain materialized data;
+- Core assembles fresh draw, viewport, scissor, and placement envelopes while
+  the renderer allocates another normalized draw representation on each paint;
 - several type assertions and tests compensate for contracts that are only
   partially expressed in the renderer's public types;
 - a few helpers and compatibility entry points duplicate existing behavior or
@@ -47,7 +52,11 @@ milestone that changes production code:
 - the number of Core-owned retained maps, dynamic-property discovery loops,
   configuration snapshot/equality helpers, and raw shader-uniform references;
 - allocations or temporary object creation in the dirty-mark synchronization
-  path where they can be counted reliably.
+  path where they can be counted reliably;
+- allocation counts and CPU time for Core draw assembly, rectangle
+  materialization, and renderer draw normalization; and
+- the number of closure-backed rectangle reads per paint in representative
+  ordinary, faceted, and closeup frames where instrumentation is practical.
 
 The previous project's hardware-backed DPR 1 interaction benchmark remains the
 performance regression gate. Do not restore DPR 2 to the routine matrix: the
@@ -69,6 +78,10 @@ Each milestone must report the net change across Core and the renderer.
 - Replace built-in raw uniform names in Core with semantic renderer properties.
 - Express invalidation through explicit Core-owned revisions rather than an
   adapter-specific dependency graph.
+- Make renderer-facing viewport, scissor, and culling geometry explicitly
+  materialized data with stable reusable storage.
+- Establish an incremental path for removing Core's closure-backed rectangles
+  without turning the renderer into their replacement scene graph.
 - Compile stable synchronization operations once per mark/configuration shape
   and perform work only for dirty marks.
 - Improve public types and seam tests so the integration needs fewer casts,
@@ -80,6 +93,8 @@ Each milestone must report the net change across Core and the renderer.
 ## Non-goals
 
 - Replacing stable slots with a required `update(patch)` API.
+- Replacing `DrawRect` with a callback, observable rectangle, or renderer-owned
+  geometry node.
 - Adding a scene graph, view hierarchy, grammar, or App-specific interaction
   behavior to `webgpu-renderer`.
 - Turning `ViewRenderingContext` into a retained renderer object or a WebGPU
@@ -95,6 +110,9 @@ Each milestone must report the net change across Core and the renderer.
 - Splitting large files before responsibilities and duplicate paths have been
   removed.
 - Preserving obsolete internal test helpers as compatibility APIs.
+- Removing every closure-backed Core `Rectangle` in this project. This project
+  isolates them from the renderer boundary and provides the revisions needed
+  for their later incremental replacement.
 
 ## Prerequisites
 
@@ -116,6 +134,8 @@ improvement and must not be refactored away:
 - visible and picking passes share that plan and maintain established draw
   order;
 - steady-state paints synchronize only dirty marks and do not replay layout;
+- scrolling, sticky axes, closeup transitions, clipping, and culling continue
+  to observe live geometry after `onBeforeRender()`;
 - `PlacementSource` remains renderer-neutral and supports complete geometry
   updates, CPU placement culling, and indexed upload coalescing;
 - selection invalidation stays conservative until every selection producer has
@@ -150,9 +170,41 @@ Existing watchers should advance these signals; the WebGPU adapter should not
 reconstruct the same dependency graph in module-level maps.
 
 The initial revision taxonomy is deliberately small: configuration/expression,
-scale, packed data, resource, placement, and selection. Combine categories when
-they always invalidate the same compiled work. Add a category only when a
-benchmark or correctness case needs a distinct action.
+scale, packed data, resource, draw geometry, placement, and selection. Draw
+geometry covers materialized viewport, scissor, and culling records; placement
+covers dense repeated-panel geometry and topology. Combine categories when they
+always invalidate the same compiled work. Add a category only when a benchmark
+or correctness case needs a distinct action.
+
+### Materialize renderer-facing geometry once
+
+`webgpu-renderer` continues to accept plain structural `DrawRect` values. It
+must never receive or evaluate Core `Rectangle` accessors. Each retained Core
+occurrence owns stable materialized viewport, scissor, visible-range, placement,
+and draw-command records. Allocate these records when compiling the frame plan,
+then update their numeric fields in place after `onBeforeRender()` when the
+owning draw-geometry or placement revision changes.
+
+Materializing only at frame-plan compilation would freeze scrolling and
+closeup geometry and is therefore incorrect. Allocating a fresh object on every
+paint would preserve behavior but worsen garbage collection. Until every live
+rectangle producer exposes a complete revision, conservatively refresh the
+affected reusable records on each paint and record that fallback. The fallback
+must allocate nothing and must disappear producer by producer as revisions
+become authoritative.
+
+Core's closure-backed rectangles may remain temporary geometry sources inside
+the frame plan during migration, but no such object crosses into
+`WebGpuSurface` or the renderer. This isolates the renderer API from the old
+model and creates a stable seam for eventually replacing the sources with
+materialized Core layout values.
+
+The renderer reads each `RenderFrame` synchronously as a value snapshot. A
+caller may retain and mutate its plain draw records before a later render call,
+but the renderer must not keep those caller-owned objects and observe later
+mutation implicitly. Normalization, caching for on-demand picking, and other
+retained representations remain renderer-owned. This permits allocation-free
+caller reuse without establishing shared mutable scene state across the API.
 
 ### Compile synchronization once
 
@@ -206,9 +258,11 @@ handles and does not adopt either project's scene or command model.
 | --- | --- | --- |
 | Core marks and mutable resources | Backend-neutral revisions | No WebGPU imports or callbacks |
 | `ViewRenderingContext` | At most a small shared invalidation contract | No retained GPU state |
+| Core layout geometry | Explicit draw-geometry revisions and snapshots | Closure sources stay transitional |
 | Core WebGPU adapter | Delete dependency maps and compile bindings | Remains the grammar translator |
-| Core WebGPU surface | Delete reflected diffing and duplicate state | Remains pass/resource orchestration |
+| Core WebGPU surface | Consume materialized stable draws and delete duplicate state | No Core `Rectangle` inputs |
 | `webgpu-renderer` handles | Semantic built-in slots and complete types | Slots remain canonical |
+| Renderer draw path | Reuse normalization storage if measurement justifies it | No retained scene graph API by default |
 | Renderer package exports | Optional helper only if proven smaller | Root API stays small by default |
 | WebGL and Canvas2D coordinators | Optional shared settled-layout traversal | Backend lifecycles stay explicit |
 | Core and renderer documentation | Final ownership and migration notes | No App-specific concepts |
@@ -229,14 +283,21 @@ and establish a trustworthy size baseline before changing ownership.
 - Add focused type fixtures and seam tests for the actual Core-to-renderer
   configurations. Prefer representative contracts over snapshots of whole
   implementation objects.
+- Make the rectangle seam explicit in types and tests: the renderer accepts
+  materialized numeric `DrawRect` snapshots and has no contract for accessors,
+  lazy values, Core rectangles, or later observation of object mutation.
+- Instrument current Core draw assembly and renderer normalization sufficiently
+  to distinguish closure reads, plain-object allocation, and normalization CPU
+  time in representative frames.
 - Make `liveValue()` explicitly mark a value dynamic and delete recursive
   retainability rewriting where this makes it redundant.
 - Reuse the existing encoder construction path for conditional branches and
   delete `createBranchEncoder()` if behavior remains identical.
 - Remove production `WebGpuSurface.useMark()` if it is only a test convenience;
   test through retained-frame or focused internal seams instead.
-- Remove `toDrawRect()` if the renderer contract can consume the existing rect
-  shape directly.
+- Replace `toDrawRect()` only when retained occurrences own materialized draw
+  rectangles directly. Do not pass a structurally compatible Core `Rectangle`
+  through the surface merely to delete this small conversion helper.
 - Resolve occurrence option ranges when packed data changes rather than caching
   them by draw-options identity on every draw.
 - Move renderer-neutral mark-data/property helpers out of immediate-rendering
@@ -251,6 +312,7 @@ and establish a trustworthy size baseline before changing ownership.
 - Focused Core WebGPU and renderer unit suites.
 - Renderer TypeScript check and the new type fixtures.
 - Before/after source, test, export, and bundle-size report.
+- Baseline draw-assembly, rectangle-read, and normalization allocation counts.
 - One hardware-backed smoke run to confirm visible and picking passes.
 
 ### Tentative commits
@@ -318,7 +380,9 @@ dependencies.
 ### Work
 
 - Trace current watcher and invalidation ownership for expressions, scales,
-  packed data, resources, placement, and selections.
+  packed data, draw geometry, placement, and selections. Include live rectangle
+  producers used by scrolling, sticky axes, closeup transitions, clipping, and
+  culling.
 - Add the smallest backend-neutral revision contract to Core marks and the
   actual owners of mutable resources.
 - Make existing update paths advance revisions exactly once for a logical
@@ -329,14 +393,23 @@ dependencies.
   mutations before one paint.
 - Preserve conservative selection invalidation where the producer cannot yet
   provide a complete revision. Record each remaining conservative path.
+- Publish a backend-neutral draw-geometry revision from the smallest existing
+  owner that knows viewport, clip, or culling geometry changed. Do not make
+  renderers observe Core rectangle accessors.
+- Record closure-backed geometry producers that cannot yet publish a complete
+  revision; their temporary fallback is allocation-free refresh, not stale
+  snapshots.
 - Delete adapter-owned dependency maps and watchers as their owner-provided
   replacements become authoritative.
 
 ### Verification
 
 - WASD pan/zoom, closeup toggle, and closeup wheel remain layout-free.
-- Expression, scale, data, resource, placement, and selection changes each
-  trigger the required update and no unrelated recompilation.
+- Expression, scale, data, resource, draw-geometry, placement, and selection
+  changes each trigger the required update and no unrelated recompilation.
+- Scrollbars, sticky axes, closeup transitions, clipping, and culling update
+  materialized geometry at the same point in the frame as their current live
+  rectangles.
 - Visible and picking frames observe the same logical revision state.
 - Core WebGL behavior and tests remain unchanged or consume only genuinely
   backend-neutral contracts.
@@ -349,8 +422,9 @@ dependencies.
 
 ### Review gate
 
-Review the revision taxonomy before removing compatibility paths. Merge
-categories that do the same work and reject revisions whose only purpose is to
+Review the revision taxonomy before removing compatibility paths. Confirm that
+draw geometry and placement have genuinely different update actions, merge
+categories that do the same work, and reject revisions whose only purpose is to
 mirror a WebGPU implementation detail.
 
 ## Milestone 4: Compile one retained binding per mark
@@ -365,6 +439,15 @@ once and owns the adapter's retained synchronization state.
 - Define a single retained binding record for a Core mark, including renderer
   handle, compiled updater records, observed revisions, packed occurrence data,
   and resources whose lifetime belongs to that binding.
+- Give each occurrence inside the binding one stable materialized draw command
+  and reusable viewport, scissor, visible-range, and placement records. Preserve
+  object identity across ordinary visible frames and picking frames.
+- Refresh materialized geometry in place after `onBeforeRender()` and before
+  culling or submission. Use the draw-geometry revision where complete and the
+  documented allocation-free fallback for remaining closure-backed producers.
+- Move culling and localization to the materialized snapshots so each source
+  rectangle is evaluated at most once per refresh rather than through repeated
+  accessor chains.
 - Compile updater records when configuration shape changes. Normal paints use
   revisions to select records and call stable slots directly.
 - Consolidate the remaining adapter `WeakMap`s, frame mark state, and surface
@@ -372,6 +455,9 @@ once and owns the adapter's retained synchronization state.
 - Delete surface-side arbitrary-object traversal, general configuration
   snapshots/equality, and dynamic-property rediscovery made redundant by the
   compiled records.
+- Delete per-paint draw-option spreads, viewport copies, and nested placement
+  envelopes from the Core path. `WebGpuSurface` receives renderer-shaped plain
+  data and never accepts a Core `Rectangle`.
 - Keep typed-array mutation semantics explicit. Never skip a required upload
   because a mutable value retained its identity.
 - Prototype the binding compiler in Core. Move only a generic handle/slot
@@ -382,8 +468,13 @@ once and owns the adapter's retained synchronization state.
 ### Verification
 
 - Steady-state clean frames perform no mark configuration traversal and create
-  no patch/update objects.
+  no patch/update, draw-command, or rectangle objects.
 - Dirty frames touch only marks and updater groups selected by revisions.
+- Renderer-facing rectangle and draw-command identity remains stable across
+  repeated frames while numeric fields reflect current scrolling and closeup
+  geometry.
+- No Core `Rectangle` or rectangle accessor reaches `WebGpuSurface` or
+  `webgpu-renderer`.
 - Renderer handles and GPU resources are released exactly once on rebuild and
   teardown.
 - The DPR 1 interaction benchmark preserves the completed plan's structural
@@ -403,7 +494,7 @@ Confirm ownership and tree shaking before proceeding. If the generic renderer
 helper fails the size or dependency test, keep the binding compiler in Core and
 remove the prototype from the renderer.
 
-## Milestone 5: Reconcile coordinators and command preparation
+## Milestone 5: Reconcile coordinators and draw preparation
 
 ### Intended outcome
 
@@ -418,6 +509,13 @@ or creating a generic framework larger than the code it replaces.
 - Evaluate a prepared encoder/branch plan now that retained bindings expose
   stable data and property revisions. Compile only demonstrably stable branch
   structure; do not create a second command graph.
+- Reprofile renderer `_normalizeDraws()` with stable materialized Core commands.
+  If allocation or CPU time remains meaningful, reuse separate normal and
+  picking normalization storage internally. Keep the public iterable
+  `DrawCommand` API unless a smaller API change is proven necessary.
+- Do not add public retained draw handles merely to avoid internal scratch
+  allocation. Such handles are acceptable only if they replace more machinery
+  than they add and do not become a renderer scene graph.
 - Remove obsolete immediate-rendering responsibilities and imports revealed by
   the retained binding model.
 - Reassess complete placement updates using the benchmark counters. Keep them
@@ -427,13 +525,15 @@ or creating a generic framework larger than the code it replaces.
 
 - Backend coordinator lifecycle and error-order tests.
 - Conditional encoder and branch parity tests.
+- Stable draw reuse, current-geometry, and independent visible/picking snapshot
+  tests if normalization storage is reused.
 - Focused WebGL, Canvas2D, and WebGPU tests for any shared helper.
 - Net production-code reduction across all affected backends.
 
 ### Tentative commits
 
 - `refactor(core): share settled-layout traversal`
-- `refactor(webgpu): prepare stable encoder branches`
+- `refactor(webgpu): prepare stable draws and encoder branches`
 
 ### Review gate
 
@@ -455,7 +555,8 @@ measured, and ready for the temporary plan to be retired.
 - Keep orchestration and binding lifetime in a small entry module. Avoid barrel
   exports that pull all mark implementations into partial consumers.
 - Update Core's WebGPU integration README with the revision and binding model,
-  ownership boundaries, and performance invariants.
+  materialized renderer-geometry boundary, transitional closure-source
+  ownership, and performance invariants.
 - Update renderer README/API and migration notes only for public contracts that
   actually changed.
 - Record final Core, renderer, test, export, bundle, allocation, and benchmark
@@ -472,6 +573,8 @@ measured, and ready for the temporary plan to be retired.
 - Hardware-backed DPR 1 benchmark and manual MCCA smoke profile.
 - Visible/picking correctness, resize, resource teardown, facets through
   placement, closeup transition, and vertical closeup scrolling.
+- Sticky axes, directional clipping, and culling with geometry changes that do
+  not initiate a new layout traversal.
 
 ### Tentative commits
 
@@ -502,6 +605,47 @@ forcing abstractions or unsafe deletion to hit it.
 - Milestone 6 follows all accepted milestones and should not be parallelized
   across overlapping adapter files.
 
+## Independent Luna review schedule
+
+Use Luna at architectural risk boundaries rather than after every milestone.
+Complete and verify the milestone first, then ask Luna to inspect the actual
+diff, affected downstream consumers, measurements, and relevant plan decisions.
+Apply worthwhile correctness and KISS fixes before the milestone is considered
+settled. Re-review only if a fix materially changes the architecture or public
+contract.
+
+- **Milestone 1:** Optional brief size and KISS audit. Request it if the cleanup
+  adds a new abstraction, misses the expected net reduction, or leaves disputed
+  compatibility paths. Otherwise the normal implementation review is enough.
+- **Milestone 2:** Required API review. Check every renderer export and Core
+  consumer, semantic slot naming and typing, custom-program escape hatches,
+  direct slot introspection, materialized `DrawRect` semantics, hot-path
+  allocation, and tree shaking.
+- **Milestone 3:** Conditional architecture review. Request it when the revision
+  taxonomy or ownership is nontrivial, touches shared Core rendering contracts,
+  or leaves conservative invalidation beyond the documented selection and
+  draw-geometry cases.
+  It may be combined with the Milestone 4 review when the revision change is
+  small and cannot be evaluated meaningfully before bindings consume it.
+- **Milestone 4:** Required architecture and performance review. Check that the
+  compiled binding replaces rather than layers over old state, that resources
+  have one owner, that mutable values cannot go stale, and that clean and dirty
+  hot paths retain the measured performance properties. Verify stable
+  materialized draw identity, live geometry correctness, and absence of
+  rectangle/draw-command allocation on ordinary paints.
+- **Milestone 5:** Conditional review only for an implemented optional change.
+  Review coordinator sharing and prepared encoding independently; a discarded
+  experiment needs only its recorded rationale and measurements.
+- **Milestone 6:** Required final integration review. Check combined Core and
+  renderer size, modularity, maintainability, public API footprint, tree
+  shaking, resource lifetime, all renderer consumers, and representative MCCA
+  interactions before reconciling the plan.
+
+The minimum expected independent reviews are therefore after Milestones 2, 4,
+and 6. Milestone 3 receives its own review when its revision model carries
+enough independent risk; Milestones 1 and 5 do not create automatic review
+overhead.
+
 ## Alternatives considered
 
 ### Replace slots with `update(patch)`
@@ -528,6 +672,20 @@ are smaller and make mutation semantics reviewable.
 Rejected. Core already owns the view hierarchy and retained frame plan. A
 second hierarchy would increase lifetime and invalidation complexity.
 
+### Materialize fresh rectangles on every paint
+
+Rejected. It would sever the closure graph but exchange accessor evaluation for
+predictable garbage proportional to draw count. Retained occurrences instead
+own materialized records and update their numeric fields in place.
+
+### Add public retained draw handles
+
+Rejected as a default. Stable Core `DrawCommand` objects already provide a
+simple materialized input contract. First reuse Core records and, if justified,
+renderer-internal normalization storage. A public handle is warranted only if
+measurement shows that it deletes more lifecycle and validation machinery than
+it introduces.
+
 ### Split `webGpuMarkAdapter.js` immediately
 
 Rejected. It would improve navigation superficially while preserving the
@@ -546,15 +704,30 @@ decision at the Milestone 2 review gate.
 Backend-neutral revisions are internal Core contracts and should not change the
 declarative grammar or `ViewRenderingContext` call sequence. Document only the
 small contract needed by renderer implementations. The Core WebGPU README owns
-the retained binding and invalidation explanation; the renderer README owns
-public slots and custom-program escape hatches. Keep detailed transition notes
-in the renderer migration plan rather than expanding the primary README.
+the retained binding, geometry materialization, and invalidation explanation;
+the renderer README owns public slots, materialized draw semantics, and
+custom-program escape hatches. Keep detailed transition notes in the renderer
+migration plan rather than expanding the primary README.
+
+Closure-backed `Rectangle` remains a transitional Core implementation detail.
+Do not expose a compatibility type or adapter in `webgpu-renderer`. As Core
+producers gain explicit geometry revisions and materialized layout values,
+remove their fallback refresh and source reference independently; the stable
+renderer-facing draw records do not change during that migration.
 
 ## Risks and mitigations
 
 - **Missed mutable updates:** identity does not reveal typed-array mutation.
   Require revisions or narrow snapshots for mutable values and test in-place
   updates.
+- **Stale materialized geometry:** snapshotting only during frame-plan
+  compilation would break live scrolling and clipping. Refresh after
+  `onBeforeRender()` using explicit revisions, with an allocation-free fallback
+  until each producer is complete.
+- **Aliasing stable draw records:** Core and renderer may otherwise retain and
+  mutate the same object at incompatible times. Define render as a synchronous
+  snapshot read and keep separate renderer-owned normalized storage, especially
+  for on-demand picking.
 - **Revision proliferation:** too many categories recreate the dependency graph
   under new names. Review taxonomy and merge categories with identical work.
 - **Selection staleness:** not all selection producers may expose complete
@@ -573,6 +746,9 @@ in the renderer migration plan rather than expanding the primary README.
 
 - Which existing Core owner should publish each revision without coupling
   general mark code to a renderer lifecycle?
+- Which owners can publish a complete draw-geometry revision for scrolling,
+  sticky axes, clipping, and culling, and which initially require conservative
+  refresh?
 - Can selection changes gain a complete revision contract in this project, or
   must some conservative invalidation remain?
 - Should semantic properties be slots exposed directly on `MarkHandle`, or
@@ -583,6 +759,9 @@ in the renderer migration plan rather than expanding the primary README.
   home, and which should remain local rather than create utility modules?
 - Does prepared conditional encoding delete enough work and code after retained
   bindings, or should Milestone 5 discard it?
+- After stable Core draw reuse, is renderer normalization still a meaningful
+  cost or source of garbage, and can separate internal visible/picking storage
+  remove it without a public retained-draw API?
 
 Resolve these at the named review gates with code-size, dependency, type, and
 benchmark evidence. They must not silently become permanent dual paths.
@@ -592,6 +771,16 @@ benchmark evidence. They must not silently become permanent dual paths.
 - Core contains no built-in WGSL uniform names.
 - Stable renderer slots remain the canonical update API and are directly usable
   without a patch allocation.
+- `webgpu-renderer` accepts materialized numeric draw rectangles and has no
+  dependency on Core rectangles, accessors, geometry revisions, or view state.
+- Retained occurrences reuse stable renderer-facing draw and geometry records;
+  ordinary paints do not allocate replacement rectangles or command envelopes.
+- Materialized geometry remains correct for scrolling, sticky axes, closeup
+  transitions, clipping, culling, visible rendering, and picking without layout
+  replay.
+- Closure-backed rectangles are isolated as transitional Core sources and do
+  not cross `WebGpuSurface`; removing them later does not require a renderer API
+  migration.
 - Core has one retained WebGPU binding per mark rather than overlapping adapter,
   frame, and surface state for the same lifetime.
 - Normal clean paints do not traverse arbitrary configuration objects,
