@@ -1,7 +1,7 @@
 # Core–WebGPU integration simplification plan
 
-Status: In progress. Milestones 1 through 5 are implemented or reconciled,
-verified, and reviewed. Milestone 6 is in progress.
+Status: Complete. All milestones are implemented or explicitly discarded,
+verified, measured, and reviewed. The reconciled plan is ready to retire.
 
 ## Context
 
@@ -832,24 +832,77 @@ measured, and ready for the temporary plan to be retired.
   and Core marks reuse the existing backend-neutral index-like type predicate
   instead of a duplicate `isHighPrecisionScale()`. The move removes five net
   Core production lines.
+- Further channel/scale and per-mark configuration splitting was evaluated and
+  discarded. Conditional channels share selection validation, cached column
+  materialization, live property readers, contextual errors, and scale
+  translation. Separating them now would expose a wide internal helper API or
+  duplicate those primitives while leaving the same dependency cluster. The
+  2,210-line adapter is larger than the planning target but has one coherent
+  translation responsibility; file size alone does not justify more modules.
+- The final source comparison is:
+
+  | Measure                           | Baseline | Final | Delta |
+  | --------------------------------- | -------: | ----: | ----: |
+  | Core WebGPU production JavaScript |    4,199 | 3,970 |  -229 |
+  | Core WebGPU tests                 |    3,288 | 3,407 |  +119 |
+  | Renderer production JavaScript    |   14,711 | 14,886 |  +175 |
+  | Renderer unit tests               |    4,708 | 4,820 |  +112 |
+  | Renderer public type exports      |      109 |   116 |    +7 |
+  | Renderer package export subpaths  |       22 |    22 |     0 |
+
+  Core's integration is 229 production lines smaller. Core and renderer
+  production together are 54 lines smaller (18,910 to 18,856), so the result
+  is a net deletion even after counting the semantic renderer API where the
+  responsibilities now live. Centralizing the index precision predicates also
+  removes five production lines outside the integration directory. Test growth
+  records the new revision, binding, stable-draw, and semantic-slot contracts.
+- The 700–1,000-line planning estimate was not reached. The retained-state and
+  per-frame envelope duplication proved removable, but most of the adapter is
+  necessary mark/channel translation rather than parallel orchestration. More
+  aggressive splitting or generic translation abstractions increased the API
+  between helpers without deleting behavior, so they were discarded.
+- Final renderer bundle fixtures retain the Milestone 2 sizes. Compared with
+  the original baseline, the four non-text fixtures grew by only 24–38
+  minified bytes, while the text fixtures grew by 414 minified bytes and one
+  module because they include the semantic text-slot helper. No later milestone
+  added bundle weight or an export subpath.
 
 ### Verification
 
-- Focused Core WebGPU and renderer suites.
-- Workspace TypeScript checks and lint for affected packages.
-- Renderer tree-shaking/bundle fixtures.
-- Hardware-backed DPR 1 benchmark and manual MCCA smoke profile.
-- Visible/picking correctness, resize, resource teardown, facets through
-  placement, closeup transition, and vertical closeup scrolling.
-- Sticky axes, directional clipping, and culling with geometry changes that do
-  not initiate a new layout traversal.
+- Focused Core WebGPU tests pass: 78 tests.
+- Renderer tests pass: 167 tests in 28 files.
+- The full repository unit suite passes: 3,526 tests passed, one skipped, and
+  two todo tests in 427 files.
+- Core and renderer TypeScript checks and lint pass.
+- Renderer tree-shaking, package-export, and bundle-fixture checks pass.
+- The final hardware-backed DPR 1 MCCA smoke run is authoritative on Apple M5 /
+  Metal 3. Horizontal WASD, WASD zoom, closeup toggle, and closeup wheel all
+  pass, including picking after motion and resize. The run is a correctness
+  gate; it does not reinterpret the established performance ratios. Filtering
+  or sorting followed by closeup remains unverified because the MCCA page has
+  no benchmark selectors for those controls.
+- Earlier post-stable-draw hardware checks cover ordinary and closeup rendering,
+  facets through placement, closeup scrolling, sticky axes, directional
+  clipping, current geometry without layout replay, picking, and resource
+  teardown. Subsequent Milestone 6 changes only relocated packing and neutral
+  precision predicates; they did not change those runtime paths.
+- Luna's required final integration review found no blockers. It confirmed the
+  corrected size accounting, unchanged runtime root exports and package
+  subpaths, localized tree-shakeable semantic-slot helper, stable
+  visible/picking draw identity, geometry refresh order, resource lifetimes,
+  and renderer isolation from Core rectangles and shader internals.
+- The review accepted the 2,210-line adapter as one cohesive dependency cluster.
+  It also confirmed that the immutable slot-shape assumption is guarded by the
+  existing TODO and handle recreation. Typed arrays currently entering retained
+  bindings are revisioned or copied; add a boundary regression test only if a
+  future binding admits a new mutable typed-array path.
 
-### Tentative commits
+### Implemented commits
 
-- `refactor(webgpu): modularize mark translation`
-- `docs(webgpu): explain retained integration contracts`
-- `chore(webgpu): reconcile integration simplification plan`
-- `chore(webgpu): retire integration simplification plan`
+- `eb900ee21 refactor(webgpu): isolate packed mark data`
+- `c1a01c87e refactor(core): centralize index precision predicates`
+- `7d06f71cd chore(webgpu): document packed mark data ownership`
+- The plan reconciliation and retirement are the final two delivery commits.
 
 ### Final review gate
 
@@ -858,6 +911,12 @@ integration size and concepts while preserving performance and API discipline.
 Do not count code moved to the renderer or general Core modules as deleted.
 Document justified misses against the 700–1,000-line estimate rather than
 forcing abstractions or unsafe deletion to hit it.
+
+The gate passes. Core's integration is materially smaller and its retained
+state model has fewer owners, scans, and per-frame allocations. The combined
+packages have a smaller production total despite the added semantic renderer
+contract. The estimate miss and deliberately retained responsibilities are
+documented above; no code was moved merely to satisfy the target.
 
 ## Milestone dependency and delegation map
 
@@ -1010,31 +1069,41 @@ renderer-facing draw records do not change during that migration.
 - **Performance regression through cleaner layering:** retain structural
   benchmark assertions and confirm that hot paths allocate no patches.
 
-## Unresolved questions
+## Resolved questions
 
-- Which existing Core owner should publish each revision without coupling
-  general mark code to a renderer lifecycle?
-- Which owners can publish a complete draw-geometry revision for scrolling,
-  sticky axes, clipping, and culling, and which initially require conservative
-  refresh?
-- Can selection changes gain a complete revision contract in this project, or
-  must some conservative invalidation remain?
-- Should semantic properties be slots exposed directly on `MarkHandle`, or
-  typed property groups owned by each mark definition?
-- Does a renderer-generic compiled slot synchronizer produce a net reduction,
-  or is the correct reusable unit Core's retained binding?
-- Which renderer-neutral mark-data/property helpers have a natural existing
-  home, and which should remain local rather than create utility modules?
-- Does prepared conditional encoding delete enough work and code after retained
-  bindings, or should Milestone 5 discard it?
-- After stable Core draw reuse, is renderer normalization still a meaningful
-  cost or source of garbage, and can separate internal visible/picking storage
-  remove it without a public retained-draw API?
+- Core marks publish lazily initialized configuration and resource revisions.
+  Existing encoder/property registration advances them without coupling the
+  general view or scale owners to a WebGPU lifecycle.
+- Not every scrolling, sticky, clipping, and culling producer has a complete
+  geometry revision. Until the later Core rectangle migration supplies one,
+  the frame plan refreshes stable numeric records in place from transitional
+  closure sources. Those closures stop at the Core surface boundary.
+- Selection changes do not yet have a complete revision contract. Selection-
+  backed marks therefore remain conservatively dirty, with a code TODO that
+  names the condition for removing the fallback.
+- Semantic properties are stable typed slots exposed directly on `MarkHandle`.
+  Built-in definitions own their conversion and validation; raw slots remain a
+  custom-program escape hatch.
+- Core's retained resource binding is the correct compiled synchronization
+  unit. A renderer-generic synchronizer would need Core's readers and revision
+  semantics and would move coupling across the package boundary.
+- Collector/topology packing has a cohesive neutral home in
+  `webGpuMarkData.js`. Property and encoder helpers remain shared Core helpers;
+  relocating them without deletion was discarded.
+- Prepared conditional encoding was discarded. Stable Core command records
+  already remove the measured envelope churn, while broader preparation added
+  lifecycle and invalidation machinery for a small command-encoding cost.
+- Renderer normalization remains measurable but small (about 0.15 ms mean in
+  the retained benchmark). Separate retained visible/picking storage or a
+  public retained-draw API did not earn its added lifetime and mutation
+  contract. The existing synchronous snapshot boundary remains explicit.
 
-Resolve these at the named review gates with code-size, dependency, type, and
-benchmark evidence. They must not silently become permanent dual paths.
+## Project acceptance record
 
-## Project acceptance criteria
+All criteria below are satisfied. The two intentionally conservative cases—
+selection invalidation and refresh from closure-backed geometry sources—are
+documented transitional contracts with removal conditions, not parallel
+renderer paths.
 
 - Core contains no built-in WGSL uniform names.
 - Stable renderer slots remain the canonical update API and are directly usable
