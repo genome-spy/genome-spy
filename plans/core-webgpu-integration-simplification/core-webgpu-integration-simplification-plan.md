@@ -1,7 +1,7 @@
 # Core–WebGPU integration simplification plan
 
-Status: In progress. Milestones 1 through 4 are implemented, verified, and
-reviewed. Milestone 5 is next.
+Status: In progress. Milestones 1 through 5 are implemented or reconciled,
+verified, and reviewed. Milestone 6 is next.
 
 ## Context
 
@@ -740,6 +740,35 @@ or creating a generic framework larger than the code it replaces.
   the retained binding model.
 - Reassess complete placement updates using the benchmark counters. Keep them
   unchanged unless they have become a measured bottleneck.
+
+### Progress and decisions
+
+- A shared settled-layout helper was prototyped across WebGL, WebGPU, and
+  Canvas2D, including the common five-pass limit. It removed only 8 production
+  lines while adding a module, callback indirection, and 25 test lines. The
+  prototype was discarded; the short backend-local loops remain clearer.
+- The hardware-backed stable-draw MCCA artifact reports draw normalization at
+  approximately 0.15 ms on average across 459 phase samples, compared with
+  approximately 0.27 ms for command encoding and 0.55 ms for the complete
+  surface render. Reusable normal/picking normalization storage was discarded
+  because the small measured cost does not justify mutable parallel snapshots
+  or a retained-draw API.
+- A prepared encoder/branch plan was discarded. Configuration translation is
+  already selected by packed-data and expression revisions, while dirty live
+  resources now use compiled slot bindings. A second branch graph would target
+  rare configuration misses and duplicate the adapter's existing structure.
+- The remaining imports from `rendering/immediate` are shared Core data and
+  property helpers, not immediate-renderer orchestration. Moving or wrapping
+  them would reorganize names without deleting responsibility. The WebGL
+  `isLargeGenome()` import is a placement issue for Milestone 6, not hot-path
+  work.
+- Complete placement uploads remain unchanged. Prior benchmark counters and
+  manual profiling identify them as a minor cost: the stable-draw artifact
+  recorded 121 uploads totaling 1,142,240 bytes. The generated-placement
+  equality scan has no evidence warranting another optimization path.
+- Luna's review found no blockers and agreed that none of the evaluated changes
+  clears the milestone's deletion and complexity thresholds. Milestone 5 is
+  complete with all proposed implementation paths deliberately discarded.
 
 ### Verification
 
