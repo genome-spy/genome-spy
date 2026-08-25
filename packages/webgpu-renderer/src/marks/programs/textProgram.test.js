@@ -26,9 +26,14 @@ describe("TextProgram series replacement", () => {
             "var anchor = applyPlacementPixel(anchorPosition, i) + positionOffset"
         );
         expect(shaderBody).toContain(
+            "getScaled_xOffset(i),\n        getScaled_yOffset(i)"
+        );
+        expect(shaderBody).toContain(
             "let angle = angleDegrees * 3.14159265 / 180.0"
         );
-        expect(shaderBody).toContain("x + local.x * width + getScaled_dx(i)");
+        expect(shaderBody).toContain(
+            "x + local.x * width + getScaled_dx(i),\n        y + getScaled_dy(i)"
+        );
         expect(shaderBody).toContain(
             "maxValue(params.uViewportEdgeFadeDistance) > -1e10"
         );

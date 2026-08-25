@@ -312,9 +312,12 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     // pixel space. Apply the per-instance placement before fitting so that
     // faceted text uses the actual sample-row range, like the WebGL mark.
     let anchorPosition = vec2<f32>(getScaled_x(i), getScaled_y(i));
+    // Core's applyOffset subtracts yOffset because unit y points upward. This
+    // shader uses local pixel coordinates, where y points downward, so the
+    // equivalent offset is positive here.
     let positionOffset = vec2<f32>(
         getScaled_xOffset(i),
-        -getScaled_yOffset(i)
+        getScaled_yOffset(i)
     );
     var anchor = applyPlacementPixel(anchorPosition, i) + positionOffset;
     var rangeScale = 1.0;
@@ -346,7 +349,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let y2 = applyPlacementPixel(
         vec2<f32>(anchorPosition.x, getScaled_y2(i)),
         i
-    ).y - getScaled_y2Offset(i);
+    ).y + getScaled_y2Offset(i);
     if (params.uLogoLetters != 0u) {
         logoSize.y = abs(y2 - anchor.y);
         anchor.y = (anchor.y + y2) * 0.5;
@@ -425,9 +428,11 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         x = (local.x - 0.5) * width;
         y = (local.y - 0.5) * height;
     }
+    // Core encodes dy as a negative y-up glyph offset. Convert it to the
+    // screen-pixel direction before applying the screen-space rotation.
     let localPos = vec2<f32>(
         x + local.x * width + getScaled_dx(i),
-        y - getScaled_dy(i)
+        y + getScaled_dy(i)
     );
     let rotated = rot * localPos;
     let localPixel = localAnchor + rotated;
