@@ -129,6 +129,7 @@ recreating mark resources.
 | `index.js`                      | Creates the backend and exposes surface, coordinator, and picking. |
 | `webGpuRenderCoordinator.js`    | Settles layout and coordinates visible and picking passes.         |
 | `webGpuViewRenderingContext.js` | Compiles and executes the retained Core frame plan.                |
+| `webGpuMarkData.js`             | Packs collector topology and resolves occurrence ranges.           |
 | `webGpuMarkAdapter.js`          | Translates Core marks and encoders to renderer definitions.        |
 | `webGpuSurface.js`              | Owns the canvas integration and retained renderer handles.         |
 
