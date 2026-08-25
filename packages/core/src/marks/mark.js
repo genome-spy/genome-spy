@@ -128,6 +128,12 @@ export function getXIndexOffsetBound(encoders) {
  * @param {number} count
  *
  * @typedef {"intersects" | "encloses" | "endpoints"} HitTestMode
+ * @typedef {"configuration" | "resources"} RenderingRevisionKind
+ * @typedef {object} RenderingRevisionState
+ * @prop {number} configuration
+ * @prop {number} resources
+ * @prop {boolean} volatileResources
+ * @prop {Set<string>} expressions
  */
 
 /**
@@ -156,6 +162,9 @@ export default class Mark {
      * @type {(() => void)[]}
      */
     #callAfterShaderCompilation = [];
+
+    /** @type {RenderingRevisionState | undefined} */
+    #renderingRevisionState;
 
     /**
      * @param {import("../view/unitView.js").default} unitView
@@ -636,6 +645,119 @@ export default class Mark {
      */
     initializeEncoders() {
         this.encoders = createEncoders(this.unitView, this.encoding);
+    }
+
+    /**
+     * Starts lazy revision tracking for a retained renderer. The caller names
+     * only expression-backed properties that it can synchronize in place;
+     * expression-backed encoder columns and scales are discovered by the mark.
+     *
+     * @param {Iterable<string>} resourceProperties
+     */
+    initializeRenderingRevisions(resourceProperties) {
+        const previousState = this.#renderingRevisionState;
+        const state =
+            previousState ??
+            (this.#renderingRevisionState = {
+                configuration: 0,
+                resources: 0,
+                volatileResources: false,
+                expressions: new Set(),
+            });
+        /**
+         * @param {string} expression
+         * @param {RenderingRevisionKind} kind
+         */
+        const watchExpression = (expression, kind) => {
+            const key = kind + ":" + expression;
+            if (state.expressions.has(key)) {
+                return;
+            }
+            this.unitView.paramRuntime.watchExpression(expression, () => {
+                state[kind]++;
+                this.unitView.context.animator.requestRender();
+            });
+            state.expressions.add(key);
+        };
+        if (!previousState) {
+            const scales = new Set();
+            for (const [channel, encoder] of Object.entries(this.encoders)) {
+                for (const branch of encoder.branches ?? []) {
+                    const channelDef = branch.accessor.channelDef;
+                    if (isExprDef(channelDef)) {
+                        watchExpression(channelDef.expr, "configuration");
+                    }
+                    const values = [
+                        isValueDef(channelDef) ? channelDef.value : undefined,
+                        isDatumDef(channelDef) ? channelDef.datum : undefined,
+                    ];
+                    for (const value of values) {
+                        if (isExprRef(value)) {
+                            watchExpression(value.expr, "resources");
+                        }
+                    }
+                }
+
+                if (encoder.scale) {
+                    const channelDef = findChannelDefWithScale(
+                        encoder.channelDef
+                    );
+                    const resolutionChannel =
+                        channelDef?.resolutionChannel ?? channel;
+                    if (isChannelWithScale(resolutionChannel)) {
+                        const resolution =
+                            this.unitView.getScaleResolution(resolutionChannel);
+                        if (resolution && !scales.has(resolution)) {
+                            const listener = () => state.resources++;
+                            resolution.addEventListener("domain", listener);
+                            resolution.addEventListener("range", listener);
+                            this.unitView.registerDisposer(() => {
+                                resolution.removeEventListener(
+                                    "domain",
+                                    listener
+                                );
+                                resolution.removeEventListener(
+                                    "range",
+                                    listener
+                                );
+                            });
+                            scales.add(resolution);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (const property of resourceProperties) {
+            const value = /** @type {Record<string, any>} */ (this.properties)[
+                property
+            ];
+            if (isExprRef(value)) {
+                watchExpression(value.expr, "resources");
+            }
+        }
+    }
+
+    /**
+     * @param {RenderingRevisionKind} kind
+     * @returns {number | undefined}
+     */
+    getRenderingRevision(kind) {
+        const state = this.#renderingRevisionState;
+        if (!state) {
+            return 0;
+        }
+        return kind == "resources" && state.volatileResources
+            ? undefined
+            : state[kind];
+    }
+
+    /** Marks retained resources as lacking a complete change signal. */
+    makeRenderingResourcesVolatile() {
+        if (!this.#renderingRevisionState) {
+            throw new Error("Rendering revisions have not been initialized.");
+        }
+        this.#renderingRevisionState.volatileResources = true;
     }
 
     /**
