@@ -50,7 +50,9 @@ export const TEXT_CHANNEL_SPECS = {
     x2: { components: 1, scale: linearScale(), optional: true },
     y: { components: 1, scale: linearScale(), default: 0.5 },
     y2: { components: 1, scale: linearScale(), optional: true },
+    xOffset: { type: "f32", components: 1, default: 0.0 },
     x2Offset: { type: "f32", components: 1, default: 0 },
+    yOffset: { type: "f32", components: 1, default: 0.0 },
     y2Offset: { type: "f32", components: 1, default: 0 },
     text: { type: "u32", components: 1, default: 0 },
     size: { type: "f32", components: 1, default: 12.0 },
@@ -109,6 +111,7 @@ struct VSOut {
     @location(3) @interpolate(flat) slope: f32,
     @location(4) @interpolate(flat) gamma: f32,
     @location(5) @interpolate(flat) pickId: u32,
+    @location(6) edgeFadeOpacity: f32,
 };
 
 fn culledText() -> VSOut {
@@ -123,7 +126,16 @@ fn culledText() -> VSOut {
     out.slope = 0.0;
     out.gamma = 1.0;
     out.pickId = 0u;
+    out.edgeFadeOpacity = 0.0;
     return out;
+}
+
+fn minValue(v: vec4<f32>) -> f32 {
+    return min(min(v.x, v.y), min(v.z, v.w));
+}
+
+fn maxValue(v: vec4<f32>) -> f32 {
+    return max(max(v.x, v.y), max(v.z, v.w));
 }
 
 fn alignOffset(align: u32, width: f32) -> f32 {
@@ -300,11 +312,11 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     // pixel space. Apply the per-instance placement before fitting so that
     // faceted text uses the actual sample-row range, like the WebGL mark.
     let anchorPosition = vec2<f32>(getScaled_x(i), getScaled_y(i));
-    let screenOffset = vec2<f32>(
-        getScaled_dx(i),
-        getScaled_dy(i)
+    let positionOffset = vec2<f32>(
+        getScaled_xOffset(i),
+        -getScaled_yOffset(i)
     );
-    var anchor = applyPlacementPixel(anchorPosition, i) + screenOffset;
+    var anchor = applyPlacementPixel(anchorPosition, i) + positionOffset;
     var rangeScale = 1.0;
     var logoSize = vec2<f32>(size);
 
@@ -334,7 +346,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let y2 = applyPlacementPixel(
         vec2<f32>(anchorPosition.x, getScaled_y2(i)),
         i
-    ).y + getScaled_y2Offset(i);
+    ).y - getScaled_y2Offset(i);
     if (params.uLogoLetters != 0u) {
         logoSize.y = abs(y2 - anchor.y);
         anchor.y = (anchor.y + y2) * 0.5;
@@ -357,6 +369,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     // rectangle's origin only for final placement and visible-range culling.
     // Source-backed draws use a zero-origin configuration rectangle and rely
     // on the GPU viewport for their canvas offset.
+    let localAnchor = anchor;
     anchor = params.uViewport.xy + anchor;
 
     if (isOutsideVisibleRange(anchor)) {
@@ -412,9 +425,24 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         x = (local.x - 0.5) * width;
         y = (local.y - 0.5) * height;
     }
-    let localPos = vec2<f32>(x + local.x * width, y);
+    let localPos = vec2<f32>(
+        x + local.x * width + getScaled_dx(i),
+        y - getScaled_dy(i)
+    );
     let rotated = rot * localPos;
+    let localPixel = localAnchor + rotated;
     let pixel = anchor + rotated;
+
+    var edgeFadeOpacity = 1.0;
+    if (maxValue(params.uViewportEdgeFadeDistance) > -1e10) {
+        let viewportSize = params.uViewport.zw - params.uViewport.xy;
+        edgeFadeOpacity = minValue(
+            ((vec4<f32>(1.0, 1.0, 0.0, 0.0) +
+                vec4<f32>(-1.0, -1.0, 1.0, 1.0) * localPixel.yxyx) *
+                viewportSize.yxyx - params.uViewportEdgeFadeDistance) /
+                params.uViewportEdgeFadeWidth
+        );
+    }
 
     let clip = vec2<f32>(
         (pixel.x / globals.width) * 2.0 - 1.0,
@@ -436,6 +464,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.slope = max(1.0, size / params.uSdfNumerator * globals.dpr);
     out.gamma = getGammaForColor(out.color.rgb);
     out.pickId = 0u;
+    out.edgeFadeOpacity = edgeFadeOpacity;
 #if defined(uniqueId_DEFINED)
     out.pickId = getScaled_uniqueId(i) + 1u;
 #endif
@@ -472,16 +501,26 @@ fn getGammaForColor(rgb: vec3<f32>) -> f32 {
     );
 }
 
-fn shade(in: VSOut) -> vec4<f32> {
+fn shadeBase(in: VSOut, edgeFadeOpacity: f32) -> vec4<f32> {
     let sigDist = sampleSuperSdf(in.uv);
     var slope = in.slope;
     if (params.uLogoLetters != 0u) {
         slope = 0.7 / length(vec2<f32>(dpdy(sigDist), dpdx(sigDist)));
     }
     var alpha = clamp((sigDist - 0.5) * slope + 0.5, 0.0, 1.0);
+    alpha = alpha * edgeFadeOpacity;
     alpha = pow(alpha, in.gamma);
     let color = vec4<f32>(in.color.rgb, in.color.a * in.opacity);
     return premultiplyAlpha(color) * alpha;
+}
+
+// Picking intentionally ignores edge fading, like the WebGL renderer.
+fn shade(in: VSOut) -> vec4<f32> {
+    return shadeBase(in, 1.0);
+}
+
+fn shadeText(in: VSOut) -> vec4<f32> {
+    return shadeBase(in, clamp(in.edgeFadeOpacity, 0.0, 1.0));
 }
 
 @fragment
@@ -489,7 +528,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 #if defined(PLACEMENT_ENABLED)
     if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }
 #endif
-    return shade(in);
+    return shadeText(in);
 }
 `;
 
@@ -507,6 +546,8 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
  * @prop {unknown} [letterSpacing]
  * @prop {unknown} [logoLetters]
  * @prop {[number, number, number, number]} [viewport]
+ * @prop {[number, number, number, number]} [viewportEdgeFadeWidth]
+ * @prop {[number, number, number, number]} [viewportEdgeFadeDistance]
  */
 
 /**
@@ -702,6 +743,14 @@ export default class TextProgram extends BaseProgram {
                     this.renderer._globals.height,
                 ],
             },
+            viewportEdgeFadeWidth: {
+                uniform: "uViewportEdgeFadeWidth",
+                default: [0, 0, 0, 0],
+            },
+            viewportEdgeFadeDistance: {
+                uniform: "uViewportEdgeFadeDistance",
+                default: [-Infinity, -Infinity, -Infinity, -Infinity],
+            },
             paddingX: { uniform: "uPaddingX", default: 0 },
             paddingY: { uniform: "uPaddingY", default: 0 },
             flushX: {
@@ -852,6 +901,16 @@ export default class TextProgram extends BaseProgram {
             { name: "uSqueeze", type: "u32", components: 1 },
             { name: "uLogoLetters", type: "u32", components: 1 },
             { name: "uViewport", type: "f32", components: 4 },
+            {
+                name: "uViewportEdgeFadeWidth",
+                type: "f32",
+                components: 4,
+            },
+            {
+                name: "uViewportEdgeFadeDistance",
+                type: "f32",
+                components: 4,
+            },
         ];
     }
 

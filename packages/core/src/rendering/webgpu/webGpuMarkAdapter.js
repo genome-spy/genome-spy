@@ -84,6 +84,20 @@ const HATCH_CODES = new Map(
     ].map((hatch, index) => [hatch, index])
 );
 
+const TEXT_EDGE_FADE_WIDTH_PROPERTIES = [
+    "viewportEdgeFadeWidthTop",
+    "viewportEdgeFadeWidthRight",
+    "viewportEdgeFadeWidthBottom",
+    "viewportEdgeFadeWidthLeft",
+];
+
+const TEXT_EDGE_FADE_DISTANCE_PROPERTIES = [
+    "viewportEdgeFadeDistanceTop",
+    "viewportEdgeFadeDistanceRight",
+    "viewportEdgeFadeDistanceBottom",
+    "viewportEdgeFadeDistanceLeft",
+];
+
 /**
  * Materialized collector batch identity acts as the data revision. Only field
  * accessors are cached because expression accessors may depend on parameters
@@ -740,8 +754,10 @@ function createTextConfig(mark, data, coords, viewOpacity) {
             text: createTextChannel(mark, data),
             size: createNumericChannel(mark, "size", data),
             angle: createNumericChannel(mark, "angle", data),
-            dx: createCombinedOffsetChannel(mark, "x", data),
-            dy: createCombinedOffsetChannel(mark, "y", data),
+            xOffset: createNumericChannel(mark, "xOffset", data),
+            yOffset: createNumericChannel(mark, "yOffset", data),
+            dx: createTextGlyphOffsetChannel(mark, "x", data),
+            dy: createTextGlyphOffsetChannel(mark, "y", data),
             ...(encoders.x2Offset
                 ? { x2Offset: createNumericChannel(mark, "x2Offset", data) }
                 : {}),
@@ -772,6 +788,16 @@ function createTextConfig(mark, data, coords, viewOpacity) {
         fontWeight: readProperty(mark, "fontWeight"),
         fontSize: size,
         viewport: [coords.x, coords.y, coords.x2, coords.y2],
+        viewportEdgeFadeWidth: readNumericPropertyVector(
+            mark,
+            TEXT_EDGE_FADE_WIDTH_PROPERTIES,
+            [0, 0, 0, 0]
+        ),
+        viewportEdgeFadeDistance: readNumericPropertyVector(
+            mark,
+            TEXT_EDGE_FADE_DISTANCE_PROPERTIES,
+            [-Infinity, -Infinity, -Infinity, -Infinity]
+        ),
         paddingX: readNumericProperty(mark, "paddingX"),
         paddingY: readNumericProperty(mark, "paddingY"),
         flushX: !!readProperty(mark, "flushX"),
@@ -786,6 +812,18 @@ function createTextConfig(mark, data, coords, viewOpacity) {
                 coords.x2,
                 coords.y2,
             ]),
+            ...createDynamicNumericVectorProperty(
+                mark,
+                "viewportEdgeFadeWidth",
+                TEXT_EDGE_FADE_WIDTH_PROPERTIES,
+                [0, 0, 0, 0]
+            ),
+            ...createDynamicNumericVectorProperty(
+                mark,
+                "viewportEdgeFadeDistance",
+                TEXT_EDGE_FADE_DISTANCE_PROPERTIES,
+                [-Infinity, -Infinity, -Infinity, -Infinity]
+            ),
             ...createDynamicProperties(mark, {
                 paddingX: (value) => value,
                 paddingY: (value) => value,
@@ -1597,6 +1635,41 @@ function createCombinedOffsetChannel(mark, axis, data) {
 }
 
 /**
+ * Creates the legacy, glyph-local text offset without mixing it with the
+ * positional offset channel. WebGL applies dx/dy to the glyph before rotating
+ * it, whereas xOffset/yOffset move the text anchor.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {"x" | "y"} axis
+ * @param {object[]} data
+ * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
+ */
+function createTextGlyphOffsetChannel(mark, axis, data) {
+    const channel = axis == "x" ? "dx" : "dy";
+    const encoder = mark.encoders[channel];
+    if (!encoder) {
+        return liveValue(() => readNumericProperty(mark, channel));
+    }
+
+    assertUnconditional(mark, channel, encoder);
+    const branchEncoder = createBranchEncoder(
+        mark,
+        encoder,
+        encoder.branches[0]
+    );
+    /** @param {object} datum */
+    const read = (datum) => Number(branchEncoder(datum));
+
+    if (branchEncoder.constant) {
+        return liveValue(() => read(data[0]));
+    }
+    return {
+        data: Float32Array.from(data, read),
+        type: "f32",
+    };
+}
+
+/**
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {object} datum
@@ -2048,6 +2121,18 @@ function readNumericProperty(mark, property) {
 
 /**
  * @param {import("../../marks/mark.js").default} mark
+ * @param {string[]} properties
+ * @param {number[]} fallbacks
+ * @returns {number[]}
+ */
+function readNumericPropertyVector(mark, properties, fallbacks) {
+    return properties.map((property, index) =>
+        readOptionalNumericProperty(mark, property, fallbacks[index])
+    );
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
  * @param {string} property
  * @param {number} fallback
  */
@@ -2212,6 +2297,32 @@ function createDynamicProperties(mark, definitions) {
         );
     }
     return properties;
+}
+
+/**
+ * Keeps a vector uniform live when any of its individual Core properties is an
+ * expression reference.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} name
+ * @param {string[]} properties
+ * @param {number[]} fallbacks
+ * @returns {Record<string, {value: number[]}>}
+ */
+function createDynamicNumericVectorProperty(mark, name, properties, fallbacks) {
+    const rawProperties = /** @type {Record<string, any>} */ (mark.properties);
+    const expressionProperties = properties.filter((property) =>
+        isExprRef(rawProperties[property])
+    );
+    mark.initializeRenderingRevisions(expressionProperties);
+    if (expressionProperties.length == 0) {
+        return {};
+    }
+    return {
+        [name]: retainedPropertyValue(() =>
+            readNumericPropertyVector(mark, properties, fallbacks)
+        ),
+    };
 }
 
 /**

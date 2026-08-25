@@ -188,7 +188,7 @@ describe("WebGPU mark adapter", () => {
         expect(channels.y.scale.range).toEqual([20, 220]);
     });
 
-    test("combines text offsets and uses the embedded font for Core defaults", () => {
+    test("keeps text anchor and glyph offsets separate", () => {
         const data = [
             { label: "A", offset: 2 },
             { label: "B", offset: -3 },
@@ -218,6 +218,8 @@ describe("WebGPU mark adapter", () => {
                 flushX: false,
                 flushY: false,
                 squeeze: false,
+                dx: 4,
+                dy: 5,
             }
         );
 
@@ -246,16 +248,124 @@ describe("WebGPU mark adapter", () => {
             },
         });
         expect(config.channels.text).toEqual({ data: ["A", "B"] });
-        expect(config.channels.dx).toEqual({
+        expect(config.channels.xOffset).toEqual({
             data: new Float32Array([2, -3]),
             type: "f32",
         });
-        expect(config.channels.dy).toEqual(dynamicValue(9));
+        expect(config.channels.yOffset).toEqual(dynamicValue(9));
+        expect(config.channels.dx).toEqual(dynamicValue(4));
+        expect(config.channels.dy).toEqual(dynamicValue(5));
         expect(config.font).toBe("Lato");
         expect(config.viewport).toEqual([10, 20, 110, 220]);
         expect(translated.properties.viewport).toEqual({
             value: [10, 20, 110, 220],
         });
+    });
+
+    test("passes text viewport edge fade properties to the renderer", () => {
+        const mark = createMark(
+            "text",
+            [{ label: "A" }],
+            {
+                x: createConstantEncoder(0),
+                y: createConstantEncoder(0),
+                text: createEncoder((datum) => datum.label),
+                size: createConstantEncoder(11),
+                angle: createConstantEncoder(0),
+                xOffset: createConstantEncoder(0),
+                yOffset: createConstantEncoder(0),
+                color: createConstantEncoder("black"),
+                opacity: createConstantEncoder(1),
+            },
+            {
+                align: "center",
+                baseline: "middle",
+                font: "sans-serif",
+                fontStyle: "normal",
+                fontWeight: 400,
+                paddingX: 0,
+                paddingY: 0,
+                flushX: false,
+                flushY: false,
+                squeeze: false,
+                viewportEdgeFadeWidthTop: 1,
+                viewportEdgeFadeWidthRight: 2,
+                viewportEdgeFadeWidthBottom: 3,
+                viewportEdgeFadeWidthLeft: 4,
+                viewportEdgeFadeDistanceTop: -5,
+                viewportEdgeFadeDistanceRight: -6,
+                viewportEdgeFadeDistanceBottom: -7,
+                viewportEdgeFadeDistanceLeft: -8,
+            }
+        );
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(10, 20, 100, 200)
+        );
+
+        expect(/** @type {any} */ (translated).config).toMatchObject({
+            viewportEdgeFadeWidth: [1, 2, 3, 4],
+            viewportEdgeFadeDistance: [-5, -6, -7, -8],
+        });
+    });
+
+    test("retains expression-driven text edge fade vectors", () => {
+        const mark = createMark(
+            "text",
+            [{ label: "A" }],
+            {
+                x: createConstantEncoder(0),
+                y: createConstantEncoder(0),
+                text: createEncoder((datum) => datum.label),
+                size: createConstantEncoder(11),
+                angle: createConstantEncoder(0),
+                xOffset: createConstantEncoder(0),
+                yOffset: createConstantEncoder(0),
+                color: createConstantEncoder("black"),
+                opacity: createConstantEncoder(1),
+            },
+            {
+                align: "center",
+                baseline: "middle",
+                font: "sans-serif",
+                fontStyle: "normal",
+                fontWeight: 400,
+                paddingX: 0,
+                paddingY: 0,
+                flushX: false,
+                flushY: false,
+                squeeze: false,
+                viewportEdgeFadeWidthTop: { expr: "fadeWidth" },
+                viewportEdgeFadeDistanceLeft: { expr: "fadeDistance" },
+            }
+        );
+        /** @type {any} */ (mark.unitView).paramRuntime = {
+            evaluateAndGet: (/** @type {string} */ name) =>
+                name == "fadeWidth" ? 12 : -9,
+            watchExpression: vi.fn(),
+        };
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+
+        expect(
+            /** @type {any} */ (translated).config.viewportEdgeFadeWidth
+        ).toEqual([12, 0, 0, 0]);
+        expect(
+            /** @type {any} */ (translated).properties.viewportEdgeFadeWidth
+                .value
+        ).toEqual([12, 0, 0, 0]);
+        expect(
+            /** @type {any} */ (translated).properties.viewportEdgeFadeDistance
+                .value
+        ).toEqual([-Infinity, -Infinity, -Infinity, -9]);
+        expect(mark.initializeRenderingRevisions).toHaveBeenCalledWith([
+            "viewportEdgeFadeWidthTop",
+        ]);
+        expect(mark.initializeRenderingRevisions).toHaveBeenCalledWith([
+            "viewportEdgeFadeDistanceLeft",
+        ]);
     });
 
     test("passes Core-loaded custom font resources to the renderer", () => {

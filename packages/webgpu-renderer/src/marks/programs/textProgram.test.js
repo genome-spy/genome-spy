@@ -23,7 +23,23 @@ describe("TextProgram series replacement", () => {
             shaderBody.indexOf("anchor = params.uViewport.xy + anchor")
         );
         expect(shaderBody).toContain(
-            "var anchor = applyPlacementPixel(anchorPosition, i) + screenOffset"
+            "var anchor = applyPlacementPixel(anchorPosition, i) + positionOffset"
+        );
+        expect(shaderBody).toContain(
+            "let angle = angleDegrees * 3.14159265 / 180.0"
+        );
+        expect(shaderBody).toContain("x + local.x * width + getScaled_dx(i)");
+        expect(shaderBody).toContain(
+            "maxValue(params.uViewportEdgeFadeDistance) > -1e10"
+        );
+        expect(shaderBody).toContain(
+            "return shadeBase(in, clamp(in.edgeFadeOpacity, 0.0, 1.0));"
+        );
+        expect(shaderBody).toContain(
+            "let localPixel = localAnchor + rotated;\n    let pixel = anchor + rotated"
+        );
+        expect(shaderBody).toContain(
+            "fn shade(in: VSOut) -> vec4<f32> {\n    return shadeBase(in, 1.0);"
         );
     });
 
@@ -46,6 +62,32 @@ describe("TextProgram series replacement", () => {
             program._sdfNumeratorBase * 0.5
         );
         expect(writeBuffer).toHaveBeenCalledOnce();
+    });
+
+    it("updates viewport edge fade vectors through semantic properties", () => {
+        const program = new TextProgram(createMockRenderer(), {
+            viewportEdgeFadeWidth: [1, 2, 3, 4],
+            viewportEdgeFadeDistance: [-5, -6, -7, -8],
+            channels: {
+                text: { value: "x" },
+                x: { value: 0, scale: identityScale() },
+                y: { value: 0, scale: identityScale() },
+            },
+        });
+        const properties = program.getSlotHandles().properties;
+
+        expect(readUniformVector(program, "uViewportEdgeFadeWidth")).toEqual([
+            1, 2, 3, 4,
+        ]);
+        expect(readUniformVector(program, "uViewportEdgeFadeDistance")).toEqual(
+            [-5, -6, -7, -8]
+        );
+
+        properties.viewportEdgeFadeWidth.set([4, 3, 2, 1]);
+
+        expect(readUniformVector(program, "uViewportEdgeFadeWidth")).toEqual([
+            4, 3, 2, 1,
+        ]);
     });
 
     it("uses Core-provided font metrics and atlas resources", () => {
@@ -438,4 +480,22 @@ function readUniform(program, name, type) {
     return type == "u32"
         ? program._uniformBufferState.view.getUint32(entry.offset, true)
         : program._uniformBufferState.view.getFloat32(entry.offset, true);
+}
+
+/**
+ * @param {TextProgram} program
+ * @param {string} name
+ * @returns {number[]}
+ */
+function readUniformVector(program, name) {
+    const entry = program._uniformBufferState.entries.get(name);
+    if (!entry) {
+        throw new Error(`Missing test uniform: ${name}`);
+    }
+    return Array.from({ length: 4 }, (_, index) =>
+        program._uniformBufferState.view.getFloat32(
+            entry.offset + index * 4,
+            true
+        )
+    );
 }

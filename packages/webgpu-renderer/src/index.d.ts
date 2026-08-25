@@ -857,6 +857,10 @@ export type TextChannelName =
     | "x2"
     | "y"
     | "y2"
+    | "xOffset"
+    | "x2Offset"
+    | "yOffset"
+    | "y2Offset"
     | "text"
     | "size"
     | "angle"
@@ -921,6 +925,10 @@ export type TextMarkOptions = {
     logoLetters?: boolean;
     /** Logical-pixel text bounds as [x1, y1, x2, y2]. */
     viewport?: [number, number, number, number];
+    /** Fade widths at the top, right, bottom, and left viewport edges. */
+    viewportEdgeFadeWidth?: [number, number, number, number];
+    /** Fade distances at the top, right, bottom, and left viewport edges. */
+    viewportEdgeFadeDistance?: [number, number, number, number];
 };
 
 export type ArrowMarkOptions = {
@@ -974,6 +982,8 @@ export type LinkMarkProperties = Required<LinkMarkOptions>;
 
 export type TextMarkProperties = {
     viewport: [number, number, number, number];
+    viewportEdgeFadeWidth: [number, number, number, number];
+    viewportEdgeFadeDistance: [number, number, number, number];
     paddingX: number;
     paddingY: number;
     flushX: boolean;
