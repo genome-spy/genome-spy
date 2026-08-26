@@ -177,7 +177,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let size = getScaled_size(i);
     let diameter = sqrt(size);
 
-    let strokeWidth = getScaled_strokeWidth(i);
+    var strokeWidth = getScaled_strokeWidth(i);
+    let strokeOpacity = getScaled_strokeOpacity(i);
     let shapeRaw = getScaled_shape(i);
     var shape = u32(shapeRaw);
 
@@ -190,6 +191,12 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         shape = TRIANGLE_UP;
     } else if (shape == X) {
         shapeAngle = -45.0;
+    }
+
+    // Line-only shapes use their width even when the stroke falls back to the
+    // fill color. An invisible stroke must not inset other filled shapes.
+    if (strokeOpacity <= 0.0 && shape != X && shape != PLUS) {
+        strokeWidth = 0.0;
     }
 
     let angleInDegrees = getScaled_angle(i);
@@ -253,7 +260,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.fill = getScaled_fill(i);
     out.stroke = getScaled_stroke(i);
     out.fillOpacity = getScaled_fillOpacity(i);
-    out.strokeOpacity = getScaled_strokeOpacity(i);
+    out.strokeOpacity = strokeOpacity;
     out.halfStrokeWidth = strokeWidth * 0.5;
     out.shape = shape;
     out.gradientStrength = getScaled_gradientStrength(i);
@@ -314,6 +321,7 @@ fn shade(in: VSOut) -> vec4<f32> {
         0.0,
         lineShape
     );
+    // TODO: Match SVG and Canvas by drawing the fill first and the stroke over it.
     let color = distanceToColor(
         d + offset,
         fillColor,
