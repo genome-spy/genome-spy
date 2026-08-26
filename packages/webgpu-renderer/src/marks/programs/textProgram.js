@@ -441,9 +441,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     var edgeFadeOpacity = 1.0;
     if (maxValue(params.uViewportEdgeFadeDistance) > -1e10) {
         let viewportSize = params.uViewport.zw - params.uViewport.xy;
+        let localUnit = localPixel / viewportSize;
         edgeFadeOpacity = minValue(
             ((vec4<f32>(1.0, 1.0, 0.0, 0.0) +
-                vec4<f32>(-1.0, -1.0, 1.0, 1.0) * localPixel.yxyx) *
+                vec4<f32>(-1.0, -1.0, 1.0, 1.0) * localUnit.yxyx) *
                 viewportSize.yxyx - params.uViewportEdgeFadeDistance) /
                 params.uViewportEdgeFadeWidth
         );

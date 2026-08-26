@@ -44,6 +44,12 @@ describe("TextProgram series replacement", () => {
             "let localPixel = localAnchor + rotated;\n    let pixel = anchor + rotated"
         );
         expect(shaderBody).toContain(
+            "let localUnit = localPixel / viewportSize;"
+        );
+        expect(shaderBody).toContain(
+            "vec4<f32>(-1.0, -1.0, 1.0, 1.0) * localUnit.yxyx"
+        );
+        expect(shaderBody).toContain(
             "fn shade(in: VSOut) -> vec4<f32> {\n    return shadeBase(in, 1.0);"
         );
     });
