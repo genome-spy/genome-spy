@@ -1194,6 +1194,7 @@ export default class BaseProgram {
      * @returns {void}
      */
     _assertAlive() {
+        this.renderer._assertAlive();
         if (this._destroyed) {
             throw new Error(`${this.constructor.name} has been destroyed.`);
         }

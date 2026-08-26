@@ -127,6 +127,36 @@ function configureMockMark(mark, definition) {
 }
 
 describe("WebGpuSurface", () => {
+    test("forwards unexpected device loss until the surface is finalized", async () => {
+        const container = document.createElement("div");
+        const onError = vi.fn();
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+                onError,
+            })
+        );
+        await surface.initialize();
+        const onDeviceLoss = mocks.createRenderer.mock.calls[0][1].onDeviceLoss;
+        const info = /** @type {GPUDeviceLostInfo} */ (
+            /** @type {unknown} */ ({ reason: "unknown", message: "gone" })
+        );
+
+        onDeviceLoss(info);
+
+        expect(onError).toHaveBeenCalledOnce();
+        expect(onError.mock.calls[0][0]).toMatchObject({
+            message: "WebGPU device was lost (unknown): gone",
+        });
+
+        surface.finalize();
+        onDeviceLoss(info);
+        expect(onError).toHaveBeenCalledOnce();
+    });
+
     test("retains repeated mark placement through empty frames until owner disposal", async () => {
         const container = document.createElement("div");
         const surface = new WebGpuSurface(

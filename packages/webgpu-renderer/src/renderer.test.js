@@ -189,6 +189,82 @@ describe("Renderer mark definitions", () => {
         ]);
     });
 
+    test("reports device loss once and rejects picks before deferred work starts", async () => {
+        const { renderer } = createRendererHarness();
+        renderer._pickSingle = vi.fn(async () => 1);
+        const first = renderer.pick(1, 2);
+        const second = renderer.pick(3, 4);
+        const info = /** @type {GPUDeviceLostInfo} */ (
+            /** @type {unknown} */ ({ reason: "unknown", message: "gone" })
+        );
+
+        renderer._handleDeviceLoss(info);
+        const error = renderer._deviceLossError;
+
+        await expect(first).rejects.toBe(error);
+        await expect(second).rejects.toBe(error);
+        await Promise.resolve();
+        expect(renderer._pickSingle).not.toHaveBeenCalled();
+        expect(renderer._activePick).toBeNull();
+        expect(renderer._pickQueue).toHaveLength(0);
+        expect(renderer._onDeviceLoss).toHaveBeenCalledOnce();
+        expect(renderer._onDeviceLoss).toHaveBeenCalledWith(info);
+
+        renderer._handleDeviceLoss(info);
+        expect(renderer._onDeviceLoss).toHaveBeenCalledOnce();
+        expect(() => renderer.render()).toThrow(error);
+        expect(() =>
+            renderer.createPlacementSet({ rectangles: new Float32Array() })
+        ).toThrow(error);
+    });
+
+    test("settles an active pick once when loss races GPU readback", async () => {
+        const { renderer } = createRendererHarness();
+        /** @type {() => void} */
+        let release = () => {};
+        renderer._pickSingle = vi.fn(
+            () =>
+                new Promise((resolve) => {
+                    release = () => resolve(7);
+                })
+        );
+        const pick = renderer.pick(1, 2);
+        await Promise.resolve();
+
+        renderer._handleDeviceLoss(
+            /** @type {GPUDeviceLostInfo} */ (
+                /** @type {unknown} */ ({ reason: "unknown", message: "" })
+            )
+        );
+        await expect(pick).rejects.toBe(renderer._deviceLossError);
+
+        release();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(renderer._activePick).toBeNull();
+    });
+
+    test("resolves active and queued picks to null on intentional destruction", async () => {
+        const { renderer } = createRendererHarness();
+        renderer._pickSingle = vi.fn(async () => 1);
+        const active = renderer.pick(1, 2);
+        const queued = renderer.pick(3, 4);
+
+        renderer.destroy();
+        renderer._handleDeviceLoss(
+            /** @type {GPUDeviceLostInfo} */ (
+                /** @type {unknown} */ ({
+                    reason: "destroyed",
+                    message: "",
+                })
+            )
+        );
+
+        await expect(active).resolves.toBeNull();
+        await expect(queued).resolves.toBeNull();
+        expect(renderer._onDeviceLoss).not.toHaveBeenCalled();
+    });
+
     test("draws retained mark occurrences in the requested order", () => {
         const firstProgram = createProgram();
         const secondProgram = createProgram();
@@ -379,11 +455,13 @@ function createRendererHarness() {
     const renderer = Object.create(Renderer.prototype);
     renderer._marks = new Map();
     renderer._nextMarkId = 1;
-    renderer._destroyed = false;
+    renderer._state = "alive";
+    renderer._deviceLossError = null;
+    renderer._onDeviceLoss = vi.fn();
     renderer._onInvalidate = vi.fn();
     renderer._pickingDirty = false;
     renderer._pickQueue = [];
-    renderer._pickInFlight = null;
+    renderer._activePick = null;
     renderer._renderFrame = null;
     renderer._pickingFrame = null;
     renderer.canvas = /** @type {HTMLCanvasElement} */ (

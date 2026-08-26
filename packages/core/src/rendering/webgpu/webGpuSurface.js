@@ -24,6 +24,8 @@ export default class WebGpuSurface {
     /** @type {import("@genome-spy/webgpu-renderer").Renderer | undefined} */
     #renderer;
 
+    #finalized = false;
+
     /** @type {Map<import("../../marks/mark.js").default, RetainedMark>} */
     #marks = new Map();
 
@@ -71,6 +73,16 @@ export default class WebGpuSurface {
             onInvalidate: () => {
                 if (this.#renderer) {
                     this.options.onRenderInvalidated?.();
+                }
+            },
+            onDeviceLoss: (info) => {
+                if (!this.#finalized) {
+                    const detail = info.message ? `: ${info.message}` : "";
+                    this.options.onError?.(
+                        new Error(
+                            `WebGPU device was lost (${info.reason})${detail}`
+                        )
+                    );
                 }
             },
         });
@@ -351,6 +363,10 @@ export default class WebGpuSurface {
     }
 
     finalize() {
+        if (this.#finalized) {
+            return;
+        }
+        this.#finalized = true;
         for (const source of this.#occurrencePlacementSources.values()) {
             source.dispose();
         }

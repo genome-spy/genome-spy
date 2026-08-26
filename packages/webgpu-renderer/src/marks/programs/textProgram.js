@@ -1150,7 +1150,7 @@ export default class TextProgram extends BaseProgram {
      * @returns {void}
      */
     _setAtlasFromBitmap(image) {
-        if (this._destroyed) {
+        if (this._destroyed || !this.renderer._isAlive()) {
             return;
         }
         const texture = this.device.createTexture({

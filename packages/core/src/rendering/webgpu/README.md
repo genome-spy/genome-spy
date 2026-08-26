@@ -102,6 +102,12 @@ Disposing a renderer-neutral `PlacementSource` releases the backend resource
 derived from it. Empty, filtered, clipped, or offscreen frames keep still-owned
 resources alive. Finalizing the surface releases everything that remains.
 
+An unexpected device loss is terminal for the current Core instance. The
+surface forwards the renderer's `onDeviceLoss` notification through Core's
+existing `EmbedOptions.onError` and default message-box path exactly once; it
+does not recreate the renderer or fall back to another backend. Intentional
+surface finalization suppresses the notification.
+
 Each retained mark supplies the renderer with a diagnostic owner in the form
 `<unit-view path> [<Core mark type>]`. GPU resource labels append their role to
 that owner, making validation errors and captures traceable to explicit Core

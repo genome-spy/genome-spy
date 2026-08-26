@@ -1039,6 +1039,8 @@ export type RendererOptions = {
     format?: GPUTextureFormat;
     /** Called when asynchronous renderer work requires the host to draw again. */
     onInvalidate?: () => void;
+    /** Called once when the device is unexpectedly lost. No recovery is attempted. */
+    onDeviceLoss?: (info: GPUDeviceLostInfo) => void;
 };
 
 export type MarkCreationOptions = {

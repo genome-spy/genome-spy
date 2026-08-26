@@ -58,6 +58,7 @@ class PlacementSet {
     }
 
     get bindGroup() {
+        this.renderer._assertAlive();
         if (this._destroyed) {
             throw new RendererError("Placement set has been destroyed.");
         }
@@ -74,6 +75,7 @@ class PlacementSet {
 
     /** @param {import("./index.d.ts").PlacementSetData} data */
     replace(data) {
+        this.renderer._assertAlive();
         if (this._destroyed) {
             throw new RendererError("Placement set has been destroyed.");
         }
@@ -225,18 +227,14 @@ export async function createRenderer(canvas, options = {}) {
 
     const format = options.format ?? navigator.gpu.getPreferredCanvasFormat();
 
-    context.configure({
-        device,
-        format,
-        alphaMode: options.alphaMode ?? "premultiplied",
-    });
-
     return new Renderer({
         device,
         context,
         format,
         canvas,
+        alphaMode: options.alphaMode ?? "premultiplied",
         onInvalidate: options.onInvalidate,
+        onDeviceLoss: options.onDeviceLoss,
     });
 }
 
@@ -250,15 +248,30 @@ export class Renderer {
      */
 
     /**
-     * @param {{ device: GPUDevice, context: GPUCanvasContext, format: GPUTextureFormat, canvas: HTMLCanvasElement, onInvalidate?: () => void }} params
+     * @param {{ device: GPUDevice, context: GPUCanvasContext, format: GPUTextureFormat, canvas: HTMLCanvasElement, alphaMode: GPUCanvasAlphaMode, onInvalidate?: () => void, onDeviceLoss?: (info: GPUDeviceLostInfo) => void }} params
      */
-    constructor({ device, context, format, canvas, onInvalidate }) {
+    constructor({
+        device,
+        context,
+        format,
+        canvas,
+        alphaMode,
+        onInvalidate,
+        onDeviceLoss,
+    }) {
         this.device = device;
         this.context = context;
         this.format = format;
         this.canvas = canvas;
         this._onInvalidate = onInvalidate ?? (() => {});
-        this._destroyed = false;
+        this._onDeviceLoss = onDeviceLoss ?? (() => {});
+        /** @type {"alive" | "lost" | "destroyed"} */
+        this._state = "alive";
+        /** @type {RendererError | null} */
+        this._deviceLossError = null;
+        void device.lost.then((info) => this._handleDeviceLoss(info));
+
+        context.configure({ device, format, alphaMode });
         // TODO: Use r32uint picking when available on all targets.
         this.pickFormat = /** @type {GPUTextureFormat} */ ("rgba8unorm");
 
@@ -281,8 +294,8 @@ export class Renderer {
          * @type {{ x: number, y: number, resolve: (value: number|null) => void, reject: (reason: unknown) => void }[]}
          */
         this._pickQueue = [];
-        /** @type {Promise<unknown> | null} */
-        this._pickInFlight = null;
+        /** @type {{ x: number, y: number, resolve: (value: number|null) => void, reject: (reason: unknown) => void } | null} */
+        this._activePick = null;
 
         this._globalUniformStride = Math.max(
             80,
@@ -491,7 +504,7 @@ export class Renderer {
      * @returns {void}
      */
     markPickingDirty() {
-        if (this._destroyed) {
+        if (this._state !== "alive") {
             return;
         }
         this._pickingDirty = true;
@@ -504,7 +517,7 @@ export class Renderer {
      * @returns {void}
      */
     _invalidate() {
-        if (this._destroyed) {
+        if (this._state !== "alive") {
             return;
         }
         this.markPickingDirty();
@@ -597,39 +610,70 @@ export class Renderer {
      * @returns {void}
      */
     _startNextPick() {
-        if (this._pickInFlight || !this._pickQueue.length) {
+        if (this._activePick || !this._pickQueue.length) {
             return;
         }
 
         const request = this._pickQueue.shift();
-        const operation = Promise.resolve().then(() =>
-            this._pickSingle(request.x, request.y)
-        );
-        this._pickInFlight = operation;
+        this._activePick = request;
+        const operation = Promise.resolve().then(() => {
+            this._assertAlive();
+            return this._pickSingle(request.x, request.y);
+        });
         operation.then(
-            (value) => {
-                request.resolve(value);
-                this._finishPick(operation);
-            },
-            (reason) => {
-                request.reject(reason);
-                this._finishPick(operation);
-            }
+            (value) => this._finishPick(request, value, false),
+            (reason) => this._finishPick(request, reason, true)
         );
     }
 
     /**
      * Complete one readback and service the next pending request.
      *
-     * @param {Promise<unknown>} operation
+     * @param {{ resolve: (value: number|null) => void, reject: (reason: unknown) => void }} request
+     * @param {unknown} result
+     * @param {boolean} rejected
      * @returns {void}
      */
-    _finishPick(operation) {
-        if (this._pickInFlight !== operation) {
+    _finishPick(request, result, rejected) {
+        if (this._activePick !== request) {
             return;
         }
-        this._pickInFlight = null;
-        this._startNextPick();
+        this._activePick = null;
+        if (rejected) {
+            request.reject(result);
+        } else {
+            request.resolve(/** @type {number | null} */ (result));
+        }
+        if (this._state === "alive") {
+            this._startNextPick();
+        }
+    }
+
+    /**
+     * Transition once to the terminal lost state and settle pending work.
+     *
+     * @param {GPUDeviceLostInfo} info
+     * @returns {void}
+     */
+    _handleDeviceLoss(info) {
+        if (this._state !== "alive") {
+            return;
+        }
+        const detail = info.message ? `: ${info.message}` : "";
+        const error = new RendererError(
+            `WebGPU device was lost (${info.reason})${detail}`
+        );
+        this._state = "lost";
+        this._deviceLossError = error;
+        const active = this._activePick;
+        this._activePick = null;
+        active?.reject(error);
+        for (const request of this._pickQueue) {
+            request.reject(error);
+        }
+        this._pickQueue.length = 0;
+        this._onInvalidate = () => {};
+        this._onDeviceLoss(info);
     }
 
     /**
@@ -968,7 +1012,7 @@ export class Renderer {
      * @returns {void}
      */
     destroyMark(markId) {
-        if (this._destroyed) {
+        if (this._state === "destroyed") {
             return;
         }
         const mark = this._marks.get(markId);
@@ -985,10 +1029,10 @@ export class Renderer {
      * @returns {void}
      */
     destroy() {
-        if (this._destroyed) {
+        if (this._state === "destroyed") {
             return;
         }
-        this._destroyed = true;
+        this._state = "destroyed";
         for (const mark of this._marks.values()) {
             mark.destroy();
         }
@@ -1008,6 +1052,9 @@ export class Renderer {
             request.resolve(null);
         }
         this._pickQueue.length = 0;
+        const active = this._activePick;
+        this._activePick = null;
+        active?.resolve(null);
         this._onInvalidate = () => {};
         this.context.unconfigure();
         this.device.destroy();
@@ -1017,9 +1064,17 @@ export class Renderer {
      * @returns {void}
      */
     _assertAlive() {
-        if (this._destroyed) {
+        if (this._state === "lost") {
+            throw this._deviceLossError;
+        }
+        if (this._state === "destroyed") {
             throw new RendererError("Renderer has been destroyed.");
         }
+    }
+
+    /** @returns {boolean} */
+    _isAlive() {
+        return this._state === "alive";
     }
 }
 

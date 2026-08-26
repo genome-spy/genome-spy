@@ -272,21 +272,21 @@ renderer cannot silently continue using invalid resources.
 
 ### Work
 
-- [ ] Add and document `RendererOptions.onDeviceLoss`.
-- [ ] Attach the `device.lost` handler before configuring or allocating
+- [x] Add and document `RendererOptions.onDeviceLoss`.
+- [x] Attach the `device.lost` handler before configuring or allocating
       renderer-owned resources.
-- [ ] Track distinct alive, lost, and intentionally destroyed states while
+- [x] Track distinct alive, lost, and intentionally destroyed states while
       preserving idempotent `destroy()`.
-- [ ] Replace the promise-only pick bookkeeping with an explicit active request
+- [x] Replace the promise-only pick bookkeeping with an explicit active request
       record; reject queued and active requests exactly once on loss, guard the
       deferred start, and settle both queued and active requests with `null` on
       intentional destruction.
-- [ ] Route the Core surface's hook through a generic post-launch runtime-error
+- [x] Route the Core surface's hook through a generic post-launch runtime-error
       reporter that reuses `EmbedOptions.onError` and the default message box.
       Thread it as internal `RenderingBackendOptions.onError`, guard finalized
       surfaces and destroyed GenomeSpy instances, and make loss during launch
       fail launch without duplicate reporting.
-- [ ] Keep adapter/device reacquisition and mark reconstruction out of the
+- [x] Keep adapter/device reacquisition and mark reconstruction out of the
       implementation.
 
 ### Affected areas and consumers
@@ -409,11 +409,11 @@ Tentative commit: `perf(webgpu-renderer): preserve bind groups across series upd
       complete unit-view path, Core mark type, and resource role.
 - [ ] Standalone renderer users get deterministic fallback labels without Core.
 - [ ] No view-path or role-label strings are assembled per draw occurrence.
-- [ ] Unexpected device loss calls `onDeviceLoss` once and reaches Core's
+- [x] Unexpected device loss calls `onDeviceLoss` once and reaches Core's
       existing error presentation; normal destruction does not call it.
-- [ ] Device loss leaves no unresolved pick promise and all later public work
+- [x] Device loss leaves no unresolved pick promise and all later public work
       fails clearly without recovery attempts.
-- [ ] Device loss during launch is reported once and makes launch fail; a loss
+- [x] Device loss during launch is reported once and makes launch fail; a loss
       notification after Core teardown has no visible effect.
 - [ ] Compatible series replacement performs uploads without creating a bind
       group; growth of packed or text-extra buffers creates exactly one

@@ -74,6 +74,13 @@ export default class GenomeSpy {
     /** @type {import("./rendering/renderingBackend.js").RenderingBackend} */
     #renderingBackend;
 
+    #destroyed = false;
+    #launchPending = false;
+    /** @type {Error | undefined} */
+    #launchRuntimeError;
+    /** @type {Set<unknown>} */
+    #reportedErrors = new Set();
+
     #keyboardListenerManager = new KeyboardListenerManager();
     #eventListeners = new EventListenerRegistry();
     #extraBroadcastListeners = new EventListenerRegistry();
@@ -308,6 +315,7 @@ export default class GenomeSpy {
             // clear the canvas and require repainting the existing render batch.
             onCanvasResize: () => this.#renderCoordinator?.renderAll(),
             onRenderInvalidated: () => this.animator.requestRender(),
+            onError: (error) => this.#reportRuntimeError(error),
         });
 
         canvasWrapper.appendChild(loadingIndicatorsElement);
@@ -325,6 +333,11 @@ export default class GenomeSpy {
      */
     destroy() {
         // TODO: There's a memory leak somewhere
+
+        if (this.#destroyed) {
+            return;
+        }
+        this.#destroyed = true;
 
         const canvasWrapper = this.#canvasWrapper;
 
@@ -553,10 +566,14 @@ export default class GenomeSpy {
      */
     async launch() {
         let launched = false;
+        this.#launchPending = true;
+        this.#launchRuntimeError = undefined;
         try {
             await this.#prepareContainer();
+            this.#throwIfLaunchFailed();
 
             await this.#prepareViewsAndData();
+            this.#throwIfLaunchFailed();
 
             this.#destructionCallbacks.push(
                 this.#interactionController.registerInteractionEvents()
@@ -568,29 +585,52 @@ export default class GenomeSpy {
             launched = true;
             return true;
         } catch (reason) {
-            const message = `${
-                reason.view ? `At "${reason.view.getPathString()}": ` : ""
-            }${reason.toString()}`;
-            console.error(reason.stack);
-            const handled = this.options.onError?.(reason, this.container);
-            if (!handled) {
-                createMessageBox(this.container, message);
-            }
-
-            if (this.viewRoot) {
-                this.#loadingStatusRegistry.set(
-                    this.viewRoot,
-                    "error",
-                    message
-                );
-            }
+            this.#reportError(this.#launchRuntimeError ?? reason);
 
             return false;
         } finally {
+            this.#launchPending = false;
             this.#canvasWrapper.classList.remove("loading");
             if (launched && this.viewRoot) {
                 this.#loadingStatusRegistry.set(this.viewRoot, "complete");
             }
+        }
+    }
+
+    /** @param {Error} error */
+    #reportRuntimeError(error) {
+        if (this.#destroyed) {
+            return;
+        }
+        if (this.#launchPending && !this.#launchRuntimeError) {
+            this.#launchRuntimeError = error;
+        }
+        this.#reportError(error);
+    }
+
+    #throwIfLaunchFailed() {
+        if (this.#launchRuntimeError) {
+            throw this.#launchRuntimeError;
+        }
+    }
+
+    /** @param {any} reason */
+    #reportError(reason) {
+        if (this.#destroyed || this.#reportedErrors.has(reason)) {
+            return;
+        }
+        this.#reportedErrors.add(reason);
+        const message = `${
+            reason.view ? `At "${reason.view.getPathString()}": ` : ""
+        }${reason.toString()}`;
+        console.error(reason.stack);
+        const handled = this.options.onError?.(reason, this.container);
+        if (!handled) {
+            createMessageBox(this.container, message);
+        }
+
+        if (this.viewRoot && this.#loadingStatusRegistry) {
+            this.#loadingStatusRegistry.set(this.viewRoot, "error", message);
         }
     }
 

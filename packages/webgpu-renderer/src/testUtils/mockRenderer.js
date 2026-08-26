@@ -31,6 +31,8 @@ export function createMockRenderer() {
             _globals: { width: 1, height: 1, dpr: 1 },
             markPickingDirty: () => {},
             _invalidate: () => {},
+            _assertAlive: () => {},
+            _isAlive: () => true,
         })
     );
 }

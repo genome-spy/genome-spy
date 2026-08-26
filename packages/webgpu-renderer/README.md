@@ -162,6 +162,13 @@ The main operations are:
 `destroy()` is idempotent. Rendering and retained handle updates fail after
 destruction.
 
+Pass `onDeviceLoss` to `createRenderer` to observe an unexpected terminal
+device loss. The callback runs once with the browser's `GPUDeviceLostInfo`;
+queued GPU picking reads reject, and later rendering or retained updates throw
+a `RendererError`. The renderer does not acquire a new device or rebuild
+resources. Calling `destroy()` intentionally does not invoke the hook, and
+pending picks resolve to `null` during that teardown.
+
 ### Canvas sizing and invalidation
 
 `updateGlobals({ width, height, dpr })` uses logical CSS-pixel dimensions. The
