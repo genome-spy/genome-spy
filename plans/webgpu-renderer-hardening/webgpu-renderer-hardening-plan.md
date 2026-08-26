@@ -1,6 +1,6 @@
 # WebGPU renderer diagnostics and lifecycle hardening plan
 
-Status: Proposed
+Status: In progress
 
 ## Context
 
@@ -212,22 +212,22 @@ each mark program and identify the role of renderer-owned resources.
 
 ### Work
 
-- [ ] Add and type `MarkCreationOptions` and the required mark-program creation
+- [x] Add and type `MarkCreationOptions` and the required mark-program creation
       context using the concrete signatures above.
-- [ ] Resolve the mark ID and label before calling the definition factory, and
+- [x] Resolve the mark ID and label before calling the definition factory, and
       update built-in definitions, custom-definition fixtures, and mocks to
       accept the context.
-- [ ] Thread the resolved label through `BaseProgram`, pipeline construction,
+- [x] Thread the resolved label through `BaseProgram`, pipeline construction,
       series, scale, selection, text/font, and extra-resource managers.
-- [ ] Label renderer-global layouts/buffers/bind groups, placement resources,
+- [x] Label renderer-global layouts/buffers/bind groups, placement resources,
       picking resources, shader modules, pipelines, textures/views, samplers,
       command encoders, and render/picking passes with stable role names. Cover
       descriptor creation in `pipelineBuilder.js`, `bindGroupBuilder.js`,
       `webgpuTextureUtils.js`, and the renderer's main and picking encoders.
-- [ ] Add a Core WebGPU label helper based on `unitView.getPathString()` and
+- [x] Add a Core WebGPU label helper based on `unitView.getPathString()` and
       `mark.getType()`, and pass its result when the retained mark is first
       created.
-- [ ] Keep labels fixed for the lifetime of a retained resource; recreated
+- [x] Keep labels fixed for the lifetime of a retained resource; recreated
       resources inherit the same ownership prefix.
 
 ### Affected areas and consumers

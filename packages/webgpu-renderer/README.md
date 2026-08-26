@@ -147,17 +147,17 @@ assets. The Lato entry point is the only intentional registration side effect.
 
 The main operations are:
 
-| API                                              | Purpose                                                    |
-| ------------------------------------------------ | ---------------------------------------------------------- |
-| `createRenderer(canvas, options?)`               | Create and configure the device and canvas context.        |
-| `renderer.updateGlobals({ width, height, dpr })` | Set logical canvas dimensions and device pixel ratio.      |
-| `renderer.createMark(definition, config)`        | Create a retained mark and its update handles.             |
-| `renderer.createPlacementSet(data)`              | Create retained normalized placement rectangles.           |
-| `renderer.render(frame?)`                        | Submit an ordered visible frame.                           |
-| `renderer.renderPicking(frame?)`                 | Set the ordered frame used for on-demand picking.          |
-| `renderer.pick(x, y)`                            | Resolve a pick ID asynchronously at a canvas coordinate.   |
-| `renderer.destroyMark(markId)`                   | Release one retained mark.                                 |
-| `renderer.destroy()`                             | Release all renderer resources and unconfigure the canvas. |
+| API                                                 | Purpose                                                    |
+| --------------------------------------------------- | ---------------------------------------------------------- |
+| `createRenderer(canvas, options?)`                  | Create and configure the device and canvas context.        |
+| `renderer.updateGlobals({ width, height, dpr })`    | Set logical canvas dimensions and device pixel ratio.      |
+| `renderer.createMark(definition, config, options?)` | Create a retained mark and its update handles.             |
+| `renderer.createPlacementSet(data)`                 | Create retained normalized placement rectangles.           |
+| `renderer.render(frame?)`                           | Submit an ordered visible frame.                           |
+| `renderer.renderPicking(frame?)`                    | Set the ordered frame used for on-demand picking.          |
+| `renderer.pick(x, y)`                               | Resolve a pick ID asynchronously at a canvas coordinate.   |
+| `renderer.destroyMark(markId)`                      | Release one retained mark.                                 |
+| `renderer.destroy()`                                | Release all renderer resources and unconfigure the canvas. |
 
 `destroy()` is idempotent. Rendering and retained handle updates fail after
 destruction.
@@ -172,6 +172,21 @@ picking coordinates to physical pixels.
 Asynchronous preparation never submits a frame implicitly. Pass an
 `onInvalidate` callback to `createRenderer` and schedule the current frame
 again when, for example, a text atlas becomes ready.
+
+### GPU diagnostic labels
+
+Pass `options.label` to `createMark` to identify the mark's logical owner in
+browser validation messages and GPU captures:
+
+```js
+renderer.createMark(pointMark, config, { label: "overview/variants [point]" });
+```
+
+Mark resources append a stable role using the format `<owner>: <role>`, such
+as `overview/variants [point]: render pipeline`. If no label is supplied, the
+renderer uses `<definition type> #<mark id>`. Renderer-owned resources use the
+`webgpu-renderer` owner. Labels are snapshots taken when resources are created;
+changing a host-side name later does not rename existing GPU objects.
 
 ### Ordered draws and picking
 

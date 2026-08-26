@@ -11,6 +11,7 @@ import {
     SELECTION_PREFIX,
 } from "../../../wgsl/prefixes.js";
 import { normalizeVisibilityPredicate } from "../../shaders/visibilityPredicate.js";
+import { gpuLabel } from "../../../utils/gpuLabel.js";
 
 /**
  * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -262,6 +263,7 @@ export class SelectionResourceManager {
      * @param {Record<string, ChannelConfigResolved>} params.channels
      * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} params.analysisByChannel
      * @param {VisibilityPredicate} [params.visibleWhen]
+     * @param {string} [params.label]
      * @param {(name: string, value: number|number[]) => void} params.setUniformValue
      */
     constructor({
@@ -269,10 +271,12 @@ export class SelectionResourceManager {
         channels,
         analysisByChannel,
         visibleWhen,
+        label = "mark",
         setUniformValue,
     }) {
         this._device = device;
         this._channels = channels;
+        this._label = label;
         this._setUniformValue = setUniformValue;
 
         /** @type {Map<string, SelectionDef>} */
@@ -381,6 +385,7 @@ export class SelectionResourceManager {
                 const bufferName = SELECTION_BUFFER_PREFIX + def.name;
                 const { table } = buildHashTableSet([]);
                 const buffer = this._device.createBuffer({
+                    label: gpuLabel(this._label, `selection ${def.name}`),
                     size: table.byteLength,
                     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
                 });
@@ -486,6 +491,7 @@ export class SelectionResourceManager {
             this._setUniformValue(SELECTION_COUNT_PREFIX + name, size);
             if (!existing || existing.byteLength < table.byteLength) {
                 const buffer = this._device.createBuffer({
+                    label: gpuLabel(this._label, `selection ${name}`),
                     size: table.byteLength,
                     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
                 });

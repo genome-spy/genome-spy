@@ -21,8 +21,17 @@ describe("buildBindGroup", () => {
         const textureView = /** @type {GPUTextureView} */ (
             /** @type {unknown} */ ({ id: "view" })
         );
+        /** @type {GPUTextureViewDescriptor[]} */
+        const textureViewDescriptors = [];
         const texture = /** @type {GPUTexture} */ (
-            /** @type {unknown} */ ({ createView: () => textureView })
+            /** @type {unknown} */ ({
+                createView: (
+                    /** @type {GPUTextureViewDescriptor} */ descriptor
+                ) => {
+                    textureViewDescriptors.push(descriptor);
+                    return textureView;
+                },
+            })
         );
         const layout = /** @type {GPUBindGroupLayout} */ (
             /** @type {unknown} */ ({ id: "layout" })
@@ -40,6 +49,7 @@ describe("buildBindGroup", () => {
             /** @type {unknown} */ (
                 buildBindGroup({
                     device,
+                    label: "root/points [point]",
                     layout,
                     uniformBuffer,
                     resourceLayout: [
@@ -100,6 +110,14 @@ describe("buildBindGroup", () => {
         expect(domainResource.buffer).toBe(domainMapBuffer);
         expect(bindGroup.entries[4].resource).toBe(textureView);
         expect(bindGroup.entries[5].resource).toBe(sampler);
+        expect(
+            /** @type {GPUBindGroupDescriptor} */ (
+                /** @type {unknown} */ (bindGroup)
+            ).label
+        ).toBe("root/points [point]: bind group");
+        expect(textureViewDescriptors[0].label).toBe(
+            "root/points [point]: scale x range texture view"
+        );
     });
 
     it("throws when a required series buffer is missing", () => {

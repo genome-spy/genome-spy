@@ -9,6 +9,7 @@ import {
     asGpuBufferSource,
     createTextureFromData,
 } from "../../utils/webgpuTextureUtils.js";
+import { gpuLabel } from "../../utils/gpuLabel.js";
 import { TEXT_GEOMETRY_WGSL } from "./textGeometry.wgsl.js";
 
 /**
@@ -794,16 +795,21 @@ export default class TextProgram extends BaseProgram {
     /**
      * @param {import("../../renderer.js").Renderer} renderer
      * @param {import("../../index.js").MarkConfig<"text">} config
+     * @param {import("../../index.js").MarkProgramCreationContext} [context]
      */
-    constructor(renderer, config) {
+    constructor(renderer, config, context) {
         const { normalized, textLayout, fontEntry, fontManager } =
             normalizeTextConfig(config);
-        super(renderer, {
-            ...config,
-            ...normalized,
-            textLayout,
-            fontEntry,
-        });
+        super(
+            renderer,
+            {
+                ...config,
+                ...normalized,
+                textLayout,
+                fontEntry,
+            },
+            context
+        );
         let seriesCount;
         try {
             seriesCount = this._seriesBuffers.inferCount();
@@ -1005,6 +1011,7 @@ export default class TextProgram extends BaseProgram {
             glyphMetricsData[base + 7] = 0;
         }
         const glyphMetricsBuffer = this.device.createBuffer({
+            label: gpuLabel(this.label, "glyph metrics"),
             size: glyphMetricsData.byteLength,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         });
@@ -1012,16 +1019,22 @@ export default class TextProgram extends BaseProgram {
         this._extraBuffers.set("glyphMetrics", glyphMetricsBuffer);
 
         const sampler = this.device.createSampler({
+            label: gpuLabel(this.label, "font atlas sampler"),
             magFilter: "linear",
             minFilter: "linear",
         });
 
-        const placeholder = createTextureFromData(this.device, {
-            format: "rgba8unorm",
-            width: 1,
-            height: 1,
-            data: new Uint8Array([255, 255, 255, 255]),
-        });
+        const placeholder = createTextureFromData(
+            this.device,
+            {
+                format: "rgba8unorm",
+                width: 1,
+                height: 1,
+                data: new Uint8Array([255, 255, 255, 255]),
+            },
+            undefined,
+            gpuLabel(this.label, "font atlas placeholder")
+        );
 
         this._extraTextures.set("fontAtlas", {
             texture: placeholder,
@@ -1074,6 +1087,7 @@ export default class TextProgram extends BaseProgram {
         if (!buffer || buffer.size < requiredSize) {
             buffer?.destroy();
             buffer = this.device.createBuffer({
+                label: gpuLabel(this.label, name),
                 size: requiredSize,
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
             });
@@ -1140,6 +1154,7 @@ export default class TextProgram extends BaseProgram {
             return;
         }
         const texture = this.device.createTexture({
+            label: gpuLabel(this.label, "font atlas"),
             size: {
                 width: image.width,
                 height: image.height,

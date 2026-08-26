@@ -1,3 +1,5 @@
+import { gpuLabel, RENDERER_GPU_OWNER } from "./utils/gpuLabel.js";
+
 /**
  * Renderer-level error for unsupported environments or invalid operations.
  */
@@ -40,9 +42,14 @@ class PlacementSet {
     constructor(renderer, id, data) {
         this.renderer = renderer;
         this.placementSetId = id;
+        this._labelOwner = `${RENDERER_GPU_OWNER} placement set #${id}`;
         this._destroyed = false;
         this._rectangles = validatePlacementData(data);
-        this._buffer = createPlacementBuffer(renderer.device, this._rectangles);
+        this._buffer = createPlacementBuffer(
+            renderer.device,
+            this._rectangles,
+            this._labelOwner
+        );
         this._bindGroup = this._createBindGroup();
     }
 
@@ -59,6 +66,7 @@ class PlacementSet {
 
     _createBindGroup() {
         return this.renderer.device.createBindGroup({
+            label: gpuLabel(this._labelOwner, "bind group"),
             layout: this.renderer._placementBindGroupLayout,
             entries: [{ binding: 0, resource: { buffer: this._buffer } }],
         });
@@ -75,7 +83,8 @@ class PlacementSet {
             const oldBuffer = this._buffer;
             this._buffer = createPlacementBuffer(
                 this.renderer.device,
-                rectangles
+                rectangles,
+                this._labelOwner
             );
             this._bindGroup = this._createBindGroup();
             oldBuffer.destroy();
@@ -151,9 +160,15 @@ function validatePlacementData(data) {
     return rectangles;
 }
 
-/** @param {GPUDevice} device @param {Float32Array} rectangles @returns {GPUBuffer} */
-function createPlacementBuffer(device, rectangles) {
+/**
+ * @param {GPUDevice} device
+ * @param {Float32Array} rectangles
+ * @param {string} labelOwner
+ * @returns {GPUBuffer}
+ */
+function createPlacementBuffer(device, rectangles, labelOwner) {
     const buffer = device.createBuffer({
+        label: gpuLabel(labelOwner, "rectangles"),
         size: Math.max(16, rectangles.byteLength),
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
@@ -280,12 +295,14 @@ export class Renderer {
 
         // Each occurrence gets viewport-local globals at a dynamic offset.
         this._globalUniformBuffer = device.createBuffer({
+            label: gpuLabel(RENDERER_GPU_OWNER, "global uniforms"),
             size: this._globalUniformStride,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
         // Bind group 0 is reserved for global uniforms.
         this._globalBindGroupLayout = device.createBindGroupLayout({
+            label: gpuLabel(RENDERER_GPU_OWNER, "global bind group layout"),
             entries: [
                 {
                     binding: 0,
@@ -300,6 +317,7 @@ export class Renderer {
         });
 
         this._globalBindGroup = device.createBindGroup({
+            label: gpuLabel(RENDERER_GPU_OWNER, "global bind group"),
             layout: this._globalBindGroupLayout,
             entries: [
                 {
@@ -313,6 +331,7 @@ export class Renderer {
         });
 
         this._placementBindGroupLayout = device.createBindGroupLayout({
+            label: gpuLabel(RENDERER_GPU_OWNER, "placement bind group layout"),
             entries: [
                 {
                     binding: 0,
@@ -360,6 +379,7 @@ export class Renderer {
 
         const oldBuffer = this._globalUniformBuffer;
         this._globalUniformBuffer = this.device.createBuffer({
+            label: gpuLabel(RENDERER_GPU_OWNER, "global uniforms"),
             size: capacity * this._globalUniformStride,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
@@ -367,6 +387,7 @@ export class Renderer {
             capacity * this._globalUniformStride
         );
         this._globalBindGroup = this.device.createBindGroup({
+            label: gpuLabel(RENDERER_GPU_OWNER, "global bind group"),
             layout: this._globalBindGroupLayout,
             entries: [
                 {
@@ -433,13 +454,15 @@ export class Renderer {
      * @template {object} TProperties
      * @param {import("./index.d.ts").MarkDefinition<TConfig, TSeries, TProperties>} definition
      * @param {TConfig} config
+     * @param {import("./index.d.ts").MarkCreationOptions} [options]
      * @returns {import("./index.d.ts").MarkHandle<TSeries, TProperties>}
      */
-    createMark(definition, config) {
+    createMark(definition, config, options = {}) {
         this._assertAlive();
-        const mark = definition.createProgram(this, config);
-
         const markId = /** @type {MarkId} */ (this._nextMarkId++);
+        const label = options.label ?? `${definition.type} #${markId}`;
+        const mark = definition.createProgram(this, config, { label });
+
         this._marks.set(markId, mark);
         this.markPickingDirty();
         const slotHandles = mark.getSlotHandles();
@@ -505,14 +528,18 @@ export class Renderer {
 
         this._pickTexture?.destroy();
         this._pickTexture = this.device.createTexture({
+            label: gpuLabel(RENDERER_GPU_OWNER, "picking texture"),
             size: { width, height },
             format: this.pickFormat,
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
         });
-        this._pickTextureView = this._pickTexture.createView();
+        this._pickTextureView = this._pickTexture.createView({
+            label: gpuLabel(RENDERER_GPU_OWNER, "picking texture view"),
+        });
         this._pickTextureSize = { width, height };
         this._pickReadbackBuffer?.destroy();
         this._pickReadbackBuffer = this.device.createBuffer({
+            label: gpuLabel(RENDERER_GPU_OWNER, "picking readback"),
             size: 256,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
         });
@@ -524,8 +551,11 @@ export class Renderer {
     _renderPick() {
         addCount("pickingRenders");
         this._ensurePickTarget();
-        const commandEncoder = this.device.createCommandEncoder();
+        const commandEncoder = this.device.createCommandEncoder({
+            label: gpuLabel(RENDERER_GPU_OWNER, "picking command encoder"),
+        });
         const pass = commandEncoder.beginRenderPass({
+            label: gpuLabel(RENDERER_GPU_OWNER, "picking render pass"),
             colorAttachments: [
                 {
                     view: this._pickTextureView,
@@ -630,7 +660,12 @@ export class Renderer {
             return null;
         }
 
-        const commandEncoder = this.device.createCommandEncoder();
+        const commandEncoder = this.device.createCommandEncoder({
+            label: gpuLabel(
+                RENDERER_GPU_OWNER,
+                "pick readback command encoder"
+            ),
+        });
         commandEncoder.copyTextureToBuffer(
             {
                 texture: this._pickTexture,
@@ -681,11 +716,16 @@ export class Renderer {
         const draws = this._normalizeDraws(frame.draws ?? this._marks.keys());
         addCount("renderDraws", draws.length);
         this._writeDrawGlobals(draws);
-        const commandEncoder = this.device.createCommandEncoder();
-        const view = this.context.getCurrentTexture().createView();
+        const commandEncoder = this.device.createCommandEncoder({
+            label: gpuLabel(RENDERER_GPU_OWNER, "main command encoder"),
+        });
+        const view = this.context.getCurrentTexture().createView({
+            label: gpuLabel(RENDERER_GPU_OWNER, "canvas texture view"),
+        });
 
         // The pick pass is rendered on demand, separate from the main pass.
         const pass = commandEncoder.beginRenderPass({
+            label: gpuLabel(RENDERER_GPU_OWNER, "main render pass"),
             colorAttachments: [
                 {
                     view,

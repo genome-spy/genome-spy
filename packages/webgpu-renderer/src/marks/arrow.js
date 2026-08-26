@@ -9,7 +9,7 @@ import ArrowProgram from "./programs/arrowProgram.js";
  */
 export const arrowMark = Object.freeze({
     type: "arrow",
-    createProgram(renderer, config) {
-        return new ArrowProgram(/** @type {any} */ (renderer), config);
+    createProgram(renderer, config, context) {
+        return new ArrowProgram(/** @type {any} */ (renderer), config, context);
     },
 });

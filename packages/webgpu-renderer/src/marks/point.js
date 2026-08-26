@@ -8,7 +8,7 @@ import PointProgram from "./programs/pointProgram.js";
  */
 export const pointMark = Object.freeze({
     type: "point",
-    createProgram(renderer, config) {
-        return new PointProgram(/** @type {any} */ (renderer), config);
+    createProgram(renderer, config, context) {
+        return new PointProgram(/** @type {any} */ (renderer), config, context);
     },
 });

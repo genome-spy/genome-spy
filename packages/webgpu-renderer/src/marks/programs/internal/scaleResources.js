@@ -22,6 +22,7 @@ import {
     RANGE_COUNT_PREFIX,
     RANGE_PREFIX,
 } from "../../../wgsl/prefixes.js";
+import { gpuLabel } from "../../../utils/gpuLabel.js";
 
 /**
  * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -44,6 +45,7 @@ export class ScaleResourceManager {
      * @param {GPUDevice} params.device
      * @param {Record<string, ChannelConfigResolved>} params.channels
      * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} params.analysisByChannel
+     * @param {string} [params.label]
      * @param {(name: string) => [number, number] | undefined} params.getDefaultScaleRange
      * @param {(name: string, value: number|ArrayLike<number>|Array<number|number[]>) => void} params.setUniformValue
      */
@@ -51,11 +53,13 @@ export class ScaleResourceManager {
         device,
         channels,
         analysisByChannel,
+        label = "mark",
         getDefaultScaleRange,
         setUniformValue,
     }) {
         this._device = device;
         this._channels = channels;
+        this._label = label;
         this._getDefaultScaleRange = getDefaultScaleRange;
         this._setUniformValue = setUniformValue;
 
@@ -618,6 +622,7 @@ export class ScaleResourceManager {
             prev.format !== prepared.format;
         const texture = needsNewTexture
             ? this._device.createTexture({
+                  label: gpuLabel(this._label, `scale ${name} range texture`),
                   size: {
                       width: prepared.width,
                       height: prepared.height,
@@ -635,7 +640,11 @@ export class ScaleResourceManager {
             { bytesPerRow: prepared.bytesPerRow },
             { width: prepared.width, height: prepared.height }
         );
-        const sampler = prev?.sampler ?? this._device.createSampler();
+        const sampler =
+            prev?.sampler ??
+            this._device.createSampler({
+                label: gpuLabel(this._label, `scale ${name} range sampler`),
+            });
         resources.rangeTexture = {
             texture,
             sampler,
@@ -695,6 +704,7 @@ export class ScaleResourceManager {
         if (needsNewBuffer) {
             const previous = buffer;
             buffer = this._device.createBuffer({
+                label: gpuLabel(this._label, `scale ${name} domain map`),
                 size: nextBytes,
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
             });
@@ -752,6 +762,7 @@ export class ScaleResourceManager {
         if (needsNewBuffer) {
             const previous = buffer;
             buffer = this._device.createBuffer({
+                label: gpuLabel(this._label, `scale ${name} ordinal range`),
                 size: nextBytes,
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
             });

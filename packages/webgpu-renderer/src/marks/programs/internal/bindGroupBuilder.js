@@ -1,8 +1,11 @@
+import { gpuLabel } from "../../../utils/gpuLabel.js";
+
 /**
  * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }} ResourceLayoutEntry
  *
  * @typedef {object} BindGroupBuildParams
  * @prop {GPUDevice} device
+ * @prop {string} [label]
  * @prop {GPUBindGroupLayout} layout
  * @prop {GPUBuffer} uniformBuffer
  * @prop {ResourceLayoutEntry[]} resourceLayout
@@ -20,6 +23,7 @@
  */
 export function buildBindGroup({
     device,
+    label = "mark",
     layout,
     uniformBuffer,
     resourceLayout,
@@ -81,7 +85,12 @@ export function buildBindGroup({
             }
             entries.push({
                 binding: bindingIndex++,
-                resource: texture.createView(),
+                resource: texture.createView({
+                    label: gpuLabel(
+                        label,
+                        `scale ${entry.name} range texture view`
+                    ),
+                }),
             });
             continue;
         }
@@ -103,7 +112,9 @@ export function buildBindGroup({
             }
             entries.push({
                 binding: bindingIndex++,
-                resource: texture.createView(),
+                resource: texture.createView({
+                    label: gpuLabel(label, `${entry.name} texture view`),
+                }),
             });
             continue;
         }
@@ -133,6 +144,7 @@ export function buildBindGroup({
     }
 
     return device.createBindGroup({
+        label: gpuLabel(label, "bind group"),
         layout,
         entries,
     });

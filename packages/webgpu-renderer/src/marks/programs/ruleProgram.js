@@ -3,6 +3,7 @@ import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import DASH_WGSL from "../../wgsl/dash.wgsl.js";
 import { buildDashAtlas } from "../../utils/dashAtlas.js";
 import { createTextureFromData } from "../../utils/webgpuTextureUtils.js";
+import { gpuLabel } from "../../utils/gpuLabel.js";
 
 /**
  * @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput
@@ -271,12 +272,17 @@ export default class RuleProgram extends BaseProgram {
         /** @type {number} */
         this._dashPatternCount = atlas.patternCount;
 
-        const texture = createTextureFromData(this.device, {
-            format: "r8uint",
-            width: atlas.width,
-            height: atlas.height,
-            data: atlas.data,
-        });
+        const texture = createTextureFromData(
+            this.device,
+            {
+                format: "r8uint",
+                width: atlas.width,
+                height: atlas.height,
+                data: atlas.data,
+            },
+            undefined,
+            gpuLabel(this.label, "dash atlas")
+        );
         this._extraTextures.set("dashAtlas", {
             texture,
             width: atlas.width,

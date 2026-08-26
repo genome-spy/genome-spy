@@ -102,6 +102,12 @@ Disposing a renderer-neutral `PlacementSource` releases the backend resource
 derived from it. Empty, filtered, clipped, or offscreen frames keep still-owned
 resources alive. Finalizing the surface releases everything that remains.
 
+Each retained mark supplies the renderer with a diagnostic owner in the form
+`<unit-view path> [<Core mark type>]`. GPU resource labels append their role to
+that owner, making validation errors and captures traceable to explicit Core
+view names or their generated fallbacks. The Core mark type is retained even
+when several Core marks share one low-level renderer definition.
+
 ## Placement and facets
 
 Repeated ordinary occurrences receive an adapter-owned placement source.

@@ -26,13 +26,35 @@ describe("Renderer mark definitions", () => {
         const { renderer } = createRendererHarness();
         const config = { channels: {} };
 
-        const handle = renderer.createMark(definition, config);
+        const handle = renderer.createMark(definition, config, {
+            label: "root/points [point]",
+        });
 
-        expect(definition.createProgram).toHaveBeenCalledWith(renderer, config);
+        expect(definition.createProgram).toHaveBeenCalledWith(
+            renderer,
+            config,
+            { label: "root/points [point]" }
+        );
         expect(handle.markId).toBe(1);
         expect(handle.series).toBe(program.getSlotHandles().series);
         expect(handle.scales).toEqual({});
         expect(renderer._marks.get(handle.markId)).toBe(program);
+    });
+
+    test("generates a stable standalone mark label", () => {
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi.fn(() => createProgram()),
+        });
+        const { renderer } = createRendererHarness();
+
+        renderer.createMark(definition, { channels: {} });
+
+        expect(definition.createProgram).toHaveBeenCalledWith(
+            renderer,
+            { channels: {} },
+            { label: "custom #1" }
+        );
     });
 
     test("retains placement-set identity while replacing and destroying data", () => {
@@ -227,6 +249,20 @@ describe("Renderer mark definitions", () => {
         ]);
     });
 
+    test("labels frame encoding resources", () => {
+        const { renderer, commandEncoderDescriptors, renderPassDescriptors } =
+            createRendererHarness();
+
+        renderer.render({ draws: [] });
+
+        expect(commandEncoderDescriptors).toContainEqual({
+            label: "webgpu-renderer: main command encoder",
+        });
+        expect(renderPassDescriptors[0].label).toBe(
+            "webgpu-renderer: main render pass"
+        );
+    });
+
     test("reuses draw-global CPU staging while capacity is unchanged", () => {
         const { renderer } = createRendererHarness();
         const staging = renderer._globalUniformStaging;
@@ -372,16 +408,28 @@ function createRendererHarness() {
         setScissorRect: vi.fn(),
         setBindGroup: vi.fn(),
     };
+    /** @type {GPUCommandEncoderDescriptor[]} */
+    const commandEncoderDescriptors = [];
+    /** @type {GPURenderPassDescriptor[]} */
+    const renderPassDescriptors = [];
     renderer.device = {
         createBuffer: (/** @type {GPUBufferDescriptor} */ { size }) => ({
             size,
             destroy: vi.fn(),
         }),
         createBindGroup: vi.fn(() => ({})),
-        createCommandEncoder: () => ({
-            beginRenderPass: () => pass,
-            finish: vi.fn(),
-        }),
+        createCommandEncoder: (descriptor = {}) => {
+            commandEncoderDescriptors.push(descriptor);
+            return {
+                beginRenderPass: (
+                    /** @type {GPURenderPassDescriptor} */ descriptor
+                ) => {
+                    renderPassDescriptors.push(descriptor);
+                    return pass;
+                },
+                finish: vi.fn(),
+            };
+        },
         queue: { submit: vi.fn(), writeBuffer: vi.fn() },
         destroy: vi.fn(),
     };
@@ -389,7 +437,12 @@ function createRendererHarness() {
         getCurrentTexture: () => ({ createView: vi.fn() }),
         unconfigure: vi.fn(),
     };
-    return { renderer: /** @type {Renderer} */ (renderer), pass };
+    return {
+        renderer: /** @type {Renderer} */ (renderer),
+        pass,
+        commandEncoderDescriptors,
+        renderPassDescriptors,
+    };
 }
 
 function createProgram() {

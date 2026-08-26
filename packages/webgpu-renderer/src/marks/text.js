@@ -9,7 +9,7 @@ import TextProgram from "./programs/textProgram.js";
  */
 export const textMark = Object.freeze({
     type: "text",
-    createProgram(renderer, config) {
-        return new TextProgram(/** @type {any} */ (renderer), config);
+    createProgram(renderer, config, context) {
+        return new TextProgram(/** @type {any} */ (renderer), config, context);
     },
 });

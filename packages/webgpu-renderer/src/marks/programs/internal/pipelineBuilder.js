@@ -1,4 +1,5 @@
 import { buildMarkShader } from "../../shaders/markShaderBuilder.js";
+import { gpuLabel } from "../../../utils/gpuLabel.js";
 
 /**
  * @typedef {object} PipelineBuildParams
@@ -17,6 +18,7 @@ import { buildMarkShader } from "../../shaders/markShaderBuilder.js";
  * @property {GPUPrimitiveTopology} [primitiveTopology]
  * @property {GPUBindGroupLayout} [placementBindGroupLayout]
  * @property {import("../../../index.d.ts").MarkConfig["placementIndex"]} [placementIndex]
+ * @property {string} [label]
  *
  * @typedef {object} PipelineBuildResult
  * @property {GPUBindGroupLayout} bindGroupLayout
@@ -47,6 +49,7 @@ export function buildPipelines({
     primitiveTopology = "triangle-list",
     placementBindGroupLayout,
     placementIndex,
+    label = "mark",
 }) {
     const { shaderCode, resourceBindings, resourceLayout } = buildMarkShader({
         compiledChannels,
@@ -61,6 +64,7 @@ export function buildPipelines({
     });
 
     const bindGroupLayout = device.createBindGroupLayout({
+        label: gpuLabel(label, "bind group layout"),
         entries: [
             {
                 binding: 0,
@@ -71,7 +75,10 @@ export function buildPipelines({
         ],
     });
 
-    const module = device.createShaderModule({ code: shaderCode });
+    const module = device.createShaderModule({
+        label: gpuLabel(label, "shader"),
+        code: shaderCode,
+    });
     // Match WebGL helper behavior: premultiplied alpha blending.
     /** @type {GPUBlendState} */
     const blendState = {
@@ -87,6 +94,7 @@ export function buildPipelines({
         },
     };
     const pipelineLayout = device.createPipelineLayout({
+        label: gpuLabel(label, "pipeline layout"),
         bindGroupLayouts: [
             globalBindGroupLayout,
             bindGroupLayout,
@@ -106,6 +114,7 @@ export function buildPipelines({
         },
     };
     const pipeline = device.createRenderPipeline({
+        label: gpuLabel(label, "render pipeline"),
         ...common,
         fragment: {
             module,
@@ -119,6 +128,7 @@ export function buildPipelines({
         },
     });
     const pickPipeline = device.createRenderPipeline({
+        label: gpuLabel(label, "picking pipeline"),
         ...common,
         fragment: {
             module,

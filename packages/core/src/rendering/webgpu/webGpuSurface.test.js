@@ -94,6 +94,7 @@ beforeEach(() => {
  * @param {Record<string, {value: any}>} [properties]
  */
 function useMark(surface, mark, definition, config, options, properties) {
+    configureMockMark(mark, definition);
     surface.updateMark(mark, definition, config, properties);
     const { placement, picking = false, ...drawOptions } = options ?? {};
     const draw = {
@@ -116,6 +117,13 @@ function useMark(surface, mark, definition, config, options, properties) {
             : {}),
     };
     surface.drawMark(mark, draw, placement?.source, picking);
+}
+
+/** @param {any} mark @param {any} definition */
+function configureMockMark(mark, definition) {
+    mark.unitView ??= {};
+    mark.unitView.getPathString ??= () => "root/test-view";
+    mark.getType ??= () => definition.type;
 }
 
 describe("WebGpuSurface", () => {
@@ -152,6 +160,11 @@ describe("WebGpuSurface", () => {
         surface.render();
 
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+        expect(mocks.renderer.createMark).toHaveBeenCalledWith(
+            definition,
+            expect.anything(),
+            { label: "root/test-view [point]" }
+        );
         expect(mocks.renderer.createPlacementSet).toHaveBeenCalledOnce();
         expect(mocks.renderer.destroyMark).not.toHaveBeenCalled();
         expect(mocks.placementHandle.destroy).not.toHaveBeenCalled();
@@ -382,6 +395,7 @@ describe("WebGpuSurface", () => {
             ),
         };
 
+        configureMockMark(mark, definition);
         surface.updateMark(mark, definition, config);
         readSeries.mockClear();
         inspectChannels.mockClear();
@@ -423,6 +437,7 @@ describe("WebGpuSurface", () => {
             },
         });
 
+        configureMockMark(mark, definition);
         surface.updateMark(
             mark,
             definition,

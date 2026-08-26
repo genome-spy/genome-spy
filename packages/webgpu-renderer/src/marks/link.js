@@ -9,7 +9,7 @@ import LinkProgram from "./programs/linkProgram.js";
  */
 export const linkMark = Object.freeze({
     type: "link",
-    createProgram(renderer, config) {
-        return new LinkProgram(/** @type {any} */ (renderer), config);
+    createProgram(renderer, config, context) {
+        return new LinkProgram(/** @type {any} */ (renderer), config, context);
     },
 });

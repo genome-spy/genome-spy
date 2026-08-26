@@ -12,6 +12,7 @@ import {
 } from "../../shaders/visibilityPredicate.js";
 import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import { compileMarkChannels } from "../../shaders/channelIR.js";
+import { gpuLabel } from "../../../utils/gpuLabel.js";
 
 let debugResourcesEnabled = false;
 
@@ -162,10 +163,12 @@ export default class BaseProgram {
     /**
      * @param {import("../../../renderer.js").Renderer} renderer
      * @param {{ channels: Record<string, ChannelConfigInput>, count?: number, [key: string]: unknown }} config
+     * @param {import("../../../index.d.ts").MarkProgramCreationContext} [context]
      */
-    constructor(renderer, config) {
+    constructor(renderer, config, context = { label: "mark" }) {
         this.renderer = renderer;
         this.device = renderer.device;
+        this.label = context.label;
         this._destroyed = false;
         /** @type {{ channels: Record<string, ChannelConfigInput>, count?: number, [key: string]: unknown }} */
         this._markConfig = config;
@@ -228,13 +231,15 @@ export default class BaseProgram {
         this._seriesBuffers = new SeriesBufferManager(
             this.device,
             this._channels,
-            this.channelSpecs
+            this.channelSpecs,
+            this.label
         );
         this.count = config.count ?? this._seriesBuffers.inferCount() ?? 1;
         this._scaleResources = new ScaleResourceManager({
             device: this.device,
             channels: this._channels,
             analysisByChannel: this._compiledChannels.analysisByChannel,
+            label: this.label,
             getDefaultScaleRange: (name) => this.getDefaultScaleRange(name),
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
@@ -244,6 +249,7 @@ export default class BaseProgram {
             channels: this._channels,
             analysisByChannel: this._compiledChannels.analysisByChannel,
             visibleWhen: this._visibleWhen,
+            label: this.label,
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
         });
@@ -315,9 +321,11 @@ export default class BaseProgram {
                 primitiveTopology: this.primitiveTopology,
                 placementBindGroupLayout: renderer._placementBindGroupLayout,
                 placementIndex: this._placementIndex,
+                label: this.label,
             });
         this._resourceLayout = resourceLayout;
         this._uniformBuffer = this.device.createBuffer({
+            label: gpuLabel(this.label, "uniforms"),
             size: this._uniformBufferState?.byteLength ?? 0,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
@@ -554,6 +562,7 @@ export default class BaseProgram {
     _rebuildBindGroup() {
         this._bindGroup = buildBindGroup({
             device: this.device,
+            label: this.label,
             layout: this._bindGroupLayout,
             uniformBuffer: this._uniformBuffer,
             resourceLayout: this._resourceLayout,

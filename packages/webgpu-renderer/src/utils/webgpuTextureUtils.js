@@ -62,14 +62,17 @@ export function prepareTextureData(textureData) {
  * @param {GPUDevice} device
  * @param {TextureData} textureData
  * @param {GPUTextureUsageFlags} [usage]
+ * @param {string} [label]
  * @returns {GPUTexture}
  */
 export function createTextureFromData(
     device,
     textureData,
-    usage = DEFAULT_TEXTURE_USAGE
+    usage = DEFAULT_TEXTURE_USAGE,
+    label
 ) {
     const texture = device.createTexture({
+        label,
         size: {
             width: textureData.width,
             height: textureData.height,

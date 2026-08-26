@@ -1041,6 +1041,16 @@ export type RendererOptions = {
     onInvalidate?: () => void;
 };
 
+export type MarkCreationOptions = {
+    /** Diagnostic owner shown in WebGPU resource labels. */
+    label?: string;
+};
+
+export type MarkProgramCreationContext = {
+    /** Resolved diagnostic owner, including the renderer-generated fallback. */
+    label: string;
+};
+
 export type GlobalUniforms = {
     width: number;
     height: number;
@@ -1152,7 +1162,8 @@ export type MarkDefinition<
     type: string;
     createProgram(
         renderer: Renderer,
-        config: TConfig
+        config: TConfig,
+        context: MarkProgramCreationContext
     ): MarkProgram<TSeries, TProperties>;
 }>;
 
@@ -1167,7 +1178,8 @@ export class Renderer {
         TProperties extends object,
     >(
         definition: MarkDefinition<TConfig, TSeries, TProperties>,
-        config: TConfig
+        config: TConfig,
+        options?: MarkCreationOptions
     ): MarkHandle<TSeries, TProperties>;
 
     /** Create a retained, renderer-owned placement table. */

@@ -6,6 +6,12 @@ describe("buildPipelines", () => {
     it("shares shader resources between visible and picking pipelines", () => {
         /** @type {GPURenderPipelineDescriptor[]} */
         const renderPipelineArgs = [];
+        /** @type {GPUBindGroupLayoutDescriptor[]} */
+        const bindGroupLayoutArgs = [];
+        /** @type {GPUPipelineLayoutDescriptor[]} */
+        const pipelineLayoutArgs = [];
+        /** @type {GPUShaderModuleDescriptor[]} */
+        const shaderModuleArgs = [];
         let shaderModuleCalls = 0;
         let pipelineLayoutCalls = 0;
         const bindGroupLayout = /** @type {GPUBindGroupLayout} */ (
@@ -18,12 +24,16 @@ describe("buildPipelines", () => {
             /** @type {unknown} */ ({
                 createBindGroupLayout:
                     /** @type {(args: GPUBindGroupLayoutDescriptor) => GPUBindGroupLayout} */ (
-                        (_args) => bindGroupLayout
+                        (args) => {
+                            bindGroupLayoutArgs.push(args);
+                            return bindGroupLayout;
+                        }
                     ),
                 createPipelineLayout:
                     /** @type {(args: GPUPipelineLayoutDescriptor) => GPUPipelineLayout} */ (
                         (args) => {
                             pipelineLayoutCalls += 1;
+                            pipelineLayoutArgs.push(args);
                             return /** @type {unknown} */ ({
                                 bindGroupLayouts: args.bindGroupLayouts,
                             });
@@ -33,6 +43,7 @@ describe("buildPipelines", () => {
                     /** @type {(args: GPUShaderModuleDescriptor) => GPUShaderModule} */ (
                         (args) => {
                             shaderModuleCalls += 1;
+                            shaderModuleArgs.push(args);
                             return /** @type {unknown} */ ({
                                 code: args.code,
                             });
@@ -83,6 +94,7 @@ describe("buildPipelines", () => {
                     ],
                 ])
             ),
+            label: "root/points [point]",
         });
 
         expect(result.resourceLayout).toEqual([
@@ -115,5 +127,16 @@ describe("buildPipelines", () => {
         expect(pickPipelineArgs.vertex.module).toBe(pipelineArgs.vertex.module);
         expect(shaderModuleCalls).toBe(1);
         expect(pipelineLayoutCalls).toBe(1);
+        expect(bindGroupLayoutArgs[0].label).toBe(
+            "root/points [point]: bind group layout"
+        );
+        expect(shaderModuleArgs[0].label).toBe("root/points [point]: shader");
+        expect(pipelineLayoutArgs[0].label).toBe(
+            "root/points [point]: pipeline layout"
+        );
+        expect(pipelineArgs.label).toBe("root/points [point]: render pipeline");
+        expect(pickPipelineArgs.label).toBe(
+            "root/points [point]: picking pipeline"
+        );
     });
 });

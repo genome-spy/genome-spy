@@ -4,6 +4,7 @@ import {
     packSeriesArrays,
 } from "./packedSeriesLayout.js";
 import { asGpuBufferSource } from "../../../utils/webgpuTextureUtils.js";
+import { gpuLabel } from "../../../utils/gpuLabel.js";
 
 /**
  * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -20,11 +21,13 @@ export class SeriesBufferManager {
      * @param {GPUDevice} device
      * @param {Record<string, ChannelConfigResolved>} channels
      * @param {Record<string, ChannelSpec>} channelSpecs
+     * @param {string} [label]
      */
-    constructor(device, channels, channelSpecs) {
+    constructor(device, channels, channelSpecs, label = "mark") {
         this._device = device;
         this._channels = channels;
         this._channelSpecs = channelSpecs;
+        this._label = label;
         /**
          * Channel name -> alias group key (single source of truth).
          * @type {Map<string, string>}
@@ -283,6 +286,10 @@ export class SeriesBufferManager {
         if (!buffer || existing.byteLength < requiredSize) {
             const previous = buffer;
             buffer = this._device.createBuffer({
+                label: gpuLabel(
+                    this._label,
+                    "series " + name.slice("series".length).toLowerCase()
+                ),
                 size: requiredSize,
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
             });

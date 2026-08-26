@@ -7,6 +7,14 @@ import PlacementSource from "../../view/layout/placementSource.js";
 const EMPTY_PROPERTIES = Object.freeze({});
 
 /**
+ * @param {import("../../marks/mark.js").default} mark
+ * @returns {string}
+ */
+function getGpuMarkLabel(mark) {
+    return `${mark.unitView.getPathString()} [${mark.getType()}]`;
+}
+
+/**
  * Owns the live WebGPU canvas and the low-level renderer used by the PoC.
  */
 export default class WebGpuSurface {
@@ -239,7 +247,9 @@ export default class WebGpuSurface {
             if (retained) {
                 this.#renderer.destroyMark(retained.handle.markId);
             }
-            const handle = this.#renderer.createMark(definition, config);
+            const handle = this.#renderer.createMark(definition, config, {
+                label: getGpuMarkLabel(mark),
+            });
             retained = {
                 definition,
                 handle,
