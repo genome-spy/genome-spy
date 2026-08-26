@@ -109,8 +109,9 @@ describe("createRulerOverlaySpec", () => {
 
         expect(/** @type {any} */ (spec.encoding.x).expr).toBe(undefined);
         expect(/** @type {any} */ (spec.encoding.x).datum.expr).toBe(
-            "linearize('x', cursor.values.x) + 0.5"
+            "linearize('x', cursor.values.x)"
         );
+        expect(/** @type {any} */ (spec.encoding.x).band).toBe(0.5);
         expect(/** @type {any} */ (spec.layer[0]).mark.type).toBe("rule");
     });
 
