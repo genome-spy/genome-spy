@@ -186,6 +186,20 @@ describe("WebGpuViewRenderingContext", () => {
 
     test("refreshes closure-backed geometry through stable draw records", () => {
         let offset = 0;
+        /** @type {{x: number, height: number}[]} */
+        const configGeometry = [];
+        /**
+         * @param {any} _mark
+         * @param {any} _options
+         * @param {{x: number, height: number}} coords
+         */
+        const captureConfigGeometry = (_mark, _options, coords) => {
+            configGeometry.push({ x: coords.x, height: coords.height });
+            return { definition: {}, config: {} };
+        };
+        /** @type {any} */ (mocks.createWebGpuMarkConfig)
+            .mockImplementationOnce(captureConfigGeometry)
+            .mockImplementationOnce(captureConfigGeometry);
         const surface = {
             getDevicePixelRatio: () => 1,
             getLogicalCanvasSize: () => ({ width: 300, height: 200 }),
@@ -196,10 +210,9 @@ describe("WebGpuViewRenderingContext", () => {
             surface: /** @type {any} */ (surface),
         });
         const view = { onBeforeRender: () => (offset += 10) };
-        const coords = Rectangle.create(20, 30, 100, 80).translate(
-            () => offset,
-            0
-        );
+        const coords = Rectangle.create(20, 30, 100, 80)
+            .modify({ height: () => 80 + offset })
+            .translate(() => offset, 0);
         const mark = {
             isPickingParticipant: () => true,
             properties: { clip: true, cullByVisibleRange: "x" },
@@ -217,7 +230,7 @@ describe("WebGpuViewRenderingContext", () => {
             x: 30,
             y: 30,
             width: 100,
-            height: 80,
+            height: 90,
         });
         expect(firstDraw.visibleRange).toMatchObject({ x1: 30, x2: 130 });
 
@@ -229,9 +242,18 @@ describe("WebGpuViewRenderingContext", () => {
             x: 40,
             y: 30,
             width: 100,
-            height: 80,
+            height: 100,
         });
         expect(secondDraw.visibleRange).toMatchObject({ x1: 40, x2: 140 });
+
+        // Unlike the draw envelope, positional mark channels bake the owner
+        // rectangle into the retained config and must be refreshed as well.
+        expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledTimes(2);
+        expect(surface.updateMark).toHaveBeenCalledTimes(2);
+        expect(configGeometry).toEqual([
+            { x: 30.5, height: 90 },
+            { x: 40.5, height: 100 },
+        ]);
     });
 
     test("omits non-picking marks from the pick draw list", () => {

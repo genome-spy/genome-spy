@@ -104,6 +104,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 resourceRevision: -1,
                 viewOpacity: NaN,
                 resourcesDirty: true,
+                configX: NaN,
+                configY: NaN,
+                configWidth: NaN,
+                configHeight: NaN,
                 viewport: undefined,
                 generatedRectangles: undefined,
             };
@@ -285,11 +289,28 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         const configRevision = getWebGpuMarkConfigRevision(state.mark);
         const packedChanged = state.packed !== packed;
         const expressionChanged = state.configRevision !== configRevision;
-        if (packedChanged || expressionChanged) {
+        // Positional channels are translated into the owner's coordinate
+        // range when the config is created. Most owner rectangles are fixed
+        // by layout, but chrome such as the SampleView scrollbar keeps a
+        // stable Rectangle whose accessors change during interaction. The
+        // WebGL path reevaluates that range for every draw; a retained WebGPU
+        // config must be rebuilt when the numeric range changes.
+        const configX = state.source ? 0 : state.ownerCoords.x;
+        const configY = state.source ? 0 : state.ownerCoords.y;
+        const configWidth = state.ownerCoords.width;
+        const configHeight = state.ownerCoords.height;
+        const geometryChanged =
+            state.configX !== configX ||
+            state.configY !== configY ||
+            state.configWidth !== configWidth ||
+            state.configHeight !== configHeight;
+        if (packedChanged || expressionChanged || geometryChanged) {
             countPerformance(
                 packedChanged
                     ? "markConfigurationPackedMiss"
-                    : "markConfigurationExpressionMiss"
+                    : expressionChanged
+                      ? "markConfigurationExpressionMiss"
+                      : "markConfigurationGeometryMiss"
             );
             const first = state.occurrences[0];
             const configCoords = state.source
@@ -317,6 +338,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.config = translated?.config;
             state.properties = translated?.properties;
             state.configRevision = configRevision;
+            state.configX = configX;
+            state.configY = configY;
+            state.configWidth = configWidth;
+            state.configHeight = configHeight;
         }
         if (packedChanged) {
             for (const occurrence of state.occurrences) {
@@ -332,6 +357,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             resourceRevision === undefined ||
             packedChanged ||
             expressionChanged ||
+            geometryChanged ||
             state.resourceRevision !== resourceRevision ||
             state.viewOpacity !== viewOpacity;
         state.resourceRevision = resourceRevision ?? -1;
@@ -644,6 +670,10 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
  * @property {number} resourceRevision
  * @property {number} viewOpacity
  * @property {boolean} resourcesDirty
+ * @property {number} configX
+ * @property {number} configY
+ * @property {number} configWidth
+ * @property {number} configHeight
  * @property {import("@genome-spy/webgpu-renderer").DrawRect | undefined} viewport
  * @property {Float32Array | undefined} generatedRectangles
  */
