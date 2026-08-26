@@ -2,6 +2,10 @@ import BufferedViewRenderingContext from "../view/renderingContext/bufferedViewR
 import CompositeViewRenderingContext from "../view/renderingContext/compositeViewRenderingContext.js";
 import { createLayoutResult } from "../view/layout/layoutResult.js";
 import Rectangle from "../view/layout/rectangle.js";
+import {
+    getPerformanceProfiler,
+    measurePerformance,
+} from "../debug/performanceProfiler.js";
 
 export default class RenderCoordinator {
     /** @type {import("../view/view.js").default} */
@@ -98,10 +102,12 @@ export default class RenderCoordinator {
         }
 
         const devicePixelRatio = this.#glHelper.getDevicePixelRatio(canvasSize);
-        const layoutResult = createLayoutResult(
-            root,
-            Rectangle.create(0, 0, canvasSize.width, canvasSize.height),
-            { devicePixelRatio }
+        const layoutResult = measurePerformance("layout", () =>
+            createLayoutResult(
+                root,
+                Rectangle.create(0, 0, canvasSize.width, canvasSize.height),
+                { devicePixelRatio }
+            )
         );
 
         return { layoutResult, canvasSize, devicePixelRatio };
@@ -130,17 +136,24 @@ export default class RenderCoordinator {
             }
         );
 
-        layoutResult.collectRenderCommands(
-            new CompositeViewRenderingContext(renderingContext, pickingContext)
+        measurePerformance("layoutReplay", () =>
+            layoutResult.collectRenderCommands(
+                new CompositeViewRenderingContext(
+                    renderingContext,
+                    pickingContext
+                )
+            )
         );
         this.#renderingContext = renderingContext;
         this.#pickingContext = pickingContext;
     }
 
     renderAll() {
-        this.#renderingContext?.render();
-
+        const profiler = getPerformanceProfiler();
+        profiler?.beginFrame("webgl");
+        measurePerformance("render", () => this.#renderingContext?.render());
         this.#dirtyPickingBuffer = true;
+        profiler?.endFrame();
     }
 
     renderPickingFramebuffer() {
@@ -148,8 +161,11 @@ export default class RenderCoordinator {
             return;
         }
 
-        this.#pickingContext.render();
+        const profiler = getPerformanceProfiler();
+        profiler?.beginFrame("webgl", "picking");
+        measurePerformance("picking", () => this.#pickingContext.render());
         this.#dirtyPickingBuffer = false;
+        profiler?.endFrame();
     }
 }
 

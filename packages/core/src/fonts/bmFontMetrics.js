@@ -17,6 +17,8 @@ const MAX_ASCII = 127;
  * @prop {number} xHeight
  * @prop {number} capHeight
  * @prop {number} descent
+ * @prop {import("../types/bmFont.js").Char[]} chars
+ * @prop {number} maxCharId
  * @prop {import("../types/bmFont.js").Common} common
  *
  * @param {import("../types/bmFont.js").BMFont} bmFont
@@ -96,10 +98,19 @@ export default function getMetrics(bmFont) {
         return (width / base) * fontSize;
     }
 
+    let maxCharId = 0;
+    for (const char of bmFont.chars) {
+        if (char.id > maxCharId) {
+            maxCharId = char.id;
+        }
+    }
+
     return {
         measureWidth,
         getCharByCode,
         getChar,
+        chars: bmFont.chars,
+        maxCharId,
         xHeight,
         capHeight,
         descent,

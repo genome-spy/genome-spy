@@ -1,0 +1,37 @@
+export const DOMAIN_PREFIX = "uDomain_";
+export const RANGE_PREFIX = "uRange_";
+export const RANGE_COUNT_PREFIX = "uRangeCount_";
+export const DOMAIN_MAP_PREFIX = "domainMap_";
+export const DOMAIN_MAP_COUNT_PREFIX = "uDomainMapCount_";
+export const RANGE_TEXTURE_PREFIX = "uRangeTexture_";
+export const RANGE_SAMPLER_PREFIX = "uRangeSampler_";
+export const SCALED_FUNCTION_PREFIX = "getScaled_";
+export const SCALE_BASE_PREFIX = "uScaleBase_";
+export const SCALE_EXPONENT_PREFIX = "uScaleExponent_";
+export const SCALE_CONSTANT_PREFIX = "uScaleConstant_";
+export const SCALE_PADDING_INNER_PREFIX = "uScalePaddingInner_";
+export const SCALE_PADDING_OUTER_PREFIX = "uScalePaddingOuter_";
+export const SCALE_ALIGN_PREFIX = "uScaleAlign_";
+export const SCALE_BAND_PREFIX = "uScaleBand_";
+export const SELECTION_PREFIX = "uSelection_";
+export const SELECTION_COUNT_PREFIX = "uSelectionCount_";
+export const SELECTION_BUFFER_PREFIX = "selection_";
+export const SELECTION_CHECKER_PREFIX = "checkSelection_";
+
+/**
+ * @param {string} name
+ * @param {number} targetIndex
+ * @returns {string}
+ */
+export function intervalSelectionActiveName(name, targetIndex) {
+    return `${SELECTION_PREFIX}${name}_${targetIndex}_active`;
+}
+
+/**
+ * @param {string} name
+ * @param {number} targetIndex
+ * @returns {string}
+ */
+export function intervalSelectionBoundsName(name, targetIndex) {
+    return `${SELECTION_PREFIX}${name}_${targetIndex}`;
+}

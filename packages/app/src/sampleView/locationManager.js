@@ -1,4 +1,8 @@
-import { createOrUpdateTexture } from "@genome-spy/core/gl/webGLHelper.js";
+import PlacementSource from "@genome-spy/core/view/layout/placementSource.js";
+import {
+    countPerformance,
+    measurePerformance,
+} from "@genome-spy/core/debug/performanceProfiler.js";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import clamp from "@genome-spy/core/utils/clamp.js";
 import { mapToPixelCoords } from "@genome-spy/core/view/layout/flexLayout.js";
@@ -12,6 +16,9 @@ const DEFAULT_SAMPLE_HEIGHT = 35;
 const DEFAULT_GROUP_SPACING = 5;
 const DEFAULT_PEEK_GROUP_SPACING = 15;
 const DEFAULT_SAMPLE_SPACING_FACTOR = 0.2;
+
+/** @type {readonly string[]} */
+const EMPTY_SAMPLE_IDS = [];
 
 export class LocationManager {
     /**
@@ -27,15 +34,24 @@ export class LocationManager {
 
     #scrollableHeight = 0;
 
-    /** @type {WebGLTexture} */
-    #facetTexture = undefined;
+    /** @type {PlacementSource} */
+    #placementSource = new PlacementSource();
+
+    /** @type {Map<string, number>} */
+    #placementIndices = new Map();
+
+    /** @type {readonly string[]} */
+    #placementSampleIds = EMPTY_SAMPLE_IDS;
+
+    /** @type {WeakMap<object, number>} */
+    #placementLocationIndices = new WeakMap();
+
+    #placementLocationVersion = -1;
 
     /** @type {Float32Array} */
-    #facetTextureData = undefined;
+    #placementRectangles = new Float32Array();
 
     #facetCount = 0;
-    #facetTextureDirty = true;
-
     /** @type {import("./sampleViewTypes.js").Locations} */
     #locations = undefined;
 
@@ -66,8 +82,8 @@ export class LocationManager {
         baseVersion: -1,
     };
 
-    // Cache of the inputs that affect facet texture updates.
-    #facetTextureInputs = {
+    // Cache of the inputs that affect placement geometry updates.
+    #placementInputs = {
         baseVersion: -1,
         height: 0,
         peekState: 0,
@@ -336,88 +352,107 @@ export class LocationManager {
         });
     }
 
-    #updateFacetTextureData() {
+    #updatePlacementGeometry() {
         const sampleData =
             this.#locationContext.getSampleHierarchy().sampleData;
+        const sampleIds = sampleData?.ids ?? EMPTY_SAMPLE_IDS;
 
-        const sampleCount = sampleData?.ids?.length ?? 0;
+        const sampleCount = sampleIds.length;
         this.#facetCount = sampleCount;
-        const requiredLength = Math.max(
-            4,
-            Math.ceil((sampleCount * 2) / 4) * 4
-        );
+        const requiredLength = sampleCount * 4;
+        // Sample state is immutable: a new ids array is the topology revision
+        // signal. Do not compare every member during geometry-only updates.
+        const membershipChanged = this.#placementSampleIds !== sampleIds;
 
         if (
-            !this.#facetTextureData ||
-            this.#facetTextureData.length !== requiredLength
+            this.#placementRectangles.length !== requiredLength ||
+            membershipChanged
         ) {
-            // Align size to four bytes
-            this.#facetTextureData = new Float32Array(requiredLength);
+            this.#placementRectangles = new Float32Array(requiredLength);
+            this.#placementIndices = new Map(
+                sampleIds.map((id, index) => [id, index])
+            );
+            this.#placementSource.replaceTopology(
+                sampleIds.map((id) => [id]),
+                this.#placementRectangles
+            );
+            this.#placementSampleIds = sampleIds;
         }
 
         const height = this.#locationContext.getHeight();
         const hasLocations = this.#ensureDynamicLocations();
         if (
-            this.#facetTextureInputs.baseVersion === this.#baseLayoutVersion &&
-            this.#facetTextureInputs.height === height &&
-            this.#facetTextureInputs.peekState === this.#peekState &&
-            this.#facetTextureInputs.scrollOffset === this.#scrollOffset &&
-            this.#facetTextureInputs.sampleCount === sampleCount
+            hasLocations &&
+            (this.#placementLocationVersion !== this.#baseLayoutVersion ||
+                membershipChanged)
+        ) {
+            for (const sampleLocation of this.#locations.samples) {
+                const index = this.#placementIndices.get(sampleLocation.key);
+                if (index !== undefined) {
+                    this.#placementLocationIndices.set(sampleLocation, index);
+                }
+            }
+            this.#placementLocationVersion = this.#baseLayoutVersion;
+        }
+        if (
+            !membershipChanged &&
+            this.#placementInputs.baseVersion === this.#baseLayoutVersion &&
+            this.#placementInputs.height === height &&
+            this.#placementInputs.peekState === this.#peekState &&
+            this.#placementInputs.scrollOffset === this.#scrollOffset &&
+            this.#placementInputs.sampleCount === sampleCount
         ) {
             return;
         }
 
-        const arr = this.#facetTextureData;
-        arr.fill(0);
-
-        const entities = sampleData?.entities;
-        if (hasLocations && entities) {
-            const sampleLocations = this.#locations.samples;
-
-            for (const sampleLocation of sampleLocations) {
-                // TODO: Get rid of the map lookup
-                const index = entities[sampleLocation.key].indexNumber;
-                arr[index * 2 + 0] = sampleLocation.locSize.location / height;
-                arr[index * 2 + 1] = sampleLocation.locSize.size / height;
+        measurePerformance("placementComputation", () => {
+            const arr = this.#placementRectangles;
+            countPerformance("placementComputationSamples", sampleCount);
+            countPerformance("placementComputationBytes", arr.byteLength);
+            arr.fill(0);
+            for (let index = 0; index < sampleCount; index++) {
+                arr[index * 4 + 2] = 1;
             }
-        }
 
-        this.#facetTextureDirty = true;
+            // Picking can observe a transient zero-sized view while closeup is
+            // being activated. Keep the complete topology but publish empty
+            // geometry until normalization has a valid owner height.
+            if (hasLocations && Number.isFinite(height) && height > 0) {
+                const sampleLocations = this.#locations.samples;
 
-        this.#facetTextureInputs.baseVersion = this.#baseLayoutVersion;
-        this.#facetTextureInputs.height = height;
-        this.#facetTextureInputs.peekState = this.#peekState;
-        this.#facetTextureInputs.scrollOffset = this.#scrollOffset;
-        this.#facetTextureInputs.sampleCount = sampleCount;
+                for (const sampleLocation of sampleLocations) {
+                    const index =
+                        this.#placementLocationIndices.get(sampleLocation);
+                    if (index === undefined) {
+                        continue;
+                    }
+                    arr[index * 4] = 0;
+                    arr[index * 4 + 1] =
+                        sampleLocation.locSize.location / height;
+                    arr[index * 4 + 2] = 1;
+                    arr[index * 4 + 3] = sampleLocation.locSize.size / height;
+                }
+            }
+
+            this.#placementSource.replaceGeometry(arr);
+        });
+
+        this.#placementInputs.baseVersion = this.#baseLayoutVersion;
+        this.#placementInputs.height = height;
+        this.#placementInputs.peekState = this.#peekState;
+        this.#placementInputs.scrollOffset = this.#scrollOffset;
+        this.#placementInputs.sampleCount = sampleCount;
     }
 
-    updateFacetTexture() {
-        this.#updateFacetTextureData();
-        if (!this.#facetTextureDirty && this.#facetTexture) {
-            return;
-        }
-
-        const glHelper = this.#locationContext.viewContext.glHelper;
-        if (!glHelper) {
-            return;
-        }
-        const gl = glHelper.gl;
-
-        this.#facetTexture = createOrUpdateTexture(
-            gl,
-            {
-                internalFormat: gl.RG32F,
-                format: gl.RG,
-                height: 1,
-            },
-            this.#facetTextureData,
-            this.#facetTexture
-        );
-        this.#facetTextureDirty = false;
+    getPlacementSource() {
+        this.#updatePlacementGeometry();
+        return this.#placementSource;
     }
 
-    getFacetTexture() {
-        return this.#facetTexture;
+    /** @param {string} sampleId @returns {number | undefined} */
+    getPlacementIndex(sampleId) {
+        this.#updatePlacementGeometry();
+        return this.#placementIndices.get(sampleId);
     }
 
     /**
@@ -428,7 +463,7 @@ export class LocationManager {
      * @returns {LocSize | undefined}
      */
     getSampleFacetPosition(index) {
-        this.#updateFacetTextureData();
+        this.#updatePlacementGeometry();
         if (
             !Number.isInteger(index) ||
             index < 0 ||
@@ -438,8 +473,8 @@ export class LocationManager {
         }
 
         return {
-            location: this.#facetTextureData[index * 2],
-            size: this.#facetTextureData[index * 2 + 1],
+            location: this.#placementRectangles[index * 4 + 1],
+            size: this.#placementRectangles[index * 4 + 3],
         };
     }
 

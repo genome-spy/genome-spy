@@ -36,6 +36,111 @@ describe("mark factory", () => {
     });
 });
 
+describe("mark rendering revisions", () => {
+    test("owns expression-backed configuration and resource revisions", async () => {
+        const view = await create(
+            {
+                data: { values: [{ start: 8, end: 32 }] },
+                params: [
+                    { name: "offset", value: 0 },
+                    { name: "headWidth", value: 2 },
+                ],
+                mark: {
+                    type: "arrow",
+                    headWidth: { expr: "headWidth" },
+                },
+                encoding: {
+                    x: {
+                        expr: "datum.start + offset",
+                        type: "quantitative",
+                    },
+                    x2: { field: "end" },
+                    y: { value: 0.5 },
+                },
+            },
+            UnitView
+        );
+
+        const watchExpression = vi.spyOn(view.paramRuntime, "watchExpression");
+        view.mark.initializeEncoders();
+        expect(watchExpression).not.toHaveBeenCalled();
+        view.mark.initializeRenderingRevisions(["headWidth"]);
+        expect(watchExpression).toHaveBeenCalledTimes(2);
+        expect(view.mark.getRenderingRevision("configuration")).toBe(0);
+        expect(view.mark.getRenderingRevision("resources")).toBe(0);
+
+        view.paramRuntime.setValue("offset", 1);
+        expect(view.mark.getRenderingRevision("configuration")).toBe(1);
+        expect(view.mark.getRenderingRevision("resources")).toBe(0);
+
+        view.paramRuntime.setValue("headWidth", 3);
+        expect(view.mark.getRenderingRevision("configuration")).toBe(1);
+        expect(view.mark.getRenderingRevision("resources")).toBe(1);
+    });
+
+    test("tracks selection predicates as resource revisions", async () => {
+        const view = await create(
+            {
+                data: { values: [{ category: "A", value: 1 }] },
+                params: [{ name: "selected", select: "point" }],
+                mark: "rect",
+                encoding: {
+                    x: { field: "category", type: "nominal" },
+                    y: { field: "value", type: "quantitative" },
+                    fillOpacity: {
+                        value: 0.3,
+                        condition: { param: "selected", value: 1 },
+                    },
+                },
+            },
+            UnitView
+        );
+        const requestRender = vi.spyOn(view.context.animator, "requestRender");
+
+        view.mark.initializeEncoders();
+        view.mark.initializeRenderingRevisions([]);
+        expect(view.mark.getRenderingRevision("resources")).toBe(0);
+
+        const selection = view.paramRuntime.getValue("selected");
+        view.paramRuntime.setValue("selected", { ...selection });
+
+        expect(view.mark.getRenderingRevision("resources")).toBe(1);
+        expect(requestRender).toHaveBeenCalledOnce();
+    });
+
+    test("deduplicates scale dependencies and can mark a category volatile", async () => {
+        const view = await create(
+            {
+                data: { values: [{ start: 8, end: 32 }] },
+                mark: "rule",
+                encoding: {
+                    x: { field: "start", type: "quantitative" },
+                    x2: { field: "end" },
+                    y: { value: 0.5 },
+                },
+            },
+            UnitView
+        );
+        const resolution = view.getScaleResolution("x");
+        const addEventListener = vi.spyOn(resolution, "addEventListener");
+
+        view.mark.initializeEncoders();
+        view.mark.initializeRenderingRevisions([]);
+
+        const listeners = addEventListener.mock.calls.map((call) => call[1]);
+        expect(addEventListener.mock.calls.map((call) => call[0])).toEqual([
+            "domain",
+            "range",
+        ]);
+        listeners[0]({ type: "domain", scaleResolution: resolution });
+        listeners[1]({ type: "range", scaleResolution: resolution });
+        expect(view.mark.getRenderingRevision("resources")).toBe(2);
+
+        view.mark.makeRenderingResourcesVolatile();
+        expect(view.mark.getRenderingRevision("resources")).toBeUndefined();
+    });
+});
+
 describe("mark positional endpoints", () => {
     test("rejects a visual y value with a scale-backed y2 endpoint", async () => {
         await expect(

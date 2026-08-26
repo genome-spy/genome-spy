@@ -996,12 +996,22 @@ export default class SampleView extends ContainerView {
         }
 
         const pixelToUnit = 1 / viewHeight;
+        const placementSource = this.locationManager.getPlacementSource();
+        const placementTopologyRevision =
+            placementSource.getSnapshot().topology.revision;
 
         this.#sampleRenderOptions = sampleLocations.map(
             (sampleLocation, index) => ({
                 sampleFacetRenderingOptions: {
                     locSize: sampleLocation.locSize,
                     pixelToUnit,
+                },
+                placement: {
+                    source: placementSource,
+                    index: this.locationManager.getPlacementIndex(
+                        sampleLocation.key
+                    ),
+                    topologyRevision: placementTopologyRevision,
                 },
                 facetId: [sampleLocation.key],
                 firstFacet: index === 0,
@@ -1209,10 +1219,19 @@ export default class SampleView extends ContainerView {
             locations
         );
 
+        const placementSource = this.locationManager.getPlacementSource();
+        const sidebarOptions = {
+            ...options,
+            placement: {
+                source: placementSource,
+                topologyRevision:
+                    placementSource.getSnapshot().topology.revision,
+            },
+        };
         this.#sidebarView.arrange(
             context,
             this.sidebarCoords.expand(alignedOverhangs.sidebarVerticalOverhang),
-            options
+            sidebarOptions
         );
 
         this.#arrangeChild(context, this.childCoords, options);
@@ -1226,7 +1245,7 @@ export default class SampleView extends ContainerView {
     }
 
     onBeforeRender() {
-        this.locationManager.updateFacetTexture();
+        this.locationManager.getPlacementSource();
 
         // TODO: Consider letting LocationManager own stable scrollbar rectangles.
         // Might reduce wiring here, but accessors still need per-frame inputs
@@ -1254,15 +1273,9 @@ export default class SampleView extends ContainerView {
         this.#scrollbarOpacitySetter(this.locationManager.getPeekState());
     }
 
-    getSampleFacetTexture() {
-        return this.locationManager.getFacetTexture();
-    }
-
-    /**
-     * @param {number} index
-     */
-    getSampleFacetPosition(index) {
-        return this.locationManager.getSampleFacetPosition(index);
+    /** @returns {boolean} */
+    usesSampleFacetRendering() {
+        return true;
     }
 
     /**
@@ -1894,6 +1907,7 @@ export default class SampleView extends ContainerView {
      * @override
      */
     dispose() {
+        this.locationManager.getPlacementSource().dispose();
         super.dispose();
         this.intentExecutor.removeActionAugmenter(this.#actionAugmenter);
     }

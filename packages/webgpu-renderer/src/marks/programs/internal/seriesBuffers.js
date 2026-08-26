@@ -1,0 +1,321 @@
+import { isSeriesChannelConfig } from "../../../types.js";
+import {
+    buildPackedSeriesLayout,
+    packSeriesArrays,
+} from "./packedSeriesLayout.js";
+import { asGpuBufferSource } from "../../../utils/webgpuTextureUtils.js";
+import { gpuLabel } from "../../../utils/gpuLabel.js";
+
+/**
+ * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
+ * @typedef {import("../../../index.d.ts").TypedArray} TypedArray
+ * @typedef {import("../../utils/channelSpecUtils.js").ChannelSpec} ChannelSpec
+ */
+
+/**
+ * Manages per-mark series buffers: alias grouping, packing, validation,
+ * and GPU buffer upload/reuse for columnar storage.
+ */
+export class SeriesBufferManager {
+    /**
+     * @param {GPUDevice} device
+     * @param {Record<string, ChannelConfigResolved>} channels
+     * @param {Record<string, ChannelSpec>} channelSpecs
+     * @param {string} [label]
+     */
+    constructor(device, channels, channelSpecs, label = "mark") {
+        this._device = device;
+        this._channels = channels;
+        this._channelSpecs = channelSpecs;
+        this._label = label;
+        /**
+         * Channel name -> alias group key (single source of truth).
+         * @type {Map<string, string>}
+         */
+        this._seriesBufferAliases = new Map();
+        /**
+         * Packed series layout metadata for f32/u32/i32 buffers.
+         * @type {import("./packedSeriesLayout.js").PackedSeriesLayout | null}
+         */
+        this._packedSeriesLayout = null;
+        /**
+         * Packed series buffers keyed by name ("seriesF32"/"seriesU32"/"seriesI32").
+         * @type {Map<string, { buffer: GPUBuffer, byteLength: number }>}
+         */
+        this._packedBuffers = new Map();
+
+        this._initializeSeriesAliases();
+    }
+
+    /**
+     * @returns {Map<string, import("./packedSeriesLayout.js").PackedSeriesLayoutEntry> | null}
+     */
+    get packedSeriesLayoutEntries() {
+        return this._getPackedLayout()?.entries ?? null;
+    }
+
+    /**
+     * @returns {Map<string, { stride: number, channels: Array<{ name: string, alias: string, offset: number, components: 1|2|4, stride: number }> }>}
+     */
+    getPackedSeriesInfo() {
+        const layout = this._getPackedLayout();
+        if (!layout) {
+            return new Map();
+        }
+        /** @type {Map<string, { stride: number, channels: Array<{ name: string, alias: string, offset: number, components: 1|2|4, stride: number }> }>} */
+        const info = new Map();
+        for (const [name, entry] of layout.entries) {
+            const bufferName =
+                entry.scalarType === "f32"
+                    ? "seriesF32"
+                    : entry.scalarType === "u32"
+                      ? "seriesU32"
+                      : "seriesI32";
+            const alias = this._seriesBufferAliases.get(name) ?? name;
+            let bucket = info.get(bufferName);
+            if (!bucket) {
+                bucket = { stride: entry.stride, channels: [] };
+                info.set(bufferName, bucket);
+            }
+            bucket.channels.push({
+                name,
+                alias,
+                offset: entry.offset,
+                components: entry.components,
+                stride: entry.stride,
+            });
+        }
+        return info;
+    }
+
+    /**
+     * @param {string} name
+     * @returns {GPUBuffer | null}
+     */
+    getBuffer(name) {
+        const packed = this._packedBuffers.get(name);
+        if (packed) {
+            return packed.buffer;
+        }
+        return null;
+    }
+
+    /**
+     * Infer the instance count from series buffers when possible.
+     *
+     * @param {Record<string, TypedArray>} [channels]
+     * @returns {number | null}
+     */
+    inferCount(channels) {
+        let inferred = null;
+        let hasSeries = false;
+
+        for (const [name, channel] of Object.entries(this._channels)) {
+            if (!isSeriesChannelConfig(channel)) {
+                continue;
+            }
+            hasSeries = true;
+            const data = channels?.[name] ?? channel.data;
+            if (!data) {
+                throw new Error(`Missing data for channel "${name}"`);
+            }
+            const inputComponents =
+                channel.inputComponents ?? channel.components ?? 1;
+            const scaleType = channel.scale?.type ?? "identity";
+            const divisor =
+                scaleType === "index" &&
+                data instanceof Float64Array &&
+                inputComponents === 2
+                    ? 1
+                    : inputComponents;
+            if (divisor <= 0) {
+                throw new Error(`Invalid input component count for "${name}"`);
+            }
+            if (data.length % divisor !== 0) {
+                throw new Error(
+                    `Channel "${name}" length (${data.length}) must be divisible by ${divisor}.`
+                );
+            }
+            const count = data.length / divisor;
+            if (inferred === null) {
+                inferred = count;
+            } else if (count !== inferred) {
+                throw new Error(
+                    `Channel "${name}" count (${count}) does not match inferred count (${inferred}).`
+                );
+            }
+        }
+
+        if (!hasSeries) {
+            return null;
+        }
+        return inferred ?? 0;
+    }
+
+    /**
+     * @returns {void}
+     */
+    _initializeSeriesAliases() {
+        this._seriesBufferAliases.clear();
+
+        const groupByArray = new Map();
+
+        for (const [name, channel] of Object.entries(this._channels)) {
+            if (!isSeriesChannelConfig(channel)) {
+                continue;
+            }
+            const array = channel.data;
+            if (!array) {
+                continue;
+            }
+            let group = groupByArray.get(array);
+            if (!group) {
+                group = name;
+                groupByArray.set(array, group);
+            }
+            this._seriesBufferAliases.set(name, group);
+        }
+    }
+
+    /**
+     * @param {Record<string, TypedArray>} channels
+     * @param {number} count
+     * @returns {boolean} Whether a packed buffer identity changed.
+     */
+    updateSeries(channels, count) {
+        return this._updatePackedSeries(channels, count);
+    }
+
+    /**
+     * @param {Record<string, TypedArray>} channels
+     * @param {number} count
+     * @returns {boolean} Whether a packed buffer identity changed.
+     */
+    _updatePackedSeries(channels, count) {
+        const layout = this._getPackedLayout();
+        if (!layout) {
+            return false;
+        }
+
+        /** @type {Map<string, TypedArray>} */
+        const groupArrays = new Map();
+
+        for (const [name, channel] of Object.entries(this._channels)) {
+            if (!isSeriesChannelConfig(channel)) {
+                continue;
+            }
+            const sourceArray = channels[name] ?? channel.data;
+            if (!sourceArray) {
+                throw new Error(`Missing data for channel "${name}"`);
+            }
+            const group = this._seriesBufferAliases.get(name) ?? name;
+            const existing = groupArrays.get(group);
+            if (existing && existing !== sourceArray) {
+                const members = this._getAliasMembers(group);
+                throw new Error(
+                    `Series channels ${members
+                        .map((member) => `"${member}"`)
+                        .join(", ")} must share the same buffer.`
+                );
+            }
+            groupArrays.set(group, sourceArray);
+            channel.data = sourceArray;
+        }
+
+        const { f32, u32, i32 } = packSeriesArrays({
+            channels: this._channels,
+            channelSpecs: this._channelSpecs,
+            layout,
+            count,
+        });
+
+        let changed = false;
+        if (f32) {
+            changed = this._ensurePackedBuffer("seriesF32", f32) || changed;
+        }
+        if (u32) {
+            changed = this._ensurePackedBuffer("seriesU32", u32) || changed;
+        }
+        if (i32) {
+            changed = this._ensurePackedBuffer("seriesI32", i32) || changed;
+        }
+        return changed;
+    }
+
+    /**
+     * @returns {import("./packedSeriesLayout.js").PackedSeriesLayout | null}
+     */
+    _getPackedLayout() {
+        if (!this._packedSeriesLayout) {
+            const layout = buildPackedSeriesLayout(
+                this._channels,
+                this._channelSpecs,
+                this._seriesBufferAliases
+            );
+            this._packedSeriesLayout = layout;
+        }
+        return this._packedSeriesLayout;
+    }
+
+    /**
+     * @param {string} group
+     * @returns {string[]}
+     */
+    _getAliasMembers(group) {
+        const members = [];
+        for (const [name, alias] of this._seriesBufferAliases.entries()) {
+            if (alias === group) {
+                members.push(name);
+            }
+        }
+        return members.length > 0 ? members : [group];
+    }
+
+    /**
+     * @param {string} field
+     * @param {TypedArray} array
+     * @returns {void}
+     */
+    /**
+     * @param {string} name
+     * @param {Float32Array | Uint32Array | Int32Array} array
+     * @returns {boolean} Whether the buffer identity changed.
+     */
+    _ensurePackedBuffer(name, array) {
+        const existing = this._packedBuffers.get(name);
+        const requiredSize = Math.max(4, array.byteLength);
+        let buffer = existing?.buffer ?? null;
+        const changed = !buffer || existing.byteLength < requiredSize;
+        if (changed) {
+            const previous = buffer;
+            buffer = this._device.createBuffer({
+                label: gpuLabel(
+                    this._label,
+                    "series " + name.slice("series".length).toLowerCase()
+                ),
+                size: requiredSize,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+            });
+            this._packedBuffers.set(name, {
+                buffer,
+                byteLength: requiredSize,
+            });
+            previous?.destroy();
+        }
+
+        if (array.byteLength > 0) {
+            this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(array));
+        }
+        return changed;
+    }
+
+    /**
+     * @returns {void}
+     */
+    destroy() {
+        for (const { buffer } of this._packedBuffers.values()) {
+            buffer.destroy();
+        }
+        this._packedBuffers.clear();
+    }
+}

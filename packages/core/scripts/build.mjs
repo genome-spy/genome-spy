@@ -1,4 +1,4 @@
-/* eslint-disable no-sync */
+/* global console */
 
 // This script renames and minifies GLSL files into JavaScript files so that
 // the core library's users do not need to configure special handling for such files.
@@ -33,7 +33,7 @@ function compressShader(source) {
             } else {
                 result.push(
                     line.replace(
-                        /\s*({|}|=|\*|,|\+|\/|>|<|&|\||\[|\]|\(|\)|\-|!|;)\s*/g,
+                        /\s*({|}|=|\*|,|\+|\/|>|<|&|\||\[|\]|\(|\)|-|!|;)\s*/g,
                         "$1"
                     )
                 );
@@ -66,7 +66,10 @@ export default shader;\n`;
     }
 }
 
-const shouldSkip = (file) => /\.test\.js$|\.stories\.js$/.test(file);
+const shouldSkip = (file) =>
+    /\.test\.js$|\.stories\.js$/.test(file) ||
+    file == "rendering/webgpu" ||
+    file.startsWith("rendering/webgpu/");
 
 // Copy files, directories, and preprocess JavaScript files
 function copyAndPreprocess(src, dest) {
@@ -78,13 +81,14 @@ function copyAndPreprocess(src, dest) {
         const srcPath = path.join(src, file);
         const destPath = path.join(dest, file);
 
-        if (fs.statSync(srcPath).isDirectory()) {
+        if (shouldSkip(file)) {
+            // Tests, stories, and the development-only WebGPU adapter are not
+            // included in the published Core package.
+            return;
+        } else if (fs.statSync(srcPath).isDirectory()) {
             if (!fs.existsSync(destPath)) {
                 fs.mkdirSync(destPath);
             }
-        } else if (shouldSkip(file)) {
-            // Tests and stories are not published to npm
-            return;
         } else if (file.endsWith(".glsl")) {
             // Rename .glsl to .glsl.js
             const newDestPath = destPath.replace(/\.glsl$/, ".glsl.js");

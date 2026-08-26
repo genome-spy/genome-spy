@@ -25,7 +25,6 @@ import {
     generateConstantValueGlsl,
     generateScaleGlsl,
     RANGE_TEXTURE_PREFIX,
-    isHighPrecisionScale,
     toHighPrecisionDomainUniform,
     dedupeEncodingFields,
     generateDynamicValueGlslAndUniform,
@@ -40,6 +39,7 @@ import {
     SELECTION_CHECKER_PREFIX,
     makeAttributeName,
 } from "../gl/glslScaleGenerator.js";
+import { isIndexLikeDomainType } from "../scales/indexLikeDomainUtils.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
 import GLSL_SAMPLE_FACET from "../gl/includes/sampleFacet.glsl";
@@ -47,7 +47,7 @@ import GLSL_PICKING_VERTEX from "../gl/includes/picking.vertex.glsl";
 import GLSL_PICKING_FRAGMENT from "../gl/includes/picking.fragment.glsl";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import { createProgram } from "../gl/webGLHelper.js";
-import { WEBGL_COORDINATE_OFFSET } from "../gl/renderingConstants.js";
+import { RASTER_COORDINATE_OFFSET } from "../rendering/renderingConstants.js";
 import coalesceProperties from "../utils/propertyCoalescer.js";
 import { isScalar } from "../utils/variableTools.js";
 import { InternMap } from "internmap";
@@ -121,13 +121,19 @@ export function getXIndexOffsetBound(encoders) {
  * @typedef {object} _MarkRenderingOptions
  * @prop {boolean} [skipViewportSetup] Don't configure viewport. Allows for
  *      optimized faceted rendering
- * @typedef {RenderingOptions & _MarkRenderingOptions} MarkRenderingOptions
+ * @typedef {RenderingOptions & import("../types/rendering.js").GlobalRenderingOptions & _MarkRenderingOptions} MarkRenderingOptions
  *
  * @callback DrawFunction
  * @param {number} offset
  * @param {number} count
  *
  * @typedef {"intersects" | "encloses" | "endpoints"} HitTestMode
+ * @typedef {"configuration" | "resources"} RenderingRevisionKind
+ * @typedef {object} RenderingRevisionState
+ * @prop {number} configuration
+ * @prop {number} resources
+ * @prop {boolean} volatileResources
+ * @prop {Set<string>} expressions
  */
 
 /**
@@ -156,6 +162,9 @@ export default class Mark {
      * @type {(() => void)[]}
      */
     #callAfterShaderCompilation = [];
+
+    /** @type {RenderingRevisionState | undefined} */
+    #renderingRevisionState;
 
     /**
      * @param {import("../view/unitView.js").default} unitView
@@ -639,6 +648,122 @@ export default class Mark {
     }
 
     /**
+     * Starts lazy revision tracking for a retained renderer. The caller names
+     * only expression-backed properties that it can synchronize in place;
+     * expression-backed encoder columns and scales are discovered by the mark.
+     *
+     * @param {Iterable<string>} resourceProperties
+     */
+    initializeRenderingRevisions(resourceProperties) {
+        const previousState = this.#renderingRevisionState;
+        const state =
+            previousState ??
+            (this.#renderingRevisionState = {
+                configuration: 0,
+                resources: 0,
+                volatileResources: false,
+                expressions: new Set(),
+            });
+        /**
+         * @param {string} expression
+         * @param {RenderingRevisionKind} kind
+         */
+        const watchExpression = (expression, kind) => {
+            const key = kind + ":" + expression;
+            if (state.expressions.has(key)) {
+                return;
+            }
+            this.unitView.paramRuntime.watchExpression(expression, () => {
+                state[kind]++;
+                this.unitView.context.animator.requestRender();
+            });
+            state.expressions.add(key);
+        };
+        if (!previousState) {
+            const scales = new Set();
+            for (const [channel, encoder] of Object.entries(this.encoders)) {
+                for (const branch of encoder.branches ?? []) {
+                    const channelDef = branch.accessor.channelDef;
+                    if (branch.predicate?.param) {
+                        watchExpression(branch.predicate.param, "resources");
+                    }
+                    if (isExprDef(channelDef)) {
+                        watchExpression(channelDef.expr, "configuration");
+                    }
+                    const values = [
+                        isValueDef(channelDef) ? channelDef.value : undefined,
+                        isDatumDef(channelDef) ? channelDef.datum : undefined,
+                    ];
+                    for (const value of values) {
+                        if (isExprRef(value)) {
+                            watchExpression(value.expr, "resources");
+                        }
+                    }
+                }
+
+                if (encoder.scale) {
+                    const channelDef = findChannelDefWithScale(
+                        encoder.channelDef
+                    );
+                    const resolutionChannel =
+                        channelDef?.resolutionChannel ?? channel;
+                    if (isChannelWithScale(resolutionChannel)) {
+                        const resolution =
+                            this.unitView.getScaleResolution(resolutionChannel);
+                        if (resolution && !scales.has(resolution)) {
+                            const listener = () => state.resources++;
+                            resolution.addEventListener("domain", listener);
+                            resolution.addEventListener("range", listener);
+                            this.unitView.registerDisposer(() => {
+                                resolution.removeEventListener(
+                                    "domain",
+                                    listener
+                                );
+                                resolution.removeEventListener(
+                                    "range",
+                                    listener
+                                );
+                            });
+                            scales.add(resolution);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (const property of resourceProperties) {
+            const value = /** @type {Record<string, any>} */ (this.properties)[
+                property
+            ];
+            if (isExprRef(value)) {
+                watchExpression(value.expr, "resources");
+            }
+        }
+    }
+
+    /**
+     * @param {RenderingRevisionKind} kind
+     * @returns {number | undefined}
+     */
+    getRenderingRevision(kind) {
+        const state = this.#renderingRevisionState;
+        if (!state) {
+            return 0;
+        }
+        return kind == "resources" && state.volatileResources
+            ? undefined
+            : state[kind];
+    }
+
+    /** Marks retained resources as lacking a complete change signal. */
+    makeRenderingResourcesVolatile() {
+        if (!this.#renderingRevisionState) {
+            throw new Error("Rendering revisions have not been initialized.");
+        }
+        this.#renderingRevisionState.volatileResources = true;
+    }
+
+    /**
      * Initialize shaders etc.
      */
     async initializeGraphics() {
@@ -655,16 +780,7 @@ export default class Mark {
     getSampleFacetMode() {
         if (this.encoders.facetIndex) {
             return SAMPLE_FACET_TEXTURE;
-        } else if (
-            // If the UnitView is inside app's SampleView.
-            // TODO: This may break if non-faceted stuff is added to SampleView,
-            // e.g., view background or an x axis.
-            // This could also be more generic and work with other faceting views
-            // that will be available in the future.
-            this.unitView
-                .getLayoutAncestors()
-                .find((view) => "samples" in view.spec)
-        ) {
+        } else if (this.unitView.usesSampleFacetRendering()) {
             return SAMPLE_FACET_UNIFORM;
         }
     }
@@ -1087,7 +1203,7 @@ export default class Mark {
                             }
 
                             domainSetter(
-                                isHighPrecisionScale(scale.type)
+                                isIndexLikeDomainType(scale.type)
                                     ? toHighPrecisionDomainUniform(domain)
                                     : domain
                             );
@@ -1458,7 +1574,7 @@ export default class Mark {
      * views, i.e., multiple views share the uniforms (such as mark properties
      * and scales) and buffers.
      *
-     * @param {import("../types/rendering.js").GlobalRenderingOptions} options
+     * @param {MarkRenderingOptions} options
      * @returns {(() => void)[]}
      */
     prepareRender(options) {
@@ -1495,21 +1611,14 @@ export default class Mark {
 
         if (this.getSampleFacetMode() == SAMPLE_FACET_TEXTURE) {
             ops.push(() => {
-                /** @type {WebGLTexture} */
-                let facetTexture;
-                for (const view of this.unitView.getLayoutAncestors()) {
-                    facetTexture = view.getSampleFacetTexture();
-                    if (facetTexture) {
-                        break;
-                    }
-                }
-
-                if (!facetTexture) {
-                    throw new Error("No facet texture available. This is bug.");
+                const source = options.placement?.source;
+                if (!source) {
+                    throw new Error("No placement source available.");
                 }
 
                 setUniforms(this.programInfo, {
-                    uSampleFacetTexture: facetTexture,
+                    uSampleFacetTexture:
+                        this.glHelper.getPlacementTexture(source),
                 });
             });
         }
@@ -1684,7 +1793,7 @@ export default class Mark {
         coords,
         clip,
         cullClip,
-        pixelOffset = WEBGL_COORDINATE_OFFSET
+        pixelOffset = RASTER_COORDINATE_OFFSET
     ) {
         coords = coords.flatten();
 

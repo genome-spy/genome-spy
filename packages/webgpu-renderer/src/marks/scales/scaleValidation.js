@@ -1,0 +1,129 @@
+/**
+ * @param {import("../../types.js").ScalarType} type
+ * @returns {boolean}
+ */
+function isNumericScalarType(type) {
+    return type === "f32" || type === "u32" || type === "i32";
+}
+
+/**
+ * @param {string} name
+ * @param {import("../../index.d.ts").ChannelConfigInput} channel
+ * @param {ReturnType<typeof import("../shaders/channelAnalysis.js").buildChannelAnalysis>} analysis
+ * @returns {string | null}
+ */
+export function validateScaleConfig(name, channel, analysis) {
+    const {
+        scaleType,
+        outputComponents,
+        inputComponents,
+        allowsScalarToVector,
+        isContinuousScale,
+        rangeIsFunction,
+        rangeIsColor,
+        isPiecewise,
+        needsDomainMap,
+        scalarType,
+        outputScalarType,
+        scaleDef,
+        interpolateEnabled,
+    } = analysis;
+
+    const vectorOutputMode = scaleDef?.vectorOutput ?? "never";
+    const allowsVectorOutputFlag =
+        vectorOutputMode === "always" ||
+        (vectorOutputMode === "interpolated" && interpolateEnabled);
+    const allowsScalarToVectorOutput =
+        allowsVectorOutputFlag && allowsScalarToVector;
+    const vectorOutputAllowed =
+        outputComponents === 1 ||
+        (scaleType === "identity"
+            ? inputComponents === outputComponents
+            : allowsVectorOutputFlag);
+    if (outputComponents > 1 && !vectorOutputAllowed) {
+        return `Channel "${name}" uses vector components but scale "${scaleType}" only supports scalars.`;
+    }
+
+    if (rangeIsFunction && !isContinuousScale) {
+        return `Channel "${name}" only supports function ranges with continuous scales.`;
+    }
+    if (rangeIsFunction && outputComponents !== 4) {
+        return `Channel "${name}" requires vec4 outputs when using function ranges.`;
+    }
+    if (channel.scale?.interpolate !== undefined) {
+        if (!rangeIsColor) {
+            return `Channel "${name}" requires a color range when interpolate is set.`;
+        }
+        if (!isContinuousScale) {
+            return `Channel "${name}" only supports color interpolation with continuous scales.`;
+        }
+        if (outputComponents !== 4) {
+            return `Channel "${name}" requires vec4 outputs when interpolate is set.`;
+        }
+    }
+    if (
+        isContinuousScale &&
+        !rangeIsFunction &&
+        rangeIsColor &&
+        outputComponents !== 4
+    ) {
+        return `Channel "${name}" requires vec4 outputs when using color ranges.`;
+    }
+
+    const inputRule = scaleDef?.input ?? "any";
+    if (inputRule === "numeric" && !isNumericScalarType(scalarType)) {
+        return `Channel "${name}" requires numeric input for "${scaleType}" scale.`;
+    }
+    if (inputRule === "u32" && scalarType !== "u32") {
+        return `Channel "${name}" requires u32 input for "${scaleType}" scale.`;
+    }
+
+    if (
+        outputComponents > 1 &&
+        scalarType !== "f32" &&
+        !allowsScalarToVectorOutput
+    ) {
+        return `Only f32 vectors are supported for "${name}" right now.`;
+    }
+
+    const allowsPackedScalarInput =
+        inputComponents === 2 &&
+        outputComponents === 1 &&
+        scalarType === "u32" &&
+        Boolean(scaleDef?.allowsPackedScalarInput);
+    if (
+        inputComponents > 1 &&
+        scalarType !== "f32" &&
+        !allowsPackedScalarInput
+    ) {
+        return `Only f32 vectors are supported for "${name}" input data.`;
+    }
+    if (
+        inputComponents !== outputComponents &&
+        !allowsScalarToVectorOutput &&
+        !allowsPackedScalarInput
+    ) {
+        return `Channel "${name}" only supports mismatched input/output components when mapping scalars to vectors.`;
+    }
+
+    const customError = scaleDef?.validate?.({
+        name,
+        channel,
+        scaleType,
+        outputComponents,
+        inputComponents,
+        scalarType,
+        outputScalarType,
+        isPiecewise,
+        needsDomainMap,
+        allowsScalarToVector,
+        isContinuousScale,
+        rangeIsFunction,
+        rangeIsColor,
+    });
+    if (customError) {
+        return customError;
+    }
+
+    return null;
+}

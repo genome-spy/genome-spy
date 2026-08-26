@@ -1,4 +1,4 @@
-import { defineConfig } from "playwright/test";
+import { defineConfig } from "@playwright/test";
 import process from "node:process";
 
 export default defineConfig({

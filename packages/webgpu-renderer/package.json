@@ -1,0 +1,141 @@
+{
+  "name": "@genome-spy/webgpu-renderer",
+  "description": "Prototype WebGPU renderer for GenomeSpy (marks + WGSL + GPU resources only)",
+  "private": true,
+  "author": {
+    "name": "Kari Lavikka",
+    "email": "kari.lavikka@helsinki.fi"
+  },
+  "license": "MIT",
+  "version": "0.64.0",
+  "type": "module",
+  "sideEffects": [
+    "src/fonts/lato.js"
+  ],
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./marks/link": {
+      "types": "./src/marks/link.d.ts",
+      "default": "./src/marks/link.js"
+    },
+    "./marks/arrow": {
+      "types": "./src/marks/arrow.d.ts",
+      "default": "./src/marks/arrow.js"
+    },
+    "./marks/point": {
+      "types": "./src/marks/point.d.ts",
+      "default": "./src/marks/point.js"
+    },
+    "./marks/rect": {
+      "types": "./src/marks/rect.d.ts",
+      "default": "./src/marks/rect.js"
+    },
+    "./marks/rule": {
+      "types": "./src/marks/rule.d.ts",
+      "default": "./src/marks/rule.js"
+    },
+    "./marks/text": {
+      "types": "./src/marks/text.d.ts",
+      "default": "./src/marks/text.js"
+    },
+    "./scales/band": {
+      "types": "./src/scales/band.d.ts",
+      "default": "./src/scales/band.js"
+    },
+    "./scales/index": {
+      "types": "./src/scales/index.d.ts",
+      "default": "./src/scales/index.js"
+    },
+    "./scales/identity": {
+      "types": "./src/scales/identity.d.ts",
+      "default": "./src/scales/identity.js"
+    },
+    "./scales/linear": {
+      "types": "./src/scales/linear.d.ts",
+      "default": "./src/scales/linear.js"
+    },
+    "./scales/log": {
+      "types": "./src/scales/log.d.ts",
+      "default": "./src/scales/log.js"
+    },
+    "./scales/ordinal": {
+      "types": "./src/scales/ordinal.d.ts",
+      "default": "./src/scales/ordinal.js"
+    },
+    "./scales/pow": {
+      "types": "./src/scales/pow.d.ts",
+      "default": "./src/scales/pow.js"
+    },
+    "./scales/quantize": {
+      "types": "./src/scales/quantize.d.ts",
+      "default": "./src/scales/quantize.js"
+    },
+    "./scales/sqrt": {
+      "types": "./src/scales/sqrt.d.ts",
+      "default": "./src/scales/sqrt.js"
+    },
+    "./scales/symlog": {
+      "types": "./src/scales/symlog.d.ts",
+      "default": "./src/scales/symlog.js"
+    },
+    "./scales/threshold": {
+      "types": "./src/scales/threshold.d.ts",
+      "default": "./src/scales/threshold.js"
+    },
+    "./debug": {
+      "types": "./src/debug.d.ts",
+      "default": "./src/debug.js"
+    },
+    "./fonts/lato": {
+      "types": "./src/fonts/lato.d.ts",
+      "default": "./src/fonts/lato.js"
+    },
+    "./high-precision": {
+      "types": "./src/utils/highPrecision.d.ts",
+      "default": "./src/utils/highPrecision.js"
+    },
+    "./scale-authoring": {
+      "types": "./src/marks/scales/scale-authoring.d.ts",
+      "default": "./src/marks/scales/scale-authoring.js"
+    }
+  },
+  "files": [
+    "src/**/*",
+    "!src/**/*.test.js",
+    "!src/testUtils/**",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "github:genome-spy/genome-spy",
+    "directory": "packages/webgpu-renderer"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "vite",
+    "lint": "eslint .",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "prepublishOnly": "npm run build",
+    "test:bundle": "node scripts/verifyTreeShaking.mjs",
+    "test:tsc": "tsc -p tsconfig.json --noEmit",
+    "test:gpu": "playwright test -c playwright.config.js"
+  },
+  "dependencies": {
+    "@webgpu/types": "^0.1.68",
+    "d3-color": "^3.1.0",
+    "d3-interpolate": "^3.0.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@storybook/addon-docs": "^8.6.14",
+    "@storybook/addon-essentials": "^8.6.14",
+    "@storybook/addon-links": "^8.6.14",
+    "@storybook/web-components-vite": "^8.6.14",
+    "esbuild": "^0.28.1"
+  }
+}

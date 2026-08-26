@@ -31,5 +31,8 @@
     "prettier": "^3.4.1",
     "vega-loader": "^4.4.0",
     "vscode-json-languageservice": "^5.7.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
   }
 }

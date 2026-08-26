@@ -28,7 +28,7 @@ describe("BufferedViewRenderingContext", () => {
         expect(markPredicate).toHaveBeenCalledWith(mark);
     });
 
-    test("reuses viewport setup for value-equal mark clips", () => {
+    test("forwards placement while reusing value-equal viewports", () => {
         const coords = Rectangle.create(0, 0, 20, 10);
         const gl = /** @type {WebGL2RenderingContext} */ (
             /** @type {unknown} */ ({
@@ -46,6 +46,11 @@ describe("BufferedViewRenderingContext", () => {
                 clear: () => undefined,
             })
         );
+        const placement = {
+            source: /** @type {import("../layout/placementSource.js").default} */ (
+                /** @type {unknown} */ ({})
+            ),
+        };
         let draws = 0;
 
         /** @returns {void} */
@@ -57,8 +62,7 @@ describe("BufferedViewRenderingContext", () => {
         /** @returns {boolean} */
         const isReady = () => true;
 
-        /** @returns {(() => void)[]} */
-        const prepareRender = () => [];
+        const prepareRender = vi.fn(() => []);
 
         /** @returns {number} */
         const getEffectiveOpacity = () => 1;
@@ -107,12 +111,16 @@ describe("BufferedViewRenderingContext", () => {
         // Each renderMark call prepares a fresh self-clip object. The buffered
         // batch should still recognize equal viewport state and reuse setup.
         context.pushView(view, coords);
-        context.renderMark(mark, {});
+        context.renderMark(mark, { placement });
         context.pushView(view, coords);
-        context.renderMark(mark, {});
+        context.renderMark(mark, { placement });
         context.render();
 
         expect(draws).toBe(2);
+        expect(prepareRender).toHaveBeenCalledWith({
+            picking: false,
+            placement,
+        });
         expect(setViewport).toHaveBeenCalledOnce();
         expect(setViewport.mock.calls[0][5]).toBe(0);
     });

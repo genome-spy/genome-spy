@@ -1,0 +1,149 @@
+import {
+    createRenderer,
+    type ExtraValueMarkOptions,
+    type MarkDefinition,
+} from "@genome-spy/webgpu-renderer";
+import { setDebugResourcesEnabled } from "@genome-spy/webgpu-renderer/debug";
+import "@genome-spy/webgpu-renderer/fonts/lato";
+import { packHighPrecisionU32Array } from "@genome-spy/webgpu-renderer/high-precision";
+import {
+    emitScalePipeline,
+    type ScalePipeline,
+} from "@genome-spy/webgpu-renderer/scale-authoring";
+import { arrowMark } from "@genome-spy/webgpu-renderer/marks/arrow";
+import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
+import { linkMark } from "@genome-spy/webgpu-renderer/marks/link";
+import { rectMark } from "@genome-spy/webgpu-renderer/marks/rect";
+import { ruleMark } from "@genome-spy/webgpu-renderer/marks/rule";
+import { textMark } from "@genome-spy/webgpu-renderer/marks/text";
+import { bandScale } from "@genome-spy/webgpu-renderer/scales/band";
+import { identityScale } from "@genome-spy/webgpu-renderer/scales/identity";
+import { indexScale } from "@genome-spy/webgpu-renderer/scales/index";
+import { linearScale } from "@genome-spy/webgpu-renderer/scales/linear";
+import { logScale } from "@genome-spy/webgpu-renderer/scales/log";
+import { ordinalScale } from "@genome-spy/webgpu-renderer/scales/ordinal";
+import { powScale } from "@genome-spy/webgpu-renderer/scales/pow";
+import { quantizeScale } from "@genome-spy/webgpu-renderer/scales/quantize";
+import { sqrtScale } from "@genome-spy/webgpu-renderer/scales/sqrt";
+import { symlogScale } from "@genome-spy/webgpu-renderer/scales/symlog";
+import { thresholdScale } from "@genome-spy/webgpu-renderer/scales/threshold";
+
+export const builtInMarks = [
+    pointMark,
+    rectMark,
+    ruleMark,
+    linkMark,
+    arrowMark,
+    textMark,
+] as const;
+
+export const configuredScales = [
+    linearScale(),
+    identityScale(),
+    bandScale(),
+    indexScale(),
+    ordinalScale(),
+    thresholdScale(),
+    logScale(),
+    powScale(),
+    sqrtScale(),
+    symlogScale(),
+    quantizeScale(),
+] as const;
+
+export async function createPointExample(
+    canvas: HTMLCanvasElement
+): Promise<void> {
+    const renderer = await createRenderer(canvas);
+    const points = renderer.createMark(pointMark, {
+        channels: {
+            x: {
+                data: new Float32Array([0, 1]),
+                type: "f32",
+                scale: linearScale({ domain: [0, 1], range: [0, 100] }),
+            },
+            y: {
+                data: new Float32Array([1, 0]),
+                type: "f32",
+                scale: linearScale({ domain: [0, 1], range: [100, 0] }),
+            },
+        },
+    });
+    points.series.replace({
+        x: new Float32Array([0.25, 0.75]),
+        y: new Float32Array([0.75, 0.25]),
+    });
+
+    const labels = renderer.createMark(textMark, {
+        channels: {
+            text: { data: ["0.00000"] },
+            x: { data: new Float32Array([0]), scale: identityScale() },
+            y: { data: new Float32Array([0]), scale: identityScale() },
+        },
+        logoLetters: false,
+        viewport: [0, 0, 100, 100],
+    });
+    labels.series.replace({
+        text: ["-1.0", "1.0"],
+        x: new Float32Array([0, 100]),
+        y: new Float32Array([50, 50]),
+    });
+    labels.properties.viewport.set([0, 0, 120, 100]);
+    labels.properties.logoLetters.set(true);
+
+    renderer.render({
+        clearColor: [1, 1, 1, 1],
+        draws: [
+            {
+                mark: points,
+                viewport: { x: 0, y: 0, width: 100, height: 100 },
+                scissor: { x: 10, y: 10, width: 80, height: 80 },
+                firstInstance: 0,
+                instanceCount: 2,
+            },
+            { mark: labels },
+        ],
+    });
+
+    const arrows = renderer.createMark(arrowMark, {
+        channels: {},
+        headAngle: 45,
+        headNotchAngle: 90,
+        minSize: 1,
+        headWidth: 3,
+        startNotch: false,
+        minStemLength: 0,
+        headSpacing: null,
+        stem: true,
+        headShape: "triangle",
+        headPlacement: "inside",
+    });
+    arrows.properties.headAngle.set(30);
+    arrows.properties.headShape.set("open");
+    renderer.destroy();
+}
+
+type CustomConfig = { radius: number } & ExtraValueMarkOptions;
+
+declare const customMark: MarkDefinition<CustomConfig>;
+
+export async function createCustomExample(
+    canvas: HTMLCanvasElement
+): Promise<void> {
+    const renderer = await createRenderer(canvas);
+    renderer.createMark(customMark, {
+        radius: 4,
+        dynamicValues: { uRadius: { value: 4 } },
+    });
+    renderer.destroy();
+}
+
+export const publicApiSmokeValues = {
+    debug: setDebugResourcesEnabled,
+    packed: packHighPrecisionU32Array([1, 2]),
+    emit: emitScalePipeline,
+} satisfies {
+    debug: (enabled: boolean) => void;
+    packed: Uint32Array;
+    emit: (pipeline: ScalePipeline) => string;
+};

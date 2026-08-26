@@ -82,8 +82,11 @@ export function createRulerOverlaySpec({
     } else {
         for (const channel of channels) {
             const encoding = createExprEncoding(
-                makeRulerPositionExpression(paramName, channel, display)
+                makeRulerPositionExpression(paramName, channel)
             );
+            if (display === "center") {
+                encoding.band = 0.5;
+            }
             const ruleLayer = /** @type {any} */ ({
                 name: "rulerOverlayRule" + channel.toUpperCase(),
                 mark: {
@@ -214,11 +217,9 @@ function makeRulerFilterExpression(paramName, channels) {
 /**
  * @param {string} paramName
  * @param {PrimaryPositionalChannel} channel
- * @param {import("../../spec/parameter.js").RulerDisplay} [display]
  */
-function makeRulerPositionExpression(paramName, channel, display = "line") {
-    const expr = `linearize('${channel}', ${paramName}.values.${channel})`;
-    return display === "center" ? expr + " + 0.5" : expr;
+function makeRulerPositionExpression(paramName, channel) {
+    return `linearize('${channel}', ${paramName}.values.${channel})`;
 }
 
 /**

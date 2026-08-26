@@ -1,11 +1,20 @@
 import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
 
 /**
- * @param {import("../spec/channel.js").Type | import("../spec/scale.js").ScaleType} type
+ * @param {string} type
  * @returns {boolean}
  */
 export function isIndexLikeDomainType(type) {
     return type === INDEX || type === LOCUS;
+}
+
+/**
+ * True when an index-like domain cannot use one u32 component.
+ *
+ * @param {number[]} domain
+ */
+export function isLargeIndexDomain(domain) {
+    return domain[1] > 2 ** 32;
 }
 
 /**

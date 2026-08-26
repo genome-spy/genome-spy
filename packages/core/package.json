@@ -36,13 +36,15 @@
   "scripts": {
     "dev": "node dev-server.mjs",
     "capture:screenshots": "node scripts/captureScreenshots.mjs",
+    "benchmark:interaction": "node scripts/runWebGpuInteractionBenchmark.mjs",
     "smoke:examples": "node scripts/captureScreenshots.mjs --all --check",
+    "smoke:examples:webgpu": "node scripts/runWebGpuExamples.mjs --all",
     "verify:bundle:minimal": "node scripts/verifyMinimalBundle.mjs",
     "build": "rm -rf dist && mkdir -p dist && node scripts/build.mjs && vite build && npm run build:schema && npm run build:typings",
     "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type CoreRootSpec > dist/schema.json",
-    "build:typings": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/src",
+    "build:typings": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/src && node scripts/removeDevelopmentOnlyArtifacts.mjs",
     "prepack": "node scripts/prepack.mjs",
     "postpack": "node scripts/postpack.mjs"
   },
@@ -79,6 +81,7 @@
     "vega-util": "2.1.0"
   },
   "devDependencies": {
+    "@genome-spy/webgpu-renderer": "^0.64.0",
     "@types/long": "^4.0.1"
   }
 }

@@ -3,6 +3,7 @@
 import { describe, expect, test } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import Rectangle from "../../view/layout/rectangle.js";
+import PlacementSource from "../../view/layout/placementSource.js";
 import { markViewAsChrome } from "../../view/viewSelectors.js";
 import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
 import SvgViewRenderingContext from "./svgViewRenderingContext.js";
@@ -392,25 +393,19 @@ describe("SvgViewRenderingContext", () => {
                 fill: { value: "#123456" },
             },
         });
-        const originalGetLayoutAncestors = view.getLayoutAncestors.bind(view);
-        view.getLayoutAncestors = () => [
-            ...originalGetLayoutAncestors(),
-            /** @type {import("../../view/view.js").default} */ (
-                /** @type {unknown} */ ({
-                    /** @param {number} index */
-                    getSampleFacetPosition: (index) =>
-                        index == 0
-                            ? { location: 0, size: 0.4 }
-                            : { location: 0.6, size: 0.4 },
-                })
-            ),
-        ];
+        const source = new PlacementSource();
+        source.replaceTopology(
+            [[0], [1]],
+            new Float32Array([0, 0, 1, 0.4, 0, 0.6, 1, 0.4])
+        );
         const context = new SvgViewRenderingContext(
             { picking: false },
             { width: 100, height: 100 }
         );
 
-        view.arrange(context, Rectangle.create(0, 0, 100, 100));
+        view.arrange(context, Rectangle.create(0, 0, 100, 100), {
+            placement: { source },
+        });
 
         expect(
             Array.from(context.getSvg().querySelectorAll("circle"), (circle) =>

@@ -2,6 +2,7 @@ import Mark from "../marks/mark.js";
 import { LocSize } from "../view/layout/flexLayout.js";
 import Rectangle from "../view/layout/rectangle.js";
 import ViewRenderingContext from "../view/renderingContext/viewRenderingContext.js";
+import PlacementSource from "../view/layout/placementSource.js";
 
 /**
  * Describes the location of a sample facet. Left is the primary pos, right is for
@@ -20,6 +21,13 @@ export interface SampleFacetRenderingOptions {
     pixelToUnit: number;
 }
 
+export interface PlacementRenderingOptions {
+    source: PlacementSource;
+    index?: number;
+    topologyRevision?: number;
+    clipToPlacement?: "x" | "y" | "xy";
+}
+
 export interface RenderingOptions {
     /**
      * Which facet to render (if faceting is being used)
@@ -33,6 +41,9 @@ export interface RenderingOptions {
     firstFacet?: boolean;
 
     sampleFacetRenderingOptions?: SampleFacetRenderingOptions;
+
+    /** Generic repeated placement information shared by all backends. */
+    placement?: PlacementRenderingOptions;
 
     /**
      * Convenience shorthand for clipping rendering to the given rectangle in
@@ -75,6 +86,7 @@ export interface BufferedRenderingRequest {
     mark: Mark;
     callback: () => void;
     coords: Rectangle;
+    placement?: PlacementRenderingOptions;
     clip?: ClipOptions;
     cullClip?: ClipOptions;
 }

@@ -39,6 +39,40 @@ export default defineConfig(
         },
     },
 
+    {
+        name: "genomespy/webgpu-renderer",
+        files: ["packages/webgpu-renderer/**/*.{js,mjs,cjs}"],
+        languageOptions: {
+            globals: {
+                ...globals.browser,
+                GPUBufferUsage: "readonly",
+                GPUMapMode: "readonly",
+                GPUShaderStage: "readonly",
+                GPUTextureUsage: "readonly",
+            },
+        },
+    },
+
+    {
+        name: "genomespy/webgpu-renderer-node-files",
+        files: [
+            "packages/webgpu-renderer/scripts/**/*.{js,mjs,cjs}",
+            "packages/webgpu-renderer/tests/**/*.{js,mjs,cjs}",
+            "packages/webgpu-renderer/stories/**/*.{js,mjs,cjs}",
+        ],
+        languageOptions: {
+            globals: {
+                ...globals.browser,
+                ...globals.node,
+                ...globals.vitest,
+                GPUBufferUsage: "readonly",
+                GPUMapMode: "readonly",
+                GPUShaderStage: "readonly",
+                GPUTextureUsage: "readonly",
+            },
+        },
+    },
+
     js.configs.recommended,
     ...tseslint.configs["flat/recommended"],
     eslintConfigPrettier,
@@ -58,6 +92,13 @@ export default defineConfig(
             "@typescript-eslint/ban-ts-comment": "off",
             "@typescript-eslint/no-explicit-any": "off",
             "@typescript-eslint/no-this-alias": "off",
+        },
+    },
+    {
+        name: "genomespy/webgpu-renderer-redeclarations",
+        files: ["packages/webgpu-renderer/**/*.{js,mjs,cjs}"],
+        rules: {
+            "no-redeclare": "off",
         },
     }
 );

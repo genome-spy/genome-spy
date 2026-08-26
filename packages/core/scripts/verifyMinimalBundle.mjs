@@ -1,4 +1,4 @@
-/* eslint-disable no-sync */
+/* global console, process */
 
 import fs from "node:fs";
 import os from "node:os";
@@ -31,6 +31,7 @@ const optionalRenderingDirectories = [
     "src/rendering/immediate/",
     "src/rendering/svg/",
 ];
+const webGpuRenderingDirectory = "src/rendering/webgpu/";
 
 const tempDir = fs.mkdtempSync(
     path.join(os.tmpdir(), "genome-spy-minimal-bundle-")
@@ -63,10 +64,14 @@ try {
         }
     }
 
-    const productionSources = await buildAndReadStaticEntrySources(
+    const productionOutput = await buildEntry(
         "index.js",
         "genomeSpyEmbed",
         productionOutDir
+    );
+    const productionSources = readStaticEntrySources(
+        productionOutput,
+        "index.js"
     );
     for (const forbidden of optionalRenderingDirectories) {
         if (productionSources.some((source) => source.includes(forbidden))) {
@@ -74,6 +79,17 @@ try {
                 `Synchronous production entry should not include ${forbidden}, but it does.`
             );
         }
+    }
+
+    const productionBundleSources = readAllOutputSources(productionOutput);
+    if (
+        productionBundleSources.some((source) =>
+            source.includes(webGpuRenderingDirectory)
+        )
+    ) {
+        throw new Error(
+            `Production bundle should not include ${webGpuRenderingDirectory}, but it does.`
+        );
     }
 
     console.log("Minimal bundle verification passed.");
@@ -87,6 +103,64 @@ try {
  * @param {string} outDir
  */
 async function buildAndReadStaticEntrySources(entry, name, outDir) {
+    return readStaticEntrySources(await buildEntry(entry, name, outDir), entry);
+}
+
+/**
+ * @param {Array<import("rollup").OutputChunk | import("rollup").OutputAsset>} output
+ * @param {string} entry
+ */
+function readStaticEntrySources(output, entry) {
+    const chunks = output.filter((item) => item.type == "chunk");
+    const chunksByFileName = new Map(
+        chunks.map((chunk) => [chunk.fileName, chunk])
+    );
+    const entryChunk = chunks.find((chunk) => chunk.isEntry);
+    if (!entryChunk) {
+        throw new Error(`Build for ${entry} did not produce an entry chunk.`);
+    }
+
+    const sources = new Set();
+    const visitedChunks = new Set();
+
+    /** @param {import("rollup").OutputChunk} chunk */
+    function visitStaticImports(chunk) {
+        if (visitedChunks.has(chunk.fileName)) {
+            return;
+        }
+        visitedChunks.add(chunk.fileName);
+
+        for (const source of Object.keys(chunk.modules)) {
+            sources.add(source.replaceAll("\\", "/"));
+        }
+        for (const importedFile of chunk.imports) {
+            const importedChunk = chunksByFileName.get(importedFile);
+            if (importedChunk) {
+                visitStaticImports(importedChunk);
+            }
+        }
+    }
+
+    visitStaticImports(entryChunk);
+    return Array.from(sources);
+}
+
+/**
+ * @param {Array<import("rollup").OutputChunk | import("rollup").OutputAsset>} output
+ */
+function readAllOutputSources(output) {
+    return output
+        .filter((item) => item.type == "chunk")
+        .flatMap((chunk) => Object.keys(chunk.modules))
+        .map((source) => source.replaceAll("\\", "/"));
+}
+
+/**
+ * @param {string} entry
+ * @param {string} name
+ * @param {string} outDir
+ */
+async function buildEntry(entry, name, outDir) {
     const buildResult = await build({
         root: "src",
         plugins: [
@@ -121,41 +195,9 @@ async function buildAndReadStaticEntrySources(entry, name, outDir) {
         },
     });
 
-    const output = Array.isArray(buildResult)
+    return Array.isArray(buildResult)
         ? buildResult.flatMap((result) => result.output)
         : buildResult.output;
-    const chunks = output.filter((item) => item.type == "chunk");
-    const chunksByFileName = new Map(
-        chunks.map((chunk) => [chunk.fileName, chunk])
-    );
-    const entryChunk = chunks.find((chunk) => chunk.isEntry);
-    if (!entryChunk) {
-        throw new Error(`Build for ${entry} did not produce an entry chunk.`);
-    }
-
-    const sources = new Set();
-    const visitedChunks = new Set();
-
-    /** @param {import("rollup").OutputChunk} chunk */
-    function visitStaticImports(chunk) {
-        if (visitedChunks.has(chunk.fileName)) {
-            return;
-        }
-        visitedChunks.add(chunk.fileName);
-
-        for (const source of Object.keys(chunk.modules)) {
-            sources.add(source.replaceAll("\\", "/"));
-        }
-        for (const importedFile of chunk.imports) {
-            const importedChunk = chunksByFileName.get(importedFile);
-            if (importedChunk) {
-                visitStaticImports(importedChunk);
-            }
-        }
-    }
-
-    visitStaticImports(entryChunk);
-    return Array.from(sources);
 }
 
 function verifyImmediateRenderingImports() {

@@ -23,7 +23,7 @@ export default class InteractionController {
     #tooltipHandlers;
     /** @type {() => void} */
     #renderPickingFramebuffer;
-    /** @type {((x: number, y: number) => number) | undefined} */
+    /** @type {((x: number, y: number) => number | null | Promise<number | null>) | undefined} */
     #readPickingId;
     /** @type {InteractionDispatcher} */
     #interactionDispatcher;
@@ -44,6 +44,7 @@ export default class InteractionController {
     #suppressTooltipUntilMouseMove = false;
     #hoverTrackingSuspensionCount = 0;
     #postRenderHoverRefreshRequested = false;
+    #pickingRequestId = 0;
 
     #dismissStickyTooltip() {
         this.#tooltip.sticky = false;
@@ -60,7 +61,7 @@ export default class InteractionController {
      * @param {(type: string, event: any) => void} options.emitEvent
      * @param {Record<string, import("../tooltip/tooltipHandler.js").TooltipHandler>} options.tooltipHandlers
      * @param {() => void} [options.renderPickingFramebuffer]
-     * @param {(x: number, y: number) => number} [options.readPickingId]
+     * @param {(x: number, y: number) => number | null | Promise<number | null>} [options.readPickingId]
      */
     constructor({
         viewRoot,
@@ -227,6 +228,52 @@ export default class InteractionController {
             return interaction;
         };
 
+        // GPU readback can be slower than mousemove delivery. Keep only one
+        // active hover read and the latest superseding pointer intent.
+        /** @type {{ point: Point, event: MouseEvent } | undefined} */
+        let queuedMouseMove;
+        /** @type {object | undefined} */
+        let activeHoverPick;
+
+        /**
+         * Coalesces hover picks so delayed mousemoves are not replayed in a
+         * burst. Clicks use separate picks because every click must retain its
+         * own coordinate and event ordering.
+         *
+         * @param {Point} point
+         * @param {MouseEvent} event
+         */
+        const startHoverPick = (point, event) => {
+            const request = {};
+            activeHoverPick = request;
+            this.#renderPickingFramebuffer();
+            const promise = this.#handlePicking(
+                point.x,
+                point.y,
+                () => activeHoverPick === request && !queuedMouseMove
+            );
+            if (!promise) {
+                activeHoverPick = undefined;
+                dispatchInteraction(point, event);
+                return;
+            }
+
+            void promise.then((applied) => {
+                if (activeHoverPick !== request) {
+                    return;
+                }
+                activeHoverPick = undefined;
+                if (applied) {
+                    dispatchInteraction(point, event);
+                }
+                const queued = queuedMouseMove;
+                queuedMouseMove = undefined;
+                if (queued) {
+                    startHoverPick(queued.point, queued.event);
+                }
+            });
+        };
+
         /** @param {Event} event */
         const listener = (event) => {
             const now = performance.now();
@@ -243,6 +290,8 @@ export default class InteractionController {
                 const point = this.#toCanvasPoint(event);
                 this.#lastPointerPoint = point;
 
+                let hoverPickHandled = false;
+
                 if (
                     event.type == "mousemove" &&
                     !wheeling &&
@@ -256,9 +305,25 @@ export default class InteractionController {
                     // the user has stopped zooming as reading pixels from the
                     // picking buffer is slow and ruins smooth animations.
                     if (event.buttons == 0 && !isStillZooming()) {
-                        this.#renderPickingFramebuffer();
-                        this.#handlePicking(point.x, point.y);
+                        if (activeHoverPick) {
+                            queuedMouseMove = { point, event };
+                        } else {
+                            startHoverPick(point, event);
+                        }
+                        hoverPickHandled = true;
                     }
+                }
+
+                if (event.type == "mousemove" && !hoverPickHandled) {
+                    // A drag or temporarily suppressed hover supersedes the
+                    // pending hover; its eventual result must not replay.
+                    activeHoverPick = undefined;
+                    queuedMouseMove = undefined;
+                }
+
+                if (hoverPickHandled) {
+                    this.#wheelInertia.cancel();
+                    return;
                 }
 
                 /**
@@ -336,51 +401,75 @@ export default class InteractionController {
                     }
                 }
 
-                // TODO: Should be handled at the view level, not globally
                 if (event.type == "click") {
                     if (longPressTriggered) {
                         return;
                     }
 
-                    const e = this.#currentHover
-                        ? {
-                              type: event.type,
-                              viewPath: this.#currentHover.mark.unitView
-                                  .getLayoutAncestors()
-                                  .map(
-                                      /** @param {import("../view/view.js").default} view */
-                                      (view) => view.name
-                                  )
-                                  .reverse(),
-                              datum: this.#currentHover.datum,
-                          }
-                        : {
-                              type: event.type,
-                              viewPath: null,
-                              datum: null,
-                          };
+                    const clickWasDrag =
+                        this.#mouseDownCoords?.subtract(
+                            Point.fromMouseEvent(event)
+                        ).length >= 3;
 
-                    this.#emitEvent("click", e);
-                }
+                    const dispatchClick = () => {
+                        // TODO: Should be handled at the view level, not globally
+                        const e = this.#currentHover
+                            ? {
+                                  type: event.type,
+                                  viewPath: this.#currentHover.mark.unitView
+                                      .getLayoutAncestors()
+                                      .map(
+                                          /** @param {import("../view/view.js").default} view */
+                                          (view) => view.name
+                                      )
+                                      .reverse(),
+                                  datum: this.#currentHover.datum,
+                              }
+                            : {
+                                  type: event.type,
+                                  viewPath: null,
+                                  datum: null,
+                              };
 
-                if (
-                    event.type != "click" ||
-                    // Suppress click events if the mouse has been dragged
-                    this.#mouseDownCoords?.subtract(Point.fromMouseEvent(event))
-                        .length < 3
-                ) {
-                    const interaction = dispatchInteraction(point, event);
+                        this.#emitEvent("click", e);
 
-                    if (
-                        event.type == "dblclick" &&
-                        this.#hoverTrackingSuspensionCount === 0 &&
-                        this.#isInsideCanvas(point)
-                    ) {
-                        this.#scheduleHoverRefreshAfterRender();
+                        if (!clickWasDrag) {
+                            return dispatchInteraction(point, event);
+                        }
+                    };
+
+                    // Resolve the datum from this click's coordinates instead
+                    // of cached hover state. Once received, a click remains
+                    // valid even if the pointer leaves before GPU readback.
+                    const promise = this.#handlePicking(
+                        point.x,
+                        point.y,
+                        undefined,
+                        false
+                    );
+                    if (promise) {
+                        void promise.then((applied) => {
+                            if (applied) {
+                                dispatchClick();
+                            }
+                        });
+                        return;
                     }
 
-                    return interaction;
+                    return dispatchClick();
                 }
+
+                const interaction = dispatchInteraction(point, event);
+
+                if (
+                    event.type == "dblclick" &&
+                    this.#hoverTrackingSuspensionCount === 0 &&
+                    this.#isInsideCanvas(point)
+                ) {
+                    this.#scheduleHoverRefreshAfterRender();
+                }
+
+                return interaction;
             }
         };
 
@@ -646,6 +735,9 @@ export default class InteractionController {
             this.#cursorManager.clear();
             this.#tooltip.clear();
             this.#currentHover = null;
+            this.#pickingRequestId++;
+            activeHoverPick = undefined;
+            queuedMouseMove = undefined;
         });
 
         return () => {
@@ -735,10 +827,44 @@ export default class InteractionController {
     /**
      * @param {number} x
      * @param {number} y
+     * @param {() => boolean} [shouldApply]
+     * @param {boolean} [invalidateOnLeave]
+     * @returns {Promise<boolean> | undefined}
      */
-    #handlePicking(x, y) {
-        const uniqueId = this.#readPickingId?.(x, y) ?? 0;
+    #handlePicking(x, y, shouldApply = () => true, invalidateOnLeave = true) {
+        const requestId = this.#pickingRequestId;
+        const result = this.#readPickingId?.(x, y) ?? 0;
+        if (result instanceof Promise) {
+            return result.then(
+                (uniqueId) => {
+                    const applied =
+                        (!invalidateOnLeave ||
+                            requestId == this.#pickingRequestId) &&
+                        shouldApply();
+                    if (applied) {
+                        this.#tooltipUpdateRequested = false;
+                        this.#applyPickingResult(x, y, uniqueId ?? 0);
+                    }
+                    return applied;
+                },
+                (error) => {
+                    console.error("Picking failed.", error);
+                    return false;
+                }
+            );
+        }
+        if (shouldApply()) {
+            this.#tooltipUpdateRequested = false;
+            this.#applyPickingResult(x, y, result);
+        }
+    }
 
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {number} uniqueId
+     */
+    #applyPickingResult(x, y, uniqueId) {
         if (uniqueId == 0) {
             this.#currentHover = null;
             return;

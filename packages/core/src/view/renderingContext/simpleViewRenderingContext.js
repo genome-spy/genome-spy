@@ -59,7 +59,10 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
             return;
         }
 
-        for (const op of mark.prepareRender(this.globalOptions)) {
+        const prepareOptions = options.placement
+            ? { ...this.globalOptions, placement: options.placement }
+            : this.globalOptions;
+        for (const op of mark.prepareRender(prepareOptions)) {
             op();
         }
 

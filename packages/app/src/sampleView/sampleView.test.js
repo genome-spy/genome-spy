@@ -12,7 +12,10 @@ import {
     getNonChromeViews,
     isChromeView,
 } from "@genome-spy/core/view/viewSelectors.js";
-import { initializeVisibleViewData } from "@genome-spy/core/genomeSpy/viewDataInit.js";
+import {
+    initializeViewData,
+    initializeVisibleViewData,
+} from "@genome-spy/core/genomeSpy/viewDataInit.js";
 import { initializeViewSubtree } from "@genome-spy/core/data/flowInit.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
 import Collector from "@genome-spy/core/data/collector.js";
@@ -24,6 +27,8 @@ import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import Provenance from "../state/provenance.js";
 import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
 import { LEGACY_LABEL_TITLE_TEXT_WARNING } from "./sampleViewSpecNormalizer.js";
+import WebGpuViewRenderingContext from "@genome-spy/core/rendering/webgpu/webGpuViewRenderingContext.js";
+import PlacementSource from "@genome-spy/core/view/layout/placementSource.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -69,6 +74,9 @@ class InspectRenderingContext extends ViewRenderingContext {
     /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
     sampleGroups = [];
 
+    /** @type {{ mark: import("@genome-spy/core/marks/mark.js").default, options: import("@genome-spy/core/types/rendering.js").RenderingOptions }[]} */
+    markCalls = [];
+
     /** @type {string[]} */
     legendMarks = [];
 
@@ -109,6 +117,7 @@ class InspectRenderingContext extends ViewRenderingContext {
     }
 
     renderMark(mark, options = {}) {
+        this.markCalls.push({ mark, options });
         if (mark.unitView.explicitName === "labels_main") {
             const coords = this.#coordsStack.at(-1);
             this.axisLabels.push({
@@ -155,6 +164,56 @@ class InspectRenderingContext extends ViewRenderingContext {
             this.titleOptions.push(options);
         }
     }
+}
+
+/**
+ * @param {Rectangle} canvas
+ */
+function createWebGpuHarness(canvas) {
+    /** @type {WeakMap<object, PlacementSource>} */
+    const occurrenceSources = new WeakMap();
+    const surface = {
+        getDevicePixelRatio: () => 1,
+        getLogicalCanvasSize: () => ({
+            width: canvas.width,
+            height: canvas.height,
+        }),
+        updateOccurrencePlacements: (mark, rectangles) => {
+            let source = occurrenceSources.get(mark);
+            if (!source) {
+                source = new PlacementSource();
+                occurrenceSources.set(mark, source);
+            }
+            source.replaceTopology(
+                Array.from({ length: rectangles.length / 4 }, (_, index) => [
+                    index,
+                ]),
+                rectangles
+            );
+            return source;
+        },
+        updateMark: vi.fn(),
+        drawMark: vi.fn(),
+    };
+    return {
+        surface,
+        context: new WebGpuViewRenderingContext({
+            surface: /** @type {any} */ (surface),
+        }),
+    };
+}
+
+/** @param {{ drawMark: ReturnType<typeof vi.fn> }} surface */
+function getSampleRangeDraws(surface) {
+    return surface.drawMark.mock.calls.filter(
+        ([mark, options]) =>
+            options.placement?.index !== undefined && mark.getType() === "rect"
+    );
+}
+
+/** @param {any[]} call */
+function getDrawPlacementIndex(call) {
+    return call[1].placement.index;
 }
 
 /**
@@ -1370,6 +1429,11 @@ describe("layout and group column", () => {
         expect(
             normalizeClipOptions(renderContext.sampleLabels[0])
         ).toBeDefined();
+        expect(renderContext.sampleLabels[0].placement).toMatchObject({
+            source: expect.any(PlacementSource),
+            topologyRevision: 1,
+        });
+        expect(renderContext.sampleLabels[0].placement.index).toBeUndefined();
     });
 
     test("does not clip sample groups to the sticky summary viewport", async () => {
@@ -2097,6 +2161,75 @@ describe("axis layout and visibility", () => {
                 (chrome) => chrome.clip?.clipX === false
             )
         ).toBe(true);
+    });
+
+    test("prunes 2,000 SampleView range occurrences equally for rendering and picking", async () => {
+        const samples = Array.from({ length: 2000 }, (_, indexNumber) => ({
+            id: `sample-${indexNumber}`,
+            displayName: `Sample ${indexNumber}`,
+            indexNumber,
+        }));
+        const values = samples.flatMap(({ id: sample }, index) => [
+            { sample, start: 0, end: 40, value: index },
+            { sample, start: 40, end: 100, value: -index },
+        ]);
+        const testContext = createTestViewContext();
+        testContext.isViewConfiguredVisible = (candidate) =>
+            candidate.spec.name !== "sample-labels";
+        const { view, context } = await createSampleViewForTest({
+            spec: {
+                data: { values },
+                samples: {},
+                sampleLayout: { sampleHeight: 20 },
+                spec: {
+                    mark: "rect",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "start", type: "index" },
+                        x2: { field: "end" },
+                        color: { value: "steelblue" },
+                    },
+                },
+            },
+            context: testContext,
+            initializeFlow: false,
+        });
+        await initializeViewData(
+            /** @type {import("@genome-spy/core/view/view.js").default} */ (
+                /** @type {unknown} */ (view)
+            ),
+            context.dataFlow,
+            context.fontManager,
+            () => undefined
+        );
+        view.sampleGroupView.updateGroups();
+
+        const coords = Rectangle.create(0, 0, 500, 300);
+        view.arrange(new NoOpRenderingContext({ picking: false }), coords, {
+            firstFacet: true,
+        });
+        context.animator.requestTransition = (callback) =>
+            callback(performance.now() + 1000);
+        await view.locationManager.togglePeek(true, 150, samples[1000].id);
+
+        const visibleHarness = createWebGpuHarness(coords);
+        const pickingHarness = createWebGpuHarness(coords);
+        const visibleContext = visibleHarness.context;
+        const pickingContext = pickingHarness.context;
+        view.arrange(visibleContext, coords, { firstFacet: true });
+        view.arrange(pickingContext, coords, { firstFacet: true });
+        visibleContext.finish();
+        pickingContext.finish();
+        visibleContext.render({ picking: false });
+        pickingContext.render({ picking: true });
+
+        const visibleRanges = getSampleRangeDraws(visibleHarness.surface);
+        const pickingRanges = getSampleRangeDraws(pickingHarness.surface);
+        expect(visibleRanges.length).toBeGreaterThan(0);
+        expect(visibleRanges.length).toBeLessThan(30);
+        expect(pickingRanges.map(getDrawPlacementIndex)).toEqual(
+            visibleRanges.map(getDrawPlacementIndex)
+        );
     });
 
     test("skips sample rendering while sample locations are unavailable", async () => {

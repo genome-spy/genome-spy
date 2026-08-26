@@ -1235,34 +1235,13 @@ export default class View {
     }
 
     /**
-     * Returns a texture that has a mapping for the sample locations. This is implemented
-     * only in the SampleView of GenomeSpy App.
-     *
-     * Background:
-     * There are to ways to manage how sample facets are drawn in the App:
-     *
-     * 1) Use one draw call for each facet and pass the location data as a uniform.
-     * 2) Draw all facets with one call and pass the facet locations as a texture.
-     *
-     * The former is suitable for large datasets, which can be subsetted for better
-     * performance. The latter one is more performant for cases where each facet
-     * consists of few data items (sample attributes / metadata).
-     *
-     * @return {WebGLTexture}
+     * Whether descendant marks need the sample-facet shader transform.
+     * The owning layout view declares this explicitly; renderer resources are
+     * carried separately in rendering options.
+     * @returns {boolean}
      */
-    getSampleFacetTexture() {
-        return undefined;
-    }
-
-    /**
-     * Returns the normalized location of a sample facet. This CPU-side
-     * counterpart of getSampleFacetTexture is used by non-GPU renderers.
-     *
-     * @param {number} index
-     * @returns {import("./layout/flexLayout.js").LocSize | undefined}
-     */
-    getSampleFacetPosition(index) {
-        return undefined;
+    usesSampleFacetRendering() {
+        return this.layoutParent?.usesSampleFacetRendering() ?? false;
     }
 
     /**

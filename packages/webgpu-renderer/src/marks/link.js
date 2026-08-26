@@ -1,0 +1,15 @@
+import LinkProgram from "./programs/linkProgram.js";
+
+/**
+ * @type {import("../index.d.ts").MarkDefinition<
+ *   import("../index.d.ts").MarkConfig<"link">,
+ *   Record<string, import("../index.d.ts").TypedArray>,
+ *   import("../index.d.ts").LinkMarkProperties
+ * >}
+ */
+export const linkMark = Object.freeze({
+    type: "link",
+    createProgram(renderer, config, context) {
+        return new LinkProgram(/** @type {any} */ (renderer), config, context);
+    },
+});

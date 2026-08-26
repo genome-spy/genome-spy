@@ -1,0 +1,81 @@
+import { describe, expect, it } from "vitest";
+import {
+    coerceRangeValue,
+    getScaleStopKind,
+    normalizeScaleStops,
+    normalizeOrdinalRange,
+} from "./scaleStops.js";
+import { createTestScale } from "../../../testUtils/scaleDefinitions.js";
+
+describe("scaleStops", () => {
+    it("detects piecewise scales from linear configs", () => {
+        const kind = getScaleStopKind(
+            createTestScale("linear", {
+                domain: [0, 1, 2],
+                range: [0, 1, 2],
+            })
+        );
+
+        expect(kind).toBe("piecewise");
+    });
+
+    it("normalizes continuous domain/range using defaults", () => {
+        const channel =
+            /** @type {import("../../index.js").ChannelConfigResolved} */ ({
+                value: 0,
+                type: "f32",
+                components: 1,
+            });
+        const result = normalizeScaleStops(
+            "x",
+            channel,
+            createTestScale("linear"),
+            "continuous",
+            () => [2, 4]
+        );
+
+        expect(result.domain).toEqual([0, 1]);
+        expect(result.range).toEqual([2, 4]);
+        expect(result.domainLength).toBe(2);
+        expect(result.rangeLength).toBe(2);
+    });
+
+    it("normalizes threshold colors to vec4 arrays", () => {
+        const channel =
+            /** @type {import("../../index.js").ChannelConfigResolved} */ ({
+                value: [0, 0, 0, 1],
+                type: "f32",
+                components: 4,
+            });
+        const result = normalizeScaleStops(
+            "fill",
+            channel,
+            createTestScale("threshold", {
+                domain: [0],
+                range: ["#000000", "#ffffff"],
+            }),
+            "threshold",
+            () => [0, 1]
+        );
+
+        expect(result.range).toEqual([
+            [0, 0, 0, 1],
+            [1, 1, 1, 1],
+        ]);
+    });
+
+    it("coerces domain updates from objects", () => {
+        const pair = coerceRangeValue({ domain: [3, 7] }, "domain");
+
+        expect(pair).toEqual([3, 7]);
+    });
+
+    it("normalizes ordinal color ranges", () => {
+        const normalized = normalizeOrdinalRange("fill", ["#000", "#fff"], 4);
+
+        expect(normalized).toEqual([
+            [0, 0, 0, 1],
+            [1, 1, 1, 1],
+        ]);
+    });
+});
