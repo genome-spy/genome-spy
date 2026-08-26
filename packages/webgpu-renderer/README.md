@@ -79,6 +79,11 @@ marks default to one instance; pass `count` explicitly when they should draw a
 different number. Call `renderer.destroy()` when the canvas integration is
 removed.
 
+The API design is partly inspired by
+[CandyGraph](https://github.com/wwwtyro/candygraph). The feature set draws on
+[Vega](https://vega.github.io/vega/), [D3](https://d3js.org/), and, most
+directly, GenomeSpy's visualization requirements.
+
 ## Rendering model
 
 ### What the renderer owns
