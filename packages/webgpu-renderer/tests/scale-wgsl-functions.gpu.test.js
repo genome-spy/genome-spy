@@ -829,6 +829,35 @@ test("scaleBandHp matches CPU reference for large u32 indices", async ({
     }
 });
 
+test("scaleBandHp preserves adjacent genomic endpoints", async ({ page }) => {
+    await ensureWebGPU(page);
+
+    const values = [2_470_387_217, 2_470_387_218];
+    const range = [0, 960];
+    const config = [0, 0, 0, 0];
+    const domain = packHighPrecisionDomain(2_470_387_120, 2_470_387_355);
+    const result = await runBandCompute(page, {
+        shaderCode: buildBandHpComputeShader(values.length),
+        input: values,
+        domain,
+        range,
+        config,
+    });
+
+    expect(result[1] - result[0]).toBeCloseTo(960 / 235, 4);
+    values.forEach((value, index) => {
+        expect(result[index]).toBeCloseTo(
+            computeBandHpExpected({
+                value,
+                domainExtent: domain,
+                range,
+                config,
+            }),
+            1
+        );
+    });
+});
+
 test("scaleBandHpU matches CPU reference with packed large indices", async ({
     page,
 }) => {

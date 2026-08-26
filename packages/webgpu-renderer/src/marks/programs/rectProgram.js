@@ -278,6 +278,14 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     var y2 = getScaled_y2(i) + getScaled_y2Offset(i);
     sort(&x, &x2);
     sort(&y, &y2);
+
+    // Keep far-off genomic endpoints close to the viewport. Without this,
+    // rasterizing a rectangle whose other endpoint is visible can lose
+    // precision when the GPU clips the very large triangle.
+    let clampMargin = 1.0;
+    x = clamp(x, 0.0 - clampMargin, globals.width + clampMargin);
+    x2 = clamp(x2, 0.0 - clampMargin, globals.width + clampMargin);
+
     var w = x2 - x;
     var h = y2 - y;
 
