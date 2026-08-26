@@ -1283,6 +1283,49 @@ describe("WebGPU mark adapter", () => {
         expect(channels.hatchPattern).toEqual(dynamicValue(0, "u32"));
     });
 
+    test("preserves nested rect endpoint bands", () => {
+        const data = [{ group: "First" }, { group: "Second" }];
+        const offsetScale = {
+            ...createBandScale(["First", "Second"]),
+            range: () => [0, 1],
+        };
+        /** @param {number} band */
+        const endpoint = (band) =>
+            createEncoder((datum) => datum.group, {
+                scale: offsetScale,
+                channelDef: {
+                    field: "group",
+                    type: "nominal",
+                    band,
+                },
+            });
+        const mark = createMark("rect", data, {
+            x: createConstantEncoder(0),
+            x2: createConstantEncoder(1),
+            y: createConstantEncoder(0),
+            y2: createConstantEncoder(1),
+            xOffset: endpoint(0),
+            x2Offset: endpoint(1),
+            yOffset: createConstantEncoder(0),
+            y2Offset: createConstantEncoder(0),
+            fill: createConstantEncoder("black"),
+            stroke: createConstantEncoder(null),
+            fillOpacity: createConstantEncoder(1),
+            strokeOpacity: createConstantEncoder(1),
+            strokeWidth: createConstantEncoder(0),
+        });
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(0, 0, 100, 100)
+        );
+        const channels = /** @type {any} */ (translated).config.channels;
+
+        expect(channels.xOffset.scale.band).toBe(0);
+        expect(channels.x2Offset.scale.band).toBe(1);
+    });
+
     test("keeps rectangle endpoint offsets as independently scaled channels", () => {
         const data = [
             { xOffset: -1, x2Offset: 0.5, yOffset: 0.25, y2Offset: 1 },

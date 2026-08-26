@@ -1206,7 +1206,9 @@ function createNumericBranch(mark, channel, data, encoder) {
                               encoder.scale.range()
                           ),
                           readDomain,
-                          0.5
+                          /** @type {import("../../spec/channel.js").BandMixins} */ (
+                              encoder.channelDef
+                          ).band ?? 0.5
                       ),
         };
     }
