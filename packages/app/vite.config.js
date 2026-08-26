@@ -41,6 +41,9 @@ export default defineConfig(({ command }) => ({
     define: {
         // A hack needed by events package
         global: "globalThis",
+        // Production bundles must not retain the development-only WebGPU path,
+        // even when a test runner sets NODE_ENV to "test".
+        "import.meta.env.DEV": JSON.stringify(command === "serve"),
     },
     build: {
         outDir: "../dist",

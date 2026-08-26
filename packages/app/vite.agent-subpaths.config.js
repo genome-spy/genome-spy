@@ -29,6 +29,8 @@ export default defineConfig({
     ],
     define: {
         global: "globalThis",
+        // These are production-only package entry points, including in tests.
+        "import.meta.env.DEV": JSON.stringify(false),
     },
     build: {
         outDir: "../dist",
