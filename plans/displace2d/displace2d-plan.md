@@ -35,6 +35,68 @@ Temporary reference checkouts used while preparing this plan:
 - ggrepel commit
   [`458aa50`](https://github.com/slowkow/ggrepel/tree/458aa50c14c2d4df8792fff1478aca1ba3b3615f)
   at `/private/tmp/genome-spy-ggrepel-reference`
+- [D3-Labeler](https://github.com/tinker10/D3-Labeler) commit `6de86705a8bb`,
+  [adjustText](https://github.com/Phlya/adjustText) commit `92b0397b5de1`,
+  [d3fc-label-layout](https://github.com/ColinEberhardt/d3fc-label-layout)
+  commit `97d1b2f82f39`, [directlabels](https://github.com/tdhock/directlabels)
+  commit `7c5792254f0d`, and
+  [ggwordcloud](https://github.com/lepennec/ggwordcloud) commit `13544e593f54`
+  under `/private/tmp/displace2d-related-work/repos`
+
+Research PDFs downloaded under `/private/tmp/displace2d-related-work/papers`:
+
+- [Fast and Flexible Overlap Detection for Chart Labeling with Occupancy
+  Bitmap](https://www.domoritz.de/papers/2020-OccupancyBitmap-VIS.pdf)
+- [An Efficient Algorithm for Scatter Chart
+  Labeling](https://aaai.org/Papers/AAAI/2006/AAAI06-167.pdf)
+- [Labeling Algorithms, Chapter 15 of the Handbook of Graph Drawing and
+  Visualization](https://cs.brown.edu/people/rtamassi/gdhandbook/chapters/labeling.pdf)
+
+The D3-Labeler paper link no longer responded, but its MIT-licensed repository
+contains the described simulated-annealing implementation and objective terms.
+
+## Related-work conclusions
+
+The reviewed work separates into approaches with different tradeoffs. None can
+be adopted wholesale because most solve a label-specific selection problem,
+while `displace2d` must preserve generic rows and emit offsets only.
+
+- Vega's occupancy-bitmap paper and transform provide the strongest evidence
+  for greedy, ordered candidate placement at interactive scale. The bitmap is
+  an overlap-query acceleration structure, not a placement policy. Vega omits
+  labels when its finite candidates fail, so its failure contract is not
+  suitable here.
+- The scatter-chart paper is directly relevant to interaction: it requires
+  deterministic output to avoid confusing users and discusses arbitrary
+  displacement with leader lines. Its continuous ray search, lookahead, and
+  iterative regrouping optimize placement count and connector length, but even
+  the authors use asynchronous recomputation for interaction. That is too much
+  machinery for the first solver.
+- ggrepel, adjustText, and D3-Labeler repeatedly resolve overlaps using force
+  relaxation or simulated annealing. They expose forces, iteration or time
+  limits, cooling, and movement constraints; D3-Labeler defaults to 1,000
+  Monte Carlo sweeps. These methods are useful sources of quality criteria but
+  are a poor default for deterministic bounded interaction.
+- d3fc-label-layout cleanly models positions and rectangle sizes, supporting
+  the generic geometry contract. Its greedy and annealing strategies may leave
+  overlaps and its cleanup strategy hides labels. Its public strategy layer is
+  broader than GenomeSpy needs.
+- ggwordcloud searches outward along a spiral and checks exact boxes against
+  already placed boxes. This is the closest structural match for preserving
+  items through displacement, but it starts at a random angle, performs linear
+  scans, exposes word-cloud-specific search controls, and can return failed
+  words to their overlapping original positions.
+- directlabels demonstrates the maintenance cost of a highly extensible method
+  pipeline: named and nested positioning methods, method dispatch, and
+  plot-specific heuristics. That flexibility is valuable for its package but
+  reinforces keeping `displace2d` to one solver and a small data contract.
+
+The handbook confirms that practical labeling relies on heuristics because the
+general and point-labeling problems are hard, that four or eight discrete
+positions are common, and that larger candidate sets directly increase cost.
+It also separates placement quality into non-overlap, unambiguous association,
+and preference. `displace2d` owns the first and proximity to the input center;
+rendering and connector composition own association.
 
 ## Goals
 
@@ -152,7 +214,8 @@ These rules are acceptance criteria for the code, not optional cleanup work:
   solve it.
 - Prefer exact rectangle checks first. Add a uniform grid, bitmap, typed array,
   buffer reuse, or other optimization individually and only with before/after
-  evidence.
+  evidence. Keep candidate generation separate from collision lookup without
+  introducing interfaces for either.
 - Reuse `displace1d` lifecycle patterns, but do not create a shared displacement
   framework until both transforms contain stable, meaningful duplication.
 - Validate once at the transform boundary. Keep the pure solver focused on its
@@ -236,25 +299,32 @@ The preferred baseline is:
 
 1. Convert item centers, collision widths and heights, and extents to logical
    pixels.
-2. Visit rows in stable input order and test positions nearest to each original
-   center first.
+2. Visit rows in stable input order and test a small, deterministic sequence of
+   positions nearest to each original center first. The unchanged position is
+   always the first candidate.
 3. Check candidates against the short array of already placed rectangles using
    exact rectangle predicates.
-4. Prefer positions inside the configured extents. If the extents are
-   infeasible, use a deterministic overflow rule rather than dropping a row or
-   emitting a visibility decision.
+4. Give the local search a fixed work bound. If its candidates cannot place a
+   rectangle inside the preferred extents, use a deterministic overflow shelf
+   outside the crowded region. The shelf must guarantee termination and
+   non-overlap rather than dropping a row or returning it to an overlapping
+   original position.
 5. Emit one finite signed x offset and one finite signed y offset for every row.
 
 The direct implementation is the correctness and code-size baseline, not a
 promise to ship an avoidably slow algorithm. Measure it first on representative
 generic rectangles and the canonical annotation example. The initial solver
-spike must resolve how nearest-position search terminates and how overflow is
-minimized without adding public tuning parameters.
+spike must compare the smallest useful finite candidate sequence with a bounded
+expanding-ring or spiral sequence. Choose one based on the named quality and
+latency fixtures, then delete the other. Search controls remain internal, and
+the deterministic overflow shelf is the termination guarantee for either.
 
-If the baseline misses the performance budget, add the smallest broad-phase
-structure that fixes the measured bottleneck and preserves exact rectangle
-checks. Compare a uniform grid and Vega-style occupancy bitmap on that fixture
-only; do not build or keep both production implementations.
+If the baseline misses the performance budget, first determine whether candidate
+count or collision lookup is the bottleneck. Reduce candidate work before adding
+state. If rectangle scans are the bottleneck, add the smallest broad-phase
+structure that fixes the measured case. A uniform grid is the first comparison
+for rectangle-only input; compare Vega-style occupancy bitmap only if the grid
+still misses the budget. Do not keep more than one production lookup path.
 
 Consider force relaxation only if the direct displacement method fails the
 agreed placement-quality criterion. Do not implement it merely to complete an
@@ -485,8 +555,8 @@ documentation, provenance, and code-size tradeoff.
   baseline. Add one broad-phase optimization only if profiling shows that
   rectangle scans cause a budget failure; do not retain two production paths.
 - **Dense infeasible bounds.** Preserve every row and use a documented
-  deterministic overflow rule rather than emitting visibility or silently
-  accepting overlaps.
+  deterministic overflow shelf rather than emitting visibility, silently
+  accepting overlaps, or running an unbounded search.
 - **Expression/data-domain feedback.** Reuse `displace1d` bootstrap and collector
   replay patterns and test data-driven x and y domains explicitly.
 - **API overfitting to text labels.** Define the solver in terms of rectangle
@@ -500,10 +570,10 @@ documentation, provenance, and code-size tradeoff.
 
 1. Which existing or new scatterplot is the canonical first use case, and what
    real annotation counts should set the final benchmark thresholds?
-2. What deterministic nearest-position search and overflow rule preserve all
-   rows while keeping squared displacement and extent overflow acceptably low?
-   Resolve this inside the solver; do not expose search controls in the first
-   public API.
+2. Does a small finite candidate sequence meet the placement-quality fixture,
+   or is a fixed-budget expanding-ring/spiral sequence justified? The overflow
+   shelf is already the termination rule. Resolve the candidate sequence inside
+   the solver and keep its controls out of the first public API.
 3. Are separate x/y position factors and extents clearer than paired parameters?
    Prefer the form that most closely preserves `displace1d` semantics and keeps
    expression-backed replay straightforward.
