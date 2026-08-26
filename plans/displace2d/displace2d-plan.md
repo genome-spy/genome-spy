@@ -149,6 +149,11 @@ rendering and connector composition own association.
 - Public candidate-generation options, obstacle geometry, visibility decisions,
   leader-line routing, and previous-frame placement state unless a demonstrated
   use case cannot be implemented acceptably without them.
+- Avoiding anchor points or unrelated marks. The canonical first example must
+  still be useful with annotation-to-annotation collision only. If labels
+  obscuring points makes that example unacceptable, stop at the first review
+  gate and revise the generic input contract instead of adding a renderer-aware
+  exception.
 
 ## Architectural constraints from GenomeSpy
 
@@ -171,6 +176,11 @@ rendering and connector composition own association.
 - Core hot paths should avoid material per-frame allocations. Reuse working
   buffers across reactive repropagations only when measurement justifies the
   extra lifetime management.
+- A 2D transform can have up to six reactive placement properties. Their
+  invalidations must be coalesced into one refresh and at most one dataflow
+  replay per settled parameter update. Prefer the existing expression-property
+  batching utility or an equally small local use of it; do not create a new
+  scheduler.
 
 ## Abstraction-level decision
 
@@ -267,6 +277,8 @@ Semantics:
 - `width` and `height` are full collision dimensions in logical pixels. A number
   is shared by all rows, a string names a datum field, and an expression
   provides a reactive scalar shared by all rows, matching `displace1d.length`.
+  Rectangle interiors collide; touching edges do not. Width and height may be
+  zero, matching `displace1d`'s non-negative collision-length contract.
 - Input order provides stable deterministic ordering. Authors can place
   `collect` immediately upstream to sort and to provide the replay buffer
   required by reactive parameters. The transform must not add a competing
@@ -276,8 +288,9 @@ Semantics:
   needs placement behavior that the default cannot provide.
 - `xExtent` and `yExtent` are preferred bounds in their respective original
   coordinate systems and are scaled with the item centers. When the rectangles
-  cannot fit, every row still receives offsets and the documented overflow
-  policy applies.
+  cannot be placed by the bounded local search, every row still receives
+  offsets and the documented overflow policy applies. Overflow does not imply
+  that no globally feasible arrangement exists.
 - The output displacement coordinate system must exactly match unscaled
   `xOffset` and `yOffset`: positive x moves right and positive y moves down.
 - Like `displace1d`, affine position conversion is supported directly.
@@ -305,19 +318,39 @@ The preferred baseline is:
 3. Check candidates against the short array of already placed rectangles using
    exact rectangle predicates.
 4. Give the local search a fixed work bound. If its candidates cannot place a
-   rectangle inside the preferred extents, use a deterministic overflow shelf
-   outside the crowded region. The shelf must guarantee termination and
-   non-overlap rather than dropping a row or returning it to an overlapping
-   original position.
+   rectangle while respecting every supplied preferred extent, use a
+   deterministic overflow row to the right of the crowded region. The row must
+   guarantee termination and non-overlap rather than dropping a row or returning
+   it to an overlapping original position.
 5. Emit one finite signed x offset and one finite signed y offset for every row.
 
 The direct implementation is the correctness and code-size baseline, not a
 promise to ship an avoidably slow algorithm. Measure it first on representative
 generic rectangles and the canonical annotation example. The initial solver
 spike must compare the smallest useful finite candidate sequence with a bounded
-expanding-ring or spiral sequence. Choose one based on the named quality and
-latency fixtures, then delete the other. Search controls remain internal, and
-the deterministic overflow shelf is the termination guarantee for either.
+rectangular-ring sequence. Choose one based on the named quality and latency
+fixtures, then delete the other. Search controls remain internal, and the
+deterministic overflow row is the termination guarantee for either. Do not use
+randomness or trigonometric spiral steps; lattice candidates make ordering and
+boundary decisions easier to reproduce across platforms.
+
+The overflow rule is deliberately plain:
+
+1. Initialize an overflow cursor from the maximum original right edge and the
+   right edge of the scaled `xExtent`, when present. Keep it at least as large
+   as the maximum right edge of every rectangle already placed.
+2. On local-search failure, place the rectangle immediately to the right of
+   that cursor, with its left edge touching the cursor. Preserve its original y
+   center, clamped to `yExtent` when the rectangle fits there, and advance the
+   cursor by its full width.
+3. Because each overflow rectangle is horizontally disjoint from everything
+   already placed, no additional search is required. Touching edges are
+   allowed. The rule may violate `xExtent` and may produce large offsets; those
+   effects are explicit and measured.
+
+A bounded greedy search makes no claim about global feasibility. The contract
+is only that accepted local candidates respect supplied extents and that every
+other row is placed by the deterministic overflow rule without overlap.
 
 If the baseline misses the performance budget, first determine whether candidate
 count or collision lookup is the bottleneck. Reduce candidate work before adding
@@ -358,6 +391,26 @@ and rendering. If representative GenomeSpy examples require a different item
 count, adjust the fixture and threshold at the algorithm review gate rather than
 quietly weakening the criterion later.
 
+## Placement-quality budget
+
+Record quality alongside runtime using the following metrics:
+
+- number and fraction of rows using overflow;
+- mean and p95 center displacement, both in pixels and normalized by each
+  rectangle's diagonal when it is positive;
+- fraction of rows whose original position remains unchanged;
+- number of materially changed offsets at each step of the zoom trace.
+
+Before selecting the production candidate sequence, choose the canonical
+annotation example and commit its deterministic fixture and quality thresholds
+to this plan. The selection gate is invalid until those thresholds exist. At a
+minimum, an already non-overlapping fixture must remain completely unchanged,
+a fixture constructed so the bounded local candidates can resolve it must have
+zero overflow, and infeasible or search-exhausted fixtures must preserve all
+rows without overlaps. For the canonical dense fixture, set explicit maximum
+overflow and displacement thresholds before comparing implementations; do not
+derive the thresholds from whichever implementation happens to win.
+
 ## Commit and delivery strategy
 
 Commit frequently on `feat/displace2d`, but keep every commit focused,
@@ -387,16 +440,21 @@ remain useful for review and bisection.
 
 - Every input row receives exactly two finite signed displacement values.
 - Output rectangles do not overlap. They remain inside preferred extents when
-  feasible and follow the documented deterministic overflow policy otherwise.
-- Equal inputs produce equal outputs across runs and platforms within documented
-  pixel quantization.
+  their accepted local candidate satisfies them and follow the documented
+  deterministic overflow policy after local-search exhaustion. Overflow is not
+  a statement about global feasibility.
+- Rectangle interiors define overlap; touching edges are allowed.
+- Equal inputs produce equal outputs across runs in the same runtime. Candidate
+  generation uses deterministic basic arithmetic without randomness or
+  platform-sensitive trigonometric ordering.
 - Output order and datum identity follow normal modifying-transform behavior.
 - Empty, singleton, coincident, heterogeneous-size, negative-factor, reversed
   screen-axis, and infeasible batches have specified behavior.
 - Non-finite positions, dimensions, factors, extents, and mismatched `as` arrays
   fail fast with transform-specific messages.
 - Expression-backed parameters bootstrap only after scale domains exist and
-  trigger one coherent replay when their effective values change.
+  coalesce into at most one coherent replay when their effective values change
+  in one settled parameter update.
 - Placement output must not feed back into the data-driven domains used to
   compute the original positions.
 - During small zoom increments, stable input and internal search order minimize
@@ -427,6 +485,8 @@ Verification:
 
 - Run the direct baseline on sparse, clustered, coincident, mixed-size,
   edge-heavy, and infeasible fixtures at 100, 500, and 2,000 annotations.
+- Freeze the canonical fixture's overflow and normalized-displacement budgets
+  before choosing between the finite and rectangular-ring candidate sequences.
 - If it fails a criterion, identify the bottleneck before implementing one
   targeted alternative. Record why the added complexity is necessary and its
   before/after result.
@@ -463,7 +523,8 @@ Verification:
   rendering dependencies.
 - Transform tests cover defaults, field/scalar inputs, validation, mutation
   behavior, upstream `collect` replay, expression bootstrap, zoom reactions,
-  negative factors, extent normalization, and unchanged source domains.
+  negative factors, extent normalization, unchanged source domains, and one
+  replay when several reactive placement properties change together.
 - Run focused Vitest suites with the `agent` reporter, schema checks, workspace
   TypeScript checks, and lint for touched code.
 - Re-run the accepted performance fixtures. Inspect allocations only if timing
@@ -523,8 +584,9 @@ documentation, provenance, and code-size tradeoff.
 - The solver and transform meet the accepted performance and churn thresholds
   on the recorded fixtures.
 - Every row is preserved and receives deterministic x and y offsets. Output
-  rectangles are non-overlapping and follow the documented preferred-bound
-  overflow behavior.
+  rectangles are non-overlapping and accepted local candidates respect the
+  documented preferred bounds; exhausted local searches follow the overflow
+  rule without claiming global infeasibility.
 - The transform remains dataflow-only, the solver remains pure, and no new
   rendering special cases or runtime dependencies are introduced.
 - WebGL display, picking/tooltips, clipping, and structured SVG export agree on
@@ -554,9 +616,12 @@ documentation, provenance, and code-size tradeoff.
 - **Premature optimization.** Preserve the direct solver as the measured design
   baseline. Add one broad-phase optimization only if profiling shows that
   rectangle scans cause a budget failure; do not retain two production paths.
-- **Dense infeasible bounds.** Preserve every row and use a documented
-  deterministic overflow shelf rather than emitting visibility, silently
-  accepting overlaps, or running an unbounded search.
+- **Dense or search-exhausted bounds.** Preserve every row and use the
+  documented deterministic right-side overflow row rather than emitting
+  visibility, silently accepting overlaps, or running an unbounded search.
+- **Duplicate reactive work.** Coalesce all expression-backed placement
+  invalidations and test that a settled multi-property change causes at most
+  one replay.
 - **Expression/data-domain feedback.** Reuse `displace1d` bootstrap and collector
   replay patterns and test data-driven x and y domains explicitly.
 - **API overfitting to text labels.** Define the solver in terms of rectangle
@@ -569,11 +634,13 @@ documentation, provenance, and code-size tradeoff.
 ## Unresolved questions
 
 1. Which existing or new scatterplot is the canonical first use case, and what
-   real annotation counts should set the final benchmark thresholds?
+   real annotation counts, overflow fraction, and normalized displacement
+   should set the final benchmark thresholds? Freeze these before selecting the
+   candidate sequence.
 2. Does a small finite candidate sequence meet the placement-quality fixture,
-   or is a fixed-budget expanding-ring/spiral sequence justified? The overflow
-   shelf is already the termination rule. Resolve the candidate sequence inside
-   the solver and keep its controls out of the first public API.
+   or is a fixed-budget rectangular-ring sequence justified? The right-side
+   overflow row is already the termination rule. Resolve the candidate sequence
+   inside the solver and keep its controls out of the first public API.
 3. Are separate x/y position factors and extents clearer than paired parameters?
    Prefer the form that most closely preserves `displace1d` semantics and keeps
    expression-backed replay straightforward.
@@ -583,3 +650,7 @@ documentation, provenance, and code-size tradeoff.
 5. Does the direct rectangle scan meet the performance budget? Only if it fails,
    which single acceleration structure fixes the measured bottleneck with the
    least code and memory?
+6. Does the canonical example remain useful when only annotation rectangles
+   avoid one another? If avoiding anchor points is essential, revise the generic
+   solver input contract at the first review gate rather than adding mark or
+   renderer coupling.
