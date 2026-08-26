@@ -1,4 +1,7 @@
-import { buildHashTableSet } from "../../../utils/hashTable.js";
+import {
+    buildHashTableSet,
+    DEFAULT_MAX_LOAD_FACTOR,
+} from "../../../utils/hashTable.js";
 import { asGpuBufferSource } from "../../../utils/webgpuTextureUtils.js";
 import {
     intervalSelectionActiveName,
@@ -468,10 +471,19 @@ export class SelectionResourceManager {
                 );
             }
         } else if (update.type === "multi") {
-            const { table, size } = buildHashTableSet(update.ids);
-            this._setUniformValue(SELECTION_COUNT_PREFIX + name, size);
             const bufferName = SELECTION_BUFFER_PREFIX + name;
             const existing = this._selectionBuffers.get(name);
+            // The shader derives its hash mask from the bound buffer length.
+            const existingCapacity =
+                existing?.byteLength / (Uint32Array.BYTES_PER_ELEMENT * 2);
+            const reuseExisting =
+                existingCapacity !== undefined &&
+                update.ids.length / existingCapacity <= DEFAULT_MAX_LOAD_FACTOR;
+            const { table, size } = buildHashTableSet(
+                update.ids,
+                reuseExisting ? { capacity: existingCapacity } : undefined
+            );
+            this._setUniformValue(SELECTION_COUNT_PREFIX + name, size);
             if (!existing || existing.byteLength < table.byteLength) {
                 const buffer = this._device.createBuffer({
                     size: table.byteLength,

@@ -78,6 +78,36 @@ describe("mark rendering revisions", () => {
         expect(view.mark.getRenderingRevision("resources")).toBe(1);
     });
 
+    test("tracks selection predicates as resource revisions", async () => {
+        const view = await create(
+            {
+                data: { values: [{ category: "A", value: 1 }] },
+                params: [{ name: "selected", select: "point" }],
+                mark: "rect",
+                encoding: {
+                    x: { field: "category", type: "nominal" },
+                    y: { field: "value", type: "quantitative" },
+                    fillOpacity: {
+                        value: 0.3,
+                        condition: { param: "selected", value: 1 },
+                    },
+                },
+            },
+            UnitView
+        );
+        const requestRender = vi.spyOn(view.context.animator, "requestRender");
+
+        view.mark.initializeEncoders();
+        view.mark.initializeRenderingRevisions([]);
+        expect(view.mark.getRenderingRevision("resources")).toBe(0);
+
+        const selection = view.paramRuntime.getValue("selected");
+        view.paramRuntime.setValue("selected", { ...selection });
+
+        expect(view.mark.getRenderingRevision("resources")).toBe(1);
+        expect(requestRender).toHaveBeenCalledOnce();
+    });
+
     test("deduplicates scale dependencies and can mark a category volatile", async () => {
         const view = await create(
             {

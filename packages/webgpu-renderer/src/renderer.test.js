@@ -131,7 +131,7 @@ describe("Renderer mark definitions", () => {
         expect(renderer._pickingFrame).toEqual([]);
     });
 
-    test("coalesces concurrent pick readbacks to the latest request", async () => {
+    test("serializes concurrent pick readbacks without dropping requests", async () => {
         const { renderer } = createRendererHarness();
         /** @type {[number, number][]} */
         const calls = [];
@@ -154,13 +154,15 @@ describe("Renderer mark definitions", () => {
 
         await Promise.resolve();
         expect(calls).toEqual([[1, 2]]);
-        await expect(second).resolves.toBeNull();
 
         releaseFirst();
 
-        await expect(Promise.all([first, third])).resolves.toEqual([3, 11]);
+        await expect(Promise.all([first, second, third])).resolves.toEqual([
+            3, 7, 11,
+        ]);
         expect(calls).toEqual([
             [1, 2],
+            [3, 4],
             [5, 6],
         ]);
     });
@@ -344,7 +346,7 @@ function createRendererHarness() {
     renderer._destroyed = false;
     renderer._onInvalidate = vi.fn();
     renderer._pickingDirty = false;
-    renderer._pickPending = null;
+    renderer._pickQueue = [];
     renderer._pickInFlight = null;
     renderer._renderFrame = null;
     renderer._pickingFrame = null;

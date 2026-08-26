@@ -56,10 +56,9 @@ to the state that changed. Preserve these invariants when refactoring it:
   live scale, opacity, value, property, scalar, and selection leaves are checked
   through renderer slots and immutable snapshots. Core never names built-in
   shader uniforms.
-- Existing scale and parameter notifications provide per-mark dirty revisions.
-  Marks backed by selections remain conservatively dirty until Core exposes a
-  complete selection-change notification contract; do not add a parallel
-  dependency graph solely for this adapter.
+- Existing scale, parameter, and selection notifications provide per-mark dirty
+  revisions. Keep that dependency tracking in Core marks rather than adding a
+  parallel graph solely for this adapter.
 - Navigation updates scale domains. Closeup transitions and scrolling may also
   replace non-uniform placement geometry. Keep those application semantics out
   of the generic renderer and continue using `PlacementSource` as the boundary.

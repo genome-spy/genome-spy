@@ -282,11 +282,11 @@ describe("InteractionController", () => {
         expect(canvas.style.cursor).toBe("");
     });
 
-    it("ignores stale asynchronous picking results", async () => {
+    it("dispatches pointer events with their asynchronous picking results", async () => {
         installEventTargetDocument();
         vi.spyOn(performance, "now")
-            .mockReturnValueOnce(1000)
-            .mockReturnValue(2000);
+            .mockReturnValueOnce(0)
+            .mockReturnValue(1000);
         globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
             /** @type {any} */ (
                 class MouseEvent extends Event {
@@ -296,15 +296,18 @@ describe("InteractionController", () => {
                     ) {
                         super(type);
                         Object.assign(this, {
+                            button: 0,
                             buttons: 0,
                             clientX: 0,
                             clientY: 0,
+                            shiftKey: false,
                             ...init,
                         });
                     }
                 }
             )
         );
+
         const canvas = new CanvasStub();
         /** @type {((value: number) => void)[]} */
         const pending = [];
@@ -315,9 +318,14 @@ describe("InteractionController", () => {
                 })
         );
 
+        /** @type {{type: string, event: any}[]} */
+        const emitted = [];
         const mark = {
             isPickingParticipant: () => true,
             properties: { tooltip: /** @type {null} */ (null) },
+            unitView: {
+                getLayoutAncestors: /** @returns {any[]} */ () => [],
+            },
         };
         const pickerUnitView = Object.create(UnitView.prototype);
         pickerUnitView.mark = mark;
@@ -326,10 +334,22 @@ describe("InteractionController", () => {
         ]);
         pickerUnitView.getCollector = () => ({
             findDatumByUniqueId: (/** @type {number} */ uniqueId) =>
-                uniqueId == 2 ? { id: "datum-2" } : undefined,
+                [1, 2].includes(uniqueId)
+                    ? { id: "datum-" + uniqueId }
+                    : undefined,
         });
+        /** @type {{type: string, shiftKey: boolean, hoverId: number | undefined}[]} */
+        const dispatched = [];
         const viewRoot = {
-            propagateInteraction() {},
+            propagateInteraction(/** @type {any} */ interaction) {
+                if (["mousemove", "click"].includes(interaction.type)) {
+                    dispatched.push({
+                        type: interaction.type,
+                        shiftKey: interaction.mouseEvent.shiftKey,
+                        hoverId: controller.getCurrentHover()?.uniqueId,
+                    });
+                }
+            },
             visit(/** @type {(view: UnitView) => any} */ visitor) {
                 return visitor(pickerUnitView);
             },
@@ -351,7 +371,9 @@ describe("InteractionController", () => {
                 sticky: false,
             }),
             animator: /** @type {any} */ ({ requestRender() {} }),
-            emitEvent() {},
+            emitEvent(/** @type {string} */ type, /** @type {any} */ event) {
+                emitted.push({ type, event });
+            },
             tooltipHandlers: {},
             renderPickingFramebuffer() {},
             readPickingId,
@@ -359,15 +381,87 @@ describe("InteractionController", () => {
         controller.registerInteractionEvents();
 
         canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 10 }));
+        canvas.dispatchEvent(new MouseEvent("mousedown", { clientX: 10 }));
+        canvas.dispatchEvent(new MouseEvent("click", { clientX: 10 }));
+        canvas.dispatchEvent(
+            new MouseEvent("mousedown", { clientX: 10, shiftKey: true })
+        );
+        canvas.dispatchEvent(
+            new MouseEvent("click", { clientX: 10, shiftKey: true })
+        );
+        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 15 }));
+        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 18 }));
         canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 20 }));
-        expect(pending).toHaveLength(2);
+        canvas.dispatchEvent(new MouseEvent("mousedown", { clientX: 20 }));
+        canvas.dispatchEvent(new MouseEvent("click", { clientX: 20 }));
+        expect(pending).toHaveLength(4);
+        expect(emitted).toHaveLength(0);
+        expect(dispatched).toHaveLength(0);
+
         pending[0](1);
         await Promise.resolve();
-        expect(controller.getCurrentHover()).toBeUndefined();
-
-        pending[1](2);
         await Promise.resolve();
-        expect(controller.getCurrentHover()?.uniqueId).toBe(2);
+        expect(pending).toHaveLength(5);
+        expect(emitted).toHaveLength(0);
+        expect(dispatched).toHaveLength(0);
+
+        pending[1](1);
+        await Promise.resolve();
+        pending[2](1);
+        await Promise.resolve();
+        pending[3](2);
+        await Promise.resolve();
+        pending[4](2);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(emitted.map(({ event }) => event.datum.id)).toEqual([
+            "datum-1",
+            "datum-1",
+            "datum-2",
+        ]);
+        expect(dispatched).toEqual([
+            { type: "click", shiftKey: false, hoverId: 1 },
+            { type: "click", shiftKey: true, hoverId: 1 },
+            { type: "click", shiftKey: false, hoverId: 2 },
+            { type: "mousemove", shiftKey: false, hoverId: 2 },
+        ]);
+
+        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 30 }));
+        canvas.dispatchEvent(new MouseEvent("mouseout", { clientX: 30 }));
+        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 30 }));
+        expect(pending).toHaveLength(7);
+
+        pending[5](1);
+        await Promise.resolve();
+        pending[6](2);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(dispatched.at(-1)).toEqual({
+            type: "mousemove",
+            shiftKey: false,
+            hoverId: 2,
+        });
+
+        canvas.dispatchEvent(new MouseEvent("mousedown", { clientX: 40 }));
+        canvas.dispatchEvent(new MouseEvent("click", { clientX: 40 }));
+        canvas.dispatchEvent(new MouseEvent("mouseout", { clientX: 40 }));
+        expect(pending).toHaveLength(8);
+        pending[7](1);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(emitted.at(-1)?.event.datum.id).toBe("datum-1");
+
+        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 50 }));
+        canvas.dispatchEvent(
+            new MouseEvent("mousemove", { buttons: 1, clientX: 60 })
+        );
+        expect(pending).toHaveLength(9);
+        const dispatchCount = dispatched.length;
+        pending[8](2);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(dispatched).toHaveLength(dispatchCount);
+        expect(controller.getCurrentHover()?.uniqueId).toBe(1);
     });
 
     it("freezes hover-derived cursor state while interactions are frozen", () => {

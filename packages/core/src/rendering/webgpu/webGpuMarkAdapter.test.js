@@ -1556,7 +1556,7 @@ describe("WebGPU mark adapter", () => {
                 },
             },
         ]);
-        expect(getWebGpuMarkResourceRevision(mark)).toBeUndefined();
+        expect(getWebGpuMarkResourceRevision(mark)).toBe(0);
     });
 
     test("translates an interval condition on a numeric channel", () => {

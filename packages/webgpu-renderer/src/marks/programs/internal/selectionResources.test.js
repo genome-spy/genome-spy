@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { SelectionResourceManager as DefinedSelectionResourceManager } from "./selectionResources.js";
 import { analyzeTestChannels } from "../../../../testUtils/scaleDefinitions.js";
+import { HASH_EMPTY_KEY, hash32 } from "../../../utils/hashTable.js";
 import {
     intervalSelectionActiveName,
     intervalSelectionBoundsName,
@@ -65,6 +66,39 @@ function makeIntervalChannels(targets) {
     );
 }
 
+function makeMultiChannels() {
+    return /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ (
+        /** @type {unknown} */ ({
+            uniqueId: {
+                data: new Uint32Array([0]),
+                type: "u32",
+                components: 1,
+            },
+            fill: {
+                value: [0, 0, 0, 1],
+                type: "f32",
+                components: 4,
+                conditions: [
+                    {
+                        when: { selection: "chosen", type: "multi" },
+                        channel: {
+                            value: [1, 0, 0, 1],
+                            type: "f32",
+                            components: 4,
+                        },
+                        channelName: "fill__cond0",
+                    },
+                ],
+            },
+            fill__cond0: {
+                value: [1, 0, 0, 1],
+                type: "f32",
+                components: 4,
+            },
+        })
+    );
+}
+
 function createDevice() {
     return /** @type {GPUDevice} */ (
         /** @type {unknown} */ ({
@@ -75,6 +109,29 @@ function createDevice() {
             queue: { writeBuffer: vi.fn() },
         })
     );
+}
+
+/**
+ * Matches the shader's lookup using the storage buffer's full capacity.
+ *
+ * @param {Uint32Array} table
+ * @param {number} key
+ */
+function contains(table, key) {
+    const capacity = table.length / 2;
+    const mask = capacity - 1;
+    let index = hash32(key) & mask;
+    for (let probe = 0; probe < capacity; probe += 1) {
+        const entryKey = table[index * 2];
+        if (entryKey === key) {
+            return true;
+        }
+        if (entryKey === HASH_EMPTY_KEY) {
+            return false;
+        }
+        index = (index + 1) & mask;
+    }
+    return false;
 }
 
 describe("SelectionResourceManager", () => {
@@ -321,40 +378,9 @@ describe("SelectionResourceManager", () => {
                 queue: { writeBuffer: vi.fn() },
             })
         );
-        const channels =
-            /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ (
-                /** @type {unknown} */ ({
-                    uniqueId: {
-                        data: new Uint32Array([0]),
-                        type: "u32",
-                        components: 1,
-                    },
-                    fill: {
-                        value: [0, 0, 0, 1],
-                        type: "f32",
-                        components: 4,
-                        conditions: [
-                            {
-                                when: { selection: "chosen", type: "multi" },
-                                channel: {
-                                    value: [1, 0, 0, 1],
-                                    type: "f32",
-                                    components: 4,
-                                },
-                                channelName: "fill__cond0",
-                            },
-                        ],
-                    },
-                    fill__cond0: {
-                        value: [1, 0, 0, 1],
-                        type: "f32",
-                        components: 4,
-                    },
-                })
-            );
         const manager = new SelectionResourceManager({
             device,
-            channels,
+            channels: makeMultiChannels(),
             setUniformValue: vi.fn(),
         });
         const extraBuffers = new Map();
@@ -371,5 +397,62 @@ describe("SelectionResourceManager", () => {
         expect(extraBuffers.get(SELECTION_BUFFER_PREFIX + "chosen")).toBe(
             buffers[1]
         );
+    });
+
+    it("preserves multi-selection lookup capacity when the selection shrinks", () => {
+        /** @type {Array<{ size: number, data: Uint32Array, destroy: ReturnType<typeof vi.fn> }>} */
+        const buffers = [];
+        const device = /** @type {GPUDevice} */ (
+            /** @type {unknown} */ ({
+                createBuffer: (/** @type {GPUBufferDescriptor} */ { size }) => {
+                    const buffer = {
+                        size,
+                        data: new Uint32Array(
+                            size / Uint32Array.BYTES_PER_ELEMENT
+                        ),
+                        destroy: vi.fn(),
+                    };
+                    buffers.push(buffer);
+                    return buffer;
+                },
+                queue: {
+                    writeBuffer: (
+                        /** @type {{ data: Uint32Array }} */ buffer,
+                        /** @type {number} */ offset,
+                        /** @type {Uint32Array} */ source
+                    ) => {
+                        buffer.data.set(
+                            source,
+                            offset / Uint32Array.BYTES_PER_ELEMENT
+                        );
+                    },
+                },
+            })
+        );
+        const manager = new SelectionResourceManager({
+            device,
+            channels: makeMultiChannels(),
+            setUniformValue: vi.fn(),
+        });
+        const extraBuffers = new Map();
+        manager.initializeSelections(extraBuffers);
+        manager.updateSelection(
+            "chosen",
+            { type: "multi", ids: new Uint32Array([10000, 10001, 10002]) },
+            extraBuffers
+        );
+
+        expect(
+            manager.updateSelection(
+                "chosen",
+                { type: "multi", ids: new Uint32Array([10000, 10002]) },
+                extraBuffers
+            )
+        ).toBe(false);
+
+        const table = buffers.at(-1).data;
+        expect(contains(table, 10000)).toBe(true);
+        expect(contains(table, 10001)).toBe(false);
+        expect(contains(table, 10002)).toBe(true);
     });
 });

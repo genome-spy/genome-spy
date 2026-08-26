@@ -684,6 +684,9 @@ export default class Mark {
             for (const [channel, encoder] of Object.entries(this.encoders)) {
                 for (const branch of encoder.branches ?? []) {
                     const channelDef = branch.accessor.channelDef;
+                    if (branch.predicate?.param) {
+                        watchExpression(branch.predicate.param, "resources");
+                    }
                     if (isExprDef(channelDef)) {
                         watchExpression(channelDef.expr, "configuration");
                     }

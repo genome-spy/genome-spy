@@ -52,6 +52,7 @@
         { "param": "select", "value": 2, "empty": false },
         { "param": "highlight", "value": 1, "empty": false }
       ]
-    }
+    },
+    "key": { "field": "a" }
   }
 }

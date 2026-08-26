@@ -263,9 +263,9 @@ export class Renderer {
         this._pickReadbackBuffer = null;
         this._pickTextureSize = { width: 0, height: 0 };
         /**
-         * @type {{ x: number, y: number, resolve: (value: number|null) => void, reject: (reason: unknown) => void } | null}
+         * @type {{ x: number, y: number, resolve: (value: number|null) => void, reject: (reason: unknown) => void }[]}
          */
-        this._pickPending = null;
+        this._pickQueue = [];
         /** @type {Promise<unknown> | null} */
         this._pickInFlight = null;
 
@@ -556,24 +556,22 @@ export class Renderer {
     pick(x, y) {
         this._assertAlive();
         return new Promise((resolve, reject) => {
-            this._pickPending?.resolve(null);
-            this._pickPending = { x, y, resolve, reject };
+            this._pickQueue.push({ x, y, resolve, reject });
             this._startNextPick();
         });
     }
 
     /**
-     * Start the latest queued pick when no GPU readback is in flight.
+     * Start the next queued pick when no GPU readback is in flight.
      *
      * @returns {void}
      */
     _startNextPick() {
-        if (this._pickInFlight || !this._pickPending) {
+        if (this._pickInFlight || !this._pickQueue.length) {
             return;
         }
 
-        const request = this._pickPending;
-        this._pickPending = null;
+        const request = this._pickQueue.shift();
         const operation = Promise.resolve().then(() =>
             this._pickSingle(request.x, request.y)
         );
@@ -591,7 +589,7 @@ export class Renderer {
     }
 
     /**
-     * Complete one readback and service the latest pending request.
+     * Complete one readback and service the next pending request.
      *
      * @param {Promise<unknown>} operation
      * @returns {void}
@@ -966,8 +964,10 @@ export class Renderer {
         this._pickTextureView = null;
         this._pickReadbackBuffer?.destroy();
         this._pickReadbackBuffer = null;
-        this._pickPending?.resolve(null);
-        this._pickPending = null;
+        for (const request of this._pickQueue) {
+            request.resolve(null);
+        }
+        this._pickQueue.length = 0;
         this._onInvalidate = () => {};
         this.context.unconfigure();
         this.device.destroy();

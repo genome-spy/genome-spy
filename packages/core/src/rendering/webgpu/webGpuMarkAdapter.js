@@ -227,7 +227,6 @@ export function getWebGpuMarkConfigRevision(mark) {
 /**
  * Returns the revision of live scale, property, and selection resources.
  * Packed data and view opacity have separate revisions at the call site.
- * Undefined marks selection-backed resources that remain conservatively live.
  *
  * @param {import("../../marks/mark.js").default} mark
  * @returns {number | undefined}
@@ -368,12 +367,6 @@ function createSelectionCondition(mark, channel, predicate) {
             `Selection "${predicate.param}" is not available for WebGPU.`
         );
     }
-    // Selections lack a complete change-notification contract. Keep the mark
-    // conservatively dirty instead of building a second dependency graph here.
-    // TODO: Use a selection revision once ParamRuntime exposes a complete
-    // selection-change notification contract.
-    mark.makeRenderingResourcesVolatile();
-
     /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate} */
     const when = {
         selection: predicate.param,
