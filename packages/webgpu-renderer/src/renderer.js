@@ -218,7 +218,13 @@ export async function createRenderer(canvas, options = {}) {
         throw new RendererError("WebGPU adapter not available.");
     }
 
-    const device = await adapter.requestDevice();
+    const maxStorageBuffersPerShaderStage = Math.min(
+        10,
+        adapter.limits.maxStorageBuffersPerShaderStage
+    );
+    const device = await adapter.requestDevice({
+        requiredLimits: { maxStorageBuffersPerShaderStage },
+    });
     instrumentGpuDevice(device);
     const context = canvas.getContext("webgpu");
     if (!context) {
