@@ -1,6 +1,6 @@
 # WebGPU renderer diagnostics and lifecycle hardening plan
 
-Status: In progress
+Status: Complete
 
 ## Context
 
@@ -405,10 +405,10 @@ Tentative commit: `perf(webgpu-renderer): preserve bind groups across series upd
 
 ## Acceptance criteria
 
-- [ ] A GPU validation message or native capture for a Core mark includes its
+- [x] A GPU validation message or native capture for a Core mark includes its
       complete unit-view path, Core mark type, and resource role.
-- [ ] Standalone renderer users get deterministic fallback labels without Core.
-- [ ] No view-path or role-label strings are assembled per draw occurrence.
+- [x] Standalone renderer users get deterministic fallback labels without Core.
+- [x] No view-path or role-label strings are assembled per draw occurrence.
 - [x] Unexpected device loss calls `onDeviceLoss` once and reaches Core's
       existing error presentation; normal destruction does not call it.
 - [x] Device loss leaves no unresolved pick promise and all later public work
@@ -418,11 +418,11 @@ Tentative commit: `perf(webgpu-renderer): preserve bind groups across series upd
 - [x] Compatible series replacement performs uploads without creating a bind
       group; growth of packed or text-extra buffers creates exactly one
       replacement group.
-- [ ] Explicit layouts, direct draws, and current `writeBuffer()` upload paths
+- [x] Explicit layouts, direct draws, and current `writeBuffer()` upload paths
       remain intact.
-- [ ] Renderer unit, GPU, type, lint, bundle/tree-shaking, and relevant Core
+- [x] Renderer unit, GPU, type, lint, bundle/tree-shaking, and relevant Core
       WebGPU suites pass.
-- [ ] Renderer and Core WebGPU READMEs describe the intended diagnostics and
+- [x] Renderer and Core WebGPU READMEs describe the intended diagnostics and
       lifecycle.
 
 ## Final integration verification
@@ -450,6 +450,23 @@ When implementation is complete, reconcile every checkbox, update
 `packages/webgpu-renderer/MIGRATION_PLAN.md` with any durable follow-up, commit
 the reconciled plan, and delete this temporary plan in a later commit before
 opening or merging a pull request.
+
+## Verification record
+
+Completed on 2026-08-26:
+
+- the renderer build passed type checking, lint, tree-shaking/export checks,
+  and package-content verification;
+- all 53 Chromium WebGPU tests passed;
+- all 427 monorepo Vitest files passed (3,545 tests, one skipped, two TODOs);
+- the focused Core WebGPU suite passed all 82 tests; and
+- renderer and Core package TypeScript checks passed.
+
+The broader workspace TypeScript command also passed App, App Agent, Core, and
+the renderer, but Inspector and Playground still report their pre-existing
+`ImportMeta.env` typing error in Core's renderer-selection branch. That line
+predates this plan and is not caused by these changes. No durable renderer
+migration follow-up was identified.
 
 ## Design references and provenance
 
