@@ -69,14 +69,14 @@ function emitOrdinalScale({
     if (mapCount == 0u) {
         let count = u32(params.${RANGE_COUNT_PREFIX}${name});
         if (count == 0u) { return ${zero}; }
-        let slot = min(raw, count - 1u);
+        let slot = raw % count;
         return ${rangeName}[slot];
     }
     let idx = hashLookup(&${domainMapName}, raw, arrayLength(&${domainMapName}));
     if (idx == HASH_NOT_FOUND) { return ${zero}; }
     let count = u32(params.${RANGE_COUNT_PREFIX}${name});
     if (count == 0u) { return ${zero}; }
-    let slot = min(idx, count - 1u);
+    let slot = idx % count;
     return ${rangeName}[slot];
 }`;
     }
@@ -85,7 +85,7 @@ function emitOrdinalScale({
     let idx = ${valueExpr};
     let count = u32(params.${RANGE_COUNT_PREFIX}${name});
     if (count == 0u) { return ${zero}; }
-    let slot = min(idx, count - 1u);
+    let slot = idx % count;
     return ${rangeName}[slot];
 }`;
 }

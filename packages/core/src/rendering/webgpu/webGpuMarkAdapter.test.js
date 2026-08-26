@@ -93,6 +93,40 @@ describe("WebGPU mark adapter", () => {
         expect(channels.fillOpacity).toEqual(dynamicValue(0.375));
     });
 
+    test("keeps categorical point offset scales in the renderer", () => {
+        const data = [{ group: "First" }, { group: "Second" }];
+        const offsetScale = Object.assign(
+            () => {
+                throw new Error("The adapter must not evaluate the scale.");
+            },
+            createBandScale(["First", "Second"]),
+            {
+                range: () => [0, 40],
+            }
+        );
+        const mark = createMark("point", data, {
+            xOffset: createEncoder((datum) => datum.group, {
+                scale: offsetScale,
+                channelDef: {
+                    field: "group",
+                    type: "nominal",
+                },
+            }),
+        });
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const xOffset = /** @type {any} */ (translated).config.channels.xOffset;
+
+        expect(xOffset.data).toEqual(new Uint32Array([0, 1]));
+        expect(xOffset.type).toBe("u32");
+        expect(xOffset.scale).toMatchObject({
+            type: "band",
+            domain: [0, 1],
+            range: [0, 40],
+            band: 0.5,
+        });
+    });
+
     test("keeps navigation and opacity leaves live in one config", () => {
         const domain = /** @type {[number, number]} */ ([0, 2]);
         let opacity = 0.75;

@@ -11,6 +11,8 @@ export const POINT_CHANNEL_SPECS = {
     uniqueId: { type: "u32", components: 1, optional: true },
     x: { components: 1, scale: linearScale(), default: 0.5 },
     y: { components: 1, scale: linearScale(), default: 0.5 },
+    xOffset: { type: "f32", components: 1, default: 0.0 },
+    yOffset: { type: "f32", components: 1, default: 0.0 },
     size: { type: "f32", components: 1, default: 100.0 },
     shape: { type: "u32", components: 1, default: 0 },
     strokeWidth: { type: "f32", components: 1, default: 2.0 },
@@ -214,8 +216,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     let total = diameter + padding;
     let local = quad[v];
-    let centerX = getScaled_x(i) + getScaled_dx(i);
-    let centerY = getScaled_y(i) + getScaled_dy(i);
+    let centerX = getScaled_x(i) + getScaled_xOffset(i) + getScaled_dx(i);
+    let centerY = getScaled_y(i) + getScaled_yOffset(i) + getScaled_dy(i);
     let px = centerX + (local.x - 0.5) * total;
     let py = centerY + (local.y - 0.5) * total;
 

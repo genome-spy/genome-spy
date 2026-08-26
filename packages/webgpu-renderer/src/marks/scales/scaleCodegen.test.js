@@ -249,5 +249,25 @@ describe("scaleCodegen codegen", () => {
 
         expect(code).toContain("hashLookup");
         expect(code).toContain("domainMap_fill");
+        expect(code).toContain("let slot = raw % count;");
+        expect(code).toContain("let slot = idx % count;");
+    });
+
+    it("cycles ordinal ranges when the domain is longer than the range", () => {
+        const code = buildScaledFunction({
+            name: "shape",
+            scaleDef: ordinalScaleDef,
+            rawValueExpr: "read_shape(i)",
+            scalarType: "u32",
+            inputComponents: 1,
+            outputComponents: 1,
+            outputScalarType: "u32",
+            scaleConfig: createTestScale("ordinal", {
+                domain: [0, 1, 2, 3, 4, 5],
+                range: [0, 1, 2],
+            }),
+        });
+
+        expect(code).toContain("let slot = idx % count;");
     });
 });

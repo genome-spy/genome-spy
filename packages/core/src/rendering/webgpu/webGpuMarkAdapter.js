@@ -548,8 +548,10 @@ function createPointConfig(mark, data, coords, viewOpacity) {
             size: createNumericChannel(mark, "size", data),
             shape: createEnumChannel(mark, "shape", data, SHAPE_CODES),
             strokeWidth: createNumericChannel(mark, "strokeWidth", data),
-            dx: createCombinedOffsetChannel(mark, "x", data),
-            dy: createCombinedOffsetChannel(mark, "y", data),
+            xOffset: createNumericChannel(mark, "xOffset", data),
+            yOffset: createNumericChannel(mark, "yOffset", data),
+            dx: createGlyphOffsetChannel(mark, "x", data),
+            dy: createGlyphOffsetChannel(mark, "y", data),
             fill: createColorChannel(mark, "fill", data),
             stroke: createColorChannel(mark, "stroke", data),
             fillOpacity: createOpacityChannel(
@@ -749,8 +751,8 @@ function createTextConfig(mark, data, coords, viewOpacity) {
             angle: createNumericChannel(mark, "angle", data),
             xOffset: createNumericChannel(mark, "xOffset", data),
             yOffset: createNumericChannel(mark, "yOffset", data),
-            dx: createTextGlyphOffsetChannel(mark, "x", data),
-            dy: createTextGlyphOffsetChannel(mark, "y", data),
+            dx: createGlyphOffsetChannel(mark, "x", data),
+            dy: createGlyphOffsetChannel(mark, "y", data),
             ...(encoders.x2Offset
                 ? { x2Offset: createNumericChannel(mark, "x2Offset", data) }
                 : {}),
@@ -1589,50 +1591,8 @@ function createTextChannel(mark, data) {
 }
 
 /**
- * @param {import("../../marks/mark.js").default} mark
- * @param {"x" | "y"} axis
- * @param {object[]} data
- * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
- */
-function createCombinedOffsetChannel(mark, axis, data) {
-    const legacyChannel = axis == "x" ? "dx" : "dy";
-    const legacy = mark.encoders[legacyChannel];
-    if (legacy) {
-        assertUnconditional(mark, legacyChannel, legacy);
-    }
-    if (legacy && legacy.branches.length != 1) {
-        throw unsupported(
-            mark,
-            `Conditional channel "${legacyChannel}" is not supported.`
-        );
-    }
-
-    const propertyValue = legacy ? 0 : readNumericProperty(mark, legacyChannel);
-    return createConditionalChannel(
-        mark,
-        axis + "Offset",
-        data,
-        (branchEncoder) => {
-            /** @param {object} datum */
-            const read = (datum) =>
-                Number(branchEncoder(datum)) +
-                (legacy ? Number(legacy(datum)) : propertyValue);
-
-            if (branchEncoder.constant && (!legacy || legacy.constant)) {
-                return liveValue(() => read(data[0]));
-            }
-            return {
-                data: Float32Array.from(data, read),
-                type: "f32",
-            };
-        }
-    );
-}
-
-/**
- * Creates the glyph-local text offset channel. dx/dy move the glyph before
- * rotation, whereas xOffset/yOffset move the text anchor. Keeping dx/dy as a
- * channel preserves the existing renderer representation.
+ * Creates an unscaled glyph-local offset channel. dx/dy move the glyph before
+ * rotation, whereas xOffset/yOffset are independently scaleable mark offsets.
  *
  * @deprecated Remove the channel representation in GenomeSpy v2.0.
  *
@@ -1641,7 +1601,7 @@ function createCombinedOffsetChannel(mark, axis, data) {
  * @param {object[]} data
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createTextGlyphOffsetChannel(mark, axis, data) {
+function createGlyphOffsetChannel(mark, axis, data) {
     const channel = axis == "x" ? "dx" : "dy";
     const encoder = mark.encoders[channel];
     if (!encoder) {
