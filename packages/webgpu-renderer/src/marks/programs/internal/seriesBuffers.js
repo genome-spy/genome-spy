@@ -180,21 +180,21 @@ export class SeriesBufferManager {
     /**
      * @param {Record<string, TypedArray>} channels
      * @param {number} count
-     * @returns {void}
+     * @returns {boolean} Whether a packed buffer identity changed.
      */
     updateSeries(channels, count) {
-        this._updatePackedSeries(channels, count);
+        return this._updatePackedSeries(channels, count);
     }
 
     /**
      * @param {Record<string, TypedArray>} channels
      * @param {number} count
-     * @returns {void}
+     * @returns {boolean} Whether a packed buffer identity changed.
      */
     _updatePackedSeries(channels, count) {
         const layout = this._getPackedLayout();
         if (!layout) {
-            return;
+            return false;
         }
 
         /** @type {Map<string, TypedArray>} */
@@ -229,15 +229,17 @@ export class SeriesBufferManager {
             count,
         });
 
+        let changed = false;
         if (f32) {
-            this._ensurePackedBuffer("seriesF32", f32);
+            changed = this._ensurePackedBuffer("seriesF32", f32) || changed;
         }
         if (u32) {
-            this._ensurePackedBuffer("seriesU32", u32);
+            changed = this._ensurePackedBuffer("seriesU32", u32) || changed;
         }
         if (i32) {
-            this._ensurePackedBuffer("seriesI32", i32);
+            changed = this._ensurePackedBuffer("seriesI32", i32) || changed;
         }
+        return changed;
     }
 
     /**
@@ -277,13 +279,14 @@ export class SeriesBufferManager {
     /**
      * @param {string} name
      * @param {Float32Array | Uint32Array | Int32Array} array
-     * @returns {void}
+     * @returns {boolean} Whether the buffer identity changed.
      */
     _ensurePackedBuffer(name, array) {
         const existing = this._packedBuffers.get(name);
         const requiredSize = Math.max(4, array.byteLength);
         let buffer = existing?.buffer ?? null;
-        if (!buffer || existing.byteLength < requiredSize) {
+        const changed = !buffer || existing.byteLength < requiredSize;
+        if (changed) {
             const previous = buffer;
             buffer = this._device.createBuffer({
                 label: gpuLabel(
@@ -303,6 +306,7 @@ export class SeriesBufferManager {
         if (array.byteLength > 0) {
             this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(array));
         }
+        return changed;
     }
 
     /**

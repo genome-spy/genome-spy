@@ -470,14 +470,20 @@ export default class BaseProgram {
     /**
      * @param {Record<string, TypedArray>} channels
      * @param {number} [count]
+     * @param {boolean} [boundResourcesChanged]
      * @returns {void}
      */
-    updateSeries(channels, count) {
+    updateSeries(channels, count, boundResourcesChanged = false) {
         const inferred = count ?? this._seriesBuffers.inferCount(channels);
         this.count = inferred ?? this.count ?? 1;
-        this._seriesBuffers.updateSeries(channels, this.count);
+        const packedBuffersChanged = this._seriesBuffers.updateSeries(
+            channels,
+            this.count
+        );
 
-        this._rebuildBindGroup();
+        if (packedBuffersChanged || boundResourcesChanged || !this._bindGroup) {
+            this._rebuildBindGroup();
+        }
         this.renderer.markPickingDirty();
     }
 

@@ -112,12 +112,34 @@ describe("SeriesBufferManager uploads", () => {
             device
         );
 
-        manager.updateSeries({ x: initial }, 1);
+        expect(manager.updateSeries({ x: initial }, 1)).toBe(true);
         const previous = buffers[0];
-        manager.updateSeries({ x: new Float32Array([1, 2]) }, 2);
+        expect(manager.updateSeries({ x: new Float32Array([1, 2]) }, 2)).toBe(
+            true
+        );
 
         expect(previous.destroy).toHaveBeenCalledOnce();
         expect(buffers[1].size).toBe(8);
+    });
+
+    it("reports unchanged identity when the packed buffer remains large enough", () => {
+        const { device, createBuffer } = createDevice();
+        const initial = new Float32Array([1, 2]);
+        const manager = createManager(
+            /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ ({
+                x: { data: initial, type: "f32", components: 1 },
+            }),
+            device
+        );
+
+        expect(manager.updateSeries({ x: initial }, 2)).toBe(true);
+        expect(manager.updateSeries({ x: new Float32Array([3, 4]) }, 2)).toBe(
+            false
+        );
+        expect(manager.updateSeries({ x: new Float32Array([5]) }, 1)).toBe(
+            false
+        );
+        expect(createBuffer).toHaveBeenCalledOnce();
     });
 
     it("destroys current buffers exactly once", () => {

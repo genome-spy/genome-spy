@@ -337,17 +337,17 @@ changes.
 
 ### Work
 
-- [ ] Make packed-buffer update helpers report allocation/identity changes
+- [x] Make packed-buffer update helpers report allocation/identity changes
       across all active scalar buffer types.
-- [ ] Make text extra-buffer updates report replacement of `glyphs` and
+- [x] Make text extra-buffer updates report replacement of `glyphs` and
       `stringMetrics`, and combine those results with packed-series changes
       before deciding whether to rebuild.
-- [ ] Rebuild the mark bind group only when at least one bound resource was
+- [x] Rebuild the mark bind group only when at least one bound resource was
       replaced.
-- [ ] Preserve current upload batching, buffer-size policy, count inference,
+- [x] Preserve current upload batching, buffer-size policy, count inference,
       alias validation, text-series preprocessing, picking invalidation, and
       public handle identity.
-- [ ] Extend profiler/test assertions so compatible replacement proves zero
+- [x] Extend profiler/test assertions so compatible replacement proves zero
       bind-group creation and growth proves one creation.
 
 ### Affected areas and consumers
@@ -415,7 +415,7 @@ Tentative commit: `perf(webgpu-renderer): preserve bind groups across series upd
       fails clearly without recovery attempts.
 - [x] Device loss during launch is reported once and makes launch fail; a loss
       notification after Core teardown has no visible effect.
-- [ ] Compatible series replacement performs uploads without creating a bind
+- [x] Compatible series replacement performs uploads without creating a bind
       group; growth of packed or text-extra buffers creates exactly one
       replacement group.
 - [ ] Explicit layouts, direct draws, and current `writeBuffer()` upload paths

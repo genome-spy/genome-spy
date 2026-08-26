@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import BaseProgram from "./baseProgram.js";
 import { createMockRenderer } from "../../../testUtils/mockRenderer.js";
 
@@ -142,5 +142,24 @@ describe("BaseProgram count inference", () => {
         expect(() => program.getSlotHandles().series.replace({})).toThrow(
             'Series replacement is missing channel "x".'
         );
+    });
+
+    it("rebuilds its bind group only when a packed buffer is replaced", () => {
+        const renderer = createMockRenderer();
+        const program = new TestSeriesProgram(renderer, {
+            channels: {
+                x: {
+                    data: new Float32Array([0, 1]),
+                    type: "f32",
+                },
+            },
+        });
+        const createBindGroup = vi.spyOn(renderer.device, "createBindGroup");
+
+        program.updateSeries({ x: new Float32Array([2, 3]) }, 2);
+        expect(createBindGroup).not.toHaveBeenCalled();
+
+        program.updateSeries({ x: new Float32Array([2, 3, 4]) }, 3);
+        expect(createBindGroup).toHaveBeenCalledOnce();
     });
 });

@@ -185,6 +185,36 @@ describe("TextProgram series replacement", () => {
         );
     });
 
+    it("rebuilds its bind group only when text layout buffers grow", () => {
+        const renderer = createMockRenderer();
+        const program = new TextProgram(renderer, {
+            count: 2,
+            channels: {
+                text: { data: ["aa", "bb"] },
+                x: {
+                    data: new Float32Array([0, 1]),
+                    type: "f32",
+                    scale: identityScale(),
+                },
+                y: { value: 0, scale: identityScale() },
+            },
+        });
+        const createBindGroup = vi.spyOn(renderer.device, "createBindGroup");
+        const series = program.getSlotHandles().series;
+
+        series.replace({
+            text: ["a", "b"],
+            x: new Float32Array([2, 3]),
+        });
+        expect(createBindGroup).not.toHaveBeenCalled();
+
+        series.replace({
+            text: ["aaaa", "bbbb"],
+            x: new Float32Array([4, 5]),
+        });
+        expect(createBindGroup).toHaveBeenCalledOnce();
+    });
+
     it("requires a count when replacing scalar text", () => {
         const program = new TextProgram(createMockRenderer(), {
             count: 1,

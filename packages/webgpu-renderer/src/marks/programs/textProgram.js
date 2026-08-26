@@ -1049,7 +1049,7 @@ export default class TextProgram extends BaseProgram {
 
     /**
      * @param {import("../../fonts/layout.js").TextLayout} layout
-     * @returns {void}
+     * @returns {boolean} Whether a bound buffer identity changed.
      */
     _updateTextLayoutBuffers(layout) {
         const glyphCount = layout.glyphIds.length;
@@ -1063,7 +1063,7 @@ export default class TextProgram extends BaseProgram {
             glyphF32[base + 2] = layout.xOffset[i];
             glyphF32[base + 3] = layout.yOffset ? layout.yOffset[i] : 0;
         }
-        this._writeExtraBuffer("glyphs", glyphData);
+        let changed = this._writeExtraBuffer("glyphs", glyphData);
 
         const stringCount = layout.textWidth.length;
         const stringData = new Float32Array(stringCount * 2);
@@ -1072,19 +1072,22 @@ export default class TextProgram extends BaseProgram {
             stringData[base] = layout.textWidth[i];
             stringData[base + 1] = layout.textHeight[i];
         }
-        this._writeExtraBuffer("stringMetrics", stringData);
+        changed =
+            this._writeExtraBuffer("stringMetrics", stringData) || changed;
+        return changed;
     }
 
     /**
      * @param {string} name
      * @param {ArrayBuffer | ArrayBufferView} data
-     * @returns {void}
+     * @returns {boolean} Whether the buffer identity changed.
      */
     _writeExtraBuffer(name, data) {
         const byteLength = data.byteLength;
         const requiredSize = Math.max(4, byteLength);
         let buffer = this._extraBuffers.get(name);
-        if (!buffer || buffer.size < requiredSize) {
+        const changed = !buffer || buffer.size < requiredSize;
+        if (changed) {
             buffer?.destroy();
             buffer = this.device.createBuffer({
                 label: gpuLabel(this.label, name),
@@ -1100,6 +1103,7 @@ export default class TextProgram extends BaseProgram {
                 ArrayBuffer.isView(data) ? asGpuBufferSource(data) : data
             );
         }
+        return changed;
     }
 
     /**
@@ -1250,8 +1254,8 @@ export default class TextProgram extends BaseProgram {
             );
         }
         this._glyphOffsets = buildGlyphOffsets(layout);
-        this._updateTextLayoutBuffers(layout);
-        this.updateSeries(resolved, strings.length);
+        const textBuffersChanged = this._updateTextLayoutBuffers(layout);
+        this.updateSeries(resolved, strings.length, textBuffersChanged);
     }
 }
 
