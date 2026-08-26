@@ -1,5 +1,5 @@
 const DASH_WGSL = /* wgsl */ `
-fn dashMask(atlas: texture_2d<u32>, patternIndex: u32, distancePx: f32, strokeWidth: f32, dashOffset: f32) -> f32 {
+fn dashMask(atlas: texture_2d<u32>, patternIndex: u32, distancePx: f32, dashOffset: f32) -> f32 {
     if (params.uDashPatternCount == 0u) {
         return 1.0;
     }
@@ -12,12 +12,12 @@ fn dashMask(atlas: texture_2d<u32>, patternIndex: u32, distancePx: f32, strokeWi
         return 1.0;
     }
 
-    let lenPx = f32(lenUnits) * strokeWidth;
+    let lenPx = f32(lenUnits);
     if (lenPx <= 0.0) {
         return 1.0;
     }
 
-    let t = distancePx + dashOffset * strokeWidth;
+    let t = distancePx + dashOffset;
     let u = fract(t / lenPx);
     let idx = 1u + u32(floor(u * f32(lenUnits)));
     let width = u32(textureDimensions(atlas).x);

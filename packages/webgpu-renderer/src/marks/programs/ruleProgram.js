@@ -198,7 +198,6 @@ fn shade(in: VSOut) -> vec4<f32> {
         dashAtlas,
         in.dashIndex,
         in.posInPixels.x,
-        width,
         in.dashOffset
     );
     let alpha = clamp(((in.halfWidth - distance) * globals.dpr) + 0.5, 0.0, 1.0);

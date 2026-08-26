@@ -14,7 +14,7 @@ export const DASH_ATLAS_WIDTH = DASH_MAX_PATTERN_LENGTH + 1;
  * Build a dash atlas texture for rule-style line patterns.
  *
  * Each row represents one pattern. The first texel stores the pattern
- * length (in stroke-width units). Remaining texels store on/off samples.
+ * length in logical pixels. Remaining texels store on/off samples.
  *
  * @param {number[][] | null | undefined} patterns
  * @returns {DashAtlas}
