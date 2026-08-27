@@ -69,7 +69,9 @@ export interface Scale {
      * For _ordinal_ and _nominal_ fields, `domain` can be an array that lists valid input values.
 
      * The domain can also be defined by an expression reference that evaluates to the domain array.
-     * Array elements may also be expression references.
+     * Array elements may also be expression references. All parameter names referenced by a scale,
+     * including selection-domain parameters, resolve from the view that owns the scale resolution.
+     * For a shared scale, declare controlling parameters on that owning composed view or an ancestor.
      *
      */
     domain?:
@@ -119,9 +121,9 @@ export interface Scale {
      *
      * - A string indicating a [pre-defined named scale range from Vega-Lite](https://vega.github.io/vega-lite/docs/scale.html#range-config) (e.g., example, `"symbol"`, or `"diverging"`).
      *
-     * - For [Vega-Lite continuous scales](https://vega.github.io/vega-lite/docs/scale.html#continuous), two-element array indicating minimum and maximum values, or an array with more than two entries for specifying a [Vega-Lite piecewise scale](https://vega.github.io/vega-lite/docs/scale.html#piecewise). Array elements may also be expression references.
+     * - For [Vega-Lite continuous scales](https://vega.github.io/vega-lite/docs/scale.html#continuous), two-element array indicating minimum and maximum values, or an array with more than two entries for specifying a [Vega-Lite piecewise scale](https://vega.github.io/vega-lite/docs/scale.html#piecewise). Array elements may also be expression references, which use the parameter scope of the view that owns the scale resolution.
      *
-     * - For [Vega-Lite discrete](https://vega.github.io/vega-lite/docs/scale.html#discrete) and [Vega-Lite discretizing](https://vega.github.io/vega-lite/docs/scale.html#discretizing) scales, an array of desired output values. Array elements may also be expression references.
+     * - For [Vega-Lite discrete](https://vega.github.io/vega-lite/docs/scale.html#discrete) and [Vega-Lite discretizing](https://vega.github.io/vega-lite/docs/scale.html#discretizing) scales, an array of desired output values. Array elements may also be expression references, which use the parameter scope of the view that owns the scale resolution.
      *
      * __Notes:__
      *
@@ -275,6 +277,7 @@ export type DomainValueArray = DomainValue[];
 export interface SelectionDomainRef {
     /**
      * Name of an interval selection parameter that provides the domain.
+     * The name resolves from the view that owns the scale resolution.
      */
     param: string;
 

@@ -32,6 +32,7 @@ import {
 } from "./scaleResolutionConstants.js";
 
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 import {
     getEncoderAccessors,
     isSecondaryChannel,
@@ -49,6 +50,7 @@ import {
     findIntervalSelectionBindingOwners,
     getIntervalSelection,
     normalizeIntervalForSelection,
+    resolveIntervalSelectionBinding,
 } from "./selectionDomainUtils.js";
 import { toExternalIndexLikeInterval } from "./indexLikeDomainUtils.js";
 
@@ -191,6 +193,9 @@ export default class ScaleResolution {
             getDataMembers: () =>
                 this.#getActiveMembers(this.#dataDomainMembers),
             getViewLevelDomainSource: () => this.#getViewLevelDomainSource(),
+            createExpression: (expr) => this.#createExpression(expr),
+            resolveSelectionBinding: (paramName, encoding) =>
+                this.#resolveSelectionBinding(paramName, encoding),
             getViewportConstraints: (member) =>
                 this.#getViewportConstraints(member),
             getType: () => this.type,
@@ -211,7 +216,7 @@ export default class ScaleResolution {
         });
 
         this.#scaleManager = new ScaleInstanceManager({
-            getParamRuntime: () => this.#resolutionView.paramRuntime,
+            createExpression: (expr) => this.#createExpression(expr),
             onRangeChange: () => this.#notifyListeners("range"),
             onDomainChange: () => this.#notifyListeners("domain"),
             getGenomeStore: () => this.#viewContext.genomeStore,
@@ -243,6 +248,69 @@ export default class ScaleResolution {
 
     get #resolutionView() {
         return this.#hostView ?? this.#firstMemberView;
+    }
+
+    /**
+     * Binds an ordinary scale expression through the resolution owner's
+     * parameter scope.
+     *
+     * @param {string} expr
+     * @returns {import("../paramRuntime/types.js").ExprRefFunction}
+     */
+    #createExpression(expr) {
+        try {
+            return this.#resolutionView.paramRuntime.createExpression(expr);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "";
+            const match = /^Unknown variable "([^"]+)" in expression: /.exec(
+                message
+            );
+            if (!match) {
+                throw error;
+            }
+
+            throw this.#createParameterScopeError(match[1], error);
+        }
+    }
+
+    /**
+     * @param {string} paramName
+     * @param {"x" | "y"} encoding
+     */
+    #resolveSelectionBinding(paramName, encoding) {
+        try {
+            return resolveIntervalSelectionBinding(
+                this.#resolutionView,
+                paramName,
+                encoding
+            );
+        } catch (error) {
+            if (
+                !(error instanceof Error) ||
+                error.message !==
+                    `Selection domain parameter "${paramName}" was not found.`
+            ) {
+                throw error;
+            }
+            throw this.#createParameterScopeError(paramName, error);
+        }
+    }
+
+    /**
+     * @param {string} paramName
+     * @param {unknown} cause
+     */
+    #createParameterScopeError(paramName, cause) {
+        const shared =
+            this.#members.size > 1 ||
+            Array.from(this.#members).some(
+                (member) => member.view !== this.#resolutionView
+            );
+        return new Error(
+            `Parameter "${paramName}" is not visible from the ${shared ? "shared " : ""}${this.channel} scale resolution. ` +
+                `Move the parameter to the resolution-owning view and use push: "outer" if a child must update it.`,
+            { cause }
+        );
     }
 
     /**
@@ -579,6 +647,9 @@ export default class ScaleResolution {
         this.#refreshSelectionDomainParamSubscriptions();
         this.#refreshConfiguredDomainExprSubscriptions();
         this.#viewportDomainScheduler.refresh();
+        if (this.#scaleManager.scale && this.#members.size > 0) {
+            this.reconfigure();
+        }
     }
 
     #markMembersDirty() {
@@ -586,6 +657,24 @@ export default class ScaleResolution {
             this.#membersDirty = true;
         } else {
             this.#syncMembers();
+        }
+    }
+
+    /**
+     * Resolves member-owned expressions before a registration batch can
+     * reconfigure any live scale.
+     */
+    #preflightMemberSync() {
+        this.#invalidateOrderedMembers();
+        this.#invalidateConfiguredDomain();
+
+        const range = this.#getMergedScaleProps().range;
+        if (Array.isArray(range)) {
+            for (const value of range) {
+                if (isExprRef(value)) {
+                    this.#createExpression(value.expr);
+                }
+            }
         }
     }
 
@@ -600,22 +689,78 @@ export default class ScaleResolution {
      */
     static registerInBatch(resolutions, callback) {
         const batchedResolutions = Array.from(resolutions);
+        let memberSyncStarted = false;
+        const snapshots = batchedResolutions.map((resolution) => ({
+            resolution,
+            members: new Set(resolution.#members),
+            dataDomainMembers: new Set(resolution.#dataDomainMembers),
+            type: resolution.type,
+            name: resolution.name,
+            batchDepth: resolution.#memberRegistrationBatchDepth,
+            membersDirty: resolution.#membersDirty,
+        }));
         for (const resolution of batchedResolutions) {
             resolution.#memberRegistrationBatchDepth++;
         }
 
         try {
-            return callback();
-        } finally {
+            const result = callback();
             for (const resolution of batchedResolutions) {
                 resolution.#memberRegistrationBatchDepth--;
-                if (
+            }
+
+            const resolutionsToSync = batchedResolutions.filter(
+                (resolution) =>
                     resolution.#memberRegistrationBatchDepth === 0 &&
                     resolution.#membersDirty
-                ) {
-                    resolution.#syncMembers();
+            );
+            for (const resolution of resolutionsToSync) {
+                resolution.#preflightMemberSync();
+            }
+
+            memberSyncStarted = true;
+            for (const resolution of resolutionsToSync) {
+                resolution.#syncMembers();
+            }
+            return result;
+        } catch (error) {
+            for (const snapshot of snapshots) {
+                const resolution = snapshot.resolution;
+                resolution.#members = snapshot.members;
+                resolution.#dataDomainMembers = snapshot.dataDomainMembers;
+                resolution.type = snapshot.type;
+                resolution.name = snapshot.name;
+                resolution.#memberRegistrationBatchDepth = snapshot.batchDepth;
+                resolution.#membersDirty = snapshot.membersDirty;
+            }
+
+            if (memberSyncStarted) {
+                // A failed reconfigure may already have replaced scale props or
+                // listeners. Restore every affected resolution before surfacing
+                // the original registration error.
+                try {
+                    for (const snapshot of snapshots) {
+                        const resolution = snapshot.resolution;
+                        if (snapshot.batchDepth === 0) {
+                            resolution.#syncMembers();
+                        } else {
+                            resolution.#membersDirty = true;
+                        }
+                    }
+                } catch (rollbackError) {
+                    if (error && typeof error === "object") {
+                        /** @type {any} */ (error).rollbackError =
+                            rollbackError;
+                    }
+                }
+            } else {
+                for (const snapshot of snapshots) {
+                    snapshot.resolution.#invalidateOrderedMembers();
+                    snapshot.resolution.#invalidateConfiguredDomain();
                 }
             }
+
+            throw error;
         }
     }
 
@@ -712,7 +857,6 @@ export default class ScaleResolution {
         }
 
         return {
-            view: viewLevelScaleProps.view,
             channel:
                 /** @type {import("../spec/channel.js").ChannelWithScale} */ (
                     this.channel
@@ -869,9 +1013,7 @@ export default class ScaleResolution {
             }
 
             for (const exprRef of exprRefs) {
-                const expr = member.view.paramRuntime.createExpression(
-                    exprRef.expr
-                );
+                const expr = this.#createExpression(exprRef.expr);
                 const unsubscribe = expr.subscribe(listener);
                 this.#configuredDomainExprUnsubscribers.push(unsubscribe);
             }
@@ -881,10 +1023,7 @@ export default class ScaleResolution {
         const viewLevelExprRefs =
             collectConfiguredDomainExprRefs(viewLevelDomain);
         for (const exprRef of viewLevelExprRefs) {
-            const expr =
-                this.#viewLevelScaleProps.view.paramRuntime.createExpression(
-                    exprRef.expr
-                );
+            const expr = this.#createExpression(exprRef.expr);
             const unsubscribe = expr.subscribe(listener);
             this.#configuredDomainExprUnsubscribers.push(unsubscribe);
         }
@@ -1071,6 +1210,8 @@ export default class ScaleResolution {
                 viewLevelScaleProps: this.#viewLevelScaleProps,
                 isExplicitDomain: this.isDomainDefinedExplicitly(),
                 configScopes: this.#resolutionView.getConfigScopes(),
+                getOwnerScaleResolution: (channel) =>
+                    this.#resolutionView.getScaleResolution(channel),
             });
             this.#validateLinkedSelectionConfiguration(props);
             this.#validateViewportDomainConfiguration(props);

@@ -6,8 +6,6 @@ import {
     isOffsetChannel,
     isPrimaryPositionalChannel,
 } from "../encoder/encoder.js";
-import { isExprRef } from "../paramRuntime/paramUtils.js";
-
 import mergeObjects from "../utils/mergeObjects.js";
 import {
     getConfiguredScaleConfig,
@@ -37,6 +35,7 @@ import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
  * @param {{ view: import("../view/view.js").default, props: Scale } | undefined} [options.viewLevelScaleProps]
  * @param {boolean} options.isExplicitDomain
  * @param {import("../spec/config.js").GenomeSpyConfig[]} options.configScopes
+ * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("./scaleResolution.js").default | undefined} [options.getOwnerScaleResolution]
  * @returns {Scale}
  */
 export function resolveScalePropsBase({
@@ -46,6 +45,7 @@ export function resolveScalePropsBase({
     viewLevelScaleProps,
     isExplicitDomain,
     configScopes,
+    getOwnerScaleResolution,
 }) {
     const memberList = orderedMembers;
 
@@ -171,9 +171,7 @@ export function resolveScalePropsBase({
 
     if (isOffsetChannel(channel) && isDiscrete(props.type) && !props.range) {
         const positionChannel = channel == "xOffset" ? "x" : "y";
-        const rangeOwner = memberList[0]?.view;
-        const positionResolution =
-            rangeOwner?.getScaleResolution(positionChannel);
+        const positionResolution = getOwnerScaleResolution?.(positionChannel);
 
         if (positionResolution?.getResolvedScaleType() == "band") {
             // Initialize the dependency before binding the reactive range.
@@ -185,7 +183,6 @@ export function resolveScalePropsBase({
                 0,
                 { expr: `bandwidth("${positionChannel}") * ${size}` },
             ];
-            /** @type {any} */ (props).__rangeExprScope = rangeOwner;
         }
     }
 
@@ -205,23 +202,6 @@ export function resolveScalePropsBase({
             collectConfiguredDomainExprRefs(viewLevelScaleProps?.props.domain)
                 .length > 0;
         props.domainTransition = !hasExprDrivenDomain;
-    }
-
-    if (
-        Array.isArray(props.range) &&
-        props.range.some(isExprRef) &&
-        memberList.length > 0
-    ) {
-        const rangeOwner =
-            viewLevelScaleProps?.props.range !== undefined
-                ? viewLevelScaleProps.view
-                : memberList.find(
-                      (member) => member.channelDef.scale?.range !== undefined
-                  )?.view;
-        if (rangeOwner) {
-            /** @type {any} */
-            (props).__rangeExprScope = rangeOwner;
-        }
     }
 
     // By default, index and locus scales are zoomable, others are not.

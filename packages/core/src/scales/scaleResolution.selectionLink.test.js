@@ -12,6 +12,7 @@ import {
 import { ensureAssembliesForView } from "../genome/assemblyPreflight.js";
 import { resolveRootGenomeConfig } from "../genome/rootGenomeConfig.js";
 import ConcatView from "../view/concatView.js";
+import LayerView from "../view/layerView.js";
 import { createTestViewContext } from "../view/testUtils.js";
 import { VIEW_ROOT_NAME } from "../view/viewFactory.js";
 import { checkForDuplicateScaleNames } from "../view/viewUtils.js";
@@ -102,6 +103,46 @@ async function createLinkedHarness(domain, linkZoom = true) {
     };
 }
 
+/**
+ * @param {[number, number]} x
+ */
+function createIntervalValue(x) {
+    return { type: "interval", intervals: { x } };
+}
+
+/**
+ * @param {object} options
+ * @param {any} [options.ownerParam]
+ * @param {any} options.childParam
+ */
+function createSharedSelectionScopeSpec({ ownerParam, childParam }) {
+    return {
+        ...(ownerParam ? { params: [ownerParam] } : {}),
+        data: { values: [{ x: 0 }, { x: 5 }, { x: 10 }] },
+        layer: [
+            {
+                params: [childParam],
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { domain: { param: "brush" } },
+                    },
+                    y: { value: 0 },
+                },
+            },
+            {
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { value: 0 },
+                },
+            },
+        ],
+    };
+}
+
 describe("Scale resolution selection-linked domains", () => {
     test("selection-linked domains fail fast when the linked positional scale is shared", async () => {
         await expect(
@@ -186,7 +227,66 @@ describe("Scale resolution selection-linked domains", () => {
         );
     });
 
-    test("selection-linked domains react to pushed outer interval params", async () => {
+    test("shared selection domains resolve owner parameters instead of child shadows", async () => {
+        const view = await initView(
+            createSharedSelectionScopeSpec({
+                ownerParam: {
+                    name: "brush",
+                    value: createIntervalValue([2, 4]),
+                },
+                childParam: {
+                    name: "brush",
+                    value: createIntervalValue([6, 8]),
+                },
+            }),
+            LayerView
+        );
+
+        expect(getRequiredScaleResolution(view, "x").scale.domain()).toEqual([
+            2, 4,
+        ]);
+    });
+
+    test("child-local selection parameters cannot control shared scales", async () => {
+        await expect(
+            initView(
+                createSharedSelectionScopeSpec({
+                    childParam: {
+                        name: "brush",
+                        value: createIntervalValue([2, 4]),
+                    },
+                }),
+                LayerView
+            )
+        ).rejects.toThrow(
+            'Parameter "brush" is not visible from the shared x scale resolution. ' +
+                'Move the parameter to the resolution-owning view and use push: "outer" if a child must update it.'
+        );
+    });
+
+    test("children can push selection-domain updates to a shared owner", async () => {
+        const view = await initView(
+            createSharedSelectionScopeSpec({
+                ownerParam: {
+                    name: "brush",
+                    value: createIntervalValue([2, 4]),
+                },
+                childParam: { name: "brush", push: "outer" },
+            }),
+            LayerView
+        );
+        const resolution = getRequiredScaleResolution(view, "x");
+
+        view.children[0].paramRuntime.setValue(
+            "brush",
+            createIntervalValue([5, 7])
+        );
+        await view.paramRuntime.whenPropagated();
+
+        expect(resolution.scale.domain()).toEqual([5, 7]);
+    });
+
+    test("selection-linked domains retain pushed owner-parameter binding", async () => {
         const { view, resolution } = await createLinkedHarness({
             param: "brush",
             encoding: "x",

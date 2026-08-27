@@ -287,7 +287,8 @@ export interface ViewSpecBase extends ResolveSpec {
      * rather than an individual encoding. An ancestor declaration shadows the
      * whole declaration of a descendant that targets the same resolution.
      * Declarations in separate sibling subtrees are ambiguous and cause an
-     * error.
+     * error. Expression references in these scale properties use this view's
+     * parameter scope and can access parameters declared here or on ancestors.
      */
     scales?: Partial<Record<ChannelWithScale, Scale>>;
 

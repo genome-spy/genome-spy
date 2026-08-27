@@ -202,38 +202,6 @@ each channel.
 
 EXAMPLE examples/docs/grammar/mark/rule/synteny-hg38-mm10.json height=460
 
-## Domain from Selection Parameters
-
-Scale domains can be linked to interval selection parameters:
-
-Use an object-valued `domain`:
-
-```json
-{
-  "scale": {
-    "zoom": true,
-    "domain": {
-      "param": "brush",
-      "initial": [10, 20]
-    }
-  }
-}
-```
-
-### Properties
-
-SCHEMA SelectionDomainRef
-
-Clearing the linked interval selection returns the scale to its normal default
-or data-derived domain instead of restoring `initial`.
-
-Zoomable linked scales automatically synchronize the domain back to the
-selection. Non-zoomable linked scales only read the selection. This affects
-`"index"` and `"locus"` scales as they are zoomable by default.
-
-For detailed brushing-and-linking guidance and interactive examples, see
-[Parameters: Interval selection](./parameters.md#interval-selection).
-
 ## Viewport autoscaling
 
 Enable autoscaling by setting `domain` to `{ "source": "viewport" }`. GenomeSpy
@@ -410,6 +378,65 @@ Do not mix view-level `scales.<channel>` with participating
 `encoding.<channel>.scale` objects for the same shared scale. Keep
 `encoding.<channel>.type` on member encodings; it describes the encoded data and
 drives default scale type inference.
+
+## Reactive scale parameters
+
+Scale properties can depend on parameters through expression references in
+`domain` and `range`, or through a selection-parameter reference in `domain`.
+Both forms use the same parameter scope.
+
+### Parameter scope
+
+Every parameter name used by a scale resolves from the view that owns the scale
+resolution. An independent scale is owned by its unit view. A shared scale is
+owned by the composed view where the child scales are resolved together.
+Parameters on that owner or its ancestors are visible to the scale; parameters
+declared only in a child are not.
+
+Declare reactive shared-scale properties and their controlling parameters on
+the owning view. If an interaction or input in a child needs to update the
+parameter, declare a same-named child parameter with `"push": "outer"`:
+
+EXAMPLE examples/docs/grammar/scale/shared-scale-expression.json height=230
+
+There is no fallback to a child declaration scope. Move a child-only parameter
+to the resolution owner and use `"push": "outer"` when the child must write it.
+
+### Domain from Selection Parameters
+
+A scale domain can link directly to an interval selection parameter. The named
+selection must be visible from the scale owner according to the scope rule
+above:
+
+```json
+{
+  "scale": {
+    "zoom": true,
+    "domain": {
+      "param": "brush",
+      "initial": [10, 20]
+    }
+  }
+}
+```
+
+Clearing the linked interval selection returns the scale to its normal default
+or data-derived domain instead of restoring `initial`.
+
+Zoomable linked scales automatically synchronize the domain back to the
+selection. Non-zoomable linked scales only read the selection. This affects
+`"index"` and `"locus"` scales as they are zoomable by default.
+
+An interval selection cannot drive the same shared positional scale on which
+it is defined because that would create a feedback loop. Make the linked scale
+independent from the selection view's scale.
+
+For detailed brushing-and-linking guidance and interactive examples, see
+[Parameters: Interval selection](./parameters.md#interval-selection).
+
+#### Properties
+
+SCHEMA SelectionDomainRef
 
 ## Named scales
 

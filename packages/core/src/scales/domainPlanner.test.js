@@ -2,9 +2,26 @@ import { describe, expect, test, vi } from "vitest";
 
 import DomainPlanner from "./domainPlanner.js";
 import createDomain, { toRegularArray } from "../utils/domainArray.js";
+import { resolveIntervalSelectionBinding } from "./selectionDomainUtils.js";
 
 /** @type {WeakMap<object, any>} */
 const selectionRuntimeByValue = new WeakMap();
+
+/**
+ * @param {string} expr
+ * @returns {import("../paramRuntime/types.js").ExprRefFunction}
+ */
+function rejectUnexpectedExpression(expr) {
+    throw new Error(`Unexpected expression in DomainPlanner test: ${expr}`);
+}
+
+/**
+ * @param {string} paramName
+ * @returns {never}
+ */
+function rejectUnexpectedSelection(paramName) {
+    throw new Error(`Unexpected selection in DomainPlanner test: ${paramName}`);
+}
 
 /**
  * @param {string} field
@@ -56,6 +73,21 @@ function createMember(accessors, collector, contributesToDomain = true) {
 function createPlanner(members, type) {
     return new DomainPlanner({
         getActiveMembers: () => new Set(members),
+        createExpression: rejectUnexpectedExpression,
+        resolveSelectionBinding: (paramName, encoding) => {
+            const member = members.find(
+                (candidate) =>
+                    candidate.channelDef.scale?.domain?.param === paramName
+            );
+            if (!member) {
+                throw new Error(`Missing selection fixture: ${paramName}`);
+            }
+            return resolveIntervalSelectionBinding(
+                member.view,
+                paramName,
+                encoding
+            );
+        },
         getType: () => type,
         getLocusExtent: () => [0, 10],
         fromComplexInterval: (interval) => /** @type {number[]} */ (interval),
@@ -195,8 +227,9 @@ describe("DomainPlanner", () => {
     test("view-level viewport domains select the resolution-wide mode", () => {
         const planner = new DomainPlanner({
             getActiveMembers: () => new Set(),
+            createExpression: rejectUnexpectedExpression,
+            resolveSelectionBinding: rejectUnexpectedSelection,
             getViewLevelDomainSource: () => ({
-                view: /** @type {any} */ ({}),
                 channel: "y",
                 type: "quantitative",
                 domain: { source: "viewport" },
@@ -290,6 +323,8 @@ describe("DomainPlanner", () => {
                         },
                     ])
                 ),
+            createExpression: rejectUnexpectedExpression,
+            resolveSelectionBinding: rejectUnexpectedSelection,
             getType: () => "locus",
             getLocusExtent: () => [0, 10],
             fromComplexInterval,
@@ -322,6 +357,8 @@ describe("DomainPlanner", () => {
                         },
                     ])
                 ),
+            createExpression: rejectUnexpectedExpression,
+            resolveSelectionBinding: rejectUnexpectedSelection,
             getType: () => "locus",
             getLocusExtent: () => [0, 10],
             fromComplexInterval,
@@ -356,6 +393,8 @@ describe("DomainPlanner", () => {
 
         const planner = new DomainPlanner({
             getActiveMembers: () => members,
+            createExpression: rejectUnexpectedExpression,
+            resolveSelectionBinding: rejectUnexpectedSelection,
             getType: () => "locus",
             getLocusExtent: () => [0, 10],
             fromComplexInterval,

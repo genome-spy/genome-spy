@@ -45,6 +45,17 @@ parameters change.
 
 EXAMPLE examples/docs/grammar/parameters/expressions.json height=150
 
+## Pushing Parameters to an Outer Scope
+
+A child view can update a parameter owned by an ancestor. Declare the writable
+parameter on the ancestor, then declare a same-named child parameter with
+`"push": "outer"`. The child parameter acts as an alias: interactions and
+input bindings in the child write to the ancestor value.
+
+This pattern is useful when a child interaction controls shared state, such as
+a [reactive shared scale](./scale.md#parameter-scope). The ancestor must declare
+the target parameter before a child can push to it.
+
 ## Numeric Transitions
 
 Numeric value and expression parameters can use `transition` to smooth how the

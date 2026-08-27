@@ -14,7 +14,7 @@ const AUTOSCALE_DEBOUNCE = 150;
 /**
  * @typedef {import("../spec/scale.js").ViewportDomainRef} ViewportDomainRef
  * @typedef {import("./scaleResolution.js").ScaleResolutionMember} ScaleResolutionMember
- * @typedef {{ view: import("../view/view.js").default, channel: import("../spec/channel.js").ChannelWithScale, type: import("../spec/channel.js").Type, domain: import("../spec/scale.js").Scale["domain"] }} ConfiguredDomainSource
+ * @typedef {{ channel: import("../spec/channel.js").ChannelWithScale, type: import("../spec/channel.js").Type, domain: import("../spec/scale.js").Scale["domain"] }} ConfiguredDomainSource
  * @typedef {(member: ScaleResolutionMember) => import("../data/viewportDomain.js").ViewportConstraint[]} ViewportConstraintsGetter
  */
 
@@ -51,7 +51,6 @@ export function validateSharedViewportDomain(members, viewLevelDomain) {
         const domain = member.channelDef.scale?.domain;
         if (member.contributesToDomain && domain !== undefined) {
             sources.push({
-                view: member.view,
                 channel: member.channel,
                 type: member.channelDef.type,
                 domain,
