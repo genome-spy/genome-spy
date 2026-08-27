@@ -499,6 +499,36 @@ example, either reference the stable upstream asset or add a small derived
 fixture with verified provenance and license; do not add the 1.8 MB Arrow file
 to GenomeSpy merely for convenience.
 
+### Initial solver evidence (2026-08-27)
+
+The first direct rectangle scan confirmed correctness but missed the latency
+budget: the broad 2,000-item synthetic fixture reached a 236 ms Node p95. A
+solver-local uniform grid reduced the same direct candidate checks to about
+1.4 ms p95, justifying that single acceleration structure. No alternative
+collision index remains in the implementation.
+
+Candidate comparison on the airway volcano fixture rejected a nine-position
+neighborhood because 15 of 32 labels used overflow. A bounded strip aligned
+with each rectangle's short axis was the smallest tested sequence that passed
+the initial quality gates. It tests at most 84 displaced candidates, preserves
+the original center as the first candidate, and uses the right-side row after
+exhaustion. With temporary dimensions of eight pixels per character plus eight
+pixels of horizontal spacing and an 18-pixel height, the top-32 airway fixture
+had zero overflow, 82.7 px mean displacement, and 146.9 px p95 displacement.
+Repeat these quality measurements with actual `measureText` output during
+transform integration.
+
+Headless Chromium 145 on an Apple M5 MacBook Pro with 32 GB memory measured the
+final clustered synthetic fixture after ten warm-ups and across 50 solves:
+
+- 100 rectangles: 0.2 ms median and 0.3 ms p95;
+- 500 rectangles: 2.2 ms median and 2.4 ms p95;
+- 2,000 rectangles: 10.7 ms median and 11.0 ms p95.
+
+The temporary benchmark scripts were deleted after recording these results.
+Milestone 1 still requires the real browser airway fixture, interaction-churn
+trace, and visual inspection before the algorithm review gate is complete.
+
 ## Commit and delivery strategy
 
 Commit frequently on `feat/displace2d`, but keep every commit focused,
