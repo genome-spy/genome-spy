@@ -567,10 +567,15 @@ composition fixture. Interaction acceptance therefore uses overlap-free settled
 steps, exact repeated-domain output, the existing latency budget, and visual
 inspection. Raw material-change fractions remain recorded diagnostics.
 
-The implementation checkpoints contain 577 production lines and 562 adjacent
+The implementation checkpoints contain 595 production lines and 576 adjacent
 test lines for the solver and transform. The public adapter's lifecycle and
 reactivity account for most of its size; no strategy interface, retained
 placement cache, worker, renderer path, or runtime dependency was added.
+
+The final code review added one finite-bounds guard. Without it, extreme but
+finite inputs could overflow rectangle-edge arithmetic to infinity and enter an
+unbounded grid loop. The solver now fails fast with a specific numeric-range
+error, covered by a regression test, without adding another placement path.
 
 ### Documentation and secondary integration (2026-08-27)
 
@@ -590,7 +595,7 @@ contained all ten text labels and ten leader lines with no warnings or raster
 fallback. The generated schema/type links, Zensical build, Core TypeScript
 check, lint, and 48 focused solver/transform/schema tests passed.
 The final workspace TypeScript run passed in every participating package. The
-complete Vitest run passed 393 files and 3,285 tests, with one existing skip and
+complete Vitest run passed 393 files and 3,286 tests, with one existing skip and
 two existing todos. Shared-example schema and initialization coverage includes
 the new documentation example.
 
