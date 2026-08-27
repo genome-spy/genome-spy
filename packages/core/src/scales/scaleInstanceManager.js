@@ -96,7 +96,8 @@ export default class ScaleInstanceManager {
         }
 
         this.#scale = /** @type {ScaleWithProps} */ (scale);
-        this.#defaultRange = scale.range();
+        this.#defaultRange =
+            typeof scale.range === "function" ? scale.range() : undefined;
         this.#bindGenomeIfNeeded(props);
         this.#configureRange();
         this.#wrapScaleInterceptors();
