@@ -1,6 +1,6 @@
 # Resolution-scoped scale expressions plan
 
-Status: Implemented; ready for review
+Status: Implementation reopened for selection-domain scope harmonization
 
 Issue: [#471 Scope scale ExprRefs to their scale resolution](https://github.com/genome-spy/genome-spy/issues/471)
 
@@ -40,6 +40,8 @@ required notice and add durable provenance next to the adapted code.
 
 - Evaluate every ordinary scale ExprRef through the parameter scope of the
   view that owns the scale resolution.
+- Resolve selection-domain parameter names through the same owner scope while
+  preserving their specialized interval-selection behavior.
 - Make the resolution own expression binding, subscriptions, refresh, and
   disposal.
 - Preserve unit-local behavior for independent scales because the unit owns
@@ -62,9 +64,8 @@ required notice and add durable provenance next to the adapted code.
 - Reject every static scale property declared below a shared-resolution owner.
 - Introduce a dedicated resolution child `ViewParamRuntime` in the first
   implementation.
-- Change selection-domain reference semantics. Selection-domain references
-  explicitly identify an external parameter and retain their existing binding
-  and feedback-loop validation.
+- Remove the specialized interval-selection binding, subscription, reverse
+  synchronization, or feedback-loop validation used by selection domains.
 - Add declaration-view lookup as a compatibility fallback.
 - Generalize all scale properties to ExprRefs.
 
@@ -90,12 +91,17 @@ scope-bearing property. Member and view-level declarations may remain available
 through existing resolution debug state for diagnostics and conflict reporting,
 but they do not participate in name lookup.
 
-### Ordinary domain ExprRefs and selection references take separate paths
+### All scale parameter names resolve through the owner
 
-Inject the resolution expression binder into configured-domain evaluation for
-ordinary literal/array ExprRefs. Continue to pass the declaration view to the
-selection-domain path because it resolves a specifically named selection
-binding and detects feedback through the contributing view group.
+Inject resolution-owned binders into configured-domain evaluation. Ordinary
+literal/array ExprRefs compile through the owner's expression scope.
+Selection-domain references resolve their named interval parameter through the
+same owner scope, then retain their specialized runtime identity,
+subscriptions, reverse synchronization, and feedback-loop checks.
+
+This gives authors one lookup rule for reactive scale dependencies without
+pretending that expression values and interval selections are the same runtime
+mechanism.
 
 ### Resolution topology owns scale helpers and geometry
 
@@ -135,6 +141,13 @@ Rejected. A fallback makes specifications depend on whether a name happens to
 exist at the owner, preserves the breaking ambiguity, and requires every new
 reactive property to retain its declaration origin.
 
+### Preserve declaration scope for selection-domain references
+
+Rejected. The exception would make two parameter references inside
+`scale.domain` follow different lookup rules. Existing repository examples
+already place the selection at the scale owner or an ancestor, so harmonizing
+lookup does not require example migration.
+
 ### Create a dedicated resolution child scope immediately
 
 Deferred. A child scope could later hold graph-native scale values, but it does
@@ -168,8 +181,8 @@ retain unit-local behavior, and declaration-origin runtime metadata disappears.
       configured-domain evaluation.
 - [x] Refresh configured-domain subscriptions through the resolution factory,
       while keeping their unsubscribe handles in `ScaleResolution`.
-- [x] Keep selection-domain resolution on its existing explicit member-aware
-      path and add a regression test proving that #471 did not change it.
+- [x] Preserve specialized selection-domain runtime behavior while deferring
+      parameter-lookup harmonization to Milestone 4.
 - [x] Replace the defining-member range test with tests for independent unit
       scope, shared owner/ancestor scope, owner shadowing, child-only rejection,
       and an owner parameter updated by a child using `push: "outer"`.
@@ -280,7 +293,7 @@ subscriptions.
 
 Review Milestones 1 and 2 together before documenting the contract. Inspect
 all expression creation sites for scale domains and ranges, selection-domain
-separation, initialized-resolution mutation, generated legends, and offset
+specialization, initialized-resolution mutation, generated legends, and offset
 scales. Reject any replacement metadata that carries a declaration runtime
 through merged props.
 
@@ -338,6 +351,58 @@ and every acceptance criterion in #471 has evidence.
 
 `docs(core): document scale expression ownership`
 
+## Milestone 4: Harmonize selection-domain parameter scope
+
+### Intended outcome
+
+Every parameter name referenced by a scale resolves from the scale-resolution
+owner, while selection-linked domains retain their specialized interval and
+two-way synchronization behavior.
+
+### Work
+
+- [ ] Replace declaration-view selection lookup with a resolution-owned
+      selection-binding boundary.
+- [ ] Remove declaration-view provenance that configured-domain planning no
+      longer needs.
+- [ ] Cover independent, shared owner/ancestor, owner-shadowing, child-only
+      rejection, and child `push: "outer"` selection-domain cases.
+- [ ] Reorganize the scale documentation so parameter-driven domains and the
+      shared-scale ownership rule form one continuous explanation.
+- [ ] Clarify `SelectionDomainRef` specification JSDoc without duplicating the
+      grammar page.
+
+### Affected areas and consumers
+
+- `packages/core/src/scales/scaleResolution.js`
+- `packages/core/src/scales/domainPlanner.js`
+- `packages/core/src/scales/selectionDomainUtils.js`
+- selection-domain and scale-expression scope tests
+- `packages/core/src/spec/scale.d.ts`
+- `docs/grammar/scale.md`
+
+### Verification
+
+- Run focused domain-planner, selection-link, expression-scope, and view-level
+  scale tests.
+- Run the shared-example suite and confirm all four selection-domain examples
+  retain their resolved runtime binding.
+- Run lint, Core TypeScript checks, the full unit suite, and the documentation
+  build.
+
+### Documentation and migration
+
+- State one rule: all reactive scale parameter references resolve from the
+  resolution owner, and child writers use `push: "outer"`.
+- Keep the distinct selection-domain behavior—interval-only input, optional
+  two-way zoom synchronization, and feedback-loop protection—next to its
+  syntax and example.
+
+### Tentative commits
+
+- `refactor(core): harmonize scale parameter scope`
+- `docs(core): unify reactive scale guidance`
+
 ## Final integration verification
 
 - Confirm independent scales still resolve unit-local range and domain params.
@@ -345,7 +410,8 @@ and every acceptance criterion in #471 has evidence.
   shadowing of a same-named ancestor binding.
 - Confirm child-local-only range and domain params fail with migration guidance.
 - Confirm child `push: "outer"` updates the shared scale.
-- Confirm selection-domain references retain their existing explicit binding.
+- Confirm selection-domain references use the resolution owner while retaining
+  interval subscriptions, reverse synchronization, and feedback validation.
 - Confirm helper topology and cycle errors are deterministic.
 - Confirm generated symbol/gradient legends and nested x/y offsets update under
   resize without leaked listeners or arbitrary member dependence.
@@ -428,7 +494,8 @@ do not restore member lookup as a workaround.
 - [x] Declaration-origin runtime metadata is removed.
 - [x] Configured-domain subscriptions no longer bind through contributing member
       runtimes.
-- [x] Selection-domain references retain their existing semantics.
+- [ ] Selection-domain references resolve names from the scale owner and retain
+      their specialized interval-link behavior.
 - [x] Generated legends and nested offsets update correctly during resize.
 - [x] Scale helpers resolve through owner topology and cycles still fail
       explicitly.
