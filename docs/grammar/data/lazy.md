@@ -65,7 +65,8 @@ EXAMPLE examples/docs/grammar/data/lazy/indexed-fasta-sequence-track.json height
     restrictions noted for the original assembly data.
 
 The data source is based on [GMOD](http://gmod.org/)'s
-[indexedfasta-js](https://github.com/GMOD/indexedfasta-js) library.
+[indexedfasta-js 5.0.7](https://github.com/GMOD/indexedfasta-js/tree/v5.0.7)
+library.
 
 ## BigWig
 
@@ -101,12 +102,14 @@ EXAMPLE examples/docs/grammar/data/lazy/bigwig-gc-content.json height=120 spechi
     available for public and commercial use.
 
 The data source is based on [GMOD](http://gmod.org/)'s
-[bbi-js](https://github.com/GMOD/bbi-js) library.
+[bbi-js 9.2.1](https://github.com/GMOD/bbi-js/tree/v9.2.1) library.
 
 ## BigBed
 
 The `"bigbed"` source enables the retrieval of segmented data, such as annotated
-genomic regions stored in BigBed files.
+genomic regions stored in BigBed files. The fields and their types are determined
+by the file's embedded AutoSQL schema, or by the standard BED schema when the
+file does not include one.
 
 ### Parameters
 
@@ -130,7 +133,8 @@ EXAMPLE examples/docs/grammar/data/lazy/bigbed-ccre-track.json height=85 spechid
     public and commercial use.
 
 The data source is based on [GMOD](http://gmod.org/)'s
-[bbi-js](https://github.com/GMOD/bbi-js) library.
+[bbi-js 9.2.1](https://github.com/GMOD/bbi-js/tree/v9.2.1) and
+[bed-js 2.2.6](https://github.com/GMOD/bed-js/tree/v2.2.6) libraries.
 
 ## Tabix TSV
 
@@ -149,12 +153,18 @@ Advanced multi-file Tabix views can use a URL template together with an
 
 SCHEMA TabixTsvData
 
+Indexed retrieval is based on [GMOD](http://gmod.org/)'s
+[tabix-js 3.2.2](https://github.com/GMOD/tabix-js/tree/v3.2.2) library.
+
 ## VCF
 
 [VCF](https://samtools.github.io/hts-specs/VCFv4.3.pdf) parsing is based on
-GMOD's [vcf-js](https://github.com/GMOD/vcf-js) library. Each VCF row produces
-an object with fields such as `CHROM`, `POS`, `ID`, `REF`, `ALT`, `QUAL`,
-`FILTER`, and `INFO`. Sample columns are materialized in the `SAMPLES` object.
+GMOD's [vcf-js 7.0.9](https://github.com/GMOD/vcf-js/tree/v7.0.9) library.
+Each VCF row follows its `Variant` object format, with fields such as `CHROM`,
+`POS`, `ID`, `REF`, `ALT`, `QUAL`, `FILTER`, and `INFO`. GenomeSpy materializes
+sample columns in the `SAMPLES` object and omits `GENOTYPES`. This parser-derived
+format will remain in GenomeSpy 1.x and will be replaced by a standardized row
+format in GenomeSpy 2.0.
 
 The tabix-based `"vcf"` source retrieves variant data from bgzip-compressed,
 tabix-indexed VCF files based on the visible genomic region.
@@ -188,12 +198,14 @@ EXAMPLE examples/docs/examples/genomic-data/clinvar-variants.json height=130 spe
 ## GFF3
 
 The tabix-based `"gff3"` source enables the retrieval of hierarchical data, such
-as genomic annotations stored in GFF3 files. The object format GenomeSpy uses
-is described in [gff-js](https://github.com/GMOD/gff-js#object-format)'s
-documentation. The [flatten](../transform/flatten.md) and
-[project](../transform/project.md) transforms are useful when extracting the
-child features and attributes from the hierarchical data structure. See the
-visualization below.
+as genomic annotations stored in GFF3 files. GenomeSpy currently exposes the
+[gff-nostream 3.0.11 object
+format](https://github.com/GMOD/gff-nostream/blob/v3.0.11/README.md#object-format)
+directly. This parser-defined format will remain in GenomeSpy 1.x and will be
+replaced by a standardized row format in GenomeSpy 2.0. The
+[flatten](../transform/flatten.md) and [project](../transform/project.md)
+transforms are useful when extracting child features and attributes from the
+hierarchical data structure. See the visualization below.
 
 ### Parameters
 
@@ -216,7 +228,9 @@ EXAMPLE examples/docs/examples/genomic-data/gff3-gene-annotations.json height=36
     that all project data are open access.
 
 The data source is based on [GMOD](http://gmod.org/)'s
-[tabix-js](https://github.com/GMOD/tabix-js) and [gff-js](https://github.com/GMOD/gff-js) libraries.
+[tabix-js 3.2.2](https://github.com/GMOD/tabix-js/tree/v3.2.2) and
+[gff-nostream 3.0.11](https://github.com/GMOD/gff-nostream/tree/v3.0.11)
+libraries.
 
 ## BAM
 
@@ -272,7 +286,10 @@ EXAMPLE examples/docs/grammar/data/lazy/bam-read-alignments.json height=350 spec
     underlying 1000 Genomes / IGSR data are also openly available.
 
 The data source is based on [GMOD](http://gmod.org/)'s
-[bam-js](https://github.com/GMOD/bam-js) library.
+[bam-js 7.3.3](https://github.com/GMOD/bam-js/tree/v7.3.3) library.
+The row format above is a GenomeSpy adaptation of `bam-js` records. It will
+remain in GenomeSpy 1.x and will be replaced by a standardized row format in
+GenomeSpy 2.0.
 
 ## Axis ticks
 
