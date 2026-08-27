@@ -55,8 +55,8 @@ Options:
   --no-trace              Skip browser traces.
   --help                  Show this help text.
 
-Hardware-backed WebGPU on a physical display is authoritative. Headless and
-software-adapter runs are retained for diagnostics and explicitly marked.`;
+Hardware-backed GPU rendering on a physical display is authoritative. Headless
+and software-adapter runs are retained for diagnostics and explicitly marked.`;
 
 /** @typedef {"webgl" | "webgpu"} RendererName */
 
@@ -442,8 +442,7 @@ export function getCaseApplicability(caseName, state) {
     ) {
         return {
             applicable: false,
-            reason:
-                "The subject does not expose a scrollable SampleView closeup state.",
+            reason: "The subject does not expose a scrollable SampleView closeup state.",
         };
     }
 
@@ -520,9 +519,7 @@ export function validateInteractionResult({
         }
     } else if (caseName === "open-closeup") {
         if (
-            !observations.some(
-                (state) => state.peekState !== before.peekState
-            )
+            !observations.some((state) => state.peekState !== before.peekState)
         ) {
             errors.push(`${caseName} did not change the closeup/peek state.`);
         }
@@ -531,7 +528,9 @@ export function validateInteractionResult({
             errors.push(`${caseName} did not reach closeup state.`);
         }
         if (after.scrollOffset === before.scrollOffset) {
-            errors.push(`${caseName} did not change the SampleView scroll offset.`);
+            errors.push(
+                `${caseName} did not change the SampleView scroll offset.`
+            );
         }
     }
 
@@ -555,7 +554,8 @@ export function validateInteractionResult({
 function domainsChanged(before, after) {
     if (before.length !== after.length) return true;
     return before.some(
-        (domain, index) => JSON.stringify(domain) !== JSON.stringify(after[index])
+        (domain, index) =>
+            JSON.stringify(domain) !== JSON.stringify(after[index])
     );
 }
 
@@ -624,9 +624,7 @@ async function prepareCase(page, caseName) {
     await page.waitForTimeout(250);
     const after = await captureInteractionState(page);
     if (!domainsChanged(before.domains, after.domains)) {
-        throw new Error(
-            `Could not establish a zoomed domain for ${caseName}.`
-        );
+        throw new Error(`Could not establish a zoomed domain for ${caseName}.`);
     }
 }
 
@@ -866,13 +864,18 @@ function percentile(sorted, fraction) {
 
 /** @param {{options: BenchmarkOptions, samples: object[]}} input */
 function createReport({ options, samples }) {
-    const passedSamples = samples.filter((sample) => sample.status === "passed");
+    const passedSamples = samples.filter(
+        (sample) => sample.status === "passed"
+    );
     const inapplicableSamples = samples.filter(
         (sample) => sample.status === "inapplicable"
     );
-    const failedSamples = samples.filter((sample) => sample.status === "failed");
+    const failedSamples = samples.filter(
+        (sample) => sample.status === "failed"
+    );
     const completed = samples.every(
-        (sample) => sample.status === "passed" || sample.status === "inapplicable"
+        (sample) =>
+            sample.status === "passed" || sample.status === "inapplicable"
     );
     const environment = {};
     for (const sample of samples) {
@@ -880,14 +883,17 @@ function createReport({ options, samples }) {
             environment[sample.renderer] = sample.environment;
         }
     }
-    const webgpuEnvironments = samples.filter(
-        (sample) => sample.renderer === "webgpu" && sample.environment
+    const missingEnvironment = options.renderers.find(
+        (renderer) => !environment[renderer]
     );
-    const hardwareBacked =
-        webgpuEnvironments.length > 0 &&
-        webgpuEnvironments.every(
-            (sample) => !isSoftwareAdapter(sample.environment.webgpu)
-        );
+    const softwareRenderer = options.renderers.find((renderer) =>
+        isSoftwareAdapter(
+            renderer === "webgpu"
+                ? environment[renderer]?.webgpu
+                : environment[renderer]?.webgl
+        )
+    );
+    const hardwareBacked = !missingEnvironment && !softwareRenderer;
     const correctness = samples
         .map((sample) => sample.correctness)
         .filter(Boolean);
@@ -938,10 +944,10 @@ function createReport({ options, samples }) {
             passedSamples.length > 0,
         limitation: !options.headed
             ? "Headless Chromium was requested; use a headed hardware-backed run for final conclusions."
-            : !webgpuEnvironments.length
-              ? "No WebGPU environment metadata was captured; inspect the failed samples."
-              : !hardwareBacked
-                ? "WebGPU adapter appears software-rendered; performance conclusions are not authoritative."
+            : missingEnvironment
+              ? `No ${missingEnvironment} environment metadata was captured; inspect the failed samples.`
+              : softwareRenderer
+                ? `${softwareRenderer} adapter appears software-rendered; performance conclusions are not authoritative.`
                 : completed
                   ? undefined
                   : "At least one benchmark sample failed; the matrix is incomplete.",
@@ -1041,6 +1047,10 @@ function bootstrapInterval(values) {
 function renderReport(report) {
     const ratio = report.cpuTimeRatio.median;
     const ratioText = ratio == null ? "unavailable" : `${ratio.toFixed(3)}x`;
+    const ratioLabel =
+        report.environment.webgpu && report.environment.webgl
+            ? "WebGPU/WebGL"
+            : "Cross-renderer";
     const limitation = report.limitation ?? "None reported.";
     const rows = report.samples
         .filter((sample) => sample.status === "passed")
@@ -1051,7 +1061,7 @@ function renderReport(report) {
                 `${sample.cadence?.over33_3 ?? "n/a"} |`
         )
         .join("\n");
-    return `# WebGPU interaction benchmark baseline
+    return `# GPU interaction benchmark report
 
 Generated: ${report.generatedAt}
 
@@ -1070,7 +1080,7 @@ The practical CPU equivalence tolerance was fixed before optimization as
 \`max(5%, same-backend A/A relative noise bound)\`. The current bound is
 \`${(report.methodology.practicalEquivalenceTolerance * 100).toFixed(1)}%\`.
 
-WebGPU/WebGL median frame-time ratio: **${ratioText}**<br>
+${ratioLabel} median frame-time ratio: **${ratioText}**<br>
 Bootstrap 95% interval: \`${report.cpuTimeRatio.bootstrap95.low ?? "n/a"}\` – \`${report.cpuTimeRatio.bootstrap95.high ?? "n/a"}\`
 
 | Subject | Renderer | Case | DPR | rAF median (ms) | gaps >33.3 ms |
