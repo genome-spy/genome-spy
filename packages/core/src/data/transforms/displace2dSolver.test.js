@@ -145,6 +145,18 @@ describe("solveDisplacement", () => {
         expect(output).toEqual({ x: [0], y: [0] });
     });
 
+    test("rejects placements outside the finite numeric range", () => {
+        expect(() =>
+            solveDisplacement(
+                [Number.MAX_VALUE],
+                [0],
+                [Number.MAX_VALUE],
+                [1],
+                [0, 1]
+            )
+        ).toThrow("finite numeric range");
+    });
+
     test.each([
         [[NaN], [0], [1], [1], "positions"],
         [[0], [0], [Infinity], [1], "dimensions"],
