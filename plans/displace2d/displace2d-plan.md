@@ -2,9 +2,10 @@
 
 ## Status
 
-In progress. The solver and public transform are implemented; browser
-integration and documentation remain. This plan is a temporary implementation
-artifact and must be reconciled and retired before the pull request is merged.
+In progress. The solver, public transform, browser integration, and user-facing
+documentation are implemented. Final review and plan reconciliation remain.
+This plan is a temporary implementation artifact and must be reconciled and
+retired before the pull request is merged.
 
 ## Motivation
 
@@ -570,6 +571,28 @@ The implementation checkpoints contain 577 production lines and 562 adjacent
 test lines for the solver and transform. The public adapter's lifecycle and
 reactivity account for most of its size; no strategy interface, retained
 placement cache, worker, renderer path, or runtime dependency was added.
+
+### Documentation and secondary integration (2026-08-27)
+
+The top-16 airway MA fixture exercised `log10_base_mean` on x and `log2fc` on y
+with measured variable-width labels. Its effective factors were 168.9 px/unit
+and -35.0 px/unit. Initial placement had zero overlap, zero overflow, 67.5 px
+mean displacement, and 154 px p95 displacement. All 40 settled zoom steps were
+overlap-free, and the reverse trace reproduced every matching-domain offset
+exactly. Visual inspection confirmed that leader lines retained their original
+data-point endpoints.
+
+The durable documentation example uses ten small inline rows rather than the
+external airway asset. It composes `measureText`, priority sorting,
+`displace2d`, centered text, and leader rules. Browser smoke testing passed, and
+the checked-in screenshot shows non-overlapping labels. Structured SVG export
+contained all ten text labels and ten leader lines with no warnings or raster
+fallback. The generated schema/type links, Zensical build, Core TypeScript
+check, lint, and 48 focused solver/transform/schema tests passed.
+The final workspace TypeScript run passed in every participating package. The
+complete Vitest run passed 393 files and 3,285 tests, with one existing skip and
+two existing todos. Shared-example schema and initialization coverage includes
+the new documentation example.
 
 ## Commit and delivery strategy
 
