@@ -42,6 +42,9 @@ Temporary reference checkouts used while preparing this plan:
   commit `7c5792254f0d`, and
   [ggwordcloud](https://github.com/lepennec/ggwordcloud) commit `13544e593f54`
   under `/private/tmp/displace2d-related-work/repos`
+- [genome-spy-python](https://github.com/genome-spy/genome-spy-python) commit
+  `1e97fa3d9102` at
+  `/private/tmp/displace2d-related-work/repos/genome-spy-python`
 
 Research PDFs downloaded under `/private/tmp/displace2d-related-work/papers`:
 
@@ -54,6 +57,17 @@ Research PDFs downloaded under `/private/tmp/displace2d-related-work/papers`:
 
 The D3-Labeler paper link no longer responded, but its MIT-licensed repository
 contains the described simulated-annealing implementation and objective terms.
+
+The exact 12,000-row Arrow table used by genome-spy-python's public airway MA
+and volcano examples is available temporarily at
+`/private/tmp/displace2d-related-work/airway-differential-expression.arrow`.
+Its stable published source is the
+[content-addressed Arrow asset](https://genomespy.app/genome-spy-python/_static/generated/arrow/b4b5bf13778d0f9fe586ee61ef1114aca7b70a15060c39a07a17d566fa06935d.arrow)
+embedded in the pasted specifications. The underlying counts originate from
+the Himes et al. airway experiment, GEO accession
+[GSE52778](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE52778), as
+distributed by Bioconductor's `airway` experiment-data package. Re-verify the
+dataset license before committing any copied or derived data to this repository.
 
 ## Related-work conclusions
 
@@ -420,15 +434,70 @@ Record quality alongside runtime using the following metrics:
 - fraction of rows whose original position remains unchanged;
 - number of materially changed offsets at each step of the zoom trace.
 
-Before selecting the production candidate sequence, choose the canonical
-annotation example and commit its deterministic fixture and quality thresholds
-to this plan. The selection gate is invalid until those thresholds exist. At a
-minimum, an already non-overlapping fixture must remain completely unchanged,
-a fixture constructed so the bounded local candidates can resolve it must have
-zero overflow, and infeasible or search-exhausted fixtures must preserve all
-rows without overlaps. For the canonical dense fixture, set explicit maximum
-overflow and displacement thresholds before comparing implementations; do not
-derive the thresholds from whichever implementation happens to win.
+The canonical fixture and initial thresholds below must be committed before
+selecting the production candidate sequence. At a minimum, an already
+non-overlapping fixture must remain completely unchanged, a fixture constructed
+so the bounded local candidates can resolve it must have zero overflow, and
+infeasible or search-exhausted fixtures must preserve all rows without overlaps.
+Do not derive or relax dense-fixture thresholds to favor whichever
+implementation happens to win.
+
+## Canonical airway fixtures
+
+Use genome-spy-python's
+[airway volcano plot](https://genomespy.app/genome-spy-python/gallery/airway_volcano_plot.html)
+as the primary end-to-end fixture. Its existing labels and leader rules already
+share pixel offsets, exactly matching the proposed output contract. Use the
+[airway MA plot](https://genomespy.app/genome-spy-python/gallery/airway_ma_plot.html)
+as a secondary integration fixture: replace its precomputed data-domain label
+endpoints with pixel displacements while keeping the original data positions as
+leader-line anchors.
+
+The published plots contain only three labels each, which is useful for checking
+composition but too sparse to evaluate automatic placement. Derive deterministic
+annotation subsets from the same 12,000-row table:
+
+1. Sort by `neglog10_pvalue` descending and `ensgene` ascending.
+2. Assign `row_number` and select the first N rows.
+3. Use `gene_symbol` when present and `ensgene` otherwise. The first 32 rows
+   contain label strings from 4 to 15 characters, providing realistic variable
+   widths without another data source.
+4. Obtain label width with `measureText`, derive height explicitly from the text
+   mark's font metrics, and include the desired spacing in both dimensions.
+5. Preserve the selected order through the collector immediately before
+   `displace2d`. Use the same offsets for text and leader-rule endpoints.
+
+Fixture roles and initial gates:
+
+- **Volcano composition:** the original three curated labels must retain all
+  rows, produce leader lines from the original data points, and remain stable
+  through the recorded zoom trace.
+- **Volcano quality:** the top 32 labels at the gallery's 760 by 420 logical-pixel
+  size must have zero overlap and zero overflow initially. Mean displacement
+  must be at most 100 px and p95 at most 200 px.
+- **MA regression:** use the top 16 labels to verify negative or positive scale
+  factors, pixel-offset output, and leader anchors after replacing data-domain
+  label endpoints. Require zero initial overflow.
+- **Performance:** use the top 100, 500, and 2,000 rows from the same ordering in
+  the 1,000 by 800 solver benchmark defined above. The 500- and 2,000-label
+  variants are intentional saturation tests; their overflow counts are reported
+  but are not visual-quality gates.
+- **Interaction churn:** use a deterministic 20-step twofold zoom around the
+  center and then reverse it. A material change is an offset delta greater than
+  4 px between steps. For the 32-label volcano fixture, the median changed
+  fraction must be at most 10% and p95 at most 35%.
+
+These are initial review thresholds, fixed before solver comparison. Change one
+only at the algorithm review gate with a recorded fixture-based rationale, not
+to favor an implementation already written. The 12,000 background points remain
+rendering load but are not collision obstacles in the first contract. The
+selected annotation rectangles avoid one another, and leader lines preserve
+association with their original points.
+
+For local research, use the downloaded Arrow file. Before committing a permanent
+example, either reference the stable upstream asset or add a small derived
+fixture with verified provenance and license; do not add the 1.8 MB Arrow file
+to GenomeSpy merely for convenience.
 
 ## Commit and delivery strategy
 
@@ -504,6 +573,7 @@ Affected areas and downstream consumers:
   results and reproduction command are recorded unless it proves valuable as a
   small permanent regression benchmark; do not build a benchmark framework.
 - Representative scatterplot and genomic annotation fixtures.
+- The 3-, 16-, 32-, 100-, 500-, and 2,000-label airway subsets defined above.
 - This plan's algorithm decision, API question, and recorded measurements.
 - No changes under the `displace1d` implementation, tests, types, or docs.
 
@@ -569,9 +639,9 @@ Tentative commit: `feat(core): add two-dimensional displacement transform`
 
 ### 3. User-facing example, documentation, and integration
 
-Intended outcome: demonstrate a realistic interactive scatterplot with moved
-text annotations and verify the complete contract across renderers and
-interactions.
+Intended outcome: demonstrate the interactive airway volcano plot with moved
+text annotations, retain the airway MA plot as a secondary regression, and
+verify the complete contract across renderers and interactions.
 
 Affected areas and downstream consumers:
 
@@ -611,8 +681,9 @@ documentation, provenance, and code-size tradeoff.
 
 ## Final integration acceptance criteria
 
-- A documented `displace2d` spec labels a dense interactive scatterplot and
-  visibly recomputes during zoom, pan, and resize without blocking interaction.
+- A documented `displace2d` spec labels the airway volcano fixture and visibly
+  recomputes during zoom, pan, and resize without blocking interaction. The MA
+  regression confirms conversion from data-domain endpoints to pixel offsets.
 - The solver and transform meet the accepted performance and churn thresholds
   on the recorded fixtures.
 - Every row is preserved and receives deterministic x and y offsets. Output
@@ -671,24 +742,20 @@ documentation, provenance, and code-size tradeoff.
 
 ## Unresolved questions
 
-1. Which existing or new scatterplot is the canonical first use case, and what
-   real annotation counts, overflow fraction, and normalized displacement
-   should set the final benchmark thresholds? Freeze these before selecting the
-   candidate sequence.
-2. Does a small finite candidate sequence meet the placement-quality fixture,
+1. Does a small finite candidate sequence meet the placement-quality fixture,
    or is a fixed-budget rectangular-ring sequence justified? The right-side
    overflow row is already the termination rule. Resolve the candidate sequence
    inside the solver and keep its controls out of the first public API.
-3. Are separate x/y position factors and extents clearer than paired parameters?
+2. Are separate x/y position factors and extents clearer than paired parameters?
    Prefer the form that most closely preserves `displace1d` semantics and keeps
    expression-backed replay straightforward.
-4. Does stable input and search order provide acceptable temporal coherence?
+3. Does stable input and search order provide acceptable temporal coherence?
    Previous-frame state remains deferred unless the interaction trace proves it
    is needed.
-5. Does the direct rectangle scan meet the performance budget? Only if it fails,
+4. Does the direct rectangle scan meet the performance budget? Only if it fails,
    which single acceleration structure fixes the measured bottleneck with the
    least code and memory?
-6. Does the canonical example remain useful when only annotation rectangles
-   avoid one another? If avoiding anchor points is essential, revise the generic
-   solver input contract at the first review gate rather than adding mark or
-   renderer coupling.
+5. Does visual review of the 32-label airway fixture confirm that background
+   points can remain non-obstacles? If not, revise the generic solver input
+   contract at the first review gate rather than adding mark or renderer
+   coupling.
