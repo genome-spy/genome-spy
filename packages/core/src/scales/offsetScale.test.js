@@ -1,10 +1,12 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
+import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
 import Rectangle from "../view/layout/rectangle.js";
 import LayerView from "../view/layerView.js";
 import UnitView from "../view/unitView.js";
 import { createAndInitialize, renderToLayout } from "../view/testUtils.js";
 import { findChannelDefWithScale } from "../encoder/encoder.js";
+import { resolveScalePropsBase } from "./scalePropsResolver.js";
 
 const GROUPED_VALUES = [
     { category: "A", group: "first", value: 2 },
@@ -46,6 +48,41 @@ function getPosition(view, channel, datum, unitSize) {
 }
 
 describe("nested offset scales", () => {
+    test("resolves automatic ranges through the offset resolution owner", () => {
+        const initializePrimaryScale = vi.fn();
+        const memberScaleLookup = vi.fn(() => {
+            throw new Error("Offset ranges must not select a member view.");
+        });
+        const props = resolveScalePropsBase({
+            channel: "xOffset",
+            dataType: "nominal",
+            orderedMembers: [
+                /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
+                    channel: "xOffset",
+                    view: /** @type {any} */ ({
+                        getEncoding: () => ({}),
+                        getScaleResolution: memberScaleLookup,
+                    }),
+                    channelDef: { type: "nominal" },
+                    contributesToDomain: true,
+                }),
+            ],
+            isExplicitDomain: false,
+            configScopes: [INTERNAL_DEFAULT_CONFIG],
+            getOwnerScaleResolution: (channel) => {
+                expect(channel).toBe("x");
+                return /** @type {any} */ ({
+                    getResolvedScaleType: () => "band",
+                    getScale: initializePrimaryScale,
+                });
+            },
+        });
+
+        expect(props.range).toEqual([0, { expr: 'bandwidth("x") * width' }]);
+        expect(initializePrimaryScale).toHaveBeenCalledTimes(1);
+        expect(memberScaleLookup).not.toHaveBeenCalled();
+    });
+
     test("derives a pixel range from the parent band and updates on resize", async () => {
         const view = await createAndInitialize(
             {

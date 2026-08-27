@@ -4,7 +4,9 @@ import { describe, expect, test } from "vitest";
 
 import ConcatView from "../view/concatView.js";
 import LayerView from "../view/layerView.js";
+import Rectangle from "../view/layout/rectangle.js";
 import UnitView from "../view/unitView.js";
+import { renderToLayout } from "../view/testUtils.js";
 import {
     getRequiredScaleResolution,
     initView,
@@ -50,6 +52,10 @@ describe("scale resolution expression scope", () => {
                         params: [{ name: "rangeEnd", value: 2 }],
                         mark: "point",
                         encoding: {
+                            x: {
+                                field: "value",
+                                type: "quantitative",
+                            },
                             size: {
                                 field: "value",
                                 type: "quantitative",
@@ -323,6 +329,213 @@ describe("scale resolution expression scope", () => {
         ).rejects.toThrow(
             'Parameter "upperBound" is not visible from the shared y scale resolution. ' +
                 'Move the parameter to the resolution-owning view and use push: "outer" if a child must update it.'
+        );
+    });
+
+    test("dynamic members rebind range expressions without leaking removed listeners", async () => {
+        const view = await initView(
+            {
+                params: [{ name: "rangeEnd", value: 10 }],
+                data: { values: [{ value: 0 }, { value: 1 }] },
+                layer: [
+                    {
+                        name: "base",
+                        mark: "point",
+                        encoding: {
+                            size: {
+                                field: "value",
+                                type: "quantitative",
+                            },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+        const resolution = getRequiredScaleResolution(view, "size");
+        const baselineRange = resolution.getScale().range();
+
+        const inserted = await view.addChildSpec({
+            name: "reactive",
+            mark: "point",
+            encoding: {
+                size: {
+                    field: "value",
+                    type: "quantitative",
+                    scale: {
+                        domain: [0, 1],
+                        range: [0, { expr: "rangeEnd" }],
+                    },
+                },
+            },
+        });
+
+        expect(inserted.getScaleResolution("size")).toBe(resolution);
+        expect(resolution.getScale().range()).toEqual([0, 10]);
+
+        view.paramRuntime.setValue("rangeEnd", 20);
+        await view.paramRuntime.whenPropagated();
+        expect(resolution.getScale().range()).toEqual([0, 20]);
+
+        await view.removeChildAt(1);
+        expect(resolution.getScale().range()).toEqual(baselineRange);
+
+        view.paramRuntime.setValue("rangeEnd", 30);
+        await view.paramRuntime.whenPropagated();
+        expect(resolution.getScale().range()).toEqual(baselineRange);
+    });
+
+    test("failed child-local insertion leaves an initialized resolution unchanged", async () => {
+        const view = await initView(
+            {
+                data: { values: [{ value: 0 }, { value: 1 }] },
+                layer: [
+                    {
+                        name: "base",
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "value",
+                                type: "quantitative",
+                            },
+                            size: {
+                                field: "value",
+                                type: "quantitative",
+                            },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+        const resolution = getRequiredScaleResolution(view, "size");
+        const xResolution = getRequiredScaleResolution(view, "x");
+        const baselineRange = resolution.getScale().range();
+
+        await expect(
+            view.addChildSpec({
+                name: "invalid",
+                params: [{ name: "childRangeEnd", value: 10 }],
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "value",
+                        type: "quantitative",
+                    },
+                    size: {
+                        field: "value",
+                        type: "quantitative",
+                        scale: {
+                            domain: [0, 1],
+                            range: [0, { expr: "childRangeEnd" }],
+                        },
+                    },
+                },
+            })
+        ).rejects.toThrow(
+            'Parameter "childRangeEnd" is not visible from the shared size scale resolution.'
+        );
+
+        expect(view.children.map((child) => child.name)).toEqual(["base"]);
+        expect(resolution.getOrderedMembers()).toHaveLength(1);
+        expect(xResolution.getOrderedMembers()).toHaveLength(1);
+        expect(resolution.getScale().range()).toEqual(baselineRange);
+    });
+
+    test("owner-level sashimi domains react to owner geometry and x domains", async () => {
+        const view = await initView(
+            {
+                scales: { x: { domain: [0, 10] } },
+                resolve: {
+                    scale: { y: "independent" },
+                    axis: { y: "independent" },
+                },
+                layer: [
+                    {
+                        data: { values: [{ x: 0, value: 1 }] },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "value", type: "quantitative" },
+                        },
+                    },
+                    {
+                        name: "splice-junctions",
+                        scales: {
+                            y: {
+                                type: "sqrt",
+                                domain: {
+                                    expr: "[0, span(domain('x')) * height / width * 5]",
+                                },
+                            },
+                        },
+                        data: {
+                            values: [
+                                { start: 0, end: 5, span: 5 },
+                                { start: 5, end: 10, span: 5 },
+                            ],
+                        },
+                        layer: [
+                            {
+                                name: "arcs",
+                                mark: "link",
+                                encoding: {
+                                    x: {
+                                        field: "start",
+                                        type: "quantitative",
+                                    },
+                                    x2: { field: "end" },
+                                    y: {
+                                        field: "span",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                },
+                            },
+                            {
+                                name: "labels",
+                                mark: "text",
+                                encoding: {
+                                    x: {
+                                        field: "start",
+                                        type: "quantitative",
+                                    },
+                                    y: {
+                                        field: "span",
+                                        type: "quantitative",
+                                    },
+                                    text: { field: "span" },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
+            LayerView
+        );
+        const spliceJunctions = view.children[1];
+        const yResolution = getRequiredScaleResolution(spliceJunctions, "y");
+        const xResolution = getRequiredScaleResolution(view, "x");
+
+        expect(yResolution.getViewLevelScaleProps()?.view).toBe(
+            spliceJunctions
+        );
+
+        renderToLayout(view, Rectangle.create(0, 0, 400, 200));
+        await view.paramRuntime.whenPropagated();
+        const wideDomainMax = yResolution.getScale().domain()[1];
+
+        renderToLayout(view, Rectangle.create(0, 0, 200, 200));
+        await view.paramRuntime.whenPropagated();
+        const narrowDomainMax = yResolution.getScale().domain()[1];
+
+        expect(narrowDomainMax).toBeGreaterThan(wideDomainMax);
+
+        xResolution.getScale().domain([0, 5]);
+        await view.paramRuntime.whenPropagated();
+
+        expect(yResolution.getScale().domain()[1]).toBeCloseTo(
+            narrowDomainMax / 2
         );
     });
 });

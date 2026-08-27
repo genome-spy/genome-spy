@@ -84,6 +84,15 @@
         }
       },
 
+      "scales": {
+        "y": {
+          "type": "sqrt",
+          "domain": {
+            "expr": "[0, span(domain('x')) * height / width * 5]"
+          }
+        }
+      },
+
       "transform": [
         {
           "type": "filter",
@@ -122,12 +131,6 @@
             "y": {
               "field": "span",
               "type": "quantitative",
-              "scale": {
-                "type": "sqrt",
-                "domain": {
-                  "expr": "[0, span(domain('x')) * height / width * 5]"
-                }
-              },
               "axis": null
             },
             "size": {

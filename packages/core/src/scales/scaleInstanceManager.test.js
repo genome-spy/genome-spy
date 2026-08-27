@@ -288,6 +288,7 @@ describe("ScaleInstanceManager", () => {
         );
 
         manager.dispose();
+        manager.dispose();
 
         expect(invalidate).toHaveBeenCalledTimes(1);
     });

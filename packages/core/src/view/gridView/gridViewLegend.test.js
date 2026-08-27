@@ -2970,11 +2970,22 @@ describe("GridView legends", () => {
                 ],
             });
             const legend = getLegends(view)[0];
+            const symbols = getLegendUnitChild(legend, "symbols");
             const labels = getLegendUnitChild(legend, "labels");
             const readMaxSymbolSize = () =>
                 getUnitData(labels).find((datum) => datum.value == 100)
                     ._legendSymbolSize;
             const context = new NoOpRenderingContext({ picking: false });
+
+            // Pixel helper scales are intentionally excluded from the source
+            // plot, so their ExprRefs bind to the generated body that owns the
+            // forced local geometry.
+            expect(
+                symbols.getScaleResolution("x").getDebugState().hostView
+            ).toBe(symbols.layoutParent);
+            expect(
+                labels.getScaleResolution("x").getDebugState().hostView
+            ).toBe(symbols.layoutParent);
 
             view.arrange(context, Rectangle.create(0, 0, 400, 160), {
                 firstFacet: true,
@@ -3083,6 +3094,12 @@ describe("GridView legends", () => {
             expect(ramp).toBeInstanceOf(UnitView);
             expect(labels).toBeInstanceOf(UnitView);
             expect(plot).toBeInstanceOf(UnitView);
+            expect(ramp.getScaleResolution("x").getDebugState().hostView).toBe(
+                ramp.layoutParent
+            );
+            expect(
+                labels.getScaleResolution("x").getDebugState().hostView
+            ).toBe(ramp.layoutParent);
             expect(
                 /** @type {UnitView} */ (ramp)
                     .getScaleResolution("y")

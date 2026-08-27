@@ -35,6 +35,7 @@ import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
  * @param {{ view: import("../view/view.js").default, props: Scale } | undefined} [options.viewLevelScaleProps]
  * @param {boolean} options.isExplicitDomain
  * @param {import("../spec/config.js").GenomeSpyConfig[]} options.configScopes
+ * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("./scaleResolution.js").default | undefined} [options.getOwnerScaleResolution]
  * @returns {Scale}
  */
 export function resolveScalePropsBase({
@@ -44,6 +45,7 @@ export function resolveScalePropsBase({
     viewLevelScaleProps,
     isExplicitDomain,
     configScopes,
+    getOwnerScaleResolution,
 }) {
     const memberList = orderedMembers;
 
@@ -169,9 +171,7 @@ export function resolveScalePropsBase({
 
     if (isOffsetChannel(channel) && isDiscrete(props.type) && !props.range) {
         const positionChannel = channel == "xOffset" ? "x" : "y";
-        const rangeOwner = memberList[0]?.view;
-        const positionResolution =
-            rangeOwner?.getScaleResolution(positionChannel);
+        const positionResolution = getOwnerScaleResolution?.(positionChannel);
 
         if (positionResolution?.getResolvedScaleType() == "band") {
             // Initialize the dependency before binding the reactive range.

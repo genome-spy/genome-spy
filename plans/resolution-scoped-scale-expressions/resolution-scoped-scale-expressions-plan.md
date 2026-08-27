@@ -220,24 +220,26 @@ subscriptions.
 
 ### Work
 
-- [ ] Replace automatic nested-offset `rangeOwner` selection with lookup of the
+- [x] Replace automatic nested-offset `rangeOwner` selection with lookup of the
       primary scale and width/height through the offset resolution owner.
-- [ ] Initialize offset-scale dependencies without permitting self-resolution
+- [x] Initialize offset-scale dependencies without permitting self-resolution
       re-entry, preserving the current explicit bootstrap behavior.
-- [ ] Hoist the sashimi plot's reactive y-scale declaration to the inner layer
+- [x] Hoist the sashimi plot's reactive y-scale declaration to the inner layer
       that owns the shared y resolution; keep the expression's `domain("x")`,
       width, and height semantics unchanged.
-- [ ] Audit generated symbol and gradient legend pixel scales. Declare each
+- [x] Audit generated symbol and gradient legend pixel scales. Declare each
       reactive pixel domain at its actual resolution owner where practical; if
-      generated resolutions intentionally remain independent, prove that each
-      owning unit has the correct forced geometry.
-- [ ] Ensure member registration/removal refreshes or reconfigures an already
+      generated resolutions intentionally remain excluded within their helper
+      bodies, prove that each body owner receives the forced local geometry.
+- [x] Ensure member registration/removal refreshes or reconfigures an already
       initialized scale when the effective expression-bearing properties
       change, rather than only refreshing domain subscriptions.
-- [ ] Test insertion, removal, replacement, and rehoming of members around an
-      initialized shared resolution. Verify that removed expressions no longer
-      react and that the host scope remains stable until resolution disposal.
-- [ ] Verify resolution disposal invalidates range expression functions and
+- [x] Test insertion, removal, failed-insertion rollback, and the existing
+      reorder/replacement paths around an initialized shared resolution. Verify
+      that removed expressions no longer react and that the host scope remains
+      stable until resolution disposal. Cross-container rehoming is not exposed
+      by the current mutation API and is therefore non-applicable.
+- [x] Verify resolution disposal invalidates range expression functions and
       unsubscribes configured-domain listeners exactly once.
 
 ### Affected areas and consumers

@@ -212,4 +212,49 @@ describe("scale resolution zoomability", () => {
                 'Move the parameter to the resolution-owning view and use push: "outer" if a child must update it.'
         );
     });
+
+    test("dispose unsubscribes configured-domain expressions exactly once", () => {
+        const hostView = createHostView({ foo: 10 });
+        const unsubscribe = vi.fn();
+        const expression = /** @type {any} */ (() => [0, 10]);
+        expression.subscribe = vi.fn(() => unsubscribe);
+        expression.invalidate = vi.fn();
+        expression.identifier = vi.fn(() => "domain-expression");
+        const createExpression = vi
+            .spyOn(hostView.paramRuntime, "createExpression")
+            .mockReturnValue(expression);
+        const resolution = new ScaleResolution("shape", hostView);
+
+        resolution.registerMember(
+            /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
+                channel: "shape",
+                view: /** @type {any} */ ({
+                    /** @returns {import("../spec/config.js").GenomeSpyConfig[]} */
+                    getConfigScopes() {
+                        return [];
+                    },
+                    getPathString: () => "root/a",
+                    isConfiguredVisible: () => true,
+                    isDataInitialized: () => true,
+                    paramRuntime: hostView.paramRuntime,
+                }),
+                channelDef: {
+                    type: "nominal",
+                    scale: {
+                        domain: { expr: "[0, foo]" },
+                        range: ["circle"],
+                    },
+                },
+                contributesToDomain: true,
+            })
+        );
+        resolution.getScale();
+
+        resolution.dispose();
+        resolution.dispose();
+
+        expect(expression.subscribe).toHaveBeenCalledTimes(1);
+        expect(unsubscribe).toHaveBeenCalledTimes(1);
+        createExpression.mockRestore();
+    });
 });

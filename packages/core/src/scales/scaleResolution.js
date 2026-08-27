@@ -612,6 +612,9 @@ export default class ScaleResolution {
         this.#refreshSelectionDomainParamSubscriptions();
         this.#refreshConfiguredDomainExprSubscriptions();
         this.#viewportDomainScheduler.refresh();
+        if (this.#scaleManager.scale && this.#members.size > 0) {
+            this.reconfigure();
+        }
     }
 
     #markMembersDirty() {
@@ -633,15 +636,25 @@ export default class ScaleResolution {
      */
     static registerInBatch(resolutions, callback) {
         const batchedResolutions = Array.from(resolutions);
+        const snapshots = batchedResolutions.map((resolution) => ({
+            resolution,
+            members: new Set(resolution.#members),
+            dataDomainMembers: new Set(resolution.#dataDomainMembers),
+            type: resolution.type,
+            name: resolution.name,
+            batchDepth: resolution.#memberRegistrationBatchDepth,
+            membersDirty: resolution.#membersDirty,
+        }));
         for (const resolution of batchedResolutions) {
             resolution.#memberRegistrationBatchDepth++;
         }
 
         try {
-            return callback();
-        } finally {
+            const result = callback();
             for (const resolution of batchedResolutions) {
                 resolution.#memberRegistrationBatchDepth--;
+            }
+            for (const resolution of batchedResolutions) {
                 if (
                     resolution.#memberRegistrationBatchDepth === 0 &&
                     resolution.#membersDirty
@@ -649,6 +662,37 @@ export default class ScaleResolution {
                     resolution.#syncMembers();
                 }
             }
+            return result;
+        } catch (error) {
+            for (const snapshot of snapshots) {
+                const resolution = snapshot.resolution;
+                resolution.#members = snapshot.members;
+                resolution.#dataDomainMembers = snapshot.dataDomainMembers;
+                resolution.type = snapshot.type;
+                resolution.name = snapshot.name;
+                resolution.#memberRegistrationBatchDepth = snapshot.batchDepth;
+                resolution.#membersDirty = snapshot.membersDirty;
+            }
+
+            // A failed reconfigure may already have replaced scale props or
+            // listeners. Restore every affected resolution before surfacing
+            // the original registration error.
+            try {
+                for (const snapshot of snapshots) {
+                    const resolution = snapshot.resolution;
+                    if (snapshot.batchDepth === 0) {
+                        resolution.#syncMembers();
+                    } else {
+                        resolution.#membersDirty = true;
+                    }
+                }
+            } catch (rollbackError) {
+                if (error && typeof error === "object") {
+                    /** @type {any} */ (error).rollbackError = rollbackError;
+                }
+            }
+
+            throw error;
         }
     }
 
@@ -1099,6 +1143,8 @@ export default class ScaleResolution {
                 viewLevelScaleProps: this.#viewLevelScaleProps,
                 isExplicitDomain: this.isDomainDefinedExplicitly(),
                 configScopes: this.#resolutionView.getConfigScopes(),
+                getOwnerScaleResolution: (channel) =>
+                    this.#resolutionView.getScaleResolution(channel),
             });
             this.#validateLinkedSelectionConfiguration(props);
             this.#validateViewportDomainConfiguration(props);
