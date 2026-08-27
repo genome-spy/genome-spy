@@ -1,6 +1,6 @@
 # Resolution-scoped scale expressions plan
 
-Status: Implemented; ready for review
+Status: Complete
 
 Issue: [#471 Scope scale ExprRefs to their scale resolution](https://github.com/genome-spy/genome-spy/issues/471)
 

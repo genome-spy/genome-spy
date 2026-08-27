@@ -1,6 +1,10 @@
 # Dynamic scale padding feasibility plan
 
-Status: Blocked until #471 is closed
+Status: Discarded from this branch; deferred until #471 is merged and closed
+
+Disposition: Every unchecked task below is intentionally discarded from this
+#471 branch rather than completed. Restore this plan from Git history when the
+separate dynamic-padding feasibility work begins.
 
 Prerequisite: [#471 Scope scale ExprRefs to their scale resolution](https://github.com/genome-spy/genome-spy/issues/471)
 
