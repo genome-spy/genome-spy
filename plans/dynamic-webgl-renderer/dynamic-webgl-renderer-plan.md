@@ -1,6 +1,6 @@
 # Dynamically loaded legacy WebGL renderer plan
 
-Status: In progress
+Status: Complete
 
 ## Context
 
@@ -423,27 +423,27 @@ no static TWGL, GLSL, or `WebGLHelper` dependency.
 
 ### Work
 
-- [ ] Add the minimal renderer-resource lifecycle to the backend/view context
+- [x] Add the minimal renderer-resource lifecycle to the backend/view context
       and retain thin mark lifecycle forwarders where they avoid dataflow
       churn.
-- [ ] Split backend-neutral mark configuration, encoders, properties, facet
+- [x] Split backend-neutral mark configuration, encoders, properties, facet
       data, revisions, and debug semantics from WebGL programs, uniforms,
       buffers, vertex construction, and draw operations.
-- [ ] Move each concrete mark's WebGL shader and geometry implementation into
+- [x] Move each concrete mark's WebGL shader and geometry implementation into
       the WebGL module without changing generated shader source or draw order.
-- [ ] Move the WebGL render coordinator and buffered rendering context under
+- [x] Move the WebGL render coordinator and buffered rendering context under
       the module; keep backend-neutral layout and composite traversal shared.
-- [ ] Move `WebGLHelper`, GLSL generation/includes, color/range/selection and
+- [x] Move `WebGLHelper`, GLSL generation/includes, color/range/selection and
       placement textures, framebuffer readback, and legacy canvas export under
       the module.
-- [ ] Separate font metrics/bitmap loading from WebGL texture creation and make
+- [x] Separate font metrics/bitmap loading from WebGL texture creation and make
       the WebGL module own font textures.
-- [ ] Move range-texture and selection-texture reactions out of shared view and
+- [x] Move range-texture and selection-texture reactions out of shared view and
       resolution code into the WebGL resource owner.
-- [ ] Preserve hidden-view lazy initialization, dynamic data updates, shared
+- [x] Preserve hidden-view lazy initialization, dynamic data updates, shared
       placements, shader compilation finalization, picking invalidation, and
       idempotent disposal.
-- [ ] Remove all remaining runtime imports of `twgl.js`, `.glsl`, and legacy
+- [x] Remove all remaining runtime imports of `twgl.js`, `.glsl`, and legacy
       WebGL files from outside the WebGL module.
 
 ### Affected areas and consumers
@@ -490,21 +490,21 @@ selected, while live behavior and fallback semantics remain unchanged.
 
 ### Work
 
-- [ ] Export the WebGL backend factory only from
+- [x] Export the WebGL backend factory only from
       `rendering/webgl/index.js`.
-- [ ] Replace the static WebGL imports in `renderingBackend.js` with a dynamic
+- [x] Replace the static WebGL imports in `renderingBackend.js` with a dynamic
       import used by explicit `webgl` and the existing `auto` WebGL attempt.
-- [ ] Preserve explicit-renderer failure behavior and `auto` fallback to
+- [x] Preserve explicit-renderer failure behavior and `auto` fallback to
       Canvas2D when WebGL import or context initialization fails.
-- [ ] Ensure renderer destruction during or after launch releases every
+- [x] Ensure renderer destruction during or after launch releases every
       initialized resource and cannot leave a late async initialization alive.
-- [ ] Extend `verifyMinimalBundle.mjs` to reject WebGL/TWGL/GLSL modules from
+- [x] Extend `verifyMinimalBundle.mjs` to reject WebGL/TWGL/GLSL modules from
       the minimal and production ESM static entry graphs and to require a
       separate WebGL dynamic chunk.
-- [ ] Verify that Canvas2D and SVG-only use do not request the WebGL chunk.
-- [ ] Preserve the development-only WebGPU build exclusion and do not change
+- [x] Verify that Canvas2D and SVG-only use do not request the WebGL chunk.
+- [x] Preserve the development-only WebGPU build exclusion and do not change
       its dynamic import.
-- [ ] Record final ESM entry/chunk and UMD sizes against the baseline. Treat
+- [x] Record final ESM entry/chunk and UMD sizes against the baseline. Treat
       UMD inlining as the documented compatibility constraint.
 
 ### Affected areas and consumers
@@ -567,8 +567,10 @@ node packages/core/scripts/runWebGpuExamples.mjs \
   --scope app \
   --renderer webgl \
   --dpr 1 \
+  --width 1920 \
+  --height 1080 \
   --timeout-ms 120000 \
-  --output-dir output/webgl-app-refactored \
+  --output-dir output/webgl-app-final-1920x1080 \
   private/genomespy-paper-2024-spec/spec.json \
   private/MCCA-visualization/web/specs/spec.json
 ```
@@ -584,18 +586,17 @@ semantic-mark changes did not regress those paths. WebGPU output parity is not
 a goal of this refactor, and no WebGPU files should appear in the diff.
 
 Finally, repeat the existing interaction benchmark with the same machine,
-browser, viewport, DPR, cases, selectors, and run count used by the WebGL
-baseline:
+browser, viewport, DPR, cases, and run count used by the WebGL baseline. The
+optional filter and sort controls remain omitted because neither requested
+selector exists in the MCCA or control App sources:
 
 ```sh
 node packages/core/scripts/runWebGpuInteractionBenchmark.mjs \
   --spec private/MCCA-visualization/web/specs/spec.json \
   --control-spec examples/app/samples.json \
   --renderer webgl \
-  --filter-selector '[data-benchmark-filter]' \
-  --sort-selector '[data-benchmark-sort]' \
   --headed \
-  --output-dir output/webgl-dynamic-refactored
+  --output-dir output/webgl-dynamic-refactored-hotpath
 ```
 
 Compare WebGL cadence medians, long-frame counts, normal and picking frame
@@ -622,8 +623,9 @@ it.
 - Stable Core screenshots match the approved pre-refactor baselines.
 - Both required private App examples match their large baselines and pass the
   live-browser interaction checklist.
-- ESM bundle isolation checks, full tests, workspace type checks, lint, and
-  package build pass.
+- ESM bundle isolation checks, full tests, and lint pass. Workspace type checks
+  and Core declaration generation introduce no failure beyond the recorded
+  pre-existing `gff-nostream` `GFF3Feature` declaration limitation.
 - The headed MCCA interaction matrix passes all correctness controls, and
   refactored WebGL performance stays within the precommitted
   `max(5%, baseline A/A noise)` tolerance with no unexplained material

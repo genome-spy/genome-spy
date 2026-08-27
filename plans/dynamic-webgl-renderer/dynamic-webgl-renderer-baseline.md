@@ -55,10 +55,10 @@ node packages/core/scripts/runWebGpuExamples.mjs \
   private/MCCA-visualization/web/specs/spec.json
 ```
 
-| Specification | Visible canvas | Backing canvas | Colors | Non-dominant pixels |
-| --- | ---: | ---: | ---: | ---: |
-| GenomeSpy paper | 1854.36 x 1004.44 | 1920 x 1040 | 674 | 49.26% |
-| MCCA | 1866.15 x 1010.83 | 1920 x 1040 | 693 | 52.40% |
+| Specification   |    Visible canvas | Backing canvas | Colors | Non-dominant pixels |
+| --------------- | ----------------: | -------------: | -----: | ------------------: |
+| GenomeSpy paper | 1854.36 x 1004.44 |    1920 x 1040 |    674 |              49.26% |
+| MCCA            | 1866.15 x 1010.83 |    1920 x 1040 |    693 |              52.40% |
 
 Both captures passed with no console errors, page errors, request failures, or
 rendering failures. Visual inspection confirmed complete lower tracks and
@@ -69,14 +69,14 @@ labels. The only console warning was Lit development mode.
 Both private specifications were opened in the normal App at 1920 x 1080 with
 `renderer=webgl`. Introductory tours were closed before testing.
 
-| Check | GenomeSpy paper | MCCA |
-| --- | --- | --- |
-| Initial domain | `chr1:1-chrM:16,569` | `chr1:1-chrM:16,299` |
-| Domain after wheel zoom | `chr5:40,598,592-chr11:84,326,866` | `chr6:71,246,938-chr13:7,656,622` |
-| Domain after drag pan | `chr4:133,538,221-chr10:120,849,362` | `chr5:127,093,858-chr12:31,797,879` |
-| Hover/picking | Short variant at `chr6:149,683,195` | Copy-ratio interval `chr6:3,072,138-73,885,849` |
-| Resize | 1920 x 1040 to 1600 x 860 | 1920 x 1040 to 1600 x 860 |
-| Wheel/scroll stability | No errors | No errors |
+| Check                   | GenomeSpy paper                      | MCCA                                            |
+| ----------------------- | ------------------------------------ | ----------------------------------------------- |
+| Initial domain          | `chr1:1-chrM:16,569`                 | `chr1:1-chrM:16,299`                            |
+| Domain after wheel zoom | `chr5:40,598,592-chr11:84,326,866`   | `chr6:71,246,938-chr13:7,656,622`               |
+| Domain after drag pan   | `chr4:133,538,221-chr10:120,849,362` | `chr5:127,093,858-chr12:31,797,879`             |
+| Hover/picking           | Short variant at `chr6:149,683,195`  | Copy-ratio interval `chr6:3,072,138-73,885,849` |
+| Resize                  | 1920 x 1040 to 1600 x 860            | 1920 x 1040 to 1600 x 860                       |
+| Wheel/scroll stability  | No errors                            | No errors                                       |
 
 The paper tooltip included the selected variant's REF, ALT, filter, CADD, and
 functional category. The MCCA tooltip included the selected interval, sample,
@@ -86,12 +86,12 @@ and log2 copy ratio. Neither page emitted browser errors during the checks.
 
 The pre-refactor production build reported:
 
-| Artifact | Raw | Gzip |
-| --- | ---: | ---: |
-| UMD `dist/bundle/index.js` | 1,276.41 kB | 473.21 kB |
-| ESM `dist/bundle/index.es.js` | 730.03 kB | 246.87 kB |
-| Minimal ESM verification bundle | 705.21 kB | 240.08 kB |
-| Production ESM verification bundle | 730.06 kB | 246.89 kB |
+| Artifact                           |         Raw |      Gzip |
+| ---------------------------------- | ----------: | --------: |
+| UMD `dist/bundle/index.js`         | 1,276.41 kB | 473.21 kB |
+| ESM `dist/bundle/index.es.js`      |   730.03 kB | 246.87 kB |
+| Minimal ESM verification bundle    |   705.21 kB | 240.08 kB |
+| Production ESM verification bundle |   730.06 kB | 246.89 kB |
 
 `verify:bundle:minimal` passed, but it does not yet assert the intended WebGL
 boundary. The production ESM entry statically contains legacy WebGL code.
@@ -167,3 +167,85 @@ final report, but do not use it alone as the performance gate. Final acceptance
 must also preserve cadence medians, gap counts, interaction correctness, and
 the relevant phase/counter trends. A consistent regression in those signals
 requires investigation even when it falls inside the coarse CPU bound.
+
+## Final verification
+
+Final verification used the completed implementation on 2026-08-28. No file
+under `packages/webgpu-renderer/` or `packages/core/src/rendering/webgpu/`
+changed. WebGPU issue
+[#483](https://github.com/genome-spy/genome-spy/issues/483) remains open with
+the `webgpu` and `enhancement` labels for separate hybrid-SVG work.
+
+### Visual and live-browser parity
+
+The complete WebGL Core screenshot suite was repeated on the final hot path:
+
+- all 192 deterministic PNGs were byte-identical to the accepted baseline;
+- the same 22 specifications containing `random()` produced nondeterministic
+  PNGs and were restored to the accepted baseline; and
+- the same `examples/core/marks/rule/rules.json` stress example was the only
+  harness failure, with its tracked PNG unchanged.
+
+Both private App examples passed a final 1920 x 1080 WebGL capture in
+`output/webgl-app-final-1920x1080`. They reported no console errors, page
+errors, request failures, or rendering failures. Pixel differences from the
+baseline were confined to the bottom-right ready/status text; plots, axes,
+legends, layout, and data marks were unchanged.
+
+| Specification   | Normalized RGB MAE | Pixels over 32 | Difference bounds           |
+| --------------- | -----------------: | -------------: | --------------------------- |
+| GenomeSpy paper |           0.05483% |       0.12510% | 264 x 13 status-text region |
+| MCCA            |           0.04175% |       0.08724% | 265 x 23 status-text region |
+
+The normal App checks were also repeated at 1920 x 1080. The paper example
+zoomed and panned, picked the known `chr6:149,683,195` LATS1 stopgain variant,
+and resized to a 1600 x 860 canvas. MCCA zoomed to
+`chr5:40,421,529-chr11:67,208,093`, panned again, picked copy-ratio interval
+`chr6:27,275,120-149,583,656`, and resized successfully. The browser error log
+remained empty.
+
+### Bundle and compatibility checks
+
+The final production ESM is 607.84 kB (212.65 kB gzip) and its separate dynamic
+WebGL chunk is 166.87 kB (45.63 kB gzip). The compatibility UMD is 1,283.68 kB
+(474.93 kB gzip). `verify:bundle:minimal` proves that WebGL, TWGL, and GLSL are
+absent from the synchronous ESM graph and that the WebGL chunk remains
+reachable dynamically. Runtime network checks confirmed that Canvas2D and SVG
+export do not request the WebGL module, while explicit WebGL selection does.
+
+Canvas2D and WebGPU representative render smokes passed. The WebGPU check was
+render-only; no WebGPU performance benchmark was run after the refactor.
+
+The full Vitest suite passed 3,591 tests in 434 files, with one skipped and two
+todo tests. Lint passed. Workspace TypeScript checking and Core declaration
+generation reached only the recorded pre-existing `gff-nostream` missing
+`GFF3Feature` declaration; bundle generation itself completed. No new typing,
+lint, test, or bundle failure remains.
+
+### WebGL interaction performance
+
+The final headed hardware-backed WebGL-only matrix is in
+`output/webgl-dynamic-refactored-hotpath`:
+
+- 60 samples: 50 passed, 10 correctly inapplicable control closeup samples,
+  and 0 failed;
+- every applicable cell retained a 16.7 ms median animation cadence and one
+  interval above 33.3 ms;
+- MCCA normal-render medians were 0.6-0.7 ms and picking medians were
+  0.7-1.2 ms, stable or lower than baseline except for timer-scale noise; and
+- repeated closeup, hover/picking after motion, and resize controls passed.
+
+The final run is authoritative on Chrome 149 with the Apple M5 ANGLE Metal
+WebGL adapter, a 1200 x 700 viewport, DPR 1, five repetitions, and traces. Its
+measured same-backend A/A bound was 33.3%; the precommitted acceptance bound
+remains the baseline's 100%.
+
+The small control spec consistently measured about 0.03-0.04 ms more render
+work per frame than baseline after extraction. Resolving the delegate once in
+the buffered batch removed the avoidable semantic-mark hop but did not change
+that signal, identifying it as fixed delegate-boundary overhead rather than
+per-instance work. It remains well below one millisecond, does not affect
+cadence or long-frame counts, and is not present as a material regression in
+the representative MCCA workload. Neither baseline nor final summaries emit
+the `layout` or `layoutReplay` phase, so those phases are not claimed as a
+measured comparison.
