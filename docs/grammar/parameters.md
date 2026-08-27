@@ -53,8 +53,8 @@ parameter on the ancestor, then declare a same-named child parameter with
 input bindings in the child write to the ancestor value.
 
 This pattern is useful when a child interaction controls shared state, such as
-a [shared scale expression](./scale.md#scale-expression-scope). The ancestor
-must declare the target parameter before a child can push to it.
+a [reactive shared scale](./scale.md#parameter-scope). The ancestor must declare
+the target parameter before a child can push to it.
 
 ## Numeric Transitions
 
