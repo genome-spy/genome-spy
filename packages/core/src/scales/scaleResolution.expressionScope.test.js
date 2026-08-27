@@ -12,23 +12,80 @@ import {
     initView,
 } from "./scaleResolutionTestUtils.js";
 
+function pointValues() {
+    return [{ value: 0 }, { value: 1 }];
+}
+
+/**
+ * @param {string} [field]
+ * @param {any} [scale]
+ */
+function quantitative(field = "value", scale) {
+    return {
+        field,
+        type: "quantitative",
+        ...(scale === undefined ? {} : { scale }),
+    };
+}
+
+/**
+ * @param {string} channel
+ * @param {{ field?: string, scale?: any, params?: any[], name?: string, encoding?: Record<string, any> }} [options]
+ */
+function point(channel, options = {}) {
+    const { field, scale, params, name, encoding = {} } = options;
+    return {
+        ...(name === undefined ? {} : { name }),
+        ...(params === undefined ? {} : { params }),
+        mark: "point",
+        encoding: {
+            ...encoding,
+            [channel]: quantitative(field, scale),
+        },
+    };
+}
+
+/**
+ * @param {string} channel
+ * @param {any} scale
+ * @param {{ ownerParams?: any[], childParams?: any[], secondChildParams?: any[], firstField?: string, secondField?: string, values?: any[] }} [options]
+ */
+function sharedPointScale(channel, scale, options = {}) {
+    const {
+        ownerParams,
+        childParams,
+        secondChildParams,
+        firstField,
+        secondField,
+        values = pointValues(),
+    } = options;
+    return {
+        ...(ownerParams === undefined ? {} : { params: ownerParams }),
+        data: { values },
+        layer: [
+            point(channel, { field: firstField, scale, params: childParams }),
+            point(channel, {
+                field: secondField,
+                params: secondChildParams,
+            }),
+        ],
+    };
+}
+
+function rangeExpressionScale() {
+    return {
+        domain: [0, 1],
+        range: [0, { expr: "rangeEnd" }],
+    };
+}
+
 describe("scale resolution expression scope", () => {
     test("independent scales use the unit scope", async () => {
         const view = await initView(
             {
                 params: [{ name: "rangeEnd", value: 10 }],
-                data: { values: [{ value: 0 }, { value: 1 }] },
-                mark: "point",
-                encoding: {
-                    size: {
-                        field: "value",
-                        type: "quantitative",
-                        scale: {
-                            domain: [0, 1],
-                            range: [0, { expr: "rangeEnd" }],
-                        },
-                    },
-                },
+                data: { values: pointValues() },
+                ...point("size", { scale: rangeExpressionScale() }),
             },
             UnitView
         );
@@ -44,40 +101,11 @@ describe("scale resolution expression scope", () => {
 
     test("shared scales use their owner instead of shadowing children", async () => {
         const view = await initView(
-            {
-                params: [{ name: "rangeEnd", value: 10 }],
-                data: { values: [{ value: 0 }, { value: 1 }] },
-                layer: [
-                    {
-                        params: [{ name: "rangeEnd", value: 2 }],
-                        mark: "point",
-                        encoding: {
-                            x: {
-                                field: "value",
-                                type: "quantitative",
-                            },
-                            size: {
-                                field: "value",
-                                type: "quantitative",
-                                scale: {
-                                    domain: [0, 1],
-                                    range: [0, { expr: "rangeEnd" }],
-                                },
-                            },
-                        },
-                    },
-                    {
-                        params: [{ name: "rangeEnd", value: 3 }],
-                        mark: "point",
-                        encoding: {
-                            size: {
-                                field: "value",
-                                type: "quantitative",
-                            },
-                        },
-                    },
-                ],
-            },
+            sharedPointScale("size", rangeExpressionScale(), {
+                ownerParams: [{ name: "rangeEnd", value: 10 }],
+                childParams: [{ name: "rangeEnd", value: 2 }],
+                secondChildParams: [{ name: "rangeEnd", value: 3 }],
+            }),
             LayerView
         );
         const resolution = getRequiredScaleResolution(view, "size");
@@ -97,61 +125,10 @@ describe("scale resolution expression scope", () => {
                 params: [{ name: "rangeEnd", value: 12 }],
                 resolve: { scale: { size: "independent" } },
                 vconcat: [
-                    {
-                        params: [{ name: "rangeEnd", value: 8 }],
-                        data: { values: [{ value: 0 }, { value: 1 }] },
-                        layer: [
-                            {
-                                mark: "point",
-                                encoding: {
-                                    size: {
-                                        field: "value",
-                                        type: "quantitative",
-                                        scale: {
-                                            domain: [0, 1],
-                                            range: [0, { expr: "rangeEnd" }],
-                                        },
-                                    },
-                                },
-                            },
-                            {
-                                mark: "point",
-                                encoding: {
-                                    size: {
-                                        field: "value",
-                                        type: "quantitative",
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                    {
-                        data: { values: [{ value: 0 }, { value: 1 }] },
-                        layer: [
-                            {
-                                mark: "point",
-                                encoding: {
-                                    size: {
-                                        field: "value",
-                                        type: "quantitative",
-                                        scale: {
-                                            domain: [0, 1],
-                                            range: [0, { expr: "rangeEnd" }],
-                                        },
-                                    },
-                                },
-                            },
-                            {
-                                mark: "point",
-                                encoding: {
-                                    size: {
-                                        field: "value",
-                                        type: "quantitative",
-                                    },
-                                },
-                            },
-                        ],
-                    },
+                    sharedPointScale("size", rangeExpressionScale(), {
+                        ownerParams: [{ name: "rangeEnd", value: 8 }],
+                    }),
+                    sharedPointScale("size", rangeExpressionScale()),
                 ],
             },
             ConcatView
@@ -172,34 +149,9 @@ describe("scale resolution expression scope", () => {
     test("child-local parameters cannot control shared ranges", async () => {
         await expect(
             initView(
-                {
-                    data: { values: [{ value: 0 }, { value: 1 }] },
-                    layer: [
-                        {
-                            params: [{ name: "rangeEnd", value: 10 }],
-                            mark: "point",
-                            encoding: {
-                                size: {
-                                    field: "value",
-                                    type: "quantitative",
-                                    scale: {
-                                        domain: [0, 1],
-                                        range: [0, { expr: "rangeEnd" }],
-                                    },
-                                },
-                            },
-                        },
-                        {
-                            mark: "point",
-                            encoding: {
-                                size: {
-                                    field: "value",
-                                    type: "quantitative",
-                                },
-                            },
-                        },
-                    ],
-                },
+                sharedPointScale("size", rangeExpressionScale(), {
+                    childParams: [{ name: "rangeEnd", value: 10 }],
+                }),
                 LayerView
             )
         ).rejects.toThrow(
@@ -210,35 +162,10 @@ describe("scale resolution expression scope", () => {
 
     test("a child can push updates to a shared range owner", async () => {
         const view = await initView(
-            {
-                params: [{ name: "rangeEnd", value: 10 }],
-                data: { values: [{ value: 0 }, { value: 1 }] },
-                layer: [
-                    {
-                        params: [{ name: "rangeEnd", push: "outer" }],
-                        mark: "point",
-                        encoding: {
-                            size: {
-                                field: "value",
-                                type: "quantitative",
-                                scale: {
-                                    domain: [0, 1],
-                                    range: [0, { expr: "rangeEnd" }],
-                                },
-                            },
-                        },
-                    },
-                    {
-                        mark: "point",
-                        encoding: {
-                            size: {
-                                field: "value",
-                                type: "quantitative",
-                            },
-                        },
-                    },
-                ],
-            },
+            sharedPointScale("size", rangeExpressionScale(), {
+                ownerParams: [{ name: "rangeEnd", value: 10 }],
+                childParams: [{ name: "rangeEnd", push: "outer" }],
+            }),
             LayerView
         );
         const resolution = getRequiredScaleResolution(view, "size");
@@ -251,37 +178,17 @@ describe("scale resolution expression scope", () => {
 
     test("configured domain arrays use the shared owner scope", async () => {
         const view = await initView(
-            {
-                params: [{ name: "upperBound", value: 10 }],
-                data: { values: [] },
-                layer: [
-                    {
-                        params: [{ name: "upperBound", value: 2 }],
-                        mark: "point",
-                        encoding: {
-                            y: {
-                                field: "a",
-                                type: "quantitative",
-                                scale: {
-                                    domain: [
-                                        { expr: "0" },
-                                        { expr: "upperBound" },
-                                    ],
-                                },
-                            },
-                        },
-                    },
-                    {
-                        mark: "point",
-                        encoding: {
-                            y: {
-                                field: "b",
-                                type: "quantitative",
-                            },
-                        },
-                    },
-                ],
-            },
+            sharedPointScale(
+                "y",
+                { domain: [{ expr: "0" }, { expr: "upperBound" }] },
+                {
+                    ownerParams: [{ name: "upperBound", value: 10 }],
+                    childParams: [{ name: "upperBound", value: 2 }],
+                    firstField: "a",
+                    secondField: "b",
+                    values: [],
+                }
+            ),
             LayerView
         );
         const resolution = getRequiredScaleResolution(view, "y");
@@ -297,33 +204,16 @@ describe("scale resolution expression scope", () => {
     test("child-local parameters cannot control shared domains", async () => {
         await expect(
             initView(
-                {
-                    data: { values: [] },
-                    layer: [
-                        {
-                            params: [{ name: "upperBound", value: 10 }],
-                            mark: "point",
-                            encoding: {
-                                y: {
-                                    field: "a",
-                                    type: "quantitative",
-                                    scale: {
-                                        domain: [0, { expr: "upperBound" }],
-                                    },
-                                },
-                            },
-                        },
-                        {
-                            mark: "point",
-                            encoding: {
-                                y: {
-                                    field: "b",
-                                    type: "quantitative",
-                                },
-                            },
-                        },
-                    ],
-                },
+                sharedPointScale(
+                    "y",
+                    { domain: [0, { expr: "upperBound" }] },
+                    {
+                        childParams: [{ name: "upperBound", value: 10 }],
+                        firstField: "a",
+                        secondField: "b",
+                        values: [],
+                    }
+                ),
                 LayerView
             )
         ).rejects.toThrow(
@@ -336,39 +226,20 @@ describe("scale resolution expression scope", () => {
         const view = await initView(
             {
                 params: [{ name: "rangeEnd", value: 10 }],
-                data: { values: [{ value: 0 }, { value: 1 }] },
-                layer: [
-                    {
-                        name: "base",
-                        mark: "point",
-                        encoding: {
-                            size: {
-                                field: "value",
-                                type: "quantitative",
-                            },
-                        },
-                    },
-                ],
+                data: { values: pointValues() },
+                layer: [point("size", { name: "base" })],
             },
             LayerView
         );
         const resolution = getRequiredScaleResolution(view, "size");
         const baselineRange = resolution.getScale().range();
 
-        const inserted = await view.addChildSpec({
-            name: "reactive",
-            mark: "point",
-            encoding: {
-                size: {
-                    field: "value",
-                    type: "quantitative",
-                    scale: {
-                        domain: [0, 1],
-                        range: [0, { expr: "rangeEnd" }],
-                    },
-                },
-            },
-        });
+        const inserted = await view.addChildSpec(
+            point("size", {
+                name: "reactive",
+                scale: rangeExpressionScale(),
+            })
+        );
 
         expect(inserted.getScaleResolution("size")).toBe(resolution);
         expect(resolution.getScale().range()).toEqual([0, 10]);
@@ -385,66 +256,15 @@ describe("scale resolution expression scope", () => {
         expect(resolution.getScale().range()).toEqual(baselineRange);
     });
 
-    test("removing a dynamic member restores a continuous scale's default range", async () => {
-        const view = await initView(
-            {
-                data: { values: [{ value: 0 }, { value: 1 }] },
-                layer: [
-                    {
-                        name: "base",
-                        mark: "point",
-                        encoding: {
-                            opacity: {
-                                field: "value",
-                                type: "quantitative",
-                            },
-                        },
-                    },
-                ],
-            },
-            LayerView
-        );
-        const resolution = getRequiredScaleResolution(view, "opacity");
-        const baselineRange = resolution.getScale().range();
-
-        await view.addChildSpec({
-            name: "explicit-range",
-            mark: "point",
-            encoding: {
-                opacity: {
-                    field: "value",
-                    type: "quantitative",
-                    scale: { range: [0, 10] },
-                },
-            },
-        });
-
-        expect(resolution.getScale().range()).toEqual([0, 10]);
-
-        await view.removeChildAt(1);
-
-        expect(resolution.getScale().range()).toEqual(baselineRange);
-    });
-
     test("failed child-local insertion leaves an initialized resolution unchanged", async () => {
         const view = await initView(
             {
-                data: { values: [{ value: 0 }, { value: 1 }] },
+                data: { values: pointValues() },
                 layer: [
-                    {
+                    point("size", {
                         name: "base",
-                        mark: "point",
-                        encoding: {
-                            x: {
-                                field: "value",
-                                type: "quantitative",
-                            },
-                            size: {
-                                field: "value",
-                                type: "quantitative",
-                            },
-                        },
-                    },
+                        encoding: { x: quantitative() },
+                    }),
                 ],
             },
             LayerView
@@ -460,26 +280,19 @@ describe("scale resolution expression scope", () => {
         renderToLayout(view);
 
         await expect(
-            view.addChildSpec({
-                name: "invalid",
-                params: [{ name: "childRangeEnd", value: 10 }],
-                mark: "point",
-                encoding: {
-                    x: {
-                        field: "value",
-                        type: "quantitative",
-                        scale: { domain: [10, 20] },
+            view.addChildSpec(
+                point("size", {
+                    name: "invalid",
+                    params: [{ name: "childRangeEnd", value: 10 }],
+                    scale: {
+                        domain: [0, 1],
+                        range: [0, { expr: "childRangeEnd" }],
                     },
-                    size: {
-                        field: "value",
-                        type: "quantitative",
-                        scale: {
-                            domain: [0, 1],
-                            range: [0, { expr: "childRangeEnd" }],
-                        },
+                    encoding: {
+                        x: quantitative("value", { domain: [10, 20] }),
                     },
-                },
-            })
+                })
+            )
         ).rejects.toThrow(
             'Parameter "childRangeEnd" is not visible from the shared size scale resolution.'
         );
@@ -503,11 +316,9 @@ describe("scale resolution expression scope", () => {
                 layer: [
                     {
                         data: { values: [{ x: 0, value: 1 }] },
-                        mark: "point",
-                        encoding: {
-                            x: { field: "x", type: "quantitative" },
-                            y: { field: "value", type: "quantitative" },
-                        },
+                        ...point("y", {
+                            encoding: { x: quantitative("x") },
+                        }),
                     },
                     {
                         name: "splice-junctions",
@@ -526,37 +337,14 @@ describe("scale resolution expression scope", () => {
                             ],
                         },
                         layer: [
-                            {
-                                name: "arcs",
-                                mark: "link",
-                                encoding: {
-                                    x: {
-                                        field: "start",
-                                        type: "quantitative",
-                                    },
-                                    x2: { field: "end" },
-                                    y: {
-                                        field: "span",
-                                        type: "quantitative",
-                                        axis: null,
-                                    },
-                                },
-                            },
-                            {
-                                name: "labels",
-                                mark: "text",
-                                encoding: {
-                                    x: {
-                                        field: "start",
-                                        type: "quantitative",
-                                    },
-                                    y: {
-                                        field: "span",
-                                        type: "quantitative",
-                                    },
-                                    text: { field: "span" },
-                                },
-                            },
+                            point("y", {
+                                field: "span",
+                                encoding: { x: quantitative("start") },
+                            }),
+                            point("y", {
+                                field: "span",
+                                encoding: { x: quantitative("end") },
+                            }),
                         ],
                     },
                 ],

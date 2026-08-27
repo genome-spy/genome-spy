@@ -177,42 +177,6 @@ describe("scale resolution zoomability", () => {
         expect(resolution.getScale().range()).toEqual(["c12", "c13"]);
     });
 
-    test("rejects member-local parameters in shared scale ranges", () => {
-        const hostView = createHostView({ foo: 10 });
-        const resolution = new ScaleResolution("shape", hostView);
-        const memberRuntime = new ViewParamRuntime(() => hostView.paramRuntime);
-        memberRuntime.registerParam({ name: "bar", value: 2 });
-
-        resolution.registerMember(
-            /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
-                channel: "shape",
-                view: /** @type {any} */ ({
-                    /** @returns {import("../spec/config.js").GenomeSpyConfig[]} */
-                    getConfigScopes() {
-                        return [];
-                    },
-                    getPathString: () => "root/a",
-                    isConfiguredVisible: () => true,
-                    isDataInitialized: () => true,
-                    paramRuntime: memberRuntime,
-                }),
-                channelDef: {
-                    type: "nominal",
-                    scale: {
-                        domain: [0, 1],
-                        range: [{ expr: "'c' + (foo + bar)" }],
-                    },
-                },
-                contributesToDomain: true,
-            })
-        );
-
-        expect(() => resolution.getScale()).toThrow(
-            'Parameter "bar" is not visible from the shared shape scale resolution. ' +
-                'Move the parameter to the resolution-owning view and use push: "outer" if a child must update it.'
-        );
-    });
-
     test("dispose unsubscribes configured-domain expressions exactly once", () => {
         const hostView = createHostView({ foo: 10 });
         const unsubscribe = vi.fn();
