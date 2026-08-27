@@ -1,5 +1,4 @@
 import { warnOnce } from "../utils/warning.js";
-import { createWebGLRenderingBackend } from "./webgl/index.js";
 
 /**
  * @typedef {object} RenderingSurface
@@ -93,6 +92,7 @@ export async function createRenderingBackend(options) {
  * @returns {Promise<RenderingBackend>}
  */
 async function createWebGLBackend(options) {
+    const { createWebGLRenderingBackend } = await import("./webgl/index.js");
     return createWebGLRenderingBackend(options);
 }
 

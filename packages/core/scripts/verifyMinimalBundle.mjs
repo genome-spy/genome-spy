@@ -31,6 +31,7 @@ const optionalRenderingDirectories = [
     "src/rendering/immediate/",
     "src/rendering/svg/",
 ];
+const webGlRenderingDirectory = "src/rendering/webgl/";
 const webGpuRenderingDirectory = "src/rendering/webgpu/";
 
 const tempDir = fs.mkdtempSync(
@@ -42,11 +43,13 @@ const productionOutDir = path.join(tempDir, "production");
 try {
     verifyImmediateRenderingImports();
 
-    const minimalSources = await buildAndReadStaticEntrySources(
+    const minimalOutput = await buildEntry(
         "minimal.js",
         "genomeSpyEmbedMinimal",
         minimalOutDir
     );
+    const minimalSources = readStaticEntrySources(minimalOutput, "minimal.js");
+    verifyNoStaticWebGLSources(minimalSources, "Minimal bundle");
 
     for (const forbidden of forbiddenSources) {
         if (minimalSources.some((source) => source.endsWith(forbidden))) {
@@ -63,6 +66,7 @@ try {
             );
         }
     }
+    verifyDynamicWebGLChunk(minimalOutput, "minimal.js");
 
     const productionOutput = await buildEntry(
         "index.js",
@@ -72,6 +76,10 @@ try {
     const productionSources = readStaticEntrySources(
         productionOutput,
         "index.js"
+    );
+    verifyNoStaticWebGLSources(
+        productionSources,
+        "Synchronous production entry"
     );
     for (const forbidden of optionalRenderingDirectories) {
         if (productionSources.some((source) => source.includes(forbidden))) {
@@ -91,19 +99,11 @@ try {
             `Production bundle should not include ${webGpuRenderingDirectory}, but it does.`
         );
     }
+    verifyDynamicWebGLChunk(productionOutput, "index.js");
 
     console.log("Minimal bundle verification passed.");
 } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
-}
-
-/**
- * @param {string} entry
- * @param {string} name
- * @param {string} outDir
- */
-async function buildAndReadStaticEntrySources(entry, name, outDir) {
-    return readStaticEntrySources(await buildEntry(entry, name, outDir), entry);
 }
 
 /**
@@ -156,6 +156,118 @@ function readAllOutputSources(output) {
 }
 
 /**
+ * @param {string[]} sources
+ * @param {string} owner
+ */
+function verifyNoStaticWebGLSources(sources, owner) {
+    const source = sources.find(isWebGLImplementationSource);
+    if (source) {
+        throw new Error(
+            `${owner} should not include WebGL, TWGL, or GLSL sources, but includes ${source}.`
+        );
+    }
+}
+
+/**
+ * @param {Array<import("rollup").OutputChunk | import("rollup").OutputAsset>} output
+ * @param {string} entry
+ */
+function verifyDynamicWebGLChunk(output, entry) {
+    const chunks = output.filter((item) => item.type == "chunk");
+    const chunksByFileName = new Map(
+        chunks.map((chunk) => [chunk.fileName, chunk])
+    );
+    const entryChunk = chunks.find((chunk) => chunk.isEntry);
+    if (!entryChunk) {
+        throw new Error(`Build for ${entry} did not produce an entry chunk.`);
+    }
+
+    const dynamicallyReachable = new Set();
+    const visited = new Set();
+
+    /**
+     * @param {import("rollup").OutputChunk} chunk
+     * @param {boolean} crossedDynamicImport
+     */
+    function visit(chunk, crossedDynamicImport) {
+        const visitKey = `${chunk.fileName}:${crossedDynamicImport}`;
+        if (visited.has(visitKey)) {
+            return;
+        }
+        visited.add(visitKey);
+
+        if (crossedDynamicImport) {
+            dynamicallyReachable.add(chunk.fileName);
+        }
+        for (const importedFile of chunk.imports) {
+            const importedChunk = chunksByFileName.get(importedFile);
+            if (importedChunk) {
+                visit(importedChunk, crossedDynamicImport);
+            }
+        }
+        for (const importedFile of chunk.dynamicImports) {
+            const importedChunk = chunksByFileName.get(importedFile);
+            if (importedChunk) {
+                visit(importedChunk, true);
+            }
+        }
+    }
+
+    visit(entryChunk, false);
+
+    const webGlChunks = chunks.filter((chunk) =>
+        Object.keys(chunk.modules)
+            .map(normalizeSource)
+            .some(isWebGLImplementationSource)
+    );
+    if (!webGlChunks.length) {
+        throw new Error(`Build for ${entry} did not contain a WebGL chunk.`);
+    }
+
+    const factoryChunk = webGlChunks.find((chunk) =>
+        Object.keys(chunk.modules)
+            .map(normalizeSource)
+            .some((source) =>
+                source.endsWith(webGlRenderingDirectory + "index.js")
+            )
+    );
+    if (!factoryChunk) {
+        throw new Error(
+            `Build for ${entry} did not contain ${webGlRenderingDirectory}index.js.`
+        );
+    }
+    if (!dynamicallyReachable.has(factoryChunk.fileName)) {
+        throw new Error(
+            `WebGL factory chunk ${factoryChunk.fileName} is not dynamically reachable from the production entry.`
+        );
+    }
+
+    const unreachableChunk = webGlChunks.find(
+        (chunk) => !dynamicallyReachable.has(chunk.fileName)
+    );
+    if (unreachableChunk) {
+        throw new Error(
+            `WebGL implementation chunk ${unreachableChunk.fileName} is not behind a dynamic import.`
+        );
+    }
+}
+
+/** @param {string} source */
+function isWebGLImplementationSource(source) {
+    const normalized = normalizeSource(source);
+    return (
+        normalized.includes(webGlRenderingDirectory) ||
+        /\/twgl\.js(?:\/|$)/.test(normalized) ||
+        /\.glsl(?:\.js)?(?:\?|$)/.test(normalized)
+    );
+}
+
+/** @param {string} source */
+function normalizeSource(source) {
+    return source.replaceAll("\\", "/");
+}
+
+/**
  * @param {string} entry
  * @param {string} name
  * @param {string} outDir
@@ -202,9 +314,9 @@ async function buildEntry(entry, name, outDir) {
 
 function verifyImmediateRenderingImports() {
     const immediateDir = path.resolve("src/rendering/immediate");
-    const prohibitedDirectories = ["canvas2d", "svg", "webgpu"]
-        .map((name) => path.resolve("src/rendering", name))
-        .concat(path.resolve("src/gl"));
+    const prohibitedDirectories = ["canvas2d", "svg", "webgl", "webgpu"].map(
+        (name) => path.resolve("src/rendering", name)
+    );
     const importPattern = /(?:from\s+|import\s*\()["']([^"']+)["']/g;
 
     for (const file of listJavaScriptFiles(immediateDir)) {
