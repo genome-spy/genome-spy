@@ -385,6 +385,47 @@ describe("scale resolution expression scope", () => {
         expect(resolution.getScale().range()).toEqual(baselineRange);
     });
 
+    test("removing a dynamic member restores a continuous scale's default range", async () => {
+        const view = await initView(
+            {
+                data: { values: [{ value: 0 }, { value: 1 }] },
+                layer: [
+                    {
+                        name: "base",
+                        mark: "point",
+                        encoding: {
+                            opacity: {
+                                field: "value",
+                                type: "quantitative",
+                            },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+        const resolution = getRequiredScaleResolution(view, "opacity");
+        const baselineRange = resolution.getScale().range();
+
+        await view.addChildSpec({
+            name: "explicit-range",
+            mark: "point",
+            encoding: {
+                opacity: {
+                    field: "value",
+                    type: "quantitative",
+                    scale: { range: [0, 10] },
+                },
+            },
+        });
+
+        expect(resolution.getScale().range()).toEqual([0, 10]);
+
+        await view.removeChildAt(1);
+
+        expect(resolution.getScale().range()).toEqual(baselineRange);
+    });
+
     test("failed child-local insertion leaves an initialized resolution unchanged", async () => {
         const view = await initView(
             {

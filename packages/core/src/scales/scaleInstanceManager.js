@@ -13,6 +13,9 @@ export default class ScaleInstanceManager {
     /** @type {ScaleWithProps | undefined} */
     #scale;
 
+    /** @type {any[] | undefined} */
+    #defaultRange;
+
     /** @type {Set<import("../paramRuntime/types.js").ExprRefFunction>} */
     #rangeExprRefListeners = new Set();
 
@@ -56,6 +59,7 @@ export default class ScaleInstanceManager {
     resetScale() {
         this.dispose();
         this.#scale = undefined;
+        this.#defaultRange = undefined;
     }
 
     /**
@@ -92,6 +96,7 @@ export default class ScaleInstanceManager {
         }
 
         this.#scale = /** @type {ScaleWithProps} */ (scale);
+        this.#defaultRange = scale.range();
         this.#bindGenomeIfNeeded(props);
         this.#configureRange();
         this.#wrapScaleInterceptors();
@@ -181,7 +186,13 @@ export default class ScaleInstanceManager {
         });
 
         if (!resolved) {
-            // Named ranges?
+            if (
+                props.scheme === undefined &&
+                props.rangeStep === undefined &&
+                this.#defaultRange
+            ) {
+                scale.range(this.#defaultRange);
+            }
             return;
         }
 
