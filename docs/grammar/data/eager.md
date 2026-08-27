@@ -460,16 +460,16 @@ The type of _FASTA_ format is `"fasta"` as shown in the example below:
 }
 ```
 
-The FASTA loader produces data objects with two fields: `identifier` and
-`sequence`. With the [`"flattenSequence"`](../transform/flatten-sequence.md)
-transform you can split the sequences into individual bases (one object per
-base) for easier visualization.
+The FASTA loader produces records with two fields: `identifier` and `sequence`.
+With the [`"flattenSequence"`](../transform/flatten-sequence.md) transform you
+can split the sequences into individual bases (one row per base) for easier
+visualization.
 
 ### Arrow
 
 [_Apache Arrow_](https://arrow.apache.org/) IPC is a column-oriented binary
 format for transferring tabular data. GenomeSpy supports both the Arrow IPC
-file and stream encodings and materializes their contents as row objects.
+file and stream encodings and materializes their contents as rows.
 
 The format type is `"arrow"`:
 
@@ -503,8 +503,8 @@ tables. Compared to row-oriented text formats, it usually provides better
 compression and faster column scans. For larger datasets, Parquet is strongly
 recommended over delimited text formats because it can be processed much more
 quickly.
-In GenomeSpy, Parquet is decoded into row objects similarly to `"csv"` and
-`"tsv"` formats supported by the `url` data source.
+In GenomeSpy, Parquet is decoded into rows similarly to `"csv"` and `"tsv"`
+formats supported by the `url` data source.
 
 The type of _Parquet_ format is `"parquet"`:
 

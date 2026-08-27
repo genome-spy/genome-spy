@@ -4,7 +4,7 @@
 
 In GenomeSpy, visualizations are built from marks, which are geometric shapes,
 such as points, ticks, arrows, rectangles, and lines, that represent data
-objects (or rows in tabular data). These marks are mapped to the data using the
+records, or rows in a tabular dataset. These marks are mapped to the data using the
 `encoding` property,
 which specifies which visual channels, such as `x`, `color`, and `size`, should
 be used to encode the data fields. By adjusting the encodings, you can present
@@ -65,7 +65,7 @@ properties are suitable for encoding data in a meaningful way.
 }
 ```
 
-The schematic example above uses the `"rect"` mark to represent the data objects.
+The schematic example above uses the `"rect"` mark to represent the data rows.
 The `"from"` field is mapped to the positional `"x"` channel, and so on. You can adjust
 the mapping by specifying a [scale](../scale.md) for the channel.
 
@@ -213,7 +213,7 @@ Some channels carry metadata for interaction features and are not encoded into
 visual mark properties.
 
 `key`
-: Defines a stable identity for data objects. This is used by point-selection
+: Defines a stable identity for rows. This is used by point-selection
   persistence in the GenomeSpy App. The key can be a single field definition
   or an array of field definitions for a composite key. For composite keys, the
   field order is significant.

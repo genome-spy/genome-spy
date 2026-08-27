@@ -1,7 +1,7 @@
 # Lookup
 
 The `"lookup"` transform performs a keyed, one-to-one left outer join: it
-retains every input data object and adds values from a matching lookup-table
+retains every input row and adds values from a matching lookup-table
 row.
 
 The table can use an eager [`data`](../data/eager.md) descriptor. It can contain
@@ -73,8 +73,8 @@ Six-Frame Translation](../../examples/genomic-data/indexed-fasta-six-frame-trans
 
 ## Lookup from the input
 
-Use `{ "source": "input" }` to match records against other records in the input
-data. For example, these records refer to each other through `relatedId`:
+Use `{ "source": "input" }` to match rows against other rows in the input
+data. For example, these rows refer to each other through `relatedId`:
 
 | id  | relatedId | label |
 | --- | --------- | ----- |
@@ -101,19 +101,19 @@ The result is:
 | B   | A         | Beta  | Alpha        |
 | C   | X         | Gamma | null         |
 
-Self-input lookup reads all records from one input file or inline dataset before
-emitting results. Results preserve the original input order. Reading all records
-first allows a record to match another record that appears later in the data.
+Self-input lookup reads all rows from one input file or inline dataset before
+emitting results. Results preserve the original input order. Reading all rows
+first allows a row to match another row that appears later in the data.
 
 When a data source loads multiple files, each file is indexed separately. Keys
 in different files neither match nor conflict. Likewise, if upstream data has
 been divided into facets, each facet is indexed separately.
 
 With lazy or incrementally loaded genomic data, a self-input lookup can only
-match records loaded together. For example, a structural-variant mate outside
+match rows loaded together. For example, a structural-variant mate outside
 the loaded genomic window is unavailable and receives `default`.
 
 When `values` is omitted for a self-input lookup, all non-key fields from the
-matching record replace the corresponding fields in the cloned input record.
+matching row replace the corresponding fields in the cloned input row.
 Use explicit `values` and `as` to retain the original fields and add renamed
 mate fields.

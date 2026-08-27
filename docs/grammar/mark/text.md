@@ -1,6 +1,6 @@
 # Text
 
-Text mark displays each data item as text.
+Text mark displays each row as text.
 
 EXAMPLE examples/docs/grammar/mark/text/text-mark.json height=150
 

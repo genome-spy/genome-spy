@@ -1,6 +1,6 @@
 # Point
 
-Point mark displays each data item as a symbol. Points are often used to create
+Point mark displays each row as a symbol. Points are often used to create
 a scatter plot. In the genomic context, they could represent, for example,
 point mutations at genomic loci.
 
@@ -65,7 +65,7 @@ EXAMPLE examples/docs/grammar/mark/point/geometric-zoom.json
 The score-based semantic zoom adjusts the point visibility by coupling a score
 threshold to current zoom level. The `semanticScore` channel enables the
 semantic zoom and specifies the score field. The `semanticZoomFraction` property
-controls the fraction of data items to show in the fully zoomed-out view, i.e.,
+controls the fraction of rows to show in the fully zoomed-out view, i.e.,
 it specifies the threshold score. The fraction is scaled as the viewport is
 zoomed. Thus, if the data is distributed roughly uniformly along the zoomed
 axis, roughly constant number of points are visible at all zoom levels. The

@@ -88,7 +88,7 @@ export interface MarkPropsBase {
     y2Offset?: number | ExprRef;
 
     /**
-     * Minimum size for WebGL buffers (number of data items).
+     * Minimum size for WebGL buffers (number of rows).
      * Allows for using `bufferSubData()` to update graphics.
      *
      * This property is intended for internal use.

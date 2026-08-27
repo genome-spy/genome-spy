@@ -1,14 +1,14 @@
 # Flatten Compressed Exons
 
 The `"flattenCompressedExons"` transform expands a compact representation of
-gene exons into one datum per exon. This encoding keeps gene annotation data
+gene exons into one row per exon. This encoding keeps gene annotation data
 compact.
 
 It reads the transcript start coordinate from `start` and parses `exons` as
 alternating segment lengths in `gap, exon, gap, exon, ...` order. The first gap
 is typically `0`, so the first exon begins at `start`.
 
-Each output row copies the input datum and adds exon interval fields. By
+Each output row copies the input row and adds exon interval fields. By
 default, these are `exonStart` and `exonEnd`.
 
 See the [RefSeq Gene Annotations with Scored

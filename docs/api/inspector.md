@@ -7,7 +7,7 @@ scale/axis/legend resolutions, dataflow, params, and unit mark state.
 Use the inspector when a visualization does not behave as expected and the
 specification alone does not explain the runtime state. Typical use cases
 include checking which views were created, how scales are shared, which params
-exist, and where data objects flow through transforms.
+exist, and where rows flow through transforms.
 
 ![Inspector screenshot](../img/inspector.avif)
 

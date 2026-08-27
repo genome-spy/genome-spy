@@ -20,7 +20,7 @@ All basic arithmetic operators are supported:
 ```
 
 When using expressions within the data [transformation](./transform/index.md)
-pipeline, the current data object is available in the `datum` variable. Its
+pipeline, the current row is available in the `datum` variable. Its
 properties (fields) can be accessed by using the dot or bracket notation:
 
 <!-- prettier-ignore -->

@@ -1,6 +1,6 @@
 # Link
 
-The `"link"` mark displays each data item as a curve that connects two points.
+The `"link"` mark displays each row as a curve that connects two points.
 The mark can be used to display structural variation and interactions, for
 example. The mark has several different [`linkShape`s](#properties) that control
 how the curve is drawn.

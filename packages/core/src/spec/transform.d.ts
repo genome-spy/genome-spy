@@ -75,7 +75,7 @@ export interface IdentifierParams extends TransformParamsBase {
 export interface ExprFilterParams extends TransformParamsBase {
     type: "filter";
 
-    /** An expression string. The data object is removed if the expression evaluates to false. */
+    /** An expression string. The row is removed if the expression evaluates to false. */
     expr: string;
 }
 
@@ -83,12 +83,12 @@ export interface SelectionFilterParams extends TransformParamsBase {
     type: "filter";
 
     /**
-     * A selection parameter. The data object is removed if it is not part of the selection.
+     * A selection parameter. The row is removed if it is not part of the selection.
      */
     param: string;
 
     /**
-     * If true, the filter retains all data objects when the selection is empty.
+     * If true, the filter retains all rows when the selection is empty.
 
      * **Default:** `true`
      */
@@ -229,7 +229,7 @@ export interface RegexExtractParams extends TransformParamsBase {
     as: string | string[];
 
     /**
-     * Do not complain about invalid input. Just skip it and leave the new fields undefined on the affected datum.
+     * Do not complain about invalid input. Just skip it and leave the new fields undefined on the affected row.
      *
      * **Default:** `false`
      **/
@@ -253,7 +253,7 @@ export interface RegexFoldParams extends TransformParamsBase {
 
     /**
      * An optional regex that matches to fields that should not be included
-     * in the new folded data objects.
+     * in the new folded rows.
      */
     skipRegex?: string;
 
@@ -351,7 +351,7 @@ export interface StackParams extends TransformParamsBase {
     /**
      * The field that contains the base or amino acid. Used for
      * information content calculation when the offset is `"information"`.
-     * The data objects that have `null` in the baseField are considered gaps
+     * Rows that have `null` in the baseField are considered gaps
      * and they are taken into account when scaling the the locus' information
      * content.
      */
@@ -374,8 +374,8 @@ export interface AggregateParams extends TransformParamsBase {
     type: "aggregate";
 
     /**
-     * The fields by which to group the data. If these are not defined, all data
-     * objects will be grouped into a single category.
+     * The fields by which to group the data. If these are not defined, all rows
+     * will be grouped into a single category.
      */
     groupby?: Field[];
 
@@ -482,8 +482,8 @@ export interface FlattenParams extends TransformParamsBase {
     type: "flatten";
 
     /**
-     * The field(s) to flatten. If no field is defined, the data object itself
-     * is treated as an array to be flattened.
+     * The field(s) to flatten. If no field is defined, the input row itself is
+     * treated as an array to be flattened.
      */
     fields?: Field[] | Field;
 
@@ -546,7 +546,7 @@ export interface FlattenSequenceParams extends TransformParamsBase {
 /**
  * Expands a read alignment into one row per CIGAR operation.
  *
- * The output rows preserve the input datum fields, or only the fields listed
+ * The output rows preserve the input row fields, or only the fields listed
  * in `copyFields` when it is defined, and add fixed CIGAR fields: `cigarOp`,
  * `cigarLength`, `cigarStart`, `cigarEnd`, `readStart`, `readEnd`, and
  * `cigarType`. Reference coordinates are 0-based, half-open.
@@ -583,7 +583,7 @@ export interface FlattenCigarParams extends TransformParamsBase {
  *
  * The transform uses the read sequence, CIGAR string, and MD tag. The MD tag is
  * required because ordinary `M` CIGAR operations do not distinguish matches
- * from mismatches. The output rows preserve the input datum fields, or only
+ * from mismatches. The output rows preserve the input row fields, or only
  * the fields listed in `copyFields` when it is defined, and add fixed mismatch
  * fields: `mismatchStart`, `mismatchEnd`, `readOffset`, `base`, `refBase`, and
  * optionally `baseQuality`. Reference coordinates are 0-based, half-open.

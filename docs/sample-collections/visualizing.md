@@ -28,13 +28,13 @@ resolutions.
 
 The GenomeSpy app extends the core library with a new view composition operator
 that allows visualization of multiple samples. In this context, a _sample_ means
-a set of data objects representing an organism, a piece of tissue, a cell line,
+a set of records representing an organism, a piece of tissue, a cell line,
 a single cell, etc. Each sample gets its own track in the visualization, and the
 behavior resembles the _facet_ operator of Vega-Lite. However, there are subtle
 differences in the behavior.
 
 A sample view is defined by the `samples` and `spec` properties. To assign a
-track for a data object, define a sample-identifier field using the `sample`
+track for a row, define a sample-identifier field using the `sample`
 channel. More complex visualizations can be created using the
 [`layer`](../grammar/composition/layer.md) operator. Each composed view may have
 a different data source, enabling concurrent visualization of multiple data

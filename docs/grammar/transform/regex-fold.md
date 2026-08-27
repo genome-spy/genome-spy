@@ -27,7 +27,7 @@ Given the following data:
 }
 ```
 
-The matched columns are folded into new data objects. All others are left
+The matched columns are folded into new rows. All others are left
 intact:
 
 | SNP        | sample | VAF  |

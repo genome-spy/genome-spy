@@ -1,6 +1,6 @@
 # Rect
 
-Rect mark displays each data object as a rectangle.
+Rect mark displays each row as a rectangle.
 
 EXAMPLE examples/docs/grammar/mark/rect/rect-mark.json
 
@@ -47,7 +47,7 @@ evaluates to one of these patterns.
 
 The hatch pattern is currently a mark property, i.e., the same for all instances
 of the mark, but may be promoted to a visual channel in the future to allow
-different hatch patterns for different data points.
+different hatch patterns for different rows.
 
 EXAMPLE examples/docs/grammar/mark/rect/hatch-patterns.json height=200
 

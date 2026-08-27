@@ -3,7 +3,7 @@
 Conditional encoding lets an encoding channel switch between alternative
 definitions based on a [selection
 parameter](./parameters.md#selection-parameters). It is used to highlight the
-selected data items and de-emphasize the rest.
+selected rows and de-emphasize the rest.
 
 The basic pattern is to provide a fallback definition for the channel and one
 or more conditional branches in `condition`:
@@ -19,7 +19,7 @@ or more conditional branches in `condition`:
 }
 ```
 
-When the selection matches the current datum, GenomeSpy uses the definition
+When the selection matches the current row, GenomeSpy uses the definition
 inside `condition`. Otherwise it uses the fallback definition on the channel
 itself.
 

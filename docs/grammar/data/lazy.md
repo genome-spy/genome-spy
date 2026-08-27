@@ -38,7 +38,7 @@ cohort visualizations that load per-sample signal or partitioned variant files.
 The `"indexedFasta"` source enable fast random access to a reference sequence.
 It loads the sequence as three consecutive chuncks that cover and flank the
 currently visible region (domain), allowing the user to rapidly pan the view.
-The chunks are provided as data objects with the following fields: `chrom`
+Each row in the chunks has the following fields: `chrom`
 (string), `start` (integer), and `sequence` (a string of bases).
 
 ### Parameters
@@ -74,7 +74,7 @@ coverage or other signal data stored in BigWig files. It behaves similarly to
 the indexed FASTA source, loading the data in chunks that cover and flank the
 currently visible region. However, the window size automatically adapts to the
 zoom level, and data are fetched in higher resolution when zooming in. The data
-source provides data objects with the following fields: `chrom` (string),
+each row has the following fields: `chrom` (string),
 `start` (integer), `end` (integer), and `score` (number).
 
 For advanced per-sample signal views, BigWig can use
@@ -279,8 +279,8 @@ The data source is based on [GMOD](http://gmod.org/)'s
 The `"axisTicks"` data source generates a set of ticks for the specified channel.
 While GenomeSpy internally uses this data source for generating axis ticks, you
 also have the flexibility to employ it for creating fully customized axes
-according to your requirements. The data source generates data objects with
-`value` and `label` fields.
+according to your requirements. Each generated row has `value` and `label`
+fields.
 
 ### Parameters
 
@@ -297,7 +297,7 @@ EXAMPLE examples/docs/grammar/data/lazy/axis-ticks.json height=80 spechidden
 The `axisGenome` data source, in fact, does not dynamically update data.
 However, it provides a convenient access to the genome (chromosomes) of the
 given channel, allowing creation of customized chromosome ticks or annotations.
-The data source generates data objects with the following fields: `name`, `size`
+Each generated row has the following fields: `name`, `size`
 (in bp), `continuousStart` (linearized coordinate), `continuousEnd`, `odd`
 (boolean), and `number` (1-based index).
 

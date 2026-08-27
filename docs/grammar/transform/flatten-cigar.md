@@ -47,7 +47,7 @@ Given the following data:
 }
 ```
 
-The CIGAR operations are expanded into new data objects. The original fields
+The CIGAR operations are expanded into new rows. The original fields
 are preserved:
 
 | chrom | start | name  | cigar              | cigarOp | cigarLength | cigarStart | cigarEnd | readStart | readEnd | cigarType |

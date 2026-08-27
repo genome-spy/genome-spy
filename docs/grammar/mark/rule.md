@@ -1,6 +1,6 @@
 # Rule
 
-Rule mark displays each data item as a line segment. Rules can span the whole
+Rule mark displays each row as a line segment. Rules can span the whole
 width or height of the view. Alternatively, they may have specific endpoints.
 
 EXAMPLE examples/docs/grammar/mark/rule/rule-mark.json height=150

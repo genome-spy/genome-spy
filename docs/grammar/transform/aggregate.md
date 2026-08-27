@@ -13,7 +13,7 @@ SCHEMA AggregateParams
 
 Aggregate functions are applied to the data fields in each group.
 
-- `"count"`: Count the number of records in each group.
+- `"count"`: Count the number of rows in each group.
 - `"valid"`: Count the number of non-null and non-NaN values.
 - `"sum"`: Sum the values.
 - `"min"`: Find the minimum value.
@@ -43,7 +43,7 @@ Given the following data:
 }
 ```
 
-A new list of data objects is created:
+A new list of rows is created:
 
 | x      | count |
 | ------ | ----- |

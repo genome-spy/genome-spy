@@ -27,7 +27,7 @@ persisted in the GenomeSpy App's bookmarks and provenance history. Use
 `persist: false` to opt out of persistence for ephemeral params (such as hover
 selections) or when `encoding.key` is not defined for point selections.
 
-For point selections, `encoding.key` should uniquely identify data objects.
+For point selections, `encoding.key` should uniquely identify rows.
 You can use either a single field or a composite key (an array of field
 definitions). When using a composite key, keep the field order stable across
 bookmark creation and restore.
@@ -114,7 +114,7 @@ EXAMPLE examples/docs/grammar/parameters/point-selection.json height=250
 
 ### Interval Selection
 
-Interval selections allow for selecting a range of data points along one or two axes.
+Interval selections allow for selecting a range of rows along one or two axes.
 By default, the start gesture depends on whether the brushed channels are
 zoomable:
 
@@ -144,7 +144,7 @@ spanning rectangle, and `"view"` always draws per-view rectangles.
 EXAMPLE examples/docs/grammar/parameters/interval-selection.json height=240
 
 Selections can also drive ["filter"](./transform/filter.md) transforms, allowing for
-aggregating or otherwise transforming only the selected data points. The example
+aggregating or otherwise transforming only the selected rows. The example
 below shows how to aggregate only the brushed penguins from the [Palmer
 Penguins](https://allisonhorst.github.io/palmerpenguins/) dataset.
 

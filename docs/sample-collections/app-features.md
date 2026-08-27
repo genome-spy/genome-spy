@@ -113,9 +113,9 @@ bookmarks, shared state, and provenance history.
 ## Search
 
 The toolbar's location/search field can navigate to features in the data. Use
-the `search` channel on marks that represent searchable data objects.
+the `search` channel on marks that represent searchable rows.
 
-`search` accepts a field definition or an array of field definitions. A datum
+`search` accepts a field definition or an array of field definitions. A row
 matches when any configured field matches the entered term case-insensitively.
 
 ```json title="One searchable field"

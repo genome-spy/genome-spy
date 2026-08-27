@@ -624,7 +624,7 @@ export interface Encoding {
     sample?: FieldDefWithoutScale;
 
     /**
-     * One or more data fields that uniquely identify data objects for stable
+     * One or more data fields that uniquely identify rows for stable
      * point selections and bookmarking across sessions. Unlike `uniqueId` (an
      * implicit surrogate key), key fields must be stable in the source data.
      *
@@ -642,11 +642,11 @@ export interface Encoding {
     uniqueId?: FieldDefWithoutScale;
 
     /**
-     * One or more fields used by the App's location/search input to match
-     * data objects in this view.
+     * One or more fields used by the App's location/search input to match rows
+     * in this view.
      *
      * Use a single field definition for simple search, or an array for
-     * matching against multiple fields. A datum matches when any configured
+     * matching against multiple fields. A row matches when any configured
      * search field matches the entered term.
      */
     search?: SearchDef;

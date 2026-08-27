@@ -27,7 +27,7 @@ in [ggplot2](https://ggplot2.tidyverse.org/) and
 ## A single view specification
 
 Each view specification must have at least the `data` to be visualized, the
-`mark` that will represent the data items, and an `encoding` that specifies how
+`mark` that will represent the rows, and an `encoding` that specifies how
 the fields of data are mapped to the visual channels of the mark. In addition,
 an optional `transform` steps allow for modifying the data before they are
 encoded into mark instances.

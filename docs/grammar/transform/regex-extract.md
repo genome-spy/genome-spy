@@ -1,7 +1,7 @@
 # Regex Extract
 
 The `"regexExtract"` transform extracts groups from a string field
-and adds them to the data objects as new fields.
+and adds them to the rows as new fields.
 
 ## Parameters
 

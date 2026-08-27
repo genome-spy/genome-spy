@@ -12,7 +12,7 @@ extensions for genome visualization.
 
 Visualizations normally use a carefully crafted WebGL-based engine, which
 enables fluid interaction and smooth animation for datasets with several
-million data points. This performance comes from using GPU
+million rows. This performance comes from using GPU
 [shader](https://en.wikipedia.org/wiki/Shader) programs for all
 [scale](grammar/scale.md) transformations and mark rendering, but shaders are
 an implementation detail hidden from end users. A Canvas2D compatibility

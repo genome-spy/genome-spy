@@ -1,9 +1,9 @@
 # Flatten
 
 The `"flatten"` transform converts fields that hold arrays into distinct,
-individual data objects. This creates a new sequence of data, where each
-element encompasses both an extracted array component and all the original
-fields from the corresponding input object.
+individual rows. This creates a new sequence of data, where each output row
+contains both an extracted array component and all the original fields from the
+corresponding input row.
 
 ## Parameters
 
@@ -13,7 +13,7 @@ SCHEMA FlattenParams
 
 ### Single-Field Flattening
 
-This example flattens the array-valued field named `foo`. Note that all fields except `foo` are repeated in every output datum.
+This example flattens the array-valued field named `foo`. Note that all fields except `foo` are repeated in every output row.
 
 ```json
 { "type": "flatten", "fields": ["foo"] }
@@ -100,7 +100,7 @@ this example produces the output:
 { "type": "flatten" }
 ```
 
-This example treats the data objects as arrays that should be flattened. Given the input data
+This example treats each input row as an array that should be flattened. Given the input data
 
 ```json
 [[{ "foo": 1 }], [{ "foo": 2 }, { "foo": 3 }]]

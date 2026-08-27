@@ -1,9 +1,9 @@
 # Data transformation
 
-With transforms, you can build a pipeline that modifies the data before the data
-objects are mapped to mark instances. In an abstract sense, a transformation
-inputs a list of data items and outputs a list of new items that may be
-filtered, modified, or generated from the original items.
+With transforms, you can build a pipeline that modifies the data before rows are
+mapped to mark instances. In an abstract sense, a transformation inputs a list
+of rows and outputs a list of new rows that may be filtered, modified, or
+generated from the original rows.
 
 The data flow is a forest of data sources and subsequent transformations, which may
 form trees. For instance, a layer view might have a data source, which is then
@@ -41,9 +41,9 @@ only the rows that match the predicate [expression](../expressions.md).
 
 Complex visualizations may involve multiple data sources and transformations,
 which can make it difficult to understand the data flow, particularly when no
-data objects appear to pass through the flow. The GenomeSpy Inspector's Dataflow
-panel shows the structure of the data flow and allows you to inspect the
-parameters of each node, the number of propagated data objects, and a preview of
-the first data object that passes through the node. See
+rows appear to pass through the flow. The GenomeSpy Inspector's Dataflow panel
+shows the structure of the data flow and allows you to inspect the parameters of
+each node, the number of propagated rows, and a preview of the first row that
+passes through the node. See
 [Inspector](../../api/inspector.md) for the available App, Playground, and Core
 embed integrations.

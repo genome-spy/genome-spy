@@ -215,13 +215,13 @@ adjacent previous/next buttons.
 ### Selecting related items in genomic tracks
 
 In genomic tracks, the context menu may include a _Select related items_ action
-for point selections. This lets you click one item and then select all items
+for point selections. This lets you click one row and then select all rows
 that share the same field value.
 
 For example, if a clicked structural variant has `clusterId = cl121`, you can
 select all variants with the same `clusterId`.
 
-The menu shows candidate fields from the clicked datum, focusing on
+The menu shows candidate fields from the clicked row, focusing on
 categorical-like fields (typically non-empty strings and booleans).
 
 When visualizing multiple samples, the menu can offer two scopes:

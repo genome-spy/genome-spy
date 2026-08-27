@@ -1,6 +1,6 @@
 # Arrow
 
-The `"arrow"` mark displays each data item as a directed line or ranged
+The `"arrow"` mark displays each row as a directed line or ranged
 segment. It supports horizontal, vertical, and diagonal arrows, making it useful
 for genomic and protein annotations where span and direction both carry meaning,
 such as genes, transcripts, alignments, and directional protein domains, and for

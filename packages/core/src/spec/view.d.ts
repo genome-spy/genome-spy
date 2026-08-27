@@ -417,7 +417,7 @@ export interface UnitSpec extends ViewSpecBase, DynamicOpacitySpec {
     view?: ViewBackground;
 
     /**
-     * The graphical mark presenting the data objects.
+     * The graphical mark presenting the rows.
      */
     mark: MarkType | MarkProps;
 }
