@@ -608,7 +608,9 @@ async function captureInteractionState(page) {
 
 /** @param {import("playwright").Page} page @param {string} caseName */
 async function prepareCase(page, caseName) {
-    if (caseName !== "horizontal-wasd") return;
+    if (caseName !== "horizontal-drag" && caseName !== "horizontal-wasd") {
+        return;
+    }
 
     const canvas = page.locator("#frame canvas");
     const box = await canvas.boundingBox();
@@ -623,7 +625,7 @@ async function prepareCase(page, caseName) {
     const after = await captureInteractionState(page);
     if (!domainsChanged(before.domains, after.domains)) {
         throw new Error(
-            "Could not establish a zoomed domain for horizontal WASD pan."
+            `Could not establish a zoomed domain for ${caseName}.`
         );
     }
 }

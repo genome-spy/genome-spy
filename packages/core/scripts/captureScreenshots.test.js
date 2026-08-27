@@ -9,12 +9,15 @@ describe("captureScreenshots arguments", () => {
                 "--check",
                 "--server-url",
                 "http://127.0.0.1:8080",
+                "--renderer",
+                "webgl",
                 "examples/core/first.json",
             ])
         ).toEqual({
             check: true,
             help: false,
             examplePaths: ["examples/core/first.json"],
+            renderer: "webgl",
             serverUrl: "http://127.0.0.1:8080",
             timeoutMs: 30_000,
             overwrite: undefined,
@@ -24,6 +27,12 @@ describe("captureScreenshots arguments", () => {
     test("rejects writing options in check mode", () => {
         expect(() => parseArgs(["--check", "--overwrite"])).toThrow(
             'Options "--check" and "--overwrite" cannot be combined.'
+        );
+    });
+
+    test("rejects unknown renderers", () => {
+        expect(() => parseArgs(["--renderer", "unknown"])).toThrow(
+            "Unknown renderer: unknown"
         );
     });
 });

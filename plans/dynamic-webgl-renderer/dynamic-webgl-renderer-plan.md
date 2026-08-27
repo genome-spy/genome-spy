@@ -288,30 +288,30 @@ measurements before production code moves.
 
 ### Work
 
-- [ ] Record the current branch revision, Node/npm versions, Playwright
+- [x] Record the current branch revision, Node/npm versions, Playwright
       Chromium version, operating system, and device-pixel-ratio settings used
       for baselines.
-- [ ] Make the Core screenshot command explicitly select `webgl` while
+- [x] Make the Core screenshot command explicitly select `webgl` while
       preserving its current dimensions, readiness waits, and sibling-PNG
       behavior.
-- [ ] Run the complete curated Core screenshot capture twice with overwrite.
+- [x] Run the complete curated Core screenshot capture twice with overwrite.
       Investigate examples that differ between identical runs and document or
       isolate unavoidable instability.
-- [ ] Review refreshed sibling PNGs and commit legitimate baseline changes
+- [x] Review refreshed sibling PNGs and commit legitimate baseline changes
       separately from renderer code.
-- [ ] Capture the two required private App specifications with the App harness
+- [x] Capture the two required private App specifications with the App harness
       at a fixed DPR and at least its existing 1200 x 700 frame. Add
       configurable dimensions before capture if either visualization needs a
       1600 x 1000 or 1920 x 1080 frame.
-- [ ] Preserve ignored/local baseline artifacts for:
+- [x] Preserve ignored/local baseline artifacts for:
       `private/genomespy-paper-2024-spec/spec.json` and
       `private/MCCA-visualization/web/specs/spec.json`.
-- [ ] Open both private specifications in the normal App at a 1920 x 1080
+- [x] Open both private specifications in the normal App at a 1920 x 1080
       viewport with `renderer=webgl`. Record representative zoom, pan, hover,
       tooltip, picking, resize/scroll, and App interaction checks.
-- [ ] Record Core ESM/UMD bundle sizes, the synchronous-entry module set, and
+- [x] Record Core ESM/UMD bundle sizes, the synchronous-entry module set, and
       the WebGL-heavy source inventory.
-- [ ] Run the existing authoritative App interaction benchmark matrix in a
+- [x] Run the existing authoritative App interaction benchmark matrix in a
       headed hardware-backed Chromium session with both WebGL and WebGPU, the
       private MCCA specification, the small App control specification, five
       counterbalanced repetitions, all six interaction cases, and DPR 1.
