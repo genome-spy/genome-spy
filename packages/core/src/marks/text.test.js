@@ -3,6 +3,7 @@ import { initializeViewSubtree } from "../data/flowInit.js";
 import LayerView from "../view/layerView.js";
 import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
+import WebGLTextMark from "../rendering/webgl/marks/text.js";
 
 /**
  * @param {import("../spec/channel.js").PositionDef | import("../spec/channel.js").Position2Def} channelDef
@@ -23,9 +24,12 @@ describe("TextMark", () => {
             },
             UnitView
         );
-        const textMark = /** @type {import("./text.js").default} */ (view.mark);
+        const textMark = /** @type {any} */ (
+            Object.create(WebGLTextMark.prototype)
+        );
+        textMark.mark = { unitView: view };
         const uniformSetter = vi.fn();
-        /** @type {any} */ (textMark).markUniformInfo = {
+        textMark.markUniformInfo = {
             setters: { uTestVector: uniformSetter },
         };
         const requestRender = vi.spyOn(view.context.animator, "requestRender");
@@ -53,7 +57,9 @@ describe("TextMark", () => {
                     text: { expr: "width" },
                 },
             },
-            UnitView
+            UnitView,
+            {},
+            { rendererResources: createNoOpRendererResources() }
         );
 
         view.mark.initializeEncoders();
@@ -68,9 +74,13 @@ describe("TextMark", () => {
         expect(updateGraphicsData).not.toHaveBeenCalled();
 
         view.getCollector().complete();
+        const updatesAfterDataPropagation =
+            updateGraphicsData.mock.calls.length;
         view.paramRuntime.setValue("width", 200);
 
-        expect(updateGraphicsData).toHaveBeenCalledTimes(1);
+        expect(updateGraphicsData).toHaveBeenCalledTimes(
+            updatesAfterDataPropagation + 1
+        );
     });
 
     test("repaints expression updates without rebuilding GPU data in Canvas mode", async () => {
@@ -80,8 +90,7 @@ describe("TextMark", () => {
                 mark: { type: "text", text: { expr: "width" } },
             },
             UnitView,
-            {},
-            { graphicsDataUpdates: false }
+            {}
         );
         view.mark.initializeEncoders();
         initializeViewSubtree(view, view.context.dataFlow);
@@ -188,3 +197,30 @@ describe("TextMark", () => {
         expect(getBand(textView.mark.encoding.x2)).toBeUndefined();
     });
 });
+
+function createNoOpRendererResources() {
+    const delegate = {
+        initializeGraphics: /** @returns {void} */ () => undefined,
+        finalizeGraphicsInitialization: /** @returns {void} */ () => undefined,
+        updateGraphicsData: /** @returns {void} */ () => undefined,
+        deleteGraphicsData: /** @returns {void} */ () => undefined,
+        dispose: /** @returns {void} */ () => undefined,
+        isReady: () => true,
+        getDebugState: () => ({
+            markUniformsAltered: false,
+            rangeCount: 0,
+        }),
+        prepareRender: /** @returns {Array<() => void>} */ () => [],
+        render: /** @returns {undefined} */ () => undefined,
+        setViewport: () => true,
+    };
+    return {
+        createMark: () => delegate,
+        updateScaleResolution: /** @returns {void} */ () => undefined,
+        loadFontResource: () => ({
+            resource: /** @type {unknown} */ (undefined),
+            ready: Promise.resolve(),
+        }),
+        dispose: /** @returns {void} */ () => undefined,
+    };
+}

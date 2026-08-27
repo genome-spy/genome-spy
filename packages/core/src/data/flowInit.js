@@ -103,7 +103,7 @@ export function findAncestorDataSource(node) {
  * - discovers the nearest data sources for views in the subtree
  * - initializes dataflow nodes (initialize) for those sources
  * - initializes mark encoders for unit views
- * - queues graphics initialization (if a GL context exists)
+ * - queues retained graphics initialization when the backend provides it
  * - wires collector observers so marks update on data arrival
  *
  * How to use it:
@@ -117,8 +117,7 @@ export function findAncestorDataSource(node) {
  * - this does not trigger data loading; callers decide when to load
  * - data sources are derived by walking to the nearest ancestor source; nested
  *   sources should be treated as boundaries (do not walk past them)
- * - only call updateGraphicsData when graphics are initialized or a GL context
- *   is available; headless/test contexts must avoid WebGL usage
+ * - only call updateGraphicsData when retained renderer resources are available
  * - loadViewSubtreeData emits a subtree-scoped "subtreeDataReady" broadcast
  *
  * TODO:
@@ -190,11 +189,11 @@ export function initializeViewSubtree(
     /** @type {Promise<import("../marks/mark.js").default>[]} */
     const graphicsPromises = [];
 
-    const canInitializeGraphics = !!subtreeRoot.context.glHelper;
+    const canInitializeGraphics = !!subtreeRoot.context.rendererResources;
 
     for (const view of unitViews) {
         const mark = view.mark;
-        // Encoders can be initialized immediately; graphics need a GL context.
+        // Encoders are backend-neutral; retained graphics are optional.
         mark.initializeEncoders();
         view.registerDomainSubscriptions();
         if (canInitializeGraphics) {

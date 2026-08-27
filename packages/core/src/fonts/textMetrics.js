@@ -2,7 +2,7 @@
  * @typedef {import("./bmFontManager.js").BMFontMetrics} BMFontMetrics
  * @typedef {import("../spec/font.js").FontStyle} FontStyle
  * @typedef {import("../spec/font.js").FontWeight} FontWeight
- * @typedef {{ metrics?: BMFontMetrics, texture?: WebGLTexture, bitmapUrl?: string }} FontEntryLike
+ * @typedef {{ metrics?: BMFontMetrics, rendererResource?: unknown, bitmapUrl?: string }} FontEntryLike
  * @typedef {{
  *     font?: string,
  *     fontStyle?: FontStyle,

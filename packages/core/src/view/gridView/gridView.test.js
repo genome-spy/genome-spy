@@ -10,7 +10,7 @@ import { normalizeClipOptions } from "../renderingContext/clipOptions.js";
 import UnitView from "../unitView.js";
 import AxisView from "../axisView.js";
 import { createAndInitialize, createTestViewContext } from "../testUtils.js";
-import { createLogicalVisibleRect } from "../../marks/mark.js";
+import { createLogicalVisibleRect } from "../../rendering/webgl/marks/webGlMark.js";
 import { isChromeView } from "../viewSelectors.js";
 
 // Minimal context for layout-driven render calls without WebGL.

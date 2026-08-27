@@ -100,8 +100,7 @@ function createHeadlessAnimator() {
  *   highlightView?: (view: import("../view/view.js").default | null) => void,
  *   isViewConfiguredVisible?: (view: import("../view/view.js").default) => boolean,
  *   isViewSpec?: (spec: any) => boolean,
- *   glHelper?: import("../gl/webGLHelper.js").default,
- *   graphicsDataUpdates?: boolean,
+ *   rendererResources?: import("../types/viewContext.js").RendererResources,
  * }} [options]
  * @returns {ViewContext}
  */
@@ -121,11 +120,9 @@ export function createHeadlessViewContext(options = {}) {
         });
 
     return createViewContext({
-        allowMissingGlHelper: true,
         dataFlow,
         genomeStore,
-        glHelper: options.glHelper,
-        graphicsDataUpdates: options.graphicsDataUpdates,
+        rendererResources: options.rendererResources,
         fontManager: options.fontManager ?? new BmFontManager(),
         animator: options.animator ?? createHeadlessAnimator(),
         requestLayoutReflow: options.requestLayoutReflow ?? (() => undefined),

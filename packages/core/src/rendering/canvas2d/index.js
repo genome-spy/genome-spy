@@ -11,7 +11,6 @@ export function createCanvas2DRenderingBackend(options) {
     const surface = new Canvas2DSurface(options);
     return {
         surface,
-        glHelper: undefined,
         createRenderCoordinator: (coordinatorOptions) =>
             new Canvas2DRenderCoordinator({
                 ...coordinatorOptions,

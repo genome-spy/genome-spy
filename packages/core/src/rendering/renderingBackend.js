@@ -1,8 +1,5 @@
-import WebGLHelper, { readPickingPixel } from "../gl/webGLHelper.js";
-import RenderCoordinator from "../genomeSpy/renderCoordinator.js";
 import { warnOnce } from "../utils/warning.js";
-import { exportCanvas, exportRaster } from "../genomeSpy/canvasExport.js";
-import { rasterizeSvgRuns } from "./svg/raster/webgl.js";
+import { createWebGLRenderingBackend } from "./webgl/index.js";
 
 /**
  * @typedef {object} RenderingSurface
@@ -43,10 +40,11 @@ import { rasterizeSvgRuns } from "./svg/raster/webgl.js";
 /**
  * @typedef {object} RenderingBackend
  * @property {RenderingSurface} surface
- * @property {WebGLHelper | undefined} glHelper
- * @property {(options: Omit<ConstructorParameters<typeof RenderCoordinator>[0], "glHelper">) => RenderingCoordinator} createRenderCoordinator
+ * @property {undefined} [glHelper] Legacy field retained for the unchanged WebGPU adapter.
+ * @property {import("../types/viewContext.js").RendererResources} [rendererResources]
+ * @property {(options: {viewRoot: import("../view/view.js").default, getBackground: () => string, broadcast: (type: import("../genomeSpy.js").BroadcastEventType, payload?: any) => void, onLayoutComputed: () => void}) => RenderingCoordinator} createRenderCoordinator
  * @property {(x: number, y: number) => number | null | Promise<number | null>} [readPickingId]
- * @property {(options: Omit<Parameters<typeof exportCanvas>[0], "glHelper">) => string} exportCanvas
+ * @property {(options: RasterExportOptions & {devicePixelRatio?: number}) => string} exportCanvas
  * @property {(options: RasterExportOptions) => Promise<Blob>} [exportRaster]
  * @property {(options: SvgRunRasterizationOptions) => void | Promise<void>} [rasterizeSvgRuns]
  */
@@ -76,7 +74,7 @@ export async function createRenderingBackend(options) {
     }
 
     try {
-        return createWebGLBackend(options);
+        return await createWebGLBackend(options);
     } catch (error) {
         if (options.renderer == "webgl") {
             throw error;
@@ -92,43 +90,10 @@ export async function createRenderingBackend(options) {
 
 /**
  * @param {RenderingBackendOptions} options
- * @returns {RenderingBackend}
+ * @returns {Promise<RenderingBackend>}
  */
-function createWebGLBackend(options) {
-    const glHelper = new WebGLHelper(
-        options.container,
-        options.sizeSource,
-        { powerPreference: options.powerPreference },
-        options.onCanvasResize
-    );
-
-    return {
-        surface: glHelper,
-        glHelper,
-        createRenderCoordinator: (coordinatorOptions) =>
-            new RenderCoordinator({
-                ...coordinatorOptions,
-                glHelper,
-            }),
-        exportCanvas: (exportOptions) =>
-            exportCanvas({ ...exportOptions, glHelper }),
-        exportRaster: (exportOptions) =>
-            exportRaster({ ...exportOptions, glHelper }),
-        rasterizeSvgRuns: (rasterOptions) =>
-            rasterizeSvgRuns({ ...rasterOptions, webGLHelper: glHelper }),
-        readPickingId: (x, y) => {
-            const dpr = glHelper.getDevicePixelRatio();
-            const pixel = readPickingPixel(
-                glHelper.gl,
-                glHelper._pickingBufferInfo,
-                x * dpr,
-                y * dpr
-            );
-            return (
-                pixel[0] | (pixel[1] << 8) | (pixel[2] << 16) | (pixel[3] << 24)
-            );
-        },
-    };
+async function createWebGLBackend(options) {
+    return createWebGLRenderingBackend(options);
 }
 
 /**

@@ -10,12 +10,12 @@ vi.mock("twgl.js", () => ({
     createFramebufferInfo: mocks.createFramebufferInfo,
 }));
 
-vi.mock("../gl/framebufferReadback.js", () => ({
+vi.mock("./gl/framebufferReadback.js", () => ({
     framebufferToBlob: mocks.framebufferToBlob,
     framebufferToDataUrl: vi.fn(),
 }));
 
-vi.mock("../view/renderingContext/bufferedViewRenderingContext.js", () => ({
+vi.mock("./bufferedViewRenderingContext.js", () => ({
     default: class {
         /** @param {object} _globalOptions @param {any} options */
         constructor(_globalOptions, options) {

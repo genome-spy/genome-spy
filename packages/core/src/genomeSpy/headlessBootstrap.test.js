@@ -26,7 +26,7 @@ describe("headless bootstrap", () => {
         );
 
         expect(view).toBeInstanceOf(UnitView);
-        expect(context.glHelper).toBeUndefined();
+        expect(context.rendererResources).toBeUndefined();
         expect(view.getDataInitializationState()).toBe("ready");
         expect(view.flowHandle?.collector).toBeDefined();
         expect(r(view.getScaleResolution("x").getDataDomain())).toEqual([1, 3]);

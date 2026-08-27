@@ -18,8 +18,8 @@ function createCoordinator({
 
     const root = {
         /**
-         * @param {import("../view/renderingContext/viewRenderingContext.js").default} _context
-         * @param {import("../view/layout/rectangle.js").default} coords
+         * @param {import("../../view/renderingContext/viewRenderingContext.js").default} _context
+         * @param {import("../../view/layout/rectangle.js").default} coords
          */
         arrange(_context, coords) {
             renderedSizes.push({

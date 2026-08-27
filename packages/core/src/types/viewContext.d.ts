@@ -1,7 +1,6 @@
 import { TemplateResult } from "lit";
 import View, { BroadcastMessage } from "../view/view.js";
 import DataFlow from "../data/dataFlow.js";
-import WebGLHelper from "../gl/webGLHelper.js";
 import Animator from "../utils/animator.js";
 import GenomeStore from "../genome/genomeStore.js";
 import BmFontManager from "../fonts/bmFontManager.js";
@@ -12,6 +11,56 @@ import ContainerView from "../view/containerView.js";
 import { BroadcastEventType } from "../genomeSpy.js";
 import { AxisLabelClipPolicy } from "../view/axisView.js";
 import { PrimaryPositionalChannel } from "../spec/channel.js";
+import ScaleResolution from "../scales/scaleResolution.js";
+import {
+    ClipOptions,
+    GlobalRenderingOptions,
+    RenderingOptions,
+} from "./rendering.js";
+
+export type MarkRenderingOptions = RenderingOptions &
+    GlobalRenderingOptions & {
+        skipViewportSetup?: boolean;
+    };
+
+export interface MarkGraphicsDebugState {
+    markUniformsAltered: boolean;
+    vertexCount?: number;
+    allocatedVertices?: number;
+    rangeCount: number;
+}
+
+export interface MarkRenderingDelegate {
+    initializeGraphics(): void | Promise<void>;
+    finalizeGraphicsInitialization(): void;
+    updateGraphicsData(): void;
+    deleteGraphicsData(): void;
+    dispose(): void;
+    isReady(): boolean;
+    getDebugState(): MarkGraphicsDebugState;
+    prepareRender(options: MarkRenderingOptions): Array<() => void>;
+    render(options: MarkRenderingOptions): (() => void) | undefined;
+    setViewport(
+        canvasSize: { width: number; height: number },
+        dpr: number,
+        coords: import("../view/layout/rectangle.js").default,
+        clip?: ClipOptions,
+        cullClip?: ClipOptions,
+        pixelOffset?: number
+    ): boolean;
+}
+
+export interface RendererResourceLoad {
+    resource: unknown;
+    ready: Promise<void>;
+}
+
+export interface RendererResources {
+    createMark(mark: Mark): MarkRenderingDelegate;
+    updateScaleResolution(scaleResolution: ScaleResolution): void;
+    loadFontResource(bitmapUrl: string): RendererResourceLoad;
+    dispose(): void;
+}
 
 export interface Hover {
     mark: Mark;
@@ -43,8 +92,7 @@ export type CreateViewOptions = ViewOptions;
  */
 export default interface ViewContext {
     dataFlow: DataFlow;
-    glHelper?: WebGLHelper;
-    graphicsDataUpdates?: boolean;
+    rendererResources?: RendererResources;
     animator: Animator;
     genomeStore?: GenomeStore;
     fontManager: BmFontManager;

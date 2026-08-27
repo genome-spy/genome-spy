@@ -75,8 +75,13 @@ export default class GenomeSpy {
     #inputBindingManager;
     /** @type {InteractionController} */
     #interactionController;
-    /** @type {import("./rendering/renderingBackend.js").RenderingBackend} */
+    /** @type {import("./rendering/renderingBackend.js").RenderingBackend | undefined} */
     #renderingBackend;
+
+    /** @type {View | undefined} */
+    #disposedViewRoot;
+
+    #backendDisposed = false;
 
     #destroyed = false;
     #launchPending = false;
@@ -157,10 +162,6 @@ export default class GenomeSpy {
 
     get #surface() {
         return this.#renderingBackend.surface;
-    }
-
-    get #glHelper() {
-        return this.#renderingBackend.glHelper;
     }
 
     #initializeParameterBindings() {
@@ -307,7 +308,7 @@ export default class GenomeSpy {
         const { canvasWrapper, loadingIndicatorsElement, tooltip } =
             createContainerUi(this.container);
 
-        this.#renderingBackend = await createRenderingBackend({
+        const renderingBackend = await createRenderingBackend({
             renderer: this.options.renderer ?? "auto",
             container: canvasWrapper,
             sizeSource: () =>
@@ -321,6 +322,13 @@ export default class GenomeSpy {
             onRenderInvalidated: () => this.animator.requestRender(),
             onError: (error) => this.#reportRuntimeError(error),
         });
+
+        if (this.#destroyed) {
+            renderingBackend.rendererResources?.dispose();
+            renderingBackend.surface.finalize();
+            throw new Error("GenomeSpy was destroyed during launch.");
+        }
+        this.#renderingBackend = renderingBackend;
 
         canvasWrapper.appendChild(loadingIndicatorsElement);
 
@@ -346,20 +354,32 @@ export default class GenomeSpy {
         const canvasWrapper = this.#canvasWrapper;
 
         this.container.classList.remove("genome-spy");
-        canvasWrapper.classList.remove("loading");
+        canvasWrapper?.classList.remove("loading");
 
         this.#keyboardListenerManager.removeAll();
 
         this.#destructionCallbacks.forEach((callback) => callback());
 
-        this.#surface.finalize();
+        this.#disposeInitializedResources();
 
         this.#inputBindingManager.remove();
 
-        this.#loadingIndicatorManager.destroy();
+        this.#loadingIndicatorManager?.destroy();
 
         while (this.container.firstChild) {
             this.container.firstChild.remove();
+        }
+    }
+
+    #disposeInitializedResources() {
+        if (this.viewRoot && this.#disposedViewRoot !== this.viewRoot) {
+            this.viewRoot.disposeSubtree();
+            this.#disposedViewRoot = this.viewRoot;
+        }
+        if (this.#renderingBackend && !this.#backendDisposed) {
+            this.#renderingBackend.rendererResources?.dispose();
+            this.#renderingBackend.surface.finalize();
+            this.#backendDisposed = true;
         }
     }
 
@@ -402,12 +422,17 @@ export default class GenomeSpy {
 
         return createViewContext({
             dataFlow,
-            glHelper: this.#glHelper,
-            allowMissingGlHelper: !this.#glHelper,
-            graphicsDataUpdates: !!this.#glHelper,
+            rendererResources: this.#renderingBackend.rendererResources,
             animator: this.animator,
             genomeStore: this.genomeStore,
-            fontManager: new BmFontManager(this.#glHelper),
+            fontManager: new BmFontManager(
+                this.#renderingBackend.rendererResources
+                    ? (bitmapUrl) =>
+                          this.#renderingBackend.rendererResources.loadFontResource(
+                              bitmapUrl
+                          )
+                    : undefined
+            ),
             updateTooltip: this.updateTooltip.bind(this),
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),
             getCurrentHover: () =>
@@ -594,7 +619,10 @@ export default class GenomeSpy {
             return false;
         } finally {
             this.#launchPending = false;
-            this.#canvasWrapper.classList.remove("loading");
+            this.#canvasWrapper?.classList.remove("loading");
+            if (this.#destroyed) {
+                this.#disposeInitializedResources();
+            }
             if (launched && this.viewRoot) {
                 this.#loadingStatusRegistry.set(this.viewRoot, "complete");
             }
@@ -613,6 +641,9 @@ export default class GenomeSpy {
     }
 
     #throwIfLaunchFailed() {
+        if (this.#destroyed) {
+            throw new Error("GenomeSpy was destroyed during launch.");
+        }
         if (this.#launchRuntimeError) {
             throw this.#launchRuntimeError;
         }

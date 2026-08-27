@@ -2,8 +2,11 @@ import { InternMap } from "internmap";
 import { format } from "d3-format";
 import { isString } from "vega-util";
 import ArrayBuilder from "./arrayBuilder.js";
-import { SDF_PADDING } from "../fonts/bmFontMetrics.js";
-import { getEncoderDataAccessor, isValueDef } from "../encoder/encoder.js";
+import { SDF_PADDING } from "../../../fonts/bmFontMetrics.js";
+import {
+    getEncoderDataAccessor,
+    isValueDef,
+} from "../../../encoder/encoder.js";
 import {
     HIGH_PRECISION_SPLIT_BASE,
     dedupeEncodingFields,
@@ -12,24 +15,24 @@ import {
     splitLargeHighPrecision,
 } from "./glslScaleGenerator.js";
 import { isContinuous } from "vega-scale";
-import createIndexer from "../utils/indexer.js";
+import createIndexer from "../../../utils/indexer.js";
 import { createVertexRangeIndexer } from "./vertexRangeIndex.js";
 
 /**
  * @typedef {object} RangeEntry Represents a location of a vertex subset
  * @prop {number} offset in vertices
  * @prop {number} count in vertices
- * @prop {import("../utils/binnedIndex.js").Lookup} xIndex
+ * @prop {import("../../../utils/binnedIndex.js").Lookup} xIndex
  */
 export class GeometryBuilder {
     /**
      * @typedef {import("./arrayBuilder.js").ConverterMetadata} Converter
-     * @typedef {import("../types/encoder.js").Encoder} Encoder
+     * @typedef {import("../../../types/encoder.js").Encoder} Encoder
      */
 
     /**
      * @param {object} object
-     * @param {Record<import("../spec/channel.js").Channel, Encoder>} object.encoders
+     * @param {Record<import("../../../spec/channel.js").Channel, Encoder>} object.encoders
      * @param {string[]} [object.attributes]
      * @param {number} [object.numVertices] If the number of data items is known, a
      *      preallocated TypedArray is used
@@ -40,7 +43,7 @@ export class GeometryBuilder {
         // Encoders for variable channels
 
         this.variableEncoders =
-            /** @type {Record<import("../spec/channel.js").Channel, Encoder>} */ (
+            /** @type {Record<import("../../../spec/channel.js").Channel, Encoder>} */ (
                 Object.fromEntries(
                     Object.entries(encoders).filter(
                         ([channel, e]) =>
@@ -58,7 +61,7 @@ export class GeometryBuilder {
         this.allocatedVertices = numVertices;
 
         this.variableBuilder = new ArrayBuilder(numVertices);
-        /** @type {Partial<Record<import("../spec/channel.js").Channel, string>>} */
+        /** @type {Partial<Record<import("../../../spec/channel.js").Channel, string>>} */
         this.attributeNames = {};
 
         // Create converters and updaters for all variable channels.
@@ -135,7 +138,7 @@ export class GeometryBuilder {
         const xEncoder = this.variableEncoders.x;
         const x2Encoder = this.variableEncoders.x2;
         const xChannelDef =
-            /** @type {import("../spec/channel.js").Encoding["x"] | undefined} */ (
+            /** @type {import("../../../spec/channel.js").Encoding["x"] | undefined} */ (
                 this.encoders.x?.channelDef
             );
         const xScale = xEncoder?.scale;
@@ -219,7 +222,7 @@ export class GeometryBuilder {
      *
      * @param {number} startVertexIndex
      * @param {number} endVertexIndex
-     * @returns {import("../utils/binnedIndex.js").Lookup | undefined}
+     * @returns {import("../../../utils/binnedIndex.js").Lookup | undefined}
      */
     createXIndex(startVertexIndex, endVertexIndex) {
         const config = this.xIndexConfig;
@@ -494,7 +497,7 @@ export class TextVertexBuilder extends GeometryBuilder {
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
-     * @param {import("../fonts/bmFontMetrics.js").BMFontMetrics} object.fontMetrics
+     * @param {import("../../../fonts/bmFontMetrics.js").BMFontMetrics} object.fontMetrics
      * @param {Record<string, any>} object.properties
      * @param {number} [object.numCharacters] number of characters
      * @param {boolean} [object.logoLetters]
@@ -519,9 +522,10 @@ export class TextVertexBuilder extends GeometryBuilder {
 
         const e = encoders;
 
-        const channelDef = /** @type {import("../spec/channel.js").TextDef} */ (
-            e.text.channelDef
-        );
+        const channelDef =
+            /** @type {import("../../../spec/channel.js").TextDef} */ (
+                e.text.channelDef
+            );
         /** @type {(value: any) => string} */
         this.numberFormat =
             !isValueDef(channelDef) &&

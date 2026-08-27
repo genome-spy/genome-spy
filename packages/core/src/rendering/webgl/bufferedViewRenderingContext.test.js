@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import Rectangle from "../layout/rectangle.js";
+import Rectangle from "../../view/layout/rectangle.js";
 import BufferedViewRenderingContext from "./bufferedViewRenderingContext.js";
 
 describe("BufferedViewRenderingContext", () => {
@@ -10,7 +10,7 @@ describe("BufferedViewRenderingContext", () => {
             { picking: false },
             {
                 webGLHelper:
-                    /** @type {import("../../gl/webGLHelper.js").default} */ (
+                    /** @type {import("./gl/webGLHelper.js").default} */ (
                         /** @type {unknown} */ ({ gl: {} })
                     ),
                 canvasSize: { width: 100, height: 100 },
@@ -47,7 +47,7 @@ describe("BufferedViewRenderingContext", () => {
             })
         );
         const placement = {
-            source: /** @type {import("../layout/placementSource.js").default} */ (
+            source: /** @type {import("../../view/layout/placementSource.js").default} */ (
                 /** @type {unknown} */ ({})
             ),
         };
@@ -81,7 +81,7 @@ describe("BufferedViewRenderingContext", () => {
             draws++;
         };
 
-        const view = /** @type {import("../view.js").default} */ (
+        const view = /** @type {import("../../view/view.js").default} */ (
             /** @type {unknown} */ ({ onBeforeRender })
         );
         const mark = /** @type {import("../../marks/mark.js").default} */ (
@@ -99,7 +99,7 @@ describe("BufferedViewRenderingContext", () => {
             { picking: false },
             {
                 webGLHelper:
-                    /** @type {import("../../gl/webGLHelper.js").default} */ (
+                    /** @type {import("./gl/webGLHelper.js").default} */ (
                         /** @type {unknown} */ ({ gl })
                     ),
                 canvasSize: { width: 100, height: 100 },

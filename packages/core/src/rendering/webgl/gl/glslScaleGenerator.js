@@ -12,16 +12,16 @@ import {
     isDiscreteChannel,
     getPrimaryChannel,
     isFieldDef,
-} from "../encoder/encoder.js";
-import { asArray, peek } from "../utils/arrayUtils.js";
+} from "../../../encoder/encoder.js";
+import { asArray, peek } from "../../../utils/arrayUtils.js";
 import { InternMap } from "internmap";
-import { isExprRef } from "../paramRuntime/paramUtils.js";
-import scaleNull from "../utils/scaleNull.js";
+import { isExprRef } from "../../../paramRuntime/paramUtils.js";
+import scaleNull from "../../../utils/scaleNull.js";
 import { cssColorToArray } from "./colorUtils.js";
 import {
     isIndexLikeDomainType,
     isLargeIndexDomain,
-} from "../scales/indexLikeDomainUtils.js";
+} from "../../../scales/indexLikeDomainUtils.js";
 
 export const ATTRIBUTE_PREFIX = "attr_";
 export const DOMAIN_PREFIX = "uDomain_";
@@ -37,7 +37,7 @@ export const SELECTION_CHECKER_PREFIX = "checkSelection_";
 const FLT_MAX = 3.402823466e38;
 
 /**
- * @typedef {import("../spec/channel.js").Channel} Channel
+ * @typedef {import("../../../spec/channel.js").Channel} Channel
  */
 
 /**
@@ -278,7 +278,7 @@ ${attributeType} ${accessorFunctionName}() {
  *
  * @param {Channel} channel
  * @param {any} scale
- * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @param {import("../../../spec/channel.js").ChannelDef} channelDef
  */
 export function generateScaleGlsl(channel, scale, channelDef) {
     scale ??= scaleNull();
@@ -549,7 +549,7 @@ ${scaleBody.map((x) => `    ${x}\n`).join("")}
 /**
  *
  * @param {Channel} channel
- * @param {import("../types/encoder.js").EncodingBranch[]} branches
+ * @param {import("../../../types/encoder.js").EncodingBranch[]} branches
  */
 export function generateConditionalEncoderGlsl(channel, branches) {
     const type = getScaledDataTypeForChannel(channel);
@@ -697,8 +697,8 @@ function makeFunctionCall(name, ...args) {
 
 /**
  *
- * @param {import("../types/encoder.js").VegaScale} scale
- * @param {import("../spec/channel.js").Channel} channel
+ * @param {import("../../../types/encoder.js").VegaScale} scale
+ * @param {import("../../../spec/channel.js").Channel} channel
  */
 export function getAttributeAndArrayTypes(scale, channel) {
     const discrete = scale && isDiscrete(scale.type);
@@ -787,12 +787,12 @@ export function toHighPrecisionDomainUniform(domain) {
  * Finds duplicated quantitative fields in the encoding block.
  * They need to be uploaded to the GPU only once.
  *
- * @param {Partial<Record<import("../spec/channel.js").Channel, import("../types/encoder.js").Encoder>>} encoders
+ * @param {Partial<Record<import("../../../spec/channel.js").Channel, import("../../../types/encoder.js").Encoder>>} encoders
  */
 export function dedupeEncodingFields(encoders) {
     /**
      * Value: an array of channels
-     * @type {InternMap<FieldKey, import("../spec/channel.js").Channel[]>}
+     * @type {InternMap<FieldKey, import("../../../spec/channel.js").Channel[]>}
      */
     const deduped = new InternMap([], JSON.stringify);
 
@@ -818,7 +818,7 @@ export function dedupeEncodingFields(encoders) {
 }
 
 /**
- * @param {import("../spec/channel.js").Channel | import("../spec/channel.js").Channel[]} channel
+ * @param {import("../../../spec/channel.js").Channel | import("../../../spec/channel.js").Channel[]} channel
  */
 export function makeAttributeName(channel) {
     return ATTRIBUTE_PREFIX + asArray(channel).toSorted().join("_");

@@ -1,15 +1,4 @@
 import Mark from "./mark.js";
-import {
-    createTexture,
-    drawBufferInfo,
-    setBlockUniforms,
-    setBuffersAndAttributes,
-    setUniforms,
-} from "twgl.js";
-import VERTEX_SHADER from "./rule.vertex.glsl";
-import FRAGMENT_SHADER from "./rule.fragment.glsl";
-import COMMON_SHADER from "./rule.common.glsl";
-import { RuleVertexBuilder } from "../gl/dataToVertices.js";
 import { isChannelDefWithScale } from "../encoder/encoder.js";
 import { fixRuleLikeEncoding } from "./ruleLikeEncoding.js";
 
@@ -20,39 +9,7 @@ const VERTICAL = "vertical";
  * @extends {Mark<import("../spec/mark.js").RuleProps | import("../spec/mark.js").TickProps>}
  */
 export default class RuleMark extends Mark {
-    /**
-     * @param {import("../view/unitView.js").default} unitView
-     */
-    constructor(unitView) {
-        super(unitView);
-
-        this.dashTextureSize = 0;
-    }
-
-    /**
-     * @returns {import("../spec/channel.js").Channel[]}
-     */
-    getAttributes() {
-        return [
-            "uniqueId",
-            "facetIndex",
-            "x",
-            "x2",
-            "y",
-            "y2",
-            "xOffset",
-            "yOffset",
-            /** @type {import("../spec/channel.js").Channel} */ ("x2Offset"),
-            /** @type {import("../spec/channel.js").Channel} */ ("y2Offset"),
-            "size",
-            "color",
-            "opacity",
-        ];
-    }
-
-    /**
-     * @returns {import("../spec/channel.js").Channel[]}
-     */
+    /** @returns {import("../spec/channel.js").Channel[]} */
     getSupportedChannels() {
         return [...super.getSupportedChannels(), "x2", "y2", "size"];
     }
@@ -62,11 +19,9 @@ export default class RuleMark extends Mark {
      * @returns {import("../spec/channel.js").Encoding}
      */
     fixEncoding(encoding) {
-        if (this.getType() == "tick") {
-            return this.fixTickEncoding(encoding);
-        }
-
-        return fixRuleLikeEncoding(encoding, "rule");
+        return this.getType() == "tick"
+            ? this.fixTickEncoding(encoding)
+            : fixRuleLikeEncoding(encoding, "rule");
     }
 
     /**
@@ -90,154 +45,8 @@ export default class RuleMark extends Mark {
         }
 
         applyTickSpan(encoding, orient);
-
         return encoding;
     }
-
-    async initializeGraphics() {
-        await super.initializeGraphics();
-
-        const gl = this.gl;
-        const textureData = createDashTextureArray(this.properties.strokeDash);
-        this.dashTexture = createTexture(gl, {
-            level: 0,
-            mag: gl.NEAREST,
-            min: gl.NEAREST,
-            internalFormat: gl.R8,
-            format: gl.RED,
-            src: textureData,
-            height: 1,
-        });
-        this.dashTextureSize = textureData.length; // Not needed with WebGL2
-
-        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER, [
-            COMMON_SHADER,
-        ]);
-    }
-
-    finalizeGraphicsInitialization() {
-        super.finalizeGraphicsInitialization();
-
-        this.gl.useProgram(this.programInfo.program);
-
-        const props = this.properties;
-
-        this.registerMarkUniformValue("uMinLength", props.minLength);
-        this.registerMarkUniformValue(
-            "uStrokeCap",
-            props.strokeCap ?? "butt",
-            (cap) => ["butt", "square", "round"].indexOf(cap)
-        );
-
-        setBlockUniforms(this.markUniformInfo, {
-            uDashTextureSize: +this.dashTextureSize,
-        });
-        this.markUniformsAltered = true;
-    }
-
-    updateGraphicsData() {
-        const collector = this.unitView.getCollector();
-        if (!collector) {
-            console.debug("No collector");
-            return;
-        }
-        const itemCount = collector.getItemCount();
-
-        const builder = new RuleVertexBuilder({
-            encoders: this.encoders,
-            attributes: this.getAttributes(),
-            numItems: Math.max(itemCount, this.properties.minBufferSize || 0),
-        });
-
-        builder.addBatches(collector.facetBatches);
-
-        const vertexData = builder.toArrays();
-        this.rangeMap.migrateEntries(vertexData.rangeMap);
-
-        this.updateBufferInfo(vertexData);
-    }
-
-    /**
-     * @param {import("../types/rendering.js").GlobalRenderingOptions} options
-     */
-    prepareRender(options) {
-        const ops = super.prepareRender(options);
-
-        ops.push(() => this.bindOrSetMarkUniformBlock());
-
-        ops.push(() =>
-            // Dash texture must be set always. Otherwise the texture unit may have
-            // an incompatible texture from an earlier program.
-            setUniforms(this.programInfo, {
-                uDashTexture: this.dashTexture,
-            })
-        );
-
-        ops.push(() =>
-            setBuffersAndAttributes(
-                this.gl,
-                this.programInfo,
-                this.vertexArrayInfo
-            )
-        );
-
-        return ops;
-    }
-
-    /**
-     * @param {import("./mark.js").MarkRenderingOptions} options
-     */
-    render(options) {
-        const gl = this.gl;
-
-        return this.createRenderCallback(
-            (offset, count) =>
-                drawBufferInfo(
-                    gl,
-                    this.vertexArrayInfo,
-                    gl.TRIANGLE_STRIP,
-                    count,
-                    offset
-                ),
-            options
-        );
-    }
-}
-
-/**
- *
- * @param {number[]} pattern
- */
-function createDashTextureArray(pattern) {
-    if (!pattern) {
-        return new Uint8Array(0);
-    }
-
-    if (
-        pattern.length == 0 ||
-        pattern.length % 2 ||
-        pattern.findIndex((s) => Math.round(s) != s || s < 1 || s > 1000) >= 0
-    ) {
-        throw new Error(
-            "Invalid stroke dash pattern: " + JSON.stringify(pattern)
-        );
-    }
-
-    const len = pattern.reduce((a, b) => a + b);
-
-    const texture = new Uint8Array(len);
-
-    let state = true;
-    let i = 0;
-    for (let segment of pattern) {
-        while (segment) {
-            texture[i++] = (state && 255) || 0;
-            segment--;
-        }
-        state = !state;
-    }
-
-    return texture;
 }
 
 /**
@@ -253,7 +62,6 @@ function inferTickOrient(encoding) {
 
     const xBand = isBandChannelDef(encoding.x);
     const yBand = isBandChannelDef(encoding.y);
-
     if (!xBand && yBand) {
         return VERTICAL;
     } else if (xBand && !yBand) {
@@ -270,22 +78,16 @@ function inferTickOrient(encoding) {
 function applyTickSpan(encoding, orient) {
     if (orient == VERTICAL) {
         encoding.x2 = encoding.x;
-
         if (isBandChannelDef(encoding.y)) {
-            const [primary, secondary] = createBandCoverage(encoding.y);
-            encoding.y = primary;
-            encoding.y2 = secondary;
+            [encoding.y, encoding.y2] = createBandCoverage(encoding.y);
         } else {
             encoding.y = { value: 0 };
             encoding.y2 = { value: 1 };
         }
     } else {
         encoding.y2 = encoding.y;
-
         if (isBandChannelDef(encoding.x)) {
-            const [primary, secondary] = createBandCoverage(encoding.x);
-            encoding.x = primary;
-            encoding.x2 = secondary;
+            [encoding.x, encoding.x2] = createBandCoverage(encoding.x);
         } else {
             encoding.x = { value: 0 };
             encoding.x2 = { value: 1 };
@@ -304,11 +106,7 @@ function isBandChannelDef(channelDef) {
     );
 }
 
-/**
- * @param {import("../spec/channel.js").ChannelDefWithScale} channelDef
- * @param {number} band
- * @returns {import("../spec/channel.js").ChannelDefWithScale}
- */
+/** @param {import("../spec/channel.js").ChannelDefWithScale} channelDef @param {number} band */
 function withBand(channelDef, band) {
     return /** @type {import("../spec/channel.js").ChannelDefWithScale} */ ({
         ...channelDef,
@@ -316,16 +114,12 @@ function withBand(channelDef, band) {
     });
 }
 
-/**
- * @param {import("../spec/channel.js").ChannelDefWithScale} channelDef
- * @returns {[import("../spec/channel.js").ChannelDefWithScale, import("../spec/channel.js").ChannelDefWithScale]}
- */
+/** @param {import("../spec/channel.js").ChannelDefWithScale} channelDef */
 function createBandCoverage(channelDef) {
     const band = /** @type {import("../spec/channel.js").BandMixins} */ (
         channelDef
     ).band;
     const adjustment = (1 - (band ?? 1)) / 2;
-
     return [
         withBand(channelDef, adjustment),
         withBand(channelDef, 1 - adjustment),

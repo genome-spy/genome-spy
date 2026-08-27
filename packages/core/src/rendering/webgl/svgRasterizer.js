@@ -1,20 +1,20 @@
 import { createFramebufferInfo } from "twgl.js";
 
-import { framebufferToDataUrl } from "../../../gl/framebufferReadback.js";
-import { createLayoutResult } from "../../../view/layout/layoutResult.js";
-import BufferedViewRenderingContext from "../../../view/renderingContext/bufferedViewRenderingContext.js";
-import Rectangle from "../../../view/layout/rectangle.js";
-import { getPhysicalCrop, setRasterImage } from "./rasterImage.js";
+import { framebufferToDataUrl } from "./gl/framebufferReadback.js";
+import { createLayoutResult } from "../../view/layout/layoutResult.js";
+import BufferedViewRenderingContext from "./bufferedViewRenderingContext.js";
+import Rectangle from "../../view/layout/rectangle.js";
+import { getPhysicalCrop, setRasterImage } from "../svg/raster/rasterImage.js";
 
 /**
  * Renders each contiguous raster run into the same reusable transparent
  * framebuffer and assigns the cropped PNG to its SVG image placeholder.
  *
  * @param {object} options
- * @param {import("../svgViewRenderingContext.js").SvgRasterRun[]} options.runs
- * @param {import("../../../view/view.js").default} options.viewRoot
- * @param {import("../../../view/layout/layoutResult.js").default} [options.layoutResult]
- * @param {import("../../../gl/webGLHelper.js").default} options.webGLHelper
+ * @param {import("../svg/svgViewRenderingContext.js").SvgRasterRun[]} options.runs
+ * @param {import("../../view/view.js").default} options.viewRoot
+ * @param {import("../../view/layout/layoutResult.js").default} [options.layoutResult]
+ * @param {import("./gl/webGLHelper.js").default} options.webGLHelper
  * @param {number} options.logicalWidth
  * @param {number} options.logicalHeight
  * @param {number} options.pixelRatio

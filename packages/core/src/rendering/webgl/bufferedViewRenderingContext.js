@@ -1,16 +1,16 @@
 import { group } from "d3-array";
 
-import ViewRenderingContext from "./viewRenderingContext.js";
+import ViewRenderingContext from "../../view/renderingContext/viewRenderingContext.js";
 import { color } from "d3-color";
 import {
     clipOptionsEqual,
     normalizeClipOptions,
     prepareMarkClipOptionsFromClip,
-} from "./clipOptions.js";
+} from "../../view/renderingContext/clipOptions.js";
 
 /**
  * @typedef {object} BufferedViewRenderingOptions
- * @prop {import("../../gl/webGLHelper.js").default} webGLHelper
+ * @prop {import("./gl/webGLHelper.js").default} webGLHelper
  * @prop {{width: number, height: number}} canvasSize Size of the canvas in logical pixels.
  * @prop {number} devicePixelRatio
  * @prop {import("twgl.js").FramebufferInfo} [framebufferInfo]
@@ -39,16 +39,16 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
     /** @type {import("twgl.js").FramebufferInfo} */
     #framebufferInfo;
 
-    /** @type {import("../../gl/webGLHelper.js").default} */
+    /** @type {import("./gl/webGLHelper.js").default} */
     #webGLHelper;
 
-    /** @type {Set<import("../view.js").default>} */
+    /** @type {Set<import("../../view/view.js").default>} */
     #views = new Set();
 
     /** @type {(mark: import("../../marks/mark.js").default) => boolean} */
     #markPredicate;
 
-    /** @type {import("../layout/rectangle.js").default} */
+    /** @type {import("../../view/layout/rectangle.js").default} */
     #coords = undefined;
 
     #dpr = 1;
@@ -84,8 +84,8 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
     /**
      * Must be called when a view layout placement is entered
      *
-     * @param {import("../view.js").default} view
-     * @param {import("../layout/rectangle.js").default} coords View coordinates
+     * @param {import("../../view/view.js").default} view
+     * @param {import("../../view/layout/rectangle.js").default} coords View coordinates
      *      inside the padding.
      * @override
      */
@@ -220,7 +220,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                 ...mark.prepareRender(prepareOptions).map((op) => ifEnabled(op))
             );
 
-            /** @type {import("../layout/rectangle.js").default} */
+            /** @type {import("../../view/layout/rectangle.js").default} */
             let previousCoords;
             /** @type {import("../../types/rendering.js").ClipOptions | undefined} */
             let previousClip;

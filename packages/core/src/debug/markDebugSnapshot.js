@@ -66,7 +66,7 @@ export function createMarkDebugSnapshot(root, options) {
             dataCount: getDataCount(view),
             vertexCount: state.vertexCount,
             allocatedVertices: state.allocatedVertices,
-            rangeCount: mark.rangeMap.size,
+            rangeCount: state.rangeCount,
             properties: previewValue(state.properties),
         });
     });

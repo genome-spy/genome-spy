@@ -4,12 +4,12 @@ import Rectangle from "../view/layout/rectangle.js";
 import { createSelfClipOptions } from "../view/renderingContext/clipOptions.js";
 import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
-import Mark from "./mark.js";
+import WebGLMark from "../rendering/webgl/marks/webGlMark.js";
 import {
     createLogicalVisibleRect,
     createViewportScope,
     getXIndexOffsetBound,
-} from "./mark.js";
+} from "../rendering/webgl/marks/webGlMark.js";
 
 describe("mark factory", () => {
     test("creates arrow marks", async () => {
@@ -337,7 +337,11 @@ describe("offset-aware x indexing", () => {
             rangeMap: { get: () => rangeEntry },
         });
 
-        const render = Mark.prototype.createRenderCallback.call(mark, draw, {});
+        const render = WebGLMark.prototype.createRenderCallback.call(
+            mark,
+            draw,
+            {}
+        );
         render();
 
         return {

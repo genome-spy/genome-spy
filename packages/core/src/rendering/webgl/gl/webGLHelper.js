@@ -26,13 +26,13 @@ import {
     getDiscreteRangeMapper,
     isColorChannel,
     isDiscreteChannel,
-} from "../encoder/encoder.js";
-import { isMultiPointSelection } from "../selection/selection.js";
+} from "../../../encoder/encoder.js";
+import { isMultiPointSelection } from "../../../selection/selection.js";
 import {
     buildHashTableSet,
     computeHashTextureDimensions,
 } from "./hashTable.js";
-import CanvasSizeHelper from "../rendering/canvasSizeHelper.js";
+import CanvasSizeHelper from "../../../rendering/canvasSizeHelper.js";
 
 export default class WebGLHelper {
     /**
@@ -73,14 +73,14 @@ export default class WebGLHelper {
         /** @type {Map<string, WebGLShader>} */
         this._shaderCache = new Map();
 
-        /** @type {WeakMap<import("../types/encoder.js").VegaScale, WebGLTexture>} */
+        /** @type {WeakMap<import("../../../types/encoder.js").VegaScale, WebGLTexture>} */
         this.rangeTextures = new WeakMap();
 
-        /** @type {WeakMap<import("../view/layout/placementSource.js").default, { texture: WebGLTexture, geometryRevision: number, data: Float32Array }>} */
+        /** @type {WeakMap<import("../../../view/layout/placementSource.js").default, { texture: WebGLTexture, geometryRevision: number, data: Float32Array }>} */
         this.placementTextures = new WeakMap();
 
         /**
-         * @type {WeakMap<import("../types/selectionTypes.js").MultiPointSelection, WebGLTexture>}
+         * @type {WeakMap<import("../../../types/selectionTypes.js").MultiPointSelection, WebGLTexture>}
          */
         this.selectionTextures = new WeakMap();
 
@@ -172,7 +172,7 @@ export default class WebGLHelper {
      * Returns the WebGL texture derived from a renderer-neutral placement
      * source. The helper owns the texture and releases it with the context.
      *
-     * @param {import("../view/layout/placementSource.js").default} source
+     * @param {import("../../../view/layout/placementSource.js").default} source
      * @returns {WebGLTexture}
      */
     getPlacementTexture(source) {
@@ -327,7 +327,7 @@ export default class WebGLHelper {
      *
      * TODO: This may be too specific to be included in WebGLHelper. Find a better place.
      *
-     * @param {import("../scales/scaleResolution.js").default} resolution
+     * @param {import("../../../scales/scaleResolution.js").default} resolution
      * @param {boolean} update Update the texture if it exists already.
      */
     createRangeTexture(resolution, update = false) {
@@ -441,7 +441,7 @@ export default class WebGLHelper {
     }
 
     /**
-     * @param {import("../types/selectionTypes.js").MultiPointSelection} selection
+     * @param {import("../../../types/selectionTypes.js").MultiPointSelection} selection
      */
     createSelectionTexture(selection, update = true) {
         if (!isMultiPointSelection(selection)) {

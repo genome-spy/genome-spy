@@ -417,8 +417,15 @@ describe("viewDataInit", () => {
 
     test("finalizes graphics before initial data load notifies marks", async () => {
         const context = createTestViewContext();
-        context.glHelper = /** @type {any} */ ({
-            createRangeTexture: /** @returns {undefined} */ () => undefined,
+        context.rendererResources = /** @type {any} */ ({
+            createMark: /** @returns {never} */ () => {
+                throw new Error("The mark initializer is mocked in this test.");
+            },
+            updateScaleResolution: /** @returns {undefined} */ () => undefined,
+            loadFontResource: /** @returns {never} */ () => {
+                throw new Error("Not used in this test.");
+            },
+            dispose: /** @returns {undefined} */ () => undefined,
         });
 
         /** @type {import("../spec/view.js").UnitSpec} */

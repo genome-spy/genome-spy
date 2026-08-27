@@ -96,9 +96,8 @@ const ensureScaleResolution = (ownerView, resolutionView, targetChannel) => {
         const updateRangeTexture = (
             /** @type {import("../types/scaleResolutionApi.js").ScaleResolutionEvent} */ event
         ) => {
-            ownerView.context.glHelper?.createRangeTexture(
-                event.scaleResolution,
-                true
+            ownerView.context.rendererResources?.updateScaleResolution(
+                event.scaleResolution
             );
         };
         resolution.addEventListener("range", updateRangeTexture);

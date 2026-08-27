@@ -24,18 +24,15 @@ vi.mock("twgl.js", () => ({
     createFramebufferInfo: mocks.createFramebufferInfo,
 }));
 
-vi.mock("../../../gl/framebufferReadback.js", () => ({
+vi.mock("./gl/framebufferReadback.js", () => ({
     framebufferToDataUrl: mocks.framebufferToDataUrl,
 }));
 
-vi.mock(
-    "../../../view/renderingContext/bufferedViewRenderingContext.js",
-    () => ({
-        default: mocks.RenderingContext,
-    })
-);
+vi.mock("./bufferedViewRenderingContext.js", () => ({
+    default: mocks.RenderingContext,
+}));
 
-import { rasterizeSvgRuns } from "./webgl.js";
+import { rasterizeSvgRuns } from "./svgRasterizer.js";
 
 beforeEach(() => {
     mocks.createFramebufferInfo.mockReset();
@@ -173,19 +170,18 @@ function createFixture(maxSize = 4096) {
         framebuffer,
         texture,
         framebufferInfo,
-        webGLHelper:
-            /** @type {import("../../../gl/webGLHelper.js").default} */ (
-                /** @type {unknown} */ ({ gl })
-            ),
-        viewRoot: /** @type {import("../../../view/view.js").default} */ (
+        webGLHelper: /** @type {import("./gl/webGLHelper.js").default} */ (
+            /** @type {unknown} */ ({ gl })
+        ),
+        viewRoot: /** @type {import("../../view/view.js").default} */ (
             /** @type {unknown} */ ({ arrange: vi.fn() })
         ),
     };
 }
 
-/** @param {import("../../immediate/bounds.js").RenderBounds} bounds */
+/** @param {import("../immediate/bounds.js").RenderBounds} bounds */
 function createRun(bounds) {
-    return /** @type {import("../svgViewRenderingContext.js").SvgRasterRun} */ ({
+    return /** @type {import("../svg/svgViewRenderingContext.js").SvgRasterRun} */ ({
         marks: new Set(),
         targets: [],
         viewNodes: new Set(),

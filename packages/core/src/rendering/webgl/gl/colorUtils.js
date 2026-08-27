@@ -2,11 +2,11 @@ import { color as d3color } from "d3-color";
 import { range } from "d3-array";
 import { scheme as vegaScheme, interpolateColors } from "vega-scale";
 import { isString, isArray, isFunction } from "vega-util";
-import { peek } from "../utils/arrayUtils.js";
+import { peek } from "../../../utils/arrayUtils.js";
 import { createOrUpdateTexture } from "./webGLHelper.js";
 
 /**
- * @param {string | import("../spec/scale.js").SchemeParams} schemeParams
+ * @param {string | import("../../../spec/scale.js").SchemeParams} schemeParams
  * @param {WebGL2RenderingContext} gl
  * @param {number} [count]
  * @param {WebGLTexture} [existingTexture]
@@ -62,7 +62,7 @@ export function createSchemeTexture(
 
 /**
  * @param {string[]} colors
- * @param {import("../spec/scale.js").ScaleInterpolate | import("../spec/scale.js").ScaleInterpolateParams} interpolateParams
+ * @param {import("../../../spec/scale.js").ScaleInterpolate | import("../../../spec/scale.js").ScaleInterpolateParams} interpolateParams
  * @param {WebGL2RenderingContext} gl
  * @param {WebGLTexture} [existingTexture]
  */
