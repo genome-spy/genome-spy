@@ -1,6 +1,6 @@
 # Resolution-scoped scale expressions plan
 
-Status: Implementation reopened for selection-domain scope harmonization
+Status: Implemented; ready for review
 
 Issue: [#471 Scope scale ExprRefs to their scale resolution](https://github.com/genome-spy/genome-spy/issues/471)
 
@@ -361,15 +361,15 @@ two-way synchronization behavior.
 
 ### Work
 
-- [ ] Replace declaration-view selection lookup with a resolution-owned
+- [x] Replace declaration-view selection lookup with a resolution-owned
       selection-binding boundary.
-- [ ] Remove declaration-view provenance that configured-domain planning no
+- [x] Remove declaration-view provenance that configured-domain planning no
       longer needs.
-- [ ] Cover independent, shared owner/ancestor, owner-shadowing, child-only
+- [x] Cover independent, shared owner/ancestor, owner-shadowing, child-only
       rejection, and child `push: "outer"` selection-domain cases.
-- [ ] Reorganize the scale documentation so parameter-driven domains and the
+- [x] Reorganize the scale documentation so parameter-driven domains and the
       shared-scale ownership rule form one continuous explanation.
-- [ ] Clarify `SelectionDomainRef` specification JSDoc without duplicating the
+- [x] Clarify `SelectionDomainRef` specification JSDoc without duplicating the
       grammar page.
 
 ### Affected areas and consumers
@@ -467,11 +467,14 @@ do not restore member lookup as a workaround.
 
 ## Verification results
 
-- `npm test -- --reporter=agent`: 430 files and 3565 tests passed; one skipped
+- `npm test -- --reporter=agent`: 430 files and 3569 tests passed; one skipped
   and two todo tests remain unrelated. The shared-example snapshot for
   `shared-scale-expression.json` was reviewed and added intentionally.
 - Focused scale, offset, legend, and mutation suites: 10 files and 183 tests
-  passed.
+  passed before the harmonization follow-up.
+- Harmonized parameter-scope suites: 6 files and 77 tests passed.
+- Shared-example and schema suites: 3 files and 408 tests passed, including all
+  four selection-domain examples.
 - `npm run lint -- --quiet`: passed.
 - `npm run build:docs`: passed, including schema generation and a clean Zensical
   build.
@@ -494,7 +497,7 @@ do not restore member lookup as a workaround.
 - [x] Declaration-origin runtime metadata is removed.
 - [x] Configured-domain subscriptions no longer bind through contributing member
       runtimes.
-- [ ] Selection-domain references resolve names from the scale owner and retain
+- [x] Selection-domain references resolve names from the scale owner and retain
       their specialized interval-link behavior.
 - [x] Generated legends and nested offsets update correctly during resize.
 - [x] Scale helpers resolve through owner topology and cycles still fail
