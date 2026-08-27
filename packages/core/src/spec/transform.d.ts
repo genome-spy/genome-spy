@@ -1106,6 +1106,76 @@ export interface Displace1DParams extends TransformParamsBase {
     as?: string;
 }
 
+/**
+ * Places generic axis-aligned rectangles in stable input order. Every input row
+ * receives signed pixel offsets; earlier rows have placement priority.
+ */
+export interface Displace2DParams extends TransformParamsBase {
+    type: "displace2d";
+
+    /** Field containing the original horizontal rectangle center. */
+    x: Field;
+
+    /** Field containing the original vertical rectangle center. */
+    y: Field;
+
+    /**
+     * Full collision width in logical pixels, including any desired spacing. A
+     * number is shared by all rows, a field supplies per-row values, and an
+     * expression supplies a reactive scalar shared by all rows. Values must be
+     * non-negative.
+     */
+    width: number | Field | ExprRef;
+
+    /**
+     * Full collision height in logical pixels, including any desired spacing.
+     * A number is shared by all rows, a field supplies per-row values, and an
+     * expression supplies a reactive scalar shared by all rows. Values must be
+     * non-negative.
+     */
+    height: number | Field | ExprRef;
+
+    /**
+     * Multiplier that converts horizontal positions to logical pixels. An
+     * expression can react to scale or layout changes. Negative factors are
+     * valid. Nonlinear scales require pixel positions derived upstream.
+     *
+     * __Default value:__ `1`
+     */
+    xPositionFactor?: number | ExprRef;
+
+    /**
+     * Multiplier that converts vertical positions to logical pixels. An
+     * expression can react to scale or layout changes. Negative factors are
+     * valid. Nonlinear scales require pixel positions derived upstream.
+     *
+     * __Default value:__ `1`
+     */
+    yPositionFactor?: number | ExprRef;
+
+    /**
+     * Preferred horizontal outer bounds in the original coordinate system.
+     * Rectangles that exhaust the bounded local search remain non-overlapping
+     * and extend beyond these bounds in a deterministic overflow row. An
+     * expression may evaluate to `undefined` to disable the bounds.
+     */
+    xExtent?: [number, number] | ExprRef;
+
+    /**
+     * Preferred vertical outer bounds in the original coordinate system. An
+     * expression may evaluate to `undefined` to disable the bounds.
+     */
+    yExtent?: [number, number] | ExprRef;
+
+    /**
+     * Output fields for signed horizontal and vertical pixel displacements.
+     * Positive values move right and down, respectively.
+     *
+     * __Default value:__ `["xDisplacement", "yDisplacement"]`
+     */
+    as?: [string, string];
+}
+
 export interface FlattenCompressedExonsParams extends TransformParamsBase {
     type: "flattenCompressedExons";
 
@@ -1139,6 +1209,7 @@ export type TransformParams =
     | CoordinateLookupParams
     | CrossParams
     | Displace1DParams
+    | Displace2DParams
     | FlattenDelimitedParams
     | FormulaParams
     | LookupParams
