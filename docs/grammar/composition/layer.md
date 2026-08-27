@@ -19,9 +19,8 @@ To specify multiple layers, use the `layer` property:
 }
 ```
 
-The provided array may contain both [single
-view](../index.md#a-single-view-specification) specifications and layer
-specifications. The encodings and data that are specified in a layer view
+The provided array may contain both [unit view](../index.md#unit-views) and
+layer specifications. The encodings and data that are specified in a layer view
 propagate to its descendants. For example, in the above example, the `"Bar"` and
 `"Label"` views inherit the data and encodings for the `x` and `y` channels from
 their parent, the layer view.
