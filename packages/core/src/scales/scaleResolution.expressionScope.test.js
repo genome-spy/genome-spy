@@ -99,6 +99,54 @@ describe("scale resolution expression scope", () => {
         expect(resolution.getScale().range()).toEqual([0, 20]);
     });
 
+    test("singleton composed scales use the unit scope for compatibility", async () => {
+        const view = await initView(
+            {
+                data: { values: pointValues() },
+                layer: [
+                    point("size", {
+                        params: [{ name: "rangeEnd", value: 2 }],
+                        scale: rangeExpressionScale(),
+                    }),
+                ],
+            },
+            LayerView
+        );
+        const child = view.children[0];
+        const resolution = getRequiredScaleResolution(view, "size");
+
+        expect(resolution.getScale().range()).toEqual([0, 2]);
+
+        child.paramRuntime.setValue("rangeEnd", 4);
+        await child.paramRuntime.whenPropagated();
+
+        expect(resolution.getScale().range()).toEqual([0, 4]);
+    });
+
+    test("view-level scales remain owner-scoped with one member", async () => {
+        const view = await initView(
+            {
+                params: [{ name: "rangeEnd", value: 10 }],
+                scales: { size: rangeExpressionScale() },
+                data: { values: pointValues() },
+                layer: [
+                    point("size", {
+                        params: [{ name: "rangeEnd", value: 2 }],
+                    }),
+                ],
+            },
+            LayerView
+        );
+        const resolution = getRequiredScaleResolution(view, "size");
+
+        expect(resolution.getScale().range()).toEqual([0, 10]);
+
+        view.children[0].paramRuntime.setValue("rangeEnd", 20);
+        await view.paramRuntime.whenPropagated();
+
+        expect(resolution.getScale().range()).toEqual([0, 10]);
+    });
+
     test("shared scales use their owner instead of shadowing children", async () => {
         const view = await initView(
             sharedPointScale("size", rangeExpressionScale(), {
@@ -222,26 +270,35 @@ describe("scale resolution expression scope", () => {
         );
     });
 
-    test("dynamic members rebind range expressions without leaking removed listeners", async () => {
+    test("dynamic members rebind range expressions to the effective scope", async () => {
         const view = await initView(
             {
                 params: [{ name: "rangeEnd", value: 10 }],
                 data: { values: pointValues() },
-                layer: [point("size", { name: "base" })],
+                layer: [
+                    point("size", {
+                        name: "base",
+                        params: [{ name: "rangeEnd", value: 2 }],
+                        scale: rangeExpressionScale(),
+                    }),
+                ],
             },
             LayerView
         );
         const resolution = getRequiredScaleResolution(view, "size");
-        const baselineRange = resolution.getScale().range();
+        const base = view.children[0];
+
+        expect(resolution.getScale().range()).toEqual([0, 2]);
 
         const inserted = await view.addChildSpec(
-            point("size", {
-                name: "reactive",
-                scale: rangeExpressionScale(),
-            })
+            point("size", { name: "shared" })
         );
 
         expect(inserted.getScaleResolution("size")).toBe(resolution);
+        expect(resolution.getScale().range()).toEqual([0, 10]);
+
+        base.paramRuntime.setValue("rangeEnd", 3);
+        await base.paramRuntime.whenPropagated();
         expect(resolution.getScale().range()).toEqual([0, 10]);
 
         view.paramRuntime.setValue("rangeEnd", 20);
@@ -249,11 +306,15 @@ describe("scale resolution expression scope", () => {
         expect(resolution.getScale().range()).toEqual([0, 20]);
 
         await view.removeChildAt(1);
-        expect(resolution.getScale().range()).toEqual(baselineRange);
+        expect(resolution.getScale().range()).toEqual([0, 3]);
+
+        base.paramRuntime.setValue("rangeEnd", 4);
+        await base.paramRuntime.whenPropagated();
+        expect(resolution.getScale().range()).toEqual([0, 4]);
 
         view.paramRuntime.setValue("rangeEnd", 30);
         await view.paramRuntime.whenPropagated();
-        expect(resolution.getScale().range()).toEqual(baselineRange);
+        expect(resolution.getScale().range()).toEqual([0, 4]);
     });
 
     test("failed child-local insertion leaves an initialized resolution unchanged", async () => {

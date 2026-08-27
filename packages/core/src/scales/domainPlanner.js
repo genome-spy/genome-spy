@@ -127,8 +127,8 @@ export default class DomainPlanner {
      * @param {ScaleMembersGetter} [options.getAllMembers] All members, including inactive ones, used for conflict validation.
      * @param {ScaleMembersGetter} [options.getDataMembers] Members used for data-domain extraction; defaults to `getActiveMembers`.
      * @param {ViewLevelDomainSourceGetter} [options.getViewLevelDomainSource] View-level domain source.
-     * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression Resolution-owned expression factory.
-     * @param {SelectionBindingResolver} options.resolveSelectionBinding Resolution-owned selection binding resolver.
+     * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression Scale expression factory.
+     * @param {SelectionBindingResolver} options.resolveSelectionBinding Scale selection binding resolver.
      * @param {ViewportConstraintsGetter} [options.getViewportConstraints] Positional constraints for viewport-domain extraction.
      * @param {() => import("../spec/channel.js").Type} options.getType
      * @param {GetLocusExtent} options.getLocusExtent

@@ -53,6 +53,7 @@ import {
     resolveIntervalSelectionBinding,
 } from "./selectionDomainUtils.js";
 import { toExternalIndexLikeInterval } from "./indexLikeDomainUtils.js";
+import { isInChromeSubtree } from "../view/viewChrome.js";
 
 // Register scaleLocus to Vega-Scale.
 // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
@@ -250,16 +251,45 @@ export default class ScaleResolution {
         return this.#hostView ?? this.#firstMemberView;
     }
 
+    get #expressionScopeView() {
+        if (!this.#viewLevelScaleProps) {
+            /** @type {import("../view/view.js").default | undefined} */
+            let memberView;
+            for (const member of this.#members) {
+                if (isInChromeSubtree(member.view)) {
+                    // TODO(#413): Use the consolidated internal guide/chrome
+                    // contract instead of checking view classification here.
+                    continue;
+                }
+                if (!memberView) {
+                    memberView = member.view;
+                } else if (member.view !== memberView) {
+                    return this.#resolutionView;
+                }
+            }
+
+            if (memberView) {
+                // TODO(v2.0): Remove this compatibility fallback and always
+                // bind scale expressions to the resolution owner's scope.
+                return memberView;
+            }
+        }
+
+        return this.#resolutionView;
+    }
+
     /**
-     * Binds an ordinary scale expression through the resolution owner's
-     * parameter scope.
+     * Binds an ordinary scale expression through its effective parameter
+     * scope.
      *
      * @param {string} expr
      * @returns {import("../paramRuntime/types.js").ExprRefFunction}
      */
     #createExpression(expr) {
         try {
-            return this.#resolutionView.paramRuntime.createExpression(expr);
+            return this.#expressionScopeView.paramRuntime.createExpression(
+                expr
+            );
         } catch (error) {
             const message = error instanceof Error ? error.message : "";
             const match = /^Unknown variable "([^"]+)" in expression: /.exec(
@@ -280,7 +310,7 @@ export default class ScaleResolution {
     #resolveSelectionBinding(paramName, encoding) {
         try {
             return resolveIntervalSelectionBinding(
-                this.#resolutionView,
+                this.#expressionScopeView,
                 paramName,
                 encoding
             );
@@ -301,11 +331,13 @@ export default class ScaleResolution {
      * @param {unknown} cause
      */
     #createParameterScopeError(paramName, cause) {
+        const expressionScopeView = this.#expressionScopeView;
         const shared =
-            this.#members.size > 1 ||
-            Array.from(this.#members).some(
-                (member) => member.view !== this.#resolutionView
-            );
+            expressionScopeView === this.#resolutionView &&
+            (this.#members.size > 1 ||
+                Array.from(this.#members).some(
+                    (member) => member.view !== this.#resolutionView
+                ));
         return new Error(
             `Parameter "${paramName}" is not visible from the ${shared ? "shared " : ""}${this.channel} scale resolution. ` +
                 `Move the parameter to the resolution-owning view and use push: "outer" if a child must update it.`,

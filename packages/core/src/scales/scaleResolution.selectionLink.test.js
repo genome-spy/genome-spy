@@ -247,6 +247,38 @@ describe("Scale resolution selection-linked domains", () => {
         ]);
     });
 
+    test("singleton composed scales can use unit-local selection parameters", async () => {
+        const view = await initView(
+            {
+                data: { values: [{ x: 0 }, { x: 5 }, { x: 10 }] },
+                layer: [
+                    {
+                        params: [
+                            {
+                                name: "brush",
+                                value: createIntervalValue([2, 4]),
+                            },
+                        ],
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                scale: { domain: { param: "brush" } },
+                            },
+                            y: { value: 0 },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+
+        expect(getRequiredScaleResolution(view, "x").scale.domain()).toEqual([
+            2, 4,
+        ]);
+    });
+
     test("child-local selection parameters cannot control shared scales", async () => {
         await expect(
             initView(

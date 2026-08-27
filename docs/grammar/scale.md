@@ -387,11 +387,17 @@ Both forms use the same parameter scope.
 
 ### Parameter scope
 
-Every parameter name used by a scale resolves from the view that owns the scale
-resolution. An independent scale is owned by its unit view. A shared scale is
-owned by the composed view where the child scales are resolved together.
-Parameters on that owner or its ancestors are visible to the scale; parameters
-declared only in a child are not.
+Every parameter name used by a scale normally resolves from the view that owns
+the scale resolution. An independent scale is owned by its unit view. A shared
+scale is owned by the composed view where the child scales are resolved
+together. Parameters on that owner or its ancestors are visible to the scale;
+parameters declared only in a child are not.
+
+For compatibility, a composed scale resolution used by only one plot unit and
+with no view-level `scales.<channel>` declaration uses that unit's parameter
+scope. Do not rely on this fallback in new specifications: make the scale
+independent or declare the parameter on the resolution owner. The fallback is
+planned for removal in GenomeSpy 2.0.
 
 Declare reactive shared-scale properties and their controlling parameters on
 the owning view. If an interaction or input in a child needs to update the
@@ -399,8 +405,9 @@ parameter, declare a same-named child parameter with `"push": "outer"`:
 
 EXAMPLE examples/docs/grammar/scale/shared-scale-expression.json height=230
 
-There is no fallback to a child declaration scope. Move a child-only parameter
-to the resolution owner and use `"push": "outer"` when the child must write it.
+Genuinely shared scales do not fall back to a child declaration scope. Move a
+child-only parameter to the resolution owner and use `"push": "outer"` when the
+child must write it.
 
 ### Domain from Selection Parameters
 

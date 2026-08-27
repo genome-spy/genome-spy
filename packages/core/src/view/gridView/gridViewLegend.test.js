@@ -2550,6 +2550,43 @@ describe("GridView legends", () => {
             );
         });
 
+        test("generated size legends preserve singleton plot expression scope", async () => {
+            // Legend symbols reuse the size resolution but are not another
+            // user-authored plot member.
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        layer: [
+                            {
+                                name: "points",
+                                params: [{ name: "rangeEnd", value: 25 }],
+                                data: { values: [{ value: 1 }] },
+                                mark: "point",
+                                encoding: {
+                                    size: {
+                                        field: "value",
+                                        type: "quantitative",
+                                        scale: {
+                                            domain: [0, 1],
+                                            range: [0, { expr: "rangeEnd" }],
+                                        },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            });
+            const points = view
+                .getDescendants()
+                .find((descendant) => descendant.name == "points");
+
+            expect(
+                points.getScaleResolution("size").getScale().range()
+            ).toEqual([0, 25]);
+        });
+
         test("uses source scales without contributing legend entries to their domains", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },
