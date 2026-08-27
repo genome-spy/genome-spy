@@ -6,9 +6,6 @@
     "A child slider pushes a size limit to the parameter that owns a shared scale."
   ],
 
-  "width": 300,
-  "height": 120,
-
   "params": [{ "name": "maxSize", "value": 800 }],
 
   "scales": {
@@ -19,7 +16,7 @@
   },
 
   "data": {
-    "values": [{ "value": 2 }, { "value": 5 }, { "value": 8 }]
+    "values": [{ "value": 2 }, { "value": 5 }, { "value": 7.5 }]
   },
 
   "layer": [
@@ -41,7 +38,10 @@
       "encoding": {
         "x": { "field": "value", "type": "quantitative" },
         "y": { "value": 0.35 },
-        "size": { "field": "value", "type": "quantitative" }
+        "size": {
+          "field": "value",
+          "type": "quantitative"
+        }
       }
     },
     {

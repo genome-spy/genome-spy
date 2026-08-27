@@ -397,7 +397,7 @@ Declare reactive shared-scale properties and their controlling parameters on
 the owning view. If an interaction or input in a child needs to update the
 parameter, declare a same-named child parameter with `"push": "outer"`:
 
-EXAMPLE examples/docs/grammar/scale/shared-scale-expression.json height=180
+EXAMPLE examples/docs/grammar/scale/shared-scale-expression.json height=230
 
 There is no fallback to a child declaration scope. Move a child-only parameter
 to the resolution owner and use `"push": "outer"` when the child must write it.
