@@ -59,7 +59,6 @@ export function createAppTestContext(options = {}) {
     context.updateTooltip = () => undefined;
     context.getCurrentHover = () => undefined;
     context.addKeyboardListener = () => undefined;
-    context.glHelper = undefined;
 
     return {
         context,
