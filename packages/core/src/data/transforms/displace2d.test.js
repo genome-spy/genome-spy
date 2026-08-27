@@ -379,13 +379,15 @@ describe("Displace2DTransform", () => {
 
     test("is available through the transform factory", () => {
         expect(
-            createTransform({
-                type: "displace2d",
-                x: "x",
-                y: "y",
-                width: 10,
-                height: 10,
-            })
+            createTransform(
+                /** @type {import("../../spec/transform.js").Displace2DParams} */ ({
+                    type: "displace2d",
+                    x: "x",
+                    y: "y",
+                    width: 10,
+                    height: 10,
+                })
+            )
         ).toBeInstanceOf(Displace2DTransform);
     });
 });
