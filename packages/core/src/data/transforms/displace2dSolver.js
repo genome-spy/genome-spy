@@ -92,6 +92,8 @@ export function solveDisplacement(
         const height = heights[index];
 
         if (
+            !hasFiniteBounds(candidateX, width) ||
+            !hasFiniteBounds(candidateY, height) ||
             !fitsExtent(candidateX, width, xExtent) ||
             !fitsExtent(candidateY, height, yExtent)
         ) {
@@ -180,14 +182,20 @@ export function solveDisplacement(
             yDisplacements[i] = overflowY - y;
         }
 
-        overflowCursor = Math.max(
-            overflowCursor,
-            x + xDisplacements[i] + width / 2
-        );
+        const placedX = x + xDisplacements[i];
+        const placedY = y + yDisplacements[i];
+        if (
+            !hasFiniteBounds(placedX, width) ||
+            !hasFiniteBounds(placedY, height)
+        ) {
+            throw new Error(
+                "displace2d placement exceeded the finite numeric range."
+            );
+        }
+
+        overflowCursor = Math.max(overflowCursor, placedX + width / 2);
 
         if (width > 0 && height > 0) {
-            const placedX = x + xDisplacements[i];
-            const placedY = y + yDisplacements[i];
             const minCellX = Math.floor((placedX - width / 2) / cellSize);
             const maxCellX = Math.floor((placedX + width / 2) / cellSize);
             const minCellY = Math.floor((placedY - height / 2) / cellSize);
@@ -252,6 +260,16 @@ function fitsExtent(center, size, extent) {
     return (
         !extent ||
         (center - size / 2 >= extent[0] && center + size / 2 <= extent[1])
+    );
+}
+
+/**
+ * @param {number} center
+ * @param {number} size
+ */
+function hasFiniteBounds(center, size) {
+    return (
+        Number.isFinite(center - size / 2) && Number.isFinite(center + size / 2)
     );
 }
 
