@@ -32,6 +32,7 @@ import {
 } from "./scaleResolutionConstants.js";
 
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 import {
     getEncoderAccessors,
     isSecondaryChannel,
@@ -626,6 +627,24 @@ export default class ScaleResolution {
     }
 
     /**
+     * Resolves member-owned expressions before a registration batch can
+     * reconfigure any live scale.
+     */
+    #preflightMemberSync() {
+        this.#invalidateOrderedMembers();
+        this.#invalidateConfiguredDomain();
+
+        const range = this.#getMergedScaleProps().range;
+        if (Array.isArray(range)) {
+            for (const value of range) {
+                if (isExprRef(value)) {
+                    this.#createExpression(value.expr);
+                }
+            }
+        }
+    }
+
+    /**
      * Executes a group of member registrations without refreshing derived
      * membership state until the callback completes.
      *
@@ -636,6 +655,7 @@ export default class ScaleResolution {
      */
     static registerInBatch(resolutions, callback) {
         const batchedResolutions = Array.from(resolutions);
+        let memberSyncStarted = false;
         const snapshots = batchedResolutions.map((resolution) => ({
             resolution,
             members: new Set(resolution.#members),
@@ -654,13 +674,19 @@ export default class ScaleResolution {
             for (const resolution of batchedResolutions) {
                 resolution.#memberRegistrationBatchDepth--;
             }
-            for (const resolution of batchedResolutions) {
-                if (
+
+            const resolutionsToSync = batchedResolutions.filter(
+                (resolution) =>
                     resolution.#memberRegistrationBatchDepth === 0 &&
                     resolution.#membersDirty
-                ) {
-                    resolution.#syncMembers();
-                }
+            );
+            for (const resolution of resolutionsToSync) {
+                resolution.#preflightMemberSync();
+            }
+
+            memberSyncStarted = true;
+            for (const resolution of resolutionsToSync) {
+                resolution.#syncMembers();
             }
             return result;
         } catch (error) {
@@ -674,21 +700,29 @@ export default class ScaleResolution {
                 resolution.#membersDirty = snapshot.membersDirty;
             }
 
-            // A failed reconfigure may already have replaced scale props or
-            // listeners. Restore every affected resolution before surfacing
-            // the original registration error.
-            try {
-                for (const snapshot of snapshots) {
-                    const resolution = snapshot.resolution;
-                    if (snapshot.batchDepth === 0) {
-                        resolution.#syncMembers();
-                    } else {
-                        resolution.#membersDirty = true;
+            if (memberSyncStarted) {
+                // A failed reconfigure may already have replaced scale props or
+                // listeners. Restore every affected resolution before surfacing
+                // the original registration error.
+                try {
+                    for (const snapshot of snapshots) {
+                        const resolution = snapshot.resolution;
+                        if (snapshot.batchDepth === 0) {
+                            resolution.#syncMembers();
+                        } else {
+                            resolution.#membersDirty = true;
+                        }
+                    }
+                } catch (rollbackError) {
+                    if (error && typeof error === "object") {
+                        /** @type {any} */ (error).rollbackError =
+                            rollbackError;
                     }
                 }
-            } catch (rollbackError) {
-                if (error && typeof error === "object") {
-                    /** @type {any} */ (error).rollbackError = rollbackError;
+            } else {
+                for (const snapshot of snapshots) {
+                    snapshot.resolution.#invalidateOrderedMembers();
+                    snapshot.resolution.#invalidateConfiguredDomain();
                 }
             }
 

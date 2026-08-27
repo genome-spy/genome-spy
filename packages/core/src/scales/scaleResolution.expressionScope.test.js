@@ -452,6 +452,12 @@ describe("scale resolution expression scope", () => {
         const resolution = getRequiredScaleResolution(view, "size");
         const xResolution = getRequiredScaleResolution(view, "x");
         const baselineRange = resolution.getScale().range();
+        const baselineXDomain = xResolution.getScale().domain();
+        let xDomainNotifications = 0;
+        xResolution.addEventListener("domain", () => {
+            xDomainNotifications++;
+        });
+        renderToLayout(view);
 
         await expect(
             view.addChildSpec({
@@ -462,6 +468,7 @@ describe("scale resolution expression scope", () => {
                     x: {
                         field: "value",
                         type: "quantitative",
+                        scale: { domain: [10, 20] },
                     },
                     size: {
                         field: "value",
@@ -481,6 +488,8 @@ describe("scale resolution expression scope", () => {
         expect(resolution.getOrderedMembers()).toHaveLength(1);
         expect(xResolution.getOrderedMembers()).toHaveLength(1);
         expect(resolution.getScale().range()).toEqual(baselineRange);
+        expect(xResolution.getScale().domain()).toEqual(baselineXDomain);
+        expect(xDomainNotifications).toBe(0);
     });
 
     test("owner-level sashimi domains react to owner geometry and x domains", async () => {
