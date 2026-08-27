@@ -420,10 +420,6 @@ above:
 }
 ```
 
-#### Properties
-
-SCHEMA SelectionDomainRef
-
 Clearing the linked interval selection returns the scale to its normal default
 or data-derived domain instead of restoring `initial`.
 
@@ -437,6 +433,10 @@ independent from the selection view's scale.
 
 For detailed brushing-and-linking guidance and interactive examples, see
 [Parameters: Interval selection](./parameters.md#interval-selection).
+
+#### Properties
+
+SCHEMA SelectionDomainRef
 
 ## Named scales
 
