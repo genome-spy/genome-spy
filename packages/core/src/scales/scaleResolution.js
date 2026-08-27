@@ -50,6 +50,7 @@ import {
     findIntervalSelectionBindingOwners,
     getIntervalSelection,
     normalizeIntervalForSelection,
+    resolveIntervalSelectionBinding,
 } from "./selectionDomainUtils.js";
 import { toExternalIndexLikeInterval } from "./indexLikeDomainUtils.js";
 
@@ -193,6 +194,8 @@ export default class ScaleResolution {
                 this.#getActiveMembers(this.#dataDomainMembers),
             getViewLevelDomainSource: () => this.#getViewLevelDomainSource(),
             createExpression: (expr) => this.#createExpression(expr),
+            resolveSelectionBinding: (paramName, encoding) =>
+                this.#resolveSelectionBinding(paramName, encoding),
             getViewportConstraints: (member) =>
                 this.#getViewportConstraints(member),
             getType: () => this.type,
@@ -266,17 +269,48 @@ export default class ScaleResolution {
                 throw error;
             }
 
-            const shared =
-                this.#members.size > 1 ||
-                Array.from(this.#members).some(
-                    (member) => member.view !== this.#resolutionView
-                );
-            throw new Error(
-                `Parameter "${match[1]}" is not visible from the ${shared ? "shared " : ""}${this.channel} scale resolution. ` +
-                    `Move the parameter to the resolution-owning view and use push: "outer" if a child must update it.`,
-                { cause: error }
-            );
+            throw this.#createParameterScopeError(match[1], error);
         }
+    }
+
+    /**
+     * @param {string} paramName
+     * @param {"x" | "y"} encoding
+     */
+    #resolveSelectionBinding(paramName, encoding) {
+        try {
+            return resolveIntervalSelectionBinding(
+                this.#resolutionView,
+                paramName,
+                encoding
+            );
+        } catch (error) {
+            if (
+                !(error instanceof Error) ||
+                error.message !==
+                    `Selection domain parameter "${paramName}" was not found.`
+            ) {
+                throw error;
+            }
+            throw this.#createParameterScopeError(paramName, error);
+        }
+    }
+
+    /**
+     * @param {string} paramName
+     * @param {unknown} cause
+     */
+    #createParameterScopeError(paramName, cause) {
+        const shared =
+            this.#members.size > 1 ||
+            Array.from(this.#members).some(
+                (member) => member.view !== this.#resolutionView
+            );
+        return new Error(
+            `Parameter "${paramName}" is not visible from the ${shared ? "shared " : ""}${this.channel} scale resolution. ` +
+                `Move the parameter to the resolution-owning view and use push: "outer" if a child must update it.`,
+            { cause }
+        );
     }
 
     /**
@@ -823,7 +857,6 @@ export default class ScaleResolution {
         }
 
         return {
-            view: viewLevelScaleProps.view,
             channel:
                 /** @type {import("../spec/channel.js").ChannelWithScale} */ (
                     this.channel
