@@ -106,7 +106,7 @@
             "type": "text",
             "align": "center",
             "baseline": "middle",
-            "fontSize": 14,
+            "size": 14,
             "fontWeight": "bold"
           },
           "encoding": {
