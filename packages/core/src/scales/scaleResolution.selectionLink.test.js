@@ -186,7 +186,7 @@ describe("Scale resolution selection-linked domains", () => {
         );
     });
 
-    test("selection-linked domains react to pushed outer interval params", async () => {
+    test("selection-linked domains retain explicit pushed-parameter binding", async () => {
         const { view, resolution } = await createLinkedHarness({
             param: "brush",
             encoding: "x",

@@ -6,8 +6,6 @@ import {
     isOffsetChannel,
     isPrimaryPositionalChannel,
 } from "../encoder/encoder.js";
-import { isExprRef } from "../paramRuntime/paramUtils.js";
-
 import mergeObjects from "../utils/mergeObjects.js";
 import {
     getConfiguredScaleConfig,
@@ -185,7 +183,6 @@ export function resolveScalePropsBase({
                 0,
                 { expr: `bandwidth("${positionChannel}") * ${size}` },
             ];
-            /** @type {any} */ (props).__rangeExprScope = rangeOwner;
         }
     }
 
@@ -205,23 +202,6 @@ export function resolveScalePropsBase({
             collectConfiguredDomainExprRefs(viewLevelScaleProps?.props.domain)
                 .length > 0;
         props.domainTransition = !hasExprDrivenDomain;
-    }
-
-    if (
-        Array.isArray(props.range) &&
-        props.range.some(isExprRef) &&
-        memberList.length > 0
-    ) {
-        const rangeOwner =
-            viewLevelScaleProps?.props.range !== undefined
-                ? viewLevelScaleProps.view
-                : memberList.find(
-                      (member) => member.channelDef.scale?.range !== undefined
-                  )?.view;
-        if (rangeOwner) {
-            /** @type {any} */
-            (props).__rangeExprScope = rangeOwner;
-        }
     }
 
     // By default, index and locus scales are zoomable, others are not.

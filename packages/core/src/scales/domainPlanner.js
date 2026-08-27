@@ -86,6 +86,9 @@ export default class DomainPlanner {
     /** @type {ViewLevelDomainSourceGetter | undefined} */
     #getViewLevelDomainSource;
 
+    /** @type {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} */
+    #createExpression;
+
     /** @type {ViewportConstraintsGetter | undefined} */
     #getViewportConstraints;
 
@@ -123,6 +126,7 @@ export default class DomainPlanner {
      * @param {ScaleMembersGetter} [options.getAllMembers] All members, including inactive ones, used for conflict validation.
      * @param {ScaleMembersGetter} [options.getDataMembers] Members used for data-domain extraction; defaults to `getActiveMembers`.
      * @param {ViewLevelDomainSourceGetter} [options.getViewLevelDomainSource] View-level domain source.
+     * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression Resolution-owned expression factory.
      * @param {ViewportConstraintsGetter} [options.getViewportConstraints] Positional constraints for viewport-domain extraction.
      * @param {() => import("../spec/channel.js").Type} options.getType
      * @param {GetLocusExtent} options.getLocusExtent
@@ -133,6 +137,7 @@ export default class DomainPlanner {
         getAllMembers,
         getDataMembers,
         getViewLevelDomainSource,
+        createExpression,
         getViewportConstraints,
         getType,
         getLocusExtent,
@@ -142,6 +147,7 @@ export default class DomainPlanner {
         this.#getAllMembers = getAllMembers ?? getActiveMembers;
         this.#getDataMembers = getDataMembers ?? getActiveMembers;
         this.#getViewLevelDomainSource = getViewLevelDomainSource;
+        this.#createExpression = createExpression;
         this.#getViewportConstraints = getViewportConstraints;
         this.#getType = getType;
         this.#getLocusExtent = getLocusExtent;
@@ -269,6 +275,7 @@ export default class DomainPlanner {
         const configuredDomain = resolveConfiguredDomain(
             this.#getActiveMembers(),
             viewLevelDomainSource,
+            this.#createExpression,
             this.#fromComplexInterval,
             includeSelectionInitial
         );
@@ -388,6 +395,7 @@ export default class DomainPlanner {
 /**
  * @param {Set<ScaleResolutionMember>} members
  * @param {ConfiguredDomainSource | undefined} viewLevelDomain
+ * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} createExpression
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
  * @param {boolean} includeSelectionInitial
  * @returns {{
@@ -398,6 +406,7 @@ export default class DomainPlanner {
 function resolveConfiguredDomain(
     members,
     viewLevelDomain,
+    createExpression,
     fromComplexInterval,
     includeSelectionInitial
 ) {
@@ -423,6 +432,7 @@ function resolveConfiguredDomain(
     ) {
         const resolved = resolveConfiguredDomainSource(
             viewLevelDomain,
+            createExpression,
             fromComplexInterval,
             includeSelectionInitial
         );
@@ -437,6 +447,7 @@ function resolveConfiguredDomain(
                 type: member.channelDef.type,
                 domain: member.channelDef.scale.domain,
             },
+            createExpression,
             fromComplexInterval,
             includeSelectionInitial
         );
@@ -461,12 +472,14 @@ function mergeConfiguredDomainResolution(state, resolved) {
 
 /**
  * @param {ConfiguredDomainSource} source
+ * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} createExpression
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
  * @param {boolean} includeSelectionInitial
  * @returns {ConfiguredDomainMemberResolution}
  */
 function resolveConfiguredDomainSource(
     source,
+    createExpression,
     fromComplexInterval,
     includeSelectionInitial
 ) {
@@ -487,7 +500,7 @@ function resolveConfiguredDomainSource(
         kind: "literal",
         domain: resolveConfiguredIntervalDomain(
             source.type,
-            resolveConfiguredDomainValue(domainDef, source.view?.paramRuntime),
+            resolveConfiguredDomainValue(domainDef, createExpression),
             fromComplexInterval
         ),
     };

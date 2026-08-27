@@ -191,6 +191,7 @@ export default class ScaleResolution {
             getDataMembers: () =>
                 this.#getActiveMembers(this.#dataDomainMembers),
             getViewLevelDomainSource: () => this.#getViewLevelDomainSource(),
+            createExpression: (expr) => this.#createExpression(expr),
             getViewportConstraints: (member) =>
                 this.#getViewportConstraints(member),
             getType: () => this.type,
@@ -211,7 +212,7 @@ export default class ScaleResolution {
         });
 
         this.#scaleManager = new ScaleInstanceManager({
-            getParamRuntime: () => this.#resolutionView.paramRuntime,
+            createExpression: (expr) => this.#createExpression(expr),
             onRangeChange: () => this.#notifyListeners("range"),
             onDomainChange: () => this.#notifyListeners("domain"),
             getGenomeStore: () => this.#viewContext.genomeStore,
@@ -243,6 +244,38 @@ export default class ScaleResolution {
 
     get #resolutionView() {
         return this.#hostView ?? this.#firstMemberView;
+    }
+
+    /**
+     * Binds an ordinary scale expression through the resolution owner's
+     * parameter scope.
+     *
+     * @param {string} expr
+     * @returns {import("../paramRuntime/types.js").ExprRefFunction}
+     */
+    #createExpression(expr) {
+        try {
+            return this.#resolutionView.paramRuntime.createExpression(expr);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "";
+            const match = /^Unknown variable "([^"]+)" in expression: /.exec(
+                message
+            );
+            if (!match) {
+                throw error;
+            }
+
+            const shared =
+                this.#members.size > 1 ||
+                Array.from(this.#members).some(
+                    (member) => member.view !== this.#resolutionView
+                );
+            throw new Error(
+                `Parameter "${match[1]}" is not visible from the ${shared ? "shared " : ""}${this.channel} scale resolution. ` +
+                    `Move the parameter to the resolution-owning view and use push: "outer" if a child must update it.`,
+                { cause: error }
+            );
+        }
     }
 
     /**
@@ -869,9 +902,7 @@ export default class ScaleResolution {
             }
 
             for (const exprRef of exprRefs) {
-                const expr = member.view.paramRuntime.createExpression(
-                    exprRef.expr
-                );
+                const expr = this.#createExpression(exprRef.expr);
                 const unsubscribe = expr.subscribe(listener);
                 this.#configuredDomainExprUnsubscribers.push(unsubscribe);
             }
@@ -881,10 +912,7 @@ export default class ScaleResolution {
         const viewLevelExprRefs =
             collectConfiguredDomainExprRefs(viewLevelDomain);
         for (const exprRef of viewLevelExprRefs) {
-            const expr =
-                this.#viewLevelScaleProps.view.paramRuntime.createExpression(
-                    exprRef.expr
-                );
+            const expr = this.#createExpression(exprRef.expr);
             const unsubscribe = expr.subscribe(listener);
             this.#configuredDomainExprUnsubscribers.push(unsubscribe);
         }

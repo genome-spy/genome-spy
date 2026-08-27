@@ -7,6 +7,14 @@ import createDomain, { toRegularArray } from "../utils/domainArray.js";
 const selectionRuntimeByValue = new WeakMap();
 
 /**
+ * @param {string} expr
+ * @returns {import("../paramRuntime/types.js").ExprRefFunction}
+ */
+function rejectUnexpectedExpression(expr) {
+    throw new Error(`Unexpected expression in DomainPlanner test: ${expr}`);
+}
+
+/**
  * @param {string} field
  * @returns {import("../types/encoder.js").Accessor}
  */
@@ -56,6 +64,7 @@ function createMember(accessors, collector, contributesToDomain = true) {
 function createPlanner(members, type) {
     return new DomainPlanner({
         getActiveMembers: () => new Set(members),
+        createExpression: rejectUnexpectedExpression,
         getType: () => type,
         getLocusExtent: () => [0, 10],
         fromComplexInterval: (interval) => /** @type {number[]} */ (interval),
@@ -195,6 +204,7 @@ describe("DomainPlanner", () => {
     test("view-level viewport domains select the resolution-wide mode", () => {
         const planner = new DomainPlanner({
             getActiveMembers: () => new Set(),
+            createExpression: rejectUnexpectedExpression,
             getViewLevelDomainSource: () => ({
                 view: /** @type {any} */ ({}),
                 channel: "y",
@@ -290,6 +300,7 @@ describe("DomainPlanner", () => {
                         },
                     ])
                 ),
+            createExpression: rejectUnexpectedExpression,
             getType: () => "locus",
             getLocusExtent: () => [0, 10],
             fromComplexInterval,
@@ -322,6 +333,7 @@ describe("DomainPlanner", () => {
                         },
                     ])
                 ),
+            createExpression: rejectUnexpectedExpression,
             getType: () => "locus",
             getLocusExtent: () => [0, 10],
             fromComplexInterval,
@@ -356,6 +368,7 @@ describe("DomainPlanner", () => {
 
         const planner = new DomainPlanner({
             getActiveMembers: () => members,
+            createExpression: rejectUnexpectedExpression,
             getType: () => "locus",
             getLocusExtent: () => [0, 10],
             fromComplexInterval,

@@ -5,6 +5,13 @@ import Genome from "../genome/genome.js";
 import GenomeStore from "../genome/genomeStore.js";
 import "./scaleResolution.js";
 
+/**
+ * @returns {import("../paramRuntime/types.js").ExprRefFunction}
+ */
+function createConstantExpression() {
+    return /** @type {any} */ (() => 0);
+}
+
 describe("ScaleInstanceManager", () => {
     afterEach(() => {
         vi.restoreAllMocks();
@@ -14,10 +21,7 @@ describe("ScaleInstanceManager", () => {
         const onRangeChange = vi.fn();
         const exprFn = /** @type {any} */ (() => 0);
         const manager = new ScaleInstanceManager({
-            getParamRuntime: () =>
-                /** @type {any} */ ({
-                    createExpression: () => exprFn,
-                }),
+            createExpression: () => exprFn,
             onRangeChange,
         });
 
@@ -50,10 +54,7 @@ describe("ScaleInstanceManager", () => {
 
         // Non-obvious: stub expression function to avoid vega-expression in unit tests.
         const manager = new ScaleInstanceManager({
-            getParamRuntime: () =>
-                /** @type {any} */ ({
-                    createExpression: () => expr,
-                }),
+            createExpression: () => expr,
             onRangeChange: /** @returns {void} */ () => undefined,
         });
 
@@ -75,10 +76,7 @@ describe("ScaleInstanceManager", () => {
     test("domain changes notify listeners", () => {
         const onDomainChange = vi.fn();
         const manager = new ScaleInstanceManager({
-            getParamRuntime: () =>
-                /** @type {any} */ ({
-                    createExpression: () => /** @type {any} */ (() => 0),
-                }),
+            createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             onDomainChange,
         });
@@ -101,10 +99,7 @@ describe("ScaleInstanceManager", () => {
         });
 
         const manager = new ScaleInstanceManager({
-            getParamRuntime: () =>
-                /** @type {any} */ ({
-                    createExpression: () => /** @type {any} */ (() => 0),
-                }),
+            createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
         });
@@ -134,10 +129,7 @@ describe("ScaleInstanceManager", () => {
         genomeStore.genomes.set(altGenome.name, altGenome);
 
         const manager = new ScaleInstanceManager({
-            getParamRuntime: () =>
-                /** @type {any} */ ({
-                    createExpression: () => /** @type {any} */ (() => 0),
-                }),
+            createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
         });
@@ -162,10 +154,7 @@ describe("ScaleInstanceManager", () => {
         });
 
         const manager = new ScaleInstanceManager({
-            getParamRuntime: () =>
-                /** @type {any} */ ({
-                    createExpression: () => /** @type {any} */ (() => 0),
-                }),
+            createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
         });
@@ -183,10 +172,7 @@ describe("ScaleInstanceManager", () => {
     test("loads built-in assembly lazily when requested by locus scale", () => {
         const genomeStore = new GenomeStore(".");
         const manager = new ScaleInstanceManager({
-            getParamRuntime: () =>
-                /** @type {any} */ ({
-                    createExpression: () => /** @type {any} */ (() => 0),
-                }),
+            createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
         });
@@ -207,10 +193,7 @@ describe("ScaleInstanceManager", () => {
     test("supports inline contigs in scale assembly", () => {
         const genomeStore = new GenomeStore(".");
         const manager = new ScaleInstanceManager({
-            getParamRuntime: () =>
-                /** @type {any} */ ({
-                    createExpression: () => /** @type {any} */ (() => 0),
-                }),
+            createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
         });
@@ -244,10 +227,7 @@ describe("ScaleInstanceManager", () => {
         await genomeStore.ensureAssembly(inlineAssembly);
 
         const manager = new ScaleInstanceManager({
-            getParamRuntime: () =>
-                /** @type {any} */ ({
-                    createExpression: () => /** @type {any} */ (() => 0),
-                }),
+            createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
         });
@@ -268,10 +248,7 @@ describe("ScaleInstanceManager", () => {
     test("throws when inline url assembly has not been ensured", () => {
         const genomeStore = new GenomeStore(".");
         const manager = new ScaleInstanceManager({
-            getParamRuntime: () =>
-                /** @type {any} */ ({
-                    createExpression: () => /** @type {any} */ (() => 0),
-                }),
+            createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
         });
@@ -298,10 +275,7 @@ describe("ScaleInstanceManager", () => {
         expr.invalidate = invalidate;
 
         const manager = new ScaleInstanceManager({
-            getParamRuntime: () =>
-                /** @type {any} */ ({
-                    createExpression: () => expr,
-                }),
+            createExpression: () => expr,
             onRangeChange: /** @returns {void} */ () => undefined,
         });
 

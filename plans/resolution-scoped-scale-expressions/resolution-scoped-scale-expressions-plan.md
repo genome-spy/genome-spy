@@ -1,6 +1,6 @@
 # Resolution-scoped scale expressions plan
 
-Status: Proposed
+Status: In progress
 
 Issue: [#471 Scope scale ExprRefs to their scale resolution](https://github.com/genome-spy/genome-spy/issues/471)
 
@@ -156,24 +156,24 @@ retain unit-local behavior, and declaration-origin runtime metadata disappears.
 
 ### Work
 
-- [ ] Add a resolution-owned expression factory in `scaleResolution.js` that
+- [x] Add a resolution-owned expression factory in `scaleResolution.js` that
       delegates to `resolutionView.paramRuntime`, augments unknown-variable
       errors with scale-scoping migration guidance, and does not fall back.
-- [ ] Change `ScaleInstanceManager` to receive the expression factory directly
+- [x] Change `ScaleInstanceManager` to receive the expression factory directly
       and bind all range ExprRefs through it.
-- [ ] Remove `__rangeExprScope` production, stripping, tests, and related
+- [x] Remove `__rangeExprScope` production, stripping, tests, and related
       `any` casts from `scalePropsResolver.js` and
       `scaleInstanceManager.js`.
-- [ ] Inject the same expression factory into `DomainPlanner` for ordinary
+- [x] Inject the same expression factory into `DomainPlanner` for ordinary
       configured-domain evaluation.
-- [ ] Refresh configured-domain subscriptions through the resolution factory,
+- [x] Refresh configured-domain subscriptions through the resolution factory,
       while keeping their unsubscribe handles in `ScaleResolution`.
-- [ ] Keep selection-domain resolution on its existing explicit member-aware
+- [x] Keep selection-domain resolution on its existing explicit member-aware
       path and add a regression test proving that #471 did not change it.
-- [ ] Replace the defining-member range test with tests for independent unit
+- [x] Replace the defining-member range test with tests for independent unit
       scope, shared owner/ancestor scope, owner shadowing, child-only rejection,
       and an owner parameter updated by a child using `push: "outer"`.
-- [ ] Cover the same scope matrix for configured domains, including ExprRefs
+- [x] Cover the same scope matrix for configured domains, including ExprRefs
       nested in arrays.
 
 ### Affected areas and consumers

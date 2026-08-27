@@ -16,8 +16,8 @@ export default class ScaleInstanceManager {
     /** @type {Set<import("../paramRuntime/types.js").ExprRefFunction>} */
     #rangeExprRefListeners = new Set();
 
-    /** @type {() => { createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} */
-    #getParamRuntime;
+    /** @type {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} */
+    #createExpression;
 
     /** @type {() => void} */
     #onRangeChange;
@@ -32,18 +32,18 @@ export default class ScaleInstanceManager {
 
     /**
      * @param {object} options
-     * @param {() => { createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} options.getParamRuntime
+     * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
      * @param {() => void} options.onRangeChange
      * @param {() => void} [options.onDomainChange]
      * @param {() => import("../genome/genomeStore.js").default | undefined} [options.getGenomeStore]
      */
     constructor({
-        getParamRuntime,
+        createExpression,
         onRangeChange,
         onDomainChange,
         getGenomeStore,
     }) {
-        this.#getParamRuntime = getParamRuntime;
+        this.#createExpression = createExpression;
         this.#onRangeChange = onRangeChange;
         this.#onDomainChange = onDomainChange;
         this.#getGenomeStore = getGenomeStore;
@@ -152,12 +152,10 @@ export default class ScaleInstanceManager {
         const {
             assembly: _assembly,
             domainIndexer: _domainIndexer,
-            __rangeExprScope: _rangeExprScope,
             ...rest
         } = propsAny;
         void _assembly;
         void _domainIndexer;
-        void _rangeExprScope;
         return rest;
     }
 
@@ -175,14 +173,10 @@ export default class ScaleInstanceManager {
         this.#rangeExprRefListeners.forEach((fn) => fn.invalidate());
         this.#rangeExprRefListeners.clear();
 
-        const rangeExprScope = /** @type {any} */ (props).__rangeExprScope;
-        const paramRuntime =
-            rangeExprScope?.paramRuntime ?? this.#getParamRuntime();
-
         const resolved = resolveRange({
             range: props.range,
             reverse: props.reverse,
-            createExpression: (expr) => paramRuntime.createExpression(expr),
+            createExpression: this.#createExpression,
             registerExpr: (fn) => this.#rangeExprRefListeners.add(fn),
         });
 
