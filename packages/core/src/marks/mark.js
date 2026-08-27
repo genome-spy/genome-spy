@@ -548,6 +548,17 @@ export default class Mark {
         return this.#graphics?.isReady() ?? false;
     }
 
+    /**
+     * Returns the opaque delegate owned by the selected retained renderer.
+     * Rendering backends resolve it while building their own command batches
+     * so per-frame work does not bounce through the semantic mark.
+     *
+     * @returns {import("../types/viewContext.js").MarkRenderingDelegate}
+     */
+    getRenderingDelegate() {
+        return this.#requireGraphics();
+    }
+
     isPickingParticipant() {
         if (
             this.properties.tooltip === null &&

@@ -1,4 +1,3 @@
-import Mark from "../marks/mark.js";
 import { LocSize } from "../view/layout/flexLayout.js";
 import Rectangle from "../view/layout/rectangle.js";
 import ViewRenderingContext from "../view/renderingContext/viewRenderingContext.js";
@@ -76,19 +75,6 @@ export interface GlobalRenderingOptions {
      * Views that haven't enabled picking can be skipped.
      */
     picking?: boolean;
-}
-
-/**
- * Allows for collecting marks for optimized rendering order.
- */
-
-export interface BufferedRenderingRequest {
-    mark: Mark;
-    callback: () => void;
-    coords: Rectangle;
-    placement?: PlacementRenderingOptions;
-    clip?: ClipOptions;
-    cullClip?: ClipOptions;
 }
 
 /**

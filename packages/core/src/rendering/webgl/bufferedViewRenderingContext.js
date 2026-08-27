@@ -21,6 +21,17 @@ import {
  */
 
 /**
+ * @typedef {object} BufferedRenderingRequest
+ * @prop {import("../../marks/mark.js").default} mark
+ * @prop {import("../../types/viewContext.js").MarkRenderingDelegate} graphics
+ * @prop {() => void} callback
+ * @prop {import("../../view/layout/rectangle.js").default} coords
+ * @prop {import("../../types/rendering.js").PlacementRenderingOptions} [placement]
+ * @prop {import("../../types/rendering.js").ClipOptions} [clip]
+ * @prop {import("../../types/rendering.js").ClipOptions} [cullClip]
+ */
+
+/**
  * View rendering context that buffers the actual WebGL rendering for
  * efficient animation.
  */
@@ -31,9 +42,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
     /** @type {(() => void)[]} */
     #batch;
 
-    /**
-     * @type {import("../../types/rendering.js").BufferedRenderingRequest[]}
-     */
+    /** @type {BufferedRenderingRequest[]} */
     #buffer = [];
 
     /** @type {import("twgl.js").FramebufferInfo} */
@@ -108,11 +117,13 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
             return;
         }
 
-        const callback = mark.render(options);
+        const graphics = mark.getRenderingDelegate();
+        const callback = graphics.render(options);
         if (callback) {
             const inheritedClip = normalizeClipOptions(options);
             this.#buffer.push({
                 mark,
+                graphics,
                 callback,
                 coords: this.#coords,
                 placement: options.placement,
@@ -204,7 +215,8 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
 
         // And reversing again to restore the original order
         for (const [mark, requests] of [...requestByMark.entries()].reverse()) {
-            if (!mark.isReady()) {
+            const graphics = requests[0].graphics;
+            if (!graphics.isReady()) {
                 continue;
             }
 
@@ -217,7 +229,9 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                 ? { ...this.globalOptions, placement }
                 : this.globalOptions;
             this.#batch.push(
-                ...mark.prepareRender(prepareOptions).map((op) => ifEnabled(op))
+                ...graphics
+                    .prepareRender(prepareOptions)
+                    .map((op) => ifEnabled(op))
             );
 
             /** @type {import("../../view/layout/rectangle.js").default} */
@@ -237,7 +251,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                     this.#batch.push(
                         ifEnabled(() => {
                             // Suppress rendering if viewport is outside the clip.
-                            viewportVisible = mark.setViewport(
+                            viewportVisible = graphics.setViewport(
                                 this.#canvasSize,
                                 this.#dpr,
                                 coords,

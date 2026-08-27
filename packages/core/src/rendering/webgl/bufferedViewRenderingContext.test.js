@@ -19,7 +19,9 @@ describe("BufferedViewRenderingContext", () => {
             }
         );
         const mark = /** @type {import("../../marks/mark.js").default} */ (
-            /** @type {unknown} */ ({})
+            /** @type {unknown} */ ({
+                getRenderingDelegate: vi.fn(),
+            })
         );
 
         context.renderMark(mark, {});
@@ -59,9 +61,6 @@ describe("BufferedViewRenderingContext", () => {
         /** @returns {boolean} */
         const isPickingParticipant = () => true;
 
-        /** @returns {boolean} */
-        const isReady = () => true;
-
         const prepareRender = vi.fn(() => []);
 
         /** @returns {number} */
@@ -84,15 +83,18 @@ describe("BufferedViewRenderingContext", () => {
         const view = /** @type {import("../../view/view.js").default} */ (
             /** @type {unknown} */ ({ onBeforeRender })
         );
+        const graphics = {
+            isReady: () => true,
+            prepareRender,
+            setViewport,
+            render,
+        };
         const mark = /** @type {import("../../marks/mark.js").default} */ (
             /** @type {unknown} */ ({
                 properties: { clip: true },
                 unitView: { getEffectiveOpacity },
                 isPickingParticipant,
-                isReady,
-                prepareRender,
-                setViewport,
-                render,
+                getRenderingDelegate: () => graphics,
             })
         );
         const context = new BufferedViewRenderingContext(
