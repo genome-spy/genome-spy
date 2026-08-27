@@ -1,0 +1,129 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Displaced scatterplot labels",
+    "Measures and separates overlapping labels while leader lines preserve their connection to the original points."
+  ],
+
+  "width": 640,
+  "height": 360,
+  "data": {
+    "values": [
+      { "x": 4.82, "y": 5.08, "label": "TP53", "priority": 1 },
+      { "x": 4.96, "y": 5.12, "label": "EGFR", "priority": 2 },
+      { "x": 5.08, "y": 4.98, "label": "BRCA1", "priority": 3 },
+      { "x": 4.91, "y": 4.89, "label": "PIK3CA", "priority": 4 },
+      { "x": 5.18, "y": 5.09, "label": "MYC", "priority": 5 },
+      { "x": 5.02, "y": 5.24, "label": "KRAS", "priority": 6 },
+      { "x": 4.74, "y": 4.95, "label": "PTEN", "priority": 7 },
+      { "x": 5.23, "y": 4.86, "label": "CDKN2A", "priority": 8 },
+      { "x": 4.85, "y": 5.28, "label": "ERBB2", "priority": 9 },
+      { "x": 5.3, "y": 5.2, "label": "BRAF", "priority": 10 }
+    ]
+  },
+
+  "resolve": { "scale": { "x": "shared", "y": "shared" } },
+
+  "layer": [
+    {
+      "mark": { "type": "point", "filled": true, "size": 45 },
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": [3.5, 6.5], "zoom": true }
+        },
+        "y": {
+          "field": "y",
+          "type": "quantitative",
+          "scale": { "domain": [3.5, 6.5], "zoom": true }
+        }
+      }
+    },
+
+    {
+      "transform": [
+        {
+          "type": "measureText",
+          "field": "label",
+          "fontSize": 14,
+          "fontWeight": "bold",
+          "as": "labelWidth"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.labelWidth + 10",
+          "as": "collisionWidth"
+        },
+        {
+          "type": "collect",
+          "sort": { "field": "priority", "order": "ascending" }
+        },
+        {
+          "type": "displace2d",
+          "x": "x",
+          "y": "y",
+          "width": "collisionWidth",
+          "height": 20,
+          "xPositionFactor": {
+            "expr": "width * (scale('x', 1) - scale('x', 0))"
+          },
+          "yPositionFactor": {
+            "expr": "height * (scale('y', 0) - scale('y', 1))"
+          },
+          "xExtent": { "expr": "domain('x')" },
+          "yExtent": { "expr": "domain('y')" },
+          "as": ["labelDx", "labelDy"]
+        }
+      ],
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      },
+      "layer": [
+        {
+          "name": "Leader lines",
+          "mark": { "type": "rule", "color": "#606770", "size": 1 },
+          "encoding": {
+            "x2": { "field": "x" },
+            "y2": { "field": "y" },
+            "xOffset": {
+              "field": "labelDx",
+              "type": "quantitative",
+              "scale": null
+            },
+            "yOffset": {
+              "field": "labelDy",
+              "type": "quantitative",
+              "scale": null
+            }
+          }
+        },
+        {
+          "name": "Labels",
+          "mark": {
+            "type": "text",
+            "align": "center",
+            "baseline": "middle",
+            "fontSize": 14,
+            "fontWeight": "bold"
+          },
+          "encoding": {
+            "text": { "field": "label", "type": "nominal" },
+            "xOffset": {
+              "field": "labelDx",
+              "type": "quantitative",
+              "scale": null
+            },
+            "yOffset": {
+              "field": "labelDy",
+              "type": "quantitative",
+              "scale": null
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

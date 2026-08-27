@@ -213,6 +213,10 @@ SCHEMA DirectionDef
 
 See the [Displace1DParams documentation](transform/displace1d.md#parameters).
 
+## Displace2DParams
+
+See the [Displace2DParams documentation](transform/displace2d.md#parameters).
+
 ## DomEventType
 
 SCHEMA DomEventType
