@@ -25,6 +25,13 @@ export interface ParameterBase {
      */
     description?: string;
 
+    /**
+     * Reuses the nearest same-named parameter in an ancestor scope and writes
+     * updates to it. Declare the target parameter on the ancestor first.
+     *
+     * This is useful when interaction in a child view updates state owned by a
+     * composed view, such as a parameter that controls a shared scale.
+     */
     push?: "outer";
 }
 
@@ -243,9 +250,7 @@ type Vector2<T> = [T, T];
 export type SelectionType = "point" | "interval";
 export type SelectionInit = Scalar;
 export type SelectionInitInterval =
-    | Vector2<boolean>
-    | Vector2<number>
-    | Vector2<string>;
+    Vector2<boolean> | Vector2<number> | Vector2<string>;
 
 export type InteractionEventType =
     | "click"

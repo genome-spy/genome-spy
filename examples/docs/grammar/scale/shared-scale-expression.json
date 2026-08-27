@@ -1,0 +1,56 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Shared Scale Expression Scope",
+    "A child slider pushes a size limit to the parameter that owns a shared scale."
+  ],
+
+  "width": 300,
+  "height": 120,
+
+  "params": [{ "name": "maxSize", "value": 800 }],
+
+  "scales": {
+    "size": {
+      "domain": [0, 10],
+      "range": [20, { "expr": "maxSize" }]
+    }
+  },
+
+  "data": {
+    "values": [{ "value": 2 }, { "value": 5 }, { "value": 8 }]
+  },
+
+  "layer": [
+    {
+      "params": [
+        {
+          "name": "maxSize",
+          "push": "outer",
+          "bind": {
+            "input": "range",
+            "min": 100,
+            "max": 1500,
+            "step": 100,
+            "name": "Maximum symbol size"
+          }
+        }
+      ],
+      "mark": { "type": "point", "color": "#4c78a8" },
+      "encoding": {
+        "x": { "field": "value", "type": "quantitative" },
+        "y": { "value": 0.35 },
+        "size": { "field": "value", "type": "quantitative" }
+      }
+    },
+    {
+      "mark": { "type": "point", "color": "#f58518" },
+      "encoding": {
+        "x": { "field": "value", "type": "quantitative" },
+        "y": { "value": 0.65 },
+        "size": { "field": "value", "type": "quantitative" }
+      }
+    }
+  ]
+}

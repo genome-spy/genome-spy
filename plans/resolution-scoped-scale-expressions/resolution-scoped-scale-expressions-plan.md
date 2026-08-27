@@ -1,6 +1,6 @@
 # Resolution-scoped scale expressions plan
 
-Status: In progress
+Status: Implemented; ready for review
 
 Issue: [#471 Scope scale ExprRefs to their scale resolution](https://github.com/genome-spy/genome-spy/issues/471)
 
@@ -293,15 +293,16 @@ and every acceptance criterion in #471 has evidence.
 
 ### Work
 
-- [ ] Update scale specification JSDoc and parameter documentation to state
+- [x] Update scale specification JSDoc and parameter documentation to state
       that ordinary scale ExprRefs use the scale resolution owner's scope.
-- [ ] Document owner-level `scales.<channel>` as the preferred declaration for
+- [x] Document owner-level `scales.<channel>` as the preferred declaration for
       shared reactive scales and show the `push: "outer"` child-writer pattern.
-- [ ] Add a breaking-change entry to `packages/core/CHANGELOG.md` with migration
-      guidance and the actionable error wording.
-- [ ] Confirm the repository contains no remaining declaration-origin runtime
+- [x] Record the breaking migration in the final Conventional Commit footer so
+      the release workflow generates the changelog entry. Do not hand-edit the
+      released-only `packages/core/CHANGELOG.md`.
+- [x] Confirm the repository contains no remaining declaration-origin runtime
       metadata or per-member ordinary scale-expression binding.
-- [ ] Reconcile every #471 acceptance criterion against a named test, example,
+- [x] Reconcile every #471 acceptance criterion against a named test, example,
       documentation section, or explicit non-applicable result.
 
 ### Affected areas and consumers
@@ -387,40 +388,56 @@ The owner may not currently expose the related scale channel expected by a
 generated or automatic expression. Fix the topology or generated declaration;
 do not restore member lookup as a workaround.
 
-## Unresolved questions
+## Resolved questions
 
-- Should identical ExprRefs contributed by several members share one compiled
-  expression function, or is one resolution-owned function per occurrence
-  preferable for diagnostics? Correct scope and lifecycle do not require
-  deduplication; decide only with evidence about error reporting and cost.
-- Should debug snapshots expose the resolution owner path explicitly alongside
-  declaration paths? Add it only if existing `hostView` output is insufficient.
-- Does initialized member mutation already call `reconfigure()` on every path,
-  or must `#syncMembers()` trigger it when a scale exists? Resolve with focused
-  mutation tests before choosing the hook.
-- Can all generated legend pixel scales be hoisted to view-level declarations
-  without changing their intentionally excluded resolution topology, or should
-  some remain unit-owned? Prefer the smallest generated-spec change consistent
-  with owner geometry.
+- Keep one compiled expression function per occurrence. Deduplication is not
+  needed for correctness and would weaken occurrence-level lifecycle handling.
+- Keep the existing debug `hostView`; it already exposes the resolution owner.
+- `#syncMembers()` now reconfigures initialized non-empty resolutions. Failed
+  registration batches restore membership, listeners, and scale props.
+- Keep generated legend pixel scales in their intentionally excluded helper
+  bodies. Focused hierarchy assertions prove that each ExprRef binds through
+  the generated body owner with forced local geometry.
+
+## Verification results
+
+- `npm test -- --reporter=agent`: 430 files and 3565 tests passed; one skipped
+  and two todo tests remain unrelated. The shared-example snapshot for
+  `shared-scale-expression.json` was reviewed and added intentionally.
+- Focused scale, offset, legend, and mutation suites: 10 files and 183 tests
+  passed.
+- `npm run lint -- --quiet`: passed.
+- `npm run build:docs`: passed, including schema generation and a clean Zensical
+  build.
+- Browser smoke checks passed for the sashimi plot, nested grouped bars, symbol
+  and gradient legends, pushed ruler parameters, and the new shared-scale
+  expression example.
+- Workspace TypeScript checks reach every workspace but report the existing
+  `gff-nostream` `GFF3Feature` export mismatch in
+  `packages/core/src/data/sources/lazy/gff3Source.js`. No changed file reports a
+  TypeScript error.
 
 ## Acceptance criteria
 
-- All domain and range ExprRefs bind through one resolution-owned scope.
-- Independent scales retain access to unit-local parameters.
-- Shared scales access owner and ancestor parameters.
-- Child-local-only parameters fail with actionable migration guidance.
-- Child `push: "outer"` updates an owner parameter that drives a shared scale.
-- Declaration-origin runtime metadata is removed.
-- Configured-domain subscriptions no longer bind through contributing member
-  runtimes.
-- Selection-domain references retain their existing semantics.
-- Generated legends and nested offsets update correctly during resize.
-- Scale helpers resolve through owner topology and cycles still fail explicitly.
-- View mutation and resolution disposal do not leak or nondeterministically
-  rebind expressions.
-- Examples, specification docs, generated docs, and changelog describe the new
-  contract.
-- #471 closes without implementing dynamic padding or #463 scheduling work.
+- [x] All domain and range ExprRefs bind through one resolution-owned scope.
+- [x] Independent scales retain access to unit-local parameters.
+- [x] Shared scales access owner and ancestor parameters.
+- [x] Child-local-only parameters fail with actionable migration guidance.
+- [x] Child `push: "outer"` updates an owner parameter that drives a shared
+      scale.
+- [x] Declaration-origin runtime metadata is removed.
+- [x] Configured-domain subscriptions no longer bind through contributing member
+      runtimes.
+- [x] Selection-domain references retain their existing semantics.
+- [x] Generated legends and nested offsets update correctly during resize.
+- [x] Scale helpers resolve through owner topology and cycles still fail
+      explicitly.
+- [x] View mutation and resolution disposal do not leak or nondeterministically
+      rebind expressions.
+- [x] Examples, specification docs, and generated docs describe the new contract;
+      the breaking commit footer will feed the generated changelog.
+- [x] The #471 implementation is complete without dynamic padding or #463
+      scheduling work. The GitHub issue remains open until review and merge.
 
 ## Plan retirement
 

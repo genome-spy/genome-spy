@@ -411,6 +411,26 @@ Do not mix view-level `scales.<channel>` with participating
 `encoding.<channel>.type` on member encodings; it describes the encoded data and
 drives default scale type inference.
 
+### Scale expression scope
+
+Expression references in scale `domain` and `range` properties use the
+parameter scope of the view that owns the scale resolution. An independent
+scale is owned by its unit view. A shared scale is owned by the composed view
+where the child scales are resolved together. Parameters on that owner or its
+ancestors are visible to the scale expression; parameters declared only in a
+child are not.
+
+Declare reactive shared-scale properties and their controlling parameters on
+the owning view. If an interaction or input in a child needs to update the
+parameter, declare a same-named child parameter with `"push": "outer"`:
+
+EXAMPLE examples/docs/grammar/scale/shared-scale-expression.json height=180
+
+There is no fallback to a child declaration scope. Move a child-only parameter
+to the resolution owner and use `"push": "outer"` when the child must write it.
+Selection-domain references remain explicitly linked to their named selection
+parameter and are not affected by this rule.
+
 ## Named scales
 
 By giving the scale a name, it can be accessed through the
