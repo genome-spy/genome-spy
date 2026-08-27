@@ -189,7 +189,7 @@ export default class ScaleInstanceManager {
         if (!resolved) {
             if (
                 props.scheme === undefined &&
-                props.rangeStep === undefined &&
+                !("rangeStep" in props) &&
                 this.#defaultRange
             ) {
                 scale.range(this.#defaultRange);
