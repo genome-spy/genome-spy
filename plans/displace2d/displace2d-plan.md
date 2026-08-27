@@ -129,6 +129,9 @@ rendering and connector composition own association.
 
 ## Non-goals for the first version
 
+- Modifying, refactoring, or fixing `displace1d`. It is an established precedent
+  whose good abstraction choices inform this design, not part of this change.
+  No `displace1d` implementation, tests, types, or documentation are in scope.
 - Inspecting rendered mark bounds or avoiding arbitrary named marks. GenomeSpy
   intentionally has no retained scene graph, so this would invert the dataflow
   and rendering ownership boundary.
@@ -166,6 +169,9 @@ rendering and connector composition own association.
 - `packages/core/src/data/transforms/displace1dSolver.js` establishes the
   preferred separation between a pure numerical solver and the dataflow
   adapter.
+- Reuse `displace1d`'s contracts selectively, not its implementation verbatim.
+  In particular, `displace2d` must avoid stale derived extent state, duplicate
+  reactive replays, and uncancelled deferred bootstrap work.
 - `packages/core/src/data/transforms/measureText.js` supplies label widths but
   does not own placement.
 - Offset channels are already applied in WebGL and structured SVG output. The
@@ -181,6 +187,13 @@ rendering and connector composition own association.
   replay per settled parameter update. Prefer the existing expression-property
   batching utility or an equally small local use of it; do not create a new
   scheduler.
+- Source-coordinate extents are the source of truth. Derive both scaled extents
+  coherently for each solve, or explicitly clear an axis when its source extent
+  becomes undefined. Never let a retained scaled extent outlive the parameter
+  value from which it was derived.
+- Deferred bootstrap replay must check that the transform is still live before
+  walking to an upstream collector. Disposal between initial completion and the
+  queued replay must be a no-op.
 
 ## Abstraction-level decision
 
@@ -228,6 +241,10 @@ These rules are acceptance criteria for the code, not optional cleanup work:
   introducing interfaces for either.
 - Reuse `displace1d` lifecycle patterns, but do not create a shared displacement
   framework until both transforms contain stable, meaningful duplication.
+- Keep scalar readers and per-datum field accessors distinct. A field-name
+  string for `width` or `height` must never leak into reactive scalar state.
+- Keep one source of truth for source extents and position factors. Scaled
+  bounds are derived solve inputs, not independently meaningful state.
 - Validate once at the transform boundary. Keep the pure solver focused on its
   explicit numerical contract and fail loudly on violated invariants.
 - Do not add compatibility aliases, deprecated parameter names, fallback
@@ -290,7 +307,9 @@ Semantics:
   coordinate systems and are scaled with the item centers. When the rectangles
   cannot be placed by the bounded local search, every row still receives
   offsets and the documented overflow policy applies. Overflow does not imply
-  that no globally feasible arrangement exists.
+  that no globally feasible arrangement exists. An expression may evaluate to
+  `undefined` to disable that axis's preferred extent and must not leave stale
+  scaled bounds behind.
 - The output displacement coordinate system must exactly match unscaled
   `xOffset` and `yOffset`: positive x moves right and positive y moves down.
 - Like `displace1d`, affine position conversion is supported directly.
@@ -455,6 +474,12 @@ remain useful for review and bisection.
 - Expression-backed parameters bootstrap only after scale domains exist and
   coalesce into at most one coherent replay when their effective values change
   in one settled parameter update.
+- A queued bootstrap replay after transform disposal is ignored.
+- Independently reactive x/y extents can be enabled, changed, and disabled
+  without retaining stale scaled bounds on either axis.
+- Reactive x/y factors may change sign because 2D placement uses stable input
+  order rather than `displace1d`'s scaled-position ordering requirement. Scaled
+  extents are normalized after every effective factor change.
 - Placement output must not feed back into the data-driven domains used to
   compute the original positions.
 - During small zoom increments, stable input and internal search order minimize
@@ -480,6 +505,7 @@ Affected areas and downstream consumers:
   small permanent regression benchmark; do not build a benchmark framework.
 - Representative scatterplot and genomic annotation fixtures.
 - This plan's algorithm decision, API question, and recorded measurements.
+- No changes under the `displace1d` implementation, tests, types, or docs.
 
 Verification:
 
@@ -525,6 +551,12 @@ Verification:
   behavior, upstream `collect` replay, expression bootstrap, zoom reactions,
   negative factors, extent normalization, unchanged source domains, and one
   replay when several reactive placement properties change together.
+- Transform tests independently toggle expression-backed x/y extents between
+  defined and undefined values, change factor signs, and dispose the transform
+  before its queued bootstrap replay. No stale extent or post-disposal replay is
+  permitted.
+- Tests distinguish datum-field dimensions from reactive shared dimensions so
+  the overloaded public input forms cannot share accidental mutable state.
 - Run focused Vitest suites with the `agent` reporter, schema checks, workspace
   TypeScript checks, and lint for touched code.
 - Re-run the accepted performance fixtures. Inspect allocations only if timing
@@ -589,6 +621,8 @@ documentation, provenance, and code-size tradeoff.
   rule without claiming global infeasibility.
 - The transform remains dataflow-only, the solver remains pure, and no new
   rendering special cases or runtime dependencies are introduced.
+- `displace1d` implementation, tests, public types, and documentation remain
+  unchanged; any issue discovered there is out of scope for this pull request.
 - WebGL display, picking/tooltips, clipping, and structured SVG export agree on
   the displaced positions.
 - Public types, generated schema, documentation, navigation, and example specs
@@ -622,6 +656,10 @@ documentation, provenance, and code-size tradeoff.
 - **Duplicate reactive work.** Coalesce all expression-backed placement
   invalidations and test that a settled multi-property change causes at most
   one replay.
+- **Stale derived bounds.** Derive scaled bounds coherently from the current
+  source extents and clear each axis explicitly when its extent is disabled.
+- **Deferred work after disposal.** Guard the queued bootstrap replay with the
+  transform lifecycle so removed views cannot replay stale branches.
 - **Expression/data-domain feedback.** Reuse `displace1d` bootstrap and collector
   replay patterns and test data-driven x and y domains explicitly.
 - **API overfitting to text labels.** Define the solver in terms of rectangle
