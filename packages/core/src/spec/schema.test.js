@@ -316,6 +316,7 @@ describe("generated core schema", () => {
 
     test("accepts two-dimensional displacement transform parameters", () => {
         const validate = createCoreValidator();
+        /** @type {import("./coreSchemaRoot.js").CoreRootSpec} */
         const spec = {
             data: { values: [{ x: 1, y: 2, width: 20 }] },
             transform: [
