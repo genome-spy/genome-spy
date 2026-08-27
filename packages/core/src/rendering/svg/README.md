@@ -20,13 +20,13 @@ geometry. SVG and Canvas2D consume those occurrences in draw order. SampleView
 facet transforms are applied by each rendering context before mark emission.
 
 Marks above the user-supplied `maxVectorInstances` threshold are collected into
-maximal contiguous paint-order runs. `raster/webgl.js` is dynamically imported
-only when at least one such run exists and an existing WebGL context is
-available. It replays each run through the normal buffered WebGL renderer and
-embeds one cropped transparent PNG. Adjacent SampleView marks and all of their
-sample facets share the same image. SVG owns run selection, placeholders,
-cropping, and document order; the WebGL dependency is confined to this lazy
-raster adapter.
+maximal contiguous paint-order runs. The selected rendering backend may provide
+a selective raster capability; otherwise Core tries the dynamically loaded
+Canvas2D fallback. Each run is replayed into a transparent raster surface and
+embedded as one cropped PNG. Adjacent SampleView marks and all of their sample
+facets share the same image. SVG owns run selection, placeholders, bounds, and
+document order. Raster backends only paint the selected marks and embed the
+result.
 
 Shared helpers include:
 
@@ -50,17 +50,17 @@ they inherit without CSS. Reusable visual definitions should be cached by the
 rendering context. Coordinates are formatted to one decimal place because they
 represent logical CSS pixels.
 
-Rasterization is opt-in. Without a threshold—or without WebGL—the exporter
-continues to produce a complete vector SVG. A requested but unavailable WebGL
-fallback produces a warning rather than failing headless export. Point fill
-gradients are intentionally flattened, and the deprecated
+Rasterization is opt-in. Without a threshold—or without an available raster
+backend—the exporter continues to produce a complete vector SVG. Unavailable
+rasterization produces a warning rather than failing headless export. Point
+fill gradients are intentionally flattened, and the deprecated
 `geometricZoomBound` property is not supported. Ordinary grammar faceting is
 also out of scope; SampleView faceting is supported.
 
 `analyzeSvgExport()` performs only the count traversal and reports visible
 layers with their post-culling instance counts. It does not emit mark elements
-or require WebGL. The App uses one cached analysis to preview threshold changes
-in the Save SVG dialog.
+or load a raster backend. The App uses one cached analysis to preview threshold
+changes in the Save SVG dialog.
 
 ## Extending and testing
 

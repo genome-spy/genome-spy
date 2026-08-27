@@ -458,7 +458,7 @@ export interface RasterExportResult {
 }
 
 export interface SvgExportOptions extends ImageExportOptions {
-    /** Rasterizes dense mark layers using the existing WebGL context. */
+    /** Rasterizes dense mark layers using an available rendering backend. */
     rasterization?: SvgRasterizationOptions;
 }
 
@@ -536,8 +536,9 @@ export interface SvgExportAnalysis {
 /** Exports the current visualization as raster or vector images. */
 export interface ImageExportApi {
     /**
-     * Exports a raster image through the active rendering backend. PNG is
-     * currently the only supported format.
+     * Exports a raster image through an available rendering backend. PNG is
+     * currently the only supported format. Rejects if rasterization is
+     * unavailable.
      */
     raster: (options?: RasterExportOptions) => Promise<RasterExportResult>;
 

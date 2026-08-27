@@ -2,6 +2,7 @@ import WebGLHelper, { readPickingPixel } from "../gl/webGLHelper.js";
 import RenderCoordinator from "../genomeSpy/renderCoordinator.js";
 import { warnOnce } from "../utils/warning.js";
 import { exportCanvas, exportRaster } from "../genomeSpy/canvasExport.js";
+import { rasterizeSvgRuns } from "./svg/raster/webgl.js";
 
 /**
  * @typedef {object} RenderingSurface
@@ -20,13 +21,34 @@ import { exportCanvas, exportRaster } from "../genomeSpy/canvasExport.js";
  */
 
 /**
+ * @typedef {object} RasterExportOptions
+ * @property {import("../view/view.js").default} viewRoot
+ * @property {number} [logicalWidth]
+ * @property {number} [logicalHeight]
+ * @property {number} [pixelRatio]
+ * @property {string | null} [clearColor]
+ * @property {"image/png"} [mimeType]
+ */
+
+/**
+ * @typedef {object} SvgRunRasterizationOptions
+ * @property {import("./svg/svgViewRenderingContext.js").SvgRasterRun[]} runs
+ * @property {import("../view/view.js").default} viewRoot
+ * @property {import("../view/layout/layoutResult.js").default} [layoutResult]
+ * @property {number} logicalWidth
+ * @property {number} logicalHeight
+ * @property {number} pixelRatio
+ */
+
+/**
  * @typedef {object} RenderingBackend
  * @property {RenderingSurface} surface
  * @property {WebGLHelper | undefined} glHelper
  * @property {(options: Omit<ConstructorParameters<typeof RenderCoordinator>[0], "glHelper">) => RenderingCoordinator} createRenderCoordinator
  * @property {(x: number, y: number) => number | null | Promise<number | null>} [readPickingId]
  * @property {(options: Omit<Parameters<typeof exportCanvas>[0], "glHelper">) => string} exportCanvas
- * @property {(options: Omit<Parameters<typeof exportRaster>[0], "glHelper">) => Promise<Blob>} exportRaster
+ * @property {(options: RasterExportOptions) => Promise<Blob>} [exportRaster]
+ * @property {(options: SvgRunRasterizationOptions) => void | Promise<void>} [rasterizeSvgRuns]
  */
 
 /**
@@ -92,6 +114,8 @@ function createWebGLBackend(options) {
             exportCanvas({ ...exportOptions, glHelper }),
         exportRaster: (exportOptions) =>
             exportRaster({ ...exportOptions, glHelper }),
+        rasterizeSvgRuns: (rasterOptions) =>
+            rasterizeSvgRuns({ ...rasterOptions, webGLHelper: glHelper }),
         readPickingId: (x, y) => {
             const dpr = glHelper.getDevicePixelRatio();
             const pixel = readPickingPixel(

@@ -20,6 +20,9 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
     /** @type {Set<import("../../view/view.js").default>} */
     #views = new Set();
 
+    /** @type {(mark: import("../../marks/mark.js").default) => boolean} */
+    #markPredicate;
+
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
      * @param {{
@@ -28,7 +31,8 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
      *     height: number,
      *     devicePixelRatio: number,
      *     background: string | null,
-     *     paint: boolean
+     *     paint: boolean,
+     *     markPredicate?: (mark: import("../../marks/mark.js").default) => boolean
      * }} options
      */
     constructor(globalOptions, options) {
@@ -38,6 +42,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         this.height = options.height;
         this.devicePixelRatio = options.devicePixelRatio;
         this.paint = options.paint;
+        this.#markPredicate = options.markPredicate ?? (() => true);
 
         if (this.paint) {
             const context = this.context;
@@ -101,7 +106,11 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     renderMark(mark, options) {
-        if (!this.paint || mark.unitView.getEffectiveOpacity() <= 0) {
+        if (
+            !this.paint ||
+            !this.#markPredicate(mark) ||
+            mark.unitView.getEffectiveOpacity() <= 0
+        ) {
             return;
         }
 

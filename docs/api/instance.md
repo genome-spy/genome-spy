@@ -64,10 +64,11 @@ const { blob } = await api.imageExport.raster({
 
 `image/png` is currently the only supported MIME type.
 
-Raster export uses the active rendering backend. In Canvas2D mode, GenomeSpy
-renders the current view into a detached Canvas2D surface and encodes it without
-requesting WebGL. Native-font and effect limitations are the same as in the
-live [Canvas2D renderer](./embed-options.md#canvas2d-limitations).
+Raster export first uses the active rendering backend. If that backend does not
+support raster export, GenomeSpy tries a detached Canvas2D surface without
+initializing another GPU renderer. Export rejects when neither is available.
+Native-font and effect limitations of the fallback are the same as in the live
+[Canvas2D renderer](./embed-options.md#canvas2d-limitations).
 
 !!! warning "Deprecated canvas export"
 
@@ -150,16 +151,17 @@ const result = await api.imageExport.svg({
 Higher values produce sharper raster layers and larger files. It does not
 change the SVG dimensions or vector elements.
 
-Rasterization uses GenomeSpy's existing WebGL renderer. If no WebGL context is
-available, export remains functional and emits vectors instead, with a warning
-in the result. Omitting `rasterization` produces a vector-only SVG and does not
-require WebGL.
+Rasterization first uses the active renderer when it supports selective
+rasterization. Otherwise, GenomeSpy tries a detached Canvas2D surface without
+initializing another GPU renderer. If neither is available, export remains
+functional and emits vectors instead, with a warning in the result. Omitting
+`rasterization` produces a vector-only SVG and does not load a raster backend.
 
 ### Previewing rasterization
 
 `imageExport.analyzeSvg()` reports the visible instance count of each mark layer
-without creating an SVG or using WebGL. It can be used to preview which layers
-would cross a rasterization threshold:
+without creating an SVG or using a raster backend. It can be used to preview
+which layers would cross a rasterization threshold:
 
 ```js
 const { layers } = await api.imageExport.analyzeSvg();

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     warnOnce: vi.fn(),
     exportCanvas: vi.fn(),
     exportRaster: vi.fn(),
+    rasterizeSvgRuns: vi.fn(),
 }));
 
 vi.mock("../gl/webGLHelper.js", () => ({
@@ -37,6 +38,10 @@ vi.mock("../utils/warning.js", () => ({
 vi.mock("../genomeSpy/canvasExport.js", () => ({
     exportCanvas: mocks.exportCanvas,
     exportRaster: mocks.exportRaster,
+}));
+
+vi.mock("./svg/raster/webgl.js", () => ({
+    rasterizeSvgRuns: mocks.rasterizeSvgRuns,
 }));
 
 import { createRenderingBackend } from "./renderingBackend.js";
@@ -160,6 +165,13 @@ describe("createRenderingBackend", () => {
         await expect(backend.exportRaster({ viewRoot })).resolves.toBe(blob);
         expect(mocks.exportCanvas).toHaveBeenCalledWith({ viewRoot, glHelper });
         expect(mocks.exportRaster).toHaveBeenCalledWith({ viewRoot, glHelper });
+
+        const rasterOptions = /** @type {any} */ ({ runs: [] });
+        await backend.rasterizeSvgRuns?.(rasterOptions);
+        expect(mocks.rasterizeSvgRuns).toHaveBeenCalledWith({
+            runs: [],
+            webGLHelper: glHelper,
+        });
     });
 
     test("preserves existing canvases when WebGL creation fails", async () => {

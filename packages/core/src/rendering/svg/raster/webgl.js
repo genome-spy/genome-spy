@@ -4,7 +4,7 @@ import { framebufferToDataUrl } from "../../../gl/framebufferReadback.js";
 import { createLayoutResult } from "../../../view/layout/layoutResult.js";
 import BufferedViewRenderingContext from "../../../view/renderingContext/bufferedViewRenderingContext.js";
 import Rectangle from "../../../view/layout/rectangle.js";
-import { formatSvgNumber } from "../svgNumber.js";
+import { getPhysicalCrop, setRasterImage } from "./rasterImage.js";
 
 /**
  * Renders each contiguous raster run into the same reusable transparent
@@ -84,21 +84,7 @@ export function rasterizeSvgRuns({
                 "image/png",
                 { ...crop, unpremultiplyAlpha: true }
             );
-            const image = run.image;
-            if (!image) {
-                throw new Error("Raster run has no SVG image placeholder.");
-            }
-            image.setAttribute("x", "" + formatSvgNumber(crop.x / pixelRatio));
-            image.setAttribute("y", "" + formatSvgNumber(crop.y / pixelRatio));
-            image.setAttribute(
-                "width",
-                "" + formatSvgNumber(crop.width / pixelRatio)
-            );
-            image.setAttribute(
-                "height",
-                "" + formatSvgNumber(crop.height / pixelRatio)
-            );
-            image.setAttribute("href", href);
+            setRasterImage(run, crop, pixelRatio, href);
         }
     } finally {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -127,23 +113,4 @@ function validateFramebufferSize(gl, width, height) {
             `SVG raster dimensions ${width} x ${height} exceed the WebGL limit ${maxSize}.`
         );
     }
-}
-
-/**
- * @param {import("../../immediate/bounds.js").RenderBounds} bounds
- * @param {number} pixelRatio
- * @param {number} framebufferWidth
- * @param {number} framebufferHeight
- */
-function getPhysicalCrop(
-    bounds,
-    pixelRatio,
-    framebufferWidth,
-    framebufferHeight
-) {
-    const x = Math.max(0, Math.floor(bounds.x1 * pixelRatio));
-    const y = Math.max(0, Math.floor(bounds.y1 * pixelRatio));
-    const x2 = Math.min(framebufferWidth, Math.ceil(bounds.x2 * pixelRatio));
-    const y2 = Math.min(framebufferHeight, Math.ceil(bounds.y2 * pixelRatio));
-    return { x, y, width: x2 - x, height: y2 - y };
 }

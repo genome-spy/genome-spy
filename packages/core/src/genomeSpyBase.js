@@ -26,6 +26,10 @@ import { invalidatePrefix } from "./utils/propertyCacher.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import InteractionController from "./genomeSpy/interactionController.js";
 import { createRenderingBackend } from "./rendering/renderingBackend.js";
+import {
+    exportRasterUsingBackend,
+    rasterizeSvgRunsUsingBackend,
+} from "./rendering/rasterization.js";
 import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
@@ -726,14 +730,17 @@ export default class GenomeSpy {
         const background = getExportBackground(this.spec, options);
 
         try {
-            const blob = await this.#renderingBackend.exportRaster({
-                viewRoot: this.viewRoot,
-                logicalWidth: options.logicalWidth,
-                logicalHeight: options.logicalHeight,
-                pixelRatio: options.pixelRatio,
-                clearColor: background,
-                mimeType: options.mimeType,
-            });
+            const blob = await exportRasterUsingBackend(
+                this.#renderingBackend,
+                {
+                    viewRoot: this.viewRoot,
+                    logicalWidth: options.logicalWidth,
+                    logicalHeight: options.logicalHeight,
+                    pixelRatio: options.pixelRatio,
+                    clearColor: background,
+                    mimeType: options.mimeType,
+                }
+            );
             return { blob };
         } finally {
             this.computeLayout();
@@ -763,7 +770,11 @@ export default class GenomeSpy {
                 await import("./rendering/svg/index.js");
             const { svg, warnings, rasterized } = await createSvgExport({
                 viewRoot: this.viewRoot,
-                webGLHelper: this.#glHelper,
+                rasterizeSvgRuns: (rasterOptions) =>
+                    rasterizeSvgRunsUsingBackend(
+                        this.#renderingBackend,
+                        rasterOptions
+                    ),
                 logicalWidth,
                 logicalHeight,
                 background,

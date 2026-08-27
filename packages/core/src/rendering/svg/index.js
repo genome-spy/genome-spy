@@ -1,5 +1,6 @@
 import { createLayoutResult } from "../../view/layout/layoutResult.js";
 import Rectangle from "../../view/layout/rectangle.js";
+import { RasterizationUnavailableError } from "../rasterization.js";
 import SvgViewRenderingContext from "./svgViewRenderingContext.js";
 
 /**
@@ -89,7 +90,7 @@ export function analyzeSvgExport({ viewRoot, logicalWidth, logicalHeight }) {
  *
  * @param {object} options
  * @param {import("../../view/view.js").default} options.viewRoot
- * @param {import("../../gl/webGLHelper.js").default} [options.webGLHelper]
+ * @param {(options: import("../renderingBackend.js").SvgRunRasterizationOptions) => void | Promise<void>} [options.rasterizeSvgRuns]
  * @param {number} options.logicalWidth
  * @param {number} options.logicalHeight
  * @param {string | null} [options.background]
@@ -102,33 +103,25 @@ export async function createSvgExport(options) {
     }
 
     validateRasterizationOptions(rasterization);
-    if (!options.webGLHelper) {
-        const result = createSvg(options);
-        return {
-            ...result,
-            warnings: [
-                ...result.warnings,
-                "SVG rasterization was requested but no WebGL context is available; exported all marks as vectors.",
-            ],
-            rasterized: [],
-        };
+    if (!options.rasterizeSvgRuns) {
+        return createVectorRasterizationFallback(options);
     }
 
     return createRasterizedSvg({
         ...options,
-        webGLHelper: options.webGLHelper,
+        rasterizeSvgRuns: options.rasterizeSvgRuns,
         maxVectorInstances: rasterization.maxVectorInstances,
         pixelRatio: rasterization.pixelRatio,
     });
 }
 
 /**
- * Creates a hybrid SVG using the existing WebGL context for marks whose exact
- * post-culling instance count exceeds the supplied threshold.
+ * Creates a hybrid SVG for marks whose exact post-culling instance count
+ * exceeds the supplied threshold.
  *
  * @param {object} options
  * @param {import("../../view/view.js").default} options.viewRoot
- * @param {import("../../gl/webGLHelper.js").default} options.webGLHelper
+ * @param {(options: import("../renderingBackend.js").SvgRunRasterizationOptions) => void | Promise<void>} options.rasterizeSvgRuns
  * @param {number} options.logicalWidth
  * @param {number} options.logicalHeight
  * @param {string | null} [options.background]
@@ -137,7 +130,7 @@ export async function createSvgExport(options) {
  */
 export async function createRasterizedSvg({
     viewRoot,
-    webGLHelper,
+    rasterizeSvgRuns,
     logicalWidth,
     logicalHeight,
     background = "white",
@@ -167,16 +160,26 @@ export async function createRasterizedSvg({
     layoutResult.collectRenderCommands(renderingContext);
     const runs = renderingContext.getRasterRuns();
     if (runs.length) {
-        const { rasterizeSvgRuns } = await import("./raster/webgl.js");
-        rasterizeSvgRuns({
-            runs,
-            viewRoot,
-            layoutResult,
-            webGLHelper,
-            logicalWidth,
-            logicalHeight,
-            pixelRatio,
-        });
+        try {
+            await rasterizeSvgRuns({
+                runs,
+                viewRoot,
+                layoutResult,
+                logicalWidth,
+                logicalHeight,
+                pixelRatio,
+            });
+        } catch (error) {
+            if (error instanceof RasterizationUnavailableError) {
+                return createVectorRasterizationFallback({
+                    viewRoot,
+                    logicalWidth,
+                    logicalHeight,
+                    background,
+                });
+            }
+            throw error;
+        }
     }
 
     return {
@@ -191,6 +194,23 @@ export async function createRasterizedSvg({
             maxVectorInstances,
             pixelRatio,
         })),
+    };
+}
+
+/**
+ * @param {Parameters<typeof createSvg>[0]} options
+ */
+function createVectorRasterizationFallback(options) {
+    const result = createSvg(options);
+    return {
+        ...result,
+        warnings: [
+            ...result.warnings,
+            "SVG rasterization was requested but no raster rendering backend is available; exported all marks as vectors.",
+        ],
+        rasterized:
+            /** @type {import("../../types/embedApi.js").SvgRasterizationInfo[]} */
+            ([]),
     };
 }
 

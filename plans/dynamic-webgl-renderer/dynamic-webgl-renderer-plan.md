@@ -1,6 +1,6 @@
 # Dynamically loaded legacy WebGL renderer plan
 
-Status: Planned
+Status: In progress
 
 ## Context
 
@@ -198,12 +198,11 @@ WebGL-specific microbenchmark. Although its files retain WebGPU-oriented names,
 `webgpu`, or both. It combines low-overhead animation cadence with Core's
 private performance profiler, optional Chromium traces, interaction
 correctness controls, repeated runs, and same-backend A/A noise estimation.
-The WebGPU renderer contributes profiler counters through the shared private
-symbol, but its instrumentation remains unchanged in this project.
 
-Run both renderers in the baseline and final matrices. WebGL is the subject of
-the comparison; unchanged WebGPU results provide a useful within-run
-environmental control. Fix the acceptance tolerance from the baseline before
+Run WebGL for the final matrix and compare it with the pre-refactor WebGL
+samples. The baseline also contains WebGPU samples from an early control run,
+but WebGPU is not an acceptance target and must not be benchmarked again for
+this refactor. Fix the acceptance tolerance from the WebGL baseline before
 implementation as `max(5%, same-backend A/A relative noise bound)`, following
 the benchmark's existing methodology. Use a headed hardware-backed browser;
 headless or software-rendered results are diagnostic only.
@@ -315,7 +314,7 @@ measurements before production code moves.
       headed hardware-backed Chromium session with both WebGL and WebGPU, the
       private MCCA specification, the small App control specification, five
       counterbalanced repetitions, all six interaction cases, and DPR 1.
-- [ ] Retain `summary.json`, `baseline.md`, and traces in an ignored baseline
+- [x] Retain `summary.json`, `baseline.md`, and traces in an ignored baseline
       output directory. Confirm every required interaction/correctness control
       completes, inspect the actual GPU adapters, and fix the practical WebGL
       equivalence tolerance before implementation.
@@ -364,23 +363,23 @@ provides the selective fallback needed when WebGL is not selected.
 
 ### Work
 
-- [ ] Define the smallest internal optional capabilities for full raster
+- [x] Define the smallest internal optional capabilities for full raster
       export and selective SVG-run rasterization.
-- [ ] Resolve usable capabilities in WebGL, WebGPU, Canvas2D order while never
+- [x] Resolve usable capabilities in WebGL, WebGPU, Canvas2D order while never
       initializing a second GPU renderer.
-- [ ] Adapt the existing WebGL export and SVG framebuffer code to the
+- [x] Adapt the existing WebGL export and SVG framebuffer code to the
       capability without changing its output or framebuffer reuse.
-- [ ] Add a mark predicate or selected-mark set to Canvas2D rendering and
+- [x] Add a mark predicate or selected-mark set to Canvas2D rendering and
       implement transparent selective-run rasterization, cropping, and PNG
       embedding.
-- [ ] Remove `webGLHelper` from `createSvgExport()` and GenomeSpy's SVG export
+- [x] Remove `webGLHelper` from `createSvgExport()` and GenomeSpy's SVG export
       call site.
-- [ ] Preserve WebGPU's existing full `exportRaster` behavior without editing
+- [x] Preserve WebGPU's existing full `exportRaster` behavior without editing
       the WebGPU adapter; treat selective rasterization as unsupported and fall
       through to Canvas2D.
-- [ ] Implement explicit no-capability behavior for full raster and hybrid SVG
+- [x] Implement explicit no-capability behavior for full raster and hybrid SVG
       export.
-- [ ] Keep synchronous `exportCanvas()` behavior unchanged.
+- [x] Keep synchronous `exportCanvas()` behavior unchanged.
 
 ### Affected areas and consumers
 
@@ -585,14 +584,14 @@ semantic-mark changes did not regress those paths. WebGPU output parity is not
 a goal of this refactor, and no WebGPU files should appear in the diff.
 
 Finally, repeat the existing interaction benchmark with the same machine,
-browser, viewport, DPR, cases, selectors, run count, and renderer order used by
-the baseline:
+browser, viewport, DPR, cases, selectors, and run count used by the WebGL
+baseline:
 
 ```sh
 node packages/core/scripts/runWebGpuInteractionBenchmark.mjs \
   --spec private/MCCA-visualization/web/specs/spec.json \
   --control-spec examples/app/samples.json \
-  --renderer both \
+  --renderer webgl \
   --filter-selector '[data-benchmark-filter]' \
   --sort-selector '[data-benchmark-sort]' \
   --headed \
@@ -601,11 +600,10 @@ node packages/core/scripts/runWebGpuInteractionBenchmark.mjs \
 
 Compare WebGL cadence medians, long-frame counts, normal and picking frame
 durations, layout/layout-replay phases, and correctness controls with the
-baseline. Use unchanged WebGPU samples as an environmental control, not as the
-target performance comparison. The refactored WebGL result must remain within
-the tolerance fixed from the baseline's A/A noise. Inspect Chromium traces and
-profiler phase/counter changes for any regression outside that bound before
-accepting it.
+baseline. The refactored WebGL result must remain within the tolerance fixed
+from the baseline's A/A noise. Inspect Chromium traces and profiler
+phase/counter changes for any regression outside that bound before accepting
+it.
 
 ## Acceptance criteria
 
