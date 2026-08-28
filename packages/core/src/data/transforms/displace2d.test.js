@@ -186,6 +186,17 @@ describe("Displace2DTransform", () => {
         ]);
     });
 
+    test("avoids anchor dimensions read from fields", () => {
+        const { output } = createFlow(
+            [{ x: 0, y: 0, anchorWidth: 4, anchorHeight: 4 }],
+            { anchorWidth: "anchorWidth", anchorHeight: "anchorHeight" }
+        );
+
+        expect([...output.getData()].map(({ dx, dy }) => [dx, dy])).toEqual([
+            [0, -10],
+        ]);
+    });
+
     test("scales and normalizes source-coordinate extents", () => {
         const positive = createFlow([{ x: 1.2, y: 0.5 }], {
             width: 20,
