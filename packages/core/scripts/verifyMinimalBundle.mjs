@@ -33,6 +33,11 @@ const optionalRenderingDirectories = [
 ];
 const webGlRenderingDirectory = "src/rendering/webgl/";
 const webGpuRenderingDirectory = "src/rendering/webgpu/";
+const rendererRegistrationSources = [
+    "src/rendering/registerCanvas.js",
+    "src/rendering/registerSvg.js",
+    "src/rendering/registerWebGL.js",
+];
 
 const tempDir = fs.mkdtempSync(
     path.join(os.tmpdir(), "genome-spy-minimal-bundle-")
@@ -49,7 +54,6 @@ try {
         minimalOutDir
     );
     const minimalSources = readStaticEntrySources(minimalOutput, "minimal.js");
-    verifyNoStaticWebGLSources(minimalSources, "Minimal bundle");
 
     for (const forbidden of forbiddenSources) {
         if (minimalSources.some((source) => source.endsWith(forbidden))) {
@@ -59,14 +63,10 @@ try {
         }
     }
 
-    for (const forbidden of optionalRenderingDirectories) {
-        if (minimalSources.some((source) => source.includes(forbidden))) {
-            throw new Error(
-                `Minimal bundle should not include ${forbidden}, but it does.`
-            );
-        }
-    }
-    verifyDynamicWebGLChunk(minimalOutput, "minimal.js");
+    verifyNoOptionalRendererSources(
+        readAllOutputSources(minimalOutput),
+        "Minimal bundle"
+    );
 
     const productionOutput = await buildEntry(
         "index.js",
@@ -99,7 +99,19 @@ try {
             `Production bundle should not include ${webGpuRenderingDirectory}, but it does.`
         );
     }
-    verifyDynamicWebGLChunk(productionOutput, "index.js");
+    verifyDynamicRendererChunks(productionOutput, "index.js", {
+        name: "WebGL",
+        directory: webGlRenderingDirectory,
+        isImplementationSource: isWebGLImplementationSource,
+    });
+    verifyDynamicRendererChunks(productionOutput, "index.js", {
+        name: "Canvas2D",
+        directory: "src/rendering/canvas2d/",
+    });
+    verifyDynamicRendererChunks(productionOutput, "index.js", {
+        name: "SVG",
+        directory: "src/rendering/svg/",
+    });
 
     console.log("Minimal bundle verification passed.");
 } finally {
@@ -171,8 +183,9 @@ function verifyNoStaticWebGLSources(sources, owner) {
 /**
  * @param {Array<import("rollup").OutputChunk | import("rollup").OutputAsset>} output
  * @param {string} entry
+ * @param {{name: string, directory: string, isImplementationSource?: (source: string) => boolean}} options
  */
-function verifyDynamicWebGLChunk(output, entry) {
+function verifyDynamicRendererChunks(output, entry, options) {
     const chunks = output.filter((item) => item.type == "chunk");
     const chunksByFileName = new Map(
         chunks.map((chunk) => [chunk.fileName, chunk])
@@ -215,39 +228,69 @@ function verifyDynamicWebGLChunk(output, entry) {
 
     visit(entryChunk, false);
 
-    const webGlChunks = chunks.filter((chunk) =>
+    const isImplementationSource =
+        options.isImplementationSource ??
+        ((source) => normalizeSource(source).includes(options.directory));
+    const rendererChunks = chunks.filter((chunk) =>
         Object.keys(chunk.modules)
             .map(normalizeSource)
-            .some(isWebGLImplementationSource)
+            .some(isImplementationSource)
     );
-    if (!webGlChunks.length) {
-        throw new Error(`Build for ${entry} did not contain a WebGL chunk.`);
+    if (!rendererChunks.length) {
+        throw new Error(
+            `Build for ${entry} did not contain a ${options.name} chunk.`
+        );
     }
 
-    const factoryChunk = webGlChunks.find((chunk) =>
+    const factoryChunk = rendererChunks.find((chunk) =>
         Object.keys(chunk.modules)
             .map(normalizeSource)
-            .some((source) =>
-                source.endsWith(webGlRenderingDirectory + "index.js")
-            )
+            .some((source) => source.endsWith(options.directory + "index.js"))
     );
     if (!factoryChunk) {
         throw new Error(
-            `Build for ${entry} did not contain ${webGlRenderingDirectory}index.js.`
+            `Build for ${entry} did not contain ${options.directory}index.js.`
         );
     }
     if (!dynamicallyReachable.has(factoryChunk.fileName)) {
         throw new Error(
-            `WebGL factory chunk ${factoryChunk.fileName} is not dynamically reachable from the production entry.`
+            `${options.name} factory chunk ${factoryChunk.fileName} is not dynamically reachable from ${entry}.`
         );
     }
 
-    const unreachableChunk = webGlChunks.find(
+    const unreachableChunk = rendererChunks.find(
         (chunk) => !dynamicallyReachable.has(chunk.fileName)
     );
     if (unreachableChunk) {
         throw new Error(
-            `WebGL implementation chunk ${unreachableChunk.fileName} is not behind a dynamic import.`
+            `${options.name} implementation chunk ${unreachableChunk.fileName} is not behind a dynamic import.`
+        );
+    }
+}
+
+/**
+ * @param {string[]} sources
+ * @param {string} owner
+ */
+function verifyNoOptionalRendererSources(sources, owner) {
+    const forbiddenDirectories = [
+        ...optionalRenderingDirectories,
+        webGlRenderingDirectory,
+        webGpuRenderingDirectory,
+    ];
+    const source = sources.find(
+        (source) =>
+            forbiddenDirectories.some((directory) =>
+                source.includes(directory)
+            ) ||
+            rendererRegistrationSources.some((registration) =>
+                source.endsWith(registration)
+            ) ||
+            isWebGLImplementationSource(source)
+    );
+    if (source) {
+        throw new Error(
+            `${owner} should not include optional renderer sources, but includes ${source}.`
         );
     }
 }

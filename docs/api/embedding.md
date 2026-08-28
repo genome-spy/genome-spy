@@ -12,10 +12,13 @@ entry points for importing the `embed` function:
 `@genome-spy/core` is the default entry point. It includes the standard
 GenomeSpy runtime and the built-in data source and format registrations.
 
-`@genome-spy/core/minimal` provides the same `embed` API without the built-in
-loaders. Import the data source and format modules you need explicitly:
+`@genome-spy/core/minimal` provides the same `embed` API without built-in
+renderers or optional data loaders. Import at least one live renderer and any
+data source or format modules you need explicitly:
 
 ```js
+import "@genome-spy/core/rendering/webgl.js";
+import "@genome-spy/core/rendering/canvas.js";
 import { embed } from "@genome-spy/core/minimal";
 import "@genome-spy/core/data/formats/parquet.js";
 import "@genome-spy/core/data/sources/lazy/bigBedSource.js";
@@ -26,6 +29,13 @@ const spec = {
 
 const api = await embed(document.body, spec);
 ```
+
+The `webgl.js` import enables WebGL2. The `canvas.js` import enables Canvas2D
+as a live renderer and as a fallback for raster export and hybrid SVG
+rasterization. Import `@genome-spy/core/rendering/svg.js` when using SVG export
+or analysis. You can omit any renderer capability the host application does
+not use; Core reports the required import if an unavailable capability is
+requested.
 
 ## API object
 

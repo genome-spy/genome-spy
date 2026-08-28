@@ -118,6 +118,8 @@ The default and full entry points register both binary readers. With the
 host uses:
 
 ```js
+import "@genome-spy/core/rendering/webgl.js";
+import "@genome-spy/core/rendering/canvas.js";
 import { embed } from "@genome-spy/core/minimal";
 import "@genome-spy/core/data/formats/arrow.js";
 import "@genome-spy/core/data/formats/parquet.js";

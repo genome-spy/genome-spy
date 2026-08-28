@@ -57,13 +57,17 @@ Modular rendering implementations live under `src/rendering/`:
   delegates, batching, picking, and rasterization.
 - `webgpu/` is the development-only Core adapter for the separate WebGPU
   renderer package.
-- `renderingBackend.js` selects the live surface and exposes rendering, export,
-  and optional picking capabilities.
+- `renderingModuleRegistry.js` holds opt-in loaders without importing renderer
+  implementations.
+- `renderingBackend.js` selects a registered live surface and exposes
+  rendering, export, and optional picking capabilities.
 
-`renderingBackend.js` dynamically imports WebGL when `webgl` is selected or
-when `auto` makes its WebGL-first attempt. Explicit Canvas2D and WebGPU
-selection does not initialize WebGL. If automatic WebGL initialization fails,
-Core falls back to Canvas2D; an explicit WebGL failure is reported.
+The full entrypoint registers dynamically imported WebGL, Canvas2D, and SVG
+modules. The minimal entrypoint registers none of them; applications enable
+only the capabilities they use through public side-effect imports. Automatic
+selection tries registered WebGL first and then registered Canvas2D. Explicit
+Canvas2D and WebGPU selection does not initialize WebGL. An explicit WebGL
+failure is reported.
 
 Semantic marks remain under `src/marks/`. They own configuration, encoders,
 data, facet semantics, and rendering revisions. WebGL's private adapter owns one
@@ -77,7 +81,8 @@ selective rasterization capability and may fall through to detached Canvas2D.
 Run selection, image placeholders, cropping, and document ordering remain
 SVG-owned. Export never initializes an unselected GPU backend.
 
-The ESM build preserves these dynamic boundaries. UMD is a compatibility
+The ESM build preserves these dynamic boundaries. Its minimal entry chunk and
+complete chunk graph exclude unregistered renderers. UMD is a compatibility
 artifact and inlines dynamic modules because its format cannot emit runtime
 chunks.
 

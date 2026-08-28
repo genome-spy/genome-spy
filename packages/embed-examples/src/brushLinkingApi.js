@@ -1,4 +1,6 @@
 import { embed, intervalSelection } from "@genome-spy/core/minimal";
+import "@genome-spy/core/rendering/webgl.js";
+import "@genome-spy/core/rendering/canvas.js";
 
 /**
  * @typedef {import("@genome-spy/core/types/selectionTypes.js").IntervalSelection} IntervalSelection

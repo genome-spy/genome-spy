@@ -1,4 +1,5 @@
 import { warnOnce } from "../utils/warning.js";
+import { renderingModules } from "./renderingModuleRegistry.js";
 
 /**
  * @typedef {object} RenderingSurface
@@ -66,45 +67,47 @@ import { warnOnce } from "../utils/warning.js";
  */
 export async function createRenderingBackend(options) {
     if (options.renderer == "canvas") {
-        return createCanvas2DBackend(options);
+        if (!renderingModules.canvasBackend) {
+            throw rendererNotRegisteredError("canvas");
+        }
+        return renderingModules.canvasBackend(options);
     } else if (options.renderer == "webgpu" && import.meta.env.DEV) {
         return createWebGpuBackend(options);
     } else if (options.renderer != "auto" && options.renderer != "webgl") {
         throw new Error("Unknown renderer: " + options.renderer);
     }
 
+    const webGlFactory = renderingModules.webglBackend;
+    const canvasFactory = renderingModules.canvasBackend;
+    if (!webGlFactory) {
+        if (options.renderer == "webgl") {
+            throw rendererNotRegisteredError("webgl");
+        } else if (canvasFactory) {
+            return canvasFactory(options);
+        }
+        throw new Error(
+            'No rendering backend is registered. Import "@genome-spy/core/rendering/webgl.js" or "@genome-spy/core/rendering/canvas.js" when using "@genome-spy/core/minimal".'
+        );
+    }
+
     try {
-        return await createWebGLBackend(options);
+        return await webGlFactory(options);
     } catch (error) {
         if (options.renderer == "webgl") {
             throw error;
+        } else if (!canvasFactory) {
+            throw new Error(
+                'WebGL2 initialization failed and the Canvas2D fallback is not registered. Import "@genome-spy/core/rendering/canvas.js" when using "@genome-spy/core/minimal".',
+                { cause: error }
+            );
         }
 
-        const backend = await createCanvas2DBackend(options);
+        const backend = await canvasFactory(options);
         warnOnce(
             "WebGL2 is unavailable. Using the Canvas2D compatibility renderer."
         );
         return backend;
     }
-}
-
-/**
- * @param {RenderingBackendOptions} options
- * @returns {Promise<RenderingBackend>}
- */
-async function createWebGLBackend(options) {
-    const { createWebGLRenderingBackend } = await import("./webgl/index.js");
-    return createWebGLRenderingBackend(options);
-}
-
-/**
- * @param {RenderingBackendOptions} options
- * @returns {Promise<RenderingBackend>}
- */
-async function createCanvas2DBackend(options) {
-    const { createCanvas2DRenderingBackend } =
-        await import("./canvas2d/index.js");
-    return createCanvas2DRenderingBackend(options);
 }
 
 /**
@@ -117,4 +120,11 @@ async function createWebGpuBackend(options) {
         /* @vite-ignore */ modulePath
     );
     return createWebGpuRenderingBackend(options);
+}
+
+/** @param {"canvas" | "webgl"} renderer */
+function rendererNotRegisteredError(renderer) {
+    return new Error(
+        `The "${renderer}" rendering backend is not registered. Import "@genome-spy/core/rendering/${renderer}.js" when using "@genome-spy/core/minimal".`
+    );
 }

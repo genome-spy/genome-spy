@@ -4,7 +4,8 @@ This directory contains GenomeSpy Core's legacy WebGL2 renderer. It remains a
 production backend during the transition to WebGPU with Canvas2D fallback, but
 it is intentionally isolated so it can eventually be deleted as one module.
 
-The implementation is dynamically imported by `../renderingBackend.js`.
+The implementation is registered by `../registerWebGL.js` and dynamically
+imported only when selected.
 Shared Core modules must not import TWGL, GLSL, `WebGLHelper`, WebGL mark
 delegates, or renderer resource types. The compatibility UMD bundle still
 inlines dynamic modules because its format cannot emit runtime chunks.
@@ -27,8 +28,9 @@ initialize another renderer.
 
 ## Initialization and lifetime
 
-When `webgl` is selected, `renderingBackend.js` dynamically imports this
-directory's `index.js`. The entry point creates one `WebGLHelper` and one
+When `webgl` is selected, `renderingBackend.js` invokes the factory registered
+by `../registerWebGL.js`, which dynamically imports this directory's `index.js`.
+The entry point creates one `WebGLHelper` and one
 `WebGLRendererResources` for the lifetime of the backend. The helper creates
 the canvas, WebGL2 context, picking framebuffer, size observer, and global GL
 state; the resource owner registers itself as the helper's resource finalizer.
