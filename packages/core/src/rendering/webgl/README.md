@@ -25,6 +25,34 @@ Raster export and hybrid SVG rasterization receive the already-selected
 backend through this capability boundary. This module does not select or
 initialize another renderer.
 
+## Initialization and lifetime
+
+When `webgl` is selected, `renderingBackend.js` dynamically imports this
+directory's `index.js`. The entry point creates one `WebGLHelper` and one
+`WebGLRendererResources` for the lifetime of the backend. The helper creates
+the canvas, WebGL2 context, picking framebuffer, size observer, and global GL
+state; the resource owner registers itself as the helper's resource finalizer.
+The returned backend capabilities all close over this same pair, so live
+rendering and export share mark programs, buffers, fonts, and scale textures.
+
+Mark resources are created lazily, when a buffered context first encounters a
+drawable semantic mark:
+
+1. `WebGLRendererResources` creates a type-specific delegate and records a
+   `compiling` entry keyed by the semantic mark.
+2. It retains the mark's scale resolutions and registers a disposer on the
+   owning `UnitView`.
+3. Delegate initialization starts all required shader programs. Only after all
+   missing programs have been started are they finalized and entries marked
+   `ready`.
+4. The entry records its collector identity and data, configuration, and
+   encoded-data revisions. Later frames upload vertex data only when one of
+   those values changes.
+
+Text bitmap decoding may proceed in parallel with mark initialization. Font
+textures are cached by bitmap URL in the resource owner and are therefore also
+shared by live rendering and export.
+
 ## Frame flow
 
 1. `RenderCoordinator` computes a completed `LayoutResult` and creates separate
@@ -55,11 +83,26 @@ its owning `UnitView` disposer. Failed initialization releases partial
 resources, and failed shader finalization also releases retained scale
 subscriptions.
 
+There are two intentionally separate kinds of scale subscriptions. The
+resource owner reference-counts subscriptions that refresh shared range
+textures. Individual delegates track their own domain and range listeners for
+updating uniforms, and remove them when disposed. Buffered draw batches retain
+entry identities rather than owning delegates; they check that an entry is
+still active before drawing, so releasing a mark also makes older batches
+harmless.
+
 `WebGLHelper` owns the canvas, context-global textures, cached shaders, picking
 framebuffer, placement resources, and size observers. Finalizing the surface
 first disposes the mark resource owner and then releases the remaining helper
 resources. Cleanup is idempotent because view disposal and backend disposal may
 occur in either order.
+
+Normal view teardown calls `releaseMark` through the `UnitView` disposer. Full
+GenomeSpy destruction first disposes the view subtree and then calls
+`surface.finalize()`. The latter releases any remaining delegates and font
+textures before deleting helper-owned textures, shaders, picking attachments,
+observers, and the canvas. Launch failures use the same surface finalizer, and
+all cleanup paths tolerate being called more than once.
 
 ## Directory map
 
