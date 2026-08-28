@@ -31,15 +31,17 @@ dependencies.
 
 Canvas2D uses the same view and scale interaction dispatcher as WebGL, so
 coordinate-based zooming, panning, scrolling, and other view interactions work.
-Rectangles, points, rules, ticks, and links also support datum hover, data
-tooltips, datum clicks, and point-selection hit testing through a software ID
-buffer. Text and arrow picking are not yet supported.
+All Canvas-supported marks also support datum hover, data tooltips, datum
+clicks, and point-selection hit testing through a software ID buffer.
 
 Picking regions are intentionally conservative. Points use a square that
 contains the rotated shape and outward stroke, rules are at least one logical
 pixel wide, and links use their configured minimum picking width without dash
 gaps. Rounded rectangles use their full rectangular extent. Overlapping marks
-follow paint order, so the last participating datum wins.
+follow paint order, so the last participating datum wins. Text uses its rotated
+displayed bounds, including ranged, squeezed, and `logoLetters` cells. Arrows
+use the thick stem and a conservative region at each actual head position;
+their whole bounds are never filled.
 
 Canvas text uses native browser fonts and antialiasing. Some specialized mark
 effects are approximated or ignored with a deduplicated warning. Keep these
@@ -62,6 +64,19 @@ but picking never decodes the colors. The buffer is allocated lazily on the
 first picking replay that contains supported data and is rebuilt only after a
 visible render makes it dirty. Keep this primitive layer independent of Canvas
 and DOM APIs.
+
+## Picking-buffer visualization
+
+Call `api.debug.setPickingBufferVisualization(true)` to replace the live Canvas
+with a colorized view of its logical picking pixels. ID `0` is black and each
+nonzero ID receives a stable opaque color. The colors are diagnostic only and
+are never decoded for picking. The method returns `false` for a non-Canvas
+backend or after finalization.
+
+Call the method with `false` to restore normal rendering. The diagnostic uses
+nearest-neighbor scaling, so individual logical pixels remain distinct at any
+device pixel ratio. It displays the actual participant-filtered buffer; a view
+without picking participants is therefore black.
 
 ## Extending and testing
 

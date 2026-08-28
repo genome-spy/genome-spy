@@ -25,7 +25,7 @@ export interface EmbedOptions {
      * Rendering backend. `"auto"` uses WebGL2 when available and falls back to
      * the Canvas2D compatibility renderer. `"webgpu"` enables an experimental
      * proof-of-concept renderer for a narrow subset of marks. `"canvas"` does
-     * not request WebGL or WebGPU, but it does not support datum picking.
+     * not request WebGL or WebGPU and uses software-based datum picking.
      *
      * __Default value:__ `"auto"`
      */
@@ -423,6 +423,13 @@ export interface EmbedDebugApi {
      * Loads Core debug helpers from the same runtime that owns the view tree.
      */
     getModules: () => Promise<typeof import("../debug/index.js")>;
+
+    /**
+     * Replaces a live Canvas rendering with a colorized view of its software
+     * picking IDs. Returns false when the active backend does not support the
+     * diagnostic or the embed has been finalized.
+     */
+    setPickingBufferVisualization: (enabled: boolean) => boolean;
 }
 
 // Design intent: EmbedResult.datasets and ViewHandle.datasets use the same

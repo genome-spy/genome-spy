@@ -11,6 +11,28 @@ import {
 /** @typedef {{x: number, y: number}} ArrowPoint */
 
 /**
+ * @typedef {object} ArrowSkeletonInstance
+ * @prop {object} datum
+ * @prop {ArrowPoint} tail
+ * @prop {ArrowPoint} tip
+ * @prop {ArrowPoint} tangent
+ * @prop {ArrowPoint} normal
+ * @prop {number} size
+ * @prop {number} stemHalfWidth
+ * @prop {number} headHalfWidth
+ * @prop {number} headAxisLength
+ * @prop {number} rHeadSlope
+ * @prop {number} rHeadNotchSlope
+ * @prop {number} strokeWidth
+ * @prop {number} repeatSpacing
+ * @prop {number} headRepeatFootprint
+ * @prop {number} geometryLength
+ * @prop {boolean} stemContainsHead
+ * @prop {"triangle" | "open"} renderedHeadShape
+ * @prop {boolean} headShapeFallback
+ */
+
+/**
  * @typedef {object} ArrowInstance
  * @prop {object} datum
  * @prop {ArrowPoint[][]} boundaryLoops
@@ -48,7 +70,86 @@ export function resolveArrowProperties(mark) {
  * @param {(instance: ArrowInstance) => void} visitor
  */
 export function visitArrowInstances(mark, properties, options, visitor) {
-    const { coords, data, visibleBounds, viewOpacity, countOnly } = options;
+    const { viewOpacity } = options;
+    const encoders =
+        /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
+            mark.encoders
+        );
+    return visitArrowSkeletonInstances(
+        mark,
+        properties,
+        options,
+        (skeleton) => {
+            const stemPolygon = properties.stem
+                ? createStemPolygon(
+                      skeleton.tail,
+                      skeleton.tip,
+                      skeleton.tangent,
+                      skeleton.normal,
+                      skeleton.stemHalfWidth,
+                      skeleton.rHeadSlope,
+                      properties.startNotch
+                  )
+                : null;
+            const polygons = stemPolygon ? [stemPolygon] : [];
+            visitArrowHeadPositions(skeleton, (x, y) => {
+                const repeatedTip = { x, y };
+                polygons.push(
+                    skeleton.renderedHeadShape == "open"
+                        ? createOpenHeadPolygon(
+                              repeatedTip,
+                              skeleton.tangent,
+                              skeleton.normal,
+                              skeleton.headHalfWidth,
+                              skeleton.rHeadSlope,
+                              skeleton.rHeadNotchSlope,
+                              skeleton.size
+                          )
+                        : createTriangleHeadPolygon(
+                              repeatedTip,
+                              skeleton.tangent,
+                              skeleton.normal,
+                              skeleton.headHalfWidth,
+                              skeleton.rHeadSlope,
+                              skeleton.rHeadNotchSlope
+                          )
+                );
+            });
+            const hasVisibleStroke =
+                toPaintString(encoders.stroke(skeleton.datum)) != "none" &&
+                encodeNumber(encoders.strokeOpacity, skeleton.datum) *
+                    viewOpacity >
+                    0 &&
+                skeleton.strokeWidth > 0;
+            visitor({
+                datum: skeleton.datum,
+                boundaryLoops:
+                    polygons.length == 1 || !hasVisibleStroke
+                        ? polygons
+                        : unionPolygons(polygons),
+                strokeWidth: skeleton.strokeWidth,
+                headShapeFallback: skeleton.headShapeFallback,
+            });
+        }
+    );
+}
+
+/**
+ * Visits projected arrow axes and scalar geometry without constructing boundary
+ * loops. The visitor must consume the reused record synchronously.
+ *
+ * @param {import("../../../marks/arrow.js").default} mark
+ * @param {ReturnType<typeof resolveArrowProperties>} properties
+ * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, countOnly?: boolean}} options
+ * @param {(instance: ArrowSkeletonInstance) => void} visitor
+ */
+export function visitArrowSkeletonInstances(
+    mark,
+    properties,
+    options,
+    visitor
+) {
+    const { coords, data, visibleBounds, countOnly } = options;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -70,26 +171,46 @@ export function visitArrowInstances(mark, properties, options, visitor) {
     );
     const xRange = /** @type {[number, number]} */ ([0, 0]);
     const yRange = /** @type {[number, number]} */ ([0, 0]);
+    /** @type {ArrowSkeletonInstance} */
+    const instance = {
+        datum: {},
+        tail: { x: 0, y: 0 },
+        tip: { x: 0, y: 0 },
+        tangent: { x: 0, y: 0 },
+        normal: { x: 0, y: 0 },
+        size: 0,
+        stemHalfWidth: 0,
+        headHalfWidth: 0,
+        headAxisLength: 0,
+        rHeadSlope: 0,
+        rHeadNotchSlope: 0,
+        strokeWidth: 0,
+        repeatSpacing: Infinity,
+        headRepeatFootprint: 0,
+        geometryLength: 0,
+        stemContainsHead: false,
+        renderedHeadShape: "triangle",
+        headShapeFallback: false,
+    };
     let instanceCount = 0;
 
     for (const datum of data) {
         projectXRange(datum, xRange);
         projectYRange(datum, yRange);
-        const [x, x2] = xRange;
-        const [y, y2] = yRange;
-        const a = { x, y };
-        const b = { x: x2, y: y2 };
-        const direction = encodeString(encoders.direction, datum);
-        const tail = direction == "reverse" ? b : a;
-        const endpoint = direction == "reverse" ? a : b;
-        const segment = subtract(endpoint, tail);
-        const segmentLength = Math.hypot(segment.x, segment.y);
+        const reverse = encodeString(encoders.direction, datum) == "reverse";
+        const tailX = reverse ? xRange[1] : xRange[0];
+        const tailY = reverse ? yRange[1] : yRange[0];
+        const endpointX = reverse ? xRange[0] : xRange[1];
+        const endpointY = reverse ? yRange[0] : yRange[1];
+        const segmentX = endpointX - tailX;
+        const segmentY = endpointY - tailY;
+        const segmentLength = Math.hypot(segmentX, segmentY);
         if (segmentLength == 0) {
             continue;
         }
 
-        const tangent = scale(segment, 1 / segmentLength);
-        const normal = { x: -tangent.y, y: tangent.x };
+        const tangentX = segmentX / segmentLength;
+        const tangentY = segmentY / segmentLength;
         const size = Math.max(
             encodeNumber(encoders.size, datum),
             properties.minSize
@@ -122,20 +243,18 @@ export function visitArrowInstances(mark, properties, options, visitor) {
                       headStrokeWidth
                   )
                 : 0;
-        const tip =
-            properties.headPlacement == "outside"
-                ? add(endpoint, scale(tangent, outsideHeadOffset))
-                : endpoint;
+        const tipX = endpointX + tangentX * outsideHeadOffset;
+        const tipY = endpointY + tangentY * outsideHeadOffset;
         const headAxisLength = headHalfWidth * rHeadSlope;
         const headNormalLength = Math.hypot(headHalfWidth, headAxisLength);
         const openHeadAxisInset =
             properties.headShape == "open" && headNormalLength > 0
                 ? (size * headHalfWidth) / headNormalLength
                 : 0;
-        const headBack = add(
-            tip,
-            scale(tangent, -headAxisLength - openHeadAxisInset)
-        );
+        const headBackX =
+            tipX - tangentX * (headAxisLength + openHeadAxisInset);
+        const headBackY =
+            tipY - tangentY * (headAxisLength + openHeadAxisInset);
         const strokeWidth = encodeNumber(encoders.strokeWidth, datum);
         const transversePadding =
             Math.max(properties.stem ? stemHalfWidth : 0, headHalfWidth) +
@@ -143,41 +262,24 @@ export function visitArrowInstances(mark, properties, options, visitor) {
         if (
             !intersectsBounds(
                 visibleBounds,
-                Math.min(tail.x, tip.x, headBack.x),
-                Math.min(tail.y, tip.y, headBack.y),
-                Math.max(tail.x, tip.x, headBack.x),
-                Math.max(tail.y, tip.y, headBack.y),
+                Math.min(tailX, tipX, headBackX),
+                Math.min(tailY, tipY, headBackY),
+                Math.max(tailX, tipX, headBackX),
+                Math.max(tailY, tipY, headBackY),
                 transversePadding
             )
         ) {
             continue;
         }
+
         instanceCount++;
         if (countOnly) {
             continue;
         }
-
         const renderedHeadShape =
             properties.headShape == "triangle" || properties.headShape == "open"
                 ? properties.headShape
                 : "triangle";
-        const stemPolygon = properties.stem
-            ? createStemPolygon(
-                  tail,
-                  tip,
-                  tangent,
-                  normal,
-                  stemHalfWidth,
-                  rHeadSlope,
-                  properties.startNotch
-              )
-            : null;
-        const polygons = stemPolygon ? [stemPolygon] : [];
-        const stemContainsHead =
-            stemPolygon &&
-            renderedHeadShape == "triangle" &&
-            !properties.repeatHeads &&
-            headHalfWidth <= stemHalfWidth;
         const headRepeatFootprint =
             headAxisLength +
             headStrokeWidth / Math.hypot(rHeadSlope, 1) +
@@ -188,56 +290,59 @@ export function visitArrowInstances(mark, properties, options, visitor) {
                   (properties.headSpacing ?? 0) * size,
                   headRepeatFootprint
               );
-        const geometryLength = Math.hypot(tip.x - tail.x, tip.y - tail.y);
-        for (let distance = 0; !stemContainsHead; distance += repeatSpacing) {
-            if (
-                distance > 0 &&
-                distance + headRepeatFootprint - strokeWidth / 2 >
-                    geometryLength
-            ) {
-                break;
-            }
-            const repeatedTip = add(tip, scale(tangent, -distance));
-            polygons.push(
-                renderedHeadShape == "open"
-                    ? createOpenHeadPolygon(
-                          repeatedTip,
-                          tangent,
-                          normal,
-                          headHalfWidth,
-                          rHeadSlope,
-                          rHeadNotchSlope,
-                          size
-                      )
-                    : createTriangleHeadPolygon(
-                          repeatedTip,
-                          tangent,
-                          normal,
-                          headHalfWidth,
-                          rHeadSlope,
-                          rHeadNotchSlope
-                      )
-            );
-            if (!properties.repeatHeads || repeatSpacing <= 0) {
-                break;
-            }
-        }
 
-        const hasVisibleStroke =
-            toPaintString(encoders.stroke(datum)) != "none" &&
-            encodeNumber(encoders.strokeOpacity, datum) * viewOpacity > 0 &&
-            strokeWidth > 0;
-        visitor({
-            datum,
-            boundaryLoops:
-                polygons.length == 1 || !hasVisibleStroke
-                    ? polygons
-                    : unionPolygons(polygons),
-            strokeWidth,
-            headShapeFallback: renderedHeadShape != properties.headShape,
-        });
+        instance.datum = datum;
+        setPoint(instance.tail, tailX, tailY);
+        setPoint(instance.tip, tipX, tipY);
+        setPoint(instance.tangent, tangentX, tangentY);
+        setPoint(instance.normal, -tangentY, tangentX);
+        instance.size = size;
+        instance.stemHalfWidth = stemHalfWidth;
+        instance.headHalfWidth = headHalfWidth;
+        instance.headAxisLength = headAxisLength;
+        instance.rHeadSlope = rHeadSlope;
+        instance.rHeadNotchSlope = rHeadNotchSlope;
+        instance.strokeWidth = strokeWidth;
+        instance.repeatSpacing = repeatSpacing;
+        instance.headRepeatFootprint = headRepeatFootprint;
+        instance.geometryLength = Math.hypot(tipX - tailX, tipY - tailY);
+        instance.stemContainsHead =
+            properties.stem &&
+            renderedHeadShape == "triangle" &&
+            !properties.repeatHeads &&
+            headHalfWidth <= stemHalfWidth;
+        instance.renderedHeadShape = renderedHeadShape;
+        instance.headShapeFallback = renderedHeadShape != properties.headShape;
+        visitor(instance);
     }
     return instanceCount;
+}
+
+/**
+ * @param {ArrowSkeletonInstance} instance
+ * @param {(x: number, y: number) => void} visitor
+ */
+export function visitArrowHeadPositions(instance, visitor) {
+    for (
+        let distance = 0;
+        !instance.stemContainsHead;
+        distance += instance.repeatSpacing
+    ) {
+        if (
+            distance > 0 &&
+            distance + instance.headRepeatFootprint - instance.strokeWidth / 2 >
+                instance.geometryLength
+        ) {
+            break;
+        }
+        visitor(
+            instance.tip.x - instance.tangent.x * distance,
+            instance.tip.y - instance.tangent.y * distance
+        );
+        if (!Number.isFinite(instance.repeatSpacing)) {
+            break;
+        }
+    }
 }
 
 /**
@@ -466,14 +571,15 @@ function add(a, b) {
     return { x: a.x + b.x, y: a.y + b.y };
 }
 
-/** @param {ArrowPoint} a @param {ArrowPoint} b */
-function subtract(a, b) {
-    return { x: a.x - b.x, y: a.y - b.y };
-}
-
 /** @param {ArrowPoint} value @param {number} factor */
 function scale(value, factor) {
     return { x: value.x * factor, y: value.y * factor };
+}
+
+/** @param {ArrowPoint} target @param {number} x @param {number} y */
+function setPoint(target, x, y) {
+    target.x = x;
+    target.y = y;
 }
 
 /** @param {number} value @param {number} min @param {number} max */

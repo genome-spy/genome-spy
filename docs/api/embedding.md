@@ -53,3 +53,19 @@ package.
 Use the [Inspector](./inspector.md) to inspect the live view hierarchy,
 resolutions, params, and dataflow of embedded visualizations. Core embeds can
 attach the inspector through the `@genome-spy/inspector` package.
+
+When debugging Canvas datum interactions, the unstable developer diagnostic can
+replace the live visualization with its colorized software-picking buffer:
+
+```js
+api.debug.setPickingBufferVisualization(true);
+```
+
+The method returns `true` when the active Canvas backend supports the
+diagnostic. It returns `false` for WebGL, WebGPU, or a finalized embed. Black
+pixels contain no datum ID; other stable colors distinguish IDs but are not
+decoded during picking. Disable the diagnostic to restore normal rendering:
+
+```js
+api.debug.setPickingBufferVisualization(false);
+```

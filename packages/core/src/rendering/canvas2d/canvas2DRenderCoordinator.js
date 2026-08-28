@@ -71,16 +71,22 @@ export default class Canvas2DRenderCoordinator {
             return;
         }
 
-        renderCanvas2D({
-            layoutResult,
-            context: this.context,
-            width: size.width,
-            height: size.height,
-            devicePixelRatio: this.surface.getDevicePixelRatio(),
-            background: this.getBackground(),
-            paint: true,
-        });
-        this.dirtyPickingBuffer = true;
+        if (this.surface.isPickingBufferVisualizationEnabled()) {
+            this.dirtyPickingBuffer = true;
+            this.renderPickingFramebuffer();
+            this.surface.blitPickingBufferVisualization();
+        } else {
+            renderCanvas2D({
+                layoutResult,
+                context: this.context,
+                width: size.width,
+                height: size.height,
+                devicePixelRatio: this.surface.getDevicePixelRatio(),
+                background: this.getBackground(),
+                paint: true,
+            });
+            this.dirtyPickingBuffer = true;
+        }
     }
 
     renderPickingFramebuffer() {

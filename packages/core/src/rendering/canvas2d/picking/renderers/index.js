@@ -3,6 +3,11 @@ import {
     resolveMarkProperty,
 } from "../../../immediate/markEncoding.js";
 import {
+    resolveArrowProperties,
+    visitArrowHeadPositions,
+    visitArrowSkeletonInstances,
+} from "../../../immediate/marks/arrow.js";
+import {
     resolveLinkProperties,
     visitLinkInstances,
 } from "../../../immediate/marks/link.js";
@@ -18,6 +23,10 @@ import {
     resolveRuleProperties,
     visitRuleInstances,
 } from "../../../immediate/marks/rule.js";
+import {
+    resolveTextProperties,
+    visitTextInstances,
+} from "../../../immediate/marks/text.js";
 
 const MIN_RULE_PICKING_WIDTH = 1;
 
@@ -38,7 +47,9 @@ const MIN_RULE_PICKING_WIDTH = 1;
  */
 export function renderMarkSoftwarePicking(mark, options) {
     const type = mark.getType();
-    if (type == "rect") {
+    if (type == "arrow") {
+        return renderArrow(mark, options);
+    } else if (type == "rect") {
         return renderRect(mark, options);
     } else if (type == "point") {
         return renderPoint(mark, options);
@@ -46,6 +57,8 @@ export function renderMarkSoftwarePicking(mark, options) {
         return renderRule(mark, options);
     } else if (type == "link") {
         return renderLink(mark, options);
+    } else if (type == "text") {
+        return renderText(mark, options);
     } else {
         return 0;
     }
@@ -56,10 +69,63 @@ export function isSoftwarePickingMarkSupported(mark) {
     const type = mark.getType();
     return (
         type == "rect" ||
+        type == "arrow" ||
         type == "point" ||
         type == "rule" ||
         type == "tick" ||
-        type == "link"
+        type == "link" ||
+        type == "text"
+    );
+}
+
+/**
+ * @param {import("../../../../marks/mark.js").default} baseMark
+ * @param {SoftwarePickingMarkRenderingOptions} options
+ */
+function renderArrow(baseMark, options) {
+    const mark = /** @type {import("../../../../marks/arrow.js").default} */ (
+        baseMark
+    );
+    const properties = resolveArrowProperties(mark);
+    const headQuad = Array(8).fill(0);
+    return visitArrowSkeletonInstances(
+        mark,
+        properties,
+        options,
+        (instance) => {
+            const id = getPickingId(mark, instance.datum);
+            const strokePadding = instance.strokeWidth / 2;
+            if (properties.stem) {
+                options.rasterizer.strokeSegment(
+                    id,
+                    instance.tail.x,
+                    instance.tail.y,
+                    instance.tip.x,
+                    instance.tip.y,
+                    instance.stemHalfWidth * 2 + instance.strokeWidth
+                );
+            }
+            visitArrowHeadPositions(instance, (tipX, tipY) => {
+                const halfWidth = instance.headHalfWidth + strokePadding;
+                const frontX = tipX + instance.tangent.x * strokePadding;
+                const frontY = tipY + instance.tangent.y * strokePadding;
+                const backDistance =
+                    instance.headRepeatFootprint + strokePadding;
+                const backX = tipX - instance.tangent.x * backDistance;
+                const backY = tipY - instance.tangent.y * backDistance;
+                setOrientedQuad(
+                    headQuad,
+                    frontX,
+                    frontY,
+                    backX,
+                    backY,
+                    instance.normal.x,
+                    instance.normal.y,
+                    halfWidth
+                );
+                options.rasterizer.fillConvexPolygon(id, headQuad);
+            });
+        }
     );
 }
 
@@ -168,6 +234,58 @@ function renderLink(baseMark, options) {
             );
         }
     );
+}
+
+/**
+ * @param {import("../../../../marks/mark.js").default} baseMark
+ * @param {SoftwarePickingMarkRenderingOptions} options
+ */
+function renderText(baseMark, options) {
+    const mark = /** @type {import("../../../../marks/text.js").default} */ (
+        baseMark
+    );
+    return visitTextInstances(
+        mark,
+        resolveTextProperties(mark),
+        options,
+        (instance) =>
+            options.rasterizer.fillConvexPolygon(
+                getPickingId(mark, instance.datum),
+                instance.boundsQuad
+            )
+    );
+}
+
+/**
+ * @param {number[]} target
+ * @param {number} frontX
+ * @param {number} frontY
+ * @param {number} backX
+ * @param {number} backY
+ * @param {number} normalX
+ * @param {number} normalY
+ * @param {number} halfWidth
+ */
+function setOrientedQuad(
+    target,
+    frontX,
+    frontY,
+    backX,
+    backY,
+    normalX,
+    normalY,
+    halfWidth
+) {
+    const offsetX = normalX * halfWidth;
+    const offsetY = normalY * halfWidth;
+    target[0] = frontX + offsetX;
+    target[1] = frontY + offsetY;
+    target[2] = backX + offsetX;
+    target[3] = backY + offsetY;
+    target[4] = backX - offsetX;
+    target[5] = backY - offsetY;
+    target[6] = frontX - offsetX;
+    target[7] = frontY - offsetY;
 }
 
 /**

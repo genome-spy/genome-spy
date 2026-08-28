@@ -29,11 +29,10 @@ It is intended as a compatibility mode; dense views can be slower than WebGL.
 
 ### Canvas2D limitations
 
-- Software picking currently covers rectangles, points, rules, ticks, and
-  links. Text and arrow marks do not yet produce datum hits. Picking uses
-  conservative hit regions instead of antialiased Canvas pixels; points use
-  bounding squares, rounded rectangles use their full extent, and link dashes
-  do not create gaps in the hit region.
+- Software picking uses conservative hit regions instead of antialiased Canvas
+  pixels. Points use bounding squares, rounded rectangles use their full
+  extent, link dashes do not create gaps, text uses rotated displayed bounds,
+  and arrows use their stem and actual head positions.
 - Text uses browser-native Canvas fonts. Metrics, rasterization, and
   antialiasing can differ from WebGL and SVG output, especially when a requested
   font is unavailable.

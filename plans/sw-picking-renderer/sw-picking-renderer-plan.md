@@ -520,23 +520,23 @@ live colorized view of the exact logical ID buffer.
 
 ### Work
 
-- [ ] Add a reusable rotated text bounds quad shared by culling and picking,
+- [x] Add a reusable rotated text bounds quad shared by culling and picking,
       including ranged/squeezed text and `logoLetters` cells whose displayed
       width and height differ from their normalized drawing instance.
-- [ ] Extract `visitArrowSkeletonInstances()` and make visual arrow construction
+- [x] Extract `visitArrowSkeletonInstances()` and make visual arrow construction
       and picking consume it independently; prove the picking path does not
       compute boundary loops or polygon unions while preserving Canvas and SVG
       arrow output.
-- [ ] Add text and arrow picking adapters with documented conservative bounds.
-- [ ] Add the optional renderer capability and
+- [x] Add text and arrow picking adapters with documented conservative bounds.
+- [x] Add the optional renderer capability and
       `api.debug.setPickingBufferVisualization(enabled)`.
-- [ ] Define the debug method's supported, unsupported, and finalized return
+- [x] Define the debug method's supported, unsupported, and finalized return
       behavior without persisting unsupported requests.
-- [ ] Reuse diagnostic pixel storage and a scratch canvas, then blit with
+- [x] Reuse diagnostic pixel storage and a scratch canvas, then blit with
       transform-free nearest-neighbor scaling that preserves the floored logical
       extent at integer and fractional DPR. Force a current picking pass while
       enabled and restore normal rendering when disabled.
-- [ ] Document the developer API and diagnostic palette semantics.
+- [x] Document the developer API and diagnostic palette semantics.
 
 ### Affected areas and downstream consumers
 

@@ -46,6 +46,7 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  * @property {(mark: import("../marks/mark.js").default) => import("../types/viewContext.js").MarkRenderingDebugState} [getMarkRenderingDebugState]
  * @property {(options: {viewRoot: import("../view/view.js").default, getBackground: () => string, broadcast: (type: import("../genomeSpy.js").BroadcastEventType, payload?: any) => void, onLayoutComputed: () => void}) => RenderingCoordinator} createRenderCoordinator
  * @property {(x: number, y: number) => number | null | Promise<number | null>} [readPickingId]
+ * @property {(enabled: boolean) => boolean} [setPickingBufferVisualization]
  * @property {(options: RasterExportOptions & {devicePixelRatio?: number}) => string} exportCanvas
  * @property {(options: RasterExportOptions) => Promise<Blob>} [exportRaster]
  * @property {(options: SvgRunRasterizationOptions) => void | Promise<void>} [rasterizeSvgRuns]

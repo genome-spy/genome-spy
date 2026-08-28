@@ -46,6 +46,7 @@ describe("Canvas2DRenderCoordinator", () => {
             },
             getLogicalCanvasSize: () => size,
             getDevicePixelRatio: () => 2,
+            isPickingBufferVisualizationEnabled: () => false,
         };
         const onLayoutComputed = vi.fn();
         const coordinator = new Canvas2DRenderCoordinator({
@@ -85,6 +86,7 @@ describe("Canvas2DRenderCoordinator", () => {
             getDevicePixelRatio: () => 1,
             getPickingBuffer,
             clearPickingBuffer,
+            isPickingBufferVisualizationEnabled: () => false,
         };
         const coordinator = new Canvas2DRenderCoordinator({
             viewRoot: /** @type {any} */ ({}),
@@ -137,5 +139,38 @@ describe("Canvas2DRenderCoordinator", () => {
         coordinator.renderPickingFramebuffer();
 
         expect(getPickingBuffer).not.toHaveBeenCalled();
+    });
+
+    test("forces picking and blits it instead of visible paint in diagnostic mode", () => {
+        const buffer = new SoftwarePickingBuffer(20, 10);
+        const blitPickingBufferVisualization = vi.fn();
+        const collectRenderCommands = vi.fn((context) => {
+            context.getRasterizer().fillRect(5, 0, 0, 2, 2);
+        });
+        const coordinator = new Canvas2DRenderCoordinator({
+            viewRoot: /** @type {any} */ ({}),
+            context: /** @type {any} */ ({}),
+            surface: /** @type {any} */ ({
+                getLogicalCanvasSize: () => ({ width: 20, height: 10 }),
+                getDevicePixelRatio: () => 1,
+                getPickingBuffer: () => buffer,
+                clearPickingBuffer: () => buffer.clear(),
+                isPickingBufferVisualizationEnabled: () => true,
+                blitPickingBufferVisualization,
+            }),
+            getBackground: () => "white",
+            broadcast: vi.fn(),
+            onLayoutComputed: vi.fn(),
+        });
+        coordinator.layoutResult = /** @type {any} */ ({
+            collectRenderCommands,
+        });
+        mocks.renderCanvas2D.mockClear();
+
+        coordinator.renderAll();
+
+        expect(mocks.renderCanvas2D).not.toHaveBeenCalled();
+        expect(collectRenderCommands).toHaveBeenCalledOnce();
+        expect(blitPickingBufferVisualization).toHaveBeenCalledOnce();
     });
 });

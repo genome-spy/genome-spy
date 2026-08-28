@@ -74,29 +74,85 @@ describe("SoftwarePickingViewRenderingContext", () => {
         expect(buffer.read(50, 75)).toBe(0);
     });
 
-    test("skips unsupported and nonparticipating marks without allocating", async () => {
+    test("uses displayed logo-letter bounds, including negative ranges", async () => {
         const { view } = await createHeadlessEngine({
-            data: { values: [{}] },
+            data: {
+                values: [
+                    { x: 0.2, x2: 0.6 },
+                    { x: 0.9, x2: 0.7 },
+                ],
+            },
+            mark: { type: "text", logoLetters: true },
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 1] },
+                },
+                x2: { field: "x2" },
+                y: { value: 0.2 },
+                y2: { value: 0.4 },
+                text: { value: "A" },
+                size: { value: 12 },
+            },
+        });
+        const buffer = render(view);
+
+        expect(buffer.read(25, 65)).toBeGreaterThan(0);
+        expect(buffer.read(75, 65)).toBeGreaterThan(0);
+        expect(buffer.read(10, 65)).toBe(0);
+    });
+
+    test("picks rotated text and arrow stems without whole-arrow bounds", async () => {
+        const { view } = await createHeadlessEngine({
             layer: [
                 {
-                    mark: "text",
+                    data: { values: [{}] },
+                    mark: {
+                        type: "text",
+                        align: "center",
+                        baseline: "middle",
+                    },
                     encoding: {
                         x: { value: 0.5 },
-                        y: { value: 0.5 },
-                        text: { value: "A" },
+                        y: { value: 0.25 },
+                        text: { value: "TEST" },
+                        size: { value: 20 },
+                        angle: { value: 45 },
                     },
                 },
                 {
-                    mark: { type: "rect", tooltip: null },
+                    data: { values: [{}] },
+                    mark: { type: "arrow", headSpacing: 3 },
                     encoding: {
-                        x: { value: 0.2 },
-                        x2: { value: 0.8 },
-                        y: { value: 0.2 },
-                        y2: { value: 0.8 },
-                        fill: { value: "black" },
+                        x: { value: 0.1 },
+                        x2: { value: 0.9 },
+                        y: { value: 0.7 },
+                        y2: { value: 0.7 },
+                        size: { value: 4 },
+                        strokeWidth: { value: 1 },
                     },
                 },
             ],
+        });
+        const buffer = render(view);
+
+        expect(buffer.read(50, 75)).toBeGreaterThan(0);
+        expect(buffer.read(50, 30)).toBeGreaterThan(0);
+        expect(buffer.read(50, 15)).toBe(0);
+    });
+
+    test("skips nonparticipating marks without allocating", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: { type: "rect", tooltip: null },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.2 },
+                y2: { value: 0.8 },
+                fill: { value: "black" },
+            },
         });
         const getRasterizer = vi.fn();
 

@@ -41,6 +41,7 @@ export function resolveTextProperties(mark) {
  * @prop {number} scale
  * @prop {{width: number, heightScale: number} | undefined} logoScale
  * @prop {boolean} multiCharacterLogo
+ * @prop {number[]} boundsQuad
  */
 
 /**
@@ -91,6 +92,7 @@ export function visitTextInstances(mark, properties, options, visitor) {
     const rangeAlign = { x: 0, y: 0 };
     const rangePosition = { position: 0, scale: 0 };
     const logoScale = { width: 0, heightScale: 0 };
+    const boundsQuad = Array(8).fill(0);
     /** @type {TextInstance} */
     const instance = {
         datum: {},
@@ -106,6 +108,7 @@ export function visitTextInstances(mark, properties, options, visitor) {
         scale: 1,
         logoScale: undefined,
         multiCharacterLogo: false,
+        boundsQuad,
     };
     const hasX2 = !!encoders.x2;
     const hasY2 = !!encoders.y2;
@@ -139,22 +142,23 @@ export function visitTextInstances(mark, properties, options, visitor) {
                 height = y - y2;
                 y = (y + y2) / 2;
             }
+            setTextBoundsQuad(
+                boundsQuad,
+                x,
+                y,
+                Math.abs(width),
+                Math.abs(height),
+                "center",
+                "middle",
+                angle,
+                properties.dx,
+                properties.dy
+            );
             if (
                 !width ||
                 !height ||
                 isOutsideBounds(anchorCullBounds, x, y) ||
-                !textIntersectsVisibleBounds(
-                    visibleBounds,
-                    x,
-                    y,
-                    Math.abs(width),
-                    Math.abs(height),
-                    "center",
-                    "middle",
-                    angle,
-                    properties.dx,
-                    properties.dy
-                )
+                !textQuadIntersectsVisibleBounds(visibleBounds, boundsQuad)
             ) {
                 continue;
             }
@@ -233,20 +237,19 @@ export function visitTextInstances(mark, properties, options, visitor) {
         }
         const scaledSize = size * scale;
         const scaledWidth = measuredWidth * scale;
-        if (
-            !textIntersectsVisibleBounds(
-                visibleBounds,
-                x,
-                y,
-                scaledWidth,
-                scaledSize,
-                align,
-                baseline,
-                angle,
-                properties.dx,
-                properties.dy
-            )
-        ) {
+        setTextBoundsQuad(
+            boundsQuad,
+            x,
+            y,
+            scaledWidth,
+            scaledSize,
+            align,
+            baseline,
+            angle,
+            properties.dx,
+            properties.dy
+        );
+        if (!textQuadIntersectsVisibleBounds(visibleBounds, boundsQuad)) {
             continue;
         }
         instanceCount++;
@@ -267,7 +270,7 @@ export function visitTextInstances(mark, properties, options, visitor) {
 }
 
 /**
- * @param {import("../bounds.js").RenderBounds} visibleBounds
+ * @param {number[]} result
  * @param {number} x
  * @param {number} y
  * @param {number} width
@@ -278,8 +281,8 @@ export function visitTextInstances(mark, properties, options, visitor) {
  * @param {number} dx
  * @param {number} dy
  */
-function textIntersectsVisibleBounds(
-    visibleBounds,
+export function setTextBoundsQuad(
+    result,
     x,
     y,
     width,
@@ -294,29 +297,44 @@ function textIntersectsVisibleBounds(
     const y1 = y + dy - ((baselineValues[baseline] + 1) / 2) * height;
     const x2 = x1 + width;
     const y2 = y1 + height;
-    if (!angleInDegrees) {
-        return intersectsBounds(visibleBounds, x1, y1, x2, y2, 1);
-    }
-
     const angle = (angleInDegrees * Math.PI) / 180;
     const sin = Math.sin(angle);
     const cos = Math.cos(angle);
-    const ax = x + (x1 - x) * cos - (y1 - y) * sin;
-    const ay = y + (x1 - x) * sin + (y1 - y) * cos;
-    const bx = x + (x2 - x) * cos - (y1 - y) * sin;
-    const by = y + (x2 - x) * sin + (y1 - y) * cos;
-    const cx = x + (x2 - x) * cos - (y2 - y) * sin;
-    const cy = y + (x2 - x) * sin + (y2 - y) * cos;
-    const dx2 = x + (x1 - x) * cos - (y2 - y) * sin;
-    const dy2 = y + (x1 - x) * sin + (y2 - y) * cos;
+    setRotatedPoint(result, 0, x, y, x1, y1, sin, cos);
+    setRotatedPoint(result, 2, x, y, x2, y1, sin, cos);
+    setRotatedPoint(result, 4, x, y, x2, y2, sin, cos);
+    setRotatedPoint(result, 6, x, y, x1, y2, sin, cos);
+    return result;
+}
+
+/**
+ * @param {import("../bounds.js").RenderBounds} visibleBounds
+ * @param {ArrayLike<number>} quad
+ */
+function textQuadIntersectsVisibleBounds(visibleBounds, quad) {
     return intersectsBounds(
         visibleBounds,
-        Math.min(ax, bx, cx, dx2),
-        Math.min(ay, by, cy, dy2),
-        Math.max(ax, bx, cx, dx2),
-        Math.max(ay, by, cy, dy2),
+        Math.min(quad[0], quad[2], quad[4], quad[6]),
+        Math.min(quad[1], quad[3], quad[5], quad[7]),
+        Math.max(quad[0], quad[2], quad[4], quad[6]),
+        Math.max(quad[1], quad[3], quad[5], quad[7]),
         1
     );
+}
+
+/**
+ * @param {number[]} target
+ * @param {number} offset
+ * @param {number} originX
+ * @param {number} originY
+ * @param {number} x
+ * @param {number} y
+ * @param {number} sin
+ * @param {number} cos
+ */
+function setRotatedPoint(target, offset, originX, originY, x, y, sin, cos) {
+    target[offset] = originX + (x - originX) * cos - (y - originY) * sin;
+    target[offset + 1] = originY + (x - originX) * sin + (y - originY) * cos;
 }
 
 /**

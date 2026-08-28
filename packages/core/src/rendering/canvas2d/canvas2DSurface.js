@@ -1,4 +1,5 @@
 import CanvasSizeHelper from "../canvasSizeHelper.js";
+import { colorizePickingIds } from "./picking/pickingColorizer.js";
 import SoftwarePickingBuffer from "./picking/softwarePickingBuffer.js";
 
 export default class Canvas2DSurface {
@@ -10,6 +11,17 @@ export default class Canvas2DSurface {
 
     /** @type {SoftwarePickingBuffer | undefined} */
     #pickingBuffer;
+
+    #pickingBufferVisualizationEnabled = false;
+
+    /** @type {HTMLCanvasElement | undefined} */
+    #diagnosticCanvas;
+
+    /** @type {CanvasRenderingContext2D | undefined} */
+    #diagnosticContext;
+
+    /** @type {ImageData | undefined} */
+    #diagnosticImageData;
 
     #finalized = false;
 
@@ -118,6 +130,86 @@ export default class Canvas2DSurface {
         return this.#finalized ? 0 : (this.#pickingBuffer?.read(x, y) ?? 0);
     }
 
+    /** @param {boolean} enabled @returns {boolean} */
+    setPickingBufferVisualization(enabled) {
+        if (this.#finalized) {
+            return false;
+        }
+        this.#pickingBufferVisualizationEnabled = enabled;
+        return true;
+    }
+
+    isPickingBufferVisualizationEnabled() {
+        return this.#pickingBufferVisualizationEnabled;
+    }
+
+    blitPickingBufferVisualization() {
+        if (!this.#pickingBufferVisualizationEnabled || this.#finalized) {
+            return;
+        }
+        const buffer = this.getPickingBuffer();
+        const context = this.context;
+        context.resetTransform();
+        context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        context.globalAlpha = 1;
+        context.globalCompositeOperation = "source-over";
+        if (buffer.width == 0 || buffer.height == 0) {
+            return;
+        }
+
+        const diagnosticContext = this.#getDiagnosticContext();
+        if (
+            this.#diagnosticCanvas.width != buffer.width ||
+            this.#diagnosticCanvas.height != buffer.height
+        ) {
+            this.#diagnosticCanvas.width = buffer.width;
+            this.#diagnosticCanvas.height = buffer.height;
+            this.#diagnosticImageData = diagnosticContext.createImageData(
+                buffer.width,
+                buffer.height
+            );
+        }
+        const imageData = /** @type {ImageData} */ (this.#diagnosticImageData);
+        colorizePickingIds(buffer.ids, imageData.data);
+        diagnosticContext.putImageData(imageData, 0, 0);
+
+        const logicalSize = this.getLogicalCanvasSize();
+        const destinationWidth =
+            (buffer.width * this.canvas.width) / logicalSize.width;
+        const destinationHeight =
+            (buffer.height * this.canvas.height) / logicalSize.height;
+        const smoothing = context.imageSmoothingEnabled;
+        context.imageSmoothingEnabled = false;
+        context.drawImage(
+            this.#diagnosticCanvas,
+            0,
+            0,
+            buffer.width,
+            buffer.height,
+            0,
+            0,
+            destinationWidth,
+            destinationHeight
+        );
+        context.imageSmoothingEnabled = smoothing;
+    }
+
+    /** @returns {CanvasRenderingContext2D} */
+    #getDiagnosticContext() {
+        if (!this.#diagnosticContext) {
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d");
+            if (!context) {
+                throw new Error(
+                    "Unable to initialize a Canvas2D picking diagnostic context."
+                );
+            }
+            this.#diagnosticCanvas = canvas;
+            this.#diagnosticContext = context;
+        }
+        return this.#diagnosticContext;
+    }
+
     finalize() {
         if (this.#finalized) {
             return;
@@ -125,6 +217,14 @@ export default class Canvas2DSurface {
         this.#finalized = true;
         this.#pickingBuffer?.dispose();
         this.#pickingBuffer = undefined;
+        this.#pickingBufferVisualizationEnabled = false;
+        if (this.#diagnosticCanvas) {
+            this.#diagnosticCanvas.width = 0;
+            this.#diagnosticCanvas.height = 0;
+        }
+        this.#diagnosticCanvas = undefined;
+        this.#diagnosticContext = undefined;
+        this.#diagnosticImageData = undefined;
         this.#sizeHelper.finalize();
         this.canvas.remove();
     }
