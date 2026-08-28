@@ -931,12 +931,16 @@ Evidence recorded on 2026-08-28:
 - The maximum jump remains about 274 px, so the 24 px gate is not met. The
   largest events involve late-order labels and large offsets near changing
   bounds; ordinary motion is no longer the dominant failure.
+- With 8 by 8 px selected anchors enabled, the fine airway trace retained an
+  approximately 5.2 px p95 but increased the maximum jump to about 536 px.
+  Anchor-enabled geometry is therefore the final continuity fixture; the
+  earlier anchor-free maximum is diagnostic rather than an acceptance result.
 - A 32-candidate best-first search across multiple obstacle edges increased
   churn and worsened the maximum jump to about 527 px. It was deleted. This
   rules out extending the solver with a broader graph search without new
   fixture evidence.
 
-### 5. Selected-anchor clearance — Planned
+### 5. Selected-anchor clearance — Implemented; review pending
 
 Intended outcome: prevent annotations from covering the points they annotate
 through generic optional rectangle geometry, without mark inspection or an
@@ -979,6 +983,32 @@ Review gate: maintainer review of the public geometry contract, transform
 abstraction level, downstream schema/docs agreement, placement quality, and
 whether the added code remains smaller than a general obstacle-source design.
 
+Evidence recorded on 2026-08-28:
+
+- Commits `539cc966` and `0ad8c76e` add one generic preplaced-obstacle solver
+  input and optional scalar, field, or reactive `anchorWidth` and
+  `anchorHeight` transform fields. The solver still returns only signed x/y
+  offsets. Omitting either public field keeps the former no-obstacle allocation
+  path.
+- Zero-sized and heterogeneous obstacle tests pass, including an all-output to
+  all-anchor intersection check. The focused solver, transform, and schema
+  suites pass with 59 tests; Core type checking and lint pass.
+- The schema/docs preparation build succeeded, generated type documentation was
+  up to date, and the canonical docs example now reserves 10 by 10 px anchors.
+- The corrected top-32 airway wheel trace reported zero intersections across
+  198 captured frames with numerical tolerance for touching edges, and zero
+  overflow. The private volcano and MA specs reserve 8 by 8 px selected
+  anchors.
+- On the deterministic private benchmark, anchor-enabled p95 solver time was
+  0.06 ms for 100, 0.91 ms for 500, and 12.23 ms for 2,000 rectangles. The
+  corresponding anchor-free p95 values were 0.09, 0.34, and 7.84 ms.
+- The Core screenshot harness passed the airway volcano, airway MA, 500-label
+  stress, overflow, and reversed-axis specs. The app harness passed slider,
+  wheel, and resize checks in 23--38 ms. Visual inspection confirmed point
+  clearance and attached leader lines; renewed user acid testing is pending.
+- The repository-wide unit suite passes with 3,296 tests, one skipped, and two
+  todo across 393 files. Every workspace TypeScript check passes.
+
 ## Reconciliation through the first user acid test (2026-08-28)
 
 The plan is reconciled to the implemented branch but is intentionally not ready
@@ -1007,7 +1037,7 @@ Completed:
   app smoke exercised each label-count slider at its minimum, maximum, and
   default, then wheel-zoomed and resized each parameterized plot. Updates
   reached two subsequent animation frames in 17--39 ms in headless Chromium.
-- The full unit suite passes with 3,287 tests passing, one skipped, and two
+- The full unit suite passes with 3,296 tests passing, one skipped, and two
   todo after the final numeric review fixes.
 
 Discarded:
