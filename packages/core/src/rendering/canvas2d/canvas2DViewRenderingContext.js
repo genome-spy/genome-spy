@@ -114,6 +114,11 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
             return;
         }
 
+        // Immediate encoders read live parameter values during every paint.
+        // Register their dependencies so conditional encodings schedule that
+        // paint when a selection or expression changes.
+        mark.initializeRenderingRevisions([]);
+
         const coords = this.currentCoords;
         const inheritedClip = normalizeClipOptions(options);
         const markClip = prepareMarkClipOptionsFromClip(

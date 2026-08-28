@@ -27,6 +27,9 @@ describe("embed factory", () => {
             this.exportRaster = vi.fn();
             this.exportSvg = vi.fn();
             this.analyzeSvgExport = vi.fn();
+            this.createPickingBufferVisualization = vi.fn(() =>
+                document.createElement("canvas")
+            );
         }
     }
 
@@ -235,6 +238,32 @@ describe("embed factory", () => {
         await expect(api.debug.getModules()).resolves.toHaveProperty(
             "createViewDebugSnapshot"
         );
+        expect(api.debug.createPickingBufferVisualization?.()).toBeInstanceOf(
+            HTMLCanvasElement
+        );
+        api.finalize();
+        expect(api.debug.createPickingBufferVisualization?.()).toBeUndefined();
+    });
+
+    test("reports an unsupported picking-buffer visualization", async () => {
+        class UnsupportedGenomeSpy extends MockGenomeSpy {
+            /**
+             * @param {HTMLElement} element
+             * @param {any} spec
+             */
+            constructor(element, spec) {
+                super(element, spec);
+                this.createPickingBufferVisualization = vi.fn(() => undefined);
+            }
+        }
+
+        const embed = createEmbed(/** @type {any} */ (UnsupportedGenomeSpy));
+        const api = await embed(
+            document.createElement("div"),
+            /** @type {any} */ ({})
+        );
+
+        expect(api.debug.createPickingBufferVisualization?.()).toBeUndefined();
     });
 
     test("leaves missing width implicit", async () => {

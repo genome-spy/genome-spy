@@ -31,5 +31,6 @@ export function createCanvas2DRenderingBackend(options) {
             }),
         rasterizeSvgRuns: (rasterOptions) =>
             createCanvas2DSvgRasterizer()(rasterOptions),
+        readPickingId: (x, y) => surface.readPickingId(x, y),
     };
 }

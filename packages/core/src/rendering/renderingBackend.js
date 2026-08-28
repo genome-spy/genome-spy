@@ -15,6 +15,7 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  * @property {() => void} computeLayout
  * @property {() => void} renderAll
  * @property {() => void} [renderPickingFramebuffer]
+ * @property {() => HTMLCanvasElement | undefined} [createPickingBufferVisualization]
  */
 
 /**

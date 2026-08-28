@@ -250,7 +250,7 @@ test("launches, updates expressions, and repaints interactions without a GPU con
     genomeSpy.destroy();
 });
 
-test("falls back automatically, updates live state, and exports without picking", async () => {
+test("falls back automatically, picks data, updates live state, and exports", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -264,7 +264,7 @@ test("falls back automatically, updates live state, and exports without picking"
             {
                 name: "dynamic",
                 data: { name: "values" },
-                mark: "rect",
+                mark: { type: "rect", tooltip: false },
                 encoding: {
                     x: {
                         field: "x",
@@ -323,27 +323,47 @@ test("falls back automatically, updates live state, and exports without picking"
     const click = vi.fn();
     genomeSpy.addEventListener("click", click);
 
+    canvas.dispatchEvent(
+        new MouseEvent("mousemove", {
+            clientX: 20,
+            clientY: 30,
+            bubbles: true,
+        })
+    );
+    flushAnimationFrames(2);
     expect(() => {
         canvas.dispatchEvent(
-            new MouseEvent("mousemove", {
+            new MouseEvent("mousedown", {
+                button: 0,
+                buttons: 1,
                 clientX: 20,
-                clientY: 20,
+                clientY: 30,
+                bubbles: true,
+            })
+        );
+        canvas.dispatchEvent(
+            new MouseEvent("mouseup", {
+                button: 0,
+                clientX: 20,
+                clientY: 30,
                 bubbles: true,
             })
         );
         canvas.dispatchEvent(
             new MouseEvent("click", {
                 clientX: 20,
-                clientY: 20,
+                clientY: 30,
                 bubbles: true,
             })
         );
     }).not.toThrow();
-    expect(click).toHaveBeenCalledWith({
-        type: "click",
-        viewPath: null,
-        datum: null,
-    });
+    expect(click).toHaveBeenCalledWith(
+        expect.objectContaining({
+            type: "click",
+            viewPath: expect.arrayContaining(["dynamic"]),
+            datum: expect.objectContaining({ x: 0.2, x2: 0.4 }),
+        })
+    );
     expect(contextTypes.filter((type) => type == "2d")).toHaveLength(1);
 
     contexts[0].fillRect.mockClear();

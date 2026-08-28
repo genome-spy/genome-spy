@@ -350,6 +350,7 @@ export default class GenomeSpy {
             return;
         }
         this.#destroyed = true;
+        this.animator.finalize();
 
         const canvasWrapper = this.#canvasWrapper;
 
@@ -881,6 +882,11 @@ export default class GenomeSpy {
 
     renderPickingFramebuffer() {
         this.#renderCoordinator.renderPickingFramebuffer?.();
+    }
+
+    /** @returns {HTMLCanvasElement | undefined} */
+    createPickingBufferVisualization() {
+        return this.#renderCoordinator.createPickingBufferVisualization?.();
     }
 
     getSearchableViews() {
