@@ -1,6 +1,6 @@
 # Canvas software picking renderer plan
 
-Status: Proposed
+Status: In progress
 
 ## Context
 
@@ -390,15 +390,16 @@ colorization.
 
 ### Work
 
-- [ ] Add the logical-size `Uint32Array` surface with explicit zero-background,
+- [x] Add the logical-size `Uint32Array` surface with explicit zero-background,
       resize, clear, bounded read, and disposal behavior.
-- [ ] Add clipped row-span fills for rectangles and convex polygons.
-- [ ] Add square point coverage and conservative thick-segment rasterization.
-- [ ] Add adaptive cubic flattening with a bounded depth and reusable scratch
+- [x] Add clipped row-span fills for rectangles and convex polygons.
+- [x] Add square point coverage and conservative thick-segment rasterization.
+- [x] Add adaptive cubic flattening with a bounded depth and reusable scratch
       storage, feeding the thick-segment primitive.
-- [ ] Add stable ID-to-RGB diagnostic colorization without changing stored IDs.
-- [ ] Instrument primitive counts and elapsed picking/debug phases through the
-      existing profiler without logging from the hot path.
+- [x] Add stable ID-to-RGB diagnostic colorization without changing stored IDs.
+- [x] Aggregate primitive counts without logging or global profiler lookups in
+      the hot path. The coordinator reports the aggregates and elapsed phases in
+      Milestone 2.
 
 ### Affected areas and downstream consumers
 
@@ -455,6 +456,7 @@ rule/tick, and link marks, including dense scatter plots and long genomic arcs.
 - [ ] Return ID `0` for floored-away fractional edge coordinates and after the
       surface has finalized.
 - [ ] Record Canvas picking replay with the existing performance profiler.
+- [ ] Publish the rasterizer's aggregate primitive counts once per picking pass.
 
 ### Affected areas and downstream consumers
 

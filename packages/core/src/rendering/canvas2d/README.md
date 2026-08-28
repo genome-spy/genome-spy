@@ -39,6 +39,21 @@ effects are approximated or ignored with a deduplicated warning. Keep these
 fallbacks explicit and useful; fail only when a mark cannot be represented
 meaningfully.
 
+## Software picking primitives
+
+`picking/` contains the DOM-independent integer coverage primitives used by the
+Canvas software picker. `SoftwarePickingBuffer` stores one unsigned datum ID per
+floored logical CSS pixel; it never scales storage by device pixel ratio. A
+fractional strip narrower than one CSS pixel at the right or bottom edge is
+intentionally outside the picking surface.
+
+The rasterizer supports clipped row spans, conservative square footprints,
+thick segments, convex polygons, and adaptively flattened cubic Bézier curves.
+It writes IDs directly in painter order without colors, alpha, blending, or
+antialiasing. `pickingColorizer.js` maps those IDs to opaque diagnostic colors,
+but picking never decodes the colors. Keep this primitive layer independent of
+Canvas and DOM APIs.
+
 ## Extending and testing
 
 Keep Canvas implementation modules behind the dynamic import in
