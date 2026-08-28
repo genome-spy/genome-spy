@@ -935,10 +935,23 @@ Evidence recorded on 2026-08-28:
   approximately 5.2 px p95 but increased the maximum jump to about 536 px.
   Anchor-enabled geometry is therefore the final continuity fixture; the
   earlier anchor-free maximum is diagnostic rather than an acceptance result.
+- Solver-space reconstruction confirmed that the largest rendered jump is not
+  scale motion: a label retained about 522 px of horizontal offset, a selected
+  anchor moved only about 1.3 px into it, all four local escape edges were
+  blocked, and the canonical fallback moved the label to `[0, 140]`. Other tail
+  events are triggered by selected anchors or earlier-priority labels in the
+  same way. A one-pass greedy solver cannot guarantee the 24 px maximum while
+  also requiring exact avoidance of every fixed anchor in this dense trace.
 - A 32-candidate best-first search across multiple obstacle edges increased
   churn and worsened the maximum jump to about 527 px. It was deleted. This
   rules out extending the solver with a broader graph search without new
   fixture evidence.
+- Moving valid retained placements toward their anchors by one fifth of the
+  smaller rectangle dimension reduced the observed maximum to about 151 px but
+  increased changed-offset events from roughly 800 to more than 3,000 and made
+  settled output depend on replay count. The hidden relaxation-rate spike was
+  deleted because it neither passed the gate nor preserved a simple transform
+  contract.
 
 ### 5. Selected-anchor clearance — Implemented; review pending
 
