@@ -133,8 +133,8 @@ decisions.
 
 ### Work
 
-- [ ] Remove `Mark.augmentDefaultProperties()` and its JSDoc.
-- [ ] Confirm that no subclass, test helper, or downstream package calls it.
+- [x] Remove `Mark.augmentDefaultProperties()` and its JSDoc.
+- [x] Confirm that no subclass, test helper, or downstream package calls it.
 
 ### Affected areas and consumers
 

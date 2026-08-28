@@ -110,17 +110,6 @@ export default class Mark {
         ]);
     }
 
-    /**
-     * @param {Partial<P>} props
-     * @protected
-     */
-    augmentDefaultProperties(props) {
-        Object.defineProperties(
-            this.defaultProperties,
-            Object.getOwnPropertyDescriptors(props)
-        );
-    }
-
     getCursorSpec() {
         return this.properties.cursor;
     }
