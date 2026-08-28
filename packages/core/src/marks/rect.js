@@ -1,13 +1,7 @@
 import Mark from "./mark.js";
 import { fixCoveragePositional, fixFill, fixStroke } from "./markUtils.js";
-import { asArray } from "../utils/arrayUtils.js";
-import {
-    getEncoderDataAccessor,
-    isNestedDiscreteOffsetDef,
-    isValueDef,
-} from "../encoder/encoder.js";
+import { isNestedDiscreteOffsetDef, isValueDef } from "../encoder/encoder.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
-import { isDiscrete } from "vega-scale";
 
 /** @extends {Mark<import("../spec/mark.js").RectProps>} */
 export default class RectMark extends Mark {
@@ -86,36 +80,5 @@ export default class RectMark extends Mark {
             !(isValueDef(strokeWidth) && !strokeWidth.value) ||
             "condition" in strokeWidth
         );
-    }
-
-    /**
-     * @param {any} facetId
-     * @param {import("../spec/channel.js").Scalar} x
-     * @returns {any}
-     * @override
-     */
-    findDatumAt(facetId, x) {
-        facetId = asArray(facetId);
-        const data = this.unitView.getCollector().facetBatches.get(facetId);
-        if (!data) {
-            return;
-        }
-
-        const encoders = this.encoders;
-        if (isDiscrete(encoders.x.scale.type)) {
-            const accessor = getEncoderDataAccessor(encoders.x);
-            return accessor
-                ? data.find((datum) => x == accessor(datum))
-                : undefined;
-        } else {
-            const accessor = getEncoderDataAccessor(encoders.x);
-            const secondaryAccessor = getEncoderDataAccessor(encoders.x2);
-            if (!accessor || !secondaryAccessor) {
-                return;
-            }
-            return data.find(
-                (datum) => x >= accessor(datum) && x < secondaryAccessor(datum)
-            );
-        }
     }
 }

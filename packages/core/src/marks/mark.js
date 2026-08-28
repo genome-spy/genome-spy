@@ -532,11 +532,4 @@ export default class Mark {
             properties,
         };
     }
-
-    /**
-     * @param {string} facetId
-     * @param {import("../spec/channel.js").Scalar} x
-     * @returns {any}
-     */
-    findDatumAt(facetId, x) {}
 }

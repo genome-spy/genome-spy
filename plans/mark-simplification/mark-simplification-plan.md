@@ -202,9 +202,9 @@ hook.
 
 ### Work
 
-- [ ] Remove the empty `Mark.findDatumAt()` method.
-- [ ] Remove `RectMark.findDatumAt()` and imports used only by it.
-- [ ] Confirm the App continues to use its interval-aware datum lookup and
+- [x] Remove the empty `Mark.findDatumAt()` method.
+- [x] Remove `RectMark.findDatumAt()` and imports used only by it.
+- [x] Confirm the App continues to use its interval-aware datum lookup and
       attribute aggregation utilities.
 
 ### Affected areas and consumers
