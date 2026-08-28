@@ -148,10 +148,41 @@ describe("solveDisplacement", () => {
                 undefined,
                 undefined,
                 undefined,
+                undefined,
                 output
             )
         ).toBe(output);
         expect(output).toEqual({ x: [0], y: [0] });
+    });
+
+    test("avoids preplaced obstacle rectangles", () => {
+        const displacements = solveDisplacement(
+            [0],
+            [0],
+            [10],
+            [10],
+            undefined,
+            undefined,
+            undefined,
+            { x: [0], y: [0], width: [4], height: [4] }
+        );
+
+        expect(displacements).toEqual({ x: [0], y: [-10] });
+    });
+
+    test("ignores obstacles with an empty collision dimension", () => {
+        expect(
+            solveDisplacement(
+                [0],
+                [0],
+                [10],
+                [10],
+                undefined,
+                undefined,
+                undefined,
+                { x: [0], y: [0], width: [0], height: [4] }
+            )
+        ).toEqual({ x: [0], y: [0] });
     });
 
     test("keeps valid previous placements instead of snapping to the origin", () => {
