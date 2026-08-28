@@ -38,6 +38,7 @@ const rendererRegistrationSources = [
     "src/rendering/registerSvg.js",
     "src/rendering/registerWebGL.js",
 ];
+const webGlFontBitmap = "src/fonts/Lato-Regular.png";
 
 const tempDir = fs.mkdtempSync(
     path.join(os.tmpdir(), "genome-spy-minimal-bundle-")
@@ -285,6 +286,7 @@ function verifyNoOptionalRendererSources(sources, owner) {
             rendererRegistrationSources.some((registration) =>
                 source.endsWith(registration)
             ) ||
+            source.endsWith(webGlFontBitmap) ||
             isWebGLImplementationSource(source)
     );
     if (source) {

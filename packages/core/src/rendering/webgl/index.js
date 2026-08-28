@@ -1,3 +1,4 @@
+import latoRegularBitmap from "../../fonts/Lato-Regular.png";
 import WebGLHelper, { readPickingPixel } from "./gl/webGLHelper.js";
 import RenderCoordinator from "./renderCoordinator.js";
 import { exportCanvas, exportRaster } from "./canvasExport.js";
@@ -19,6 +20,7 @@ export function createWebGLRenderingBackend(options) {
 
     return {
         surface: glHelper,
+        defaultFontBitmapUrl: latoRegularBitmap,
         prepareFontBitmap: (bitmapUrl) =>
             rendererResources.prepareFontBitmap(bitmapUrl),
         getMarkRenderingDebugState: (mark) =>

@@ -426,7 +426,8 @@ export default class GenomeSpy {
             animator: this.animator,
             genomeStore: this.genomeStore,
             fontManager: new BmFontManager(
-                this.#renderingBackend.prepareFontBitmap
+                this.#renderingBackend.prepareFontBitmap,
+                this.#renderingBackend.defaultFontBitmapUrl
             ),
             updateTooltip: this.updateTooltip.bind(this),
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),

@@ -41,6 +41,7 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  * @typedef {object} RenderingBackend
  * @property {RenderingSurface} surface
  * @property {undefined} [glHelper] Legacy field retained for the unchanged WebGPU adapter.
+ * @property {string} [defaultFontBitmapUrl]
  * @property {(bitmapUrl: string) => Promise<void>} [prepareFontBitmap]
  * @property {(mark: import("../marks/mark.js").default) => import("../types/viewContext.js").MarkRenderingDebugState} [getMarkRenderingDebugState]
  * @property {(options: {viewRoot: import("../view/view.js").default, getBackground: () => string, broadcast: (type: import("../genomeSpy.js").BroadcastEventType, payload?: any) => void, onLayoutComputed: () => void}) => RenderingCoordinator} createRenderCoordinator

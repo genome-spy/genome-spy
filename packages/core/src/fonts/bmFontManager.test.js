@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 import BmFontManager from "./bmFontManager.js";
 
 describe("BmFontManager", () => {
-    test("uses the embedded default font for the bundled Lato face", () => {
+    test("uses bundled default metrics for the Lato face", () => {
         const manager = new BmFontManager();
 
         expect(manager.getFont("Lato")).toBe(manager.getDefaultFont());
@@ -10,6 +10,7 @@ describe("BmFontManager", () => {
             manager.getDefaultFont()
         );
         expect(manager.getFont("sans-serif")).toBe(manager.getDefaultFont());
+        expect(manager.getDefaultFont().bitmapUrl).toBeUndefined();
     });
 
     test("loads non-default metrics without bitmap preparation", async () => {
@@ -33,7 +34,7 @@ describe("BmFontManager", () => {
 
     test("prepares bitmaps through the renderer-owned callback", async () => {
         const prepareBitmap = vi.fn(() => Promise.resolve());
-        const manager = new BmFontManager(prepareBitmap);
+        const manager = new BmFontManager(prepareBitmap, "default.png");
         const metrics = manager.getDefaultFont().metrics;
         vi.spyOn(manager, "_loadMetadata").mockResolvedValue([
             /** @type {any} */ ({
@@ -49,6 +50,7 @@ describe("BmFontManager", () => {
         await manager.waitUntilReady();
 
         expect(prepareBitmap).toHaveBeenCalledTimes(2);
+        expect(prepareBitmap).toHaveBeenNthCalledWith(1, "default.png");
         expect(prepareBitmap).toHaveBeenLastCalledWith(
             expect.stringContaining("TestSans-Bold.png")
         );

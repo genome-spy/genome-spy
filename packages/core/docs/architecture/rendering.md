@@ -123,9 +123,10 @@ attachments, size observers, and the canvas.
 - Textures represent color ramps and discrete schemes
   (`src/rendering/webgl/gl/colorUtils.js`), multi-point selections, and
   offscreen picking data.
-- The WebGL adapter prepares font textures from renderer-neutral bitmap URLs and
-  subscribes to the scale resolutions used by its retained marks. Font and
-  range textures are not stored in semantic fonts, marks, or scale planning.
+- The WebGL adapter supplies the embedded fallback bitmap URL and prepares font
+  textures from renderer-neutral bitmap URLs. It also subscribes to the scale
+  resolutions used by its retained marks. Font and range textures are not
+  stored in marks or scale planning.
 - Picking renders into a dedicated framebuffer owned by `WebGLHelper`.
 - Marks can opt out of picking; some render only into the picking target.
 

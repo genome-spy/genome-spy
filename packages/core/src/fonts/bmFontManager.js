@@ -1,7 +1,6 @@
 import { InternMap } from "internmap";
 import { isString } from "vega-util";
 import latoRegular from "../fonts/Lato-Regular.json" with { type: "json" };
-import latoRegularBitmap from "../fonts/Lato-Regular.png";
 import getMetrics from "./bmFontMetrics.js";
 
 const WEIGHTS = {
@@ -47,8 +46,9 @@ const DEFAULT_FONT_KEY = {
 export default class BmFontManager {
     /**
      * @param {(bitmapUrl: string) => Promise<void>} [prepareBitmap]
+     * @param {string} [defaultBitmapUrl]
      */
-    constructor(prepareBitmap) {
+    constructor(prepareBitmap, defaultBitmapUrl) {
         this._prepareBitmap = prepareBitmap;
 
         this.fontRepository =
@@ -68,11 +68,12 @@ export default class BmFontManager {
         /** @type {Promise<void>[]} Keep track of overall font loading state */
         this._promises = [];
 
-        const defaultBitmap = prepareBitmap?.(latoRegularBitmap);
+        const defaultBitmap =
+            defaultBitmapUrl && prepareBitmap?.(defaultBitmapUrl);
         /** A default/fallback font to be used when font loading fails. */
         this._defaultFontEntry = /** @type {FontEntry} */ ({
             metrics: getMetrics(latoRegular),
-            bitmapUrl: latoRegularBitmap,
+            bitmapUrl: defaultBitmapUrl,
         });
         if (defaultBitmap) {
             this._promises.push(defaultBitmap);
