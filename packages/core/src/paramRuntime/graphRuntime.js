@@ -266,8 +266,10 @@ export default class GraphRuntime {
             if (value !== node.value) {
                 node.value = value;
                 if (notifyOnSet) {
+                    // Computed/effect listeners schedule after they enqueue
+                    // graph work. Direct listeners are synchronous and need no
+                    // otherwise-empty flush microtask.
                     notify(node.listeners);
-                    this.#scheduleFlush();
                 }
             }
         };

@@ -1,8 +1,23 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import GraphRuntime from "./graphRuntime.js";
 import LifecycleRegistry from "./lifecycleRegistry.js";
 
 describe("GraphRuntime", () => {
+    test("does not schedule propagation without queued graph work", () => {
+        const queueMicrotaskSpy = vi.spyOn(globalThis, "queueMicrotask");
+
+        try {
+            const runtime = new GraphRuntime();
+            const source = runtime.createWritable("scope:test", "a", "base", 1);
+
+            source.set(2);
+
+            expect(queueMicrotaskSpy).not.toHaveBeenCalled();
+        } finally {
+            queueMicrotaskSpy.mockRestore();
+        }
+    });
+
     test("recomputes diamond DAG once per flush", async () => {
         const runtime = new GraphRuntime();
         const source = runtime.createWritable("scope:test", "a", "base", 1);
