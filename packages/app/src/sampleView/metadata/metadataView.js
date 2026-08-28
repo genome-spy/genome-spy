@@ -11,10 +11,7 @@ import { easeQuadInOut } from "d3-ease";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../../utils/ui/contextMenu.js";
 import { appendPlotMenuItems } from "../plotMenuItems.js";
-import {
-    checkForDuplicateScaleNames,
-    finalizeSubtreeGraphics,
-} from "@genome-spy/core/view/viewUtils.js";
+import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
 import { finalizeViewConfiguration } from "@genome-spy/core/genomeSpy/viewHierarchyConfig.js";
 import {
     collectViewSubtreeDataSources,
@@ -345,8 +342,7 @@ export class MetadataView extends ConcatView {
             ) => view.isConfiguredVisible();
             const dynamicSource = this.#initializeMetadataSubtree(
                 flow,
-                viewPredicate,
-                metadataGeneration
+                viewPredicate
             );
 
             dynamicSource.updateDynamicData(
@@ -390,15 +386,10 @@ export class MetadataView extends ConcatView {
      *
      * @param {import("@genome-spy/core/data/dataFlow.js").default} flow
      * @param {(view: import("@genome-spy/core/view/view.js").default) => boolean} viewPredicate
-     * @param {number} metadataGeneration
      * @returns {import("@genome-spy/core/data/sources/namedSource.js").default}
      */
-    #initializeMetadataSubtree(flow, viewPredicate, metadataGeneration) {
-        const { graphicsPromises } = initializeViewSubtree(
-            this,
-            flow,
-            viewPredicate
-        );
+    #initializeMetadataSubtree(flow, viewPredicate) {
+        initializeViewSubtree(this, flow, viewPredicate);
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
                 this.flowHandle?.dataSource
@@ -407,11 +398,6 @@ export class MetadataView extends ConcatView {
         if (!dynamicSource) {
             throw new Error("Cannot find metadata data source handle!");
         }
-
-        finalizeSubtreeGraphics(
-            graphicsPromises,
-            () => metadataGeneration === this.#metadataGeneration
-        );
 
         return dynamicSource;
     }

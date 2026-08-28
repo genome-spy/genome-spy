@@ -24,6 +24,8 @@ vi.mock("./bufferedViewRenderingContext.js", () => ({
         }
 
         render() {}
+
+        finish() {}
     },
 }));
 
@@ -34,6 +36,7 @@ describe("exportRaster", () => {
         await expect(
             exportRaster({
                 glHelper: /** @type {any} */ ({}),
+                markAdapter: /** @type {any} */ ({}),
                 viewRoot: /** @type {any} */ ({}),
                 mimeType: /** @type {any} */ ("image/webp"),
             })
@@ -51,6 +54,7 @@ describe("exportRaster", () => {
         const viewRoot = { arrange: vi.fn() };
         await exportRaster({
             glHelper: /** @type {any} */ ({ gl }),
+            markAdapter: /** @type {any} */ ({}),
             viewRoot: /** @type {any} */ (viewRoot),
             logicalWidth: 200,
             logicalHeight: 100,

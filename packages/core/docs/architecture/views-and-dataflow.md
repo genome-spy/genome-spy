@@ -11,7 +11,9 @@
   - `LayerView`, `ConcatView`, and `GridView` compose layout.
 - `UnitView` (`src/view/unitView.js`) creates a `Mark` such as rect, point, rule,
   link, or text; connects encodings to scales, selections, and axes; and
-  unregisters scale/axis resolution members when disposed.
+  unregisters scale/axis resolution members when disposed. Rendering backends
+  may register their own cleanup callbacks with the view, but retained renderer
+  state is not stored on the unit view or mark.
 
 Layout sizing uses `View.getSize()` and `getViewportSize()` with a cached
 `size/*` property namespace:
@@ -61,6 +63,9 @@ arrangement.
   visibility change.
 - Hidden views do not contribute to shared scale domains until initialized, so
   a domain may expand when a subtree becomes visible.
+- Collector observers update semantic mark data and schedule rendering. A
+  retained backend synchronizes its own buffers from collector and mark
+  revisions when it next prepares or paints the mark.
 - Views track `none`, `pending`, or `ready` data initialization state to prevent
   duplicate flow nodes and collectors.
 - Disposing a subtree prunes its flow branches so orphaned nodes and unused data
@@ -70,8 +75,9 @@ arrangement.
 
 - Prefer `ViewFactory.createOrImportView`; some App views are still constructed
   directly and need equivalent lifecycle wiring.
-- `src/data/flowInit.js` owns `initializeViewSubtree`, `loadViewSubtreeData`, and
-  `finalizeSubtreeGraphics`.
+- `src/data/flowInit.js` owns `initializeViewSubtree` and
+  `loadViewSubtreeData`. It initializes encoders and semantic mark data but does
+  not create, update, or finalize renderer resources.
 - `src/genomeSpy/viewDataInit.js` centralizes visibility-triggered data
   initialization and should run after visibility state changes.
 - `disposeSubtree` walks post-order, unregisters resolution members, and prunes

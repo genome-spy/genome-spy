@@ -16,12 +16,14 @@ describe("BufferedViewRenderingContext", () => {
                 canvasSize: { width: 100, height: 100 },
                 devicePixelRatio: 1,
                 markPredicate,
+                markAdapter: /** @type {any} */ ({
+                    prepareMarks: vi.fn(),
+                    synchronize: vi.fn(),
+                }),
             }
         );
         const mark = /** @type {import("../../marks/mark.js").default} */ (
-            /** @type {unknown} */ ({
-                getRenderingDelegate: vi.fn(),
-            })
+            /** @type {unknown} */ ({})
         );
 
         context.renderMark(mark, {});
@@ -70,7 +72,7 @@ describe("BufferedViewRenderingContext", () => {
          * @returns {boolean}
          */
         const setViewport = vi.fn(
-            /** @type {import("../../marks/mark.js").default["setViewport"]} */ (
+            /** @type {import("./types.js").WebGLMark["setViewport"]} */ (
                 () => true
             )
         );
@@ -89,12 +91,19 @@ describe("BufferedViewRenderingContext", () => {
             setViewport,
             render,
         };
+        const entry = { graphics, state: "ready" };
+        const markAdapter = {
+            prepareMarks: vi.fn(),
+            getMarkEntry: () => entry,
+            isEntryActive: () => true,
+            isEntryDrawable: () => true,
+            synchronize: vi.fn(),
+        };
         const mark = /** @type {import("../../marks/mark.js").default} */ (
             /** @type {unknown} */ ({
                 properties: { clip: true },
                 unitView: { getEffectiveOpacity },
                 isPickingParticipant,
-                getRenderingDelegate: () => graphics,
             })
         );
         const context = new BufferedViewRenderingContext(
@@ -107,6 +116,7 @@ describe("BufferedViewRenderingContext", () => {
                 canvasSize: { width: 100, height: 100 },
                 devicePixelRatio: 1,
                 pixelOffset: 0,
+                markAdapter: /** @type {any} */ (markAdapter),
             }
         );
 
@@ -125,5 +135,7 @@ describe("BufferedViewRenderingContext", () => {
         });
         expect(setViewport).toHaveBeenCalledOnce();
         expect(setViewport.mock.calls[0][5]).toBe(0);
+        expect(markAdapter.prepareMarks).toHaveBeenCalledWith([mark, mark]);
+        expect(markAdapter.synchronize).toHaveBeenCalledWith(new Set([entry]));
     });
 });

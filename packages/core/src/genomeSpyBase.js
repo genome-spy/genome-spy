@@ -324,7 +324,6 @@ export default class GenomeSpy {
         });
 
         if (this.#destroyed) {
-            renderingBackend.rendererResources?.dispose();
             renderingBackend.surface.finalize();
             throw new Error("GenomeSpy was destroyed during launch.");
         }
@@ -377,7 +376,6 @@ export default class GenomeSpy {
             this.#disposedViewRoot = this.viewRoot;
         }
         if (this.#renderingBackend && !this.#backendDisposed) {
-            this.#renderingBackend.rendererResources?.dispose();
             this.#renderingBackend.surface.finalize();
             this.#backendDisposed = true;
         }
@@ -422,16 +420,12 @@ export default class GenomeSpy {
 
         return createViewContext({
             dataFlow,
-            rendererResources: this.#renderingBackend.rendererResources,
+            getMarkRenderingDebugState:
+                this.#renderingBackend.getMarkRenderingDebugState,
             animator: this.animator,
             genomeStore: this.genomeStore,
             fontManager: new BmFontManager(
-                this.#renderingBackend.rendererResources
-                    ? (bitmapUrl) =>
-                          this.#renderingBackend.rendererResources.loadFontResource(
-                              bitmapUrl
-                          )
-                    : undefined
+                this.#renderingBackend.prepareFontBitmap
             ),
             updateTooltip: this.updateTooltip.bind(this),
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),

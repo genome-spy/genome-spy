@@ -16,9 +16,10 @@ export default class WebGLLinkMark extends WebGLMark {
     /**
      * @param {import("../../../marks/mark.js").default} mark
      * @param {import("../gl/webGLHelper.js").default} glHelper
+     * @param {import("../rendererResources.js").default} rendererResources
      */
-    constructor(mark, glHelper) {
-        super(mark, glHelper);
+    constructor(mark, glHelper, rendererResources) {
+        super(mark, glHelper, rendererResources);
         /**
          * Only available if "WebGL Draft Extensions" is enabled in chrome://flags
          * But seems to work.
@@ -160,7 +161,7 @@ export default class WebGLLinkMark extends WebGLMark {
     }
 
     /**
-     * @param {import("../../../types/viewContext.js").MarkRenderingOptions} options
+     * @param {import("../types.js").WebGLMarkRenderingOptions} options
      */
     render(options) {
         const gl = this.gl;

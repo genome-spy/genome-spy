@@ -15,6 +15,7 @@ import { getPhysicalCrop, setRasterImage } from "../svg/raster/rasterImage.js";
  * @param {import("../../view/view.js").default} options.viewRoot
  * @param {import("../../view/layout/layoutResult.js").default} [options.layoutResult]
  * @param {import("./gl/webGLHelper.js").default} options.webGLHelper
+ * @param {import("./rendererResources.js").default} options.markAdapter
  * @param {number} options.logicalWidth
  * @param {number} options.logicalHeight
  * @param {number} options.pixelRatio
@@ -24,6 +25,7 @@ export function rasterizeSvgRuns({
     viewRoot,
     layoutResult,
     webGLHelper,
+    markAdapter,
     logicalWidth,
     logicalHeight,
     pixelRatio,
@@ -64,6 +66,7 @@ export function rasterizeSvgRuns({
                 { picking: false },
                 {
                     webGLHelper,
+                    markAdapter,
                     canvasSize: {
                         width: logicalWidth,
                         height: logicalHeight,
@@ -75,6 +78,7 @@ export function rasterizeSvgRuns({
                 }
             );
             rasterLayoutResult.collectRenderCommands(renderingContext);
+            renderingContext.finish();
             renderingContext.render();
 
             const crop = getPhysicalCrop(run.bounds, pixelRatio, width, height);

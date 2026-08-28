@@ -38,6 +38,14 @@ function createCoordinator({
             getDevicePixelRatio: () => 1,
             invalidateSize,
         }),
+        markAdapter: /** @type {any} */ ({
+            /** @returns {void} */
+            prepareMarks() {},
+            /** @returns {undefined} */
+            getMarkEntry() {},
+            /** @returns {void} */
+            synchronize() {},
+        }),
         getBackground: () => "white",
         broadcast: () => undefined,
         onLayoutComputed: () => undefined,

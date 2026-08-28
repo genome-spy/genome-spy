@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => {
             }
 
             render = vi.fn();
+
+            finish = vi.fn();
         },
     };
 });
@@ -55,6 +57,7 @@ describe("rasterizeSvgRuns", () => {
             runs,
             viewRoot: fixture.viewRoot,
             webGLHelper: fixture.webGLHelper,
+            markAdapter: /** @type {any} */ ({}),
             logicalWidth: 100,
             logicalHeight: 80,
             pixelRatio: 2,
@@ -104,6 +107,7 @@ describe("rasterizeSvgRuns", () => {
                 runs: [createRun({ x1: 0, y1: 0, x2: 100, y2: 80 })],
                 viewRoot: fixture.viewRoot,
                 webGLHelper: fixture.webGLHelper,
+                markAdapter: /** @type {any} */ ({}),
                 logicalWidth: 100,
                 logicalHeight: 80,
                 pixelRatio: 2,
@@ -123,6 +127,7 @@ describe("rasterizeSvgRuns", () => {
                 runs: [createRun({ x1: 0, y1: 0, x2: 10, y2: 10 })],
                 viewRoot: fixture.viewRoot,
                 webGLHelper: fixture.webGLHelper,
+                markAdapter: /** @type {any} */ ({}),
                 logicalWidth: 100,
                 logicalHeight: 80,
                 pixelRatio: 1,

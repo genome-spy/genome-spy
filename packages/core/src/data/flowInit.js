@@ -103,21 +103,18 @@ export function findAncestorDataSource(node) {
  * - discovers the nearest data sources for views in the subtree
  * - initializes dataflow nodes (initialize) for those sources
  * - initializes mark encoders for unit views
- * - queues retained graphics initialization when the backend provides it
- * - wires collector observers so marks update on data arrival
+ * - wires collector observers so marks update semantic data on arrival
  *
  * How to use it:
  * - call after the subtree is fully constructed (post-order build)
  * - do not attach the subtree to the live hierarchy until after this call
  * - dispose the old subtree before replacing it to prevent observer leaks
- * - follow up with finalizeSubtreeGraphics(...) once graphics promises resolve
  * - reconfigure scales for the subtree when data loads complete
  *
  * Considerations:
  * - this does not trigger data loading; callers decide when to load
  * - data sources are derived by walking to the nearest ancestor source; nested
  *   sources should be treated as boundaries (do not walk past them)
- * - only call updateGraphicsData when retained renderer resources are available
  * - loadViewSubtreeData emits a subtree-scoped "subtreeDataReady" broadcast
  *
  * TODO:
@@ -133,8 +130,7 @@ export function findAncestorDataSource(node) {
  * @returns {{
  *     dataFlow: import("./dataFlow.js").default,
  *     unitViews: UnitView[],
- *     dataSources: Set<import("./sources/dataSource.js").default>,
- *     graphicsPromises: Promise<import("../marks/mark.js").default>[]
+ *     dataSources: Set<import("./sources/dataSource.js").default>
  * }}
  */
 export function initializeViewSubtree(
@@ -151,7 +147,6 @@ export function initializeViewSubtree(
             dataFlow: flow,
             unitViews: [],
             dataSources: new Set(),
-            graphicsPromises: [],
         };
     }
 
@@ -186,33 +181,16 @@ export function initializeViewSubtree(
         (view) => view instanceof UnitView
     );
 
-    /** @type {Promise<import("../marks/mark.js").default>[]} */
-    const graphicsPromises = [];
-
-    const canInitializeGraphics = !!subtreeRoot.context.rendererResources;
-
     for (const view of unitViews) {
         const mark = view.mark;
-        // Encoders are backend-neutral; retained graphics are optional.
         mark.initializeEncoders();
         view.registerDomainSubscriptions();
-        if (canInitializeGraphics) {
-            graphicsPromises.push(mark.initializeGraphics().then(() => mark));
-        }
 
-        // Wire collector completion to mark data/graphics updates.
+        // Wire collector completion to semantic mark data updates.
         const observer = (
             /** @type {import("./collector.js").default} */ _collector
         ) => {
             mark.initializeData(); // does faceting
-            if (canInitializeGraphics) {
-                try {
-                    mark.updateGraphicsData();
-                } catch (e) {
-                    e.view = view;
-                    throw e;
-                }
-            }
             view.context.animator.requestRender();
         };
         view.registerDisposer(view.flowHandle.collector.observe(observer));
@@ -226,7 +204,6 @@ export function initializeViewSubtree(
         dataFlow,
         unitViews,
         dataSources,
-        graphicsPromises,
     };
 }
 

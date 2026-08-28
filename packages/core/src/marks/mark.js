@@ -16,8 +16,6 @@ import { getConfiguredMarkDefaults } from "../config/markConfig.js";
 import { validatePositionalEndpointCoordinateSpaces } from "./markUtils.js";
 
 /**
- * @typedef {import("../types/rendering.js").ClipOptions} ClipOptions
- * @typedef {import("../types/viewContext.js").MarkRenderingOptions} MarkRenderingOptions
  * @typedef {"intersects" | "encloses" | "endpoints"} HitTestMode
  * @typedef {"configuration" | "resources"} RenderingRevisionKind
  * @typedef {object} RenderingRevisionState
@@ -29,16 +27,12 @@ import { validatePositionalEndpointCoordinateSpaces } from "./markUtils.js";
 
 /**
  * @typedef {object} MarkDebugState
- * @prop {boolean} markUniformsAltered
- * @prop {number | undefined} vertexCount
- * @prop {number | undefined} allocatedVertices
- * @prop {number} rangeCount
  * @prop {Record<string, any>} properties
  */
 
 /**
- * Backend-neutral mark configuration, encoders, and data semantics. Retained
- * renderer resources live in an opaque delegate created by RendererResources.
+ * Backend-neutral mark configuration, encoders, and data semantics. Rendering
+ * backends own any retained state derived from the mark.
  *
  * @template {MarkProps} [P=MarkProps]
  */
@@ -53,11 +47,7 @@ export default class Mark {
     /** @type {RenderingRevisionState | undefined} */
     #renderingRevisionState;
 
-    /** @type {import("../types/viewContext.js").MarkRenderingDelegate | undefined} */
-    #graphics;
-
-    /** @type {Promise<void> | undefined} */
-    #graphicsInitialization;
+    #encodedDataRevision = 0;
 
     /**
      * @param {import("../view/unitView.js").default} unitView
@@ -112,7 +102,7 @@ export default class Mark {
             () => this.defaultProperties
         );
 
-        this.setupExprRefsNeedingGraphicsUpdate([
+        this.setupExprRefsNeedingEncodedDataUpdate([
             "xOffset",
             "yOffset",
             "x2Offset",
@@ -221,7 +211,7 @@ export default class Mark {
      * @param {(keyof P)[]} props
      * @protected
      */
-    setupExprRefsNeedingGraphicsUpdate(props) {
+    setupExprRefsNeedingEncodedDataUpdate(props) {
         const channels = this.getSupportedChannels();
         /** @type {Partial<MarkProps>} */
         const exprProps = {};
@@ -236,9 +226,7 @@ export default class Mark {
                             return;
                         }
 
-                        if (this.#graphics) {
-                            this.updateGraphicsData();
-                        }
+                        this.#encodedDataRevision++;
                         this.unitView.context.animator.requestRender();
                     }
                 );
@@ -507,56 +495,15 @@ export default class Mark {
             : state[kind];
     }
 
+    getEncodedDataRevision() {
+        return this.#encodedDataRevision;
+    }
+
     makeRenderingResourcesVolatile() {
         if (!this.#renderingRevisionState) {
             throw new Error("Rendering revisions have not been initialized.");
         }
         this.#renderingRevisionState.volatileResources = true;
-    }
-
-    async initializeGraphics() {
-        const resources = this.getContext().rendererResources;
-        if (!resources) {
-            return;
-        }
-        if (!this.#graphics) {
-            this.#graphics = resources.createMark(this);
-            this.#graphicsInitialization = Promise.resolve(
-                this.#graphics.initializeGraphics()
-            );
-        }
-        await this.#graphicsInitialization;
-    }
-
-    finalizeGraphicsInitialization() {
-        this.#graphics?.finalizeGraphicsInitialization();
-    }
-
-    updateGraphicsData() {
-        this.#graphics?.updateGraphicsData();
-    }
-
-    deleteGraphicsData() {
-        this.#graphics?.deleteGraphicsData();
-    }
-
-    dispose() {
-        this.#graphics?.dispose();
-    }
-
-    isReady() {
-        return this.#graphics?.isReady() ?? false;
-    }
-
-    /**
-     * Returns the opaque delegate owned by the selected retained renderer.
-     * Rendering backends resolve it while building their own command batches
-     * so per-frame work does not bounce through the semantic mark.
-     *
-     * @returns {import("../types/viewContext.js").MarkRenderingDelegate}
-     */
-    getRenderingDelegate() {
-        return this.#requireGraphics();
     }
 
     isPickingParticipant() {
@@ -594,43 +541,9 @@ export default class Mark {
             )[key];
         }
 
-        const graphics = this.#graphics?.getDebugState();
         return {
-            markUniformsAltered: graphics?.markUniformsAltered ?? false,
-            vertexCount: graphics?.vertexCount,
-            allocatedVertices: graphics?.allocatedVertices,
-            rangeCount: graphics?.rangeCount ?? 0,
             properties,
         };
-    }
-
-    /** @param {MarkRenderingOptions} options */
-    prepareRender(options) {
-        return this.#requireGraphics().prepareRender(options);
-    }
-
-    /** @param {MarkRenderingOptions} options */
-    render(options) {
-        return this.#requireGraphics().render(options);
-    }
-
-    /**
-     * @param {{width: number, height: number}} canvasSize
-     * @param {number} dpr
-     * @param {import("../view/layout/rectangle.js").default} coords
-     * @param {ClipOptions} [clip]
-     * @param {ClipOptions} [cullClip]
-     * @param {number} [pixelOffset]
-     */
-    setViewport(canvasSize, dpr, coords, clip, cullClip, pixelOffset) {
-        return this.#requireGraphics().setViewport(
-            canvasSize,
-            dpr,
-            coords,
-            clip,
-            cullClip,
-            pixelOffset
-        );
     }
 
     /**
@@ -639,13 +552,4 @@ export default class Mark {
      * @returns {any}
      */
     findDatumAt(facetId, x) {}
-
-    #requireGraphics() {
-        if (!this.#graphics) {
-            throw new Error(
-                `No retained renderer resources for mark: ${this.unitView.getPathString()}`
-            );
-        }
-        return this.#graphics;
-    }
 }

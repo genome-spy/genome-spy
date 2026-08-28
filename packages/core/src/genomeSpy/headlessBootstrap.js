@@ -100,7 +100,6 @@ function createHeadlessAnimator() {
  *   highlightView?: (view: import("../view/view.js").default | null) => void,
  *   isViewConfiguredVisible?: (view: import("../view/view.js").default) => boolean,
  *   isViewSpec?: (spec: any) => boolean,
- *   rendererResources?: import("../types/viewContext.js").RendererResources,
  * }} [options]
  * @returns {ViewContext}
  */
@@ -122,7 +121,6 @@ export function createHeadlessViewContext(options = {}) {
     return createViewContext({
         dataFlow,
         genomeStore,
-        rendererResources: options.rendererResources,
         fontManager: options.fontManager ?? new BmFontManager(),
         animator: options.animator ?? createHeadlessAnimator(),
         requestLayoutReflow: options.requestLayoutReflow ?? (() => undefined),

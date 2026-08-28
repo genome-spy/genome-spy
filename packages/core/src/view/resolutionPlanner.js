@@ -92,20 +92,6 @@ const ensureScaleResolution = (ownerView, resolutionView, targetChannel) => {
     if (!resolutionView.resolutions.scale[targetChannel]) {
         const resolution = new ScaleResolution(targetChannel, resolutionView);
         resolutionView.resolutions.scale[targetChannel] = resolution;
-
-        const updateRangeTexture = (
-            /** @type {import("../types/scaleResolutionApi.js").ScaleResolutionEvent} */ event
-        ) => {
-            ownerView.context.rendererResources?.updateScaleResolution(
-                event.scaleResolution
-            );
-        };
-        resolution.addEventListener("range", updateRangeTexture);
-        resolution.addEventListener("domain", updateRangeTexture);
-        ownerView.registerDisposer(() => {
-            resolution.removeEventListener("range", updateRangeTexture);
-            resolution.removeEventListener("domain", updateRangeTexture);
-        });
     }
 
     return resolutionView.resolutions.scale[targetChannel];

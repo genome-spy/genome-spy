@@ -131,7 +131,7 @@ export default class WebGLPointMark extends WebGLMark {
     }
 
     /**
-     * @param {import("../../../types/viewContext.js").MarkRenderingOptions} options
+     * @param {import("../types.js").WebGLMarkRenderingOptions} options
      */
     render(options) {
         const gl = this.gl;

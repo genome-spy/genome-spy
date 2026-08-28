@@ -20,7 +20,7 @@ export function createViewContext(options) {
     /** @type {Partial<ViewContext>} */
     const context = {
         dataFlow: options.dataFlow ?? missing("dataFlow"),
-        rendererResources: options.rendererResources,
+        getMarkRenderingDebugState: options.getMarkRenderingDebugState,
         animator: options.animator ?? missing("animator"),
         genomeStore: options.genomeStore,
         fontManager: options.fontManager ?? missing("fontManager"),

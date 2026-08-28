@@ -37,4 +37,34 @@ describe("createMarkDebugSnapshot", () => {
             }),
         });
     });
+
+    test("merges renderer-owned diagnostics", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [{ x: 1 }] },
+                mark: "point",
+                encoding: { x: { field: "x", type: "quantitative" } },
+            },
+            View
+        );
+        view.context.getMarkRenderingDebugState = () => ({
+            ready: true,
+            markUniformsAltered: true,
+            vertexCount: 3,
+            allocatedVertices: 8,
+            rangeCount: 2,
+        });
+
+        const [mark] = createMarkDebugSnapshot(view, {
+            getDebugId: () => "v1",
+        }).marks;
+
+        expect(mark).toMatchObject({
+            ready: true,
+            markUniformsAltered: true,
+            vertexCount: 3,
+            allocatedVertices: 8,
+            rangeCount: 2,
+        });
+    });
 });

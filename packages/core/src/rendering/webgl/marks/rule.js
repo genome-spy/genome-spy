@@ -18,9 +18,10 @@ export default class WebGLRuleMark extends WebGLMark {
     /**
      * @param {import("../../../marks/mark.js").default} mark
      * @param {import("../gl/webGLHelper.js").default} glHelper
+     * @param {import("../rendererResources.js").default} rendererResources
      */
-    constructor(mark, glHelper) {
-        super(mark, glHelper);
+    constructor(mark, glHelper, rendererResources) {
+        super(mark, glHelper, rendererResources);
 
         /** @type {WebGLTexture | undefined} */
         this.dashTexture = undefined;
@@ -143,7 +144,7 @@ export default class WebGLRuleMark extends WebGLMark {
     }
 
     /**
-     * @param {import("../../../types/viewContext.js").MarkRenderingOptions} options
+     * @param {import("../types.js").WebGLMarkRenderingOptions} options
      */
     render(options) {
         const gl = this.gl;

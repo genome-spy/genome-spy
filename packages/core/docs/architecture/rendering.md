@@ -37,8 +37,10 @@ the complete membership used to index retained mark data.
 - `CompositeViewRenderingContext` combines contexts, including picking.
 - `LayoutResult.collectRenderCommands()` replays placements into a context
   without traversing the view hierarchy again.
-- The WebGL context asks semantic marks for delegate-backed draw callbacks,
-  which the ordered batch executes while minimizing state changes.
+- The WebGL context records semantic marks and placements, then asks its private
+  adapter to prepare and synchronize retained delegates before compiling draw
+  callbacks. The ordered batch resolves each delegate once and minimizes state
+  changes across paints.
 - `Animator` (`src/utils/animator.js`) centralizes render requests. Many reactive
   updates call `animator.requestRender()` directly.
 
@@ -64,9 +66,10 @@ selection does not initialize WebGL. If automatic WebGL initialization fails,
 Core falls back to Canvas2D; an explicit WebGL failure is reported.
 
 Semantic marks remain under `src/marks/`. They own configuration, encoders,
-data, facet semantics, and rendering revisions. A retained renderer attaches
-an opaque delegate through `RendererResources`; WebGL programs, buffers,
-textures, and draw callbacks never become shared mark state.
+data, facet semantics, and rendering revisions. WebGL's private adapter owns one
+retained delegate per logical mark and releases it through the owning view's
+disposer registry. WebGL programs, buffers, textures, and draw callbacks never
+become shared mark state or cross through `ViewContext`.
 
 SVG hybrid export counts visible instances and selects contiguous paint-order
 runs within the SVG subsystem. It asks the selected backend for an optional
@@ -98,7 +101,9 @@ chunks.
 
 `WebGLHelper` owns the canvas and WebGL2 context, including extension setup,
 defaults, premultiplied-alpha blending, the picking framebuffer, and
-device-pixel-ratio scaling.
+device-pixel-ratio scaling. Surface finalization first disposes the WebGL mark
+adapter and then releases helper-owned textures, cached shaders, picking
+attachments, size observers, and the canvas.
 
 ### Buffers and geometry
 
@@ -113,6 +118,9 @@ device-pixel-ratio scaling.
 - Textures represent color ramps and discrete schemes
   (`src/rendering/webgl/gl/colorUtils.js`), multi-point selections, and
   offscreen picking data.
+- The WebGL adapter prepares font textures from renderer-neutral bitmap URLs and
+  subscribes to the scale resolutions used by its retained marks. Font and
+  range textures are not stored in semantic fonts, marks, or scale planning.
 - Picking renders into a dedicated framebuffer owned by `WebGLHelper`.
 - Marks can opt out of picking; some render only into the picking target.
 
@@ -136,8 +144,9 @@ replacing:
 - The picking framebuffer with an offscreen WebGPU render pass
 
 Do not make WebGPU emulate WebGL resource layouts or depend on the
-immediate-mode CPU projection layer. Shared Core exposes only the narrow
-renderer-resource lifecycle and optional raster capabilities.
+immediate-mode CPU projection layer. Shared Core exposes semantic marks,
+rendering revisions, completed layout results, and optional backend
+capabilities, but no retained-mark lifecycle.
 
 ### WebGPU integration boundary
 

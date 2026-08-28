@@ -58,32 +58,28 @@ describe("TextMark", () => {
                 },
             },
             UnitView,
-            {},
-            { rendererResources: createNoOpRendererResources() }
+            {}
         );
 
         view.mark.initializeEncoders();
         initializeViewSubtree(view, view.context.dataFlow);
 
-        const updateGraphicsData = vi
-            .spyOn(view.mark, "updateGraphicsData")
-            .mockImplementation(() => undefined);
+        const revision = view.mark.getEncodedDataRevision();
 
         // Layout expressions can update before the source has completed.
         view.paramRuntime.setValue("width", 100);
-        expect(updateGraphicsData).not.toHaveBeenCalled();
+        expect(view.mark.getEncodedDataRevision()).toBe(revision);
 
         view.getCollector().complete();
-        const updatesAfterDataPropagation =
-            updateGraphicsData.mock.calls.length;
+        const revisionAfterDataPropagation = view.mark.getEncodedDataRevision();
         view.paramRuntime.setValue("width", 200);
 
-        expect(updateGraphicsData).toHaveBeenCalledTimes(
-            updatesAfterDataPropagation + 1
+        expect(view.mark.getEncodedDataRevision()).toBe(
+            revisionAfterDataPropagation + 1
         );
     });
 
-    test("repaints expression updates without rebuilding GPU data in Canvas mode", async () => {
+    test("repaints expression updates in Canvas mode", async () => {
         const view = await create(
             {
                 data: { values: [{ label: "text" }] },
@@ -95,14 +91,12 @@ describe("TextMark", () => {
         view.mark.initializeEncoders();
         initializeViewSubtree(view, view.context.dataFlow);
         view.getCollector().complete();
-        const updateGraphicsData = vi
-            .spyOn(view.mark, "updateGraphicsData")
-            .mockImplementation(() => undefined);
+        const revision = view.mark.getEncodedDataRevision();
         const requestRender = vi.spyOn(view.context.animator, "requestRender");
 
         view.paramRuntime.setValue("width", 200);
 
-        expect(updateGraphicsData).not.toHaveBeenCalled();
+        expect(view.mark.getEncodedDataRevision()).toBe(revision + 1);
         expect(requestRender).toHaveBeenCalled();
     });
 
@@ -197,30 +191,3 @@ describe("TextMark", () => {
         expect(getBand(textView.mark.encoding.x2)).toBeUndefined();
     });
 });
-
-function createNoOpRendererResources() {
-    const delegate = {
-        initializeGraphics: /** @returns {void} */ () => undefined,
-        finalizeGraphicsInitialization: /** @returns {void} */ () => undefined,
-        updateGraphicsData: /** @returns {void} */ () => undefined,
-        deleteGraphicsData: /** @returns {void} */ () => undefined,
-        dispose: /** @returns {void} */ () => undefined,
-        isReady: () => true,
-        getDebugState: () => ({
-            markUniformsAltered: false,
-            rangeCount: 0,
-        }),
-        prepareRender: /** @returns {Array<() => void>} */ () => [],
-        render: /** @returns {undefined} */ () => undefined,
-        setViewport: () => true,
-    };
-    return {
-        createMark: () => delegate,
-        updateScaleResolution: /** @returns {void} */ () => undefined,
-        loadFontResource: () => ({
-            resource: /** @type {unknown} */ (undefined),
-            ready: Promise.resolve(),
-        }),
-        dispose: /** @returns {void} */ () => undefined,
-    };
-}

@@ -42,15 +42,14 @@ const DEFAULT_FONT_KEY = {
  *
  * @typedef {object} FontEntry
  * @prop {BMFontMetrics | undefined} metrics
- * @prop {unknown} rendererResource
  * @prop {string | undefined} bitmapUrl
  */
 export default class BmFontManager {
     /**
-     * @param {(bitmapUrl: string) => import("../types/viewContext.js").RendererResourceLoad} [loadRendererResource]
+     * @param {(bitmapUrl: string) => Promise<void>} [prepareBitmap]
      */
-    constructor(loadRendererResource) {
-        this._loadRendererResource = loadRendererResource;
+    constructor(prepareBitmap) {
+        this._prepareBitmap = prepareBitmap;
 
         this.fontRepository =
             "https://raw.githubusercontent.com/etiennepinchon/aframe-fonts/master/fonts/";
@@ -69,15 +68,14 @@ export default class BmFontManager {
         /** @type {Promise<void>[]} Keep track of overall font loading state */
         this._promises = [];
 
-        const defaultResource = loadRendererResource?.(latoRegularBitmap);
+        const defaultBitmap = prepareBitmap?.(latoRegularBitmap);
         /** A default/fallback font to be used when font loading fails. */
         this._defaultFontEntry = /** @type {FontEntry} */ ({
             metrics: getMetrics(latoRegular),
-            rendererResource: defaultResource?.resource,
             bitmapUrl: latoRegularBitmap,
         });
-        if (defaultResource) {
-            this._promises.push(defaultResource.ready);
+        if (defaultBitmap) {
+            this._promises.push(defaultBitmap);
         }
         this._fonts.set(DEFAULT_FONT_KEY, this._defaultFontEntry);
     }
@@ -100,7 +98,6 @@ export default class BmFontManager {
             // Return and empty entry, load it asynchronously
             fontEntry = {
                 metrics: undefined,
-                rendererResource: undefined,
                 bitmapUrl: undefined,
             };
             this._fonts.set(key, fontEntry);
@@ -129,15 +126,9 @@ export default class BmFontManager {
             fontEntry.bitmapUrl = urlBase + ".png";
 
             const metricsPromise = this._loadFont(urlBase + ".json");
-            const rendererResource = this._loadRendererResource?.(
-                fontEntry.bitmapUrl
-            );
-            fontEntry.rendererResource = rendererResource?.resource;
+            const bitmap = this._prepareBitmap?.(fontEntry.bitmapUrl);
 
-            const [metrics] = await Promise.all([
-                metricsPromise,
-                rendererResource?.ready,
-            ]);
+            const [metrics] = await Promise.all([metricsPromise, bitmap]);
             fontEntry.metrics = metrics;
         } catch {
             console.warn(
@@ -145,8 +136,6 @@ export default class BmFontManager {
             );
 
             fontEntry.metrics = this._defaultFontEntry.metrics;
-            fontEntry.rendererResource =
-                this._defaultFontEntry.rendererResource;
             fontEntry.bitmapUrl = this._defaultFontEntry.bitmapUrl;
         }
     }

@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import View from "../view/view.js";
 import UnitView from "../view/unitView.js";
 import { createAndInitialize } from "../view/testUtils.js";
-import WebGLRendererResources from "../rendering/webgl/rendererResources.js";
+import { createWebGLMark } from "../rendering/webgl/rendererResources.js";
 
 const VERTEX_SHADER = 0x8b31;
 const FRAGMENT_SHADER = 0x8b30;
@@ -163,11 +163,10 @@ async function captureShaderSources(spec, unitName) {
     const unitView = findUnitView(root, unitName);
     const glHelper = createFakeGlHelper();
 
-    unitView.context.rendererResources = new WebGLRendererResources(
+    createWebGLMark(
+        unitView.mark,
         /** @type {any} */ (glHelper)
-    );
-
-    await unitView.mark.initializeGraphics();
+    ).initializeGraphics();
 
     return glHelper.getCapturedSources();
 }

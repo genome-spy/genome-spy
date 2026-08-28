@@ -71,7 +71,6 @@ test("launches with a rendering backend that has no retained resources", async (
     );
 
     expect(await genomeSpy.launch()).toBe(true);
-    expect(genomeSpy.viewRoot.context.rendererResources).toBeUndefined();
     expect(mocks.createRenderingBackend).toHaveBeenCalledWith(
         expect.objectContaining({ renderer: "canvas" })
     );
@@ -159,8 +158,6 @@ test("disposes a backend that finishes loading after destroy", async () => {
     let resolveBackend;
     /** @type {import("./rendering/renderingBackend.js").RenderingBackendOptions} */
     let backendOptions;
-    const dispose = vi.fn();
-
     mocks.createRenderingBackend.mockImplementation((options) => {
         backendOptions = options;
         return new Promise((resolve) => {
@@ -185,11 +182,9 @@ test("disposes a backend that finishes loading after destroy", async () => {
     genomeSpy.destroy();
 
     const backend = createMockBackend(backendOptions);
-    backend.rendererResources = /** @type {any} */ ({ dispose });
     resolveBackend(backend);
 
     expect(await launch).toBe(false);
-    expect(dispose).toHaveBeenCalledOnce();
     expect(backend.surface.finalize).toHaveBeenCalledOnce();
     expect(container.childElementCount).toBe(0);
 });

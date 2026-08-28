@@ -1,6 +1,6 @@
 # WebGL mark encapsulation follow-up plan
 
-Status: Planned
+Status: Complete
 
 ## Context
 
@@ -314,32 +314,32 @@ identity for the WebGL hot path.
 
 ### Work
 
-- [ ] Record the starting revision and refresh the complete WebGL thumbnail
+- [x] Record the starting revision and refresh the complete WebGL thumbnail
       set, both 1920 x 1080 private App captures, and the headed WebGL-only
       interaction benchmark before production edits.
-- [ ] Extend or replace `rendering/webgl/rendererResources.js` with a private
+- [x] Extend or replace `rendering/webgl/rendererResources.js` with a private
       mark adapter that owns one entry per logical semantic mark.
-- [ ] Register entry disposal through `UnitView.registerDisposer()` and make
+- [x] Register entry disposal through `UnitView.registerDisposer()` and make
       adapter-wide disposal idempotent.
-- [ ] Change the buffered rendering context to record semantic marks and
+- [x] Change the buffered rendering context to record semantic marks and
       occurrences, then resolve delegates from the adapter while compiling its
       existing ordered batch.
-- [ ] Pass the same adapter into live, full-canvas export, and hybrid-SVG
+- [x] Pass the same adapter into live, full-canvas export, and hybrid-SVG
       rendering contexts and make all three paths use the same context finish
       and synchronization contract.
-- [ ] Start all missing shader programs before finalizing any of them, preserve
+- [x] Start all missing shader programs before finalizing any of them, preserve
       view-attributed error reporting, release failed partial delegates, and
       tolerate early pre-data and empty-data layouts.
-- [ ] Add backend-neutral encoded-data invalidation to semantic marks without
+- [x] Add backend-neutral encoded-data invalidation to semantic marks without
       changing the existing WebGPU configuration/resource revision behavior.
-- [ ] Synchronize vertex buffers from collector/configuration/encoded-data
+- [x] Synchronize vertex buffers from collector/configuration/encoded-data
       revisions before normal and picking paints.
-- [ ] Preserve cached draw callbacks, `RangeMap` identity, buffer-capacity
+- [x] Preserve cached draw callbacks, `RangeMap` identity, buffer-capacity
       reuse, VAO recreation, opacity gating, culling, placement, and picking
       invalidation.
-- [ ] Guard every cached mark group with adapter-entry liveness so dynamic
+- [x] Guard every cached mark group with adapter-entry liveness so dynamic
       disposal between layout and paint cannot call a released delegate.
-- [ ] Route WebGL readiness and mark diagnostics through the adapter rather
+- [x] Route WebGL readiness and mark diagnostics through the adapter rather
       than delegate state stored on `Mark`.
 
 ### Affected areas and downstream consumers
@@ -389,41 +389,41 @@ its dynamic module.
 
 ### Work
 
-- [ ] Remove delegate storage and graphics initialization, finalization, data
+- [x] Remove delegate storage and graphics initialization, finalization, data
       update, deletion, readiness, rendering, viewport, and disposal forwarders
       from semantic `Mark`.
-- [ ] Remove `MarkRenderingDelegate`, `RendererResources`, renderer-resource
+- [x] Remove `MarkRenderingDelegate`, `RendererResources`, renderer-resource
       loads, and `ViewContext.rendererResources` from shared types and context
       factories.
-- [ ] Remove graphics promises and updates from dataflow initialization and
+- [x] Remove graphics promises and updates from dataflow initialization and
       delete `finalizeSubtreeGraphics` plus its orchestration and tests.
-- [ ] Migrate App's dynamic metadata subtree initialization away from
+- [x] Migrate App's dynamic metadata subtree initialization away from
       `graphicsPromises`/`finalizeSubtreeGraphics`; rely on adapter preparation
       during the next layout and preserve the metadata-generation race guard
       through view disposal.
-- [ ] Keep collector observers responsible only for semantic
+- [x] Keep collector observers responsible only for semantic
       `mark.initializeData()` and render scheduling.
-- [ ] Remove `mark.dispose()` from `UnitView`; adapter-registered view disposers
+- [x] Remove `mark.dispose()` from `UnitView`; adapter-registered view disposers
       become the sole per-mark GPU cleanup path.
-- [ ] Remove renderer updates from scale-resolution planning and make the
+- [x] Remove renderer updates from scale-resolution planning and make the
       WebGL adapter own initial range-texture creation, deduplicated updates,
       and listener cleanup.
-- [ ] Remove `FontEntry.rendererResource`; retain metrics, bitmap URL, fallback,
+- [x] Remove `FontEntry.rendererResource`; retain metrics, bitmap URL, fallback,
       and readiness while moving texture storage and lookup into WebGL.
-- [ ] Fold WebGL adapter cleanup into backend/surface finalization and remove
+- [x] Fold WebGL adapter cleanup into backend/surface finalization and remove
       the `rendererResources` disposal escape hatch from `GenomeSpyBase` and
       `RenderingBackend`.
-- [ ] Make `WebGLHelper.finalize()` explicitly delete or disarm marks, programs,
+- [x] Make `WebGLHelper.finalize()` explicitly delete or disarm marks, programs,
       buffers, VAOs, font/range/selection/placement textures, cached shaders,
       picking framebuffer attachments, source callbacks, and size observers in
       the specified order.
-- [ ] Preserve renderer diagnostics through the backend-to-view-context
+- [x] Preserve renderer diagnostics through the backend-to-view-context
       `getMarkRenderingDebugState` callback and keep the Inspector's existing
       snapshot fields without exposing the delegate lifecycle.
-- [ ] Delete `SimpleViewRenderingContext` and its isolated test.
-- [ ] Update tests and headless helpers to stop constructing no-op renderer
+- [x] Delete `SimpleViewRenderingContext` and its isolated test.
+- [x] Update tests and headless helpers to stop constructing no-op renderer
       resources.
-- [ ] Update rendering and view/dataflow architecture documents to describe
+- [x] Update rendering and view/dataflow architecture documents to describe
       renderer-owned retained state and the actual WebGL deletion boundary.
 
 ### Affected areas and downstream consumers

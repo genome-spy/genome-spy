@@ -12,7 +12,7 @@ describe("BmFontManager", () => {
         expect(manager.getFont("sans-serif")).toBe(manager.getDefaultFont());
     });
 
-    test("loads non-default metrics without renderer resources", async () => {
+    test("loads non-default metrics without bitmap preparation", async () => {
         const manager = new BmFontManager();
         const metrics = manager.getDefaultFont().metrics;
         vi.spyOn(manager, "_loadMetadata").mockResolvedValue([
@@ -28,15 +28,12 @@ describe("BmFontManager", () => {
         await manager.waitUntilReady();
 
         expect(font.metrics).toBe(metrics);
-        expect(font.rendererResource).toBeUndefined();
+        expect(font.bitmapUrl).toContain("TestSans-Bold.png");
     });
 
-    test("loads bitmap resources through the renderer-owned loader", async () => {
-        const loadRendererResource = vi.fn((bitmapUrl) => ({
-            resource: { bitmapUrl },
-            ready: Promise.resolve(),
-        }));
-        const manager = new BmFontManager(loadRendererResource);
+    test("prepares bitmaps through the renderer-owned callback", async () => {
+        const prepareBitmap = vi.fn(() => Promise.resolve());
+        const manager = new BmFontManager(prepareBitmap);
         const metrics = manager.getDefaultFont().metrics;
         vi.spyOn(manager, "_loadMetadata").mockResolvedValue([
             /** @type {any} */ ({
@@ -51,9 +48,10 @@ describe("BmFontManager", () => {
         const font = manager.getFont("Test Sans", "normal", 700);
         await manager.waitUntilReady();
 
-        expect(loadRendererResource).toHaveBeenCalledTimes(2);
-        expect(font.rendererResource).toEqual({
-            bitmapUrl: expect.stringContaining("TestSans-Bold.png"),
-        });
+        expect(prepareBitmap).toHaveBeenCalledTimes(2);
+        expect(prepareBitmap).toHaveBeenLastCalledWith(
+            expect.stringContaining("TestSans-Bold.png")
+        );
+        expect(font.bitmapUrl).toContain("TestSans-Bold.png");
     });
 });

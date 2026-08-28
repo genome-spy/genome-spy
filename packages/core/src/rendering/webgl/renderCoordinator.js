@@ -12,6 +12,8 @@ export default class RenderCoordinator {
     #viewRoot;
     /** @type {import("./gl/webGLHelper.js").default} */
     #glHelper;
+    /** @type {import("./rendererResources.js").default} */
+    #markAdapter;
     /** @type {() => string} */
     #getBackground;
     /** @type {(type: import("../../genomeSpy.js").BroadcastEventType, payload?: any) => void} */
@@ -28,6 +30,7 @@ export default class RenderCoordinator {
      * @param {object} options
      * @param {import("../../view/view.js").default} options.viewRoot
      * @param {import("./gl/webGLHelper.js").default} options.glHelper
+     * @param {import("./rendererResources.js").default} options.markAdapter
      * @param {() => string} options.getBackground
      * @param {(type: import("../../genomeSpy.js").BroadcastEventType, payload?: any) => void} options.broadcast
      * @param {() => void} options.onLayoutComputed
@@ -35,12 +38,14 @@ export default class RenderCoordinator {
     constructor({
         viewRoot,
         glHelper,
+        markAdapter,
         getBackground,
         broadcast,
         onLayoutComputed,
     }) {
         this.#viewRoot = viewRoot;
         this.#glHelper = glHelper;
+        this.#markAdapter = markAdapter;
         this.#getBackground = getBackground;
         this.#broadcast = broadcast;
         this.#onLayoutComputed = onLayoutComputed;
@@ -117,6 +122,7 @@ export default class RenderCoordinator {
     #collectLayout({ layoutResult, canvasSize, devicePixelRatio }) {
         const commonOptions = {
             webGLHelper: this.#glHelper,
+            markAdapter: this.#markAdapter,
             canvasSize,
             devicePixelRatio,
         };
@@ -144,6 +150,8 @@ export default class RenderCoordinator {
                 )
             )
         );
+        renderingContext.finish();
+        pickingContext.finish();
         this.#renderingContext = renderingContext;
         this.#pickingContext = pickingContext;
     }

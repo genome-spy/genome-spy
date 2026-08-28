@@ -32,6 +32,7 @@ test("quantize textures use the scale's resolved color range", () => {
     const helper = Object.create(WebGLHelper.prototype);
     helper.gl = {};
     helper.rangeTextures = new WeakMap();
+    helper._ownedTextures = new Set();
 
     helper.createRangeTexture({
         channel: "color",

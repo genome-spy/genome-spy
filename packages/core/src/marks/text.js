@@ -9,7 +9,7 @@ export default class TextMark extends Mark {
     constructor(unitView) {
         super(unitView);
         this.font = requestFont(unitView.context.fontManager, this.properties);
-        this.setupExprRefsNeedingGraphicsUpdate([
+        this.setupExprRefsNeedingEncodedDataUpdate([
             "text",
             "fitToBand",
             "logoLetters",

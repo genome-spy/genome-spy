@@ -19,18 +19,34 @@ export function createWebGLRenderingBackend(options) {
 
     return {
         surface: glHelper,
-        rendererResources,
+        prepareFontBitmap: (bitmapUrl) =>
+            rendererResources.prepareFontBitmap(bitmapUrl),
+        getMarkRenderingDebugState: (mark) =>
+            rendererResources.getMarkRenderingDebugState(mark),
         createRenderCoordinator: (coordinatorOptions) =>
             new RenderCoordinator({
                 ...coordinatorOptions,
                 glHelper,
+                markAdapter: rendererResources,
             }),
         exportCanvas: (exportOptions) =>
-            exportCanvas({ ...exportOptions, glHelper }),
+            exportCanvas({
+                ...exportOptions,
+                glHelper,
+                markAdapter: rendererResources,
+            }),
         exportRaster: (exportOptions) =>
-            exportRaster({ ...exportOptions, glHelper }),
+            exportRaster({
+                ...exportOptions,
+                glHelper,
+                markAdapter: rendererResources,
+            }),
         rasterizeSvgRuns: (rasterOptions) =>
-            rasterizeSvgRuns({ ...rasterOptions, webGLHelper: glHelper }),
+            rasterizeSvgRuns({
+                ...rasterOptions,
+                webGLHelper: glHelper,
+                markAdapter: rendererResources,
+            }),
         readPickingId: (x, y) => {
             const dpr = glHelper.getDevicePixelRatio();
             const pixel = readPickingPixel(

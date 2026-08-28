@@ -104,7 +104,7 @@ export function getXIndexOffsetBound(encoders) {
 /**
  * @typedef {import("../../../types/rendering.js").ClipOptions} ClipOptions
  * @typedef {import("../../../view/layout/rectangle.js").default} Rectangle
- * @typedef {import("../../../types/viewContext.js").MarkRenderingOptions} MarkRenderingOptions
+ * @typedef {import("../types.js").WebGLMarkRenderingOptions} MarkRenderingOptions
  * @typedef {import("../../../spec/channel.js").Channel} Channel
  * @typedef {import("../../../spec/parameter.js").ExprRef} ExprRef
  * @typedef {object} MarkDebugState
@@ -126,10 +126,12 @@ export default class WebGLMark {
     /**
      * @param {import("../../../marks/mark.js").default} mark
      * @param {import("../gl/webGLHelper.js").default} glHelper
+     * @param {import("../rendererResources.js").default} [rendererResources]
      */
-    constructor(mark, glHelper) {
+    constructor(mark, glHelper, rendererResources) {
         this.mark = mark;
         this._glHelper = glHelper;
+        this._rendererResources = rendererResources;
 
         /** @type {import("twgl.js").BufferInfo & {allocatedVertices?: number} | undefined} */
         this.bufferInfo = undefined;
@@ -938,6 +940,13 @@ export default class WebGLMark {
     /** Convenience method */
     get glHelper() {
         return this._glHelper;
+    }
+
+    get rendererResources() {
+        if (!this._rendererResources) {
+            throw new Error("WebGL renderer resources are not available.");
+        }
+        return this._rendererResources;
     }
 
     /** Convenience method */
