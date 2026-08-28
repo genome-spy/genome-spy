@@ -395,8 +395,14 @@ export default class Mark {
         this.encoders = createEncoders(this.unitView, this.encoding);
     }
 
-    /** @param {Iterable<string>} resourceProperties */
-    initializeRenderingRevisions(resourceProperties) {
+    /**
+     * @param {Iterable<string>} resourceProperties Expression-backed properties
+     *      that a retained renderer can update without rebuilding encoded data.
+     * @param {{ trackResources?: boolean }} [options] Disable resource tracking
+     *      when the renderer only consumes configuration revisions.
+     */
+    initializeRenderingRevisions(resourceProperties, options = {}) {
+        const trackResources = options.trackResources ?? true;
         const previousState = this.#renderingRevisionState;
         const state =
             previousState ??
@@ -427,11 +433,14 @@ export default class Mark {
             for (const [channel, encoder] of Object.entries(this.encoders)) {
                 for (const branch of encoder.branches ?? []) {
                     const channelDef = branch.accessor.channelDef;
-                    if (branch.predicate?.param) {
-                        watchExpression(branch.predicate.param, "resources");
-                    }
                     if (isExprDef(channelDef)) {
                         watchExpression(channelDef.expr, "configuration");
+                    }
+                    if (!trackResources) {
+                        continue;
+                    }
+                    if (branch.predicate?.param) {
+                        watchExpression(branch.predicate.param, "resources");
                     }
                     const values = [
                         isValueDef(channelDef) ? channelDef.value : undefined,
@@ -444,7 +453,7 @@ export default class Mark {
                     }
                 }
 
-                if (encoder.scale) {
+                if (trackResources && encoder.scale) {
                     const channelDef = findChannelDefWithScale(
                         encoder.channelDef
                     );
@@ -472,6 +481,10 @@ export default class Mark {
                     }
                 }
             }
+        }
+
+        if (!trackResources) {
+            return;
         }
 
         for (const property of resourceProperties) {

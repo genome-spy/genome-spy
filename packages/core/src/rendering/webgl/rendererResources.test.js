@@ -127,6 +127,9 @@ test("synchronizes mark data only when encoded inputs change", () => {
     resources.synchronize([entry]);
     resources.synchronize([entry]);
     expect(mocks.delegates[0].updateCount).toBe(1);
+    expect(fixture.mark.initializeRenderingRevisions).toHaveBeenCalledWith([], {
+        trackResources: false,
+    });
 
     fixture.collector.dataRevision++;
     resources.synchronize([entry]);

@@ -213,7 +213,7 @@ export default class WebGLRendererResources {
                 continue;
             }
             const mark = entry.mark;
-            mark.initializeRenderingRevisions([]);
+            mark.initializeRenderingRevisions([], { trackResources: false });
             const collector = mark.unitView.getCollector();
             if (!collector?.completed) {
                 continue;
@@ -309,7 +309,7 @@ export default class WebGLRendererResources {
     /** @param {WebGLMarkEntry} entry */
     #recordRevisions(entry) {
         const mark = entry.mark;
-        mark.initializeRenderingRevisions([]);
+        mark.initializeRenderingRevisions([], { trackResources: false });
         const collector = mark.unitView.getCollector();
         entry.collector = collector;
         entry.dataRevision = collector?.dataRevision ?? -1;
