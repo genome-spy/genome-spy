@@ -238,9 +238,9 @@ unused `is*Props()` implementations cannot become latent bugs.
 
 ### Work
 
-- [ ] Remove `isPointProps`, `isRectProps`, `isRuleProps`, `isTextProps`, and
+- [x] Remove `isPointProps`, `isRectProps`, `isRuleProps`, `isTextProps`, and
       `isLinkProps` with their JSDoc blocks.
-- [ ] Confirm no generated schema or documentation process imports them.
+- [x] Confirm no generated schema or documentation process imports them.
 
 ### Affected areas and consumers
 
