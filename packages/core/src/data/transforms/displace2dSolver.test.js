@@ -140,9 +140,48 @@ describe("solveDisplacement", () => {
         const output = { x: [NaN], y: [NaN] };
 
         expect(
-            solveDisplacement([0], [0], [2], [2], undefined, undefined, output)
+            solveDisplacement(
+                [0],
+                [0],
+                [2],
+                [2],
+                undefined,
+                undefined,
+                undefined,
+                output
+            )
         ).toBe(output);
         expect(output).toEqual({ x: [0], y: [0] });
+    });
+
+    test("keeps valid previous placements instead of snapping to the origin", () => {
+        const displacements = solveDisplacement(
+            [0, 20],
+            [0, 0],
+            [10, 10],
+            [10, 10],
+            undefined,
+            undefined,
+            { x: [0, 0], y: [0, -10] }
+        );
+
+        expect(displacements).toEqual({ x: [0, 0], y: [0, -10] });
+        expectNoOverlap([0, 20], [0, 0], [10, 10], [10, 10], displacements);
+    });
+
+    test("rejects invalid previous placement input", () => {
+        expect(() =>
+            solveDisplacement([0], [0], [1], [1], undefined, undefined, {
+                x: [],
+                y: [],
+            })
+        ).toThrow("previous placements");
+        expect(() =>
+            solveDisplacement([0], [0], [1], [1], undefined, undefined, {
+                x: [0],
+                y: [undefined],
+            })
+        ).toThrow("finite offset pairs");
     });
 
     test("rejects placements outside the finite numeric range", () => {
