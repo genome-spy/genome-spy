@@ -2,10 +2,12 @@
 
 ## Status
 
-Implemented and internally reviewed. User acid testing with the private example
-suite remains a deliberate pre-PR gate. This plan stays on the branch until that
-testing and any resulting fixes are complete; it must be reconciled again and
-retired before a pull request is created.
+Implemented, but the first user acid test exposed unacceptable placement jumps
+during interactive zoom and labels covering their annotated anchor points.
+Corrective milestones are planned below and block pull-request preparation.
+This plan stays on the branch until those fixes and another user acid test are
+complete; it must then be reconciled again and retired before a pull request is
+created.
 
 ## Motivation
 
@@ -120,7 +122,8 @@ rendering and connector composition own association.
    `displace1d` naming and dataflow conventions.
 2. Keep interaction smooth. Recomputing placement on scale-domain or layout
    changes must have a deterministic, bounded cost suitable for interactive
-   zoom and pan.
+   zoom and pan, and small navigation increments must not cause unrelated
+   labels to jump between distant candidates or the overflow row.
 3. Keep the implementation modular and self-contained: a pure placement solver,
    a thin dataflow adapter, and no dependency from transforms to views, marks,
    Canvas, WebGL, SVG, or DOM geometry.
@@ -133,9 +136,10 @@ rendering and connector composition own association.
    visibility, or styling.
 6. React correctly to zoom, layout, and expression-backed placement parameters
    without changing data-driven x/y domains or creating feedback loops.
-7. Make identical inputs and parameters produce identical outputs, including
-   when an interaction returns to an earlier domain. Inspect movement during
-   interaction so deterministic recomputation does not mask visible flicker.
+7. Make a fresh solve and a repeated interaction trace deterministic. During
+   an interaction, prefer valid previous placements so continuous scale changes
+   do not produce visually discontinuous label motion. Path-independent output
+   at a repeated domain is subordinate to temporal coherence.
 8. Measure the simplest correct implementation against representative
    performance and placement-quality fixtures before adding an acceleration
    structure or a more sophisticated algorithm.
@@ -165,14 +169,13 @@ rendering and connector composition own association.
   well-profiled synchronous solver cannot meet the interaction budget.
 - A public family of pluggable strategies. Keep algorithm boundaries internal
   until more than one production use case justifies a public abstraction.
-- Public candidate-generation options, obstacle geometry, visibility decisions,
-  leader-line routing, and previous-frame placement state unless a demonstrated
-  use case cannot be implemented acceptably without them.
-- Avoiding anchor points or unrelated marks. The canonical first example must
-  still be useful with annotation-to-annotation collision only. If labels
-  obscuring points makes that example unacceptable, stop at the first review
-  gate and revise the generic input contract instead of adding a renderer-aware
-  exception.
+- Public candidate-generation options, visibility decisions, leader-line
+  routing, animation controls, or previous-frame placement controls. Temporal
+  placement hints remain an internal implementation detail.
+- Inspecting unrelated rendered marks or treating all points in another layer
+  as obstacles. The corrective contract accepts generic geometry for the
+  selected annotations' anchors; it does not query the renderer or introduce a
+  cross-stream obstacle source.
 
 ## Architectural constraints from GenomeSpy
 
@@ -248,9 +251,10 @@ These rules are acceptance criteria for the code, not optional cleanup work:
 - Use one placement algorithm in production. Alternative algorithms are
   considered only after the current one fails a named correctness, quality, or
   performance criterion on a representative fixture.
-- Prefer stateless deterministic recomputation. Retain previous placements only
-  if measured interaction churn is unacceptable and stable input order cannot
-  solve it.
+- Retain previous placements only by datum identity and only as internal solver
+  hints. The user recording has now demonstrated that stateless recomputation
+  is unacceptable, but it does not justify a cache abstraction, state machine,
+  public continuity options, or renderer-specific transition path.
 - Prefer exact rectangle checks first. Add a uniform grid, bitmap, typed array,
   buffer reuse, or other optimization individually and only with before/after
   evidence. Keep candidate generation separate from collision lookup without
@@ -287,6 +291,8 @@ interface Displace2DParams extends TransformParamsBase {
     y: Field;
     width: number | Field | ExprRef;
     height: number | Field | ExprRef;
+    anchorWidth?: number | Field | ExprRef;
+    anchorHeight?: number | Field | ExprRef;
     xPositionFactor?: number | ExprRef;
     yPositionFactor?: number | ExprRef;
     xExtent?: [number, number] | ExprRef;
@@ -312,6 +318,13 @@ Semantics:
   provides a reactive scalar shared by all rows, matching `displace1d.length`.
   Rectangle interiors collide; touching edges do not. Width and height may be
   zero, matching `displace1d`'s non-negative collision-length contract.
+- `anchorWidth` and `anchorHeight` optionally describe centered rectangular
+  obstacles at every input `x`, `y` position. They accept the same constant,
+  datum-field, and reactive-scalar forms as item dimensions and default to zero.
+  When both dimensions are positive, every output rectangle avoids every input
+  anchor rectangle in the batch. Authors include desired point clearance in
+  these dimensions. This covers selected annotation anchors without inspecting
+  marks or unrelated data streams.
 - Input order provides stable deterministic ordering. Authors can place
   `collect` immediately upstream to sort and to provide the replay buffer
   required by reactive parameters. The transform must not add a competing
@@ -333,9 +346,9 @@ Semantics:
   documentation must not imply otherwise.
 
 The API mirrors `displace1d` where the concepts have direct two-dimensional
-counterparts. Do not add label anchors, candidate lists, visibility, forces,
-iteration controls, or algorithm selection to the public contract without a
-separate demonstrated requirement.
+counterparts. Do not add candidate lists, arbitrary obstacle datasets,
+visibility, forces, iteration controls, transition controls, or algorithm
+selection to the public contract without a separate demonstrated requirement.
 
 ## Algorithm decision
 
@@ -406,6 +419,53 @@ notice and add a durable `Based on ...` source comment. ggrepel is GPL-3: use
 its user-facing behavior and published ideas only, and do not copy or translate
 its source into GenomeSpy's MIT code.
 
+### Corrective temporal and anchor design
+
+The initial stateless decision is superseded by the user acid test recorded on
+2026-08-28. In the nine-second airway volcano recording, ordinary wheel zoom
+caused large layout changes around 2.4--3.6 seconds: labels switched between
+distant lattice candidates, and search-exhausted labels entered or left the
+far-right overflow row. Solver latency remained within budget, so this is a
+continuity failure rather than a throughput failure. The same recording showed
+labels covering annotated points because the solver considered only output
+rectangles.
+
+Correct temporal behavior uses the smallest stateful extension consistent with
+the current abstraction:
+
+1. The transform retains the last finite displacement for each datum in a
+   `WeakMap`. Datum identity is the continuity key; no identifier parameter,
+   retained scene graph, or independently enumerable cache is introduced. New
+   datum objects naturally start from canonical placement, and unreachable
+   rows do not require explicit eviction.
+2. The pure solver accepts optional previous displacements as input hints. It
+   remains pure and deterministic for all explicit inputs; it does not own
+   lifecycle state.
+3. First test the smallest change: for each row in stable priority order, test
+   the valid previous placement and a bounded neighborhood near it before the
+   canonical candidates. If the discrete lattice still misses the jump gate,
+   reject it for interactive placement and compare one bounded deterministic
+   search whose candidates derive continuously from colliding rectangle edges.
+   Do not stack multiple production strategies or retain the losing spike.
+4. Keep the existing finite-work and row-preservation guarantees. Expand the
+   internal local candidate budget only if the top-32 airway trace still enters
+   overflow; keep the budget private and remeasure the 500- and 2,000-item
+   fixtures.
+5. Do not interpolate output fields in the renderer. Interpolation can hide an
+   unstable solver, creates transient overlaps, and would require a general
+   per-datum transition facility outside this transform. Reconsider that only
+   as a separate cross-cutting proposal if stable placement still has visible
+   residual jumps.
+
+Anchor clearance extends the existing collision model rather than adding a
+second algorithm. Before placing labels, seed the same broad-phase grid with
+the optional centered anchor rectangles. Output rectangles then collide with
+both anchors and earlier outputs, while anchors do not collide with each other.
+The airway example initially supplies geometry only for its selected annotated
+points. Avoiding every background point would require a cross-stream obstacle
+contract and is explicitly deferred until the selected-anchor result has been
+acid-tested.
+
 ## Performance budget
 
 Use a browser benchmark because JSDOM/Node timings do not represent the
@@ -437,6 +497,10 @@ Record quality alongside runtime using the following metrics:
 - number of materially changed offsets at each step of the zoom trace. This is
   diagnostic rather than a standalone quality score because continuous edge
   clamping and a discrete candidate change both alter offsets.
+- p95 and maximum per-step displacement change for each persistent datum after
+  subtracting anchor motion, plus the number of transitions into or out of
+  overflow. This isolates solver jumps from the smooth movement caused by the
+  scale itself.
 
 The canonical fixture and initial thresholds below must be committed before
 selecting the production candidate sequence. At a minimum, an already
@@ -488,18 +552,29 @@ Fixture roles and initial gates:
   the 1,000 by 800 solver benchmark defined above. The 500- and 2,000-label
   variants are intentional saturation tests; their overflow counts are reported
   but are not visual-quality gates.
-- **Interaction repeatability:** use a deterministic 20-step twofold zoom around
-  the center and then reverse it. Require zero overlaps at every settled step
-  and bit-for-bit equal offsets whenever the trace returns to the same domain.
-  Report the fraction of offsets changing by more than 4 px, but assess jumps
-  visually rather than treating that fraction as churn by itself.
+- **Interaction continuity:** retain the deterministic 20-step twofold zoom and
+  add a finer trace derived from real wheel updates in the private airway
+  example. Require zero overlaps at every settled step, zero overflow for the
+  top-32 airway fixture, deterministic output when replaying the same complete
+  trace from fresh state, p95 per-step offset change at most 8 px, and no
+  single-step offset change over 24 px. Report the fraction changing by more
+  than 4 px as a diagnostic, not an acceptance score.
+- **Anchor clearance:** when the selected airway anchors use nonzero obstacle
+  geometry, require zero intersections between any output rectangle and any
+  selected anchor rectangle at every settled trace step. Background points
+  outside the annotation batch are not part of this gate.
 
-These are initial review thresholds, fixed before solver comparison. Change one
-only at the algorithm review gate with a recorded fixture-based rationale, not
-to favor an implementation already written. The 12,000 background points remain
-rendering load but are not collision obstacles in the first contract. The
-selected annotation rectangles avoid one another, and leader lines preserve
-association with their original points.
+The continuity thresholds are fixed from the observed failure before the
+corrective solver comparison. Change one only at the corrective algorithm
+review gate with a recorded fixture-based rationale, not to favor an
+implementation already written. The 8 px p95 gate keeps ordinary motion below
+half a label line, while the 24 px maximum permits an exceptional one-line move
+but rejects the roughly label-width-scale jumps visible in the recording.
+Compute the metric directly from consecutive output offsets; this is equivalent
+to subtracting anchor motion from rendered-center motion. The 12,000 background
+points remain rendering load rather than collision obstacles. Selected
+annotation rectangles avoid one another and their selected anchors, while
+leader lines preserve association with the original points.
 
 For local research, use the downloaded Arrow file. Before committing a permanent
 example, either reference the stable upstream asset or add a small derived
@@ -620,7 +695,13 @@ Expected checkpoints are:
    user-facing documentation as a coherent integration checkpoint.
 5. Commit worthwhile review fixes separately when they are independently
    meaningful; fold trivial corrections into the checkpoint they belong to.
-6. Before PR creation, commit the fully reconciled plan with every task marked
+6. Commit the user-recording diagnosis and corrective plan before changing the
+   solver again.
+7. Commit temporal coherence and ordinary-trace overflow fixes after the
+   retained-state review gate and before/after browser verification pass.
+8. Commit selected-anchor clearance with its public grammar, example, and
+   documentation after the public-contract review gate passes.
+9. Before PR creation, commit the fully reconciled plan with every task marked
    completed or discarded, then delete the temporary plan in a later commit.
 
 Use Conventional Commit messages with rationale-focused bodies. Run the
@@ -635,9 +716,10 @@ remain useful for review and bisection.
   deterministic overflow policy after local-search exhaustion. Overflow is not
   a statement about global feasibility.
 - Rectangle interiors define overlap; touching edges are allowed.
-- Equal inputs produce equal outputs across runs in the same runtime. Candidate
-  generation uses deterministic basic arithmetic without randomness or
-  platform-sensitive trigonometric ordering.
+- A fresh solve produces equal output for equal explicit inputs. A stateful
+  transform produces equal output when the same complete interaction trace is
+  replayed from fresh state. Candidate generation uses deterministic basic
+  arithmetic without randomness or platform-sensitive trigonometric ordering.
 - Output order and datum identity follow normal modifying-transform behavior.
 - Empty, singleton, coincident, heterogeneous-size, negative-factor, reversed
   screen-axis, and infeasible batches have specified behavior.
@@ -654,9 +736,13 @@ remain useful for review and bisection.
   extents are normalized after every effective factor change.
 - Placement output must not feed back into the data-driven domains used to
   compute the original positions.
-- During zoom increments, stable input and internal search order produce exact
-  repeated-domain results. The benchmark reports materially changed offsets per
-  frame and visual inspection checks that timing alone does not mask flicker.
+- During zoom increments, previous placements are only hints: every accepted
+  output must still satisfy current bounds and collision checks. The benchmark
+  reports p95 and maximum per-frame offset jumps and overflow transitions;
+  visual inspection checks that timing alone does not mask flicker.
+- When anchor dimensions are positive, every output rectangle avoids every
+  selected anchor rectangle. Zero anchor width or height disables anchor
+  collision for that row without affecting output-row preservation.
 
 ## Milestones
 
@@ -782,7 +868,94 @@ Review gate: final maintainer review of the public grammar, integrated
 interaction behavior, downstream renderer/picking/export behavior, performance,
 documentation, provenance, and code-size tradeoff.
 
-## Reconciliation before user acid testing (2026-08-28)
+### 4. Temporal coherence and ordinary-trace overflow — Planned
+
+Intended outcome: remove the visible snapping demonstrated by the first user
+recording while preserving bounded synchronous work, exact collision checks,
+and the transform/solver separation. The ordinary top-32 airway trace must not
+use the saturation overflow path.
+
+Affected areas and downstream consumers:
+
+- `packages/core/src/data/transforms/displace2dSolver.js` and focused solver
+  tests for explicit previous-placement hints
+- `packages/core/src/data/transforms/displace2d.js` and focused transform tests
+  for datum-identity retention, new-data behavior, reset/replay, and disposal
+- The private airway volcano, MA, and stress traces; no renderer, mark, offset
+  encoding, or `displace1d` changes
+- This plan's deterministic-output wording and recorded measurements
+
+Verification:
+
+- Record the current top-32 airway baseline using the coarse and fine wheel
+  traces: per-step offset jumps, overflow transitions, overlaps, and latency.
+- Test one bounded previous-neighborhood ordering first. If it misses the 8 px
+  p95 or 24 px maximum jump gate, compare one bounded obstacle-edge-derived
+  search that can move continuously with current geometry. Select the smallest
+  passing approach and delete all spike variants.
+- Verify fresh canonical solves and complete traces are deterministic, a new
+  datum object does not inherit another datum's placement, filtered datums do
+  not corrupt retained state, and disposed transforms cannot replay state.
+- Repeat the 500- and 2,000-rectangle latency and allocation checks, including
+  1,000 repeated replays. Retained state must remain O(live datum identities)
+  and must not require manual eviction.
+- Reproduce wheel zoom, inertial zoom, pan, resize, and domain restoration in
+  the browser. Capture a comparable recording and require user visual approval.
+
+Documentation or migration: update determinism and overflow documentation to
+distinguish a fresh canonical solve, deterministic trace replay, and the
+saturation-only overflow fallback. No public temporal option is added.
+
+Tentative commit: `fix(core): stabilize two-dimensional displacement`
+
+Review gate: maintainer review of retained-state ownership, deterministic trace
+semantics, lifecycle safety, memory bounds, solver simplicity, and the recorded
+before/after interaction evidence.
+
+### 5. Selected-anchor clearance — Planned
+
+Intended outcome: prevent annotations from covering the points they annotate
+through generic optional rectangle geometry, without mark inspection or an
+arbitrary obstacle-data subsystem.
+
+Affected areas and downstream consumers:
+
+- `packages/core/src/data/transforms/displace2dSolver.js` and collision-grid
+  tests for preseeded anchor rectangles
+- `packages/core/src/data/transforms/displace2d.js` and tests for scalar, field,
+  and reactive `anchorWidth`/`anchorHeight` inputs
+- `packages/core/src/spec/transform.d.ts`, generated schema consumers, the
+  displace2d documentation, and the canonical annotation example
+- Existing WebGL, picking, SVG, and leader-line composition through unchanged
+  offset channels
+
+Verification:
+
+- Cover heterogeneous anchors, zero-sized disabled anchors, edge touching,
+  coincident anchors, reversed factors, reactive geometry, and infeasible
+  batches while preserving every output row.
+- Require zero label-to-label and label-to-selected-anchor intersections across
+  the airway zoom traces. Report displacement and saturation overflow changes
+  introduced by anchor clearance.
+- Repeat the accepted performance fixtures. Preseeding anchors must reuse the
+  one existing collision grid and retain O(n) working memory.
+- Inspect the airway examples for clear association, leader-line attachment,
+  tooltips, clipping, and point visibility. Avoidance of unrelated background
+  points is neither claimed nor silently approximated.
+- Run focused tests, schema/docs checks, workspace TypeScript checks, lint, and
+  the full unit suite before renewed user acid testing.
+
+Documentation or migration: document the optional anchor geometry forms,
+pixel units, all-selected-anchor semantics, zero default, and the explicit
+cross-layer obstacle non-goal. Update the example to include point clearance.
+
+Tentative commit: `feat(core): support anchor clearance in displace2d`
+
+Review gate: maintainer review of the public geometry contract, transform
+abstraction level, downstream schema/docs agreement, placement quality, and
+whether the added code remains smaller than a general obstacle-source design.
+
+## Reconciliation through the first user acid test (2026-08-28)
 
 The plan is reconciled to the implemented branch but is intentionally not ready
 to retire. No pull request will be prepared until the private examples have been
@@ -813,12 +986,13 @@ Completed:
 
 Discarded:
 
-- Retained-placement hysteresis and near-previous candidate searches were
-  deleted because they added policy and state without passing a meaningful
-  interaction-quality criterion.
+- The original retained-placement spike remains deleted because its raw churn
+  metric did not distinguish smooth clamping from jumps. Retained placement is
+  now reopened under milestone 4 with explicit jump, overflow-transition, and
+  user-visual criteria derived from the recording.
 - Vega's occupancy bitmap, force relaxation, workers, pluggable strategies,
-  obstacle marks, and visibility outputs remain unnecessary for the measured
-  use cases.
+  arbitrary obstacle sources, visibility outputs, and renderer-specific
+  animation remain unnecessary for the measured corrective scope.
 - The external airway Arrow table will not be copied into the repository. The
   permanent docs example uses small inline data; private examples may reference
   the published content-addressed asset for local testing.
@@ -828,6 +1002,10 @@ Discarded:
 
 Pending before PR preparation:
 
+- Complete milestone 4 temporal coherence and ordinary-trace overflow work,
+  including before/after recording evidence and the retained-state review gate.
+- Complete milestone 5 selected-anchor clearance and its public-contract review
+  gate without expanding into renderer or cross-layer obstacle inspection.
 - Manually exercise resize, wheel and inertial zoom, pan, domain restoration,
   clipping, tooltip/picking alignment, long interaction sessions, and visual
   association through leader lines.
@@ -840,14 +1018,15 @@ Pending before PR preparation:
 ## Final integration acceptance criteria
 
 - A documented `displace2d` spec labels the airway volcano fixture and visibly
-  recomputes during zoom, pan, and resize without blocking interaction. The MA
+  recomputes during zoom, pan, and resize without blocking or blinking. The MA
   regression confirms conversion from data-domain endpoints to pixel offsets.
 - The solver and transform meet the accepted performance and interaction-
-  repeatability thresholds on the recorded fixtures.
+  continuity thresholds on the recorded fixtures.
 - Every row is preserved and receives deterministic x and y offsets. Output
-  rectangles are non-overlapping and accepted local candidates respect the
-  documented preferred bounds; exhausted local searches follow the overflow
-  rule without claiming global infeasibility.
+  rectangles are non-overlapping, avoid selected anchors when configured, and
+  accepted local candidates respect the documented preferred bounds. Ordinary
+  airway interaction does not enter overflow; saturation fixtures follow the
+  overflow rule without claiming global infeasibility.
 - The transform remains dataflow-only, the solver remains pure, and no new
   rendering special cases or runtime dependencies are introduced.
 - `displace1d` implementation, tests, public types, and documentation remain
@@ -860,7 +1039,9 @@ Pending before PR preparation:
   ggrepel source has been copied or translated.
 - Relevant focused tests, schema/docs checks, TypeScript checks, and lint pass.
 - The production change contains one solver path and no unused strategy,
-  geometry, caching, worker, or compatibility abstractions.
+  cache abstraction, worker, transition path, or compatibility abstraction.
+  Retained placements consist only of datum-identity hints owned by the
+  transform, and anchor obstacles reuse the existing collision grid.
 - Public parameter forms are exercised by the canonical example or focused
   contract tests. Any parameter that remains only for a hypothetical use case
   is removed or explicitly deferred.
@@ -873,16 +1054,24 @@ Pending before PR preparation:
 
 ## Risks and mitigations
 
-- **Displacement jumps during zoom.** Measure raw offset changes, require exact
-  repeated-domain output, and inspect motion visually. A retained-placement
-  spike did not pass its original metric and was removed; reconsider state only
-  with a metric that distinguishes discontinuities from continuous clamping.
+- **Displacement jumps during zoom.** Measure p95 and maximum per-step offset
+  changes after subtracting anchor motion, count overflow transitions, replay
+  the same trace from fresh state, and inspect comparable recordings. Prefer
+  valid prior placement without adding public continuity controls.
+- **Path-dependent placement.** Retained hints intentionally trade repeated-
+  domain canonical output for continuity. Require deterministic complete trace
+  replay, keep the pure solver explicit, and key state only by datum identity.
+- **Animation masking unstable placement.** Do not add displace2d-specific
+  interpolation. It would allow transient overlaps and couple dataflow output
+  to rendering. Consider general per-datum transitions only in a separate
+  proposal after stable placement passes visual testing.
 - **Premature optimization.** Preserve the direct solver as the measured design
   baseline. Add one broad-phase optimization only if profiling shows that
   rectangle scans cause a budget failure; do not retain two production paths.
 - **Dense or search-exhausted bounds.** Preserve every row and use the
-  documented deterministic right-side overflow row rather than emitting
+  deterministic right-side overflow row for saturation rather than emitting
   visibility, silently accepting overlaps, or running an unbounded search.
+  Treat overflow in the ordinary top-32 airway trace as a solver failure.
 - **Duplicate reactive work.** Coalesce all expression-backed placement
   invalidations and test that a settled multi-property change causes at most
   one replay.
@@ -895,6 +1084,9 @@ Pending before PR preparation:
 - **API overfitting to text labels.** Define the solver in terms of rectangle
   centers and extents and keep text measurement, styling, and leader-line
   rendering outside the transform.
+- **Obstacle-scope creep.** Accept only centered anchor rectangles belonging to
+  the current input batch. Do not inspect marks or add cross-stream obstacle
+  data until selected-anchor avoidance has been implemented and acid-tested.
 - **Premature generalization.** Ship one measured solver with generic geometry
   inputs and offset outputs; keep algorithm selection and renderer obstacle
   avoidance out of the public API.
@@ -908,13 +1100,14 @@ Pending before PR preparation:
 2. Are separate x/y position factors and extents clearer than paired parameters?
    Prefer the form that most closely preserves `displace1d` semantics and keeps
    expression-backed replay straightforward.
-3. Does stable input and search order provide acceptable temporal coherence?
-   Previous-frame state remains deferred unless the interaction trace proves it
-   is needed.
+3. Does the bounded previous-neighborhood ordering meet the fixed 8 px p95 and
+   24 px maximum jump gates? If not, which single obstacle-edge-derived search
+   replaces the discrete lattice with the least code while preserving zero
+   overlap and zero ordinary-trace overflow?
 4. Does the direct rectangle scan meet the performance budget? Only if it fails,
    which single acceleration structure fixes the measured bottleneck with the
    least code and memory?
-5. Does visual review of the 32-label airway fixture confirm that background
-   points can remain non-obstacles? If not, revise the generic solver input
-   contract at the first review gate rather than adding mark or renderer
-   coupling.
+5. After selected-anchor clearance, does visual review still require avoiding
+   unrelated background points? If so, stop and design a separate generic
+   cross-stream obstacle contract rather than extending the anchor fields or
+   inspecting rendered marks.
