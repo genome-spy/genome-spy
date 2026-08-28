@@ -1,3 +1,5 @@
+export const PICKING_BACKGROUND_COLOR = "#000000";
+
 /**
  * Converts picking IDs into stable opaque diagnostic colors.
  * The colors are never decoded back into IDs.

@@ -77,12 +77,15 @@ test("colorizes and blits logical picking pixels with nearest-neighbor scaling",
     /** @type {HTMLCanvasElement[]} */
     const canvases = [];
     const liveContext = /** @type {any} */ ({
+        save: vi.fn(),
+        restore: vi.fn(),
         resetTransform: vi.fn(),
-        clearRect: vi.fn(),
+        fillRect: vi.fn(),
         drawImage: vi.fn(),
         imageSmoothingEnabled: true,
         globalAlpha: 0,
         globalCompositeOperation: "multiply",
+        fillStyle: "white",
     });
     const imageData = { data: new Uint8ClampedArray(4 * 2 * 4) };
     const diagnosticContext = /** @type {any} */ ({
@@ -122,6 +125,8 @@ test("colorizes and blits logical picking pixels with nearest-neighbor scaling",
         0,
         0
     );
+    expect(liveContext.fillStyle).toBe("#000000");
+    expect(liveContext.fillRect).toHaveBeenCalledWith(0, 0, 9, 5);
     expect(liveContext.drawImage).toHaveBeenCalledWith(
         canvases[1],
         0,
@@ -133,7 +138,8 @@ test("colorizes and blits logical picking pixels with nearest-neighbor scaling",
         8,
         4
     );
-    expect(liveContext.imageSmoothingEnabled).toBe(true);
+    expect(liveContext.save).toHaveBeenCalledOnce();
+    expect(liveContext.restore).toHaveBeenCalledOnce();
 
     surface.finalize();
     expect(canvases[1]).toMatchObject({ width: 0, height: 0 });

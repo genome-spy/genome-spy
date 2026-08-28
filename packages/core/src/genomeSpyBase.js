@@ -350,6 +350,7 @@ export default class GenomeSpy {
             return;
         }
         this.#destroyed = true;
+        this.animator.finalize();
 
         const canvasWrapper = this.#canvasWrapper;
 

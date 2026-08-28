@@ -1,5 +1,8 @@
 import CanvasSizeHelper from "../canvasSizeHelper.js";
-import { colorizePickingIds } from "./picking/pickingColorizer.js";
+import {
+    colorizePickingIds,
+    PICKING_BACKGROUND_COLOR,
+} from "./picking/pickingColorizer.js";
 import SoftwarePickingBuffer from "./picking/softwarePickingBuffer.js";
 
 export default class Canvas2DSurface {
@@ -149,49 +152,55 @@ export default class Canvas2DSurface {
         }
         const buffer = this.getPickingBuffer();
         const context = this.context;
-        context.resetTransform();
-        context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        context.globalAlpha = 1;
-        context.globalCompositeOperation = "source-over";
-        if (buffer.width == 0 || buffer.height == 0) {
-            return;
-        }
+        context.save();
+        try {
+            context.resetTransform();
+            context.globalAlpha = 1;
+            context.globalCompositeOperation = "source-over";
+            context.fillStyle = PICKING_BACKGROUND_COLOR;
+            context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            if (buffer.width == 0 || buffer.height == 0) {
+                return;
+            }
 
-        const diagnosticContext = this.#getDiagnosticContext();
-        if (
-            this.#diagnosticCanvas.width != buffer.width ||
-            this.#diagnosticCanvas.height != buffer.height
-        ) {
-            this.#diagnosticCanvas.width = buffer.width;
-            this.#diagnosticCanvas.height = buffer.height;
-            this.#diagnosticImageData = diagnosticContext.createImageData(
-                buffer.width,
-                buffer.height
+            const diagnosticContext = this.#getDiagnosticContext();
+            if (
+                this.#diagnosticCanvas.width != buffer.width ||
+                this.#diagnosticCanvas.height != buffer.height
+            ) {
+                this.#diagnosticCanvas.width = buffer.width;
+                this.#diagnosticCanvas.height = buffer.height;
+                this.#diagnosticImageData = diagnosticContext.createImageData(
+                    buffer.width,
+                    buffer.height
+                );
+            }
+            const imageData = /** @type {ImageData} */ (
+                this.#diagnosticImageData
             );
-        }
-        const imageData = /** @type {ImageData} */ (this.#diagnosticImageData);
-        colorizePickingIds(buffer.ids, imageData.data);
-        diagnosticContext.putImageData(imageData, 0, 0);
+            colorizePickingIds(buffer.ids, imageData.data);
+            diagnosticContext.putImageData(imageData, 0, 0);
 
-        const logicalSize = this.getLogicalCanvasSize();
-        const destinationWidth =
-            (buffer.width * this.canvas.width) / logicalSize.width;
-        const destinationHeight =
-            (buffer.height * this.canvas.height) / logicalSize.height;
-        const smoothing = context.imageSmoothingEnabled;
-        context.imageSmoothingEnabled = false;
-        context.drawImage(
-            this.#diagnosticCanvas,
-            0,
-            0,
-            buffer.width,
-            buffer.height,
-            0,
-            0,
-            destinationWidth,
-            destinationHeight
-        );
-        context.imageSmoothingEnabled = smoothing;
+            const logicalSize = this.getLogicalCanvasSize();
+            const destinationWidth =
+                (buffer.width * this.canvas.width) / logicalSize.width;
+            const destinationHeight =
+                (buffer.height * this.canvas.height) / logicalSize.height;
+            context.imageSmoothingEnabled = false;
+            context.drawImage(
+                this.#diagnosticCanvas,
+                0,
+                0,
+                buffer.width,
+                buffer.height,
+                0,
+                0,
+                destinationWidth,
+                destinationHeight
+            );
+        } finally {
+            context.restore();
+        }
     }
 
     /** @returns {CanvasRenderingContext2D} */

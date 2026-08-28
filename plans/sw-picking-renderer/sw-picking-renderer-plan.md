@@ -606,7 +606,7 @@ Tentative commit: `feat(core): visualize the Canvas software picking buffer`
 
 ### Completion record
 
-- The full unit suite passed: 437 files and 3,628 tests, with one skipped test
+- The full unit suite passed: 438 files and 3,632 tests, with one skipped test
   and two existing todos.
 - ESLint and the minimal-bundle verifier passed. The verifier confirmed that
   plain minimal excludes Canvas picking and the Canvas opt-in loads it only
@@ -622,6 +622,10 @@ Tentative commit: `feat(core): visualize the Canvas software picking buffer`
 - An integrated one-million-point Canvas plot produced a 900 by 420 logical
   picking visualization in 93 ms on the verification machine. A second replay
   took 107 ms and was byte-identical to the first.
+- Follow-up review fixes restored termination when repeated arrow-head spacing
+  collapses to zero, cancel pending animation frames during destruction, and
+  paint the fractional diagnostic fringe with the opaque ID-0 color. Chromium
+  verified all three fixes together without a post-finalization runtime error.
 
 ## Acceptance criteria
 

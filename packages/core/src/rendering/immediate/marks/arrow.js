@@ -339,7 +339,10 @@ export function visitArrowHeadPositions(instance, visitor) {
             instance.tip.x - instance.tangent.x * distance,
             instance.tip.y - instance.tangent.y * distance
         );
-        if (!Number.isFinite(instance.repeatSpacing)) {
+        if (
+            !(instance.repeatSpacing > 0) ||
+            !Number.isFinite(instance.repeatSpacing)
+        ) {
             break;
         }
     }

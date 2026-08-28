@@ -1,5 +1,56 @@
-import { describe, expect, test } from "vitest";
-import { makeLerpSmoother } from "./animator.js";
+// @vitest-environment jsdom
+
+import { afterEach, describe, expect, test, vi } from "vitest";
+import Animator, { makeLerpSmoother } from "./animator.js";
+
+afterEach(() => {
+    vi.restoreAllMocks();
+});
+
+describe("Animator", () => {
+    test("cancels a pending render when finalized", () => {
+        /** @type {FrameRequestCallback | undefined} */
+        let pendingCallback;
+        vi.spyOn(window, "requestAnimationFrame").mockImplementation(
+            (callback) => {
+                pendingCallback = callback;
+                return 17;
+            }
+        );
+        const cancelAnimationFrame = vi
+            .spyOn(window, "cancelAnimationFrame")
+            .mockImplementation(() => undefined);
+        const render = vi.fn();
+        const animator = new Animator(render);
+
+        animator.requestRender();
+        animator.finalize();
+        pendingCallback?.(performance.now());
+        animator.requestRender();
+
+        expect(cancelAnimationFrame).toHaveBeenCalledWith(17);
+        expect(window.requestAnimationFrame).toHaveBeenCalledOnce();
+        expect(render).not.toHaveBeenCalled();
+    });
+
+    test("does not render when a transition finalizes the animator", () => {
+        /** @type {FrameRequestCallback | undefined} */
+        let pendingCallback;
+        vi.spyOn(window, "requestAnimationFrame").mockImplementation(
+            (callback) => {
+                pendingCallback = callback;
+                return 23;
+            }
+        );
+        const render = vi.fn();
+        const animator = new Animator(render);
+
+        animator.requestTransition(() => animator.finalize());
+        pendingCallback?.(performance.now());
+
+        expect(render).not.toHaveBeenCalled();
+    });
+});
 
 function createTestAnimator() {
     /** @type {((timestamp: number) => void)[]} */

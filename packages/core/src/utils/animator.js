@@ -8,7 +8,11 @@ export default class Animator {
     constructor(renderCallback) {
         this._renderCallback = renderCallback;
         this._renderRequested = false;
+        this._finalized = false;
         this._warn = false;
+
+        /** @type {number | undefined} */
+        this._animationFrameRequest = undefined;
 
         /** @type {(function(number):void)[]} */
         this.transitions = [];
@@ -31,6 +35,9 @@ export default class Animator {
      * @param {function(number):void} callback
      */
     requestTransition(callback) {
+        if (this._finalized) {
+            return;
+        }
         this.cancelTransition(callback);
         this.transitions.push(callback);
         this.requestRender();
@@ -52,24 +59,44 @@ export default class Animator {
      * they have no effect.
      */
     requestRender() {
-        if (!this._renderRequested) {
+        if (this._finalized) {
+            return;
+        } else if (!this._renderRequested) {
             this._renderRequested = true;
-            window.requestAnimationFrame((timestamp) => {
-                this._renderRequested = false;
+            this._animationFrameRequest = window.requestAnimationFrame(
+                (timestamp) => {
+                    this._animationFrameRequest = undefined;
+                    if (this._finalized) {
+                        return;
+                    }
+                    this._renderRequested = false;
 
-                const transitions = this.transitions;
-                this.transitions = [];
+                    const transitions = this.transitions;
+                    this.transitions = [];
 
-                /** @type {function} */
-                let transitionCallback;
-                while ((transitionCallback = transitions.shift())) {
-                    transitionCallback(timestamp);
+                    /** @type {function} */
+                    let transitionCallback;
+                    while ((transitionCallback = transitions.shift())) {
+                        transitionCallback(timestamp);
+                    }
+
+                    if (!this._finalized) {
+                        this._renderCallback(timestamp);
+                    }
                 }
-
-                this._renderCallback(timestamp);
-            });
+            );
         } else if (this._warn) {
             console.warn("Render already requested!");
+        }
+    }
+
+    finalize() {
+        this._finalized = true;
+        this._renderRequested = false;
+        this.transitions = [];
+        if (this._animationFrameRequest !== undefined) {
+            window.cancelAnimationFrame(this._animationFrameRequest);
+            this._animationFrameRequest = undefined;
         }
     }
 

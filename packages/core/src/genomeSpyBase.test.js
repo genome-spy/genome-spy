@@ -1,6 +1,22 @@
+// @vitest-environment jsdom
+
 import { describe, expect, test, vi } from "vitest";
 
 import GenomeSpy from "./genomeSpyBase.js";
+
+describe("GenomeSpy destruction", () => {
+    test("finalizes the animator before disposing resources", () => {
+        const genomeSpy = new GenomeSpy(
+            document.createElement("div"),
+            /** @type {any} */ ({})
+        );
+        const finalize = vi.spyOn(genomeSpy.animator, "finalize");
+
+        genomeSpy.destroy();
+
+        expect(finalize).toHaveBeenCalledOnce();
+    });
+});
 
 describe("GenomeSpy layout reflow", () => {
     test("requestLayoutReflow schedules layout as a render transition", () => {
