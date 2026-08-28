@@ -169,6 +169,30 @@ describe("solveDisplacement", () => {
         expectNoOverlap([0, 20], [0, 0], [10, 10], [10, 10], displacements);
     });
 
+    test("projects an invalid previous placement to the nearest collision edge", () => {
+        const displacements = solveDisplacement(
+            [0, 0],
+            [-20, 0],
+            [10, 10],
+            [10, 10],
+            undefined,
+            undefined,
+            { x: [0, 0], y: [0, -20] }
+        );
+
+        expect(displacements).toEqual({ x: [0, -10], y: [0, -20] });
+        expectNoOverlap([0, 0], [-20, 0], [10, 10], [10, 10], displacements);
+    });
+
+    test("clamps previous placements to changed extents", () => {
+        expect(
+            solveDisplacement([0], [0], [10], [10], [-20, 20], [-20, 20], {
+                x: [18],
+                y: [-18],
+            })
+        ).toEqual({ x: [15], y: [-15] });
+    });
+
     test("rejects invalid previous placement input", () => {
         expect(() =>
             solveDisplacement([0], [0], [1], [1], undefined, undefined, {
