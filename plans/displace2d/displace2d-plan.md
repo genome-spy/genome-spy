@@ -801,6 +801,15 @@ Completed:
 - A final maintainer-style review confirmed the intended abstraction boundary:
   generic rectangle inputs, signed offset outputs, one solver, no renderer
   coupling, no retained placement state, and no changes to `displace1d`.
+- The ignored `private/displace2d-acid/` suite now covers the 12,000-row airway
+  volcano and MA plots, 500 heterogeneous labels, coincident-label overflow,
+  and reversed axes. It includes repeatable screenshot and app smoke scripts.
+- All five private specs initialized and rendered without browser errors. The
+  app smoke exercised each label-count slider at its minimum, maximum, and
+  default, then wheel-zoomed and resized each parameterized plot. Updates
+  reached two subsequent animation frames in 17--39 ms in headless Chromium.
+- The full unit suite passes with 3,287 tests passing, one skipped, and two
+  todo after the final numeric review fixes.
 
 Discarded:
 
@@ -819,8 +828,6 @@ Discarded:
 
 Pending before PR preparation:
 
-- Create a private acid-test suite covering realistic airway plots, dense and
-  heterogeneous labels, overflow, edge clamping, and larger stress batches.
 - Manually exercise resize, wheel and inertial zoom, pan, domain restoration,
   clipping, tooltip/picking alignment, long interaction sessions, and visual
   association through leader lines.
