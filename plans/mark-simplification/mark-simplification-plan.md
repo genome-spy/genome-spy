@@ -343,9 +343,9 @@ None. The surviving `UnitView` filter preserves existing behavior.
 
 ### Work
 
-- [ ] Remove the empty Point default-encoding object and no-op
+- [x] Remove the empty Point default-encoding object and no-op
       `getDefaultEncoding()` override.
-- [ ] Remove the no-op `super.initializeData()` call.
+- [x] Remove the no-op `super.initializeData()` call.
 
 ### Affected areas and consumers
 
