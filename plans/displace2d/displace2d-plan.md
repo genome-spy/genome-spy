@@ -868,7 +868,7 @@ Review gate: final maintainer review of the public grammar, integrated
 interaction behavior, downstream renderer/picking/export behavior, performance,
 documentation, provenance, and code-size tradeoff.
 
-### 4. Temporal coherence and ordinary-trace overflow — Planned
+### 4. Temporal coherence and ordinary-trace overflow — In progress
 
 Intended outcome: remove the visible snapping demonstrated by the first user
 recording while preserving bounded synchronous work, exact collision checks,
@@ -880,7 +880,8 @@ Affected areas and downstream consumers:
 - `packages/core/src/data/transforms/displace2dSolver.js` and focused solver
   tests for explicit previous-placement hints
 - `packages/core/src/data/transforms/displace2d.js` and focused transform tests
-  for datum-identity retention, new-data behavior, reset/replay, and disposal
+  for stable-input-order retention, batch replacement, reset/replay, and
+  disposal
 - The private airway volcano, MA, and stress traces; no renderer, mark, offset
   encoding, or `displace1d` changes
 - This plan's deterministic-output wording and recorded measurements
@@ -892,7 +893,8 @@ Verification:
 - Test one bounded previous-neighborhood ordering first. If it misses the 8 px
   p95 or 24 px maximum jump gate, compare one bounded obstacle-edge-derived
   search that can move continuously with current geometry. Select the smallest
-  passing approach and delete all spike variants.
+  approach that materially improves the fixed metrics, delete all spike
+  variants, and keep this milestone open until both gates pass.
 - Verify fresh canonical solves and complete traces are deterministic, a new
   datum object does not inherit another datum's placement, filtered datums do
   not corrupt retained state, and disposed transforms cannot replay state.
@@ -911,6 +913,28 @@ Tentative commit: `fix(core): stabilize two-dimensional displacement`
 Review gate: maintainer review of retained-state ownership, deterministic trace
 semantics, lifecycle safety, memory bounds, solver simplicity, and the recorded
 before/after interaction evidence.
+
+Evidence recorded on 2026-08-28:
+
+- Real dataflow replays replaced most datum objects: 5,536 of 6,432 comparable
+  identities changed in a representative wheel trace. A `WeakMap` therefore
+  could not carry continuity. The transform now retains offsets by stable input
+  order and discards the complete hint batch when its length changes.
+- Exact retained offsets reduced changed-offset events but still produced about
+  161 px p95 and 413 px maximum jumps. Trying the nearest old lattice candidate
+  only reduced these to about 143 px and 379 px, so that spike was deleted.
+- Projecting a colliding retained rectangle to the nearest free edge of its
+  first blocking rectangle reduced p95 to about 6.3 px with zero overflow.
+  Clamping retained centers to changing extents reduced p95 further to about
+  4.4 px and the p95 frame maximum to about 13.2 px. Focused tests, Core type
+  checking, and lint passed for commit `ea5bea42`.
+- The maximum jump remains about 274 px, so the 24 px gate is not met. The
+  largest events involve late-order labels and large offsets near changing
+  bounds; ordinary motion is no longer the dominant failure.
+- A 32-candidate best-first search across multiple obstacle edges increased
+  churn and worsened the maximum jump to about 527 px. It was deleted. This
+  rules out extending the solver with a broader graph search without new
+  fixture evidence.
 
 ### 5. Selected-anchor clearance — Planned
 
@@ -971,9 +995,11 @@ Completed:
 - The airway volcano and MA data were exercised temporarily with real
   `measureText` geometry. Browser WebGL, zoom traces, and structured SVG export
   were verified, and performance measurements are recorded above.
-- A final maintainer-style review confirmed the intended abstraction boundary:
-  generic rectangle inputs, signed offset outputs, one solver, no renderer
-  coupling, no retained placement state, and no changes to `displace1d`.
+- The pre-interaction maintainer-style review confirmed the intended
+  abstraction boundary: generic rectangle inputs, signed offset outputs, one
+  solver, no renderer coupling, and no changes to `displace1d`. Milestone 4
+  subsequently added private retained-placement hints inside the transform;
+  that state still requires its review gate before PR preparation.
 - The ignored `private/displace2d-acid/` suite now covers the 12,000-row airway
   volcano and MA plots, 500 heterogeneous labels, coincident-label overflow,
   and reversed axes. It includes repeatable screenshot and app smoke scripts.
