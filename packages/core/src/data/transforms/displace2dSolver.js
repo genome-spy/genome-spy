@@ -15,6 +15,14 @@ const CANDIDATE_OFFSETS = createCandidateOffsets();
  */
 
 /**
+ * @typedef {object} Displacement2DObstacles
+ * @prop {number[]} x Horizontal centers.
+ * @prop {number[]} y Vertical centers.
+ * @prop {number[]} width Full collision widths.
+ * @prop {number[]} height Full collision heights.
+ */
+
+/**
  * Places axis-aligned rectangles without overlap using stable input order.
  *
  * Candidates form a small bounded strip around each original center.
@@ -28,6 +36,7 @@ const CANDIDATE_OFFSETS = createCandidateOffsets();
  * @param {[number, number]} [xExtent] Preferred horizontal outer bounds.
  * @param {[number, number]} [yExtent] Preferred vertical outer bounds.
  * @param {PreviousDisplacement2D} [previous] Previous placement hints.
+ * @param {Displacement2DObstacles} [obstacles] Preplaced collision rectangles.
  * @param {Displacement2D} [output] Reusable output arrays.
  * @returns {Displacement2D} The output arrays.
  */
@@ -39,6 +48,7 @@ export function solveDisplacement(
     xExtent,
     yExtent,
     previous,
+    obstacles,
     output = { x: [], y: [] }
 ) {
     const count = xPositions.length;
@@ -95,8 +105,89 @@ export function solveDisplacement(
         cellSize = Math.max(cellSize, width, height);
     }
 
+    const obstacleData = obstacles ?? { x: [], y: [], width: [], height: [] };
+    const obstacleCount = obstacleData.x.length;
+    if (
+        obstacleData.y.length != obstacleCount ||
+        obstacleData.width.length != obstacleCount ||
+        obstacleData.height.length != obstacleCount
+    ) {
+        throw new Error(
+            "displace2d obstacle positions and dimensions must have the same number of values."
+        );
+    }
+
+    for (let i = 0; i < obstacleCount; i++) {
+        const x = obstacleData.x[i];
+        const y = obstacleData.y[i];
+        const width = obstacleData.width[i];
+        const height = obstacleData.height[i];
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+            throw new Error(
+                "displace2d obstacle positions must be finite numbers."
+            );
+        } else if (
+            !Number.isFinite(width) ||
+            !Number.isFinite(height) ||
+            width < 0 ||
+            height < 0
+        ) {
+            throw new Error(
+                "displace2d obstacle dimensions must be finite non-negative numbers."
+            );
+        }
+
+        overflowCursor = Math.max(overflowCursor, x + width / 2);
+        cellSize = Math.max(cellSize, width, height);
+    }
+
     /** @type {Map<number, Map<number, number[]>>} */
     const grid = new Map();
+
+    /**
+     * @param {number} index
+     * @param {number} centerX
+     * @param {number} centerY
+     * @param {number} width
+     * @param {number} height
+     */
+    const addToGrid = (index, centerX, centerY, width, height) => {
+        if (width == 0 || height == 0) {
+            return;
+        }
+
+        const minCellX = Math.floor((centerX - width / 2) / cellSize);
+        const maxCellX = Math.floor((centerX + width / 2) / cellSize);
+        const minCellY = Math.floor((centerY - height / 2) / cellSize);
+        const maxCellY = Math.floor((centerY + height / 2) / cellSize);
+
+        for (let cellX = minCellX; cellX <= maxCellX; cellX++) {
+            let column = grid.get(cellX);
+            if (!column) {
+                column = new Map();
+                grid.set(cellX, column);
+            }
+
+            for (let cellY = minCellY; cellY <= maxCellY; cellY++) {
+                let occupants = column.get(cellY);
+                if (!occupants) {
+                    occupants = [];
+                    column.set(cellY, occupants);
+                }
+                occupants.push(index);
+            }
+        }
+    };
+
+    for (let i = 0; i < obstacleCount; i++) {
+        addToGrid(
+            count + i,
+            obstacleData.x[i],
+            obstacleData.y[i],
+            obstacleData.width[i],
+            obstacleData.height[i]
+        );
+    }
 
     /**
      * @param {number} index
@@ -137,16 +228,28 @@ export function solveDisplacement(
                     continue;
                 }
 
-                for (const j of occupants) {
-                    const otherX = xPositions[j] + xDisplacements[j];
-                    const otherY = yPositions[j] + yDisplacements[j];
+                for (const occupant of occupants) {
+                    const isObstacle = occupant >= count;
+                    const j = isObstacle ? occupant - count : occupant;
+                    const otherX = isObstacle
+                        ? obstacleData.x[j]
+                        : xPositions[j] + xDisplacements[j];
+                    const otherY = isObstacle
+                        ? obstacleData.y[j]
+                        : yPositions[j] + yDisplacements[j];
+                    const otherWidth = isObstacle
+                        ? obstacleData.width[j]
+                        : widths[j];
+                    const otherHeight = isObstacle
+                        ? obstacleData.height[j]
+                        : heights[j];
                     if (
                         Math.abs(candidateX - otherX) <
-                            width / 2 + widths[j] / 2 &&
+                            width / 2 + otherWidth / 2 &&
                         Math.abs(candidateY - otherY) <
-                            height / 2 + heights[j] / 2
+                            height / 2 + otherHeight / 2
                     ) {
-                        return j;
+                        return occupant;
                     }
                 }
             }
@@ -194,12 +297,22 @@ export function solveDisplacement(
                 yDisplacements[i] = previousY - y;
                 placed = true;
             } else if (collision >= 0) {
-                const otherX =
-                    xPositions[collision] + xDisplacements[collision];
-                const otherY =
-                    yPositions[collision] + yDisplacements[collision];
-                const xDistance = width / 2 + widths[collision] / 2;
-                const yDistance = height / 2 + heights[collision] / 2;
+                const isObstacle = collision >= count;
+                const j = isObstacle ? collision - count : collision;
+                const otherX = isObstacle
+                    ? obstacleData.x[j]
+                    : xPositions[j] + xDisplacements[j];
+                const otherY = isObstacle
+                    ? obstacleData.y[j]
+                    : yPositions[j] + yDisplacements[j];
+                const otherWidth = isObstacle
+                    ? obstacleData.width[j]
+                    : widths[j];
+                const otherHeight = isObstacle
+                    ? obstacleData.height[j]
+                    : heights[j];
+                const xDistance = width / 2 + otherWidth / 2;
+                const yDistance = height / 2 + otherHeight / 2;
                 const edgeCandidates = [
                     [otherX - xDistance, previousY],
                     [otherX + xDistance, previousY],
@@ -283,29 +396,7 @@ export function solveDisplacement(
 
         overflowCursor = Math.max(overflowCursor, placedX + width / 2);
 
-        if (width > 0 && height > 0) {
-            const minCellX = Math.floor((placedX - width / 2) / cellSize);
-            const maxCellX = Math.floor((placedX + width / 2) / cellSize);
-            const minCellY = Math.floor((placedY - height / 2) / cellSize);
-            const maxCellY = Math.floor((placedY + height / 2) / cellSize);
-
-            for (let cellX = minCellX; cellX <= maxCellX; cellX++) {
-                let column = grid.get(cellX);
-                if (!column) {
-                    column = new Map();
-                    grid.set(cellX, column);
-                }
-
-                for (let cellY = minCellY; cellY <= maxCellY; cellY++) {
-                    let occupants = column.get(cellY);
-                    if (!occupants) {
-                        occupants = [];
-                        column.set(cellY, occupants);
-                    }
-                    occupants.push(i);
-                }
-            }
-        }
+        addToGrid(i, placedX, placedY, width, height);
     }
 
     return output;
