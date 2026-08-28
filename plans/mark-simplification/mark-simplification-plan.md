@@ -453,13 +453,13 @@ ordering stays with the WebGL delegate and shader constants.
 
 ### Work
 
-- [ ] Remove `ARROW_UNIFORM_ENUMS` and `enumIndex()` from semantic `arrow.js`.
-- [ ] Delete the unused `directions` duplicate; direction-channel mapping
+- [x] Remove `ARROW_UNIFORM_ENUMS` and `enumIndex()` from semantic `arrow.js`.
+- [x] Delete the unused `directions` duplicate; direction-channel mapping
       remains in the generic encoder.
-- [ ] Move head-shape, head-placement, and fail-fast mapping next to
+- [x] Move head-shape, head-placement, and fail-fast mapping next to
       `WebGLArrowMark`.
-- [ ] Move the corresponding uniform-order tests under WebGL.
-- [ ] Preserve WebGPU's independent `ARROW_DIRECTION_CODES` mapping and
+- [x] Move the corresponding uniform-order tests under WebGL.
+- [x] Preserve WebGPU's independent `ARROW_DIRECTION_CODES` mapping and
       immediate renderers' string-based direction handling.
 
 ### Affected areas and consumers

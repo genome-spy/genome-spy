@@ -3,12 +3,6 @@ import { fixFill, fixStroke } from "./markUtils.js";
 import { isChannelDefWithScale } from "../encoder/encoder.js";
 import { fixRuleLikeEncoding } from "./ruleLikeEncoding.js";
 
-export const ARROW_UNIFORM_ENUMS = {
-    directions: ["forward", "reverse"],
-    headShapes: ["triangle", "open"],
-    headPlacements: ["inside", "outside"],
-};
-
 /** @extends {Mark<import("../spec/mark.js").ArrowProps>} */
 export default class ArrowMark extends Mark {
     /** @returns {import("../spec/channel.js").Channel[]} */
@@ -98,15 +92,6 @@ function getSizeReferenceChannel(channel, encoding) {
     } else {
         return channel;
     }
-}
-
-/** @param {string[]} values @param {string} value */
-export function enumIndex(values, value) {
-    const index = values.indexOf(value);
-    if (index < 0) {
-        throw new Error(`Unsupported arrow mark value: ${value}`);
-    }
-    return index;
 }
 
 /**
