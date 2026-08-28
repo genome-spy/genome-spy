@@ -23,16 +23,17 @@ back. Canvas2D may still be accelerated internally by the browser, so the
 setting does not guarantee that the browser uses no GPU hardware.
 
 Canvas2D supports live layout, axes, legends, zooming, panning, dynamic data,
-visibility changes, and PNG export. It projects geometry on the CPU and
-repaints the full Canvas surface immediately. It is intended as a compatibility
-mode; dense views can be slower than WebGL.
+visibility changes, datum interactions, and PNG export. It projects visible and
+picking geometry on the CPU and repaints the full Canvas surface immediately.
+It is intended as a compatibility mode; dense views can be slower than WebGL.
 
 ### Canvas2D limitations
 
-- Datum picking is disabled. Data tooltips, datum clicks, hover-dependent mark
-  behavior, and point-selection hit testing are unavailable. Coordinate-based
-  view and scale interactions continue to work. Instance-level click events
-  report `datum: null`.
+- Software picking currently covers rectangles, points, rules, ticks, and
+  links. Text and arrow marks do not yet produce datum hits. Picking uses
+  conservative hit regions instead of antialiased Canvas pixels; points use
+  bounding squares, rounded rectangles use their full extent, and link dashes
+  do not create gaps in the hit region.
 - Text uses browser-native Canvas fonts. Metrics, rasterization, and
   antialiasing can differ from WebGL and SVG output, especially when a requested
   font is unavailable.

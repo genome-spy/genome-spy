@@ -39,12 +39,14 @@ const rendererRegistrationSources = [
     "src/rendering/registerWebGL.js",
 ];
 const webGlFontBitmap = "src/fonts/Lato-Regular.png";
+const softwarePickingDirectory = "src/rendering/canvas2d/picking/";
 
 const tempDir = fs.mkdtempSync(
     path.join(os.tmpdir(), "genome-spy-minimal-bundle-")
 );
 const minimalOutDir = path.join(tempDir, "minimal");
 const productionOutDir = path.join(tempDir, "production");
+const minimalCanvasOutDir = path.join(tempDir, "minimal-canvas");
 
 try {
     verifyImmediateRenderingImports();
@@ -68,6 +70,41 @@ try {
         readAllOutputSources(minimalOutput),
         "Minimal bundle"
     );
+
+    const minimalCanvasEntry = path.resolve(
+        "scripts/fixtures/minimalCanvas.js"
+    );
+    const minimalCanvasOutput = await buildEntry(
+        minimalCanvasEntry,
+        "genomeSpyEmbedMinimalCanvas",
+        minimalCanvasOutDir
+    );
+    const minimalCanvasSources = readStaticEntrySources(
+        minimalCanvasOutput,
+        minimalCanvasEntry
+    );
+    if (
+        minimalCanvasSources.some((source) =>
+            source.includes("src/rendering/canvas2d/")
+        )
+    ) {
+        throw new Error(
+            "Synchronous minimal plus Canvas entry should not include the Canvas implementation."
+        );
+    }
+    verifyDynamicRendererChunks(minimalCanvasOutput, minimalCanvasEntry, {
+        name: "Canvas2D",
+        directory: "src/rendering/canvas2d/",
+    });
+    if (
+        !readAllOutputSources(minimalCanvasOutput).some((source) =>
+            source.includes(softwarePickingDirectory)
+        )
+    ) {
+        throw new Error(
+            "Minimal plus Canvas build did not contain software-picking sources."
+        );
+    }
 
     const productionOutput = await buildEntry(
         "index.js",

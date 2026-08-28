@@ -883,9 +883,11 @@ export default class InteractionController {
                             coords.containsPoint(x, y)
                         )
                     ) {
-                        const datum = view
-                            .getCollector()
-                            .findDatumByUniqueId(uniqueId);
+                        const collector = view.getCollector();
+                        if (!collector) {
+                            return;
+                        }
+                        const datum = collector.findDatumByUniqueId(uniqueId);
                         if (datum) {
                             this.#currentHover = {
                                 mark: view.mark,

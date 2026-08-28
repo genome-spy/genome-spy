@@ -13,6 +13,7 @@ import {
  * @prop {number} x
  * @prop {number} y
  * @prop {number} geometryRadius
+ * @prop {number} boundsRadius
  * @prop {number} angle
  * @prop {number} strokeWidth
  * @prop {boolean} lineShape
@@ -73,6 +74,7 @@ export function visitPointInstances(mark, properties, options, visitor) {
         x: 0,
         y: 0,
         geometryRadius: 0,
+        boundsRadius: 0,
         angle: 0,
         strokeWidth: 0,
         lineShape: false,
@@ -126,6 +128,7 @@ export function visitPointInstances(mark, properties, options, visitor) {
         instance.x = x;
         instance.y = y;
         instance.geometryRadius = geometryRadius;
+        instance.boundsRadius = conservativeRadius;
         instance.angle = encodeNumber(encoders.angle, datum);
         instance.strokeWidth = adjustedStrokeWidth;
         instance.lineShape = lineShape;

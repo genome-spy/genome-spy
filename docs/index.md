@@ -17,7 +17,7 @@ million rows. This performance comes from using GPU
 [scale](grammar/scale.md) transformations and mark rendering, but shaders are
 an implementation detail hidden from end users. A Canvas2D compatibility
 renderer keeps GenomeSpy usable when WebGL is unavailable, with lower
-performance and no datum picking.
+performance and conservative software-based datum picking.
 
 The toolkit comprises two JavaScript packages:
 

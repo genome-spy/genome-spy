@@ -199,6 +199,10 @@ that radius and half the expression-resolved `minPickingSize`. Link picking
 uses `max(instance.strokeWidth, resolvedMinPickingSize)`, matching the current
 WebGL width rule, and deliberately ignores dash gaps.
 
+Rule and tick marks have no `minPickingSize` grammar property. Their software
+picking width is therefore `max(instance.strokeWidth, 1)`, making authored
+hairlines acquire at least one logical pixel without extending the grammar.
+
 For text, add one reusable screen-space bounds-quad calculation and use it for
 both immediate culling and software picking. Ordinary text uses its final
 scaled width and size after range placement and squeezing. `logoLetters` uses
@@ -440,23 +444,24 @@ rule/tick, and link marks, including dense scatter plots and long genomic arcs.
 
 ### Work
 
-- [ ] Add `SoftwarePickingViewRenderingContext` with view-stack,
+- [x] Add `SoftwarePickingViewRenderingContext` with view-stack,
       once-per-view `onBeforeRender()`, occurrence, sample-facet, clipping,
       culling, opacity, and picking-participation rules.
-- [ ] Add mark dispatch for rect, point, rule/tick, and link using the immediate
+- [x] Add mark dispatch for rect, point, rule/tick, and link using the immediate
       instance visitors and the existing datum `uniqueId` encoding.
-- [ ] Add the lazy dirty-buffer lifecycle to `Canvas2DRenderCoordinator`.
-- [ ] Expose `readPickingId` from the Canvas backend and ensure surface resize
+- [x] Add the lazy dirty-buffer lifecycle to `Canvas2DRenderCoordinator`.
+- [x] Expose `readPickingId` from the Canvas backend and ensure surface resize
       invalidates or reallocates the picking surface.
-- [ ] Make `Canvas2DSurface` the explicit owner of picking and diagnostic
-      storage so its existing `finalize()` path releases all allocations.
-- [ ] Keep the picking context and rasterizer inside the existing dynamically
+- [x] Make `Canvas2DSurface` the explicit owner of picking storage and reserve
+      diagnostic storage ownership for Milestone 3 so its existing `finalize()`
+      path releases all allocations.
+- [x] Keep the picking context and rasterizer inside the existing dynamically
       loaded Canvas implementation so Canvas registration enables both without
       another public option or side-effect import.
-- [ ] Return ID `0` for floored-away fractional edge coordinates and after the
+- [x] Return ID `0` for floored-away fractional edge coordinates and after the
       surface has finalized.
-- [ ] Record Canvas picking replay with the existing performance profiler.
-- [ ] Publish the rasterizer's aggregate primitive counts once per picking pass.
+- [x] Record Canvas picking replay with the existing performance profiler.
+- [x] Publish the rasterizer's aggregate primitive counts once per picking pass.
 
 ### Affected areas and downstream consumers
 

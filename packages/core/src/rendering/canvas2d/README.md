@@ -9,10 +9,11 @@ UMD distribution still inlines optional modules.
 
 ## Architecture
 
-`index.js` creates the live surface and exposes Canvas-specific raster export
-through the rendering-backend boundary. `Canvas2DRenderCoordinator` runs the
-normal layout and view traversal. `Canvas2DViewRenderingContext` applies view
-coordinates, clipping, SampleView facet projection, and immediate mark drawing.
+`index.js` creates the live surface and exposes Canvas-specific picking and
+raster export through the rendering-backend boundary.
+`Canvas2DRenderCoordinator` runs the normal layout and view traversal.
+`Canvas2DViewRenderingContext` applies view coordinates, clipping, SampleView
+facet projection, and immediate mark drawing.
 
 Live rendering and detached PNG export share `renderCanvas2D.js`. Both clear
 and repaint the full surface in draw order; there is no retained scene graph or
@@ -30,9 +31,15 @@ dependencies.
 
 Canvas2D uses the same view and scale interaction dispatcher as WebGL, so
 coordinate-based zooming, panning, scrolling, and other view interactions work.
-It deliberately has no picking surface or framebuffer readback. Datum hover,
-data tooltips, datum clicks, and point-selection hit testing are therefore
-disabled.
+Rectangles, points, rules, ticks, and links also support datum hover, data
+tooltips, datum clicks, and point-selection hit testing through a software ID
+buffer. Text and arrow picking are not yet supported.
+
+Picking regions are intentionally conservative. Points use a square that
+contains the rotated shape and outward stroke, rules are at least one logical
+pixel wide, and links use their configured minimum picking width without dash
+gaps. Rounded rectangles use their full rectangular extent. Overlapping marks
+follow paint order, so the last participating datum wins.
 
 Canvas text uses native browser fonts and antialiasing. Some specialized mark
 effects are approximated or ignored with a deduplicated warning. Keep these
@@ -51,8 +58,10 @@ The rasterizer supports clipped row spans, conservative square footprints,
 thick segments, convex polygons, and adaptively flattened cubic Bézier curves.
 It writes IDs directly in painter order without colors, alpha, blending, or
 antialiasing. `pickingColorizer.js` maps those IDs to opaque diagnostic colors,
-but picking never decodes the colors. Keep this primitive layer independent of
-Canvas and DOM APIs.
+but picking never decodes the colors. The buffer is allocated lazily on the
+first picking replay that contains supported data and is rebuilt only after a
+visible render makes it dirty. Keep this primitive layer independent of Canvas
+and DOM APIs.
 
 ## Extending and testing
 

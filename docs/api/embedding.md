@@ -31,10 +31,11 @@ const api = await embed(document.body, spec);
 ```
 
 The `webgl.js` import enables WebGL2. The `canvas.js` import enables Canvas2D
-as a live renderer and as a fallback for raster export and hybrid SVG
-rasterization. Import `@genome-spy/core/rendering/svg.js` when using SVG export
-or analysis. You can omit any renderer capability the host application does
-not use; Core reports the required import if an unavailable capability is
+with software datum picking, plus a fallback for raster export and hybrid SVG
+rasterization. Software picking is included automatically and needs no separate
+import. Import `@genome-spy/core/rendering/svg.js` when using SVG export or
+analysis. You can omit any renderer capability the host application does not
+use; Core reports the required import if an unavailable capability is
 requested.
 
 ## API object

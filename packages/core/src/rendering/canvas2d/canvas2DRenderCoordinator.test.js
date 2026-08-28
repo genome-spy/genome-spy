@@ -1,4 +1,5 @@
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { startPerformanceProfiler } from "../../debug/performanceProfiler.js";
 
 const mocks = vi.hoisted(() => ({
     renderCanvas2D: vi.fn(),
@@ -9,6 +10,12 @@ vi.mock("./renderCanvas2D.js", () => ({
 }));
 
 import Canvas2DRenderCoordinator from "./canvas2DRenderCoordinator.js";
+import SoftwarePickingBuffer from "./picking/softwarePickingBuffer.js";
+
+afterEach(() => {
+    const globalObject = /** @type {Record<symbol, unknown>} */ (globalThis);
+    delete globalObject[Symbol.for("genome-spy.performance-profiler")];
+});
 
 describe("Canvas2DRenderCoordinator", () => {
     test("publishes only the settled layout and replays it without arranging", () => {
@@ -63,5 +70,72 @@ describe("Canvas2DRenderCoordinator", () => {
         expect(mocks.renderCanvas2D.mock.calls[0][0].layoutResult).toBe(
             mocks.renderCanvas2D.mock.calls[1][0].layoutResult
         );
+    });
+
+    test("replays picking only while dirty and allocates on the first write", () => {
+        const profiler = startPerformanceProfiler();
+        const buffer = new SoftwarePickingBuffer(20, 10);
+        const getPickingBuffer = vi.fn(() => buffer);
+        const clearPickingBuffer = vi.fn(() => buffer.clear());
+        const collectRenderCommands = vi.fn((context) => {
+            context.getRasterizer().fillRect(7, 2, 3, 4, 2);
+        });
+        const surface = {
+            getLogicalCanvasSize: () => ({ width: 20, height: 10 }),
+            getDevicePixelRatio: () => 1,
+            getPickingBuffer,
+            clearPickingBuffer,
+        };
+        const coordinator = new Canvas2DRenderCoordinator({
+            viewRoot: /** @type {any} */ ({}),
+            context: /** @type {any} */ ({}),
+            surface: /** @type {any} */ (surface),
+            getBackground: () => "white",
+            broadcast: vi.fn(),
+            onLayoutComputed: vi.fn(),
+        });
+        coordinator.layoutResult = /** @type {any} */ ({
+            collectRenderCommands,
+        });
+
+        coordinator.renderPickingFramebuffer();
+        coordinator.renderPickingFramebuffer();
+
+        expect(getPickingBuffer).toHaveBeenCalledOnce();
+        expect(clearPickingBuffer).toHaveBeenCalledOnce();
+        expect(collectRenderCommands).toHaveBeenCalledOnce();
+        expect(buffer.read(3, 4)).toBe(7);
+        expect(profiler.snapshot()).toMatchObject({
+            frames: [{ renderer: "canvas", kind: "picking" }],
+            countTotals: { pickingRectangles: 1, pickingSpans: 2 },
+        });
+
+        coordinator.renderAll();
+        coordinator.renderPickingFramebuffer();
+        expect(collectRenderCommands).toHaveBeenCalledTimes(2);
+    });
+
+    test("does not allocate a picking surface for an empty replay", () => {
+        const getPickingBuffer = vi.fn();
+        const coordinator = new Canvas2DRenderCoordinator({
+            viewRoot: /** @type {any} */ ({}),
+            context: /** @type {any} */ ({}),
+            surface: /** @type {any} */ ({
+                getLogicalCanvasSize: () => ({ width: 20, height: 10 }),
+                getDevicePixelRatio: () => 1,
+                getPickingBuffer,
+                clearPickingBuffer: vi.fn(),
+            }),
+            getBackground: () => null,
+            broadcast: vi.fn(),
+            onLayoutComputed: vi.fn(),
+        });
+        coordinator.layoutResult = /** @type {any} */ ({
+            collectRenderCommands: vi.fn(),
+        });
+
+        coordinator.renderPickingFramebuffer();
+
+        expect(getPickingBuffer).not.toHaveBeenCalled();
     });
 });

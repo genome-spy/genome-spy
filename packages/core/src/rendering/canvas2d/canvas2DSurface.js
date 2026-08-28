@@ -1,4 +1,5 @@
 import CanvasSizeHelper from "../canvasSizeHelper.js";
+import SoftwarePickingBuffer from "./picking/softwarePickingBuffer.js";
 
 export default class Canvas2DSurface {
     /** @type {CanvasSizeHelper} */
@@ -6,6 +7,11 @@ export default class Canvas2DSurface {
 
     /** @type {{logicalWidth: number, logicalHeight: number, physicalWidth: number, physicalHeight: number} | undefined} */
     #appliedSize;
+
+    /** @type {SoftwarePickingBuffer | undefined} */
+    #pickingBuffer;
+
+    #finalized = false;
 
     /**
      * @param {import("../renderingBackend.js").RenderingBackendOptions} options
@@ -70,6 +76,7 @@ export default class Canvas2DSurface {
             physicalWidth: physicalSize.width,
             physicalHeight: physicalSize.height,
         };
+        this.#pickingBuffer?.resize(logicalSize.width, logicalSize.height);
         return true;
     }
 
@@ -81,7 +88,43 @@ export default class Canvas2DSurface {
         return this.#sizeHelper.getDevicePixelRatio();
     }
 
+    /**
+     * Lazily creates the logical-pixel picking surface.
+     *
+     * @returns {SoftwarePickingBuffer}
+     */
+    getPickingBuffer() {
+        if (this.#finalized) {
+            throw new Error("Canvas2D surface has been finalized.");
+        }
+        const size = this.getLogicalCanvasSize();
+        this.#pickingBuffer ??= new SoftwarePickingBuffer(
+            size.width,
+            size.height
+        );
+        return this.#pickingBuffer;
+    }
+
+    clearPickingBuffer() {
+        this.#pickingBuffer?.clear();
+    }
+
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @returns {number}
+     */
+    readPickingId(x, y) {
+        return this.#finalized ? 0 : (this.#pickingBuffer?.read(x, y) ?? 0);
+    }
+
     finalize() {
+        if (this.#finalized) {
+            return;
+        }
+        this.#finalized = true;
+        this.#pickingBuffer?.dispose();
+        this.#pickingBuffer = undefined;
         this.#sizeHelper.finalize();
         this.canvas.remove();
     }
