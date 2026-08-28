@@ -185,6 +185,47 @@ describe("solveDisplacement", () => {
         ).toEqual({ x: [0], y: [0] });
     });
 
+    test("avoids heterogeneous obstacles for every output rectangle", () => {
+        const xPositions = [0, 30];
+        const yPositions = [0, 0];
+        const widths = [10, 10];
+        const heights = [10, 10];
+        const obstacles = {
+            x: [0, 30],
+            y: [0, 0],
+            width: [4, 12],
+            height: [8, 2],
+        };
+        const displacements = solveDisplacement(
+            xPositions,
+            yPositions,
+            widths,
+            heights,
+            undefined,
+            undefined,
+            undefined,
+            obstacles
+        );
+
+        expect(displacements).toEqual({ x: [0, 0], y: [-10, -10] });
+        for (let i = 0; i < xPositions.length; i++) {
+            for (let j = 0; j < obstacles.x.length; j++) {
+                expect(
+                    Math.abs(
+                        xPositions[i] + displacements.x[i] - obstacles.x[j]
+                    ) *
+                        2 <
+                        widths[i] + obstacles.width[j] &&
+                        Math.abs(
+                            yPositions[i] + displacements.y[i] - obstacles.y[j]
+                        ) *
+                            2 <
+                            heights[i] + obstacles.height[j]
+                ).toBe(false);
+            }
+        }
+    });
+
     test("keeps valid previous placements instead of snapping to the origin", () => {
         const displacements = solveDisplacement(
             [0, 20],
