@@ -2,10 +2,10 @@
 
 ## Status
 
-In progress. The solver, public transform, browser integration, and user-facing
-documentation are implemented. Final review and plan reconciliation remain.
-This plan is a temporary implementation artifact and must be reconciled and
-retired before the pull request is merged.
+Implemented and internally reviewed. User acid testing with the private example
+suite remains a deliberate pre-PR gate. This plan stays on the branch until that
+testing and any resulting fixes are complete; it must be reconciled again and
+retired before a pull request is created.
 
 ## Motivation
 
@@ -567,7 +567,7 @@ composition fixture. Interaction acceptance therefore uses overlap-free settled
 steps, exact repeated-domain output, the existing latency budget, and visual
 inspection. Raw material-change fractions remain recorded diagnostics.
 
-The implementation checkpoints contain 595 production lines and 576 adjacent
+The implementation checkpoints contain 597 production lines and 588 adjacent
 test lines for the solver and transform. The public adapter's lifecycle and
 reactivity account for most of its size; no strategy interface, retained
 placement cache, worker, renderer path, or runtime dependency was added.
@@ -576,6 +576,9 @@ The final code review added one finite-bounds guard. Without it, extreme but
 finite inputs could overflow rectangle-edge arithmetic to infinity and enter an
 unbounded grid loop. The solver now fails fast with a specific numeric-range
 error, covered by a regression test, without adding another placement path.
+The same review replaced a full-width overlap comparison with the equivalent
+half-width form so large finite rectangles cannot overflow both sides of the
+predicate and be mistaken for non-overlapping geometry.
 
 ### Documentation and secondary integration (2026-08-27)
 
@@ -657,7 +660,7 @@ remain useful for review and bisection.
 
 ## Milestones
 
-### 1. Minimal solver and contract evidence
+### 1. Minimal solver and contract evidence — Completed
 
 Intended outcome: implement the smallest production-quality direct solver once,
 validate it against generic rectangle fixtures and one canonical annotation use
@@ -701,7 +704,7 @@ Tentative commit: `feat(core): add two-dimensional displacement solver`
 Review gate: maintainer review of the algorithm, public parameter shape,
 performance evidence, infeasibility policy, and license/provenance decision.
 
-### 2. Dataflow transform and public grammar
+### 2. Dataflow transform and public grammar — Completed
 
 Intended outcome: add a thin collecting, modifying `displace2d` transform with
 reactive pixel conversion and the smallest public contract proven by milestone
@@ -737,7 +740,7 @@ documentation; there is no migration because this is additive.
 
 Tentative commit: `feat(core): add two-dimensional displacement transform`
 
-### 3. User-facing example, documentation, and integration
+### 3. User-facing example, documentation, and integration — Implemented
 
 Intended outcome: demonstrate the interactive airway volcano plot with moved
 text annotations, retain the airway MA plot as a secondary regression, and
@@ -778,6 +781,54 @@ Tentative commit: `docs(core): document two-dimensional displacement`
 Review gate: final maintainer review of the public grammar, integrated
 interaction behavior, downstream renderer/picking/export behavior, performance,
 documentation, provenance, and code-size tradeoff.
+
+## Reconciliation before user acid testing (2026-08-28)
+
+The plan is reconciled to the implemented branch but is intentionally not ready
+to retire. No pull request will be prepared until the private examples have been
+used for sustained manual testing and the user approves the behavior.
+
+Completed:
+
+- The pure solver, transform adapter, public grammar, generated schema links,
+  documentation, inline example, and shared-example snapshot are implemented.
+- Determinism, preferred bounds, overflow, heterogeneous dimensions, reactive
+  scale and extent updates, lifecycle disposal, and numeric failure modes have
+  focused automated coverage.
+- The airway volcano and MA data were exercised temporarily with real
+  `measureText` geometry. Browser WebGL, zoom traces, and structured SVG export
+  were verified, and performance measurements are recorded above.
+- A final maintainer-style review confirmed the intended abstraction boundary:
+  generic rectangle inputs, signed offset outputs, one solver, no renderer
+  coupling, no retained placement state, and no changes to `displace1d`.
+
+Discarded:
+
+- Retained-placement hysteresis and near-previous candidate searches were
+  deleted because they added policy and state without passing a meaningful
+  interaction-quality criterion.
+- Vega's occupancy bitmap, force relaxation, workers, pluggable strategies,
+  obstacle marks, and visibility outputs remain unnecessary for the measured
+  use cases.
+- The external airway Arrow table will not be copied into the repository. The
+  permanent docs example uses small inline data; private examples may reference
+  the published content-addressed asset for local testing.
+- No renderer-specific code or new permanent picking/SVG implementation test
+  was added. Existing offset channels own those semantics, while the integrated
+  SVG smoke test confirmed all displaced labels and leader lines.
+
+Pending before PR preparation:
+
+- Create a private acid-test suite covering realistic airway plots, dense and
+  heterogeneous labels, overflow, edge clamping, and larger stress batches.
+- Manually exercise resize, wheel and inertial zoom, pan, domain restoration,
+  clipping, tooltip/picking alignment, long interaction sessions, and visual
+  association through leader lines.
+- Address findings from user testing, repeat proportionate automated and
+  browser verification, and obtain explicit user approval.
+- Reconcile every remaining acceptance item, commit that final record, and
+  delete this temporary plan in a later commit. Only then prepare a pull
+  request.
 
 ## Final integration acceptance criteria
 
