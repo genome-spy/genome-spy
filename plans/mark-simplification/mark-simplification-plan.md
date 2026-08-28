@@ -270,12 +270,12 @@ defaults.
 
 ### Work
 
-- [ ] Remove `xOffset`, `yOffset`, and `minBufferSize` literals duplicated in
+- [x] Remove `xOffset`, `yOffset`, and `minBufferSize` literals duplicated in
       `Mark.defaultProperties`; configured defaults remain authoritative.
-- [ ] Remove undefined `sample` and `uniqueId` placeholders and offset defaults
+- [x] Remove undefined `sample` and `uniqueId` placeholders and offset defaults
       from `getDefaultEncoding()` when the property-to-value pass already
       supplies them.
-- [ ] Preserve conditional automatic `uniqueId` encoding for picking.
+- [x] Preserve conditional automatic `uniqueId` encoding for picking.
 
 ### Affected areas and consumers
 

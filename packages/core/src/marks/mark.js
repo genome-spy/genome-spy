@@ -87,9 +87,6 @@ export default class Mark {
                     }
                 });
             },
-            xOffset: 0,
-            yOffset: 0,
-            minBufferSize: 0,
             ...configuredDefaults,
         });
 
@@ -167,12 +164,7 @@ export default class Mark {
     /** @returns {Encoding} */
     getDefaultEncoding() {
         /** @type {Encoding} */
-        const encoding = {
-            sample: undefined,
-            uniqueId: undefined,
-            xOffset: { value: 0 },
-            yOffset: { value: 0 },
-        };
+        const encoding = {};
 
         if (this.isPickingParticipant()) {
             encoding.uniqueId = { field: UNIQUE_ID_KEY };

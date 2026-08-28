@@ -4,6 +4,7 @@ import Rectangle from "../view/layout/rectangle.js";
 import { createSelfClipOptions } from "../view/renderingContext/clipOptions.js";
 import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
+import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import WebGLMark from "../rendering/webgl/marks/webGlMark.js";
 import {
     createLogicalVisibleRect,
@@ -33,6 +34,16 @@ describe("mark factory", () => {
         );
 
         expect(view.mark.constructor.name).toBe("ArrowMark");
+    });
+
+    test("derives offset defaults and picking IDs from mark properties", async () => {
+        const view = await create({ mark: "point" }, UnitView);
+
+        expect(view.mark.encoding).toMatchObject({
+            xOffset: { value: 0 },
+            yOffset: { value: 0 },
+            uniqueId: { field: UNIQUE_ID_KEY },
+        });
     });
 });
 
