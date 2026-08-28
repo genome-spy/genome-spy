@@ -3,7 +3,6 @@ import { initializeViewSubtree } from "../data/flowInit.js";
 import LayerView from "../view/layerView.js";
 import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
-import WebGLTextMark from "../rendering/webgl/marks/text.js";
 
 /**
  * @param {import("../spec/channel.js").PositionDef | import("../spec/channel.js").Position2Def} channelDef
@@ -14,40 +13,6 @@ function getBand(channelDef) {
 }
 
 describe("TextMark", () => {
-    test("updates a vector uniform from an expression component", async () => {
-        const view = await create(
-            {
-                params: [{ name: "fadeDistance", value: 4 }],
-                data: { values: [{ label: "text" }] },
-                mark: "text",
-                encoding: { text: { field: "label", type: "nominal" } },
-            },
-            UnitView
-        );
-        const textMark = /** @type {any} */ (
-            Object.create(WebGLTextMark.prototype)
-        );
-        textMark.mark = { unitView: view };
-        const uniformSetter = vi.fn();
-        textMark.markUniformInfo = {
-            setters: { uTestVector: uniformSetter },
-        };
-        const requestRender = vi.spyOn(view.context.animator, "requestRender");
-
-        textMark.registerMarkUniformVector("uTestVector", [
-            1,
-            { expr: "fadeDistance" },
-            3,
-            4,
-        ]);
-        expect(uniformSetter).toHaveBeenLastCalledWith([1, 4, 3, 4]);
-
-        view.paramRuntime.setValue("fadeDistance", 12);
-
-        expect(uniformSetter).toHaveBeenLastCalledWith([1, 12, 3, 4]);
-        expect(requestRender).toHaveBeenCalledTimes(2);
-    });
-
     test("defers expression updates until data propagation completes", async () => {
         const view = await create(
             {

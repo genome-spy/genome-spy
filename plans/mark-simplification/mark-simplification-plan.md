@@ -492,16 +492,17 @@ The test tree communicates the same ownership boundary as production code.
 
 ### Work
 
-- [ ] Move generated GLSL snapshot tests and snapshots from `src/marks/` to an
+- [x] Move generated GLSL snapshot tests and snapshots from `src/marks/` to an
       appropriate `src/rendering/webgl/` location.
-- [ ] Move offset-aware indexed drawing, viewport scope, and logical visible
+- [x] Move offset-aware indexed drawing, viewport scope, and logical visible
       rectangle tests out of semantic `mark.test.js`.
-- [ ] Move the WebGL text uniform-vector test out of semantic `text.test.js`.
-- [ ] Leave the Arrow uniform-order tests moved with milestone 10 in place, and
+- [x] Move the WebGL text uniform-vector test out of semantic `text.test.js`.
+- [x] Leave the Arrow uniform-order tests moved with milestone 10 in place, and
       relocate the remaining WebGL-owned tests without duplicating that work.
-- [ ] Leave semantic factory, encoding, offset, text-data, and configuration
+- [x] Leave semantic factory, encoding, offset, text-data, and configuration
       tests under `src/marks/`.
-- [ ] Update relative fixture paths without regenerating unchanged snapshots.
+- [x] Update relative fixture paths and accept only the channel-order snapshot
+      changes produced by milestone 6.
 
 ### Affected areas and consumers
 
@@ -512,8 +513,8 @@ The test tree communicates the same ownership boundary as production code.
 ### Verification
 
 - Run all moved and remaining mark/WebGL test files directly.
-- Confirm snapshot content is unchanged except for snapshot key or path changes
-  required by relocation.
+- Confirm snapshot content is unchanged except for relocation and the
+  channel-order normalization from milestone 6.
 - Run `rg "rendering/webgl|WebGL|GLSL|shader|uniform" packages/core/src/marks
   --glob "*.test.js"` and justify every remaining match.
 

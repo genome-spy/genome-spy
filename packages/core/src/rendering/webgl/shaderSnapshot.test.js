@@ -1,16 +1,16 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
-import View from "../view/view.js";
-import UnitView from "../view/unitView.js";
-import { createAndInitialize } from "../view/testUtils.js";
-import { createWebGLMark } from "../rendering/webgl/rendererResources.js";
+import View from "../../view/view.js";
+import UnitView from "../../view/unitView.js";
+import { createAndInitialize } from "../../view/testUtils.js";
+import { createWebGLMark } from "./rendererResources.js";
 
 const VERTEX_SHADER = 0x8b31;
 const FRAGMENT_SHADER = 0x8b30;
 
 /**
  * @param {string} relativePath
- * @returns {import("../spec/root.js").RootSpec}
+ * @returns {import("../../spec/root.js").RootSpec}
  */
 function loadSpec(relativePath) {
     return JSON.parse(
@@ -125,7 +125,7 @@ function createFakeGlHelper() {
 }
 
 /**
- * @param {import("../view/view.js").default} root
+ * @param {import("../../view/view.js").default} root
  * @param {string} [name]
  * @returns {UnitView}
  */
@@ -155,7 +155,7 @@ function findUnitView(root, name) {
 }
 
 /**
- * @param {import("../spec/root.js").RootSpec} spec
+ * @param {import("../../spec/root.js").RootSpec} spec
  * @param {string} [unitName]
  */
 async function captureShaderSources(spec, unitName) {
@@ -315,7 +315,7 @@ describe("generated shader snapshots", () => {
     test("interval selection example", async () => {
         const sources = await captureShaderSources(
             loadSpec(
-                "../../../../examples/docs/grammar/parameters/interval-selection.json"
+                "../../../../../examples/docs/grammar/parameters/interval-selection.json"
             )
         );
 
@@ -325,7 +325,7 @@ describe("generated shader snapshots", () => {
     test("point selection example", async () => {
         const sources = await captureShaderSources(
             loadSpec(
-                "../../../../examples/docs/grammar/parameters/point-selection.json"
+                "../../../../../examples/docs/grammar/parameters/point-selection.json"
             )
         );
 
@@ -359,7 +359,7 @@ describe("generated shader snapshots", () => {
     test("arrow mark playground spec", async () => {
         const sources = await captureShaderSources(
             loadSpec(
-                "../../../../examples/docs/grammar/mark/arrow/arrow-playground.json"
+                "../../../../../examples/docs/grammar/mark/arrow/arrow-playground.json"
             )
         );
 
@@ -393,7 +393,7 @@ describe("generated shader snapshots", () => {
     test("arrow direction encoding spec", async () => {
         const sources = await captureShaderSources(
             loadSpec(
-                "../../../../examples/core/marks/arrow/arrow_direction.json"
+                "../../../../../examples/core/marks/arrow/arrow_direction.json"
             )
         );
 
@@ -448,7 +448,7 @@ describe("generated shader snapshots", () => {
     test("penguins scatter plot example", async () => {
         const sources = await captureShaderSources(
             loadSpec(
-                "../../../../examples/docs/grammar/parameters/penguins.json"
+                "../../../../../examples/docs/grammar/parameters/penguins.json"
             ),
             "scatterPlot"
         );
