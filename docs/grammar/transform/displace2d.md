@@ -29,6 +29,11 @@ desired spacing. They can be constants, datum fields, or reactive expressions
 that provide a shared value. Marks should use centered alignment or adjust
 their anchor coordinates before displacement.
 
+`anchorWidth` and `anchorHeight` can reserve a rectangle around each original
+center. Every displaced rectangle avoids every reserved anchor, including its
+own. Use the rendered point dimensions plus the desired clearance. Setting
+either dimension to zero disables the anchor for that row.
+
 The transform visits rows in input order and places each rectangle at the
 first available candidate in a bounded deterministic sequence around its
 original center. Sorting by a priority field immediately before `displace2d`
@@ -83,6 +88,6 @@ non-overlapping overflow row to the right of the crowded region. Thus, extents
 are preferences rather than a visibility or clipping policy. Downstream marks
 still control clipping, opacity, tooltips, and leader-line styling.
 
-The transform prevents collisions only between the supplied rectangles. It
-does not inspect rendered marks, avoid unrelated points, measure text
-automatically, or route leader lines.
+The transform prevents collisions between the supplied rectangles and any
+configured anchors. It does not inspect rendered marks, avoid unrelated points,
+measure text automatically, or route leader lines.
