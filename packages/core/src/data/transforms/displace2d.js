@@ -11,6 +11,8 @@ import { solveDisplacement } from "./displace2dSolver.js";
  * @typedef {object} PlacementProps
  * @prop {number} width
  * @prop {number} height
+ * @prop {number} anchorWidth
+ * @prop {number} anchorHeight
  * @prop {number} xPositionFactor
  * @prop {number} yPositionFactor
  * @prop {[number, number] | undefined} xExtent
@@ -62,6 +64,13 @@ export default class Displace2DTransform extends Transform {
 
         this.width = typeof params.width == "number" ? params.width : 0;
         this.height = typeof params.height == "number" ? params.height : 0;
+        this.anchorWidth =
+            typeof params.anchorWidth == "number" ? params.anchorWidth : 0;
+        this.anchorHeight =
+            typeof params.anchorHeight == "number" ? params.anchorHeight : 0;
+        this.usesAnchorObstacles =
+            params.anchorWidth !== undefined &&
+            params.anchorHeight !== undefined;
         this.xPositionFactor = isExprRef(params.xPositionFactor)
             ? 1
             : (params.xPositionFactor ?? 1);
@@ -79,11 +88,27 @@ export default class Displace2DTransform extends Transform {
             typeof params.height == "string"
                 ? field(params.height)
                 : () => this.height;
+        this.anchorWidthAccessor =
+            typeof params.anchorWidth == "string"
+                ? field(params.anchorWidth)
+                : () => this.anchorWidth;
+        this.anchorHeightAccessor =
+            typeof params.anchorHeight == "string"
+                ? field(params.anchorHeight)
+                : () => this.anchorHeight;
 
         const placementProps = {
             width: typeof params.width == "string" ? this.width : params.width,
             height:
                 typeof params.height == "string" ? this.height : params.height,
+            anchorWidth:
+                typeof params.anchorWidth == "string"
+                    ? this.anchorWidth
+                    : (params.anchorWidth ?? 0),
+            anchorHeight:
+                typeof params.anchorHeight == "string"
+                    ? this.anchorHeight
+                    : (params.anchorHeight ?? 0),
             xPositionFactor: params.xPositionFactor ?? 1,
             yPositionFactor: params.yPositionFactor ?? 1,
             xExtent: params.xExtent,
@@ -153,6 +178,12 @@ export default class Displace2DTransform extends Transform {
         const yPositions = new Array(count);
         const widths = new Array(count);
         const heights = new Array(count);
+        const anchorWidths = this.usesAnchorObstacles
+            ? new Array(count)
+            : undefined;
+        const anchorHeights = this.usesAnchorObstacles
+            ? new Array(count)
+            : undefined;
 
         for (let i = 0; i < count; i++) {
             const datum = data[i];
@@ -160,6 +191,10 @@ export default class Displace2DTransform extends Transform {
             yPositions[i] = this.yAccessor(datum) * this.yPositionFactor;
             widths[i] = this.widthAccessor(datum);
             heights[i] = this.heightAccessor(datum);
+            if (this.usesAnchorObstacles) {
+                anchorWidths[i] = this.anchorWidthAccessor(datum);
+                anchorHeights[i] = this.anchorHeightAccessor(datum);
+            }
         }
 
         const previous =
@@ -174,7 +209,15 @@ export default class Displace2DTransform extends Transform {
             heights,
             scaleExtent(this.xExtent, this.xPositionFactor),
             scaleExtent(this.yExtent, this.yPositionFactor),
-            previous
+            previous,
+            this.usesAnchorObstacles
+                ? {
+                      x: xPositions,
+                      y: yPositions,
+                      width: anchorWidths,
+                      height: anchorHeights,
+                  }
+                : undefined
         );
         this.#previousDisplacements = displacements;
 
@@ -199,6 +242,8 @@ export default class Displace2DTransform extends Transform {
         const placementChanged =
             props.width != this.width ||
             props.height != this.height ||
+            props.anchorWidth != this.anchorWidth ||
+            props.anchorHeight != this.anchorHeight ||
             props.xPositionFactor != this.xPositionFactor ||
             props.yPositionFactor != this.yPositionFactor ||
             !equalExtent(props.xExtent, this.xExtent) ||
@@ -206,6 +251,8 @@ export default class Displace2DTransform extends Transform {
 
         this.width = props.width;
         this.height = props.height;
+        this.anchorWidth = props.anchorWidth;
+        this.anchorHeight = props.anchorHeight;
         this.xPositionFactor = props.xPositionFactor;
         this.yPositionFactor = props.yPositionFactor;
         this.xExtent = copyExtent(props.xExtent);
@@ -240,8 +287,12 @@ function validatePlacementParameters(props) {
     if (
         !Number.isFinite(props.width) ||
         !Number.isFinite(props.height) ||
+        !Number.isFinite(props.anchorWidth) ||
+        !Number.isFinite(props.anchorHeight) ||
         props.width < 0 ||
-        props.height < 0
+        props.height < 0 ||
+        props.anchorWidth < 0 ||
+        props.anchorHeight < 0
     ) {
         throw new Error(
             "displace2d scalar dimensions must be finite non-negative numbers."

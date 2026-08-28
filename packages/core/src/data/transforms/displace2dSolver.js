@@ -137,8 +137,10 @@ export function solveDisplacement(
             );
         }
 
-        overflowCursor = Math.max(overflowCursor, x + width / 2);
-        cellSize = Math.max(cellSize, width, height);
+        if (width > 0 && height > 0) {
+            overflowCursor = Math.max(overflowCursor, x + width / 2);
+            cellSize = Math.max(cellSize, width, height);
+        }
     }
 
     /** @type {Map<number, Map<number, number[]>>} */

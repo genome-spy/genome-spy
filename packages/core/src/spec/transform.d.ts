@@ -1136,6 +1136,26 @@ export interface Displace2DParams extends TransformParamsBase {
     height: number | Field | ExprRef;
 
     /**
+     * Full width of a preplaced obstacle centered at each row's original
+     * position. A number is shared by all rows, a field supplies per-row
+     * values, and an expression supplies a reactive scalar shared by all rows.
+     * Set either anchor dimension to zero to disable the obstacle for that row.
+     *
+     * __Default value:__ `0`
+     */
+    anchorWidth?: number | Field | ExprRef;
+
+    /**
+     * Full height of a preplaced obstacle centered at each row's original
+     * position. A number is shared by all rows, a field supplies per-row
+     * values, and an expression supplies a reactive scalar shared by all rows.
+     * Set either anchor dimension to zero to disable the obstacle for that row.
+     *
+     * __Default value:__ `0`
+     */
+    anchorHeight?: number | Field | ExprRef;
+
+    /**
      * Multiplier that converts horizontal positions to logical pixels. An
      * expression can react to scale or layout changes. Negative factors are
      * valid. Nonlinear scales require pixel positions derived upstream.
