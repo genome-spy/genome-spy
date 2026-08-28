@@ -147,6 +147,30 @@ describe("Displace2DTransform", () => {
         expect(placed[1]).toBe(input[1]);
     });
 
+    test("retains a valid placement for the same datum across replays", () => {
+        const input = [
+            { x: 0, y: 0 },
+            { x: 0, y: 0.2 },
+        ];
+        const { output, source, transform } = createFlow(input, {
+            xPositionFactor: 20,
+            yPositionFactor: 20,
+        });
+
+        expect([...output.getData()].map(({ dx, dy }) => [dx, dy])).toEqual([
+            [0, 0],
+            [0, 10],
+        ]);
+
+        transform.yPositionFactor = 100;
+        source.repropagate();
+
+        expect([...output.getData()].map(({ dx, dy }) => [dx, dy])).toEqual([
+            [0, 0],
+            [0, 10],
+        ]);
+    });
+
     test("reads collision dimensions from fields", () => {
         const { output } = createFlow(
             [
@@ -258,7 +282,7 @@ describe("Displace2DTransform", () => {
         expect(repropagate).toHaveBeenCalledOnce();
         expect([...output.getData()].map(({ dx, dy }) => [dx, dy])).toEqual([
             [0, 0],
-            [0, -10],
+            [0, -20],
         ]);
     });
 
@@ -304,7 +328,8 @@ describe("Displace2DTransform", () => {
         listener();
         await Promise.resolve();
 
-        expect([...output.getData()][0].dx).toBe(0);
+        expect(transform.xExtent).toBeUndefined();
+        expect([...output.getData()][0].dx).toBe(-30);
     });
 
     test("cancels the deferred bootstrap replay after disposal", async () => {

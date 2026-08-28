@@ -9,6 +9,12 @@ const CANDIDATE_OFFSETS = createCandidateOffsets();
  */
 
 /**
+ * @typedef {object} PreviousDisplacement2D
+ * @prop {(number | undefined)[]} x Previous signed horizontal offsets.
+ * @prop {(number | undefined)[]} y Previous signed vertical offsets.
+ */
+
+/**
  * Places axis-aligned rectangles without overlap using stable input order.
  *
  * Candidates form a small bounded strip around each original center.
@@ -21,6 +27,7 @@ const CANDIDATE_OFFSETS = createCandidateOffsets();
  * @param {number[]} heights Full collision heights.
  * @param {[number, number]} [xExtent] Preferred horizontal outer bounds.
  * @param {[number, number]} [yExtent] Preferred vertical outer bounds.
+ * @param {PreviousDisplacement2D} [previous] Previous placement hints.
  * @param {Displacement2D} [output] Reusable output arrays.
  * @returns {Displacement2D} The output arrays.
  */
@@ -31,6 +38,7 @@ export function solveDisplacement(
     heights,
     xExtent,
     yExtent,
+    previous,
     output = { x: [], y: [] }
 ) {
     const count = xPositions.length;
@@ -41,6 +49,14 @@ export function solveDisplacement(
     ) {
         throw new Error(
             "displace2d positions and dimensions must have the same number of values."
+        );
+    }
+    if (
+        previous &&
+        (previous.x.length != count || previous.y.length != count)
+    ) {
+        throw new Error(
+            "displace2d previous placements must have the same number of values as positions."
         );
     }
     validateExtent(xExtent, "xExtent");
@@ -148,7 +164,24 @@ export function solveDisplacement(
         const preferredY = clampToExtent(y, height, yExtent);
 
         let placed = false;
-        if (isAvailable(i, x, y)) {
+        const previousDx = previous?.x[i];
+        const previousDy = previous?.y[i];
+        const hasPrevious =
+            previousDx !== undefined || previousDy !== undefined;
+        if (
+            hasPrevious &&
+            (!Number.isFinite(previousDx) || !Number.isFinite(previousDy))
+        ) {
+            throw new Error(
+                "displace2d previous placements must contain finite offset pairs."
+            );
+        }
+
+        if (hasPrevious && isAvailable(i, x + previousDx, y + previousDy)) {
+            xDisplacements[i] = previousDx;
+            yDisplacements[i] = previousDy;
+            placed = true;
+        } else if (isAvailable(i, x, y)) {
             xDisplacements[i] = 0;
             yDisplacements[i] = 0;
             placed = true;
