@@ -16,6 +16,9 @@
     ".": "./src/index.js",
     "./minimal": "./src/minimal.js",
     "./full": "./src/full.js",
+    "./rendering/canvas.js": "./src/rendering/registerCanvas.js",
+    "./rendering/svg.js": "./src/rendering/registerSvg.js",
+    "./rendering/webgl.js": "./src/rendering/registerWebGL.js",
     "./browser": {
       "import": "./dist/bundle/index.es.js",
       "default": "./dist/bundle/index.js"

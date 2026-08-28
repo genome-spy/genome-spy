@@ -26,6 +26,7 @@ import { invalidatePrefix } from "./utils/propertyCacher.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import InteractionController from "./genomeSpy/interactionController.js";
 import { createRenderingBackend } from "./rendering/renderingBackend.js";
+import { renderingModules } from "./rendering/renderingModuleRegistry.js";
 import {
     exportRasterUsingBackend,
     rasterizeSvgRunsUsingBackend,
@@ -791,8 +792,7 @@ export default class GenomeSpy {
         const background = getExportBackground(this.spec, options);
 
         try {
-            const { createSvgExport } =
-                await import("./rendering/svg/index.js");
+            const { createSvgExport } = await loadSvgRenderer();
             const { svg, warnings, rasterized } = await createSvgExport({
                 viewRoot: this.viewRoot,
                 rasterizeSvgRuns: (rasterOptions) =>
@@ -830,7 +830,7 @@ export default class GenomeSpy {
         const logicalWidth = options.logicalWidth ?? canvasSize.width;
         const logicalHeight = options.logicalHeight ?? canvasSize.height;
         try {
-            const svgModule = await import("./rendering/svg/index.js");
+            const svgModule = await loadSvgRenderer();
             return svgModule.analyzeSvgExport({
                 viewRoot: this.viewRoot,
                 logicalWidth,
@@ -908,6 +908,16 @@ export default class GenomeSpy {
         });
         return resolutions;
     }
+}
+
+async function loadSvgRenderer() {
+    const loader = renderingModules.svgRenderer;
+    if (!loader) {
+        throw new Error(
+            'SVG export is not registered. Import "@genome-spy/core/rendering/svg.js" when using "@genome-spy/core/minimal".'
+        );
+    }
+    return loader();
 }
 
 /**

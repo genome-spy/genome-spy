@@ -1,3 +1,5 @@
+import { renderingModules } from "./renderingModuleRegistry.js";
+
 /**
  * Signals that a raster backend could not be initialized or does not support
  * the requested operation. Rendering errors must use their original type so
@@ -30,9 +32,13 @@ export async function exportRasterUsingBackend(backend, options) {
         }
     }
 
+    if (!renderingModules.canvasRasterExport) {
+        throw unavailableRasterExportError();
+    }
+
     let canvasModule;
     try {
-        canvasModule = await import("./canvas2d/rasterExport.js");
+        canvasModule = await renderingModules.canvasRasterExport();
     } catch (error) {
         throw unavailableRasterExportError(error);
     }
@@ -70,16 +76,21 @@ export async function rasterizeSvgRunsUsingBackend(backend, options) {
         }
     }
 
+    if (!renderingModules.canvasSvgRasterizer) {
+        throw new RasterizationUnavailableError(
+            'No raster backend supports selective SVG rasterization. Import "@genome-spy/core/rendering/canvas.js" to enable the Canvas2D fallback.'
+        );
+    }
+
     let canvasModule;
     try {
-        canvasModule = await import("./canvas2d/svgRasterizer.js");
+        canvasModule = await renderingModules.canvasSvgRasterizer();
     } catch (error) {
         throw new RasterizationUnavailableError(
             "No raster backend supports selective SVG rasterization.",
             { cause: error }
         );
     }
-
     const rasterizeSvgRuns = canvasModule.createCanvas2DSvgRasterizer();
     await rasterizeSvgRuns(options);
 }
@@ -87,7 +98,7 @@ export async function rasterizeSvgRunsUsingBackend(backend, options) {
 /** @param {unknown} cause */
 function unavailableRasterExportError(cause) {
     return new RasterizationUnavailableError(
-        "Raster export is unsupported because no raster rendering backend is available.",
+        'Raster export is unsupported because no raster rendering backend is available. Import "@genome-spy/core/rendering/canvas.js" to enable the Canvas2D fallback.',
         { cause }
     );
 }

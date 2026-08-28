@@ -4,6 +4,9 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 vi.mock("./styles/genome-spy.css.js", () => ({ default: "" }));
 
+import "./rendering/registerCanvas.js";
+import "./rendering/registerSvg.js";
+import "./rendering/registerWebGL.js";
 import GenomeSpy from "./genomeSpyBase.js";
 
 /** @type {ReturnType<typeof createContext>[]} */

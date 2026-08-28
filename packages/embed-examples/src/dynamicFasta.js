@@ -1,4 +1,5 @@
 import { embed } from "@genome-spy/core/minimal";
+import "@genome-spy/core/rendering/webgl.js";
 
 import { IndexedFasta } from "@gmod/indexedfasta";
 import { RemoteFile } from "generic-filehandle";

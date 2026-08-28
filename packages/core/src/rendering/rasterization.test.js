@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
     canvasExportRaster: vi.fn(),
@@ -8,25 +8,29 @@ const mocks = vi.hoisted(() => ({
     createCanvas2DSvgRasterizer: vi.fn(),
 }));
 
-vi.mock("./canvas2d/rasterExport.js", () => ({
-    exportRaster: mocks.canvasExportRaster,
-}));
-
-vi.mock("./canvas2d/svgRasterizer.js", () => ({
-    createCanvas2DSvgRasterizer: mocks.createCanvas2DSvgRasterizer,
-}));
-
 import {
     exportRasterUsingBackend,
     RasterizationUnavailableError,
     rasterizeSvgRunsUsingBackend,
 } from "./rasterization.js";
+import { renderingModules } from "./renderingModuleRegistry.js";
 
 beforeEach(() => {
     vi.resetAllMocks();
     mocks.createCanvas2DSvgRasterizer.mockReturnValue(
         mocks.canvasRasterizeSvgRuns
     );
+    renderingModules.canvasRasterExport = async () => ({
+        exportRaster: mocks.canvasExportRaster,
+    });
+    renderingModules.canvasSvgRasterizer = async () => ({
+        createCanvas2DSvgRasterizer: mocks.createCanvas2DSvgRasterizer,
+    });
+});
+
+afterEach(() => {
+    delete renderingModules.canvasRasterExport;
+    delete renderingModules.canvasSvgRasterizer;
 });
 
 describe("raster capability routing", () => {
@@ -82,15 +86,11 @@ describe("raster capability routing", () => {
     });
 
     test("rejects explicitly when no full-raster backend is available", async () => {
-        mocks.canvasExportRaster.mockRejectedValue(
-            new RasterizationUnavailableError("No Canvas2D")
-        );
+        delete renderingModules.canvasRasterExport;
 
         await expect(
             exportRasterUsingBackend(createBackend(), createExportOptions())
-        ).rejects.toThrow(
-            "Raster export is unsupported because no raster rendering backend is available."
-        );
+        ).rejects.toThrow("@genome-spy/core/rendering/canvas.js");
     });
 
     test("prefers the selected backend for selective SVG rasterization", async () => {

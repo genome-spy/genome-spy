@@ -1,8 +1,9 @@
 # SVG export
 
-This directory contains GenomeSpy Core's vector export implementation. The
-subsystem is dynamically imported by `GenomeSpy.exportSvg()` so normal WebGL
-rendering does not include it in the main bundle.
+This directory contains GenomeSpy Core's vector export implementation.
+`../registerSvg.js` registers the dynamically imported subsystem, so normal
+rendering does not include it in the main bundle and the minimal entrypoint can
+omit it entirely.
 
 ## Architecture
 

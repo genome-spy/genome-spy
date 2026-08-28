@@ -1,4 +1,5 @@
 import { embed } from "@genome-spy/core/minimal";
+import "@genome-spy/core/rendering/webgl.js";
 
 const getFormData = () =>
     ["A", "B"].map((x) => ({

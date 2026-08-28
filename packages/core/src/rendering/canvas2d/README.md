@@ -1,10 +1,11 @@
 # Canvas2D renderer
 
 This directory contains GenomeSpy Core's compatibility renderer for browsers
-and virtual desktops where WebGL2 is unavailable. The subsystem is dynamically
-imported after backend selection, so normal WebGL rendering does not include it
-in the synchronous ESM entry bundle. The single-file UMD distribution still
-inlines optional modules.
+and virtual desktops where WebGL2 is unavailable. `../registerCanvas.js`
+registers its dynamically imported live and raster capabilities. Normal WebGL
+rendering does not include it in the synchronous ESM entry bundle, while the
+minimal entrypoint omits it entirely unless explicitly enabled. The single-file
+UMD distribution still inlines optional modules.
 
 ## Architecture
 

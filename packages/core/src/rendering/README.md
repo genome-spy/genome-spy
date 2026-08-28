@@ -6,7 +6,9 @@ graph and expose only the capabilities needed by shared orchestration.
 
 ## Directory layout
 
-- `renderingBackend.js` dynamically selects the live backend and exposes its
+- `renderingModuleRegistry.js` holds the renderer loaders enabled by the active
+  package entrypoint or explicit opt-in imports.
+- `renderingBackend.js` selects a registered live backend and exposes its
   surface, coordinator, raster operations, and optional picking capability.
 - `canvasSizeHelper.js` provides backend-neutral logical and physical surface
   sizing.
@@ -31,8 +33,9 @@ immediate layer must not import Canvas2D, SVG, WebGL, or WebGPU code. There is
 intentionally no universal low-level drawing interface shared by every
 renderer.
 
-`renderingBackend.js` is the only static caller of renderer factories. WebGL,
-Canvas2D, and SVG enter through dynamic imports. Keep all TWGL and GLSL imports
+The `register*.js` modules are the only static bridge to renderer factories.
+Their dynamic imports keep WebGL, Canvas2D, and SVG out of the minimal entrypoint
+unless explicitly enabled. Keep all TWGL and GLSL imports
 under `webgl/`; adding one elsewhere would pull the temporary renderer back
 into the synchronous ESM graph.
 

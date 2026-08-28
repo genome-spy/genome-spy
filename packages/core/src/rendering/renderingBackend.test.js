@@ -1,20 +1,12 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
     createWebGLRenderingBackend: vi.fn(),
     createCanvas2DRenderingBackend: vi.fn(),
     createWebGpuRenderingBackend: vi.fn(),
     warnOnce: vi.fn(),
-}));
-
-vi.mock("./webgl/index.js", () => ({
-    createWebGLRenderingBackend: mocks.createWebGLRenderingBackend,
-}));
-
-vi.mock("./canvas2d/index.js", () => ({
-    createCanvas2DRenderingBackend: mocks.createCanvas2DRenderingBackend,
 }));
 
 vi.mock("./webgpu/index.js", () => ({
@@ -26,6 +18,7 @@ vi.mock("../utils/warning.js", () => ({
 }));
 
 import { createRenderingBackend } from "./renderingBackend.js";
+import { renderingModules } from "./renderingModuleRegistry.js";
 
 const baseOptions = {
     renderer: /** @type {const} */ ("auto"),
@@ -38,6 +31,15 @@ const baseOptions = {
 describe("createRenderingBackend", () => {
     beforeEach(() => {
         vi.resetAllMocks();
+        renderingModules.webglBackend = async (options) =>
+            mocks.createWebGLRenderingBackend(options);
+        renderingModules.canvasBackend = async (options) =>
+            mocks.createCanvas2DRenderingBackend(options);
+    });
+
+    afterEach(() => {
+        delete renderingModules.canvasBackend;
+        delete renderingModules.webglBackend;
     });
 
     test("loads WebGL without loading Canvas2D when WebGL is available", async () => {
@@ -140,5 +142,52 @@ describe("createRenderingBackend", () => {
             })
         ).rejects.toBe(failure);
         expect(mocks.createCanvas2DRenderingBackend).not.toHaveBeenCalled();
+    });
+
+    test("explains how to enable the missing automatic fallback", async () => {
+        delete renderingModules.canvasBackend;
+        mocks.createWebGLRenderingBackend.mockRejectedValue(
+            new Error("No WebGL2")
+        );
+
+        await expect(
+            createRenderingBackend({
+                ...baseOptions,
+                container: document.createElement("div"),
+            })
+        ).rejects.toThrow("@genome-spy/core/rendering/canvas.js");
+    });
+
+    test("uses the registered Canvas2D backend when auto has no WebGL", async () => {
+        delete renderingModules.webglBackend;
+        const canvasBackend = /** @type {any} */ ({ surface: {} });
+        mocks.createCanvas2DRenderingBackend.mockReturnValue(canvasBackend);
+
+        await expect(
+            createRenderingBackend({
+                ...baseOptions,
+                container: document.createElement("div"),
+            })
+        ).resolves.toBe(canvasBackend);
+        expect(mocks.createWebGLRenderingBackend).not.toHaveBeenCalled();
+    });
+
+    test("explains how to register a missing renderer", async () => {
+        delete renderingModules.webglBackend;
+        delete renderingModules.canvasBackend;
+
+        await expect(
+            createRenderingBackend({
+                ...baseOptions,
+                container: document.createElement("div"),
+            })
+        ).rejects.toThrow("@genome-spy/core/rendering/webgl.js");
+        await expect(
+            createRenderingBackend({
+                ...baseOptions,
+                renderer: "canvas",
+                container: document.createElement("div"),
+            })
+        ).rejects.toThrow("@genome-spy/core/rendering/canvas.js");
     });
 });
