@@ -1,5 +1,6 @@
 import { color as parseColor } from "d3-color";
 
+import latoRegularBitmap from "../../fonts/Lato-Regular.png";
 import WebGpuRenderCoordinator from "./webGpuRenderCoordinator.js";
 import WebGpuSurface from "./webGpuSurface.js";
 
@@ -23,6 +24,7 @@ export async function createWebGpuRenderingBackend(options) {
     return {
         surface,
         glHelper: undefined,
+        defaultFontBitmapUrl: latoRegularBitmap,
         createRenderCoordinator: (coordinatorOptions) =>
             new WebGpuRenderCoordinator({
                 ...coordinatorOptions,
