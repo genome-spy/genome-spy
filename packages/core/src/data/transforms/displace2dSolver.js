@@ -125,8 +125,10 @@ export function solveDisplacement(
                     const otherX = xPositions[j] + xDisplacements[j];
                     const otherY = yPositions[j] + yDisplacements[j];
                     if (
-                        Math.abs(candidateX - otherX) * 2 < width + widths[j] &&
-                        Math.abs(candidateY - otherY) * 2 < height + heights[j]
+                        Math.abs(candidateX - otherX) <
+                            width / 2 + widths[j] / 2 &&
+                        Math.abs(candidateY - otherY) <
+                            height / 2 + heights[j] / 2
                     ) {
                         return false;
                     }

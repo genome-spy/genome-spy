@@ -157,6 +157,18 @@ describe("solveDisplacement", () => {
         ).toThrow("finite numeric range");
     });
 
+    test("detects overlaps without overflowing finite dimensions", () => {
+        const width = 1.5e308;
+        const displacements = solveDisplacement(
+            [0, 1e308],
+            [0, 0],
+            [width, width],
+            [1, 1]
+        );
+
+        expect(displacements).toEqual({ x: [0, 0], y: [0, -1] });
+    });
+
     test.each([
         [[NaN], [0], [1], [1], "positions"],
         [[0], [0], [Infinity], [1], "dimensions"],
