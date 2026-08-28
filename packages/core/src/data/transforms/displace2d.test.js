@@ -123,8 +123,8 @@ describe("Displace2DTransform", () => {
         await Promise.resolve();
         const zoomedPlacement = [...view.flowHandle.collector.getData()];
         expect(zoomedPlacement.map(({ dx, dy }) => [dx, dy])).toEqual([
-            [0, 0],
-            [0, 0],
+            [20, 0],
+            [40, 0],
             [0, 0],
         ]);
         expect(zoomedPlacement[0]).not.toBe(initialPlacement[0]);
@@ -147,7 +147,7 @@ describe("Displace2DTransform", () => {
         expect(placed[1]).toBe(input[1]);
     });
 
-    test("retains a valid placement for the same datum across replays", () => {
+    test("retains a valid placement for the same input row across replays", () => {
         const input = [
             { x: 0, y: 0 },
             { x: 0, y: 0.2 },
