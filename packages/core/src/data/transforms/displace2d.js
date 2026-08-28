@@ -27,8 +27,8 @@ export default class Displace2DTransform extends Transform {
     /** @type {import("../flowNode.js").Datum[]} */
     #data = [];
 
-    /** @type {WeakMap<import("../flowNode.js").Datum, [number, number]>} */
-    #previousDisplacements = new WeakMap();
+    /** @type {import("./displace2dSolver.js").Displacement2D} */
+    #previousDisplacements = { x: [], y: [] };
 
     /** @type {PlacementProps} */
     #placementProps;
@@ -153,8 +153,6 @@ export default class Displace2DTransform extends Transform {
         const yPositions = new Array(count);
         const widths = new Array(count);
         const heights = new Array(count);
-        const previousX = new Array(count);
-        const previousY = new Array(count);
 
         for (let i = 0; i < count; i++) {
             const datum = data[i];
@@ -162,10 +160,12 @@ export default class Displace2DTransform extends Transform {
             yPositions[i] = this.yAccessor(datum) * this.yPositionFactor;
             widths[i] = this.widthAccessor(datum);
             heights[i] = this.heightAccessor(datum);
-            const previous = this.#previousDisplacements.get(datum);
-            previousX[i] = previous?.[0];
-            previousY[i] = previous?.[1];
         }
+
+        const previous =
+            this.#previousDisplacements.x.length == count
+                ? this.#previousDisplacements
+                : undefined;
 
         const displacements = solveDisplacement(
             xPositions,
@@ -174,8 +174,9 @@ export default class Displace2DTransform extends Transform {
             heights,
             scaleExtent(this.xExtent, this.xPositionFactor),
             scaleExtent(this.yExtent, this.yPositionFactor),
-            { x: previousX, y: previousY }
+            previous
         );
+        this.#previousDisplacements = displacements;
 
         for (let i = 0; i < count; i++) {
             const datum = data[i];
@@ -184,13 +185,6 @@ export default class Displace2DTransform extends Transform {
             datum[this.as[0]] = dx;
             datum[this.as[1]] = dy;
 
-            const previous = this.#previousDisplacements.get(datum);
-            if (previous) {
-                previous[0] = dx;
-                previous[1] = dy;
-            } else {
-                this.#previousDisplacements.set(datum, [dx, dy]);
-            }
             this._propagate(datum);
         }
 
