@@ -408,15 +408,15 @@ chooses blending state.
 
 ### Work
 
-- [ ] Remove `Mark.opaque` and `RectMark.opaque`.
-- [ ] Remove the semantic Rect rounded-corner and stroke helpers when they
+- [x] Remove `Mark.opaque` and `RectMark.opaque`.
+- [x] Remove the semantic Rect rounded-corner and stroke helpers when they
       become unused.
-- [ ] Implement the conservative opaque check in `WebGLRectMark` by reusing the
+- [x] Implement the conservative opaque check in `WebGLRectMark` by reusing the
       equivalent private helpers already present there; do not create another
       copy.
-- [ ] Remove the `WebGLMark.opaque` forwarding getter and provide a WebGL-local
+- [x] Remove the `WebGLMark.opaque` forwarding getter and provide a WebGL-local
       default of false for other delegates.
-- [ ] Preserve conservative behavior for expression-backed properties and
+- [x] Preserve conservative behavior for expression-backed properties and
       effective view opacity.
 
 ### Affected areas and consumers

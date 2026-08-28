@@ -184,7 +184,7 @@ export default class WebGLMark {
     }
 
     get opaque() {
-        return this.mark.opaque;
+        return false;
     }
 
     get defaultHitTestMode() {

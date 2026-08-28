@@ -133,10 +133,6 @@ export default class Mark {
         });
     }
 
-    get opaque() {
-        return false;
-    }
-
     /** @returns {HitTestMode} */
     get defaultHitTestMode() {
         return "intersects";
