@@ -33,8 +33,9 @@ It coordinates four major systems:
   marks, encodings, transforms, and scales.
 - **Dataflow graph:** sources, transforms, and collectors form a re-evaluable
   pipeline.
-- **GPU-first rendering:** the GPU performs scale transforms and rendering while
-  the CPU avoids building a scene graph.
+- **GPU-first rendering:** retained GPU backends perform scale transforms and
+  rendering while the CPU avoids building a scene graph. Canvas2D and SVG use
+  a shared immediate projection path.
 - **Batched rendering:** render calls are ordered to reduce WebGL state changes.
 - **Parameter hierarchy:** scoped lookup follows view/data-parent ancestry;
   expressions attach owner-scoped listeners to upstream parameters.
@@ -57,6 +58,7 @@ It coordinates four major systems:
 - View hierarchy: `src/view/`
 - Dataflow: `src/data/`
 - Marks: `src/marks/`
-- WebGL and shaders: `src/gl/`
-- Modular Canvas2D/SVG rendering and future WebGPU ownership: `src/rendering/`
+- Semantic marks: `src/marks/`
+- Dynamically loaded renderer implementations: `src/rendering/`
+- Legacy WebGL, TWGL, and GLSL deletion boundary: `src/rendering/webgl/`
 - Parameters: `src/paramRuntime/`

@@ -2,6 +2,7 @@
 // @ts-check
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import LayerView from "@genome-spy/core/view/layerView.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import Tooltip from "@genome-spy/core/utils/ui/tooltip.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
@@ -194,6 +195,7 @@ async function createMetadataViewTestHarness(options = {}) {
             },
         },
     });
+    await metadataView.awaitMetadataReady();
 
     await waitForCondition(() =>
         sampleMetadata.attributeNames.every((attribute) =>
@@ -211,9 +213,11 @@ async function createMetadataViewTestHarness(options = {}) {
                 .find((view) => view.name === `attribute-${attribute}`),
         ])
     );
+    requestRender.mockClear();
 
     return {
         context,
+        store,
         sampleView,
         metadataView,
         requestRender,
@@ -324,6 +328,82 @@ describe("MetadataView", () => {
             reserve: false,
         });
         expect(attributeViews.foo.spec.overhang).toEqual({ bottom: false });
+    });
+
+    it("serializes overlapping metadata subtree rebuilds", async () => {
+        const { metadataView, sampleView, store } =
+            await createMetadataViewTestHarness();
+        await metadataView.awaitMetadataReady();
+
+        const initializeChildren = LayerView.prototype.initializeChildren;
+        /** @type {() => void} */
+        let releaseFirst = () => undefined;
+        const firstCanContinue = new Promise((resolve) => {
+            releaseFirst = () => resolve();
+        });
+        let firstIsBlocked = false;
+        const initializeSpy = vi
+            .spyOn(LayerView.prototype, "initializeChildren")
+            .mockImplementation(
+                /** @this {LayerView} */
+                async function () {
+                    if (!firstIsBlocked) {
+                        firstIsBlocked = true;
+                        await firstCanContinue;
+                    }
+                    return initializeChildren.call(this);
+                }
+            );
+
+        /** @param {string} attribute */
+        const updateMetadata = (attribute) => {
+            const sampleMetadata = {
+                attributeNames: [attribute],
+                attributeDefs: {
+                    [attribute]: { type: "nominal" },
+                },
+                entities: {
+                    s1: { [attribute]: attribute },
+                },
+            };
+            sampleView.sampleHierarchy.sampleMetadata = sampleMetadata;
+            store.setState({
+                provenance: {
+                    present: {
+                        sampleView: { sampleMetadata },
+                    },
+                },
+            });
+        };
+
+        try {
+            updateMetadata("stale");
+            await waitForCondition(() => firstIsBlocked);
+
+            updateMetadata("fresh");
+            expect(initializeSpy).toHaveBeenCalledOnce();
+
+            releaseFirst();
+            await metadataView.awaitMetadataReady();
+            await waitForCondition(() =>
+                metadataView
+                    .getDescendants()
+                    .some((view) => view.name === "attribute-fresh")
+            );
+
+            const descendantNames = metadataView
+                .getDescendants()
+                .map((view) => view.name);
+            expect(descendantNames).toContain("attribute-fresh");
+            expect(descendantNames).not.toContain("attribute-stale");
+            assertFlowMatchesSubtree(
+                metadataView,
+                metadataView.context.dataFlow
+            );
+        } finally {
+            releaseFirst();
+            initializeSpy.mockRestore();
+        }
     });
 
     it("can reserve space for metadata attribute titles", async () => {

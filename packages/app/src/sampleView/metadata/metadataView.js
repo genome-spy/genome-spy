@@ -11,10 +11,7 @@ import { easeQuadInOut } from "d3-ease";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../../utils/ui/contextMenu.js";
 import { appendPlotMenuItems } from "../plotMenuItems.js";
-import {
-    checkForDuplicateScaleNames,
-    finalizeSubtreeGraphics,
-} from "@genome-spy/core/view/viewUtils.js";
+import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
 import { finalizeViewConfiguration } from "@genome-spy/core/genomeSpy/viewHierarchyConfig.js";
 import {
     collectViewSubtreeDataSources,
@@ -60,6 +57,9 @@ export class MetadataView extends ConcatView {
     #attributeViews = new Map();
 
     #metadataGeneration = 0;
+
+    /** @type {Promise<void>} */
+    #metadataUpdateTail = Promise.resolve();
 
     /** @type {ReadyGate} */
     #metadataReady = new ReadyGate("Metadata readiness was aborted.");
@@ -325,15 +325,25 @@ export class MetadataView extends ConcatView {
         const metadataGeneration = ++this.#metadataGeneration;
         const ready = this.#metadataReady.reset();
         const finalizeReady = createFinalizeOnce(ready);
-        // Each metadata update starts a new readiness cycle. finalizeReady is
-        // a single-shot completion hook so overlapping updates can exit early
-        // without double-resolving when stale generations bail out.
+        const previousUpdate = this.#metadataUpdateTail;
+        /** @type {() => void} */
+        let releaseUpdate = () => undefined;
+        this.#metadataUpdateTail = new Promise((resolve) => {
+            releaseUpdate = resolve;
+        });
+
+        await previousUpdate;
 
         try {
+            if (this.#isMetadataStale(metadataGeneration)) {
+                return;
+            }
             await this.#createViews();
+            if (this.#isMetadataStale(metadataGeneration)) {
+                return;
+            }
             await this.syncGuideViews();
             if (this.#isMetadataStale(metadataGeneration)) {
-                finalizeReady();
                 return;
             }
             // Finalize after the subtree and guides exist: opacity and
@@ -345,8 +355,7 @@ export class MetadataView extends ConcatView {
             ) => view.isConfiguredVisible();
             const dynamicSource = this.#initializeMetadataSubtree(
                 flow,
-                viewPredicate,
-                metadataGeneration
+                viewPredicate
             );
 
             dynamicSource.updateDynamicData(
@@ -355,7 +364,6 @@ export class MetadataView extends ConcatView {
 
             await this.#loadMetadataSubtree(dynamicSource, viewPredicate);
             if (this.#isMetadataStale(metadataGeneration)) {
-                finalizeReady();
                 return;
             }
 
@@ -373,6 +381,7 @@ export class MetadataView extends ConcatView {
             );
             throw error;
         } finally {
+            releaseUpdate();
             finalizeReady();
         }
     }
@@ -390,15 +399,10 @@ export class MetadataView extends ConcatView {
      *
      * @param {import("@genome-spy/core/data/dataFlow.js").default} flow
      * @param {(view: import("@genome-spy/core/view/view.js").default) => boolean} viewPredicate
-     * @param {number} metadataGeneration
      * @returns {import("@genome-spy/core/data/sources/namedSource.js").default}
      */
-    #initializeMetadataSubtree(flow, viewPredicate, metadataGeneration) {
-        const { graphicsPromises } = initializeViewSubtree(
-            this,
-            flow,
-            viewPredicate
-        );
+    #initializeMetadataSubtree(flow, viewPredicate) {
+        initializeViewSubtree(this, flow, viewPredicate);
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
                 this.flowHandle?.dataSource
@@ -407,11 +411,6 @@ export class MetadataView extends ConcatView {
         if (!dynamicSource) {
             throw new Error("Cannot find metadata data source handle!");
         }
-
-        finalizeSubtreeGraphics(
-            graphicsPromises,
-            () => metadataGeneration === this.#metadataGeneration
-        );
 
         return dynamicSource;
     }

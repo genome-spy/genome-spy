@@ -18,6 +18,10 @@ const statusElement = /** @type {HTMLElement} */ (
 );
 const query = new URLSearchParams(window.location.search);
 const specUrl = query.get("spec");
+const frameWidth = parseDimension(query.get("width"), 1200);
+const frameHeight = parseDimension(query.get("height"), 700);
+frame.style.width = `${frameWidth}px`;
+frame.style.height = `${frameHeight}px`;
 const renderer =
     /** @type {"auto" | "webgl" | "canvas" | "webgpu" | null} */ (
         query.get("renderer")
@@ -126,6 +130,18 @@ function parseTimeoutMs(value, fallback) {
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed <= 0) {
         throw new Error(`Invalid readiness timeout: ${value}.`);
+    }
+    return parsed;
+}
+
+/** @param {string | null} value @param {number} fallback */
+function parseDimension(value, fallback) {
+    if (value == null) {
+        return fallback;
+    }
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error(`Invalid frame dimension: ${value}.`);
     }
     return parsed;
 }

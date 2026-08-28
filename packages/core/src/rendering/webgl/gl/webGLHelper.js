@@ -26,15 +26,26 @@ import {
     getDiscreteRangeMapper,
     isColorChannel,
     isDiscreteChannel,
-} from "../encoder/encoder.js";
-import { isMultiPointSelection } from "../selection/selection.js";
+} from "../../../encoder/encoder.js";
+import { isMultiPointSelection } from "../../../selection/selection.js";
 import {
     buildHashTableSet,
     computeHashTextureDimensions,
 } from "./hashTable.js";
-import CanvasSizeHelper from "../rendering/canvasSizeHelper.js";
+import CanvasSizeHelper from "../../../rendering/canvasSizeHelper.js";
 
 export default class WebGLHelper {
+    #finalized = false;
+
+    /** @type {() => void} */
+    #resourceFinalizer = () => {};
+
+    /** @type {Set<WebGLTexture>} */
+    _ownedTextures = new Set();
+
+    /** @type {Set<() => void>} */
+    _placementDisposers = new Set();
+
     /**
      *
      * @param {HTMLElement} container
@@ -73,14 +84,14 @@ export default class WebGLHelper {
         /** @type {Map<string, WebGLShader>} */
         this._shaderCache = new Map();
 
-        /** @type {WeakMap<import("../types/encoder.js").VegaScale, WebGLTexture>} */
+        /** @type {WeakMap<import("../../../types/encoder.js").VegaScale, WebGLTexture>} */
         this.rangeTextures = new WeakMap();
 
-        /** @type {WeakMap<import("../view/layout/placementSource.js").default, { texture: WebGLTexture, geometryRevision: number, data: Float32Array }>} */
+        /** @type {WeakMap<import("../../../view/layout/placementSource.js").default, { texture: WebGLTexture, geometryRevision: number, data: Float32Array }>} */
         this.placementTextures = new WeakMap();
 
         /**
-         * @type {WeakMap<import("../types/selectionTypes.js").MultiPointSelection, WebGLTexture>}
+         * @type {WeakMap<import("../../../types/selectionTypes.js").MultiPointSelection, WebGLTexture>}
          */
         this.selectionTextures = new WeakMap();
 
@@ -172,7 +183,7 @@ export default class WebGLHelper {
      * Returns the WebGL texture derived from a renderer-neutral placement
      * source. The helper owns the texture and releases it with the context.
      *
-     * @param {import("../view/layout/placementSource.js").default} source
+     * @param {import("../../../view/layout/placementSource.js").default} source
      * @returns {WebGLTexture}
      */
     getPlacementTexture(source) {
@@ -201,14 +212,21 @@ export default class WebGLHelper {
             geometryRevision: snapshot.geometryRevision,
             data,
         });
+        this._ownedTextures.add(texture);
         if (!cached) {
-            source.onDispose(() => {
+            /** @type {() => void} */
+            let unregister;
+            unregister = source.onDispose(() => {
+                this._placementDisposers.delete(unregister);
                 const current = this.placementTextures.get(source);
                 if (current) {
-                    this.gl.deleteTexture(current.texture);
+                    if (this._ownedTextures.delete(current.texture)) {
+                        this.gl.deleteTexture(current.texture);
+                    }
                     this.placementTextures.delete(source);
                 }
             });
+            this._placementDisposers.add(unregister);
         }
         return texture;
     }
@@ -290,8 +308,34 @@ export default class WebGLHelper {
     }
 
     finalize() {
+        if (this.#finalized) {
+            return;
+        }
+        this.#finalized = true;
+        this.#resourceFinalizer();
+        for (const unregister of this._placementDisposers) {
+            unregister();
+        }
+        this._placementDisposers.clear();
+        for (const texture of this._ownedTextures) {
+            this.gl.deleteTexture(texture);
+        }
+        this._ownedTextures.clear();
+        for (const shader of this._shaderCache.values()) {
+            this.gl.deleteShader(shader);
+        }
+        this._shaderCache.clear();
+        for (const attachment of this._pickingBufferInfo.attachments) {
+            this.gl.deleteTexture(/** @type {WebGLTexture} */ (attachment));
+        }
+        this.gl.deleteFramebuffer(this._pickingBufferInfo.framebuffer);
         this._canvasSizeHelper.finalize();
         this.canvas.remove();
+    }
+
+    /** @param {() => void} finalizer */
+    setResourceFinalizer(finalizer) {
+        this.#resourceFinalizer = finalizer;
     }
 
     /**
@@ -327,7 +371,7 @@ export default class WebGLHelper {
      *
      * TODO: This may be too specific to be included in WebGLHelper. Find a better place.
      *
-     * @param {import("../scales/scaleResolution.js").default} resolution
+     * @param {import("../../../scales/scaleResolution.js").default} resolution
      * @param {boolean} update Update the texture if it exists already.
      */
     createRangeTexture(resolution, update = false) {
@@ -414,6 +458,7 @@ export default class WebGLHelper {
             }
 
             this.rangeTextures.set(scale, texture);
+            this._ownedTextures.add(texture);
         } else {
             const scale = resolution.getScale();
 
@@ -425,23 +470,22 @@ export default class WebGLHelper {
 
                 const range = /** @type {any[]} */ (scale.range());
 
-                this.rangeTextures.set(
-                    scale,
-                    createDiscreteTexture(
-                        range.map(mapper),
-                        this.gl,
-                        isDiscretizing(scale.type)
-                            ? getDiscreteRangeCountForGlsl(scale)
-                            : scale.domain().length,
-                        existingTexture
-                    )
+                const texture = createDiscreteTexture(
+                    range.map(mapper),
+                    this.gl,
+                    isDiscretizing(scale.type)
+                        ? getDiscreteRangeCountForGlsl(scale)
+                        : scale.domain().length,
+                    existingTexture
                 );
+                this.rangeTextures.set(scale, texture);
+                this._ownedTextures.add(texture);
             }
         }
     }
 
     /**
-     * @param {import("../types/selectionTypes.js").MultiPointSelection} selection
+     * @param {import("../../../types/selectionTypes.js").MultiPointSelection} selection
      */
     createSelectionTexture(selection, update = true) {
         if (!isMultiPointSelection(selection)) {
@@ -481,6 +525,7 @@ export default class WebGLHelper {
         gl.bindTexture(gl.TEXTURE_2D, null);
 
         this.selectionTextures.set(selection, texture);
+        this._ownedTextures.add(texture);
     }
 }
 

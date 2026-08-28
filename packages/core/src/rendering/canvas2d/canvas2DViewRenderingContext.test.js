@@ -153,6 +153,44 @@ function render(
 }
 
 describe("Canvas2DViewRenderingContext", () => {
+    test("skips marks rejected by the selective-render predicate", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: "rect",
+            encoding: {
+                x: { value: 0.1 },
+                x2: { value: 0.9 },
+                y: { value: 0.1 },
+                y2: { value: 0.9 },
+                fill: { value: "black" },
+            },
+        });
+        const recording = createRecordingContext();
+        const markPredicate = vi.fn(() => false);
+
+        view.arrange(
+            new Canvas2DViewRenderingContext(
+                { picking: false },
+                {
+                    context: recording.context,
+                    width: 100,
+                    height: 100,
+                    devicePixelRatio: 1,
+                    background: null,
+                    paint: true,
+                    markPredicate,
+                }
+            ),
+            Rectangle.create(0, 0, 100, 100),
+            { firstFacet: true }
+        );
+
+        const unitView =
+            /** @type {import("../../view/unitView.js").default} */ (view);
+        expect(markPredicate).toHaveBeenCalledWith(unitView.mark);
+        expect(recording.calls.fillRects).toEqual([]);
+    });
+
     test("reprojects rectangles from the current scale domain", async () => {
         const { view } = await createHeadlessEngine({
             data: {

@@ -392,6 +392,32 @@ test("falls back automatically, updates live state, and exports without picking"
     expect(genomeSpy.exportCanvas()).toBe("data:image/png;base64,canvas2d");
     expect(contextTypes.filter((type) => type == "2d")).toHaveLength(3);
 
+    const gpuContextRequests = contextTypes.filter(
+        (type) => type != "2d"
+    ).length;
+    const svgResult = await genomeSpy.exportSvg({
+        logicalWidth: 40,
+        logicalHeight: 20,
+        background: null,
+        rasterization: { maxVectorInstances: 0, pixelRatio: 2 },
+    });
+    expect(svgResult.blob.type).toBe("image/svg+xml");
+    expect(svgResult.warnings).toEqual([]);
+    expect(svgResult.rasterized).toEqual([
+        {
+            targets: [{ markType: "rect", instanceCount: 1 }],
+            reason: "instance-threshold",
+            maxVectorInstances: 0,
+            pixelRatio: 2,
+        },
+    ]);
+    expect(contexts[3].canvas.width).toBe(80);
+    expect(contexts[3].canvas.height).toBe(40);
+    expect(contexts[4].drawImage).toHaveBeenCalledOnce();
+    expect(contextTypes.filter((type) => type != "2d")).toHaveLength(
+        gpuContextRequests
+    );
+
     genomeSpy.destroy();
     warn.mockRestore();
 });
@@ -445,5 +471,6 @@ function createContext(canvas) {
         fill: vi.fn(),
         stroke: vi.fn(),
         fillText: vi.fn(),
+        drawImage: vi.fn(),
     };
 }

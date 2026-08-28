@@ -92,30 +92,6 @@ export function setImplicitScaleNames(root) {
 }
 
 /**
- * @param {Promise<import("../marks/mark.js").default>[]} graphicsPromises
- * @param {() => boolean} [shouldFinalize]
- * @returns {Promise<void>}
- */
-export function finalizeSubtreeGraphics(
-    graphicsPromises,
-    shouldFinalize = () => true
-) {
-    return Promise.allSettled(graphicsPromises).then((results) => {
-        if (!shouldFinalize()) {
-            return;
-        }
-
-        for (const result of results) {
-            if ("value" in result) {
-                result.value.finalizeGraphicsInitialization();
-            } else if ("reason" in result) {
-                console.error(result.reason);
-            }
-        }
-    });
-}
-
-/**
  *
  * @param {View} view
  */

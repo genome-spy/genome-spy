@@ -1,9 +1,3 @@
-import { drawBufferInfo, setBuffersAndAttributes } from "twgl.js";
-import VERTEX_SHADER from "./rect.vertex.glsl";
-import FRAGMENT_SHADER from "./rect.fragment.glsl";
-import COMMON_SHADER from "./rect.common.glsl";
-import { RectVertexBuilder } from "../gl/dataToVertices.js";
-
 import Mark from "./mark.js";
 import { fixCoveragePositional, fixFill, fixStroke } from "./markUtils.js";
 import { asArray } from "../utils/arrayUtils.js";
@@ -14,58 +8,10 @@ import {
 } from "../encoder/encoder.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import { isDiscrete } from "vega-scale";
-import { cssColorToArray } from "../gl/colorUtils.js";
 
-const hatchPatterns = [
-    "none",
-    "diagonal",
-    "antiDiagonal",
-    "cross",
-    "vertical",
-    "horizontal",
-    "grid",
-    "dots",
-    "rings",
-    "ringsLarge",
-];
-
-/**
- * @extends {Mark<import("../spec/mark.js").RectProps>}
- */
+/** @extends {Mark<import("../spec/mark.js").RectProps>} */
 export default class RectMark extends Mark {
-    /**
-     * @param {import("../view/unitView.js").default} unitView
-     */
-    constructor(unitView) {
-        super(unitView);
-    }
-
-    /**
-     * @returns {import("../spec/channel.js").Channel[]}
-     */
-    getAttributes() {
-        return [
-            "uniqueId",
-            "facetIndex",
-            "x",
-            "x2",
-            "y",
-            "y2",
-            "xOffset",
-            "yOffset",
-            /** @type {import("../spec/channel.js").Channel} */ ("x2Offset"),
-            /** @type {import("../spec/channel.js").Channel} */ ("y2Offset"),
-            "fill",
-            "stroke",
-            "fillOpacity",
-            "strokeOpacity",
-            "strokeWidth",
-        ];
-    }
-
-    /**
-     * @returns {import("../spec/channel.js").Channel[]}
-     */
+    /** @returns {import("../spec/channel.js").Channel[]} */
     getSupportedChannels() {
         return [
             ...super.getSupportedChannels(),
@@ -79,14 +25,7 @@ export default class RectMark extends Mark {
         ];
     }
 
-    /**
-     * Rectangles span the full subgroup band when the secondary positional
-     * endpoint is implicit.
-     *
-     * @param {string} channel
-     * @returns {number}
-     * @protected
-     */
+    /** @param {string} channel @returns {number} @protected */
     getOffsetBand(channel) {
         return channel == "x2Offset" || channel == "y2Offset" ? 1 : 0;
     }
@@ -112,7 +51,6 @@ export default class RectMark extends Mark {
      * @returns {import("../spec/channel.js").Encoding}
      */
     fixEncoding(encoding) {
-        // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
         fixCoveragePositional(
             encoding,
             "x",
@@ -126,11 +64,8 @@ export default class RectMark extends Mark {
 
         fixStroke(encoding, this.properties.filled);
         fixFill(encoding, this.properties.filled);
-
-        // TODO: Function for getting rid of extras. Also should validate that all attributes are defined
         delete encoding.color;
         delete encoding.opacity;
-
         return encoding;
     }
 
@@ -146,178 +81,41 @@ export default class RectMark extends Mark {
     }
 
     #isStroked() {
-        const sw = this.encoding.strokeWidth;
-        // True if there's any chance for a stroke to be drawn
-        return !(isValueDef(sw) && !sw.value) || "condition" in sw;
-    }
-
-    async initializeGraphics() {
-        await super.initializeGraphics();
-
-        /** @type {string[]} */
-        const defines = [];
-        if (this.#isRoundedCorners()) {
-            defines.push("ROUNDED_CORNERS");
-        }
-        if (this.#isStroked()) {
-            defines.push("STROKED");
-        }
-        if (this.properties.shadowOpacity) {
-            defines.push("SHADOW");
-        }
-
-        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER, [
-            COMMON_SHADER,
-            ...defines.map((d) => "#define " + d),
-        ]);
-    }
-
-    finalizeGraphicsInitialization() {
-        super.finalizeGraphicsInitialization();
-
-        this.gl.useProgram(this.programInfo.program);
-
-        const props = this.properties;
-
-        this.registerMarkUniformValue("uMinWidth", props.minWidth);
-        this.registerMarkUniformValue("uMinHeight", props.minHeight);
-        this.registerMarkUniformValue("uMinOpacity", props.minOpacity);
-        this.registerMarkUniformValue(
-            "uCornerRadiusTopRight",
-            props.cornerRadiusTopRight ?? props.cornerRadius ?? 0
+        const strokeWidth = this.encoding.strokeWidth;
+        return (
+            !(isValueDef(strokeWidth) && !strokeWidth.value) ||
+            "condition" in strokeWidth
         );
-        this.registerMarkUniformValue(
-            "uCornerRadiusBottomRight",
-            props.cornerRadiusBottomRight ?? props.cornerRadius ?? 0
-        );
-        this.registerMarkUniformValue(
-            "uCornerRadiusTopLeft",
-            props.cornerRadiusTopLeft ?? props.cornerRadius ?? 0
-        );
-        this.registerMarkUniformValue(
-            "uCornerRadiusBottomLeft",
-            props.cornerRadiusBottomLeft ?? props.cornerRadius ?? 0
-        );
-
-        this.registerMarkUniformValue("uHatchPattern", props.hatch, (x) =>
-            Math.max(0, hatchPatterns.indexOf(x ?? "none"))
-        );
-
-        this.registerMarkUniformValue("uShadowBlur", props.shadowBlur ?? 0);
-        this.registerMarkUniformValue(
-            "uShadowOpacity",
-            props.shadowOpacity ?? 0
-        );
-        this.registerMarkUniformValue(
-            "uShadowOffsetX",
-            props.shadowOffsetX ?? 0
-        );
-        this.registerMarkUniformValue(
-            "uShadowOffsetY",
-            props.shadowOffsetY ?? 0
-        );
-        this.registerMarkUniformValue(
-            "uShadowColor",
-            props.shadowColor ?? "black",
-            cssColorToArray
-        );
-    }
-
-    updateGraphicsData() {
-        const collector = this.unitView.getCollector();
-        if (!collector) {
-            console.debug("No collector");
-            return;
-        }
-        const numItems = collector.getItemCount();
-
-        const builder = new RectVertexBuilder({
-            encoders: this.encoders,
-            attributes: this.getAttributes(),
-            numItems,
-        });
-
-        builder.addBatches(collector.facetBatches);
-
-        const vertexData = builder.toArrays();
-        this.rangeMap.migrateEntries(vertexData.rangeMap);
-        this.updateBufferInfo(vertexData);
     }
 
     /**
-     * @param {import("../types/rendering.js").GlobalRenderingOptions} options
-     */
-    prepareRender(options) {
-        const ops = super.prepareRender(options);
-
-        ops.push(() => this.bindOrSetMarkUniformBlock());
-
-        ops.push(() =>
-            setBuffersAndAttributes(
-                this.gl,
-                this.programInfo,
-                this.vertexArrayInfo
-            )
-        );
-
-        return ops;
-    }
-
-    /**
-     * @param {import("./mark.js").MarkRenderingOptions} options
-     */
-    render(options) {
-        const gl = this.gl;
-
-        return this.createRenderCallback((offset, count) => {
-            drawBufferInfo(
-                gl,
-                this.vertexArrayInfo,
-                gl.TRIANGLE_STRIP,
-                count,
-                offset
-            );
-        }, options);
-    }
-
-    /**
-     * Finds a datum that overlaps the given value on the x domain.
-     * The result is unspecified if multiple data are found.
-     *
-     * This is highly specific to SampleView and its sorting/filtering functionality.
-     *
      * @param {any} facetId
-     * @param {import("../spec/channel.js").Scalar} x value on the x domain
+     * @param {import("../spec/channel.js").Scalar} x
      * @returns {any}
      * @override
      */
     findDatumAt(facetId, x) {
-        facetId = asArray(facetId); // TODO: Do at the call site
+        facetId = asArray(facetId);
         const data = this.unitView.getCollector().facetBatches.get(facetId);
         if (!data) {
             return;
         }
 
-        const e = this.encoders;
-
-        const scaleType = e.x.scale.type;
-
-        if (isDiscrete(scaleType)) {
-            const a = getEncoderDataAccessor(e.x);
-            if (!a) {
-                return;
-            }
-            // TODO: Binary search
-            return data.find((d) => x == a(d));
+        const encoders = this.encoders;
+        if (isDiscrete(encoders.x.scale.type)) {
+            const accessor = getEncoderDataAccessor(encoders.x);
+            return accessor
+                ? data.find((datum) => x == accessor(datum))
+                : undefined;
         } else {
-            // TODO: Handle point features on locus/index scales
-            const a = getEncoderDataAccessor(e.x);
-            const a2 = getEncoderDataAccessor(e.x2);
-            if (!a || !a2) {
+            const accessor = getEncoderDataAccessor(encoders.x);
+            const secondaryAccessor = getEncoderDataAccessor(encoders.x2);
+            if (!accessor || !secondaryAccessor) {
                 return;
             }
-            // TODO: Binary search
-            return data.find((d) => x >= a(d) && x < a2(d));
+            return data.find(
+                (datum) => x >= accessor(datum) && x < secondaryAccessor(datum)
+            );
         }
     }
 }

@@ -1,5 +1,4 @@
 import { InternMap } from "internmap";
-import { createTexture } from "twgl.js";
 import { isString } from "vega-util";
 import latoRegular from "../fonts/Lato-Regular.json" with { type: "json" };
 import latoRegularBitmap from "../fonts/Lato-Regular.png";
@@ -42,16 +41,15 @@ const DEFAULT_FONT_KEY = {
  * @prop {FontWeight} weight
  *
  * @typedef {object} FontEntry
- * @prop {BMFontMetrics} metrics
- * @prop {WebGLTexture} texture
- * @prop {string} bitmapUrl
+ * @prop {BMFontMetrics | undefined} metrics
+ * @prop {string | undefined} bitmapUrl
  */
 export default class BmFontManager {
     /**
-     * @param {import("../gl/webGLHelper.js").default} [webGLHelper]
+     * @param {(bitmapUrl: string) => Promise<void>} [prepareBitmap]
      */
-    constructor(webGLHelper) {
-        this._webGLHelper = webGLHelper;
+    constructor(prepareBitmap) {
+        this._prepareBitmap = prepareBitmap;
 
         this.fontRepository =
             "https://raw.githubusercontent.com/etiennepinchon/aframe-fonts/master/fonts/";
@@ -70,17 +68,15 @@ export default class BmFontManager {
         /** @type {Promise<void>[]} Keep track of overall font loading state */
         this._promises = [];
 
-        /**
-         * A default/fallback font to be used when font loading fails
-         * @type {FontEntry}
-         */
-        this._defaultFontEntry = {
+        const defaultBitmap = prepareBitmap?.(latoRegularBitmap);
+        /** A default/fallback font to be used when font loading fails. */
+        this._defaultFontEntry = /** @type {FontEntry} */ ({
             metrics: getMetrics(latoRegular),
-            texture: webGLHelper
-                ? this._createTextureNow(latoRegularBitmap)
-                : undefined,
             bitmapUrl: latoRegularBitmap,
-        };
+        });
+        if (defaultBitmap) {
+            this._promises.push(defaultBitmap);
+        }
         this._fonts.set(DEFAULT_FONT_KEY, this._defaultFontEntry);
     }
 
@@ -102,7 +98,6 @@ export default class BmFontManager {
             // Return and empty entry, load it asynchronously
             fontEntry = {
                 metrics: undefined,
-                texture: undefined,
                 bitmapUrl: undefined,
             };
             this._fonts.set(key, fontEntry);
@@ -131,19 +126,16 @@ export default class BmFontManager {
             fontEntry.bitmapUrl = urlBase + ".png";
 
             const metricsPromise = this._loadFont(urlBase + ".json");
-            const texturePromise = this._webGLHelper
-                ? this._createTexture(urlBase + ".png")
-                : undefined;
+            const bitmap = this._prepareBitmap?.(fontEntry.bitmapUrl);
 
-            fontEntry.metrics = await metricsPromise;
-            fontEntry.texture = await texturePromise;
+            const [metrics] = await Promise.all([metricsPromise, bitmap]);
+            fontEntry.metrics = metrics;
         } catch {
             console.warn(
                 `Cannot load font: "${key.family}". Using the embedded default font.`
             );
 
             fontEntry.metrics = this._defaultFontEntry.metrics;
-            fontEntry.texture = this._defaultFontEntry.texture;
             fontEntry.bitmapUrl = this._defaultFontEntry.bitmapUrl;
         }
     }
@@ -208,63 +200,6 @@ export default class BmFontManager {
 
     getDefaultFont() {
         return this._defaultFontEntry;
-    }
-
-    /**
-     *
-     * @param {string} bitmapUrl
-     * @returns {Promise<WebGLTexture>}
-     */
-    _createTexture(bitmapUrl) {
-        const gl = this._webGLHelper.gl;
-
-        return new Promise((resolve, reject) => {
-            createTexture(
-                gl,
-                {
-                    src: bitmapUrl,
-                    min: gl.LINEAR,
-                },
-                (err, texture, source) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(texture);
-                    }
-                }
-            );
-        });
-    }
-
-    /**
-     *
-     * @param {string} bitmapUrl
-     * @returns {WebGLTexture}
-     */
-    _createTextureNow(bitmapUrl) {
-        const gl = this._webGLHelper.gl;
-
-        /** @type {WebGLTexture} */
-        let texture;
-        const promise = new Promise((resolve, reject) => {
-            texture = createTexture(
-                gl,
-                {
-                    src: bitmapUrl,
-                    min: gl.LINEAR,
-                },
-                (err, texture, source) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(texture);
-                    }
-                }
-            );
-        });
-
-        this._promises.push(promise);
-        return texture;
     }
 }
 

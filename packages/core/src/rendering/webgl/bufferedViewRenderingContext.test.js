@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import Rectangle from "../layout/rectangle.js";
+import Rectangle from "../../view/layout/rectangle.js";
 import BufferedViewRenderingContext from "./bufferedViewRenderingContext.js";
 
 describe("BufferedViewRenderingContext", () => {
@@ -10,12 +10,16 @@ describe("BufferedViewRenderingContext", () => {
             { picking: false },
             {
                 webGLHelper:
-                    /** @type {import("../../gl/webGLHelper.js").default} */ (
+                    /** @type {import("./gl/webGLHelper.js").default} */ (
                         /** @type {unknown} */ ({ gl: {} })
                     ),
                 canvasSize: { width: 100, height: 100 },
                 devicePixelRatio: 1,
                 markPredicate,
+                markAdapter: /** @type {any} */ ({
+                    prepareMarks: vi.fn(),
+                    synchronize: vi.fn(),
+                }),
             }
         );
         const mark = /** @type {import("../../marks/mark.js").default} */ (
@@ -47,7 +51,7 @@ describe("BufferedViewRenderingContext", () => {
             })
         );
         const placement = {
-            source: /** @type {import("../layout/placementSource.js").default} */ (
+            source: /** @type {import("../../view/layout/placementSource.js").default} */ (
                 /** @type {unknown} */ ({})
             ),
         };
@@ -59,9 +63,6 @@ describe("BufferedViewRenderingContext", () => {
         /** @returns {boolean} */
         const isPickingParticipant = () => true;
 
-        /** @returns {boolean} */
-        const isReady = () => true;
-
         const prepareRender = vi.fn(() => []);
 
         /** @returns {number} */
@@ -71,7 +72,7 @@ describe("BufferedViewRenderingContext", () => {
          * @returns {boolean}
          */
         const setViewport = vi.fn(
-            /** @type {import("../../marks/mark.js").default["setViewport"]} */ (
+            /** @type {import("./types.js").WebGLMark["setViewport"]} */ (
                 () => true
             )
         );
@@ -81,30 +82,41 @@ describe("BufferedViewRenderingContext", () => {
             draws++;
         };
 
-        const view = /** @type {import("../view.js").default} */ (
+        const view = /** @type {import("../../view/view.js").default} */ (
             /** @type {unknown} */ ({ onBeforeRender })
         );
+        const graphics = {
+            isReady: () => true,
+            prepareRender,
+            setViewport,
+            render,
+        };
+        const entry = { graphics, state: "ready" };
+        const markAdapter = {
+            prepareMarks: vi.fn(),
+            getMarkEntry: () => entry,
+            isEntryActive: () => true,
+            isEntryDrawable: () => true,
+            synchronize: vi.fn(),
+        };
         const mark = /** @type {import("../../marks/mark.js").default} */ (
             /** @type {unknown} */ ({
                 properties: { clip: true },
                 unitView: { getEffectiveOpacity },
                 isPickingParticipant,
-                isReady,
-                prepareRender,
-                setViewport,
-                render,
             })
         );
         const context = new BufferedViewRenderingContext(
             { picking: false },
             {
                 webGLHelper:
-                    /** @type {import("../../gl/webGLHelper.js").default} */ (
+                    /** @type {import("./gl/webGLHelper.js").default} */ (
                         /** @type {unknown} */ ({ gl })
                     ),
                 canvasSize: { width: 100, height: 100 },
                 devicePixelRatio: 1,
                 pixelOffset: 0,
+                markAdapter: /** @type {any} */ (markAdapter),
             }
         );
 
@@ -123,5 +135,7 @@ describe("BufferedViewRenderingContext", () => {
         });
         expect(setViewport).toHaveBeenCalledOnce();
         expect(setViewport.mock.calls[0][5]).toBe(0);
+        expect(markAdapter.prepareMarks).toHaveBeenCalledWith([mark, mark]);
+        expect(markAdapter.synchronize).toHaveBeenCalledWith(new Set([entry]));
     });
 });

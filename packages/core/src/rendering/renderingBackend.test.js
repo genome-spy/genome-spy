@@ -3,23 +3,14 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-    createWebGLHelper: vi.fn(),
+    createWebGLRenderingBackend: vi.fn(),
     createCanvas2DRenderingBackend: vi.fn(),
     createWebGpuRenderingBackend: vi.fn(),
-    readPickingPixel: vi.fn(),
     warnOnce: vi.fn(),
-    exportCanvas: vi.fn(),
-    exportRaster: vi.fn(),
 }));
 
-vi.mock("../gl/webGLHelper.js", () => ({
-    default: class {
-        /** @param {...any} args */
-        constructor(...args) {
-            return mocks.createWebGLHelper(...args);
-        }
-    },
-    readPickingPixel: mocks.readPickingPixel,
+vi.mock("./webgl/index.js", () => ({
+    createWebGLRenderingBackend: mocks.createWebGLRenderingBackend,
 }));
 
 vi.mock("./canvas2d/index.js", () => ({
@@ -32,11 +23,6 @@ vi.mock("./webgpu/index.js", () => ({
 
 vi.mock("../utils/warning.js", () => ({
     warnOnce: mocks.warnOnce,
-}));
-
-vi.mock("../genomeSpy/canvasExport.js", () => ({
-    exportCanvas: mocks.exportCanvas,
-    exportRaster: mocks.exportRaster,
 }));
 
 import { createRenderingBackend } from "./renderingBackend.js";
@@ -54,18 +40,21 @@ describe("createRenderingBackend", () => {
         vi.resetAllMocks();
     });
 
-    test("uses WebGL without loading Canvas2D when WebGL2 is available", async () => {
+    test("loads WebGL without loading Canvas2D when WebGL is available", async () => {
         const container = document.createElement("div");
-        const glHelper = createGlHelper(container);
-        mocks.createWebGLHelper.mockReturnValue(glHelper);
+        const webGlBackend = /** @type {any} */ ({ surface: {} });
+        mocks.createWebGLRenderingBackend.mockReturnValue(webGlBackend);
 
         const backend = await createRenderingBackend({
             ...baseOptions,
             container,
         });
 
-        expect(backend.surface).toBe(glHelper);
-        expect(backend.glHelper).toBe(glHelper);
+        expect(backend).toBe(webGlBackend);
+        expect(mocks.createWebGLRenderingBackend).toHaveBeenCalledWith({
+            ...baseOptions,
+            container,
+        });
         expect(mocks.createCanvas2DRenderingBackend).not.toHaveBeenCalled();
     });
 
@@ -81,7 +70,7 @@ describe("createRenderingBackend", () => {
         });
 
         expect(backend).toBe(canvasBackend);
-        expect(mocks.createWebGLHelper).not.toHaveBeenCalled();
+        expect(mocks.createWebGLRenderingBackend).not.toHaveBeenCalled();
     });
 
     test("loads WebGPU directly without requesting another renderer", async () => {
@@ -101,7 +90,7 @@ describe("createRenderingBackend", () => {
             renderer: "webgpu",
             container,
         });
-        expect(mocks.createWebGLHelper).not.toHaveBeenCalled();
+        expect(mocks.createWebGLRenderingBackend).not.toHaveBeenCalled();
         expect(mocks.createCanvas2DRenderingBackend).not.toHaveBeenCalled();
     });
 
@@ -116,75 +105,30 @@ describe("createRenderingBackend", () => {
                 container: document.createElement("div"),
             })
         ).rejects.toBe(failure);
-        expect(mocks.createWebGLHelper).not.toHaveBeenCalled();
+        expect(mocks.createWebGLRenderingBackend).not.toHaveBeenCalled();
         expect(mocks.createCanvas2DRenderingBackend).not.toHaveBeenCalled();
     });
 
-    test("keeps WebGL picking behind the backend boundary", async () => {
-        const container = document.createElement("div");
-        const glHelper = createGlHelper(container);
-        glHelper.getDevicePixelRatio = () => 2;
-        mocks.createWebGLHelper.mockReturnValue(glHelper);
-        mocks.readPickingPixel.mockReturnValue([1, 2, 3, 4]);
-
-        const backend = await createRenderingBackend({
-            ...baseOptions,
-            container,
-        });
-
-        expect(backend.readPickingId?.(5, 7)).toBe(67_305_985);
-        expect(mocks.readPickingPixel).toHaveBeenCalledWith(
-            glHelper.gl,
-            glHelper._pickingBufferInfo,
-            10,
-            14
-        );
-    });
-
-    test("routes raster exports through the active WebGL backend", async () => {
-        const container = document.createElement("div");
-        const glHelper = createGlHelper(container);
-        const viewRoot = /** @type {any} */ ({});
-        const blob = new Blob();
-        mocks.createWebGLHelper.mockReturnValue(glHelper);
-        mocks.exportCanvas.mockReturnValue("data:image/png;base64,webgl");
-        mocks.exportRaster.mockResolvedValue(blob);
-        const backend = await createRenderingBackend({
-            ...baseOptions,
-            container,
-        });
-
-        expect(backend.exportCanvas({ viewRoot })).toBe(
-            "data:image/png;base64,webgl"
-        );
-        await expect(backend.exportRaster({ viewRoot })).resolves.toBe(blob);
-        expect(mocks.exportCanvas).toHaveBeenCalledWith({ viewRoot, glHelper });
-        expect(mocks.exportRaster).toHaveBeenCalledWith({ viewRoot, glHelper });
-    });
-
-    test("preserves existing canvases when WebGL creation fails", async () => {
-        const container = document.createElement("div");
-        const existingCanvas = document.createElement("canvas");
-        container.appendChild(existingCanvas);
+    test("falls back to Canvas2D when automatic WebGL creation fails", async () => {
+        const failure = new Error("No WebGL2");
         const canvasBackend = /** @type {any} */ ({ surface: {} });
-        mocks.createWebGLHelper.mockImplementation(() => {
-            throw new Error("No WebGL2");
+        mocks.createWebGLRenderingBackend.mockImplementation(() => {
+            throw failure;
         });
         mocks.createCanvas2DRenderingBackend.mockReturnValue(canvasBackend);
 
         const backend = await createRenderingBackend({
             ...baseOptions,
-            container,
+            container: document.createElement("div"),
         });
 
         expect(backend).toBe(canvasBackend);
-        expect(existingCanvas.parentElement).toBe(container);
         expect(mocks.warnOnce).toHaveBeenCalledOnce();
     });
 
     test("preserves an explicitly requested WebGL failure", async () => {
         const failure = new Error("No WebGL2");
-        mocks.createWebGLHelper.mockImplementation(() => {
+        mocks.createWebGLRenderingBackend.mockImplementation(() => {
             throw failure;
         });
 
@@ -198,17 +142,3 @@ describe("createRenderingBackend", () => {
         expect(mocks.createCanvas2DRenderingBackend).not.toHaveBeenCalled();
     });
 });
-
-/**
- * @param {HTMLElement} container
- */
-function createGlHelper(container) {
-    const canvas = document.createElement("canvas");
-    container.appendChild(canvas);
-    return /** @type {any} */ ({
-        canvas,
-        gl: {},
-        _pickingBufferInfo: {},
-        getDevicePixelRatio: () => 1,
-    });
-}

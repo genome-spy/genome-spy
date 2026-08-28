@@ -53,20 +53,21 @@ export function createMarkDebugSnapshot(root, options) {
         }
 
         const state = mark.getDebugState();
+        const renderingState = view.context.getMarkRenderingDebugState?.(mark);
         marks.push({
             viewId: options.getDebugId(view),
             viewPath: view.getPathString(),
             type: mark.getType(),
-            ready: Boolean(mark.isReady()),
+            ready: renderingState?.ready ?? false,
             pickingParticipant: mark.isPickingParticipant(),
-            markUniformsAltered: state.markUniformsAltered,
+            markUniformsAltered: renderingState?.markUniformsAltered ?? false,
             encodingChannels: Object.keys(mark.encoding),
             encoderChannels: mark.encoders ? Object.keys(mark.encoders) : [],
             searchFields: getEncodingSearchFields(view.getEncoding()) ?? [],
             dataCount: getDataCount(view),
-            vertexCount: state.vertexCount,
-            allocatedVertices: state.allocatedVertices,
-            rangeCount: mark.rangeMap.size,
+            vertexCount: renderingState?.vertexCount,
+            allocatedVertices: renderingState?.allocatedVertices,
+            rangeCount: renderingState?.rangeCount ?? 0,
             properties: previewValue(state.properties),
         });
     });

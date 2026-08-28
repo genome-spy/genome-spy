@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => {
             }
 
             render = vi.fn();
+
+            finish = vi.fn();
         },
     };
 });
@@ -24,18 +26,15 @@ vi.mock("twgl.js", () => ({
     createFramebufferInfo: mocks.createFramebufferInfo,
 }));
 
-vi.mock("../../../gl/framebufferReadback.js", () => ({
+vi.mock("./gl/framebufferReadback.js", () => ({
     framebufferToDataUrl: mocks.framebufferToDataUrl,
 }));
 
-vi.mock(
-    "../../../view/renderingContext/bufferedViewRenderingContext.js",
-    () => ({
-        default: mocks.RenderingContext,
-    })
-);
+vi.mock("./bufferedViewRenderingContext.js", () => ({
+    default: mocks.RenderingContext,
+}));
 
-import { rasterizeSvgRuns } from "./webgl.js";
+import { rasterizeSvgRuns } from "./svgRasterizer.js";
 
 beforeEach(() => {
     mocks.createFramebufferInfo.mockReset();
@@ -58,6 +57,7 @@ describe("rasterizeSvgRuns", () => {
             runs,
             viewRoot: fixture.viewRoot,
             webGLHelper: fixture.webGLHelper,
+            markAdapter: /** @type {any} */ ({}),
             logicalWidth: 100,
             logicalHeight: 80,
             pixelRatio: 2,
@@ -107,6 +107,7 @@ describe("rasterizeSvgRuns", () => {
                 runs: [createRun({ x1: 0, y1: 0, x2: 100, y2: 80 })],
                 viewRoot: fixture.viewRoot,
                 webGLHelper: fixture.webGLHelper,
+                markAdapter: /** @type {any} */ ({}),
                 logicalWidth: 100,
                 logicalHeight: 80,
                 pixelRatio: 2,
@@ -126,6 +127,7 @@ describe("rasterizeSvgRuns", () => {
                 runs: [createRun({ x1: 0, y1: 0, x2: 10, y2: 10 })],
                 viewRoot: fixture.viewRoot,
                 webGLHelper: fixture.webGLHelper,
+                markAdapter: /** @type {any} */ ({}),
                 logicalWidth: 100,
                 logicalHeight: 80,
                 pixelRatio: 1,
@@ -173,19 +175,18 @@ function createFixture(maxSize = 4096) {
         framebuffer,
         texture,
         framebufferInfo,
-        webGLHelper:
-            /** @type {import("../../../gl/webGLHelper.js").default} */ (
-                /** @type {unknown} */ ({ gl })
-            ),
-        viewRoot: /** @type {import("../../../view/view.js").default} */ (
+        webGLHelper: /** @type {import("./gl/webGLHelper.js").default} */ (
+            /** @type {unknown} */ ({ gl })
+        ),
+        viewRoot: /** @type {import("../../view/view.js").default} */ (
             /** @type {unknown} */ ({ arrange: vi.fn() })
         ),
     };
 }
 
-/** @param {import("../../immediate/bounds.js").RenderBounds} bounds */
+/** @param {import("../immediate/bounds.js").RenderBounds} bounds */
 function createRun(bounds) {
-    return /** @type {import("../svgViewRenderingContext.js").SvgRasterRun} */ ({
+    return /** @type {import("../svg/svgViewRenderingContext.js").SvgRasterRun} */ ({
         marks: new Set(),
         targets: [],
         viewNodes: new Set(),

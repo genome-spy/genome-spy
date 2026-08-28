@@ -161,9 +161,7 @@ describe("GridView keyboard navigation", () => {
             needsAxes: { x: false, y: false },
             spec: {},
             paramRuntime: { paramConfigs: new Map() },
-            context: /** @type {any} */ ({
-                glHelper: { canvas: { style: {} } },
-            }),
+            context: /** @type {any} */ ({}),
             isConfiguredVisible: () => true,
             getParentGridChromePolicy: () => ({
                 axes: true,

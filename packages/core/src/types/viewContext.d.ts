@@ -1,7 +1,6 @@
 import { TemplateResult } from "lit";
 import View, { BroadcastMessage } from "../view/view.js";
 import DataFlow from "../data/dataFlow.js";
-import WebGLHelper from "../gl/webGLHelper.js";
 import Animator from "../utils/animator.js";
 import GenomeStore from "../genome/genomeStore.js";
 import BmFontManager from "../fonts/bmFontManager.js";
@@ -12,6 +11,13 @@ import ContainerView from "../view/containerView.js";
 import { BroadcastEventType } from "../genomeSpy.js";
 import { AxisLabelClipPolicy } from "../view/axisView.js";
 import { PrimaryPositionalChannel } from "../spec/channel.js";
+export interface MarkRenderingDebugState {
+    ready: boolean;
+    markUniformsAltered: boolean;
+    vertexCount?: number;
+    allocatedVertices?: number;
+    rangeCount: number;
+}
 
 export interface Hover {
     mark: Mark;
@@ -43,8 +49,7 @@ export type CreateViewOptions = ViewOptions;
  */
 export default interface ViewContext {
     dataFlow: DataFlow;
-    glHelper?: WebGLHelper;
-    graphicsDataUpdates?: boolean;
+    getMarkRenderingDebugState?: (mark: Mark) => MarkRenderingDebugState;
     animator: Animator;
     genomeStore?: GenomeStore;
     fontManager: BmFontManager;

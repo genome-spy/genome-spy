@@ -324,14 +324,6 @@ export default class UnitView extends View {
     }
 
     /**
-     * @override
-     */
-    dispose() {
-        super.dispose();
-        this.mark.dispose();
-    }
-
-    /**
      * Returns an accessor that accesses a field or an evaluated expression,
      * if there is one.
      *

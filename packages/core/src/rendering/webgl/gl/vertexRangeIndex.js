@@ -1,4 +1,4 @@
-import clamp from "../utils/clamp.js";
+import clamp from "../../../utils/clamp.js";
 
 const MAX_INTEGER = 2 ** 31 - 1;
 const MIN_INTEGER = -(2 ** 31);
@@ -22,7 +22,7 @@ const MIN_INTEGER = -(2 ** 31);
  * @param {VertexReader} [readEnd=readStart] Reader for the end x value at a vertex
  * @param {number} [startVertexIndex=0] First vertex index in the scanned range
  * @param {number} [endVertexIndex=startVertexIndex] One past the last vertex index
- * @returns {import("../utils/binnedIndex.js").Lookup | undefined}
+ * @returns {import("../../../utils/binnedIndex.js").Lookup | undefined}
  */
 export function createVertexRangeIndexer(
     size,
@@ -73,7 +73,7 @@ export function createVertexRangeIndexer(
     let unordered = false;
 
     /**
-     * @type {import("../utils/binnedIndex.js").Lookup}
+     * @type {import("../../../utils/binnedIndex.js").Lookup}
      */
     const lookup = (queryStart, queryEnd, arr = [0, 0]) => {
         const startBin = getBin(queryStart, false);
@@ -86,7 +86,7 @@ export function createVertexRangeIndexer(
         return arr;
     };
 
-    for (let i = startVertexIndex; i < endVertexIndex; ) {
+    for (let i = startVertexIndex; i < endVertexIndex;) {
         const runStart = i;
         const runX = readStart(i);
         const runX2 = readEnd(i);

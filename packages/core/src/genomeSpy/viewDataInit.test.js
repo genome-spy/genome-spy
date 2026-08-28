@@ -415,11 +415,8 @@ describe("viewDataInit", () => {
         expect(invalidateSizeCache).toHaveBeenCalled();
     });
 
-    test("finalizes graphics before initial data load notifies marks", async () => {
+    test("initial data load notifies semantic marks", async () => {
         const context = createTestViewContext();
-        context.glHelper = /** @type {any} */ ({
-            createRangeTexture: /** @returns {undefined} */ () => undefined,
-        });
 
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {
@@ -435,21 +432,7 @@ describe("viewDataInit", () => {
             throw new Error("Expected a unit view.");
         }
 
-        /** @type {string[]} */
-        const events = [];
-        const initializeSpy = vi
-            .spyOn(root.mark, "initializeGraphics")
-            .mockResolvedValue();
-        const finalizeSpy = vi
-            .spyOn(root.mark, "finalizeGraphicsInitialization")
-            .mockImplementation(() => {
-                events.push("finalize");
-            });
-        const updateSpy = vi
-            .spyOn(root.mark, "updateGraphicsData")
-            .mockImplementation(() => {
-                events.push("update");
-            });
+        const initializeData = vi.spyOn(root.mark, "initializeData");
 
         await initializeViewData(
             root,
@@ -458,11 +441,7 @@ describe("viewDataInit", () => {
             () => undefined
         );
 
-        expect(events).toEqual(["finalize", "update"]);
-
-        initializeSpy.mockRestore();
-        finalizeSpy.mockRestore();
-        updateSpy.mockRestore();
+        expect(initializeData).toHaveBeenCalledOnce();
     });
 
     test("completed collectors repropagate to newly attached views", async () => {

@@ -2,6 +2,7 @@
 
 import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
+import { RasterizationUnavailableError } from "../rasterization.js";
 import { analyzeSvgExport, createSvg, createSvgExport } from "./index.js";
 
 const { rasterizeSvgRuns } = vi.hoisted(() => ({
@@ -16,8 +17,6 @@ const { rasterizeSvgRuns } = vi.hoisted(() => ({
         }
     ),
 }));
-
-vi.mock("./raster/webgl.js", () => ({ rasterizeSvgRuns }));
 
 describe("SVG export", () => {
     test("analyzes visible layers without emitting mark elements", async () => {
@@ -74,7 +73,7 @@ describe("SVG export", () => {
         );
     });
 
-    test("falls back to vectors when rasterization has no WebGL context", async () => {
+    test("falls back to vectors when no rasterizer is available", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}, {}] },
             mark: "point",
@@ -97,9 +96,37 @@ describe("SVG export", () => {
         expect(svg.querySelectorAll("circle")).toHaveLength(2);
         expect(svg.querySelector("image")).toBeNull();
         expect(warnings).toContainEqual(
-            expect.stringContaining("no WebGL context")
+            expect.stringContaining("no raster rendering backend")
         );
         expect(rasterized).toEqual([]);
+    });
+
+    test("falls back to vectors when rasterizer initialization is unavailable", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}, {}] },
+            mark: "point",
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                size: { value: 100 },
+                fill: { value: "black" },
+            },
+        });
+
+        const result = await createSvgExport({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            rasterization: { maxVectorInstances: 1 },
+            rasterizeSvgRuns: () => {
+                throw new RasterizationUnavailableError("No Canvas2D");
+            },
+        });
+
+        expect(result.svg.querySelectorAll("circle")).toHaveLength(2);
+        expect(result.svg.querySelector("image")).toBeNull();
+        expect(result.warnings).toHaveLength(1);
+        expect(result.rasterized).toEqual([]);
     });
 
     test("rasterizes adjacent over-threshold layers as one run", async () => {
@@ -121,7 +148,7 @@ describe("SVG export", () => {
 
         const result = await createSvgExport({
             viewRoot: view,
-            webGLHelper: /** @type {any} */ ({}),
+            rasterizeSvgRuns,
             logicalWidth: 100,
             logicalHeight: 100,
             background: null,
@@ -144,6 +171,32 @@ describe("SVG export", () => {
             },
         ]);
         expect(rasterizeSvgRuns).toHaveBeenCalledOnce();
+    });
+
+    test("propagates errors after raster rendering starts", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}, {}] },
+            mark: "point",
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                size: { value: 100 },
+                fill: { value: "black" },
+            },
+        });
+        const failure = new Error("paint failed");
+
+        await expect(
+            createSvgExport({
+                viewRoot: view,
+                logicalWidth: 100,
+                logicalHeight: 100,
+                rasterization: { maxVectorInstances: 1 },
+                rasterizeSvgRuns: () => {
+                    throw failure;
+                },
+            })
+        ).rejects.toBe(failure);
     });
 
     test("emits scaled rule and plain text elements", async () => {

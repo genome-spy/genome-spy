@@ -1,69 +1,50 @@
 # Rendering modules
 
-This directory contains renderer orchestration and the modular rendering
-implementations that are independent of GenomeSpy's original WebGL path. The
-layout keeps backend ownership explicit, avoids pulling optional renderers into
-the synchronous ESM entry, and leaves a clear location for an eventual WebGPU
-renderer.
+This directory contains renderer orchestration and backend-owned rendering
+implementations. Optional renderers stay outside Core's synchronous ESM entry
+graph and expose only the capabilities needed by shared orchestration.
 
 ## Directory layout
 
-- `renderingBackend.js` selects the live backend and exposes its capabilities,
-  such as surface sizing, rendering, raster export, and optional picking.
+- `renderingBackend.js` dynamically selects the live backend and exposes its
+  surface, coordinator, raster operations, and optional picking capability.
 - `canvasSizeHelper.js` provides backend-neutral logical and physical surface
   sizing.
-- `canvas2d/` owns live Canvas2D rendering and detached PNG export.
+- `canvas2d/` owns live Canvas2D rendering and detached rasterization.
 - `svg/` owns structured SVG export, including hybrid raster-run discovery and
   document paint order.
-- `immediate/` projects and culls mark occurrences for Canvas2D and SVG. Its
-  mark visitors and geometry helpers are backend-neutral.
-
-Canvas2D and SVG are loaded dynamically. Keep their implementation modules,
-and the immediate-mode modules they use, out of statically imported production
-entry points.
+- `immediate/` projects and culls mark occurrences for Canvas2D and SVG.
+- `webgl/` owns the complete legacy WebGL implementation: TWGL, GLSL, mark GPU
+  delegates, batching, picking, textures, framebuffer export, and cleanup.
+- `webgpu/` is the development-only adapter for the independently selectable
+  WebGPU renderer.
 
 ## Dependency boundaries
 
-Dependencies point from Canvas2D and SVG into `immediate/`, never in the other
-direction. The immediate layer must not import Canvas2D, SVG, WebGL, or WebGPU
-code. Backend-specific emitters translate its projected occurrences into their
-own drawing operations; there is intentionally no universal path or low-level
-drawing interface shared by every renderer.
+Semantic mark classes under `src/marks/` retain configuration, encoders, data,
+and rendering revisions. A selected retained-mode backend may attach an opaque
+per-mark delegate through the renderer-resource lifecycle; shared code does not
+import its buffers, shaders, textures, or helper types.
 
-The existing WebGL implementation is a transitional exception. Its programs,
-buffers, textures, uniforms, and draw code remain in `src/marks/` and
-`src/gl/`. Do not move or wrap that code merely to make the directory tree
-symmetrical.
+Canvas2D and SVG depend on `immediate/`, never the other way around. The
+immediate layer must not import Canvas2D, SVG, WebGL, or WebGPU code. There is
+intentionally no universal low-level drawing interface shared by every
+renderer.
 
-SVG hybrid rasterization is another deliberate, narrow exception.
-`svg/raster/webgl.js` may use the existing WebGL renderer to rasterize selected
-contiguous mark runs, but it remains a lazy leaf. SVG continues to own visible
+`renderingBackend.js` is the only static caller of renderer factories. WebGL,
+Canvas2D, and SVG enter through dynamic imports. Keep all TWGL and GLSL imports
+under `webgl/`; adding one elsewhere would pull the temporary renderer back
+into the synchronous ESM graph.
+
+Raster export and hybrid SVG use optional capabilities rather than a WebGL
+helper. A selected GPU backend is never initialized a second time for export;
+Canvas2D may provide a detached fallback. SVG retains ownership of visible
 instance counting, run selection, placeholders, cropping, and paint order.
 
-## Future WebGPU renderer
-
-A WebGPU implementation should live in `rendering/webgpu/` and may coexist with
-the current WebGL path during migration. WebGL can continue calling the
-mark-owned rendering methods while WebGPU dispatches semantic marks through
-renderer-owned implementations.
-
-WebGPU should own its device and surface state, pipelines, buffers, textures,
-bind groups, shaders, render passes, and picking resources. Per-mark GPU state
-should be held by the renderer, for example in maps keyed by mark identity,
-rather than added to mark instances. This keeps semantic marks usable by
-multiple backends and makes backend lifetime and disposal explicit.
-
-The shared boundary should remain high-level: prepared views, semantic mark
-state, encodings, scales, render scheduling, surface management, export, and
-capabilities. WebGPU should not emulate `glHelper`, inherit WebGL resource
-assumptions, or depend on the immediate-mode CPU projection layer merely
-because both execute some CPU code. A WebGPU renderer can reuse backend-neutral
-semantics while choosing its own batching, resource, and shader architecture.
-
-Avoid introducing placeholder WebGPU modules or a generalized rasterizer
-contract before a second GPU backend needs those abstractions. Add common
-interfaces only when two concrete implementations demonstrate the same stable
-requirement.
+The WebGL directory is a deletion boundary, not a reusable renderer framework.
+When WebGPU and Canvas2D cover production needs, removing the dynamic WebGL
+factory and its directory should remove the legacy renderer without another
+shared-Core redesign.
 
 For broader runtime context, see
 [`../../docs/architecture/rendering.md`](../../docs/architecture/rendering.md).

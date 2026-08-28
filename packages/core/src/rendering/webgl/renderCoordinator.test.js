@@ -18,8 +18,8 @@ function createCoordinator({
 
     const root = {
         /**
-         * @param {import("../view/renderingContext/viewRenderingContext.js").default} _context
-         * @param {import("../view/layout/rectangle.js").default} coords
+         * @param {import("../../view/renderingContext/viewRenderingContext.js").default} _context
+         * @param {import("../../view/layout/rectangle.js").default} coords
          */
         arrange(_context, coords) {
             renderedSizes.push({
@@ -37,6 +37,14 @@ function createCoordinator({
             getLogicalCanvasSize,
             getDevicePixelRatio: () => 1,
             invalidateSize,
+        }),
+        markAdapter: /** @type {any} */ ({
+            /** @returns {void} */
+            prepareMarks() {},
+            /** @returns {undefined} */
+            getMarkEntry() {},
+            /** @returns {void} */
+            synchronize() {},
         }),
         getBackground: () => "white",
         broadcast: () => undefined,

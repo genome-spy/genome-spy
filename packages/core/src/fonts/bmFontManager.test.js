@@ -12,7 +12,7 @@ describe("BmFontManager", () => {
         expect(manager.getFont("sans-serif")).toBe(manager.getDefaultFont());
     });
 
-    test("loads non-default metrics without creating a texture when GL is absent", async () => {
+    test("loads non-default metrics without bitmap preparation", async () => {
         const manager = new BmFontManager();
         const metrics = manager.getDefaultFont().metrics;
         vi.spyOn(manager, "_loadMetadata").mockResolvedValue([
@@ -24,13 +24,34 @@ describe("BmFontManager", () => {
             }),
         ]);
         vi.spyOn(manager, "_loadFont").mockResolvedValue(metrics);
-        const createTexture = vi.spyOn(manager, "_createTexture");
-
         const font = manager.getFont("Test Sans", "normal", 700);
         await manager.waitUntilReady();
 
         expect(font.metrics).toBe(metrics);
-        expect(font.texture).toBeUndefined();
-        expect(createTexture).not.toHaveBeenCalled();
+        expect(font.bitmapUrl).toContain("TestSans-Bold.png");
+    });
+
+    test("prepares bitmaps through the renderer-owned callback", async () => {
+        const prepareBitmap = vi.fn(() => Promise.resolve());
+        const manager = new BmFontManager(prepareBitmap);
+        const metrics = manager.getDefaultFont().metrics;
+        vi.spyOn(manager, "_loadMetadata").mockResolvedValue([
+            /** @type {any} */ ({
+                name: "Test Sans",
+                style: "normal",
+                weight: 700,
+                filename: "TestSans-Bold.ttf",
+            }),
+        ]);
+        vi.spyOn(manager, "_loadFont").mockResolvedValue(metrics);
+
+        const font = manager.getFont("Test Sans", "normal", 700);
+        await manager.waitUntilReady();
+
+        expect(prepareBitmap).toHaveBeenCalledTimes(2);
+        expect(prepareBitmap).toHaveBeenLastCalledWith(
+            expect.stringContaining("TestSans-Bold.png")
+        );
+        expect(font.bitmapUrl).toContain("TestSans-Bold.png");
     });
 });

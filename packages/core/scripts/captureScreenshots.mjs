@@ -23,6 +23,7 @@ const helpText = `Usage:
 Options:
   --all                 Capture all curated examples under examples/core and examples/docs.
   --check               Initialize and render examples without writing screenshots.
+  --renderer NAME       Renderer to use: auto (default), webgl, webgpu, or canvas.
   --server-url URL      Use an already running server instead of launching packages/core/dev-server.mjs.
   --timeout-ms NUMBER   Max time to wait for visible lazy data before failing the example.
   --overwrite           Overwrite existing sibling .png files.
@@ -116,7 +117,8 @@ export async function main(args = process.argv.slice(2)) {
                         examplePath,
                         options.timeoutMs,
                         overwrite,
-                        options.check
+                        options.check,
+                        options.renderer
                     );
                     if (browserFailures.length) {
                         throw new Error(browserFailures.join("\n"));
@@ -240,6 +242,7 @@ function visit(dir, visitor) {
  * @param {number} timeoutMs
  * @param {boolean} overwrite
  * @param {boolean} check
+ * @param {"auto" | "webgl" | "webgpu" | "canvas"} renderer
  * @returns {Promise<"checked" | "written" | "skipped">}
  */
 async function captureExample(
@@ -248,7 +251,8 @@ async function captureExample(
     examplePath,
     timeoutMs,
     overwrite,
-    check
+    check,
+    renderer
 ) {
     const outputPath = getOutputPath(examplePath);
     if (!check && !overwrite && fs.existsSync(outputPath)) {
@@ -259,6 +263,7 @@ async function captureExample(
     const specUrl = `/${examplePath}`;
     const harnessUrl = new URL(screenshotHarnessPath, serverOrigin);
     harnessUrl.searchParams.set("spec", specUrl);
+    harnessUrl.searchParams.set("renderer", renderer);
     harnessUrl.searchParams.set("lazy-timeout-ms", String(timeoutMs));
 
     console.log(`${check ? "Checking" : "Capturing"} ${examplePath}`);
@@ -428,6 +433,7 @@ export function parseArgs(args) {
         check: false,
         help: false,
         examplePaths: [],
+        renderer: "auto",
         serverUrl: undefined,
         timeoutMs: defaultLazyDataTimeoutMs,
         overwrite: undefined,
@@ -443,6 +449,13 @@ export function parseArgs(args) {
             options.check = true;
         } else if (arg === "--overwrite") {
             options.overwrite = true;
+        } else if (arg === "--renderer") {
+            const renderer = args[index + 1];
+            if (!["auto", "webgl", "webgpu", "canvas"].includes(renderer)) {
+                throw new Error(`Unknown renderer: ${renderer}`);
+            }
+            options.renderer = renderer;
+            index += 1;
         } else if (arg === "--server-url") {
             const serverUrl = args[index + 1];
             if (!serverUrl) {

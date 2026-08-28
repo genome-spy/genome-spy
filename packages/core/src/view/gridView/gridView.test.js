@@ -10,7 +10,7 @@ import { normalizeClipOptions } from "../renderingContext/clipOptions.js";
 import UnitView from "../unitView.js";
 import AxisView from "../axisView.js";
 import { createAndInitialize, createTestViewContext } from "../testUtils.js";
-import { createLogicalVisibleRect } from "../../marks/mark.js";
+import { createLogicalVisibleRect } from "../../rendering/webgl/marks/webGlMark.js";
 import { isChromeView } from "../viewSelectors.js";
 
 // Minimal context for layout-driven render calls without WebGL.
@@ -784,13 +784,6 @@ describe("GridView separators", () => {
         );
         const firstDatum = Array.from(firstChild.getCollector().getData())[0];
         const secondDatum = Array.from(secondChild.getCollector().getData())[0];
-
-        Object.defineProperty(firstChild.mark, "updateGraphicsData", {
-            value: /** @returns {void} */ () => undefined,
-        });
-        Object.defineProperty(secondChild.mark, "updateGraphicsData", {
-            value: /** @returns {void} */ () => undefined,
-        });
 
         view.paramRuntime.setValue("width", 999);
         view.paramRuntime.setValue("height", 888);

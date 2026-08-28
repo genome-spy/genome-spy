@@ -5,12 +5,11 @@ import {
     loadViewSubtreeData,
 } from "../data/flowInit.js";
 import { hasAuxiliaryDataInput } from "../data/transforms/auxiliaryData.js";
-import { finalizeSubtreeGraphics } from "../view/viewUtils.js";
 import { VISIT_SKIP } from "../view/view.js";
 
 /**
  * Initializes the view data pipeline: builds the flow graph, awaits fonts,
- * loads sources, and finalizes graphics for rendering.
+ * and loads sources.
  *
  * @param {import("../view/view.js").default} viewRoot
  * @param {import("../data/dataFlow.js").default} dataFlow
@@ -27,7 +26,7 @@ export async function initializeViewData(
     const visibilityPredicate = (
         /** @type {import("../view/view.js").default} */ view
     ) => view.isConfiguredVisible();
-    const { dataFlow: builtDataFlow, graphicsPromises } = initializeViewSubtree(
+    const { dataFlow: builtDataFlow } = initializeViewSubtree(
         viewRoot,
         dataFlow,
         visibilityPredicate
@@ -42,7 +41,6 @@ export async function initializeViewData(
     // subtrees that contain measureText transforms.
     await fontManager.waitUntilReady();
     viewRoot.invalidateSizeCache();
-    await finalizeSubtreeGraphics(graphicsPromises);
 
     // Find all data sources and initiate loading.
     await loadViewSubtreeData(
@@ -55,7 +53,7 @@ export async function initializeViewData(
 }
 
 /**
- * Initializes data flow and graphics for visible views that were previously
+ * Initializes data flow for visible views that were previously
  * skipped. Intended for view-visibility toggles.
  *
  * @param {import("../view/view.js").default} viewRoot
@@ -85,7 +83,7 @@ export async function initializeVisibleViewData(
 }
 
 /**
- * Initializes dataflow/graphics for selected views while avoiding unnecessary
+ * Initializes dataflow for selected views while avoiding unnecessary
  * data source reloads.
  *
  * If a selected view attaches downstream of an already completed collector,
@@ -144,7 +142,7 @@ export async function initializeViewDataForViews(
         }
     }
 
-    const { dataFlow: builtDataFlow, graphicsPromises } = initializeViewSubtree(
+    const { dataFlow: builtDataFlow } = initializeViewSubtree(
         viewRoot,
         dataFlow,
         visibilityPredicate,
@@ -155,7 +153,6 @@ export async function initializeViewDataForViews(
     // that request fonts during initializeViewSubtree.
     await fontManager.waitUntilReady();
     viewRoot.invalidateSizeCache();
-    await finalizeSubtreeGraphics(graphicsPromises);
 
     for (const collector of collectorsToRepropagate) {
         collector.repropagate();

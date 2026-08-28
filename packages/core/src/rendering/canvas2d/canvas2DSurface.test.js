@@ -30,7 +30,7 @@ test("creates only a 2D context and sizes its backing store", () => {
     expect(contextTypes).toEqual(["2d"]);
     expect(backend.surface.canvas.width).toBe(200);
     expect(backend.surface.canvas.height).toBe(100);
-    expect(backend.glHelper).toBeUndefined();
+    expect("rendererResources" in backend).toBe(false);
     expect(container.querySelectorAll("canvas")).toHaveLength(1);
 
     backend.surface.finalize();

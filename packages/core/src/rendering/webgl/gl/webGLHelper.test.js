@@ -12,7 +12,7 @@ vi.mock("./colorUtils.js", () => ({
     cssColorToArray: vi.fn(),
 }));
 
-import scale from "../scale/scale.js";
+import scale from "../../../scale/scale.js";
 import WebGLHelper from "./webGLHelper.js";
 
 beforeEach(() => {
@@ -21,7 +21,7 @@ beforeEach(() => {
 
 test("quantize textures use the scale's resolved color range", () => {
     // The resolved range samples interpolating schemes at the same points as CPU encoders.
-    /** @type {import("../spec/scale.js").Scale} */
+    /** @type {import("../../../spec/scale.js").Scale} */
     const scaleProps = {
         type: "quantize",
         domain: [0, 120],
@@ -32,6 +32,7 @@ test("quantize textures use the scale's resolved color range", () => {
     const helper = Object.create(WebGLHelper.prototype);
     helper.gl = {};
     helper.rangeTextures = new WeakMap();
+    helper._ownedTextures = new Set();
 
     helper.createRangeTexture({
         channel: "color",

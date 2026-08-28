@@ -1,17 +1,18 @@
 import { createFramebufferInfo } from "twgl.js";
 
-import BufferedViewRenderingContext from "../view/renderingContext/bufferedViewRenderingContext.js";
-import { createLayoutResult } from "../view/layout/layoutResult.js";
-import Rectangle from "../view/layout/rectangle.js";
+import BufferedViewRenderingContext from "./bufferedViewRenderingContext.js";
+import { createLayoutResult } from "../../view/layout/layoutResult.js";
+import Rectangle from "../../view/layout/rectangle.js";
 import {
     framebufferToBlob,
     framebufferToDataUrl,
-} from "../gl/framebufferReadback.js";
+} from "./gl/framebufferReadback.js";
 
 /**
  * @param {object} options
- * @param {import("../gl/webGLHelper.js").default} options.glHelper
- * @param {import("../view/view.js").default} options.viewRoot
+ * @param {import("./gl/webGLHelper.js").default} options.glHelper
+ * @param {import("./rendererResources.js").default} options.markAdapter
+ * @param {import("../../view/view.js").default} options.viewRoot
  * @param {number} [options.logicalWidth]
  * @param {number} [options.logicalHeight]
  * @param {number} [options.devicePixelRatio]
@@ -21,6 +22,7 @@ import {
  */
 export function exportCanvas({
     glHelper,
+    markAdapter,
     viewRoot,
     logicalWidth,
     logicalHeight,
@@ -29,6 +31,7 @@ export function exportCanvas({
 }) {
     const { gl, framebufferInfo } = renderToFramebuffer({
         glHelper,
+        markAdapter,
         viewRoot,
         logicalWidth,
         logicalHeight,
@@ -45,8 +48,9 @@ export function exportCanvas({
 
 /**
  * @param {object} options
- * @param {import("../gl/webGLHelper.js").default} options.glHelper
- * @param {import("../view/view.js").default} options.viewRoot
+ * @param {import("./gl/webGLHelper.js").default} options.glHelper
+ * @param {import("./rendererResources.js").default} options.markAdapter
+ * @param {import("../../view/view.js").default} options.viewRoot
  * @param {number} [options.logicalWidth]
  * @param {number} [options.logicalHeight]
  * @param {number} [options.pixelRatio]
@@ -56,6 +60,7 @@ export function exportCanvas({
  */
 export async function exportRaster({
     glHelper,
+    markAdapter,
     viewRoot,
     logicalWidth,
     logicalHeight,
@@ -69,6 +74,7 @@ export async function exportRaster({
 
     const { gl, framebufferInfo } = renderToFramebuffer({
         glHelper,
+        markAdapter,
         viewRoot,
         logicalWidth,
         logicalHeight,
@@ -85,8 +91,9 @@ export async function exportRaster({
 
 /**
  * @param {object} options
- * @param {import("../gl/webGLHelper.js").default} options.glHelper
- * @param {import("../view/view.js").default} options.viewRoot
+ * @param {import("./gl/webGLHelper.js").default} options.glHelper
+ * @param {import("./rendererResources.js").default} options.markAdapter
+ * @param {import("../../view/view.js").default} options.viewRoot
  * @param {number} [options.logicalWidth]
  * @param {number} [options.logicalHeight]
  * @param {number} [options.pixelRatio]
@@ -94,6 +101,7 @@ export async function exportRaster({
  */
 function renderToFramebuffer({
     glHelper,
+    markAdapter,
     viewRoot,
     logicalWidth,
     logicalHeight,
@@ -145,6 +153,7 @@ function renderToFramebuffer({
             { picking: false },
             {
                 webGLHelper: glHelper,
+                markAdapter,
                 canvasSize: { width: logicalWidth, height: logicalHeight },
                 devicePixelRatio: pixelRatio,
                 clearColor,
@@ -158,6 +167,7 @@ function renderToFramebuffer({
             { devicePixelRatio: pixelRatio }
         );
         layoutResult.collectRenderCommands(renderingContext);
+        renderingContext.finish();
         renderingContext.render();
 
         gl.bindFramebuffer(

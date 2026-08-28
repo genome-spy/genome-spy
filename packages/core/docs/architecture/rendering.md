@@ -31,14 +31,16 @@ the complete membership used to index retained mark data.
 
 ## Rendering contexts and scheduling
 
-- `BufferedViewRenderingContext`
-  (`src/view/renderingContext/bufferedViewRenderingContext.js`) buffers mark
-  placements and builds an ordered batch.
+- WebGL's `BufferedViewRenderingContext`
+  (`src/rendering/webgl/bufferedViewRenderingContext.js`) buffers mark
+  placements and builds an ordered batch behind the renderer boundary.
 - `CompositeViewRenderingContext` combines contexts, including picking.
 - `LayoutResult.collectRenderCommands()` replays placements into a context
   without traversing the view hierarchy again.
-- Contexts call `mark.render()` during consumption to obtain draw callbacks,
-  which the WebGL batch executes while minimizing state changes.
+- The WebGL context records semantic marks and placements, then asks its private
+  adapter to prepare and synchronize retained delegates before compiling draw
+  callbacks. The ordered batch resolves each delegate once and minimizes state
+  changes across paints.
 - `Animator` (`src/utils/animator.js`) centralizes render requests. Many reactive
   updates call `animator.requestRender()` directly.
 
@@ -51,33 +53,47 @@ Modular rendering implementations live under `src/rendering/`:
 - `svg/` owns structured SVG export and SVG-specific definitions.
 - `immediate/` projects, constructs, and culls mark occurrences shared by
   Canvas2D and SVG. It must not depend on a rendering backend.
+- `webgl/` owns the legacy WebGL surface, TWGL and GLSL implementation, mark GPU
+  delegates, batching, picking, and rasterization.
+- `webgpu/` is the development-only Core adapter for the separate WebGPU
+  renderer package.
 - `renderingBackend.js` selects the live surface and exposes rendering, export,
   and optional picking capabilities.
 
-The existing WebGL implementation remains split between `src/marks/` and
-`src/gl/`. This is a transitional exception: WebGL code is not extracted into
-a modular renderer before it is replaced. The experimental WebGPU integration
-lives under `src/rendering/webgpu/`; `@genome-spy/webgpu-renderer` owns its
-pipelines, buffers, textures, bind groups, and per-mark resources rather than
-storing WebGPU state in Core marks.
+`renderingBackend.js` dynamically imports WebGL when `webgl` is selected or
+when `auto` makes its WebGL-first attempt. Explicit Canvas2D and WebGPU
+selection does not initialize WebGL. If automatic WebGL initialization fails,
+Core falls back to Canvas2D; an explicit WebGL failure is reported.
+
+Semantic marks remain under `src/marks/`. They own configuration, encoders,
+data, facet semantics, and rendering revisions. WebGL's private adapter owns one
+retained delegate per logical mark and releases it through the owning view's
+disposer registry. WebGL programs, buffers, textures, and draw callbacks never
+become shared mark state or cross through `ViewContext`.
 
 SVG hybrid export counts visible instances and selects contiguous paint-order
-runs within the SVG subsystem. Its nested `svg/raster/webgl.js` adapter may use
-the existing buffered WebGL renderer to rasterize selected runs. This lazy leaf
-is the only intended SVG-to-WebGL dependency; run selection, image
-placeholders, cropping, and document ordering remain SVG-owned.
+runs within the SVG subsystem. It asks the selected backend for an optional
+selective rasterization capability and may fall through to detached Canvas2D.
+Run selection, image placeholders, cropping, and document ordering remain
+SVG-owned. Export never initializes an unselected GPU backend.
+
+The ESM build preserves these dynamic boundaries. UMD is a compatibility
+artifact and inlines dynamic modules because its format cannot emit runtime
+chunks.
 
 ## Shader generation and programs
 
 - Shaders are generated dynamically from encodings and scales.
-- GLSL generation lives in `src/gl/glslScaleGenerator.js` and
-  `src/gl/includes/*.glsl`.
+- GLSL generation lives in
+  `src/rendering/webgl/gl/glslScaleGenerator.js` and
+  `src/rendering/webgl/gl/includes/*.glsl`.
 - Encoders generate attribute declarations, scale mappings, conditional
   encodings, and selection predicates.
-- `WebGLHelper.compileShader` (`src/gl/webGLHelper.js`) centralizes compilation.
-  Normalized source keys cache shaders, and link time checks compilation errors.
-- Marks create and link programs through twgl.js and configure static/dynamic
-  uniforms, view/mark uniform blocks, vertex arrays, and buffers.
+- `WebGLHelper.compileShader`
+  (`src/rendering/webgl/gl/webGLHelper.js`) centralizes compilation. Normalized
+  source keys cache shaders, and link time checks compilation errors.
+- WebGL mark delegates create and link programs through twgl.js and configure
+  static/dynamic uniforms, view/mark uniform blocks, vertex arrays, and buffers.
 
 ## GPU and CPU resources
 
@@ -85,45 +101,52 @@ placeholders, cropping, and document ordering remain SVG-owned.
 
 `WebGLHelper` owns the canvas and WebGL2 context, including extension setup,
 defaults, premultiplied-alpha blending, the picking framebuffer, and
-device-pixel-ratio scaling.
+device-pixel-ratio scaling. Surface finalization first disposes the WebGL mark
+adapter and then releases helper-owned textures, cached shaders, picking
+attachments, size observers, and the canvas.
 
 ### Buffers and geometry
 
-- Marks create vertex buffers per mark and per attribute through TWGL.
+- WebGL delegates create vertex buffers per mark and per attribute through TWGL.
 - `updateBufferInfo` uses sub-data-style updates when capacity allows and
   reallocates when new data exceeds the allocation.
-- Each mark keeps a `rangeMap` from facets to vertex ranges for efficient batch
-  rendering.
+- Each WebGL delegate keeps a `rangeMap` from facets to vertex ranges for
+  efficient batch rendering.
 
 ### Textures and picking
 
 - Textures represent color ramps and discrete schemes
-  (`src/gl/colorUtils.js`), multi-point selections, and offscreen picking data.
+  (`src/rendering/webgl/gl/colorUtils.js`), multi-point selections, and
+  offscreen picking data.
+- The WebGL adapter prepares font textures from renderer-neutral bitmap URLs and
+  subscribes to the scale resolutions used by its retained marks. Font and
+  range textures are not stored in semantic fonts, marks, or scale planning.
 - Picking renders into a dedicated framebuffer owned by `WebGLHelper`.
 - Marks can opt out of picking; some render only into the picking target.
 
 ## WebGPU migration implications
 
-WebGL-specific behavior is concentrated in `src/gl/`, mark buffer/program code
-under `src/marks/`, and render-context batch execution. WebGL and a modular
-WebGPU renderer may coexist while the transition is incomplete. During that
-period, WebGL continues to call `mark.render()`, while WebGPU dispatches marks
-through renderer-owned implementations and resources. WebGPU consumes each
-settled `LayoutResult` once to compile an adapter-owned frame plan that
-preserves placement order across paints. Ordinary visible and picking passes
-reuse that plan while retaining compatible pipelines, buffers, textures, and
-bind groups. Core does not prescribe those renderer-resource lifetimes. A
-migration can retain the dataflow, view hierarchy, mark abstraction, and
-encoding logic while replacing:
+WebGL-specific behavior is concentrated under `src/rendering/webgl/`. WebGL and
+WebGPU remain independently selectable while the transition is incomplete.
+Both consume the same semantic marks but own their GPU implementations and
+resource lifetimes. WebGPU consumes each settled `LayoutResult` once to compile
+an adapter-owned frame plan that preserves placement order across paints.
+Ordinary visible and picking passes reuse that plan while retaining compatible
+pipelines, buffers, textures, and bind groups.
+
+The WebGL directory is intentionally a deletion boundary. A migration can
+retain the dataflow, view hierarchy, semantic marks, and encoding logic while
+replacing:
 
 - `WebGLHelper` with WebGPU device and surface setup
 - TWGL buffer/texture operations with WebGPU resources
 - GLSL compilation/linking with WGSL render-pipeline creation
 - The picking framebuffer with an offscreen WebGPU render pass
 
-Do not make WebGPU emulate `glHelper` or depend on the immediate-mode CPU
-projection layer. Existing `glHelper` access remains a legacy WebGL escape
-hatch until WebGL-specific mark code is deleted.
+Do not make WebGPU emulate WebGL resource layouts or depend on the
+immediate-mode CPU projection layer. Shared Core exposes semantic marks,
+rendering revisions, completed layout results, and optional backend
+capabilities, but no retained-mark lifecycle.
 
 ### WebGPU integration boundary
 

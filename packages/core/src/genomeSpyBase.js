@@ -26,6 +26,10 @@ import { invalidatePrefix } from "./utils/propertyCacher.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import InteractionController from "./genomeSpy/interactionController.js";
 import { createRenderingBackend } from "./rendering/renderingBackend.js";
+import {
+    exportRasterUsingBackend,
+    rasterizeSvgRunsUsingBackend,
+} from "./rendering/rasterization.js";
 import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
@@ -71,8 +75,13 @@ export default class GenomeSpy {
     #inputBindingManager;
     /** @type {InteractionController} */
     #interactionController;
-    /** @type {import("./rendering/renderingBackend.js").RenderingBackend} */
+    /** @type {import("./rendering/renderingBackend.js").RenderingBackend | undefined} */
     #renderingBackend;
+
+    /** @type {View | undefined} */
+    #disposedViewRoot;
+
+    #backendDisposed = false;
 
     #destroyed = false;
     #launchPending = false;
@@ -153,10 +162,6 @@ export default class GenomeSpy {
 
     get #surface() {
         return this.#renderingBackend.surface;
-    }
-
-    get #glHelper() {
-        return this.#renderingBackend.glHelper;
     }
 
     #initializeParameterBindings() {
@@ -303,7 +308,7 @@ export default class GenomeSpy {
         const { canvasWrapper, loadingIndicatorsElement, tooltip } =
             createContainerUi(this.container);
 
-        this.#renderingBackend = await createRenderingBackend({
+        const renderingBackend = await createRenderingBackend({
             renderer: this.options.renderer ?? "auto",
             container: canvasWrapper,
             sizeSource: () =>
@@ -317,6 +322,12 @@ export default class GenomeSpy {
             onRenderInvalidated: () => this.animator.requestRender(),
             onError: (error) => this.#reportRuntimeError(error),
         });
+
+        if (this.#destroyed) {
+            renderingBackend.surface.finalize();
+            throw new Error("GenomeSpy was destroyed during launch.");
+        }
+        this.#renderingBackend = renderingBackend;
 
         canvasWrapper.appendChild(loadingIndicatorsElement);
 
@@ -342,20 +353,31 @@ export default class GenomeSpy {
         const canvasWrapper = this.#canvasWrapper;
 
         this.container.classList.remove("genome-spy");
-        canvasWrapper.classList.remove("loading");
+        canvasWrapper?.classList.remove("loading");
 
         this.#keyboardListenerManager.removeAll();
 
         this.#destructionCallbacks.forEach((callback) => callback());
 
-        this.#surface.finalize();
+        this.#disposeInitializedResources();
 
         this.#inputBindingManager.remove();
 
-        this.#loadingIndicatorManager.destroy();
+        this.#loadingIndicatorManager?.destroy();
 
         while (this.container.firstChild) {
             this.container.firstChild.remove();
+        }
+    }
+
+    #disposeInitializedResources() {
+        if (this.viewRoot && this.#disposedViewRoot !== this.viewRoot) {
+            this.viewRoot.disposeSubtree();
+            this.#disposedViewRoot = this.viewRoot;
+        }
+        if (this.#renderingBackend && !this.#backendDisposed) {
+            this.#renderingBackend.surface.finalize();
+            this.#backendDisposed = true;
         }
     }
 
@@ -398,12 +420,13 @@ export default class GenomeSpy {
 
         return createViewContext({
             dataFlow,
-            glHelper: this.#glHelper,
-            allowMissingGlHelper: !this.#glHelper,
-            graphicsDataUpdates: !!this.#glHelper,
+            getMarkRenderingDebugState:
+                this.#renderingBackend.getMarkRenderingDebugState,
             animator: this.animator,
             genomeStore: this.genomeStore,
-            fontManager: new BmFontManager(this.#glHelper),
+            fontManager: new BmFontManager(
+                this.#renderingBackend.prepareFontBitmap
+            ),
             updateTooltip: this.updateTooltip.bind(this),
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),
             getCurrentHover: () =>
@@ -590,7 +613,10 @@ export default class GenomeSpy {
             return false;
         } finally {
             this.#launchPending = false;
-            this.#canvasWrapper.classList.remove("loading");
+            this.#canvasWrapper?.classList.remove("loading");
+            if (this.#destroyed) {
+                this.#disposeInitializedResources();
+            }
             if (launched && this.viewRoot) {
                 this.#loadingStatusRegistry.set(this.viewRoot, "complete");
             }
@@ -609,6 +635,9 @@ export default class GenomeSpy {
     }
 
     #throwIfLaunchFailed() {
+        if (this.#destroyed) {
+            throw new Error("GenomeSpy was destroyed during launch.");
+        }
         if (this.#launchRuntimeError) {
             throw this.#launchRuntimeError;
         }
@@ -726,14 +755,17 @@ export default class GenomeSpy {
         const background = getExportBackground(this.spec, options);
 
         try {
-            const blob = await this.#renderingBackend.exportRaster({
-                viewRoot: this.viewRoot,
-                logicalWidth: options.logicalWidth,
-                logicalHeight: options.logicalHeight,
-                pixelRatio: options.pixelRatio,
-                clearColor: background,
-                mimeType: options.mimeType,
-            });
+            const blob = await exportRasterUsingBackend(
+                this.#renderingBackend,
+                {
+                    viewRoot: this.viewRoot,
+                    logicalWidth: options.logicalWidth,
+                    logicalHeight: options.logicalHeight,
+                    pixelRatio: options.pixelRatio,
+                    clearColor: background,
+                    mimeType: options.mimeType,
+                }
+            );
             return { blob };
         } finally {
             this.computeLayout();
@@ -763,7 +795,11 @@ export default class GenomeSpy {
                 await import("./rendering/svg/index.js");
             const { svg, warnings, rasterized } = await createSvgExport({
                 viewRoot: this.viewRoot,
-                webGLHelper: this.#glHelper,
+                rasterizeSvgRuns: (rasterOptions) =>
+                    rasterizeSvgRunsUsingBackend(
+                        this.#renderingBackend,
+                        rasterOptions
+                    ),
                 logicalWidth,
                 logicalHeight,
                 background,

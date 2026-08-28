@@ -3,6 +3,7 @@ import { initializeViewSubtree } from "../data/flowInit.js";
 import LayerView from "../view/layerView.js";
 import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
+import WebGLTextMark from "../rendering/webgl/marks/text.js";
 
 /**
  * @param {import("../spec/channel.js").PositionDef | import("../spec/channel.js").Position2Def} channelDef
@@ -23,9 +24,12 @@ describe("TextMark", () => {
             },
             UnitView
         );
-        const textMark = /** @type {import("./text.js").default} */ (view.mark);
+        const textMark = /** @type {any} */ (
+            Object.create(WebGLTextMark.prototype)
+        );
+        textMark.mark = { unitView: view };
         const uniformSetter = vi.fn();
-        /** @type {any} */ (textMark).markUniformInfo = {
+        textMark.markUniformInfo = {
             setters: { uTestVector: uniformSetter },
         };
         const requestRender = vi.spyOn(view.context.animator, "requestRender");
@@ -53,47 +57,46 @@ describe("TextMark", () => {
                     text: { expr: "width" },
                 },
             },
-            UnitView
+            UnitView,
+            {}
         );
 
         view.mark.initializeEncoders();
         initializeViewSubtree(view, view.context.dataFlow);
 
-        const updateGraphicsData = vi
-            .spyOn(view.mark, "updateGraphicsData")
-            .mockImplementation(() => undefined);
+        const revision = view.mark.getEncodedDataRevision();
 
         // Layout expressions can update before the source has completed.
         view.paramRuntime.setValue("width", 100);
-        expect(updateGraphicsData).not.toHaveBeenCalled();
+        expect(view.mark.getEncodedDataRevision()).toBe(revision);
 
         view.getCollector().complete();
+        const revisionAfterDataPropagation = view.mark.getEncodedDataRevision();
         view.paramRuntime.setValue("width", 200);
 
-        expect(updateGraphicsData).toHaveBeenCalledTimes(1);
+        expect(view.mark.getEncodedDataRevision()).toBe(
+            revisionAfterDataPropagation + 1
+        );
     });
 
-    test("repaints expression updates without rebuilding GPU data in Canvas mode", async () => {
+    test("repaints expression updates in Canvas mode", async () => {
         const view = await create(
             {
                 data: { values: [{ label: "text" }] },
                 mark: { type: "text", text: { expr: "width" } },
             },
             UnitView,
-            {},
-            { graphicsDataUpdates: false }
+            {}
         );
         view.mark.initializeEncoders();
         initializeViewSubtree(view, view.context.dataFlow);
         view.getCollector().complete();
-        const updateGraphicsData = vi
-            .spyOn(view.mark, "updateGraphicsData")
-            .mockImplementation(() => undefined);
+        const revision = view.mark.getEncodedDataRevision();
         const requestRender = vi.spyOn(view.context.animator, "requestRender");
 
         view.paramRuntime.setValue("width", 200);
 
-        expect(updateGraphicsData).not.toHaveBeenCalled();
+        expect(view.mark.getEncodedDataRevision()).toBe(revision + 1);
         expect(requestRender).toHaveBeenCalled();
     });
 

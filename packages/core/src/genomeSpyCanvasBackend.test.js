@@ -30,7 +30,7 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-test("launches with a rendering backend that has no WebGL helper", async () => {
+test("launches with a rendering backend that has no retained resources", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const canvas = document.createElement("canvas");
@@ -46,7 +46,6 @@ test("launches with a rendering backend that has no WebGL helper", async () => {
                 getDevicePixelRatio: () => 1,
                 finalize,
             },
-            glHelper: undefined,
             createRenderCoordinator: () => ({
                 computeLayout: /** @returns {void} */ () => undefined,
                 renderAll: /** @returns {void} */ () => undefined,
@@ -72,7 +71,6 @@ test("launches with a rendering backend that has no WebGL helper", async () => {
     );
 
     expect(await genomeSpy.launch()).toBe(true);
-    expect(genomeSpy.viewRoot.context.glHelper).toBeUndefined();
     expect(mocks.createRenderingBackend).toHaveBeenCalledWith(
         expect.objectContaining({ renderer: "canvas" })
     );
@@ -153,6 +151,44 @@ test("shows a post-launch backend error and ignores notifications after destroy"
     expect(consoleError).toHaveBeenCalledOnce();
 });
 
+test("disposes a backend that finishes loading after destroy", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    /** @type {(backend: import("./rendering/renderingBackend.js").RenderingBackend) => void} */
+    let resolveBackend;
+    /** @type {import("./rendering/renderingBackend.js").RenderingBackendOptions} */
+    let backendOptions;
+    mocks.createRenderingBackend.mockImplementation((options) => {
+        backendOptions = options;
+        return new Promise((resolve) => {
+            resolveBackend = resolve;
+        });
+    });
+    const genomeSpy = new GenomeSpy(
+        container,
+        {
+            width: 100,
+            height: 100,
+            data: { values: [{}] },
+            mark: "rect",
+        },
+        { renderer: "webgl" }
+    );
+
+    const launch = genomeSpy.launch();
+    await vi.waitFor(() =>
+        expect(container.querySelector(".canvas-wrapper")).not.toBeNull()
+    );
+    genomeSpy.destroy();
+
+    const backend = createMockBackend(backendOptions);
+    resolveBackend(backend);
+
+    expect(await launch).toBe(false);
+    expect(backend.surface.finalize).toHaveBeenCalledOnce();
+    expect(container.childElementCount).toBe(0);
+});
+
 /**
  * @param {import("./rendering/renderingBackend.js").RenderingBackendOptions} options
  * @returns {import("./rendering/renderingBackend.js").RenderingBackend}
@@ -168,7 +204,6 @@ function createMockBackend(options) {
             getDevicePixelRatio: () => 1,
             finalize: vi.fn(),
         },
-        glHelper: undefined,
         createRenderCoordinator: () => ({
             computeLayout: /** @returns {void} */ () => undefined,
             renderAll: /** @returns {void} */ () => undefined,

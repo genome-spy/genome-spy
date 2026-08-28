@@ -1,5 +1,6 @@
 import { createLayoutResult } from "../../view/layout/layoutResult.js";
 import Rectangle from "../../view/layout/rectangle.js";
+import { RasterizationUnavailableError } from "../rasterization.js";
 import renderCanvas2D from "./renderCanvas2D.js";
 
 /**
@@ -57,12 +58,23 @@ function renderToCanvas(options) {
     const logicalWidth = options.logicalWidth ?? options.liveSize.width;
     const logicalHeight = options.logicalHeight ?? options.liveSize.height;
     const pixelRatio = options.pixelRatio ?? options.liveDevicePixelRatio;
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.floor(logicalWidth * pixelRatio);
-    canvas.height = Math.floor(logicalHeight * pixelRatio);
-    const context = canvas.getContext("2d");
+    let canvas;
+    let context;
+    try {
+        canvas = document.createElement("canvas");
+        canvas.width = Math.floor(logicalWidth * pixelRatio);
+        canvas.height = Math.floor(logicalHeight * pixelRatio);
+        context = canvas.getContext("2d");
+    } catch (error) {
+        throw new RasterizationUnavailableError(
+            "Unable to initialize a Canvas2D export context.",
+            { cause: error }
+        );
+    }
     if (!context) {
-        throw new Error("Unable to initialize a Canvas2D export context.");
+        throw new RasterizationUnavailableError(
+            "Unable to initialize a Canvas2D export context."
+        );
     }
 
     const layoutResult = createLayoutResult(

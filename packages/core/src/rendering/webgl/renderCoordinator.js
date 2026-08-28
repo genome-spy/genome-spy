@@ -1,20 +1,22 @@
-import BufferedViewRenderingContext from "../view/renderingContext/bufferedViewRenderingContext.js";
-import CompositeViewRenderingContext from "../view/renderingContext/compositeViewRenderingContext.js";
-import { createLayoutResult } from "../view/layout/layoutResult.js";
-import Rectangle from "../view/layout/rectangle.js";
+import BufferedViewRenderingContext from "./bufferedViewRenderingContext.js";
+import CompositeViewRenderingContext from "../../view/renderingContext/compositeViewRenderingContext.js";
+import { createLayoutResult } from "../../view/layout/layoutResult.js";
+import Rectangle from "../../view/layout/rectangle.js";
 import {
     getPerformanceProfiler,
     measurePerformance,
-} from "../debug/performanceProfiler.js";
+} from "../../debug/performanceProfiler.js";
 
 export default class RenderCoordinator {
-    /** @type {import("../view/view.js").default} */
+    /** @type {import("../../view/view.js").default} */
     #viewRoot;
-    /** @type {import("../gl/webGLHelper.js").default} */
+    /** @type {import("./gl/webGLHelper.js").default} */
     #glHelper;
+    /** @type {import("./rendererResources.js").default} */
+    #markAdapter;
     /** @type {() => string} */
     #getBackground;
-    /** @type {(type: import("../genomeSpy.js").BroadcastEventType, payload?: any) => void} */
+    /** @type {(type: import("../../genomeSpy.js").BroadcastEventType, payload?: any) => void} */
     #broadcast;
     /** @type {() => void} */
     #onLayoutComputed;
@@ -26,21 +28,24 @@ export default class RenderCoordinator {
     #dirtyPickingBuffer;
     /**
      * @param {object} options
-     * @param {import("../view/view.js").default} options.viewRoot
-     * @param {import("../gl/webGLHelper.js").default} options.glHelper
+     * @param {import("../../view/view.js").default} options.viewRoot
+     * @param {import("./gl/webGLHelper.js").default} options.glHelper
+     * @param {import("./rendererResources.js").default} options.markAdapter
      * @param {() => string} options.getBackground
-     * @param {(type: import("../genomeSpy.js").BroadcastEventType, payload?: any) => void} options.broadcast
+     * @param {(type: import("../../genomeSpy.js").BroadcastEventType, payload?: any) => void} options.broadcast
      * @param {() => void} options.onLayoutComputed
      */
     constructor({
         viewRoot,
         glHelper,
+        markAdapter,
         getBackground,
         broadcast,
         onLayoutComputed,
     }) {
         this.#viewRoot = viewRoot;
         this.#glHelper = glHelper;
+        this.#markAdapter = markAdapter;
         this.#getBackground = getBackground;
         this.#broadcast = broadcast;
         this.#onLayoutComputed = onLayoutComputed;
@@ -117,6 +122,7 @@ export default class RenderCoordinator {
     #collectLayout({ layoutResult, canvasSize, devicePixelRatio }) {
         const commonOptions = {
             webGLHelper: this.#glHelper,
+            markAdapter: this.#markAdapter,
             canvasSize,
             devicePixelRatio,
         };
@@ -144,6 +150,8 @@ export default class RenderCoordinator {
                 )
             )
         );
+        renderingContext.finish();
+        pickingContext.finish();
         this.#renderingContext = renderingContext;
         this.#pickingContext = pickingContext;
     }
@@ -171,7 +179,7 @@ export default class RenderCoordinator {
 
 /**
  * @typedef {object} CompletedLayoutPass
- * @prop {import("../view/layout/layoutResult.js").default} layoutResult
+ * @prop {import("../../view/layout/layoutResult.js").default} layoutResult
  * @prop {{width: number, height: number}} canvasSize
  * @prop {number} devicePixelRatio
  */

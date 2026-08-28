@@ -10,12 +10,12 @@ vi.mock("twgl.js", () => ({
     createFramebufferInfo: mocks.createFramebufferInfo,
 }));
 
-vi.mock("../gl/framebufferReadback.js", () => ({
+vi.mock("./gl/framebufferReadback.js", () => ({
     framebufferToBlob: mocks.framebufferToBlob,
     framebufferToDataUrl: vi.fn(),
 }));
 
-vi.mock("../view/renderingContext/bufferedViewRenderingContext.js", () => ({
+vi.mock("./bufferedViewRenderingContext.js", () => ({
     default: class {
         /** @param {object} _globalOptions @param {any} options */
         constructor(_globalOptions, options) {
@@ -24,6 +24,8 @@ vi.mock("../view/renderingContext/bufferedViewRenderingContext.js", () => ({
         }
 
         render() {}
+
+        finish() {}
     },
 }));
 
@@ -34,6 +36,7 @@ describe("exportRaster", () => {
         await expect(
             exportRaster({
                 glHelper: /** @type {any} */ ({}),
+                markAdapter: /** @type {any} */ ({}),
                 viewRoot: /** @type {any} */ ({}),
                 mimeType: /** @type {any} */ ("image/webp"),
             })
@@ -51,6 +54,7 @@ describe("exportRaster", () => {
         const viewRoot = { arrange: vi.fn() };
         await exportRaster({
             glHelper: /** @type {any} */ ({ gl }),
+            markAdapter: /** @type {any} */ ({}),
             viewRoot: /** @type {any} */ (viewRoot),
             logicalWidth: 200,
             logicalHeight: 100,

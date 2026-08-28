@@ -34,6 +34,8 @@ Options:
   --server-url URL      Use an already running dev server for the selected scope.
   --output-dir DIR      Store screenshots and reports in DIR.
   --dpr NUMBER          Browser device pixel ratio (default: 1).
+  --width NUMBER        App frame width in CSS pixels (default: 1200).
+  --height NUMBER       App frame height in CSS pixels (default: 700).
   --timeout-ms NUMBER   Wait limit for example initialization and visible lazy data.
   --fail-on-warning     Treat browser console warnings as failures.
   --help                Show this help text.
@@ -55,6 +57,8 @@ be full examples/... paths, the private MCCA spec, or paths relative to examples
  * @property {string | undefined} serverUrl
  * @property {string} outputDir
  * @property {number} dpr
+ * @property {number} width
+ * @property {number} height
  * @property {number} timeoutMs
  * @property {boolean} failOnWarning
  */
@@ -100,6 +104,8 @@ export async function main(args = process.argv.slice(2)) {
                         options.timeoutMs,
                         options.failOnWarning,
                         options.dpr,
+                        options.width,
+                        options.height,
                         options.checkPicking
                     )
                 );
@@ -117,6 +123,8 @@ export async function main(args = process.argv.slice(2)) {
                         options.timeoutMs,
                         options.failOnWarning,
                         options.dpr,
+                        options.width,
+                        options.height,
                         options.checkPicking
                     );
                     comparisons.push({
@@ -140,6 +148,8 @@ export async function main(args = process.argv.slice(2)) {
                 renderer: options.renderer,
                 compareWebgl: options.compareWebgl,
                 dpr: options.dpr,
+                width: options.width,
+                height: options.height,
                 results,
                 comparisons,
             };
@@ -190,6 +200,8 @@ export async function main(args = process.argv.slice(2)) {
  * @param {number} timeoutMs
  * @param {boolean} failOnWarning
  * @param {number} dpr
+ * @param {number} width
+ * @param {number} height
  * @param {boolean} checkPicking
  */
 async function runExample(
@@ -201,6 +213,8 @@ async function runExample(
     timeoutMs,
     failOnWarning,
     dpr,
+    width,
+    height,
     checkPicking
 ) {
     const startedAt = Date.now();
@@ -219,7 +233,10 @@ async function runExample(
         picking: undefined,
         detail: undefined,
     };
-    const page = await browser.newPage({ deviceScaleFactor: dpr });
+    const page = await browser.newPage({
+        deviceScaleFactor: dpr,
+        viewport: { width, height },
+    });
     const prefix = `${renderer}-${examplePath
         .replaceAll("/", "__")
         .replace(/\.json$/, "")}${dpr === 1 ? "" : `-dpr${dpr}`}`;
@@ -258,6 +275,8 @@ async function runExample(
         url.searchParams.set("spec", `/${examplePath}`);
         url.searchParams.set("renderer", renderer);
         url.searchParams.set("lazy-timeout-ms", String(timeoutMs));
+        url.searchParams.set("width", String(width));
+        url.searchParams.set("height", String(height));
         await page.goto(url.toString(), {
             waitUntil: "load",
             timeout: timeoutMs,
@@ -661,6 +680,7 @@ function createFailureReport(summary) {
         `Generated: ${summary.generatedAt}`,
         `Renderer: ${summary.renderer}`,
         `DPR: ${summary.dpr}`,
+        `Frame: ${summary.width} x ${summary.height}`,
         `Selected examples: ${summary.selectedCount}`,
         `Passed: ${summary.results.length - failed.length}`,
         `Failed: ${failed.length}`,
@@ -771,6 +791,8 @@ function parseArgs(args) {
         serverUrl: undefined,
         outputDir: undefined,
         dpr: 1,
+        width: 1200,
+        height: 700,
         timeoutMs: defaultTimeoutMs,
         failOnWarning: false,
     };
@@ -804,6 +826,13 @@ function parseArgs(args) {
             if (!Number.isFinite(options.dpr) || options.dpr <= 0) {
                 throw new Error("--dpr must be positive.");
             }
+        } else if (arg === "--width" || arg === "--height") {
+            const value = Number(requireValue(args, ++index, arg));
+            if (!Number.isInteger(value) || value <= 0) {
+                throw new Error(`${arg} must be a positive integer.`);
+            }
+            if (arg === "--width") options.width = value;
+            else options.height = value;
         } else if (arg === "--timeout-ms") {
             options.timeoutMs = Number(requireValue(args, ++index, arg));
             if (!Number.isFinite(options.timeoutMs) || options.timeoutMs <= 0) {
