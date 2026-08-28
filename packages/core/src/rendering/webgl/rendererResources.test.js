@@ -14,6 +14,9 @@ const mocks = vi.hoisted(() => {
 
         initializeGraphics() {
             events.push(this.mark.name + ":initialize");
+            if (this.mark.failInitialize) {
+                throw new Error(this.mark.name + " failed");
+            }
         }
 
         finalizeGraphicsInitialization() {
@@ -203,6 +206,57 @@ test("finishes other shader programs when one fails", () => {
     expect(
         resources.isEntryActive(resources.getMarkEntry(successful.mark))
     ).toBe(true);
+});
+
+test("finishes successfully started programs when initialization fails", () => {
+    const resources = new WebGLRendererResources(createGlHelper());
+    const first = createMark("first");
+    const failed = createMark("failed");
+    failed.mark.failInitialize = true;
+    const last = createMark("last");
+
+    expect(() =>
+        resources.prepareMarks([first.mark, failed.mark, last.mark])
+    ).toThrow("failed failed");
+
+    expect(mocks.events).toEqual([
+        "first:initialize",
+        "failed:initialize",
+        "last:initialize",
+        "first:finalize",
+        "last:finalize",
+    ]);
+    expect(resources.isEntryActive(resources.getMarkEntry(first.mark))).toBe(
+        true
+    );
+    expect(resources.isEntryActive(resources.getMarkEntry(failed.mark))).toBe(
+        false
+    );
+    expect(resources.isEntryActive(resources.getMarkEntry(last.mark))).toBe(
+        true
+    );
+    expect(mocks.delegates[1].disposeCount).toBe(1);
+});
+
+test("releases scale listeners when shader finalization fails", () => {
+    const resources = new WebGLRendererResources(createGlHelper());
+    const resolution = createScaleResolution();
+    const failed = createMark("failed");
+    failed.mark.failFinalize = true;
+    failed.mark.encoders = {
+        color: {
+            scale: {},
+            channelDef: { field: "category", type: "nominal" },
+        },
+    };
+    failed.mark.unitView.getScaleResolution = () => resolution;
+
+    expect(() => resources.prepareMarks([failed.mark])).toThrow(
+        "failed failed"
+    );
+
+    expect(resolution.removeEventListener).toHaveBeenCalledTimes(2);
+    expect(resolution.listeners).toEqual(new Map());
 });
 
 test("rejects resource creation after disposal", () => {

@@ -98,24 +98,45 @@ export default class WebGLRendererResources {
 
     /** @param {Iterable<import("../../marks/mark.js").default>} marks */
     prepareMarks(marks) {
-        this.#finishPreparingMarks(this.#startPreparingMarks(marks));
+        const preparation = this.#startPreparingMarks(marks);
+        try {
+            this.#finishPreparingMarks(preparation.entries);
+        } catch (error) {
+            preparation.firstError ??= error;
+        }
+        if (preparation.firstError) {
+            throw preparation.firstError;
+        }
     }
 
-    /** @param {Iterable<import("../../marks/mark.js").default>} marks */
+    /**
+     * @param {Iterable<import("../../marks/mark.js").default>} marks
+     * @returns {{entries: WebGLMarkEntry[], firstError: unknown}}
+     */
     #startPreparingMarks(marks) {
         this.#assertActive();
         /** @type {WebGLMarkEntry[]} */
-        const created = [];
+        const entries = [];
+        /** @type {unknown} */
+        let firstError;
         for (const mark of new Set(marks)) {
-            const font = /** @type {{ metrics?: unknown } | undefined} */ (
-                /** @type {any} */ (mark).font
-            );
-            const fontReady = mark.getType() != "text" || font?.metrics;
-            if (!this.#markEntries.has(mark) && mark.encoders && fontReady) {
-                created.push(this.#createMarkEntry(mark));
+            try {
+                const font = /** @type {{ metrics?: unknown } | undefined} */ (
+                    /** @type {any} */ (mark).font
+                );
+                const fontReady = mark.getType() != "text" || font?.metrics;
+                if (
+                    !this.#markEntries.has(mark) &&
+                    mark.encoders &&
+                    fontReady
+                ) {
+                    entries.push(this.#createMarkEntry(mark));
+                }
+            } catch (error) {
+                firstError ??= error;
             }
         }
-        return created;
+        return { entries, firstError };
     }
 
     /** @param {Iterable<WebGLMarkEntry>} entries */
@@ -129,6 +150,7 @@ export default class WebGLRendererResources {
                 entry.state = "ready";
             } catch (error) {
                 entry.state = "failed";
+                this.#releaseScaleResolutions(entry);
                 entry.graphics.dispose();
                 firstError ??= error;
             }
