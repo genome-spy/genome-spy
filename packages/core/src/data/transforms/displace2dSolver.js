@@ -103,7 +103,7 @@ export function solveDisplacement(
      * @param {number} candidateX
      * @param {number} candidateY
      */
-    const isAvailable = (index, candidateX, candidateY) => {
+    const findCollision = (index, candidateX, candidateY) => {
         const width = widths[index];
         const height = heights[index];
 
@@ -113,11 +113,11 @@ export function solveDisplacement(
             !fitsExtent(candidateX, width, xExtent) ||
             !fitsExtent(candidateY, height, yExtent)
         ) {
-            return false;
+            return -2;
         }
 
         if (width == 0 || height == 0) {
-            return true;
+            return -1;
         }
 
         const minCellX = Math.floor((candidateX - width / 2) / cellSize);
@@ -146,14 +146,22 @@ export function solveDisplacement(
                         Math.abs(candidateY - otherY) <
                             height / 2 + heights[j] / 2
                     ) {
-                        return false;
+                        return j;
                     }
                 }
             }
         }
 
-        return true;
+        return -1;
     };
+
+    /**
+     * @param {number} index
+     * @param {number} candidateX
+     * @param {number} candidateY
+     */
+    const isAvailable = (index, candidateX, candidateY) =>
+        findCollision(index, candidateX, candidateY) == -1;
 
     for (let i = 0; i < count; i++) {
         const x = xPositions[i];
@@ -177,15 +185,60 @@ export function solveDisplacement(
             );
         }
 
-        if (hasPrevious && isAvailable(i, x + previousDx, y + previousDy)) {
-            xDisplacements[i] = previousDx;
-            yDisplacements[i] = previousDy;
-            placed = true;
-        } else if (isAvailable(i, x, y)) {
+        if (hasPrevious) {
+            const previousX = clampToExtent(x + previousDx, width, xExtent);
+            const previousY = clampToExtent(y + previousDy, height, yExtent);
+            const collision = findCollision(i, previousX, previousY);
+            if (collision == -1) {
+                xDisplacements[i] = previousX - x;
+                yDisplacements[i] = previousY - y;
+                placed = true;
+            } else if (collision >= 0) {
+                const otherX =
+                    xPositions[collision] + xDisplacements[collision];
+                const otherY =
+                    yPositions[collision] + yDisplacements[collision];
+                const xDistance = width / 2 + widths[collision] / 2;
+                const yDistance = height / 2 + heights[collision] / 2;
+                const edgeCandidates = [
+                    [otherX - xDistance, previousY],
+                    [otherX + xDistance, previousY],
+                    [previousX, otherY - yDistance],
+                    [previousX, otherY + yDistance],
+                ];
+                let nearestDistance = Infinity;
+                let nearestX = 0;
+                let nearestY = 0;
+
+                for (const [candidateX, candidateY] of edgeCandidates) {
+                    if (!isAvailable(i, candidateX, candidateY)) {
+                        continue;
+                    }
+                    const distance = Math.hypot(
+                        candidateX - previousX,
+                        candidateY - previousY
+                    );
+                    if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        nearestX = candidateX;
+                        nearestY = candidateY;
+                    }
+                }
+
+                if (nearestDistance < Infinity) {
+                    xDisplacements[i] = nearestX - x;
+                    yDisplacements[i] = nearestY - y;
+                    placed = true;
+                }
+            }
+        }
+
+        if (!placed && isAvailable(i, x, y)) {
             xDisplacements[i] = 0;
             yDisplacements[i] = 0;
             placed = true;
         } else if (
+            !placed &&
             (preferredX != x || preferredY != y) &&
             isAvailable(i, preferredX, preferredY)
         ) {
