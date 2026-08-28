@@ -884,12 +884,9 @@ export default class GenomeSpy {
         this.#renderCoordinator.renderPickingFramebuffer?.();
     }
 
-    /** @param {boolean} enabled @returns {boolean} */
-    setPickingBufferVisualization(enabled) {
-        return (
-            this.#renderingBackend.setPickingBufferVisualization?.(enabled) ??
-            false
-        );
+    /** @returns {HTMLCanvasElement | undefined} */
+    createPickingBufferVisualization() {
+        return this.#renderCoordinator.createPickingBufferVisualization?.();
     }
 
     getSearchableViews() {

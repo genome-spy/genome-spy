@@ -73,23 +73,20 @@ test("resizes an allocated picking buffer in logical pixels", () => {
     surface.finalize();
 });
 
-test("colorizes and blits logical picking pixels with nearest-neighbor scaling", () => {
+test("creates a detached logical-pixel picking visualization", () => {
     /** @type {HTMLCanvasElement[]} */
     const canvases = [];
-    const liveContext = /** @type {any} */ ({
-        save: vi.fn(),
-        restore: vi.fn(),
-        resetTransform: vi.fn(),
-        fillRect: vi.fn(),
-        drawImage: vi.fn(),
-        imageSmoothingEnabled: true,
-        globalAlpha: 0,
-        globalCompositeOperation: "multiply",
-        fillStyle: "white",
-    });
-    const imageData = { data: new Uint8ClampedArray(4 * 2 * 4) };
+    const liveContext = /** @type {any} */ ({});
+    /** @type {ImageData[]} */
+    const imageDatas = [];
     const diagnosticContext = /** @type {any} */ ({
-        createImageData: vi.fn(() => imageData),
+        createImageData: vi.fn((width, height) => {
+            const imageData = /** @type {ImageData} */ ({
+                data: new Uint8ClampedArray(width * height * 4),
+            });
+            imageDatas.push(imageData);
+            return imageData;
+        }),
         putImageData: vi.fn(),
     });
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
@@ -98,15 +95,12 @@ test("colorizes and blits logical picking pixels with nearest-neighbor scaling",
             return canvases.length == 1 ? liveContext : diagnosticContext;
         }
     );
-    vi.spyOn(window, "devicePixelRatio", "get").mockReturnValue(2);
-    const onRenderInvalidated = vi.fn();
     const backend = createCanvas2DRenderingBackend({
         renderer: "canvas",
         container: document.createElement("div"),
         sizeSource: () => ({ width: 4.5, height: 2.5 }),
         powerPreference: "default",
         onCanvasResize: () => undefined,
-        onRenderInvalidated,
     });
     const surface = /** @type {import("./canvas2DSurface.js").default} */ (
         backend.surface
@@ -114,37 +108,23 @@ test("colorizes and blits logical picking pixels with nearest-neighbor scaling",
     const buffer = surface.getPickingBuffer();
     buffer.ids[1] = 123;
 
-    expect(backend.setPickingBufferVisualization?.(true)).toBe(true);
-    surface.blitPickingBufferVisualization();
+    const visualization = surface.createPickingBufferVisualization();
+    const secondVisualization = surface.createPickingBufferVisualization();
 
-    expect(onRenderInvalidated).toHaveBeenCalledOnce();
+    expect(visualization).toMatchObject({ width: 4, height: 2 });
+    expect(secondVisualization).not.toBe(visualization);
     expect(diagnosticContext.createImageData).toHaveBeenCalledWith(4, 2);
-    expect(Array.from(imageData.data.slice(4, 8))).not.toEqual([0, 0, 0, 255]);
-    expect(diagnosticContext.putImageData).toHaveBeenCalledWith(
-        imageData,
-        0,
-        0
-    );
-    expect(liveContext.fillStyle).toBe("#000000");
-    expect(liveContext.fillRect).toHaveBeenCalledWith(0, 0, 9, 5);
-    expect(liveContext.drawImage).toHaveBeenCalledWith(
-        canvases[1],
-        0,
-        0,
-        4,
-        2,
-        0,
-        0,
-        8,
-        4
-    );
-    expect(liveContext.save).toHaveBeenCalledOnce();
-    expect(liveContext.restore).toHaveBeenCalledOnce();
+    expect(Array.from(imageDatas[0].data.slice(0, 4))).toEqual([0, 0, 0, 255]);
+    expect(Array.from(imageDatas[0].data.slice(4, 8))).not.toEqual([
+        0, 0, 0, 255,
+    ]);
+    expect(imageDatas[1].data).toEqual(imageDatas[0].data);
+    expect(diagnosticContext.putImageData).toHaveBeenCalledTimes(2);
+    expect(canvases).toHaveLength(3);
 
     surface.finalize();
-    expect(canvases[1]).toMatchObject({ width: 0, height: 0 });
-    expect(backend.setPickingBufferVisualization?.(false)).toBe(false);
-    expect(onRenderInvalidated).toHaveBeenCalledOnce();
+    expect(visualization).toMatchObject({ width: 4, height: 2 });
+    expect(surface.createPickingBufferVisualization()).toBeUndefined();
 });
 
 test("does not attach a canvas when a 2D context is unavailable", () => {

@@ -148,8 +148,6 @@ export default class App {
         this.debug = {
             getViewRoot: () => this.genomeSpy?.viewRoot,
             getModules: () => this.getDebugModules(),
-            setPickingBufferVisualization: (enabled) =>
-                this.genomeSpy?.setPickingBufferVisualization(enabled) ?? false,
         };
 
         this.genomeSpy.viewFactory.addViewType(

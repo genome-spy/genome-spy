@@ -110,10 +110,10 @@ export function createEmbed(GenomeSpy) {
                 getModules() {
                     return import("./debug/index.js");
                 },
-                setPickingBufferVisualization(enabled) {
+                createPickingBufferVisualization() {
                     return active
-                        ? genomeSpy.setPickingBufferVisualization(enabled)
-                        : false;
+                        ? genomeSpy.createPickingBufferVisualization()
+                        : undefined;
                 },
             },
         };

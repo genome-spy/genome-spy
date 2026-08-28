@@ -46,7 +46,6 @@ describe("Canvas2DRenderCoordinator", () => {
             },
             getLogicalCanvasSize: () => size,
             getDevicePixelRatio: () => 2,
-            isPickingBufferVisualizationEnabled: () => false,
         };
         const onLayoutComputed = vi.fn();
         const coordinator = new Canvas2DRenderCoordinator({
@@ -86,7 +85,6 @@ describe("Canvas2DRenderCoordinator", () => {
             getDevicePixelRatio: () => 1,
             getPickingBuffer,
             clearPickingBuffer,
-            isPickingBufferVisualizationEnabled: () => false,
         };
         const coordinator = new Canvas2DRenderCoordinator({
             viewRoot: /** @type {any} */ ({}),
@@ -141,9 +139,10 @@ describe("Canvas2DRenderCoordinator", () => {
         expect(getPickingBuffer).not.toHaveBeenCalled();
     });
 
-    test("forces picking and blits it instead of visible paint in diagnostic mode", () => {
+    test("refreshes picking before creating a one-shot visualization", () => {
         const buffer = new SoftwarePickingBuffer(20, 10);
-        const blitPickingBufferVisualization = vi.fn();
+        const visualization = /** @type {HTMLCanvasElement} */ ({});
+        const createPickingBufferVisualization = vi.fn(() => visualization);
         const collectRenderCommands = vi.fn((context) => {
             context.getRasterizer().fillRect(5, 0, 0, 2, 2);
         });
@@ -155,8 +154,7 @@ describe("Canvas2DRenderCoordinator", () => {
                 getDevicePixelRatio: () => 1,
                 getPickingBuffer: () => buffer,
                 clearPickingBuffer: () => buffer.clear(),
-                isPickingBufferVisualizationEnabled: () => true,
-                blitPickingBufferVisualization,
+                createPickingBufferVisualization,
             }),
             getBackground: () => "white",
             broadcast: vi.fn(),
@@ -165,12 +163,12 @@ describe("Canvas2DRenderCoordinator", () => {
         coordinator.layoutResult = /** @type {any} */ ({
             collectRenderCommands,
         });
-        mocks.renderCanvas2D.mockClear();
+        coordinator.renderPickingFramebuffer();
+        collectRenderCommands.mockClear();
+        const result = coordinator.createPickingBufferVisualization();
 
-        coordinator.renderAll();
-
-        expect(mocks.renderCanvas2D).not.toHaveBeenCalled();
+        expect(result).toBe(visualization);
         expect(collectRenderCommands).toHaveBeenCalledOnce();
-        expect(blitPickingBufferVisualization).toHaveBeenCalledOnce();
+        expect(createPickingBufferVisualization).toHaveBeenCalledOnce();
     });
 });

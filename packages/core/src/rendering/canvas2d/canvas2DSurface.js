@@ -1,8 +1,4 @@
 import CanvasSizeHelper from "../canvasSizeHelper.js";
-import {
-    colorizePickingIds,
-    PICKING_BACKGROUND_COLOR,
-} from "./picking/pickingColorizer.js";
 import SoftwarePickingBuffer from "./picking/softwarePickingBuffer.js";
 
 export default class Canvas2DSurface {
@@ -14,17 +10,6 @@ export default class Canvas2DSurface {
 
     /** @type {SoftwarePickingBuffer | undefined} */
     #pickingBuffer;
-
-    #pickingBufferVisualizationEnabled = false;
-
-    /** @type {HTMLCanvasElement | undefined} */
-    #diagnosticCanvas;
-
-    /** @type {CanvasRenderingContext2D | undefined} */
-    #diagnosticContext;
-
-    /** @type {ImageData | undefined} */
-    #diagnosticImageData;
 
     #finalized = false;
 
@@ -133,90 +118,40 @@ export default class Canvas2DSurface {
         return this.#finalized ? 0 : (this.#pickingBuffer?.read(x, y) ?? 0);
     }
 
-    /** @param {boolean} enabled @returns {boolean} */
-    setPickingBufferVisualization(enabled) {
+    /** @returns {HTMLCanvasElement | undefined} */
+    createPickingBufferVisualization() {
         if (this.#finalized) {
-            return false;
-        }
-        this.#pickingBufferVisualizationEnabled = enabled;
-        return true;
-    }
-
-    isPickingBufferVisualizationEnabled() {
-        return this.#pickingBufferVisualizationEnabled;
-    }
-
-    blitPickingBufferVisualization() {
-        if (!this.#pickingBufferVisualizationEnabled || this.#finalized) {
-            return;
+            return undefined;
         }
         const buffer = this.getPickingBuffer();
-        const context = this.context;
-        context.save();
-        try {
-            context.resetTransform();
-            context.globalAlpha = 1;
-            context.globalCompositeOperation = "source-over";
-            context.fillStyle = PICKING_BACKGROUND_COLOR;
-            context.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            if (buffer.width == 0 || buffer.height == 0) {
-                return;
-            }
-
-            const diagnosticContext = this.#getDiagnosticContext();
-            if (
-                this.#diagnosticCanvas.width != buffer.width ||
-                this.#diagnosticCanvas.height != buffer.height
-            ) {
-                this.#diagnosticCanvas.width = buffer.width;
-                this.#diagnosticCanvas.height = buffer.height;
-                this.#diagnosticImageData = diagnosticContext.createImageData(
-                    buffer.width,
-                    buffer.height
-                );
-            }
-            const imageData = /** @type {ImageData} */ (
-                this.#diagnosticImageData
+        const canvas = document.createElement("canvas");
+        canvas.width = buffer.width;
+        canvas.height = buffer.height;
+        const context = canvas.getContext("2d");
+        if (!context) {
+            throw new Error(
+                "Unable to initialize a Canvas2D picking visualization context."
             );
-            colorizePickingIds(buffer.ids, imageData.data);
-            diagnosticContext.putImageData(imageData, 0, 0);
-
-            const logicalSize = this.getLogicalCanvasSize();
-            const destinationWidth =
-                (buffer.width * this.canvas.width) / logicalSize.width;
-            const destinationHeight =
-                (buffer.height * this.canvas.height) / logicalSize.height;
-            context.imageSmoothingEnabled = false;
-            context.drawImage(
-                this.#diagnosticCanvas,
-                0,
-                0,
+        }
+        if (buffer.width > 0 && buffer.height > 0) {
+            const imageData = context.createImageData(
                 buffer.width,
-                buffer.height,
-                0,
-                0,
-                destinationWidth,
-                destinationHeight
+                buffer.height
             );
-        } finally {
-            context.restore();
-        }
-    }
-
-    /** @returns {CanvasRenderingContext2D} */
-    #getDiagnosticContext() {
-        if (!this.#diagnosticContext) {
-            const canvas = document.createElement("canvas");
-            const context = canvas.getContext("2d");
-            if (!context) {
-                throw new Error(
-                    "Unable to initialize a Canvas2D picking diagnostic context."
-                );
+            for (let i = 0; i < buffer.ids.length; i++) {
+                const id = buffer.ids[i];
+                const offset = i * 4;
+                if (id != 0) {
+                    const color = Math.imul(id ^ (id >>> 16), 0x45d9f3b);
+                    imageData.data[offset] = 64 + (color & 127);
+                    imageData.data[offset + 1] = 64 + ((color >>> 8) & 127);
+                    imageData.data[offset + 2] = 64 + ((color >>> 16) & 127);
+                }
+                imageData.data[offset + 3] = 255;
             }
-            this.#diagnosticCanvas = canvas;
-            this.#diagnosticContext = context;
+            context.putImageData(imageData, 0, 0);
         }
-        return this.#diagnosticContext;
+        return canvas;
     }
 
     finalize() {
@@ -226,14 +161,6 @@ export default class Canvas2DSurface {
         this.#finalized = true;
         this.#pickingBuffer?.dispose();
         this.#pickingBuffer = undefined;
-        this.#pickingBufferVisualizationEnabled = false;
-        if (this.#diagnosticCanvas) {
-            this.#diagnosticCanvas.width = 0;
-            this.#diagnosticCanvas.height = 0;
-        }
-        this.#diagnosticCanvas = undefined;
-        this.#diagnosticContext = undefined;
-        this.#diagnosticImageData = undefined;
         this.#sizeHelper.finalize();
         this.canvas.remove();
     }

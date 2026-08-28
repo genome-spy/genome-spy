@@ -71,22 +71,16 @@ export default class Canvas2DRenderCoordinator {
             return;
         }
 
-        if (this.surface.isPickingBufferVisualizationEnabled()) {
-            this.dirtyPickingBuffer = true;
-            this.renderPickingFramebuffer();
-            this.surface.blitPickingBufferVisualization();
-        } else {
-            renderCanvas2D({
-                layoutResult,
-                context: this.context,
-                width: size.width,
-                height: size.height,
-                devicePixelRatio: this.surface.getDevicePixelRatio(),
-                background: this.getBackground(),
-                paint: true,
-            });
-            this.dirtyPickingBuffer = true;
-        }
+        renderCanvas2D({
+            layoutResult,
+            context: this.context,
+            width: size.width,
+            height: size.height,
+            devicePixelRatio: this.surface.getDevicePixelRatio(),
+            background: this.getBackground(),
+            paint: true,
+        });
+        this.dirtyPickingBuffer = true;
     }
 
     renderPickingFramebuffer() {
@@ -138,6 +132,12 @@ export default class Canvas2DRenderCoordinator {
         } finally {
             profiler?.endFrame();
         }
+    }
+
+    createPickingBufferVisualization() {
+        this.dirtyPickingBuffer = true;
+        this.renderPickingFramebuffer();
+        return this.surface.createPickingBufferVisualization();
     }
 
     /** @returns {import("../../view/layout/layoutResult.js").default | undefined} */

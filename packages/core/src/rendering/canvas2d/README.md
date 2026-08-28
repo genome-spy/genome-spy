@@ -59,24 +59,17 @@ intentionally outside the picking surface.
 The rasterizer supports clipped row spans, conservative square footprints,
 thick segments, convex polygons, and adaptively flattened cubic Bézier curves.
 It writes IDs directly in painter order without colors, alpha, blending, or
-antialiasing. `pickingColorizer.js` maps those IDs to opaque diagnostic colors,
-but picking never decodes the colors. The buffer is allocated lazily on the
-first picking replay that contains supported data and is rebuilt only after a
-visible render makes it dirty. Keep this primitive layer independent of Canvas
-and DOM APIs.
+antialiasing. The buffer is allocated lazily on the first picking replay that
+contains supported data and is rebuilt only after a visible render makes it
+dirty. Keep this primitive layer independent of Canvas and DOM APIs.
 
 ## Picking-buffer visualization
 
-Call `api.debug.setPickingBufferVisualization(true)` to replace the live Canvas
-with a colorized view of its logical picking pixels. ID `0` is black and each
-nonzero ID receives a stable opaque color. The colors are diagnostic only and
-are never decoded for picking. The method returns `false` for a non-Canvas
-backend or after finalization.
-
-Call the method with `false` to restore normal rendering. The diagnostic uses
-nearest-neighbor scaling, so individual logical pixels remain distinct at any
-device pixel ratio. It displays the actual participant-filtered buffer; a view
-without picking participants is therefore black.
+Core embeds expose the optional developer helper
+`api.debug.createPickingBufferVisualization()`. It refreshes dirty picking data
+and returns a detached canvas with one pixel per logical picking cell. ID `0` is
+black and each nonzero ID receives a stable opaque color. The helper does not
+alter the live Canvas and is absent from GenomeSpy App's debug interface.
 
 ## Extending and testing
 

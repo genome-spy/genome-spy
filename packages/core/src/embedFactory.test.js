@@ -27,7 +27,9 @@ describe("embed factory", () => {
             this.exportRaster = vi.fn();
             this.exportSvg = vi.fn();
             this.analyzeSvgExport = vi.fn();
-            this.setPickingBufferVisualization = vi.fn(() => true);
+            this.createPickingBufferVisualization = vi.fn(() =>
+                document.createElement("canvas")
+            );
         }
     }
 
@@ -236,9 +238,11 @@ describe("embed factory", () => {
         await expect(api.debug.getModules()).resolves.toHaveProperty(
             "createViewDebugSnapshot"
         );
-        expect(api.debug.setPickingBufferVisualization(true)).toBe(true);
+        expect(api.debug.createPickingBufferVisualization?.()).toBeInstanceOf(
+            HTMLCanvasElement
+        );
         api.finalize();
-        expect(api.debug.setPickingBufferVisualization(false)).toBe(false);
+        expect(api.debug.createPickingBufferVisualization?.()).toBeUndefined();
     });
 
     test("reports an unsupported picking-buffer visualization", async () => {
@@ -249,7 +253,7 @@ describe("embed factory", () => {
              */
             constructor(element, spec) {
                 super(element, spec);
-                this.setPickingBufferVisualization = vi.fn(() => false);
+                this.createPickingBufferVisualization = vi.fn(() => undefined);
             }
         }
 
@@ -259,7 +263,7 @@ describe("embed factory", () => {
             /** @type {any} */ ({})
         );
 
-        expect(api.debug.setPickingBufferVisualization(true)).toBe(false);
+        expect(api.debug.createPickingBufferVisualization?.()).toBeUndefined();
     });
 
     test("leaves missing width implicit", async () => {

@@ -49,8 +49,8 @@ outside this feature's scope: <https://github.com/linebender/tiny-skia>.
 - Keep pointer reads constant-time after the buffer has been rendered.
 - Bound normal memory by four bytes per logical CSS pixel, independently of
   device pixel ratio.
-- Provide a developer mode that colorizes the ID buffer and blits it into the
-  live Canvas for visual inspection.
+- Provide a developer-only one-shot snapshot of the colorized ID buffer for
+  spatial inspection without changing live renderer state.
 - Keep Canvas, SVG, WebGL, and WebGPU implementations independently loadable.
 - Make the existing Canvas registration the only opt-in needed for both visual
   Canvas rendering and its software picking implementation.
@@ -101,12 +101,11 @@ that strip return ID `0`. Tests cover safe flooring and bounds checks but do not
 require picking in the discarded fringe.
 
 Expected storage is about 3.8 MiB at 1000 by 1000, 7.9 MiB at 1920 by 1080, and
-31.6 MiB at 3840 by 2160. `Canvas2DSurface` owns the ID array, diagnostic byte
-storage, and diagnostic scratch canvas because it already has the renderer
-finalization contract. It allocates them lazily, lends the ID surface to the
-coordinator during picking replay, resizes it with the live logical surface, and
-releases it from `Canvas2DSurface.finalize()`. The coordinator owns only dirty
-state and synchronous replay control.
+31.6 MiB at 3840 by 2160. `Canvas2DSurface` owns the ID array because it already
+has the renderer finalization contract. It allocates the array lazily, lends it
+to the coordinator during picking replay, resizes it with the live logical
+surface, and releases it from `Canvas2DSurface.finalize()`. The coordinator owns
+only dirty state and synchronous replay control.
 
 ### Package picking with the opt-in Canvas implementation
 
@@ -244,18 +243,17 @@ zero. Existing GPU picking primarily follows picking participation and picking
 geometry rather than visible color blending. Any deliberate difference from
 WebGL must be captured in tests and the Canvas renderer documentation.
 
-The diagnostic visualization displays the exact participant-filtered ID
-surface. A visualization whose marks have `tooltip: null` and no point
-selections may therefore display only the empty/background color. This is
-intentional: debug mode inspects real picking behavior rather than an
-all-marks coverage approximation.
+The one-shot debug snapshot displays the exact participant-filtered ID surface.
+A visualization whose marks have `tooltip: null` and no point selections may
+therefore produce only the empty/background color. This is intentional: the
+snapshot inspects real picking behavior rather than an all-marks approximation.
 
 ### Keep immediate geometry backend-neutral
 
 Add a `SoftwarePickingViewRenderingContext` under `rendering/canvas2d/`. It
 owns Canvas-specific picking policy but consumes the same immediate occurrence
 visitors as Canvas and SVG. The primitive ID rasterizer remains independent of
-`CanvasRenderingContext2D`; only diagnostic visualization uses Canvas APIs.
+`CanvasRenderingContext2D`; only the one-shot debug snapshot uses Canvas APIs.
 
 Avoid copying coordinate projection or facet traversal into mark-specific
 picking code. Where visible Canvas and software picking need identical setup,
@@ -269,53 +267,29 @@ by `InteractionController`.
 
 ### Make the ID surface visually inspectable
 
-Add a developer-only API:
+Add a developer-only one-shot helper:
 
 ```ts
-api.debug.setPickingBufferVisualization(enabled: boolean): boolean;
+api.debug.createPickingBufferVisualization?.(): HTMLCanvasElement | undefined;
 ```
 
-The method returns whether the active backend supports this diagnostic. It is
-not an `EmbedOptions` field or a specification property and is not persisted.
-Add `setPickingBufferVisualization(enabled): boolean` as an optional
-`RenderingBackend` capability implemented by Canvas and backed by
-`Canvas2DSurface` state. The embed debug method is available only after
-successful `embed()` resolution, returns `false` on WebGL/WebGPU or after
-finalization, and never remembers an unsupported request for a future backend.
-Canvas returns `true` when it applies a changed or already-current mode.
-Enabling or disabling requests a render.
+Core's embed debug object provides the optional helper; App does not forward it.
+Canvas first refreshes a dirty picking pass and then returns a new detached
+canvas at the floored logical-pixel dimensions. WebGL, WebGPU, and finalized
+embeds return `undefined`. The helper never replaces the live visualization,
+persists renderer state, requests a visible repaint, or adds a backend surface
+capability.
 
-When enabled, a Canvas render performs or refreshes the picking pass and then
-blits a colorized representation over the live Canvas instead of leaving the
-normal visualization visible. This keeps sizing, positioning, interaction, and
-cleanup attached to the existing surface and avoids managing a second DOM
-canvas. Disabling the mode schedules a normal repaint.
-
-Colorization is diagnostic only:
-
-- ID `0` uses a stable empty/background color;
-- each nonzero 32-bit ID is hashed to a stable, opaque, high-contrast RGB color;
-- collisions in the 24-bit diagnostic palette are acceptable because the
-  actual picking surface remains 32-bit and is never decoded from the colors;
-- conversion reuses one `ImageData`-compatible byte buffer;
-- `putImageData()` writes the logical image into a reused scratch canvas because
-  it ignores the live context transform;
-- the live context resets its transform, clears the full physical backing
-  store, disables image smoothing, and uses `drawImage()` from the scratch
-  canvas; and
-- destination width and height are the floored picking dimensions multiplied
-  by the live physical-to-logical ratios. Any discarded fractional logical
-  fringe stays at the empty/background color rather than stretching the final
-  picking row or column across it.
-
-Keep colorization and blitting out of normal picking measurements. The software
-surface should expose a target-context blit helper internally so tests can
-verify visualization without entangling ID rasterization with the live Canvas.
+Colorization is local to the one-shot operation. ID `0` is opaque black and
+nonzero IDs receive stable opaque RGB colors. Palette collisions are acceptable
+because the actual picking surface remains 32-bit and is never decoded from the
+colors. The returned canvas belongs to the caller and can be inspected in
+DevTools, appended temporarily, or discarded without renderer cleanup.
 
 ### Instrument and guard the hot path
 
-Use the existing performance profiler categories for Canvas picking replay and
-debug blitting. Primitive loops must avoid per-pixel objects and avoid
+Use the existing performance profiler categories for Canvas picking replay.
+Primitive loops must avoid per-pixel objects and avoid
 per-instance temporary arrays where reusable scratch storage is sufficient.
 
 The first version uses one contiguous buffer. Sparse tiles are deferred: they
@@ -377,20 +351,19 @@ Rejected as the default. Exact outlines increase implementation and execution
 cost while making small shapes harder to acquire. The relaxed bounds are an
 intentional interaction feature, not a visual fallback.
 
-### Keep a separate visible debug canvas
+### Replace the live Canvas in a persistent debug mode
 
-Rejected for the initial diagnostic mode. A sibling or overlay canvas adds DOM
-layout, sizing, stacking, and lifecycle behavior. Replacing the live Canvas
-contents while the mode is enabled is simpler and makes pointer coordinates
-directly comparable with displayed picking pixels.
+Rejected. Persistent renderer state, invalidation, App forwarding, lifecycle
+behavior, and live-canvas restoration are disproportionate to an occasional
+debugging aid. A detached one-shot canvas preserves spatial inspection with a
+smaller and less coupled contract.
 
 ## Milestone 1: Add the integer picking surface and primitive rasterizer
 
 ### Intended outcome
 
 A DOM-independent module can resize, clear, rasterize conservative primitives,
-preserve overwrite order, read IDs, and produce bytes for diagnostic
-colorization.
+preserve overwrite order, and read IDs.
 
 ### Work
 
@@ -400,7 +373,6 @@ colorization.
 - [x] Add square point coverage and conservative thick-segment rasterization.
 - [x] Add adaptive cubic flattening with a bounded depth and reusable scratch
       storage, feeding the thick-segment primitive.
-- [x] Add stable ID-to-RGB diagnostic colorization without changing stored IDs.
 - [x] Aggregate primitive counts without logging or global profiler lookups in
       the hot path. The coordinator reports the aggregates and elapsed phases in
       Milestone 2.
@@ -452,9 +424,8 @@ rule/tick, and link marks, including dense scatter plots and long genomic arcs.
 - [x] Add the lazy dirty-buffer lifecycle to `Canvas2DRenderCoordinator`.
 - [x] Expose `readPickingId` from the Canvas backend and ensure surface resize
       invalidates or reallocates the picking surface.
-- [x] Make `Canvas2DSurface` the explicit owner of picking storage and reserve
-      diagnostic storage ownership for Milestone 3 so its existing `finalize()`
-      path releases all allocations.
+- [x] Make `Canvas2DSurface` the explicit owner of picking storage so its
+      existing `finalize()` path releases the allocation.
 - [x] Keep the picking context and rasterizer inside the existing dynamically
       loaded Canvas implementation so Canvas registration enables both without
       another public option or side-effect import.
@@ -511,12 +482,12 @@ needed.
 
 Tentative commit: `feat(core): enable software picking in the Canvas renderer`
 
-## Milestone 3: Complete mark coverage and add buffer visualization
+## Milestone 3: Complete mark coverage and add buffer inspection
 
 ### Intended outcome
 
-Text and arrow marks participate in Canvas picking, and developers can toggle a
-live colorized view of the exact logical ID buffer.
+Text and arrow marks participate in Canvas picking, and developers can capture
+a detached colorized view of the exact logical ID buffer.
 
 ### Work
 
@@ -528,27 +499,23 @@ live colorized view of the exact logical ID buffer.
       compute boundary loops or polygon unions while preserving Canvas and SVG
       arrow output.
 - [x] Add text and arrow picking adapters with documented conservative bounds.
-- [x] Add the optional renderer capability and
-      `api.debug.setPickingBufferVisualization(enabled)`.
-- [x] Define the debug method's supported, unsupported, and finalized return
-      behavior without persisting unsupported requests.
-- [x] Reuse diagnostic pixel storage and a scratch canvas, then blit with
-      transform-free nearest-neighbor scaling that preserves the floored logical
-      extent at integer and fractional DPR. Force a current picking pass while
-      enabled and restore normal rendering when disabled.
-- [x] Document the developer API and diagnostic palette semantics.
+- [x] Add the optional Core embed debug helper
+      `api.debug.createPickingBufferVisualization()` without App forwarding.
+- [x] Refresh dirty picking data and return a detached logical-pixel canvas
+      without changing visible Canvas state or retaining diagnostic resources.
+- [x] Document the developer helper and diagnostic palette semantics.
 
 ### Affected areas and downstream consumers
 
 - Immediate text and arrow geometry helpers
 - Canvas, SVG, and software-picking text/arrow renderers
-- Rendering backend capability types
+- Rendering coordinator debug capability types
 - `GenomeSpyBase`, `embedFactory`, and `EmbedDebugApi`
-- Canvas README and developer-facing API documentation
+- Canvas README
 
 The immediate arrow refactor is a review gate because it affects two visual
-renderers and the new picker. The developer API is a second review gate because
-it extends the typed embed result even though it is explicitly diagnostic.
+renderers and the new picker. The debug helper is optional and Core-only, so App
+and other embed implementations do not acquire a picking-diagnostic contract.
 
 ### Verification
 
@@ -559,25 +526,22 @@ it extends the typed embed result even though it is explicitly diagnostic.
   invoking polygon construction or `unionPolygons()`.
 - Existing Canvas and SVG arrow/text geometry tests remain unchanged or receive
   only intentional structural updates with identical rendered output.
-- Embed API tests verify enable, disable, unsupported-backend reporting,
-  post-finalization behavior, render requests, and cleanup. Public calls cannot
-  occur before successful embed resolution.
-- Chromium checks verify one logical picking pixel remains visually discrete at
-  DPR 1, 2, and a fractional DPR; the floored logical fringe remains empty,
-  colors stay stable between clean reads, and disabling the mode restores the
-  visualization.
+- Embed API tests verify Canvas snapshots, unsupported-backend reporting, and
+  post-finalization behavior. Public calls cannot occur before successful embed
+  resolution.
+- Chromium checks verify that the snapshot has logical-pixel dimensions, colors
+  stay stable between clean reads, and capture does not alter the live Canvas.
 - Debug tests verify that nonparticipating marks are absent and an entirely
   nonparticipating visualization produces an empty diagnostic buffer.
-- Visualized pixels and `readPickingId()` are checked against the same underlying
+- Snapshot pixels and `readPickingId()` are checked against the same underlying
   ID surface; no color decoding participates in picking.
 
 ### Documentation and migration
 
-Document the debug method as unstable developer tooling and show a short console
-example. Document that the live visualization is temporarily replaced while
-the mode is enabled. No specification migration is needed.
+Document the optional helper as unstable developer tooling in the Canvas README.
+No specification migration is needed.
 
-Tentative commit: `feat(core): visualize the Canvas software picking buffer`
+Tentative commit: `feat(core): inspect the Canvas software picking buffer`
 
 ## Final integration verification
 
@@ -593,39 +557,37 @@ Tentative commit: `feat(core): visualize the Canvas software picking buffer`
   whole Bézier bounds.
 - Exercise a synthetic million-point scatter plot at DPR 1 and 2. Verify
   deterministic topmost IDs, responsive repeated pointer reads, and an
-  inspectable dense picking visualization.
+  inspectable dense picking snapshot.
 - Exercise `examples/core/layout/grid/concat_points_text.json` for facets,
   points, text, and explicit `minPickingSize` behavior.
 - Verify clipping, zooming, panning, resizing, semantic zoom, overlapping marks,
   Canvas fallback after WebGL initialization failure, and finalization.
 - Compare profiler results for ordinary Canvas frames with and without picking
-  activity. Clean-buffer pointer movement must add only constant-time reads,
-  and debug colorization must have no cost while its mode is disabled.
+  activity. Clean-buffer pointer movement must add only constant-time reads;
+  one-shot snapshot creation stays outside normal rendering measurements.
 - Run the full Core unit suite if shared immediate text or arrow geometry
   changes have wider consumers.
 
 ### Completion record
 
-- The full unit suite passed: 438 files and 3,633 tests, with one skipped test
+- The full unit suite passed: 437 files and 3,631 tests, with one skipped test
   and two existing todos.
 - ESLint and the minimal-bundle verifier passed. The verifier confirmed that
   plain minimal excludes Canvas picking and the Canvas opt-in loads it only
   through the renderer implementation path.
-- Workspace TypeScript checks exposed and prompted a fix for the App's manual
-  `EmbedDebugApi` implementation. After that fix, the only remaining error is
-  the pre-existing missing `GFF3Feature` export from `gff-nostream`.
-- Chromium verified rect, point, rule, link, text, and arrow diagnostics at
-  integer and fractional DPR, including nearest-neighbor scaling and restoring
-  visible Canvas output after disabling the mode.
+- The App no longer forwards a Canvas-only diagnostic contract. App test types
+  pass; Core and App source checks report only the pre-existing missing
+  `GFF3Feature` export from `gff-nostream`.
+- Chromium verified a detached 1200 by 1279 logical-pixel HCC1954 picking
+  snapshot with 161,707 covered pixels while the 2400 by 2558 live Canvas
+  remained byte-identical.
 - The HCC1954 structural-variant example produced curve-following link coverage
   rather than filled Bézier bounds.
 - An integrated one-million-point Canvas plot produced a 900 by 420 logical
-  picking visualization in 93 ms on the verification machine. A second replay
-  took 107 ms and was byte-identical to the first.
+  picking snapshot in 93 ms on the verification machine. A second replay took
+  107 ms and was byte-identical to the first.
 - Follow-up review fixes restored termination when repeated arrow-head spacing
-  collapses to zero, cancel pending animation frames during destruction, and
-  paint the fractional diagnostic fringe with the opaque ID-0 color. Chromium
-  verified all three fixes together without a post-finalization runtime error.
+  collapses to zero and cancel pending animation frames during destruction.
 - Canvas immediate marks now subscribe to the live parameter dependencies used
   by conditional encoders. Chromium verified that hovering an HCC1954 arc
   repaints its highlighted state immediately, without a zoom or layout event.
@@ -651,9 +613,9 @@ Tentative commit: `feat(core): visualize the Canvas software picking buffer`
   DPR, rebuilds only while dirty, is owned by `Canvas2DSurface`, and is released
   by its existing finalization path. A subpixel right/bottom fringe may return
   no hit.
-- The developer debug method can replace the live Canvas with a stable,
-  nearest-neighbor colorization of the exact current ID surface and can restore
-  normal rendering.
+- The optional Core embed debug helper can return a detached logical-pixel
+  colorization of the exact current ID surface without changing live renderer
+  state or adding an App contract.
 - Normal Canvas rendering, Canvas/SVG export, WebGL, and WebGPU output are
   unchanged, and no general rasterization dependency is added.
 - Selecting the Canvas backend automatically exposes software picking, while
@@ -681,8 +643,7 @@ Tentative commit: `feat(core): visualize the Canvas software picking buffer`
   bounded, visualize them through the debug mode, and document the policy.
 - **Fractional logical fringe:** flooring can leave less than one CSS pixel at
   the right and bottom edges unpickable. This is accepted; keep reads bounded
-  and ensure debug visualization does not stretch the last stored row or column
-  over the fringe.
+  and keep the debug snapshot at the exact floored dimensions.
 - **Geometry drift:** shared arrow or text refactoring could alter Canvas or SVG
   output. Keep visual geometry as the source of truth and add cross-renderer
   regression tests at the refactor boundary.
@@ -704,6 +665,3 @@ Tentative commit: `feat(core): visualize the Canvas software picking buffer`
 - Should rule/tick receive a new configurable minimum picking width, or use an
   internal parity value matching current GPU coverage? Do not expand the public
   grammar without a concrete usability requirement.
-- After the replacement-canvas diagnostic mode is proven, is there a real need
-  for an optional side-by-side target canvas? Keep that extension out of the
-  initial API unless comparison during debugging is materially cumbersome.

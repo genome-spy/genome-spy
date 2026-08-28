@@ -425,11 +425,10 @@ export interface EmbedDebugApi {
     getModules: () => Promise<typeof import("../debug/index.js")>;
 
     /**
-     * Replaces a live Canvas rendering with a colorized view of its software
-     * picking IDs. Returns false when the active backend does not support the
-     * diagnostic or the embed has been finalized.
+     * Creates a detached logical-pixel visualization of the Canvas software
+     * picking IDs. Available only in Core embeds using the Canvas renderer.
      */
-    setPickingBufferVisualization: (enabled: boolean) => boolean;
+    createPickingBufferVisualization?: () => HTMLCanvasElement | undefined;
 }
 
 // Design intent: EmbedResult.datasets and ViewHandle.datasets use the same

@@ -32,12 +32,5 @@ export function createCanvas2DRenderingBackend(options) {
         rasterizeSvgRuns: (rasterOptions) =>
             createCanvas2DSvgRasterizer()(rasterOptions),
         readPickingId: (x, y) => surface.readPickingId(x, y),
-        setPickingBufferVisualization: (enabled) => {
-            const supported = surface.setPickingBufferVisualization(enabled);
-            if (supported) {
-                options.onRenderInvalidated?.();
-            }
-            return supported;
-        },
     };
 }
