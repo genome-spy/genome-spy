@@ -2,6 +2,17 @@ import { embed } from "./index.js";
 
 // This is for development purposes. Use "npm start" to launch.
 
+/**
+ * @typedef {Window & typeof globalThis & {
+ *     __genomeSpy?: {
+ *         api: import("@genome-spy/core/types/embedApi.js").EmbedResult;
+ *         readonly viewRoot: object | undefined;
+ *     };
+ * }} DevelopmentWindow
+ */
+
+const developmentWindow = /** @type {DevelopmentWindow} */ (window);
+
 const searchParams = new URLSearchParams(window.location.search);
 const specUrl = searchParams.get("spec");
 const renderer =
@@ -20,7 +31,13 @@ if (specUrl) {
         plugins.push(appAgent({ baseUrl: agentBaseUrl }));
     }
 
-    embed(document.body, specUrl, { plugins, renderer });
+    const api = await embed(document.body, specUrl, { plugins, renderer });
+    developmentWindow.__genomeSpy = {
+        api,
+        get viewRoot() {
+            return api.debug.getViewRoot();
+        },
+    };
 } else {
     document.body.innerHTML = `
         <p style="color: firebrick">No 'spec' url parameter defined!</p>
