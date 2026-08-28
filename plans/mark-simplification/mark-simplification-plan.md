@@ -374,10 +374,10 @@ through both semantic and WebGL mark layers.
 
 ### Work
 
-- [ ] Replace `Mark.getContext()` callers with `mark.unitView.context` or
+- [x] Replace `Mark.getContext()` callers with `mark.unitView.context` or
       `this.unitView.context` as appropriate.
-- [ ] Remove the corresponding `WebGLMark.getContext()` forwarding method.
-- [ ] Keep `Mark.getType()` because it has broad semantic and diagnostic use.
+- [x] Remove the corresponding `WebGLMark.getContext()` forwarding method.
+- [x] Keep `Mark.getType()` because it has broad semantic and diagnostic use.
 
 ### Affected areas and consumers
 

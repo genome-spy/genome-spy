@@ -191,10 +191,6 @@ export default class WebGLMark {
         return this.mark.defaultHitTestMode;
     }
 
-    getContext() {
-        return this.mark.getContext();
-    }
-
     getType() {
         return this.mark.getType();
     }
@@ -355,7 +351,7 @@ export default class WebGLMark {
                                 paramRuntime.getValue(param)
                             );
                         glHelper.createSelectionTexture(selection);
-                        this.getContext().animator.requestRender();
+                        this.unitView.context.animator.requestRender();
                     });
                 }
             } else if (isIntervalSelection(selection)) {

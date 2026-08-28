@@ -355,10 +355,6 @@ export default class Mark {
         });
     }
 
-    getContext() {
-        return this.unitView.context;
-    }
-
     getType() {
         return this.unitView.getMarkType();
     }
