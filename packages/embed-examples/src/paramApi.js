@@ -1,6 +1,5 @@
 import { embed, intervalSelection } from "@genome-spy/core/minimal";
 import "@genome-spy/core/rendering/webgl.js";
-import "@genome-spy/core/rendering/canvas.js";
 import { html, render } from "lit";
 
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */

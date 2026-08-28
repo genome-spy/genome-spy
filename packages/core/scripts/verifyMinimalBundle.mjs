@@ -275,7 +275,6 @@ function verifyDynamicRendererChunks(output, entry, options) {
 function verifyNoOptionalRendererSources(sources, owner) {
     const forbiddenDirectories = [
         ...optionalRenderingDirectories,
-        webGlRenderingDirectory,
         webGpuRenderingDirectory,
     ];
     const source = sources.find(
