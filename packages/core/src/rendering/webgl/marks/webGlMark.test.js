@@ -35,3 +35,43 @@ test("releases retained program and uniform resources idempotently", () => {
         "WebGL mark resources have been disposed."
     );
 });
+
+test("removes scale-resolution listeners idempotently", () => {
+    const delegate = new WebGLMark(
+        /** @type {any} */ ({}),
+        /** @type {any} */ ({
+            gl: {
+                deleteBuffer: vi.fn(),
+                deleteProgram: vi.fn(),
+            },
+        })
+    );
+    const resolution = /** @type {any} */ ({
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+    });
+    const domainListener = vi.fn();
+    const rangeListener = vi.fn();
+
+    delegate.registerScaleResolutionListener(
+        resolution,
+        "domain",
+        domainListener
+    );
+    delegate.registerScaleResolutionListener(
+        resolution,
+        "range",
+        rangeListener
+    );
+    delegate.dispose();
+    delegate.dispose();
+
+    expect(resolution.addEventListener.mock.calls).toEqual([
+        ["domain", domainListener],
+        ["range", rangeListener],
+    ]);
+    expect(resolution.removeEventListener.mock.calls).toEqual([
+        ["domain", domainListener],
+        ["range", rangeListener],
+    ]);
+});

@@ -58,6 +58,9 @@ export class MetadataView extends ConcatView {
 
     #metadataGeneration = 0;
 
+    /** @type {Promise<void>} */
+    #metadataUpdateTail = Promise.resolve();
+
     /** @type {ReadyGate} */
     #metadataReady = new ReadyGate("Metadata readiness was aborted.");
 
@@ -322,15 +325,25 @@ export class MetadataView extends ConcatView {
         const metadataGeneration = ++this.#metadataGeneration;
         const ready = this.#metadataReady.reset();
         const finalizeReady = createFinalizeOnce(ready);
-        // Each metadata update starts a new readiness cycle. finalizeReady is
-        // a single-shot completion hook so overlapping updates can exit early
-        // without double-resolving when stale generations bail out.
+        const previousUpdate = this.#metadataUpdateTail;
+        /** @type {() => void} */
+        let releaseUpdate = () => undefined;
+        this.#metadataUpdateTail = new Promise((resolve) => {
+            releaseUpdate = resolve;
+        });
+
+        await previousUpdate;
 
         try {
+            if (this.#isMetadataStale(metadataGeneration)) {
+                return;
+            }
             await this.#createViews();
+            if (this.#isMetadataStale(metadataGeneration)) {
+                return;
+            }
             await this.syncGuideViews();
             if (this.#isMetadataStale(metadataGeneration)) {
-                finalizeReady();
                 return;
             }
             // Finalize after the subtree and guides exist: opacity and
@@ -351,7 +364,6 @@ export class MetadataView extends ConcatView {
 
             await this.#loadMetadataSubtree(dynamicSource, viewPredicate);
             if (this.#isMetadataStale(metadataGeneration)) {
-                finalizeReady();
                 return;
             }
 
@@ -369,6 +381,7 @@ export class MetadataView extends ConcatView {
             );
             throw error;
         } finally {
+            releaseUpdate();
             finalizeReady();
         }
     }

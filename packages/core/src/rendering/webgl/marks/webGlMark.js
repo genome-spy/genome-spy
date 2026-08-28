@@ -156,6 +156,9 @@ export default class WebGLMark {
         /** @type {(() => void)[]} */
         this.selectionTextureOps = [];
 
+        /** @type {(() => void)[]} */
+        this.scaleResolutionDisposers = [];
+
         this.rangeMap = new RangeMap();
     }
 
@@ -609,7 +612,11 @@ export default class WebGLMark {
                         const set = () =>
                             rangeSetter(getRangeForGlsl(scale, channel));
                         // TODO: The event listener should be in the scale, not the resolution
-                        scaleResolution.addEventListener("range", set);
+                        this.registerScaleResolutionListener(
+                            scaleResolution,
+                            "range",
+                            set
+                        );
 
                         // Initial value
                         set();
@@ -638,7 +645,11 @@ export default class WebGLMark {
                         };
 
                         // TODO: The event listener should be in the scale, not the resolution
-                        scaleResolution.addEventListener("domain", set);
+                        this.registerScaleResolutionListener(
+                            scaleResolution,
+                            "domain",
+                            set
+                        );
 
                         // Initial value
                         set();
@@ -862,11 +873,27 @@ export default class WebGLMark {
         }
     }
 
+    /**
+     * @param {import("../../../scales/scaleResolution.js").default} resolution
+     * @param {"domain" | "range"} type
+     * @param {() => void} listener
+     */
+    registerScaleResolutionListener(resolution, type, listener) {
+        resolution.addEventListener(type, listener);
+        this.scaleResolutionDisposers.push(() =>
+            resolution.removeEventListener(type, listener)
+        );
+    }
+
     dispose() {
         if (this.#disposed) {
             return;
         }
         this.#disposed = true;
+        for (const dispose of this.scaleResolutionDisposers) {
+            dispose();
+        }
+        this.scaleResolutionDisposers.length = 0;
         this.deleteGraphicsData();
 
         if (this.viewUniformInfo) {
