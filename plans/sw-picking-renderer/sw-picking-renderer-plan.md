@@ -606,7 +606,7 @@ Tentative commit: `feat(core): visualize the Canvas software picking buffer`
 
 ### Completion record
 
-- The full unit suite passed: 438 files and 3,632 tests, with one skipped test
+- The full unit suite passed: 438 files and 3,633 tests, with one skipped test
   and two existing todos.
 - ESLint and the minimal-bundle verifier passed. The verifier confirmed that
   plain minimal excludes Canvas picking and the Canvas opt-in loads it only
@@ -626,11 +626,16 @@ Tentative commit: `feat(core): visualize the Canvas software picking buffer`
   collapses to zero, cancel pending animation frames during destruction, and
   paint the fractional diagnostic fringe with the opaque ID-0 color. Chromium
   verified all three fixes together without a post-finalization runtime error.
+- Canvas immediate marks now subscribe to the live parameter dependencies used
+  by conditional encoders. Chromium verified that hovering an HCC1954 arc
+  repaints its highlighted state immediately, without a zoom or layout event.
 
 ## Acceptance criteria
 
 - Canvas provides the same tooltip, datum click, and point-selection interaction
   entry points as WebGL for every Canvas-supported mark type.
+- Selection-driven conditional encodings repaint Canvas immediately when the
+  picked datum changes.
 - Dense overdraw can never decode a blended or nonexistent ID because the
   picking path stores integers directly.
 - Later painted picking participants win overlapping pixels consistently.

@@ -2,6 +2,7 @@
 
 import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
+import { createSinglePointSelection } from "../../selection/selection.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import Canvas2DViewRenderingContext from "./canvas2DViewRenderingContext.js";
 
@@ -232,6 +233,48 @@ describe("Canvas2DViewRenderingContext", () => {
 
         expect(zoomed.calls.fillRects[0][2]).toBeCloseTo(100.2);
         expect(zoomed.calls.fillRects[1][0]).toBeCloseTo(99.9);
+    });
+
+    test("repaints conditional encodings when a selection changes", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ value: 1 }] },
+            params: [{ name: "selected", select: "point" }],
+            mark: "point",
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                size: {
+                    value: 100,
+                    condition: {
+                        param: "selected",
+                        empty: false,
+                        value: 400,
+                    },
+                },
+                fill: { value: "black" },
+            },
+        });
+        const requestRender = vi.spyOn(view.context.animator, "requestRender");
+        view.paramRuntime.setValue(
+            "selected",
+            createSinglePointSelection(null)
+        );
+        const initial = createRecordingContext();
+        render(view, initial.context);
+        expect(initial.calls.arcs).toEqual([[50, 50, 5]]);
+
+        const unitView =
+            /** @type {import("../../view/unitView.js").default} */ (view);
+        const datum = unitView.getCollector().facetBatches.get(undefined)[0];
+        view.paramRuntime.setValue(
+            "selected",
+            createSinglePointSelection(datum)
+        );
+
+        expect(requestRender).toHaveBeenCalledOnce();
+        const selected = createRecordingContext();
+        render(view, selected.context);
+        expect(selected.calls.arcs).toEqual([[50, 50, 10]]);
     });
 
     test("draws points without per-datum save scopes", async () => {
