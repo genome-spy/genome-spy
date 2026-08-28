@@ -1,6 +1,6 @@
 # Canvas software picking renderer plan
 
-Status: In progress
+Status: Completed
 
 ## Context
 
@@ -603,6 +603,25 @@ Tentative commit: `feat(core): visualize the Canvas software picking buffer`
   and debug colorization must have no cost while its mode is disabled.
 - Run the full Core unit suite if shared immediate text or arrow geometry
   changes have wider consumers.
+
+### Completion record
+
+- The full unit suite passed: 437 files and 3,628 tests, with one skipped test
+  and two existing todos.
+- ESLint and the minimal-bundle verifier passed. The verifier confirmed that
+  plain minimal excludes Canvas picking and the Canvas opt-in loads it only
+  through the renderer implementation path.
+- Workspace TypeScript checks exposed and prompted a fix for the App's manual
+  `EmbedDebugApi` implementation. After that fix, the only remaining error is
+  the pre-existing missing `GFF3Feature` export from `gff-nostream`.
+- Chromium verified rect, point, rule, link, text, and arrow diagnostics at
+  integer and fractional DPR, including nearest-neighbor scaling and restoring
+  visible Canvas output after disabling the mode.
+- The HCC1954 structural-variant example produced curve-following link coverage
+  rather than filled Bézier bounds.
+- An integrated one-million-point Canvas plot produced a 900 by 420 logical
+  picking visualization in 93 ms on the verification machine. A second replay
+  took 107 ms and was byte-identical to the first.
 
 ## Acceptance criteria
 
