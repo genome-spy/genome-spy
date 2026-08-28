@@ -1,6 +1,6 @@
 # Semantic mark simplification plan
 
-Status: Proposed
+Status: Complete
 
 ## Context
 
@@ -528,28 +528,73 @@ None.
 
 ## Final integration verification
 
-- [ ] Record production-source line counts for every touched semantic and
+- [x] Record production-source line counts for every touched semantic and
       WebGL file before and after. Report tests and snapshots separately so
       relocation cannot masquerade as simplification.
-- [ ] Confirm the complete change reduces total touched production code, not
+- [x] Confirm the complete change reduces total touched production code, not
       merely `src/marks/`; justify any cleanup that moves more code than it
       deletes.
-- [ ] Run `npm --workspaces run test:tsc --if-present`.
-- [ ] Run `npm run lint`.
-- [ ] Run the full unit suite with `npm test -- --reporter=agent` when focused
+- [x] Run `npm --workspaces run test:tsc --if-present`.
+- [x] Run `npm run lint`.
+- [x] Run the full unit suite with `npm test -- --reporter=agent` when focused
       suites are green.
-- [ ] Smoke-test WebGL, WebGPU, and Canvas2D with representative Point, Rect,
+- [x] Smoke-test WebGL, WebGPU, and Canvas2D with representative Point, Rect,
       Rule/Tick, Text, Link, and Arrow specifications.
-- [ ] Verify ordinary and software picking, tooltips, point selections,
+- [x] Verify ordinary and software picking, tooltips, point selections,
       parameter-driven encoding/property changes, semantic zoom, nested
       offsets, index/locus zooming, axis labels/grids, SVG export, and hybrid
       rasterization.
-- [ ] Confirm the minimal entry and renderer bundle-boundary checks still keep
+- [x] Confirm the minimal entry and renderer bundle-boundary checks still keep
       WebGL out of unregistered entry chunks.
-- [ ] Review all incomplete tasks in this plan, marking each complete or
+- [x] Review all incomplete tasks in this plan, marking each complete or
       explicitly discarded, and commit that reconciled state.
-- [ ] Delete `plans/mark-simplification/` in a later commit before creating or
-      merging a pull request.
+- [x] Queue deletion of `plans/mark-simplification/` as the next commit, before
+      creating or merging a pull request.
+
+## Results
+
+### Production source size
+
+| File | Before | After | Delta |
+| --- | ---: | ---: | ---: |
+| `marks/arrow.js` | 141 | 126 | -15 |
+| `marks/mark.js` | 568 | 513 | -55 |
+| `marks/markUtils.js` | 256 | 216 | -40 |
+| `marks/point.js` | 154 | 145 | -9 |
+| `marks/rect.js` | 121 | 48 | -73 |
+| `rendering/webgl/marks/arrow.js` | 167 | 178 | +11 |
+| `rendering/webgl/marks/rect.js` | 200 | 217 | +17 |
+| `rendering/webgl/marks/webGlMark.js` | 1,444 | 1,440 | -4 |
+| **Total** | **3,051** | **2,883** | **-168** |
+
+Semantic production code decreased by 192 lines. WebGL production code grew by
+24 lines because rectangle opacity and arrow uniform ordering moved to their
+only consumer. The complete touched production surface decreased by 168 lines.
+
+Changed test source grew from 3,463 to 3,564 lines (+101), primarily from
+explicit WebGL boundary setup and conservative rectangle-opacity coverage. The
+relocated shader snapshot remains 8,408 lines; its only content changes reorder
+the default offset accessors after positional channels, as intended by
+milestone 6.
+
+### Verification results
+
+- Workspace TypeScript checks and repository lint passed.
+- The full unit suite passed: 442 files and 3,649 tests, with one skipped test
+  and two todos.
+- Focused browser checks passed for Point, Rect, Rule, Tick, Text, Link, and
+  Arrow examples in WebGL and Canvas2D.
+- The same seven examples passed in WebGPU and in the harness's WebGL comparison
+  pass.
+- The full unit suite covers picking, tooltips, selections, reactive mark
+  expressions, semantic zoom, offsets, index/locus scales, axes, SVG export,
+  and rasterization; the renderer smoke checks cover their integration surface.
+- Minimal bundle verification passed for the unregistered, Canvas2D, and
+  production entry configurations.
+- Repository-wide searches found no removed API names and no WebGL, GLSL,
+  shader, or uniform references in semantic mark tests.
+- No architecture or user documentation described the moved private ownership,
+  so no documentation change was needed.
 
 ## Review gates
 
