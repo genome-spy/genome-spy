@@ -164,11 +164,11 @@ unit test.
 
 ### Work
 
-- [ ] Remove `volatileResources` from `RenderingRevisionState`.
-- [ ] Remove `Mark.makeRenderingResourcesVolatile()`.
-- [ ] Simplify `getRenderingRevision()` while preserving its current `0`
+- [x] Remove `volatileResources` from `RenderingRevisionState`.
+- [x] Remove `Mark.makeRenderingResourcesVolatile()`.
+- [x] Simplify `getRenderingRevision()` while preserving its current `0`
       result before revision tracking has been initialized.
-- [ ] Remove the volatile-category assertions while retaining scale dependency
+- [x] Remove the volatile-category assertions while retaining scale dependency
       coverage.
 
 ### Affected areas and consumers

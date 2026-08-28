@@ -21,7 +21,6 @@ import { validatePositionalEndpointCoordinateSpaces } from "./markUtils.js";
  * @typedef {object} RenderingRevisionState
  * @prop {number} configuration
  * @prop {number} resources
- * @prop {boolean} volatileResources
  * @prop {Set<string>} expressions
  */
 
@@ -398,7 +397,6 @@ export default class Mark {
             (this.#renderingRevisionState = {
                 configuration: 0,
                 resources: 0,
-                volatileResources: false,
                 expressions: new Set(),
             });
 
@@ -486,26 +484,13 @@ export default class Mark {
         }
     }
 
-    /** @param {RenderingRevisionKind} kind @returns {number | undefined} */
+    /** @param {RenderingRevisionKind} kind @returns {number} */
     getRenderingRevision(kind) {
-        const state = this.#renderingRevisionState;
-        if (!state) {
-            return 0;
-        }
-        return kind == "resources" && state.volatileResources
-            ? undefined
-            : state[kind];
+        return this.#renderingRevisionState?.[kind] ?? 0;
     }
 
     getEncodedDataRevision() {
         return this.#encodedDataRevision;
-    }
-
-    makeRenderingResourcesVolatile() {
-        if (!this.#renderingRevisionState) {
-            throw new Error("Rendering revisions have not been initialized.");
-        }
-        this.#renderingRevisionState.volatileResources = true;
     }
 
     isPickingParticipant() {

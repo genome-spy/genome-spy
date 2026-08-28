@@ -108,7 +108,7 @@ describe("mark rendering revisions", () => {
         expect(requestRender).toHaveBeenCalledOnce();
     });
 
-    test("deduplicates scale dependencies and can mark a category volatile", async () => {
+    test("deduplicates scale dependencies", async () => {
         const view = await create(
             {
                 data: { values: [{ start: 8, end: 32 }] },
@@ -135,9 +135,6 @@ describe("mark rendering revisions", () => {
         listeners[0]({ type: "domain", scaleResolution: resolution });
         listeners[1]({ type: "range", scaleResolution: resolution });
         expect(view.mark.getRenderingRevision("resources")).toBe(2);
-
-        view.mark.makeRenderingResourcesVolatile();
-        expect(view.mark.getRenderingRevision("resources")).toBeUndefined();
     });
 });
 
