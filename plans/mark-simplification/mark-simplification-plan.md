@@ -307,11 +307,11 @@ pass in `Mark.encoding`.
 
 ### Work
 
-- [ ] Add or strengthen tests covering every mark type with an inherited
+- [x] Add or strengthen tests covering every mark type with an inherited
       channel that it does not support.
-- [ ] Confirm every mark-specific `fixEncoding()` introduces only channels in
+- [x] Confirm every mark-specific `fixEncoding()` introduces only channels in
       that mark's supported-channel contract.
-- [ ] Remove the final unsupported-channel deletion loop in `Mark.encoding`.
+- [x] Remove the final unsupported-channel deletion loop in `Mark.encoding`.
 
 ### Affected areas and consumers
 

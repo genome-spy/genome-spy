@@ -5,6 +5,7 @@ import { createSelfClipOptions } from "../view/renderingContext/clipOptions.js";
 import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
+import LayerView from "../view/layerView.js";
 import WebGLMark from "../rendering/webgl/marks/webGlMark.js";
 import {
     createLogicalVisibleRect,
@@ -45,6 +46,48 @@ describe("mark factory", () => {
             uniqueId: { field: UNIQUE_ID_KEY },
         });
     });
+});
+
+describe("supported mark channels", () => {
+    /** @type {[import("../spec/mark.js").MarkType | import("../spec/mark.js").MarkProps, string][]} */
+    const cases = [
+        ["point", "text"],
+        ["rect", "text"],
+        ["rule", "text"],
+        [{ type: "tick", orient: "vertical" }, "text"],
+        ["text", "shape"],
+        ["link", "text"],
+        ["arrow", "text"],
+    ];
+
+    test.each(cases)(
+        "%s filters unsupported inherited channels once in UnitView",
+        async (mark, unsupportedChannel) => {
+            const layer = await create(
+                {
+                    encoding: {
+                        x: { value: 0.5 },
+                        text: { value: "inherited" },
+                        shape: { value: "square" },
+                    },
+                    layer: [{ mark }],
+                },
+                LayerView
+            );
+            const child = /** @type {UnitView} */ (Array.from(layer)[0]);
+
+            expect(
+                /** @type {Record<string, any>} */ (child.getEncoding())[
+                    unsupportedChannel
+                ]
+            ).toBeUndefined();
+            expect(
+                /** @type {Record<string, any>} */ (child.mark.encoding)[
+                    unsupportedChannel
+                ]
+            ).toBeUndefined();
+        }
+    );
 });
 
 describe("mark rendering revisions", () => {

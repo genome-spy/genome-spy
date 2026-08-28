@@ -345,12 +345,6 @@ export default class Mark {
                 }
             }
 
-            for (const channel of Object.keys(encoding)) {
-                if (!this.getSupportedChannels().includes(channel)) {
-                    delete encoding[channel];
-                }
-            }
-
             validatePositionalEndpointCoordinateSpaces(encoding);
 
             if (encoding.x) {
