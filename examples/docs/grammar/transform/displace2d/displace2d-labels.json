@@ -66,6 +66,8 @@
           "y": "y",
           "width": "collisionWidth",
           "height": 20,
+          "anchorWidth": 10,
+          "anchorHeight": 10,
           "xPositionFactor": {
             "expr": "width * (scale('x', 1) - scale('x', 0))"
           },
