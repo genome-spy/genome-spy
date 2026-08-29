@@ -157,18 +157,6 @@ export default class Mark {
         ];
     }
 
-    /** @returns {Encoding} */
-    getDefaultEncoding() {
-        /** @type {Encoding} */
-        const encoding = {};
-
-        if (this.isPickingParticipant()) {
-            encoding.uniqueId = { field: UNIQUE_ID_KEY };
-        }
-
-        return encoding;
-    }
-
     /** @param {Encoding} encoding @returns {Encoding} */
     fixEncoding(encoding) {
         return encoding;
@@ -227,7 +215,6 @@ export default class Mark {
     /** @returns {Encoding} */
     get encoding() {
         return getCachedOrCall(this, "encoding", () => {
-            const defaults = this.getDefaultEncoding();
             const configured = this.unitView.getEncoding();
 
             /** @type {(property: string) => ValueDef} */
@@ -252,7 +239,9 @@ export default class Mark {
             );
 
             const encoding = this.fixEncoding({
-                ...defaults,
+                ...(this.isPickingParticipant()
+                    ? { uniqueId: { field: UNIQUE_ID_KEY } }
+                    : {}),
                 ...propertyValues,
                 ...configured,
             });
