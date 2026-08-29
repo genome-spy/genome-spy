@@ -165,8 +165,6 @@ export default class Mark {
             "y",
             "xOffset",
             "yOffset",
-            /** @type {Channel} */ ("x2Offset"),
-            /** @type {Channel} */ ("y2Offset"),
             "color",
             "opacity",
             "search",
@@ -323,7 +321,7 @@ export default class Mark {
 
                 const resolved = resolveSecondaryOffset(
                     internalEncoding[primaryOffset],
-                    propertyValues[secondaryOffset],
+                    propToValueDef(secondaryOffset),
                     configured[secondary] != null
                 );
 
