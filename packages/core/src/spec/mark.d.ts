@@ -749,6 +749,9 @@ export interface PointProps
      * point size is reached.
      *
      * **Default value:** `0`
+     *
+     * @deprecated This property will be removed in GenomeSpy v2.0. Use an
+     * expression-valued `size` instead.
      */
     geometricZoomBound?: number;
 }
