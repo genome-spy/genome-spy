@@ -7,10 +7,17 @@ import {
 import { linearScaleDef } from "./linear.js";
 
 const symlogWgsl = /* wgsl */ `
+fn log1pPositive(value: f32) -> f32 {
+    // Avoid cancellation in log(1 + x) near zero. The first three Taylor terms
+    // are more accurate than the rounded sum in this range.
+    if (value < 0.01) {
+        return value * (1.0 + value * (-0.5 + value / 3.0));
+    }
+    return log(value + 1.0);
+}
+
 fn symlog(value: f32, constant: f32) -> f32 {
-    // WARNING: emulating log1p with log(x + 1). Small numbers are likely to
-    // have significant precision problems.
-    return sign(value) * log(abs(value / constant) + 1.0);
+    return sign(value) * log1pPositive(abs(value / constant));
 }
 
 fn scaleSymlog(value: f32, domain: vec2<f32>, range: vec2<f32>, constant: f32) -> f32 {

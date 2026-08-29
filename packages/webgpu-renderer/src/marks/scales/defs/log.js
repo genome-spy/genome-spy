@@ -7,11 +7,21 @@ import {
 import { linearScaleDef } from "./linear.js";
 
 const logWgsl = /* wgsl */ `
+fn logTransform(value: f32, base: f32) -> f32 {
+    return sign(value) * log(abs(value)) / log(base);
+}
+
 fn scaleLog(value: f32, domain: vec2<f32>, range: vec2<f32>, base: f32) -> f32 {
     // y = m log(x) + b
     // TODO: Perf optimization: precalculate log domain in js.
-    // TODO: Reversed domain, etc
-    return scaleLinear(log(value) / log(base), log(domain) / log(base), range);
+    return scaleLinear(
+        logTransform(value, base),
+        vec2<f32>(
+            logTransform(domain.x, base),
+            logTransform(domain.y, base)
+        ),
+        range
+    );
 }
 `;
 

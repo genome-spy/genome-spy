@@ -587,13 +587,13 @@ test("scaleCodegen emits WGSL that executes", async ({ page }) => {
     });
 });
 
-test("scaleCodegen clamps linear inputs to the domain extent", async ({
+test("scaleCodegen clamps a reversed linear domain like d3", async ({
     page,
 }) => {
     await ensureWebGPU(page);
 
-    const input = [-1, 0, 0.5, 2];
-    const domain = [0, 1];
+    const input = [-1, 0, 0.5, 1, 2];
+    const domain = [1, 0];
     const range = [0, 10];
     const reference = scaleLinear().domain(domain).range(range).clamp(true);
     const codegenFn = buildScaleFn({
@@ -682,6 +682,37 @@ test("scaleCodegen clamps piecewise linear inputs to the domain extent", async (
     });
 });
 
+test("scaleCodegen matches d3 for descending piecewise domains", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const input = [12, 10, 7.5, 5, 2.5, 0, -2];
+    const domain = [10, 5, 0];
+    const range = [-4, 20, 3];
+    const reference = scaleLinear().domain(domain).range(range);
+    const codegenFn = buildScaleFn({
+        scale: "linear",
+        scaleConfig: { type: "linear", domain, range },
+    });
+    const shaderCode = buildScaleCodegenShader({
+        scaleFn: codegenFn,
+        inputLength: input.length,
+        domainLength: domain.length,
+        rangeLength: range.length,
+    });
+    const result = await runScaleCodegenCompute(page, {
+        shaderCode,
+        input,
+        uniformData: packPiecewiseDomainRange(domain, range),
+    });
+
+    expect(result).toHaveLength(input.length);
+    input.forEach((value, index) => {
+        expect(result[index]).toBeCloseTo(reference(value), 5);
+    });
+});
+
 test("scaleCodegen rounds clamped piecewise outputs for scalar channels", async ({
     page,
 }) => {
@@ -690,6 +721,10 @@ test("scaleCodegen rounds clamped piecewise outputs for scalar channels", async 
     const input = [-1, 1.4, 4.6, 8.2, 12];
     const domain = [0, 5, 10];
     const range = [0, 5, 10];
+    const reference = scaleLinear()
+        .domain(domain)
+        .rangeRound(range)
+        .clamp(true);
     const scaleFn = buildScaleFn({
         scale: "linear",
         scaleConfig: {
@@ -713,11 +748,7 @@ test("scaleCodegen rounds clamped piecewise outputs for scalar channels", async 
         outputComponents: 1,
     });
 
-    const roundAwayFromZero = (value) =>
-        value >= 0 ? Math.floor(value + 0.5) : Math.ceil(value - 0.5);
-    const expected = input.map((value) =>
-        roundAwayFromZero(Math.min(10, Math.max(0, value)))
-    );
+    const expected = input.map((value) => reference(value));
 
     expect(result).toHaveLength(input.length);
     expected.forEach((value, index) => {
@@ -730,10 +761,9 @@ test("scaleCodegen rounds continuous scale outputs like d3 rangeRound", async ({
 }) => {
     await ensureWebGPU(page);
 
-    // const x = d3.scaleLinear().rangeRound([0, 960]);
-    const input = [-0.2, 0.1, 0.5, 0.9, 1.2, 1.8];
-    const domain = [0, 2];
-    const range = [0, 960];
+    const input = [-1, 0, 0.5, 1, 1.5, 2, 2.5, 3, 4, 5];
+    const domain = [0, 4];
+    const range = [-2, 2];
     const reference = scaleLinear()
         .domain(domain)
         .rangeRound(range)
@@ -758,7 +788,7 @@ test("scaleCodegen rounds continuous scale outputs like d3 rangeRound", async ({
         uniformData: packContinuousDomainRange(domain, range),
     });
 
-    const expected = input.map((value) => reference(value));
+    const expected = input.map((value) => reference(value) || 0);
 
     expect(result).toEqual(expected);
 });
@@ -809,9 +839,11 @@ test("scaleCodegen maps scalars to vec4 via threshold scale", async ({
 test("scaleCodegen matches d3 threshold at breakpoints", async ({ page }) => {
     await ensureWebGPU(page);
 
-    const input = [0.49, 0.5, 0.51];
-    const domain = [0.5];
-    const range = [1, 2];
+    const input = [
+        -10, -2.01, -2, -1.99, 0.49, 0.5, 0.51, 3.99, 4, 4, 4.01, 20,
+    ].map(Math.fround);
+    const domain = [-2, 0.5, 4, 4];
+    const range = [1, 2, 4, 8, 16];
     const reference = scaleThreshold().domain(domain).range(range);
     const codegenFn = buildScaleFn({
         scale: "threshold",
@@ -834,32 +866,53 @@ test("scaleCodegen matches d3 threshold at breakpoints", async ({ page }) => {
     expect(result).toEqual(expected);
 });
 
-test("scaleCodegen matches d3 quantize scale", async ({ page }) => {
+test("scaleCodegen matches d3 quantize boundaries across range sizes", async ({
+    page,
+}) => {
     await ensureWebGPU(page);
 
-    const input = [-0.1, 0.2, 0.49, 0.5, 0.75, 1.1];
-    const domain = [0, 1];
-    const range = [1, 2, 4, 8];
-    const reference = scaleQuantize().domain(domain).range(range);
-    const codegenFn = buildScaleFn({
-        scale: "quantize",
-        scaleConfig: { type: "quantize", domain, range },
-    });
-    const shaderCode = buildScaleCodegenShader({
-        scaleFn: codegenFn,
-        inputLength: input.length,
-        domainLength: domain.length,
-        rangeLength: range.length,
-    });
-    const result = await runScaleCodegenCompute(page, {
-        shaderCode,
-        input,
-        uniformData: packPiecewiseDomainRange(domain, range),
-    });
+    const cases = [
+        { domain: [0, 10], range: [1, 2, 4, 8, 16] },
+        { domain: [-1, 1], range: [3, 9] },
+    ];
+    for (const quantizeCase of cases) {
+        const { domain, range } = quantizeCase;
+        const reference = scaleQuantize().domain(domain).range(range);
+        // These configurations make every threshold exactly representable as
+        // f32, so exact-boundary assertions measure semantics rather than
+        // f64/f32 threshold construction differences.
+        const input = [
+            domain[0] - 1,
+            domain[0],
+            ...reference
+                .thresholds()
+                .flatMap((threshold) => [
+                    threshold - 0.001,
+                    threshold,
+                    threshold + 0.001,
+                ]),
+            domain[1],
+            domain[1] + 1,
+        ].map(Math.fround);
+        const codegenFn = buildScaleFn({
+            scale: "quantize",
+            scaleConfig: { type: "quantize", domain, range },
+        });
+        const shaderCode = buildScaleCodegenShader({
+            scaleFn: codegenFn,
+            inputLength: input.length,
+            domainLength: domain.length,
+            rangeLength: range.length,
+        });
+        const result = await runScaleCodegenCompute(page, {
+            shaderCode,
+            input,
+            uniformData: packPiecewiseDomainRange(domain, range),
+        });
 
-    const expected = input.map((value) => reference(value));
-
-    expect(result).toEqual(expected);
+        const expected = input.map((value) => reference(value));
+        expect(result).toEqual(expected);
+    }
 });
 
 test("scaleCodegen reproduces d3 linear color interpolation via ramp texture", async ({

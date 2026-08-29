@@ -18,9 +18,10 @@ fn clampToDomain(value: f32, domain: vec2<f32>) -> f32 {
     return clamp(value, min(domain.x, domain.y), max(domain.x, domain.y));
 }
 
-// Matches d3 rangeRound: rounds .5 away from zero.
-fn roundAwayFromZero(value: f32) -> f32 {
-    return select(ceil(value - 0.5), floor(value + 0.5), value >= 0.0);
+// Matches Math.round, which d3-interpolate uses for rangeRound. Negative half
+// ties round toward positive zero.
+fn roundLikeD3(value: f32) -> f32 {
+    return floor(value + 0.5);
 }
 
 // Uniform arrays must use 16-byte elements, so scalar pairs are packed into vec4 slots.

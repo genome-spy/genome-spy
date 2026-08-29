@@ -7,7 +7,7 @@
 import { test, expect } from "@playwright/test";
 import { color as d3color } from "d3-color";
 import { interpolateHcl } from "d3-interpolate";
-import { scaleLinear } from "d3-scale";
+import { scaleBand, scaleLinear, scaleOrdinal } from "d3-scale";
 import { createSchemeTexture } from "../src/utils/colorUtils.js";
 import {
     buildHashTableMap,
@@ -92,6 +92,140 @@ test("markShaderBuilder passes through identity values for series data", async (
     expect(output).toHaveLength(input.length);
     input.forEach((value, index) => {
         expect(output[index]).toBeCloseTo(value, 5);
+    });
+});
+
+test("markShaderBuilder matches d3 ordinal mapping for explicit categories", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const input = [10, 42, 99, 123, 777];
+    const domain = [10, 42, 99, 123];
+    const range = [3, 7];
+    const domainMap = buildHashTableMap(
+        domain.map((value, index) => [value, index])
+    );
+    const reference = scaleOrdinal()
+        .domain(domain)
+        .range(range)
+        .unknown(undefined);
+    const channels = {
+        x: {
+            data: new Uint32Array(input),
+            type: "u32",
+            components: 1,
+            scale: { type: "ordinal", domain, range },
+        },
+    };
+    const output = await runScaleCase(page, {
+        channels,
+        channelName: "x",
+        outputType: "f32",
+        outputLength: input.length,
+        outputComponents: 1,
+        uniformLayout: [
+            { name: "uRangeCount_x", type: "f32", components: 1 },
+            { name: "uDomainMapCount_x", type: "f32", components: 1 },
+        ],
+        uniforms: {
+            uRangeCount_x: range.length,
+            uDomainMapCount_x: domainMap.size,
+        },
+        extraBuffers: [
+            { name: "x", role: "ordinalRange", data: range },
+            { name: "x", role: "domainMap", data: domainMap.table },
+        ],
+        dumpLabel: test.info().title,
+    });
+
+    const expected = input.map((value) => reference(value) ?? 0);
+    expect(output).toEqual(expected);
+});
+
+test("markShaderBuilder matches d3 band positions through a sparse domain map", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const input = [10, 42, 99, 777];
+    const domain = [10, 42, 99];
+    const range = [120, 20];
+    const paddingInner = 0.2;
+    const paddingOuter = 0.1;
+    const align = 0.25;
+    const band = 0.5;
+    const domainMap = buildHashTableMap(
+        domain.map((value, index) => [value, index])
+    );
+    const reference = scaleBand()
+        .domain(domain)
+        .range(range)
+        .paddingInner(paddingInner)
+        .paddingOuter(paddingOuter)
+        .align(align);
+    const channels = {
+        x: {
+            data: new Uint32Array(input),
+            type: "u32",
+            components: 1,
+            scale: {
+                type: "band",
+                domain,
+                range,
+                paddingInner,
+                paddingOuter,
+                align,
+                band,
+            },
+        },
+    };
+    const output = await runScaleCase(page, {
+        channels,
+        channelName: "x",
+        outputType: "f32",
+        outputLength: input.length,
+        outputComponents: 1,
+        uniformLayout: [
+            {
+                name: "uDomain_x",
+                type: "f32",
+                components: 1,
+                arrayLength: 2,
+            },
+            {
+                name: "uRange_x",
+                type: "f32",
+                components: 1,
+                arrayLength: 2,
+            },
+            { name: "uScalePaddingInner_x", type: "f32", components: 1 },
+            { name: "uScalePaddingOuter_x", type: "f32", components: 1 },
+            { name: "uScaleAlign_x", type: "f32", components: 1 },
+            { name: "uScaleBand_x", type: "f32", components: 1 },
+            { name: "uDomainMapCount_x", type: "f32", components: 1 },
+        ],
+        uniforms: {
+            uDomain_x: [0, domain.length],
+            uRange_x: range,
+            uScalePaddingInner_x: paddingInner,
+            uScalePaddingOuter_x: paddingOuter,
+            uScaleAlign_x: align,
+            uScaleBand_x: band,
+            uDomainMapCount_x: domainMap.size,
+        },
+        extraBuffers: [{ name: "x", role: "domainMap", data: domainMap.table }],
+        dumpLabel: test.info().title,
+    });
+
+    const expected = input.map((value) => {
+        const start = reference(value);
+        return start === undefined
+            ? range[0]
+            : start + reference.bandwidth() * band;
+    });
+    expected.forEach((value, index) => {
+        expect(output[index]).toBeCloseTo(value, 4);
     });
 });
 
