@@ -479,6 +479,22 @@ describe("MetadataView", () => {
         expect(actualClipInput.height).toBe(expectedClipInput.height);
     });
 
+    it("does not apply the metadata content clip to group titles", async () => {
+        const { metadataView } = await createMetadataViewTestHarness();
+        const titleMarks = metadataView
+            .getDescendants()
+            .flatMap((view) =>
+                view instanceof UnitView && view.name.startsWith("title")
+                    ? [view.mark]
+                    : []
+            );
+
+        expect(titleMarks.length).toBeGreaterThan(0);
+        expect(
+            titleMarks.every((mark) => mark.properties.clip === "never")
+        ).toBe(true);
+    });
+
     it("removes dataflow hosts when metadata is rebuilt", async () => {
         const { MetadataView } = await import("./metadataView.js");
         const context = createTestViewContext();

@@ -597,13 +597,12 @@ export class MetadataView extends ConcatView {
 
         await createAttributeViews(nestedAttributes, this, {});
 
-        // This is a hack to ensure that the title views are not clipped.
-        // TODO: Clipping should only be applied to the unit views inside GridChilds
+        // Metadata content must respect sticky-summary clipping, but its group
+        // titles must not. TODO: Pass the content clip only to the unit views
+        // inside GridChilds.
         for (const v of this.getDescendants()) {
             if (v instanceof UnitView && v.name.startsWith("title")) {
-                if (typeof v.spec.mark !== "string") {
-                    v.spec.mark.clip = "never";
-                }
+                v.mark.properties.clip = "never";
             }
         }
 

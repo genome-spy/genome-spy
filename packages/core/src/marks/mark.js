@@ -8,7 +8,6 @@ import createEncoders, {
     resolveSecondaryOffset,
 } from "../encoder/encoder.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
-import coalesceProperties from "../utils/propertyCoalescer.js";
 import { isScalar } from "../utils/variableTools.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
@@ -56,50 +55,65 @@ export default class Mark {
      */
     constructor(unitView) {
         this.unitView = unitView;
-        const mark = this;
 
         /** @type {Partial<Record<Channel, import("../types/encoder.js").Encoder>>} */
         this.encoders = undefined;
 
-        const configuredDefaults = getConfiguredMarkDefaults(
-            this.unitView.getConfigScopes(),
-            this.unitView.getMarkType(),
-            typeof this.unitView.spec.mark == "object"
-                ? this.unitView.spec.mark.style
-                : undefined
+        const specProperties = /** @type {P} */ (
+            typeof unitView.spec.mark == "object" ? unitView.spec.mark : {}
         );
+        const properties = /** @type {P} */ (
+            getConfiguredMarkDefaults(
+                unitView.getConfigScopes(),
+                unitView.getMarkType(),
+                specProperties.style
+            )
+        );
+        const mutableProperties = /** @type {Record<string, any>} */ (
+            properties
+        );
+        for (const [key, value] of Object.entries(specProperties)) {
+            if (value !== undefined) {
+                mutableProperties[key] = value;
+            }
+        }
 
-        this.defaultProperties = /** @type {P} */ ({
-            get clip() {
-                return getCachedOrCall(mark, "defaultClip", () => {
+        if (properties.clip === undefined) {
+            // Scale resolutions are registered after mark construction. Resolve
+            // the default on first use, then make subsequent reads ordinary.
+            Object.defineProperty(properties, "clip", {
+                configurable: true,
+                enumerable: true,
+                get() {
                     const clipX = unitView
                         .getScaleResolution("x")
                         ?.isZoomable();
                     const clipY = unitView
                         .getScaleResolution("y")
                         ?.isZoomable();
-
+                    /** @type {boolean | "x" | "y"} */
+                    let clip = false;
                     if (clipX && clipY) {
-                        return true;
+                        clip = true;
                     } else if (clipX) {
-                        return "x";
+                        clip = "x";
                     } else if (clipY) {
-                        return "y";
-                    } else {
-                        return false;
+                        clip = "y";
                     }
-                });
-            },
-            ...configuredDefaults,
-        });
+
+                    Object.defineProperty(properties, "clip", {
+                        configurable: true,
+                        enumerable: true,
+                        writable: true,
+                        value: clip,
+                    });
+                    return clip;
+                },
+            });
+        }
 
         /** @type {P} */
-        this.properties = coalesceProperties(
-            typeof this.unitView.spec.mark == "object"
-                ? () => /** @type {P} */ (this.unitView.spec.mark)
-                : () => /** @type {P} */ ({}),
-            () => this.defaultProperties
-        );
+        this.properties = properties;
     }
 
     /**
@@ -537,24 +551,8 @@ export default class Mark {
      * @returns {MarkDebugState}
      */
     getDebugState() {
-        const specProperties =
-            typeof this.unitView.spec.mark == "object"
-                ? this.unitView.spec.mark
-                : {};
-        const propertyKeys = new Set([
-            ...Object.keys(this.defaultProperties),
-            ...Object.keys(specProperties),
-        ]);
-        /** @type {Record<string, any>} */
-        const properties = {};
-        for (const key of propertyKeys) {
-            properties[key] = /** @type {Record<string, any>} */ (
-                this.properties
-            )[key];
-        }
-
         return {
-            properties,
+            properties: { ...this.properties },
         };
     }
 }
