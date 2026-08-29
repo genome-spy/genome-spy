@@ -153,7 +153,10 @@ export default class Mark {
     }
 
     /**
-     * Returns the channels accepted by this mark after encoding inheritance.
+     * Returns the encoding channels accepted by this mark. Unit views use the
+     * list to discard unsupported inherited definitions, and the encoding
+     * getter uses it to promote same-named scalar mark properties to value
+     * definitions.
      *
      * @returns {Channel[]}
      */
