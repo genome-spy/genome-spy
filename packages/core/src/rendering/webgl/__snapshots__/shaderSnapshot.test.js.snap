@@ -3350,30 +3350,6 @@ return accessor_uniqueId_0();
 #define uniqueId_DEFINED
 
 
-float accessor_xOffset_0() {
-    // Constant value
-    return float(0.0);
-}
-
-float getScaled_xOffset() {
-return accessor_xOffset_0();
-}
-
-#define xOffset_DEFINED
-
-
-float accessor_yOffset_0() {
-    // Constant value
-    return float(0.0);
-}
-
-float getScaled_yOffset() {
-return accessor_yOffset_0();
-}
-
-#define yOffset_DEFINED
-
-
 float accessor_x_0() {
     return attr_x;
 }
@@ -3422,6 +3398,30 @@ return scale_y(accessor_y_0());
 }
 
 #define y_DEFINED
+
+
+float accessor_xOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_xOffset() {
+return accessor_xOffset_0();
+}
+
+#define xOffset_DEFINED
+
+
+float accessor_yOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_yOffset() {
+return accessor_yOffset_0();
+}
+
+#define yOffset_DEFINED
 
 
 float accessor_size_0() {
@@ -4355,30 +4355,6 @@ return accessor_uniqueId_0();
 #define uniqueId_DEFINED
 
 
-float accessor_xOffset_0() {
-    // Constant value
-    return float(0.0);
-}
-
-float getScaled_xOffset() {
-return accessor_xOffset_0();
-}
-
-#define xOffset_DEFINED
-
-
-float accessor_yOffset_0() {
-    // Constant value
-    return float(0.0);
-}
-
-float getScaled_yOffset() {
-return accessor_yOffset_0();
-}
-
-#define yOffset_DEFINED
-
-
 float accessor_x_0() {
     return attr_x;
 }
@@ -4427,6 +4403,30 @@ return scale_y(accessor_y_0());
 }
 
 #define y_DEFINED
+
+
+float accessor_xOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_xOffset() {
+return accessor_xOffset_0();
+}
+
+#define xOffset_DEFINED
+
+
+float accessor_yOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_yOffset() {
+return accessor_yOffset_0();
+}
+
+#define yOffset_DEFINED
 
 
 float accessor_opacity_0() {
@@ -5578,30 +5578,6 @@ return accessor_uniqueId_0();
 #define uniqueId_DEFINED
 
 
-float accessor_xOffset_0() {
-    // Constant value
-    return float(0.0);
-}
-
-float getScaled_xOffset() {
-return accessor_xOffset_0();
-}
-
-#define xOffset_DEFINED
-
-
-float accessor_yOffset_0() {
-    // Constant value
-    return float(0.0);
-}
-
-float getScaled_yOffset() {
-return accessor_yOffset_0();
-}
-
-#define yOffset_DEFINED
-
-
 float accessor_x_0() {
     return attr_x;
 }
@@ -5650,6 +5626,30 @@ return scale_y(accessor_y_0());
 }
 
 #define y_DEFINED
+
+
+float accessor_xOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_xOffset() {
+return accessor_xOffset_0();
+}
+
+#define xOffset_DEFINED
+
+
+float accessor_yOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_yOffset() {
+return accessor_yOffset_0();
+}
+
+#define yOffset_DEFINED
 
 
 float accessor_size_0() {
@@ -6711,30 +6711,6 @@ return accessor_uniqueId_0();
 #define uniqueId_DEFINED
 
 
-float accessor_xOffset_0() {
-    // Constant value
-    return float(0.0);
-}
-
-float getScaled_xOffset() {
-return accessor_xOffset_0();
-}
-
-#define xOffset_DEFINED
-
-
-float accessor_yOffset_0() {
-    // Constant value
-    return float(0.0);
-}
-
-float getScaled_yOffset() {
-return accessor_yOffset_0();
-}
-
-#define yOffset_DEFINED
-
-
 float accessor_x_0() {
     return attr_x;
 }
@@ -6783,6 +6759,30 @@ return scale_y(accessor_y_0());
 }
 
 #define y_DEFINED
+
+
+float accessor_xOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_xOffset() {
+return accessor_xOffset_0();
+}
+
+#define xOffset_DEFINED
+
+
+float accessor_yOffset_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_yOffset() {
+return accessor_yOffset_0();
+}
+
+#define yOffset_DEFINED
 
 
 float accessor_size_0() {

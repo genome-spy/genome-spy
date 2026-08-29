@@ -14,6 +14,9 @@ import { TextVertexBuilder } from "../gl/dataToVertices.js";
 import WebGLMark from "./webGlMark.js";
 import { isExprRef } from "../../../paramRuntime/paramUtils.js";
 
+// Work around a buffer-growth issue where the old text buffer can remain visible.
+const MIN_TEXT_BUFFER_CHARACTERS = 1024;
+
 /** For GLSL uniforms */
 const alignments = {
     left: -1,
@@ -83,17 +86,23 @@ export default class WebGLTextMark extends WebGLMark {
             this.properties
         );
 
-        // 0.35 is a magic number found by trial and error
-        const sdfNumerator =
-            this.font.metrics.common.base *
-            0.35 *
-            (this.properties.logoLetters ? 0.5 : 1);
-
         this.registerMarkUniformValue("uPaddingX", props.paddingX);
         this.registerMarkUniformValue("uPaddingY", props.paddingY);
         this.registerMarkUniformValue("uFlushX", props.flushX, (x) => !!x);
         this.registerMarkUniformValue("uFlushY", props.flushY, (x) => !!x);
         this.registerMarkUniformValue("uSqueeze", props.squeeze, (x) => !!x);
+        this.registerMarkUniformValue(
+            "uLogoLetter",
+            props.logoLetters,
+            (x) => !!x
+        );
+        this.registerMarkUniformValue(
+            "uSdfNumerator",
+            props.logoLetters,
+            (x) =>
+                // 0.35 is a magic number found by trial and error
+                this.font.metrics.common.base * 0.35 * (x ? 0.5 : 1)
+        );
 
         this.registerMarkUniformVector("uViewportEdgeFadeWidth", [
             props.viewportEdgeFadeWidthTop,
@@ -110,12 +119,7 @@ export default class WebGLTextMark extends WebGLMark {
 
         setBlockUniforms(this.markUniformInfo, {
             uAlign: [alignments[props.align], baselines[props.baseline]],
-
             uD: [props.dx, -props.dy],
-
-            uLogoLetter: !!props.logoLetters,
-
-            uSdfNumerator: sdfNumerator,
         });
     }
 
@@ -145,14 +149,16 @@ export default class WebGLTextMark extends WebGLMark {
         update();
     }
 
-    updateGraphicsData() {
-        const collector = this.unitView.getCollector();
-        if (!collector) {
-            console.debug("No collector");
-            return;
-        }
+    /** @param {import("../../../data/collector.js").default} collector */
+    updateGraphicsData(collector) {
         const data = collector.getData();
         const encoding = this.encoding;
+        const props = /** @type {import("../../../spec/mark.js").TextProps} */ (
+            this.properties
+        );
+        const logoLetters = isExprRef(props.logoLetters)
+            ? this.unitView.paramRuntime.evaluateAndGet(props.logoLetters.expr)
+            : props.logoLetters;
 
         // Count the total number of characters to that we can pre-allocate a typed array
         const accessor = this.encoders.text; // accessor or constant value
@@ -174,15 +180,13 @@ export default class WebGLTextMark extends WebGLMark {
         const builder = new TextVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            properties: this.properties,
+            properties: {
+                align: props.align,
+                baseline: props.baseline,
+                logoLetters,
+            },
             fontMetrics: this.font.metrics,
-            numCharacters: Math.max(
-                charCount,
-                // There's some mysterious bug with growing the buffer –
-                // old buffer is rendered instead of the new one.
-                // TODO: Figure it out
-                this.properties.minBufferSize || 1024
-            ),
+            numCharacters: Math.max(charCount, MIN_TEXT_BUFFER_CHARACTERS),
         });
 
         builder.addBatches(collector.facetBatches);

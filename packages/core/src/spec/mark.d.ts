@@ -88,16 +88,6 @@ export interface MarkPropsBase {
     y2Offset?: number | ExprRef;
 
     /**
-     * Minimum size for WebGL buffers (number of rows).
-     * Allows for using `bufferSubData()` to update graphics.
-     *
-     * This property is intended for internal use.
-     *
-     * @internal
-     */
-    minBufferSize?: number;
-
-    /**
      * Whether the x channel should build an index for efficient subset rendering.
      * If omitted, GenomeSpy enables indexing automatically for positional x encodings.
      *
@@ -629,6 +619,9 @@ export interface TextProps
      * 1) `"band"`, `"index"`, or `"locus"` scale is being used and
      * 2) only the primary positional channel is specified.
      *
+     * Expressions are evaluated when the mark is initialized and cannot change
+     * reactively.
+     *
      * **Default value:** `false`
      */
     fitToBand?: boolean | ExprRef;
@@ -759,6 +752,9 @@ export interface PointProps
      * point size is reached.
      *
      * **Default value:** `0`
+     *
+     * @deprecated This property will be removed in GenomeSpy v2.0. Use an
+     * expression-valued `size` instead.
      */
     geometricZoomBound?: number;
 }

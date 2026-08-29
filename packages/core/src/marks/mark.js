@@ -21,7 +21,6 @@ import { validatePositionalEndpointCoordinateSpaces } from "./markUtils.js";
  * @typedef {object} RenderingRevisionState
  * @prop {number} configuration
  * @prop {number} resources
- * @prop {boolean} volatileResources
  * @prop {Set<string>} expressions
  */
 
@@ -50,6 +49,9 @@ export default class Mark {
     #encodedDataRevision = 0;
 
     /**
+     * Creates the semantic mark owned by a unit view and resolves its configured
+     * property defaults.
+     *
      * @param {import("../view/unitView.js").default} unitView
      */
     constructor(unitView) {
@@ -88,9 +90,6 @@ export default class Mark {
                     }
                 });
             },
-            xOffset: 0,
-            yOffset: 0,
-            minBufferSize: 0,
             ...configuredDefaults,
         });
 
@@ -101,30 +100,22 @@ export default class Mark {
                 : () => /** @type {P} */ ({}),
             () => this.defaultProperties
         );
-
-        this.setupExprRefsNeedingEncodedDataUpdate([
-            "xOffset",
-            "yOffset",
-            "x2Offset",
-            "y2Offset",
-        ]);
     }
 
     /**
-     * @param {Partial<P>} props
-     * @protected
+     * Returns the cursor definition without evaluating an expression reference.
+     *
+     * @returns {string | import("../spec/parameter.js").ExprRef | undefined}
      */
-    augmentDefaultProperties(props) {
-        Object.defineProperties(
-            this.defaultProperties,
-            Object.getOwnPropertyDescriptors(props)
-        );
-    }
-
     getCursorSpec() {
         return this.properties.cursor;
     }
 
+    /**
+     * Returns the current cursor value in the mark's parameter scope.
+     *
+     * @returns {string | undefined}
+     */
     getCursor() {
         const cursor = this.getCursorSpec();
         return isExprRef(cursor)
@@ -133,6 +124,9 @@ export default class Mark {
     }
 
     /**
+     * Registers a listener for changes to an expression-backed cursor. Static
+     * cursor values do not create a subscription.
+     *
      * @param {() => void} listener
      * @param {(disposer: () => void) => void} [registerDisposer]
      */
@@ -148,16 +142,24 @@ export default class Mark {
         });
     }
 
-    get opaque() {
-        return false;
-    }
-
-    /** @returns {HitTestMode} */
+    /**
+     * Returns the default interval-selection relationship for ranged mark
+     * instances.
+     *
+     * @returns {HitTestMode}
+     */
     get defaultHitTestMode() {
         return "intersects";
     }
 
-    /** @returns {Channel[]} */
+    /**
+     * Returns the encoding channels accepted by this mark. Unit views use the
+     * list to discard unsupported inherited definitions, and the encoding
+     * getter uses it to promote same-named scalar mark properties to value
+     * definitions.
+     *
+     * @returns {Channel[]}
+     */
     getSupportedChannels() {
         return [
             "sample",
@@ -166,8 +168,6 @@ export default class Mark {
             "y",
             "xOffset",
             "yOffset",
-            /** @type {Channel} */ ("x2Offset"),
-            /** @type {Channel} */ ("y2Offset"),
             "color",
             "opacity",
             "search",
@@ -176,29 +176,20 @@ export default class Mark {
         ];
     }
 
-    /** @returns {Encoding} */
-    getDefaultEncoding() {
-        /** @type {Encoding} */
-        const encoding = {
-            sample: undefined,
-            uniqueId: undefined,
-            xOffset: { value: 0 },
-            yOffset: { value: 0 },
-        };
-
-        if (this.isPickingParticipant()) {
-            encoding.uniqueId = { field: UNIQUE_ID_KEY };
-        }
-
-        return encoding;
-    }
-
-    /** @param {Encoding} encoding @returns {Encoding} */
+    /**
+     * Applies mark-specific defaults and normalization to a merged encoding.
+     * Subclasses may mutate and return the provided object.
+     *
+     * @param {Encoding} encoding
+     * @returns {Encoding}
+     */
     fixEncoding(encoding) {
         return encoding;
     }
 
     /**
+     * Returns the default band position for a nested discrete offset channel.
+     *
      * @param {string} channel
      * @returns {number}
      * @protected
@@ -208,50 +199,40 @@ export default class Mark {
     }
 
     /**
-     * @param {(keyof P)[]} props
+     * Tracks expression-backed properties whose changes require rebuilding
+     * encoded mark data.
+     *
+     * @param {(keyof P)[]} props Properties to track.
      * @protected
      */
-    setupExprRefsNeedingEncodedDataUpdate(props) {
-        const channels = this.getSupportedChannels();
-        /** @type {Partial<MarkProps>} */
-        const exprProps = {};
+    watchEncodedDataExpressions(props) {
         for (const key of props) {
             const prop = this.properties[key];
-            if (prop && isExprRef(prop)) {
-                const fn = this.unitView.paramRuntime.watchExpression(
-                    prop.expr,
-                    () => {
-                        const collector = this.unitView.getCollector();
-                        if (!collector?.completed) {
-                            return;
-                        }
-
-                        this.#encodedDataRevision++;
-                        this.unitView.context.animator.requestRender();
-                    }
-                );
-                // @ts-ignore
-                if (!channels.includes(key)) {
-                    Object.defineProperty(exprProps, key, {
-                        get() {
-                            return fn();
-                        },
-                    });
-                }
+            if (!isExprRef(prop)) {
+                continue;
             }
+
+            this.unitView.paramRuntime.watchExpression(prop.expr, () => {
+                const collector = this.unitView.getCollector();
+                if (!collector?.completed) {
+                    return;
+                }
+
+                this.#encodedDataRevision++;
+                this.unitView.context.animator.requestRender();
+            });
         }
-        const originalProperties = this.properties;
-        // @ts-ignore
-        this.properties = coalesceProperties(
-            () => exprProps,
-            () => originalProperties
-        );
     }
 
-    /** @returns {Encoding} */
+    /**
+     * Returns the cached normalized encoding. Automatic picking defaults, mark
+     * property values, and configured encodings are merged in increasing
+     * precedence before mark-specific normalization.
+     *
+     * @returns {Encoding}
+     */
     get encoding() {
         return getCachedOrCall(this, "encoding", () => {
-            const defaults = this.getDefaultEncoding();
             const configured = this.unitView.getEncoding();
 
             /** @type {(property: string) => ValueDef} */
@@ -276,7 +257,9 @@ export default class Mark {
             );
 
             const encoding = this.fixEncoding({
-                ...defaults,
+                ...(this.isPickingParticipant()
+                    ? { uniqueId: { field: UNIQUE_ID_KEY } }
+                    : {}),
                 ...propertyValues,
                 ...configured,
             });
@@ -341,7 +324,7 @@ export default class Mark {
 
                 const resolved = resolveSecondaryOffset(
                     internalEncoding[primaryOffset],
-                    propertyValues[secondaryOffset],
+                    propToValueDef(secondaryOffset),
                     configured[secondary] != null
                 );
 
@@ -365,12 +348,6 @@ export default class Mark {
                 }
             }
 
-            for (const channel of Object.keys(encoding)) {
-                if (!this.getSupportedChannels().includes(channel)) {
-                    delete encoding[channel];
-                }
-            }
-
             validatePositionalEndpointCoordinateSpaces(encoding);
 
             if (encoding.x) {
@@ -381,21 +358,36 @@ export default class Mark {
         });
     }
 
-    getContext() {
-        return this.unitView.context;
-    }
-
+    /**
+     * Returns the declarative mark type owned by the unit view.
+     *
+     * @returns {import("../spec/mark.js").MarkType}
+     */
     getType() {
         return this.unitView.getMarkType();
     }
 
+    /**
+     * Updates data-derived mark state after the collector completes.
+     * Subclasses override this lifecycle hook when needed.
+     *
+     * @returns {void}
+     */
     initializeData() {}
 
+    /**
+     * Creates channel encoders from the normalized mark encoding.
+     *
+     * @returns {void}
+     */
     initializeEncoders() {
         this.encoders = createEncoders(this.unitView, this.encoding);
     }
 
     /**
+     * Tracks expression and scale dependencies that retained renderers use to
+     * decide whether configuration or resources must be refreshed.
+     *
      * @param {Iterable<string>} resourceProperties Expression-backed properties
      *      that a retained renderer can update without rebuilding encoded data.
      * @param {{ trackResources?: boolean }} [options] Disable resource tracking
@@ -409,7 +401,6 @@ export default class Mark {
             (this.#renderingRevisionState = {
                 configuration: 0,
                 resources: 0,
-                volatileResources: false,
                 expressions: new Set(),
             });
 
@@ -497,28 +488,32 @@ export default class Mark {
         }
     }
 
-    /** @param {RenderingRevisionKind} kind @returns {number | undefined} */
+    /**
+     * Returns a renderer-facing revision, or zero before tracking is initialized.
+     *
+     * @param {RenderingRevisionKind} kind
+     * @returns {number}
+     */
     getRenderingRevision(kind) {
-        const state = this.#renderingRevisionState;
-        if (!state) {
-            return 0;
-        }
-        return kind == "resources" && state.volatileResources
-            ? undefined
-            : state[kind];
+        return this.#renderingRevisionState?.[kind] ?? 0;
     }
 
+    /**
+     * Returns the revision of data rebuilt because an expression-backed mark
+     * property changed.
+     *
+     * @returns {number}
+     */
     getEncodedDataRevision() {
         return this.#encodedDataRevision;
     }
 
-    makeRenderingResourcesVolatile() {
-        if (!this.#renderingRevisionState) {
-            throw new Error("Rendering revisions have not been initialized.");
-        }
-        this.#renderingRevisionState.volatileResources = true;
-    }
-
+    /**
+     * Returns whether this mark is enabled for picking throughout its layout
+     * ancestry.
+     *
+     * @returns {boolean}
+     */
     isPickingParticipant() {
         if (
             this.properties.tooltip === null &&
@@ -536,7 +531,11 @@ export default class Mark {
         return true;
     }
 
-    /** @returns {MarkDebugState} */
+    /**
+     * Returns configured and defaulted mark properties for debug snapshots.
+     *
+     * @returns {MarkDebugState}
+     */
     getDebugState() {
         const specProperties =
             typeof this.unitView.spec.mark == "object"
@@ -558,11 +557,4 @@ export default class Mark {
             properties,
         };
     }
-
-    /**
-     * @param {string} facetId
-     * @param {import("../spec/channel.js").Scalar} x
-     * @returns {any}
-     */
-    findDatumAt(facetId, x) {}
 }

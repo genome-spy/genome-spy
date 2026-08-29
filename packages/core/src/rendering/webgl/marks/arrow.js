@@ -5,12 +5,14 @@ import COMMON_SHADER from "./arrow.common.glsl";
 import { RuleVertexBuilder } from "../gl/dataToVertices.js";
 
 import WebGLMark from "./webGlMark.js";
-import { ARROW_UNIFORM_ENUMS, enumIndex } from "../../../marks/arrow.js";
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
 const MIN_HEAD_SLOPE = 1e-6;
 const MIN_HEAD_ANGLE = 1;
 const MAX_HEAD_ANGLE = 90;
+
+export const ARROW_HEAD_SHAPES = ["triangle", "open"];
+export const ARROW_HEAD_PLACEMENTS = ["inside", "outside"];
 
 /**
  * @extends {WebGLMark}
@@ -71,7 +73,7 @@ export default class WebGLArrowMark extends WebGLMark {
             headAngleToSlope
         );
         this.registerMarkUniformValue("uHeadShape", props.headShape, (value) =>
-            enumIndex(ARROW_UNIFORM_ENUMS.headShapes, value)
+            enumIndex(ARROW_HEAD_SHAPES, value)
         );
         this.registerMarkUniformValue("uMinSize", props.minSize);
         this.registerMarkUniformValue("uHeadWidth", props.headWidth);
@@ -86,20 +88,13 @@ export default class WebGLArrowMark extends WebGLMark {
         this.registerMarkUniformValue(
             "uHeadPlacement",
             props.headPlacement,
-            (value) => enumIndex(ARROW_UNIFORM_ENUMS.headPlacements, value)
+            (value) => enumIndex(ARROW_HEAD_PLACEMENTS, value)
         );
     }
 
-    updateGraphicsData() {
-        const collector = this.unitView.getCollector();
-        if (!collector) {
-            console.debug("No collector");
-            return;
-        }
-        const numItems = Math.max(
-            collector.getItemCount(),
-            this.properties.minBufferSize || 0
-        );
+    /** @param {import("../../../data/collector.js").default} collector */
+    updateGraphicsData(collector) {
+        const numItems = collector.getItemCount();
 
         const builder = new RuleVertexBuilder({
             encoders: this.encoders,
@@ -149,6 +144,15 @@ export default class WebGLArrowMark extends WebGLMark {
             );
         }, options);
     }
+}
+
+/** @param {string[]} values @param {string} value */
+export function enumIndex(values, value) {
+    const index = values.indexOf(value);
+    if (index < 0) {
+        throw new Error(`Unsupported arrow mark value: ${value}`);
+    }
+    return index;
 }
 
 /**

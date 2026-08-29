@@ -1,4 +1,5 @@
 import Mark from "../../marks/mark.js";
+import Collector from "../../data/collector.js";
 import {
     ClipOptions,
     GlobalRenderingOptions,
@@ -21,7 +22,7 @@ export interface WebGLMark {
     mark: Mark;
     initializeGraphics(): void;
     finalizeGraphicsInitialization(): void;
-    updateGraphicsData(): void;
+    updateGraphicsData(collector: Collector): void;
     deleteGraphicsData(): void;
     dispose(): void;
     isReady(): boolean;

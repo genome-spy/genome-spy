@@ -225,7 +225,7 @@ export default class WebGLRendererResources {
                     mark.getRenderingRevision("configuration") ||
                 entry.encodedDataRevision != mark.getEncodedDataRevision()
             ) {
-                entry.graphics.updateGraphicsData();
+                entry.graphics.updateGraphicsData(collector);
                 this.#recordRevisions(entry);
             }
         }

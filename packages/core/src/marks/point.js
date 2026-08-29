@@ -5,9 +5,6 @@ import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { sampleIterable } from "../data/transforms/sample.js";
 import { fixFill, fixStroke } from "./markUtils.js";
 
-/** @type {Record<string, import("../spec/channel.js").ChannelDef>} */
-const defaultEncoding = {};
-
 /** @extends {Mark<import("../spec/mark.js").PointProps>} */
 export default class PointMark extends Mark {
     #semanticZoomFraction = () => 0;
@@ -20,7 +17,7 @@ export default class PointMark extends Mark {
             if (isExprRef(szf)) {
                 const fn = this.unitView.paramRuntime.watchExpression(
                     szf.expr,
-                    () => this.getContext().animator.requestRender()
+                    () => this.unitView.context.animator.requestRender()
                 );
                 this.#semanticZoomFraction = fn;
             } else {
@@ -51,10 +48,6 @@ export default class PointMark extends Mark {
             "strokeOpacity",
             "angle",
         ];
-    }
-
-    getDefaultEncoding() {
-        return { ...super.getDefaultEncoding(), ...defaultEncoding };
     }
 
     /**
@@ -108,8 +101,6 @@ export default class PointMark extends Mark {
     }
 
     initializeData() {
-        super.initializeData();
-
         const semanticScoreAccessor = this.encoders.semanticScore
             ? getEncoderDataAccessor(
                   this.encoders.semanticScore

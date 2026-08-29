@@ -3,7 +3,6 @@ import { initializeViewSubtree } from "../data/flowInit.js";
 import LayerView from "../view/layerView.js";
 import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
-import WebGLTextMark from "../rendering/webgl/marks/text.js";
 
 /**
  * @param {import("../spec/channel.js").PositionDef | import("../spec/channel.js").Position2Def} channelDef
@@ -14,40 +13,6 @@ function getBand(channelDef) {
 }
 
 describe("TextMark", () => {
-    test("updates a vector uniform from an expression component", async () => {
-        const view = await create(
-            {
-                params: [{ name: "fadeDistance", value: 4 }],
-                data: { values: [{ label: "text" }] },
-                mark: "text",
-                encoding: { text: { field: "label", type: "nominal" } },
-            },
-            UnitView
-        );
-        const textMark = /** @type {any} */ (
-            Object.create(WebGLTextMark.prototype)
-        );
-        textMark.mark = { unitView: view };
-        const uniformSetter = vi.fn();
-        textMark.markUniformInfo = {
-            setters: { uTestVector: uniformSetter },
-        };
-        const requestRender = vi.spyOn(view.context.animator, "requestRender");
-
-        textMark.registerMarkUniformVector("uTestVector", [
-            1,
-            { expr: "fadeDistance" },
-            3,
-            4,
-        ]);
-        expect(uniformSetter).toHaveBeenLastCalledWith([1, 4, 3, 4]);
-
-        view.paramRuntime.setValue("fadeDistance", 12);
-
-        expect(uniformSetter).toHaveBeenLastCalledWith([1, 12, 3, 4]);
-        expect(requestRender).toHaveBeenCalledTimes(2);
-    });
-
     test("defers expression updates until data propagation completes", async () => {
         const view = await create(
             {
@@ -98,6 +63,62 @@ describe("TextMark", () => {
 
         expect(view.mark.getEncodedDataRevision()).toBe(revision + 1);
         expect(requestRender).toHaveBeenCalled();
+    });
+
+    test("keeps logo letter expressions reactive", async () => {
+        const view = await create(
+            {
+                params: [{ name: "logo", value: false }],
+                data: { values: [{ label: "A" }] },
+                mark: {
+                    type: "text",
+                    logoLetters: { expr: "logo" },
+                },
+                encoding: {
+                    text: { field: "label", type: "nominal" },
+                },
+            },
+            UnitView,
+            {}
+        );
+
+        view.mark.initializeEncoders();
+        initializeViewSubtree(view, view.context.dataFlow);
+        view.getCollector().complete();
+        const revision = view.mark.getEncodedDataRevision();
+
+        view.paramRuntime.setValue("logo", true);
+
+        expect(view.mark.getEncodedDataRevision()).toBe(revision + 1);
+    });
+
+    test("resolves fitToBand expressions only during initialization", async () => {
+        const view = await create(
+            {
+                params: [{ name: "fit", value: true }],
+                data: {
+                    values: [{ from: 0, to: 2, label: "[0, 2)" }],
+                },
+                mark: {
+                    type: "text",
+                    fitToBand: { expr: "fit" },
+                },
+                encoding: {
+                    x: { field: "from", type: "index" },
+                    x2: { field: "to" },
+                    text: { field: "label", type: "nominal" },
+                },
+            },
+            UnitView,
+            {}
+        );
+
+        view.mark.initializeEncoders();
+
+        expect(getBand(view.mark.encoding.x)).toBe(0);
+        expect(() => view.paramRuntime.setValue("fit", false)).toThrow(
+            "Reactive text fitToBand changes are not supported."
+        );
     });
 
     test("requests configured weight from the default font family", async () => {

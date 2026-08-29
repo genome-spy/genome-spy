@@ -73,7 +73,6 @@ function createRegularAxisGrid(axisProps, type) {
             color: ap.gridColor,
             size: ap.gridWidth,
             opacity: ap.gridOpacity,
-            minBufferSize: 300,
         },
         encoding: {
             [channel]: {

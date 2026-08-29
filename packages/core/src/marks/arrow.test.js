@@ -1,31 +1,8 @@
 import { describe, expect, test } from "vitest";
 
-import { ARROW_UNIFORM_ENUMS, enumIndex } from "./arrow.js";
 import UnitView from "../view/unitView.js";
 import View from "../view/view.js";
 import { create } from "../view/testUtils.js";
-
-describe("arrow mark uniform enums", () => {
-    test("match shader constant order", () => {
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.directions, "forward")).toBe(0);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.directions, "reverse")).toBe(1);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "triangle")).toBe(0);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "open")).toBe(1);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.headPlacements, "inside")).toBe(0);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.headPlacements, "outside")).toBe(
-            1
-        );
-    });
-
-    test("fails fast on unknown values", () => {
-        expect(() =>
-            enumIndex(ARROW_UNIFORM_ENUMS.directions, "sideways")
-        ).toThrow("Unsupported arrow mark value: sideways");
-        expect(() =>
-            enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "start")
-        ).toThrow("Unsupported arrow mark value: start");
-    });
-});
 
 describe("arrow mark size encoding", () => {
     test("lowers band-relative mark size to a bandwidth expression", async () => {

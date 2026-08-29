@@ -184,15 +184,11 @@ export default class WebGLMark {
     }
 
     get opaque() {
-        return this.mark.opaque;
+        return false;
     }
 
     get defaultHitTestMode() {
         return this.mark.defaultHitTestMode;
-    }
-
-    getContext() {
-        return this.mark.getContext();
     }
 
     getType() {
@@ -355,7 +351,7 @@ export default class WebGLMark {
                                 paramRuntime.getValue(param)
                             );
                         glHelper.createSelectionTexture(selection);
-                        this.getContext().animator.requestRender();
+                        this.unitView.context.animator.requestRender();
                     });
                 }
             } else if (isIntervalSelection(selection)) {

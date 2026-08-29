@@ -7,6 +7,7 @@ import { RectVertexBuilder } from "../gl/dataToVertices.js";
 import WebGLMark from "./webGlMark.js";
 import { isValueDef } from "../../../encoder/encoder.js";
 import { cssColorToArray } from "../gl/colorUtils.js";
+import { getCachedOrCall } from "../../../utils/propertyCacher.js";
 
 const hatchPatterns = [
     "none",
@@ -25,6 +26,22 @@ const hatchPatterns = [
  * @extends {WebGLMark}
  */
 export default class WebGLRectMark extends WebGLMark {
+    get opaque() {
+        return (
+            getCachedOrCall(
+                this,
+                "opaque",
+                () =>
+                    !this.#isRoundedCorners() &&
+                    !this.#isStroked() &&
+                    !this.properties.shadowOpacity &&
+                    isValueDef(this.encoding.fillOpacity) &&
+                    this.encoding.fillOpacity.value == 1.0 &&
+                    this.properties.minOpacity == 1.0
+            ) && this.unitView.getEffectiveOpacity() == 1
+        );
+    }
+
     /**
      * @returns {import("../../../spec/channel.js").Channel[]}
      */
@@ -141,12 +158,8 @@ export default class WebGLRectMark extends WebGLMark {
         );
     }
 
-    updateGraphicsData() {
-        const collector = this.unitView.getCollector();
-        if (!collector) {
-            console.debug("No collector");
-            return;
-        }
+    /** @param {import("../../../data/collector.js").default} collector */
+    updateGraphicsData(collector) {
         const numItems = collector.getItemCount();
 
         const builder = new RectVertexBuilder({

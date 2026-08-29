@@ -1835,8 +1835,6 @@ function createMark(type, data, encoders, properties = {}) {
             : {};
     /** @type {Record<"configuration" | "resources", number>} */
     const revisions = { configuration: 0, resources: 0 };
-    /** @type {Set<"configuration" | "resources">} */
-    const volatile = new Set();
     return /** @type {import("../../marks/mark.js").default} */ (
         /** @type {unknown} */ ({
             encoders: { ...defaultEncoders, ...encoders },
@@ -1851,8 +1849,7 @@ function createMark(type, data, encoders, properties = {}) {
             initializeRenderingRevisions: vi.fn(),
             getRenderingRevision: (
                 /** @type {"configuration" | "resources"} */ kind
-            ) => (volatile.has(kind) ? undefined : revisions[kind]),
-            makeRenderingResourcesVolatile: () => volatile.add("resources"),
+            ) => revisions[kind],
             advanceRenderingRevision: (
                 /** @type {"configuration" | "resources"} */ kind
             ) => revisions[kind]++,
