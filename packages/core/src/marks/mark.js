@@ -100,13 +100,6 @@ export default class Mark {
                 : () => /** @type {P} */ ({}),
             () => this.defaultProperties
         );
-
-        this.watchEncodedDataExpressions([
-            "xOffset",
-            "yOffset",
-            "x2Offset",
-            "y2Offset",
-        ]);
     }
 
     /**
