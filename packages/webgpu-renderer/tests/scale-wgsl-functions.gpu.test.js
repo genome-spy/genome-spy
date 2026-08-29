@@ -11,6 +11,7 @@ import {
     scaleLinear,
     scaleLog,
     scalePow,
+    scaleSqrt,
     scaleSymlog,
 } from "d3-scale";
 import { buildScaleWgsl } from "../src/marks/scales/scaleWgsl.js";
@@ -694,102 +695,148 @@ async function runBandCompute(
         }
     );
 }
-test("scaleLinear matches CPU reference", async ({ page }) => {
-    await ensureWebGPU(page);
+/**
+ * @typedef {object} ContinuousScaleCase
+ * @property {string} name
+ * @property {number[]} input
+ * @property {number[]} domain
+ * @property {number[]} range
+ * @property {string} scaleExpr
+ * @property {(domain: number[], range: number[]) => (value: number) => number | undefined} createReference
+ * @property {number} [tolerance]
+ */
 
-    const input = [0, 0.5, 1];
-    const reference = scaleLinear().domain([0, 1]).range([0, 10]);
-    const shaderCode = buildComputeShader(
-        "scaleLinear(v, params.domain, params.range)",
-        input.length
-    );
-    const result = await runScaleCompute(page, {
-        shaderCode,
-        input,
-        domain: [0, 1],
-        range: [0, 10],
+/** @type {ContinuousScaleCase[]} */
+const CONTINUOUS_SCALE_CASES = [
+    {
+        name: "linear maps and extrapolates through a reversed range",
+        input: [-8, -4, 0, 6, 10],
+        domain: [-4, 6],
+        range: [20, -10],
+        scaleExpr: "scaleLinear(v, params.domain, params.range)",
+        createReference: (domain, range) =>
+            scaleLinear().domain(domain).range(range),
+    },
+    {
+        name: "linear supports a reversed domain",
+        input: [-8, -4, 0, 6, 10],
+        domain: [6, -4],
+        range: [-10, 20],
+        scaleExpr: "scaleLinear(v, params.domain, params.range)",
+        createReference: (domain, range) =>
+            scaleLinear().domain(domain).range(range),
+    },
+    {
+        name: "linear maps a degenerate domain to the range midpoint",
+        input: [-1, 2, 10],
+        domain: [2, 2],
+        range: [-5, 9],
+        scaleExpr: "scaleLinear(v, params.domain, params.range)",
+        createReference: (domain, range) =>
+            scaleLinear().domain(domain).range(range),
+    },
+    {
+        name: "pow preserves sign with a non-default exponent",
+        input: [-6, -3, -1, 0, 2, 5],
+        domain: [-3, 5],
+        range: [12, -4],
+        scaleExpr: "scalePow(v, params.domain, params.range, 2.0)",
+        createReference: (domain, range) =>
+            scalePow().domain(domain).range(range).exponent(2),
+    },
+    {
+        name: "sqrt preserves sign across a reversed domain",
+        input: [-9, -4, 0, 4, 16],
+        domain: [16, -9],
+        range: [-3, 7],
+        scaleExpr: "scalePow(v, params.domain, params.range, 0.5)",
+        createReference: (domain, range) =>
+            scaleSqrt().domain(domain).range(range),
+    },
+    {
+        name: "log maps a positive domain with a non-default base",
+        input: [0.0625, 0.125, 1, 8, 64, 128],
+        domain: [0.125, 64],
+        range: [5, -3],
+        scaleExpr: "scaleLog(v, params.domain, params.range, 2.0)",
+        createReference: (domain, range) =>
+            scaleLog().domain(domain).range(range).base(2),
+        tolerance: 5e-5,
+    },
+    {
+        name: "log maps a reversed positive domain with base e",
+        input: [0.25, 0.5, 1, 4, 32, 64],
+        domain: [32, 0.5],
+        range: [-7, 11],
+        scaleExpr: "scaleLog(v, params.domain, params.range, 2.718281828)",
+        createReference: (domain, range) =>
+            scaleLog().domain(domain).range(range).base(Math.E),
+        tolerance: 5e-5,
+    },
+    {
+        name: "log maps a wholly negative reversed domain",
+        input: [-0.5, -1, -10, -100, -1000, -2000],
+        domain: [-1, -1000],
+        range: [4, -2],
+        scaleExpr: "scaleLog(v, params.domain, params.range, 10.0)",
+        createReference: (domain, range) =>
+            scaleLog().domain(domain).range(range).base(10),
+        tolerance: 5e-5,
+    },
+    {
+        name: "symlog maps an asymmetric domain with a custom constant",
+        input: [-200, -20, -0.5, 0, 1, 30, 80],
+        domain: [-100, 30],
+        range: [20, -5],
+        scaleExpr: "scaleSymlog(v, params.domain, params.range, 0.5)",
+        createReference: (domain, range) =>
+            scaleSymlog().domain(domain).range(range).constant(0.5),
+        tolerance: 5e-5,
+    },
+    {
+        name: "symlog retains precision around zero",
+        input: [-0.0002, -0.00001, -0.000001, 0, 0.000001, 0.00001, 0.0004],
+        domain: [-0.0001, 0.0002],
+        range: [-1, 1],
+        scaleExpr: "scaleSymlog(v, params.domain, params.range, 1.0)",
+        createReference: (domain, range) =>
+            scaleSymlog().domain(domain).range(range).constant(1),
+        tolerance: 5e-5,
+    },
+];
+
+for (const scaleCase of CONTINUOUS_SCALE_CASES) {
+    test(`WGSL ${scaleCase.name} like d3`, async ({ page }) => {
+        await ensureWebGPU(page);
+
+        const input = scaleCase.input.map(Math.fround);
+        const domain = scaleCase.domain.map(Math.fround);
+        const range = scaleCase.range.map(Math.fround);
+        const reference = scaleCase.createReference(domain, range);
+        const shaderCode = buildComputeShader(
+            scaleCase.scaleExpr,
+            input.length
+        );
+        const result = await runScaleCompute(page, {
+            shaderCode,
+            input,
+            domain,
+            range,
+        });
+
+        expect(result).toHaveLength(input.length);
+        input.forEach((value, index) => {
+            const expected = reference(value);
+            expect(expected).not.toBeUndefined();
+            const tolerance =
+                (scaleCase.tolerance ?? 1e-5) *
+                Math.max(1, Math.abs(expected ?? 0));
+            expect(
+                Math.abs(result[index] - (expected ?? 0))
+            ).toBeLessThanOrEqual(tolerance);
+        });
     });
-
-    expect(result).toHaveLength(input.length);
-    input.forEach((value, index) => {
-        expect(result[index]).toBeCloseTo(reference(value), 5);
-    });
-});
-
-test("scalePow matches CPU reference", async ({ page }) => {
-    await ensureWebGPU(page);
-
-    const input = [0, 0.5, 1];
-    const reference = scalePow().domain([0, 1]).range([0, 1]).exponent(2);
-    const shaderCode = buildComputeShader(
-        "scalePow(v, params.domain, params.range, 2.0)",
-        input.length
-    );
-    const result = await runScaleCompute(page, {
-        shaderCode,
-        input,
-        domain: [0, 1],
-        range: [0, 1],
-    });
-
-    expect(result).toHaveLength(input.length);
-    input.forEach((value, index) => {
-        expect(result[index]).toBeCloseTo(reference(value), 5);
-    });
-});
-
-test("scaleLog matches CPU reference", async ({ page }) => {
-    await ensureWebGPU(page);
-
-    const input = [1, 10, 100];
-    const domain = [1, 100];
-    const range = [0, 1];
-    const base = 10;
-    const reference = scaleLog().domain(domain).range(range).base(base);
-    const shaderCode = buildComputeShader(
-        `scaleLog(v, params.domain, params.range, ${base}.0)`,
-        input.length
-    );
-    const result = await runScaleCompute(page, {
-        shaderCode,
-        input,
-        domain,
-        range,
-    });
-
-    expect(result).toHaveLength(input.length);
-    input.forEach((value, index) => {
-        expect(result[index]).toBeCloseTo(reference(value), 5);
-    });
-});
-
-test("scaleSymlog matches CPU reference", async ({ page }) => {
-    await ensureWebGPU(page);
-
-    const input = [-10, 0, 10];
-    const domain = [-10, 10];
-    const range = [0, 1];
-    const constant = 1;
-    const reference = scaleSymlog()
-        .domain(domain)
-        .range(range)
-        .constant(constant);
-    const shaderCode = buildComputeShader(
-        `scaleSymlog(v, params.domain, params.range, ${constant}.0)`,
-        input.length
-    );
-    const result = await runScaleCompute(page, {
-        shaderCode,
-        input,
-        domain,
-        range,
-    });
-
-    expect(result).toHaveLength(input.length);
-    input.forEach((value, index) => {
-        expect(result[index]).toBeCloseTo(reference(value), 5);
-    });
-});
+}
 
 test("scaleBandHp matches CPU reference for large u32 indices", async ({
     page,
@@ -1010,4 +1057,82 @@ test("scaleBand supports reverse ranges with non-zero domain starts", async ({
         const expected = reference(String(value));
         expect(result[index]).toBeCloseTo(expected ?? 0, 5);
     });
+});
+
+test("scaleBand matches d3 at alignment extremes and fractional band positions", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const input = [4, 5, 6, 7, 8];
+    const domain = [4, 9];
+    const cases = [
+        {
+            range: [-20, 140],
+            paddingInner: 0.35,
+            paddingOuter: 0.4,
+            align: 0,
+            band: 0.5,
+        },
+        {
+            range: [140, -20],
+            paddingInner: 0.7,
+            paddingOuter: 0.15,
+            align: 1,
+            band: 0.25,
+        },
+    ];
+
+    for (const bandCase of cases) {
+        const reference = scaleBand()
+            .domain(input.map(String))
+            .range(bandCase.range)
+            .paddingInner(bandCase.paddingInner)
+            .paddingOuter(bandCase.paddingOuter)
+            .align(bandCase.align);
+        const result = await runBandScaleCompute(page, {
+            shaderCode: buildBandComputeShader(input.length),
+            input,
+            domain,
+            ...bandCase,
+        });
+
+        input.forEach((value, index) => {
+            const start = reference(String(value)) ?? 0;
+            const expected = start + reference.bandwidth() * bandCase.band;
+            expect(result[index]).toBeCloseTo(expected, 4);
+        });
+    }
+});
+
+test("scaleBand ignores inner padding for a singleton domain by design", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const input = [5];
+    const range = [0, 100];
+    const paddingOuter = 0.2;
+    const align = 0.75;
+    const band = 0.5;
+    const reference = scaleBand()
+        .domain(["5"])
+        .range(range)
+        .paddingInner(0)
+        .paddingOuter(paddingOuter)
+        .align(align);
+    const result = await runBandScaleCompute(page, {
+        shaderCode: buildBandComputeShader(input.length),
+        input,
+        domain: [5, 6],
+        range,
+        paddingInner: 0.8,
+        paddingOuter,
+        align,
+        band,
+    });
+
+    const expected = (reference("5") ?? 0) + reference.bandwidth() * band;
+    expect(result).toHaveLength(1);
+    expect(result[0]).toBeCloseTo(expected, 5);
 });

@@ -1,8 +1,77 @@
 /* global document, window */
 
 import { expect, test } from "@playwright/test";
+import { scaleLinear } from "d3-scale";
 
 import { ensureWebGPU } from "./gpuTestUtils.js";
+
+test("retained scale updates keep rendered WGSL mapping aligned with d3", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const value = 0.75;
+    const initialX = scaleLinear().domain([0, 1]).range([0, 64])(value);
+    const updatedX = scaleLinear().domain([0, 3]).range([0, 32])(value);
+    const picks = await page.evaluate(
+        async ({ value, initialX, updatedX }) => {
+            const [{ createRenderer }, { pointMark }, { linearScale }] =
+                await Promise.all([
+                    import("/src/index.js"),
+                    import("/src/marks/point.js"),
+                    import("/src/scales/linear.js"),
+                ]);
+
+            const canvas = document.createElement("canvas");
+            canvas.width = 128;
+            canvas.height = 128;
+            document.body.appendChild(canvas);
+
+            const renderer = await createRenderer(canvas);
+            renderer.updateGlobals({ width: 64, height: 64, dpr: 2 });
+            const handle = renderer.createMark(pointMark, {
+                count: 1,
+                channels: {
+                    uniqueId: { data: new Uint32Array([41]), type: "u32" },
+                    x: {
+                        data: new Float32Array([value]),
+                        type: "f32",
+                        scale: linearScale({
+                            domain: [0, 1],
+                            range: [0, 64],
+                        }),
+                    },
+                    y: {
+                        value: 0.5,
+                        scale: linearScale({
+                            domain: [0, 1],
+                            range: [0, 64],
+                        }),
+                    },
+                    size: { value: 16 },
+                },
+            });
+
+            renderer.render({ draws: [{ mark: handle }] });
+            await renderer.device.queue.onSubmittedWorkDone();
+            const before = await renderer.pick(initialX, 32);
+
+            handle.scales.x.setDomain([0, 3]);
+            handle.scales.x.setRange([0, 32]);
+            renderer.render({ draws: [{ mark: handle }] });
+            await renderer.device.queue.onSubmittedWorkDone();
+            const stale = await renderer.pick(initialX, 32);
+            const updated = await renderer.pick(updatedX, 32);
+
+            renderer.destroy();
+            canvas.remove();
+            return { before, stale, updated };
+        },
+        { value, initialX, updatedX }
+    );
+
+    expect(picks).toEqual({ before: 41, stale: null, updated: 41 });
+});
 
 test("one retained point mark renders into two draw occurrences", async ({
     page,

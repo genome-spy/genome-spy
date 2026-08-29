@@ -16,7 +16,8 @@ const linearWgsl = /* wgsl */ `
 fn scaleLinear(value: f32, domain: vec2<f32>, range: vec2<f32>) -> f32 {
     let domainSpan = domain.y - domain.x;
     let rangeSpan = range.y - range.x;
-    return (value - domain.x) / domainSpan * rangeSpan + range.x;
+    let unit = select(0.5, (value - domain.x) / domainSpan, domainSpan != 0.0);
+    return unit * rangeSpan + range.x;
 }
 `;
 

@@ -141,7 +141,7 @@ export function applyScaleStep(name, valueExprFn) {
 export function roundStep() {
     return (state) => ({
         ...state,
-        expr: `roundAwayFromZero(${state.expr})`,
+        expr: `roundLikeD3(${state.expr})`,
     });
 }
 
@@ -180,16 +180,19 @@ export function piecewiseLinearStep({
         const block = /* wgsl */ `
     const DOMAIN_LEN: u32 = ${domainLength}u;
     let value = ${state.expr};
+    let descending = params.${DOMAIN_PREFIX}${name}[DOMAIN_LEN - 1u].x <
+        params.${DOMAIN_PREFIX}${name}[0u].x;
     var slot: u32 = 0u;
     for (var i: u32 = 1u; i + 1u < DOMAIN_LEN; i = i + 1u) {
-        if (value >= params.${DOMAIN_PREFIX}${name}[i].x) {
+        let stop = params.${DOMAIN_PREFIX}${name}[i].x;
+        if (select(value >= stop, value <= stop, descending)) {
             slot = i;
         }
     }
     let d0 = params.${DOMAIN_PREFIX}${name}[slot].x;
     let d1 = params.${DOMAIN_PREFIX}${name}[slot + 1u].x;
     let denom = d1 - d0;
-    var t = select(0.0, (value - d0) / denom, denom != 0.0);
+    var t = select(0.5, (value - d0) / denom, denom != 0.0);
     let r0: ${rangeType} = ${rangeAccess(
         `params.${RANGE_PREFIX}${name}[slot]`
     )};
