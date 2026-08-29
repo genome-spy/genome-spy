@@ -1,8 +1,17 @@
 # WebGPU Renderer (package notes)
 
 This package is a low-level WebGPU renderer extracted from GenomeSpy. It is
-designed to be usable outside the monorepo, but it currently lives here so it
-can track GenomeSpy’s requirements.
+developed around the current and planned rendering needs of
+`@genome-spy/core` (referred to below as Core) while remaining independently
+usable.
+
+New capabilities are typically implemented and validated through a
+renderer-generic API before Core exposes them through its adapter and
+visualization grammar. The planned Core integration supplies the motivating use
+case and acceptance criteria. Public APIs, documentation, and examples must be
+usable without Core. External use cases are welcome when they align with this
+architecture; do not expand the package into a general charting, interaction,
+layout, or graphics framework merely for completeness.
 
 This package is unpublished work in progress. The experimental Core WebGPU
 adapter is its sole consumer. Large refactors are welcome; the API can be broken
@@ -19,9 +28,8 @@ The renderer is still exploratory: there are guiding goals but the exact
 implementation is open to iteration. Prioritize a clear, extensible
 architecture while keeping render-time hot paths minimal and optimized.
 
-Although the renderer is driven by GenomeSpy’s needs, keep `README.md` written
-for a broad audience so external users can understand it without GenomeSpy
-context.
+Keep `README.md` written for a broad audience so external users can understand
+it without GenomeSpy context.
 
 ## Coding style & conventions
 
@@ -91,9 +99,3 @@ Follow the monorepo-wide conventions in `AGENTS.md`.
 
 - Track ongoing work in `packages/webgpu-renderer/MIGRATION_PLAN.md` and update
   it when new phases start or finish.
-
-## Open questions / to clarify
-
-- Should we expose additional scale validation helpers as a public API?
-- When adding new marks, which parts of the mark API should be considered
-  stable vs. experimental?
