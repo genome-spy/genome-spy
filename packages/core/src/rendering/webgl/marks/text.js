@@ -145,12 +145,8 @@ export default class WebGLTextMark extends WebGLMark {
         update();
     }
 
-    updateGraphicsData() {
-        const collector = this.unitView.getCollector();
-        if (!collector) {
-            console.debug("No collector");
-            return;
-        }
+    /** @param {import("../../../data/collector.js").default} collector */
+    updateGraphicsData(collector) {
         const data = collector.getData();
         const encoding = this.encoding;
 

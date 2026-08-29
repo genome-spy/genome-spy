@@ -92,12 +92,8 @@ export default class WebGLArrowMark extends WebGLMark {
         );
     }
 
-    updateGraphicsData() {
-        const collector = this.unitView.getCollector();
-        if (!collector) {
-            console.debug("No collector");
-            return;
-        }
+    /** @param {import("../../../data/collector.js").default} collector */
+    updateGraphicsData(collector) {
         const numItems = Math.max(
             collector.getItemCount(),
             this.properties.minBufferSize || 0

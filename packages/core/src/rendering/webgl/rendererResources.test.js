@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
         constructor(mark) {
             this.mark = mark;
             this.updateCount = 0;
+            this.lastCollector = undefined;
             this.disposeCount = 0;
             delegates.push(this);
         }
@@ -26,7 +27,9 @@ const mocks = vi.hoisted(() => {
             }
         }
 
-        updateGraphicsData() {
+        /** @param {any} collector */
+        updateGraphicsData(collector) {
+            this.lastCollector = collector;
             this.updateCount++;
         }
 
@@ -127,6 +130,7 @@ test("synchronizes mark data only when encoded inputs change", () => {
     resources.synchronize([entry]);
     resources.synchronize([entry]);
     expect(mocks.delegates[0].updateCount).toBe(1);
+    expect(mocks.delegates[0].lastCollector).toBe(fixture.collector);
     expect(fixture.mark.initializeRenderingRevisions).toHaveBeenCalledWith([], {
         trackResources: false,
     });

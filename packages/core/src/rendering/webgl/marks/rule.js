@@ -94,12 +94,8 @@ export default class WebGLRuleMark extends WebGLMark {
         this.markUniformsAltered = true;
     }
 
-    updateGraphicsData() {
-        const collector = this.unitView.getCollector();
-        if (!collector) {
-            console.debug("No collector");
-            return;
-        }
+    /** @param {import("../../../data/collector.js").default} collector */
+    updateGraphicsData(collector) {
         const itemCount = collector.getItemCount();
 
         const builder = new RuleVertexBuilder({

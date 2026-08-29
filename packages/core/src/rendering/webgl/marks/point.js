@@ -65,12 +65,8 @@ export default class WebGLPointMark extends WebGLMark {
         this.registerMarkUniformValue("uMinPickingSize", props.minPickingSize);
     }
 
-    updateGraphicsData() {
-        const collector = this.unitView.getCollector();
-        if (!collector) {
-            console.debug("No collector");
-            return;
-        }
+    /** @param {import("../../../data/collector.js").default} collector */
+    updateGraphicsData(collector) {
         const itemCount = collector.getItemCount();
 
         const builder = new PointVertexBuilder({
