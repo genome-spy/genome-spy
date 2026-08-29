@@ -619,6 +619,9 @@ export interface TextProps
      * 1) `"band"`, `"index"`, or `"locus"` scale is being used and
      * 2) only the primary positional channel is specified.
      *
+     * Expressions are evaluated when the mark is initialized and cannot change
+     * reactively.
+     *
      * **Default value:** `false`
      */
     fitToBand?: boolean | ExprRef;

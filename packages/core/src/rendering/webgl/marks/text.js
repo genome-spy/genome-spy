@@ -86,17 +86,23 @@ export default class WebGLTextMark extends WebGLMark {
             this.properties
         );
 
-        // 0.35 is a magic number found by trial and error
-        const sdfNumerator =
-            this.font.metrics.common.base *
-            0.35 *
-            (this.properties.logoLetters ? 0.5 : 1);
-
         this.registerMarkUniformValue("uPaddingX", props.paddingX);
         this.registerMarkUniformValue("uPaddingY", props.paddingY);
         this.registerMarkUniformValue("uFlushX", props.flushX, (x) => !!x);
         this.registerMarkUniformValue("uFlushY", props.flushY, (x) => !!x);
         this.registerMarkUniformValue("uSqueeze", props.squeeze, (x) => !!x);
+        this.registerMarkUniformValue(
+            "uLogoLetter",
+            props.logoLetters,
+            (x) => !!x
+        );
+        this.registerMarkUniformValue(
+            "uSdfNumerator",
+            props.logoLetters,
+            (x) =>
+                // 0.35 is a magic number found by trial and error
+                this.font.metrics.common.base * 0.35 * (x ? 0.5 : 1)
+        );
 
         this.registerMarkUniformVector("uViewportEdgeFadeWidth", [
             props.viewportEdgeFadeWidthTop,
@@ -113,12 +119,7 @@ export default class WebGLTextMark extends WebGLMark {
 
         setBlockUniforms(this.markUniformInfo, {
             uAlign: [alignments[props.align], baselines[props.baseline]],
-
             uD: [props.dx, -props.dy],
-
-            uLogoLetter: !!props.logoLetters,
-
-            uSdfNumerator: sdfNumerator,
         });
     }
 
@@ -152,6 +153,12 @@ export default class WebGLTextMark extends WebGLMark {
     updateGraphicsData(collector) {
         const data = collector.getData();
         const encoding = this.encoding;
+        const props = /** @type {import("../../../spec/mark.js").TextProps} */ (
+            this.properties
+        );
+        const logoLetters = isExprRef(props.logoLetters)
+            ? this.unitView.paramRuntime.evaluateAndGet(props.logoLetters.expr)
+            : props.logoLetters;
 
         // Count the total number of characters to that we can pre-allocate a typed array
         const accessor = this.encoders.text; // accessor or constant value
@@ -173,7 +180,11 @@ export default class WebGLTextMark extends WebGLMark {
         const builder = new TextVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            properties: this.properties,
+            properties: {
+                align: props.align,
+                baseline: props.baseline,
+                logoLetters,
+            },
             fontMetrics: this.font.metrics,
             numCharacters: Math.max(charCount, MIN_TEXT_BUFFER_CHARACTERS),
         });

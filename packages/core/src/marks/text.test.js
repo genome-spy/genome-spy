@@ -65,6 +65,62 @@ describe("TextMark", () => {
         expect(requestRender).toHaveBeenCalled();
     });
 
+    test("keeps logo letter expressions reactive", async () => {
+        const view = await create(
+            {
+                params: [{ name: "logo", value: false }],
+                data: { values: [{ label: "A" }] },
+                mark: {
+                    type: "text",
+                    logoLetters: { expr: "logo" },
+                },
+                encoding: {
+                    text: { field: "label", type: "nominal" },
+                },
+            },
+            UnitView,
+            {}
+        );
+
+        view.mark.initializeEncoders();
+        initializeViewSubtree(view, view.context.dataFlow);
+        view.getCollector().complete();
+        const revision = view.mark.getEncodedDataRevision();
+
+        view.paramRuntime.setValue("logo", true);
+
+        expect(view.mark.getEncodedDataRevision()).toBe(revision + 1);
+    });
+
+    test("resolves fitToBand expressions only during initialization", async () => {
+        const view = await create(
+            {
+                params: [{ name: "fit", value: true }],
+                data: {
+                    values: [{ from: 0, to: 2, label: "[0, 2)" }],
+                },
+                mark: {
+                    type: "text",
+                    fitToBand: { expr: "fit" },
+                },
+                encoding: {
+                    x: { field: "from", type: "index" },
+                    x2: { field: "to" },
+                    text: { field: "label", type: "nominal" },
+                },
+            },
+            UnitView,
+            {}
+        );
+
+        view.mark.initializeEncoders();
+
+        expect(getBand(view.mark.encoding.x)).toBe(0);
+        expect(() => view.paramRuntime.setValue("fit", false)).toThrow(
+            "Reactive text fitToBand changes are not supported."
+        );
+    });
+
     test("requests configured weight from the default font family", async () => {
         const view = await create(
             {

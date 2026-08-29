@@ -101,7 +101,7 @@ export default class Mark {
             () => this.defaultProperties
         );
 
-        this.setupExprRefsNeedingEncodedDataUpdate([
+        this.watchEncodedDataExpressions([
             "xOffset",
             "yOffset",
             "x2Offset",
@@ -211,41 +211,23 @@ export default class Mark {
      * @param {(keyof P)[]} props Properties to track.
      * @protected
      */
-    setupExprRefsNeedingEncodedDataUpdate(props) {
-        const channels = this.getSupportedChannels();
-        /** @type {Partial<MarkProps>} */
-        const exprProps = {};
+    watchEncodedDataExpressions(props) {
         for (const key of props) {
             const prop = this.properties[key];
-            if (prop && isExprRef(prop)) {
-                const fn = this.unitView.paramRuntime.watchExpression(
-                    prop.expr,
-                    () => {
-                        const collector = this.unitView.getCollector();
-                        if (!collector?.completed) {
-                            return;
-                        }
-
-                        this.#encodedDataRevision++;
-                        this.unitView.context.animator.requestRender();
-                    }
-                );
-                // @ts-ignore
-                if (!channels.includes(key)) {
-                    Object.defineProperty(exprProps, key, {
-                        get() {
-                            return fn();
-                        },
-                    });
-                }
+            if (!isExprRef(prop)) {
+                continue;
             }
+
+            this.unitView.paramRuntime.watchExpression(prop.expr, () => {
+                const collector = this.unitView.getCollector();
+                if (!collector?.completed) {
+                    return;
+                }
+
+                this.#encodedDataRevision++;
+                this.unitView.context.animator.requestRender();
+            });
         }
-        const originalProperties = this.properties;
-        // @ts-ignore
-        this.properties = coalesceProperties(
-            () => exprProps,
-            () => originalProperties
-        );
     }
 
     /**
@@ -556,7 +538,7 @@ export default class Mark {
     }
 
     /**
-     * Returns resolved mark properties for debug snapshots.
+     * Returns configured and defaulted mark properties for debug snapshots.
      *
      * @returns {MarkDebugState}
      */
