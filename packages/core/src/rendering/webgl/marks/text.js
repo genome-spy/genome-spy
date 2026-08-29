@@ -14,6 +14,9 @@ import { TextVertexBuilder } from "../gl/dataToVertices.js";
 import WebGLMark from "./webGlMark.js";
 import { isExprRef } from "../../../paramRuntime/paramUtils.js";
 
+// Work around a buffer-growth issue where the old text buffer can remain visible.
+const MIN_TEXT_BUFFER_CHARACTERS = 1024;
+
 /** For GLSL uniforms */
 const alignments = {
     left: -1,
@@ -172,13 +175,7 @@ export default class WebGLTextMark extends WebGLMark {
             attributes: this.getAttributes(),
             properties: this.properties,
             fontMetrics: this.font.metrics,
-            numCharacters: Math.max(
-                charCount,
-                // There's some mysterious bug with growing the buffer –
-                // old buffer is rendered instead of the new one.
-                // TODO: Figure it out
-                this.properties.minBufferSize || 1024
-            ),
+            numCharacters: Math.max(charCount, MIN_TEXT_BUFFER_CHARACTERS),
         });
 
         builder.addBatches(collector.facetBatches);

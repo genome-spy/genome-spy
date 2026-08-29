@@ -101,7 +101,7 @@ export default class WebGLRuleMark extends WebGLMark {
         const builder = new RuleVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            numItems: Math.max(itemCount, this.properties.minBufferSize || 0),
+            numItems: itemCount,
         });
 
         builder.addBatches(collector.facetBatches);

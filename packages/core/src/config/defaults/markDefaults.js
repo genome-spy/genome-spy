@@ -2,7 +2,6 @@
 export const MARK_DEFAULTS = {
     xOffset: 0,
     yOffset: 0,
-    minBufferSize: 0,
     opacity: 1.0,
 };
 

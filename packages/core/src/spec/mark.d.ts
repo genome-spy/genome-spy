@@ -88,16 +88,6 @@ export interface MarkPropsBase {
     y2Offset?: number | ExprRef;
 
     /**
-     * Minimum size for WebGL buffers (number of rows).
-     * Allows for using `bufferSubData()` to update graphics.
-     *
-     * This property is intended for internal use.
-     *
-     * @internal
-     */
-    minBufferSize?: number;
-
-    /**
      * Whether the x channel should build an index for efficient subset rendering.
      * If omitted, GenomeSpy enables indexing automatically for positional x encodings.
      *

@@ -94,10 +94,7 @@ export default class WebGLArrowMark extends WebGLMark {
 
     /** @param {import("../../../data/collector.js").default} collector */
     updateGraphicsData(collector) {
-        const numItems = Math.max(
-            collector.getItemCount(),
-            this.properties.minBufferSize || 0
-        );
+        const numItems = collector.getItemCount();
 
         const builder = new RuleVertexBuilder({
             encoders: this.encoders,

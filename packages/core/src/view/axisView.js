@@ -720,7 +720,6 @@ function createAxis(
             [secondary]: anchor,
             size: labelTextStyle.size,
             color: ap.labelColor,
-            minBufferSize: 1500, // to prevent GPU buffer reallocation when zooming
         },
         encoding: {
             [main]: makeMainDomainDef(),
@@ -809,7 +808,6 @@ function createAxis(
             strokeCap: ap.tickCap,
             color: ap.tickColor,
             size: ap.tickWidth,
-            minBufferSize: 300,
         },
         encoding: {
             [secondary]: { value: anchor },

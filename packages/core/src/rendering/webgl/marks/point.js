@@ -72,7 +72,7 @@ export default class WebGLPointMark extends WebGLMark {
         const builder = new PointVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            numItems: Math.max(itemCount, this.properties.minBufferSize || 0),
+            numItems: itemCount,
         });
 
         builder.addBatches(collector.facetBatches);
