@@ -24,6 +24,7 @@ import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
  * @typedef {object} ProgramTemplate
  * @property {GPUBindGroupLayout} bindGroupLayout
  * @property {GPURenderPipeline} pipeline
+ * @property {(sampleCount: 1 | 4) => GPURenderPipeline} getPipeline
  * @property {() => GPURenderPipeline} getPickPipeline
  * @property {{ id: number, firstBorrowerLabel: string, borrowerLabels: Set<string> }} diagnostics
  *
@@ -159,20 +160,37 @@ export function buildPipelines({
                 topology: primitiveTopology,
             },
         };
-        const pipeline = device.createRenderPipeline({
-            label: gpuLabel(labelOwner, "render pipeline"),
-            ...common,
-            fragment: {
-                module,
-                entryPoint: "fs_main",
-                targets: [
-                    {
-                        format,
-                        blend: blendState,
+        /** @type {Map<1 | 4, GPURenderPipeline>} */
+        const pipelines = new Map();
+        /** @param {1 | 4} sampleCount */
+        const getPipeline = (sampleCount) => {
+            let pipeline = pipelines.get(sampleCount);
+            if (!pipeline) {
+                pipeline = device.createRenderPipeline({
+                    label: gpuLabel(
+                        labelOwner,
+                        sampleCount == 1
+                            ? "render pipeline"
+                            : `${sampleCount}x render pipeline`
+                    ),
+                    ...common,
+                    fragment: {
+                        module,
+                        entryPoint: "fs_main",
+                        targets: [
+                            {
+                                format,
+                                blend: blendState,
+                            },
+                        ],
                     },
-                ],
-            },
-        });
+                    multisample: { count: sampleCount },
+                });
+                pipelines.set(sampleCount, pipeline);
+            }
+            return pipeline;
+        };
+        const pipeline = getPipeline(1);
         /** @type {GPURenderPipeline | undefined} */
         let pickPipeline;
         const getPickPipeline = () => {
@@ -194,6 +212,7 @@ export function buildPipelines({
         return {
             bindGroupLayout,
             pipeline,
+            getPipeline,
             getPickPipeline,
             diagnostics,
         };

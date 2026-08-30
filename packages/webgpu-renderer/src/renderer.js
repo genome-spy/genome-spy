@@ -1,5 +1,10 @@
 import { gpuLabel, RENDERER_GPU_OWNER } from "./utils/gpuLabel.js";
 import { ProgramTemplateCache } from "./marks/programs/internal/programTemplateCache.js";
+import {
+    normalizeGroupBounds,
+    TextureCompositor,
+    TransientTexturePool,
+} from "./renderGroups.js";
 
 /**
  * Renderer-level error for unsupported environments or invalid operations.
@@ -287,6 +292,8 @@ export class Renderer {
         /** @type {Map<number, PlacementSet>} */
         this._placementSets = new Map();
         this._programTemplateCache = new ProgramTemplateCache(addCount);
+        this._transientTextures = new TransientTexturePool(device, format);
+        this._textureCompositor = new TextureCompositor(device, format);
         /** @type {Map<object, Map<unknown, { destroy: () => void }>>} */
         this._fontResourceCache = new Map();
         this._nextFontResourceId = 1;
@@ -768,9 +775,12 @@ export class Renderer {
      */
     render(frame = {}) {
         this._assertAlive();
-        const draws = this._normalizeDraws(frame.draws ?? this._marks.keys());
+        const { items, draws, groupCount } = this._normalizeRenderItems(
+            frame.items ?? frame.draws ?? this._marks.keys()
+        );
         addCount("renderDraws", draws.length);
         this._writeDrawGlobals(draws);
+        this._textureCompositor.prepare(draws.length + groupCount + 1);
         const commandEncoder = this.device.createCommandEncoder({
             label: gpuLabel(RENDERER_GPU_OWNER, "main command encoder"),
         });
@@ -778,29 +788,22 @@ export class Renderer {
             label: gpuLabel(RENDERER_GPU_OWNER, "canvas texture view"),
         });
 
-        // The pick pass is rendered on demand, separate from the main pass.
-        const pass = commandEncoder.beginRenderPass({
-            label: gpuLabel(RENDERER_GPU_OWNER, "main render pass"),
-            colorAttachments: [
-                {
-                    view,
-                    clearValue: frame.clearColor ?? {
-                        r: 1,
-                        g: 1,
-                        b: 1,
-                        a: 1,
-                    },
-                    loadOp: "clear",
-                    storeOp: "store",
-                },
-            ],
-        });
-
         const encodingStart = startPhase();
-        this._encodeDraws(pass, draws, false);
+        this._encodeRenderItems(
+            commandEncoder,
+            {
+                view,
+                width: this.canvas.width,
+                height: this.canvas.height,
+                logicalX: 0,
+                logicalY: 0,
+            },
+            items,
+            1,
+            frame.clearColor ?? { r: 1, g: 1, b: 1, a: 1 }
+        );
+        this._textureCompositor.flush();
         finishPhase("commandEncoding", encodingStart);
-
-        pass.end();
         const submissionStart = startPhase();
         this.device.queue.submit([commandEncoder.finish()]);
         finishPhase("submission", submissionStart);
@@ -836,7 +839,7 @@ export class Renderer {
             width: this._globals.width,
             height: this._globals.height,
         };
-        const normalized = Array.from(draws, (draw) => {
+        const normalized = Array.from(draws, (draw, uniformIndex) => {
             const command =
                 typeof draw == "number" ? { mark: { markId: draw } } : draw;
             const markId = command.mark.markId;
@@ -947,6 +950,8 @@ export class Renderer {
             }
 
             return {
+                type: /** @type {"draw"} */ ("draw"),
+                uniformIndex,
                 markId,
                 viewport,
                 scissor,
@@ -965,47 +970,370 @@ export class Renderer {
     }
 
     /**
+     * @param {Iterable<import("./index.d.ts").RenderItem | MarkId>} items
+     * @returns {{items: NormalizedRenderItem[], draws: NormalizedDraw[], groupCount: number}}
+     */
+    _normalizeRenderItems(items) {
+        /** @type {NormalizedDraw[]} */
+        const draws = [];
+        let groupCount = 0;
+
+        /**
+         * @param {Iterable<import("./index.d.ts").RenderItem | MarkId>} source
+         * @returns {NormalizedRenderItem[]}
+         */
+        const visit = (source) => {
+            /** @type {NormalizedRenderItem[]} */
+            const normalized = [];
+            for (const item of source) {
+                if (isRenderGroup(item)) {
+                    const opacity = item.opacity ?? 1;
+                    if (
+                        !Number.isFinite(opacity) ||
+                        opacity < 0 ||
+                        opacity > 1
+                    ) {
+                        throw new RendererError(
+                            "Render group opacity must be between zero and one."
+                        );
+                    }
+                    const sampleCount = item.sampleCount ?? 1;
+                    if (sampleCount !== 1 && sampleCount !== 4) {
+                        throw new RendererError(
+                            "Render group sampleCount must be 1 or 4."
+                        );
+                    }
+                    assertRect("render group bounds", item.bounds);
+                    const children = visit(item.items);
+                    if (!children.length || opacity === 0) {
+                        continue;
+                    }
+                    if (opacity === 1 && sampleCount === 1) {
+                        normalized.push(...children);
+                    } else {
+                        groupCount++;
+                        normalized.push({
+                            type: "group",
+                            bounds: { ...item.bounds },
+                            opacity,
+                            sampleCount,
+                            items: children,
+                        });
+                    }
+                } else {
+                    const draw = this._normalizeDraws([item])[0];
+                    if (draw) {
+                        draw.uniformIndex = draws.length;
+                        draws.push(draw);
+                        normalized.push(draw);
+                    }
+                }
+            }
+            return normalized;
+        };
+
+        return { items: visit(items), draws, groupCount };
+    }
+
+    /**
+     * Encodes ordered items into a single-sampled accumulation target.
+     *
+     * @param {GPUCommandEncoder} commandEncoder
+     * @param {RenderTarget} target
+     * @param {NormalizedRenderItem[]} items
+     * @param {1 | 4} sampleCount
+     * @param {GPUColor} clearValue
+     */
+    _encodeRenderItems(commandEncoder, target, items, sampleCount, clearValue) {
+        let initialized = false;
+        /** @type {NormalizedDraw[]} */
+        let pending = [];
+
+        const flush = () => {
+            if (!pending.length) {
+                return;
+            }
+            if (sampleCount === 1) {
+                this._encodeDrawPass(
+                    commandEncoder,
+                    target,
+                    pending,
+                    1,
+                    initialized ? undefined : clearValue
+                );
+            } else {
+                const chunk = this._renderDrawGroup(
+                    commandEncoder,
+                    target,
+                    pending,
+                    sampleCount
+                );
+                this._encodeCompositePass(
+                    commandEncoder,
+                    target,
+                    chunk,
+                    1,
+                    initialized ? undefined : clearValue
+                );
+                this._transientTextures.release(chunk.texture);
+            }
+            initialized = true;
+            pending = [];
+        };
+
+        for (const item of items) {
+            if (item.type === "group") {
+                flush();
+                const group = this._renderGroup(commandEncoder, item);
+                if (group) {
+                    this._encodeCompositePass(
+                        commandEncoder,
+                        target,
+                        group,
+                        item.opacity,
+                        initialized ? undefined : clearValue
+                    );
+                    this._transientTextures.release(group.texture);
+                    initialized = true;
+                }
+            } else {
+                pending.push(item);
+            }
+        }
+        flush();
+
+        if (!initialized) {
+            this._encodeDrawPass(commandEncoder, target, [], 1, clearValue);
+        }
+    }
+
+    /**
+     * @param {GPUCommandEncoder} commandEncoder
+     * @param {NormalizedRenderGroup} group
+     * @returns {RenderedGroup | undefined}
+     */
+    _renderGroup(commandEncoder, group) {
+        const bounds = normalizeGroupBounds(group.bounds, this._globals);
+        if (!bounds.width || !bounds.height) {
+            return undefined;
+        }
+        const texture = this._transientTextures.acquire(
+            bounds.width,
+            bounds.height,
+            1,
+            GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+        );
+        const target = {
+            view: texture.view,
+            width: bounds.width,
+            height: bounds.height,
+            logicalX: bounds.logicalX,
+            logicalY: bounds.logicalY,
+        };
+        const onlyDraws = group.items.every((item) => item.type !== "group");
+        if (onlyDraws) {
+            if (group.sampleCount === 1) {
+                this._encodeDrawPass(
+                    commandEncoder,
+                    target,
+                    /** @type {NormalizedDraw[]} */ (group.items),
+                    1,
+                    { r: 0, g: 0, b: 0, a: 0 }
+                );
+            } else {
+                this._encodeMultisampleDrawPass(
+                    commandEncoder,
+                    target,
+                    /** @type {NormalizedDraw[]} */ (group.items),
+                    group.sampleCount
+                );
+            }
+        } else {
+            this._encodeRenderItems(
+                commandEncoder,
+                target,
+                group.items,
+                group.sampleCount,
+                { r: 0, g: 0, b: 0, a: 0 }
+            );
+        }
+        return { texture, ...target };
+    }
+
+    /**
+     * @param {GPUCommandEncoder} commandEncoder
+     * @param {RenderTarget} target
+     * @param {NormalizedDraw[]} draws
+     * @param {4} sampleCount
+     */
+    _renderDrawGroup(commandEncoder, target, draws, sampleCount) {
+        const texture = this._transientTextures.acquire(
+            target.width,
+            target.height,
+            1,
+            GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+        );
+        const result = { texture, ...target, view: texture.view };
+        this._encodeMultisampleDrawPass(
+            commandEncoder,
+            result,
+            draws,
+            sampleCount
+        );
+        return result;
+    }
+
+    /**
+     * @param {GPUCommandEncoder} commandEncoder
+     * @param {RenderTarget} target
+     * @param {NormalizedDraw[]} draws
+     * @param {4} sampleCount
+     */
+    _encodeMultisampleDrawPass(commandEncoder, target, draws, sampleCount) {
+        const multisampled = this._transientTextures.acquire(
+            target.width,
+            target.height,
+            sampleCount,
+            GPUTextureUsage.RENDER_ATTACHMENT
+        );
+        const pass = commandEncoder.beginRenderPass({
+            label: gpuLabel(RENDERER_GPU_OWNER, "multisample group pass"),
+            colorAttachments: [
+                {
+                    view: multisampled.view,
+                    resolveTarget: target.view,
+                    clearValue: { r: 0, g: 0, b: 0, a: 0 },
+                    loadOp: "clear",
+                    storeOp: "discard",
+                },
+            ],
+        });
+        this._encodeDraws(pass, draws, false, target, sampleCount);
+        pass.end();
+        this._transientTextures.release(multisampled);
+    }
+
+    /**
+     * @param {GPUCommandEncoder} commandEncoder
+     * @param {RenderTarget} target
+     * @param {NormalizedDraw[]} draws
+     * @param {1 | 4} sampleCount
+     * @param {GPUColor} [clearValue]
+     */
+    _encodeDrawPass(commandEncoder, target, draws, sampleCount, clearValue) {
+        const pass = commandEncoder.beginRenderPass({
+            label: gpuLabel(RENDERER_GPU_OWNER, "main render pass"),
+            colorAttachments: [
+                {
+                    view: target.view,
+                    ...(clearValue ? { clearValue } : {}),
+                    loadOp: clearValue ? "clear" : "load",
+                    storeOp: "store",
+                },
+            ],
+        });
+        this._encodeDraws(pass, draws, false, target, sampleCount);
+        pass.end();
+    }
+
+    /**
+     * @param {GPUCommandEncoder} commandEncoder
+     * @param {RenderTarget} target
+     * @param {RenderedGroup} source
+     * @param {number} opacity
+     * @param {GPUColor} [clearValue]
+     */
+    _encodeCompositePass(commandEncoder, target, source, opacity, clearValue) {
+        const pass = commandEncoder.beginRenderPass({
+            label: gpuLabel(RENDERER_GPU_OWNER, "group composite pass"),
+            colorAttachments: [
+                {
+                    view: target.view,
+                    ...(clearValue ? { clearValue } : {}),
+                    loadOp: clearValue ? "clear" : "load",
+                    storeOp: "store",
+                },
+            ],
+        });
+        const x = Math.round(
+            (source.logicalX - target.logicalX) * this._globals.dpr
+        );
+        const y = Math.round(
+            (source.logicalY - target.logicalY) * this._globals.dpr
+        );
+        pass.setViewport(x, y, source.width, source.height, 0, 1);
+        pass.setScissorRect(x, y, source.width, source.height);
+        pass.setPipeline(this._textureCompositor.pipeline);
+        pass.setBindGroup(
+            0,
+            this._textureCompositor.createBinding(source.view, opacity)
+        );
+        pass.draw(6);
+        pass.end();
+    }
+
+    /**
      * @param {GPURenderPassEncoder} pass
      * @param {NormalizedDraw[]} draws
      * @param {boolean} picking
+     * @param {RenderTarget} [target]
+     * @param {1 | 4} [sampleCount]
      * @returns {void}
      */
-    _encodeDraws(pass, draws, picking) {
+    _encodeDraws(
+        pass,
+        draws,
+        picking,
+        target = {
+            view: /** @type {GPUTextureView | undefined} */ (undefined),
+            width: this.canvas.width,
+            height: this.canvas.height,
+            logicalX: 0,
+            logicalY: 0,
+        },
+        sampleCount = 1
+    ) {
         const dpr = this._globals.dpr;
-        for (let i = 0; i < draws.length; i++) {
-            const draw = draws[i];
+        for (const draw of draws) {
             const mark = this._marks.get(draw.markId);
             if (!mark) {
                 continue;
             }
 
             pass.setViewport(
-                draw.viewport.x * dpr,
-                draw.viewport.y * dpr,
+                (draw.viewport.x - target.logicalX) * dpr,
+                (draw.viewport.y - target.logicalY) * dpr,
                 draw.viewport.width * dpr,
                 draw.viewport.height * dpr,
                 0,
                 1
             );
+            const targetScissor = intersectRects(draw.scissor, {
+                x: target.logicalX,
+                y: target.logicalY,
+                width: target.width / dpr,
+                height: target.height / dpr,
+            });
             const scissor = toPhysicalScissor(
-                draw.scissor,
+                targetScissor,
                 dpr,
-                this.canvas.width,
-                this.canvas.height
+                Math.floor(target.logicalX * dpr) + target.width,
+                Math.floor(target.logicalY * dpr) + target.height
             );
             pass.setScissorRect(
-                scissor.x,
-                scissor.y,
+                scissor.x - Math.floor(target.logicalX * dpr),
+                scissor.y - Math.floor(target.logicalY * dpr),
                 scissor.width,
                 scissor.height
             );
             pass.setBindGroup(0, this._globalBindGroup, [
-                i * this._globalUniformStride,
+                draw.uniformIndex * this._globalUniformStride,
             ]);
             /** @type {import("./index.d.ts").ProgramDrawOptions} */
             const options = {
                 firstInstance: draw.firstInstance,
                 instanceCount: draw.instanceCount,
+                sampleCount,
             };
             if (draw.placement) {
                 options.placement = draw.placement;
@@ -1060,6 +1388,8 @@ export class Renderer {
         this._fontResourceCache.clear();
         this._renderFrame = null;
         this._globalUniformBuffer.destroy();
+        this._transientTextures.destroy();
+        this._textureCompositor.destroy();
         this._pickTexture?.destroy();
         this._pickTexture = null;
         this._pickTextureView = null;
@@ -1160,15 +1490,46 @@ function wrapMethod(target, name, before) {
 
 /**
  * @typedef {{
+ *   type: "draw",
  *   markId: import("./index.d.ts").MarkId,
  *   viewport: import("./index.d.ts").DrawRect,
  *   scissor: import("./index.d.ts").DrawRect,
  *   visibleRange: import("./index.d.ts").DrawVisibleRange,
+ *   uniformIndex: number,
  *   firstInstance: number,
  *   instanceCount: number,
  *   placement?: { bindGroup: GPUBindGroup, count: number, index?: number, clipToPlacement?: "x"|"y"|"xy", clipMode?: number },
  * }} NormalizedDraw
  */
+
+/**
+ * @typedef {object} NormalizedRenderGroup
+ * @property {"group"} type
+ * @property {import("./index.d.ts").DrawRect} bounds
+ * @property {number} opacity
+ * @property {1 | 4} sampleCount
+ * @property {NormalizedRenderItem[]} items
+ */
+
+/** @typedef {NormalizedDraw | NormalizedRenderGroup} NormalizedRenderItem */
+
+/**
+ * @typedef {object} RenderTarget
+ * @property {GPUTextureView | undefined} view
+ * @property {number} width
+ * @property {number} height
+ * @property {number} logicalX
+ * @property {number} logicalY
+ */
+
+/**
+ * @typedef {RenderTarget & {texture: import("./renderGroups.js").TransientTexture}} RenderedGroup
+ */
+
+/** @param {unknown} value @returns {value is import("./index.d.ts").RenderGroup} */
+function isRenderGroup(value) {
+    return typeof value === "object" && value !== null && "items" in value;
+}
 
 /**
  * @param {string} name

@@ -1,6 +1,6 @@
 # Selective WebGPU compositing and export plan
 
-Status: Ready for implementation
+Status: In progress
 
 Reviewed by a Luna subagent before branch creation. The review tightened
 placement-indexed MSAA grouping, Canvas2D opacity ownership, sample-count
@@ -208,20 +208,20 @@ single-pass path.
 
 ### Work
 
-- [ ] Add typed draw/group render items, opacity/sample-count validation, and
+- [x] Add typed draw/group render items, opacity/sample-count validation, and
       recursive normalization that preserves order and logical bounds.
-- [ ] Pass the active sample count through `ProgramDrawOptions` and lazily
+- [x] Pass the active sample count through `ProgramDrawOptions` and lazily
       provide visible mark pipelines for sample counts one and four; keep
       picking single-sampled and retain shader/layout/resource sharing.
-- [ ] Add a renderer-owned transient color-target pool with explicit acquire,
+- [x] Add a renderer-owned transient color-target pool with explicit acquire,
       release, resize-keying, and destruction semantics.
-- [ ] Add the texture-composite pipeline and encode nested groups with
+- [x] Add the texture-composite pipeline and encode nested groups with
       premultiplied alpha, correct viewport/scissor translation, transparent
       clears, resolve targets, and ordered parent loads.
-- [ ] Add renderer unit and GPU tests for direct-path preservation, selective
+- [x] Add renderer unit and GPU tests for direct-path preservation, selective
       MSAA, opacity over overlapping marks, nesting, clipping, pooling, and
       picking isolation.
-- [ ] Reconcile the transient-target and same-device-target work with
+- [x] Reconcile the transient-target and same-device-target work with
       `packages/webgpu-renderer/MIGRATION_PLAN.md`.
 
 ### Affected areas and downstream consumers

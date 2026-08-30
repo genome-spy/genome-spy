@@ -1112,9 +1112,24 @@ export type DrawCommand = {
     placement?: DrawPlacement;
 };
 
+export type RenderGroup = {
+    /** Ordered retained draws and nested groups. */
+    items: Iterable<RenderItem>;
+    /** Logical-pixel bounds of the isolated target. */
+    bounds: DrawRect;
+    /** Opacity applied once when the resolved group is composited. */
+    opacity?: number;
+    /** Color sample count for direct draws in this group. */
+    sampleCount?: 1 | 4;
+};
+
+export type RenderItem = DrawCommand | RenderGroup;
+
 export type RenderFrame = {
     /** Ordered mark occurrences. Defaults to all retained marks in creation order. */
     draws?: Iterable<DrawCommand>;
+    /** Ordered draws and isolated render groups. Takes precedence over draws. */
+    items?: Iterable<RenderItem>;
     /** Canvas clear color. Defaults to opaque white. */
     clearColor?: GPUColor;
 };
@@ -1122,6 +1137,7 @@ export type RenderFrame = {
 export type ProgramDrawOptions = {
     firstInstance: number;
     instanceCount: number;
+    sampleCount: 1 | 4;
     placement?: {
         bindGroup: GPUBindGroup;
         count: number;

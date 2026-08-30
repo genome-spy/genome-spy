@@ -312,7 +312,7 @@ describe("Renderer mark definitions", () => {
         expect(secondProgram.draw).toHaveBeenNthCalledWith(
             1,
             expect.anything(),
-            { firstInstance: 2, instanceCount: 3 }
+            { firstInstance: 2, instanceCount: 3, sampleCount: 1 }
         );
         expect(pass.setViewport).toHaveBeenNthCalledWith(
             1,
@@ -405,6 +405,156 @@ describe("Renderer mark definitions", () => {
         expect(pass.setScissorRect).toHaveBeenCalledWith(0, 0, 99, 100);
     });
 
+    test("renders a bounded multisampled group and composites it once", () => {
+        const program = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, pass, renderPassDescriptors, transientAcquires } =
+            createRendererHarness();
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            items: [
+                {
+                    bounds: { x: 10, y: 5, width: 20, height: 10 },
+                    opacity: 0.5,
+                    sampleCount: 4,
+                    items: [
+                        {
+                            mark,
+                            viewport: {
+                                x: 10,
+                                y: 5,
+                                width: 20,
+                                height: 10,
+                            },
+                            scissor: {
+                                x: 10,
+                                y: 5,
+                                width: 20,
+                                height: 10,
+                            },
+                        },
+                    ],
+                },
+            ],
+        });
+
+        expect(program.draw).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ sampleCount: 4 })
+        );
+        expect(transientAcquires).toEqual([
+            expect.objectContaining({ width: 40, height: 20, sampleCount: 1 }),
+            expect.objectContaining({ width: 40, height: 20, sampleCount: 4 }),
+        ]);
+        expect(renderPassDescriptors).toHaveLength(2);
+        expect(
+            Array.from(renderPassDescriptors[0].colorAttachments)[0]
+                .resolveTarget
+        ).toBeDefined();
+        expect(renderPassDescriptors[1].label).toBe(
+            "webgpu-renderer: group composite pass"
+        );
+        expect(pass.setViewport).toHaveBeenNthCalledWith(1, 0, 0, 40, 20, 0, 1);
+        expect(pass.setScissorRect).toHaveBeenNthCalledWith(1, 0, 0, 40, 20);
+        expect(pass.setViewport).toHaveBeenNthCalledWith(
+            2,
+            20,
+            10,
+            40,
+            20,
+            0,
+            1
+        );
+        expect(renderer._renderFrame).toHaveLength(1);
+
+        renderer.renderPicking();
+        expect(renderer._pickingFrame).toBe(renderer._renderFrame);
+    });
+
+    test("preserves draw order across nested opacity groups", () => {
+        const firstProgram = createProgram();
+        const nestedProgram = createProgram();
+        const lastProgram = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi
+                .fn()
+                .mockReturnValueOnce(firstProgram)
+                .mockReturnValueOnce(nestedProgram)
+                .mockReturnValueOnce(lastProgram),
+        });
+        const { renderer } = createRendererHarness();
+        const first = renderer.createMark(definition, { channels: {} });
+        const nested = renderer.createMark(definition, { channels: {} });
+        const last = renderer.createMark(definition, { channels: {} });
+        const bounds = { x: 0, y: 0, width: 100, height: 50 };
+
+        renderer.render({
+            items: [
+                {
+                    bounds,
+                    opacity: 0.5,
+                    items: [
+                        { mark: first },
+                        {
+                            bounds,
+                            opacity: 0.5,
+                            items: [{ mark: nested }],
+                        },
+                        { mark: last },
+                    ],
+                },
+            ],
+        });
+
+        expect(firstProgram.draw.mock.invocationCallOrder[0]).toBeLessThan(
+            nestedProgram.draw.mock.invocationCallOrder[0]
+        );
+        expect(nestedProgram.draw.mock.invocationCallOrder[0]).toBeLessThan(
+            lastProgram.draw.mock.invocationCallOrder[0]
+        );
+    });
+
+    test("keeps ordinary frames on the direct single-sample path", () => {
+        const program = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, renderPassDescriptors, transientAcquires } =
+            createRendererHarness();
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({ items: [{ mark }] });
+
+        expect(transientAcquires).toEqual([]);
+        expect(renderPassDescriptors).toHaveLength(1);
+        expect(program.draw).toHaveBeenCalledWith(expect.anything(), {
+            firstInstance: 0,
+            instanceCount: 10,
+            sampleCount: 1,
+        });
+    });
+
+    test("rejects unsupported render group sample counts", () => {
+        const { renderer } = createRendererHarness();
+        expect(() =>
+            renderer.render({
+                items: [
+                    /** @type {any} */ ({
+                        bounds: { x: 0, y: 0, width: 10, height: 10 },
+                        sampleCount: 2,
+                        items: [],
+                    }),
+                ],
+            })
+        ).toThrow("sampleCount must be 1 or 4");
+    });
+
     test("skips zero-sized scissors from empty clipped views", () => {
         const { renderer } = createRendererHarness();
         const program = createProgram();
@@ -494,7 +644,9 @@ function createRendererHarness() {
     };
     renderer._globalBindGroup = {};
     const pass = {
+        draw: vi.fn(),
         end: vi.fn(),
+        setPipeline: vi.fn(),
         setViewport: vi.fn(),
         setScissorRect: vi.fn(),
         setBindGroup: vi.fn(),
@@ -528,11 +680,37 @@ function createRendererHarness() {
         getCurrentTexture: () => ({ createView: vi.fn() }),
         unconfigure: vi.fn(),
     };
+    /** @type {{width: number, height: number, sampleCount: number, usage: number}[]} */
+    const transientAcquires = [];
+    let transientId = 0;
+    renderer._textureCompositor = {
+        prepare: vi.fn(),
+        flush: vi.fn(),
+        destroy: vi.fn(),
+        pipeline: {},
+        createBinding: vi.fn(() => ({})),
+    };
+    renderer._transientTextures = {
+        acquire: vi.fn((width, height, sampleCount, usage) => {
+            transientAcquires.push({ width, height, sampleCount, usage });
+            return {
+                key: `texture-${transientId++}`,
+                texture: {},
+                view: {},
+                width,
+                height,
+                sampleCount,
+            };
+        }),
+        release: vi.fn(),
+        destroy: vi.fn(),
+    };
     return {
         renderer: /** @type {Renderer} */ (renderer),
         pass,
         commandEncoderDescriptors,
         renderPassDescriptors,
+        transientAcquires,
     };
 }
 

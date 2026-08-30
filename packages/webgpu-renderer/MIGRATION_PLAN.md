@@ -13,6 +13,10 @@ sample facets are implemented. Completed milestone narratives live in Git
 history. This file contains only current work that still has a concrete
 renderer or Core consumer.
 
+Issues #478 and #483 are the concrete consumers for renderer-owned transient
+groups and same-device detached canvas targets. Their implementation is tracked
+in `plans/webgpu-compositing-export/webgpu-compositing-export-plan.md`.
+
 ## Goals
 
 - Close the remaining observable WebGL/WebGPU feature gaps.
@@ -129,9 +133,8 @@ Tentative commit: `refactor(webgpu-renderer): remove measured scale duplication`
   representation as the future font API.
 - Independent per-facet scale domains require a separate scale-state proposal;
   placement rectangles remain geometry-only.
-- Existing-device construction, worker transfer protocols, vector-backend
-  compatibility, and selection-only masking need a concrete consumer or
-  measurement before becoming milestones.
+- Worker transfer protocols, vector-backend compatibility, and selection-only
+  masking need a concrete consumer or measurement before becoming milestones.
 
 ## Final integration verification
 

@@ -10,6 +10,7 @@ import runRuleScene from "../examples/ruleScene.js";
 import runLinkScene from "../examples/linkScene.js";
 import runTextScene from "../examples/textScene.js";
 import runRangedTextScene from "../examples/rangedTextScene.js";
+import runGroupScene from "../examples/groupScene.js";
 import {
     runIndexedPlacementScene,
     runRepeatedPlacementScene,
@@ -126,5 +127,18 @@ export const RepeatedRangePlacements = withSource(
     null,
     {
         render: (args) => renderScene(runRepeatedPlacementScene, args),
+    }
+);
+
+export const RenderGroup = withSource(
+    "runGroupScene",
+    { opacity: 0.65, multisample: true },
+    {
+        args: { opacity: 0.65, multisample: true },
+        argTypes: {
+            opacity: { control: { type: "range", min: 0, max: 1, step: 0.01 } },
+            multisample: { control: "boolean" },
+        },
+        render: (args) => renderScene(runGroupScene, args),
     }
 );

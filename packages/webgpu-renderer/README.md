@@ -222,6 +222,36 @@ Viewport-local position ranges are the caller's responsibility. This lets one
 handle serve several same-shaped viewport occurrences. Occurrence-local scale
 domains would require a separate draw-time scale-state contract.
 
+Visible frames may instead provide ordered `items`, where each item is either
+a draw command or a render group. A group supplies logical-pixel `bounds`, an
+ordered `items` iterable, and optional `opacity` and `sampleCount` values:
+
+```js
+renderer.render({
+    items: [
+        backgroundDraw,
+        {
+            bounds: { x: 20, y: 10, width: 400, height: 120 },
+            opacity: 0.6,
+            sampleCount: 4,
+            items: [heatmapDraw],
+        },
+        labelsDraw,
+    ],
+});
+```
+
+Groups isolate their children into a transparent, bounded transient target.
+The renderer resolves four-sample groups and composites the result into the
+parent using premultiplied-alpha blending. Nested groups preserve item order.
+Only sample counts `1` and `4` are accepted. A group with opacity `1` and one
+sample is flattened, so ordinary frames and groups that need no isolation keep
+the direct single-sample path. Multisample mark pipelines are created lazily,
+and exact-size transient attachments are pooled for the renderer lifetime.
+
+Picking remains a separate flat, single-sampled frame. Visual render groups do
+not change pick ordering, IDs, or attachment ownership.
+
 ## Retained updates
 
 ### Mark handles and slots

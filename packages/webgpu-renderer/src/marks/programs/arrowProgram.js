@@ -562,7 +562,7 @@ export default class ArrowProgram extends BaseProgram {
      * @param {import("../../index.d.ts").ProgramDrawOptions} options
      */
     draw(pass, options) {
-        pass.setPipeline(this._pipeline);
+        pass.setPipeline(this._getPipeline(options.sampleCount));
         pass.setBindGroup(1, this._bindGroup);
         pass.draw(6, options.instanceCount, 0, options.firstInstance);
     }
