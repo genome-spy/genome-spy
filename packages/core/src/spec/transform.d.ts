@@ -1199,7 +1199,7 @@ export interface Displace2DParams extends TransformParamsBase {
 /**
  * Smooths numeric fields between dataflow updates. Rows are matched by a stable
  * key, allowing replacement data objects to continue from their currently
- * displayed values.
+ * displayed values. Updates before the first render snap to their targets.
  */
 export interface TransitionParams extends TransformParamsBase {
     type: "transition";
