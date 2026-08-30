@@ -19,7 +19,8 @@ export function renderRectCanvas(baseMark, options) {
     if (properties.shadow.opacity > 0) {
         options.warn("Canvas2D ignored unsupported rect shadow.");
     }
-    if (options.data.length == 0) {
+    const start = options.start ?? 0;
+    if (start === (options.end ?? options.data.length)) {
         return 0;
     }
     const context = options.context;
@@ -36,13 +37,13 @@ export function renderRectCanvas(baseMark, options) {
     const strokeIsConstant = encoders.stroke.constant;
     const strokeOpacityIsConstant = encoders.strokeOpacity.constant;
     const constantStroke = strokeIsConstant
-        ? toPaintString(encoders.stroke(options.data[0]))
+        ? toPaintString(encoders.stroke(options.data[start]))
         : "none";
     const hasInvisibleConstantStroke =
         strokeIsConstant && constantStroke == "none";
     const constantStrokeOpacity =
         !hasInvisibleConstantStroke && strokeOpacityIsConstant
-            ? encodeNumber(encoders.strokeOpacity, options.data[0])
+            ? encodeNumber(encoders.strokeOpacity, options.data[start])
             : 0;
 
     return visitRectInstances(mark, properties, options, (instance) => {

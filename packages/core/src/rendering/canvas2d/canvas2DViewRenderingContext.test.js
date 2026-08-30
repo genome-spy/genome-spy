@@ -140,7 +140,8 @@ function createRecordingContext() {
 
 function render(
     /** @type {import("../../view/view.js").default} */ view,
-    /** @type {CanvasRenderingContext2D} */ context
+    /** @type {CanvasRenderingContext2D} */ context,
+    /** @type {import("./canvasXIndexManager.js").default} */ xIndexManager = undefined
 ) {
     view.arrange(
         new Canvas2DViewRenderingContext(
@@ -152,6 +153,7 @@ function render(
                 devicePixelRatio: 2,
                 background: null,
                 paint: true,
+                xIndexManager,
             }
         ),
         Rectangle.create(0, 0, 100, 100),
@@ -160,6 +162,39 @@ function render(
 }
 
 describe("Canvas2DViewRenderingContext", () => {
+    test("passes indexed source-row bounds to immediate marks", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ x: 0.1 }, { x: 0.5 }, { x: 0.9 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 1] },
+                },
+                y: { value: 0.5 },
+                size: { value: 4 },
+                color: { value: "black" },
+            },
+        });
+        const recording = createRecordingContext();
+        const xIndexManager = /** @type {any} */ ({
+            prepare: vi.fn(() => true),
+            query: vi.fn((_data, target) => {
+                target[0] = 1;
+                target[1] = 2;
+                return true;
+            }),
+        });
+
+        render(view, recording.context, xIndexManager);
+
+        expect(xIndexManager.prepare).toHaveBeenCalledOnce();
+        expect(xIndexManager.query).toHaveBeenCalledOnce();
+        expect(recording.calls.arcs).toHaveLength(1);
+        expect(recording.calls.arcs[0][0]).toBe(50);
+    });
+
     test("skips marks rejected by the selective-render predicate", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },

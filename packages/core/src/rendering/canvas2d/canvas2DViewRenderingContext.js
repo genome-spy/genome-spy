@@ -33,6 +33,12 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
 
     #sampleFacetCoords = new SampleFacetCoordsResolver();
 
+    /** @type {import("./canvasXIndexManager.js").default | undefined} */
+    #xIndexManager;
+
+    /** @type {[number, number]} */
+    #indexedRange = [0, 0];
+
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
      * @param {{
@@ -42,7 +48,8 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
      *     devicePixelRatio: number,
      *     background: string | null,
      *     paint: boolean,
-     *     markPredicate?: (mark: import("../../marks/mark.js").default) => boolean
+     *     markPredicate?: (mark: import("../../marks/mark.js").default) => boolean,
+     *     xIndexManager?: import("./canvasXIndexManager.js").default
      * }} options
      */
     constructor(globalOptions, options) {
@@ -54,6 +61,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         this.paint = options.paint;
         this.#markPredicate = options.markPredicate ?? (() => true);
         this.#profiler = getPerformanceProfiler();
+        this.#xIndexManager = options.xIndexManager;
 
         if (this.paint) {
             const context = this.context;
@@ -160,6 +168,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
             inheritedClip,
             mark.properties.cullByVisibleRange
         );
+        const useXIndex = this.#xIndexManager?.prepare(mark) ?? false;
 
         const context = this.context;
         context.save();
@@ -180,11 +189,22 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                 options,
                 coords,
                 this.#sampleFacetCoords,
-                (occurrenceCoords, data) =>
-                    renderMarkCanvas(mark, {
+                (occurrenceCoords, data) => {
+                    let start = 0;
+                    let end = data.length;
+                    if (
+                        useXIndex &&
+                        this.#xIndexManager.query(data, this.#indexedRange)
+                    ) {
+                        start = this.#indexedRange[0];
+                        end = this.#indexedRange[1];
+                    }
+                    return renderMarkCanvas(mark, {
                         context,
                         coords: occurrenceCoords,
                         data,
+                        start,
+                        end,
                         visibleBounds,
                         anchorCullBounds,
                         viewOpacity,
@@ -192,7 +212,8 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                             warnOnce(
                                 `${message} View: ${mark.unitView.getPathString()}`
                             ),
-                    }),
+                    });
+                },
                 (facetIndex) =>
                     warnOnce(
                         `Canvas2D could not resolve sample facet index ${facetIndex}. View: ${mark.unitView.getPathString()}`

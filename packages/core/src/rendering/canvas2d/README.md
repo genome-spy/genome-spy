@@ -20,6 +20,14 @@ and repaint the full surface in draw order; there is no retained scene graph or
 dirty-region cache. The export path creates a detached canvas at the requested
 logical size and pixel ratio, renders once, and encodes it with `toBlob()`.
 
+The live coordinator owns source-row x indexes for eligible sorted point and
+rectangle batches. Normal rendering and software picking share the same cache
+and conservative query envelope, then pass source-array start/end bounds to the
+immediate visitors. Scale-domain changes only update the query; collector data
+or encoder changes rebuild the affected index. Detached export keeps complete
+traversal, and transient `facetIndex` groups deliberately fall back instead of
+building an index during every paint.
+
 Mark projection, geometry, and culling live in `../immediate/` and are
 shared with SVG export. Files under `renderers/` only translate the normalized
 mark occurrences into Canvas state, paths, text, and paint operations. Keep new

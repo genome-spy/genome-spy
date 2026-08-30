@@ -7,6 +7,7 @@ import {
 import renderCanvas2D from "./renderCanvas2D.js";
 import SoftwarePickingRasterizer from "./picking/softwarePickingRasterizer.js";
 import SoftwarePickingViewRenderingContext from "./picking/softwarePickingViewRenderingContext.js";
+import CanvasXIndexManager from "./canvasXIndexManager.js";
 
 export default class Canvas2DRenderCoordinator {
     /**
@@ -32,6 +33,7 @@ export default class Canvas2DRenderCoordinator {
         /** @type {SoftwarePickingRasterizer | undefined} */
         this.pickingRasterizer = undefined;
         this.dirtyPickingBuffer = true;
+        this.xIndexManager = new CanvasXIndexManager();
     }
 
     computeLayout() {
@@ -83,6 +85,7 @@ export default class Canvas2DRenderCoordinator {
                     devicePixelRatio: this.surface.getDevicePixelRatio(),
                     background: this.getBackground(),
                     paint: true,
+                    xIndexManager: this.xIndexManager,
                 })
             );
             this.dirtyPickingBuffer = true;
@@ -122,6 +125,7 @@ export default class Canvas2DRenderCoordinator {
                 }
                 return rasterizer;
             },
+            xIndexManager: this.xIndexManager,
         });
 
         const profiler = getPerformanceProfiler();

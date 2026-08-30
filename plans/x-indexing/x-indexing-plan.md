@@ -1,6 +1,6 @@
 # Renderer-neutral x-indexing plan
 
-Status: In progress (Milestone 1 complete)
+Status: In progress (Milestones 1–2 complete)
 
 ## Context
 

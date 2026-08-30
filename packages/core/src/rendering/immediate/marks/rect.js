@@ -103,31 +103,35 @@ export function resolveRectProperties(mark) {
  *     coords: import("../../../view/layout/rectangle.js").default,
  *     data: object[],
  *     visibleBounds: import("../bounds.js").RenderBounds,
- *     viewOpacity: number
+ *     viewOpacity: number,
+ *     start?: number,
+ *     end?: number
  * }} options
  * @param {(instance: RectInstance) => void} visitor
  * @returns {number}
  */
 export function visitRectInstances(mark, properties, options, visitor) {
     const { coords, data, visibleBounds, viewOpacity } = options;
+    const start = options.start ?? 0;
+    const end = options.end ?? data.length;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
-    if (data.length == 0) {
+    if (start === end) {
         return 0;
     }
     const strokeWidthIsConstant = encoders.strokeWidth.constant;
     const fillOpacityIsConstant = encoders.fillOpacity.constant;
     const constantStrokeWidth = strokeWidthIsConstant
-        ? encodeNumber(encoders.strokeWidth, data[0])
+        ? encodeNumber(encoders.strokeWidth, data[start])
         : 0;
     const constantFillOpacity = fillOpacityIsConstant
-        ? encodeNumber(encoders.fillOpacity, data[0])
+        ? encodeNumber(encoders.fillOpacity, data[start])
         : 0;
     const fillIsConstant = encoders.fill.constant;
     const constantFill = fillIsConstant
-        ? toPaintString(encoders.fill(data[0]))
+        ? toPaintString(encoders.fill(data[start]))
         : "none";
     const shadowPadding =
         properties.shadow.opacity > 0
@@ -141,13 +145,13 @@ export function visitRectInstances(mark, properties, options, visitor) {
         coords,
         encoders,
         "x",
-        data[0]
+        data[start]
     );
     const projectYRange = prepareRangeProjection(
         coords,
         encoders,
         "y",
-        data[0]
+        data[start]
     );
     const xRange = /** @type {[number, number]} */ ([0, 0]);
     const yRange = /** @type {[number, number]} */ ([0, 0]);
@@ -166,7 +170,8 @@ export function visitRectInstances(mark, properties, options, visitor) {
     };
     let instanceCount = 0;
 
-    for (const datum of data) {
+    for (let i = start; i < end; i++) {
+        const datum = data[i];
         projectXRange(datum, xRange);
         projectYRange(datum, yRange);
         let x = Math.min(xRange[0], xRange[1]);

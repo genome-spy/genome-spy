@@ -38,6 +38,8 @@ const MIN_RULE_PICKING_WIDTH = 1;
  * @prop {import("../../../immediate/bounds.js").RenderBounds} visibleBounds
  * @prop {import("../../../immediate/bounds.js").RenderBounds} anchorCullBounds
  * @prop {number} viewOpacity
+ * @prop {number} [start]
+ * @prop {number} [end]
  */
 
 /**
