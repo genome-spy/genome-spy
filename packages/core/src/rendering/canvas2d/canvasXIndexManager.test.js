@@ -70,6 +70,7 @@ function createFixture(data) {
     return {
         collector,
         mark,
+        resolution,
         setDomain: (/** @type {[number, number]} */ next) => (domain = next),
     };
 }
@@ -112,6 +113,22 @@ describe("CanvasXIndexManager", () => {
         manager.prepare(fixture.mark);
         manager.query(data, range);
         fixture.collector.dataRevision++;
+        manager.prepare(fixture.mark);
+        manager.query(data, range);
+
+        expect(profiler.snapshot().countTotals.canvasXIndexBuilds).toBe(2);
+    });
+
+    test("rebuilds when the index domain changes", () => {
+        const data = Array.from({ length: 100 }, (_, x) => ({ x }));
+        const fixture = createFixture(data);
+        const manager = new CanvasXIndexManager();
+        const profiler = startPerformanceProfiler();
+        const range = /** @type {[number, number]} */ ([0, 0]);
+
+        manager.prepare(fixture.mark);
+        manager.query(data, range);
+        fixture.resolution.zoomExtent = [0, 2000];
         manager.prepare(fixture.mark);
         manager.query(data, range);
 

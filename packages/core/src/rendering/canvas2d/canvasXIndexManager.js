@@ -31,13 +31,18 @@ export default class CanvasXIndexManager {
         }
 
         const collector = mark.unitView.getCollector();
+        const xScaleResolution = mark.unitView.getScaleResolution("x");
+        const xIndexDomain = xScaleResolution?.zoomExtent;
         let markEntry = this.#marks.get(mark);
         if (
             !markEntry ||
             markEntry.collector !== collector ||
             markEntry.dataRevision !== collector.dataRevision ||
             markEntry.xEncoder !== mark.encoders.x ||
-            markEntry.x2Encoder !== mark.encoders.x2
+            markEntry.x2Encoder !== mark.encoders.x2 ||
+            markEntry.xScaleResolution !== xScaleResolution ||
+            markEntry.xIndexDomainStart !== xIndexDomain?.[0] ||
+            markEntry.xIndexDomainEnd !== xIndexDomain?.[1]
         ) {
             const spec = createMarkXIndexSpec(mark);
             markEntry = {
@@ -45,6 +50,9 @@ export default class CanvasXIndexManager {
                 dataRevision: collector.dataRevision,
                 xEncoder: mark.encoders.x,
                 x2Encoder: mark.encoders.x2,
+                xScaleResolution,
+                xIndexDomainStart: xIndexDomain?.[0],
+                xIndexDomainEnd: xIndexDomain?.[1],
                 spec,
                 batches: new WeakMap(),
             };
@@ -114,6 +122,9 @@ export default class CanvasXIndexManager {
  * @property {number} dataRevision
  * @property {import("../../types/encoder.js").Encoder | undefined} xEncoder
  * @property {import("../../types/encoder.js").Encoder | undefined} x2Encoder
+ * @property {import("../../scales/scaleResolution.js").default | undefined} xScaleResolution
+ * @property {number | undefined} xIndexDomainStart
+ * @property {number | undefined} xIndexDomainEnd
  * @property {import("../xIndex/markXIndex.js").MarkXIndexSpec | undefined} spec
  * @property {WeakMap<object[], BatchCacheEntry>} batches
  */
