@@ -85,8 +85,8 @@ describe("CanvasXIndexManager", () => {
 
         expect(manager.prepare(fixture.mark)).toBe(true);
         expect(manager.query(data, range)).toBe(true);
-        expect(range[0]).toBeGreaterThan(300);
-        expect(range[1]).toBeLessThan(600);
+        expect(range[0]).toBeGreaterThan(250);
+        expect(range[1]).toBeLessThan(650);
         const firstRange = Array.from(range);
 
         fixture.setDomain([800, 810]);

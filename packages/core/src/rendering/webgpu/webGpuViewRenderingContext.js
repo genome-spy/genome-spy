@@ -292,11 +292,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         state.xQueryEnabled =
             !!packed.xIndexSpec &&
-            resolveMarkXIndexQuery(
-                state.mark,
-                packed.xIndexSpec,
-                state.xQueryDomain
-            );
+            resolveMarkXIndexQuery(packed.xIndexSpec, state.xQueryDomain);
         if (!state.xQueryEnabled) {
             countPerformance("webgpuXIndexFallbackQueries");
         }

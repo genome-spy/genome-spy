@@ -22,7 +22,7 @@ logical size and pixel ratio, renders once, and encodes it with `toBlob()`.
 
 The live coordinator owns source-row x indexes for eligible sorted point and
 rectangle batches. Normal rendering and software picking share the same cache
-and conservative query envelope, then pass source-array start/end bounds to the
+and one-viewport query guard, then pass source-array start/end bounds to the
 immediate visitors. Scale-domain changes only update the query; collector data
 or encoder changes rebuild the affected index. Detached export keeps complete
 traversal, and transient `facetIndex` groups deliberately fall back instead of

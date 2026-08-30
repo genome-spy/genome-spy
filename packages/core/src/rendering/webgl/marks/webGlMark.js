@@ -56,7 +56,6 @@ import {
     isMultiPointSelection,
     isSinglePointSelection,
 } from "../../../selection/selection.js";
-import { getXIndexOffsetBound } from "../../xIndex/markXIndex.js";
 
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -1115,31 +1114,20 @@ export default class WebGLMark {
 
         const scale = this.unitView.getScaleResolution("x")?.getScale();
         const continuous = scale && isContinuous(scale.type);
-        const offsetBound = getXIndexOffsetBound(
-            /** @type {Partial<Record<string, import("../../../types/encoder.js").Encoder>>} */ (
-                this.encoders
-            )
-        );
         const domainStartOffset = ["index", "locus"].includes(scale?.type)
             ? -1
             : 0;
-        const offsetPerPixel =
-            continuous && offsetBound > 0 && Number.isFinite(offsetBound)
-                ? offsetBound /
-                  (this.unitView.getScaleResolution("x").getAxisLength() || 1)
-                : 0;
 
         /** @type {[number, number]} Recycle to ease garbage collector's work */
         const arr = [0, 0];
 
         drawWithRangeEntry = (rangeEntry) => {
-            if (continuous && rangeEntry.xIndex && offsetBound !== undefined) {
+            if (continuous && rangeEntry.xIndex) {
                 const domain = scale.domain();
-                const offsetDomainMargin =
-                    Math.abs(domain[1] - domain[0]) * offsetPerPixel;
+                const span = Math.abs(domain[1] - domain[0]);
                 const vertexIndices = rangeEntry.xIndex(
-                    domain[0] + domainStartOffset - offsetDomainMargin,
-                    domain[1] + offsetDomainMargin,
+                    domain[0] + domainStartOffset - span,
+                    domain[1] + span,
                     arr
                 );
                 const offset = vertexIndices[0];

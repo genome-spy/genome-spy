@@ -42,24 +42,18 @@ function createFixture(type = "point") {
     const scale = Object.assign((/** @type {number} */ value) => value, {
         type: "linear",
         domain: vi.fn(() => [20, 40]),
-        range: vi.fn(() => [0, 1]),
     });
     const resolution = {
-        getAxisLength: vi.fn(() => 200),
         getScale: vi.fn(() => scale),
         zoomExtent: [0, 100],
     };
     const mark = {
         encoders: {
-            size: constantEncoder(100),
-            strokeWidth: constantEncoder(2),
             x: createEncoder("x", scale),
         },
         getType: () => type,
-        properties: { minPickingSize: 4, minWidth: 6 },
         unitView: {
             getScaleResolution: () => resolution,
-            paramRuntime: { evaluateAndGet: vi.fn() },
         },
     };
     return { mark, resolution, scale };
@@ -133,74 +127,21 @@ describe("createMarkXIndexSpec", () => {
 });
 
 describe("resolveMarkXIndexQuery", () => {
-    test("expands a point query for offsets, rotated geometry, and picking", () => {
+    test("expands a query by one live viewport", () => {
         const { mark } = createFixture();
-        mark.encoders.dx = constantEncoder(-3);
         const spec = createMarkXIndexSpec(mark);
         const target = /** @type {[number, number]} */ ([0, 0]);
 
-        expect(resolveMarkXIndexQuery(mark, spec, target)).toBe(true);
-        const envelope = 3 + (Math.sqrt(100) / 2) * Math.SQRT2 + 1;
-        expect(target).toEqual([
-            20 - (20 * envelope) / 200,
-            40 + (20 * envelope) / 200,
-        ]);
+        expect(resolveMarkXIndexQuery(spec, target)).toBe(true);
+        expect(target).toEqual([0, 60]);
     });
 
-    test("expands rectangles for minimum width, stroke, and shadow", () => {
-        const { mark } = createFixture("rect");
-        mark.properties.shadowBlur = 3;
-        mark.properties.shadowOffsetX = -2;
-        const spec = createMarkXIndexSpec(mark);
-        const target = /** @type {[number, number]} */ ([0, 0]);
-
-        expect(resolveMarkXIndexQuery(mark, spec, target)).toBe(true);
-        const envelope = 3 + 2 + 2 + 3;
-        expect(target).toEqual([
-            20 - (20 * envelope) / 200,
-            40 + (20 * envelope) / 200,
-        ]);
-    });
-
-    test("fails closed for data-dependent unscaled geometry", () => {
-        const { mark } = createFixture();
-        mark.encoders.dx = Object.assign(
-            (/** @type {{dx: number}} */ datum) => datum.dx,
-            {
-                branches: [],
-                channelDef: { field: "dx" },
-                constant: false,
-            }
-        );
-        const spec = createMarkXIndexSpec(mark);
-
-        expect(
-            resolveMarkXIndexQuery(
-                mark,
-                spec,
-                /** @type {[number, number]} */ ([0, 0])
-            )
-        ).toBe(false);
-    });
-
-    const fallbackCases = /** @type {[string, (fixture: any) => void][]} */ ([
-        [
-            "invalid domain",
-            (fixture) => fixture.scale.domain.mockReturnValue([40, 20]),
-        ],
-        [
-            "invalid axis length",
-            (fixture) => fixture.resolution.getAxisLength.mockReturnValue(0),
-        ],
-    ]);
-
-    test.each(fallbackCases)("fails closed for %s", (_name, mutate) => {
+    test("fails closed for an invalid domain", () => {
         const fixture = createFixture();
-        mutate(fixture);
+        fixture.scale.domain.mockReturnValue([40, 20]);
         const spec = createMarkXIndexSpec(fixture.mark);
         expect(
             resolveMarkXIndexQuery(
-                fixture.mark,
                 spec,
                 /** @type {[number, number]} */ ([0, 0])
             )

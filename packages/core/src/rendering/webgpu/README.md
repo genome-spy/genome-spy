@@ -39,7 +39,7 @@ for the backend-neutral lifecycle and the
    and selection leaves stay live. Unsupported behavior fails here with a
    contextual error.
 6. The frame plan owns one stable plain draw command per occurrence.
-   Before submission, the adapter resolves the live x-domain envelope and
+   Before submission, the adapter resolves the guarded live x domain and
    refreshes `firstInstance` and `instanceCount` in place. `WebGpuSurface`
    attaches retained mark and placement handles, appends those commands in
    order, and submits the frame without rebuilding draw envelopes.
@@ -65,8 +65,7 @@ to the state that changed. Preserve these invariants when refactoring it:
   parallel graph solely for this adapter.
 - X-domain navigation queries stable packed-range indexes without repacking
   series or uploading buffers. Visible and picking passes use the same
-  conservative candidate envelope; unsupported or uncertain geometry submits
-  the complete packed range.
+  one-viewport query guard.
 - Navigation updates scale domains. Closeup transitions and scrolling may also
   replace non-uniform placement geometry. Keep those application semantics out
   of the generic renderer and continue using `PlacementSource` as the boundary.

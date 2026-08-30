@@ -63,7 +63,7 @@ export default class CanvasXIndexManager {
         if (!spec) {
             return this.#fallback();
         }
-        if (!resolveMarkXIndexQuery(mark, spec, this.#queryDomain)) {
+        if (!resolveMarkXIndexQuery(spec, this.#queryDomain)) {
             return this.#fallback();
         }
 

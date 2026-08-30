@@ -5,8 +5,9 @@ by a renderer adapter. It deliberately has no renderer resources or lifecycle.
 
 `buildMarkXIndex` reuses Core's existing allocation-free binned-range utility.
 `createMarkXIndexSpec` and `resolveMarkXIndexQuery` centralize eligibility and
-the conservative visible/picking envelope. Unsupported or unbounded geometry
-must use the adapter's complete native range.
+the live query. The query includes one viewport of guard space on both sides;
+exact geometry culling remains renderer-owned. Geometry extending farther than
+a viewport from its x coordinate is outside this optimization's guarantee.
 
 Canvas2D indexes stable source-row batches. The Core WebGPU adapter indexes its
 packed instance ranges. WebGL retains its private vertex index as a behavioral

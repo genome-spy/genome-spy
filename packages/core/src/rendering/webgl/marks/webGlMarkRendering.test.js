@@ -8,21 +8,13 @@ import WebGLMark, {
     createLogicalVisibleRect,
     createViewportScope,
 } from "./webGlMark.js";
-import { getXIndexOffsetBound } from "../../xIndex/markXIndex.js";
 
-describe("offset-aware x indexing", () => {
-    /**
-     * @param {import("../../../types/encoder.js").Encoder} xOffset
-     * @param {{ offset?: number, indexedRange?: [number, number] }} [options]
-     */
-    function createIndexedRenderContext(
-        xOffset,
-        { offset = 0, indexedRange = [2, 5] } = {}
-    ) {
+describe("guarded x indexing", () => {
+    test("expands an indexed domain by one viewport", () => {
         const lookup = vi.fn(
             (/** @type {number} */ _start, /** @type {number} */ _end, arr) => {
-                arr[0] = indexedRange[0];
-                arr[1] = indexedRange[1];
+                arr[0] = 2;
+                arr[1] = 5;
                 return arr;
             }
         );
@@ -31,18 +23,15 @@ describe("offset-aware x indexing", () => {
             type: "index",
             domain: () => [100, 200],
         });
-        const resolution = {
-            getScale: () => scale,
-            getAxisLength: vi.fn(() => 100),
-        };
-        const rangeEntry = { offset, count: 10, xIndex: lookup };
         const mark = /** @type {any} */ ({
             bufferInfo: {},
-            encoders: { xOffset },
-            unitView: { getScaleResolution: () => resolution },
-            rangeMap: { get: () => rangeEntry },
+            unitView: {
+                getScaleResolution: () => ({ getScale: () => scale }),
+            },
+            rangeMap: {
+                get: () => ({ offset: 0, count: 10, xIndex: lookup }),
+            },
         });
-
         const render = WebGLMark.prototype.createRenderCallback.call(
             mark,
             draw,
@@ -50,71 +39,8 @@ describe("offset-aware x indexing", () => {
         );
         render();
 
-        return {
-            draw,
-            lookup,
-            getAxisLength: resolution.getAxisLength,
-            render,
-        };
-    }
-
-    test("uses scaled and constant pixel bounds", () => {
-        const scaled = Object.assign(() => 0, {
-            scale: { range: () => [-12, 8] },
-            constant: false,
-        });
-        const constant = Object.assign(() => -20, { constant: true });
-
-        expect(
-            getXIndexOffsetBound(
-                /** @type {any} */ ({
-                    xOffset: scaled,
-                    x2Offset: constant,
-                })
-            )
-        ).toBe(20);
-    });
-
-    test("expands an indexed domain by the bounded pixel offset", () => {
-        const { draw, lookup, getAxisLength, render } =
-            createIndexedRenderContext(
-                /** @type {any} */ (
-                    Object.assign(() => 0, {
-                        scale: { range: () => [-10, 10] },
-                        constant: false,
-                    })
-                )
-            );
-
-        expect(lookup).toHaveBeenCalledWith(89, 210, [2, 5]);
+        expect(lookup).toHaveBeenCalledWith(-1, 300, [2, 5]);
         expect(draw).toHaveBeenCalledWith(2, 3);
-        render();
-        expect(getAxisLength).toHaveBeenCalledTimes(1);
-    });
-
-    test("does not query axis length for a zero pixel offset", () => {
-        const { draw, lookup, getAxisLength } = createIndexedRenderContext(
-            /** @type {any} */ (Object.assign(() => 0, { constant: true }))
-        );
-
-        expect(lookup).toHaveBeenCalledWith(99, 200, [2, 5]);
-        expect(draw).toHaveBeenCalledWith(2, 3);
-        expect(getAxisLength).not.toHaveBeenCalled();
-    });
-
-    test("draws the full range when an indexed offset is unbounded", () => {
-        const { draw, lookup } = createIndexedRenderContext(
-            /** @type {any} */ (
-                Object.assign((/** @type {any} */ datum) => datum.offset, {
-                    constant: false,
-                    scale: { type: "null" },
-                })
-            ),
-            { offset: 4 }
-        );
-
-        expect(lookup).not.toHaveBeenCalled();
-        expect(draw).toHaveBeenCalledWith(4, 10);
     });
 });
 

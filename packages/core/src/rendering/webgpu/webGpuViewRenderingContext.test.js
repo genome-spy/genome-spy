@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => {
                 instanceCount: 1,
             }))
         ),
-        resolveMarkXIndexQuery: vi.fn((_mark, spec, target) => {
+        resolveMarkXIndexQuery: vi.fn((spec, target) => {
             if (!spec) {
                 return false;
             }
