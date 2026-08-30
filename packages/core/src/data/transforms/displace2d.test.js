@@ -39,6 +39,41 @@ function createFlow(data, overrides = {}) {
 }
 
 describe("Displace2DTransform", () => {
+    test("restores canonical offsets after intermediate geometry", () => {
+        const transform = new Displace2DTransform(
+            {
+                type: "displace2d",
+                x: "x",
+                y: "y",
+                width: 10,
+                height: 10,
+                as: ["dx", "dy"],
+            },
+            /** @type {any} */ ({})
+        );
+        const output = new Collector();
+        transform.addChild(output);
+        const home = [
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+        ];
+        const place = (/** @type {Record<string, number>[]} */ data) => {
+            transform.reset();
+            for (const datum of structuredClone(data)) {
+                transform.handle(datum);
+            }
+            transform.complete();
+            return Array.from(output.getData(), ({ dx, dy }) => [dx, dy]);
+        };
+
+        const initial = place(home);
+        place(home.map((datum, i) => ({ ...datum, x: i * 3 })));
+
+        expect(place(home)).toEqual(initial);
+    });
+
     test("uses unit factors and displacement field defaults", () => {
         const transform = new Displace2DTransform(
             {
@@ -123,8 +158,8 @@ describe("Displace2DTransform", () => {
         await Promise.resolve();
         const zoomedPlacement = [...view.flowHandle.collector.getData()];
         expect(zoomedPlacement.map(({ dx, dy }) => [dx, dy])).toEqual([
-            [20, 0],
-            [40, 0],
+            [0, 0],
+            [0, 0],
             [0, 0],
         ]);
         expect(zoomedPlacement[0]).not.toBe(initialPlacement[0]);
@@ -147,7 +182,7 @@ describe("Displace2DTransform", () => {
         expect(placed[1]).toBe(input[1]);
     });
 
-    test("retains a valid placement for the same input row across replays", () => {
+    test("recomputes canonical placement across replays", () => {
         const input = [
             { x: 0, y: 0 },
             { x: 0, y: 0.2 },
@@ -167,7 +202,7 @@ describe("Displace2DTransform", () => {
 
         expect([...output.getData()].map(({ dx, dy }) => [dx, dy])).toEqual([
             [0, 0],
-            [0, 10],
+            [0, 0],
         ]);
     });
 
@@ -293,7 +328,7 @@ describe("Displace2DTransform", () => {
         expect(repropagate).toHaveBeenCalledOnce();
         expect([...output.getData()].map(({ dx, dy }) => [dx, dy])).toEqual([
             [0, 0],
-            [0, -20],
+            [0, -10],
         ]);
     });
 
@@ -340,7 +375,7 @@ describe("Displace2DTransform", () => {
         await Promise.resolve();
 
         expect(transform.xExtent).toBeUndefined();
-        expect([...output.getData()][0].dx).toBe(-30);
+        expect([...output.getData()][0].dx).toBe(0);
     });
 
     test("cancels the deferred bootstrap replay after disposal", async () => {

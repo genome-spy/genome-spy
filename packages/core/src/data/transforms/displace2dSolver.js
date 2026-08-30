@@ -9,12 +9,6 @@ const CANDIDATE_OFFSETS = createCandidateOffsets();
  */
 
 /**
- * @typedef {object} PreviousDisplacement2D
- * @prop {(number | undefined)[]} x Previous signed horizontal offsets.
- * @prop {(number | undefined)[]} y Previous signed vertical offsets.
- */
-
-/**
  * @typedef {object} Displacement2DObstacles
  * @prop {number[]} x Horizontal centers.
  * @prop {number[]} y Vertical centers.
@@ -35,7 +29,6 @@ const CANDIDATE_OFFSETS = createCandidateOffsets();
  * @param {number[]} heights Full collision heights.
  * @param {[number, number]} [xExtent] Preferred horizontal outer bounds.
  * @param {[number, number]} [yExtent] Preferred vertical outer bounds.
- * @param {PreviousDisplacement2D} [previous] Previous placement hints.
  * @param {Displacement2DObstacles} [obstacles] Preplaced collision rectangles.
  * @param {Displacement2D} [output] Reusable output arrays.
  * @returns {Displacement2D} The output arrays.
@@ -47,7 +40,6 @@ export function solveDisplacement(
     heights,
     xExtent,
     yExtent,
-    previous,
     obstacles,
     output = { x: [], y: [] }
 ) {
@@ -59,14 +51,6 @@ export function solveDisplacement(
     ) {
         throw new Error(
             "displace2d positions and dimensions must have the same number of values."
-        );
-    }
-    if (
-        previous &&
-        (previous.x.length != count || previous.y.length != count)
-    ) {
-        throw new Error(
-            "displace2d previous placements must have the same number of values as positions."
         );
     }
     validateExtent(xExtent, "xExtent");
@@ -198,7 +182,7 @@ export function solveDisplacement(
      * @param {number} candidateX
      * @param {number} candidateY
      */
-    const findCollision = (index, candidateX, candidateY) => {
+    const isAvailable = (index, candidateX, candidateY) => {
         const width = widths[index];
         const height = heights[index];
 
@@ -208,11 +192,11 @@ export function solveDisplacement(
             !fitsExtent(candidateX, width, xExtent) ||
             !fitsExtent(candidateY, height, yExtent)
         ) {
-            return -2;
+            return false;
         }
 
         if (width == 0 || height == 0) {
-            return -1;
+            return true;
         }
 
         const minCellX = Math.floor((candidateX - width / 2) / cellSize);
@@ -253,22 +237,14 @@ export function solveDisplacement(
                         Math.abs(candidateY - otherY) <
                             height / 2 + otherHeight / 2
                     ) {
-                        return occupant;
+                        return false;
                     }
                 }
             }
         }
 
-        return -1;
+        return true;
     };
-
-    /**
-     * @param {number} index
-     * @param {number} candidateX
-     * @param {number} candidateY
-     */
-    const isAvailable = (index, candidateX, candidateY) =>
-        findCollision(index, candidateX, candidateY) == -1;
 
     for (let i = 0; i < count; i++) {
         const x = xPositions[i];
@@ -279,97 +255,17 @@ export function solveDisplacement(
         const preferredY = clampToExtent(y, height, yExtent);
 
         let placed = false;
-        const previousDx = previous?.x[i];
-        const previousDy = previous?.y[i];
-        const hasPrevious =
-            previousDx !== undefined || previousDy !== undefined;
-        if (
-            hasPrevious &&
-            (!Number.isFinite(previousDx) || !Number.isFinite(previousDy))
-        ) {
-            throw new Error(
-                "displace2d previous placements must contain finite offset pairs."
-            );
-        }
-
         if (width == 0 || height == 0) {
-            xDisplacements[i] = hasPrevious ? previousDx : 0;
-            yDisplacements[i] = hasPrevious ? previousDy : 0;
-            if (
-                !hasFiniteBounds(x + xDisplacements[i], width) ||
-                !hasFiniteBounds(y + yDisplacements[i], height)
-            ) {
-                throw new Error(
-                    "displace2d placement exceeded the finite numeric range."
-                );
-            }
+            xDisplacements[i] = 0;
+            yDisplacements[i] = 0;
             continue;
         }
 
-        if (hasPrevious) {
-            const previousX = clampToExtent(x + previousDx, width, xExtent);
-            const previousY = clampToExtent(y + previousDy, height, yExtent);
-            const collision = findCollision(i, previousX, previousY);
-            if (collision == -1) {
-                xDisplacements[i] = previousX - x;
-                yDisplacements[i] = previousY - y;
-                placed = true;
-            } else if (collision >= 0) {
-                const isObstacle = collision >= count;
-                const j = isObstacle ? collision - count : collision;
-                const otherX = isObstacle
-                    ? obstacleData.x[j]
-                    : xPositions[j] + xDisplacements[j];
-                const otherY = isObstacle
-                    ? obstacleData.y[j]
-                    : yPositions[j] + yDisplacements[j];
-                const otherWidth = isObstacle
-                    ? obstacleData.width[j]
-                    : widths[j];
-                const otherHeight = isObstacle
-                    ? obstacleData.height[j]
-                    : heights[j];
-                const xDistance = width / 2 + otherWidth / 2;
-                const yDistance = height / 2 + otherHeight / 2;
-                const edgeCandidates = [
-                    [otherX - xDistance, previousY],
-                    [otherX + xDistance, previousY],
-                    [previousX, otherY - yDistance],
-                    [previousX, otherY + yDistance],
-                ];
-                let nearestDistance = Infinity;
-                let nearestX = 0;
-                let nearestY = 0;
-
-                for (const [candidateX, candidateY] of edgeCandidates) {
-                    if (!isAvailable(i, candidateX, candidateY)) {
-                        continue;
-                    }
-                    const distance = Math.hypot(
-                        candidateX - previousX,
-                        candidateY - previousY
-                    );
-                    if (distance < nearestDistance) {
-                        nearestDistance = distance;
-                        nearestX = candidateX;
-                        nearestY = candidateY;
-                    }
-                }
-
-                if (nearestDistance < Infinity) {
-                    xDisplacements[i] = nearestX - x;
-                    yDisplacements[i] = nearestY - y;
-                    placed = true;
-                }
-            }
-        }
-
-        if (!placed && isAvailable(i, x, y)) {
+        if (isAvailable(i, x, y)) {
             xDisplacements[i] = 0;
             yDisplacements[i] = 0;
             placed = true;
         } else if (
-            !placed &&
             (preferredX != x || preferredY != y) &&
             isAvailable(i, preferredX, preferredY)
         ) {

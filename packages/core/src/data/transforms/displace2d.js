@@ -29,9 +29,6 @@ export default class Displace2DTransform extends Transform {
     /** @type {import("../flowNode.js").Datum[]} */
     #data = [];
 
-    /** @type {import("./displace2dSolver.js").Displacement2D} */
-    #previousDisplacements = { x: [], y: [] };
-
     /** @type {PlacementProps} */
     #placementProps;
 
@@ -197,11 +194,6 @@ export default class Displace2DTransform extends Transform {
             }
         }
 
-        const previous =
-            this.#previousDisplacements.x.length == count
-                ? this.#previousDisplacements
-                : undefined;
-
         const displacements = solveDisplacement(
             xPositions,
             yPositions,
@@ -209,7 +201,6 @@ export default class Displace2DTransform extends Transform {
             heights,
             scaleExtent(this.xExtent, this.xPositionFactor),
             scaleExtent(this.yExtent, this.yPositionFactor),
-            previous,
             this.usesAnchorObstacles
                 ? {
                       x: xPositions,
@@ -219,8 +210,6 @@ export default class Displace2DTransform extends Transform {
                   }
                 : undefined
         );
-        this.#previousDisplacements = displacements;
-
         for (let i = 0; i < count; i++) {
             const datum = data[i];
             const dx = displacements.x[i];
