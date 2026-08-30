@@ -3,6 +3,57 @@ import { describe, expect, test, vi } from "vitest";
 import { Renderer } from "./renderer.js";
 
 describe("Renderer mark definitions", () => {
+    test("renders detached targets with target-local globals", async () => {
+        const { renderer, pass } = createRendererHarness();
+        renderer.format = "bgra8unorm";
+        renderer.alphaMode = "premultiplied";
+        renderer.device.queue.onSubmittedWorkDone = vi.fn();
+        const context = {
+            configure: vi.fn(),
+            getCurrentTexture: () => ({ createView: vi.fn() }),
+            unconfigure: vi.fn(),
+        };
+        const canvas = /** @type {HTMLCanvasElement} */ (
+            /** @type {unknown} */ ({
+                width: 300,
+                height: 150,
+                getContext: vi.fn(() => context),
+            })
+        );
+        const program = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi.fn(() => program),
+        });
+        const mark = renderer.createMark(definition, { channels: {} });
+        const target = renderer.createDetachedTarget(canvas, {
+            width: 200,
+            height: 100,
+            dpr: 1.5,
+        });
+
+        target.render({ draws: [{ mark }] });
+        await target.onSubmittedWorkDone();
+
+        expect(context.configure).toHaveBeenCalledWith({
+            device: renderer.device,
+            format: "bgra8unorm",
+            alphaMode: "premultiplied",
+        });
+        expect(pass.setViewport).toHaveBeenCalledWith(0, 0, 300, 150, 0, 1);
+        expect(renderer._globalUniformStaging.floats[2]).toBe(1.5);
+        expect(renderer._globals).toEqual({ width: 100, height: 50, dpr: 2 });
+        expect(renderer._renderFrame).toBeNull();
+        expect(
+            renderer.device.queue.onSubmittedWorkDone
+        ).toHaveBeenCalledOnce();
+
+        target.destroy();
+        target.destroy();
+        expect(context.unconfigure).toHaveBeenCalledOnce();
+        expect(() => target.render()).toThrow("has been destroyed");
+    });
+
     test("notifies the host instead of submitting an implicit frame", () => {
         const { renderer } = createRendererHarness();
         const onInvalidate = vi.fn();
@@ -616,6 +667,8 @@ describe("Renderer mark definitions", () => {
 function createRendererHarness() {
     const renderer = Object.create(Renderer.prototype);
     renderer._marks = new Map();
+    renderer._placementSets = new Map();
+    renderer._detachedTargets = new Set();
     renderer._fontResourceCache = new Map();
     renderer._nextMarkId = 1;
     renderer._state = "alive";

@@ -252,6 +252,19 @@ and exact-size transient attachments are pooled for the renderer lifetime.
 Picking remains a separate flat, single-sampled frame. Visual render groups do
 not change pick ordering, IDs, or attachment ownership.
 
+### Detached targets
+
+`renderer.createDetachedTarget(canvas, { width, height, dpr })` configures a
+second WebGPU canvas on the renderer's device. Its `render()` method reuses all
+retained marks, placements, pipelines, and transient attachments while using
+target-local globals and physical canvas dimensions. It does not replace the
+live frame remembered for picking.
+
+Call `await target.onSubmittedWorkDone()` before reading the canvas with
+`toBlob()`, `toDataURL()`, or `drawImage()`. Call `target.destroy()` afterward
+to unconfigure its context. Destroying the renderer also destroys any targets
+that remain open.
+
 ## Retained updates
 
 ### Mark handles and slots

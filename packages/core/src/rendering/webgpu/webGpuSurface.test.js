@@ -38,6 +38,7 @@ const mocks = vi.hoisted(() => {
         render: vi.fn(),
         renderPicking: vi.fn(),
         pick: vi.fn(async () => 42),
+        createDetachedTarget: vi.fn(),
     };
     return {
         handle,
@@ -83,6 +84,7 @@ beforeEach(() => {
     mocks.handle.extraValues = {};
     mocks.handle.scalarSlots = {};
     mocks.handle.selections = {};
+    mocks.renderer.createDetachedTarget.mockReset();
 });
 
 /**
@@ -132,6 +134,58 @@ function configureMockMark(mark, definition) {
 }
 
 describe("WebGpuSurface", () => {
+    test("submits export layouts with detached target dimensions", async () => {
+        const detachedHandle = {
+            render: vi.fn(),
+            onSubmittedWorkDone: vi.fn(),
+            destroy: vi.fn(),
+        };
+        mocks.renderer.createDetachedTarget.mockReturnValue(detachedHandle);
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const target = surface.createExportTarget(80, 40, 3);
+        /** @type {{width: number, height: number, dpr: number}[]} */
+        const observedSizes = [];
+        const layoutResult = {
+            collectRenderCommands: vi.fn(() => {
+                observedSizes.push({
+                    ...surface.getLogicalCanvasSize(),
+                    dpr: surface.getDevicePixelRatio(),
+                });
+            }),
+        };
+        const clearColor = { r: 0, g: 0, b: 0, a: 0 };
+
+        surface.renderLayoutToTarget(
+            /** @type {any} */ (layoutResult),
+            target,
+            clearColor
+        );
+
+        expect(target.canvas.width).toBe(240);
+        expect(target.canvas.height).toBe(120);
+        expect(mocks.renderer.createDetachedTarget).toHaveBeenCalledWith(
+            target.canvas,
+            { width: 80, height: 40, dpr: 3 }
+        );
+        expect(observedSizes).toEqual([{ width: 80, height: 40, dpr: 3 }]);
+        expect(detachedHandle.render).toHaveBeenCalledWith({
+            items: [],
+            clearColor,
+        });
+        expect(surface.getLogicalCanvasSize()).toEqual({
+            width: 100,
+            height: 50,
+        });
+        expect(surface.getDevicePixelRatio()).toBe(2);
+    });
+
     test("wraps selected marks in inspectable four-sample groups", async () => {
         const surface = new WebGpuSurface(
             /** @type {any} */ ({

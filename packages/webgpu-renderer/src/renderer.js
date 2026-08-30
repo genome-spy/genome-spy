@@ -207,6 +207,58 @@ function createGlobalUniformStaging(byteLength) {
     };
 }
 
+class DetachedTarget {
+    /**
+     * @param {Renderer} renderer
+     * @param {HTMLCanvasElement} canvas
+     * @param {GPUCanvasContext} context
+     * @param {import("./index.d.ts").GlobalUniforms} globals
+     */
+    constructor(renderer, canvas, context, globals) {
+        this.renderer = renderer;
+        this.canvas = canvas;
+        this.context = context;
+        this.globals = validateGlobals(globals);
+        this.destroyed = false;
+    }
+
+    /** @param {import("./index.d.ts").RenderFrame} [frame] */
+    render(frame = {}) {
+        this.#assertAlive();
+        this.renderer._renderTarget(
+            this.context,
+            this.canvas,
+            this.globals,
+            frame,
+            false
+        );
+    }
+
+    /** Waits until every submission made before this call has completed. */
+    async onSubmittedWorkDone() {
+        this.#assertAlive();
+        await this.renderer.device.queue.onSubmittedWorkDone();
+    }
+
+    destroy() {
+        if (this.destroyed) {
+            return;
+        }
+        this.destroyed = true;
+        this.context.unconfigure();
+        this.renderer._detachedTargets.delete(this);
+    }
+
+    #assertAlive() {
+        this.renderer._assertAlive();
+        if (this.destroyed) {
+            throw new RendererError(
+                "Detached render target has been destroyed."
+            );
+        }
+    }
+}
+
 /**
  * Create a renderer instance and WebGPU device/context for a canvas.
  *
@@ -275,6 +327,7 @@ export class Renderer {
         this.context = context;
         this.format = format;
         this.canvas = canvas;
+        this.alphaMode = alphaMode;
         this._onInvalidate = onInvalidate ?? (() => {});
         this._onDeviceLoss = onDeviceLoss ?? (() => {});
         /** @type {"alive" | "lost" | "destroyed"} */
@@ -291,6 +344,8 @@ export class Renderer {
         this._marks = new Map();
         /** @type {Map<number, PlacementSet>} */
         this._placementSets = new Map();
+        /** @type {Set<DetachedTarget>} */
+        this._detachedTargets = new Set();
         this._programTemplateCache = new ProgramTemplateCache(addCount);
         this._transientTextures = new TransientTexturePool(device, format);
         this._textureCompositor = new TextureCompositor(device, format);
@@ -386,12 +441,35 @@ export class Renderer {
      */
     updateGlobals(globals) {
         this._assertAlive();
-        const { width, height, dpr } = globals;
-        assertPositiveFinite("width", width);
-        assertPositiveFinite("height", height);
-        assertPositiveFinite("dpr", dpr);
-        this._globals = { width, height, dpr };
+        /** @type {import("./index.d.ts").GlobalUniforms} */
+        this._globals = validateGlobals(globals);
         this.markPickingDirty();
+    }
+
+    /**
+     * Creates an independently sized canvas target that shares this renderer's
+     * device and retained resources.
+     *
+     * @param {HTMLCanvasElement} canvas
+     * @param {import("./index.d.ts").GlobalUniforms} globals
+     * @returns {import("./index.d.ts").DetachedTargetHandle}
+     */
+    createDetachedTarget(canvas, globals) {
+        this._assertAlive();
+        const context = canvas.getContext("webgpu");
+        if (!context) {
+            throw new RendererError(
+                "Could not create a detached WebGPU context."
+            );
+        }
+        context.configure({
+            device: this.device,
+            format: this.format,
+            alphaMode: this.alphaMode,
+        });
+        const target = new DetachedTarget(this, canvas, context, globals);
+        this._detachedTargets.add(target);
+        return target;
     }
 
     /**
@@ -775,6 +853,42 @@ export class Renderer {
      */
     render(frame = {}) {
         this._assertAlive();
+        this._renderTarget(
+            this.context,
+            this.canvas,
+            this._globals,
+            frame,
+            true
+        );
+    }
+
+    /**
+     * @param {GPUCanvasContext} context
+     * @param {HTMLCanvasElement} canvas
+     * @param {import("./index.d.ts").GlobalUniforms} globals
+     * @param {import("./index.d.ts").RenderFrame} frame
+     * @param {boolean} rememberFrame
+     */
+    _renderTarget(context, canvas, globals, frame, rememberFrame) {
+        const previousGlobals =
+            /** @type {import("./index.d.ts").GlobalUniforms} */ (
+                this._globals
+            );
+        this._globals = globals;
+        try {
+            this._renderTargetFrame(context, canvas, frame, rememberFrame);
+        } finally {
+            this._globals = previousGlobals;
+        }
+    }
+
+    /**
+     * @param {GPUCanvasContext} context
+     * @param {HTMLCanvasElement} canvas
+     * @param {import("./index.d.ts").RenderFrame} frame
+     * @param {boolean} rememberFrame
+     */
+    _renderTargetFrame(context, canvas, frame, rememberFrame) {
         const { items, draws, groupCount } = this._normalizeRenderItems(
             frame.items ?? frame.draws ?? this._marks.keys()
         );
@@ -784,7 +898,7 @@ export class Renderer {
         const commandEncoder = this.device.createCommandEncoder({
             label: gpuLabel(RENDERER_GPU_OWNER, "main command encoder"),
         });
-        const view = this.context.getCurrentTexture().createView({
+        const view = context.getCurrentTexture().createView({
             label: gpuLabel(RENDERER_GPU_OWNER, "canvas texture view"),
         });
 
@@ -793,8 +907,8 @@ export class Renderer {
             commandEncoder,
             {
                 view,
-                width: this.canvas.width,
-                height: this.canvas.height,
+                width: canvas.width,
+                height: canvas.height,
                 logicalX: 0,
                 logicalY: 0,
             },
@@ -807,8 +921,10 @@ export class Renderer {
         const submissionStart = startPhase();
         this.device.queue.submit([commandEncoder.finish()]);
         finishPhase("submission", submissionStart);
-        this._renderFrame = draws;
-        this._pickingDirty = true;
+        if (rememberFrame) {
+            this._renderFrame = draws;
+            this._pickingDirty = true;
+        }
     }
 
     /**
@@ -1380,6 +1496,9 @@ export class Renderer {
             set.destroy();
         }
         this._placementSets?.clear();
+        for (const target of Array.from(this._detachedTargets ?? [])) {
+            target.destroy();
+        }
         for (const resourcesByBitmap of this._fontResourceCache.values()) {
             for (const resources of resourcesByBitmap.values()) {
                 resources.destroy();
@@ -1423,6 +1542,18 @@ export class Renderer {
     _isAlive() {
         return this._state === "alive";
     }
+}
+
+/**
+ * @param {import("./index.d.ts").GlobalUniforms} globals
+ * @returns {import("./index.d.ts").GlobalUniforms}
+ */
+function validateGlobals(globals) {
+    const { width, height, dpr } = globals;
+    assertPositiveFinite("width", width);
+    assertPositiveFinite("height", height);
+    assertPositiveFinite("dpr", dpr);
+    return { width, height, dpr };
 }
 
 /**

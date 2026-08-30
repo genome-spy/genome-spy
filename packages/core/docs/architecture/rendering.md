@@ -190,3 +190,11 @@ remain one retained draw and one group rather than expanding into per-facet
 targets. Picking stays flat and single-sampled. Canvas2D honors the same local
 view-opacity semantics with transparent offscreen canvases, while WebGL keeps
 its unchanged effective-opacity fallback.
+
+WebGPU raster export compiles an export-sized layout and submits it to a
+same-device detached canvas target with target-local globals. The renderer
+reuses retained GPU resources without replacing the live coordinator's frame
+plan. Hybrid SVG passes each selected paint-order run as a mark predicate,
+waits for submission, and uses the shared SVG crop and placeholder helpers.
+The backend serializes asynchronous exports because layout synchronization can
+temporarily update shared retained mark resources.

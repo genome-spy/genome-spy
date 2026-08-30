@@ -1134,6 +1134,16 @@ export type RenderFrame = {
     clearColor?: GPUColor;
 };
 
+export type DetachedTargetHandle = {
+    readonly canvas: HTMLCanvasElement;
+    /** Draw using this target's logical dimensions without changing live globals. */
+    render(frame?: RenderFrame): void;
+    /** Wait for all previously submitted work before reading the canvas. */
+    onSubmittedWorkDone(): Promise<void>;
+    /** Unconfigure the detached canvas. Safe to call repeatedly. */
+    destroy(): void;
+};
+
 export type ProgramDrawOptions = {
     firstInstance: number;
     instanceCount: number;
@@ -1188,6 +1198,12 @@ export type MarkDefinition<
 export class Renderer {
     /** Update global viewport-related uniforms (pixel size + device pixel ratio). */
     updateGlobals(globals: GlobalUniforms): void;
+
+    /** Create a same-device canvas target with independent logical globals. */
+    createDetachedTarget(
+        canvas: HTMLCanvasElement,
+        globals: GlobalUniforms
+    ): DetachedTargetHandle;
 
     /** Create a retained mark from an explicitly imported definition. */
     createMark<

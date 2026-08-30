@@ -318,19 +318,19 @@ and paint order.
 
 ### Work
 
-- [ ] Add a same-device detached renderer target with explicit logical and
+- [x] Add a same-device detached renderer target with explicit logical and
       physical dimensions, target-local globals, cleanup, and queue
       synchronization before capture.
-- [ ] Build full export-sized Core layout/frame plans instead of scaling the
+- [x] Build full export-sized Core layout/frame plans instead of scaling the
       live WebGPU canvas, keep them independent from the coordinator's live
       frame plan, and serialize retained-resource synchronization across
       overlapping export requests.
-- [ ] Add a WebGPU selective SVG rasterizer that filters each run's marks,
+- [x] Add a WebGPU selective SVG rasterizer that filters each run's marks,
       renders transparent export-sized frames, crops with the shared SVG
       helpers, and fills existing placeholders in order.
-- [ ] Preserve MIME validation and fallback behavior, and restore the live
+- [x] Preserve MIME validation and fallback behavior, and restore the live
       layout/resources after success or failure.
-- [ ] Add full-frame, requested-size, transparent selective-run, crop, and
+- [x] Add full-frame, requested-size, transparent selective-run, crop, and
       hybrid-document-order tests.
 
 ### Affected areas and downstream consumers
@@ -365,13 +365,13 @@ Tentative commit: `feat(core): rasterize exports with WebGPU`
 
 ## Final integration and acceptance
 
-- [ ] Re-run the supplied MCCA visualization with WebGPU and verify that
+- [x] Re-run the supplied MCCA visualization with WebGPU and verify that
       copy-number segments and metadata heatmaps are the only MSAA groups.
-- [ ] Verify dense point marks stay on the direct single-sample path during
+- [x] Verify dense point marks stay on the direct single-sample path during
       interaction and picking remains unchanged.
-- [ ] Verify overlapping and nested view opacity against equivalent SVG-style
+- [x] Verify overlapping and nested view opacity against equivalent SVG-style
       group composition in WebGPU and Canvas2D.
-- [ ] Export a non-live-size transparent PNG and a hybrid SVG containing both
+- [x] Export a non-live-size transparent PNG and a hybrid SVG containing both
       vector elements and correctly cropped WebGPU raster runs.
 - [ ] Run final focused and cross-workspace checks and reconcile every task in
       this plan before delivery.

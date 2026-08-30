@@ -60,6 +60,41 @@ beforeEach(() => {
 });
 
 describe("WebGpuViewRenderingContext", () => {
+    test("compiles only marks selected for a raster run", () => {
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            updateMark: vi.fn(),
+            drawMark: vi.fn(),
+        };
+        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const selected = {
+            encoders: {},
+            encoding: {},
+            getType: () => "point",
+            isPickingParticipant: () => true,
+            properties: {},
+            unitView: { getEffectiveOpacity: () => 1 },
+        };
+        const other = { ...selected };
+        const context = new WebGpuViewRenderingContext({
+            surface: /** @type {any} */ (surface),
+            markPredicate: (mark) => mark === selected,
+        });
+
+        context.pushView(/** @type {any} */ (view), Rectangle.ZERO);
+        context.renderMark(/** @type {any} */ (selected), {});
+        context.renderMark(/** @type {any} */ (other), {});
+        context.popView(/** @type {any} */ (view));
+        context.finish();
+        context.render({ picking: false });
+
+        expect(mocks.getPackedMarkData).toHaveBeenCalledOnce();
+        expect(surface.updateMark).toHaveBeenCalledOnce();
+        expect(surface.drawMark).toHaveBeenCalledOnce();
+        expect(surface.drawMark.mock.calls[0][0]).toBe(selected);
+    });
+
     test("refreshes visible and picking ranges without mark uploads", () => {
         const domain = [20, 30];
         mocks.packed.xIndexSpec = { domain };

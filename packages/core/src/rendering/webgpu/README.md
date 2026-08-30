@@ -57,17 +57,33 @@ therefore stays independent of ancestor opacity. Nested views produce nested
 groups, while picking remains a flat single-sampled draw list.
 
 Four-sample coverage is limited to undecorated `rect` marks packed through a
-source-backed `sample` channel or the sample-facet `facetIndex` channel. This includes copy-number segments and both
-foreground and missing-value metadata rectangles. Points, text, ordinary
-rectangles, and rectangles with strokes, rounded corners, shadows, or hatches
-stay on the direct single-sample path. A placement-indexed retained mark is one
-draw and therefore one resolve, regardless of its number of sample facets.
+source-backed `sample` channel or the sample-facet `facetIndex` channel. This
+includes copy-number segments and both foreground and missing-value metadata
+rectangles. Points, text, ordinary rectangles, and rectangles with strokes,
+rounded corners, shadows, or hatches stay on the direct single-sample path. A
+placement-indexed retained mark is one draw and therefore one resolve,
+regardless of its number of sample facets.
 
 `EmbedResult.debug.getWebGpuFramePlanSummary()` exposes serializable group
 bounds, sample counts, opacities, mark types, and view paths for development
 checks without exposing renderer resources. Development canvases mirror the
 same JSON in `data-webgpu-frame-plan` for browser smoke tests. WebGL continues
 to consume effective per-mark opacity and receives no render-group behavior.
+
+## Raster export
+
+Full PNG and hybrid SVG rasterization reuse the live renderer's device, mark
+handles, placement sets, and pipelines through a detached canvas target. Each
+target has independent logical dimensions, backing dimensions, and device
+pixel ratio; export therefore compiles a fresh layout instead of stretching
+the live canvas. The live coordinator retains its frame plan and redraws after
+the export restores the view hierarchy's live layout.
+
+Hybrid SVG keeps run discovery, placeholders, cropping, and document order in
+the SVG renderer. WebGPU receives one mark predicate per run, clears the
+export-sized target transparently, waits for the queue, and embeds the cropped
+PNG into the existing placeholder. Asynchronous raster and SVG exports are
+serialized because they synchronize shared retained mark configuration.
 
 ## Performance invariants
 

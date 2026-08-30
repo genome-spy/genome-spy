@@ -40,12 +40,16 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
     #finished = false;
 
+    /** @type {((mark: import("../../marks/mark.js").default) => boolean) | undefined} */
+    #markPredicate;
+
     /**
-     * @param {{surface: import("./webGpuSurface.js").default}} options
+     * @param {{surface: import("./webGpuSurface.js").default, markPredicate?: (mark: import("../../marks/mark.js").default) => boolean}} options
      */
     constructor(options) {
         super({});
         this.surface = options.surface;
+        this.#markPredicate = options.markPredicate;
     }
 
     getDevicePixelRatio() {
@@ -85,6 +89,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     renderMark(mark, options) {
         if (this.#finished) {
             throw new Error("Cannot collect WebGPU marks after finishing.");
+        }
+        if (this.#markPredicate && !this.#markPredicate(mark)) {
+            return;
         }
         const coords = this.currentCoords;
         const markCoords = coords.translate(

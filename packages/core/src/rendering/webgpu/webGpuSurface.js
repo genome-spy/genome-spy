@@ -2,6 +2,7 @@ import { createRenderer } from "@genome-spy/webgpu-renderer";
 
 import CanvasSizeHelper from "../canvasSizeHelper.js";
 import PlacementSource from "../../view/layout/placementSource.js";
+import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 
 /** @type {Readonly<Record<string, {value: any}>>} */
 const EMPTY_PROPERTIES = Object.freeze({});
@@ -58,6 +59,9 @@ export default class WebGpuSurface {
 
     /** @type {{logicalWidth: number, logicalHeight: number, physicalWidth: number, physicalHeight: number} | undefined} */
     #appliedSize;
+
+    /** @type {{width: number, height: number, dpr: number} | undefined} */
+    #targetSize;
 
     /**
      * @param {import("../renderingBackend.js").RenderingBackendOptions} options
@@ -153,11 +157,88 @@ export default class WebGpuSurface {
     }
 
     getLogicalCanvasSize() {
+        if (this.#targetSize) {
+            return {
+                width: this.#targetSize.width,
+                height: this.#targetSize.height,
+            };
+        }
         return this.#sizeHelper.getLogicalCanvasSize();
     }
 
     getDevicePixelRatio() {
+        if (this.#targetSize) {
+            return this.#targetSize.dpr;
+        }
         return this.#sizeHelper.getDevicePixelRatio();
+    }
+
+    /**
+     * Creates an export canvas on the live renderer's device.
+     *
+     * @param {number} logicalWidth
+     * @param {number} logicalHeight
+     * @param {number} pixelRatio
+     */
+    createExportTarget(logicalWidth, logicalHeight, pixelRatio) {
+        if (!this.#renderer) {
+            throw new Error("The WebGPU surface has not been initialized.");
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(logicalWidth * pixelRatio);
+        canvas.height = Math.ceil(logicalHeight * pixelRatio);
+        return {
+            handle: this.#renderer.createDetachedTarget(canvas, {
+                width: logicalWidth,
+                height: logicalHeight,
+                dpr: pixelRatio,
+            }),
+            canvas,
+            logicalWidth,
+            logicalHeight,
+            pixelRatio,
+        };
+    }
+
+    /**
+     * Compiles and submits an export layout without replacing the live
+     * coordinator's frame plan.
+     *
+     * @param {import("../../view/layout/layoutResult.js").default} layoutResult
+     * @param {WebGpuExportTarget} target
+     * @param {GPUColor} clearColor
+     * @param {(mark: import("../../marks/mark.js").default) => boolean} [markPredicate]
+     */
+    renderLayoutToTarget(layoutResult, target, clearColor, markPredicate) {
+        if (this.#targetSize) {
+            throw new Error("WebGPU export rendering cannot be nested.");
+        }
+        this.#targetSize = {
+            width: target.logicalWidth,
+            height: target.logicalHeight,
+            dpr: target.pixelRatio,
+        };
+        try {
+            const framePlan = new WebGpuViewRenderingContext({
+                surface: this,
+                markPredicate,
+            });
+            layoutResult.collectRenderCommands(framePlan);
+            framePlan.finish();
+            this.beginFrame();
+            framePlan.render({ picking: false });
+            if (this.#frameItemStack.length !== 1) {
+                throw new Error(
+                    "Cannot render with an open WebGPU render group."
+                );
+            }
+            target.handle.render({
+                items: this.#frameItems,
+                clearColor,
+            });
+        } finally {
+            this.#targetSize = undefined;
+        }
     }
 
     /**
@@ -556,6 +637,15 @@ function unionBounds(target, source) {
  * @typedef {object} WebGpuFramePlanSummary
  * @property {WebGpuFramePlanGroupSummary[]} groups
  * @property {{viewPath: string, markType: string}[]} directMarks
+ */
+
+/**
+ * @typedef {object} WebGpuExportTarget
+ * @property {import("@genome-spy/webgpu-renderer").DetachedTargetHandle} handle
+ * @property {HTMLCanvasElement} canvas
+ * @property {number} logicalWidth
+ * @property {number} logicalHeight
+ * @property {number} pixelRatio
  */
 
 /** @param {Float32Array} first @param {Float32Array} second */

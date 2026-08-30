@@ -41,8 +41,9 @@ into the synchronous ESM graph.
 
 Raster export and hybrid SVG use optional capabilities rather than a WebGL
 helper. A selected GPU backend is never initialized a second time for export;
-Canvas2D may provide a detached fallback. SVG retains ownership of visible
-instance counting, run selection, placeholders, cropping, and paint order.
+WebGPU reuses its device through export-sized detached targets, and Canvas2D
+may provide a detached fallback. SVG retains ownership of visible instance
+counting, run selection, placeholders, cropping, and paint order.
 
 The WebGL directory is a deletion boundary, not a reusable renderer framework.
 When WebGPU and Canvas2D cover production needs, removing the dynamic WebGL
