@@ -68,7 +68,7 @@ beforeEach(() => {
 });
 
 describe("WebGpuViewRenderingContext", () => {
-    test("narrows stable draws for visible and picking passes", () => {
+    test("refreshes visible and picking ranges without mark uploads", () => {
         const domain = [20, 30];
         mocks.packed.xIndexSpec = { domain };
         const xIndex = {
@@ -82,11 +82,14 @@ describe("WebGpuViewRenderingContext", () => {
             instanceCount: 100,
             xIndex,
         });
+        const drawRanges = /** @type {[number, number][]} */ ([]);
         const surface = {
             getDevicePixelRatio: () => 1,
             getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
             updateMark: vi.fn(),
-            drawMark: vi.fn(),
+            drawMark: vi.fn((_mark, draw) => {
+                drawRanges.push([draw.firstInstance, draw.instanceCount]);
+            }),
         };
         const context = new WebGpuViewRenderingContext({
             surface: /** @type {any} */ (surface),
@@ -104,20 +107,21 @@ describe("WebGpuViewRenderingContext", () => {
         context.popView(/** @type {any} */ (view));
         context.finish();
         context.render({ picking: false });
+
+        domain[0] = 40;
+        domain[1] = 45;
+        context.render({ picking: false });
         context.render({ picking: true });
 
         expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledOnce();
         expect(surface.updateMark).toHaveBeenCalledOnce();
-        expect(surface.drawMark).toHaveBeenCalledTimes(2);
-        expect(surface.drawMark.mock.calls[0][1]).toMatchObject({
-            firstInstance: 120,
-            instanceCount: 10,
-        });
-        expect(surface.drawMark.mock.calls[1][1]).toMatchObject({
-            firstInstance: 120,
-            instanceCount: 10,
-        });
-        expect(xIndex.query).toHaveBeenCalledTimes(2);
+        expect(surface.drawMark).toHaveBeenCalledTimes(3);
+        expect(drawRanges).toEqual([
+            [120, 10],
+            [140, 5],
+            [140, 5],
+        ]);
+        expect(xIndex.query).toHaveBeenCalledTimes(3);
     });
 
     test("runs live view and opacity state from a retained plan", () => {
