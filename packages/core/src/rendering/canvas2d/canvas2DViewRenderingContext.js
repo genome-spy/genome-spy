@@ -22,10 +22,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
     /** @type {{view: import("../../view/view.js").default, coords: import("../../view/layout/rectangle.js").default}[]} */
     #viewStack = [];
 
-    /** @type {Set<import("../../view/view.js").default>} */
-    #views = new Set();
-
-    /** @type {WeakMap<import("../../view/unitView.js").default, number>} */
+    /** @type {WeakMap<import("../../view/view.js").default, number | undefined>} */
     #viewOpacities = new WeakMap();
 
     /** @type {(mark: import("../../marks/mark.js").default) => boolean} */
@@ -94,9 +91,9 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     pushView(view, coords) {
-        if (this.paint && !this.#views.has(view)) {
+        if (this.paint && !this.#viewOpacities.has(view)) {
             view.onBeforeRender();
-            this.#views.add(view);
+            this.#viewOpacities.set(view, undefined);
         }
         this.#viewStack.push({ view, coords });
     }
@@ -137,7 +134,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         const sampleFacet = options.sampleFacetRenderingOptions;
         if (sampleFacet && !mark.encoders.facetIndex) {
             this.#profiler?.addCount("canvasSampleFacetOccurrences");
-            if (!isSampleFacetVisible(options)) {
+            if (!isSampleFacetVisible(sampleFacet)) {
                 this.#profiler?.addCount("canvasCulledSampleFacetOccurrences");
                 return;
             }

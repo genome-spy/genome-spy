@@ -24,9 +24,6 @@ export class SampleFacetCoordsResolver {
 
     #sourceHeight = 0;
 
-    /** @type {import("../../view/layout/flexLayout.js").LocSize | undefined} */
-    #locSize;
-
     #location = NaN;
 
     #size = NaN;
@@ -46,13 +43,11 @@ export class SampleFacetCoordsResolver {
         const location = facet.locSize.location;
         const size = facet.locSize.size;
         if (
-            this.#locSize !== facet.locSize ||
             this.#location !== location ||
             this.#size !== size ||
             this.#pixelToUnit !== facet.pixelToUnit
         ) {
             this.#resolveFacet(location, size, facet.pixelToUnit);
-            this.#locSize = facet.locSize;
             this.#location = location;
             this.#size = size;
             this.#pixelToUnit = facet.pixelToUnit;
@@ -81,7 +76,6 @@ export class SampleFacetCoordsResolver {
 
         this.#resolveSource(coords);
         this.#resolveFacet(rectangles[offset + 1], rectangles[offset + 3], 1);
-        this.#locSize = undefined;
         this.#location = NaN;
         this.#size = NaN;
         this.#pixelToUnit = NaN;
@@ -100,7 +94,6 @@ export class SampleFacetCoordsResolver {
         this.#values.width = coords.width;
         this.#sourceHeight = coords.height;
         this.#sourceCoords = coords;
-        this.#locSize = undefined;
         this.#location = NaN;
         this.#size = NaN;
         this.#pixelToUnit = NaN;

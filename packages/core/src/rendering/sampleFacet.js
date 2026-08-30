@@ -1,16 +1,11 @@
 /**
  * Tests the normalized vertical interval of an explicit sample facet. Exact
- * edge contact remains visible, matching the buffered WebGL renderer.
+ * edge contact remains visible.
  *
- * @param {import("../types/rendering.js").RenderingOptions} options
+ * @param {import("../types/rendering.js").SampleFacetRenderingOptions} facet
  * @returns {boolean}
  */
-export function isSampleFacetVisible(options) {
-    const facet = options.sampleFacetRenderingOptions;
-    if (!facet) {
-        return true;
-    }
-
+export function isSampleFacetVisible(facet) {
     const scale = facet.pixelToUnit;
     const position = facet.locSize.location * scale;
     const height = facet.locSize.size * scale;

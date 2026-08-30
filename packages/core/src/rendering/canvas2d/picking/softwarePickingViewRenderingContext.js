@@ -93,7 +93,7 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
         const sampleFacet = options.sampleFacetRenderingOptions;
         if (sampleFacet && !mark.encoders.facetIndex) {
             this.#profiler?.addCount("canvasSampleFacetOccurrences");
-            if (!isSampleFacetVisible(options)) {
+            if (!isSampleFacetVisible(sampleFacet)) {
                 this.#profiler?.addCount("canvasCulledSampleFacetOccurrences");
                 return;
             }

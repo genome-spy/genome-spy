@@ -3,7 +3,6 @@ import { isSampleFacetVisible } from "./sampleFacet.js";
 
 describe("sample facet visibility", () => {
     test.each([
-        ["ordinary rendering", {}, true],
         ["upper edge contact", facet(100, 20), true],
         ["lower edge contact", facet(-20, 20), true],
         ["upper partial overlap", facet(90, 20), true],
@@ -11,17 +10,15 @@ describe("sample facet visibility", () => {
         ["wholly above", facet(101, 20), false],
         ["wholly below", facet(-21, 20), false],
         ["non-finite position", facet(Number.NaN, 20), true],
-    ])("handles %s", (_name, options, expected) => {
-        expect(isSampleFacetVisible(options)).toBe(expected);
+    ])("handles %s", (_name, sampleFacet, expected) => {
+        expect(isSampleFacetVisible(sampleFacet)).toBe(expected);
     });
 });
 
 /** @param {number} location @param {number} size */
 function facet(location, size) {
     return {
-        sampleFacetRenderingOptions: {
-            locSize: { location, size },
-            pixelToUnit: 0.01,
-        },
+        locSize: { location, size },
+        pixelToUnit: 0.01,
     };
 }
