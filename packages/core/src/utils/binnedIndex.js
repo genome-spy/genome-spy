@@ -80,7 +80,7 @@ export function createBinningRangeIndexer(
 
         const value = accessor(datum);
 
-        if (value < lastStart) {
+        if (!Number.isFinite(value) || value < lastStart) {
             unordered = true;
             return;
         }
@@ -123,7 +123,10 @@ export function createBinningRangeIndexer(
         const start = accessor(datum);
         const end = accessor2(datum);
 
-        if (start < lastStart) {
+        if (!Number.isFinite(start) || !Number.isFinite(end)) {
+            unordered = true;
+            return;
+        } else if (start < lastStart) {
             unordered = true;
             return;
         } else if (end < start) {

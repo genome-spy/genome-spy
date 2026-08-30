@@ -2,11 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 import { InternMap } from "internmap";
 
 import PlacementSource from "../../view/layout/placementSource.js";
-import {
-    getPackedMarkData,
-    getPackedMarkRange,
-    queryPackedMarkXIndex,
-} from "./webGpuMarkData.js";
+import { getPackedMarkData, getPackedMarkRange } from "./webGpuMarkData.js";
 
 /** @param {number} value */
 function constantEncoder(value) {
@@ -74,7 +70,7 @@ function createIndexedMark(facetBatches) {
 }
 
 describe("WebGPU mark data", () => {
-    test("indexes nonzero packed facet ranges and caches domain queries", () => {
+    test("indexes nonzero packed facet ranges", () => {
         const firstFacet = ["first"];
         const secondFacet = ["second"];
         const firstData = [{ x: 10 }, { x: 20 }];
@@ -97,21 +93,15 @@ describe("WebGPU mark data", () => {
             { placement: { source, index: 1 } },
             packed
         );
-        const query = vi.spyOn(secondRange.xIndex, "query");
         const target = /** @type {[number, number]} */ ([0, 0]);
 
         expect(secondRange).toMatchObject({
             firstInstance: 2,
             instanceCount: 2,
         });
-        expect(queryPackedMarkXIndex(secondRange, [65, 75], target)).toBe(true);
+        secondRange.xIndex(65, 75, target);
         expect(target[0]).toBeGreaterThanOrEqual(2);
         expect(target[1]).toBeLessThanOrEqual(4);
-        expect(queryPackedMarkXIndex(secondRange, [65, 75], target)).toBe(true);
-        expect(query).toHaveBeenCalledOnce();
-
-        queryPackedMarkXIndex(secondRange, [75, 85], target);
-        expect(query).toHaveBeenCalledTimes(2);
     });
 
     test("rebuilds packed x indexes when encoder identity changes", () => {

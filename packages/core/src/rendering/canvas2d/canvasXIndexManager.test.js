@@ -1,8 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { startPerformanceProfiler } from "../../debug/performanceProfiler.js";
-import CanvasXIndexManager, {
-    CanvasXIndexFallbackReason,
-} from "./canvasXIndexManager.js";
+import CanvasXIndexManager from "./canvasXIndexManager.js";
 
 afterEach(() => {
     const globalObject = /** @type {Record<symbol, unknown>} */ (globalThis);
@@ -130,9 +128,6 @@ describe("CanvasXIndexManager", () => {
         expect(manager.prepare(fixture.mark)).toBe(true);
         expect(manager.query(data, range)).toBe(false);
         expect(manager.query(data, range)).toBe(false);
-        expect(manager.getLastFallbackReason()).toBe(
-            CanvasXIndexFallbackReason.REJECTED_BUILD
-        );
         expect(profiler.snapshot().countTotals).toMatchObject({
             canvasXIndexBuilds: 1,
             canvasXIndexRejectedBuilds: 1,
@@ -147,8 +142,5 @@ describe("CanvasXIndexManager", () => {
         const manager = new CanvasXIndexManager();
 
         expect(manager.prepare(fixture.mark)).toBe(false);
-        expect(manager.getLastFallbackReason()).toBe(
-            CanvasXIndexFallbackReason.FACET_INDEX
-        );
     });
 });

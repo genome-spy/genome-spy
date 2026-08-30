@@ -17,13 +17,6 @@ const mocks = vi.hoisted(() => {
                 instanceCount: 1,
             }))
         ),
-        queryPackedMarkXIndex: vi.fn((range, queryDomain, target) => {
-            if (!range.xIndex) {
-                return false;
-            }
-            range.xIndex.query(queryDomain[0], queryDomain[1], target);
-            return true;
-        }),
         resolveMarkXIndexQuery: vi.fn((_mark, spec, target) => {
             if (!spec) {
                 return false;
@@ -44,7 +37,6 @@ vi.mock("./webGpuMarkAdapter.js", () => ({
 vi.mock("./webGpuMarkData.js", () => ({
     getPackedMarkData: mocks.getPackedMarkData,
     getPackedMarkRange: mocks.getPackedMarkRange,
-    queryPackedMarkXIndex: mocks.queryPackedMarkXIndex,
 }));
 
 vi.mock("../xIndex/markXIndex.js", () => ({
@@ -71,12 +63,10 @@ describe("WebGpuViewRenderingContext", () => {
     test("refreshes visible and picking ranges without mark uploads", () => {
         const domain = [20, 30];
         mocks.packed.xIndexSpec = { domain };
-        const xIndex = {
-            query: vi.fn((start, end, target) => {
-                target[0] = start + 100;
-                target[1] = end + 100;
-            }),
-        };
+        const xIndex = vi.fn((start, end, target) => {
+            target[0] = start + 100;
+            target[1] = end + 100;
+        });
         mocks.getPackedMarkRange.mockReturnValue({
             firstInstance: 100,
             instanceCount: 100,
@@ -121,7 +111,7 @@ describe("WebGpuViewRenderingContext", () => {
             [140, 5],
             [140, 5],
         ]);
-        expect(xIndex.query).toHaveBeenCalledTimes(3);
+        expect(xIndex).toHaveBeenCalledTimes(3);
     });
 
     test("runs live view and opacity state from a retained plan", () => {

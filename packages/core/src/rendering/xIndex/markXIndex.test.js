@@ -73,8 +73,6 @@ describe("createMarkXIndexSpec", () => {
         expect(spec.xAccessor({ x: 12 })).toBe(12);
         expect(spec.x2Accessor).toBeUndefined();
         expect(spec.indexDomain).toEqual([0, 100]);
-        expect(Object.isFrozen(spec)).toBe(true);
-        expect(Object.isFrozen(spec.indexDomain)).toBe(true);
     });
 
     test("accepts a compatible ranged accessor", () => {

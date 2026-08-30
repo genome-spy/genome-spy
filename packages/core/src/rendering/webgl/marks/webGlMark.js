@@ -56,50 +56,11 @@ import {
     isMultiPointSelection,
     isSinglePointSelection,
 } from "../../../selection/selection.js";
+import { getXIndexOffsetBound } from "../../xIndex/markXIndex.js";
 
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
 const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
-
-/**
- * Returns a conservative horizontal pixel bound for indexed rendering.
- * Undefined means that a data-dependent pass-through offset is unbounded and
- * the x index must not be used for culling.
- *
- * @param {Partial<Record<string, import("../../../types/encoder.js").Encoder>>} encoders
- * @returns {number | undefined}
- */
-export function getXIndexOffsetBound(encoders) {
-    let bound = 0;
-
-    for (const channel of ["xOffset", "x2Offset", "dx"]) {
-        const encoder = encoders[channel];
-        if (!encoder) {
-            continue;
-        }
-
-        if (encoder.constant) {
-            const value = encoder(/** @type {any} */ ({}));
-            if (!Number.isFinite(value)) {
-                return undefined;
-            }
-            bound = Math.max(bound, Math.abs(/** @type {number} */ (value)));
-        } else if (encoder.scale && encoder.scale.type !== "null") {
-            const range = encoder.scale.range();
-            if (!range.every((value) => Number.isFinite(value))) {
-                return undefined;
-            }
-            bound = Math.max(
-                bound,
-                ...range.map((value) => Math.abs(/** @type {number} */ (value)))
-            );
-        } else {
-            return undefined;
-        }
-    }
-
-    return bound;
-}
 
 /**
  * @typedef {import("../../../types/rendering.js").ClipOptions} ClipOptions

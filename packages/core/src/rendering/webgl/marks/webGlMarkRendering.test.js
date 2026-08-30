@@ -7,8 +7,8 @@ import { createSelfClipOptions } from "../../../view/renderingContext/clipOption
 import WebGLMark, {
     createLogicalVisibleRect,
     createViewportScope,
-    getXIndexOffsetBound,
 } from "./webGlMark.js";
+import { getXIndexOffsetBound } from "../../xIndex/markXIndex.js";
 
 describe("offset-aware x indexing", () => {
     /**

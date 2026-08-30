@@ -15,11 +15,7 @@ import {
     getWebGpuMarkConfigRevision,
     getWebGpuMarkResourceRevision,
 } from "./webGpuMarkAdapter.js";
-import {
-    getPackedMarkData,
-    getPackedMarkRange,
-    queryPackedMarkXIndex,
-} from "./webGpuMarkData.js";
+import { getPackedMarkData, getPackedMarkRange } from "./webGpuMarkData.js";
 import { resolveMarkXIndexQuery } from "../xIndex/markXIndex.js";
 
 /**
@@ -462,14 +458,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
         let firstInstance = range.firstInstance;
         let instanceCount = range.instanceCount;
-        if (
-            state.xQueryEnabled &&
-            queryPackedMarkXIndex(
-                range,
-                state.xQueryDomain,
+        if (state.xQueryEnabled && range.xIndex) {
+            range.xIndex(
+                state.xQueryDomain[0],
+                state.xQueryDomain[1],
                 state.xIndexedRange
-            )
-        ) {
+            );
             firstInstance = state.xIndexedRange[0];
             instanceCount = state.xIndexedRange[1] - firstInstance;
             countPerformance("webgpuXIndexQueries");

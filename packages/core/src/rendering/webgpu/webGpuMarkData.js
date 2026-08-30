@@ -1,7 +1,6 @@
 import { getMarkData } from "../immediate/markData.js";
 import { countPerformance } from "../../debug/performanceProfiler.js";
-import { createMarkXIndexSpec } from "../xIndex/markXIndex.js";
-import { XRangeIndexBuilder } from "../xIndex/xRangeIndex.js";
+import { buildMarkXIndex, createMarkXIndexSpec } from "../xIndex/markXIndex.js";
 
 /** @type {WeakMap<import("../../marks/mark.js").default, PackedMarkData>} */
 const PACKED_DATA_CACHE = new WeakMap();
@@ -115,24 +114,8 @@ function createPackedRange(spec, data, firstInstance) {
         return range;
     }
 
-    const binCount = Math.min(
-        256,
-        Math.max(1, Math.ceil(Math.sqrt(data.length)))
-    );
-    const builder = new XRangeIndexBuilder(spec.indexDomain, binCount);
-    const x = spec.xAccessor;
-    const x2 = spec.x2Accessor ?? x;
-    for (let i = 0; i < data.length; i++) {
-        const datum = data[i];
-        builder.add(
-            x(datum),
-            x2(datum),
-            firstInstance + i,
-            firstInstance + i + 1
-        );
-    }
     countPerformance("webgpuXIndexBuilds");
-    const xIndex = builder.finish();
+    const xIndex = buildMarkXIndex(spec, data, firstInstance);
     if (!xIndex) {
         countPerformance("webgpuXIndexRejectedBuilds");
         return range;
@@ -140,39 +123,7 @@ function createPackedRange(spec, data, firstInstance) {
     return {
         ...range,
         xIndex,
-        xQueryStart: NaN,
-        xQueryEnd: NaN,
-        xIndexedStart: 0,
-        xIndexedEnd: 0,
     };
-}
-
-/**
- * Queries and caches the indexed subrange of one stable packed range.
- *
- * @param {PackedMarkRange} range
- * @param {[number, number]} queryDomain
- * @param {[number, number]} target
- * @returns {boolean}
- */
-export function queryPackedMarkXIndex(range, queryDomain, target) {
-    if (!range.xIndex) {
-        return false;
-    }
-    if (
-        range.xQueryStart !== queryDomain[0] ||
-        range.xQueryEnd !== queryDomain[1]
-    ) {
-        range.xIndex.query(queryDomain[0], queryDomain[1], target);
-        range.xQueryStart = queryDomain[0];
-        range.xQueryEnd = queryDomain[1];
-        range.xIndexedStart = target[0];
-        range.xIndexedEnd = target[1];
-    } else {
-        target[0] = range.xIndexedStart;
-        target[1] = range.xIndexedEnd;
-    }
-    return true;
 }
 
 /**
@@ -215,9 +166,5 @@ export function getPackedMarkRange(mark, options, packed) {
  * @typedef {object} PackedMarkRange
  * @property {number} firstInstance
  * @property {number} instanceCount
- * @property {import("../xIndex/xRangeIndex.js").XRangeIndex} [xIndex]
- * @property {number} [xQueryStart]
- * @property {number} [xQueryEnd]
- * @property {number} [xIndexedStart]
- * @property {number} [xIndexedEnd]
+ * @property {import("../../utils/binnedIndex.js").Lookup} [xIndex]
  */

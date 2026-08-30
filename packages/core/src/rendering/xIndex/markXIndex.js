@@ -1,6 +1,47 @@
 import { isContinuous } from "vega-scale";
 import { getEncoderDataAccessor } from "../../encoder/encoder.js";
+import { createBinningRangeIndexer } from "../../utils/binnedIndex.js";
 import { resolveMarkProperty } from "../immediate/markEncoding.js";
+
+/**
+ * Returns a conservative horizontal pixel bound for positional offsets.
+ *
+ * @param {Partial<Record<string, import("../../types/encoder.js").Encoder>>} encoders
+ * @returns {number | undefined}
+ */
+export function getXIndexOffsetBound(encoders) {
+    const dx = getEncoderAbsoluteBound(encoders.dx);
+    const x = getEncoderAbsoluteBound(encoders.xOffset);
+    const x2 = getEncoderAbsoluteBound(encoders.x2Offset);
+    return dx === undefined || x === undefined || x2 === undefined
+        ? undefined
+        : dx + Math.max(x, x2);
+}
+
+/**
+ * Builds an index over a stable data batch. Native indices correspond
+ * one-to-one with rows and may start at a nonzero packed-instance offset.
+ *
+ * @param {MarkXIndexSpec} spec
+ * @param {object[]} data
+ * @param {number} [nativeStart]
+ */
+export function buildMarkXIndex(spec, data, nativeStart = 0) {
+    if (!data.length) {
+        return undefined;
+    }
+    const binCount = Math.min(256, Math.ceil(Math.sqrt(data.length)));
+    const indexer = createBinningRangeIndexer(
+        binCount,
+        /** @type {[number, number]} */ (spec.indexDomain),
+        spec.xAccessor,
+        spec.x2Accessor
+    );
+    data.forEach((datum, index) =>
+        indexer(datum, nativeStart + index, nativeStart + index + 1)
+    );
+    return indexer.getIndex();
+}
 
 /**
  * Resolves the immutable data-side contract needed to build an x index.
@@ -55,19 +96,18 @@ export function createMarkXIndexSpec(mark) {
         return undefined;
     }
 
-    return Object.freeze({
+    return {
         xAccessor,
         x2Accessor,
-        xEncoder,
-        x2Encoder,
         scaleResolution,
-        indexDomain: /** @type {readonly [number, number]} */ (
-            Object.freeze([zoomExtent[0], zoomExtent[1]])
-        ),
+        indexDomain: /** @type {[number, number]} */ ([
+            zoomExtent[0],
+            zoomExtent[1],
+        ]),
         domainStartOffset: ["index", "locus"].includes(xEncoder.scale.type)
             ? -1
             : 0,
-    });
+    };
 }
 
 /**
@@ -114,11 +154,7 @@ function resolvePixelEnvelope(mark) {
         /** @type {Partial<Record<string, import("../../types/encoder.js").Encoder>>} */ (
             mark.encoders
         );
-    const offsetBound = sumBounds([
-        getEncoderAbsoluteBound(encoders.xOffset),
-        getEncoderAbsoluteBound(encoders.x2Offset),
-        getEncoderAbsoluteBound(encoders.dx),
-    ]);
+    const offsetBound = getXIndexOffsetBound(encoders);
     if (offsetBound === undefined) {
         return undefined;
     }
@@ -193,16 +229,6 @@ function getEncoderNonNegativeBound(encoder) {
     return bound === undefined ? undefined : Math.max(0, bound);
 }
 
-/** @param {(number | undefined)[]} bounds */
-function sumBounds(bounds) {
-    return bounds.includes(undefined)
-        ? undefined
-        : /** @type {number[]} */ (bounds).reduce(
-              (sum, value) => sum + value,
-              0
-          );
-}
-
 /**
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} property
@@ -215,13 +241,10 @@ function getPropertyNumber(mark, property, fallback) {
 }
 
 /**
- * @typedef {Readonly<{
- *     xAccessor: import("../../types/encoder.js").Accessor<number>,
- *     x2Accessor: import("../../types/encoder.js").Accessor<number> | undefined,
- *     xEncoder: import("../../types/encoder.js").Encoder,
- *     x2Encoder: import("../../types/encoder.js").Encoder | undefined,
- *     scaleResolution: import("../../scales/scaleResolution.js").default,
- *     indexDomain: readonly [number, number],
- *     domainStartOffset: number,
- * }>} MarkXIndexSpec
+ * @typedef {object} MarkXIndexSpec
+ * @property {import("../../types/encoder.js").Accessor<number>} xAccessor
+ * @property {import("../../types/encoder.js").Accessor<number> | undefined} x2Accessor
+ * @property {import("../../scales/scaleResolution.js").default} scaleResolution
+ * @property {[number, number]} indexDomain
+ * @property {number} domainStartOffset
  */
