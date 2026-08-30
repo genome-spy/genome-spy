@@ -7,9 +7,9 @@ import BmFontManager, { fetchBmFontBitmap } from "../../fonts/bmFontManager.js";
 import { SDF_PADDING } from "../../fonts/bmFontMetrics.js";
 import {
     asGpuBufferSource,
-    createTextureFromData,
+    writeTextureData,
 } from "../../utils/webgpuTextureUtils.js";
-import { gpuLabel } from "../../utils/gpuLabel.js";
+import { gpuLabel, RENDERER_GPU_OWNER } from "../../utils/gpuLabel.js";
 import { TEXT_GEOMETRY_WGSL } from "./textGeometry.wgsl.js";
 
 /**
@@ -25,8 +25,9 @@ import { TEXT_GEOMETRY_WGSL } from "./textGeometry.wgsl.js";
  *     (yOffset). This is indexed by the glyph id emitted from layout.
  * - Per-string buffer:
  *   - stringMetrics: width/height per string, used for alignment and baseline.
- * - Texture:
- *   - fontAtlas: msdf atlas texture for the current font (one font per mark).
+ * - Shared font resources:
+ *   - fontAtlas, fontSampler, and glyphMetrics are pooled by exact font
+ *     resource for the renderer lifetime.
  *
  * Channel data remains at logical-string cardinality. Text's generated channel
  * readers map the glyph instance through glyphs[i].stringIndex, so all glyphs
@@ -42,6 +43,7 @@ import { TEXT_GEOMETRY_WGSL } from "./textGeometry.wgsl.js";
  * @typedef {import("../../index.js").TextStringChannelConfigInput} TextStringChannelConfigInput
  * @typedef {ReturnType<BmFontManager["getFont"]>} FontEntry
  * @typedef {number|"thin"|"light"|"regular"|"normal"|"medium"|"bold"|"black"} FontWeightInput
+ * @typedef {{ glyphMetrics: GPUBuffer, atlas: { texture: GPUTexture, sampler: GPUSampler, width: number, height: number, format: GPUTextureFormat }, upload: (image: ImageBitmap | HTMLImageElement) => void, destroy: () => void }} FontGpuResources
  */
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
@@ -738,6 +740,151 @@ function buildConfiguredTextLayout(
     });
 }
 
+/**
+ * @param {string | ImageBitmap} bitmap
+ * @returns {Promise<ImageBitmap | HTMLImageElement | null>}
+ */
+async function loadFontBitmap(bitmap) {
+    if (typeof ImageBitmap !== "undefined" && bitmap instanceof ImageBitmap) {
+        return bitmap;
+    }
+    if (typeof bitmap !== "string") {
+        return null;
+    }
+    try {
+        return await fetchBmFontBitmap(bitmap);
+    } catch {
+        // Fall back to the browser image loader for non-fetchable URLs.
+    }
+    if (typeof Image === "undefined") {
+        return null;
+    }
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error("Could not load font bitmap."));
+        image.src = bitmap;
+    });
+}
+
+/**
+ * @param {import("../../renderer.js").Renderer} renderer
+ * @param {FontEntry} fontEntry
+ * @returns {FontGpuResources}
+ */
+function getFontGpuResources(renderer, fontEntry) {
+    const { metrics, bitmap } = fontEntry;
+    let resourcesByBitmap = renderer._fontResourceCache.get(metrics);
+    const existing = resourcesByBitmap?.get(bitmap);
+    if (existing) {
+        return /** @type {FontGpuResources} */ (existing);
+    }
+    if (!resourcesByBitmap) {
+        resourcesByBitmap = new Map();
+        renderer._fontResourceCache.set(metrics, resourcesByBitmap);
+    }
+
+    const labelOwner = `${RENDERER_GPU_OWNER} font #${renderer._nextFontResourceId++}`;
+    const glyphMetricsData = new Float32Array((metrics.maxCharId + 1) * 8);
+    for (const glyph of metrics.chars) {
+        const base = glyph.id * 8;
+        glyphMetricsData[base] = glyph.x;
+        glyphMetricsData[base + 1] = glyph.y;
+        glyphMetricsData[base + 2] = glyph.width;
+        glyphMetricsData[base + 3] = glyph.height;
+        glyphMetricsData[base + 4] = glyph.yoffset;
+    }
+    const glyphMetrics = renderer.device.createBuffer({
+        label: gpuLabel(labelOwner, "glyph metrics"),
+        size: glyphMetricsData.byteLength,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+
+    let sampler;
+    let texture;
+    try {
+        renderer.device.queue.writeBuffer(glyphMetrics, 0, glyphMetricsData);
+        sampler = renderer.device.createSampler({
+            label: gpuLabel(labelOwner, "atlas sampler"),
+            magFilter: "linear",
+            minFilter: "linear",
+        });
+        texture = renderer.device.createTexture({
+            label: gpuLabel(labelOwner, "atlas"),
+            size: {
+                width: metrics.common.scaleW,
+                height: metrics.common.scaleH,
+                depthOrArrayLayers: 1,
+            },
+            format: "rgba8unorm",
+            usage:
+                GPUTextureUsage.TEXTURE_BINDING |
+                GPUTextureUsage.COPY_DST |
+                GPUTextureUsage.RENDER_ATTACHMENT,
+        });
+        const transparentAtlas = new Uint8Array(
+            metrics.common.scaleW * metrics.common.scaleH * 4
+        );
+        transparentAtlas.fill(255);
+        writeTextureData(renderer.device, texture, {
+            format: "rgba8unorm",
+            width: metrics.common.scaleW,
+            height: metrics.common.scaleH,
+            data: transparentAtlas,
+        });
+    } catch (error) {
+        texture?.destroy();
+        glyphMetrics.destroy();
+        throw error;
+    }
+
+    let destroyed = false;
+    /** @type {FontGpuResources} */
+    const resources = {
+        glyphMetrics,
+        atlas: {
+            texture,
+            sampler,
+            width: metrics.common.scaleW,
+            height: metrics.common.scaleH,
+            format: "rgba8unorm",
+        },
+        upload(image) {
+            if (destroyed || !renderer._isAlive()) {
+                return;
+            }
+            if (
+                image.width !== metrics.common.scaleW ||
+                image.height !== metrics.common.scaleH
+            ) {
+                console.warn(
+                    `Ignoring ${image.width}x${image.height} font bitmap; expected ${metrics.common.scaleW}x${metrics.common.scaleH}.`
+                );
+                return;
+            }
+            renderer.device.queue.copyExternalImageToTexture(
+                { source: image },
+                { texture },
+                { width: image.width, height: image.height }
+            );
+            renderer._invalidate();
+        },
+        destroy() {
+            if (destroyed) {
+                return;
+            }
+            destroyed = true;
+            glyphMetrics.destroy();
+            texture.destroy();
+        },
+    };
+    resourcesByBitmap.set(bitmap, resources);
+    void loadFontBitmap(bitmap)
+        .then((image) => image && resources.upload(image))
+        .catch(() => {});
+    return resources;
+}
+
 export default class TextProgram extends BaseProgram {
     get propertySlotDefinitions() {
         return {
@@ -997,54 +1144,11 @@ export default class TextProgram extends BaseProgram {
         this._sdfNumeratorBase = metrics.common.base * 0.35;
         this._updateTextLayoutBuffers(layout);
 
-        const glyphMetricsLength = metrics.maxCharId + 1;
-        const glyphMetricsData = new Float32Array(glyphMetricsLength * 8);
-        for (const glyph of metrics.chars) {
-            const base = glyph.id * 8;
-            glyphMetricsData[base] = glyph.x;
-            glyphMetricsData[base + 1] = glyph.y;
-            glyphMetricsData[base + 2] = glyph.width;
-            glyphMetricsData[base + 3] = glyph.height;
-            glyphMetricsData[base + 4] = glyph.yoffset;
-            glyphMetricsData[base + 5] = 0;
-            glyphMetricsData[base + 6] = 0;
-            glyphMetricsData[base + 7] = 0;
-        }
-        const glyphMetricsBuffer = this.device.createBuffer({
-            label: gpuLabel(this.label, "glyph metrics"),
-            size: glyphMetricsData.byteLength,
-            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-        });
-        this.device.queue.writeBuffer(glyphMetricsBuffer, 0, glyphMetricsData);
-        this._extraBuffers.set("glyphMetrics", glyphMetricsBuffer);
-
-        const sampler = this.device.createSampler({
-            label: gpuLabel(this.label, "font atlas sampler"),
-            magFilter: "linear",
-            minFilter: "linear",
-        });
-
-        const placeholder = createTextureFromData(
-            this.device,
-            {
-                format: "rgba8unorm",
-                width: 1,
-                height: 1,
-                data: new Uint8Array([255, 255, 255, 255]),
-            },
-            undefined,
-            gpuLabel(this.label, "font atlas placeholder")
-        );
-
-        this._extraTextures.set("fontAtlas", {
-            texture: placeholder,
-            sampler,
-            width: 1,
-            height: 1,
-            format: "rgba8unorm",
-        });
-
-        void this._uploadFontAtlas(fontEntry.bitmap);
+        const resources = getFontGpuResources(this.renderer, fontEntry);
+        this._extraBuffers.set("glyphMetrics", resources.glyphMetrics);
+        this._extraTextures.set("fontAtlas", resources.atlas);
+        this._borrowedExtraBuffers.add("glyphMetrics");
+        this._borrowedExtraTextures.add("fontAtlas");
     }
 
     /**
@@ -1104,89 +1208,6 @@ export default class TextProgram extends BaseProgram {
             );
         }
         return changed;
-    }
-
-    /**
-     * @param {string | ImageBitmap} bitmap
-     * @returns {Promise<void>}
-     */
-    async _uploadFontAtlas(bitmap) {
-        if (
-            typeof ImageBitmap !== "undefined" &&
-            bitmap instanceof ImageBitmap
-        ) {
-            this._setAtlasFromBitmap(bitmap);
-            return;
-        }
-        if (typeof bitmap !== "string") {
-            return;
-        }
-
-        try {
-            this._setAtlasFromBitmap(await fetchBmFontBitmap(bitmap));
-            return;
-        } catch {
-            // Fall back to the browser image loader for environments without
-            // fetch/CORS support for the atlas URL.
-        }
-        if (typeof Image === "undefined") {
-            return;
-        }
-        const image = new Image();
-        image.src = bitmap;
-        const onReady = () => {
-            this._setAtlasFromBitmap(image);
-        };
-        if (image.decode) {
-            image
-                .decode()
-                .then(onReady)
-                .catch(() => {
-                    image.onload = onReady;
-                });
-        } else {
-            image.onload = onReady;
-        }
-    }
-
-    /**
-     * @param {ImageBitmap | HTMLImageElement} image
-     * @returns {void}
-     */
-    _setAtlasFromBitmap(image) {
-        if (this._destroyed || !this.renderer._isAlive()) {
-            return;
-        }
-        const texture = this.device.createTexture({
-            label: gpuLabel(this.label, "font atlas"),
-            size: {
-                width: image.width,
-                height: image.height,
-                depthOrArrayLayers: 1,
-            },
-            format: "rgba8unorm",
-            usage:
-                GPUTextureUsage.TEXTURE_BINDING |
-                GPUTextureUsage.COPY_DST |
-                GPUTextureUsage.RENDER_ATTACHMENT,
-        });
-        this.device.queue.copyExternalImageToTexture(
-            { source: image },
-            { texture },
-            { width: image.width, height: image.height }
-        );
-        const entry = this._extraTextures.get("fontAtlas");
-        if (entry) {
-            entry.texture.destroy();
-            entry.texture = texture;
-            entry.width = image.width;
-            entry.height = image.height;
-            entry.format = "rgba8unorm";
-        }
-        if (this._bindGroupLayout) {
-            this._rebuildBindGroup();
-        }
-        this.renderer._invalidate();
     }
 
     /**

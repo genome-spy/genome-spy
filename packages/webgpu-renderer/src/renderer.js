@@ -1,4 +1,5 @@
 import { gpuLabel, RENDERER_GPU_OWNER } from "./utils/gpuLabel.js";
+import { ProgramTemplateCache } from "./marks/programs/internal/programTemplateCache.js";
 
 /**
  * Renderer-level error for unsupported environments or invalid operations.
@@ -285,6 +286,10 @@ export class Renderer {
         this._marks = new Map();
         /** @type {Map<number, PlacementSet>} */
         this._placementSets = new Map();
+        this._programTemplateCache = new ProgramTemplateCache(addCount);
+        /** @type {Map<object, Map<unknown, { destroy: () => void }>>} */
+        this._fontResourceCache = new Map();
+        this._nextFontResourceId = 1;
         /** @type {NormalizedDraw[] | null} */
         this._renderFrame = null;
         /** @type {NormalizedDraw[] | null} */
@@ -1047,6 +1052,12 @@ export class Renderer {
             set.destroy();
         }
         this._placementSets?.clear();
+        for (const resourcesByBitmap of this._fontResourceCache.values()) {
+            for (const resources of resourcesByBitmap.values()) {
+                resources.destroy();
+            }
+        }
+        this._fontResourceCache.clear();
         this._renderFrame = null;
         this._globalUniformBuffer.destroy();
         this._pickTexture?.destroy();
@@ -1112,6 +1123,9 @@ function instrumentGpuDevice(device) {
 
     wrapMethod(device, "createBuffer", () => addCount("gpuBuffersCreated"));
     wrapMethod(device, "createTexture", () => addCount("gpuTexturesCreated"));
+    wrapMethod(device, "createShaderModule", () =>
+        addCount("shaderModulesCreated")
+    );
     wrapMethod(device, "createBindGroup", () => addCount("bindGroupsCreated"));
     wrapMethod(device, "createRenderPipeline", () =>
         addCount("pipelinesCreated")

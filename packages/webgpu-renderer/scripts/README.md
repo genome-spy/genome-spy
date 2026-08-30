@@ -9,6 +9,7 @@ the repository root.
 ```sh
 npm run test:tsc
 npm run test:bundle
+npm run benchmark:resources -- --headless
 npm run lint
 npm run build
 ```
@@ -23,6 +24,9 @@ To run the checks from the repository root:
 ```sh
 npm -w @genome-spy/webgpu-renderer run build
 ```
+
+The [resource-sharing benchmark](./resourceSharingBenchmark/README.md) has its
+own runner, methodology, and checked-in baseline.
 
 ## Bundle verification
 

@@ -194,11 +194,18 @@ browser validation messages and GPU captures:
 renderer.createMark(pointMark, config, { label: "overview/variants [point]" });
 ```
 
-Mark resources append a stable role using the format `<owner>: <role>`, such
-as `overview/variants [point]: render pipeline`. If no label is supplied, the
-renderer uses `<definition type> #<mark id>`. Renderer-owned resources use the
-`webgpu-renderer` owner. Labels are snapshots taken when resources are created;
-changing a host-side name later does not rename existing GPU objects.
+Mark-owned resources append a stable role using the format `<owner>: <role>`,
+such as `overview/variants [point]: uniforms`. If no label is supplied, the
+renderer uses `<definition type> #<mark id>`. Equivalent marks share immutable
+shader modules, layouts, and pipelines. Their renderer-owned labels identify
+the first borrower using
+`webgpu-renderer program template #<id> (first used by <owner>)`. Resource
+debugging also lists every current or former mark label that borrowed the
+template. Mutable buffers and bind groups remain mark-owned. Labels are
+snapshots taken when resources are created; changing a host-side name later
+does not rename existing GPU objects.
+The shared picking pipeline is created only when a template is first used in a
+picking draw.
 
 ### Ordered draws and picking
 
@@ -480,11 +487,13 @@ const labels = renderer.createMark(textMark, {
 ```
 
 Text series and draw ranges use logical strings. The retained text program
-builds private glyph geometry, maps glyphs back to logical series, and keeps
-the pipeline and atlas when `series.replace()` changes the strings. Numeric
-text channels contain one value per logical string; scalar text replacement
-requires an explicit count. Empty strings are valid, and shared logical source
-arrays remain shared.
+builds private glyph geometry and maps glyphs back to logical series. Programs
+using the same exact font resource share one renderer-lifetime atlas, sampler,
+and glyph-metrics buffer; per-string geometry and bind groups remain mark-owned.
+`series.replace()` changes only the mark-owned string resources. Numeric text
+channels contain one value per logical string; scalar text replacement requires
+an explicit count. Empty strings are valid, and shared logical source arrays
+remain shared.
 
 The renderer accepts host-provided font resources at the GenomeSpy Core
 integration boundary. Standalone users do not need to construct or expose the

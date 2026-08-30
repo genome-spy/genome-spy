@@ -268,6 +268,12 @@ export default class BaseProgram {
         /** @type {Map<string, GPUBuffer>} */
         this._extraBuffers = new Map();
 
+        /** @type {Set<string>} */
+        this._borrowedExtraTextures = new Set();
+
+        /** @type {Set<string>} */
+        this._borrowedExtraBuffers = new Set();
+
         this._slotUpdateDepth = 0;
         this._slotUniformsDirty = false;
         this._slotBindingsDirty = false;
@@ -303,27 +309,34 @@ export default class BaseProgram {
             ...this._selectionResources.getExtraResourceDefs(),
             ...this.getExtraResourceDefs(),
         ];
-        const { bindGroupLayout, pipeline, pickPipeline, resourceLayout } =
-            buildPipelines({
-                device: this.device,
-                globalBindGroupLayout: renderer._globalBindGroupLayout,
-                format: renderer.format,
-                pickFormat: renderer.pickFormat,
-                compiledChannels: this._compiledChannels,
-                uniformLayout: this._uniformLayout,
-                shaderBody: this.shaderBody,
-                packedSeriesLayout:
-                    this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
-                selectionDefs: this._selectionResources.selectionDefs,
-                visibleWhen: this._visibleWhen,
-                scalarSlots: this._scalarSlots,
-                extraResources,
-                primitiveTopology: this.primitiveTopology,
-                placementBindGroupLayout: renderer._placementBindGroupLayout,
-                placementIndex: this._placementIndex,
-                label: this.label,
-            });
+        const {
+            bindGroupLayout,
+            pipeline,
+            getPickPipeline,
+            diagnostics,
+            resourceLayout,
+        } = buildPipelines({
+            device: this.device,
+            cache: renderer._programTemplateCache,
+            globalBindGroupLayout: renderer._globalBindGroupLayout,
+            format: renderer.format,
+            pickFormat: renderer.pickFormat,
+            compiledChannels: this._compiledChannels,
+            uniformLayout: this._uniformLayout,
+            shaderBody: this.shaderBody,
+            packedSeriesLayout:
+                this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
+            selectionDefs: this._selectionResources.selectionDefs,
+            visibleWhen: this._visibleWhen,
+            scalarSlots: this._scalarSlots,
+            extraResources,
+            primitiveTopology: this.primitiveTopology,
+            placementBindGroupLayout: renderer._placementBindGroupLayout,
+            placementIndex: this._placementIndex,
+            label: this.label,
+        });
         this._resourceLayout = resourceLayout;
+        this._programTemplateDiagnostics = diagnostics;
         this._uniformBuffer = this.device.createBuffer({
             label: gpuLabel(this.label, "uniforms"),
             size: this._uniformBufferState?.byteLength ?? 0,
@@ -344,7 +357,7 @@ export default class BaseProgram {
         this._buildSlotHandles();
         this._bindGroupLayout = bindGroupLayout;
         this._pipeline = pipeline;
-        this._pickPipeline = pickPipeline;
+        this._getPickPipeline = getPickPipeline;
 
         // Initialize any series-backed channels.
         this.updateSeries(
@@ -693,6 +706,14 @@ export default class BaseProgram {
         }
 
         console.debug(`[webgpu-renderer] ${label} resources`, {
+            programTemplate: {
+                id: this._programTemplateDiagnostics.id,
+                firstBorrowerLabel:
+                    this._programTemplateDiagnostics.firstBorrowerLabel,
+                borrowerLabels: Array.from(
+                    this._programTemplateDiagnostics.borrowerLabels
+                ),
+            },
             uniforms: this._uniformBufferState?.byteLength ?? 0,
             storageBuffers: storage,
             textures,
@@ -1170,7 +1191,7 @@ export default class BaseProgram {
      * @returns {void}
      */
     drawPick(pass, options) {
-        pass.setPipeline(this._pickPipeline);
+        pass.setPipeline(this._getPickPipeline());
         pass.setBindGroup(1, this._bindGroup);
         if (options.placement) {
             pass.setBindGroup(2, options.placement.bindGroup);
@@ -1186,12 +1207,16 @@ export default class BaseProgram {
         this._uniformBuffer.destroy();
         this._seriesBuffers.destroy();
         this._scaleResources.destroy();
-        for (const buffer of this._extraBuffers.values()) {
-            buffer.destroy();
+        for (const [name, buffer] of this._extraBuffers) {
+            if (!this._borrowedExtraBuffers.has(name)) {
+                buffer.destroy();
+            }
         }
         this._extraBuffers.clear();
-        for (const { texture } of this._extraTextures.values()) {
-            texture.destroy();
+        for (const [name, { texture }] of this._extraTextures) {
+            if (!this._borrowedExtraTextures.has(name)) {
+                texture.destroy();
+            }
         }
         this._extraTextures.clear();
     }
