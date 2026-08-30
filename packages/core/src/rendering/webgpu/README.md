@@ -29,7 +29,9 @@ for the backend-neutral lifecycle and the
    `LayoutResult`. Existing Core scale and parameter notifications advance
    small per-mark revisions so unrelated marks bypass slot scanning.
 4. `webGpuMarkData.js` owns collector/topology packing and occurrence ranges.
-   Its cache is independent of renderer configuration and resources.
+   Its cache is independent of renderer configuration and resources. Eligible
+   sorted point and rectangle ranges also retain a binned x index over their
+   packed instance spans.
 5. `webGpuMarkAdapter.js` translates Core encoders, resolved scales,
    selections, properties, and typed series into a renderer mark definition and
    configuration. The plan caches this shape until packed data or an
@@ -37,8 +39,10 @@ for the backend-neutral lifecycle and the
    and selection leaves stay live. Unsupported behavior fails here with a
    contextual error.
 6. The frame plan owns one stable plain draw command per occurrence.
-   `WebGpuSurface` attaches retained mark and placement handles, appends those
-   commands in order, and submits the frame without rebuilding draw envelopes.
+   Before submission, the adapter resolves the live x-domain envelope and
+   refreshes `firstInstance` and `instanceCount` in place. `WebGpuSurface`
+   attaches retained mark and placement handles, appends those commands in
+   order, and submits the frame without rebuilding draw envelopes.
 
 Normal and picking passes share the same frame plan, ranges, placements, and
 order. A completed picking frame is reused for pointer reads until layout,
@@ -59,6 +63,10 @@ to the state that changed. Preserve these invariants when refactoring it:
 - Existing scale, parameter, and selection notifications provide per-mark dirty
   revisions. Keep that dependency tracking in Core marks rather than adding a
   parallel graph solely for this adapter.
+- X-domain navigation queries stable packed-range indexes without repacking
+  series or uploading buffers. Visible and picking passes use the same
+  conservative candidate envelope; unsupported or uncertain geometry submits
+  the complete packed range.
 - Navigation updates scale domains. Closeup transitions and scrolling may also
   replace non-uniform placement geometry. Keep those application semantics out
   of the generic renderer and continue using `PlacementSource` as the boundary.

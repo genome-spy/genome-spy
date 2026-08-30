@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
-    const packed = { data: [{}] };
+    const packed = /** @type {any} */ ({ data: [{}] });
     return {
         packed,
         createWebGpuMarkConfig: vi.fn(() => ({
@@ -11,10 +11,27 @@ const mocks = vi.hoisted(() => {
         getWebGpuMarkConfigRevision: vi.fn(() => 0),
         getWebGpuMarkResourceRevision: vi.fn(() => 0),
         getPackedMarkData: vi.fn(() => packed),
-        getPackedMarkRange: vi.fn(() => ({
-            firstInstance: 0,
-            instanceCount: 1,
-        })),
+        getPackedMarkRange: /** @type {any} */ (
+            vi.fn(() => ({
+                firstInstance: 0,
+                instanceCount: 1,
+            }))
+        ),
+        queryPackedMarkXIndex: vi.fn((range, queryDomain, target) => {
+            if (!range.xIndex) {
+                return false;
+            }
+            range.xIndex.query(queryDomain[0], queryDomain[1], target);
+            return true;
+        }),
+        resolveMarkXIndexQuery: vi.fn((_mark, spec, target) => {
+            if (!spec) {
+                return false;
+            }
+            target[0] = spec.domain[0];
+            target[1] = spec.domain[1];
+            return true;
+        }),
     };
 });
 
@@ -27,6 +44,11 @@ vi.mock("./webGpuMarkAdapter.js", () => ({
 vi.mock("./webGpuMarkData.js", () => ({
     getPackedMarkData: mocks.getPackedMarkData,
     getPackedMarkRange: mocks.getPackedMarkRange,
+    queryPackedMarkXIndex: mocks.queryPackedMarkXIndex,
+}));
+
+vi.mock("../xIndex/markXIndex.js", () => ({
+    resolveMarkXIndexQuery: mocks.resolveMarkXIndexQuery,
 }));
 
 import Rectangle from "../../view/layout/rectangle.js";
@@ -36,11 +58,68 @@ import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 beforeEach(() => {
     vi.clearAllMocks();
     mocks.getPackedMarkData.mockReturnValue(mocks.packed);
+    mocks.getPackedMarkRange.mockReturnValue({
+        firstInstance: 0,
+        instanceCount: 1,
+    });
     mocks.getWebGpuMarkConfigRevision.mockReturnValue(0);
     mocks.getWebGpuMarkResourceRevision.mockReturnValue(0);
+    delete mocks.packed.xIndexSpec;
 });
 
 describe("WebGpuViewRenderingContext", () => {
+    test("narrows stable draws for visible and picking passes", () => {
+        const domain = [20, 30];
+        mocks.packed.xIndexSpec = { domain };
+        const xIndex = {
+            query: vi.fn((start, end, target) => {
+                target[0] = start + 100;
+                target[1] = end + 100;
+            }),
+        };
+        mocks.getPackedMarkRange.mockReturnValue({
+            firstInstance: 100,
+            instanceCount: 100,
+            xIndex,
+        });
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            updateMark: vi.fn(),
+            drawMark: vi.fn(),
+        };
+        const context = new WebGpuViewRenderingContext({
+            surface: /** @type {any} */ (surface),
+        });
+        const view = { onBeforeRender: vi.fn() };
+        const mark = {
+            encoders: {},
+            isPickingParticipant: () => true,
+            properties: {},
+            unitView: { getEffectiveOpacity: () => 1 },
+        };
+
+        context.pushView(/** @type {any} */ (view), Rectangle.ZERO);
+        context.renderMark(/** @type {any} */ (mark), {});
+        context.popView(/** @type {any} */ (view));
+        context.finish();
+        context.render({ picking: false });
+        context.render({ picking: true });
+
+        expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledOnce();
+        expect(surface.updateMark).toHaveBeenCalledOnce();
+        expect(surface.drawMark).toHaveBeenCalledTimes(2);
+        expect(surface.drawMark.mock.calls[0][1]).toMatchObject({
+            firstInstance: 120,
+            instanceCount: 10,
+        });
+        expect(surface.drawMark.mock.calls[1][1]).toMatchObject({
+            firstInstance: 120,
+            instanceCount: 10,
+        });
+        expect(xIndex.query).toHaveBeenCalledTimes(2);
+    });
+
     test("runs live view and opacity state from a retained plan", () => {
         let opacity = 0;
         const surface = {
