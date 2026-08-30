@@ -98,15 +98,6 @@ describe("solveDisplacement", () => {
         expect(withEmpty.y.slice(1)).toEqual(baseline.y);
     });
 
-    test("empty collision rectangles retain their previous placements", () => {
-        expect(
-            solveDisplacement([100], [100], [0], [10], [0, 10], [0, 10], {
-                x: [12],
-                y: [-3],
-            })
-        ).toEqual({ x: [12], y: [-3] });
-    });
-
     test("clamps edge items into feasible preferred extents", () => {
         const displacements = solveDisplacement(
             [-10, 5, 20],
@@ -178,7 +169,6 @@ describe("solveDisplacement", () => {
                 undefined,
                 undefined,
                 undefined,
-                undefined,
                 output
             )
         ).toBe(output);
@@ -193,7 +183,6 @@ describe("solveDisplacement", () => {
             [10],
             undefined,
             undefined,
-            undefined,
             { x: [0], y: [0], width: [4], height: [4] }
         );
 
@@ -202,16 +191,12 @@ describe("solveDisplacement", () => {
 
     test("ignores obstacles with an empty collision dimension", () => {
         expect(
-            solveDisplacement(
-                [0],
-                [0],
-                [10],
-                [10],
-                undefined,
-                undefined,
-                undefined,
-                { x: [0], y: [0], width: [0], height: [4] }
-            )
+            solveDisplacement([0], [0], [10], [10], undefined, undefined, {
+                x: [0],
+                y: [0],
+                width: [0],
+                height: [4],
+            })
         ).toEqual({ x: [0], y: [0] });
     });
 
@@ -231,7 +216,6 @@ describe("solveDisplacement", () => {
             yPositions,
             widths,
             heights,
-            undefined,
             undefined,
             undefined,
             obstacles
@@ -254,60 +238,6 @@ describe("solveDisplacement", () => {
                 ).toBe(false);
             }
         }
-    });
-
-    test("keeps valid previous placements instead of snapping to the origin", () => {
-        const displacements = solveDisplacement(
-            [0, 20],
-            [0, 0],
-            [10, 10],
-            [10, 10],
-            undefined,
-            undefined,
-            { x: [0, 0], y: [0, -10] }
-        );
-
-        expect(displacements).toEqual({ x: [0, 0], y: [0, -10] });
-        expectNoOverlap([0, 20], [0, 0], [10, 10], [10, 10], displacements);
-    });
-
-    test("projects an invalid previous placement to the nearest collision edge", () => {
-        const displacements = solveDisplacement(
-            [0, 0],
-            [-20, 0],
-            [10, 10],
-            [10, 10],
-            undefined,
-            undefined,
-            { x: [0, 0], y: [0, -20] }
-        );
-
-        expect(displacements).toEqual({ x: [0, -10], y: [0, -20] });
-        expectNoOverlap([0, 0], [-20, 0], [10, 10], [10, 10], displacements);
-    });
-
-    test("clamps previous placements to changed extents", () => {
-        expect(
-            solveDisplacement([0], [0], [10], [10], [-20, 20], [-20, 20], {
-                x: [18],
-                y: [-18],
-            })
-        ).toEqual({ x: [15], y: [-15] });
-    });
-
-    test("rejects invalid previous placement input", () => {
-        expect(() =>
-            solveDisplacement([0], [0], [1], [1], undefined, undefined, {
-                x: [],
-                y: [],
-            })
-        ).toThrow("previous placements");
-        expect(() =>
-            solveDisplacement([0], [0], [1], [1], undefined, undefined, {
-                x: [0],
-                y: [undefined],
-            })
-        ).toThrow("finite offset pairs");
     });
 
     test("rejects placements outside the finite numeric range", () => {
