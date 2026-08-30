@@ -292,6 +292,20 @@ export function solveDisplacement(
             );
         }
 
+        if (width == 0 || height == 0) {
+            xDisplacements[i] = hasPrevious ? previousDx : 0;
+            yDisplacements[i] = hasPrevious ? previousDy : 0;
+            if (
+                !hasFiniteBounds(x + xDisplacements[i], width) ||
+                !hasFiniteBounds(y + yDisplacements[i], height)
+            ) {
+                throw new Error(
+                    "displace2d placement exceeded the finite numeric range."
+                );
+            }
+            continue;
+        }
+
         if (hasPrevious) {
             const previousX = clampToExtent(x + previousDx, width, xExtent);
             const previousY = clampToExtent(y + previousDy, height, yExtent);
