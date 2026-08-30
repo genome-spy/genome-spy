@@ -1,8 +1,9 @@
 # WebGPU resource-sharing benchmark baseline
 
-Recorded on 2026-08-30 in headed Chrome 151 on Apple Metal 3. The benchmark
-used a fresh Chrome/GPU process for every cell and three repetitions. Raw JSON
-is generated under the ignored repository `output/` directory.
+Reference run recorded on 2026-08-30 in headed Chrome 151 on Apple Metal 3.
+The benchmark used a fresh Chrome/GPU process for every cell and three
+repetitions. Raw JSON is generated under the ignored repository `output/`
+directory.
 
 The shared mode is the normal renderer. The unshared control bypasses the
 private program-template and immutable-font-resource caches without adding a

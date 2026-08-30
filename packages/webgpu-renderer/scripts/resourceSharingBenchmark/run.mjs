@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const packageRoot = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
-    ".."
+    "../.."
 );
 const workspaceRoot = path.resolve(packageRoot, "../..");
 const defaultOrigin = "http://127.0.0.1:4180";
@@ -18,7 +18,7 @@ const defaultOutput = path.join(
 );
 
 const helpText = `Usage:
-  node scripts/runResourceSharingBenchmark.mjs [options]
+  node scripts/resourceSharingBenchmark/run.mjs [options]
 
 Options:
   --count NUMBER        Marks of each type (default: 500).

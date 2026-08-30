@@ -1,10 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import {
-    parseArgs,
-    summarize,
-    summarizeSamples,
-} from "./runResourceSharingBenchmark.mjs";
+import { parseArgs, summarize, summarizeSamples } from "./run.mjs";
 
 describe("resource-sharing benchmark", () => {
     test("uses the pathological 500 + 500 mark default", () => {
