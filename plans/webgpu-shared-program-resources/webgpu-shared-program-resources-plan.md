@@ -1,6 +1,6 @@
 # WebGPU shared program resources plan
 
-Status: Proposed
+Status: In progress
 
 ## Context
 
@@ -221,17 +221,27 @@ picking pipeline per renderer.
 
 ### Work
 
-- [ ] Add a small renderer-owned program-template cache.
-- [ ] Refactor `pipelineBuilder.js` to generate the existing WGSL/resource
+- [x] Add a small renderer-owned program-template cache.
+- [x] Refactor `pipelineBuilder.js` to generate the existing WGSL/resource
       shape, construct the focused key, and create objects only on a miss.
-- [ ] Exclude labels, mark IDs, data, uniforms, and GPU buffer identities from
+- [x] Exclude labels, mark IDs, data, uniforms, and GPU buffer identities from
       the key.
-- [ ] Freeze or shallow-copy shared `resourceLayout` metadata.
-- [ ] Give shared objects renderer-template labels while retaining per-mark
+- [x] Freeze or shallow-copy shared `resourceLayout` metadata.
+- [x] Give shared objects renderer-template labels while retaining per-mark
       labels on mutable resources.
-- [ ] Add shader-module and cache hit/miss counters beside the existing pipeline
+- [x] Add shader-module and cache hit/miss counters beside the existing pipeline
       counter, only when debug profiling is enabled.
-- [ ] Record focused production/test line counts and resource counts.
+- [x] Record focused production/test line counts and resource counts.
+
+Implementation record:
+
+- Production code grew by 85 lines across the pipeline builder, renderer, base
+  program, and new cache helper; focused tests/support grew by 138 lines and
+  renderer documentation by 2 lines.
+- Two equivalent builds now create one bind-group layout, one pipeline layout,
+  one shader module, and two render pipelines, with one cache miss and one hit.
+  Previously they created two layouts of each kind, two shader modules, and
+  four render pipelines.
 
 ### Affected areas and downstream consumers
 

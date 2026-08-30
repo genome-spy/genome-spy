@@ -306,6 +306,7 @@ export default class BaseProgram {
         const { bindGroupLayout, pipeline, pickPipeline, resourceLayout } =
             buildPipelines({
                 device: this.device,
+                cache: renderer._programTemplateCache,
                 globalBindGroupLayout: renderer._globalBindGroupLayout,
                 format: renderer.format,
                 pickFormat: renderer.pickFormat,
@@ -321,7 +322,6 @@ export default class BaseProgram {
                 primitiveTopology: this.primitiveTopology,
                 placementBindGroupLayout: renderer._placementBindGroupLayout,
                 placementIndex: this._placementIndex,
-                label: this.label,
             });
         this._resourceLayout = resourceLayout;
         this._uniformBuffer = this.device.createBuffer({

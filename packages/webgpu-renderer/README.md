@@ -194,10 +194,12 @@ browser validation messages and GPU captures:
 renderer.createMark(pointMark, config, { label: "overview/variants [point]" });
 ```
 
-Mark resources append a stable role using the format `<owner>: <role>`, such
-as `overview/variants [point]: render pipeline`. If no label is supplied, the
-renderer uses `<definition type> #<mark id>`. Renderer-owned resources use the
-`webgpu-renderer` owner. Labels are snapshots taken when resources are created;
+Mark-owned resources append a stable role using the format `<owner>: <role>`,
+such as `overview/variants [point]: uniforms`. If no label is supplied, the
+renderer uses `<definition type> #<mark id>`. Equivalent marks share immutable
+shader modules, layouts, and pipelines, which use a renderer-owned
+`webgpu-renderer program template #<id>` label. Mutable buffers and bind groups
+remain mark-owned. Labels are snapshots taken when resources are created;
 changing a host-side name later does not rename existing GPU objects.
 
 ### Ordered draws and picking

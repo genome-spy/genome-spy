@@ -1,3 +1,5 @@
+import { ProgramTemplateCache } from "../marks/programs/internal/programTemplateCache.js";
+
 /**
  * @returns {import("../renderer.js").Renderer}
  */
@@ -26,8 +28,10 @@ export function createMockRenderer() {
             device,
             format: "rgba8unorm",
             pickFormat: "rgba8unorm",
+            _programTemplateCache: new ProgramTemplateCache(() => {}),
             _globalBindGroupLayout: {},
             _globalBindGroup: {},
+            _placementBindGroupLayout: {},
             _globals: { width: 1, height: 1, dpr: 1 },
             markPickingDirty: () => {},
             _invalidate: () => {},

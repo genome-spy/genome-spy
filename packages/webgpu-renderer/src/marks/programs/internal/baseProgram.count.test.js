@@ -63,6 +63,27 @@ struct VSOut {
 }
 
 describe("BaseProgram count inference", () => {
+    it("shares templates while keeping mutable mark resources independent", () => {
+        const renderer = createMockRenderer();
+        const config = {
+            channels: {
+                x: {
+                    data: new Float32Array([0, 1]),
+                    type: /** @type {const} */ ("f32"),
+                },
+            },
+        };
+
+        const first = new TestSeriesProgram(renderer, config);
+        const second = new TestSeriesProgram(renderer, config);
+
+        expect(second._pipeline).toBe(first._pipeline);
+        expect(second._pickPipeline).toBe(first._pickPipeline);
+        expect(second._bindGroupLayout).toBe(first._bindGroupLayout);
+        expect(second._uniformBuffer).not.toBe(first._uniformBuffer);
+        expect(second._bindGroup).not.toBe(first._bindGroup);
+    });
+
     it("infers count from series buffers when omitted", () => {
         const renderer = createMockRenderer();
         const program = new TestSeriesProgram(renderer, {

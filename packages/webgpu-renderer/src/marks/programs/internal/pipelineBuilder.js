@@ -1,9 +1,10 @@
 import { buildMarkShader } from "../../shaders/markShaderBuilder.js";
-import { gpuLabel } from "../../../utils/gpuLabel.js";
+import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
 
 /**
  * @typedef {object} PipelineBuildParams
  * @property {GPUDevice} device
+ * @property {import("./programTemplateCache.js").ProgramTemplateCache} cache
  * @property {GPUBindGroupLayout} globalBindGroupLayout
  * @property {GPUTextureFormat} format
  * @property {GPUTextureFormat} pickFormat
@@ -18,14 +19,38 @@ import { gpuLabel } from "../../../utils/gpuLabel.js";
  * @property {GPUPrimitiveTopology} [primitiveTopology]
  * @property {GPUBindGroupLayout} [placementBindGroupLayout]
  * @property {import("../../../index.d.ts").MarkConfig["placementIndex"]} [placementIndex]
- * @property {string} [label]
  *
- * @typedef {object} PipelineBuildResult
+ * @typedef {object} ProgramTemplate
  * @property {GPUBindGroupLayout} bindGroupLayout
  * @property {GPURenderPipeline} pipeline
  * @property {GPURenderPipeline} pickPipeline
- * @property {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} resourceLayout
+ *
+ * @typedef {ProgramTemplate & { resourceLayout: { name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[] }} PipelineBuildResult
  */
+
+/**
+ * @param {GPUBindGroupLayoutEntry[]} resourceBindings
+ * @param {GPUTextureFormat} format
+ * @param {GPUTextureFormat} pickFormat
+ * @param {GPUPrimitiveTopology} primitiveTopology
+ * @param {boolean} usesPlacementLayout
+ * @returns {string}
+ */
+function createDescriptorKey(
+    resourceBindings,
+    format,
+    pickFormat,
+    primitiveTopology,
+    usesPlacementLayout
+) {
+    return JSON.stringify([
+        resourceBindings,
+        format,
+        pickFormat,
+        primitiveTopology,
+        usesPlacementLayout,
+    ]);
+}
 
 /**
  * Build the shared shader resources and both render pipelines for a mark.
@@ -35,6 +60,7 @@ import { gpuLabel } from "../../../utils/gpuLabel.js";
  */
 export function buildPipelines({
     device,
+    cache,
     globalBindGroupLayout,
     format,
     pickFormat,
@@ -49,7 +75,6 @@ export function buildPipelines({
     primitiveTopology = "triangle-list",
     placementBindGroupLayout,
     placementIndex,
-    label = "mark",
 }) {
     const { shaderCode, resourceBindings, resourceLayout } = buildMarkShader({
         compiledChannels,
@@ -63,83 +88,100 @@ export function buildPipelines({
         placementIndex,
     });
 
-    const bindGroupLayout = device.createBindGroupLayout({
-        label: gpuLabel(label, "bind group layout"),
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-                buffer: { type: "uniform" },
+    const usesPlacementLayout = Boolean(
+        placementIndex && placementBindGroupLayout
+    );
+    const descriptorKey = createDescriptorKey(
+        resourceBindings,
+        format,
+        pickFormat,
+        primitiveTopology,
+        usesPlacementLayout
+    );
+
+    const template = cache.getOrCreate(shaderCode, descriptorKey, (id) => {
+        const labelOwner = `${RENDERER_GPU_OWNER} program template #${id}`;
+        const bindGroupLayout = device.createBindGroupLayout({
+            label: gpuLabel(labelOwner, "bind group layout"),
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                    buffer: { type: "uniform" },
+                },
+                ...resourceBindings,
+            ],
+        });
+
+        const module = device.createShaderModule({
+            label: gpuLabel(labelOwner, "shader"),
+            code: shaderCode,
+        });
+        // Match WebGL helper behavior: premultiplied alpha blending.
+        /** @type {GPUBlendState} */
+        const blendState = {
+            color: {
+                srcFactor: "one",
+                dstFactor: "one-minus-src-alpha",
+                operation: "add",
             },
-            ...resourceBindings,
-        ],
-    });
-
-    const module = device.createShaderModule({
-        label: gpuLabel(label, "shader"),
-        code: shaderCode,
-    });
-    // Match WebGL helper behavior: premultiplied alpha blending.
-    /** @type {GPUBlendState} */
-    const blendState = {
-        color: {
-            srcFactor: "one",
-            dstFactor: "one-minus-src-alpha",
-            operation: "add",
-        },
-        alpha: {
-            srcFactor: "one",
-            dstFactor: "one-minus-src-alpha",
-            operation: "add",
-        },
-    };
-    const pipelineLayout = device.createPipelineLayout({
-        label: gpuLabel(label, "pipeline layout"),
-        bindGroupLayouts: [
-            globalBindGroupLayout,
-            bindGroupLayout,
-            ...(placementIndex && placementBindGroupLayout
-                ? [placementBindGroupLayout]
-                : []),
-        ],
-    });
-    const common = {
-        layout: pipelineLayout,
-        vertex: {
-            module,
-            entryPoint: "vs_main",
-        },
-        primitive: {
-            topology: primitiveTopology,
-        },
-    };
-    const pipeline = device.createRenderPipeline({
-        label: gpuLabel(label, "render pipeline"),
-        ...common,
-        fragment: {
-            module,
-            entryPoint: "fs_main",
-            targets: [
-                {
-                    format,
-                    blend: blendState,
-                },
+            alpha: {
+                srcFactor: "one",
+                dstFactor: "one-minus-src-alpha",
+                operation: "add",
+            },
+        };
+        const pipelineLayout = device.createPipelineLayout({
+            label: gpuLabel(labelOwner, "pipeline layout"),
+            bindGroupLayouts: [
+                globalBindGroupLayout,
+                bindGroupLayout,
+                ...(usesPlacementLayout ? [placementBindGroupLayout] : []),
             ],
-        },
+        });
+        const common = {
+            layout: pipelineLayout,
+            vertex: {
+                module,
+                entryPoint: "vs_main",
+            },
+            primitive: {
+                topology: primitiveTopology,
+            },
+        };
+        const pipeline = device.createRenderPipeline({
+            label: gpuLabel(labelOwner, "render pipeline"),
+            ...common,
+            fragment: {
+                module,
+                entryPoint: "fs_main",
+                targets: [
+                    {
+                        format,
+                        blend: blendState,
+                    },
+                ],
+            },
+        });
+        const pickPipeline = device.createRenderPipeline({
+            label: gpuLabel(labelOwner, "picking pipeline"),
+            ...common,
+            fragment: {
+                module,
+                entryPoint: "fs_pick",
+                targets: [
+                    {
+                        format: pickFormat,
+                    },
+                ],
+            },
+        });
+        return { bindGroupLayout, pipeline, pickPipeline };
     });
-    const pickPipeline = device.createRenderPipeline({
-        label: gpuLabel(label, "picking pipeline"),
-        ...common,
-        fragment: {
-            module,
-            entryPoint: "fs_pick",
-            targets: [
-                {
-                    format: pickFormat,
-                },
-            ],
-        },
-    });
+    const immutableResourceLayout = resourceLayout.map((entry) =>
+        Object.freeze({ ...entry })
+    );
+    Object.freeze(immutableResourceLayout);
 
-    return { bindGroupLayout, pipeline, pickPipeline, resourceLayout };
+    return { ...template, resourceLayout: immutableResourceLayout };
 }

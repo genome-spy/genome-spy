@@ -1,4 +1,5 @@
 import { gpuLabel, RENDERER_GPU_OWNER } from "./utils/gpuLabel.js";
+import { ProgramTemplateCache } from "./marks/programs/internal/programTemplateCache.js";
 
 /**
  * Renderer-level error for unsupported environments or invalid operations.
@@ -285,6 +286,7 @@ export class Renderer {
         this._marks = new Map();
         /** @type {Map<number, PlacementSet>} */
         this._placementSets = new Map();
+        this._programTemplateCache = new ProgramTemplateCache(addCount);
         /** @type {NormalizedDraw[] | null} */
         this._renderFrame = null;
         /** @type {NormalizedDraw[] | null} */
@@ -1112,6 +1114,9 @@ function instrumentGpuDevice(device) {
 
     wrapMethod(device, "createBuffer", () => addCount("gpuBuffersCreated"));
     wrapMethod(device, "createTexture", () => addCount("gpuTexturesCreated"));
+    wrapMethod(device, "createShaderModule", () =>
+        addCount("shaderModulesCreated")
+    );
     wrapMethod(device, "createBindGroup", () => addCount("bindGroupsCreated"));
     wrapMethod(device, "createRenderPipeline", () =>
         addCount("pipelinesCreated")
