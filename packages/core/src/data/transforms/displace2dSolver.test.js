@@ -77,6 +77,27 @@ describe("solveDisplacement", () => {
         ).toEqual({ x: [0, 0, 0], y: [0, 0, 0] });
     });
 
+    test("empty collision rectangles do not affect overflow placement", () => {
+        const count = 86;
+        const positions = Array(count).fill(0);
+        const dimensions = Array(count).fill(2);
+        const baseline = solveDisplacement(
+            positions,
+            positions,
+            dimensions,
+            dimensions
+        );
+        const withEmpty = solveDisplacement(
+            [10_000, ...positions],
+            [10_000, ...positions],
+            [0, ...dimensions],
+            [0, ...dimensions]
+        );
+
+        expect(withEmpty.x.slice(1)).toEqual(baseline.x);
+        expect(withEmpty.y.slice(1)).toEqual(baseline.y);
+    });
+
     test("clamps edge items into feasible preferred extents", () => {
         const displacements = solveDisplacement(
             [-10, 5, 20],
