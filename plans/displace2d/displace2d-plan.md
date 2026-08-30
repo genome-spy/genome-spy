@@ -1038,16 +1038,19 @@ preserve the existing datum-centered wheel interaction when the pointer is over
 a displaced annotation. These are three related interaction findings, not one
 solver feature, and they must not be hidden behind renderer-specific behavior.
 
-Selected immediate change:
+Selected viewport composition:
 
-- Compose an ordinary domain-reactive `filter` before `measureText` and
-  `displace2d` in the private annotation examples. Only rows whose source
-  anchors are inside the current x and y domains participate in measurement,
-  displacement, rendering, and collision checks.
+- Keep the selected annotation batch stable through `displace2d`. Derive an
+  `inViewport` field from the current x and y domains, supply zero collision and
+  anchor dimensions for inactive rows, and filter those rows after
+  displacement. Only visible rows participate in collision or rendering, while
+  stable input order continues to carry retained offsets.
 - Keep this policy outside `displace2d`. The transform continues to preserve
   every input row and emit only offsets; callers decide which annotations are
-  relevant. Use explicit or independently established plot domains so the
-  annotation subset cannot define the domain that filters it.
+  relevant. Zero-area rectangles use the existing generic geometry contract;
+  no visibility parameter or selection cache is added. Use explicit or
+  independently established plot domains so the annotation subset cannot
+  define the domain that filters it.
 - Start with exact viewport bounds. Add a small pixel or domain margin only if
   edge popping is visible in the acid tests; do not introduce a public
   visibility, clipping, or prefetch option speculatively.
@@ -1074,15 +1077,13 @@ Hovered-label investigation:
 - Existing wheel interaction already anchors zoom to the hovered datum's
   encoded source x/y position. In the recorded trace, the source stayed fixed
   to sub-pixel precision and the same datum remained hovered.
-- The annotation nevertheless moved from an offset of about `[-56, 0]` to
-  `[0, 85]` because the displacement replay changed its placement. The missing
-  behavior is therefore a placement pin, not alternate zoom-coordinate math.
-- Do not let `displace2d` inspect hover state and do not special-case displaced
-  text or rules in the renderer. Design a generic, lifecycle-bounded constraint
-  only if it can identify one input row and preserve its prior rectangle during
-  the active wheel gesture without exposing interaction internals to the pure
-  solver. Otherwise defer label pinning to a separate proposal rather than
-  weakening the transform boundary.
+- Filtering rows before displacement changed the batch length and allowed the
+  annotation to move from an offset of about `[-56, 0]` to `[0, 85]`. With the
+  stable-batch viewport composition, the same trace retains `[-56, 0]` exactly.
+- No explicit pin is needed for the tested wheel behavior. Do not let
+  `displace2d` inspect hover state and do not special-case displaced text or
+  rules in the renderer. Reopen a generic pin constraint only if manual testing
+  finds a case the stable batch does not cover.
 
 Verification:
 
@@ -1097,36 +1098,50 @@ Verification:
   temporal policy guarantees.
 - For hovered-label zoom, separately assert source-point stability, hover
   identity, label screen-position stability, collision freedom, and behavior
-  when the pinned source leaves the viewport or the gesture ends.
+  after the source leaves the viewport or the gesture ends.
 - Obtain user visual approval from the private volcano, MA, and stress examples
   before promoting any new interaction contract or preparing a pull request.
 
-Documentation or migration: if viewport filtering becomes part of the public
-example, document it as transform composition and explain the need for a stable
-background domain. Do not promise reversible layouts or hovered-label pinning
-until their contracts and tests exist.
+Documentation or migration: if viewport participation becomes part of the
+public example, document the zero-geometry and downstream-filter composition
+and explain the need for a stable background domain. Do not promise reversible
+layouts until that contract and its tests exist.
 
-Tentative commits: `test(core): exercise visible displace2d annotations`, then
-one narrowly scoped behavior commit only after the restoration or pinning gate
-has selected a design.
+Implemented commits: `e29fdc90` prevents zero-area rows from changing overflow
+bounds, and `35e623df` preserves their finite retained offsets while inactive.
+Both changes clarify existing zero-geometry semantics without adding public
+parameters. Restoration remains a separate open gate.
 
 Evidence recorded on 2026-08-30:
 
 - Frames extracted from the second user recording confirm the reported failure:
   at extreme zoom, leader lines from many offscreen annotations cross the whole
   viewport, and returning outward yields a visibly different arrangement.
-- Adding an upstream x/y domain filter to the ignored 500-label stress example
-  reduced the captured deep-zoom annotation count from 150 to zero at an empty
-  approximately 0.0073 by 0.0073 domain. The resulting screenshot contains no
-  stray annotations or leader lines.
+- The initial upstream x/y domain filter reduced the captured deep-zoom
+  annotation count from 150 to zero at an empty approximately 0.0073 by 0.0073
+  domain, but its changing batch undermined retained-placement continuity. It
+  was replaced with zero collision geometry before displacement and a filter
+  afterward. The deep screenshot still contains no stray annotations or leader
+  lines.
 - Restoring the exact `[35, 65]` x and y domains returned all 150 annotations,
   but 108 offsets differed from the initial and fresh-page layouts. A one-second
   settling delay and fresh reload comparison rule out bootstrap timing as the
   explanation.
 - A real-pointer trace over displaced label 125 kept its source at approximately
   `[310.75, 321.65]` and retained hover identity through eight wheel steps. Its
-  label moved by roughly 113 px as its offset changed from approximately
-  `[-55.96, 0]` to `[0, 85]`.
+  label originally moved by roughly 113 px when upstream filtering changed the
+  batch. With stable-batch viewport composition, both source and label remain
+  fixed and the offset stays exactly `[-55.96, 0]`; no hover-specific code is
+  involved.
+- On a symmetric 61-state programmatic zoom trace, stateless canonical solving
+  restored all offsets but worsened p95 offset jumps from about 19.7 px to 85 px
+  and the maximum from about 704 px to 965 px. The spike was deleted because it
+  restores the blinking that retained placements were introduced to fix.
+- Preserving inactive-row hints reduced that retained trace's p95 to about
+  15.7 px, but exact restoration remained path-dependent. The wheel trace still
+  restored 108 of 150 labels differently from the initial and fresh layouts.
+- The private app smoke passes volcano, MA, stress, and overflow after the
+  stable-batch change, with tested parameter updates completing in 16--41 ms.
 
 ## Reconciliation through the first user acid test (2026-08-28)
 
@@ -1182,8 +1197,8 @@ Pending before PR preparation:
 - Complete milestone 5 selected-anchor clearance and its public-contract review
   gate without expanding into renderer or cross-layer obstacle inspection.
 - Complete milestone 6 viewport-participation acid testing and select or defer
-  explicit restoration and hovered-label-pinning policies without coupling the
-  transform to renderer or interaction state.
+  an explicit restoration policy. Confirm the stable-batch composition covers
+  hovered-label zoom without coupling the transform to interaction state.
 - Manually exercise resize, wheel and inertial zoom, pan, domain restoration,
   clipping, tooltip/picking alignment, long interaction sessions, and visual
   association through leader lines.
@@ -1249,9 +1264,10 @@ Pending before PR preparation:
   need it. Keep plot domains independent of that subset and resist moving
   visibility policy into `displace2d`.
 - **Hovered annotation moves during datum-centered zoom.** Preserve the existing
-  source-point zoom anchor. Add label pinning only through a generic bounded
-  constraint with explicit ownership and cleanup; otherwise defer it rather
-  than coupling dataflow, picking, and rendering.
+  source-point zoom anchor and keep the annotation batch stable while inactive
+  rows use zero collision geometry. The current trace needs no label-pinning
+  mechanism; do not add one unless a failing acid test justifies a separate
+  generic contract.
 - **Animation masking unstable placement.** Do not add displace2d-specific
   interpolation. It would allow transient overlaps and couple dataflow output
   to rendering. Consider general per-datum transitions only in a separate
