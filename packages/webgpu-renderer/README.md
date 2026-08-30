@@ -201,6 +201,8 @@ shader modules, layouts, and pipelines, which use a renderer-owned
 `webgpu-renderer program template #<id>` label. Mutable buffers and bind groups
 remain mark-owned. Labels are snapshots taken when resources are created;
 changing a host-side name later does not rename existing GPU objects.
+The shared picking pipeline is created only when a template is first used in a
+picking draw.
 
 ### Ordered draws and picking
 

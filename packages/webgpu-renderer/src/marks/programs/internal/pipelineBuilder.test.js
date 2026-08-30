@@ -120,7 +120,7 @@ describe("buildPipelines", () => {
         const second = harness.build();
 
         expect(second.pipeline).toBe(first.pipeline);
-        expect(second.pickPipeline).toBe(first.pickPipeline);
+        expect(second.getPickPipeline).toBe(first.getPickPipeline);
         expect(second.bindGroupLayout).toBe(first.bindGroupLayout);
         expect(first.resourceLayout).toEqual([
             { name: "seriesF32", role: "series" },
@@ -130,6 +130,9 @@ describe("buildPipelines", () => {
         expect(harness.bindGroupLayoutArgs).toHaveLength(1);
         expect(harness.pipelineLayoutArgs).toHaveLength(1);
         expect(harness.shaderModuleArgs).toHaveLength(1);
+        expect(harness.renderPipelineArgs).toHaveLength(1);
+        const pickPipeline = first.getPickPipeline();
+        expect(second.getPickPipeline()).toBe(pickPipeline);
         expect(harness.renderPipelineArgs).toHaveLength(2);
         expect(harness.cacheCounts).toEqual([
             "programTemplateCacheMisses",
@@ -140,7 +143,8 @@ describe("buildPipelines", () => {
     it("builds visible and picking pipelines from shared resources", () => {
         const harness = createHarness();
 
-        harness.build();
+        const template = harness.build();
+        const pickPipeline = template.getPickPipeline();
 
         const pipelineArgs = harness.renderPipelineArgs[0];
         const pickPipelineArgs = harness.renderPipelineArgs[1];
@@ -167,6 +171,8 @@ describe("buildPipelines", () => {
         expect(pickPipelineArgs.fragment.entryPoint).toBe("fs_pick");
         expect(pickPipelineArgs.layout).toBe(pipelineArgs.layout);
         expect(pickPipelineArgs.vertex.module).toBe(pipelineArgs.vertex.module);
+        expect(template.getPickPipeline()).toBe(pickPipeline);
+        expect(harness.renderPipelineArgs).toHaveLength(2);
         expect(harness.bindGroupLayoutArgs[0].label).toBe(
             "webgpu-renderer program template #1: bind group layout"
         );
@@ -202,7 +208,7 @@ describe("buildPipelines", () => {
 
         expect(second.pipeline).not.toBe(first.pipeline);
         expect(harness.shaderModuleArgs).toHaveLength(2);
-        expect(harness.renderPipelineArgs).toHaveLength(4);
+        expect(harness.renderPipelineArgs).toHaveLength(2);
     });
 
     it("does not share when only bind-group visibility differs", () => {

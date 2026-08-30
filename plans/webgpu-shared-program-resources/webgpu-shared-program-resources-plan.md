@@ -293,14 +293,26 @@ without changing renderer or Core lifecycle contracts.
 
 ### Work
 
-- [ ] Store the cached picking pipeline as optional and create it once from the
+- [x] Store the cached picking pipeline as optional and create it once from the
       already shared module and layout when `drawPick()` first needs it.
-- [ ] Keep the visible draw path unchanged.
-- [ ] Distinguish visible and picking pipeline creation in focused tests or
+- [x] Keep the visible draw path unchanged.
+- [x] Distinguish visible and picking pipeline creation in focused tests or
       existing debug counters.
-- [ ] Measure first-use picking latency and focused line-count growth.
-- [ ] Discard this milestone if it requires a public option, async lifecycle, or
-      more than a small local change.
+- [x] Exercise first-use picking in the real-GPU suite and measure focused
+      line-count growth.
+- [x] Retain this milestone because it requires no public option, async
+      lifecycle, or more than a small local change.
+
+Implementation record:
+
+- Production code grew by 5 lines and focused tests by 6 lines relative to
+  milestone 1.
+- Visible creation now creates one render pipeline. The first picking draw
+  creates the second pipeline, and equivalent programs reuse both.
+- All 67 real-GPU tests passed, including first-use point, link, and text
+  picking. This is a first-use smoke gate rather than a stable latency
+  microbenchmark; the supported test environment showed no observable
+  regression or timeout.
 
 ### Affected areas and downstream consumers
 

@@ -303,7 +303,7 @@ export default class BaseProgram {
             ...this._selectionResources.getExtraResourceDefs(),
             ...this.getExtraResourceDefs(),
         ];
-        const { bindGroupLayout, pipeline, pickPipeline, resourceLayout } =
+        const { bindGroupLayout, pipeline, getPickPipeline, resourceLayout } =
             buildPipelines({
                 device: this.device,
                 cache: renderer._programTemplateCache,
@@ -344,7 +344,7 @@ export default class BaseProgram {
         this._buildSlotHandles();
         this._bindGroupLayout = bindGroupLayout;
         this._pipeline = pipeline;
-        this._pickPipeline = pickPipeline;
+        this._getPickPipeline = getPickPipeline;
 
         // Initialize any series-backed channels.
         this.updateSeries(
@@ -1170,7 +1170,7 @@ export default class BaseProgram {
      * @returns {void}
      */
     drawPick(pass, options) {
-        pass.setPipeline(this._pickPipeline);
+        pass.setPipeline(this._getPickPipeline());
         pass.setBindGroup(1, this._bindGroup);
         if (options.placement) {
             pass.setBindGroup(2, options.placement.bindGroup);

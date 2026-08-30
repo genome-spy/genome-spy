@@ -23,7 +23,7 @@ import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
  * @typedef {object} ProgramTemplate
  * @property {GPUBindGroupLayout} bindGroupLayout
  * @property {GPURenderPipeline} pipeline
- * @property {GPURenderPipeline} pickPipeline
+ * @property {() => GPURenderPipeline} getPickPipeline
  *
  * @typedef {ProgramTemplate & { resourceLayout: { name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[] }} PipelineBuildResult
  */
@@ -163,20 +163,25 @@ export function buildPipelines({
                 ],
             },
         });
-        const pickPipeline = device.createRenderPipeline({
-            label: gpuLabel(labelOwner, "picking pipeline"),
-            ...common,
-            fragment: {
-                module,
-                entryPoint: "fs_pick",
-                targets: [
-                    {
-                        format: pickFormat,
-                    },
-                ],
-            },
-        });
-        return { bindGroupLayout, pipeline, pickPipeline };
+        /** @type {GPURenderPipeline | undefined} */
+        let pickPipeline;
+        const getPickPipeline = () => {
+            pickPipeline ??= device.createRenderPipeline({
+                label: gpuLabel(labelOwner, "picking pipeline"),
+                ...common,
+                fragment: {
+                    module,
+                    entryPoint: "fs_pick",
+                    targets: [
+                        {
+                            format: pickFormat,
+                        },
+                    ],
+                },
+            });
+            return pickPipeline;
+        };
+        return { bindGroupLayout, pipeline, getPickPipeline };
     });
     const immutableResourceLayout = resourceLayout.map((entry) =>
         Object.freeze({ ...entry })

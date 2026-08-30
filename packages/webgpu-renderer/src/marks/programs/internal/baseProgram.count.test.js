@@ -78,7 +78,7 @@ describe("BaseProgram count inference", () => {
         const second = new TestSeriesProgram(renderer, config);
 
         expect(second._pipeline).toBe(first._pipeline);
-        expect(second._pickPipeline).toBe(first._pickPipeline);
+        expect(second._getPickPipeline).toBe(first._getPickPipeline);
         expect(second._bindGroupLayout).toBe(first._bindGroupLayout);
         expect(second._uniformBuffer).not.toBe(first._uniformBuffer);
         expect(second._bindGroup).not.toBe(first._bindGroup);
