@@ -10,7 +10,10 @@ import {
     createVisibleBounds,
     hasVisibleArea,
 } from "../immediate/bounds.js";
-import { visitMarkOccurrences } from "../immediate/markData.js";
+import {
+    SampleFacetCoordsResolver,
+    visitMarkOccurrences,
+} from "../immediate/markData.js";
 import { renderMarkSvg } from "./renderers/index.js";
 import { createSvgElement, SVG_NS } from "./svgElement.js";
 import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
@@ -126,6 +129,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
 
     /** @type {Map<import("../../marks/mark.js").default, number>} */
     #instanceCounts = new Map();
+
+    #sampleFacetCoords = new SampleFacetCoordsResolver();
 
     /** @type {SVGGElement} */
     #countingGroup = createSvgElement("g");
@@ -456,6 +461,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             mark,
             options,
             this.currentCoords,
+            this.#sampleFacetCoords,
             render,
             (facetIndex) =>
                 this.#warnings.add(

@@ -9,12 +9,17 @@ import {
     createVisibleBounds,
     hasVisibleArea,
 } from "../../immediate/bounds.js";
-import { visitMarkOccurrences } from "../../immediate/markData.js";
+import {
+    SampleFacetCoordsResolver,
+    visitMarkOccurrences,
+} from "../../immediate/markData.js";
 import { warnOnce } from "../../../utils/warning.js";
 import {
     isSoftwarePickingMarkSupported,
     renderMarkSoftwarePicking,
 } from "./renderers/index.js";
+import { getPerformanceProfiler } from "../../../debug/performanceProfiler.js";
+import { isSampleFacetVisible } from "../../sampleFacet.js";
 
 export default class SoftwarePickingViewRenderingContext extends ViewRenderingContext {
     /** @type {{view: import("../../../view/view.js").default, coords: import("../../../view/layout/rectangle.js").default}[]} */
@@ -22,6 +27,11 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
 
     /** @type {Set<import("../../../view/view.js").default>} */
     #views = new Set();
+
+    /** @type {import("../../../debug/performanceProfiler.js").PerformanceProfiler | undefined} */
+    #profiler;
+
+    #sampleFacetCoords = new SampleFacetCoordsResolver();
 
     /**
      * @param {{
@@ -37,6 +47,7 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
         this.height = options.height;
         this.devicePixelRatio = options.devicePixelRatio;
         this.getRasterizer = options.getRasterizer;
+        this.#profiler = getPerformanceProfiler();
     }
 
     getDevicePixelRatio() {
@@ -72,12 +83,24 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
      * @override
      */
     renderMark(mark, options) {
-        const viewOpacity = mark.unitView.getEffectiveOpacity();
         if (
             !mark.isPickingParticipant() ||
-            !isSoftwarePickingMarkSupported(mark) ||
-            viewOpacity <= 0
+            !isSoftwarePickingMarkSupported(mark)
         ) {
+            return;
+        }
+
+        const sampleFacet = options.sampleFacetRenderingOptions;
+        if (sampleFacet && !mark.encoders.facetIndex) {
+            this.#profiler?.addCount("canvasSampleFacetOccurrences");
+            if (!isSampleFacetVisible(sampleFacet)) {
+                this.#profiler?.addCount("canvasCulledSampleFacetOccurrences");
+                return;
+            }
+        }
+
+        const viewOpacity = mark.unitView.getEffectiveOpacity();
+        if (viewOpacity <= 0) {
             return;
         }
 
@@ -105,6 +128,7 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
             mark,
             options,
             coords,
+            this.#sampleFacetCoords,
             (occurrenceCoords, data) => {
                 if (data.length == 0) {
                     return;

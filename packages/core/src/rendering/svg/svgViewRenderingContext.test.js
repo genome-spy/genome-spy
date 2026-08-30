@@ -258,6 +258,34 @@ describe("SvgViewRenderingContext", () => {
         ]).toEqual(["10", "80"]);
     });
 
+    test("retains an offscreen sample occurrence that overflows into view", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: "point",
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                size: { value: 10000 },
+                fill: { value: "#123456" },
+            },
+        });
+        const context = new SvgViewRenderingContext(
+            { picking: false },
+            { width: 100, height: 100 }
+        );
+
+        view.arrange(context, Rectangle.create(0, 0, 100, 100), {
+            sampleFacetRenderingOptions: {
+                locSize: { location: -30, size: 20 },
+                pixelToUnit: 0.01,
+            },
+        });
+
+        expect(
+            context.getSvg().querySelector("circle")?.getAttribute("cy")
+        ).toBe("-20");
+    });
+
     test("keeps different sample-facet clips in separate mark groups", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },

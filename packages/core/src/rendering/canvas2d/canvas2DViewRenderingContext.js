@@ -1,5 +1,8 @@
 import { peek } from "../../utils/arrayUtils.js";
-import { visitMarkOccurrences } from "../immediate/markData.js";
+import {
+    SampleFacetCoordsResolver,
+    visitMarkOccurrences,
+} from "../immediate/markData.js";
 import {
     normalizeClipOptions,
     prepareMarkClipOptionsFromClip,
@@ -12,16 +15,23 @@ import {
 } from "../immediate/bounds.js";
 import { renderMarkCanvas } from "./renderers/index.js";
 import { warnOnce } from "../../utils/warning.js";
+import { getPerformanceProfiler } from "../../debug/performanceProfiler.js";
+import { isSampleFacetVisible } from "../sampleFacet.js";
 
 export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
     /** @type {{view: import("../../view/view.js").default, coords: import("../../view/layout/rectangle.js").default}[]} */
     #viewStack = [];
 
-    /** @type {Set<import("../../view/view.js").default>} */
-    #views = new Set();
+    /** @type {WeakMap<import("../../view/view.js").default, number | undefined>} */
+    #viewOpacities = new WeakMap();
 
     /** @type {(mark: import("../../marks/mark.js").default) => boolean} */
     #markPredicate;
+
+    /** @type {import("../../debug/performanceProfiler.js").PerformanceProfiler | undefined} */
+    #profiler;
+
+    #sampleFacetCoords = new SampleFacetCoordsResolver();
 
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
@@ -43,6 +53,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         this.devicePixelRatio = options.devicePixelRatio;
         this.paint = options.paint;
         this.#markPredicate = options.markPredicate ?? (() => true);
+        this.#profiler = getPerformanceProfiler();
 
         if (this.paint) {
             const context = this.context;
@@ -80,9 +91,9 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     pushView(view, coords) {
-        if (this.paint && !this.#views.has(view)) {
+        if (this.paint && !this.#viewOpacities.has(view)) {
             view.onBeforeRender();
-            this.#views.add(view);
+            this.#viewOpacities.set(view, undefined);
         }
         this.#viewStack.push({ view, coords });
     }
@@ -106,11 +117,12 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     renderMark(mark, options) {
-        if (
-            !this.paint ||
-            !this.#markPredicate(mark) ||
-            mark.unitView.getEffectiveOpacity() <= 0
-        ) {
+        if (!this.paint || !this.#markPredicate(mark)) {
+            return;
+        }
+
+        const viewOpacity = this.#getViewOpacity(mark.unitView);
+        if (viewOpacity <= 0) {
             return;
         }
 
@@ -118,6 +130,15 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         // Register their dependencies so conditional encodings schedule that
         // paint when a selection or expression changes.
         mark.initializeRenderingRevisions([]);
+
+        const sampleFacet = options.sampleFacetRenderingOptions;
+        if (sampleFacet && !mark.encoders.facetIndex) {
+            this.#profiler?.addCount("canvasSampleFacetOccurrences");
+            if (!isSampleFacetVisible(sampleFacet)) {
+                this.#profiler?.addCount("canvasCulledSampleFacetOccurrences");
+                return;
+            }
+        }
 
         const coords = this.currentCoords;
         const inheritedClip = normalizeClipOptions(options);
@@ -158,6 +179,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                 mark,
                 options,
                 coords,
+                this.#sampleFacetCoords,
                 (occurrenceCoords, data) =>
                     renderMarkCanvas(mark, {
                         context,
@@ -165,7 +187,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                         data,
                         visibleBounds,
                         anchorCullBounds,
-                        viewOpacity: mark.unitView.getEffectiveOpacity(),
+                        viewOpacity,
                         warn: (message) =>
                             warnOnce(
                                 `${message} View: ${mark.unitView.getPathString()}`
@@ -187,5 +209,15 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
             throw new Error("No current view in Canvas2D rendering context.");
         }
         return entry.coords;
+    }
+
+    /** @param {import("../../view/unitView.js").default} view */
+    #getViewOpacity(view) {
+        let opacity = this.#viewOpacities.get(view);
+        if (opacity === undefined) {
+            opacity = view.getEffectiveOpacity();
+            this.#viewOpacities.set(view, opacity);
+        }
+        return opacity;
     }
 }

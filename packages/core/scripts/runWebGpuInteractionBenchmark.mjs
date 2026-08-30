@@ -38,7 +38,7 @@ const helpText = `Usage:
 Options:
   --spec PATH             Generic App spec path or URL (required).
   --control-spec PATH     Optional small control spec, measured with the same cases.
-  --renderer NAME         webgl, webgpu, or both (default: both).
+  --renderer NAME         canvas, webgl, webgpu, or both (default: both).
   --cases LIST            Comma-separated case names (default: all six).
   --runs NUMBER           Runs per renderer and case (default: 5).
   --duration-ms NUMBER   Active interaction duration (default: 1500).
@@ -55,10 +55,11 @@ Options:
   --no-trace              Skip browser traces.
   --help                  Show this help text.
 
-Hardware-backed GPU rendering on a physical display is authoritative. Headless
-and software-adapter runs are retained for diagnostics and explicitly marked.`;
+Headed rendering on a physical display is authoritative. GPU runs additionally
+require a hardware-backed adapter. Headless and software-adapter runs are
+retained for diagnostics and explicitly marked.`;
 
-/** @typedef {"webgl" | "webgpu"} RendererName */
+/** @typedef {"canvas" | "webgl" | "webgpu"} RendererName */
 
 /**
  * @typedef {object} BenchmarkOptions
@@ -786,18 +787,25 @@ async function wheel(page, point, deltaY, deltaX, duration) {
 async function readEnvironment(page, renderer, dpr) {
     return page.evaluate(
         async ({ renderer: selectedRenderer, dpr: selectedDpr }) => {
-            const adapter = await navigator.gpu?.requestAdapter();
+            const adapter =
+                selectedRenderer === "webgpu"
+                    ? await navigator.gpu?.requestAdapter()
+                    : undefined;
             const adapterInfo =
                 adapter?.info ?? (await adapter?.requestAdapterInfo?.());
             let webgl = {};
-            const canvas = document.createElement("canvas");
-            const gl = canvas.getContext("webgl2");
-            const debug = gl?.getExtension("WEBGL_debug_renderer_info");
-            if (gl && debug) {
-                webgl = {
-                    vendor: gl.getParameter(debug.UNMASKED_VENDOR_WEBGL),
-                    renderer: gl.getParameter(debug.UNMASKED_RENDERER_WEBGL),
-                };
+            if (selectedRenderer === "webgl") {
+                const canvas = document.createElement("canvas");
+                const gl = canvas.getContext("webgl2");
+                const debug = gl?.getExtension("WEBGL_debug_renderer_info");
+                if (gl && debug) {
+                    webgl = {
+                        vendor: gl.getParameter(debug.UNMASKED_VENDOR_WEBGL),
+                        renderer: gl.getParameter(
+                            debug.UNMASKED_RENDERER_WEBGL
+                        ),
+                    };
+                }
             }
             return {
                 renderer: selectedRenderer,
@@ -821,6 +829,8 @@ async function readEnvironment(page, renderer, dpr) {
                       }
                     : null,
                 webgl,
+                canvas:
+                    selectedRenderer === "canvas" ? { context: "2d" } : null,
                 preferredFormat: navigator.gpu?.getPreferredCanvasFormat?.(),
             };
         },
@@ -863,7 +873,7 @@ function percentile(sorted, fraction) {
 }
 
 /** @param {{options: BenchmarkOptions, samples: object[]}} input */
-function createReport({ options, samples }) {
+export function createReport({ options, samples }) {
     const passedSamples = samples.filter(
         (sample) => sample.status === "passed"
     );
@@ -886,14 +896,16 @@ function createReport({ options, samples }) {
     const missingEnvironment = options.renderers.find(
         (renderer) => !environment[renderer]
     );
-    const softwareRenderer = options.renderers.find((renderer) =>
-        isSoftwareAdapter(
-            renderer === "webgpu"
-                ? environment[renderer]?.webgpu
-                : environment[renderer]?.webgl
-        )
-    );
-    const hardwareBacked = !missingEnvironment && !softwareRenderer;
+    const softwareRenderer = options.renderers
+        .filter((renderer) => renderer !== "canvas")
+        .find((renderer) =>
+            isSoftwareAdapter(
+                renderer === "webgpu"
+                    ? environment[renderer]?.webgpu
+                    : environment[renderer]?.webgl
+            )
+        );
+    const suitableBackend = !missingEnvironment && !softwareRenderer;
     const correctness = samples
         .map((sample) => sample.correctness)
         .filter(Boolean);
@@ -915,6 +927,7 @@ function createReport({ options, samples }) {
     return {
         generatedAt: new Date().toISOString(),
         methodology: {
+            renderers: options.renderers,
             runsPerCell: options.runs,
             cases: options.cases,
             viewport: options.viewport,
@@ -939,11 +952,14 @@ function createReport({ options, samples }) {
         },
         authoritative:
             options.headed &&
-            hardwareBacked &&
+            suitableBackend &&
             completed &&
             passedSamples.length > 0,
         limitation: !options.headed
-            ? "Headless Chromium was requested; use a headed hardware-backed run for final conclusions."
+            ? options.renderers.includes("canvas") &&
+              options.renderers.every((renderer) => renderer === "canvas")
+                ? "Headless Chromium was requested; use a headed run for final Canvas conclusions."
+                : "Headless Chromium was requested; use a headed hardware-backed run for final GPU conclusions."
             : missingEnvironment
               ? `No ${missingEnvironment} environment metadata was captured; inspect the failed samples.`
               : softwareRenderer
@@ -984,7 +1000,7 @@ function sampleKey(sample) {
 /** @param {object[]} samples */
 function estimateAaNoise(samples) {
     const relative = [];
-    for (const renderer of ["webgl", "webgpu"]) {
+    for (const renderer of new Set(samples.map((sample) => sample.renderer))) {
         for (const key of new Set(samples.map(sampleKey))) {
             const values = samples
                 .filter(
@@ -1044,7 +1060,7 @@ function bootstrapInterval(values) {
 }
 
 /** @param {object} report */
-function renderReport(report) {
+export function renderReport(report) {
     const ratio = report.cpuTimeRatio.median;
     const ratioText = ratio == null ? "unavailable" : `${ratio.toFixed(3)}x`;
     const ratioLabel =
@@ -1061,7 +1077,7 @@ function renderReport(report) {
                 `${sample.cadence?.over33_3 ?? "n/a"} |`
         )
         .join("\n");
-    return `# GPU interaction benchmark report
+    return `# Renderer interaction benchmark report
 
 Generated: ${report.generatedAt}
 
@@ -1097,7 +1113,7 @@ The \`layoutReplay\` phase is render-command collection from an existing
 LayoutResult; actual view arrangement and layout computation are recorded as
 the separate \`layout\` phase.
 Those measurements identify costs; explanations about user-visible judder are
-inferences until repeated hardware-backed runs confirm them.
+inferences until repeated authoritative runs confirm them.
 
 The control subject, when supplied, is intended to expose fixed renderer
 overhead. Main-spec-only increases are evidence for mark, facet, or sample
@@ -1165,7 +1181,11 @@ export function parseArgs(args) {
         else if (arg === "--renderer") {
             const value = requireValue(args, ++index, arg);
             if (value === "both") options.renderers = ["webgl", "webgpu"];
-            else if (value === "webgl" || value === "webgpu")
+            else if (
+                value === "canvas" ||
+                value === "webgl" ||
+                value === "webgpu"
+            )
                 options.renderers = [value];
             else throw new Error(`Unknown renderer: ${value}`);
         } else if (arg === "--cases") {

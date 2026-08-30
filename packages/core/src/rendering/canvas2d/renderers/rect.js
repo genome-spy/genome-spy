@@ -19,6 +19,9 @@ export function renderRectCanvas(baseMark, options) {
     if (properties.shadow.opacity > 0) {
         options.warn("Canvas2D ignored unsupported rect shadow.");
     }
+    if (options.data.length == 0) {
+        return 0;
+    }
     const context = options.context;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
@@ -30,22 +33,41 @@ export function renderRectCanvas(baseMark, options) {
     /** @type {string | undefined} */
     let strokeStyle;
     const radii = [0, 0, 0, 0];
+    const strokeIsConstant = encoders.stroke.constant;
+    const strokeOpacityIsConstant = encoders.strokeOpacity.constant;
+    const constantStroke = strokeIsConstant
+        ? toPaintString(encoders.stroke(options.data[0]))
+        : "none";
+    const hasInvisibleConstantStroke =
+        strokeIsConstant && constantStroke == "none";
+    const constantStrokeOpacity =
+        !hasInvisibleConstantStroke && strokeOpacityIsConstant
+            ? encodeNumber(encoders.strokeOpacity, options.data[0])
+            : 0;
 
     return visitRectInstances(mark, properties, options, (instance) => {
         const opacityFactor = instance.opacityFactor;
         const fillVisible = instance.fill != "none" && instance.fillOpacity > 0;
-        const stroke = toPaintString(encoders.stroke(instance.datum));
+        const stroke = strokeIsConstant
+            ? constantStroke
+            : toPaintString(encoders.stroke(instance.datum));
         const strokeOpacity =
-            encodeNumber(encoders.strokeOpacity, instance.datum) *
+            (strokeOpacityIsConstant
+                ? constantStrokeOpacity
+                : encodeNumber(encoders.strokeOpacity, instance.datum)) *
             options.viewOpacity *
             opacityFactor;
         const strokeVisible =
-            stroke != "none" && strokeOpacity > 0 && instance.strokeWidth > 0;
+            !hasInvisibleConstantStroke &&
+            stroke != "none" &&
+            strokeOpacity > 0 &&
+            instance.strokeWidth > 0;
         const rounded =
-            instance.radii.topLeft != 0 ||
-            instance.radii.topRight != 0 ||
-            instance.radii.bottomRight != 0 ||
-            instance.radii.bottomLeft != 0;
+            properties.hasCornerRadii &&
+            (instance.radii.topLeft != 0 ||
+                instance.radii.topRight != 0 ||
+                instance.radii.bottomRight != 0 ||
+                instance.radii.bottomLeft != 0);
         if (rounded && (fillVisible || strokeVisible)) {
             radii[0] = instance.radii.topLeft;
             radii[1] = instance.radii.topRight;

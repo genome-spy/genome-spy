@@ -1,10 +1,16 @@
 // @vitest-environment jsdom
 
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { createSinglePointSelection } from "../../selection/selection.js";
 import Rectangle from "../../view/layout/rectangle.js";
+import { startPerformanceProfiler } from "../../debug/performanceProfiler.js";
 import Canvas2DViewRenderingContext from "./canvas2DViewRenderingContext.js";
+
+afterEach(() => {
+    const globalObject = /** @type {Record<symbol, unknown>} */ (globalThis);
+    delete globalObject[Symbol.for("genome-spy.performance-profiler")];
+});
 
 function createRecordingContext() {
     /**
@@ -418,6 +424,9 @@ describe("Canvas2DViewRenderingContext", () => {
             },
         });
         const recording = createRecordingContext();
+        const unitView =
+            /** @type {import("../../view/unitView.js").default} */ (view);
+        const getEffectiveOpacity = vi.spyOn(unitView, "getEffectiveOpacity");
         const context = new Canvas2DViewRenderingContext(
             { picking: false },
             {
@@ -452,6 +461,134 @@ describe("Canvas2DViewRenderingContext", () => {
             [50, 70, 5],
         ]);
         expect(recording.context.clip).toHaveBeenCalledTimes(2);
+        expect(getEffectiveOpacity).toHaveBeenCalledOnce();
+
+        render(view, createRecordingContext().context);
+
+        expect(getEffectiveOpacity).toHaveBeenCalledTimes(2);
+    });
+
+    test("culls only explicit offscreen sample facets before data traversal", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: "rect",
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.2 },
+                y2: { value: 0.8 },
+                fill: { value: "black" },
+            },
+        });
+        const profiler = startPerformanceProfiler();
+        const unitView =
+            /** @type {import("../../view/unitView.js").default} */ (view);
+        const encoders =
+            /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
+                unitView.mark.encoders
+            );
+        const originalXEncoder = encoders.x;
+        const xEncoder = Object.assign(
+            vi.fn(originalXEncoder),
+            originalXEncoder
+        );
+        encoders.x = xEncoder;
+        const context = new Canvas2DViewRenderingContext(
+            { picking: false },
+            {
+                context: createRecordingContext().context,
+                width: 100,
+                height: 100,
+                devicePixelRatio: 1,
+                background: null,
+                paint: true,
+            }
+        );
+        const coords = Rectangle.create(0, 0, 100, 100);
+
+        view.arrange(context, coords, {
+            sampleFacetRenderingOptions: {
+                locSize: { location: 101, size: 20 },
+                pixelToUnit: 0.01,
+            },
+        });
+        expect(xEncoder).not.toHaveBeenCalled();
+
+        view.arrange(context, coords, {
+            sampleFacetRenderingOptions: {
+                locSize: { location: 90, size: 20 },
+                pixelToUnit: 0.01,
+            },
+        });
+        expect(xEncoder).toHaveBeenCalledOnce();
+
+        encoders.facetIndex = Object.assign(() => 0, originalXEncoder, {
+            constant: true,
+        });
+        view.arrange(context, coords, {
+            sampleFacetRenderingOptions: {
+                locSize: { location: 101, size: 20 },
+                pixelToUnit: 0.01,
+            },
+        });
+        expect(xEncoder).toHaveBeenCalledTimes(2);
+        expect(profiler.snapshot().countTotals).toMatchObject({
+            canvasSampleFacetOccurrences: 2,
+            canvasCulledSampleFacetOccurrences: 1,
+        });
+    });
+
+    test("subscribes offscreen conditional marks to selection changes", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ value: 1 }] },
+            params: [{ name: "selected", select: "point" }],
+            mark: "point",
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                size: {
+                    value: 100,
+                    condition: {
+                        param: "selected",
+                        empty: false,
+                        value: 400,
+                    },
+                },
+                fill: { value: "black" },
+            },
+        });
+        const requestRender = vi.spyOn(view.context.animator, "requestRender");
+        view.paramRuntime.setValue(
+            "selected",
+            createSinglePointSelection(null)
+        );
+        const context = new Canvas2DViewRenderingContext(
+            { picking: false },
+            {
+                context: createRecordingContext().context,
+                width: 100,
+                height: 100,
+                devicePixelRatio: 1,
+                background: null,
+                paint: true,
+            }
+        );
+        view.arrange(context, Rectangle.create(0, 0, 100, 100), {
+            sampleFacetRenderingOptions: {
+                locSize: { location: 101, size: 20 },
+                pixelToUnit: 0.01,
+            },
+        });
+
+        const unitView =
+            /** @type {import("../../view/unitView.js").default} */ (view);
+        const datum = unitView.getCollector().facetBatches.get(undefined)[0];
+        view.paramRuntime.setValue(
+            "selected",
+            createSinglePointSelection(datum)
+        );
+
+        expect(requestRender).toHaveBeenCalledOnce();
     });
 
     test("draws rounded rectangles while warning about other effects", async () => {
@@ -535,18 +672,33 @@ describe("Canvas2DViewRenderingContext", () => {
             vi.fn(() => strokeWidth),
             encoders.strokeWidth
         );
+        const fillEncoder = Object.assign(vi.fn(encoders.fill), encoders.fill);
+        const strokeEncoder = Object.assign(
+            vi.fn(encoders.stroke),
+            encoders.stroke
+        );
+        const strokeOpacityEncoder = Object.assign(
+            vi.fn(encoders.strokeOpacity),
+            encoders.strokeOpacity
+        );
         const fillOpacityEncoder = Object.assign(
             vi.fn((datum) => datum.fillOpacity),
             encoders.fillOpacity,
             { constant: false }
         );
         encoders.strokeWidth = strokeWidthEncoder;
+        encoders.fill = fillEncoder;
+        encoders.stroke = strokeEncoder;
+        encoders.strokeOpacity = strokeOpacityEncoder;
         encoders.fillOpacity = fillOpacityEncoder;
 
         const first = createRecordingContext();
         render(view, first.context);
 
         expect(strokeWidthEncoder).toHaveBeenCalledOnce();
+        expect(fillEncoder).toHaveBeenCalledOnce();
+        expect(strokeEncoder).toHaveBeenCalledOnce();
+        expect(strokeOpacityEncoder).toHaveBeenCalledOnce();
         expect(fillOpacityEncoder).toHaveBeenCalledTimes(2);
         expect(first.calls.fills.map(([opacity]) => opacity)).toEqual([
             0.25, 0.75,
@@ -558,6 +710,9 @@ describe("Canvas2DViewRenderingContext", () => {
         render(view, second.context);
 
         expect(strokeWidthEncoder).toHaveBeenCalledTimes(2);
+        expect(fillEncoder).toHaveBeenCalledTimes(2);
+        expect(strokeEncoder).toHaveBeenCalledTimes(2);
+        expect(strokeOpacityEncoder).toHaveBeenCalledTimes(2);
         expect(fillOpacityEncoder).toHaveBeenCalledTimes(4);
         expect(second.context.lineWidth).toBe(3);
     });
