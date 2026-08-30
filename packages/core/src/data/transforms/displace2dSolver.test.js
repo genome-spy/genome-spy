@@ -98,6 +98,15 @@ describe("solveDisplacement", () => {
         expect(withEmpty.y.slice(1)).toEqual(baseline.y);
     });
 
+    test("empty collision rectangles retain their previous placements", () => {
+        expect(
+            solveDisplacement([100], [100], [0], [10], [0, 10], [0, 10], {
+                x: [12],
+                y: [-3],
+            })
+        ).toEqual({ x: [12], y: [-3] });
+    });
+
     test("clamps edge items into feasible preferred extents", () => {
         const displacements = solveDisplacement(
             [-10, 5, 20],
