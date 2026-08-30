@@ -99,10 +99,12 @@ export function solveDisplacement(
             );
         }
 
-        overflowCursor = Math.max(overflowCursor, x + width / 2);
-        // The largest dimension limits each rectangle to at most four cells,
-        // keeping grid storage linear in the number of rectangles.
-        cellSize = Math.max(cellSize, width, height);
+        if (width > 0 && height > 0) {
+            overflowCursor = Math.max(overflowCursor, x + width / 2);
+            // The largest dimension limits each rectangle to at most four cells,
+            // keeping grid storage linear in the number of rectangles.
+            cellSize = Math.max(cellSize, width, height);
+        }
     }
 
     const obstacleData = obstacles ?? { x: [], y: [], width: [], height: [] };
@@ -396,7 +398,9 @@ export function solveDisplacement(
             );
         }
 
-        overflowCursor = Math.max(overflowCursor, placedX + width / 2);
+        if (width > 0 && height > 0) {
+            overflowCursor = Math.max(overflowCursor, placedX + width / 2);
+        }
 
         addToGrid(i, placedX, placedY, width, height);
     }
