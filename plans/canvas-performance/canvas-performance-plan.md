@@ -1,6 +1,6 @@
 # Canvas interaction performance plan
 
-Status: Milestones 1–3 complete; shared x indexing moved to a dedicated plan
+Status: Milestones 1–3 complete; milestone 4 planned
 
 ## Context
 
@@ -42,12 +42,23 @@ reporting, and comparison report assume WebGL and WebGPU. The private
 performance profiler records Canvas picking frames but does not record normal
 Canvas paints.
 
+Peek exposes a separate, simpler source of wasted work. `SampleView` records
+the repeated sample hierarchy for every sample and supplies each occurrence
+with `sampleFacetRenderingOptions`. WebGL already rejects occurrences whose
+normalized sample interval is wholly outside the view before issuing a draw.
+Canvas and Canvas software picking do not perform that occurrence-level test;
+they enter mark setup, resolve the sample's collector batch, project every
+datum, and only then reject individual geometry against the clip. The main
+MCCA exon and copy-ratio paths use these explicit sample facet batches, not the
+placement-driven `facetIndex` grouping path.
+
 ## Goals
 
 - Make Canvas interaction benchmarks repeatable and attributable using the
   existing benchmark driver and private profiler.
 - Avoid repeated view-hierarchy opacity evaluation within one Canvas paint.
 - Reduce invariant style and geometry work in the immediate rectangle hot loop.
+- Skip offscreen repeated sample facets before Canvas mark traversal.
 - Provide profiling evidence and requirements for the renderer-neutral x-index
   work tracked in `plans/x-indexing/x-indexing-plan.md`.
 - Preserve exact painter order, clipping, opacity, interval overlap, offset,
@@ -65,6 +76,8 @@ Canvas paints.
 - Making SVG export use an interaction-oriented subset index.
 - Adding a shared low-level renderer abstraction or importing WebGL modules
   into Canvas or the immediate renderer.
+- Changing SampleView layout recording, sample placement topology, or SVG
+  export occurrence selection.
 
 ## Key decisions
 
@@ -100,6 +113,26 @@ intervals to renderer-native contiguous ranges while keeping caches and
 resources adapter-owned. This Canvas plan retains only the profiling evidence
 that motivates the shared work.
 
+### Share the existing sample-facet visibility contract
+
+The normalized interval test in WebGL's `prepareSampleFacetRendering()` is the
+established Core behavior: an occurrence is visible when its sample interval
+overlaps `[0, 1]`. A backend-neutral immediate-rendering helper will own that
+exact test. WebGL will call the helper without changing its draw behavior, and
+Canvas normal and software-picking contexts will call it after immediate
+rendering revisions are initialized but before opacity, clip, data, or renderer
+setup. Revision initialization must remain first so an initially offscreen mark
+still subscribes to expression, selection, and scale changes that request a
+future paint.
+
+Canvas applies the helper only to explicit `sampleFacetRenderingOptions`
+without a `facetIndex` encoder. Mixed explicit-sample and placement-texture
+mode therefore falls back to the full traversal, matching WebGL's separation
+between uniform sample facets and `SAMPLE_FACET_TEXTURE`. Generic
+placement-driven `facetIndex` marks retain their current behavior. SVG export
+also retains every recorded occurrence because interaction viewport culling is
+not part of structured export selection.
+
 ## Alternatives considered
 
 ### Filter or slice arrays before calling immediate renderers
@@ -125,6 +158,15 @@ have existing contracts and materially lower correctness risk.
 Deferred. It has high full-domain potential, but grouping paths can change
 alpha accumulation, overlap, painter order, and stroke joins. It needs a
 separate visual design and structured rendering verification.
+
+### Cache `facetIndex` grouping before culling sample facets
+
+Deferred because tracing the MCCA hierarchy showed that the dominant sample
+marks receive already-separated collector batches through
+`sampleFacetRenderingOptions`. `groupDataByFacetIndex()` accounts for only
+about 1–1.5% of sampled CPU in the current traces and serves a different
+placement-driven path. Caching it would add data-revision and encoder-revision
+invalidation without removing the dominant closeup traversal.
 
 ## Milestone 1: Measure normal Canvas interaction frames
 
@@ -276,6 +318,58 @@ run variance. Cadence was likewise noisy and showed no defensible improvement.
 The milestone is retained as a small, covered reduction in the measured hot
 rectangle path rather than as a frame-rate claim.
 
+## Milestone 4: Cull offscreen Canvas sample facets
+
+### Intended outcome
+
+Canvas normal and software-picking paints skip repeated sample occurrences
+whose normalized vertical interval is wholly outside the view, matching the
+existing WebGL behavior before any mark data is traversed.
+
+### Work
+
+- [ ] Extract WebGL's normalized sample-facet visibility test into the
+      backend-neutral immediate-rendering layer.
+- [ ] Preserve WebGL's current boundary behavior through focused helper and
+      WebGL tests, including exact edge contact, partial overlap, wholly
+      offscreen intervals, and current non-finite behavior.
+- [ ] Reject offscreen sample occurrences at the start of Canvas normal and
+      software-picking `renderMark()` after revision-listener initialization.
+- [ ] Record profiler counts for considered and culled Canvas sample-mark
+      occurrences without allocating or performing timing work when profiling
+      is disabled.
+- [ ] Cover normal rendering and picking with offscreen, partially visible,
+      mixed-mode fallback, and ordinary non-sample occurrences.
+- [ ] Prove that an initially offscreen conditional mark still schedules a
+      repaint when its selection or parameter changes.
+- [ ] Prove that SVG retains an offscreen sample occurrence.
+
+### Affected areas and consumers
+
+- Shared immediate sample-facet visibility helper
+- WebGL sample-facet draw preparation
+- Canvas normal rendering and software picking
+
+SVG, layout recording, placement topology, collector batches, and mark
+geometry visitors remain unchanged.
+
+### Verification
+
+- Focused helper, WebGL, Canvas, and software-picking tests.
+- Complete Canvas rendering suite and Core TypeScript check.
+- Exact restored-state MCCA `wheel-zoom`, `open-closeup`, and `closeup-wheel`
+  traces at 1200 x 700 and DPR 2, with a fresh pre-change run and at least two
+  post-change runs in the same environment.
+- Compare Canvas render CPU, `visitRectInstances`, closeup cadence, and the new
+  considered/culled occurrence counters. Treat cadence as diagnostic unless
+  repeated headed runs agree.
+
+### Documentation and migration
+
+None. This aligns Canvas with an existing internal WebGL culling contract.
+
+Tentative commit: `perf(core): cull offscreen Canvas sample facets`
+
 ## Proposed later work: not authorized for this implementation pass
 
 ### Dense point batching or subpixel LOD
@@ -305,6 +399,9 @@ dropping interaction frames.
   state-hash benchmark option is designed and verified.
 - Headless timings are diagnostic; final cadence claims should use the live
   headed Chrome run on the same viewport and DPR.
+- The normalized interval test intentionally matches WebGL rather than adding
+  mark-specific overflow margins. Any future change to sample-facet overflow
+  semantics must update both backends and their shared helper.
 
 ## Acceptance criteria
 
@@ -313,6 +410,9 @@ dropping interaction frames.
 - The exact MCCA wheel and Peek interactions preserve domain, scroll, visual,
   console, and picking behavior.
 - Canvas normal frames appear in benchmark profiler snapshots.
+- Canvas explicit sample batches and WebGL uniform sample facets use one
+  visibility predicate; mixed placement-texture mode falls back, while SVG
+  keeps full export occurrence selection.
 - Measurements report viewport, DPR, restored domain, case, run count, and the
   distinction between live-headed cadence and headless CPU attribution.
 - No retained scene graph, layer cache, point LOD, or other large architectural
