@@ -12,6 +12,8 @@ import {
 } from "../immediate/bounds.js";
 import { renderMarkCanvas } from "./renderers/index.js";
 import { warnOnce } from "../../utils/warning.js";
+import { getPerformanceProfiler } from "../../debug/performanceProfiler.js";
+import { isSampleFacetVisible } from "../sampleFacet.js";
 
 export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
     /** @type {{view: import("../../view/view.js").default, coords: import("../../view/layout/rectangle.js").default}[]} */
@@ -25,6 +27,9 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
 
     /** @type {(mark: import("../../marks/mark.js").default) => boolean} */
     #markPredicate;
+
+    /** @type {import("../../debug/performanceProfiler.js").PerformanceProfiler | undefined} */
+    #profiler;
 
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
@@ -46,6 +51,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         this.devicePixelRatio = options.devicePixelRatio;
         this.paint = options.paint;
         this.#markPredicate = options.markPredicate ?? (() => true);
+        this.#profiler = getPerformanceProfiler();
 
         if (this.paint) {
             const context = this.context;
@@ -122,6 +128,15 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         // Register their dependencies so conditional encodings schedule that
         // paint when a selection or expression changes.
         mark.initializeRenderingRevisions([]);
+
+        const sampleFacet = options.sampleFacetRenderingOptions;
+        if (sampleFacet && !mark.encoders.facetIndex) {
+            this.#profiler?.addCount("canvasSampleFacetOccurrences");
+            if (!isSampleFacetVisible(options)) {
+                this.#profiler?.addCount("canvasCulledSampleFacetOccurrences");
+                return;
+            }
+        }
 
         const coords = this.currentCoords;
         const inheritedClip = normalizeClipOptions(options);

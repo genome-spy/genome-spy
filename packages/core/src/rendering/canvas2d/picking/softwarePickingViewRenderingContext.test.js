@@ -170,6 +170,49 @@ describe("SoftwarePickingViewRenderingContext", () => {
         expect(getRasterizer).not.toHaveBeenCalled();
     });
 
+    test("skips offscreen explicit sample facets but renders partial ones", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: "rect",
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.2 },
+                y2: { value: 0.8 },
+                fill: { value: "black" },
+            },
+        });
+        const buffer = new SoftwarePickingBuffer(100, 100);
+        const rasterizer = new SoftwarePickingRasterizer(buffer);
+        const getRasterizer = vi.fn(() => rasterizer);
+        const context = new SoftwarePickingViewRenderingContext({
+            width: 100,
+            height: 100,
+            devicePixelRatio: 1,
+            getRasterizer,
+        });
+        const coords = Rectangle.create(0, 0, 100, 100);
+
+        view.arrange(context, coords, {
+            sampleFacetRenderingOptions: {
+                locSize: { location: -21, size: 20 },
+                pixelToUnit: 0.01,
+            },
+        });
+
+        expect(getRasterizer).not.toHaveBeenCalled();
+
+        view.arrange(context, coords, {
+            sampleFacetRenderingOptions: {
+                locSize: { location: 90, size: 20 },
+                pixelToUnit: 0.01,
+            },
+        });
+
+        expect(getRasterizer).toHaveBeenCalledOnce();
+        expect(buffer.read(50, 96)).toBeGreaterThan(0);
+    });
+
     test("calls onBeforeRender once for repeated view scopes", () => {
         const onBeforeRender = vi.fn();
         const view = /** @type {any} */ ({ onBeforeRender });

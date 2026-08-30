@@ -1,6 +1,6 @@
 # Canvas interaction performance plan
 
-Status: Milestones 1–3 complete; milestone 4 planned
+Status: Milestones 1–4 complete
 
 ## Context
 
@@ -25,10 +25,10 @@ pathological URL identified two regimes:
 The two dominant x-indexable rectangle marks already satisfy the shared
 contract:
 
-| Mark | Collected rows | Rows overlapping the restored x domain |
-| --- | ---: | ---: |
-| Gencode exons | 290,812 | 69,895 |
-| Copy ratios | 62,693 | 17,170 |
+| Mark          | Collected rows | Rows overlapping the restored x domain |
+| ------------- | -------------: | -------------------------------------: |
+| Gencode exons |        290,812 |                                 69,895 |
+| Copy ratios   |         62,693 |                                 17,170 |
 
 Canvas therefore scans about 353,000 rows to find 87,000 x candidates per
 paint. A temporary filtered-data counterfactual reduced steady live-Chrome
@@ -119,11 +119,11 @@ The normalized interval test in WebGL's `prepareSampleFacetRendering()` is the
 established Core behavior: an occurrence is visible when its sample interval
 overlaps `[0, 1]`. A backend-neutral immediate-rendering helper will own that
 exact test. WebGL will call the helper without changing its draw behavior, and
-Canvas normal and software-picking contexts will call it after immediate
-rendering revisions are initialized but before opacity, clip, data, or renderer
-setup. Revision initialization must remain first so an initially offscreen mark
-still subscribes to expression, selection, and scale changes that request a
-future paint.
+Canvas normal and software-picking contexts will call it before clip, data, or
+renderer setup. Normal Canvas keeps immediate rendering revision initialization
+before the cull so an initially offscreen mark still subscribes to expression,
+selection, and scale changes that request a future paint. Software picking does
+not own those subscriptions.
 
 Canvas applies the helper only to explicit `sampleFacetRenderingOptions`
 without a `facetIndex` encoder. Mixed explicit-sample and placement-texture
@@ -328,21 +328,21 @@ existing WebGL behavior before any mark data is traversed.
 
 ### Work
 
-- [ ] Extract WebGL's normalized sample-facet visibility test into the
+- [x] Extract WebGL's normalized sample-facet visibility test into the
       backend-neutral immediate-rendering layer.
-- [ ] Preserve WebGL's current boundary behavior through focused helper and
+- [x] Preserve WebGL's current boundary behavior through focused helper and
       WebGL tests, including exact edge contact, partial overlap, wholly
       offscreen intervals, and current non-finite behavior.
-- [ ] Reject offscreen sample occurrences at the start of Canvas normal and
+- [x] Reject offscreen sample occurrences at the start of Canvas normal and
       software-picking `renderMark()` after revision-listener initialization.
-- [ ] Record profiler counts for considered and culled Canvas sample-mark
+- [x] Record profiler counts for considered and culled Canvas sample-mark
       occurrences without allocating or performing timing work when profiling
       is disabled.
-- [ ] Cover normal rendering and picking with offscreen, partially visible,
+- [x] Cover normal rendering and picking with offscreen, partially visible,
       mixed-mode fallback, and ordinary non-sample occurrences.
-- [ ] Prove that an initially offscreen conditional mark still schedules a
+- [x] Prove that an initially offscreen conditional mark still schedules a
       repaint when its selection or parameter changes.
-- [ ] Prove that SVG retains an offscreen sample occurrence.
+- [x] Prove that SVG retains an offscreen sample occurrence.
 
 ### Affected areas and consumers
 
@@ -369,6 +369,30 @@ geometry visitors remain unchanged.
 None. This aligns Canvas with an existing internal WebGL culling contract.
 
 Tentative commit: `perf(core): cull offscreen Canvas sample facets`
+
+### Result
+
+The facet-only design received a Luna review before implementation. The review
+identified revision-listener initialization, mixed explicit/texture facet
+mode, exact boundary behavior, and SVG export as required compatibility cases;
+all are covered by the implementation and focused tests.
+
+A fresh pre-change trace and two post-change traces used the exact restored MCCA
+state at 1200 x 700 and DPR 2 in the same headless Chromium environment. During
+steady closeup wheel interaction, the profiler counted 27,730 Canvas sample-mark
+occurrences and rejected 26,484 (95.5%) before data traversal. Inclusive
+`renderCanvas2D` CPU fell from 814.1 ms before the change to 614.4 and 611.9 ms
+after it, a median reduction of 24.7%. Inclusive `visitRectInstances` CPU fell
+from 530.1 ms to 306.0 and 300.4 ms, a median reduction of 42.8%.
+
+Closeup rAF p95 fell from 26.5 ms to 18.2 and 17.1 ms, and frames over 33.3 ms
+fell from two to zero. The transition case improved more modestly:
+`renderCanvas2D` fell from 987.3 ms to 941.3 and 916.5 ms, while rAF p95 fell
+from 34.8 ms to 33.2 and 33.0 ms. Normal wheel zoom counted 17,700 considered
+sample occurrences and rejected none; its 43.2 ms pre-change p95 and 42.7/43.3
+ms post-change p95 values are effectively unchanged, as expected. These cadence
+numbers remain diagnostic because the controlled A/B runs were headless; the
+CPU stacks and occurrence counters provide the attribution evidence.
 
 ## Proposed later work: not authorized for this implementation pass
 

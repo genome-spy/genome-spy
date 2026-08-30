@@ -75,3 +75,35 @@ test("removes scale-resolution listeners idempotently", () => {
         ["range", rangeListener],
     ]);
 });
+
+test("preserves sample facet visibility when preparing its uniform", () => {
+    const gl = { uniform2f: vi.fn() };
+    const delegate = new WebGLMark(
+        /** @type {any} */ ({}),
+        /** @type {any} */ ({ gl })
+    );
+    delegate.programInfo = /** @type {any} */ ({
+        uniformSetters: { uSampleFacet: { location: "sample-facet" } },
+    });
+
+    expect(
+        delegate.prepareSampleFacetRendering({
+            sampleFacetRenderingOptions: {
+                locSize: { location: 80, size: 30 },
+                pixelToUnit: 0.01,
+            },
+        })
+    ).toBe(true);
+    expect(gl.uniform2f).toHaveBeenCalledWith("sample-facet", 0.8, 0.3);
+
+    gl.uniform2f.mockClear();
+    expect(
+        delegate.prepareSampleFacetRendering({
+            sampleFacetRenderingOptions: {
+                locSize: { location: 101, size: 20 },
+                pixelToUnit: 0.01,
+            },
+        })
+    ).toBe(false);
+    expect(gl.uniform2f).not.toHaveBeenCalled();
+});

@@ -56,6 +56,7 @@ import {
     isMultiPointSelection,
     isSinglePointSelection,
 } from "../../../selection/selection.js";
+import { isSampleFacetVisible } from "../../sampleFacet.js";
 
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -1100,7 +1101,7 @@ export default class WebGLMark {
             const pos = opts.locSize.location * scale;
             const height = opts.locSize.size * scale;
 
-            if (pos > 1.0 || pos + height < 0.0) {
+            if (!isSampleFacetVisible(options)) {
                 // Not visible
                 return false;
             }
