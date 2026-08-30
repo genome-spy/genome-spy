@@ -29,6 +29,7 @@ function createRecordingContext() {
      *     fillTexts: [string, number, number, number | undefined][],
      *     fonts: string[],
      *     scales: [number, number][],
+     *     drawImages: number[],
      *     closes: number,
      *     saves: number
      * }}
@@ -48,6 +49,7 @@ function createRecordingContext() {
         fillTexts: [],
         fonts: [],
         scales: [],
+        drawImages: [],
         closes: 0,
         saves: 0,
     };
@@ -101,6 +103,7 @@ function createRecordingContext() {
         rotate: (/** @type {number} */ angle) => calls.rotations.push(angle),
         scale: (/** @type {number} */ x, /** @type {number} */ y) =>
             calls.scales.push([x, y]),
+        drawImage: () => calls.drawImages.push(context.globalAlpha),
         measureText: vi.fn(() => ({ width: 0.5 })),
         fillText: (
             /** @type {string} */ text,
@@ -162,6 +165,65 @@ function render(
 }
 
 describe("Canvas2DViewRenderingContext", () => {
+    test("applies local view opacity once after overlapping child draws", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: "point",
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                size: { value: 100 },
+                fill: { value: "black" },
+            },
+        });
+        const unitView =
+            /** @type {import("../../view/unitView.js").default} */ (view);
+        const main = createRecordingContext();
+        const offscreen = createRecordingContext();
+        offscreen.context.canvas.getContext = () => offscreen.context;
+        const originalCreateElement = document.createElement.bind(document);
+        const createElement = vi
+            .spyOn(document, "createElement")
+            .mockImplementation((tagName, options) => {
+                if (tagName === "canvas") {
+                    return /** @type {any} */ (offscreen.context.canvas);
+                }
+                return originalCreateElement(tagName, options);
+            });
+        const context = new Canvas2DViewRenderingContext(
+            { picking: false },
+            {
+                context: main.context,
+                width: 100,
+                height: 100,
+                devicePixelRatio: 1,
+                background: null,
+                paint: true,
+            }
+        );
+        const groupView = {
+            onBeforeRender: vi.fn(),
+            getOpacity: () => 0.5,
+        };
+
+        try {
+            context.pushView(
+                /** @type {any} */ (groupView),
+                Rectangle.create(0, 0, 100, 100)
+            );
+            context.renderMark(unitView.mark, {});
+            context.renderMark(unitView.mark, {});
+            context.popView(/** @type {any} */ (groupView));
+        } finally {
+            createElement.mockRestore();
+        }
+
+        expect(offscreen.calls.fills.map(([opacity]) => opacity)).toEqual([
+            1, 1,
+        ]);
+        expect(main.calls.drawImages).toEqual([0.5]);
+    });
+
     test("passes indexed source-row bounds to immediate marks", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{ x: 0.1 }, { x: 0.5 }, { x: 0.9 }] },

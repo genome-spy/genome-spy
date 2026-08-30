@@ -84,7 +84,7 @@ describe("WebGpuViewRenderingContext", () => {
         const context = new WebGpuViewRenderingContext({
             surface: /** @type {any} */ (surface),
         });
-        const view = { onBeforeRender: vi.fn() };
+        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             encoders: {},
             isPickingParticipant: () => true,
@@ -125,7 +125,7 @@ describe("WebGpuViewRenderingContext", () => {
         const context = new WebGpuViewRenderingContext({
             surface: /** @type {any} */ (surface),
         });
-        const view = { onBeforeRender: vi.fn() };
+        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             properties: {},
             unitView: {
@@ -160,7 +160,7 @@ describe("WebGpuViewRenderingContext", () => {
         const context = new WebGpuViewRenderingContext({
             surface: /** @type {any} */ (surface),
         });
-        const view = { onBeforeRender: vi.fn() };
+        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             properties: { clip: "x" },
             unitView: {
@@ -191,7 +191,7 @@ describe("WebGpuViewRenderingContext", () => {
             markCoords.width,
             markCoords.height,
         ]).toEqual([20.5, 30.5, 100, 80]);
-        expect(adapterCalls[0][3]()).toBe(0.25);
+        expect(adapterCalls[0][3]).toBe(1);
 
         expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
         expect(surface.drawMark).toHaveBeenCalledWith(
@@ -216,7 +216,7 @@ describe("WebGpuViewRenderingContext", () => {
         const context = new WebGpuViewRenderingContext({
             surface: /** @type {any} */ (surface),
         });
-        const view = { onBeforeRender: vi.fn() };
+        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             properties: { clip: "never", cullByVisibleRange: "y" },
             unitView: {
@@ -282,7 +282,10 @@ describe("WebGpuViewRenderingContext", () => {
         const context = new WebGpuViewRenderingContext({
             surface: /** @type {any} */ (surface),
         });
-        const view = { onBeforeRender: () => (offset += 10) };
+        const view = {
+            onBeforeRender: () => (offset += 10),
+            getOpacity: () => 1,
+        };
         const coords = Rectangle.create(20, 30, 100, 80)
             .modify({ height: () => 80 + offset })
             .translate(() => offset, 0);
@@ -339,7 +342,7 @@ describe("WebGpuViewRenderingContext", () => {
         const context = new WebGpuViewRenderingContext({
             surface: /** @type {any} */ (surface),
         });
-        const view = { onBeforeRender: vi.fn() };
+        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             isPickingParticipant: () => false,
             properties: {},
@@ -382,7 +385,7 @@ describe("WebGpuViewRenderingContext", () => {
         const context = new WebGpuViewRenderingContext({
             surface: /** @type {any} */ (surface),
         });
-        const view = { onBeforeRender: vi.fn() };
+        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             properties: {},
             unitView: {
@@ -478,13 +481,16 @@ describe("WebGpuViewRenderingContext", () => {
         const context = new WebGpuViewRenderingContext({
             surface: /** @type {any} */ (surface),
         });
-        const view = { onBeforeRender: vi.fn() };
+        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             encoders: { facetIndex: vi.fn() },
+            encoding: {},
+            getType: () => "rect",
             properties: {},
             unitView: {
                 getEffectiveOpacity: () => 1,
                 getCollector: () => ({}),
+                getPathString: () => "samples/copy-ratios",
             },
         };
 
@@ -519,6 +525,119 @@ describe("WebGpuViewRenderingContext", () => {
             placement: { set: { placementSetId: -1 } },
         });
         expect(surface.drawMark.mock.calls[0][2]).toBe(source);
+        expect(surface.drawMark.mock.calls[0][4]).toEqual({ sampleCount: 4 });
+    });
+
+    test("coalesces repeated sample rectangles into one MSAA placement draw", () => {
+        const source = new PlacementSource();
+        source.replaceTopology(
+            [["first"], ["second"]],
+            new Float32Array([0, 0, 1, 0.5, 0, 0.5, 1, 0.5])
+        );
+        const placementIndices = new Uint32Array([0, 1]);
+        mocks.getPackedMarkData.mockReturnValue({
+            data: [{ sample: "first" }, { sample: "second" }],
+            placementIndices,
+        });
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 300, height: 200 }),
+            updateMark: vi.fn(),
+            drawMark: vi.fn(),
+        };
+        const context = new WebGpuViewRenderingContext({
+            surface: /** @type {any} */ (surface),
+        });
+        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const mark = {
+            encoders: { sample: vi.fn() },
+            encoding: {},
+            getType: () => "rect",
+            properties: {},
+            unitView: {
+                getEffectiveOpacity: () => 1,
+                getCollector: () => ({}),
+                getPathString: () => "samples/copy-ratios",
+            },
+        };
+        const coords = Rectangle.create(20, 30, 100, 80);
+
+        for (let index = 0; index < 2; index++) {
+            context.pushView(/** @type {any} */ (view), coords);
+            context.renderMark(/** @type {any} */ (mark), {
+                placement: {
+                    source,
+                    index,
+                    topologyRevision: source.getSnapshot().topology.revision,
+                },
+            });
+            context.popView(/** @type {any} */ (view));
+        }
+        context.finish();
+        context.render({ picking: false });
+
+        const adapterCalls = /** @type {any[][]} */ (
+            mocks.createWebGpuMarkConfig.mock.calls
+        );
+        expect(adapterCalls[0][5]).toEqual({
+            data: placementIndices,
+            type: "u32",
+        });
+        expect(surface.drawMark).toHaveBeenCalledOnce();
+        expect(surface.drawMark.mock.calls[0][1]).toMatchObject({
+            firstInstance: 0,
+            instanceCount: 2,
+            placement: { set: { placementSetId: -1 } },
+        });
+        expect(
+            surface.drawMark.mock.calls[0][1].placement.index
+        ).toBeUndefined();
+        expect(surface.drawMark.mock.calls[0][4]).toEqual({ sampleCount: 4 });
+    });
+
+    test("updates local group opacity without rebuilding mark resources", () => {
+        let opacity = 0.5;
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            updateMark: vi.fn(),
+            drawMark: vi.fn(),
+            pushViewGroup: vi.fn(),
+            popViewGroup: vi.fn(),
+        };
+        const context = new WebGpuViewRenderingContext({
+            surface: /** @type {any} */ (surface),
+        });
+        const view = {
+            onBeforeRender: vi.fn(),
+            getOpacity: () => opacity,
+            getEffectiveOpacity: () => opacity,
+            getCollector: () => ({}),
+        };
+        const mark = {
+            encoders: {},
+            properties: {},
+            unitView: view,
+        };
+        const coords = Rectangle.create(10, 20, 30, 40);
+
+        context.pushView(/** @type {any} */ (view), coords);
+        context.renderMark(/** @type {any} */ (mark), {});
+        context.popView(/** @type {any} */ (view));
+        context.finish();
+        context.render({ picking: false });
+        opacity = 0.25;
+        context.render({ picking: false });
+
+        expect(surface.pushViewGroup.mock.calls.map((call) => call[2])).toEqual(
+            [0.5, 0.25]
+        );
+        expect(surface.popViewGroup).toHaveBeenCalledTimes(2);
+        expect(surface.updateMark).toHaveBeenCalledOnce();
+        const adapterCalls = /** @type {any[][]} */ (
+            mocks.createWebGpuMarkConfig.mock.calls
+        );
+        expect(adapterCalls[0][3]).toBe(1);
     });
 
     test("submits only visible ranges from a 2,000-placement source", () => {
@@ -544,7 +663,7 @@ describe("WebGpuViewRenderingContext", () => {
         const context = new WebGpuViewRenderingContext({
             surface: /** @type {any} */ (surface),
         });
-        const view = { onBeforeRender: vi.fn() };
+        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             encoders: {},
             isPickingParticipant: () => true,

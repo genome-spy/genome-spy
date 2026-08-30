@@ -17,6 +17,7 @@ import {
 } from "./webGpuMarkAdapter.js";
 import { getPackedMarkData, getPackedMarkRange } from "./webGpuMarkData.js";
 import { resolveMarkXIndexQuery } from "../xIndex/markXIndex.js";
+import { getMarkRenderingIntent } from "../renderingIntent.js";
 
 /**
  * Compiles a completed Core layout into an adapter-owned retained frame plan.
@@ -33,6 +34,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
     /** @type {Occurrence[]} */
     #occurrences = [];
+
+    /** @type {PaintCommand[]} */
+    #paintCommands = [];
 
     #finished = false;
 
@@ -58,6 +62,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             this.#views.add(view);
         }
         this.#viewStack.push({ view, coords });
+        this.#paintCommands.push({ type: "pushView", view, coords });
     }
 
     /**
@@ -69,6 +74,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (entry?.view !== view) {
             throw new Error("Unbalanced WebGPU view rendering context stack.");
         }
+        this.#paintCommands.push({ type: "popView", view });
     }
 
     /**
@@ -94,6 +100,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 source: undefined,
                 generatedSource: false,
                 placementIndexed: mark.encoders?.facetIndex !== undefined,
+                instancePlacementIndexed: false,
                 submittedPlacementIndexed: false,
                 xQueryDomain: [0, 0],
                 xIndexedRange: [0, 0],
@@ -106,7 +113,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 properties: undefined,
                 configRevision: -1,
                 resourceRevision: -1,
-                viewOpacity: NaN,
                 resourcesDirty: true,
                 configX: NaN,
                 configY: NaN,
@@ -138,6 +144,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         };
         state.occurrences.push(occurrence);
         this.#occurrences.push(occurrence);
+        this.#paintCommands.push({ type: "occurrence", occurrence });
         countPerformance("markOccurrences");
     }
 
@@ -185,13 +192,39 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         let synchronizedMarks = 0;
         let changedMarks = 0;
         let resourceWrites = 0;
-        for (const occurrence of this.#occurrences) {
-            const writes = this.#submitOccurrence(occurrence, picking, canvas);
-            if (writes !== undefined) {
-                synchronizedMarks++;
-                changedMarks += writes > 0 ? 1 : 0;
-                resourceWrites += writes;
+        /** @type {boolean[]} */
+        const openedGroups = [];
+        for (const command of this.#paintCommands) {
+            if (command.type === "pushView") {
+                const opacity = command.view.getOpacity();
+                const isolated = !picking && opacity !== 1;
+                openedGroups.push(isolated);
+                if (isolated) {
+                    this.surface.pushViewGroup(
+                        command.view,
+                        command.coords,
+                        opacity
+                    );
+                }
+            } else if (command.type === "popView") {
+                if (openedGroups.pop()) {
+                    this.surface.popViewGroup();
+                }
+            } else {
+                const writes = this.#submitOccurrence(
+                    command.occurrence,
+                    picking,
+                    canvas
+                );
+                if (writes !== undefined) {
+                    synchronizedMarks++;
+                    changedMarks += writes > 0 ? 1 : 0;
+                    resourceWrites += writes;
+                }
             }
+        }
+        if (openedGroups.length) {
+            throw new Error("Unbalanced WebGPU paint command stack.");
         }
         countPerformance("retainedMarkSyncChecks", synchronizedMarks);
         countPerformance("retainedMarkSyncChanges", changedMarks);
@@ -247,6 +280,11 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             );
         }
 
+        state.instancePlacementIndexed =
+            state.placementIndexed ||
+            (!!state.source &&
+                getMarkRenderingIntent(state.mark).sampleCount === 4);
+
         if (state.source) {
             state.viewport = createDrawRect();
         }
@@ -285,12 +323,15 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
         const packed = getPackedMarkData(
             state.mark,
-            state.generatedSource ? undefined : state.source
+            state.instancePlacementIndexed || !state.generatedSource
+                ? state.source
+                : undefined
         );
         if (!packed.data.length) {
             return;
         }
         state.xQueryEnabled =
+            !state.instancePlacementIndexed &&
             !!packed.xIndexSpec &&
             resolveMarkXIndexQuery(packed.xIndexSpec, state.xQueryDomain);
         if (!state.xQueryEnabled) {
@@ -337,11 +378,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                     state.mark,
                     first.options,
                     configCoords,
-                    () => state.mark.unitView.getEffectiveOpacity(),
+                    1,
                     packed.data,
-                    state.source && !state.placementIndexed
-                        ? { source: "draw" }
-                        : undefined
+                    createPlacementIndexConfig(state, packed)
                 )
             );
             state.packed = packed;
@@ -369,10 +408,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             packedChanged ||
             expressionChanged ||
             geometryChanged ||
-            state.resourceRevision !== resourceRevision ||
-            state.viewOpacity !== viewOpacity;
+            state.resourceRevision !== resourceRevision;
         state.resourceRevision = resourceRevision ?? -1;
-        state.viewOpacity = viewOpacity;
         state.active = !!state.config;
     }
 
@@ -410,7 +447,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         ) {
             return undefined;
         }
-        if (state.placementIndexed && state.submittedPlacementIndexed) {
+        if (state.instancePlacementIndexed && state.submittedPlacementIndexed) {
             return undefined;
         }
 
@@ -425,12 +462,14 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         refreshOccurrenceDraw(occurrence, state, draw, canvas);
 
-        const placementIndex = state.generatedSource
-            ? occurrence.placementIndex
-            : occurrence.options.placement?.index;
+        const placementIndex = state.instancePlacementIndexed
+            ? undefined
+            : state.generatedSource
+              ? occurrence.placementIndex
+              : occurrence.options.placement?.index;
         if (
             state.source &&
-            !state.placementIndexed &&
+            !state.instancePlacementIndexed &&
             placementIndex === undefined
         ) {
             throw createViewError(
@@ -440,7 +479,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         if (
             state.source &&
-            !state.placementIndexed &&
+            !state.instancePlacementIndexed &&
             !isPlacementVisible(
                 state.source,
                 placementIndex,
@@ -452,8 +491,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             return undefined;
         }
 
-        let firstInstance = range.firstInstance;
-        let instanceCount = range.instanceCount;
+        let firstInstance = state.instancePlacementIndexed
+            ? 0
+            : range.firstInstance;
+        let instanceCount = state.instancePlacementIndexed
+            ? state.packed.data.length
+            : range.instanceCount;
         if (state.xQueryEnabled && range.xIndex) {
             range.xIndex(
                 state.xQueryDomain[0],
@@ -496,9 +539,20 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (draw.placement) {
             draw.placement.index = placementIndex;
         }
-        this.surface.drawMark(state.mark, draw, state.source, picking);
+        const intent = getMarkRenderingIntent(state.mark);
+        if (!picking && intent.sampleCount === 4) {
+            this.surface.drawMark(
+                state.mark,
+                draw,
+                state.source,
+                false,
+                intent
+            );
+        } else {
+            this.surface.drawMark(state.mark, draw, state.source, picking);
+        }
         countPerformance("drawCommands");
-        if (state.placementIndexed) {
+        if (state.instancePlacementIndexed) {
             state.submittedPlacementIndexed = true;
         }
         return resourceWrites;
@@ -567,6 +621,28 @@ function createOccurrenceDraw(occurrence, state) {
         };
     }
     return draw;
+}
+
+/**
+ * @param {MarkState} state
+ * @param {import("./webGpuMarkData.js").PackedMarkData} packed
+ * @returns {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"] | undefined}
+ */
+function createPlacementIndexConfig(state, packed) {
+    if (state.placementIndexed) {
+        return undefined;
+    } else if (state.instancePlacementIndexed) {
+        if (!packed.placementIndices) {
+            throw createViewError(
+                state.mark,
+                "Grouped sample placement requires complete facet topology."
+            );
+        }
+        return { data: packed.placementIndices, type: "u32" };
+    } else if (state.source) {
+        return { source: "draw" };
+    }
+    return undefined;
 }
 
 /**
@@ -695,6 +771,7 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
  * @property {import("../../view/layout/placementSource.js").default | undefined} source
  * @property {boolean} generatedSource
  * @property {boolean} placementIndexed
+ * @property {boolean} instancePlacementIndexed
  * @property {boolean} submittedPlacementIndexed
  * @property {[number, number]} xQueryDomain
  * @property {[number, number]} xIndexedRange
@@ -707,7 +784,6 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
  * @property {Record<string, {value: any}> | undefined} properties
  * @property {number} configRevision
  * @property {number} resourceRevision
- * @property {number} viewOpacity
  * @property {boolean} resourcesDirty
  * @property {number} configX
  * @property {number} configY
@@ -715,6 +791,14 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
  * @property {number} configHeight
  * @property {import("@genome-spy/webgpu-renderer").DrawRect | undefined} viewport
  * @property {Float32Array | undefined} generatedRectangles
+ */
+
+/**
+ * @typedef {
+ *   | {type: "pushView", view: import("../../view/view.js").default, coords: Rectangle}
+ *   | {type: "popView", view: import("../../view/view.js").default}
+ *   | {type: "occurrence", occurrence: Occurrence}
+ * } PaintCommand
  */
 
 /**

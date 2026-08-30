@@ -38,11 +38,23 @@ export default class WebGpuSurface {
     /** @type {WeakSet<import("../../marks/mark.js").default>} */
     #registeredMarkOwners = new WeakSet();
 
-    /** @type {import("@genome-spy/webgpu-renderer").DrawCommand[]} */
-    #frameDraws = [];
+    /** @type {import("@genome-spy/webgpu-renderer").RenderItem[]} */
+    #frameItems = [];
+
+    /** @type {import("@genome-spy/webgpu-renderer").RenderItem[][]} */
+    #frameItemStack = [this.#frameItems];
 
     /** @type {import("@genome-spy/webgpu-renderer").DrawCommand[]} */
     #pickingDraws = [];
+
+    /** @type {WebGpuFramePlanSummary} */
+    #framePlanSummary = { groups: [], directMarks: [] };
+
+    /** @type {{mark: import("../../marks/mark.js").default, parent: import("@genome-spy/webgpu-renderer").RenderItem[], group: {bounds: import("@genome-spy/webgpu-renderer").DrawRect, sampleCount: 4, items: import("@genome-spy/webgpu-renderer").DrawCommand[]}} | undefined} */
+    #activeMsaaGroup;
+
+    /** @type {Set<string>} */
+    #directSummaryKeys = new Set();
 
     /** @type {{logicalWidth: number, logicalHeight: number, physicalWidth: number, physicalHeight: number} | undefined} */
     #appliedSize;
@@ -152,13 +164,54 @@ export default class WebGpuSurface {
      * Starts a new ordered frame without releasing retained marks.
      */
     beginFrame() {
-        this.#frameDraws.length = 0;
+        this.#frameItems.length = 0;
+        this.#frameItemStack = [this.#frameItems];
         this.#pickingDraws.length = 0;
+        this.#framePlanSummary = { groups: [], directMarks: [] };
+        this.#activeMsaaGroup = undefined;
+        this.#directSummaryKeys.clear();
     }
 
     /** Starts collecting the next on-demand pick frame. */
     beginPickingFrame() {
         this.#pickingDraws.length = 0;
+    }
+
+    /**
+     * Opens an opacity-isolated Core view group.
+     *
+     * @param {import("../../view/view.js").default} view
+     * @param {import("../../view/layout/rectangle.js").default} coords
+     * @param {number} opacity
+     */
+    pushViewGroup(view, coords, opacity) {
+        const bounds = {
+            x: coords.x,
+            y: coords.y,
+            width: coords.width,
+            height: coords.height,
+        };
+        /** @type {import("@genome-spy/webgpu-renderer").RenderItem[]} */
+        const items = [];
+        this.#currentFrameItems().push({ bounds, opacity, items });
+        this.#frameItemStack.push(items);
+        this.#activeMsaaGroup = undefined;
+        this.#framePlanSummary.groups.push({
+            kind: "view-opacity",
+            sampleCount: 1,
+            opacity,
+            bounds,
+            viewPath: view.getPathString(),
+        });
+    }
+
+    /** Closes the current opacity-isolated Core view group. */
+    popViewGroup() {
+        if (this.#frameItemStack.length <= 1) {
+            throw new Error("Unbalanced WebGPU render group stack.");
+        }
+        this.#frameItemStack.pop();
+        this.#activeMsaaGroup = undefined;
     }
 
     /**
@@ -306,8 +359,9 @@ export default class WebGpuSurface {
      * @param {import("@genome-spy/webgpu-renderer").DrawCommand} draw
      * @param {PlacementSource | undefined} placementSource
      * @param {boolean} picking
+     * @param {{sampleCount: 1 | 4}} [intent]
      */
-    drawMark(mark, draw, placementSource, picking) {
+    drawMark(mark, draw, placementSource, picking, intent) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
@@ -325,7 +379,57 @@ export default class WebGpuSurface {
             }
             draw.placement.set = this.getPlacementSet(placementSource);
         }
-        (picking ? this.#pickingDraws : this.#frameDraws).push(draw);
+        if (picking) {
+            this.#pickingDraws.push(draw);
+        } else if (intent?.sampleCount === 4) {
+            const size = this.getLogicalCanvasSize();
+            const bounds = {
+                ...(draw.scissor ??
+                    draw.viewport ?? {
+                        x: 0,
+                        y: 0,
+                        width: size.width,
+                        height: size.height,
+                    }),
+            };
+            const parent = this.#currentFrameItems();
+            if (
+                this.#activeMsaaGroup?.mark === mark &&
+                this.#activeMsaaGroup.parent === parent
+            ) {
+                this.#activeMsaaGroup.group.items.push(draw);
+                unionBounds(this.#activeMsaaGroup.group.bounds, bounds);
+            } else {
+                const group = {
+                    bounds,
+                    sampleCount: /** @type {const} */ (4),
+                    items: [draw],
+                };
+                parent.push(group);
+                this.#activeMsaaGroup = { mark, parent, group };
+                this.#framePlanSummary.groups.push({
+                    kind: "mark-msaa",
+                    sampleCount: 4,
+                    opacity: 1,
+                    bounds,
+                    viewPath: mark.unitView.getPathString(),
+                    markType: mark.getType(),
+                });
+            }
+        } else {
+            this.#currentFrameItems().push(draw);
+            this.#activeMsaaGroup = undefined;
+            const viewPath = mark.unitView.getPathString();
+            const markType = mark.getType();
+            const key = `${viewPath}\u0000${markType}`;
+            if (!this.#directSummaryKeys.has(key)) {
+                this.#directSummaryKeys.add(key);
+                this.#framePlanSummary.directMarks.push({
+                    viewPath,
+                    markType,
+                });
+            }
+        }
     }
 
     /**
@@ -335,10 +439,23 @@ export default class WebGpuSurface {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
+        if (this.#frameItemStack.length !== 1) {
+            throw new Error("Cannot render with an open WebGPU render group.");
+        }
         this.#renderer.render({
-            draws: this.#frameDraws,
+            items: this.#frameItems,
             ...(clearColor ? { clearColor } : {}),
         });
+        if (import.meta.env.DEV) {
+            this.canvas.dataset.webgpuFramePlan = JSON.stringify(
+                this.#framePlanSummary
+            );
+        }
+    }
+
+    /** @returns {WebGpuFramePlanSummary} */
+    getFramePlanSummary() {
+        return this.#framePlanSummary;
     }
 
     renderPicking() {
@@ -376,7 +493,8 @@ export default class WebGpuSurface {
         this.#placementSets = new WeakMap();
         this.#occurrencePlacementSources.clear();
         this.#registeredMarkOwners = new WeakSet();
-        this.#frameDraws.length = 0;
+        this.#frameItems.length = 0;
+        this.#frameItemStack = [this.#frameItems];
         this.#pickingDraws.length = 0;
         this.#sizeHelper.finalize();
         this.canvas.remove();
@@ -404,7 +522,41 @@ export default class WebGpuSurface {
             this.#occurrencePlacementSources.delete(mark);
         }
     }
+
+    /** @returns {import("@genome-spy/webgpu-renderer").RenderItem[]} */
+    #currentFrameItems() {
+        return this.#frameItemStack[this.#frameItemStack.length - 1];
+    }
 }
+
+/**
+ * @param {import("@genome-spy/webgpu-renderer").DrawRect} target
+ * @param {import("@genome-spy/webgpu-renderer").DrawRect} source
+ */
+function unionBounds(target, source) {
+    const x2 = Math.max(target.x + target.width, source.x + source.width);
+    const y2 = Math.max(target.y + target.height, source.y + source.height);
+    target.x = Math.min(target.x, source.x);
+    target.y = Math.min(target.y, source.y);
+    target.width = x2 - target.x;
+    target.height = y2 - target.y;
+}
+
+/**
+ * @typedef {object} WebGpuFramePlanGroupSummary
+ * @property {"view-opacity" | "mark-msaa"} kind
+ * @property {1 | 4} sampleCount
+ * @property {number} opacity
+ * @property {import("@genome-spy/webgpu-renderer").DrawRect} bounds
+ * @property {string} viewPath
+ * @property {string} [markType]
+ */
+
+/**
+ * @typedef {object} WebGpuFramePlanSummary
+ * @property {WebGpuFramePlanGroupSummary[]} groups
+ * @property {{viewPath: string, markType: string}[]} directMarks
+ */
 
 /** @param {Float32Array} first @param {Float32Array} second */
 function equalFloat32Arrays(first, second) {

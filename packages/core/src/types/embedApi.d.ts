@@ -429,6 +429,21 @@ export interface EmbedDebugApi {
      * picking IDs. Available only in Core embeds using the Canvas renderer.
      */
     createPickingBufferVisualization?: () => HTMLCanvasElement | undefined;
+
+    /** Returns the last Core-to-WebGPU render grouping for development checks. */
+    getWebGpuFramePlanSummary?: () => WebGpuFramePlanSummary | undefined;
+}
+
+export interface WebGpuFramePlanSummary {
+    groups: {
+        kind: "view-opacity" | "mark-msaa";
+        sampleCount: 1 | 4;
+        opacity: number;
+        bounds: ViewLayoutBounds;
+        viewPath: string;
+        markType?: string;
+    }[];
+    directMarks: { viewPath: string; markType: string }[];
 }
 
 // Design intent: EmbedResult.datasets and ViewHandle.datasets use the same

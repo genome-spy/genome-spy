@@ -19,11 +19,14 @@ import { getPerformanceProfiler } from "../../debug/performanceProfiler.js";
 import { isSampleFacetVisible } from "../sampleFacet.js";
 
 export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
-    /** @type {{view: import("../../view/view.js").default, coords: import("../../view/layout/rectangle.js").default}[]} */
+    /** @type {CanvasViewStackEntry[]} */
     #viewStack = [];
 
-    /** @type {WeakMap<import("../../view/view.js").default, number | undefined>} */
-    #viewOpacities = new WeakMap();
+    /** @type {WeakSet<import("../../view/view.js").default>} */
+    #preparedViews = new WeakSet();
+
+    /** @type {WeakMap<import("../../view/view.js").default, number>} */
+    #effectiveViewOpacities = new WeakMap();
 
     /** @type {(mark: import("../../marks/mark.js").default) => boolean} */
     #markPredicate;
@@ -99,11 +102,33 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     pushView(view, coords) {
-        if (this.paint && !this.#viewOpacities.has(view)) {
+        if (this.paint && !this.#preparedViews.has(view)) {
             view.onBeforeRender();
-            this.#viewOpacities.set(view, undefined);
+            this.#preparedViews.add(view);
         }
-        this.#viewStack.push({ view, coords });
+
+        const opacity = view.getOpacity();
+        let parentContext;
+        if (this.paint && opacity !== 1) {
+            const canvas = document.createElement("canvas");
+            canvas.width = this.context.canvas.width;
+            canvas.height = this.context.canvas.height;
+            const context = canvas.getContext("2d");
+            if (!context) {
+                throw new Error("Unable to create a Canvas2D view group.");
+            }
+            context.setTransform(
+                this.devicePixelRatio,
+                0,
+                0,
+                this.devicePixelRatio,
+                0,
+                0
+            );
+            parentContext = this.context;
+            this.context = context;
+        }
+        this.#viewStack.push({ view, coords, opacity, parentContext });
     }
 
     /**
@@ -117,6 +142,17 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                 "Unbalanced Canvas2D view rendering context stack."
             );
         }
+        if (entry.parentContext) {
+            const source = this.context.canvas;
+            this.context = entry.parentContext;
+            this.context.save();
+            try {
+                this.context.globalAlpha = entry.opacity;
+                this.context.drawImage(source, 0, 0, this.width, this.height);
+            } finally {
+                this.context.restore();
+            }
+        }
     }
 
     /**
@@ -129,8 +165,12 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
             return;
         }
 
-        const viewOpacity = this.#getViewOpacity(mark.unitView);
-        if (viewOpacity <= 0) {
+        let effectiveOpacity = this.#effectiveViewOpacities.get(mark.unitView);
+        if (effectiveOpacity === undefined) {
+            effectiveOpacity = mark.unitView.getEffectiveOpacity();
+            this.#effectiveViewOpacities.set(mark.unitView, effectiveOpacity);
+        }
+        if (effectiveOpacity <= 0) {
             return;
         }
 
@@ -207,7 +247,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                         end,
                         visibleBounds,
                         anchorCullBounds,
-                        viewOpacity,
+                        viewOpacity: 1,
                         warn: (message) =>
                             warnOnce(
                                 `${message} View: ${mark.unitView.getPathString()}`
@@ -231,14 +271,12 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         }
         return entry.coords;
     }
-
-    /** @param {import("../../view/unitView.js").default} view */
-    #getViewOpacity(view) {
-        let opacity = this.#viewOpacities.get(view);
-        if (opacity === undefined) {
-            opacity = view.getEffectiveOpacity();
-            this.#viewOpacities.set(view, opacity);
-        }
-        return opacity;
-    }
 }
+
+/**
+ * @typedef {object} CanvasViewStackEntry
+ * @property {import("../../view/view.js").default} view
+ * @property {import("../../view/layout/rectangle.js").default} coords
+ * @property {number} opacity
+ * @property {CanvasRenderingContext2D | undefined} parentContext
+ */

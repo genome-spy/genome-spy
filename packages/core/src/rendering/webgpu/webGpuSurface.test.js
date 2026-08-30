@@ -96,7 +96,12 @@ beforeEach(() => {
 function useMark(surface, mark, definition, config, options, properties) {
     configureMockMark(mark, definition);
     surface.updateMark(mark, definition, config, properties);
-    const { placement, picking = false, ...drawOptions } = options ?? {};
+    const {
+        placement,
+        picking = false,
+        intent,
+        ...drawOptions
+    } = options ?? {};
     const draw = {
         mark: mocks.handle,
         ...drawOptions,
@@ -116,7 +121,7 @@ function useMark(surface, mark, definition, config, options, properties) {
               }
             : {}),
     };
-    surface.drawMark(mark, draw, placement?.source, picking);
+    surface.drawMark(mark, draw, placement?.source, picking, intent);
 }
 
 /** @param {any} mark @param {any} definition */
@@ -127,6 +132,59 @@ function configureMockMark(mark, definition) {
 }
 
 describe("WebGpuSurface", () => {
+    test("wraps selected marks in inspectable four-sample groups", async () => {
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {any} */ ({});
+        const definition = /** @type {any} */ ({ type: "rect" });
+        const bounds = { x: 5, y: 6, width: 40, height: 20 };
+        const secondBounds = { x: 30, y: 4, width: 50, height: 10 };
+        const groupBounds = { x: 5, y: 4, width: 75, height: 22 };
+
+        surface.beginFrame();
+        useMark(surface, mark, definition, createConfig(0), {
+            viewport: bounds,
+            intent: { sampleCount: 4 },
+        });
+        useMark(surface, mark, definition, createConfig(0), {
+            viewport: secondBounds,
+            intent: { sampleCount: 4 },
+        });
+        surface.render();
+
+        expect(mocks.renderer.render).toHaveBeenCalledWith({
+            items: [
+                {
+                    bounds: groupBounds,
+                    sampleCount: 4,
+                    items: [
+                        { mark: mocks.handle, viewport: bounds },
+                        { mark: mocks.handle, viewport: secondBounds },
+                    ],
+                },
+            ],
+        });
+        expect(surface.getFramePlanSummary()).toEqual({
+            groups: [
+                {
+                    kind: "mark-msaa",
+                    sampleCount: 4,
+                    opacity: 1,
+                    bounds: groupBounds,
+                    viewPath: "root/test-view",
+                    markType: "rect",
+                },
+            ],
+            directMarks: [],
+        });
+    });
+
     test("forwards unexpected device loss until the surface is finalized", async () => {
         const container = document.createElement("div");
         const onError = vi.fn();
@@ -248,10 +306,10 @@ describe("WebGpuSurface", () => {
         expect(mocks.handle.scales.x.default.setRange).not.toHaveBeenCalled();
         expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
         expect(mocks.renderer.render).toHaveBeenNthCalledWith(1, {
-            draws: [{ mark: mocks.handle }],
+            items: [{ mark: mocks.handle }],
         });
         expect(mocks.renderer.render).toHaveBeenNthCalledWith(2, {
-            draws: [{ mark: mocks.handle }],
+            items: [{ mark: mocks.handle }],
         });
         expect(mocks.renderer.destroyMark).not.toHaveBeenCalled();
 
@@ -893,7 +951,7 @@ describe("WebGpuSurface", () => {
         surface.renderPicking();
 
         expect(mocks.renderer.render).toHaveBeenCalledWith({
-            draws: [{ mark: mocks.handle }],
+            items: [{ mark: mocks.handle }],
         });
         expect(mocks.renderer.renderPicking).toHaveBeenCalledWith({
             draws: [{ mark: mocks.handle }],

@@ -116,12 +116,13 @@ draw items may be coalesced only when that preserves the existing paint order
 and clip.
 
 The precise initial predicate is: a Core `rect` mark whose packed rendering
-uses the sample-facet `facetIndex` channel and whose rectangle has no stroke,
-corner radius, shadow, or hatch decoration. Metadata missing-value background
-rectangles are intentionally part of the metadata heatmap and use MSAA. Tests
-lock down the MCCA-shaped positive cases and the negative cases: mutation
-points, labels, axes, copy-ratio summaries, selection overlays, decorated
-rectangles, non-sample rectangles, and dense points remain direct.
+uses either the sample-facet `facetIndex` channel or the source-backed `sample`
+channel and whose rectangle has no stroke, corner radius, shadow, or hatch
+decoration. The MCCA copy-number segments use `sample`, while the metadata
+heatmap and its missing-value background use `facetIndex`; both use MSAA.
+Tests lock down these MCCA-shaped positive cases and the negative cases:
+mutation points, labels, axes, copy-ratio summaries, selection overlays,
+decorated rectangles, non-sample rectangles, and dense points remain direct.
 
 ### View opacity is local group state
 
@@ -261,22 +262,22 @@ untouched.
 
 ### Work
 
-- [ ] Add and test the local view-opacity accessor without changing
+- [x] Add and test the local view-opacity accessor without changing
       `getEffectiveOpacity()` for legacy consumers.
-- [ ] Add a renderer-neutral internal rendering-intent helper using the exact
+- [x] Add a renderer-neutral internal rendering-intent helper using the exact
       undecorated sample-faceted rectangle predicate above.
-- [ ] Compile WebGPU view nesting and selected rectangle occurrences into
+- [x] Compile WebGPU view nesting and selected rectangle occurrences into
       ordered renderer groups while keeping picking flat and direct. Aggregate
       placement-indexed marks into one bounded target and resolve, never one
       target per sample facet.
-- [ ] Stop baking effective view opacity into WebGPU mark channels; update group
+- [x] Stop baking effective view opacity into WebGPU mark channels; update group
       opacity live without rebuilding mark resources.
-- [ ] Add Canvas2D offscreen view groups for true group opacity, render their
+- [x] Add Canvas2D offscreen view groups for true group opacity, render their
       descendants without effective-opacity baking, and retain browser-managed
       antialiasing plus selective-mark rendering.
-- [ ] Cover MCCA-shaped copy-number rectangles, metadata rectangles, mutation
+- [x] Cover MCCA-shaped copy-number rectangles, metadata rectangles, mutation
       points, nested opacity, clipping, and picking with focused Core/App tests.
-- [ ] Expose a serializable development frame-plan summary containing group
+- [x] Expose a serializable development frame-plan summary containing group
       sample counts, bounds, and Core mark/view identities so browser smoke
       tests can prove the MCCA selection without inspecting GPU internals.
 

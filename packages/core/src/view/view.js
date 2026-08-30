@@ -832,6 +832,15 @@ export default class View {
         );
     }
 
+    /**
+     * Returns this view's opacity without applying ancestor opacity.
+     *
+     * @returns {number}
+     */
+    getOpacity() {
+        return this.opacityFunction(1.0);
+    }
+
     getPathString() {
         return this.getLayoutAncestors()
             .map((v) => v.name)

@@ -115,6 +115,11 @@ export function createEmbed(GenomeSpy) {
                         ? genomeSpy.createPickingBufferVisualization()
                         : undefined;
                 },
+                getWebGpuFramePlanSummary() {
+                    return active
+                        ? genomeSpy.getWebGpuFramePlanSummary()
+                        : undefined;
+                },
             },
         };
     };

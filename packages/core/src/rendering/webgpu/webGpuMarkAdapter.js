@@ -226,7 +226,7 @@ export function getWebGpuMarkConfigRevision(mark) {
 
 /**
  * Returns the revision of live scale, property, and selection resources.
- * Packed data and view opacity have separate revisions at the call site.
+ * Packed data has a separate revision, while view opacity is frame-group state.
  *
  * @param {import("../../marks/mark.js").default} mark
  * @returns {number | undefined}

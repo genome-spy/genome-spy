@@ -148,6 +148,8 @@ export default class App {
         this.debug = {
             getViewRoot: () => this.genomeSpy?.viewRoot,
             getModules: () => this.getDebugModules(),
+            getWebGpuFramePlanSummary: () =>
+                this.genomeSpy?.getWebGpuFramePlanSummary(),
         };
 
         this.genomeSpy.viewFactory.addViewType(

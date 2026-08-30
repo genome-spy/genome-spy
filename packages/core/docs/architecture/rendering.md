@@ -180,3 +180,13 @@ handle. Repeated ordinary marks use an adapter-owned placement source, while
 renderer-neutral placement sources remain owned by their Core or App layout
 producer. Neither an empty draw list nor offscreen placement releases retained
 resources; mark/view and placement-source disposal do.
+
+Visible WebGPU frames may contain generic ordered render groups. Core derives
+group opacity from each view's local opacity and derives four-sample coverage
+only for undecorated sample-faceted rectangles. The renderer owns transient
+attachments, resolves, and premultiplied-alpha composition; Core owns the
+predicate, nesting, bounds, and mark/view identities. Placement-indexed marks
+remain one retained draw and one group rather than expanding into per-facet
+targets. Picking stays flat and single-sampled. Canvas2D honors the same local
+view-opacity semantics with transparent offscreen canvases, while WebGL keeps
+its unchanged effective-opacity fallback.

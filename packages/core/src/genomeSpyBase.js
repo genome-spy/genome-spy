@@ -889,6 +889,10 @@ export default class GenomeSpy {
         return this.#renderCoordinator.createPickingBufferVisualization?.();
     }
 
+    getWebGpuFramePlanSummary() {
+        return this.#renderCoordinator.getWebGpuFramePlanSummary?.();
+    }
+
     getSearchableViews() {
         /** @type {UnitView[]} */
         const views = [];
