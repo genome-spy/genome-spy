@@ -1,6 +1,6 @@
 # Selective WebGPU compositing and export plan
 
-Status: In progress
+Status: Complete
 
 Reviewed by a Luna subagent before branch creation. The review tightened
 placement-indexed MSAA grouping, Canvas2D opacity ownership, sample-count
@@ -294,7 +294,7 @@ untouched.
 - Core tests assert that copy-number-like and metadata-like rect marks produce
   four-sample groups, while points and non-sample rectangles stay direct.
 - A placement-indexed multi-facet regression test asserts one MSAA group and
-  one resolve for the complete retained draw, with no per-facet target.
+  one resolve for its clipped occurrence draws, with no per-facet target.
 - A live opacity update changes only group composition state, not retained mark
   series, pipelines, or picking commands.
 - Canvas2D pixel/operation tests distinguish group opacity from per-mark
@@ -373,9 +373,9 @@ Tentative commit: `feat(core): rasterize exports with WebGPU`
       group composition in WebGPU and Canvas2D.
 - [x] Export a non-live-size transparent PNG and a hybrid SVG containing both
       vector elements and correctly cropped WebGPU raster runs.
-- [ ] Run final focused and cross-workspace checks and reconcile every task in
+- [x] Run final focused and cross-workspace checks and reconcile every task in
       this plan before delivery.
-- [ ] Perform an independent smell/KISS review over the full branch, apply
+- [x] Perform an independent smell/KISS review over the full branch, apply
       worthwhile simplifications, and repeat affected verification.
 
 ## Risks

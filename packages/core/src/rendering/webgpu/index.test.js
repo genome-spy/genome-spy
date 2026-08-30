@@ -44,9 +44,15 @@ test("serializes asynchronous raster and hybrid SVG exports", async () => {
     await Promise.resolve();
     expect(mocks.exportRaster).toHaveBeenCalledOnce();
     expect(mocks.rasterizeSvgRuns).not.toHaveBeenCalled();
+    expect(() => backend.exportCanvas(/** @type {any} */ ({}))).toThrow(
+        "cannot overlap"
+    );
+    expect(mocks.exportCanvas).not.toHaveBeenCalled();
 
     releaseRaster?.(new Blob());
     await rasterPromise;
     await svgPromise;
     expect(mocks.rasterizeSvgRuns).toHaveBeenCalledOnce();
+    backend.exportCanvas(/** @type {any} */ ({}));
+    expect(mocks.exportCanvas).toHaveBeenCalledOnce();
 });

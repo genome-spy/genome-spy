@@ -213,6 +213,11 @@ function getSampleRangeDraws(surface) {
     );
 }
 
+/** @param {any[]} call */
+function getDrawRange(call) {
+    return [call[1].firstInstance, call[1].instanceCount];
+}
+
 /**
  * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
  * @param {import("@genome-spy/core/types/rendering.js").ClipOptions | undefined} clip
@@ -2160,7 +2165,7 @@ describe("axis layout and visibility", () => {
         ).toBe(true);
     });
 
-    test("packs 2,000 SampleView ranges into one rendering and picking draw", async () => {
+    test("prunes 2,000 SampleView ranges equally for rendering and picking", async () => {
         const samples = Array.from({ length: 2000 }, (_, indexNumber) => ({
             id: `sample-${indexNumber}`,
             displayName: `Sample ${indexNumber}`,
@@ -2222,20 +2227,17 @@ describe("axis layout and visibility", () => {
 
         const visibleRanges = getSampleRangeDraws(visibleHarness.surface);
         const pickingRanges = getSampleRangeDraws(pickingHarness.surface);
-        expect(visibleRanges).toHaveLength(1);
-        expect(pickingRanges).toHaveLength(1);
-        expect(visibleRanges[0][1]).toMatchObject({
-            firstInstance: 0,
-            instanceCount: values.length,
-        });
-        expect(pickingRanges[0][1]).toMatchObject({
-            firstInstance: 0,
-            instanceCount: values.length,
-        });
-        expect(visibleRanges[0][3]).toBe(false);
-        expect(visibleRanges[0][4]).toEqual({ sampleCount: 4 });
-        expect(pickingRanges[0][3]).toBe(true);
-        expect(pickingRanges[0][4]).toBeUndefined();
+        expect(visibleRanges.length).toBeGreaterThan(0);
+        expect(visibleRanges.length).toBeLessThan(30);
+        expect(pickingRanges.map(getDrawRange)).toEqual(
+            visibleRanges.map(getDrawRange)
+        );
+        expect(visibleRanges.every((call) => call[3] === false)).toBe(true);
+        expect(visibleRanges.every((call) => call[4]?.sampleCount === 4)).toBe(
+            true
+        );
+        expect(pickingRanges.every((call) => call[3] === true)).toBe(true);
+        expect(pickingRanges.every((call) => call[4] === undefined)).toBe(true);
     });
 
     test("skips sample rendering while sample locations are unavailable", async () => {

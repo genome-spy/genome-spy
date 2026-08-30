@@ -563,7 +563,7 @@ describe("WebGpuViewRenderingContext", () => {
         expect(surface.drawMark.mock.calls[0][4]).toEqual({ sampleCount: 4 });
     });
 
-    test("coalesces repeated sample rectangles into one MSAA placement draw", () => {
+    test("preserves repeated sample rectangle ranges for one MSAA group", () => {
         const source = new PlacementSource();
         source.replaceTopology(
             [["first"], ["second"]],
@@ -574,6 +574,12 @@ describe("WebGpuViewRenderingContext", () => {
             data: [{ sample: "first" }, { sample: "second" }],
             placementIndices,
         });
+        mocks.getPackedMarkRange.mockImplementation(
+            (/** @type {any} */ _mark, /** @type {any} */ options) => ({
+                firstInstance: options.placement.index,
+                instanceCount: 1,
+            })
+        );
         const surface = {
             getDevicePixelRatio: () => 1,
             getLogicalCanvasSize: () => ({ width: 300, height: 200 }),
@@ -600,6 +606,11 @@ describe("WebGpuViewRenderingContext", () => {
         for (let index = 0; index < 2; index++) {
             context.pushView(/** @type {any} */ (view), coords);
             context.renderMark(/** @type {any} */ (mark), {
+                clip: {
+                    rect: Rectangle.create(20 + index * 50, 30, 50, 80),
+                    clipX: true,
+                    clipY: true,
+                },
                 placement: {
                     source,
                     index,
@@ -618,16 +629,31 @@ describe("WebGpuViewRenderingContext", () => {
             data: placementIndices,
             type: "u32",
         });
-        expect(surface.drawMark).toHaveBeenCalledOnce();
-        expect(surface.drawMark.mock.calls[0][1]).toMatchObject({
-            firstInstance: 0,
-            instanceCount: 2,
-            placement: { set: { placementSetId: -1 } },
-        });
+        expect(surface.drawMark).toHaveBeenCalledTimes(2);
         expect(
-            surface.drawMark.mock.calls[0][1].placement.index
-        ).toBeUndefined();
-        expect(surface.drawMark.mock.calls[0][4]).toEqual({ sampleCount: 4 });
+            surface.drawMark.mock.calls.map((call) => ({
+                firstInstance: call[1].firstInstance,
+                instanceCount: call[1].instanceCount,
+                placementIndex: call[1].placement.index,
+                scissor: call[1].scissor,
+                intent: call[4],
+            }))
+        ).toEqual([
+            {
+                firstInstance: 0,
+                instanceCount: 1,
+                placementIndex: undefined,
+                scissor: { x: 20, y: 30, width: 50, height: 80 },
+                intent: { sampleCount: 4 },
+            },
+            {
+                firstInstance: 1,
+                instanceCount: 1,
+                placementIndex: undefined,
+                scissor: { x: 70, y: 30, width: 50, height: 80 },
+                intent: { sampleCount: 4 },
+            },
+        ]);
     });
 
     test("updates local group opacity without rebuilding mark resources", () => {

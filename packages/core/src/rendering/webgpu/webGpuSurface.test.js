@@ -149,6 +149,16 @@ describe("WebGpuSurface", () => {
             })
         );
         await surface.initialize();
+        const liveMark = /** @type {any} */ ({});
+        surface.beginFrame();
+        useMark(
+            surface,
+            liveMark,
+            /** @type {any} */ ({ type: "point" }),
+            createConfig(0),
+            { viewport: { x: 0, y: 0, width: 100, height: 50 } }
+        );
+        const liveSummary = surface.getFramePlanSummary();
         const target = surface.createExportTarget(80, 40, 3);
         /** @type {{width: number, height: number, dpr: number}[]} */
         const observedSizes = [];
@@ -184,6 +194,16 @@ describe("WebGpuSurface", () => {
             height: 50,
         });
         expect(surface.getDevicePixelRatio()).toBe(2);
+        expect(surface.getFramePlanSummary()).toBe(liveSummary);
+        surface.render();
+        expect(mocks.renderer.render).toHaveBeenCalledWith({
+            items: [
+                {
+                    mark: mocks.handle,
+                    viewport: { x: 0, y: 0, width: 100, height: 50 },
+                },
+            ],
+        });
     });
 
     test("wraps selected marks in inspectable four-sample groups", async () => {

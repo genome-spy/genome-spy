@@ -186,10 +186,10 @@ group opacity from each view's local opacity and derives four-sample coverage
 only for undecorated sample-faceted rectangles. The renderer owns transient
 attachments, resolves, and premultiplied-alpha composition; Core owns the
 predicate, nesting, bounds, and mark/view identities. Placement-indexed marks
-remain one retained draw and one group rather than expanding into per-facet
-targets. Picking stays flat and single-sampled. Canvas2D honors the same local
-view-opacity semantics with transparent offscreen canvases, while WebGL keeps
-its unchanged effective-opacity fallback.
+retain clipped occurrence draws inside one group rather than expanding into
+per-facet targets. Picking stays flat and single-sampled. Canvas2D honors the
+same local view-opacity semantics with transparent offscreen canvases, while
+WebGL keeps its unchanged effective-opacity fallback.
 
 WebGPU raster export compiles an export-sized layout and submits it to a
 same-device detached canvas target with target-local globals. The renderer

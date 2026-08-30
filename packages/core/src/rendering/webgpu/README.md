@@ -61,8 +61,9 @@ source-backed `sample` channel or the sample-facet `facetIndex` channel. This
 includes copy-number segments and both foreground and missing-value metadata
 rectangles. Points, text, ordinary rectangles, and rectangles with strokes,
 rounded corners, shadows, or hatches stay on the direct single-sample path. A
-placement-indexed retained mark is one draw and therefore one resolve,
-regardless of its number of sample facets.
+placement-indexed retained mark keeps its clipped occurrence ranges as draws
+inside one group and therefore resolves once, regardless of its number of
+sample facets.
 
 `EmbedResult.debug.getWebGpuFramePlanSummary()` exposes serializable group
 bounds, sample counts, opacities, mark types, and view paths for development

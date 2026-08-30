@@ -213,6 +213,20 @@ export default class WebGpuSurface {
         if (this.#targetSize) {
             throw new Error("WebGPU export rendering cannot be nested.");
         }
+        const liveState = {
+            frameItems: this.#frameItems,
+            frameItemStack: this.#frameItemStack,
+            pickingDraws: this.#pickingDraws,
+            framePlanSummary: this.#framePlanSummary,
+            activeMsaaGroup: this.#activeMsaaGroup,
+            directSummaryKeys: this.#directSummaryKeys,
+        };
+        this.#frameItems = [];
+        this.#frameItemStack = [this.#frameItems];
+        this.#pickingDraws = [];
+        this.#framePlanSummary = { groups: [], directMarks: [] };
+        this.#activeMsaaGroup = undefined;
+        this.#directSummaryKeys = new Set();
         this.#targetSize = {
             width: target.logicalWidth,
             height: target.logicalHeight,
@@ -238,6 +252,12 @@ export default class WebGpuSurface {
             });
         } finally {
             this.#targetSize = undefined;
+            this.#frameItems = liveState.frameItems;
+            this.#frameItemStack = liveState.frameItemStack;
+            this.#pickingDraws = liveState.pickingDraws;
+            this.#framePlanSummary = liveState.framePlanSummary;
+            this.#activeMsaaGroup = liveState.activeMsaaGroup;
+            this.#directSummaryKeys = liveState.directSummaryKeys;
         }
     }
 

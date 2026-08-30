@@ -32,9 +32,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     /** @type {Map<import("../../marks/mark.js").default, MarkState>} */
     #marks = new Map();
 
-    /** @type {Occurrence[]} */
-    #occurrences = [];
-
     /** @type {PaintCommand[]} */
     #paintCommands = [];
 
@@ -150,7 +147,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             draw: undefined,
         };
         state.occurrences.push(occurrence);
-        this.#occurrences.push(occurrence);
         this.#paintCommands.push({ type: "occurrence", occurrence });
         countPerformance("markOccurrences");
     }
@@ -446,6 +442,36 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      */
     #submitOccurrence(occurrence, picking, canvas) {
         const state = occurrence.state;
+        if (!state.instancePlacementIndexed) {
+            return this.#submitOccurrenceDraw(occurrence, picking, canvas);
+        }
+        if (state.submittedPlacementIndexed) {
+            return undefined;
+        }
+        state.submittedPlacementIndexed = true;
+
+        let resourceWrites;
+        for (const candidate of state.occurrences) {
+            const writes = this.#submitOccurrenceDraw(
+                candidate,
+                picking,
+                canvas
+            );
+            if (writes !== undefined) {
+                resourceWrites = (resourceWrites ?? 0) + writes;
+            }
+        }
+        return resourceWrites;
+    }
+
+    /**
+     * @param {Occurrence} occurrence
+     * @param {boolean} picking
+     * @param {{width: number, height: number}} canvas
+     * @returns {number | undefined}
+     */
+    #submitOccurrenceDraw(occurrence, picking, canvas) {
+        const state = occurrence.state;
         if (
             !state.active ||
             !state.config ||
@@ -454,10 +480,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         ) {
             return undefined;
         }
-        if (state.instancePlacementIndexed && state.submittedPlacementIndexed) {
-            return undefined;
-        }
-
         const range = occurrence.range;
         if (!range.instanceCount) {
             return undefined;
@@ -469,11 +491,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         refreshOccurrenceDraw(occurrence, state, draw, canvas);
 
+        const occurrencePlacementIndex = state.generatedSource
+            ? occurrence.placementIndex
+            : occurrence.options.placement?.index;
         const placementIndex = state.instancePlacementIndexed
             ? undefined
-            : state.generatedSource
-              ? occurrence.placementIndex
-              : occurrence.options.placement?.index;
+            : occurrencePlacementIndex;
         if (
             state.source &&
             !state.instancePlacementIndexed &&
@@ -486,10 +509,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         if (
             state.source &&
-            !state.instancePlacementIndexed &&
+            occurrencePlacementIndex !== undefined &&
             !isPlacementVisible(
                 state.source,
-                placementIndex,
+                occurrencePlacementIndex,
                 state.viewport,
                 draw.scissor,
                 canvas
@@ -498,12 +521,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             return undefined;
         }
 
-        let firstInstance = state.instancePlacementIndexed
-            ? 0
-            : range.firstInstance;
-        let instanceCount = state.instancePlacementIndexed
-            ? state.packed.data.length
-            : range.instanceCount;
+        let firstInstance = range.firstInstance;
+        let instanceCount = range.instanceCount;
         if (state.xQueryEnabled && range.xIndex) {
             range.xIndex(
                 state.xQueryDomain[0],
@@ -559,9 +578,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             this.surface.drawMark(state.mark, draw, state.source, picking);
         }
         countPerformance("drawCommands");
-        if (state.instancePlacementIndexed) {
-            state.submittedPlacementIndexed = true;
-        }
         return resourceWrites;
     }
 
