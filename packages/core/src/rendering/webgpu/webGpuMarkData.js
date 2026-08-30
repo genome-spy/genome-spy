@@ -106,6 +106,7 @@ export function getPackedMarkData(mark, placementSource) {
  * @returns {PackedMarkRange}
  */
 function createPackedRange(spec, data, firstInstance) {
+    /** @type {PackedMarkRange} */
     const range = {
         firstInstance,
         instanceCount: data.length,
@@ -120,10 +121,8 @@ function createPackedRange(spec, data, firstInstance) {
         countPerformance("webgpuXIndexRejectedBuilds");
         return range;
     }
-    return {
-        ...range,
-        xIndex,
-    };
+    range.xIndex = xIndex;
+    return range;
 }
 
 /**

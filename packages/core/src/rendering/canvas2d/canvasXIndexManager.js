@@ -86,21 +86,20 @@ export default class CanvasXIndexManager {
 
         countPerformance("canvasXIndexNativeItems", data.length);
 
-        let batch = markEntry.batches.get(data);
-        if (!batch) {
-            const index = buildMarkXIndex(markEntry.spec, data) ?? null;
-            batch = { index };
-            markEntry.batches.set(data, batch);
+        let index = markEntry.batches.get(data);
+        if (index === undefined) {
+            index = buildMarkXIndex(markEntry.spec, data) ?? null;
+            markEntry.batches.set(data, index);
             countPerformance("canvasXIndexBuilds");
             if (!index) {
                 countPerformance("canvasXIndexRejectedBuilds");
             }
         }
-        if (!batch.index) {
+        if (!index) {
             return this.#fallback();
         }
 
-        batch.index(this.#queryDomain[0], this.#queryDomain[1], target);
+        index(this.#queryDomain[0], this.#queryDomain[1], target);
 
         countPerformance("canvasXIndexQueries");
         countPerformance("canvasXIndexCandidateItems", target[1] - target[0]);
@@ -126,10 +125,5 @@ export default class CanvasXIndexManager {
  * @property {number | undefined} xIndexDomainStart
  * @property {number | undefined} xIndexDomainEnd
  * @property {import("../xIndex/markXIndex.js").MarkXIndexSpec | undefined} spec
- * @property {WeakMap<object[], BatchCacheEntry>} batches
- */
-
-/**
- * @typedef {object} BatchCacheEntry
- * @property {import("../../utils/binnedIndex.js").Lookup | null} index
+ * @property {WeakMap<object[], import("../../utils/binnedIndex.js").Lookup | null>} batches
  */
