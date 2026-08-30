@@ -1064,13 +1064,16 @@ Restoration investigation:
   not sufficient to recover a canonical layout after intermediate replays.
   Stable input order makes a complete trace repeatable but does not make the
   result a function of the current input alone.
-- Before implementation, compare only two KISS-compatible policies: a
-  path-independent canonical solve at a clearly defined interaction boundary,
-  and continued retained placement with its path dependence documented. Reject
-  zoom-history caches, arbitrary domain-keyed layout caches, and hidden
-  relaxation schedules unless evidence shows that neither simple policy is
-  usable. A canonicalization policy must be tested for visible snapping and may
-  not merely move the original blinking to wheel-idle time.
+- The two smallest policies have now been tested. Continued retained placement
+  is smooth but path-dependent; canonical or reference restoration is exact but
+  creates a large topology-change jump. Neither meets both interaction goals.
+- Reject zoom-history caches, arbitrary domain-keyed layout caches, timers, and
+  hidden relaxation schedules: they make results depend on event frequency or
+  move the discontinuity without solving it. If exact reversibility remains a
+  requirement, the next admissible spike is one bounded path-independent
+  solver with a continuous global objective. It must beat the recorded jump
+  gates and interactive latency before replacing the current greedy solver; if
+  it does not, document path dependence as a first-version limitation.
 
 Hovered-label investigation:
 
@@ -1142,6 +1145,19 @@ Evidence recorded on 2026-08-30:
   restored 108 of 150 labels differently from the initial and fresh layouts.
 - The private app smoke passes volcano, MA, stress, and overflow after the
   stable-batch change, with tested parameter updates completing in 16--41 ms.
+- A single immutable home-layout snapshot restored the exact initial offsets,
+  but applying it only when the home geometry returned caused an approximately
+  667 px maximum jump in the final programmatic trace frame. The spike was
+  deleted because it moved the discontinuity to the restoration boundary.
+- Using the same home snapshot as a fixed solver hint made the trace
+  path-independent. On a finer 241-state trace it achieved about 5.1 px p95 and
+  exact restoration, but a collision cascade still caused an approximately
+  225 px final-frame jump and a 583 px overall maximum. This spike was also
+  deleted; exact output alone does not satisfy temporal coherence.
+- Vega Label's bitmap accelerates overlap queries around discrete anchor
+  candidates but does not provide temporal reversibility. Its interaction issue
+  history also includes erratic label movement, so adopting its occupancy
+  structure would not address the measured restoration discontinuity.
 
 ## Reconciliation through the first user acid test (2026-08-28)
 
