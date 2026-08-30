@@ -26,6 +26,7 @@ const RECT_SEAM_PADDING = 0.1;
  * @prop {number} minOpacity
  * @prop {{blur: number, color: string, offsetX: number, offsetY: number, opacity: number}} shadow
  * @prop {string} hatch
+ * @prop {boolean} hasCornerRadii
  * @prop {boolean} canPadSeams
  */
 
@@ -78,6 +79,7 @@ export function resolveRectProperties(mark) {
         opacity: resolveMarkProperty(mark, p.shadowOpacity ?? 0),
     };
     const hatch = resolveMarkProperty(mark, p.hatch ?? "none");
+    const hasCornerRadii = !hasZeroCornerRadii(cornerRadii);
 
     return {
         cornerRadii,
@@ -86,10 +88,8 @@ export function resolveRectProperties(mark) {
         minOpacity: resolveMarkProperty(mark, p.minOpacity),
         shadow,
         hatch,
-        canPadSeams:
-            hatch == "none" &&
-            shadow.opacity == 0 &&
-            hasZeroCornerRadii(cornerRadii),
+        hasCornerRadii,
+        canPadSeams: hatch == "none" && shadow.opacity == 0 && !hasCornerRadii,
     };
 }
 
@@ -117,12 +117,26 @@ export function visitRectInstances(mark, properties, options, visitor) {
     if (data.length == 0) {
         return 0;
     }
-    const constantStrokeWidth = encoders.strokeWidth.constant
+    const strokeWidthIsConstant = encoders.strokeWidth.constant;
+    const fillOpacityIsConstant = encoders.fillOpacity.constant;
+    const constantStrokeWidth = strokeWidthIsConstant
         ? encodeNumber(encoders.strokeWidth, data[0])
         : 0;
-    const constantFillOpacity = encoders.fillOpacity.constant
+    const constantFillOpacity = fillOpacityIsConstant
         ? encodeNumber(encoders.fillOpacity, data[0])
         : 0;
+    const fillIsConstant = encoders.fill.constant;
+    const constantFill = fillIsConstant
+        ? toPaintString(encoders.fill(data[0]))
+        : "none";
+    const shadowPadding =
+        properties.shadow.opacity > 0
+            ? properties.shadow.blur +
+              Math.max(
+                  Math.abs(properties.shadow.offsetX),
+                  Math.abs(properties.shadow.offsetY)
+              )
+            : 0;
     const projectXRange = prepareRangeProjection(
         coords,
         encoders,
@@ -173,12 +187,14 @@ export function visitRectInstances(mark, properties, options, visitor) {
             y -= (properties.minHeight - height) / 2;
             height = properties.minHeight;
         }
-        const strokeWidth = encoders.strokeWidth.constant
+        const strokeWidth = strokeWidthIsConstant
             ? constantStrokeWidth
             : encodeNumber(encoders.strokeWidth, datum);
-        const fill = toPaintString(encoders.fill(datum));
+        const fill = fillIsConstant
+            ? constantFill
+            : toPaintString(encoders.fill(datum));
         const fillOpacity =
-            (encoders.fillOpacity.constant
+            (fillOpacityIsConstant
                 ? constantFillOpacity
                 : encodeNumber(encoders.fillOpacity, datum)) * viewOpacity;
         const seamPadding =
@@ -195,14 +211,6 @@ export function visitRectInstances(mark, properties, options, visitor) {
             width += seamPadding * 2;
             height += seamPadding * 2;
         }
-        const shadowPadding =
-            properties.shadow.opacity > 0
-                ? properties.shadow.blur +
-                  Math.max(
-                      Math.abs(properties.shadow.offsetX),
-                      Math.abs(properties.shadow.offsetY)
-                  )
-                : 0;
         if (
             !intersectsBounds(
                 visibleBounds,
@@ -226,7 +234,14 @@ export function visitRectInstances(mark, properties, options, visitor) {
         instance.strokeWidth = strokeWidth;
         instance.fill = fill;
         instance.fillOpacity = fillOpacity;
-        clampCornerRadii(properties.cornerRadii, width, height, instance.radii);
+        if (properties.hasCornerRadii) {
+            clampCornerRadii(
+                properties.cornerRadii,
+                width,
+                height,
+                instance.radii
+            );
+        }
         visitor(instance);
     }
     return instanceCount;

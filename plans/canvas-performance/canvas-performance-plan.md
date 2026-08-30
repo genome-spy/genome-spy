@@ -1,6 +1,6 @@
 # Canvas interaction performance plan
 
-Status: Reviewed; implementation in progress
+Status: Milestones 1–3 complete; shared x indexing moved to a dedicated plan
 
 ## Context
 
@@ -47,8 +47,9 @@ Canvas paints.
 - Make Canvas interaction benchmarks repeatable and attributable using the
   existing benchmark driver and private profiler.
 - Avoid repeated view-hierarchy opacity evaluation within one Canvas paint.
-- Honor the existing `buildIndex` contract for Canvas rectangle and point
-  traversal without changing mark output or SVG behavior.
+- Reduce invariant style and geometry work in the immediate rectangle hot loop.
+- Provide profiling evidence and requirements for the renderer-neutral x-index
+  work tracked in `plans/x-indexing/x-indexing-plan.md`.
 - Preserve exact painter order, clipping, opacity, interval overlap, offset,
   semantic zoom, facet, and picking behavior.
 - Land each implemented milestone as a focused Conventional Commit with before
@@ -64,9 +65,6 @@ Canvas paints.
 - Making SVG export use an interaction-oriented subset index.
 - Adding a shared low-level renderer abstraction or importing WebGL modules
   into Canvas or the immediate renderer.
-- Adding a comparable x-subset implementation to WebGPU without independent
-  profiling evidence; its instance processing occurs on the GPU and currently
-  exposes no corresponding adapter contract.
 
 ## Key decisions
 
@@ -93,26 +91,14 @@ The context is recreated for every live paint and detached export, so no cache
 invalidation protocol is needed and expression-backed opacity remains live
 between frames.
 
-### Build Canvas indexes from sorted source rows, not WebGL vertices
+### Treat x indexing as a cross-renderer Core contract
 
-The shared mark normalization enables `encoding.x.buildIndex` by default, and
-`flowBuilder` sorts eligible zoomable field encodings before collection.
-Canvas will use a backend-local index cache that outlives a paint and is keyed
-by logical mark, facet-batch identity, collector `dataRevision`, and positional
-encoding identity. It will use renderer-neutral raw branch accessors and the
-generic binned range-index utility; it will not import WebGL's vertex index.
-
-Queries use the live x scale domain and support x/x2 half-open interval overlap.
-Eligibility fails closed unless geometry expansion can be bounded, including
-minimum size, stroke, shadow, seam padding, point radius, and positional
-offsets. An unbounded zoom extent, non-finite value, incompatible scale,
-conditional positional accessor, unsorted batch, missing continuous scale, or
-disabled `buildIndex` falls back to the complete data range.
-
-Immediate rectangle and point visitors will accept optional start/stop bounds
-and iterate the original array directly. This avoids allocating `slice()`
-arrays and leaves SVG callers on their current full-array path. Exact
-screen-space culling remains in the visitor as the final correctness check.
+The original Canvas-only index proposal exposed representation and ownership
+questions shared by WebGL and the Core WebGPU adapter. The replacement design
+is tracked in `plans/x-indexing/x-indexing-plan.md`. It maps source x/x2
+intervals to renderer-native contiguous ranges while keeping caches and
+resources adapter-owned. This Canvas plan retains only the profiling evidence
+that motivates the shared work.
 
 ## Alternatives considered
 
@@ -241,65 +227,56 @@ comparison is directional; the removed call-tree cost is the stronger
 attribution evidence. Peek-open p95 was effectively unchanged (41.6 ms to
 41.3 ms), and closeup-wheel p95 changed from 33.3 ms to 33.1 ms.
 
-## Milestone 3a: Specify and test Canvas x-index eligibility
+## Milestone 3: Hoist invariant rectangle work
 
 ### Intended outcome
 
-The risky parts of source-row indexing have one backend-neutral, exhaustively
-tested contract before they are wired into normal Canvas and picking traversal.
-This milestone intentionally does not change runtime traversal or claim a
-performance gain.
+Rectangle traversal evaluates datum-independent paint encoders and geometry
+padding once per occurrence and avoids corner-radius clamping for ordinary
+square rectangles.
 
 ### Work
 
-- [ ] Define one helper for eligibility, index construction, candidate queries,
-      and attribution counters that normal paint and picking can both call.
-- [ ] Require raw source accessors, sorted finite data, a finite nonzero index
-      extent, continuous compatible x/x2 scales, and stable encoding identity.
-- [ ] Define conservative geometry margins for rectangle and point expansion;
-      fail closed for data-dependent or otherwise unbounded expansion.
-- [ ] Define a cache lifetime beyond one `renderCanvas2D()` context, keyed by
-      mark, data-array identity, collector `dataRevision`, and encoding identity.
-- [ ] Cover disabled indexing and every unsupported case with full-range
-      fallback tests.
+- [x] Evaluate constant fill, stroke, and stroke-opacity encoders once per
+      rectangle occurrence and hoist constant-channel checks out of the loop.
+- [x] Skip stroke-opacity evaluation when a constant stroke is absent.
+- [x] Compute shadow culling padding once outside the datum loop.
+- [x] Skip corner-radius clamping when all resolved radii are zero.
+- [x] Extend constant-encoder call-count coverage while preserving rounded,
+      square, culling, SVG, and software-picking behavior.
 
 ### Affected areas and consumers
 
-- Backend-neutral encoder/accessor and binned-index helpers
-- Focused eligibility and candidate-range unit tests
+- Shared immediate rectangle traversal used by Canvas, SVG, and Canvas software
+  picking
+- Canvas rectangle painting
 
-Canvas, Canvas picking, SVG, WebGL, and WebGPU traversal remain unchanged in
-this foundation milestone.
+The optimization changes neither renderer selection nor visible geometry.
 
 ### Verification
 
-- Unit tests cover points, overlapping intervals, empty bins, pan/zoom changes,
-  x2, index/locus domain-start semantics, bounded and unbounded geometry,
-  facets, data-revision rebuilds, encoding changes, disabled indexing,
-  non-finite values, and unsorted fallback.
-- Existing renderer traversal remains unchanged.
+- All 52 Canvas rendering tests and all 101 SVG rendering tests pass.
+- The Core TypeScript check passes.
+- Exact restored-state MCCA wheel, Peek-open, and closeup-wheel profiling uses
+  the same 1200 x 700 viewport, DPR 2, state hash, and trace categories.
 
 ### Documentation and migration
 
-None until renderer integration lands.
+None.
 
-Tentative commit: `test(core): specify Canvas x-index eligibility`
+Tentative commit: `perf(core): hoist invariant rectangle work`
+
+### Result
+
+A same-environment headless A/B/A comparison reduced sampled inclusive
+rectangle-renderer CPU by about 3.2% for Peek-open, 4.1% for wheel zoom, and
+5.4% for closeup-wheel. Total Canvas render CPU changed by about +1.5%, -3.2%,
+and -1.1%, respectively, so whole-frame improvement is not consistently above
+run variance. Cadence was likewise noisy and showed no defensible improvement.
+The milestone is retained as a small, covered reduction in the measured hot
+rectangle path rather than as a frame-rate claim.
 
 ## Proposed later work: not authorized for this implementation pass
-
-### Integrate x-indexed source ranges into Canvas
-
-Add optional start/stop bounds to immediate rectangle and point traversal and
-wire the tested candidate helper into both normal Canvas paint and software
-picking. Keep one coordinator-owned cache so index construction is amortized
-across frames. Report profiler counters for indexed candidates, visited rows,
-indexed batches, and fallback batches. SVG continues to visit full arrays.
-
-Before landing, verify candidate counts and cadence on the exact restored MCCA
-state. The two dominant rectangle batches should fall from about 353,000 rows
-toward the measured 87,000 candidates, allowing conservative margin and bin
-overfetch. Add a short Canvas architecture note only when this integration
-actually ships.
 
 ### Dense point batching or subpixel LOD
 
@@ -321,13 +298,8 @@ dropping interaction frames.
 
 ## Risks and unresolved questions
 
-- Binned ranges deliberately overfetch. Candidate-count reduction is expected,
-  but exact gains depend on domain width and interval distribution.
-- Conditional x encodings and data-dependent pixel offsets must fail closed to
-  full traversal; expanding eligibility prematurely risks disappearing marks.
-- Index/locus domains need the same inclusive-start adjustment as WebGL.
-- Normal and picking rendering must query identical candidates to prevent stale
-  or missing hover targets.
+- Shared x-index eligibility, overfetch, invalidation, geometry, and picking
+  risks are tracked in `plans/x-indexing/x-indexing-plan.md`.
 - The benchmark's screenshot harness does not restore the supplied hash. Exact
   restored-state runs will use the direct profiling harness until an explicit
   state-hash benchmark option is designed and verified.
@@ -341,8 +313,6 @@ dropping interaction frames.
 - The exact MCCA wheel and Peek interactions preserve domain, scroll, visual,
   console, and picking behavior.
 - Canvas normal frames appear in benchmark profiler snapshots.
-- Any implemented x-index foundation has exhaustive fallback tests but does not
-  alter Canvas traversal in this pass.
 - Measurements report viewport, DPR, restored domain, case, run count, and the
   distinction between live-headed cadence and headless CPU attribution.
 - No retained scene graph, layer cache, point LOD, or other large architectural

@@ -543,18 +543,33 @@ describe("Canvas2DViewRenderingContext", () => {
             vi.fn(() => strokeWidth),
             encoders.strokeWidth
         );
+        const fillEncoder = Object.assign(vi.fn(encoders.fill), encoders.fill);
+        const strokeEncoder = Object.assign(
+            vi.fn(encoders.stroke),
+            encoders.stroke
+        );
+        const strokeOpacityEncoder = Object.assign(
+            vi.fn(encoders.strokeOpacity),
+            encoders.strokeOpacity
+        );
         const fillOpacityEncoder = Object.assign(
             vi.fn((datum) => datum.fillOpacity),
             encoders.fillOpacity,
             { constant: false }
         );
         encoders.strokeWidth = strokeWidthEncoder;
+        encoders.fill = fillEncoder;
+        encoders.stroke = strokeEncoder;
+        encoders.strokeOpacity = strokeOpacityEncoder;
         encoders.fillOpacity = fillOpacityEncoder;
 
         const first = createRecordingContext();
         render(view, first.context);
 
         expect(strokeWidthEncoder).toHaveBeenCalledOnce();
+        expect(fillEncoder).toHaveBeenCalledOnce();
+        expect(strokeEncoder).toHaveBeenCalledOnce();
+        expect(strokeOpacityEncoder).toHaveBeenCalledOnce();
         expect(fillOpacityEncoder).toHaveBeenCalledTimes(2);
         expect(first.calls.fills.map(([opacity]) => opacity)).toEqual([
             0.25, 0.75,
@@ -566,6 +581,9 @@ describe("Canvas2DViewRenderingContext", () => {
         render(view, second.context);
 
         expect(strokeWidthEncoder).toHaveBeenCalledTimes(2);
+        expect(fillEncoder).toHaveBeenCalledTimes(2);
+        expect(strokeEncoder).toHaveBeenCalledTimes(2);
+        expect(strokeOpacityEncoder).toHaveBeenCalledTimes(2);
         expect(fillOpacityEncoder).toHaveBeenCalledTimes(4);
         expect(second.context.lineWidth).toBe(3);
     });
