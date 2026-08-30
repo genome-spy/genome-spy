@@ -205,9 +205,9 @@ paint while preserving expression updates between paints.
 
 ### Work
 
-- [ ] Add a per-context `WeakMap` keyed by unit view.
-- [ ] Use the cached value for both the visibility guard and renderer options.
-- [ ] Add representative repeated-occurrence and next-paint invalidation tests.
+- [x] Add a per-context `WeakMap` keyed by unit view.
+- [x] Use the cached value for both the visibility guard and renderer options.
+- [x] Add representative repeated-occurrence and next-paint invalidation tests.
 
 ### Affected areas and consumers
 
@@ -228,6 +228,18 @@ SVG's native structured renderer and GPU backends are unchanged.
 None.
 
 Tentative commit: `perf(core): cache Canvas view opacity per paint`
+
+### Result
+
+The repeated-sample test reduces effective-opacity evaluation from once per
+occurrence to once per unit view and confirms that a new paint reevaluates it.
+On one exact restored-state headless diagnostic trace at 1200 x 700, DPR 2,
+`getEffectiveOpacity()` fell from 10.4% of sampled wheel CPU to below the top 30
+inclusive stacks. Sampled wheel-render CPU fell from about 1,214 ms to 1,035 ms
+(15%), while rAF p95 fell from 50.3 ms to 43.6 ms (13%). The single-run cadence
+comparison is directional; the removed call-tree cost is the stronger
+attribution evidence. Peek-open p95 was effectively unchanged (41.6 ms to
+41.3 ms), and closeup-wheel p95 changed from 33.3 ms to 33.1 ms.
 
 ## Milestone 3a: Specify and test Canvas x-index eligibility
 

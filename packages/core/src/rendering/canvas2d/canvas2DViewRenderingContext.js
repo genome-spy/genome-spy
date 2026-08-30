@@ -20,6 +20,9 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
     /** @type {Set<import("../../view/view.js").default>} */
     #views = new Set();
 
+    /** @type {WeakMap<import("../../view/unitView.js").default, number>} */
+    #viewOpacities = new WeakMap();
+
     /** @type {(mark: import("../../marks/mark.js").default) => boolean} */
     #markPredicate;
 
@@ -106,11 +109,12 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     renderMark(mark, options) {
-        if (
-            !this.paint ||
-            !this.#markPredicate(mark) ||
-            mark.unitView.getEffectiveOpacity() <= 0
-        ) {
+        if (!this.paint || !this.#markPredicate(mark)) {
+            return;
+        }
+
+        const viewOpacity = this.#getViewOpacity(mark.unitView);
+        if (viewOpacity <= 0) {
             return;
         }
 
@@ -165,7 +169,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                         data,
                         visibleBounds,
                         anchorCullBounds,
-                        viewOpacity: mark.unitView.getEffectiveOpacity(),
+                        viewOpacity,
                         warn: (message) =>
                             warnOnce(
                                 `${message} View: ${mark.unitView.getPathString()}`
@@ -187,5 +191,15 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
             throw new Error("No current view in Canvas2D rendering context.");
         }
         return entry.coords;
+    }
+
+    /** @param {import("../../view/unitView.js").default} view */
+    #getViewOpacity(view) {
+        let opacity = this.#viewOpacities.get(view);
+        if (opacity === undefined) {
+            opacity = view.getEffectiveOpacity();
+            this.#viewOpacities.set(view, opacity);
+        }
+        return opacity;
     }
 }

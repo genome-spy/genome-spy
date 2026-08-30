@@ -418,6 +418,9 @@ describe("Canvas2DViewRenderingContext", () => {
             },
         });
         const recording = createRecordingContext();
+        const unitView =
+            /** @type {import("../../view/unitView.js").default} */ (view);
+        const getEffectiveOpacity = vi.spyOn(unitView, "getEffectiveOpacity");
         const context = new Canvas2DViewRenderingContext(
             { picking: false },
             {
@@ -452,6 +455,11 @@ describe("Canvas2DViewRenderingContext", () => {
             [50, 70, 5],
         ]);
         expect(recording.context.clip).toHaveBeenCalledTimes(2);
+        expect(getEffectiveOpacity).toHaveBeenCalledOnce();
+
+        render(view, createRecordingContext().context);
+
+        expect(getEffectiveOpacity).toHaveBeenCalledTimes(2);
     });
 
     test("draws rounded rectangles while warning about other effects", async () => {
