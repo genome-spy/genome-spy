@@ -1,5 +1,8 @@
 import { peek } from "../../utils/arrayUtils.js";
-import { visitMarkOccurrences } from "../immediate/markData.js";
+import {
+    SampleFacetCoordsResolver,
+    visitMarkOccurrences,
+} from "../immediate/markData.js";
 import {
     normalizeClipOptions,
     prepareMarkClipOptionsFromClip,
@@ -30,6 +33,8 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
 
     /** @type {import("../../debug/performanceProfiler.js").PerformanceProfiler | undefined} */
     #profiler;
+
+    #sampleFacetCoords = new SampleFacetCoordsResolver();
 
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
@@ -177,6 +182,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                 mark,
                 options,
                 coords,
+                this.#sampleFacetCoords,
                 (occurrenceCoords, data) =>
                     renderMarkCanvas(mark, {
                         context,

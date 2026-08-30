@@ -9,7 +9,10 @@ import {
     createVisibleBounds,
     hasVisibleArea,
 } from "../../immediate/bounds.js";
-import { visitMarkOccurrences } from "../../immediate/markData.js";
+import {
+    SampleFacetCoordsResolver,
+    visitMarkOccurrences,
+} from "../../immediate/markData.js";
 import { warnOnce } from "../../../utils/warning.js";
 import {
     isSoftwarePickingMarkSupported,
@@ -27,6 +30,8 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
 
     /** @type {import("../../../debug/performanceProfiler.js").PerformanceProfiler | undefined} */
     #profiler;
+
+    #sampleFacetCoords = new SampleFacetCoordsResolver();
 
     /**
      * @param {{
@@ -123,6 +128,7 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
             mark,
             options,
             coords,
+            this.#sampleFacetCoords,
             (occurrenceCoords, data) => {
                 if (data.length == 0) {
                     return;

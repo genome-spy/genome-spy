@@ -1,5 +1,122 @@
+import Rectangle from "../../view/layout/rectangle.js";
+
 /** @type {object[]} */
 const EMPTY_DATA = [];
+
+/**
+ * Reuses one materialized rectangle while visiting mark occurrences. Rendering
+ * contexts own an instance for one synchronous rendering pass.
+ */
+export class SampleFacetCoordsResolver {
+    #values = { x: 0, y: 0, width: 0, height: 0 };
+
+    #coords = new Rectangle(
+        () => this.#values.x,
+        () => this.#values.y,
+        () => this.#values.width,
+        () => this.#values.height
+    );
+
+    /** @type {Rectangle | undefined} */
+    #sourceCoords;
+
+    #sourceY = 0;
+
+    #sourceHeight = 0;
+
+    /** @type {import("../../view/layout/flexLayout.js").LocSize | undefined} */
+    #locSize;
+
+    #location = NaN;
+
+    #size = NaN;
+
+    #pixelToUnit = NaN;
+
+    /**
+     * Materializes explicit sample coordinates once for consecutive marks in
+     * the same sample occurrence.
+     *
+     * @param {Rectangle} coords
+     * @param {import("../../types/rendering.js").SampleFacetRenderingOptions} facet
+     * @returns {Rectangle}
+     */
+    resolveFacet(coords, facet) {
+        this.#resolveSource(coords);
+        const location = facet.locSize.location;
+        const size = facet.locSize.size;
+        if (
+            this.#locSize !== facet.locSize ||
+            this.#location !== location ||
+            this.#size !== size ||
+            this.#pixelToUnit !== facet.pixelToUnit
+        ) {
+            this.#resolveFacet(location, size, facet.pixelToUnit);
+            this.#locSize = facet.locSize;
+            this.#location = location;
+            this.#size = size;
+            this.#pixelToUnit = facet.pixelToUnit;
+        }
+        return this.#coords;
+    }
+
+    /**
+     * Resolves placement-backed coordinates without allocating an intermediate
+     * location object.
+     *
+     * @param {Rectangle} coords
+     * @param {import("../../view/layout/placementSource.js").default | undefined} source
+     * @param {number} index
+     * @returns {Rectangle | undefined}
+     */
+    resolvePlacement(coords, source, index) {
+        if (!source) {
+            return undefined;
+        }
+        const rectangles = source.getSnapshot().rectangles;
+        const offset = index * 4;
+        if (offset + 3 >= rectangles.length) {
+            return undefined;
+        }
+
+        this.#resolveSource(coords);
+        this.#resolveFacet(rectangles[offset + 1], rectangles[offset + 3], 1);
+        this.#locSize = undefined;
+        this.#location = NaN;
+        this.#size = NaN;
+        this.#pixelToUnit = NaN;
+        return this.#coords;
+    }
+
+    /**
+     * @param {Rectangle} coords
+     */
+    #resolveSource(coords) {
+        if (this.#sourceCoords === coords) {
+            return;
+        }
+        this.#values.x = coords.x;
+        this.#sourceY = coords.y;
+        this.#values.width = coords.width;
+        this.#sourceHeight = coords.height;
+        this.#sourceCoords = coords;
+        this.#locSize = undefined;
+        this.#location = NaN;
+        this.#size = NaN;
+        this.#pixelToUnit = NaN;
+    }
+
+    /**
+     * @param {number} location
+     * @param {number} size
+     * @param {number} pixelToUnit
+     */
+    #resolveFacet(location, size, pixelToUnit) {
+        this.#values.y =
+            this.#sourceY + location * pixelToUnit * this.#sourceHeight;
+        this.#values.height = size * pixelToUnit * this.#sourceHeight;
+    }
+}
 
 /**
  * Selects the collector batch that corresponds to the rendered occurrence.
@@ -25,11 +142,13 @@ export function getMarkData(mark, options) {
 }
 
 /**
- * Visits the data and coordinates for each rendered occurrence of a mark.
+ * Visits the data and coordinates for each rendered occurrence of a mark. The
+ * visitor must consume the coordinates synchronously and must not retain them.
  *
  * @param {import("../../marks/mark.js").default} mark
  * @param {import("../../types/rendering.js").RenderingOptions} options
  * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {SampleFacetCoordsResolver} sampleFacetCoords
  * @param {(coords: import("../../view/layout/rectangle.js").default, data: object[]) => void} visitor
  * @param {(facetIndex: number) => void} onMissingFacet
  */
@@ -37,13 +156,17 @@ export function visitMarkOccurrences(
     mark,
     options,
     coords,
+    sampleFacetCoords,
     visitor,
     onMissingFacet
 ) {
     const data = getMarkData(mark, options);
     if (options.sampleFacetRenderingOptions) {
         visitor(
-            getSampleFacetCoords(coords, options.sampleFacetRenderingOptions),
+            sampleFacetCoords.resolveFacet(
+                coords,
+                options.sampleFacetRenderingOptions
+            ),
             data
         );
     } else if (mark.encoders.facetIndex) {
@@ -51,56 +174,19 @@ export function visitMarkOccurrences(
             mark.encoders.facetIndex,
             data
         )) {
-            const locSize = getPlacementPosition(
+            const occurrenceCoords = sampleFacetCoords.resolvePlacement(
+                coords,
                 options.placement?.source,
                 facetIndex
             );
-            if (locSize) {
-                visitor(
-                    getSampleFacetCoords(coords, {
-                        locSize,
-                        pixelToUnit: 1,
-                    }),
-                    facetData
-                );
+            if (occurrenceCoords) {
+                visitor(occurrenceCoords, facetData);
             } else {
                 onMissingFacet(facetIndex);
             }
         }
     } else {
         visitor(coords, data);
-    }
-}
-
-/**
- * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {import("../../types/rendering.js").SampleFacetRenderingOptions} facet
- */
-function getSampleFacetCoords(coords, facet) {
-    const location = facet.locSize.location * facet.pixelToUnit;
-    const size = facet.locSize.size * facet.pixelToUnit;
-    return coords.modify({
-        y: () => coords.y + location * coords.height,
-        height: () => size * coords.height,
-    });
-}
-
-/**
- * @param {import("../../view/layout/placementSource.js").default | undefined} source
- * @param {number} index
- * @returns {import("../../view/layout/flexLayout.js").LocSize | undefined}
- */
-function getPlacementPosition(source, index) {
-    if (!source) {
-        return undefined;
-    }
-    const rectangles = source.getSnapshot().rectangles;
-    const offset = index * 4;
-    if (offset + 3 < rectangles.length) {
-        return {
-            location: rectangles[offset + 1],
-            size: rectangles[offset + 3],
-        };
     }
 }
 

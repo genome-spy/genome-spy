@@ -1,6 +1,6 @@
 # Canvas interaction performance plan
 
-Status: Milestones 1–4 complete
+Status: Milestones 1–5 complete
 
 ## Context
 
@@ -59,6 +59,8 @@ placement-driven `facetIndex` grouping path.
 - Avoid repeated view-hierarchy opacity evaluation within one Canvas paint.
 - Reduce invariant style and geometry work in the immediate rectangle hot loop.
 - Skip offscreen repeated sample facets before Canvas mark traversal.
+- Reuse materialized sample-facet coordinates across immediate marks without
+  allocating rectangles in the per-mark traversal.
 - Provide profiling evidence and requirements for the renderer-neutral x-index
   work tracked in `plans/x-indexing/x-indexing-plan.md`.
 - Preserve exact painter order, clipping, opacity, interval overlap, offset,
@@ -393,6 +395,68 @@ sample occurrences and rejected none; its 43.2 ms pre-change p95 and 42.7/43.3
 ms post-change p95 values are effectively unchanged, as expected. These cadence
 numbers remain diagnostic because the controlled A/B runs were headless; the
 CPU stacks and occurrence counters provide the attribution evidence.
+
+## Milestone 5: Reuse immediate sample-facet coordinates
+
+### Intended outcome
+
+Canvas, SVG, and software picking materialize one sample-coordinate rectangle
+per rendering context and reuse it synchronously. Parent rectangle dimensions
+are read once for consecutive sample occurrences that share the same view
+coordinates, and no rectangle, callback, or intermediate placement object is
+allocated while resolving each occurrence.
+
+### Work
+
+- [x] Replace per-occurrence `Rectangle.modify()` calls with a reusable
+      backend-neutral coordinate resolver.
+- [x] Cache materialized parent coordinates independently from changing sample
+      locations and sizes.
+- [x] Preserve mutable sample-location updates within a rendering pass.
+- [x] Resolve placement-source rectangles directly from their packed snapshot
+      without allocating an intermediate `LocSize` object.
+- [x] Make the synchronous, non-retaining visitor contract explicit.
+- [x] Share the resolver across Canvas, Canvas software picking, and SVG.
+
+### Affected areas and consumers
+
+- Shared immediate mark occurrence traversal
+- Canvas normal rendering and software picking
+- Structured SVG rendering and its instance-counting pass
+
+WebGL and WebGPU do not use the immediate coordinate resolver and remain
+unchanged.
+
+### Verification
+
+- Focused tests prove rectangle identity reuse, one-time parent-coordinate
+  reads, mutable sample-location updates, and explicit/placement transitions.
+- Complete immediate, Canvas, and SVG suites and the Core TypeScript check.
+- Two exact restored-state MCCA profiles at 1200 x 700 and DPR 2.
+
+### Documentation and migration
+
+None. This is an internal immediate-rendering optimization.
+
+Tentative commit: `perf(core): reuse sample facet coordinates`
+
+### Result
+
+All 181 immediate, Canvas, and SVG tests pass, as does the Core TypeScript
+check. In both post-change CPU traces, `getSampleFacetCoords()`,
+`Rectangle.modify()`, its generated coordinate callbacks, and the nested
+rectangle getter disappeared from the top sampled stacks. The replacement
+resolver was also below the top 30 functions after parent-coordinate caching.
+
+Against the preceding exact-state trace, the median of two post-change traces
+changed inclusive `renderCanvas2D` CPU by about -1.0% for normal wheel zoom,
+-3.7% for Peek-open, and -8.7% for closeup-wheel. Normal-view cadence remained
+effectively unchanged. Closeup p95 remained in the same 16.9–17.4 ms range,
+while profiler render time per closeup frame fell from 13.8 ms to 11.5–11.7 ms.
+The supplied DevTools profile attributed 7.6% of total CPU to the removed
+coordinate helper before this milestone; the controlled traces confirm removal
+of that stack, while whole-frame cadence remains subject to normal headless
+variance.
 
 ## Proposed later work: not authorized for this implementation pass
 
