@@ -1158,6 +1158,24 @@ Evidence recorded on 2026-08-30:
   candidates but does not provide temporal reversibility. Its interaction issue
   history also includes erratic label movement, so adopting its occupancy
   structure would not address the measured restoration discontinuity.
+- An eight-step deterministic pairwise relaxation followed by the existing
+  exact cleanup preserved path independence but worsened the fine-trace maximum
+  to about 705 px, the final-frame maximum to about 525 px, and changed-offset
+  events to 22,456. The approximately 150-line spike was deleted because the
+  greedy cleanup still produced the same collision cascade.
+- A smaller homeward-hint spike limited offset movement to the largest observed
+  anchor movement per frame. It achieved about 5.1 px p95 and a 1.6 px final-
+  frame maximum, but 31 labels remained displaced from home by up to about
+  559 px. Applying the hint only while domains moved toward home left 33 labels
+  wrong by up to about 552 px. Increasing the movement rate added an arbitrary
+  constant, worsened the final jump, and still did not restore every label. All
+  variants were deleted.
+- These spikes isolate the incompatibility in the current contract: exact
+  history-independent restoration, collision-free placement of every row, and
+  continuous motion through greedy topology changes cannot all be obtained by
+  adding a home snapshot or a small local heuristic. Further work must relax a
+  requirement or explicitly broaden scope to a transition/visibility model;
+  do not add another solver-local continuity rule without new evidence.
 
 ## Reconciliation through the first user acid test (2026-08-28)
 
