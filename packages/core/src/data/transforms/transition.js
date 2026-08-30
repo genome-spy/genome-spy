@@ -41,6 +41,9 @@ export default class TransitionTransform extends Transform {
         this.as = params.as ?? params.fields;
         this.halfLife = params.halfLife ?? DEFAULT_HALF_LIFE;
         this.epsilon = params.epsilon ?? DEFAULT_EPSILON;
+        this.canAnimate = () =>
+            typeof paramRuntimeProvider.hasRendered != "function" ||
+            paramRuntimeProvider.hasRendered();
 
         const animator = paramRuntimeProvider?.context?.animator;
         if (!animator) {
@@ -94,6 +97,7 @@ export default class TransitionTransform extends Transform {
 
             if (
                 this.animator.transitionsEnabled === false ||
+                !this.canAnimate() ||
                 maxDifference(current, target) <= this.epsilon
             ) {
                 state.current = target.slice();

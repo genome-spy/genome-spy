@@ -143,6 +143,25 @@ describe("transition", () => {
         expect(animator.transitions).toHaveLength(0);
     });
 
+    test("snaps updates before the first render", () => {
+        const animator = new TestAnimator();
+        const provider = /** @type {any} */ ({
+            context: { animator },
+            hasRendered: () => false,
+        });
+        const transform = new TransitionTransform(
+            { type: "transition", key: "id", fields: ["x"] },
+            provider
+        );
+        const collector = new Collector();
+        transform.addChild(collector);
+        update(transform, [{ id: "a", x: 0 }]);
+        update(transform, [{ id: "a", x: 8 }]);
+
+        expect(Array.from(collector.getData())).toEqual([{ id: "a", x: 8 }]);
+        expect(animator.transitions).toHaveLength(0);
+    });
+
     test("replays downstream once per animation frame", () => {
         const { animator, transform, collector } = setup();
         const observer = vi.fn();
