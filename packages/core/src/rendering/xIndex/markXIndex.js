@@ -64,6 +64,10 @@ export function createMarkXIndexSpec(mark) {
     ) {
         return undefined;
     }
+    const markType = mark.getType();
+    if (markType !== "point" && markType !== "rect") {
+        return undefined;
+    }
 
     const xAccessor = getEncoderDataAccessor(xEncoder)?.asNumberAccessor();
     if (!xAccessor) {
@@ -166,8 +170,8 @@ function resolvePixelEnvelope(mark) {
 
     const markType = mark.getType();
     if (markType === "point") {
-        const size = getEncoderNonNegativeBound(encoders.size);
-        const strokeWidth = getEncoderNonNegativeBound(encoders.strokeWidth);
+        const size = getEncoderAbsoluteBound(encoders.size);
+        const strokeWidth = getEncoderAbsoluteBound(encoders.strokeWidth);
         if (size === undefined || strokeWidth === undefined) {
             return undefined;
         }
@@ -175,7 +179,7 @@ function resolvePixelEnvelope(mark) {
             (Math.sqrt(size) / 2) * Math.SQRT2 + strokeWidth / 2;
         return offsetBound + Math.max(visibleRadius, minPickingSize / 2);
     } else if (markType === "rect") {
-        const strokeWidth = getEncoderNonNegativeBound(encoders.strokeWidth);
+        const strokeWidth = getEncoderAbsoluteBound(encoders.strokeWidth);
         const minWidth = getPropertyNumber(mark, "minWidth", 0);
         const shadowBlur = getPropertyNumber(mark, "shadowBlur", 0);
         const shadowOffsetX = getPropertyNumber(mark, "shadowOffsetX", 0);
@@ -215,18 +219,14 @@ function getEncoderAbsoluteBound(encoder) {
         return undefined;
     }
     const range = encoder.scale.range();
-    if (!range.every(Number.isFinite)) {
-        return undefined;
+    let bound = 0;
+    for (const value of range) {
+        if (!Number.isFinite(value)) {
+            return undefined;
+        }
+        bound = Math.max(bound, Math.abs(value));
     }
-    return Math.max(...range.map((value) => Math.abs(value)));
-}
-
-/**
- * @param {import("../../types/encoder.js").Encoder | undefined} encoder
- */
-function getEncoderNonNegativeBound(encoder) {
-    const bound = getEncoderAbsoluteBound(encoder);
-    return bound === undefined ? undefined : Math.max(0, bound);
+    return bound;
 }
 
 /**

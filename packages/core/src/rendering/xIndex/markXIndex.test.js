@@ -96,6 +96,10 @@ describe("createMarkXIndexSpec", () => {
         ],
         ["discrete scale", (fixture) => (fixture.scale.type = "band")],
         [
+            "unsupported mark",
+            (fixture) => (fixture.mark.getType = () => "text"),
+        ],
+        [
             "conditional x",
             (fixture) =>
                 fixture.mark.encoders.x.branches.push(
@@ -180,10 +184,6 @@ describe("resolveMarkXIndexQuery", () => {
     });
 
     const fallbackCases = /** @type {[string, (fixture: any) => void][]} */ ([
-        [
-            "unsupported mark",
-            (fixture) => (fixture.mark.getType = () => "text"),
-        ],
         [
             "invalid domain",
             (fixture) => fixture.scale.domain.mockReturnValue([40, 20]),
