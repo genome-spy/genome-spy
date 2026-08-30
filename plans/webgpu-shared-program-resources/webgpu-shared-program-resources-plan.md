@@ -1,6 +1,6 @@
 # WebGPU shared program resources plan
 
-Status: In progress
+Status: Complete
 
 ## Context
 
@@ -454,6 +454,21 @@ Tentative commit if accepted:
   adapter, surface, retained-frame, text, and picking suites.
 - Review total production and test line-count deltas. Added code must remain
   proportionate to the eliminated resource creation.
+
+Completion record:
+
+- All three milestones were retained. Program sharing and lazy picking add 90
+  production lines net, well within their 200–300-line KISS budget. Font
+  pooling adds 40 lines, far below its separate cap, for 130 lines total.
+- Renderer verification passed: 195 unit tests, type checks, lint, tree-shaking
+  fixtures, and 67 real-GPU tests.
+- Focused Core WebGPU adapter, surface, coordinator, context, data, and App
+  metadata-view verification passed: 107 tests across 7 files.
+- Confirmed the flat metadata, hierarchical metadata, and ranged-text examples
+  on WebGPU canvases. Flat metadata and ranged text also matched representative
+  WebGL renders in layout and visible text behavior.
+- Browser consoles had no rendering or validation errors. The only failed
+  request was the development server's existing missing favicon.
 
 The plan is temporary. Before PR creation, reconcile every checkbox as
 completed or discarded, commit that record, and delete the plan in a later
