@@ -22,11 +22,20 @@ differently:
 - SVG performs complete deterministic traversal and does not need
   interaction-oriented indexing.
 
+The product direction determines which of these paths should receive new
+infrastructure. WebGPU is intended to replace WebGL as the primary interactive
+renderer. Canvas2D must remain an interactively usable fallback when WebGPU is
+unavailable or unsuitable. WebGL is a temporary compatibility and behavioral
+oracle during that transition, and its renderer directory remains an
+intentional deletion boundary. This plan therefore integrates the shared
+contract with WebGPU and Canvas2D without refactoring WebGL to consume it.
+
 The current generic `createBinningRangeIndexer()` already maps an x/x2 interval
-to an arbitrary integer range, while WebGL has a second vertex-specific
-implementation. The shared opportunity is not a renderer abstraction: it is a
-small interval-to-native-range contract that each renderer can populate using
-its own representation and retain using its own resource lifecycle.
+to an arbitrary integer range, while WebGL has a mature vertex-specific
+implementation whose behavior can guide compatibility checks. The shared
+opportunity is not a renderer abstraction: it is a small
+interval-to-native-range contract that WebGPU and Canvas2D can populate using
+their own representations and retain using their own resource lifecycles.
 
 The design follows two established ideas without copying external code:
 
@@ -47,17 +56,21 @@ baseline rather than being duplicated here.
 
 ## Goals
 
-- Define one internal x-index contract that Canvas2D, WebGL, and the Core
-  WebGPU adapter can consume without sharing renderer resources.
+- Define one internal x-index contract that the Core WebGPU adapter and
+  Canvas2D can consume without sharing renderer resources.
 - Preserve the existing `buildIndex` grammar and sorting behavior.
 - Make an index map source x/x2 intervals to any contiguous renderer-native
-  integer range: source rows, packed instances, or emitted vertices.
+  integer range, initially source rows or packed instances.
 - Build indexes only when data or index configuration changes; pan and zoom
   perform allocation-free queries.
 - Use one conservative query-envelope policy for visible and picking passes so
   indexed rendering cannot create missing or stale hit targets.
 - Fail closed to the complete renderer-native range whenever eligibility,
   ordering, geometry expansion, or scale semantics are uncertain.
+- Treat Canvas2D performance as a product requirement for the fallback, not
+  merely as a correctness path.
+- Use existing WebGL behavior as a migration oracle without coupling new code
+  to WebGL resources or extending WebGL's lifetime.
 - Keep SVG output and dependencies unchanged.
 
 ## Non-goals
@@ -69,7 +82,8 @@ baseline rather than being duplicated here.
 - Replacing dataflow filtering, lazy loading, semantic zoom, or viewport-domain
   calculation.
 - Indexing arbitrary two-dimensional geometry or non-contiguous native ranges.
-- Guaranteeing that WebGPU benefits materially before it is benchmarked.
+- Migrating or refactoring WebGL's private indexing implementation.
+- Changing renderer selection, WebGPU feature detection, or fallback policy.
 - Expanding indexing to every mark type in the first implementation.
 
 ## Key decisions
@@ -92,11 +106,10 @@ index?.query(queryStart, queryEnd, targetRange);
 
 `nativeStart` and `nativeEnd` are renderer-defined non-negative integers:
 
-| Consumer | Native range |
-| --- | --- |
-| Canvas2D | Indices into one stable source-data batch |
+| Consumer       | Native range                                      |
+| -------------- | ------------------------------------------------- |
+| Canvas2D       | Indices into one stable source-data batch         |
 | WebGPU adapter | Packed instance indices submitted to the renderer |
-| WebGL | Emitted vertex indices |
 
 The builder validates finite coordinates, monotonic starts, non-inverted x/x2
 intervals, nondecreasing non-overlapping native ranges, and a finite nonzero
@@ -161,12 +174,12 @@ unchanged:
 - stable input-batch or packed-range identity;
 - x/x2 encoder and raw-accessor identity;
 - index-domain endpoints; and
-- renderer-native packing or vertex-layout revision.
+- renderer-native packing revision.
 
 Expression-backed geometry and scale-domain changes do not rebuild the index.
 They are evaluated while resolving the live query envelope. Encoding rewrites,
-data replacement, topology changes that repack instances, or vertex-layout
-changes rebuild the adapter entry.
+data replacement, or topology changes that repack instances rebuild the
+adapter entry.
 
 This follows existing retained ownership:
 
@@ -174,7 +187,6 @@ This follows existing retained ownership:
   software-picking contexts.
 - WebGPU's packed-mark cache owns instance indexes and reuses them from its
   retained frame plan.
-- WebGL's renderer resources own vertex indexes as they do today.
 
 Semantic marks and `Collector` remain free of renderer-native indexes. The
 collector's existing `dataRevision` is an invalidation input, not an index
@@ -182,11 +194,10 @@ container.
 
 The adapter workflow is the same even though ownership differs:
 
-| Adapter | Build trigger | Builder input | Query consumer |
-| --- | --- | --- | --- |
-| Canvas2D | Source batch or x config changes | One native span per source row | Immediate visitor start/end |
-| WebGPU | Packed batch, topology, or x config changes | One native span per packed instance | Draw `firstInstance`/`instanceCount` |
-| WebGL | Vertex data or x config changes | One native span per emitted vertex run | Existing native draw callback |
+| Adapter  | Build trigger                               | Builder input                       | Query consumer                       |
+| -------- | ------------------------------------------- | ----------------------------------- | ------------------------------------ |
+| Canvas2D | Source batch or x config changes            | One native span per source row      | Immediate visitor start/end          |
+| WebGPU   | Packed batch, topology, or x config changes | One native span per packed instance | Draw `firstInstance`/`instanceCount` |
 
 Use `xIndex` or `xIndexedRange` consistently. In particular, do not reuse the
 WebGPU adapter's existing `indexed` placement flag for x-domain indexing.
@@ -204,8 +215,8 @@ encoder identity. Alternatively, if profiling shows grouping is rare for the
 target marks, the adapter may conservatively use full traversal for transient
 groups. It must not silently rebuild a large index every paint.
 
-WebGPU already retains stable packed occurrence ranges. WebGL already retains
-stable facet-to-vertex ranges.
+WebGPU already retains stable packed occurrence ranges. WebGL's existing stable
+facet-to-vertex ranges remain unchanged and provide useful comparison cases.
 
 ### Adapt native ranges at renderer boundaries
 
@@ -225,10 +236,10 @@ own buffers, pipelines, draw-range resolution for expanded representations
 such as text glyphs, and the final `pass.draw()` call. Normal and picking passes
 reuse the same Core frame-plan range.
 
-WebGL builds the shared index with emitted vertex spans. Other renderers never
-import WebGL's vertex readers, geometry builders, or range entries. Once
-behavioral parity is established, the duplicate vertex-range binning code can
-be deleted while the WebGL directory remains a removable boundary.
+WebGL keeps its existing index, vertex readers, geometry builders, and range
+entries. Compatibility tests compare visible and picking behavior rather than
+making either new adapter import WebGL internals. This avoids spending migration
+effort on code intended to disappear.
 
 ### Instrument decisions at adapter boundaries
 
@@ -249,13 +260,13 @@ not allocated as strings in the production paint loop.
 Rejected. A collector owns materialized data and revision, but does not own
 mark encoders, x2 semantics, zoom extents, screen-space geometry, or native
 renderer ranges. Storing the index there would couple dataflow to rendering and
-still fail to serve WebGL's vertex representation cleanly.
+still fail to represent retained WebGPU packing cleanly.
 
 ### Put all indexing in semantic marks
 
 Rejected. Marks should not acquire retained backend lifecycle or cache native
-resource offsets. It would also make one logical mark coordinate three
-different resource representations.
+resource offsets. It would also make one logical mark coordinate multiple
+resource representations.
 
 ### Implement indexing in `@genome-spy/webgpu-renderer`
 
@@ -266,10 +277,10 @@ facet semantics. The Core adapter can already narrow `firstInstance` and
 
 ### Share only a source-row index
 
-Rejected as the sole abstraction. It is convenient for Canvas and WebGPU, but
-WebGL indexes emitted vertices and some renderers expand one datum into a
-different native count. Mapping intervals directly to arbitrary native ranges
-supports all adapters without requiring a second index implementation.
+Rejected as the sole abstraction. It is convenient for Canvas, but WebGPU
+occurrence packing can use nonzero bases and some representations expand one
+datum into a different native count. Mapping intervals directly to arbitrary
+native ranges avoids per-frame translation tables in the retained adapter.
 
 ### Reuse `ViewportDomainManager` as the render index
 
@@ -284,29 +295,28 @@ conflating their query contracts.
 Rejected because it allocates per query, changes data-array identity, and
 undermines retained caches. Integer ranges preserve identity and painter order.
 
-## Milestone 1: Establish the shared contract through WebGL
+## Milestone 1: Establish the shared contract and compatibility oracle
 
 ### Intended outcome
 
-The renderer-neutral builder and common scale-query mechanics are
-production-tested by the existing WebGL backend without changing WebGL output
-or its current draw-range decisions.
+The renderer-neutral builder and common scale-query mechanics have independent
+contract tests. Existing WebGL results provide compatibility fixtures without
+changing WebGL runtime code or draw-range decisions.
 
 ### Work
 
 - Add `rendering/xIndex/` with the native-range builder and mark-level spec and
   query helpers.
-- Move bounded-offset and index/locus query primitives out of WebGL while
-  retaining its current per-mark query policy during this mechanical step.
-- Adapt WebGL vertex spans to the shared builder and remove duplicate binning
-  after parity is demonstrated.
-- Retain WebGL's resource ownership, facet `rangeMap`, and draw-callback
-  lifecycle.
+- Add table and property tests for eligibility, conservative envelopes, and
+  native-range queries.
+- Capture representative expected ranges and visible/picking outcomes from the
+  current WebGL implementation as compatibility fixtures.
+- Leave WebGL imports, resources, private index, and draw callbacks unchanged.
 
 ### Affected areas and consumers
 
 - New renderer-neutral x-index module
-- WebGL geometry builders, mark draw callbacks, and focused tests
+- Shared x-index tests and WebGL compatibility fixtures
 - Existing generic binned-index tests and callers
 
 Canvas2D, WebGPU, SVG, dataflow, and the public grammar remain behaviorally
@@ -317,7 +327,7 @@ unchanged.
 - Shared tests cover points, half-open intervals, empty bins, long overlaps,
   unordered and inverted data, non-finite values, native ranges with nonzero
   bases, index/locus adjustment, and bounded/unbounded geometry.
-- Existing WebGL index and mark-rendering tests produce identical ranges.
+- Existing WebGL index and mark-rendering tests remain unchanged and pass.
 - WebGL normal and picking screenshots remain unchanged on representative
   indexed genomic examples.
 
@@ -325,7 +335,7 @@ unchanged.
 
 Add a short internal README for the shared contract. No user migration.
 
-Tentative commit: `refactor(core): share renderer x-index mechanics`
+Tentative commit: `feat(core): add renderer-neutral x-index contract`
 
 ## Milestone 2: Integrate Canvas rendering and picking
 
@@ -333,7 +343,8 @@ Tentative commit: `refactor(core): share renderer x-index mechanics`
 
 Eligible Canvas rectangle and point batches project only conservative x-domain
 candidates, while visible output, painter order, and software picking remain
-equivalent to full traversal.
+equivalent to full traversal. The fallback remains responsive on the
+pathological MCCA interaction instead of merely rendering correctly.
 
 ### Work
 
@@ -363,6 +374,8 @@ dependency-wise unchanged.
 - Data, filtering, sorting, and encoding changes rebuild or fall back correctly.
 - Exact MCCA profiling reports index builds, fallback decisions, and candidate
   reduction for wheel zoom, Peek opening, and closeup scrolling.
+- Repeated before/after traces show a material reduction in Canvas scripting
+  time for closeup interaction without a regression in the small control spec.
 
 ### Documentation and migration
 
@@ -375,7 +388,9 @@ Tentative commit: `perf(core): cull Canvas marks with shared x indexes`
 ### Intended outcome
 
 WebGPU retains complete series buffers but submits only the indexed packed
-instance range for eligible occurrences during normal and picking passes.
+instance range for eligible occurrences during normal and picking passes. The
+design fits the intended primary renderer's retained frame plan instead of
+copying Canvas's immediate traversal model.
 
 ### Work
 
@@ -402,9 +417,10 @@ resources, and draw implementation remain unchanged.
   changes without mark uploads.
 - The WebGPU interaction benchmark shows no new layout replay, occurrence
   reconstruction, resource synchronization, or buffer writes during zoom.
-- Keep the integration only if repeated hardware-backed runs show neutral or
-  improved frame timing on large indexed marks and no meaningful regression on
-  the small control specification.
+- Repeated hardware-backed runs show improved frame timing on large indexed
+  marks. If query overhead affects small batches, establish a measured
+  eligibility threshold or full-range fast path rather than rebuilding the
+  index architecture.
 
 ### Documentation and migration
 
@@ -412,56 +428,16 @@ Update the WebGPU adapter README. No renderer-package or public migration.
 
 Tentative commit: `perf(core): narrow WebGPU draws with shared x indexes`
 
-## Milestone 4: Converge WebGL on the shared mark-query policy
-
-### Intended outcome
-
-WebGL, Canvas2D, and WebGPU use the same mark eligibility and conservative
-query-envelope contract for every supported indexed mark type. Unsupported
-types explicitly use their complete native ranges.
-
-### Work
-
-- Apply the shared rectangle and point query envelopes to WebGL.
-- Define and test envelopes for other WebGL-indexed mark types where the bounds
-  are straightforward; explicitly fall back for the rest.
-- Delete the remaining WebGL-private x-index query helpers.
-- Compare candidate expansion and fallback rates before accepting any WebGL
-  performance tradeoff.
-
-### Affected areas and consumers
-
-- WebGL mark draw callbacks and rendering tests
-- Shared mark-query helpers and profiler counters
-
-Canvas2D and WebGPU retain their adapter-owned caches and native ranges.
-
-### Verification
-
-- Cross-renderer table tests produce identical query domains for the same mark,
-  scale, geometry, and picking state.
-- WebGL visible and picking output remains unchanged across indexed genomic
-  examples, including marks whose larger envelopes now overfetch safely.
-- Repeated WebGL interaction benchmarks show no material regression; unexpected
-  fallbacks are investigated rather than hidden with backend-specific rules.
-
-### Documentation and migration
-
-Update the WebGL internal README to point to the shared contract. No public
-migration.
-
-Tentative commit: `refactor(core): unify WebGL x-index queries`
-
 ## Final integration verification
 
-After all three adapters consume the contract and WebGL query policy converges:
+After Canvas2D and the Core WebGPU adapter consume the contract:
 
-- Run focused Canvas, WebGL, WebGPU, immediate-rendering, binned-index, and
-  TypeScript suites.
+- Run focused Canvas, WebGPU, immediate-rendering, binned-index, compatibility,
+  and TypeScript suites.
 - Run structured SVG export tests and verify that SVG never queries an x index.
-- Compare normal and picking behavior across Canvas, WebGL, and WebGPU for
-  points, intervals, facets, sample placements, clips, pan, zoom, filtering,
-  sorting, and parameter-driven geometry.
+- Compare Canvas and WebGPU normal and picking behavior against the existing
+  WebGL oracle for points, intervals, facets, sample placements, clips, pan,
+  zoom, filtering, sorting, and parameter-driven geometry.
 - Run the private MCCA visualization at the exact reported state, including
   genomic wheel zoom, Peek open/close, closeup scrolling, hover, and selection.
 - Run a small non-genomic control specification to expose fixed index overhead.
@@ -470,9 +446,11 @@ After all three adapters consume the contract and WebGL query policy converges:
 
 ## Review gates
 
-- Review the shared contract and WebGL parity before Canvas or WebGPU adopt it.
+- Review the shared contract and compatibility fixtures before Canvas or WebGPU
+  adopts it. Reject dependencies from shared code into WebGL.
 - Review Canvas visible/picking equivalence and fallback coverage before its
-  performance commit.
+  performance commit; candidate reduction alone is insufficient without an
+  interaction-time improvement.
 - Review final WebGPU retained-state behavior and cross-renderer integration
   after hardware-backed measurements.
 
@@ -489,8 +467,6 @@ After all three adapters consume the contract and WebGL query policy converges:
 - WebGPU may be vertex- or raster-bound elsewhere, making CPU index queries a
   net loss for smaller batches. Benchmark thresholds may be warranted, but no
   threshold should be chosen before measurement.
-- WebGL's emitted vertices may use high-precision split attributes. Its adapter
-  must feed the shared builder values equivalent to the current vertex reader.
 - Text and other variable-expansion marks require their renderer's native-range
   resolver to preserve datum-to-native mapping; unsupported marks fall back.
 - Index construction increases retained memory. Each adapter should report
@@ -499,9 +475,9 @@ After all three adapters consume the contract and WebGL query policy converges:
 ## Acceptance criteria
 
 - One internal mark-level eligibility and query-envelope contract is used by
-  Canvas2D, WebGL, and the Core WebGPU adapter.
-- One interval-to-native-range implementation serves source rows, packed
-  instances, and emitted vertices.
+  Canvas2D and the Core WebGPU adapter.
+- One interval-to-native-range implementation serves source rows and packed
+  instances without importing renderer-specific resources.
 - Every uncertain or unsupported case visibly falls back to the complete
   native range with no false-negative culling.
 - Normal and picking passes use identical candidate ranges and preserve paint
@@ -510,7 +486,9 @@ After all three adapters consume the contract and WebGL query policy converges:
   reuploads GPU buffers, or allocates candidate arrays.
 - SVG output, tests, and bundle dependencies remain unchanged and do not import
   the x-index module.
-- WebGL retains behavioral parity, Canvas shows a repeatable improvement on the
-  pathological MCCA state, and WebGPU is kept only when hardware measurements
-  are neutral or positive.
+- WebGL runtime code remains unchanged and continues to provide a behavioral
+  oracle during migration.
+- Canvas shows a repeatable interaction-time improvement on the pathological
+  MCCA state, and WebGPU shows a hardware-measured gain for large indexed marks
+  without a meaningful small-spec regression.
 - No public specification, renderer-selection, or migration change is needed.
