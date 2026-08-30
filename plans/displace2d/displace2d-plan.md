@@ -1278,6 +1278,22 @@ Evidence recorded on 2026-08-30:
   `[-56, 0]` to `[-3, 80]` while its canonical target changes. Do not couple the
   transition to hover state to hide this; hovered-label locking remains an
   explicit interaction-design question for user testing.
+- The next user acid test exposed loading spinners and delayed annotations in
+  the airway plots. Instrumented Chromium traces showed that this was not solver
+  time: `transition.complete()` remained below 0.8 ms, but each animated
+  collector completion invalidated scale domains. Because the reactive
+  `inViewport` formula had no upstream collector, its expression replay walked
+  back through the 12,000-row window transform and URL source. A short volcano
+  gesture caused 116 full replays and about 1.39 million window-row handles;
+  the URL source alternated between loading and complete on animation frames.
+- Moving the existing sorted collector immediately before the first
+  `domain(...)`-reactive viewport formula makes it the replay boundary. Repeating
+  the same traces produced zero window, measurement, or URL-source replays and
+  no loading-state transitions. `displace2d.complete()` including downstream
+  work remained below 0.9 ms for both airway plots, and no interaction long task
+  was observed. This transform-order correction is sufficient evidence against
+  adding a solver cache, another placement algorithm, or a dataflow framework
+  change for the current fixtures.
 
 ## Reconciliation through the first user acid test (2026-08-28)
 
