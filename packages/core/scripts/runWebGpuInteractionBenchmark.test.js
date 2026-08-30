@@ -1,8 +1,10 @@
 import { describe, expect, test } from "vitest";
 
 import {
+    createReport,
     getCaseApplicability,
     parseArgs,
+    renderReport,
     summarizeCadence,
     validateInteractionResult,
 } from "./runWebGpuInteractionBenchmark.mjs";
@@ -38,6 +40,61 @@ describe("WebGPU interaction benchmark driver", () => {
         expect(options.runs).toBe(2);
         expect(options.headed).toBe(false);
         expect(options.traces).toBe(false);
+    });
+
+    test("accepts Canvas as a CPU-renderer benchmark", () => {
+        const options = parseArgs([
+            "--spec",
+            "example.json",
+            "--renderer",
+            "canvas",
+        ]);
+
+        expect(options.renderers).toEqual(["canvas"]);
+    });
+
+    test("makes a completed headed Canvas run authoritative without GPU metadata", () => {
+        const options = parseArgs([
+            "--spec",
+            "example.json",
+            "--renderer",
+            "canvas",
+            "--no-trace",
+        ]);
+        const sample = {
+            status: "passed",
+            subject: "main",
+            renderer: "canvas",
+            case: "wheel-zoom",
+            dpr: 1,
+            cadence: {
+                intervals: { median: 16 },
+                over33_3: 0,
+            },
+            profile: {
+                frames: [{ kind: "render", duration: 16 }],
+            },
+            environment: {
+                renderer: "canvas",
+                canvas: { context: "2d" },
+            },
+            correctness: {
+                repeatedCloseupTransitions: true,
+                hoverAndPickingAfterMotion: true,
+                filteringOrSortingFollowedByCloseup: false,
+                resize: true,
+                errors: [],
+            },
+        };
+
+        const report = createReport({ options, samples: [sample] });
+
+        expect(report.authoritative).toBe(true);
+        expect(report.limitation).toBeUndefined();
+        expect(report.sameBackendAa.values).toEqual([0]);
+        expect(renderReport(report)).toContain(
+            "# Renderer interaction benchmark report"
+        );
     });
 
     test("adds an optional DPR sensitivity matrix", () => {

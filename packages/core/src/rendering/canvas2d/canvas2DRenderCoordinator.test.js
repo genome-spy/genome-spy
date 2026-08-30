@@ -115,6 +115,35 @@ describe("Canvas2DRenderCoordinator", () => {
         expect(collectRenderCommands).toHaveBeenCalledTimes(2);
     });
 
+    test("profiles normal paints and closes failed frames", () => {
+        const profiler = startPerformanceProfiler();
+        const coordinator = new Canvas2DRenderCoordinator({
+            viewRoot: /** @type {any} */ ({}),
+            context: /** @type {any} */ ({}),
+            surface: /** @type {any} */ ({
+                getLogicalCanvasSize: () => ({ width: 20, height: 10 }),
+                getDevicePixelRatio: () => 1,
+            }),
+            getBackground: () => "white",
+            broadcast: vi.fn(),
+            onLayoutComputed: vi.fn(),
+        });
+        coordinator.layoutResult = /** @type {any} */ ({});
+
+        coordinator.renderAll();
+        mocks.renderCanvas2D.mockImplementationOnce(() => {
+            throw new Error("paint failed");
+        });
+        expect(() => coordinator.renderAll()).toThrow("paint failed");
+
+        const snapshot = profiler.snapshot();
+        expect(snapshot.frames).toMatchObject([
+            { renderer: "canvas", kind: "render" },
+            { renderer: "canvas", kind: "render" },
+        ]);
+        expect(snapshot.phaseTotals.render).toBeGreaterThanOrEqual(0);
+    });
+
     test("does not allocate a picking surface for an empty replay", () => {
         const getPickingBuffer = vi.fn();
         const coordinator = new Canvas2DRenderCoordinator({

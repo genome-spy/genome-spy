@@ -149,19 +149,19 @@ Canvas frame durations and phases rather than an empty frame list.
 
 ### Work
 
-- [ ] Wrap normal `Canvas2DRenderCoordinator.renderAll()` paints with the
+- [x] Wrap normal `Canvas2DRenderCoordinator.renderAll()` paints with the
       private profiler's `beginFrame("canvas")` / `endFrame()` lifecycle.
-- [ ] Record render-command replay as a named phase while keeping profiler
-      overhead absent when profiling is disabled.
-- [ ] Add Canvas to the benchmark renderer parser, types, help, environment
+- [x] Record the full Canvas paint as the `render` phase while keeping profiler
+      timing overhead absent when profiling is disabled.
+- [x] Add Canvas to the benchmark renderer parser, types, help, environment
       metadata, renderer ordering, and report paths without treating it as a
       WebGL adapter.
-- [ ] Make antialiasing noise estimation follow the selected renderer matrix.
-- [ ] Classify Canvas runs as CPU-renderer measurements rather than requiring
+- [x] Make antialiasing noise estimation follow the selected renderer matrix.
+- [x] Classify Canvas runs as CPU-renderer measurements rather than requiring
       hardware-backed GPU metadata.
-- [ ] Preserve the current WebGL/WebGPU comparison when both are requested and
+- [x] Preserve the current WebGL/WebGPU comparison when both are requested and
       make Canvas-only reports meaningful.
-- [ ] Cover profiler lifecycle and Canvas argument parsing with focused tests.
+- [x] Cover profiler lifecycle and Canvas argument parsing with focused tests.
 
 ### Affected areas and consumers
 
@@ -175,8 +175,8 @@ their existing profiler phases and report semantics.
 ### Verification
 
 - Focused Vitest tests for the coordinator and benchmark parser/report helpers.
-- One Canvas `wheel-zoom`, `open-closeup`, and `closeup-wheel` run on the exact
-  private MCCA URL/state at DPR 2.
+- One Canvas `wheel-zoom`, `open-closeup`, and `closeup-wheel` benchmark run on
+  the private MCCA spec at DPR 2, plus exact restored-state direct profiling.
 - The benchmark records normal Canvas frames, changes the genomic domain for
   wheel zoom, reaches Peek state for closeup cases, and performs no layout
   during steady interactions.
@@ -186,6 +186,15 @@ their existing profiler phases and report semantics.
 Internal benchmark help text only; no user-facing documentation or migration.
 
 Tentative commit: `perf(core): benchmark Canvas interaction frames`
+
+### Result
+
+Focused tests pass. A headed 1200 x 700, DPR 2 MCCA benchmark captured 140
+normal wheel frames, 38 normal Peek-transition frames, and 161 normal
+closeup-wheel frames. All three interactions passed state and layout checks;
+the report classified the completed Canvas-only run as authoritative. This
+milestone adds measurement coverage and intentionally claims no render-time
+gain.
 
 ## Milestone 2: Cache effective opacity within a Canvas paint
 

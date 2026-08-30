@@ -71,16 +71,24 @@ export default class Canvas2DRenderCoordinator {
             return;
         }
 
-        renderCanvas2D({
-            layoutResult,
-            context: this.context,
-            width: size.width,
-            height: size.height,
-            devicePixelRatio: this.surface.getDevicePixelRatio(),
-            background: this.getBackground(),
-            paint: true,
-        });
-        this.dirtyPickingBuffer = true;
+        const profiler = getPerformanceProfiler();
+        profiler?.beginFrame("canvas");
+        try {
+            measurePerformance("render", () =>
+                renderCanvas2D({
+                    layoutResult,
+                    context: this.context,
+                    width: size.width,
+                    height: size.height,
+                    devicePixelRatio: this.surface.getDevicePixelRatio(),
+                    background: this.getBackground(),
+                    paint: true,
+                })
+            );
+            this.dirtyPickingBuffer = true;
+        } finally {
+            profiler?.endFrame();
+        }
     }
 
     renderPickingFramebuffer() {
