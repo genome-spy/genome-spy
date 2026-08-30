@@ -103,37 +103,28 @@ describe("CanvasXIndexManager", () => {
         ).toBeLessThan(1000);
     });
 
-    test("rebuilds when collector data changes", () => {
-        const data = Array.from({ length: 100 }, (_, x) => ({ x }));
-        const fixture = createFixture(data);
-        const manager = new CanvasXIndexManager();
-        const profiler = startPerformanceProfiler();
-        const range = /** @type {[number, number]} */ ([0, 0]);
+    test.each(["collector data", "index domain"])(
+        "rebuilds when %s changes",
+        (change) => {
+            const data = Array.from({ length: 100 }, (_, x) => ({ x }));
+            const fixture = createFixture(data);
+            const manager = new CanvasXIndexManager();
+            const profiler = startPerformanceProfiler();
+            const range = /** @type {[number, number]} */ ([0, 0]);
 
-        manager.prepare(fixture.mark);
-        manager.query(data, range);
-        fixture.collector.dataRevision++;
-        manager.prepare(fixture.mark);
-        manager.query(data, range);
+            manager.prepare(fixture.mark);
+            manager.query(data, range);
+            if (change === "collector data") {
+                fixture.collector.dataRevision++;
+            } else {
+                fixture.resolution.zoomExtent = [0, 2000];
+            }
+            manager.prepare(fixture.mark);
+            manager.query(data, range);
 
-        expect(profiler.snapshot().countTotals.canvasXIndexBuilds).toBe(2);
-    });
-
-    test("rebuilds when the index domain changes", () => {
-        const data = Array.from({ length: 100 }, (_, x) => ({ x }));
-        const fixture = createFixture(data);
-        const manager = new CanvasXIndexManager();
-        const profiler = startPerformanceProfiler();
-        const range = /** @type {[number, number]} */ ([0, 0]);
-
-        manager.prepare(fixture.mark);
-        manager.query(data, range);
-        fixture.resolution.zoomExtent = [0, 2000];
-        manager.prepare(fixture.mark);
-        manager.query(data, range);
-
-        expect(profiler.snapshot().countTotals.canvasXIndexBuilds).toBe(2);
-    });
+            expect(profiler.snapshot().countTotals.canvasXIndexBuilds).toBe(2);
+        }
+    );
 
     test("caches a rejected unordered build", () => {
         const data = [{ x: 10 }, { x: 5 }];
