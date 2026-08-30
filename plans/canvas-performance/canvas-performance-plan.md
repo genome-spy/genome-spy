@@ -6,9 +6,7 @@ Status: Milestones 1–5 complete
 
 The Canvas2D compatibility renderer replays the complete `LayoutResult` and
 clears and repaints the full surface for every interaction frame. The immediate
-rendering path projects and culls source data on the CPU. Unlike WebGL, it does
-not use the normalized `buildIndex` contract to narrow x-sorted data to the
-current genomic domain before projection.
+rendering path projects and culls complete source batches on the CPU.
 
 Profiling the private MCCA visualization at the shared state in the reported
 pathological URL identified two regimes:
@@ -21,20 +19,6 @@ pathological URL identified two regimes:
   The trace contained about 106,000 `arc`, `fill`, and `stroke` calls per paint.
   This is a distinct draw-call batching problem and carries greater visual
   correctness risk.
-
-The two dominant x-indexable rectangle marks already satisfy the shared
-contract:
-
-| Mark          | Collected rows | Rows overlapping the restored x domain |
-| ------------- | -------------: | -------------------------------------: |
-| Gencode exons |        290,812 |                                 69,895 |
-| Copy ratios   |         62,693 |                                 17,170 |
-
-Canvas therefore scans about 353,000 rows to find 87,000 x candidates per
-paint. A temporary filtered-data counterfactual reduced steady live-Chrome
-paint tasks from roughly 200–238 ms to 160–173 ms. This is attribution
-evidence, not an implementation result: the production implementation must
-retain conservative interval, offset, pan, and facet semantics.
 
 The existing generic interaction benchmark already covers `wheel-zoom`,
 `open-closeup`, and `closeup-wheel`, but its renderer matrix, environment
@@ -61,8 +45,6 @@ placement-driven `facetIndex` grouping path.
 - Skip offscreen repeated sample facets before Canvas mark traversal.
 - Reuse materialized sample-facet coordinates across immediate marks without
   allocating rectangles in the per-mark traversal.
-- Provide profiling evidence and requirements for the renderer-neutral x-index
-  work tracked in `plans/x-indexing/x-indexing-plan.md`.
 - Preserve exact painter order, clipping, opacity, interval overlap, offset,
   semantic zoom, facet, and picking behavior.
 - Land each implemented milestone as a focused Conventional Commit with before
@@ -74,10 +56,6 @@ placement-driven `facetIndex` grouping path.
   architecture, or worker-owned `OffscreenCanvas`.
 - Peek row/tile caching or partial blits.
 - Point-path batching, subpixel point approximation, or any visual LOD change.
-- Changing the public grammar or the default meaning of `buildIndex`.
-- Making SVG export use an interaction-oriented subset index.
-- Adding a shared low-level renderer abstraction or importing WebGL modules
-  into Canvas or the immediate renderer.
 - Changing SampleView layout recording, sample placement topology, or SVG
   export occurrence selection.
 
@@ -106,15 +84,6 @@ The context is recreated for every live paint and detached export, so no cache
 invalidation protocol is needed and expression-backed opacity remains live
 between frames.
 
-### Treat x indexing as a cross-renderer Core contract
-
-The original Canvas-only index proposal exposed representation and ownership
-questions shared by WebGL and the Core WebGPU adapter. The replacement design
-is tracked in `plans/x-indexing/x-indexing-plan.md`. It maps source x/x2
-intervals to renderer-native contiguous ranges while keeping caches and
-resources adapter-owned. This Canvas plan retains only the profiling evidence
-that motivates the shared work.
-
 ### Share the existing sample-facet visibility contract
 
 The normalized interval test in WebGL's `prepareSampleFacetRendering()` is the
@@ -137,23 +106,12 @@ not part of structured export selection.
 
 ## Alternatives considered
 
-### Filter or slice arrays before calling immediate renderers
-
-Rejected because it allocates a candidate array per batch and paint. Passing
-integer bounds keeps the hot path allocation-free and preserves datum identity.
-
-### Reuse WebGL's vertex-range index directly
-
-Rejected because the WebGL directory is an explicit deletion boundary and its
-index addresses emitted vertices rather than source rows. Canvas can reuse the
-generic binned-index algorithm without crossing backend ownership.
-
 ### Cache the entire rendered surface or static layers first
 
 Deferred. Static sidebar/layer caching could provide substantial gains, but it
 requires invalidation ownership across parameters, scale domains, data
-revisions, layout, and paint order. The indexed traversal and per-frame cache
-have existing contracts and materially lower correctness risk.
+revisions, layout, and paint order. The implemented hot-path changes have
+existing contracts and materially lower correctness risk.
 
 ### Batch dense point paths first
 
@@ -480,8 +438,6 @@ dropping interaction frames.
 
 ## Risks and unresolved questions
 
-- Shared x-index eligibility, overfetch, invalidation, geometry, and picking
-  risks are tracked in `plans/x-indexing/x-indexing-plan.md`.
 - The benchmark's screenshot harness does not restore the supplied hash. Exact
   restored-state runs will use the direct profiling harness until an explicit
   state-hash benchmark option is designed and verified.
