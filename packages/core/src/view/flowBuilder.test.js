@@ -31,6 +31,61 @@ const mark = {
     tooltip: null,
 };
 
+/**
+ * @template {UnitView | LayerView} V
+ * @param {import("../spec/view.js").UnitSpec | import("../spec/view.js").LayerSpec} spec
+ * @param {{new (...args: any[]): V}} ViewClass
+ */
+async function getUnitCollector(spec, ViewClass) {
+    const root = await create(spec, ViewClass);
+    buildDataFlow(root);
+    const unit = root.getDescendants().find((view) => view instanceof UnitView);
+    return unit.getCollector();
+}
+
+test.each([
+    ["default", undefined, { field: "x" }],
+    ["explicit false", false, null],
+])("Collector x sorting honors %s buildIndex", async (_name, value, sort) => {
+    const x = {
+        field: "x",
+        type: /** @type {const} */ ("quantitative"),
+        scale: { zoom: true },
+        ...(value === undefined ? {} : { buildIndex: value }),
+    };
+    const collector = await getUnitCollector(
+        {
+            data: { values: [{ x: 2 }, { x: 1 }] },
+            mark,
+            encoding: { x },
+        },
+        UnitView
+    );
+
+    expect(collector.params.sort).toEqual(sort);
+});
+
+test("Collector sorting uses normalized inherited locus encoding", async () => {
+    const collector = await getUnitCollector(
+        {
+            data: { values: [{ chrom: "chr1", pos: 2 }] },
+            encoding: {
+                x: {
+                    chrom: "chrom",
+                    pos: "pos",
+                    type: "locus",
+                },
+            },
+            layer: [{ mark }],
+        },
+        LayerView
+    );
+
+    expect(collector.params.sort).toEqual({
+        field: "_linearized_chrom_pos",
+    });
+});
+
 test("Trivial flow", async () => {
     const root = await create(
         {
