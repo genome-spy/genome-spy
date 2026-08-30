@@ -4,7 +4,131 @@ import { InternMap } from "internmap";
 import PlacementSource from "../../view/layout/placementSource.js";
 import { getPackedMarkData, getPackedMarkRange } from "./webGpuMarkData.js";
 
+/** @param {number} value */
+function constantEncoder(value) {
+    return Object.assign(() => value, {
+        branches: [],
+        channelDef: { value },
+        constant: true,
+    });
+}
+
+/** @param {any} scale */
+function createXEncoder(scale) {
+    const accessor = Object.assign(
+        (/** @type {{x: number}} */ datum) => datum.x,
+        {
+            asNumberAccessor() {
+                return accessor;
+            },
+            channel: "x",
+            channelDef: { field: "x" },
+            constant: false,
+            fields: ["x"],
+        }
+    );
+    return Object.assign(
+        (/** @type {{x: number}} */ datum) => scale(accessor(datum)),
+        {
+            branches: [{ accessor, predicate: () => true }],
+            channelDef: { field: "x", buildIndex: true },
+            constant: false,
+            scale,
+        }
+    );
+}
+
+/** @param {Map<any, object[]> | InternMap<any, object[]>} facetBatches */
+function createIndexedMark(facetBatches) {
+    const scale = Object.assign((/** @type {number} */ value) => value, {
+        type: "linear",
+        domain: () => [0, 100],
+        range: () => [0, 1],
+    });
+    const collector = { dataRevision: 0, facetBatches };
+    const scaleResolution = {
+        getAxisLength: () => 100,
+        getScale: () => scale,
+        zoomExtent: [0, 100],
+    };
+    const mark = /** @type {any} */ ({
+        encoders: {
+            size: constantEncoder(0),
+            strokeWidth: constantEncoder(0),
+            x: createXEncoder(scale),
+        },
+        getType: () => "point",
+        properties: { minPickingSize: 0 },
+        unitView: {
+            getCollector: () => collector,
+            getPathString: () => "test",
+            getScaleResolution: () => scaleResolution,
+            paramRuntime: { evaluateAndGet: vi.fn() },
+        },
+    });
+    return { collector, mark, scale, scaleResolution };
+}
+
 describe("WebGPU mark data", () => {
+    test("indexes nonzero packed facet ranges", () => {
+        const firstFacet = ["first"];
+        const secondFacet = ["second"];
+        const firstData = [{ x: 10 }, { x: 20 }];
+        const secondData = [{ x: 70 }, { x: 80 }];
+        const fixture = createIndexedMark(
+            new InternMap(
+                [
+                    [firstFacet, firstData],
+                    [secondFacet, secondData],
+                ],
+                JSON.stringify
+            )
+        );
+        const source = new PlacementSource();
+        source.replaceTopology([firstFacet, secondFacet], new Float32Array(8));
+
+        const packed = getPackedMarkData(fixture.mark, source);
+        const secondRange = getPackedMarkRange(
+            fixture.mark,
+            { placement: { source, index: 1 } },
+            packed
+        );
+        const target = /** @type {[number, number]} */ ([0, 0]);
+
+        expect(secondRange).toMatchObject({
+            firstInstance: 2,
+            instanceCount: 2,
+        });
+        secondRange.xIndex(65, 75, target);
+        expect(target[0]).toBeGreaterThanOrEqual(2);
+        expect(target[1]).toBeLessThanOrEqual(4);
+    });
+
+    test("rebuilds packed x indexes when encoder identity changes", () => {
+        const data = [{ x: 10 }, { x: 20 }];
+        const fixture = createIndexedMark(new Map([[undefined, data]]));
+        const first = getPackedMarkData(fixture.mark);
+
+        fixture.mark.encoders.x = createXEncoder(fixture.scale);
+        const second = getPackedMarkData(fixture.mark);
+
+        expect(second).not.toBe(first);
+        expect(second.ranges.get(data)?.xIndex).toBeDefined();
+    });
+
+    test("rebuilds packed x indexes when the index domain changes", () => {
+        const data = [{ x: 10 }, { x: 20 }];
+        const fixture = createIndexedMark(new Map([[undefined, data]]));
+        const first = getPackedMarkData(fixture.mark);
+
+        fixture.scaleResolution.zoomExtent = [0, 200];
+        const second = getPackedMarkData(fixture.mark);
+
+        expect(second).not.toBe(first);
+        expect(second.xIndexSpec.indexDomain).toEqual([0, 200]);
+        expect(getPackedMarkData(fixture.mark)).toBe(second);
+    });
+
     test("packs complete topology independently of active occurrences", () => {
         const firstFacet = ["first"];
         const hiddenFacet = ["hidden"];

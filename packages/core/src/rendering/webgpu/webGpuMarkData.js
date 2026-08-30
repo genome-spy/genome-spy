@@ -1,4 +1,6 @@
 import { getMarkData } from "../immediate/markData.js";
+import { countPerformance } from "../../debug/performanceProfiler.js";
+import { buildMarkXIndex, createMarkXIndexSpec } from "../xIndex/markXIndex.js";
 
 /** @type {WeakMap<import("../../marks/mark.js").default, PackedMarkData>} */
 const PACKED_DATA_CACHE = new WeakMap();
@@ -20,29 +22,38 @@ export function getPackedMarkData(mark, placementSource) {
     }
 
     const topology = placementSource?.getSnapshot().topology;
+    const xEncoder = mark.encoders?.x;
+    const x2Encoder = mark.encoders?.x2;
+    const xScaleResolution = xEncoder
+        ? mark.unitView.getScaleResolution("x")
+        : undefined;
+    const xIndexDomain = xScaleResolution?.zoomExtent;
     const cached = PACKED_DATA_CACHE.get(mark);
     if (
         cached?.collector === collector &&
         cached.revision === collector.dataRevision &&
-        cached.topology === topology
+        cached.topology === topology &&
+        cached.xEncoder === xEncoder &&
+        cached.x2Encoder === x2Encoder &&
+        cached.xScaleResolution === xScaleResolution &&
+        cached.xIndexDomainStart === xIndexDomain?.[0] &&
+        cached.xIndexDomainEnd === xIndexDomain?.[1]
     ) {
         return cached;
     }
 
     const unFaceted = collector.facetBatches.get(undefined);
-    /** @type {Map<object[], {firstInstance: number, instanceCount: number}>} */
+    const xIndexSpec = createMarkXIndexSpec(mark);
+    /** @type {Map<object[], PackedMarkRange>} */
     const ranges = new Map();
-    /** @type {{firstInstance: number, instanceCount: number}[] | undefined} */
+    /** @type {PackedMarkRange[] | undefined} */
     let placementRanges;
     /** @type {object[]} */
     let data;
 
     if (unFaceted?.length) {
         data = unFaceted;
-        ranges.set(unFaceted, {
-            firstInstance: 0,
-            instanceCount: data.length,
-        });
+        ranges.set(unFaceted, createPackedRange(xIndexSpec, data, 0));
     } else {
         const batches = topology
             ? topology.facetIds.map((facetId) =>
@@ -61,10 +72,7 @@ export function getPackedMarkData(mark, placementSource) {
         }
         let dataIndex = 0;
         for (const batch of batches) {
-            const range = {
-                firstInstance: dataIndex,
-                instanceCount: batch.length,
-            };
+            const range = createPackedRange(xIndexSpec, batch, dataIndex);
             placementRanges?.push(range);
             ranges.set(batch, range);
             for (const datum of batch) {
@@ -77,12 +85,44 @@ export function getPackedMarkData(mark, placementSource) {
         collector,
         revision: collector.dataRevision,
         topology,
+        xEncoder,
+        x2Encoder,
+        xScaleResolution,
+        xIndexDomainStart: xIndexDomain?.[0],
+        xIndexDomainEnd: xIndexDomain?.[1],
+        xIndexSpec,
         data,
         ranges,
         placementRanges,
     };
     PACKED_DATA_CACHE.set(mark, packed);
     return packed;
+}
+
+/**
+ * @param {import("../xIndex/markXIndex.js").MarkXIndexSpec | undefined} spec
+ * @param {object[]} data
+ * @param {number} firstInstance
+ * @returns {PackedMarkRange}
+ */
+function createPackedRange(spec, data, firstInstance) {
+    /** @type {PackedMarkRange} */
+    const range = {
+        firstInstance,
+        instanceCount: data.length,
+    };
+    if (!spec || !data.length) {
+        return range;
+    }
+
+    countPerformance("webgpuXIndexBuilds");
+    const xIndex = buildMarkXIndex(spec, data, firstInstance);
+    if (!xIndex) {
+        countPerformance("webgpuXIndexRejectedBuilds");
+        return range;
+    }
+    range.xIndex = xIndex;
+    return range;
 }
 
 /**
@@ -110,7 +150,20 @@ export function getPackedMarkRange(mark, options, packed) {
  * @property {import("../../data/collector.js").default} collector
  * @property {number} revision
  * @property {object | undefined} topology
+ * @property {import("../../types/encoder.js").Encoder | undefined} xEncoder
+ * @property {import("../../types/encoder.js").Encoder | undefined} x2Encoder
+ * @property {import("../../scales/scaleResolution.js").default | undefined} xScaleResolution
+ * @property {number | undefined} xIndexDomainStart
+ * @property {number | undefined} xIndexDomainEnd
+ * @property {import("../xIndex/markXIndex.js").MarkXIndexSpec | undefined} xIndexSpec
  * @property {object[]} data
- * @property {Map<object[], {firstInstance: number, instanceCount: number}>} ranges
- * @property {{firstInstance: number, instanceCount: number}[] | undefined} placementRanges
+ * @property {Map<object[], PackedMarkRange>} ranges
+ * @property {PackedMarkRange[] | undefined} placementRanges
+ */
+
+/**
+ * @typedef {object} PackedMarkRange
+ * @property {number} firstInstance
+ * @property {number} instanceCount
+ * @property {import("../../utils/binnedIndex.js").Lookup} [xIndex]
  */

@@ -16,6 +16,7 @@ import {
     getWebGpuMarkResourceRevision,
 } from "./webGpuMarkAdapter.js";
 import { getPackedMarkData, getPackedMarkRange } from "./webGpuMarkData.js";
+import { resolveMarkXIndexQuery } from "../xIndex/markXIndex.js";
 
 /**
  * Compiles a completed Core layout into an adapter-owned retained frame plan.
@@ -92,8 +93,11 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 packed: undefined,
                 source: undefined,
                 generatedSource: false,
-                indexed: mark.encoders?.facetIndex !== undefined,
-                submittedIndexed: false,
+                placementIndexed: mark.encoders?.facetIndex !== undefined,
+                submittedPlacementIndexed: false,
+                xQueryDomain: [0, 0],
+                xIndexedRange: [0, 0],
+                xQueryEnabled: false,
                 updated: false,
                 active: false,
                 ownerCoords: undefined,
@@ -173,7 +177,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
         const canvas = this.surface.getLogicalCanvasSize();
         for (const state of this.#marks.values()) {
-            state.submittedIndexed = false;
+            state.submittedPlacementIndexed = false;
             state.updated = false;
             state.active = false;
             this.#prepareMarkState(state, picking, canvas);
@@ -205,7 +209,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.occurrences
                 .map((occurrence) => {
                     const placement = occurrence.options.placement;
-                    return state.indexed || placement?.index !== undefined
+                    return state.placementIndexed ||
+                        placement?.index !== undefined
                         ? placement?.source
                         : undefined;
                 })
@@ -235,7 +240,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.ownerCoords = state.occurrences[0].markCoords;
         }
 
-        if (state.indexed && !state.source) {
+        if (state.placementIndexed && !state.source) {
             throw createViewError(
                 state.mark,
                 "Indexed placement requires a placement source."
@@ -285,6 +290,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (!packed.data.length) {
             return;
         }
+        state.xQueryEnabled =
+            !!packed.xIndexSpec &&
+            resolveMarkXIndexQuery(packed.xIndexSpec, state.xQueryDomain);
+        if (!state.xQueryEnabled) {
+            countPerformance("webgpuXIndexFallbackQueries");
+        }
 
         const configRevision = getWebGpuMarkConfigRevision(state.mark);
         const packedChanged = state.packed !== packed;
@@ -328,7 +339,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                     configCoords,
                     () => state.mark.unitView.getEffectiveOpacity(),
                     packed.data,
-                    state.source && !state.indexed
+                    state.source && !state.placementIndexed
                         ? { source: "draw" }
                         : undefined
                 )
@@ -399,7 +410,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         ) {
             return undefined;
         }
-        if (state.indexed && state.submittedIndexed) {
+        if (state.placementIndexed && state.submittedPlacementIndexed) {
             return undefined;
         }
 
@@ -417,7 +428,11 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         const placementIndex = state.generatedSource
             ? occurrence.placementIndex
             : occurrence.options.placement?.index;
-        if (state.source && !state.indexed && placementIndex === undefined) {
+        if (
+            state.source &&
+            !state.placementIndexed &&
+            placementIndex === undefined
+        ) {
             throw createViewError(
                 state.mark,
                 "Draw-level placement requires a resolved placement index."
@@ -425,7 +440,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         if (
             state.source &&
-            !state.indexed &&
+            !state.placementIndexed &&
             !isPlacementVisible(
                 state.source,
                 placementIndex,
@@ -435,6 +450,27 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             )
         ) {
             return undefined;
+        }
+
+        let firstInstance = range.firstInstance;
+        let instanceCount = range.instanceCount;
+        if (state.xQueryEnabled && range.xIndex) {
+            range.xIndex(
+                state.xQueryDomain[0],
+                state.xQueryDomain[1],
+                state.xIndexedRange
+            );
+            firstInstance = state.xIndexedRange[0];
+            instanceCount = state.xIndexedRange[1] - firstInstance;
+            countPerformance("webgpuXIndexQueries");
+            countPerformance("webgpuXIndexNativeItems", range.instanceCount);
+            countPerformance("webgpuXIndexCandidateItems", instanceCount);
+            if (!instanceCount) {
+                countPerformance("webgpuXIndexEmptyRanges");
+                return undefined;
+            }
+        } else if (state.xQueryEnabled) {
+            countPerformance("webgpuXIndexFallbackQueries");
         }
 
         let resourceWrites;
@@ -455,15 +491,15 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             }
         }
 
-        draw.firstInstance = range.firstInstance;
-        draw.instanceCount = range.instanceCount;
+        draw.firstInstance = firstInstance;
+        draw.instanceCount = instanceCount;
         if (draw.placement) {
             draw.placement.index = placementIndex;
         }
         this.surface.drawMark(state.mark, draw, state.source, picking);
         countPerformance("drawCommands");
-        if (state.indexed) {
-            state.submittedIndexed = true;
+        if (state.placementIndexed) {
+            state.submittedPlacementIndexed = true;
         }
         return resourceWrites;
     }
@@ -658,8 +694,11 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
  * @property {import("./webGpuMarkData.js").PackedMarkData | undefined} packed
  * @property {import("../../view/layout/placementSource.js").default | undefined} source
  * @property {boolean} generatedSource
- * @property {boolean} indexed
- * @property {boolean} submittedIndexed
+ * @property {boolean} placementIndexed
+ * @property {boolean} submittedPlacementIndexed
+ * @property {[number, number]} xQueryDomain
+ * @property {[number, number]} xIndexedRange
+ * @property {boolean} xQueryEnabled
  * @property {boolean} updated
  * @property {boolean} active
  * @property {Rectangle | undefined} ownerCoords
@@ -687,7 +726,7 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
  * @property {import("../../types/rendering.js").ClipOptions | undefined} clip
  * @property {import("../../types/rendering.js").ClipOptions | undefined} cullClip
  * @property {import("../../spec/mark.js").MarkProps["cullByVisibleRange"]} cull
- * @property {{firstInstance: number, instanceCount: number}} range
+ * @property {import("./webGpuMarkData.js").PackedMarkRange} range
  * @property {number} placementIndex
  * @property {import("@genome-spy/webgpu-renderer").DrawCommand | undefined} draw
  */

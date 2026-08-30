@@ -33,12 +33,19 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
 
     #sampleFacetCoords = new SampleFacetCoordsResolver();
 
+    /** @type {import("../canvasXIndexManager.js").default | undefined} */
+    #xIndexManager;
+
+    /** @type {[number, number]} */
+    #indexedRange = [0, 0];
+
     /**
      * @param {{
      *     width: number,
      *     height: number,
      *     devicePixelRatio: number,
-     *     getRasterizer: () => import("./softwarePickingRasterizer.js").default
+     *     getRasterizer: () => import("./softwarePickingRasterizer.js").default,
+     *     xIndexManager?: import("../canvasXIndexManager.js").default
      * }} options
      */
     constructor(options) {
@@ -48,6 +55,7 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
         this.devicePixelRatio = options.devicePixelRatio;
         this.getRasterizer = options.getRasterizer;
         this.#profiler = getPerformanceProfiler();
+        this.#xIndexManager = options.xIndexManager;
     }
 
     getDevicePixelRatio() {
@@ -124,6 +132,7 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
             inheritedClip,
             mark.properties.cullByVisibleRange
         );
+        const useXIndex = this.#xIndexManager?.prepare(mark) ?? false;
         visitMarkOccurrences(
             mark,
             options,
@@ -132,6 +141,18 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
             (occurrenceCoords, data) => {
                 if (data.length == 0) {
                     return;
+                }
+                let start = 0;
+                let end = data.length;
+                if (
+                    useXIndex &&
+                    this.#xIndexManager.query(data, this.#indexedRange)
+                ) {
+                    start = this.#indexedRange[0];
+                    end = this.#indexedRange[1];
+                    if (start === end) {
+                        return;
+                    }
                 }
                 const rasterizer = this.getRasterizer();
                 rasterizer.setClip(
@@ -144,6 +165,8 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
                     rasterizer,
                     coords: occurrenceCoords,
                     data,
+                    start,
+                    end,
                     visibleBounds,
                     anchorCullBounds,
                     viewOpacity,

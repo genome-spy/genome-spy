@@ -38,31 +38,35 @@ export function resolvePointProperties(mark) {
  *     coords: import("../../../view/layout/rectangle.js").default,
  *     data: object[],
  *     visibleBounds: import("../bounds.js").RenderBounds,
- *     anchorCullBounds: import("../bounds.js").RenderBounds
+ *     anchorCullBounds: import("../bounds.js").RenderBounds,
+ *     start?: number,
+ *     end?: number
  * }} options
  * @param {(instance: PointInstance) => void} visitor
  * @returns {number}
  */
 export function visitPointInstances(mark, properties, options, visitor) {
     const { coords, data, visibleBounds, anchorCullBounds } = options;
+    const start = options.start ?? 0;
+    const end = options.end ?? data.length;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
-    if (data.length == 0) {
+    if (start === end) {
         return 0;
     }
     const projectXRange = prepareRangeProjection(
         coords,
         encoders,
         "x",
-        data[0]
+        data[start]
     );
     const projectYRange = prepareRangeProjection(
         coords,
         encoders,
         "y",
-        data[0]
+        data[start]
     );
     const xRange = /** @type {[number, number]} */ ([0, 0]);
     const yRange = /** @type {[number, number]} */ ([0, 0]);
@@ -81,7 +85,8 @@ export function visitPointInstances(mark, properties, options, visitor) {
     };
     let instanceCount = 0;
 
-    for (const datum of data) {
+    for (let i = start; i < end; i++) {
+        const datum = data[i];
         if (encodeNumber(encoders.semanticScore, datum) < semanticThreshold) {
             continue;
         }

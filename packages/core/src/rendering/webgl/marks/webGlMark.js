@@ -62,46 +62,6 @@ const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
 const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
 
 /**
- * Returns a conservative horizontal pixel bound for indexed rendering.
- * Undefined means that a data-dependent pass-through offset is unbounded and
- * the x index must not be used for culling.
- *
- * @param {Partial<Record<string, import("../../../types/encoder.js").Encoder>>} encoders
- * @returns {number | undefined}
- */
-export function getXIndexOffsetBound(encoders) {
-    let bound = 0;
-
-    for (const channel of ["xOffset", "x2Offset", "dx"]) {
-        const encoder = encoders[channel];
-        if (!encoder) {
-            continue;
-        }
-
-        if (encoder.constant) {
-            const value = encoder(/** @type {any} */ ({}));
-            if (!Number.isFinite(value)) {
-                return undefined;
-            }
-            bound = Math.max(bound, Math.abs(/** @type {number} */ (value)));
-        } else if (encoder.scale && encoder.scale.type !== "null") {
-            const range = encoder.scale.range();
-            if (!range.every((value) => Number.isFinite(value))) {
-                return undefined;
-            }
-            bound = Math.max(
-                bound,
-                ...range.map((value) => Math.abs(/** @type {number} */ (value)))
-            );
-        } else {
-            return undefined;
-        }
-    }
-
-    return bound;
-}
-
-/**
  * @typedef {import("../../../types/rendering.js").ClipOptions} ClipOptions
  * @typedef {import("../../../view/layout/rectangle.js").default} Rectangle
  * @typedef {import("../types.js").WebGLMarkRenderingOptions} MarkRenderingOptions
@@ -1154,31 +1114,20 @@ export default class WebGLMark {
 
         const scale = this.unitView.getScaleResolution("x")?.getScale();
         const continuous = scale && isContinuous(scale.type);
-        const offsetBound = getXIndexOffsetBound(
-            /** @type {Partial<Record<string, import("../../../types/encoder.js").Encoder>>} */ (
-                this.encoders
-            )
-        );
         const domainStartOffset = ["index", "locus"].includes(scale?.type)
             ? -1
             : 0;
-        const offsetPerPixel =
-            continuous && offsetBound > 0 && Number.isFinite(offsetBound)
-                ? offsetBound /
-                  (this.unitView.getScaleResolution("x").getAxisLength() || 1)
-                : 0;
 
         /** @type {[number, number]} Recycle to ease garbage collector's work */
         const arr = [0, 0];
 
         drawWithRangeEntry = (rangeEntry) => {
-            if (continuous && rangeEntry.xIndex && offsetBound !== undefined) {
+            if (continuous && rangeEntry.xIndex) {
                 const domain = scale.domain();
-                const offsetDomainMargin =
-                    Math.abs(domain[1] - domain[0]) * offsetPerPixel;
+                const span = Math.abs(domain[1] - domain[0]);
                 const vertexIndices = rangeEntry.xIndex(
-                    domain[0] + domainStartOffset - offsetDomainMargin,
-                    domain[1] + offsetDomainMargin,
+                    domain[0] + domainStartOffset - span,
+                    domain[1] + span,
                     arr
                 );
                 const offset = vertexIndices[0];

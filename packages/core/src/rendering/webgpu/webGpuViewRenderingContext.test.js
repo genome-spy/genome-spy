@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
-    const packed = { data: [{}] };
+    const packed = /** @type {any} */ ({ data: [{}] });
     return {
         packed,
         createWebGpuMarkConfig: vi.fn(() => ({
@@ -11,10 +11,20 @@ const mocks = vi.hoisted(() => {
         getWebGpuMarkConfigRevision: vi.fn(() => 0),
         getWebGpuMarkResourceRevision: vi.fn(() => 0),
         getPackedMarkData: vi.fn(() => packed),
-        getPackedMarkRange: vi.fn(() => ({
-            firstInstance: 0,
-            instanceCount: 1,
-        })),
+        getPackedMarkRange: /** @type {any} */ (
+            vi.fn(() => ({
+                firstInstance: 0,
+                instanceCount: 1,
+            }))
+        ),
+        resolveMarkXIndexQuery: vi.fn((spec, target) => {
+            if (!spec) {
+                return false;
+            }
+            target[0] = spec.domain[0];
+            target[1] = spec.domain[1];
+            return true;
+        }),
     };
 });
 
@@ -29,6 +39,10 @@ vi.mock("./webGpuMarkData.js", () => ({
     getPackedMarkRange: mocks.getPackedMarkRange,
 }));
 
+vi.mock("../xIndex/markXIndex.js", () => ({
+    resolveMarkXIndexQuery: mocks.resolveMarkXIndexQuery,
+}));
+
 import Rectangle from "../../view/layout/rectangle.js";
 import PlacementSource from "../../view/layout/placementSource.js";
 import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
@@ -36,11 +50,70 @@ import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 beforeEach(() => {
     vi.clearAllMocks();
     mocks.getPackedMarkData.mockReturnValue(mocks.packed);
+    mocks.getPackedMarkRange.mockReturnValue({
+        firstInstance: 0,
+        instanceCount: 1,
+    });
     mocks.getWebGpuMarkConfigRevision.mockReturnValue(0);
     mocks.getWebGpuMarkResourceRevision.mockReturnValue(0);
+    delete mocks.packed.xIndexSpec;
 });
 
 describe("WebGpuViewRenderingContext", () => {
+    test("refreshes visible and picking ranges without mark uploads", () => {
+        const domain = [20, 30];
+        mocks.packed.xIndexSpec = { domain };
+        const xIndex = vi.fn((start, end, target) => {
+            target[0] = start + 100;
+            target[1] = end + 100;
+        });
+        mocks.getPackedMarkRange.mockReturnValue({
+            firstInstance: 100,
+            instanceCount: 100,
+            xIndex,
+        });
+        const drawRanges = /** @type {[number, number][]} */ ([]);
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            updateMark: vi.fn(),
+            drawMark: vi.fn((_mark, draw) => {
+                drawRanges.push([draw.firstInstance, draw.instanceCount]);
+            }),
+        };
+        const context = new WebGpuViewRenderingContext({
+            surface: /** @type {any} */ (surface),
+        });
+        const view = { onBeforeRender: vi.fn() };
+        const mark = {
+            encoders: {},
+            isPickingParticipant: () => true,
+            properties: {},
+            unitView: { getEffectiveOpacity: () => 1 },
+        };
+
+        context.pushView(/** @type {any} */ (view), Rectangle.ZERO);
+        context.renderMark(/** @type {any} */ (mark), {});
+        context.popView(/** @type {any} */ (view));
+        context.finish();
+        context.render({ picking: false });
+
+        domain[0] = 40;
+        domain[1] = 45;
+        context.render({ picking: false });
+        context.render({ picking: true });
+
+        expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledOnce();
+        expect(surface.updateMark).toHaveBeenCalledOnce();
+        expect(surface.drawMark).toHaveBeenCalledTimes(3);
+        expect(drawRanges).toEqual([
+            [120, 10],
+            [140, 5],
+            [140, 5],
+        ]);
+        expect(xIndex).toHaveBeenCalledTimes(3);
+    });
+
     test("runs live view and opacity state from a retained plan", () => {
         let opacity = 0;
         const surface = {

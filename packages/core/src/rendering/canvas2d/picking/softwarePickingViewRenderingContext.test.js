@@ -8,6 +8,38 @@ import SoftwarePickingRasterizer from "./softwarePickingRasterizer.js";
 import SoftwarePickingViewRenderingContext from "./softwarePickingViewRenderingContext.js";
 
 describe("SoftwarePickingViewRenderingContext", () => {
+    test("uses indexed source-row bounds for picking", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ x: 0.1 }, { x: 0.5 }, { x: 0.9 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 1] },
+                },
+                y: { value: 0.5 },
+                size: { value: 4 },
+                color: { value: "black" },
+            },
+        });
+        const xIndexManager = /** @type {any} */ ({
+            prepare: vi.fn(() => true),
+            query: vi.fn((_data, target) => {
+                target[0] = 1;
+                target[1] = 2;
+                return true;
+            }),
+        });
+        const buffer = render(view, xIndexManager);
+
+        expect(xIndexManager.prepare).toHaveBeenCalledOnce();
+        expect(xIndexManager.query).toHaveBeenCalledOnce();
+        expect(buffer.read(50, 50)).toBeGreaterThan(0);
+        expect(buffer.read(10, 50)).toBe(0);
+        expect(buffer.read(90, 50)).toBe(0);
+    });
+
     test("writes topmost rect and point IDs using conservative point bounds", async () => {
         const { view } = await createHeadlessEngine({
             params: [{ name: "pickWidth", value: 20 }],
@@ -235,8 +267,9 @@ describe("SoftwarePickingViewRenderingContext", () => {
 
 /**
  * @param {import("../../../view/view.js").default} view
+ * @param {import("../canvasXIndexManager.js").default} [xIndexManager]
  */
-function render(view) {
+function render(view, xIndexManager) {
     const buffer = new SoftwarePickingBuffer(100, 100);
     const rasterizer = new SoftwarePickingRasterizer(buffer);
     view.arrange(
@@ -245,6 +278,7 @@ function render(view) {
             height: 100,
             devicePixelRatio: 1,
             getRasterizer: () => rasterizer,
+            xIndexManager,
         }),
         Rectangle.create(0, 0, 100, 100),
         { firstFacet: true }

@@ -528,6 +528,7 @@ export function linearizeLocusAccess(view) {
  */
 function getCompareParamsForView(view, encoding) {
     const e = { ...view.getEncoding(), ...encoding }.x;
+    const normalizedX = view.mark.encoding.x;
     if (isChannelDefWithScale(e)) {
         if (view.getScaleResolution("x")?.isZoomable()) {
             if (isFieldDef(e)) {
@@ -536,7 +537,9 @@ function getCompareParamsForView(view, encoding) {
                 // For instance, genomic data is typically already sorted
                 // by position within a chromosome (but not necessarily
                 // across chromosomes).
-                return "buildIndex" in e && e.buildIndex
+                return isChannelDefWithScale(normalizedX) &&
+                    "buildIndex" in normalizedX &&
+                    normalizedX.buildIndex
                     ? { field: e.field }
                     : null;
             } else if (isDatumDef(e)) {
