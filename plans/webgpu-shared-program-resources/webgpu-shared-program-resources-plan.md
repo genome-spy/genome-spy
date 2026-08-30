@@ -460,7 +460,7 @@ Completion record:
 - All three milestones were retained. Program sharing and lazy picking add 90
   production lines net, well within their 200–300-line KISS budget. Font
   pooling adds 40 lines, far below its separate cap, for 130 lines total.
-- Renderer verification passed: 195 unit tests, type checks, lint, tree-shaking
+- Renderer verification passed: 198 unit tests, type checks, lint, tree-shaking
   fixtures, and 67 real-GPU tests.
 - Focused Core WebGPU adapter, surface, coordinator, context, data, and App
   metadata-view verification passed: 107 tests across 7 files.
@@ -469,6 +469,26 @@ Completion record:
   WebGL renders in layout and visible text behavior.
 - Browser consoles had no rendering or validation errors. The only failed
   request was the development server's existing missing favicon.
+
+Post-completion benchmark record:
+
+- A headed Chrome/Apple Metal benchmark compared the normal renderer with a
+  benchmark-only control that bypasses program-template and font-resource
+  sharing. It used fresh browser/GPU processes for each grouped or alternating
+  draw-order cell and three repetitions.
+- With 500 rect plus 500 text marks, sharing reduced median synchronous mark
+  initialization from 199.8 ms to 70.0 ms and GPU-settled initialization from
+  447.7 ms to 83.4 ms. Shader modules and visible pipelines fell from 1,000 to
+  2, and Lato atlas textures from 500 to 1.
+- Both grouped and alternating rendering remained at 60 fps. JavaScript and
+  serialized GPU-completed frame times differed by at most 0.2 ms at this
+  count.
+- A second run with 1,000 marks of each type confirmed the result:
+  initialization fell from 375.7 ms to 123.6 ms in JavaScript and from 847.2 ms
+  to 141.9 ms through GPU settlement, while both modes still rendered at
+  60 fps. Steady-state frame-cost differences were small and inconsistent.
+- The optimization is therefore justified by initialization and resource
+  pressure. It does not claim a steady-state frame-rate improvement.
 
 The plan is temporary. Before PR creation, reconcile every checkbox as
 completed or discarded, commit that record, and delete the plan in a later

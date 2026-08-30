@@ -116,6 +116,7 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
+    "benchmark:resources": "node scripts/runResourceSharingBenchmark.mjs",
     "dev": "vite",
     "lint": "eslint .",
     "storybook": "storybook dev -p 6006",
