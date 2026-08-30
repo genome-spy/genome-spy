@@ -484,11 +484,13 @@ const labels = renderer.createMark(textMark, {
 ```
 
 Text series and draw ranges use logical strings. The retained text program
-builds private glyph geometry, maps glyphs back to logical series, and keeps
-the pipeline and atlas when `series.replace()` changes the strings. Numeric
-text channels contain one value per logical string; scalar text replacement
-requires an explicit count. Empty strings are valid, and shared logical source
-arrays remain shared.
+builds private glyph geometry and maps glyphs back to logical series. Programs
+using the same exact font resource share one renderer-lifetime atlas, sampler,
+and glyph-metrics buffer; per-string geometry and bind groups remain mark-owned.
+`series.replace()` changes only the mark-owned string resources. Numeric text
+channels contain one value per logical string; scalar text replacement requires
+an explicit count. Empty strings are valid, and shared logical source arrays
+remain shared.
 
 The renderer accepts host-provided font resources at the GenomeSpy Core
 integration boundary. Standalone users do not need to construct or expose the

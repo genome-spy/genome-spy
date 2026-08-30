@@ -123,8 +123,10 @@ Tentative commit: `refactor(webgpu-renderer): remove measured scale duplication`
 
 ## Deferred until a concrete consumer or design exists
 
-- Font registration, shaping, atlas generation, and caching are owned by issue
-  #362; do not expose the current BMFont resource representation meanwhile.
+- Font registration, shaping, atlas generation, and public or persistent
+  caching are owned by issue #362. The renderer may pool exact immutable BMFont
+  GPU resources for one device lifetime, but must not expose the current
+  representation as the future font API.
 - Independent per-facet scale domains require a separate scale-state proposal;
   placement rectangles remain geometry-only.
 - Existing-device construction, worker transfer protocols, vector-backend

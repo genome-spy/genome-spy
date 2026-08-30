@@ -360,20 +360,40 @@ until issue #362 supplies a clearer font lifecycle.
 
 ### Work if accepted
 
-- [ ] Reword the migration backlog to separate same-device GPU pooling from
+- [x] Reword the migration backlog to separate same-device GPU pooling from
       issue #362's registration, shaping, atlas-generation, and persistence
       scope.
-- [ ] Add the smallest renderer-lifetime pool keyed by normalized metrics and
+- [x] Add the smallest renderer-lifetime pool keyed by normalized metrics and
       bitmap identity/value.
-- [ ] Share only immutable atlas, sampler, and glyph-metric resources; retain
+- [x] Share only immutable atlas, sampler, and glyph-metric resources; retain
       per-mark glyph/string buffers and bind groups.
-- [ ] Preserve a stable transparent atlas texture during asynchronous loading,
+- [x] Preserve a stable transparent atlas texture during asynchronous loading,
       validate decoded dimensions, and settle failures without unhandled
       rejections.
-- [ ] Keep pool destruction renderer-owned and cover device loss and late
+- [x] Keep pool destruction renderer-owned and cover device loss and late
       asynchronous completion.
-- [ ] Stop if implementation requires a public BMFont cache contract or grows
-      beyond roughly 150–200 non-test lines; defer instead to issue #362.
+- [x] Retain the implementation because it adds no public BMFont cache contract
+      and stays below the 150–200 non-test-line cap.
+
+Implementation record:
+
+- The Lato atlas is 512 by 512 RGBA, or 1 MiB of GPU texture storage per text
+  program before pooling. Its glyph-metrics buffer is 4,064 bytes. The metadata
+  hierarchy example has five leaf columns plus group headings, so duplication
+  is material even in the small checked-in workload and grows linearly in
+  wider cohorts.
+- Production code grew by 40 lines net relative to milestone 2 because the pool
+  replaces the per-mark placeholder/replacement upload path.
+- Equivalent text programs now create one atlas texture, sampler, glyph-metrics
+  buffer, transparent initialization, and decoded atlas upload per exact font
+  resource. Glyph instances, string metrics, bind groups, and destruction
+  remain mark-local.
+- Renderer-only bundle size grew by 177 minified bytes and 38 gzip bytes. The
+  custom-font bundle grew by 317 minified bytes and 149 gzip bytes. All 67
+  real-GPU tests and 195 renderer unit tests pass.
+- Confirmed WebGPU canvases rendered the flat metadata, hierarchical metadata,
+  and ranged-text examples with visible titles and glyphs. The browser console
+  had no rendering errors; only the existing missing-favicon request failed.
 
 ### Affected areas and downstream consumers
 

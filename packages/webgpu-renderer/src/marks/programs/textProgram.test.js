@@ -8,6 +8,16 @@ import { indexScale } from "../../scales/index.js";
 import { thresholdScale } from "../../scales/threshold.js";
 import TextProgram from "./textProgram.js";
 
+/**
+ * @param {import("../../renderer.js").Renderer} renderer
+ * @returns {{ glyphMetrics: GPUBuffer, atlas: { texture: GPUTexture }, upload: (image: ImageBitmap) => void, destroy: () => void }}
+ */
+function getOnlyFontResources(renderer) {
+    const [resourcesByBitmap] = renderer._fontResourceCache.values();
+    const [resources] = resourcesByBitmap.values();
+    return /** @type {any} */ (resources);
+}
+
 describe("TextProgram series replacement", () => {
     it("fits ranged text after applying facet placement", () => {
         const shaderBody = Object.getOwnPropertyDescriptor(
@@ -124,7 +134,65 @@ describe("TextProgram series replacement", () => {
         expect(program._markConfig.textLayout).toBeUndefined();
     });
 
-    it("invalidates the host when the font atlas becomes ready", () => {
+    it("shares immutable font GPU resources between text programs", () => {
+        const renderer = createMockRenderer();
+        const createBuffer = vi.spyOn(renderer.device, "createBuffer");
+        const createTexture = vi.spyOn(renderer.device, "createTexture");
+        const createSampler = vi.spyOn(renderer.device, "createSampler");
+        const writeTexture = vi.spyOn(renderer.device.queue, "writeTexture");
+        const config = {
+            channels: {
+                text: { value: "x" },
+                x: { value: 0, scale: identityScale() },
+                y: { value: 0, scale: identityScale() },
+            },
+        };
+
+        const first = new TextProgram(renderer, config);
+        const second = new TextProgram(renderer, config);
+
+        expect(second._extraBuffers.get("glyphMetrics")).toBe(
+            first._extraBuffers.get("glyphMetrics")
+        );
+        expect(second._extraTextures.get("fontAtlas")?.texture).toBe(
+            first._extraTextures.get("fontAtlas")?.texture
+        );
+        expect(second._extraBuffers.get("glyphs")).not.toBe(
+            first._extraBuffers.get("glyphs")
+        );
+        expect(createTexture).toHaveBeenCalledOnce();
+        expect(createSampler).toHaveBeenCalledOnce();
+        expect(writeTexture).toHaveBeenCalledOnce();
+        expect(
+            createBuffer.mock.calls.filter(([descriptor]) =>
+                descriptor.label?.endsWith(": glyph metrics")
+            )
+        ).toHaveLength(1);
+    });
+
+    it("does not share different font bitmap resources", () => {
+        const renderer = createMockRenderer();
+        const metrics = new BmFontManager().getDefaultFont().metrics;
+        const create = (/** @type {string} */ bitmap) =>
+            new TextProgram(renderer, {
+                font: "Test Sans",
+                fontResource: { metrics, bitmap },
+                channels: {
+                    text: { value: "x" },
+                    x: { value: 0, scale: identityScale() },
+                    y: { value: 0, scale: identityScale() },
+                },
+            });
+
+        const first = create("first.png");
+        const second = create("second.png");
+
+        expect(second._extraTextures.get("fontAtlas")?.texture).not.toBe(
+            first._extraTextures.get("fontAtlas")?.texture
+        );
+    });
+
+    it("uploads a shared atlas in place while the renderer is alive", () => {
         const renderer = createMockRenderer();
         renderer._invalidate = vi.fn();
         const program = new TextProgram(renderer, {
@@ -134,18 +202,60 @@ describe("TextProgram series replacement", () => {
                 y: { value: 0, scale: identityScale() },
             },
         });
+        const resources = getOnlyFontResources(renderer);
+        const atlas = program._extraTextures.get("fontAtlas");
+        const copyAtlas = vi.spyOn(
+            renderer.device.queue,
+            "copyExternalImageToTexture"
+        );
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-        program._setAtlasFromBitmap(
-            /** @type {ImageBitmap} */ ({ width: 2, height: 2 })
+        resources.upload(/** @type {ImageBitmap} */ ({ width: 1, height: 1 }));
+        expect(copyAtlas).not.toHaveBeenCalled();
+        expect(warn).toHaveBeenCalledOnce();
+
+        resources.upload(
+            /** @type {ImageBitmap} */ ({
+                width: atlas.width,
+                height: atlas.height,
+            })
         );
 
         expect(renderer._invalidate).toHaveBeenCalledOnce();
+        expect(copyAtlas).toHaveBeenCalledOnce();
+
+        renderer._isAlive = () => false;
+        resources.upload(
+            /** @type {ImageBitmap} */ ({
+                width: atlas.width,
+                height: atlas.height,
+            })
+        );
+        expect(renderer._invalidate).toHaveBeenCalledOnce();
+        warn.mockRestore();
+    });
+
+    it("keeps shared font resources alive until the renderer releases them", () => {
+        const renderer = createMockRenderer();
+        const program = new TextProgram(renderer, {
+            channels: {
+                text: { value: "x" },
+                x: { value: 0, scale: identityScale() },
+                y: { value: 0, scale: identityScale() },
+            },
+        });
+        const resources = getOnlyFontResources(renderer);
+        const destroyMetrics = vi.spyOn(resources.glyphMetrics, "destroy");
+        const destroyAtlas = vi.spyOn(resources.atlas.texture, "destroy");
 
         program.destroy();
-        program._setAtlasFromBitmap(
-            /** @type {ImageBitmap} */ ({ width: 2, height: 2 })
-        );
-        expect(renderer._invalidate).toHaveBeenCalledOnce();
+        expect(destroyMetrics).not.toHaveBeenCalled();
+        expect(destroyAtlas).not.toHaveBeenCalled();
+
+        resources.destroy();
+        resources.destroy();
+        expect(destroyMetrics).toHaveBeenCalledOnce();
+        expect(destroyAtlas).toHaveBeenCalledOnce();
     });
 
     it("rebuilds glyph layout from logical strings without recreating the pipeline", () => {

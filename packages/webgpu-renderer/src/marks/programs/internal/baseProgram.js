@@ -268,6 +268,12 @@ export default class BaseProgram {
         /** @type {Map<string, GPUBuffer>} */
         this._extraBuffers = new Map();
 
+        /** @type {Set<string>} */
+        this._borrowedExtraTextures = new Set();
+
+        /** @type {Set<string>} */
+        this._borrowedExtraBuffers = new Set();
+
         this._slotUpdateDepth = 0;
         this._slotUniformsDirty = false;
         this._slotBindingsDirty = false;
@@ -1186,12 +1192,16 @@ export default class BaseProgram {
         this._uniformBuffer.destroy();
         this._seriesBuffers.destroy();
         this._scaleResources.destroy();
-        for (const buffer of this._extraBuffers.values()) {
-            buffer.destroy();
+        for (const [name, buffer] of this._extraBuffers) {
+            if (!this._borrowedExtraBuffers.has(name)) {
+                buffer.destroy();
+            }
         }
         this._extraBuffers.clear();
-        for (const { texture } of this._extraTextures.values()) {
-            texture.destroy();
+        for (const [name, { texture }] of this._extraTextures) {
+            if (!this._borrowedExtraTextures.has(name)) {
+                texture.destroy();
+            }
         }
         this._extraTextures.clear();
     }
