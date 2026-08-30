@@ -138,8 +138,10 @@ rendering and connector composition own association.
    without changing data-driven x/y domains or creating feedback loops.
 7. Make a fresh solve and a repeated interaction trace deterministic. During
    an interaction, prefer valid previous placements so continuous scale changes
-   do not produce visually discontinuous label motion. Path-independent output
-   at a repeated domain is subordinate to temporal coherence.
+   do not produce visually discontinuous label motion. Treat path-independent
+   restoration as a separate acceptance question: do not sacrifice interaction
+   coherence or promise reversibility until the acid-test evidence supports a
+   simple policy for both.
 8. Measure the simplest correct implementation against representative
    performance and placement-quality fixtures before adding an acceleration
    structure or a more sophisticated algorithm.
@@ -430,14 +432,14 @@ continuity failure rather than a throughput failure. The same recording showed
 labels covering annotated points because the solver considered only output
 rectangles.
 
-Correct temporal behavior uses the smallest stateful extension consistent with
-the current abstraction:
+The implemented temporal behavior uses the smallest stateful extension found so
+far that is consistent with the current abstraction:
 
-1. The transform retains the last finite displacement for each datum in a
-   `WeakMap`. Datum identity is the continuity key; no identifier parameter,
-   retained scene graph, or independently enumerable cache is introduced. New
-   datum objects naturally start from canonical placement, and unreachable
-   rows do not require explicit eviction.
+1. The transform retains one batch of last finite displacements by stable input
+   order. Real dataflow replays replace datum objects, so identity-keyed state
+   did not preserve continuity. A changed batch length discards all hints; no
+   identifier parameter, retained scene graph, or enumerable per-key history is
+   introduced.
 2. The pure solver accepts optional previous displacements as input hints. It
    remains pure and deterministic for all explicit inputs; it does not own
    lifecycle state.
@@ -456,6 +458,12 @@ the current abstraction:
    per-datum transition facility outside this transform. Reconsider that only
    as a separate cross-cutting proposal if stable placement still has visible
    residual jumps.
+
+The second acid test shows that this retained batch is path-dependent even when
+the exact domain and row count are restored. Milestone 6 therefore keeps the
+choice between explicit path dependence and interaction-boundary
+canonicalization open; neither is silently part of the public transform
+contract yet.
 
 Anchor clearance extends the existing collision model rather than adding a
 second algorithm. Before placing labels, seed the same broad-phase grid with
@@ -1022,6 +1030,104 @@ Evidence recorded on 2026-08-28:
 - The repository-wide unit suite passes with 3,296 tests, one skipped, and two
   todo across 393 files. Every workspace TypeScript check passes.
 
+### 6. Viewport participation, restoration, and hovered-label zoom — In progress
+
+Intended outcome: keep close zooms bounded to annotations that can affect the
+visible plot, make repeated viewport states understandable and testable, and
+preserve the existing datum-centered wheel interaction when the pointer is over
+a displaced annotation. These are three related interaction findings, not one
+solver feature, and they must not be hidden behind renderer-specific behavior.
+
+Selected immediate change:
+
+- Compose an ordinary domain-reactive `filter` before `measureText` and
+  `displace2d` in the private annotation examples. Only rows whose source
+  anchors are inside the current x and y domains participate in measurement,
+  displacement, rendering, and collision checks.
+- Keep this policy outside `displace2d`. The transform continues to preserve
+  every input row and emit only offsets; callers decide which annotations are
+  relevant. Use explicit or independently established plot domains so the
+  annotation subset cannot define the domain that filters it.
+- Start with exact viewport bounds. Add a small pixel or domain margin only if
+  edge popping is visible in the acid tests; do not introduce a public
+  visibility, clipping, or prefetch option speculatively.
+
+Restoration investigation:
+
+- Exact restoration to a previous domain currently restores the same 150-row
+  input but not its original placement: 108 of 150 offsets differed from both
+  the initial state and a fresh page solve in the recorded stress trace.
+- This is expected from the retained, greedy warm start: identical geometry is
+  not sufficient to recover a canonical layout after intermediate replays.
+  Stable input order makes a complete trace repeatable but does not make the
+  result a function of the current input alone.
+- Before implementation, compare only two KISS-compatible policies: a
+  path-independent canonical solve at a clearly defined interaction boundary,
+  and continued retained placement with its path dependence documented. Reject
+  zoom-history caches, arbitrary domain-keyed layout caches, and hidden
+  relaxation schedules unless evidence shows that neither simple policy is
+  usable. A canonicalization policy must be tested for visible snapping and may
+  not merely move the original blinking to wheel-idle time.
+
+Hovered-label investigation:
+
+- Existing wheel interaction already anchors zoom to the hovered datum's
+  encoded source x/y position. In the recorded trace, the source stayed fixed
+  to sub-pixel precision and the same datum remained hovered.
+- The annotation nevertheless moved from an offset of about `[-56, 0]` to
+  `[0, 85]` because the displacement replay changed its placement. The missing
+  behavior is therefore a placement pin, not alternate zoom-coordinate math.
+- Do not let `displace2d` inspect hover state and do not special-case displaced
+  text or rules in the renderer. Design a generic, lifecycle-bounded constraint
+  only if it can identify one input row and preserve its prior rectangle during
+  the active wheel gesture without exposing interaction internals to the pure
+  solver. Otherwise defer label pinning to a separate proposal rather than
+  weakening the transform boundary.
+
+Verification:
+
+- Repeat the deep-zoom trace and require offscreen annotations and leader lines
+  not to participate. Record visible row count, replay time, console errors,
+  and screenshots near empty and densely populated viewports.
+- Exercise sources entering and leaving all four viewport edges, reversed
+  domains, pan, wheel and inertial zoom, and exact domain restoration. Confirm
+  filtering does not create a data-domain feedback loop.
+- Compare initial, restored, fresh-page, and repeated-trace offsets with exact
+  domains and stable timing. State explicitly which equalities the selected
+  temporal policy guarantees.
+- For hovered-label zoom, separately assert source-point stability, hover
+  identity, label screen-position stability, collision freedom, and behavior
+  when the pinned source leaves the viewport or the gesture ends.
+- Obtain user visual approval from the private volcano, MA, and stress examples
+  before promoting any new interaction contract or preparing a pull request.
+
+Documentation or migration: if viewport filtering becomes part of the public
+example, document it as transform composition and explain the need for a stable
+background domain. Do not promise reversible layouts or hovered-label pinning
+until their contracts and tests exist.
+
+Tentative commits: `test(core): exercise visible displace2d annotations`, then
+one narrowly scoped behavior commit only after the restoration or pinning gate
+has selected a design.
+
+Evidence recorded on 2026-08-30:
+
+- Frames extracted from the second user recording confirm the reported failure:
+  at extreme zoom, leader lines from many offscreen annotations cross the whole
+  viewport, and returning outward yields a visibly different arrangement.
+- Adding an upstream x/y domain filter to the ignored 500-label stress example
+  reduced the captured deep-zoom annotation count from 150 to zero at an empty
+  approximately 0.0073 by 0.0073 domain. The resulting screenshot contains no
+  stray annotations or leader lines.
+- Restoring the exact `[35, 65]` x and y domains returned all 150 annotations,
+  but 108 offsets differed from the initial and fresh-page layouts. A one-second
+  settling delay and fresh reload comparison rule out bootstrap timing as the
+  explanation.
+- A real-pointer trace over displaced label 125 kept its source at approximately
+  `[310.75, 321.65]` and retained hover identity through eight wheel steps. Its
+  label moved by roughly 113 px as its offset changed from approximately
+  `[-55.96, 0]` to `[0, 85]`.
+
 ## Reconciliation through the first user acid test (2026-08-28)
 
 The plan is reconciled to the implemented branch but is intentionally not ready
@@ -1075,6 +1181,9 @@ Pending before PR preparation:
   including before/after recording evidence and the retained-state review gate.
 - Complete milestone 5 selected-anchor clearance and its public-contract review
   gate without expanding into renderer or cross-layer obstacle inspection.
+- Complete milestone 6 viewport-participation acid testing and select or defer
+  explicit restoration and hovered-label-pinning policies without coupling the
+  transform to renderer or interaction state.
 - Manually exercise resize, wheel and inertial zoom, pan, domain restoration,
   clipping, tooltip/picking alignment, long interaction sessions, and visual
   association through leader lines.
@@ -1089,6 +1198,9 @@ Pending before PR preparation:
 - A documented `displace2d` spec labels the airway volcano fixture and visibly
   recomputes during zoom, pan, and resize without blocking or blinking. The MA
   regression confirms conversion from data-domain endpoints to pixel offsets.
+- Annotation examples explicitly limit participation to relevant source anchors
+  when needed; `displace2d` itself remains visibility-agnostic and preserves
+  every row it receives.
 - The solver and transform meet the accepted performance and interaction-
   continuity thresholds on the recorded fixtures.
 - Every row is preserved and receives deterministic x and y offsets. Output
@@ -1127,9 +1239,19 @@ Pending before PR preparation:
   changes after subtracting anchor motion, count overflow transitions, replay
   the same trace from fresh state, and inspect comparable recordings. Prefer
   valid prior placement without adding public continuity controls.
-- **Path-dependent placement.** Retained hints intentionally trade repeated-
-  domain canonical output for continuity. Require deterministic complete trace
-  replay, keep the pure solver explicit, and key state only by datum identity.
+- **Path-dependent placement.** Retained hints currently trade repeated-domain
+  canonical output for continuity. Require deterministic complete-trace replay,
+  keep the pure solver explicit, and retain only one stable-input-order batch.
+  Do not describe domain restoration as reversible unless a tested interaction-
+  boundary canonicalization policy is selected.
+- **Offscreen work and visual explosions.** Filter annotation participation by
+  source-anchor domains before measurement and displacement in examples that
+  need it. Keep plot domains independent of that subset and resist moving
+  visibility policy into `displace2d`.
+- **Hovered annotation moves during datum-centered zoom.** Preserve the existing
+  source-point zoom anchor. Add label pinning only through a generic bounded
+  constraint with explicit ownership and cleanup; otherwise defer it rather
+  than coupling dataflow, picking, and rendering.
 - **Animation masking unstable placement.** Do not add displace2d-specific
   interpolation. It would allow transient overlaps and couple dataflow output
   to rendering. Consider general per-datum transitions only in a separate
