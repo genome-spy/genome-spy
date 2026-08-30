@@ -5,6 +5,7 @@ import {
 import { normalizeSingleUrlDescriptor } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
+import { normalizeGenomicStrand } from "../../formats/genomicStrand.js";
 
 export default class BamSource extends SingleAxisWindowedSource {
     /** @type {import("@gmod/bam").BamFile} */
@@ -78,17 +79,21 @@ export default class BamSource extends SingleAxisWindowedSource {
             },
             "BamSource"
         );
-        const [{ BamFile }, { RemoteFile }] = await Promise.all([
-            import("@gmod/bam"),
-            import("generic-filehandle2"),
-        ]);
+        const [{ BamFile }, { RemoteFile }, { gmodChunkCacheBudget }] =
+            await Promise.all([
+                import("@gmod/bam"),
+                import("generic-filehandle2"),
+                import("./gmodChunkCache.js"),
+            ]);
 
         this.#bam = new BamFile({
             bamFilehandle: new RemoteFile(descriptor.url),
             baiFilehandle: new RemoteFile(
                 descriptor.indexUrl ?? descriptor.url + ".bai"
             ),
+            cacheBudget: gmodChunkCacheBudget,
         });
+        this.registerDisposer(() => this.#bam.chunkFeatureCache.clear());
 
         await this.#bam.getHeader();
         const g = this.genome.hasChrPrefix();
@@ -149,7 +154,7 @@ export function createBamReadDatum(chrom, record) {
         name: record.name,
         cigar: record.CIGAR || "*",
         mapq: record.mq,
-        strand: record.strand === 1 ? "+" : "-",
+        strand: normalizeGenomicStrand(record.strand),
         seq: record.seq,
         qual: record.qual ? Array.from(record.qual) : undefined,
         md: record.getTag("MD"),

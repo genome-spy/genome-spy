@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
 import BamSource, { createBamReadDatum } from "./bamSource.js";
+import { gmodChunkCacheBudget } from "./gmodChunkCache.js";
 
 /** @type {{ chrom: string, start: number, end: number }[]} */
 const requestedIntervals = [];
+/** @type {Record<string, unknown>[]} */
+const bamConstructorOptions = [];
+const clearChunkFeatureCache = vi.fn();
 
 vi.mock("generic-filehandle2", () => ({
     RemoteFile: class RemoteFile {
@@ -17,6 +21,12 @@ vi.mock("generic-filehandle2", () => ({
 vi.mock("@gmod/bam", () => ({
     BamFile: class BamFile {
         indexToChr = [{ refName: "chr1" }];
+        chunkFeatureCache = { clear: clearChunkFeatureCache };
+
+        /** @param {Record<string, unknown>} options */
+        constructor(options) {
+            bamConstructorOptions.push(options);
+        }
 
         async getHeader() {
             return {};
@@ -130,6 +140,8 @@ function createViewStub(initialWindowSize = 300) {
 describe("BamSource", () => {
     beforeEach(() => {
         requestedIntervals.length = 0;
+        bamConstructorOptions.length = 0;
+        clearChunkFeatureCache.mockClear();
     });
 
     afterEach(() => {
@@ -172,6 +184,24 @@ describe("BamSource", () => {
         expect(requestedIntervals).toEqual([
             { chrom: "chr1", start: 0, end: 300 },
         ]);
+    });
+
+    test("shares the bounded chunk budget and clears its cache on disposal", async () => {
+        const source = new BamSource(
+            {
+                type: "bam",
+                url: "reads.bam",
+            },
+            /** @type {any} */ (createViewStub())
+        );
+
+        await /** @type {any} */ (source).initializedPromise;
+
+        expect(bamConstructorOptions[0].cacheBudget).toBe(gmodChunkCacheBudget);
+
+        source.dispose();
+        source.dispose();
+        expect(clearChunkFeatureCache).toHaveBeenCalledOnce();
     });
 
     test("maps a BAM record to a read-level datum", () => {
@@ -272,5 +302,29 @@ describe("BamSource", () => {
         expect(createDatum("chr1", record)).toMatchObject({
             cigar: "*",
         });
+    });
+
+    test("maps an unstranded BAM record to null", () => {
+        /** @type {FakeBamRecord} */
+        const record = {
+            start: 50,
+            end: 50,
+            name: "unstranded",
+            CIGAR: "",
+            mq: undefined,
+            strand: 0,
+            seq: "",
+            qual: undefined,
+            flags: 4,
+            getTag: () => undefined,
+            isPaired: () => false,
+            isProperlyPaired: () => false,
+            isDuplicate: () => false,
+            isFailedQc: () => false,
+            isSecondary: () => false,
+            isSupplementary: () => false,
+        };
+
+        expect(createDatum("chr1", record).strand).toBeNull();
     });
 });

@@ -14,8 +14,8 @@ test("parses headerless BEDPE with default positional columns", () => {
             end2: 40,
             name: "eventA",
             score: 5,
-            strand1: 1,
-            strand2: -1,
+            strand1: "+",
+            strand2: "-",
         },
     ]);
 });
@@ -33,8 +33,8 @@ test("keeps optional extra columns as fieldN fallback names", () => {
             end2: 40,
             name: "eventA",
             score: 5,
-            strand1: 1,
-            strand2: -1,
+            strand1: "+",
+            strand2: "-",
             field11: "extra1",
             field12: "extra2",
         },
@@ -91,8 +91,8 @@ test("normalizes unknown sentinels to null", () => {
             end2: 40,
             name: null,
             score: null,
-            strand1: 0,
-            strand2: 0,
+            strand1: null,
+            strand2: null,
         },
     ]);
 });

@@ -97,7 +97,7 @@ test("UrlSource reads BED using format.type bed", async () => {
             chromStart: 0,
             chromEnd: 10,
             name: "feature",
-            strand: 0,
+            strand: null,
         },
     ]);
 });
@@ -127,8 +127,8 @@ test("UrlSource reads BEDPE using format.type bedpe", async () => {
             end2: 40,
             name: "eventA",
             score: 5,
-            strand1: 1,
-            strand2: -1,
+            strand1: "+",
+            strand2: "-",
         },
     ]);
 });

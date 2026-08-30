@@ -9,6 +9,7 @@ import UrlDescriptorState, {
 } from "../urlDescriptorState.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
+import { normalizeGenomicStrand } from "../../formats/genomicStrand.js";
 
 export default class BigBedSource extends SingleAxisWindowedSource {
     /**
@@ -138,10 +139,19 @@ export default class BigBedSource extends SingleAxisWindowedSource {
                 parser.parseLine(`${chrom}\t${f.start}\t${f.end}\t${f.rest}`);
         }
 
+        /** @type {BigBedHandle["parseLine"]} */
+        const normalizeParseLine = (chrom, fields) => {
+            const datum = parseLine(chrom, fields);
+            if ("strand" in datum) {
+                datum.strand = normalizeGenomicStrand(datum.strand);
+            }
+            return datum;
+        };
+
         return {
             attachFields: createDescriptorFieldAttacher(descriptor.fields),
             bbi,
-            parseLine,
+            parseLine: normalizeParseLine,
             url: descriptor.url,
         };
     }

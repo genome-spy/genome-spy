@@ -11,6 +11,8 @@ const featuresByUrl = new Map();
 const requestedIntervals = [];
 /** @type {Set<string>} */
 const failingHeaderUrls = new Set();
+/** @type {Map<string, any>} */
+const autoSqlByUrl = new Map();
 
 vi.mock("generic-filehandle2", () => ({
     RemoteFile: class RemoteFile {
@@ -24,14 +26,23 @@ vi.mock("generic-filehandle2", () => ({
 
 vi.mock("@gmod/bed", () => ({
     default: class Bed {
+        /** @param {{ autoSql?: any }} [options] */
+        constructor(options = {}) {
+            this.autoSql = options.autoSql;
+        }
+
         /** @param {string} line */
         parseLine(line) {
-            const [chrom, start, end, name] = line.split("\t");
+            const [chrom, start, end, name, score, strand] = line.split("\t");
             return {
                 chrom,
                 chromStart: Number(start),
                 chromEnd: Number(end),
                 name,
+                ...(score === undefined ? {} : { score: Number(score) }),
+                ...(strand === undefined
+                    ? {}
+                    : { strand: strand == "+" ? 1 : strand == "-" ? -1 : 0 }),
             };
         }
     },
@@ -48,7 +59,9 @@ vi.mock("@gmod/bbi", () => ({
             if (failingHeaderUrls.has(this.url)) {
                 throw new Error("Missing BigBed");
             }
-            return /** @type {{ autoSql: any }} */ ({ autoSql: undefined });
+            return /** @type {{ autoSql: any }} */ ({
+                autoSql: autoSqlByUrl.get(this.url),
+            });
         }
 
         /**
@@ -135,6 +148,7 @@ describe("BigBedSource", () => {
         openedUrls.length = 0;
         requestedIntervals.length = 0;
         failingHeaderUrls.clear();
+        autoSqlByUrl.clear();
         featuresByUrl.clear();
         featuresByUrl.set("https://example.org/spec/features/A.bb", [
             { start: 1, end: 2, rest: "feature A" },
@@ -216,6 +230,75 @@ describe("BigBedSource", () => {
             },
         ]);
         expect(readinessAtCompletion).toEqual([true]);
+    });
+
+    it("normalizes numeric strands from the fallback BED parser", async () => {
+        featuresByUrl.set("https://example.org/spec/fallback.bb", [
+            { start: 1, end: 2, rest: "fallback\t5\t-" },
+        ]);
+        const source = new BigBedSource(
+            {
+                type: "bigbed",
+                debounceMode: "domain",
+                url: "fallback.bb",
+            },
+            /** @type {any} */ (createViewStub())
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await /** @type {any} */ (source).initializedPromise;
+        await source.loadInterval([0, 100]);
+
+        expect([...collector.getData()]).toEqual([
+            {
+                chrom: "chr1",
+                chromStart: 1,
+                chromEnd: 2,
+                name: "fallback",
+                score: 5,
+                strand: "-",
+            },
+        ]);
+    });
+
+    it("normalizes string strands from the fast AutoSQL parser", async () => {
+        const url = "https://example.org/spec/fast.bb";
+        autoSqlByUrl.set(url, {
+            fields: [
+                { name: "chrom", type: "string", isNumeric: false },
+                { name: "chromStart", type: "uint", isNumeric: true },
+                { name: "chromEnd", type: "uint", isNumeric: true },
+                { name: "name", type: "string", isNumeric: false },
+                { name: "score", type: "uint", isNumeric: true },
+                { name: "strand", type: "char", isNumeric: false },
+            ],
+        });
+        featuresByUrl.set(url, [{ start: 1, end: 2, rest: "fast\t5\t+" }]);
+        const source = new BigBedSource(
+            {
+                type: "bigbed",
+                debounceMode: "domain",
+                url: "fast.bb",
+            },
+            /** @type {any} */ (createViewStub())
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await /** @type {any} */ (source).initializedPromise;
+        await source.loadInterval([0, 100]);
+
+        expect([...collector.getData()]).toEqual([
+            {
+                chrom: "chr1",
+                chromStart: 1,
+                chromEnd: 2,
+                name: "fast",
+                score: 5,
+                strand: "+",
+            },
+        ]);
     });
 
     it("skips failed template URLs when configured", async () => {

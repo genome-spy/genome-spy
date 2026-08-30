@@ -109,7 +109,8 @@ The data source is based on [GMOD](http://gmod.org/)'s
 The `"bigbed"` source enables the retrieval of segmented data, such as annotated
 genomic regions stored in BigBed files. The fields and their types are determined
 by the file's embedded AutoSQL schema, or by the standard BED schema when the
-file does not include one.
+file does not include one. When the schema includes a `strand` field, its value
+is normalized to `"+"`, `"-"`, or `null`.
 
 ### Parameters
 
@@ -144,7 +145,9 @@ field names from `columns`, from a commented header line in the tabix file
 header, or from the first row of a plain TSV header. Field types are inferred
 automatically unless you provide `parse` (see [eager data sources](eager.md#tabular-formats)
 for the supported syntax). If the file uses bare chromosome names, set
-`addChrPrefix` to `true` to align them with GenomeSpy's UCSC-style genomes.
+`addChrPrefix` to `true` so UCSC-style assembly names query the corresponding
+bare names in the index. This mapping does not rewrite chromosome fields in
+the loaded records.
 
 Advanced multi-file Tabix views can use a URL template together with an
 `indexUrl` template. See [URL templates and multiple files](multi-url.md).
@@ -198,14 +201,22 @@ EXAMPLE examples/docs/examples/genomic-data/clinvar-variants.json height=130 spe
 ## GFF3
 
 The tabix-based `"gff3"` source enables the retrieval of hierarchical data, such
-as genomic annotations stored in GFF3 files. GenomeSpy currently exposes the
-[gff-nostream 3.0.11 object
-format](https://github.com/GMOD/gff-nostream/blob/v3.0.11/README.md#object-format)
-directly. This parser-defined format will remain in GenomeSpy 1.x and will be
-replaced by a standardized row format in GenomeSpy 2.0. The
-[flatten](../transform/flatten.md) and [project](../transform/project.md)
-transforms are useful when extracting child features and attributes from the
-hierarchical data structure. See the visualization below.
+as genomic annotations stored in GFF3 files. It converts GFF3's one-based,
+closed coordinates to zero-based, half-open `start` and `end` values. Each
+feature has `chrom`, `source`, `type`, `start`, `end`, `score`, `strand`,
+`phase`, and `subfeatures` fields. `strand` is `"+"`, `"-"`, or `null`.
+
+GFF3 attributes are lowercased and flattened onto the feature object. A
+single-valued attribute is a scalar; a repeated attribute remains an array.
+Attribute names that collide with parser fields receive a numeric suffix. The
+adapter reserves `chrom`: an attribute with that name becomes `chrom2`, or the
+next available numeric suffix.
+
+Child features are nested directly under `subfeatures`. Multi-location lines
+remain separate features, and a feature with several parents is attached to
+each parent. A child whose parent is outside the fetched interval remains
+available as a top-level feature. Use [flatten](../transform/flatten.md) and
+[project](../transform/project.md) to reshape the hierarchy for a track.
 
 ### Parameters
 
@@ -228,8 +239,8 @@ EXAMPLE examples/docs/examples/genomic-data/gff3-gene-annotations.json height=36
     that all project data are open access.
 
 The data source is based on [GMOD](http://gmod.org/)'s
-[tabix-js 3.2.2](https://github.com/GMOD/tabix-js/tree/v3.2.2) and
-[gff-nostream 3.0.11](https://github.com/GMOD/gff-nostream/tree/v3.0.11)
+[tabix-js 3.8.1](https://github.com/GMOD/tabix-js/tree/v3.8.1) and
+[gff-nostream 5.2.1](https://github.com/GMOD/gff-nostream/tree/v5.2.1)
 libraries.
 
 ## BAM
@@ -249,7 +260,7 @@ Returned fields:
 | `name`            | string   | Read name.                                                                       |
 | `cigar`           | string   | CIGAR string, or `"*"` when unavailable.                                         |
 | `mapq`            | number   | Mapping quality.                                                                 |
-| `strand`          | string   | Read strand: `"+"` or `"-"`.                                                     |
+| `strand`          | string or null | Read strand: `"+"`, `"-"`, or `null` when unstranded.                     |
 | `seq`             | string   | Read sequence.                                                                   |
 | `qual`            | number[] | Base quality values, when available.                                             |
 | `md`              | string   | `MD` tag value, when available.                                                  |

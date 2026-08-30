@@ -20,8 +20,9 @@ export default class TabixSource extends SingleAxisWindowedSource {
      * @prop {import("@gmod/tabix").TabixIndexedFile} tbiIndex
      * @prop {Record<string, import("../../../spec/channel.js").Scalar>} [fields]
      * @prop {P} parserContext
+     * @prop {Map<string, string>} queryToRawReferenceName
+     * @prop {string[]} rawReferenceNames
      * @prop {string} url
-     * @prop {((refSeq: string) => string) | undefined} renameRefSeqs
      */
 
     /** @type {UrlDescriptorState<TabixHandle>} */
@@ -113,60 +114,67 @@ export default class TabixSource extends SingleAxisWindowedSource {
             clearData: () => this.invalidateData(),
             setLoadingStatus: (status, detail) =>
                 this.setLoadingStatus(status, detail),
-            loadModules: async () => {
-                const { TabixIndexedFile, RemoteFile } =
-                    await loadTabixModules();
-                const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
-
-                const renameRefSeqs =
-                    addChrPrefix === true
-                        ? (/** @type {string} */ refSeq) => "chr" + refSeq
-                        : addChrPrefix
-                          ? (/** @type {string} */ refSeq) =>
-                                addChrPrefix + refSeq
-                          : undefined;
-
-                return { TabixIndexedFile, RemoteFile, renameRefSeqs };
-            },
+            loadModules: loadTabixModules,
             createHandle: (
                 descriptor,
-                { TabixIndexedFile, RemoteFile, renameRefSeqs }
+                { TabixIndexedFile, RemoteFile, gmodChunkCacheBudget }
             ) =>
                 this.#createHandle(
                     descriptor,
                     TabixIndexedFile,
                     RemoteFile,
-                    renameRefSeqs
+                    gmodChunkCacheBudget
                 ),
         });
+
+        const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
+        for (const handle of this.#descriptorState.handles) {
+            try {
+                handle.queryToRawReferenceName = createReferenceNameMap(
+                    handle.rawReferenceNames,
+                    addChrPrefix
+                );
+            } catch (error) {
+                throw new Error(
+                    `Cannot map references for Tabix file ${handle.url}: ${/** @type {Error} */ (error).message}`,
+                    { cause: error }
+                );
+            }
+        }
     }
 
     /**
      * @param {import("../urlDescriptor.js").UrlDescriptor} descriptor
      * @param {typeof import("@gmod/tabix").TabixIndexedFile} TabixIndexedFile
      * @param {typeof import("generic-filehandle2").RemoteFile} RemoteFile
-     * @param {((refSeq: string) => string) | undefined} renameRefSeqs
+     * @param {import("@gmod/shared-read-cache").SharedBudget} gmodChunkCacheBudget
      * @returns {Promise<TabixHandle>}
      */
     async #createHandle(
         descriptor,
         TabixIndexedFile,
         RemoteFile,
-        renameRefSeqs
+        gmodChunkCacheBudget
     ) {
         const tbiIndex = new TabixIndexedFile({
             filehandle: new RemoteFile(descriptor.url),
             tbiFilehandle: new RemoteFile(
                 descriptor.indexUrl ?? descriptor.url + ".tbi"
             ),
+            chunkCacheBudget: gmodChunkCacheBudget,
         });
-        const header = await tbiIndex.getHeader();
+        const [headerLines, rawReferenceNames] = await Promise.all([
+            tbiIndex.getHeaderLines(),
+            tbiIndex.getReferenceSequenceNames(),
+        ]);
+        this.registerDisposer(() => tbiIndex.clearChunkCache());
 
         return {
             tbiIndex,
             fields: descriptor.fields,
-            parserContext: await this._createParser(header, tbiIndex),
-            renameRefSeqs,
+            parserContext: await this._createParser(headerLines.join("\n")),
+            queryToRawReferenceName: new Map(),
+            rawReferenceNames,
             url: descriptor.url,
         };
     }
@@ -186,10 +194,19 @@ export default class TabixSource extends SingleAxisWindowedSource {
                     handles.map(async (handle) => {
                         /** @type {string[]} */
                         const lines = [];
+                        const rawReferenceName =
+                            handle.queryToRawReferenceName.get(
+                                discreteInterval.chrom
+                            );
+
+                        if (!rawReferenceName) {
+                            throw new Error(
+                                `Reference "${discreteInterval.chrom}" is not available in Tabix file ${handle.url}.`
+                            );
+                        }
 
                         await handle.tbiIndex.getLines(
-                            handle.renameRefSeqs?.(discreteInterval.chrom) ??
-                                discreteInterval.chrom,
+                            rawReferenceName,
                             discreteInterval.startPos,
                             discreteInterval.endPos,
                             {
@@ -221,31 +238,11 @@ export default class TabixSource extends SingleAxisWindowedSource {
 
     /**
      * @param {string} header
-     * @param {import("@gmod/tabix").TabixIndexedFile} tbiIndex
      * @protected
      * @returns {Promise<P>}
      */
-    async _createParser(header, tbiIndex) {
+    async _createParser(header) {
         return /** @type {P} */ (undefined);
-    }
-
-    /**
-     * Read a prefix of the Tabix file and decode it as text.
-     *
-     * @param {import("@gmod/tabix").TabixIndexedFile} tbiIndex
-     * @returns {Promise<string>}
-     * @protected
-     */
-    async _readFilePrefix(tbiIndex) {
-        const { maxBlockSize } = await tbiIndex.getMetadata();
-        const tabixIndex = /** @type {any} */ (tbiIndex);
-        const compressedPrefix = await tabixIndex.filehandle.read(
-            maxBlockSize,
-            0
-        );
-        const { unzip } = await import("@gmod/bgzf-filehandle");
-        const bytes = await unzip(compressedPrefix);
-        return new TextDecoder("utf-8").decode(bytes);
     }
 
     /**
@@ -301,9 +298,41 @@ export default class TabixSource extends SingleAxisWindowedSource {
 }
 
 async function loadTabixModules() {
-    const [{ TabixIndexedFile }, { RemoteFile }] = await Promise.all([
-        import("@gmod/tabix"),
-        import("generic-filehandle2"),
-    ]);
-    return { TabixIndexedFile, RemoteFile };
+    const [{ TabixIndexedFile }, { RemoteFile }, { gmodChunkCacheBudget }] =
+        await Promise.all([
+            import("@gmod/tabix"),
+            import("generic-filehandle2"),
+            import("./gmodChunkCache.js"),
+        ]);
+    return { TabixIndexedFile, RemoteFile, gmodChunkCacheBudget };
+}
+
+/**
+ * Builds the mapping from GenomeSpy query names to reference names stored in a
+ * Tabix index. Prefixing is idempotent so files using `1` and `chr1` can be
+ * queried together, while ambiguous names within one file fail immediately.
+ *
+ * @param {string[]} rawReferenceNames
+ * @param {boolean | string} addChrPrefix
+ * @returns {Map<string, string>}
+ */
+export function createReferenceNameMap(rawReferenceNames, addChrPrefix) {
+    const prefix = addChrPrefix === true ? "chr" : addChrPrefix || "";
+    const result = new Map();
+
+    for (const rawName of rawReferenceNames) {
+        const queryName =
+            prefix && !rawName.startsWith(prefix) ? prefix + rawName : rawName;
+        const existing = result.get(queryName);
+
+        if (existing) {
+            throw new Error(
+                `Tabix reference names "${existing}" and "${rawName}" both map to "${queryName}".`
+            );
+        }
+
+        result.set(queryName, rawName);
+    }
+
+    return result;
 }

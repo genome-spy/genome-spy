@@ -111,10 +111,9 @@ export default class TabixTsvSource extends TabixSource {
 
     /**
      * @param {string} header
-     * @param {import("@gmod/tabix").TabixIndexedFile} tbiIndex
      * @returns {Promise<string[]>}
      */
-    async _createParser(header, tbiIndex) {
+    async _createParser(header) {
         const params =
             /** @type {import("../../../spec/data.js").TabixTsvData} */ (
                 this.params
@@ -122,11 +121,7 @@ export default class TabixTsvSource extends TabixSource {
         const columns = withoutExprRef(params.columns);
         let fileColumns = columns ?? extractTabixTsvColumns(header);
 
-        if (!fileColumns?.length) {
-            fileColumns = extractTabixTsvColumnsFromFirstLine(
-                await this._readFilePrefix(tbiIndex)
-            );
-        }
+        fileColumns ??= extractTabixTsvColumnsFromFirstLine(header);
 
         if (!fileColumns?.length) {
             throw new Error(

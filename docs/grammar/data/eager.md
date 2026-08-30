@@ -376,8 +376,7 @@ Behavior details:
   row.
 - BED12 rows use BED12 field names (for example `thickStart`, `thickEnd`,
   `itemRgb`, `blockCount`, `blockSizes`, `blockStarts`).
-- `strand` is normalized to numeric codes: `"+"` -> `1`, `"-"` -> `-1`, and
-  any other value -> `0`.
+- `strand` is `"+"`, `"-"`, or `null` when the record is unstranded.
 - `blockSizes` and `blockStarts` are parsed from comma-separated text into
   numeric arrays.
 - Non-BED12 extra columns are preserved as positional fallback fields (`fieldN`).
@@ -407,8 +406,8 @@ Behavior details:
   order or explicit names from `format.columns`.
 - Sentinel normalization: `.` -> `null` for string fields (`chrom*`, `name`);
   `-1` and `""` -> `null` for coordinates; `""` -> `null` for `score`.
-- `strand1` and `strand2` are normalized to numeric codes: `"+"` -> `1`,
-  `"-"` -> `-1`, and any other value -> `0`.
+- `strand1` and `strand2` are `"+"`, `"-"`, or `null` when an endpoint is
+  unstranded.
 - Extra trailing columns are preserved as positional fallback fields (`fieldN`,
   with 1-based indexing).
 - Rows with fewer than six columns are rejected with a parse error.

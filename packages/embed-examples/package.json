@@ -15,8 +15,8 @@
     "@genome-spy/core": "^0.85.0",
     "@genome-spy/inspector": "^0.85.0",
     "@genome-spy/react-component": "^0.85.0",
-    "@gmod/indexedfasta": "^2.0.4",
-    "buffer": "^6.0.3",
+    "@gmod/indexedfasta": "^5.0.10",
+    "generic-filehandle2": "^2.3.1",
     "lit": "^3.1.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

@@ -2,13 +2,7 @@ import { embed } from "@genome-spy/core/minimal";
 import "@genome-spy/core/rendering/webgl.js";
 
 import { IndexedFasta } from "@gmod/indexedfasta";
-import { RemoteFile } from "generic-filehandle";
-
-import { Buffer } from "buffer";
-
-// Hack needed by @gmod/indexedfasta
-// TODO: Submit a PR to @gmod/indexedfasta to make this unnecessary
-window.Buffer = Buffer;
+import { RemoteFile } from "generic-filehandle2";
 
 // Use IGV's fasta files for testing
 const fasta = new IndexedFasta({

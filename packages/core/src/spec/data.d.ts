@@ -22,12 +22,7 @@ import {
 import { ExprRef } from "./parameter.js";
 
 export type ParseValue =
-    | null
-    | string
-    | "string"
-    | "boolean"
-    | "date"
-    | "number";
+    null | string | "string" | "boolean" | "date" | "number";
 
 export interface Parse {
     [field: string]: ParseValue;
@@ -144,21 +139,12 @@ export type DataFormat =
 export type DataFormatType = "json" | "csv" | "tsv" | "dsv" | string;
 
 export type DataSource =
-    | UrlData
-    | InlineData
-    | NamedData
-    | DynamicCallbackData
-    | LazyData;
+    UrlData | InlineData | NamedData | DynamicCallbackData | LazyData;
 
 export type Data = DataSource | Generator;
 
 export type InlineDataset =
-    | number[]
-    | string[]
-    | boolean[]
-    | object[]
-    | string
-    | object;
+    number[] | string[] | boolean[] | object[] | string | object;
 
 export interface DataBase {
     /**
@@ -626,8 +612,10 @@ export interface TabixData extends DebouncedData {
     indexUrl?: IndexUrlSourceRef;
 
     /**
-     * Add a `chr` (boolean) or custom (string) prefix to the chromosome names
-     * in the Tabix file.
+     * Add a `chr` (boolean) or custom (string) prefix when mapping assembly
+     * query names to chromosome names in each Tabix file. Prefixing is
+     * idempotent: an existing matching prefix is not added again. Loaded record
+     * fields retain the names stored in the file.
      *
      * __Default value:__ `false`
      */
@@ -663,6 +651,11 @@ export interface TabixTsvData extends TabixData {
     parse?: Parse | null;
 }
 
+/**
+ * Loads tabix-indexed GFF3 features as zero-based, half-open hierarchical
+ * records. Attributes are lowercase top-level fields, child features are in
+ * `subfeatures`, and strand values are `"+"`, `"-"`, or `null`.
+ */
 export interface Gff3Data extends TabixData {
     type: "gff3";
 }

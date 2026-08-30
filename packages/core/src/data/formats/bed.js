@@ -1,4 +1,5 @@
 import { formats as vegaFormats } from "vega-loader";
+import { normalizeGenomicStrand } from "./genomicStrand.js";
 
 const blankLinePattern = /^\s*$/;
 const controlLinePattern = /^\s*(?:browser\b|track\b|#)/;
@@ -41,7 +42,11 @@ export default async function bed(data) {
         }
 
         try {
-            rows.push(parser.parseLine(line));
+            const row = parser.parseLine(line);
+            if ("strand" in row) {
+                row.strand = normalizeGenomicStrand(row.strand);
+            }
+            rows.push(row);
         } catch (error) {
             throw new Error(
                 `Cannot parse BED line ${i + 1}: ${
