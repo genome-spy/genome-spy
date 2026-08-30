@@ -136,12 +136,9 @@ rendering and connector composition own association.
    visibility, or styling.
 6. React correctly to zoom, layout, and expression-backed placement parameters
    without changing data-driven x/y domains or creating feedback loops.
-7. Make a fresh solve and a repeated interaction trace deterministic. During
-   an interaction, prefer valid previous placements so continuous scale changes
-   do not produce visually discontinuous label motion. Treat path-independent
-   restoration as a separate acceptance question: do not sacrifice interaction
-   coherence or promise reversibility until the acid-test evidence supports a
-   simple policy for both.
+7. Make placement targets a deterministic function of the current batch. Keep
+   temporal interpolation outside `displace2d` so returning to an exact domain
+   returns the exact target layout without requiring solver history.
 8. Measure the simplest correct implementation against representative
    performance and placement-quality fixtures before adding an acceleration
    structure or a more sophisticated algorithm.
@@ -172,8 +169,8 @@ rendering and connector composition own association.
 - A public family of pluggable strategies. Keep algorithm boundaries internal
   until more than one production use case justifies a public abstraction.
 - Public candidate-generation options, visibility decisions, leader-line
-  routing, animation controls, or previous-frame placement controls. Temporal
-  placement hints remain an internal implementation detail.
+  routing, or previous-frame placement controls. Animation is a separate
+  generic dataflow concern and is not configured through `displace2d`.
 - Inspecting unrelated rendered marks or treating all points in another layer
   as obstacles. The corrective contract accepts generic geometry for the
   selected annotations' anchors; it does not query the renderer or introduce a
@@ -432,38 +429,34 @@ continuity failure rather than a throughput failure. The same recording showed
 labels covering annotated points because the solver considered only output
 rectangles.
 
-The implemented temporal behavior uses the smallest stateful extension found so
-far that is consistent with the current abstraction:
+The retained-placement implementation improved local motion, but the second
+acid test proved that its output is path-dependent even when the exact domain
+and row count return. Multiple bounded solver-local restoration spikes either
+kept the wrong layout or moved a several-hundred-pixel discontinuity to the
+restoration boundary. That state is therefore not a sound target contract.
 
-1. The transform retains one batch of last finite displacements by stable input
-   order. Real dataflow replays replace datum objects, so identity-keyed state
-   did not preserve continuity. A changed batch length discards all hints; no
-   identifier parameter, retained scene graph, or enumerable per-key history is
-   introduced.
-2. The pure solver accepts optional previous displacements as input hints. It
-   remains pure and deterministic for all explicit inputs; it does not own
-   lifecycle state.
-3. First test the smallest change: for each row in stable priority order, test
-   the valid previous placement and a bounded neighborhood near it before the
-   canonical candidates. If the discrete lattice still misses the jump gate,
-   reject it for interactive placement and compare one bounded deterministic
-   search whose candidates derive continuously from colliding rectangle edges.
-   Do not stack multiple production strategies or retain the losing spike.
-4. Keep the existing finite-work and row-preservation guarantees. Expand the
-   internal local candidate budget only if the top-32 airway trace still enters
-   overflow; keep the budget private and remeasure the 500- and 2,000-item
-   fixtures.
-5. Do not interpolate output fields in the renderer. Interpolation can hide an
-   unstable solver, creates transient overlaps, and would require a general
-   per-datum transition facility outside this transform. Reconsider that only
-   as a separate cross-cutting proposal if stable placement still has visible
-   residual jumps.
+The selected corrective boundary is:
 
-The second acid test shows that this retained batch is path-dependent even when
-the exact domain and row count are restored. Milestone 6 therefore keeps the
-choice between explicit path dependence and interaction-boundary
-canonicalization open; neither is silently part of the public transform
-contract yet.
+1. `displace2d` computes canonical target offsets from the current explicit
+   batch only. It retains no previous offsets and its solver receives no
+   temporal hint.
+2. A separate generic keyed `transition` transform interpolates numeric fields.
+   It is useful beyond annotation placement and has no knowledge of rectangles,
+   marks, scales, or `displace2d`.
+3. The transition retains only current values for keys in the live input batch.
+   New keys snap to their target, removed keys are discarded, and duplicate
+   keys fail loudly. Initial load and headless rendering also snap to targets.
+4. Animation frames replay the transition's cached rows only to its downstream
+   flow. They must not rerun upstream placement or introduce a second render
+   scheduler.
+5. Settled output equals the exact target. Transient overlaps while moving are
+   an accepted consequence of interpolating independently between two valid
+   layouts; the transition does not claim collision preservation in flight.
+
+Keep the first public transition contract to `key`, `fields`, optional `as`,
+`halfLife`, and `epsilon`. It supports one lerp behavior. Do not add easing
+families, enter/exit policies, delays, callbacks, solver integration, or a
+transition strategy interface without another demonstrated use case.
 
 Anchor clearance extends the existing collision model rather than adding a
 second algorithm. Before placing labels, seed the same broad-phase grid with
@@ -876,7 +869,7 @@ Review gate: final maintainer review of the public grammar, integrated
 interaction behavior, downstream renderer/picking/export behavior, performance,
 documentation, provenance, and code-size tradeoff.
 
-### 4. Temporal coherence and ordinary-trace overflow — In progress
+### 4. Temporal coherence and ordinary-trace overflow — Superseded
 
 Intended outcome: remove the visible snapping demonstrated by the first user
 recording while preserving bounded synchronous work, exact collision checks,
@@ -921,6 +914,10 @@ Tentative commit: `fix(core): stabilize two-dimensional displacement`
 Review gate: maintainer review of retained-state ownership, deterministic trace
 semantics, lifecycle safety, memory bounds, solver simplicity, and the recorded
 before/after interaction evidence.
+
+This milestone's retained-target policy is superseded by milestone 7. Its
+implementation remains temporarily in the branch only until the canonical
+target plus generic transition replacement is verified.
 
 Evidence recorded on 2026-08-28:
 
@@ -1030,7 +1027,7 @@ Evidence recorded on 2026-08-28:
 - The repository-wide unit suite passes with 3,296 tests, one skipped, and two
   todo across 393 files. Every workspace TypeScript check passes.
 
-### 6. Viewport participation, restoration, and hovered-label zoom — In progress
+### 6. Viewport participation, restoration, and hovered-label zoom — Partly implemented
 
 Intended outcome: keep close zooms bounded to annotations that can affect the
 visible plot, make repeated viewport states understandable and testable, and
@@ -1177,6 +1174,79 @@ Evidence recorded on 2026-08-30:
   requirement or explicitly broaden scope to a transition/visibility model;
   do not add another solver-local continuity rule without new evidence.
 
+### 7. Canonical targets and generic keyed transitions — In progress
+
+Intended outcome: restore exact path-independent placement targets while
+retaining the smooth interaction approved in the second acid test. Keep the
+placement and animation responsibilities independently reusable.
+
+Minimal public contract:
+
+```ts
+interface TransitionParams extends TransformParamsBase {
+    type: "transition";
+    key: Field;
+    fields: Field[];
+    as?: Field[];
+    halfLife?: number;
+    epsilon?: number;
+}
+```
+
+`fields` contains numeric targets and `as` receives current interpolated
+values. Omitting `as` updates the input fields in place. `fields` and `as` must
+be non-empty, equally sized, and contain distinct output names. `key` values
+must be unique in the complete live batch. The first batch and new keys snap to
+their targets; persistent keys animate from their current displayed values.
+
+Implementation boundaries:
+
+- Remove previous-displacement ownership from `displace2d` and remove the
+  solver's previous-placement input. Equal current inputs must again produce
+  equal target offsets regardless of interaction history.
+- Implement one collecting, modifying transition transform. Keep one map for
+  live keyed values and one animation callback per transform, not one callback
+  per row or field.
+- Reuse the view's existing `Animator`. On each frame, update cached row fields
+  and replay only descendants of the transition. Preserve batch boundaries in
+  that replay so faceted flows do not silently change semantics.
+- Snap to the exact target inside `epsilon`, stop scheduling frames when every
+  value settles, and cancel pending work on disposal. Headless rendering snaps
+  immediately through `Animator.transitionsEnabled`.
+- Do not add renderer changes, a scene graph, solver callbacks, mark-specific
+  behavior, transition modes, or a reusable scheduler abstraction.
+
+Verification:
+
+- Unit-test initial snap, keyed retargeting across replaced datum objects,
+  exact settling, in-place and separate outputs, new and removed keys,
+  duplicate keys, non-numeric targets, invalid parameters, cancellation, and
+  headless snapping.
+- Verify one animation callback updates every live row and causes one downstream
+  replay per frame. Cover preserved facet batch boundaries if the normal flow
+  can deliver multiple batches to one transform.
+- Re-run the exact-domain restoration trace. Settled offsets at the restored
+  domain must equal both the initial target and a fresh solve exactly. Report
+  visible per-frame movement separately from target jumps.
+- Re-run deep zoom, hovered-label zoom, app smoke, WebGL picking, and structured
+  SVG export. Inspect transient overlaps explicitly; they are an accepted
+  tradeoff only if movement remains understandable and settles promptly.
+- Measure the transition loop at 100, 500, and 2,000 rows. State must remain
+  O(live rows), and repeated replacement batches must not grow the key map.
+- Run focused transform and schema tests, Core TypeScript, lint, and the
+  proportionate browser suite before asking for another user acid test.
+
+Commit checkpoints:
+
+1. Record this selected boundary and rejected solver-local alternatives.
+2. Add and test the generic transition transform.
+3. Restore canonical `displace2d` targets and compose the transition in private
+   examples, with exact-restoration and interaction evidence.
+
+Review gate: maintainer review of the generic transform contract, downstream
+replay lifecycle, memory bound, exact target restoration, transient-overlap
+tradeoff, and KISS/YAGNI compliance.
+
 ## Reconciliation through the first user acid test (2026-08-28)
 
 The plan is reconciled to the implemented branch but is intentionally not ready
@@ -1226,13 +1296,13 @@ Discarded:
 
 Pending before PR preparation:
 
-- Complete milestone 4 temporal coherence and ordinary-trace overflow work,
-  including before/after recording evidence and the retained-state review gate.
+- Complete milestone 7 and remove the superseded retained-target implementation
+  after canonical targets plus generic transitions pass the interaction gate.
 - Complete milestone 5 selected-anchor clearance and its public-contract review
   gate without expanding into renderer or cross-layer obstacle inspection.
-- Complete milestone 6 viewport-participation acid testing and select or defer
-  an explicit restoration policy. Confirm the stable-batch composition covers
-  hovered-label zoom without coupling the transform to interaction state.
+- Complete milestone 6 viewport-participation acid testing. Confirm the
+  stable-batch composition covers hovered-label zoom without coupling the
+  transform to interaction state, and verify restoration through milestone 7.
 - Manually exercise resize, wheel and inertial zoom, pan, domain restoration,
   clipping, tooltip/picking alignment, long interaction sessions, and visual
   association through leader lines.
@@ -1252,7 +1322,8 @@ Pending before PR preparation:
   every row it receives.
 - The solver and transform meet the accepted performance and interaction-
   continuity thresholds on the recorded fixtures.
-- Every row is preserved and receives deterministic x and y offsets. Output
+- Every row is preserved and receives deterministic target x and y offsets.
+  Settled transitioned values equal those targets exactly. Output
   rectangles are non-overlapping, avoid selected anchors when configured, and
   accepted local candidates respect the documented preferred bounds. Ordinary
   airway interaction does not enter overflow; saturation fixtures follow the
@@ -1268,10 +1339,10 @@ Pending before PR preparation:
 - Required BSD attribution is present for closely adapted Vega code; no GPL
   ggrepel source has been copied or translated.
 - Relevant focused tests, schema/docs checks, TypeScript checks, and lint pass.
-- The production change contains one solver path and no unused strategy,
-  cache abstraction, worker, transition path, or compatibility abstraction.
-  Retained placements consist only of datum-identity hints owned by the
-  transform, and anchor obstacles reuse the existing collision grid.
+- The production change contains one solver path and one generic lerp transition
+  path, with no unused strategy, cache abstraction, worker, or compatibility
+  abstraction. Transition state contains only values for the live keyed batch,
+  and anchor obstacles reuse the existing collision grid.
 - Public parameter forms are exercised by the canonical example or focused
   contract tests. Any parameter that remains only for a hypothetical use case
   is removed or explicitly deferred.
@@ -1288,11 +1359,9 @@ Pending before PR preparation:
   changes after subtracting anchor motion, count overflow transitions, replay
   the same trace from fresh state, and inspect comparable recordings. Prefer
   valid prior placement without adding public continuity controls.
-- **Path-dependent placement.** Retained hints currently trade repeated-domain
-  canonical output for continuity. Require deterministic complete-trace replay,
-  keep the pure solver explicit, and retain only one stable-input-order batch.
-  Do not describe domain restoration as reversible unless a tested interaction-
-  boundary canonicalization policy is selected.
+- **Path-dependent placement.** Make `displace2d` targets stateless and verify
+  exact target restoration against a fresh solve. Keep temporal state only in
+  the keyed transition and require its settled values to equal current targets.
 - **Offscreen work and visual explosions.** Filter annotation participation by
   source-anchor domains before measurement and displacement in examples that
   need it. Keep plot domains independent of that subset and resist moving
@@ -1302,10 +1371,10 @@ Pending before PR preparation:
   rows use zero collision geometry. The current trace needs no label-pinning
   mechanism; do not add one unless a failing acid test justifies a separate
   generic contract.
-- **Animation masking unstable placement.** Do not add displace2d-specific
-  interpolation. It would allow transient overlaps and couple dataflow output
-  to rendering. Consider general per-datum transitions only in a separate
-  proposal after stable placement passes visual testing.
+- **Transition artifacts.** Keep interpolation generic and downstream of
+  `displace2d`, inspect transient overlaps, and expose exact settled targets.
+  Do not claim collision preservation during motion or add renderer-specific
+  correction paths.
 - **Premature optimization.** Preserve the direct solver as the measured design
   baseline. Add one broad-phase optimization only if profiling shows that
   rectangle scans cause a budget failure; do not retain two production paths.
