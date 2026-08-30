@@ -250,10 +250,9 @@ These rules are acceptance criteria for the code, not optional cleanup work:
 - Use one placement algorithm in production. Alternative algorithms are
   considered only after the current one fails a named correctness, quality, or
   performance criterion on a representative fixture.
-- Retain previous placements only by datum identity and only as internal solver
-  hints. The user recording has now demonstrated that stateless recomputation
-  is unacceptable, but it does not justify a cache abstraction, state machine,
-  public continuity options, or renderer-specific transition path.
+- Keep temporal state only in the generic keyed transition and only for its live
+  batch. `displace2d` must not retain solver hints, interaction history, or a
+  second continuity policy.
 - Prefer exact rectangle checks first. Add a uniform grid, bitmap, typed array,
   buffer reuse, or other optimization individually and only with before/after
   evidence. Keep candidate generation separate from collision lookup without
@@ -737,10 +736,9 @@ remain useful for review and bisection.
   extents are normalized after every effective factor change.
 - Placement output must not feed back into the data-driven domains used to
   compute the original positions.
-- During zoom increments, previous placements are only hints: every accepted
-  output must still satisfy current bounds and collision checks. The benchmark
-  reports p95 and maximum per-frame offset jumps and overflow transitions;
-  visual inspection checks that timing alone does not mask flicker.
+- Every `displace2d` target satisfies current bounds and collision checks. A
+  downstream transition may overlap transiently, but its settled values must
+  equal those targets exactly.
 - When anchor dimensions are positive, every output rectangle avoids every
   selected anchor rectangle. Zero anchor width or height disables anchor
   collision for that row without affecting output-row preservation.
@@ -1247,6 +1245,40 @@ Review gate: maintainer review of the generic transform contract, downstream
 replay lifecycle, memory bound, exact target restoration, transient-overlap
 tradeoff, and KISS/YAGNI compliance.
 
+Evidence recorded on 2026-08-30:
+
+- Commit `8e3a5566` adds one keyed numeric `transition` transform with a single
+  lerp behavior. It retains one state per live key, uses one Animator callback
+  per transform, and replays only its descendants while preserving facet batch
+  boundaries. Focused tests cover replacement objects, separate and in-place
+  outputs, key lifecycle, exact settling, headless snapping, validation,
+  disposal, and one downstream replay per frame.
+- Commit `da31d4f0` removes previous-displacement inputs and edge-projection
+  logic from `displace2d`. The checkpoint deletes 205 lines and adds 55,
+  including a regression that restores the canonical layout after intermediate
+  geometry.
+- Commit `c9ad9013` snaps transition updates before a view's first render. This
+  prevents the reactive `displace2d` bootstrap replay from animating labels in
+  from an incomplete initial layout.
+- The private examples keep `labelTargetDx` and `labelTargetDy` separate from
+  animated `labelDx` and `labelDy`. On the 61-state stress trace, all 150 target
+  pairs returned exactly to their initial values; the maximum target restoration
+  difference was zero. Displayed values were still moving after two frames, as
+  expected from temporal interpolation, and all 150 matched their exact targets
+  after the final 1.6-second settling window. The two-frame trace reported a
+  14.8 px p95 offset change and a 132.2 px maximum while continuously retargeting.
+- The app browser smoke passes airway volcano, airway MA, 500-label stress, and
+  overflow parameter changes, wheel zoom, and resize without console errors.
+  Focused solver, transform, transition, and schema tests pass with 68 tests;
+  Core TypeScript and touched-file lint pass.
+- Deep zoom still renders zero annotations at the empty close viewport, and all
+  canonical targets restore exactly afterward. Hovered
+  wheel zoom keeps the annotated source point fixed to numerical precision and
+  retains hover identity, but the label itself moves from approximately
+  `[-56, 0]` to `[-3, 80]` while its canonical target changes. Do not couple the
+  transition to hover state to hide this; hovered-label locking remains an
+  explicit interaction-design question for user testing.
+
 ## Reconciliation through the first user acid test (2026-08-28)
 
 The plan is reconciled to the implemented branch but is intentionally not ready
@@ -1296,8 +1328,8 @@ Discarded:
 
 Pending before PR preparation:
 
-- Complete milestone 7 and remove the superseded retained-target implementation
-  after canonical targets plus generic transitions pass the interaction gate.
+- Complete milestone 7 interaction testing of canonical targets plus generic
+  transitions; the superseded retained-target implementation is removed.
 - Complete milestone 5 selected-anchor clearance and its public-contract review
   gate without expanding into renderer or cross-layer obstacle inspection.
 - Complete milestone 6 viewport-participation acid testing. Confirm the
@@ -1357,8 +1389,9 @@ Pending before PR preparation:
 
 - **Displacement jumps during zoom.** Measure p95 and maximum per-step offset
   changes after subtracting anchor motion, count overflow transitions, replay
-  the same trace from fresh state, and inspect comparable recordings. Prefer
-  valid prior placement without adding public continuity controls.
+  the same trace from fresh state, and inspect comparable recordings. Smooth
+  displayed fields through the generic keyed transition without adding a
+  solver-local continuity control.
 - **Path-dependent placement.** Make `displace2d` targets stateless and verify
   exact target restoration against a fresh solve. Keep temporal state only in
   the keyed transition and require its settled values to equal current targets.
