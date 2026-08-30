@@ -19,11 +19,13 @@ import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
  * @property {GPUPrimitiveTopology} [primitiveTopology]
  * @property {GPUBindGroupLayout} [placementBindGroupLayout]
  * @property {import("../../../index.d.ts").MarkConfig["placementIndex"]} [placementIndex]
+ * @property {string} label
  *
  * @typedef {object} ProgramTemplate
  * @property {GPUBindGroupLayout} bindGroupLayout
  * @property {GPURenderPipeline} pipeline
  * @property {() => GPURenderPipeline} getPickPipeline
+ * @property {{ id: number, firstBorrowerLabel: string, borrowerLabels: Set<string> }} diagnostics
  *
  * @typedef {ProgramTemplate & { resourceLayout: { name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[] }} PipelineBuildResult
  */
@@ -75,6 +77,7 @@ export function buildPipelines({
     primitiveTopology = "triangle-list",
     placementBindGroupLayout,
     placementIndex,
+    label,
 }) {
     const { shaderCode, resourceBindings, resourceLayout } = buildMarkShader({
         compiledChannels,
@@ -100,7 +103,14 @@ export function buildPipelines({
     );
 
     const template = cache.getOrCreate(shaderCode, descriptorKey, (id) => {
-        const labelOwner = `${RENDERER_GPU_OWNER} program template #${id}`;
+        const diagnostics = {
+            id,
+            firstBorrowerLabel: label,
+            borrowerLabels: new Set([label]),
+        };
+        const labelOwner =
+            `${RENDERER_GPU_OWNER} program template #${id} ` +
+            `(first used by ${label})`;
         const bindGroupLayout = device.createBindGroupLayout({
             label: gpuLabel(labelOwner, "bind group layout"),
             entries: [
@@ -181,8 +191,14 @@ export function buildPipelines({
             });
             return pickPipeline;
         };
-        return { bindGroupLayout, pipeline, getPickPipeline };
+        return {
+            bindGroupLayout,
+            pipeline,
+            getPickPipeline,
+            diagnostics,
+        };
     });
+    template.diagnostics.borrowerLabels.add(label);
     const immutableResourceLayout = resourceLayout.map((entry) =>
         Object.freeze({ ...entry })
     );

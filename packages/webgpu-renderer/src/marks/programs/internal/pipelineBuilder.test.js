@@ -96,6 +96,7 @@ function createHarness() {
             ],
         ]),
         placementBindGroupLayout,
+        label: "first mark",
     });
 
     return {
@@ -117,11 +118,17 @@ describe("buildPipelines", () => {
         const harness = createHarness();
 
         const first = harness.build();
-        const second = harness.build();
+        const second = harness.build({ label: "second mark" });
 
         expect(second.pipeline).toBe(first.pipeline);
         expect(second.getPickPipeline).toBe(first.getPickPipeline);
         expect(second.bindGroupLayout).toBe(first.bindGroupLayout);
+        expect(first.diagnostics).toBe(second.diagnostics);
+        expect(first.diagnostics).toEqual({
+            id: 1,
+            firstBorrowerLabel: "first mark",
+            borrowerLabels: new Set(["first mark", "second mark"]),
+        });
         expect(first.resourceLayout).toEqual([
             { name: "seriesF32", role: "series" },
         ]);
@@ -174,19 +181,19 @@ describe("buildPipelines", () => {
         expect(template.getPickPipeline()).toBe(pickPipeline);
         expect(harness.renderPipelineArgs).toHaveLength(2);
         expect(harness.bindGroupLayoutArgs[0].label).toBe(
-            "webgpu-renderer program template #1: bind group layout"
+            "webgpu-renderer program template #1 (first used by first mark): bind group layout"
         );
         expect(harness.shaderModuleArgs[0].label).toBe(
-            "webgpu-renderer program template #1: shader"
+            "webgpu-renderer program template #1 (first used by first mark): shader"
         );
         expect(harness.pipelineLayoutArgs[0].label).toBe(
-            "webgpu-renderer program template #1: pipeline layout"
+            "webgpu-renderer program template #1 (first used by first mark): pipeline layout"
         );
         expect(pipelineArgs.label).toBe(
-            "webgpu-renderer program template #1: render pipeline"
+            "webgpu-renderer program template #1 (first used by first mark): render pipeline"
         );
         expect(pickPipelineArgs.label).toBe(
-            "webgpu-renderer program template #1: picking pipeline"
+            "webgpu-renderer program template #1 (first used by first mark): picking pipeline"
         );
     });
 

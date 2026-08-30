@@ -197,10 +197,13 @@ renderer.createMark(pointMark, config, { label: "overview/variants [point]" });
 Mark-owned resources append a stable role using the format `<owner>: <role>`,
 such as `overview/variants [point]: uniforms`. If no label is supplied, the
 renderer uses `<definition type> #<mark id>`. Equivalent marks share immutable
-shader modules, layouts, and pipelines, which use a renderer-owned
-`webgpu-renderer program template #<id>` label. Mutable buffers and bind groups
-remain mark-owned. Labels are snapshots taken when resources are created;
-changing a host-side name later does not rename existing GPU objects.
+shader modules, layouts, and pipelines. Their renderer-owned labels identify
+the first borrower using
+`webgpu-renderer program template #<id> (first used by <owner>)`. Resource
+debugging also lists every current or former mark label that borrowed the
+template. Mutable buffers and bind groups remain mark-owned. Labels are
+snapshots taken when resources are created; changing a host-side name later
+does not rename existing GPU objects.
 The shared picking pipeline is created only when a template is first used in a
 picking draw.
 

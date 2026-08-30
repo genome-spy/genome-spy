@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import BaseProgram from "./baseProgram.js";
+import BaseProgram, { setDebugResourcesEnabled } from "./baseProgram.js";
 import { createMockRenderer } from "../../../testUtils/mockRenderer.js";
 
 class TestSeriesProgram extends BaseProgram {
@@ -74,14 +74,60 @@ describe("BaseProgram count inference", () => {
             },
         };
 
-        const first = new TestSeriesProgram(renderer, config);
-        const second = new TestSeriesProgram(renderer, config);
+        const first = new TestSeriesProgram(renderer, config, {
+            label: "first mark",
+        });
+        const second = new TestSeriesProgram(renderer, config, {
+            label: "second mark",
+        });
 
         expect(second._pipeline).toBe(first._pipeline);
         expect(second._getPickPipeline).toBe(first._getPickPipeline);
         expect(second._bindGroupLayout).toBe(first._bindGroupLayout);
         expect(second._uniformBuffer).not.toBe(first._uniformBuffer);
         expect(second._bindGroup).not.toBe(first._bindGroup);
+        expect(first._programTemplateDiagnostics).toBe(
+            second._programTemplateDiagnostics
+        );
+        expect(first._programTemplateDiagnostics.borrowerLabels).toEqual(
+            new Set(["first mark", "second mark"])
+        );
+    });
+
+    it("reports the first and all template borrowers in resource diagnostics", () => {
+        const renderer = createMockRenderer();
+        const config = {
+            channels: {
+                x: {
+                    data: new Float32Array([0]),
+                    type: /** @type {const} */ ("f32"),
+                },
+            },
+        };
+        const first = new TestSeriesProgram(renderer, config, {
+            label: "first mark",
+        });
+        new TestSeriesProgram(renderer, config, { label: "second mark" });
+        const debug = vi.spyOn(console, "debug").mockImplementation(() => {});
+
+        setDebugResourcesEnabled(true);
+        try {
+            first.debugResources();
+        } finally {
+            setDebugResourcesEnabled(false);
+        }
+
+        expect(debug).toHaveBeenCalledWith(
+            expect.any(String),
+            expect.objectContaining({
+                programTemplate: {
+                    id: 1,
+                    firstBorrowerLabel: "first mark",
+                    borrowerLabels: ["first mark", "second mark"],
+                },
+            })
+        );
+        debug.mockRestore();
     });
 
     it("infers count from series buffers when omitted", () => {

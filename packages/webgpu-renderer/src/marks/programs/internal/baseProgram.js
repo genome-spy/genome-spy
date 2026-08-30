@@ -309,27 +309,34 @@ export default class BaseProgram {
             ...this._selectionResources.getExtraResourceDefs(),
             ...this.getExtraResourceDefs(),
         ];
-        const { bindGroupLayout, pipeline, getPickPipeline, resourceLayout } =
-            buildPipelines({
-                device: this.device,
-                cache: renderer._programTemplateCache,
-                globalBindGroupLayout: renderer._globalBindGroupLayout,
-                format: renderer.format,
-                pickFormat: renderer.pickFormat,
-                compiledChannels: this._compiledChannels,
-                uniformLayout: this._uniformLayout,
-                shaderBody: this.shaderBody,
-                packedSeriesLayout:
-                    this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
-                selectionDefs: this._selectionResources.selectionDefs,
-                visibleWhen: this._visibleWhen,
-                scalarSlots: this._scalarSlots,
-                extraResources,
-                primitiveTopology: this.primitiveTopology,
-                placementBindGroupLayout: renderer._placementBindGroupLayout,
-                placementIndex: this._placementIndex,
-            });
+        const {
+            bindGroupLayout,
+            pipeline,
+            getPickPipeline,
+            diagnostics,
+            resourceLayout,
+        } = buildPipelines({
+            device: this.device,
+            cache: renderer._programTemplateCache,
+            globalBindGroupLayout: renderer._globalBindGroupLayout,
+            format: renderer.format,
+            pickFormat: renderer.pickFormat,
+            compiledChannels: this._compiledChannels,
+            uniformLayout: this._uniformLayout,
+            shaderBody: this.shaderBody,
+            packedSeriesLayout:
+                this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
+            selectionDefs: this._selectionResources.selectionDefs,
+            visibleWhen: this._visibleWhen,
+            scalarSlots: this._scalarSlots,
+            extraResources,
+            primitiveTopology: this.primitiveTopology,
+            placementBindGroupLayout: renderer._placementBindGroupLayout,
+            placementIndex: this._placementIndex,
+            label: this.label,
+        });
         this._resourceLayout = resourceLayout;
+        this._programTemplateDiagnostics = diagnostics;
         this._uniformBuffer = this.device.createBuffer({
             label: gpuLabel(this.label, "uniforms"),
             size: this._uniformBufferState?.byteLength ?? 0,
@@ -699,6 +706,14 @@ export default class BaseProgram {
         }
 
         console.debug(`[webgpu-renderer] ${label} resources`, {
+            programTemplate: {
+                id: this._programTemplateDiagnostics.id,
+                firstBorrowerLabel:
+                    this._programTemplateDiagnostics.firstBorrowerLabel,
+                borrowerLabels: Array.from(
+                    this._programTemplateDiagnostics.borrowerLabels
+                ),
+            },
             uniforms: this._uniformBufferState?.byteLength ?? 0,
             storageBuffers: storage,
             textures,
