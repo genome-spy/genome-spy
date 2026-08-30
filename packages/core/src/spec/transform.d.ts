@@ -1196,6 +1196,44 @@ export interface Displace2DParams extends TransformParamsBase {
     as?: [string, string];
 }
 
+/**
+ * Smooths numeric fields between dataflow updates. Rows are matched by a stable
+ * key, allowing replacement data objects to continue from their currently
+ * displayed values.
+ */
+export interface TransitionParams extends TransformParamsBase {
+    type: "transition";
+
+    /** Field containing a unique string or finite numeric key. */
+    key: Field;
+
+    /** Fields containing finite numeric target values. */
+    fields: Field[];
+
+    /**
+     * Output fields for the interpolated values. Omitting this property updates
+     * `fields` in place. Output fields must not overwrite `key`.
+     *
+     * __Default value:__ `fields`
+     */
+    as?: Field[];
+
+    /**
+     * Time in milliseconds for the remaining distance to halve.
+     *
+     * __Default value:__ `80`
+     */
+    halfLife?: number;
+
+    /**
+     * Positive distance from the target at which the output snaps to the exact
+     * target.
+     *
+     * __Default value:__ `0.01`
+     */
+    epsilon?: number;
+}
+
 export interface FlattenCompressedExonsParams extends TransformParamsBase {
     type: "flattenCompressedExons";
 
@@ -1253,4 +1291,5 @@ export type TransformParams =
     | SampleParams
     | SetIntersectionParams
     | StackParams
+    | TransitionParams
     | WindowParams;
