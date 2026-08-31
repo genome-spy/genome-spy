@@ -853,9 +853,7 @@ function createRendererHarness() {
                 key: `texture-${transientId++}`,
                 texture: {},
                 view: {},
-                width,
-                height,
-                sampleCount,
+                cost: width * height * sampleCount,
             };
         }),
         release: vi.fn(),

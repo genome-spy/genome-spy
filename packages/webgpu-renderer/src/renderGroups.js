@@ -98,9 +98,6 @@ export class TransientTexturePool {
             view: texture.createView({
                 label: gpuLabel(RENDERER_GPU_OWNER, "transient color view"),
             }),
-            width,
-            height,
-            sampleCount,
             cost: width * height * sampleCount,
         };
         this.all.add(entry);
@@ -303,14 +300,10 @@ export function normalizeGroupBounds(bounds, globals) {
         Math.ceil((bounds.y + bounds.height) * globals.dpr)
     );
     return {
-        x,
-        y,
         width: Math.max(0, right - x),
         height: Math.max(0, bottom - y),
         logicalX: x / globals.dpr,
         logicalY: y / globals.dpr,
-        logicalWidth: Math.max(0, right - x) / globals.dpr,
-        logicalHeight: Math.max(0, bottom - y) / globals.dpr,
     };
 }
 
@@ -319,8 +312,5 @@ export function normalizeGroupBounds(bounds, globals) {
  * @property {string} key
  * @property {GPUTexture} texture
  * @property {GPUTextureView} view
- * @property {number} width
- * @property {number} height
- * @property {1 | 4} sampleCount
  * @property {number} cost
  */

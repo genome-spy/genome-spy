@@ -126,14 +126,10 @@ describe("normalizeGroupBounds", () => {
                 { width: 10, height: 8, dpr: 2 }
             )
         ).toEqual({
-            x: 0,
-            y: 4,
             width: 20,
             height: 12,
             logicalX: 0,
             logicalY: 2,
-            logicalWidth: 10,
-            logicalHeight: 6,
         });
     });
 });
