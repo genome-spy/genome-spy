@@ -1349,6 +1349,17 @@ Evidence recorded on 2026-08-30:
 - After these review fixes, all 3,308 unit tests, every workspace TypeScript
   check, lint, the documentation build, the focused WebGL example capture, and
   the four-fixture App interaction smoke pass.
+- Reversed-axis acid testing then exposed annotations at viewport boundaries
+  when every source anchor was offscreen, followed by a web of leader lines at
+  deeper zoom. The fixture had no viewport-participation transforms, so
+  `displace2d` correctly treated offscreen rows as active and placed them near
+  its preferred bounds. Commit `ec61aa23` keeps viewport policy outside the
+  generic transform: order-independent domain formulas zero offscreen collision
+  and anchor geometry, and a post-transition filter hides their marks.
+- The reversed-axis deep-zoom trace now reports zero visible annotations and
+  restores all 12 rows with exact canonical targets. Generated-example and SVG
+  suites pass with 195 tests, and the tracked example passes focused WebGL
+  capture without rendering errors.
 
 ## Reconciliation through the first user acid test (2026-08-28)
 
