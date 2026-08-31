@@ -103,7 +103,7 @@
           "key": "priority",
           "fields": ["labelTargetDx", "labelTargetDy"],
           "as": ["labelDx", "labelDy"],
-          "targetDelay": 20,
+          "targetDelay": 10,
           "halfLife": 100,
           "epsilon": 0.25
         },

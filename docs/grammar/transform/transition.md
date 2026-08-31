@@ -20,7 +20,7 @@ the targets reactively:
   "key": "id",
   "fields": ["targetDx", "targetDy"],
   "as": ["dx", "dy"],
-  "targetDelay": 20,
+  "targetDelay": 10,
   "halfLife": 100,
   "epsilon": 0.25
 }
