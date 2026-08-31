@@ -67,12 +67,11 @@ export default class WebGpuRenderCoordinator {
 
         const profiler = getPerformanceProfiler();
         profiler?.beginFrame("webgpu");
-        this.surface.beginFrame();
-        measurePerformance("markTranslation", () =>
+        const frame = measurePerformance("markTranslation", () =>
             framePlan.render({ picking: false })
         );
         measurePerformance("surfaceRender", () =>
-            this.surface.render(toGpuColor(this.getBackground()))
+            this.surface.render(frame.items, toGpuColor(this.getBackground()))
         );
         this.#dirtyPickingBuffer = true;
         profiler?.endFrame();
@@ -85,11 +84,12 @@ export default class WebGpuRenderCoordinator {
         }
         const profiler = getPerformanceProfiler();
         profiler?.beginFrame("webgpu", "picking");
-        this.surface.beginPickingFrame();
-        measurePerformance("markTranslation", () =>
+        const frame = measurePerformance("markTranslation", () =>
             framePlan.render({ picking: true })
         );
-        measurePerformance("surfaceRender", () => this.surface.renderPicking());
+        measurePerformance("surfaceRender", () =>
+            this.surface.renderPicking(frame.pickingDraws)
+        );
         this.#dirtyPickingBuffer = false;
         profiler?.endFrame();
     }
@@ -117,8 +117,14 @@ export default class WebGpuRenderCoordinator {
      * @param {import("../../view/layout/layoutResult.js").default} layoutResult
      */
     #compileFramePlan(layoutResult) {
+        const size = this.surface.getLogicalCanvasSize();
         const framePlan = new WebGpuViewRenderingContext({
             surface: this.surface,
+            target: {
+                width: size.width,
+                height: size.height,
+                dpr: this.surface.getDevicePixelRatio(),
+            },
         });
         measurePerformance("framePlanCompilation", () => {
             layoutResult.collectRenderCommands(framePlan);

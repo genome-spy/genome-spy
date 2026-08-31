@@ -18,6 +18,7 @@ import {
 import { getPackedMarkData, getPackedMarkRange } from "./webGpuMarkData.js";
 import { resolveMarkXIndexQuery } from "../xIndex/markXIndex.js";
 import { getMarkRenderingIntent } from "../renderingIntent.js";
+import WebGpuFrameBuilder from "./webGpuFrameBuilder.js";
 
 /**
  * Compiles a completed Core layout into an adapter-owned retained frame plan.
@@ -40,17 +41,30 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     /** @type {((mark: import("../../marks/mark.js").default) => boolean) | undefined} */
     #markPredicate;
 
+    /** @type {{width: number, height: number, dpr: number}} */
+    #target;
+
     /**
-     * @param {{surface: import("./webGpuSurface.js").default, markPredicate?: (mark: import("../../marks/mark.js").default) => boolean}} options
+     * @param {{surface: import("./webGpuSurface.js").default, target?: {width: number, height: number, dpr: number}, markPredicate?: (mark: import("../../marks/mark.js").default) => boolean}} options
      */
     constructor(options) {
         super({});
         this.surface = options.surface;
+        if (options.target) {
+            this.#target = options.target;
+        } else {
+            const size = options.surface.getLogicalCanvasSize();
+            this.#target = {
+                width: size.width,
+                height: size.height,
+                dpr: options.surface.getDevicePixelRatio(),
+            };
+        }
         this.#markPredicate = options.markPredicate;
     }
 
     getDevicePixelRatio() {
-        return this.surface.getDevicePixelRatio();
+        return this.#target.dpr;
     }
 
     /**
@@ -162,8 +176,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         this.#finished = true;
 
-        const size = this.surface.getLogicalCanvasSize();
-        const canvas = Rectangle.create(0, 0, size.width, size.height);
+        const canvas = Rectangle.create(
+            0,
+            0,
+            this.#target.width,
+            this.#target.height
+        );
         for (const state of this.#marks.values()) {
             this.#compileMarkState(state, canvas);
         }
@@ -173,6 +191,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      * Synchronizes live state and submits occurrences in original paint order.
      *
      * @param {{picking: boolean}} options
+     * @returns {{items: import("@genome-spy/webgpu-renderer").RenderItem[], pickingDraws: import("@genome-spy/webgpu-renderer").DrawCommand[]}}
      */
     render({ picking }) {
         if (!this.#finished) {
@@ -184,7 +203,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             countPerformance("viewsVisited");
         }
 
-        const canvas = this.surface.getLogicalCanvasSize();
+        const canvas = this.#target;
+        const frame = new WebGpuFrameBuilder(this.#target);
         for (const state of this.#marks.values()) {
             state.updated = false;
             state.active = false;
@@ -201,21 +221,18 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 const isolated = !picking && opacity !== 1;
                 openedGroups.push(isolated);
                 if (isolated) {
-                    this.surface.pushViewGroup(
-                        command.view,
-                        command.coords,
-                        opacity
-                    );
+                    frame.pushViewGroup(command.view, command.coords, opacity);
                 }
             } else if (command.type === "popView") {
                 if (openedGroups.pop()) {
-                    this.surface.popViewGroup();
+                    frame.popViewGroup();
                 }
             } else {
                 const writes = this.#submitOccurrenceDraw(
                     command.occurrence,
                     picking,
-                    canvas
+                    canvas,
+                    frame
                 );
                 if (writes !== undefined) {
                     synchronizedMarks++;
@@ -230,6 +247,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         countPerformance("retainedMarkSyncChecks", synchronizedMarks);
         countPerformance("retainedMarkSyncChanges", changedMarks);
         countPerformance("retainedResourceWrites", resourceWrites);
+        return frame.finish();
     }
 
     /**
@@ -431,9 +449,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      * @param {Occurrence} occurrence
      * @param {boolean} picking
      * @param {{width: number, height: number}} canvas
+     * @param {WebGpuFrameBuilder} frame
      * @returns {number | undefined}
      */
-    #submitOccurrenceDraw(occurrence, picking, canvas) {
+    #submitOccurrenceDraw(occurrence, picking, canvas, frame) {
         const state = occurrence.state;
         if (
             !state.active ||
@@ -528,17 +547,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (draw.placement) {
             draw.placement.index = placementIndex;
         }
-        if (!picking && state.intent.sampleCount === 4) {
-            this.surface.drawMark(
-                state.mark,
-                draw,
-                state.source,
-                false,
-                state.intent
-            );
-        } else {
-            this.surface.drawMark(state.mark, draw, state.source, picking);
-        }
+        this.surface.prepareDraw(state.mark, draw, state.source);
+        frame.addDraw(state.mark, draw, picking, state.intent);
         countPerformance("drawCommands");
         return resourceWrites;
     }

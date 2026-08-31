@@ -326,22 +326,22 @@ resources rather than mutable frame-construction state.
 
 ### Work
 
-- [ ] Introduce a small adapter-internal frame record/builder with explicit
+- [x] Introduce a small adapter-internal frame record/builder with explicit
       `{ width, height, dpr }`, visible items, picking draws, item stack, and
       active MSAA run.
-- [ ] Move opacity-group push/pop and consecutive-MSAA grouping from surface
+- [x] Move opacity-group push/pop and consecutive-MSAA grouping from surface
       fields into the builder.
-- [ ] Pass the builder explicitly while replaying the retained paint-command
+- [x] Pass the builder explicitly while replaying the retained paint-command
       stream; keep one group stack and one balance assertion.
-- [ ] Reduce `WebGpuSurface.drawMark()` to retained mark/placement resolution,
+- [x] Reduce `WebGpuSurface.drawMark()` to retained mark/placement resolution,
       or replace it with a smaller method that prepares a renderer draw for the
       builder.
-- [ ] Remove `#frameItems`, `#frameItemStack`, `#pickingDraws`,
+- [x] Remove `#frameItems`, `#frameItemStack`, `#pickingDraws`,
       `#activeMsaaGroup`, `beginFrame()`, and `beginPickingFrame()` from the
       surface.
-- [ ] Compile export frames against explicit target metrics and remove
+- [x] Compile export frames against explicit target metrics and remove
       `#targetSize` plus all live-state save/swap/restore logic.
-- [ ] Preserve export serialization because live and export layouts still
+- [x] Preserve export serialization because live and export layouts still
       synchronize shared retained mark resources.
 
 ### Affected areas and downstream consumers

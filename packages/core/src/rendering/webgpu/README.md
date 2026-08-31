@@ -40,9 +40,10 @@ for the backend-neutral lifecycle and the
    contextual error.
 6. The frame plan owns one stable plain draw command per occurrence.
    Before submission, the adapter resolves the guarded live x domain and
-   refreshes `firstInstance` and `instanceCount` in place. `WebGpuSurface`
-   attaches retained mark and placement handles, appends ordered draws and
-   render groups, and submits the frame without rebuilding draw envelopes.
+   refreshes `firstInstance` and `instanceCount` in place. A frame-local builder
+   collects ordered draws, opacity scopes, and MSAA runs against explicit target
+   metrics. `WebGpuSurface` only attaches retained handles and submits the
+   completed frame.
 
 Normal and picking passes share the same frame plan, ranges, placements, and
 order. A completed picking frame is reused for pointer reads until layout,
@@ -74,8 +75,8 @@ Full PNG and hybrid SVG rasterization reuse the live renderer's device, mark
 handles, placement sets, and pipelines through a detached canvas target. Each
 target has independent logical dimensions, backing dimensions, and device
 pixel ratio; export therefore compiles a fresh layout instead of stretching
-the live canvas. The live coordinator retains its frame plan and redraws after
-the export restores the view hierarchy's live layout.
+the live canvas. Export metrics are passed to the independent frame builder and
+never replace the live surface's size or frame state.
 
 Hybrid SVG keeps run discovery, placeholders, cropping, and document order in
 the SVG renderer. WebGPU receives one mark predicate per run, clears the

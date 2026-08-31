@@ -74,7 +74,6 @@ vi.mock("../canvasSizeHelper.js", () => ({
 }));
 
 import WebGpuSurface from "./webGpuSurface.js";
-import Rectangle from "../../view/layout/rectangle.js";
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -99,12 +98,7 @@ beforeEach(() => {
 function useMark(surface, mark, definition, config, options, properties) {
     configureMockMark(mark, definition);
     surface.updateMark(mark, definition, config, properties);
-    const {
-        placement,
-        picking = false,
-        intent,
-        ...drawOptions
-    } = options ?? {};
+    const { placement, ...drawOptions } = options ?? {};
     const draw = {
         mark: mocks.handle,
         ...drawOptions,
@@ -124,7 +118,8 @@ function useMark(surface, mark, definition, config, options, properties) {
               }
             : {}),
     };
-    surface.drawMark(mark, draw, placement?.source, picking, intent);
+    surface.prepareDraw(mark, draw, placement?.source);
+    return draw;
 }
 
 /** @param {any} mark @param {any} definition */
@@ -151,8 +146,7 @@ describe("WebGpuSurface", () => {
         );
         await surface.initialize();
         const liveMark = /** @type {any} */ ({});
-        surface.beginFrame();
-        useMark(
+        const liveDraw = useMark(
             surface,
             liveMark,
             /** @type {any} */ ({ type: "point" }),
@@ -163,10 +157,10 @@ describe("WebGpuSurface", () => {
         /** @type {{width: number, height: number, dpr: number}[]} */
         const observedSizes = [];
         const layoutResult = {
-            collectRenderCommands: vi.fn(() => {
+            collectRenderCommands: vi.fn((context) => {
                 observedSizes.push({
                     ...surface.getLogicalCanvasSize(),
-                    dpr: surface.getDevicePixelRatio(),
+                    dpr: context.getDevicePixelRatio(),
                 });
             }),
         };
@@ -184,7 +178,7 @@ describe("WebGpuSurface", () => {
             target.canvas,
             { width: 80, height: 40, dpr: 3 }
         );
-        expect(observedSizes).toEqual([{ width: 80, height: 40, dpr: 3 }]);
+        expect(observedSizes).toEqual([{ width: 100, height: 50, dpr: 3 }]);
         expect(detachedHandle.render).toHaveBeenCalledWith({
             items: [],
             clearColor,
@@ -194,7 +188,7 @@ describe("WebGpuSurface", () => {
             height: 50,
         });
         expect(surface.getDevicePixelRatio()).toBe(2);
-        surface.render();
+        surface.render([liveDraw]);
         expect(mocks.renderer.render).toHaveBeenCalledWith({
             items: [
                 {
@@ -203,103 +197,6 @@ describe("WebGpuSurface", () => {
                 },
             ],
         });
-    });
-
-    test("wraps selected marks in inspectable four-sample groups", async () => {
-        const surface = new WebGpuSurface(
-            /** @type {any} */ ({
-                container: document.body,
-                onCanvasResize: vi.fn(),
-                onRenderInvalidated: vi.fn(),
-            })
-        );
-        await surface.initialize();
-        const mark = /** @type {any} */ ({});
-        const definition = /** @type {any} */ ({ type: "rect" });
-        const bounds = { x: 5, y: 6, width: 40, height: 20 };
-        const secondBounds = { x: 30, y: 4, width: 50, height: 10 };
-        const groupBounds = { x: 5, y: 4, width: 75, height: 22 };
-
-        surface.beginFrame();
-        useMark(surface, mark, definition, createConfig(0), {
-            viewport: bounds,
-            intent: { sampleCount: 4 },
-        });
-        useMark(surface, mark, definition, createConfig(0), {
-            viewport: secondBounds,
-            intent: { sampleCount: 4 },
-        });
-        surface.render();
-
-        expect(mocks.renderer.render).toHaveBeenCalledWith({
-            items: [
-                {
-                    bounds: groupBounds,
-                    sampleCount: 4,
-                    items: [
-                        { mark: mocks.handle, viewport: bounds },
-                        { mark: mocks.handle, viewport: secondBounds },
-                    ],
-                },
-            ],
-        });
-    });
-
-    test("bounds opacity groups only in semantically clipped directions", async () => {
-        const surface = new WebGpuSurface(
-            /** @type {any} */ ({
-                container: document.body,
-                onCanvasResize: vi.fn(),
-                onRenderInvalidated: vi.fn(),
-            })
-        );
-        await surface.initialize();
-        const view = /** @type {any} */ ({
-            mark: { properties: { clip: "x" } },
-            getPathString: () => "root/test-view",
-        });
-
-        surface.beginFrame();
-        surface.pushViewGroup(view, Rectangle.create(5, 6, 40, 20), 0.5);
-        surface.popViewGroup();
-        surface.render();
-
-        expect(mocks.renderer.render).toHaveBeenCalledWith({
-            items: [
-                {
-                    bounds: { x: 5, y: 0, width: 40, height: 50 },
-                    opacity: 0.5,
-                    items: [],
-                },
-            ],
-        });
-    });
-
-    test("skips empty four-sample group occurrences", async () => {
-        const surface = new WebGpuSurface(
-            /** @type {any} */ ({
-                container: document.body,
-                onCanvasResize: vi.fn(),
-                onRenderInvalidated: vi.fn(),
-            })
-        );
-        await surface.initialize();
-        const mark = /** @type {any} */ ({});
-
-        surface.beginFrame();
-        useMark(
-            surface,
-            mark,
-            /** @type {any} */ ({ type: "rect" }),
-            createConfig(0),
-            {
-                viewport: { x: 0, y: 0, width: 0, height: 20 },
-                intent: { sampleCount: 4 },
-            }
-        );
-        surface.render();
-
-        expect(mocks.renderer.render).toHaveBeenCalledWith({ items: [] });
     });
 
     test("forwards unexpected device loss until the surface is finalized", async () => {
@@ -361,8 +258,6 @@ describe("WebGpuSurface", () => {
             viewport: { x: 0, y: 0, width: 100, height: 50 },
             placement: { source, index: 0 },
         });
-        surface.beginFrame();
-        surface.render();
 
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
         expect(mocks.renderer.createMark).toHaveBeenCalledWith(
@@ -404,12 +299,10 @@ describe("WebGpuSurface", () => {
                 /** @type {unknown} */ ({ type: "point" })
             );
 
-        surface.beginFrame();
-        useMark(surface, mark, definition, createConfig(0));
-        surface.render();
-        surface.beginFrame();
-        useMark(surface, mark, definition, createConfig(1));
-        surface.render();
+        const firstDraw = useMark(surface, mark, definition, createConfig(0));
+        surface.render([firstDraw]);
+        const secondDraw = useMark(surface, mark, definition, createConfig(1));
+        surface.render([secondDraw]);
 
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
         expect(mocks.handle.series.replace).toHaveBeenCalledOnce();
@@ -456,9 +349,7 @@ describe("WebGpuSurface", () => {
                 /** @type {unknown} */ ({ type: "text" })
             );
 
-        surface.beginFrame();
         useMark(surface, mark, definition, createTextConfig(["0.00000"]));
-        surface.beginFrame();
         useMark(surface, mark, definition, createTextConfig(["-1.0", "1.0"]));
 
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
@@ -1060,12 +951,10 @@ describe("WebGpuSurface", () => {
                 /** @type {unknown} */ ({ type: "point" })
             );
 
-        surface.beginFrame();
-        useMark(surface, mark, definition, createConfig(0));
-        surface.render();
-        surface.beginPickingFrame();
-        useMark(surface, mark, definition, createConfig(0), { picking: true });
-        surface.renderPicking();
+        const visibleDraw = useMark(surface, mark, definition, createConfig(0));
+        surface.render([visibleDraw]);
+        const pickingDraw = useMark(surface, mark, definition, createConfig(0));
+        surface.renderPicking([pickingDraw]);
 
         expect(mocks.renderer.render).toHaveBeenCalledWith({
             items: [{ mark: mocks.handle }],

@@ -2,7 +2,6 @@ import { createRenderer } from "@genome-spy/webgpu-renderer";
 
 import CanvasSizeHelper from "../canvasSizeHelper.js";
 import PlacementSource from "../../view/layout/placementSource.js";
-import { getViewClipDirections } from "../../view/renderingContext/clipOptions.js";
 import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 
 /** @type {Readonly<Record<string, {value: any}>>} */
@@ -40,23 +39,8 @@ export default class WebGpuSurface {
     /** @type {WeakSet<import("../../marks/mark.js").default>} */
     #registeredMarkOwners = new WeakSet();
 
-    /** @type {import("@genome-spy/webgpu-renderer").RenderItem[]} */
-    #frameItems = [];
-
-    /** @type {import("@genome-spy/webgpu-renderer").RenderItem[][]} */
-    #frameItemStack = [this.#frameItems];
-
-    /** @type {import("@genome-spy/webgpu-renderer").DrawCommand[]} */
-    #pickingDraws = [];
-
-    /** @type {{mark: import("../../marks/mark.js").default, parent: import("@genome-spy/webgpu-renderer").RenderItem[], group: {bounds: import("@genome-spy/webgpu-renderer").DrawRect, sampleCount: 4, items: import("@genome-spy/webgpu-renderer").DrawCommand[]}} | undefined} */
-    #activeMsaaGroup;
-
     /** @type {{logicalWidth: number, logicalHeight: number, physicalWidth: number, physicalHeight: number} | undefined} */
     #appliedSize;
-
-    /** @type {{width: number, height: number, dpr: number} | undefined} */
-    #targetSize;
 
     /**
      * @param {import("../renderingBackend.js").RenderingBackendOptions} options
@@ -152,19 +136,10 @@ export default class WebGpuSurface {
     }
 
     getLogicalCanvasSize() {
-        if (this.#targetSize) {
-            return {
-                width: this.#targetSize.width,
-                height: this.#targetSize.height,
-            };
-        }
         return this.#sizeHelper.getLogicalCanvasSize();
     }
 
     getDevicePixelRatio() {
-        if (this.#targetSize) {
-            return this.#targetSize.dpr;
-        }
         return this.#sizeHelper.getDevicePixelRatio();
     }
 
@@ -205,96 +180,19 @@ export default class WebGpuSurface {
      * @param {(mark: import("../../marks/mark.js").default) => boolean} [markPredicate]
      */
     renderLayoutToTarget(layoutResult, target, clearColor, markPredicate) {
-        if (this.#targetSize) {
-            throw new Error("WebGPU export rendering cannot be nested.");
-        }
-        const liveState = {
-            frameItems: this.#frameItems,
-            frameItemStack: this.#frameItemStack,
-            pickingDraws: this.#pickingDraws,
-            activeMsaaGroup: this.#activeMsaaGroup,
-        };
-        this.#frameItems = [];
-        this.#frameItemStack = [this.#frameItems];
-        this.#pickingDraws = [];
-        this.#activeMsaaGroup = undefined;
-        this.#targetSize = {
-            width: target.logicalWidth,
-            height: target.logicalHeight,
-            dpr: target.pixelRatio,
-        };
-        try {
-            const framePlan = new WebGpuViewRenderingContext({
-                surface: this,
-                markPredicate,
-            });
-            layoutResult.collectRenderCommands(framePlan);
-            framePlan.finish();
-            this.beginFrame();
-            framePlan.render({ picking: false });
-            if (this.#frameItemStack.length !== 1) {
-                throw new Error(
-                    "Cannot render with an open WebGPU render group."
-                );
-            }
-            target.handle.render({
-                items: this.#frameItems,
-                clearColor,
-            });
-        } finally {
-            this.#targetSize = undefined;
-            this.#frameItems = liveState.frameItems;
-            this.#frameItemStack = liveState.frameItemStack;
-            this.#pickingDraws = liveState.pickingDraws;
-            this.#activeMsaaGroup = liveState.activeMsaaGroup;
-        }
-    }
-
-    /**
-     * Starts a new ordered frame without releasing retained marks.
-     */
-    beginFrame() {
-        this.#frameItems.length = 0;
-        this.#frameItemStack = [this.#frameItems];
-        this.#pickingDraws.length = 0;
-        this.#activeMsaaGroup = undefined;
-    }
-
-    /** Starts collecting the next on-demand pick frame. */
-    beginPickingFrame() {
-        this.#pickingDraws.length = 0;
-    }
-
-    /**
-     * Opens an opacity-isolated Core view group.
-     *
-     * @param {import("../../view/view.js").default} view
-     * @param {import("../../view/layout/rectangle.js").default} coords
-     * @param {number} opacity
-     */
-    pushViewGroup(view, coords, opacity) {
-        const clip = getViewClipDirections(view);
-        const size = this.getLogicalCanvasSize();
-        const bounds = {
-            x: clip.clipX ? coords.x : 0,
-            y: clip.clipY ? coords.y : 0,
-            width: clip.clipX ? coords.width : size.width,
-            height: clip.clipY ? coords.height : size.height,
-        };
-        /** @type {import("@genome-spy/webgpu-renderer").RenderItem[]} */
-        const items = [];
-        this.#currentFrameItems().push({ bounds, opacity, items });
-        this.#frameItemStack.push(items);
-        this.#activeMsaaGroup = undefined;
-    }
-
-    /** Closes the current opacity-isolated Core view group. */
-    popViewGroup() {
-        if (this.#frameItemStack.length <= 1) {
-            throw new Error("Unbalanced WebGPU render group stack.");
-        }
-        this.#frameItemStack.pop();
-        this.#activeMsaaGroup = undefined;
+        const framePlan = new WebGpuViewRenderingContext({
+            surface: this,
+            target: {
+                width: target.logicalWidth,
+                height: target.logicalHeight,
+                dpr: target.pixelRatio,
+            },
+            markPredicate,
+        });
+        layoutResult.collectRenderCommands(framePlan);
+        framePlan.finish();
+        const frame = framePlan.render({ picking: false });
+        target.handle.render({ items: frame.items, clearColor });
     }
 
     /**
@@ -441,10 +339,8 @@ export default class WebGpuSurface {
      * @param {import("../../marks/mark.js").default} mark
      * @param {import("@genome-spy/webgpu-renderer").DrawCommand} draw
      * @param {PlacementSource | undefined} placementSource
-     * @param {boolean} picking
-     * @param {{sampleCount: 1 | 4}} [intent]
      */
-    drawMark(mark, draw, placementSource, picking, intent) {
+    prepareDraw(mark, draw, placementSource) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
@@ -462,66 +358,28 @@ export default class WebGpuSurface {
             }
             draw.placement.set = this.getPlacementSet(placementSource);
         }
-        if (picking) {
-            this.#pickingDraws.push(draw);
-        } else if (intent?.sampleCount === 4) {
-            const size = this.getLogicalCanvasSize();
-            const bounds = {
-                ...(draw.scissor ??
-                    draw.viewport ?? {
-                        x: 0,
-                        y: 0,
-                        width: size.width,
-                        height: size.height,
-                    }),
-            };
-            if (bounds.width <= 0 || bounds.height <= 0) {
-                this.#activeMsaaGroup = undefined;
-                return;
-            }
-            const parent = this.#currentFrameItems();
-            if (
-                this.#activeMsaaGroup?.mark === mark &&
-                this.#activeMsaaGroup.parent === parent
-            ) {
-                this.#activeMsaaGroup.group.items.push(draw);
-                unionBounds(this.#activeMsaaGroup.group.bounds, bounds);
-            } else {
-                const group = {
-                    bounds,
-                    sampleCount: /** @type {const} */ (4),
-                    items: [draw],
-                };
-                parent.push(group);
-                this.#activeMsaaGroup = { mark, parent, group };
-            }
-        } else {
-            this.#currentFrameItems().push(draw);
-            this.#activeMsaaGroup = undefined;
-        }
     }
 
     /**
+     * @param {import("@genome-spy/webgpu-renderer").RenderItem[]} items
      * @param {GPUColor} [clearColor]
      */
-    render(clearColor) {
+    render(items, clearColor) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
-        if (this.#frameItemStack.length !== 1) {
-            throw new Error("Cannot render with an open WebGPU render group.");
-        }
         this.#renderer.render({
-            items: this.#frameItems,
+            items,
             ...(clearColor ? { clearColor } : {}),
         });
     }
 
-    renderPicking() {
+    /** @param {import("@genome-spy/webgpu-renderer").DrawCommand[]} draws */
+    renderPicking(draws) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
-        this.#renderer.renderPicking({ draws: this.#pickingDraws });
+        this.#renderer.renderPicking({ draws });
     }
 
     /**
@@ -552,9 +410,6 @@ export default class WebGpuSurface {
         this.#placementSets = new WeakMap();
         this.#occurrencePlacementSources.clear();
         this.#registeredMarkOwners = new WeakSet();
-        this.#frameItems.length = 0;
-        this.#frameItemStack = [this.#frameItems];
-        this.#pickingDraws.length = 0;
         this.#sizeHelper.finalize();
         this.canvas.remove();
     }
@@ -581,24 +436,6 @@ export default class WebGpuSurface {
             this.#occurrencePlacementSources.delete(mark);
         }
     }
-
-    /** @returns {import("@genome-spy/webgpu-renderer").RenderItem[]} */
-    #currentFrameItems() {
-        return this.#frameItemStack[this.#frameItemStack.length - 1];
-    }
-}
-
-/**
- * @param {import("@genome-spy/webgpu-renderer").DrawRect} target
- * @param {import("@genome-spy/webgpu-renderer").DrawRect} source
- */
-function unionBounds(target, source) {
-    const x2 = Math.max(target.x + target.width, source.x + source.width);
-    const y2 = Math.max(target.y + target.height, source.y + source.height);
-    target.x = Math.min(target.x, source.x);
-    target.y = Math.min(target.y, source.y);
-    target.width = x2 - target.x;
-    target.height = y2 - target.y;
 }
 
 /**
