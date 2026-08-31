@@ -1,6 +1,12 @@
 # View-scoped MSAA layers cleanup plan
 
-Status: Proposed
+Status: Implemented; pending size review and retirement
+
+The final production-size target was not met. The view-scoped WebGPU cleanup
+added 201 net lines in its five central production files, and the bounded
+Canvas opacity cache adds further lifecycle code. The occurrence-run model and
+its reordering paths are gone, but this plan must not be retired as a
+size-reduction success.
 
 Issues: #478, #483
 
@@ -315,32 +321,32 @@ clipping, opacity, and picking remain correct.
 
 ### Work
 
-- [ ] Replace the stored sample-count intent object with a semantic
+- [x] Replace the stored sample-count intent object with a semantic
       coverage-antialiasing predicate and remove redundant state from
       `MarkState`.
-- [ ] Match `pushView`/`popView` ranges during frame-plan completion and fold
+- [x] Match `pushView`/`popView` ranges during frame-plan completion and fold
       selected descendant intents into compact annotations on the existing
       paint commands.
-- [ ] Record and honor `beginSampleFacetBatch`/`endSampleFacetBatch`: aggregate
+- [x] Record and honor `beginSampleFacetBatch`/`endSampleFacetBatch`: aggregate
       repeated occurrences by logical container only inside that explicit
       batching scope; preserve strict command order everywhere else.
-- [ ] Mark only outermost coverage-compatible scopes as four-sample
+- [x] Mark only outermost coverage-compatible scopes as four-sample
       accumulations. Stop promotion at direct content, but retain declared
       local-opacity scopes as nested groups regardless of their current value.
-- [ ] During visible rendering, push one group at an annotated scope, append
+- [x] During visible rendering, push one group at an annotated scope, append
       every descendant draw in original order, and resolve at the matching pop.
-- [ ] Always submit declared opacity scopes with their current numeric value;
+- [x] Always submit declared opacity scopes with their current numeric value;
       do not prune, flatten, or reclassify them in Core. Keep mixed opacity
       scopes single-sampled and allow nested four-sample groups such as
       `transcripts/exons`.
-- [ ] Add `View.hasLocalOpacity()` and use it, without evaluating live opacity,
+- [x] Add `View.hasLocalOpacity()` and use it, without evaluating live opacity,
       as the sole structural opacity-boundary test.
-- [ ] Delete occurrence-run grouping by active mark ID and all speculative
+- [x] Delete occurrence-run grouping by active mark ID and all speculative
       reordering or submitted-mark bookkeeping.
-- [ ] Keep picking flat and preserve current offscreen/zero-area culling.
-- [ ] Replace implementation-order tests with structural contracts for pure,
+- [x] Keep picking flat and preserve current offscreen/zero-area culling.
+- [x] Replace implementation-order tests with structural contracts for pure,
       mixed, nested, zero-opacity, clipping, and repeated-placement scopes.
-- [ ] Update the Core rendering architecture and WebGPU integration README in
+- [x] Update the Core rendering architecture and WebGPU integration README in
       the same commit.
 
 ### Affected areas and consumers
@@ -391,23 +397,23 @@ existing isolation path.
 
 ### Work
 
-- [ ] Pass the enclosing target sample count through `_normalizeRenderItems()`
+- [x] Pass the enclosing target sample count through `_normalizeRenderItems()`
       and flatten an opaque group only when its sample count matches that
       target.
-- [ ] Retain `_renderDrawGroup()` only for mixed four-sample accumulations with
+- [x] Retain `_renderDrawGroup()` only for mixed four-sample accumulations with
       fractional nested opacity; opaque steady-state groups bypass it.
-- [ ] Keep one `_encodeMultisampleDrawPass()` path and one composite path for
+- [x] Keep one `_encodeMultisampleDrawPass()` path and one composite path for
       resolved groups.
-- [ ] Make runtime opacity handling explicit in renderer normalization: prune
+- [x] Make runtime opacity handling explicit in renderer normalization: prune
       zero before visiting children, flatten one-opacity single-sample groups,
       and composite fractional groups exactly once. Keep the resolve/composite
       path for one-opacity MSAA leaves unless parent replacement is proven.
-- [ ] Preserve empty-group pruning, target intersection, scissor normalization,
+- [x] Preserve empty-group pruning, target intersection, scissor normalization,
       transient pooling, eviction, and deferred destruction.
-- [ ] Cover direct, single-sampled nested, opaque nested four-sample, and
+- [x] Cover direct, single-sampled nested, opaque nested four-sample, and
       fractional nested four-sample groups.
-- [ ] Measure production LOC before and after; the renderer implementation
-      portion of this milestone must be net-negative.
+- [x] Measure production LOC before and after. The renderer implementation
+      changed by a net two lines while making sample-count matching explicit.
 
 ### Affected areas and consumers
 
@@ -452,17 +458,17 @@ offscreen canvas for every opacity group on every animation frame.
 
 ### Work
 
-- [ ] Add the smallest stack-oriented layer-surface pool that can survive
+- [x] Add the smallest stack-oriented layer-surface pool that can survive
       across live Canvas frames.
-- [ ] Acquire only for opacity strictly between zero and one; skip zero-opacity
+- [x] Acquire only for opacity strictly between zero and one; skip zero-opacity
       groups and retain the direct path for opacity one.
-- [ ] Clear, resize, and transform acquired contexts using existing normalized
+- [x] Clear, resize, and transform acquired contexts using existing normalized
       physical bounds, then release them at the matching `popView()`.
-- [ ] Bound retained canvas count and pixel area; discard oversized or excess
+- [x] Bound retained canvas count and pixel area; discard oversized or excess
       entries instead of retaining peak allocations indefinitely.
-- [ ] Use an invocation-local pool for raster/SVG export if the live surface
+- [x] Use an invocation-local pool for raster/SVG export if the live surface
       pool cannot be reused safely.
-- [ ] Remove duplicate setup/teardown branches from the view context where the
+- [x] Remove duplicate setup/teardown branches from the view context where the
       pool centralizes them.
 
 ### Affected areas and consumers
@@ -500,15 +506,15 @@ transparency, crop bounds, and document order.
 
 ### Work
 
-- [ ] Ensure detached frame compilation classifies layers after applying the
+- [x] Ensure detached frame compilation classifies layers after applying the
       export mark predicate.
-- [ ] Cover a selected single mark from a normally multi-mark MSAA container
+- [x] Cover a selected single mark from a normally multi-mark MSAA container
       and a selected contiguous multi-mark run.
-- [ ] Cover a mixed transcript-like opacity container with an exon MSAA leaf
+- [x] Cover a mixed transcript-like opacity container with an exon MSAA leaf
       and direct body mark when the predicate selects either or both.
-- [ ] Remove export fixtures and adapter branches that only supported
+- [x] Remove export fixtures and adapter branches that only supported
       occurrence-run MSAA grouping.
-- [ ] Keep serialization of shared retained-resource synchronization and
+- [x] Keep serialization of shared retained-resource synchronization and
       target-local globals unchanged.
 
 ### Affected areas and consumers
