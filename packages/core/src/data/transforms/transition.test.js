@@ -103,6 +103,53 @@ describe("transition", () => {
         });
     });
 
+    test("waits for a quiet target and equal updates do not restart the delay", () => {
+        const { animator, transform, collector } = setup({
+            fields: ["x"],
+            halfLife: 100,
+            targetDelay: 100,
+        });
+        const observer = vi.fn();
+        collector.observe(observer);
+        update(transform, [{ id: "a", x: 0 }]);
+        update(transform, [{ id: "a", x: 8 }]);
+
+        animator.frame(0);
+        animator.frame(50);
+        expect(Array.from(collector.getData())[0].x).toBe(0);
+        expect(observer).toHaveBeenCalledTimes(2);
+
+        update(transform, [{ id: "a", x: 8 }]);
+        animator.frame(100);
+        expect(Array.from(collector.getData())[0].x).toBeGreaterThan(0);
+        expect(observer).toHaveBeenCalledTimes(4);
+    });
+
+    test("restarts the quiet period for a new target and promotes the latest", () => {
+        const { animator, transform, collector } = setup({
+            fields: ["x"],
+            halfLife: 100,
+            targetDelay: 100,
+        });
+        update(transform, [{ id: "a", x: 0 }]);
+        update(transform, [{ id: "a", x: 8 }]);
+        animator.frame(0);
+        animator.frame(60);
+
+        update(transform, [{ id: "a", x: 16 }]);
+        animator.frame(100);
+        animator.frame(160);
+        expect(Array.from(collector.getData())[0].x).toBe(0);
+
+        animator.frame(200);
+        const x = Array.from(collector.getData())[0].x;
+        expect(x).toBeGreaterThan(0);
+        expect(x).toBeLessThan(16);
+
+        animator.frame(1400);
+        expect(Array.from(collector.getData())[0].x).toBe(16);
+    });
+
     test("snaps new keys and forgets removed keys", () => {
         const { transform, collector } = setup();
         update(transform, [
@@ -213,6 +260,7 @@ describe("transition", () => {
         );
         expect(() => setup({ halfLife: 0 })).toThrow("halfLife");
         expect(() => setup({ epsilon: -1 })).toThrow("epsilon");
+        expect(() => setup({ targetDelay: -1 })).toThrow("targetDelay");
         expect(
             () =>
                 new TransitionTransform(
