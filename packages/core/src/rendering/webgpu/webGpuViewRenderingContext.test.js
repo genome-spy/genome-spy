@@ -953,12 +953,14 @@ describe("WebGpuViewRenderingContext", () => {
             encoders: {},
             encoding: {},
             getType: () => "rect",
+            isPickingParticipant: () => true,
             properties: {},
             unitView,
         };
         const solid = { ...faded };
         const point = {
             getType: () => "point",
+            isPickingParticipant: () => true,
             properties: {},
             unitView,
         };
@@ -1002,6 +1004,17 @@ describe("WebGpuViewRenderingContext", () => {
                 ],
             },
             ...drawsFor(point),
+        ]);
+
+        surface.prepareDraw.mockClear();
+        context.renderPicking();
+        expect(surface.prepareDraw.mock.calls.map((call) => call[0])).toEqual([
+            faded,
+            solid,
+            point,
+            faded,
+            solid,
+            point,
         ]);
     });
 

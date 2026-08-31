@@ -9,38 +9,30 @@
  * @returns {boolean}
  */
 export function needsCoverageAntialiasing(mark) {
-    return isPlainRect(mark);
-}
-
-/** @param {import("../marks/mark.js").default} mark */
-function isPlainRect(mark) {
     if (mark.getType() !== "rect") {
         return false;
     }
 
     const stroke = mark.encoding.stroke;
-    if (
+    const hasStroke =
         stroke != null &&
-        (!("value" in stroke) || stroke.value !== null || "condition" in stroke)
-    ) {
-        return false;
-    }
+        (!("value" in stroke) ||
+            stroke.value !== null ||
+            "condition" in stroke);
 
     const properties = /** @type {import("../spec/mark.js").RectProps} */ (
         mark.properties
     );
     return (
-        isZero(properties.cornerRadius) &&
-        isZero(properties.cornerRadiusTopLeft) &&
-        isZero(properties.cornerRadiusTopRight) &&
-        isZero(properties.cornerRadiusBottomLeft) &&
-        isZero(properties.cornerRadiusBottomRight) &&
-        isZero(properties.shadowOpacity) &&
+        !hasStroke &&
+        [
+            properties.cornerRadius,
+            properties.cornerRadiusTopLeft,
+            properties.cornerRadiusTopRight,
+            properties.cornerRadiusBottomLeft,
+            properties.cornerRadiusBottomRight,
+            properties.shadowOpacity,
+        ].every((value) => value === undefined || value === 0) &&
         (properties.hatch === undefined || properties.hatch === "none")
     );
-}
-
-/** @param {unknown} value */
-function isZero(value) {
-    return value === undefined || value === 0;
 }

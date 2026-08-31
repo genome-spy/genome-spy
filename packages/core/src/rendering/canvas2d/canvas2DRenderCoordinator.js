@@ -35,7 +35,7 @@ export default class Canvas2DRenderCoordinator {
         this.dirtyPickingBuffer = true;
         this.xIndexManager = new CanvasXIndexManager();
 
-        /** @type {{canvas: HTMLCanvasElement, context: CanvasRenderingContext2D}[]} */
+        /** @type {CanvasRenderingContext2D[]} */
         this.opacityLayers = [];
     }
 

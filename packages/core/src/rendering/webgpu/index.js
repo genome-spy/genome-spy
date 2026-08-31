@@ -22,11 +22,8 @@ export async function createWebGpuRenderingBackend(options) {
 
     let exportQueue = Promise.resolve();
     const serializeExport = (/** @type {() => Promise<any>} */ operation) => {
-        const result = exportQueue.then(operation, operation);
-        exportQueue = result.then(
-            completeExportOperation,
-            completeExportOperation
-        );
+        const result = exportQueue.then(operation);
+        exportQueue = result.catch(/** @returns {void} */ () => {});
         return result;
     };
 
@@ -51,6 +48,3 @@ export async function createWebGpuRenderingBackend(options) {
             serializeExport(() => rasterizeSvgRuns(surface, options)),
     };
 }
-
-/** @returns {void} */
-function completeExportOperation() {}

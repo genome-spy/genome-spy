@@ -70,11 +70,10 @@ export class TransientTexturePool {
      * @param {number} width
      * @param {number} height
      * @param {1 | 4} sampleCount
-     * @param {GPUTextureUsageFlags} usage
      * @returns {TransientTexture}
      */
-    acquire(width, height, sampleCount, usage) {
-        const key = `${width}x${height}:${sampleCount}:${usage}`;
+    acquire(width, height, sampleCount) {
+        const key = `${width}x${height}:${sampleCount}`;
         const freeIndex = this.free.findLastIndex((entry) => entry.key === key);
         if (freeIndex >= 0) {
             const pooled = this.free.splice(freeIndex, 1)[0];
@@ -90,7 +89,9 @@ export class TransientTexturePool {
             size: { width, height },
             format: this.format,
             sampleCount,
-            usage,
+            usage:
+                GPUTextureUsage.RENDER_ATTACHMENT |
+                (sampleCount === 1 ? GPUTextureUsage.TEXTURE_BINDING : 0),
         });
         const entry = {
             key,
@@ -161,34 +162,13 @@ export class TextureCompositor {
         this.staging = new Float32Array((this.capacity * this.stride) / 4);
         this.count = 0;
 
-        this.layout = device.createBindGroupLayout({
-            label: gpuLabel(RENDERER_GPU_OWNER, "composite bind group layout"),
-            entries: [
-                {
-                    binding: 0,
-                    visibility: GPUShaderStage.FRAGMENT,
-                    buffer: { type: "uniform" },
-                },
-                {
-                    binding: 1,
-                    visibility: GPUShaderStage.FRAGMENT,
-                    texture: { sampleType: "float" },
-                },
-            ],
-        });
         const module = device.createShaderModule({
             label: gpuLabel(RENDERER_GPU_OWNER, "composite shader"),
             code: COMPOSITE_SHADER,
         });
         this.pipeline = device.createRenderPipeline({
             label: gpuLabel(RENDERER_GPU_OWNER, "composite pipeline"),
-            layout: device.createPipelineLayout({
-                label: gpuLabel(
-                    RENDERER_GPU_OWNER,
-                    "composite pipeline layout"
-                ),
-                bindGroupLayouts: [this.layout],
-            }),
+            layout: "auto",
             vertex: { module, entryPoint: "vs_main" },
             fragment: {
                 module,
@@ -213,6 +193,7 @@ export class TextureCompositor {
             },
             primitive: { topology: "triangle-list" },
         });
+        this.layout = this.pipeline.getBindGroupLayout(0);
     }
 
     /** @param {number} capacity */
@@ -280,31 +261,6 @@ export class TextureCompositor {
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
     }
-}
-
-/**
- * Rounds logical bounds outward to complete physical pixels.
- *
- * @param {import("./index.d.ts").DrawRect} bounds
- * @param {import("./index.d.ts").GlobalUniforms} globals
- */
-export function normalizeGroupBounds(bounds, globals) {
-    const x = Math.max(0, Math.floor(bounds.x * globals.dpr));
-    const y = Math.max(0, Math.floor(bounds.y * globals.dpr));
-    const right = Math.min(
-        Math.ceil(globals.width * globals.dpr),
-        Math.ceil((bounds.x + bounds.width) * globals.dpr)
-    );
-    const bottom = Math.min(
-        Math.ceil(globals.height * globals.dpr),
-        Math.ceil((bounds.y + bounds.height) * globals.dpr)
-    );
-    return {
-        width: Math.max(0, right - x),
-        height: Math.max(0, bottom - y),
-        logicalX: x / globals.dpr,
-        logicalY: y / globals.dpr,
-    };
 }
 
 /**

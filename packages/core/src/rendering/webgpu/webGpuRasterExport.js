@@ -18,27 +18,29 @@ export async function exportRaster(surface, options) {
     const logicalWidth = options.logicalWidth ?? liveSize.width;
     const logicalHeight = options.logicalHeight ?? liveSize.height;
     const pixelRatio = options.pixelRatio ?? surface.getDevicePixelRatio();
-    return withExportTarget(
+    const target = createExportTarget(
         surface,
         logicalWidth,
         logicalHeight,
-        pixelRatio,
-        async (target) => {
-            const layoutResult = createExportLayout(
-                options.viewRoot,
-                logicalWidth,
-                logicalHeight,
-                pixelRatio
-            );
-            surface.renderLayoutToTarget(
-                layoutResult,
-                target,
-                toGpuColor(options.clearColor)
-            );
-            await target.handle.onSubmittedWorkDone();
-            return canvasToBlob(target.canvas, mimeType);
-        }
+        pixelRatio
     );
+    try {
+        const layoutResult = createExportLayout(
+            options.viewRoot,
+            logicalWidth,
+            logicalHeight,
+            pixelRatio
+        );
+        surface.renderLayoutToTarget(
+            layoutResult,
+            target,
+            toGpuColor(options.clearColor)
+        );
+        await target.handle.onSubmittedWorkDone();
+        return canvasToBlob(target.canvas, mimeType);
+    } finally {
+        target.handle.destroy();
+    }
 }
 
 /**
@@ -46,102 +48,86 @@ export async function exportRaster(surface, options) {
  * @param {import("../renderingBackend.js").SvgRunRasterizationOptions} options
  */
 export async function rasterizeSvgRuns(surface, options) {
-    return withExportTarget(
+    const target = createExportTarget(
         surface,
         options.logicalWidth,
         options.logicalHeight,
-        options.pixelRatio,
-        async (target) => {
-            const cropCanvas = document.createElement("canvas");
-            const cropContext = cropCanvas.getContext("2d");
-            if (!cropContext) {
-                throw new RasterizationUnavailableError(
-                    "Unable to initialize a WebGPU SVG crop context."
-                );
-            }
-            const layoutResult =
-                options.layoutResult && options.pixelRatio == 1
-                    ? options.layoutResult
-                    : createExportLayout(
-                          options.viewRoot,
-                          options.logicalWidth,
-                          options.logicalHeight,
-                          options.pixelRatio
-                      );
-
-            for (const run of options.runs) {
-                surface.renderLayoutToTarget(
-                    layoutResult,
-                    target,
-                    TRANSPARENT_GPU_COLOR,
-                    (mark) => run.marks.has(mark)
-                );
-                await target.handle.onSubmittedWorkDone();
-
-                const crop = getPhysicalCrop(
-                    run.bounds,
-                    options.pixelRatio,
-                    target.canvas.width,
-                    target.canvas.height
-                );
-                cropCanvas.width = crop.width;
-                cropCanvas.height = crop.height;
-                cropContext.resetTransform();
-                cropContext.clearRect(0, 0, crop.width, crop.height);
-                cropContext.drawImage(
-                    target.canvas,
-                    crop.x,
-                    crop.y,
-                    crop.width,
-                    crop.height,
-                    0,
-                    0,
-                    crop.width,
-                    crop.height
-                );
-                setRasterImage(
-                    run,
-                    crop,
-                    options.pixelRatio,
-                    cropCanvas.toDataURL("image/png")
-                );
-            }
-        }
+        options.pixelRatio
     );
+    try {
+        const cropCanvas = document.createElement("canvas");
+        const cropContext = cropCanvas.getContext("2d");
+        if (!cropContext) {
+            throw new RasterizationUnavailableError(
+                "Unable to initialize a WebGPU SVG crop context."
+            );
+        }
+        const layoutResult =
+            options.layoutResult && options.pixelRatio == 1
+                ? options.layoutResult
+                : createExportLayout(
+                      options.viewRoot,
+                      options.logicalWidth,
+                      options.logicalHeight,
+                      options.pixelRatio
+                  );
+
+        for (const run of options.runs) {
+            surface.renderLayoutToTarget(
+                layoutResult,
+                target,
+                TRANSPARENT_GPU_COLOR,
+                (mark) => run.marks.has(mark)
+            );
+            await target.handle.onSubmittedWorkDone();
+
+            const crop = getPhysicalCrop(
+                run.bounds,
+                options.pixelRatio,
+                target.canvas.width,
+                target.canvas.height
+            );
+            cropCanvas.width = crop.width;
+            cropCanvas.height = crop.height;
+            cropContext.resetTransform();
+            cropContext.clearRect(0, 0, crop.width, crop.height);
+            cropContext.drawImage(
+                target.canvas,
+                crop.x,
+                crop.y,
+                crop.width,
+                crop.height,
+                0,
+                0,
+                crop.width,
+                crop.height
+            );
+            setRasterImage(
+                run,
+                crop,
+                options.pixelRatio,
+                cropCanvas.toDataURL("image/png")
+            );
+        }
+    } finally {
+        target.handle.destroy();
+    }
 }
 
 /**
  * @param {import("./webGpuSurface.js").default} surface
- * @param {number} logicalWidth
- * @param {number} logicalHeight
+ * @param {number} width
+ * @param {number} height
  * @param {number} pixelRatio
- * @param {(target: ReturnType<import("./webGpuSurface.js").default["createExportTarget"]>) => Promise<any>} operation
  */
-async function withExportTarget(
-    surface,
-    logicalWidth,
-    logicalHeight,
-    pixelRatio,
-    operation
-) {
-    /** @type {ReturnType<import("./webGpuSurface.js").default["createExportTarget"]>} */
-    let target;
+function createExportTarget(surface, width, height, pixelRatio) {
     try {
-        target = surface.createExportTarget(
-            logicalWidth,
-            logicalHeight,
-            pixelRatio
-        );
+        return surface.createExportTarget(width, height, pixelRatio);
     } catch (error) {
         throw new RasterizationUnavailableError(
             "Unable to initialize a detached WebGPU export target.",
             { cause: error }
         );
-    }
-    try {
-        return await operation(target);
-    } finally {
-        target.handle.destroy();
     }
 }
 

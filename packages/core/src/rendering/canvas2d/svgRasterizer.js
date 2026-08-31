@@ -36,7 +36,7 @@ export function createCanvas2DSvgRasterizer() {
     return (options) => {
         const width = Math.ceil(options.logicalWidth * options.pixelRatio);
         const height = Math.ceil(options.logicalHeight * options.pixelRatio);
-        /** @type {{canvas: HTMLCanvasElement, context: CanvasRenderingContext2D}[]} */
+        /** @type {CanvasRenderingContext2D[]} */
         const opacityLayers = [];
         canvas.width = width;
         canvas.height = height;

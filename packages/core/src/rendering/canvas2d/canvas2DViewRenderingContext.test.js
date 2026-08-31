@@ -249,7 +249,7 @@ describe("Canvas2DViewRenderingContext", () => {
         const main = createRecordingContext();
         const offscreen = createRecordingContext();
         offscreen.context.canvas.getContext = () => offscreen.context;
-        /** @type {{canvas: HTMLCanvasElement, context: CanvasRenderingContext2D}[]} */
+        /** @type {CanvasRenderingContext2D[]} */
         const opacityLayers = [];
         const originalCreateElement = document.createElement.bind(document);
         const createElement = vi
@@ -311,7 +311,7 @@ describe("Canvas2DViewRenderingContext", () => {
 
     test("reuses nested opacity layers while bounding retained depth", () => {
         const main = createRecordingContext();
-        /** @type {{canvas: HTMLCanvasElement, context: CanvasRenderingContext2D}[]} */
+        /** @type {CanvasRenderingContext2D[]} */
         const opacityLayers = [];
         /** @type {ReturnType<typeof createRecordingContext>[]} */
         const offscreens = [];

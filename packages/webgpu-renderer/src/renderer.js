@@ -1,10 +1,8 @@
 import { gpuLabel, RENDERER_GPU_OWNER } from "./utils/gpuLabel.js";
 import { ProgramTemplateCache } from "./marks/programs/internal/programTemplateCache.js";
-import {
-    normalizeGroupBounds,
-    TextureCompositor,
-    TransientTexturePool,
-} from "./renderGroups.js";
+import { TextureCompositor, TransientTexturePool } from "./renderGroups.js";
+
+const TRANSPARENT = { r: 0, g: 0, b: 0, a: 0 };
 
 /**
  * Renderer-level error for unsupported environments or invalid operations.
@@ -207,58 +205,6 @@ function createGlobalUniformStaging(byteLength) {
     };
 }
 
-class DetachedTarget {
-    /**
-     * @param {Renderer} renderer
-     * @param {HTMLCanvasElement} canvas
-     * @param {GPUCanvasContext} context
-     * @param {import("./index.d.ts").GlobalUniforms} globals
-     */
-    constructor(renderer, canvas, context, globals) {
-        this.renderer = renderer;
-        this.canvas = canvas;
-        this.context = context;
-        this.globals = validateGlobals(globals);
-        this.destroyed = false;
-    }
-
-    /** @param {import("./index.d.ts").RenderFrame} [frame] */
-    render(frame = {}) {
-        this.#assertAlive();
-        this.renderer._renderTarget(
-            this.context,
-            this.canvas,
-            this.globals,
-            frame,
-            false
-        );
-    }
-
-    /** Waits until every submission made before this call has completed. */
-    async onSubmittedWorkDone() {
-        this.#assertAlive();
-        await this.renderer.device.queue.onSubmittedWorkDone();
-    }
-
-    destroy() {
-        if (this.destroyed) {
-            return;
-        }
-        this.destroyed = true;
-        this.context.unconfigure();
-        this.renderer._detachedTargets.delete(this);
-    }
-
-    #assertAlive() {
-        this.renderer._assertAlive();
-        if (this.destroyed) {
-            throw new RendererError(
-                "Detached render target has been destroyed."
-            );
-        }
-    }
-}
-
 /**
  * Create a renderer instance and WebGPU device/context for a canvas.
  *
@@ -344,7 +290,7 @@ export class Renderer {
         this._marks = new Map();
         /** @type {Map<number, PlacementSet>} */
         this._placementSets = new Map();
-        /** @type {Set<DetachedTarget>} */
+        /** @type {Set<import("./index.d.ts").DetachedTargetHandle>} */
         this._detachedTargets = new Set();
         this._programTemplateCache = new ProgramTemplateCache(addCount);
         this._transientTextures = new TransientTexturePool(device, format);
@@ -467,7 +413,41 @@ export class Renderer {
             format: this.format,
             alphaMode: this.alphaMode,
         });
-        const target = new DetachedTarget(this, canvas, context, globals);
+        const targetGlobals = validateGlobals(globals);
+        let destroyed = false;
+        const assertAlive = () => {
+            this._assertAlive();
+            if (destroyed) {
+                throw new RendererError(
+                    "Detached render target has been destroyed."
+                );
+            }
+        };
+        /** @type {import("./index.d.ts").DetachedTargetHandle} */
+        const target = {
+            canvas,
+            render: (frame = {}) => {
+                assertAlive();
+                this._renderTarget(
+                    context,
+                    canvas,
+                    targetGlobals,
+                    frame,
+                    false
+                );
+            },
+            onSubmittedWorkDone: async () => {
+                assertAlive();
+                await this.device.queue.onSubmittedWorkDone();
+            },
+            destroy: () => {
+                if (!destroyed) {
+                    destroyed = true;
+                    context.unconfigure();
+                    this._detachedTargets.delete(target);
+                }
+            },
+        };
         this._detachedTargets.add(target);
         return target;
     }
@@ -1213,16 +1193,22 @@ export class Renderer {
                     commandEncoder,
                     target,
                     pending,
-                    1,
                     initialized ? undefined : clearValue
                 );
-            } else {
-                const chunk = this._renderDrawGroup(
+            } else if (!initialized) {
+                this._encodeMultisampleDrawPass(
                     commandEncoder,
                     target,
-                    pending,
-                    sampleCount
+                    pending
                 );
+            } else {
+                const texture = this._transientTextures.acquire(
+                    target.width,
+                    target.height,
+                    1
+                );
+                const chunk = { texture, ...target, view: texture.view };
+                this._encodeMultisampleDrawPass(commandEncoder, chunk, pending);
                 this._encodeCompositePass(
                     commandEncoder,
                     target,
@@ -1258,7 +1244,7 @@ export class Renderer {
         flush();
 
         if (!initialized) {
-            this._encodeDrawPass(commandEncoder, target, [], 1, clearValue);
+            this._encodeDrawPass(commandEncoder, target, [], clearValue);
         }
     }
 
@@ -1275,50 +1261,35 @@ export class Renderer {
             width: parent.width / this._globals.dpr,
             height: parent.height / this._globals.dpr,
         });
-        const bounds = normalizeGroupBounds(clippedBounds, this._globals);
+        const dpr = this._globals.dpr;
+        const bounds = toPhysicalScissor(
+            clippedBounds,
+            dpr,
+            Math.floor(parent.logicalX * dpr) + parent.width,
+            Math.floor(parent.logicalY * dpr) + parent.height
+        );
         if (!bounds.width || !bounds.height) {
             return undefined;
         }
         const texture = this._transientTextures.acquire(
             bounds.width,
             bounds.height,
-            1,
-            GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+            1
         );
         const target = {
             view: texture.view,
             width: bounds.width,
             height: bounds.height,
-            logicalX: bounds.logicalX,
-            logicalY: bounds.logicalY,
+            logicalX: bounds.x / dpr,
+            logicalY: bounds.y / dpr,
         };
-        const onlyDraws = group.items.every((item) => item.type !== "group");
-        if (onlyDraws) {
-            if (group.sampleCount === 1) {
-                this._encodeDrawPass(
-                    commandEncoder,
-                    target,
-                    /** @type {NormalizedDraw[]} */ (group.items),
-                    1,
-                    { r: 0, g: 0, b: 0, a: 0 }
-                );
-            } else {
-                this._encodeMultisampleDrawPass(
-                    commandEncoder,
-                    target,
-                    /** @type {NormalizedDraw[]} */ (group.items),
-                    group.sampleCount
-                );
-            }
-        } else {
-            this._encodeRenderItems(
-                commandEncoder,
-                target,
-                group.items,
-                group.sampleCount,
-                { r: 0, g: 0, b: 0, a: 0 }
-            );
-        }
+        this._encodeRenderItems(
+            commandEncoder,
+            target,
+            group.items,
+            group.sampleCount,
+            TRANSPARENT
+        );
         return { texture, ...target };
     }
 
@@ -1326,37 +1297,12 @@ export class Renderer {
      * @param {GPUCommandEncoder} commandEncoder
      * @param {RenderTarget} target
      * @param {NormalizedDraw[]} draws
-     * @param {4} sampleCount
      */
-    _renderDrawGroup(commandEncoder, target, draws, sampleCount) {
-        const texture = this._transientTextures.acquire(
-            target.width,
-            target.height,
-            1,
-            GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
-        );
-        const result = { texture, ...target, view: texture.view };
-        this._encodeMultisampleDrawPass(
-            commandEncoder,
-            result,
-            draws,
-            sampleCount
-        );
-        return result;
-    }
-
-    /**
-     * @param {GPUCommandEncoder} commandEncoder
-     * @param {RenderTarget} target
-     * @param {NormalizedDraw[]} draws
-     * @param {4} sampleCount
-     */
-    _encodeMultisampleDrawPass(commandEncoder, target, draws, sampleCount) {
+    _encodeMultisampleDrawPass(commandEncoder, target, draws) {
         const multisampled = this._transientTextures.acquire(
             target.width,
             target.height,
-            sampleCount,
-            GPUTextureUsage.RENDER_ATTACHMENT
+            4
         );
         const pass = commandEncoder.beginRenderPass({
             label: gpuLabel(RENDERER_GPU_OWNER, "multisample group pass"),
@@ -1364,13 +1310,13 @@ export class Renderer {
                 {
                     view: multisampled.view,
                     resolveTarget: target.view,
-                    clearValue: { r: 0, g: 0, b: 0, a: 0 },
+                    clearValue: TRANSPARENT,
                     loadOp: "clear",
                     storeOp: "discard",
                 },
             ],
         });
-        this._encodeDraws(pass, draws, false, target, sampleCount);
+        this._encodeDraws(pass, draws, false, target, 4);
         pass.end();
         this._transientTextures.release(multisampled);
     }
@@ -1379,10 +1325,9 @@ export class Renderer {
      * @param {GPUCommandEncoder} commandEncoder
      * @param {RenderTarget} target
      * @param {NormalizedDraw[]} draws
-     * @param {1 | 4} sampleCount
      * @param {GPUColor} [clearValue]
      */
-    _encodeDrawPass(commandEncoder, target, draws, sampleCount, clearValue) {
+    _encodeDrawPass(commandEncoder, target, draws, clearValue) {
         const pass = commandEncoder.beginRenderPass({
             label: gpuLabel(RENDERER_GPU_OWNER, "main render pass"),
             colorAttachments: [
@@ -1394,7 +1339,7 @@ export class Renderer {
                 },
             ],
         });
-        this._encodeDraws(pass, draws, false, target, sampleCount);
+        this._encodeDraws(pass, draws, false, target);
         pass.end();
     }
 

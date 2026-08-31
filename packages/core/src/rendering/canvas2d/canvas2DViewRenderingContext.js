@@ -49,10 +49,11 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
     /** @type {CanvasPhysicalBounds} */
     #targetBounds;
 
-    /** @type {CanvasOpacityLayer[]} */
+    /** @type {CanvasRenderingContext2D[]} */
     #opacityLayers;
 
-    #activeOpacityLayers = 0;
+    /** @type {{context: CanvasRenderingContext2D, bounds: CanvasPhysicalBounds}[]} */
+    #opacityTargetStack = [];
 
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
@@ -65,7 +66,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
      *     paint: boolean,
      *     markPredicate?: (mark: import("../../marks/mark.js").default) => boolean,
      *     xIndexManager?: import("./canvasXIndexManager.js").default,
-     *     opacityLayers?: CanvasOpacityLayer[]
+     *     opacityLayers?: CanvasRenderingContext2D[]
      * }} options
      */
     constructor(globalOptions, options) {
@@ -128,8 +129,6 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         }
 
         const opacity = view.getOpacity();
-        let parentContext;
-        let parentBounds;
         if (this.paint && opacity > 0 && opacity !== 1) {
             const clip = getViewClipDirections(view);
             const bounds = normalizeOffscreenBounds(
@@ -138,14 +137,12 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                 this.#targetBounds,
                 clip
             );
-            const layerIndex = this.#activeOpacityLayers;
             const context = acquireOpacityLayer(
                 this.#opacityLayers,
-                layerIndex,
+                this.#opacityTargetStack.length,
                 bounds.width,
                 bounds.height
             );
-            this.#activeOpacityLayers++;
             context.setTransform(
                 this.devicePixelRatio,
                 0,
@@ -154,18 +151,14 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                 -bounds.x,
                 -bounds.y
             );
-            parentContext = this.context;
-            parentBounds = this.#targetBounds;
+            this.#opacityTargetStack.push({
+                context: this.context,
+                bounds: this.#targetBounds,
+            });
             this.context = context;
             this.#targetBounds = bounds;
         }
-        this.#viewStack.push({
-            view,
-            coords,
-            opacity,
-            parentContext,
-            parentBounds,
-        });
+        this.#viewStack.push({ view, coords, opacity });
     }
 
     /**
@@ -179,12 +172,15 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                 "Unbalanced Canvas2D view rendering context stack."
             );
         }
-        if (entry.parentContext) {
-            this.#activeOpacityLayers--;
+        if (this.paint && entry.opacity > 0 && entry.opacity !== 1) {
+            const parent = this.#opacityTargetStack.pop();
+            if (!parent) {
+                throw new Error("Missing Canvas2D opacity parent target.");
+            }
             const source = this.context.canvas;
             const sourceBounds = this.#targetBounds;
-            this.context = entry.parentContext;
-            this.#targetBounds = entry.parentBounds;
+            this.context = parent.context;
+            this.#targetBounds = parent.bounds;
             this.context.save();
             try {
                 this.context.globalAlpha = entry.opacity;
@@ -326,14 +322,6 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
  * @property {import("../../view/view.js").default} view
  * @property {import("../../view/layout/rectangle.js").default} coords
  * @property {number} opacity
- * @property {CanvasRenderingContext2D | undefined} parentContext
- * @property {CanvasPhysicalBounds | undefined} parentBounds
- */
-
-/**
- * @typedef {object} CanvasOpacityLayer
- * @property {HTMLCanvasElement} canvas
- * @property {CanvasRenderingContext2D} context
  */
 
 /**
@@ -383,48 +371,46 @@ function normalizeOffscreenBounds(coords, devicePixelRatio, parent, clip) {
  * Reuses one canvas per active opacity nesting depth. Oversized or excessively
  * deep layers remain invocation-local and are released to garbage collection.
  *
- * @param {CanvasOpacityLayer[]} layers
+ * @param {CanvasRenderingContext2D[]} layers
  * @param {number} index
  * @param {number} width
  * @param {number} height
  */
 function acquireOpacityLayer(layers, index, width, height) {
     const pixelCount = width * height;
-    let retainedPixelCount = 0;
-    for (const retainedLayer of layers) {
-        retainedPixelCount +=
-            retainedLayer.canvas.width * retainedLayer.canvas.height;
-    }
-    let layer = layers[index];
-    const retainedWithoutLayer =
-        retainedPixelCount -
-        (layer ? layer.canvas.width * layer.canvas.height : 0);
+    let context = layers[index];
+    const retainedWithoutLayer = layers.reduce(
+        (sum, retained, retainedIndex) =>
+            retainedIndex === index
+                ? sum
+                : sum + retained.canvas.width * retained.canvas.height,
+        0
+    );
     const retain =
         index < MAX_RETAINED_OPACITY_LAYERS &&
         retainedWithoutLayer + pixelCount <= MAX_RETAINED_OPACITY_LAYER_PIXELS;
 
-    if (!layer || !retain) {
+    if (!context || !retain) {
         const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
+        context = canvas.getContext("2d");
         if (!context) {
             throw new Error("Unable to create a Canvas2D view group.");
         }
-        layer = { canvas, context };
         if (retain) {
-            layers[index] = layer;
+            layers[index] = context;
         }
     }
 
-    if (layer.canvas.width != width || layer.canvas.height != height) {
-        layer.canvas.width = width;
-        layer.canvas.height = height;
+    if (context.canvas.width != width || context.canvas.height != height) {
+        context.canvas.width = width;
+        context.canvas.height = height;
     } else {
-        layer.context.resetTransform();
-        layer.context.clearRect(0, 0, width, height);
+        context.resetTransform();
+        context.clearRect(0, 0, width, height);
     }
-    layer.context.globalAlpha = 1;
-    layer.context.globalCompositeOperation = "source-over";
-    return layer.context;
+    context.globalAlpha = 1;
+    context.globalCompositeOperation = "source-over";
+    return context;
 }
 
 /** @param {number} value @param {number} min @param {number} max */
