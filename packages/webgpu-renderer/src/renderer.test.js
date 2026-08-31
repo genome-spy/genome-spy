@@ -570,6 +570,42 @@ describe("Renderer mark definitions", () => {
         );
     });
 
+    test("clips nested groups to their parent before compositing", () => {
+        const program = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, pass, transientAcquires } = createRendererHarness();
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            items: [
+                {
+                    bounds: { x: 20, y: 10, width: 40, height: 20 },
+                    opacity: 0.5,
+                    items: [
+                        {
+                            bounds: { x: 10, y: 5, width: 30, height: 20 },
+                            opacity: 0.5,
+                            items: [{ mark }],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        expect(transientAcquires).toEqual([
+            expect.objectContaining({ width: 80, height: 40 }),
+            expect.objectContaining({ width: 40, height: 30 }),
+        ]);
+        expect(pass.setScissorRect.mock.calls).toEqual([
+            [0, 0, 40, 30],
+            [0, 0, 40, 30],
+            [40, 20, 80, 40],
+        ]);
+    });
+
     test("keeps ordinary frames on the direct single-sample path", () => {
         const program = createProgram();
         const definition = Object.freeze({

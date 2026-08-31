@@ -1200,7 +1200,7 @@ export class Renderer {
         for (const item of items) {
             if (item.type === "group") {
                 flush();
-                const group = this._renderGroup(commandEncoder, item);
+                const group = this._renderGroup(commandEncoder, target, item);
                 if (group) {
                     this._encodeCompositePass(
                         commandEncoder,
@@ -1225,11 +1225,18 @@ export class Renderer {
 
     /**
      * @param {GPUCommandEncoder} commandEncoder
+     * @param {RenderTarget} parent
      * @param {NormalizedRenderGroup} group
      * @returns {RenderedGroup | undefined}
      */
-    _renderGroup(commandEncoder, group) {
-        const bounds = normalizeGroupBounds(group.bounds, this._globals);
+    _renderGroup(commandEncoder, parent, group) {
+        const clippedBounds = intersectRects(group.bounds, {
+            x: parent.logicalX,
+            y: parent.logicalY,
+            width: parent.width / this._globals.dpr,
+            height: parent.height / this._globals.dpr,
+        });
+        const bounds = normalizeGroupBounds(clippedBounds, this._globals);
         if (!bounds.width || !bounds.height) {
             return undefined;
         }
