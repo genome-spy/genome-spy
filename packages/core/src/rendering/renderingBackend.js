@@ -16,7 +16,6 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  * @property {() => void} renderAll
  * @property {() => void} [renderPickingFramebuffer]
  * @property {() => HTMLCanvasElement | undefined} [createPickingBufferVisualization]
- * @property {() => import("../types/embedApi.js").WebGpuFramePlanSummary | undefined} [getWebGpuFramePlanSummary]
  */
 
 /**

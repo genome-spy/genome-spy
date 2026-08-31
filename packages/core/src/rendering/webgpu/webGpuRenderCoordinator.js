@@ -94,10 +94,6 @@ export default class WebGpuRenderCoordinator {
         profiler?.endFrame();
     }
 
-    getWebGpuFramePlanSummary() {
-        return this.surface.getFramePlanSummary();
-    }
-
     /** @returns {import("../../view/layout/layoutResult.js").default | undefined} */
     #createLayoutResult() {
         const size = this.surface.getLogicalCanvasSize();

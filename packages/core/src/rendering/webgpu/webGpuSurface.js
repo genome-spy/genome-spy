@@ -49,14 +49,8 @@ export default class WebGpuSurface {
     /** @type {import("@genome-spy/webgpu-renderer").DrawCommand[]} */
     #pickingDraws = [];
 
-    /** @type {WebGpuFramePlanSummary} */
-    #framePlanSummary = { groups: [], directMarks: [] };
-
     /** @type {{mark: import("../../marks/mark.js").default, parent: import("@genome-spy/webgpu-renderer").RenderItem[], group: {bounds: import("@genome-spy/webgpu-renderer").DrawRect, sampleCount: 4, items: import("@genome-spy/webgpu-renderer").DrawCommand[]}} | undefined} */
     #activeMsaaGroup;
-
-    /** @type {Set<string>} */
-    #directSummaryKeys = new Set();
 
     /** @type {{logicalWidth: number, logicalHeight: number, physicalWidth: number, physicalHeight: number} | undefined} */
     #appliedSize;
@@ -218,16 +212,12 @@ export default class WebGpuSurface {
             frameItems: this.#frameItems,
             frameItemStack: this.#frameItemStack,
             pickingDraws: this.#pickingDraws,
-            framePlanSummary: this.#framePlanSummary,
             activeMsaaGroup: this.#activeMsaaGroup,
-            directSummaryKeys: this.#directSummaryKeys,
         };
         this.#frameItems = [];
         this.#frameItemStack = [this.#frameItems];
         this.#pickingDraws = [];
-        this.#framePlanSummary = { groups: [], directMarks: [] };
         this.#activeMsaaGroup = undefined;
-        this.#directSummaryKeys = new Set();
         this.#targetSize = {
             width: target.logicalWidth,
             height: target.logicalHeight,
@@ -256,9 +246,7 @@ export default class WebGpuSurface {
             this.#frameItems = liveState.frameItems;
             this.#frameItemStack = liveState.frameItemStack;
             this.#pickingDraws = liveState.pickingDraws;
-            this.#framePlanSummary = liveState.framePlanSummary;
             this.#activeMsaaGroup = liveState.activeMsaaGroup;
-            this.#directSummaryKeys = liveState.directSummaryKeys;
         }
     }
 
@@ -269,9 +257,7 @@ export default class WebGpuSurface {
         this.#frameItems.length = 0;
         this.#frameItemStack = [this.#frameItems];
         this.#pickingDraws.length = 0;
-        this.#framePlanSummary = { groups: [], directMarks: [] };
         this.#activeMsaaGroup = undefined;
-        this.#directSummaryKeys.clear();
     }
 
     /** Starts collecting the next on-demand pick frame. */
@@ -300,13 +286,6 @@ export default class WebGpuSurface {
         this.#currentFrameItems().push({ bounds, opacity, items });
         this.#frameItemStack.push(items);
         this.#activeMsaaGroup = undefined;
-        this.#framePlanSummary.groups.push({
-            kind: "view-opacity",
-            sampleCount: 1,
-            opacity,
-            bounds,
-            viewPath: view.getPathString(),
-        });
     }
 
     /** Closes the current opacity-isolated Core view group. */
@@ -515,28 +494,10 @@ export default class WebGpuSurface {
                 };
                 parent.push(group);
                 this.#activeMsaaGroup = { mark, parent, group };
-                this.#framePlanSummary.groups.push({
-                    kind: "mark-msaa",
-                    sampleCount: 4,
-                    opacity: 1,
-                    bounds,
-                    viewPath: mark.unitView.getPathString(),
-                    markType: mark.getType(),
-                });
             }
         } else {
             this.#currentFrameItems().push(draw);
             this.#activeMsaaGroup = undefined;
-            const viewPath = mark.unitView.getPathString();
-            const markType = mark.getType();
-            const key = `${viewPath}\u0000${markType}`;
-            if (!this.#directSummaryKeys.has(key)) {
-                this.#directSummaryKeys.add(key);
-                this.#framePlanSummary.directMarks.push({
-                    viewPath,
-                    markType,
-                });
-            }
         }
     }
 
@@ -554,16 +515,6 @@ export default class WebGpuSurface {
             items: this.#frameItems,
             ...(clearColor ? { clearColor } : {}),
         });
-        if (import.meta.env.DEV) {
-            this.canvas.dataset.webgpuFramePlan = JSON.stringify(
-                this.#framePlanSummary
-            );
-        }
-    }
-
-    /** @returns {WebGpuFramePlanSummary} */
-    getFramePlanSummary() {
-        return this.#framePlanSummary;
     }
 
     renderPicking() {
@@ -649,22 +600,6 @@ function unionBounds(target, source) {
     target.width = x2 - target.x;
     target.height = y2 - target.y;
 }
-
-/**
- * @typedef {object} WebGpuFramePlanGroupSummary
- * @property {"view-opacity" | "mark-msaa"} kind
- * @property {1 | 4} sampleCount
- * @property {number} opacity
- * @property {import("@genome-spy/webgpu-renderer").DrawRect} bounds
- * @property {string} viewPath
- * @property {string} [markType]
- */
-
-/**
- * @typedef {object} WebGpuFramePlanSummary
- * @property {WebGpuFramePlanGroupSummary[]} groups
- * @property {{viewPath: string, markType: string}[]} directMarks
- */
 
 /**
  * @typedef {object} WebGpuExportTarget

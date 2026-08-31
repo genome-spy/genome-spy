@@ -159,7 +159,6 @@ describe("WebGpuSurface", () => {
             createConfig(0),
             { viewport: { x: 0, y: 0, width: 100, height: 50 } }
         );
-        const liveSummary = surface.getFramePlanSummary();
         const target = surface.createExportTarget(80, 40, 3);
         /** @type {{width: number, height: number, dpr: number}[]} */
         const observedSizes = [];
@@ -195,7 +194,6 @@ describe("WebGpuSurface", () => {
             height: 50,
         });
         expect(surface.getDevicePixelRatio()).toBe(2);
-        expect(surface.getFramePlanSummary()).toBe(liveSummary);
         surface.render();
         expect(mocks.renderer.render).toHaveBeenCalledWith({
             items: [
@@ -244,19 +242,6 @@ describe("WebGpuSurface", () => {
                     ],
                 },
             ],
-        });
-        expect(surface.getFramePlanSummary()).toEqual({
-            groups: [
-                {
-                    kind: "mark-msaa",
-                    sampleCount: 4,
-                    opacity: 1,
-                    bounds: groupBounds,
-                    viewPath: "root/test-view",
-                    markType: "rect",
-                },
-            ],
-            directMarks: [],
         });
     });
 
@@ -315,10 +300,6 @@ describe("WebGpuSurface", () => {
         surface.render();
 
         expect(mocks.renderer.render).toHaveBeenCalledWith({ items: [] });
-        expect(surface.getFramePlanSummary()).toEqual({
-            groups: [],
-            directMarks: [],
-        });
     });
 
     test("forwards unexpected device loss until the surface is finalized", async () => {

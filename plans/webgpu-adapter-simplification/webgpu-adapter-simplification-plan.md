@@ -180,15 +180,15 @@ public forwarding remain.
 
 ### Work
 
-- [ ] Delete `#framePlanSummary`, `#directSummaryKeys`, summary typedefs, and
+- [x] Delete `#framePlanSummary`, `#directSummaryKeys`, summary typedefs, and
       all summary writes from `WebGpuSurface`.
-- [ ] Delete `getFramePlanSummary()` and the development canvas dataset write.
-- [ ] Remove `getWebGpuFramePlanSummary()` forwarding from
+- [x] Delete `getFramePlanSummary()` and the development canvas dataset write.
+- [x] Remove `getWebGpuFramePlanSummary()` forwarding from
       `WebGpuRenderCoordinator`, `GenomeSpyBase`, `embedFactory`, App debug
       wiring, rendering-backend types, and embed API types.
-- [ ] Replace summary-based tests with assertions against ordered renderer
+- [x] Replace summary-based tests with assertions against ordered renderer
       items, group bounds, sample counts, and draw order.
-- [ ] Remove the diagnostic descriptions from the Core WebGPU README and
+- [x] Remove the diagnostic descriptions from the Core WebGPU README and
       rendering architecture document.
 
 ### Affected areas and downstream consumers

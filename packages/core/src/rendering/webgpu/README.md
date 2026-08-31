@@ -64,11 +64,8 @@ hatches stay on the direct single-sample path. A placement-indexed retained mark
 keeps its clipped occurrence ranges as draws inside one group and therefore
 resolves once, regardless of its number of sample facets.
 
-`EmbedResult.debug.getWebGpuFramePlanSummary()` exposes serializable group
-bounds, sample counts, opacities, mark types, and view paths for development
-checks without exposing renderer resources. Development canvases mirror the
-same JSON in `data-webgpu-frame-plan` for browser smoke tests. WebGL continues
-to consume effective per-mark opacity and receives no render-group behavior.
+WebGL continues to consume effective per-mark opacity and receives no
+render-group behavior.
 
 ## Raster export
 
