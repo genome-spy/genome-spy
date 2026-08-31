@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import Collector from "../collector.js";
 import FlowNode from "../flowNode.js";
 import TransitionTransform from "./transition.js";
@@ -67,6 +67,10 @@ function update(transform, data) {
 }
 
 describe("transition", () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
     test("snaps the initial batch and interpolates replacement rows by key", () => {
         const { animator, transform, collector } = setup();
         update(transform, [{ id: "a", x: 0, y: 10 }]);
@@ -104,6 +108,7 @@ describe("transition", () => {
     });
 
     test("waits for a quiet target and equal updates do not restart the delay", () => {
+        setTimelineTime(0);
         const { animator, transform, collector } = setup({
             fields: ["x"],
             halfLife: 100,
@@ -126,6 +131,7 @@ describe("transition", () => {
     });
 
     test("restarts the quiet period for a new target and promotes the latest", () => {
+        setTimelineTime(0);
         const { animator, transform, collector } = setup({
             fields: ["x"],
             halfLife: 100,
@@ -136,18 +142,35 @@ describe("transition", () => {
         animator.frame(0);
         animator.frame(60);
 
+        setTimelineTime(60);
         update(transform, [{ id: "a", x: 16 }]);
         animator.frame(100);
-        animator.frame(160);
+        animator.frame(159);
         expect(Array.from(collector.getData())[0].x).toBe(0);
 
-        animator.frame(200);
+        animator.frame(160);
         const x = Array.from(collector.getData())[0].x;
         expect(x).toBeGreaterThan(0);
         expect(x).toBeLessThan(16);
 
         animator.frame(1400);
         expect(Array.from(collector.getData())[0].x).toBe(16);
+    });
+
+    test("measures target delay from the target update", () => {
+        setTimelineTime(5);
+        const { animator, transform, collector } = setup({
+            fields: ["x"],
+            targetDelay: 20,
+        });
+        update(transform, [{ id: "a", x: 0 }]);
+        update(transform, [{ id: "a", x: 8 }]);
+
+        animator.frame(16);
+        expect(Array.from(collector.getData())[0].x).toBe(0);
+
+        animator.frame(32);
+        expect(Array.from(collector.getData())[0].x).toBeGreaterThan(0);
     });
 
     test("snaps new keys and forgets removed keys", () => {
@@ -332,4 +355,9 @@ function propagateFacets(transform, x) {
     transform.beginBatch({ type: "facet", facetId: ["b"] });
     transform.handle({ id: 2, x, y: 0 });
     transform.complete();
+}
+
+/** @param {number} currentTime */
+function setTimelineTime(currentTime) {
+    vi.stubGlobal("document", { timeline: { currentTime } });
 }

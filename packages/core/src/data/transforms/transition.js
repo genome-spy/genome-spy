@@ -1,5 +1,6 @@
 import { BEHAVIOR_COLLECTS, BEHAVIOR_MODIFIES } from "../flowNode.js";
 import { field } from "../../utils/field.js";
+import { getCurrentTimelineTime } from "../../utils/animator.js";
 import Transform from "./transform.js";
 
 const DEFAULT_HALF_LIFE = 80;
@@ -24,7 +25,8 @@ export default class TransitionTransform extends Transform {
     /** @type {number | undefined} */
     #lastTimestamp;
 
-    #targetDelayRemaining = 0;
+    /** @type {number | undefined} */
+    #targetChangedAt;
 
     get behavior() {
         return BEHAVIOR_COLLECTS | BEHAVIOR_MODIFIES;
@@ -124,15 +126,14 @@ export default class TransitionTransform extends Transform {
 
         this.#states = nextStates;
         if (snap || this.targetDelay == 0) {
-            this.#targetDelayRemaining = 0;
+            this.#targetChangedAt = undefined;
         } else if (pendingChanged) {
-            this.#targetDelayRemaining = this.targetDelay;
-            this.#lastTimestamp = undefined;
+            this.#targetChangedAt = getCurrentTimelineTime();
         }
 
         const hasPendingTargets = this.#hasPendingTargets();
         if (!hasPendingTargets) {
-            this.#targetDelayRemaining = 0;
+            this.#targetChangedAt = undefined;
         }
 
         for (const datum of this.#data) {
@@ -158,7 +159,7 @@ export default class TransitionTransform extends Transform {
         this.animator.cancelTransition(this.#animate);
         this.#animationRequested = false;
         this.#lastTimestamp = undefined;
-        this.#targetDelayRemaining = 0;
+        this.#targetChangedAt = undefined;
     }
 
     /** @param {number} timestamp */
@@ -173,14 +174,14 @@ export default class TransitionTransform extends Transform {
                 ? 0
                 : timestamp - this.#lastTimestamp;
         this.#lastTimestamp = timestamp;
-        this.#targetDelayRemaining = Math.max(
-            0,
-            this.#targetDelayRemaining - elapsed
-        );
-        if (this.#targetDelayRemaining == 0) {
+        if (
+            this.#targetChangedAt !== undefined &&
+            timestamp - this.#targetChangedAt >= this.targetDelay
+        ) {
             for (const state of this.#states.values()) {
                 state.target = state.pending;
             }
+            this.#targetChangedAt = undefined;
         }
 
         const remainder = Math.pow(2, -elapsed / this.halfLife);
