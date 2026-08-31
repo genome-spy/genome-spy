@@ -540,6 +540,49 @@ describe("Renderer mark definitions", () => {
         expect(renderer._pickingFrame).toBe(renderer._renderFrame);
     });
 
+    test("flattens opaque nested MSAA groups into one accumulation pass", () => {
+        const program = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, renderPassDescriptors, transientAcquires } =
+            createRendererHarness();
+        const first = renderer.createMark(definition, { channels: {} });
+        const second = renderer.createMark(definition, { channels: {} });
+        const bounds = { x: 0, y: 0, width: 100, height: 50 };
+
+        renderer.render({
+            items: [
+                {
+                    bounds,
+                    sampleCount: 4,
+                    items: [
+                        {
+                            bounds,
+                            opacity: 1,
+                            sampleCount: 4,
+                            items: [{ mark: first }],
+                        },
+                        {
+                            bounds,
+                            opacity: 1,
+                            sampleCount: 4,
+                            items: [{ mark: second }],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        expect(transientAcquires).toEqual([
+            expect.objectContaining({ sampleCount: 1 }),
+            expect.objectContaining({ sampleCount: 4 }),
+        ]);
+        expect(renderPassDescriptors).toHaveLength(2);
+        expect(program.draw).toHaveBeenCalledTimes(2);
+    });
+
     test("preserves draw order across nested opacity groups", () => {
         const firstProgram = createProgram();
         const nestedProgram = createProgram();

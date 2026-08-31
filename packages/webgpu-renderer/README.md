@@ -244,11 +244,12 @@ renderer.render({
 Groups isolate their children into a transparent, bounded transient target.
 The renderer resolves four-sample groups and composites the result into the
 parent using premultiplied-alpha blending. Nested groups preserve item order.
-Only sample counts `1` and `4` are accepted. A group with opacity `1` and one
-sample is flattened, so ordinary frames and groups that need no isolation keep
-the direct single-sample path. Multisample mark pipelines are created lazily,
-and exact-size transient attachments are pooled within a bounded free-cache
-budget.
+Only sample counts `1` and `4` are accepted. An opaque group whose sample count
+matches its parent is flattened during normalization. This keeps ordinary
+single-sampled frames direct and lets adjacent opaque four-sample opacity scopes
+share one accumulation. Fractional opacity retains isolation. Multisample mark
+pipelines are created lazily, and exact-size transient attachments are pooled
+within a bounded free-cache budget.
 
 Picking remains a separate flat, single-sampled frame. Visual render groups do
 not change pick ordering, IDs, or attachment ownership.

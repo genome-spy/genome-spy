@@ -893,6 +893,7 @@ export class Renderer {
             frame.items ?? frame.draws ?? this._marks.keys()
         );
         addCount("renderDraws", draws.length);
+        addCount("renderGroups", groupCount);
         this._writeDrawGlobals(draws);
         this._textureCompositor.prepare(draws.length + groupCount + 1);
         const commandEncoder = this.device.createCommandEncoder({
@@ -1124,9 +1125,10 @@ export class Renderer {
 
         /**
          * @param {Iterable<import("./index.d.ts").RenderItem | MarkId>} source
+         * @param {1 | 4} targetSampleCount
          * @returns {NormalizedRenderItem[]}
          */
-        const visit = (source) => {
+        const visit = (source, targetSampleCount) => {
             /** @type {NormalizedRenderItem[]} */
             const normalized = [];
             for (const item of source) {
@@ -1151,11 +1153,11 @@ export class Renderer {
                     if (opacity === 0) {
                         continue;
                     }
-                    const children = visit(item.items);
+                    const children = visit(item.items, sampleCount);
                     if (!children.length) {
                         continue;
                     }
-                    if (opacity === 1 && sampleCount === 1) {
+                    if (opacity === 1 && sampleCount === targetSampleCount) {
                         normalized.push(...children);
                     } else {
                         groupCount++;
@@ -1182,7 +1184,7 @@ export class Renderer {
             return normalized;
         };
 
-        const normalizedItems = visit(items);
+        const normalizedItems = visit(items, 1);
         addCount("normalizedDraws", draws.length);
         finishPhase("drawNormalization", phaseStart);
         return { items: normalizedItems, draws, groupCount };

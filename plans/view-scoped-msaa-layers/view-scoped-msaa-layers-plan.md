@@ -57,7 +57,7 @@ code in the frame/compositing paths rather than add another planner hierarchy.
   occurrences, facet instances, or sample placements.
 - Render all compatible descendants of a maximal container in one ordered
   multisampled pass and resolve it once.
-- Represent mixed containers with ordinary compositing and nested leaf MSAA
+- Represent mixed-geometry containers with ordinary compositing and nested MSAA
   groups so only eligible marks use four-sample coverage.
 - Preserve local opacity, clipping, painter's order, picking, and placement
   semantics without speculative draw commutation outside an explicit repeated
@@ -69,8 +69,8 @@ code in the frame/compositing paths rather than add another planner hierarchy.
 - Preserve WebGPU full raster and hybrid SVG export from issue #483.
 - Keep Canvas2D group opacity correct while eliminating per-frame offscreen
   canvas allocation after warm-up.
-- Delete occurrence-level grouping code and renderer branches made unnecessary
-  by an explicit leaf-group contract.
+- Delete occurrence-level grouping code and keep renderer branching limited to
+  the paths required by live opacity.
 
 ## Non-goals
 
@@ -100,21 +100,20 @@ selected drawable descendants:
 
 - empty;
 - direct or mixed; or
-- a four-sample leaf whose drawable descendants all require coverage
-  antialiasing and which contains no nested compositing boundary that must
-  remain independent.
+- a four-sample coverage group whose drawable descendants all require coverage
+  antialiasing.
 
-Only the outermost compatible scope becomes the MSAA leaf. Compatible child
-scopes collapse into it. Promotion stops at a direct descendant or a declared
-local-opacity boundary. This classification is structural: it does not depend
-on the boundary's current opacity value.
+Only the outermost coverage-compatible scope becomes the MSAA accumulation
+group. Compatible child scopes collapse into it, except that declared local
+opacity remains as a nested group so the renderer can evaluate it every frame.
+Promotion stops at a direct single-sampled descendant. This classification is
+structural: it does not depend on the boundary's current opacity value.
 
-A scope is compatible with a four-sample leaf exactly when every selected,
-non-empty drawable descendant requires coverage antialiasing and no descendant
-introduces local opacity. Child viewports and scissors remain properties of
-their original draw commands and do not block promotion. Empty scopes disappear
-after the export predicate and do not block promotion. A direct single-sampled
-draw or any local-opacity boundary makes the scope mixed and stops promotion.
+A scope is coverage-compatible exactly when every selected, non-empty drawable
+descendant requires coverage antialiasing. Child viewports, scissors, and local
+opacity do not change that classification. Empty scopes disappear after the
+export predicate and do not block promotion. A direct single-sampled draw makes
+the scope mixed and stops promotion.
 
 Examples:
 
@@ -143,16 +142,19 @@ mark. Within that explicit scope, repeated occurrences of the same semantic
 container contribute to one layer in first-container paint order. Outside it,
 the compiler never regroups sibling scope occurrences or changes paint order.
 
-### Four-sample groups are renderer leaves
+### Four-sample groups are maximal coverage accumulations
 
-Tighten the low-level `RenderGroup` contract: a group with `sampleCount: 4`
-contains ordered draw commands only. A mixed or nested group is single-sampled
-and may contain direct draws plus nested four-sample leaves.
+A `sampleCount: 4` group may contain ordered draws and nested local-opacity
+groups whose descendants use the same sample count. The outer group defines a
+maximal coverage-compatible accumulation. A mixed-geometry group is
+single-sampled and may contain direct draws plus nested four-sample groups.
 
-This matches WebGPU's attachment and pipeline compatibility rule: pipelines in
-one render pass must use the attachment's sample count. It also lets the
-renderer delete the path that recursively treats an arbitrary mixed group as a
-four-sample accumulation target.
+This matches WebGPU's attachment and pipeline compatibility rule while keeping
+dynamic opacity in the renderer. When a nested four-sample opacity group is
+currently opaque, normalization flattens it into the surrounding four-sample
+accumulation. When it is fractional, the existing recursive path isolates that
+subgroup and composites it into the outer target. The extra passes therefore
+exist only on frames that semantically require group opacity.
 
 The renderer remains generic. It receives a small ordered render-group tree and
 does not know about GenomeSpy views, facets, samples, or mark types.
@@ -194,9 +196,10 @@ The WebGPU renderer owns the runtime optimization:
   draws or acquiring, resolving, or compositing a transient target;
 - opacity one with `sampleCount: 1`: flatten the group into its parent while
   preserving item order;
-- opacity one with `sampleCount: 4`: render and resolve the MSAA leaf, then
-  composite it because a WebGPU resolve overwrites its resolve target and does
-  not in general source-over blend into existing parent content; and
+- opacity one with `sampleCount: 4`: flatten into an enclosing four-sample
+  accumulation when one exists; otherwise render, resolve, and composite the
+  top-level MSAA group because a WebGPU resolve does not source-over blend into
+  existing parent content; and
 - fractional opacity: isolate the group and composite it once with the current
   opacity.
 
@@ -305,7 +308,8 @@ explicitly.
 
 ### Intended outcome
 
-Core submits one four-sample leaf for each maximal compatible view container.
+Core submits one four-sample accumulation for each maximal coverage-compatible
+view container.
 MSAA group count no longer scales with sample placements, and paint order,
 clipping, opacity, and picking remain correct.
 
@@ -320,14 +324,14 @@ clipping, opacity, and picking remain correct.
 - [ ] Record and honor `beginSampleFacetBatch`/`endSampleFacetBatch`: aggregate
       repeated occurrences by logical container only inside that explicit
       batching scope; preserve strict command order everywhere else.
-- [ ] Mark only outermost compatible scopes as four-sample leaves. Stop
-      promotion at direct content or a declared local-opacity boundary,
-      regardless of its current value.
+- [ ] Mark only outermost coverage-compatible scopes as four-sample
+      accumulations. Stop promotion at direct content, but retain declared
+      local-opacity scopes as nested groups regardless of their current value.
 - [ ] During visible rendering, push one group at an annotated scope, append
       every descendant draw in original order, and resolve at the matching pop.
 - [ ] Always submit declared opacity scopes with their current numeric value;
       do not prune, flatten, or reclassify them in Core. Keep mixed opacity
-      scopes single-sampled and allow nested four-sample leaves such as
+      scopes single-sampled and allow nested four-sample groups such as
       `transcripts/exons`.
 - [ ] Add `View.hasLocalOpacity()` and use it, without evaluating live opacity,
       as the sole structural opacity-boundary test.
@@ -376,34 +380,32 @@ are formed from compatible draw runs. There is no public grammar migration.
 
 Tentative commit: `refactor(core): compile MSAA from view layers`
 
-## Milestone 2: Reduce the renderer to explicit leaf groups
+## Milestone 2: Coalesce opaque MSAA opacity groups at render time
 
 ### Intended outcome
 
-The low-level renderer executes the layer structure Core submits without a
-second mixed-sample grouping path. Four-sample groups render in one pass and
-resolve once; mixed containers recurse only through single-sampled groups.
+The low-level renderer evaluates live opacity without changing Core's retained
+structure. Matching opaque four-sample children flatten into their surrounding
+four-sample accumulation and resolve once. Fractional children retain the
+existing isolation path.
 
 ### Work
 
-- [ ] Document and validate during `_normalizeRenderItems()` that
-      `sampleCount: 4` groups contain draw commands only; reject a nested group
-      with `Four-sample render groups must contain draws only.` before any
-      transient texture is acquired.
-- [ ] Simplify `_encodeRenderItems()` so ungrouped pending draws are always
-      single-sampled.
-- [ ] Remove `_renderDrawGroup()` and recursive four-sample accumulation paths
-      made unreachable by the leaf contract.
-- [ ] Keep one `_encodeMultisampleDrawPass()` path for explicit four-sample
-      leaves and one composite path for resolved groups.
+- [ ] Pass the enclosing target sample count through `_normalizeRenderItems()`
+      and flatten an opaque group only when its sample count matches that
+      target.
+- [ ] Retain `_renderDrawGroup()` only for mixed four-sample accumulations with
+      fractional nested opacity; opaque steady-state groups bypass it.
+- [ ] Keep one `_encodeMultisampleDrawPass()` path and one composite path for
+      resolved groups.
 - [ ] Make runtime opacity handling explicit in renderer normalization: prune
       zero before visiting children, flatten one-opacity single-sample groups,
       and composite fractional groups exactly once. Keep the resolve/composite
       path for one-opacity MSAA leaves unless parent replacement is proven.
 - [ ] Preserve empty-group pruning, target intersection, scissor normalization,
       transient pooling, eviction, and deferred destruction.
-- [ ] Replace tests for renderer-inferred chunks with tests for direct,
-      single-sampled nested, and four-sample leaf groups.
+- [ ] Cover direct, single-sampled nested, opaque nested four-sample, and
+      fractional nested four-sample groups.
 - [ ] Measure production LOC before and after; the renderer implementation
       portion of this milestone must be net-negative.
 
@@ -420,12 +422,13 @@ contract can be tightened directly without a compatibility shim.
 ### Verification
 
 - Renderer tests assert one multisample pass and one resolve/composite for a
-  multi-mark leaf.
+  multi-mark coverage group whose opaque nested boundaries were flattened.
 - Reusing the same structural frame with opacity values zero, fractional, and
   one respectively produces no child normalization/GPU work, one isolated
   composite, and a flattened single-sample group. A one-opacity MSAA leaf still
   resolves and composites once.
-- Validation rejects or fails loudly on a nested four-sample group.
+- A fractional nested four-sample group retains its independent opacity while
+  opaque siblings coalesce.
 - A GPU pixel test asserts the intended source-over result when a translucent
   LOH-like rectangle overlaps a CNV-like rectangle in the same multisample
   attachment before resolve.
@@ -614,6 +617,7 @@ material fixes.
 - WebGPU full raster and hybrid SVG export preserve dimensions, transparency,
   crop placement, selected marks, and document order.
 - WebGL code and behavior are unchanged.
-- Obsolete occurrence-grouping and mixed-sample renderer paths are deleted.
+- Obsolete occurrence-run grouping is deleted; the mixed-sample renderer path
+  remains only for fractional nested opacity.
 - Final production code in the touched frame/compositing paths is smaller than
   at the start of this cleanup.
