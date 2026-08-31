@@ -682,6 +682,35 @@ describe("Renderer mark definitions", () => {
         ).toEqual([]);
     });
 
+    test("normalizes grouped leaves directly with compact uniform indices", () => {
+        const { renderer } = createRendererHarness();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram,
+        });
+        const skipped = renderer.createMark(definition, { channels: {} });
+        const visible = renderer.createMark(definition, { channels: {} });
+        const normalizeDraws = vi.spyOn(renderer, "_normalizeDraws");
+
+        const frame = renderer._normalizeRenderItems([
+            {
+                bounds: { x: 0, y: 0, width: 100, height: 50 },
+                opacity: 0.5,
+                items: [
+                    {
+                        mark: skipped,
+                        scissor: { x: 0, y: 0, width: 0, height: 50 },
+                    },
+                    { mark: visible },
+                ],
+            },
+        ]);
+
+        expect(normalizeDraws).not.toHaveBeenCalled();
+        expect(frame.draws).toHaveLength(1);
+        expect(frame.draws[0].uniformIndex).toBe(0);
+    });
+
     test("destroys owned resources exactly once and rejects later work", () => {
         const firstProgram = createProgram();
         const secondProgram = createProgram();

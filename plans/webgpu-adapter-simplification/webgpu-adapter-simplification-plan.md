@@ -282,15 +282,15 @@ single-element arrays or per-leaf profiler phases.
 
 ### Work
 
-- [ ] Extract a single-draw normalizer that receives the shared logical canvas
+- [x] Extract a single-draw normalizer that receives the shared logical canvas
       rectangle and target uniform index.
-- [ ] Make `_normalizeDraws()` a thin flat-loop caller for explicit picking
+- [x] Make `_normalizeDraws()` a thin flat-loop caller for explicit picking
       frames and public flat draw lists.
-- [ ] Make `_normalizeRenderItems()` traverse groups and normalize leaf draws
+- [x] Make `_normalizeRenderItems()` traverse groups and normalize leaf draws
       directly with the same context.
-- [ ] Preserve early zero-opacity subtree removal, transparent one-sample group
+- [x] Preserve early zero-opacity subtree removal, transparent one-sample group
       flattening, validation errors, and draw/group counters.
-- [ ] Delete duplicated array filtering and canvas/profiler setup made obsolete
+- [x] Delete duplicated array filtering and canvas/profiler setup made obsolete
       by the helper.
 
 ### Affected areas and downstream consumers

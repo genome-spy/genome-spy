@@ -955,134 +955,151 @@ export class Renderer {
             width: this._globals.width,
             height: this._globals.height,
         };
-        const normalized = Array.from(draws, (draw, uniformIndex) => {
-            const command =
-                typeof draw == "number" ? { mark: { markId: draw } } : draw;
-            const markId = command.mark.markId;
-            const mark = this._marks.get(markId);
-            if (!mark) {
-                throw new RendererError(`No such mark: ${markId}`);
-            }
-
-            const viewport = { ...(command.viewport ?? canvas) };
-            assertRect("viewport", viewport);
-            if (
-                viewport.x < 0 ||
-                viewport.y < 0 ||
-                viewport.x + viewport.width > canvas.width ||
-                viewport.y + viewport.height > canvas.height
-            ) {
-                throw new RendererError(
-                    "Viewport must be contained within the logical canvas."
-                );
-            }
-
-            let scissor = intersectRects(command.scissor ?? canvas, canvas);
-            const firstInstance = command.firstInstance ?? 0;
-            assertNonNegativeInteger("firstInstance", firstInstance);
-            const instanceCount =
-                command.instanceCount ?? mark.drawCount - firstInstance;
-            assertNonNegativeInteger("instanceCount", instanceCount);
-            if (firstInstance + instanceCount > mark.drawCount) {
-                throw new RendererError(
-                    `Instance range exceeds mark count: ${mark.drawCount}.`
-                );
-            }
-            const resolvedRange = mark.resolveDrawRange(
-                firstInstance,
-                instanceCount
+        /** @type {NormalizedDraw[]} */
+        const normalized = [];
+        for (const draw of draws) {
+            const normalizedDraw = this._normalizeDraw(
+                draw,
+                canvas,
+                normalized.length
             );
-
-            const placementConfig = mark._placementIndex;
-            let placement;
-            if (placementConfig) {
-                if (!command.placement) {
-                    throw new RendererError(
-                        "Placement-enabled marks require a placement binding."
-                    );
-                }
-                const set = this._placementSets.get(
-                    command.placement.set.placementSetId
-                );
-                if (!set) {
-                    throw new RendererError(
-                        `No such placement set: ${command.placement.set.placementSetId}`
-                    );
-                }
-                const index = command.placement.index;
-                if (
-                    "source" in placementConfig &&
-                    placementConfig.source === "draw"
-                ) {
-                    if (!Number.isInteger(index) || index < 0) {
-                        throw new RendererError(
-                            "Draw placement marks require a non-negative index."
-                        );
-                    }
-                    if (index >= set.count) {
-                        throw new RendererError(
-                            `Placement index ${index} exceeds set count ${set.count}.`
-                        );
-                    }
-                } else if (index !== undefined) {
-                    throw new RendererError(
-                        "Per-instance placement marks forbid a draw-level index."
-                    );
-                }
-                placement = {
-                    bindGroup: set.bindGroup,
-                    count: set.count,
-                    index,
-                    clipToPlacement: command.placement.clipToPlacement,
-                    clipMode: placementClipMode(
-                        command.placement.clipToPlacement
-                    ),
-                };
-                if (index !== undefined && placement.clipToPlacement) {
-                    const base = index * 4;
-                    const rectangles = set._rectangles;
-                    const placementRect = {
-                        x: viewport.x + rectangles[base] * viewport.width,
-                        y: viewport.y + rectangles[base + 1] * viewport.height,
-                        width: rectangles[base + 2] * viewport.width,
-                        height: rectangles[base + 3] * viewport.height,
-                    };
-                    const clip = placement.clipToPlacement;
-                    scissor = intersectRects(scissor, {
-                        x: clip.includes("x") ? placementRect.x : canvas.x,
-                        y: clip.includes("y") ? placementRect.y : canvas.y,
-                        width: clip.includes("x")
-                            ? placementRect.width
-                            : canvas.width,
-                        height: clip.includes("y")
-                            ? placementRect.height
-                            : canvas.height,
-                    });
-                }
-            } else if (command.placement) {
-                throw new RendererError(
-                    "Placement bindings require a placement-enabled mark."
-                );
+            if (normalizedDraw) {
+                normalized.push(normalizedDraw);
             }
-
-            return {
-                type: /** @type {"draw"} */ ("draw"),
-                uniformIndex,
-                markId,
-                viewport,
-                scissor,
-                visibleRange: normalizeVisibleRange(
-                    command.visibleRange,
-                    canvas
-                ),
-                firstInstance: resolvedRange.firstInstance,
-                instanceCount: resolvedRange.instanceCount,
-                placement,
-            };
-        }).filter((draw) => draw.scissor.width > 0 && draw.scissor.height > 0);
+        }
         addCount("normalizedDraws", normalized.length);
         finishPhase("drawNormalization", phaseStart);
         return normalized;
+    }
+
+    /**
+     * @param {import("./index.d.ts").DrawCommand | MarkId} draw
+     * @param {import("./index.d.ts").DrawRect} canvas
+     * @param {number} uniformIndex
+     * @returns {NormalizedDraw | undefined}
+     */
+    _normalizeDraw(draw, canvas, uniformIndex) {
+        const command =
+            typeof draw == "number" ? { mark: { markId: draw } } : draw;
+        const markId = command.mark.markId;
+        const mark = this._marks.get(markId);
+        if (!mark) {
+            throw new RendererError(`No such mark: ${markId}`);
+        }
+
+        const viewport = { ...(command.viewport ?? canvas) };
+        assertRect("viewport", viewport);
+        if (
+            viewport.x < 0 ||
+            viewport.y < 0 ||
+            viewport.x + viewport.width > canvas.width ||
+            viewport.y + viewport.height > canvas.height
+        ) {
+            throw new RendererError(
+                "Viewport must be contained within the logical canvas."
+            );
+        }
+
+        let scissor = intersectRects(command.scissor ?? canvas, canvas);
+        const firstInstance = command.firstInstance ?? 0;
+        assertNonNegativeInteger("firstInstance", firstInstance);
+        const instanceCount =
+            command.instanceCount ?? mark.drawCount - firstInstance;
+        assertNonNegativeInteger("instanceCount", instanceCount);
+        if (firstInstance + instanceCount > mark.drawCount) {
+            throw new RendererError(
+                `Instance range exceeds mark count: ${mark.drawCount}.`
+            );
+        }
+        const resolvedRange = mark.resolveDrawRange(
+            firstInstance,
+            instanceCount
+        );
+
+        const placementConfig = mark._placementIndex;
+        let placement;
+        if (placementConfig) {
+            if (!command.placement) {
+                throw new RendererError(
+                    "Placement-enabled marks require a placement binding."
+                );
+            }
+            const set = this._placementSets.get(
+                command.placement.set.placementSetId
+            );
+            if (!set) {
+                throw new RendererError(
+                    `No such placement set: ${command.placement.set.placementSetId}`
+                );
+            }
+            const index = command.placement.index;
+            if (
+                "source" in placementConfig &&
+                placementConfig.source === "draw"
+            ) {
+                if (!Number.isInteger(index) || index < 0) {
+                    throw new RendererError(
+                        "Draw placement marks require a non-negative index."
+                    );
+                }
+                if (index >= set.count) {
+                    throw new RendererError(
+                        `Placement index ${index} exceeds set count ${set.count}.`
+                    );
+                }
+            } else if (index !== undefined) {
+                throw new RendererError(
+                    "Per-instance placement marks forbid a draw-level index."
+                );
+            }
+            placement = {
+                bindGroup: set.bindGroup,
+                count: set.count,
+                index,
+                clipToPlacement: command.placement.clipToPlacement,
+                clipMode: placementClipMode(command.placement.clipToPlacement),
+            };
+            if (index !== undefined && placement.clipToPlacement) {
+                const base = index * 4;
+                const rectangles = set._rectangles;
+                const placementRect = {
+                    x: viewport.x + rectangles[base] * viewport.width,
+                    y: viewport.y + rectangles[base + 1] * viewport.height,
+                    width: rectangles[base + 2] * viewport.width,
+                    height: rectangles[base + 3] * viewport.height,
+                };
+                const clip = placement.clipToPlacement;
+                scissor = intersectRects(scissor, {
+                    x: clip.includes("x") ? placementRect.x : canvas.x,
+                    y: clip.includes("y") ? placementRect.y : canvas.y,
+                    width: clip.includes("x")
+                        ? placementRect.width
+                        : canvas.width,
+                    height: clip.includes("y")
+                        ? placementRect.height
+                        : canvas.height,
+                });
+            }
+        } else if (command.placement) {
+            throw new RendererError(
+                "Placement bindings require a placement-enabled mark."
+            );
+        }
+
+        if (scissor.width <= 0 || scissor.height <= 0) {
+            return undefined;
+        }
+        return {
+            type: /** @type {"draw"} */ ("draw"),
+            uniformIndex,
+            markId,
+            viewport,
+            scissor,
+            visibleRange: normalizeVisibleRange(command.visibleRange, canvas),
+            firstInstance: resolvedRange.firstInstance,
+            instanceCount: resolvedRange.instanceCount,
+            placement,
+        };
     }
 
     /**
@@ -1090,6 +1107,13 @@ export class Renderer {
      * @returns {{items: NormalizedRenderItem[], draws: NormalizedDraw[], groupCount: number}}
      */
     _normalizeRenderItems(items) {
+        const phaseStart = startPhase();
+        const canvas = {
+            x: 0,
+            y: 0,
+            width: this._globals.width,
+            height: this._globals.height,
+        };
         /** @type {NormalizedDraw[]} */
         const draws = [];
         let groupCount = 0;
@@ -1140,9 +1164,12 @@ export class Renderer {
                         });
                     }
                 } else {
-                    const draw = this._normalizeDraws([item])[0];
+                    const draw = this._normalizeDraw(
+                        item,
+                        canvas,
+                        draws.length
+                    );
                     if (draw) {
-                        draw.uniformIndex = draws.length;
                         draws.push(draw);
                         normalized.push(draw);
                     }
@@ -1151,7 +1178,10 @@ export class Renderer {
             return normalized;
         };
 
-        return { items: visit(items), draws, groupCount };
+        const normalizedItems = visit(items);
+        addCount("normalizedDraws", draws.length);
+        finishPhase("drawNormalization", phaseStart);
+        return { items: normalizedItems, draws, groupCount };
     }
 
     /**
