@@ -1,12 +1,19 @@
 # View-scoped MSAA layers cleanup plan
 
-Status: Implemented; pending size review and retirement
+Status: Implemented and size-reviewed; pending retirement
 
 The final production-size target was not met. The view-scoped WebGPU cleanup
-added 201 net lines in its five central production files, and the bounded
-Canvas opacity cache adds further lifecycle code. The occurrence-run model and
-its reordering paths are gone, but this plan must not be retired as a
-size-reduction success.
+now adds 97 net lines in its five central production files, down from 201 after
+the size review. Across the complete cleanup scope, later deletions reduce that
+to 96 net production lines. The branch as a whole remains 1,556 net production
+lines above its base, so this plan must not be retired as a size-reduction
+success.
+
+The review moved sample-facet coalescing from every paint to layout-time frame
+compilation, removed the detached-target class and manual composite pipeline
+layouts, simplified Canvas opacity-surface retention, and deleted an avoidable
+MSAA texture/composite pass. Those changes removed 179 net production lines
+from the implemented branch while preserving the required features.
 
 Issues: #478, #483
 
@@ -329,7 +336,8 @@ clipping, opacity, and picking remain correct.
       paint commands.
 - [x] Record and honor `beginSampleFacetBatch`/`endSampleFacetBatch`: aggregate
       repeated occurrences by logical container only inside that explicit
-      batching scope; preserve strict command order everywhere else.
+      batching scope during frame-plan completion; preserve strict command
+      order everywhere else and replay the compiled sequence on each paint.
 - [x] Mark only outermost coverage-compatible scopes as four-sample
       accumulations. Stop promotion at direct content, but retain declared
       local-opacity scopes as nested groups regardless of their current value.
@@ -400,8 +408,9 @@ existing isolation path.
 - [x] Pass the enclosing target sample count through `_normalizeRenderItems()`
       and flatten an opaque group only when its sample count matches that
       target.
-- [x] Retain `_renderDrawGroup()` only for mixed four-sample accumulations with
-      fractional nested opacity; opaque steady-state groups bypass it.
+- [x] Keep the extra resolved-texture path only for later chunks in mixed
+      four-sample accumulations; resolve the first chunk directly and inline
+      the one remaining exceptional path.
 - [x] Keep one `_encodeMultisampleDrawPass()` path and one composite path for
       resolved groups.
 - [x] Make runtime opacity handling explicit in renderer normalization: prune
@@ -412,8 +421,8 @@ existing isolation path.
       transient pooling, eviction, and deferred destruction.
 - [x] Cover direct, single-sampled nested, opaque nested four-sample, and
       fractional nested four-sample groups.
-- [x] Measure production LOC before and after. The renderer implementation
-      changed by a net two lines while making sample-count matching explicit.
+- [x] Measure production LOC before and after. The final renderer simplification
+      removes 53 net lines from the pre-cleanup implementation.
 
 ### Affected areas and consumers
 
