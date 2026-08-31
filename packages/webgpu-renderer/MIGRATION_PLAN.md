@@ -3,19 +3,8 @@
 Status: Core retained-frame optimization is complete; the independent package
 parity and cleanup backlog remains ongoing.
 
-The completed interaction-performance plan has been retired. Current adapter
-simplification and regression-gate work is specified in
-`plans/core-webgpu-integration-simplification/core-webgpu-integration-simplification-plan.md`.
-Keep milestone detail there rather than duplicating it here.
-
-The retained renderer, Core adapter, ordinary repeated occurrences, and App
-sample facets are implemented. Completed milestone narratives live in Git
-history. This file contains only current work that still has a concrete
-renderer or Core consumer.
-
-Issues #478 and #483 are the concrete consumers for renderer-owned transient
-groups and same-device detached canvas targets. Their implementation is tracked
-in `plans/webgpu-compositing-export/webgpu-compositing-export-plan.md`.
+Completed milestone narratives and retired plans live in Git history. This file
+contains only current work that still has a concrete renderer or Core consumer.
 
 ## Goals
 
