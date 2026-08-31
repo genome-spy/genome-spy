@@ -384,14 +384,14 @@ lifecycle, and live/background rendering shares one WebGPU color conversion.
 
 ### Work
 
-- [ ] Add one small `withExportTarget` helper that creates a detached target,
+- [x] Add one small `withExportTarget` helper that creates a detached target,
       maps creation failures to `RasterizationUnavailableError`, awaits the
       provided async operation, and destroys the target in `finally`.
-- [ ] Use it for full raster export and the multi-run SVG rasterization loop;
+- [x] Use it for full raster export and the multi-run SVG rasterization loop;
       keep one target alive for all runs in a single SVG export.
-- [ ] Move WebGPU background parsing and the transparent constant into one
+- [x] Move WebGPU background parsing and the transparent constant into one
       adapter-local utility used by the coordinator and export path.
-- [ ] Delete `renderExport`, `createTarget`, duplicated try/finally blocks, and
+- [x] Delete `renderExport`, `createTarget`, duplicated try/finally blocks, and
       duplicate `toGpuColor` implementations made obsolete by the helpers.
 
 ### Affected areas and downstream consumers

@@ -70,6 +70,31 @@ describe("WebGPU raster export", () => {
         ).rejects.toThrow("Unsupported raster export MIME type");
     });
 
+    test("destroys the target when raster encoding fails", async () => {
+        const { surface, target } = createSurface({
+            toBlob: vi.fn((callback) => callback(null)),
+        });
+
+        await expect(
+            exportRaster(surface, { viewRoot: /** @type {any} */ ({}) })
+        ).rejects.toThrow("could not encode");
+
+        expect(target.handle.destroy).toHaveBeenCalledOnce();
+    });
+
+    test("destroys the target when background parsing fails", async () => {
+        const { surface, target } = createSurface();
+
+        await expect(
+            exportRaster(surface, {
+                viewRoot: /** @type {any} */ ({}),
+                clearColor: "not-a-color",
+            })
+        ).rejects.toThrow("Invalid WebGPU canvas background color");
+
+        expect(target.handle.destroy).toHaveBeenCalledOnce();
+    });
+
     test("renders selected SVG runs transparently and preserves placeholders", async () => {
         const cropContext = {
             resetTransform: vi.fn(),
@@ -103,7 +128,7 @@ describe("WebGPU raster export", () => {
             });
 
         await rasterizeSvgRuns(surface, {
-            runs: [run],
+            runs: [run, run],
             viewRoot: /** @type {any} */ ({}),
             layoutResult: /** @type {any} */ ({ layout: true }),
             logicalWidth: 100,
@@ -142,7 +167,8 @@ describe("WebGPU raster export", () => {
             image,
             lastVector,
         ]);
-        expect(target.handle.onSubmittedWorkDone).toHaveBeenCalledOnce();
+        expect(surface.createExportTarget).toHaveBeenCalledOnce();
+        expect(target.handle.onSubmittedWorkDone).toHaveBeenCalledTimes(2);
         expect(target.handle.destroy).toHaveBeenCalledOnce();
     });
 
