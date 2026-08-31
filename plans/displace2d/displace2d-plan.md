@@ -2,12 +2,10 @@
 
 ## Status
 
-Implemented, but the first user acid test exposed unacceptable placement jumps
-during interactive zoom and labels covering their annotated anchor points.
-Corrective milestones are planned below and block pull-request preparation.
-This plan stays on the branch until those fixes and another user acid test are
-complete; it must then be reconciled again and retired before a pull request is
-created.
+Implemented and reconciled after repeated user acid testing. The final design
+keeps `displace2d` deterministic and stateless, composes it with a generic keyed
+numeric transition, and leaves viewport participation to the specification.
+This record is ready to retire before pull-request review.
 
 ## Motivation
 
@@ -825,7 +823,7 @@ documentation; there is no migration because this is additive.
 
 Tentative commit: `feat(core): add two-dimensional displacement transform`
 
-### 3. User-facing example, documentation, and integration — Implemented
+### 3. User-facing example, documentation, and integration — Completed
 
 Intended outcome: demonstrate the interactive airway volcano plot with moved
 text annotations, retain the airway MA plot as a secondary regression, and
@@ -956,7 +954,7 @@ Evidence recorded on 2026-08-28:
   deleted because it neither passed the gate nor preserved a simple transform
   contract.
 
-### 5. Selected-anchor clearance — Implemented; review pending
+### 5. Selected-anchor clearance — Completed
 
 Intended outcome: prevent annotations from covering the points they annotate
 through generic optional rectangle geometry, without mark inspection or an
@@ -1025,7 +1023,7 @@ Evidence recorded on 2026-08-28:
 - The repository-wide unit suite passes with 3,296 tests, one skipped, and two
   todo across 393 files. Every workspace TypeScript check passes.
 
-### 6. Viewport participation, restoration, and hovered-label zoom — Partly implemented
+### 6. Viewport participation, restoration, and hovered-label zoom — Completed
 
 Intended outcome: keep close zooms bounded to annotations that can affect the
 visible plot, make repeated viewport states understandable and testable, and
@@ -1172,7 +1170,7 @@ Evidence recorded on 2026-08-30:
   requirement or explicitly broaden scope to a transition/visibility model;
   do not add another solver-local continuity rule without new evidence.
 
-### 7. Canonical targets and generic keyed transitions — In progress
+### 7. Canonical targets and generic keyed transitions — Completed
 
 Intended outcome: restore exact path-independent placement targets while
 retaining the smooth interaction approved in the second acid test. Keep the
@@ -1365,70 +1363,56 @@ Evidence recorded on 2026-08-30:
   `targetDelay: 10`, preserving a positive quiet period while normally
   accepting a stable target on the next available animation frame.
 
-## Reconciliation through the first user acid test (2026-08-28)
-
-The plan is reconciled to the implemented branch but is intentionally not ready
-to retire. No pull request will be prepared until the private examples have been
-used for sustained manual testing and the user approves the behavior.
+## Final reconciliation (2026-08-31)
 
 Completed:
 
-- The pure solver, transform adapter, public grammar, generated schema links,
+- The pure solver, dataflow adapter, public grammar, schema links,
   documentation, inline example, and shared-example snapshot are implemented.
-- Determinism, preferred bounds, overflow, heterogeneous dimensions, reactive
-  scale and extent updates, lifecycle disposal, and numeric failure modes have
-  focused automated coverage.
-- The airway volcano and MA data were exercised temporarily with real
-  `measureText` geometry. Browser WebGL, zoom traces, and structured SVG export
-  were verified, and performance measurements are recorded above.
-- The pre-interaction maintainer-style review confirmed the intended
-  abstraction boundary: generic rectangle inputs, signed offset outputs, one
-  solver, no renderer coupling, and no changes to `displace1d`. Milestone 4
-  subsequently added private retained-placement hints inside the transform;
-  that state still requires its review gate before PR preparation.
-- The ignored `private/displace2d-acid/` suite now covers the 12,000-row airway
-  volcano and MA plots, 500 heterogeneous labels, coincident-label overflow,
-  and reversed axes. It includes repeatable screenshot and app smoke scripts.
-- All five private specs initialized and rendered without browser errors. The
-  app smoke exercised each label-count slider at its minimum, maximum, and
-  default, then wheel-zoomed and resized each parameterized plot. Updates
-  reached two subsequent animation frames in 17--39 ms in headless Chromium.
-- The full unit suite passes with 3,296 tests passing, one skipped, and two
-  todo after the final numeric review fixes.
+- Focused tests cover deterministic placement, preferred bounds, overflow,
+  heterogeneous and anchor geometry, reactive parameters, lifecycle behavior,
+  validation, canonical restoration, and keyed numeric transitions.
+- The generic transition owns all temporal state. `displace2d` again computes
+  canonical targets solely from its current batch, and exact domain restoration
+  reproduces those targets.
+- Viewport participation is composed outside the transform using stable rows,
+  zero collision geometry for inactive annotations, and downstream filtering.
+  The reversed-axis deep-zoom trace renders no offscreen annotations or leader
+  lines and restores all canonical targets.
+- The airway volcano and MA plots, heterogeneous-label stress plot, coincident
+  overflow, and reversed axes were exercised in private browser fixtures.
+  WebGL rendering, structured SVG export, zoom, resize, restoration, and
+  selected-anchor clearance were verified without renderer-specific changes.
+- Profiling isolated full-source reactive replay, rather than solver cost, as
+  the loading-spinner cause. Moving the existing collector to the replay
+  boundary kept displacement updates below 0.9 ms in the airway fixtures.
+- Repeated user acid tests approved canonical restoration, transition
+  smoothness, interaction performance, and the final 10 ms example delay.
+- The recorded final verification passed the full unit suite, workspace
+  TypeScript checks, lint, documentation build, focused WebGL capture, and
+  private application smoke tests.
 
-Discarded:
+Discarded or deferred:
 
-- The original retained-placement spike remains deleted because its raw churn
-  metric did not distinguish smooth clamping from jumps. Retained placement is
-  now reopened under milestone 4 with explicit jump, overflow-transition, and
-  user-visual criteria derived from the recording.
-- Vega's occupancy bitmap, force relaxation, workers, pluggable strategies,
-  arbitrary obstacle sources, visibility outputs, and renderer-specific
-  animation remain unnecessary for the measured corrective scope.
-- The external airway Arrow table will not be copied into the repository. The
-  permanent docs example uses small inline data; private examples may reference
-  the published content-addressed asset for local testing.
-- No renderer-specific code or new permanent picking/SVG implementation test
-  was added. Existing offset channels own those semantics, while the integrated
-  SVG smoke test confirmed all displaced labels and leader lines.
+- Retained solver hints, home snapshots, pairwise relaxation, and broader
+  candidate searches were deleted. They added path dependence or moved large
+  discontinuities without meeting the interaction criteria.
+- Explicit hovered-label pinning is not part of this change. Existing wheel
+  interaction remains anchored to the source datum, and `displace2d` does not
+  inspect pointer or renderer state.
+- Vega-style occupancy bitmaps, force simulation, workers, pluggable
+  strategies, arbitrary obstacle streams, and renderer-specific animation are
+  unnecessary for the measured scope.
+- Avoidance of unrelated background points remains outside the selected-anchor
+  geometry contract.
+- The external airway Arrow table remains a private, published test fixture;
+  the permanent documentation example uses small inline data.
+- No renderer-specific picking or SVG implementation path was added. Existing
+  offset channels own those semantics, and browser/SVG smoke tests exercised
+  their composition.
 
-Pending before PR preparation:
-
-- Complete milestone 7 interaction testing of canonical targets plus generic
-  transitions; the superseded retained-target implementation is removed.
-- Complete milestone 5 selected-anchor clearance and its public-contract review
-  gate without expanding into renderer or cross-layer obstacle inspection.
-- Complete milestone 6 viewport-participation acid testing. Confirm the
-  stable-batch composition covers hovered-label zoom without coupling the
-  transform to interaction state, and verify restoration through milestone 7.
-- Manually exercise resize, wheel and inertial zoom, pan, domain restoration,
-  clipping, tooltip/picking alignment, long interaction sessions, and visual
-  association through leader lines.
-- Address findings from user testing, repeat proportionate automated and
-  browser verification, and obtain explicit user approval.
-- Reconcile every remaining acceptance item, commit that final record, and
-  delete this temporary plan in a later commit. Only then prepare a pull
-  request.
+No implementation-plan tasks remain. The plan can be deleted in the required
+follow-up commit.
 
 ## Final integration acceptance criteria
 
@@ -1520,23 +1504,16 @@ Pending before PR preparation:
   inputs and offset outputs; keep algorithm selection and renderer obstacle
   avoidance out of the public API.
 
-## Unresolved questions
+## Resolved decisions
 
-1. Does a small finite candidate sequence meet the placement-quality fixture,
-   or is a fixed-budget rectangular-ring sequence justified? The right-side
-   overflow row is already the termination rule. Resolve the candidate sequence
-   inside the solver and keep its controls out of the first public API.
-2. Are separate x/y position factors and extents clearer than paired parameters?
-   Prefer the form that most closely preserves `displace1d` semantics and keeps
-   expression-backed replay straightforward.
-3. Does the bounded previous-neighborhood ordering meet the fixed 8 px p95 and
-   24 px maximum jump gates? If not, which single obstacle-edge-derived search
-   replaces the discrete lattice with the least code while preserving zero
-   overlap and zero ordinary-trace overflow?
-4. Does the direct rectangle scan meet the performance budget? Only if it fails,
-   which single acceleration structure fixes the measured bottleneck with the
-   least code and memory?
-5. After selected-anchor clearance, does visual review still require avoiding
-   unrelated background points? If so, stop and design a separate generic
-   cross-stream obstacle contract rather than extending the anchor fields or
-   inspecting rendered marks.
+1. A deterministic rectangular-ring search with a right-side overflow row met
+   the placement and performance fixtures. Candidate controls remain internal.
+2. Separate x/y position factors and extents preserve the useful `displace1d`
+   conventions and allow independent reactive updates.
+3. Previous-placement ordering was discarded. Canonical targets plus a generic
+   keyed transition provide exact restoration and approved visual continuity.
+4. The measured solver met the interaction budget without an occupancy bitmap
+   or another acceleration abstraction.
+5. Selected-anchor clearance is sufficient for this contract. Avoiding
+   unrelated background points requires a separately designed obstacle stream
+   and is deferred.
