@@ -1188,6 +1188,7 @@ interface TransitionParams extends TransformParamsBase {
     as?: Field[];
     halfLife?: number;
     epsilon?: number;
+    targetDelay?: number;
 }
 ```
 
@@ -1196,6 +1197,9 @@ values. Omitting `as` updates the input fields in place. `fields` and `as` must
 be non-empty, equally sized, and contain distinct output names. `key` values
 must be unique in the complete live batch. The first batch and new keys snap to
 their targets; persistent keys animate from their current displayed values.
+`targetDelay` optionally requires a changed target batch to remain quiet for a
+fixed number of milliseconds before it becomes the interpolation target. Equal
+replayed targets do not restart the delay.
 
 Implementation boundaries:
 
@@ -1211,6 +1215,10 @@ Implementation boundaries:
 - Snap to the exact target inside `epsilon`, stop scheduling frames when every
   value settles, and cancel pending work on disposal. Headless rendering snaps
   immediately through `Animator.transitionsEnabled`.
+- Implement target delay inside the existing single Animator callback. Keep one
+  pending target per live key, promote the latest complete batch together after
+  the quiet period, and do not replay descendants while only waiting. Do not
+  inspect wheel, hover, scale, or mark state and do not add another timer.
 - Do not add renderer changes, a scene graph, solver callbacks, mark-specific
   behavior, transition modes, or a reusable scheduler abstraction.
 
@@ -1220,6 +1228,9 @@ Verification:
   exact settling, in-place and separate outputs, new and removed keys,
   duplicate keys, non-numeric targets, invalid parameters, cancellation, and
   headless snapping.
+- Test that changed targets reset the quiet period, equal feedback replays do
+  not reset it, only the latest batch is promoted, no descendant replay occurs
+  while waiting, and zero delay preserves immediate retargeting.
 - Verify one animation callback updates every live row and causes one downstream
   replay per frame. Cover preserved facet batch boundaries if the normal flow
   can deliver multiple batches to one transform.
@@ -1294,6 +1305,16 @@ Evidence recorded on 2026-08-30:
   was observed. This transform-order correction is sufficient evidence against
   adding a solver cache, another placement algorithm, or a dataflow framework
   change for the current fixtures.
+- The following user acid test found that long labels still changed direction
+  too often during small zoom increments. This is target thrashing rather than
+  interpolation overshoot: canonical greedy layouts switch topology while the
+  current lerp immediately follows each new target. The selected KISS experiment
+  adds a generic quiet-period `targetDelay` to `transition`, configured only in
+  the long-label private examples with `targetDelay: 100`, `halfLife: 140`, and
+  `epsilon: 0.25`. Visibility continues updating, the latest canonical target
+  remains reversible, and the transition accepts one settled target instead of
+  following every intermediate arrangement. Quantized zoom levels, label
+  hiding, interaction-state coupling, and a new solver remain deferred.
 
 ## Reconciliation through the first user acid test (2026-08-28)
 
