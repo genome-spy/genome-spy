@@ -233,6 +233,144 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(main.calls.drawImages).toEqual([0.5]);
     });
 
+    test("clears and resets a reused opacity layer before painting", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: "point",
+            encoding: {
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                size: { value: 100 },
+                fill: { value: "black" },
+            },
+        });
+        const unitView =
+            /** @type {import("../../view/unitView.js").default} */ (view);
+        const main = createRecordingContext();
+        const offscreen = createRecordingContext();
+        offscreen.context.canvas.getContext = () => offscreen.context;
+        /** @type {{canvas: HTMLCanvasElement, context: CanvasRenderingContext2D}[]} */
+        const opacityLayers = [];
+        const originalCreateElement = document.createElement.bind(document);
+        const createElement = vi
+            .spyOn(document, "createElement")
+            .mockImplementation((tagName, options) => {
+                if (tagName === "canvas") {
+                    return /** @type {any} */ (offscreen.context.canvas);
+                }
+                return originalCreateElement(tagName, options);
+            });
+        const groupView = {
+            onBeforeRender: vi.fn(),
+            getOpacity: () => 0.5,
+            mark: { properties: { clip: true } },
+        };
+
+        try {
+            for (let i = 0; i < 2; i++) {
+                const context = new Canvas2DViewRenderingContext(
+                    { picking: false },
+                    {
+                        context: main.context,
+                        width: 100,
+                        height: 100,
+                        devicePixelRatio: 1,
+                        background: null,
+                        paint: true,
+                        opacityLayers,
+                    }
+                );
+                context.pushView(
+                    /** @type {any} */ (groupView),
+                    Rectangle.create(0, 0, 100, 100)
+                );
+                context.renderMark(unitView.mark, {});
+                context.popView(/** @type {any} */ (groupView));
+            }
+
+            expect(createElement).toHaveBeenCalledOnce();
+            expect(opacityLayers).toHaveLength(1);
+            expect(offscreen.calls.fills).toHaveLength(2);
+            expect(offscreen.context.clearRect).toHaveBeenCalledWith(
+                0,
+                0,
+                100,
+                100
+            );
+            expect(
+                offscreen.context.clearRect.mock.invocationCallOrder[0]
+            ).toBeLessThan(offscreen.context.fill.mock.invocationCallOrder[1]);
+            expect(offscreen.context.globalAlpha).toBe(1);
+            expect(offscreen.context.globalCompositeOperation).toBe(
+                "source-over"
+            );
+        } finally {
+            createElement.mockRestore();
+        }
+    });
+
+    test("reuses nested opacity layers while bounding retained depth", () => {
+        const main = createRecordingContext();
+        /** @type {{canvas: HTMLCanvasElement, context: CanvasRenderingContext2D}[]} */
+        const opacityLayers = [];
+        /** @type {ReturnType<typeof createRecordingContext>[]} */
+        const offscreens = [];
+        const originalCreateElement = document.createElement.bind(document);
+        const createElement = vi
+            .spyOn(document, "createElement")
+            .mockImplementation((tagName, options) => {
+                if (tagName === "canvas") {
+                    const offscreen = createRecordingContext();
+                    offscreen.context.canvas.getContext = () =>
+                        offscreen.context;
+                    offscreens.push(offscreen);
+                    return /** @type {any} */ (offscreen.context.canvas);
+                }
+                return originalCreateElement(tagName, options);
+            });
+        const groupView = {
+            onBeforeRender: vi.fn(),
+            getOpacity: () => 0.5,
+            mark: { properties: { clip: true } },
+        };
+
+        const paint = () => {
+            const context = new Canvas2DViewRenderingContext(
+                { picking: false },
+                {
+                    context: main.context,
+                    width: 100,
+                    height: 100,
+                    devicePixelRatio: 1,
+                    background: null,
+                    paint: true,
+                    opacityLayers,
+                }
+            );
+            for (let i = 0; i < 9; i++) {
+                context.pushView(
+                    /** @type {any} */ (groupView),
+                    Rectangle.create(0, 0, 100, 100)
+                );
+            }
+            for (let i = 0; i < 9; i++) {
+                context.popView(/** @type {any} */ (groupView));
+            }
+        };
+
+        try {
+            paint();
+            paint();
+
+            expect(opacityLayers).toHaveLength(8);
+            expect(createElement).toHaveBeenCalledTimes(10);
+            expect(offscreens[7].calls.drawImages).toEqual([0.5, 0.5]);
+            expect(main.calls.drawImages).toEqual([0.5, 0.5]);
+        } finally {
+            createElement.mockRestore();
+        }
+    });
+
     test.each([
         {
             name: "xy clipping",

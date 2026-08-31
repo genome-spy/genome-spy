@@ -19,6 +19,9 @@ import { warnOnce } from "../../utils/warning.js";
 import { getPerformanceProfiler } from "../../debug/performanceProfiler.js";
 import { isSampleFacetVisible } from "../sampleFacet.js";
 
+const MAX_RETAINED_OPACITY_LAYERS = 8;
+const MAX_RETAINED_OPACITY_LAYER_PIXELS = 16_777_216;
+
 export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
     /** @type {CanvasViewStackEntry[]} */
     #viewStack = [];
@@ -46,6 +49,11 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
     /** @type {CanvasPhysicalBounds} */
     #targetBounds;
 
+    /** @type {CanvasOpacityLayer[]} */
+    #opacityLayers;
+
+    #activeOpacityLayers = 0;
+
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
      * @param {{
@@ -56,7 +64,8 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
      *     background: string | null,
      *     paint: boolean,
      *     markPredicate?: (mark: import("../../marks/mark.js").default) => boolean,
-     *     xIndexManager?: import("./canvasXIndexManager.js").default
+     *     xIndexManager?: import("./canvasXIndexManager.js").default,
+     *     opacityLayers?: CanvasOpacityLayer[]
      * }} options
      */
     constructor(globalOptions, options) {
@@ -69,6 +78,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         this.#markPredicate = options.markPredicate ?? (() => true);
         this.#profiler = getPerformanceProfiler();
         this.#xIndexManager = options.xIndexManager;
+        this.#opacityLayers = options.opacityLayers ?? [];
         this.#targetBounds = {
             x: 0,
             y: 0,
@@ -128,13 +138,14 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                 this.#targetBounds,
                 clip
             );
-            const canvas = document.createElement("canvas");
-            canvas.width = bounds.width;
-            canvas.height = bounds.height;
-            const context = canvas.getContext("2d");
-            if (!context) {
-                throw new Error("Unable to create a Canvas2D view group.");
-            }
+            const layerIndex = this.#activeOpacityLayers;
+            const context = acquireOpacityLayer(
+                this.#opacityLayers,
+                layerIndex,
+                bounds.width,
+                bounds.height
+            );
+            this.#activeOpacityLayers++;
             context.setTransform(
                 this.devicePixelRatio,
                 0,
@@ -169,6 +180,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
             );
         }
         if (entry.parentContext) {
+            this.#activeOpacityLayers--;
             const source = this.context.canvas;
             const sourceBounds = this.#targetBounds;
             this.context = entry.parentContext;
@@ -319,6 +331,12 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
  */
 
 /**
+ * @typedef {object} CanvasOpacityLayer
+ * @property {HTMLCanvasElement} canvas
+ * @property {CanvasRenderingContext2D} context
+ */
+
+/**
  * @typedef {object} CanvasPhysicalBounds
  * @property {number} x
  * @property {number} y
@@ -359,6 +377,54 @@ function normalizeOffscreenBounds(coords, devicePixelRatio, parent, clip) {
           )
         : parentBottom;
     return { x, y, width: right - x, height: bottom - y };
+}
+
+/**
+ * Reuses one canvas per active opacity nesting depth. Oversized or excessively
+ * deep layers remain invocation-local and are released to garbage collection.
+ *
+ * @param {CanvasOpacityLayer[]} layers
+ * @param {number} index
+ * @param {number} width
+ * @param {number} height
+ */
+function acquireOpacityLayer(layers, index, width, height) {
+    const pixelCount = width * height;
+    let retainedPixelCount = 0;
+    for (const retainedLayer of layers) {
+        retainedPixelCount +=
+            retainedLayer.canvas.width * retainedLayer.canvas.height;
+    }
+    let layer = layers[index];
+    const retainedWithoutLayer =
+        retainedPixelCount -
+        (layer ? layer.canvas.width * layer.canvas.height : 0);
+    const retain =
+        index < MAX_RETAINED_OPACITY_LAYERS &&
+        retainedWithoutLayer + pixelCount <= MAX_RETAINED_OPACITY_LAYER_PIXELS;
+
+    if (!layer || !retain) {
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        if (!context) {
+            throw new Error("Unable to create a Canvas2D view group.");
+        }
+        layer = { canvas, context };
+        if (retain) {
+            layers[index] = layer;
+        }
+    }
+
+    if (layer.canvas.width != width || layer.canvas.height != height) {
+        layer.canvas.width = width;
+        layer.canvas.height = height;
+    } else {
+        layer.context.resetTransform();
+        layer.context.clearRect(0, 0, width, height);
+    }
+    layer.context.globalAlpha = 1;
+    layer.context.globalCompositeOperation = "source-over";
+    return layer.context;
 }
 
 /** @param {number} value @param {number} min @param {number} max */

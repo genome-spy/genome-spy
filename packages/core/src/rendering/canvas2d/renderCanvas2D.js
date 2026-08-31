@@ -13,6 +13,7 @@ import Canvas2DViewRenderingContext from "./canvas2DViewRenderingContext.js";
  * @param {boolean} options.paint
  * @param {(mark: import("../../marks/mark.js").default) => boolean} [options.markPredicate]
  * @param {import("./canvasXIndexManager.js").default} [options.xIndexManager]
+ * @param {{canvas: HTMLCanvasElement, context: CanvasRenderingContext2D}[]} [options.opacityLayers]
  */
 export default function renderCanvas2D(options) {
     const renderingContext = new Canvas2DViewRenderingContext(
