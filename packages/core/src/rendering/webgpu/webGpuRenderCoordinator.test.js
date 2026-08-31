@@ -10,10 +10,8 @@ vi.mock("./webGpuViewRenderingContext.js", () => ({
             this.pushView = vi.fn();
             this.popView = vi.fn();
             this.finish = vi.fn();
-            this.render = vi.fn(({ picking }) => ({
-                items: picking ? [] : ["visible"],
-                pickingDraws: picking ? ["pick"] : [],
-            }));
+            this.render = vi.fn(() => ["visible"]);
+            this.renderPicking = vi.fn(() => ["pick"]);
             mocks.contexts.push(this);
         }
     },
@@ -72,9 +70,6 @@ describe("WebGpuRenderCoordinator", () => {
         expect(mocks.contexts).toHaveLength(1);
         expect(mocks.contexts[0].finish).toHaveBeenCalledOnce();
         expect(mocks.contexts[0].render).toHaveBeenCalledTimes(3);
-        expect(mocks.contexts[0].render).toHaveBeenNthCalledWith(1, {
-            picking: false,
-        });
         expect(mocks.contexts[0].pushView).toHaveBeenCalledWith(
             viewRoot,
             expect.objectContaining({ width: 100, height: 50 })
@@ -108,15 +103,8 @@ describe("WebGpuRenderCoordinator", () => {
         coordinator.renderAll();
         coordinator.renderPickingFramebuffer();
         expect(surface.renderPicking).toHaveBeenCalledTimes(2);
-        expect(mocks.contexts[0].render).toHaveBeenNthCalledWith(1, {
-            picking: true,
-        });
-        expect(mocks.contexts[0].render).toHaveBeenNthCalledWith(2, {
-            picking: false,
-        });
-        expect(mocks.contexts[0].render).toHaveBeenNthCalledWith(3, {
-            picking: true,
-        });
+        expect(mocks.contexts[0].render).toHaveBeenCalledOnce();
+        expect(mocks.contexts[0].renderPicking).toHaveBeenCalledTimes(2);
 
         coordinator.computeLayout();
         expect(mocks.contexts).toHaveLength(2);

@@ -52,14 +52,8 @@ import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
  * @param {{markPredicate?: (mark: import("../../marks/mark.js").default) => boolean}} [options]
  */
 function createContext(surface, options = {}) {
-    const { width, height } = surface.getLogicalCanvasSize();
     return new WebGpuViewRenderingContext({
         surface,
-        target: {
-            width,
-            height,
-            dpr: surface.getDevicePixelRatio(),
-        },
         ...options,
     });
 }
@@ -98,9 +92,9 @@ describe("WebGpuViewRenderingContext", () => {
         context.renderMark(/** @type {any} */ (mark), {});
         context.popView(/** @type {any} */ (view));
         context.finish();
-        const frame = context.render({ picking: false });
+        const frame = context.render();
 
-        expect(frame.items[0]).toMatchObject({
+        expect(frame[0]).toMatchObject({
             sampleCount: 4,
             items: [surface.prepareDraw.mock.calls[0][1]],
         });
@@ -132,7 +126,7 @@ describe("WebGpuViewRenderingContext", () => {
         context.renderMark(/** @type {any} */ (other), {});
         context.popView(/** @type {any} */ (view));
         context.finish();
-        context.render({ picking: false });
+        context.render();
 
         expect(mocks.getPackedMarkData).toHaveBeenCalledOnce();
         expect(surface.updateMark).toHaveBeenCalledOnce();
@@ -175,12 +169,12 @@ describe("WebGpuViewRenderingContext", () => {
         context.renderMark(/** @type {any} */ (mark), {});
         context.popView(/** @type {any} */ (view));
         context.finish();
-        context.render({ picking: false });
+        context.render();
 
         domain[0] = 40;
         domain[1] = 45;
-        context.render({ picking: false });
-        context.render({ picking: true });
+        context.render();
+        context.renderPicking();
 
         expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledOnce();
         expect(surface.updateMark).toHaveBeenCalledOnce();
@@ -217,12 +211,12 @@ describe("WebGpuViewRenderingContext", () => {
         context.finish();
 
         expect(view.onBeforeRender).not.toHaveBeenCalled();
-        context.render({ picking: false });
+        context.render();
         expect(view.onBeforeRender).toHaveBeenCalledOnce();
         expect(surface.prepareDraw).not.toHaveBeenCalled();
 
         opacity = 1;
-        context.render({ picking: false });
+        context.render();
         expect(view.onBeforeRender).toHaveBeenCalledTimes(2);
         expect(surface.updateMark).toHaveBeenCalledOnce();
         expect(surface.prepareDraw).toHaveBeenCalledOnce();
@@ -256,7 +250,7 @@ describe("WebGpuViewRenderingContext", () => {
         });
         context.popView(/** @type {any} */ (view));
         context.finish();
-        context.render({ picking: false });
+        context.render();
 
         const adapterCalls = /** @type {any[][]} */ (
             mocks.createWebGpuMarkConfig.mock.calls
@@ -310,7 +304,7 @@ describe("WebGpuViewRenderingContext", () => {
         });
         context.popView(/** @type {any} */ (view));
         context.finish();
-        context.render({ picking: false });
+        context.render();
 
         expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
         expect(surface.prepareDraw).toHaveBeenCalledWith(
@@ -373,7 +367,7 @@ describe("WebGpuViewRenderingContext", () => {
         context.popView(/** @type {any} */ (view));
         context.finish();
 
-        context.render({ picking: false });
+        context.render();
         const firstDraw = surface.prepareDraw.mock.calls[0][1];
         expect(firstDraw.scissor).toEqual({
             x: 30,
@@ -383,10 +377,10 @@ describe("WebGpuViewRenderingContext", () => {
         });
         expect(firstDraw.visibleRange).toMatchObject({ x1: 30, x2: 130 });
 
-        const pickingFrame = context.render({ picking: true });
+        const pickingFrame = context.renderPicking();
         const secondDraw = surface.prepareDraw.mock.calls[1][1];
         expect(secondDraw).toBe(firstDraw);
-        expect(pickingFrame.pickingDraws).toEqual([secondDraw]);
+        expect(pickingFrame).toEqual([secondDraw]);
         expect(secondDraw.scissor).toEqual({
             x: 40,
             y: 30,
@@ -425,7 +419,7 @@ describe("WebGpuViewRenderingContext", () => {
         context.renderMark(/** @type {any} */ (mark), {});
         context.popView(/** @type {any} */ (view));
         context.finish();
-        context.render({ picking: true });
+        context.renderPicking();
 
         expect(surface.updateMark).not.toHaveBeenCalled();
         expect(surface.prepareDraw).not.toHaveBeenCalled();
@@ -474,8 +468,8 @@ describe("WebGpuViewRenderingContext", () => {
             context.popView(/** @type {any} */ (view));
         }
         context.finish();
-        context.render({ picking: false });
-        context.render({ picking: false });
+        context.render();
+        context.render();
 
         expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledOnce();
         const adapterCalls = /** @type {any[][]} */ (
@@ -522,19 +516,19 @@ describe("WebGpuViewRenderingContext", () => {
         ).toEqual([0, 1, 0, 1]);
 
         mocks.getPackedMarkData.mockReturnValue({ data: [{ updated: true }] });
-        context.render({ picking: false });
+        context.render();
         expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledTimes(2);
         expect(surface.updateMark).toHaveBeenCalledTimes(2);
         expect(mocks.getPackedMarkRange).toHaveBeenCalledTimes(4);
 
         mocks.getWebGpuMarkConfigRevision.mockReturnValue(1);
-        context.render({ picking: false });
+        context.render();
         expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledTimes(3);
         expect(surface.updateMark).toHaveBeenCalledTimes(3);
         expect(mocks.getPackedMarkRange).toHaveBeenCalledTimes(4);
 
         mocks.getWebGpuMarkResourceRevision.mockReturnValue(1);
-        context.render({ picking: false });
+        context.render();
         expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledTimes(3);
         expect(surface.updateMark).toHaveBeenCalledTimes(4);
     });
@@ -577,7 +571,7 @@ describe("WebGpuViewRenderingContext", () => {
         });
         context.popView(/** @type {any} */ (view));
         context.finish();
-        const frame = context.render({ picking: false });
+        const frame = context.render();
 
         const adapterCalls = /** @type {any[][]} */ (
             mocks.createWebGpuMarkConfig.mock.calls
@@ -596,7 +590,7 @@ describe("WebGpuViewRenderingContext", () => {
             placement: { set: { placementSetId: -1 } },
         });
         expect(surface.prepareDraw.mock.calls[0][2]).toBe(source);
-        expect(frame.items[0]).toMatchObject({
+        expect(frame[0]).toMatchObject({
             sampleCount: 4,
             items: [surface.prepareDraw.mock.calls[0][1]],
         });
@@ -669,7 +663,7 @@ describe("WebGpuViewRenderingContext", () => {
             context.popView(/** @type {any} */ (view));
         }
         context.finish();
-        const frame = context.render({ picking: false });
+        const frame = context.render();
 
         const adapterCalls = /** @type {any[][]} */ (
             mocks.createWebGpuMarkConfig.mock.calls
@@ -697,7 +691,7 @@ describe("WebGpuViewRenderingContext", () => {
                 scissor: { x: 70, y: 30, width: 50, height: 80 },
             },
         ]);
-        expect(frame.items[0]).toMatchObject({
+        expect(frame[0]).toMatchObject({
             sampleCount: 4,
             items: surface.prepareDraw.mock.calls.map((call) => call[1]),
         });
@@ -754,7 +748,7 @@ describe("WebGpuViewRenderingContext", () => {
         });
         context.popView(/** @type {any} */ (view));
         context.finish();
-        context.render({ picking: false });
+        context.render();
 
         expect(order).toEqual(["rect A", "mark B", "rect A"]);
     });
@@ -812,9 +806,9 @@ describe("WebGpuViewRenderingContext", () => {
             context.popView(/** @type {any} */ (view));
         }
         context.finish();
-        const frame = context.render({ picking: false });
+        const frame = context.render();
 
-        expect(frame.items).toMatchObject([
+        expect(frame).toMatchObject([
             {
                 opacity: 0.5,
                 items: [
@@ -859,12 +853,12 @@ describe("WebGpuViewRenderingContext", () => {
         context.renderMark(/** @type {any} */ (mark), {});
         context.popView(/** @type {any} */ (view));
         context.finish();
-        const firstFrame = context.render({ picking: false });
+        const firstFrame = context.render();
         opacity = 0.25;
-        const secondFrame = context.render({ picking: false });
+        const secondFrame = context.render();
 
-        expect(firstFrame.items[0]).toMatchObject({ opacity: 0.5 });
-        expect(secondFrame.items[0]).toMatchObject({ opacity: 0.25 });
+        expect(firstFrame[0]).toMatchObject({ opacity: 0.5 });
+        expect(secondFrame[0]).toMatchObject({ opacity: 0.25 });
         expect(surface.updateMark).toHaveBeenCalledOnce();
         const adapterCalls = /** @type {any[][]} */ (
             mocks.createWebGpuMarkConfig.mock.calls
@@ -914,7 +908,7 @@ describe("WebGpuViewRenderingContext", () => {
             context.popView(/** @type {any} */ (view));
         }
         context.finish();
-        const frame = context.render({ picking: true });
+        const frame = context.renderPicking();
 
         expect(surface.updateMark).toHaveBeenCalledOnce();
         expect(surface.prepareDraw).toHaveBeenCalledTimes(2);
@@ -923,6 +917,6 @@ describe("WebGpuViewRenderingContext", () => {
                 (call) => call[1].placement.index
             )
         ).toEqual([1, 2]);
-        expect(frame.pickingDraws).toHaveLength(2);
+        expect(frame).toHaveLength(2);
     });
 });

@@ -75,7 +75,7 @@ Full PNG and hybrid SVG rasterization reuse the live renderer's device, mark
 handles, placement sets, and pipelines through a detached canvas target. Each
 target has independent logical dimensions, backing dimensions, and device
 pixel ratio; export therefore compiles a fresh layout instead of stretching
-the live canvas. Export metrics are passed to the independent frame builder and
+the live canvas. Export metrics are passed to the independent frame plan and
 never replace the live surface's size or frame state.
 
 Hybrid SVG keeps run discovery, placeholders, cropping, and document order in

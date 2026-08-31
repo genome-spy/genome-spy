@@ -1,6 +1,7 @@
 import { peek } from "../../utils/arrayUtils.js";
 import ViewRenderingContext from "../../view/renderingContext/viewRenderingContext.js";
 import {
+    getViewClipDirections,
     normalizeClipOptions,
     prepareMarkClipOptionsFromClip,
 } from "../../view/renderingContext/clipOptions.js";
@@ -18,7 +19,6 @@ import {
 import { getPackedMarkData, getPackedMarkRange } from "./webGpuMarkData.js";
 import { resolveMarkXIndexQuery } from "../xIndex/markXIndex.js";
 import { getMarkRenderingIntent } from "../renderingIntent.js";
-import WebGpuFrameBuilder from "./webGpuFrameBuilder.js";
 
 /**
  * Compiles a completed Core layout into an adapter-owned retained frame plan.
@@ -45,12 +45,21 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     #target;
 
     /**
-     * @param {{surface: import("./webGpuSurface.js").default, target: {width: number, height: number, dpr: number}, markPredicate?: (mark: import("../../marks/mark.js").default) => boolean}} options
+     * @param {{surface: import("./webGpuSurface.js").default, target?: {width: number, height: number, dpr: number}, markPredicate?: (mark: import("../../marks/mark.js").default) => boolean}} options
      */
     constructor(options) {
         super({});
         this.surface = options.surface;
-        this.#target = options.target;
+        if (options.target) {
+            this.#target = options.target;
+        } else {
+            const size = options.surface.getLogicalCanvasSize();
+            this.#target = {
+                width: size.width,
+                height: size.height,
+                dpr: options.surface.getDevicePixelRatio(),
+            };
+        }
         this.#markPredicate = options.markPredicate;
     }
 
@@ -64,11 +73,14 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     pushView(view, coords) {
-        if (!this.#views.has(view)) {
-            this.#views.add(view);
-        }
+        this.#views.add(view);
         this.#viewStack.push({ view, coords });
-        this.#paintCommands.push({ type: "pushView", view, coords });
+        this.#paintCommands.push({
+            type: "pushView",
+            view,
+            coords,
+            clip: undefined,
+        });
     }
 
     /**
@@ -80,7 +92,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (entry?.view !== view) {
             throw new Error("Unbalanced WebGPU view rendering context stack.");
         }
-        this.#paintCommands.push({ type: "popView", view });
+        this.#paintCommands.push({ type: "popView" });
     }
 
     /**
@@ -181,10 +193,24 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     /**
      * Synchronizes live state and submits occurrences in original paint order.
      *
-     * @param {{picking: boolean}} options
-     * @returns {{items: import("@genome-spy/webgpu-renderer").RenderItem[], pickingDraws: import("@genome-spy/webgpu-renderer").DrawCommand[]}}
+     * @returns {import("@genome-spy/webgpu-renderer").RenderItem[]}
      */
-    render({ picking }) {
+    render() {
+        return this.#render(false);
+    }
+
+    /** @returns {import("@genome-spy/webgpu-renderer").DrawCommand[]} */
+    renderPicking() {
+        return /** @type {import("@genome-spy/webgpu-renderer").DrawCommand[]} */ (
+            this.#render(true)
+        );
+    }
+
+    /**
+     * @param {boolean} picking
+     * @returns {import("@genome-spy/webgpu-renderer").RenderItem[]}
+     */
+    #render(picking) {
         if (!this.#finished) {
             throw new Error("Cannot render an unfinished WebGPU frame plan.");
         }
@@ -195,50 +221,119 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
 
         const canvas = this.#target;
-        const frame = new WebGpuFrameBuilder(this.#target);
         for (const state of this.#marks.values()) {
             state.updated = false;
             state.active = false;
             this.#prepareMarkState(state, picking, canvas);
         }
+
+        /** @type {import("@genome-spy/webgpu-renderer").RenderItem[]} */
+        const items = [];
+        /** @type {(import("@genome-spy/webgpu-renderer").RenderItem[] | undefined)[]} */
+        const parentItems = [];
+        let currentItems = items;
+        /** @type {{markId: import("@genome-spy/webgpu-renderer").MarkId, group: {bounds: import("@genome-spy/webgpu-renderer").DrawRect, sampleCount: 4, items: import("@genome-spy/webgpu-renderer").DrawCommand[]}} | undefined} */
+        let activeMsaaGroup;
+        /**
+         * @param {import("@genome-spy/webgpu-renderer").DrawCommand} draw
+         * @param {1 | 4} sampleCount
+         */
+        const appendDraw = (draw, sampleCount) => {
+            if (picking) {
+                items.push(draw);
+                return;
+            }
+
+            if (sampleCount !== 4) {
+                currentItems.push(draw);
+                activeMsaaGroup = undefined;
+                return;
+            }
+
+            const bounds = {
+                ...(draw.scissor ??
+                    draw.viewport ?? {
+                        x: 0,
+                        y: 0,
+                        width: this.#target.width,
+                        height: this.#target.height,
+                    }),
+            };
+            if (bounds.width <= 0 || bounds.height <= 0) {
+                activeMsaaGroup = undefined;
+                return;
+            }
+
+            if (activeMsaaGroup?.markId === draw.mark.markId) {
+                activeMsaaGroup.group.items.push(draw);
+                unionBounds(activeMsaaGroup.group.bounds, bounds);
+            } else {
+                const group = {
+                    bounds,
+                    sampleCount: /** @type {const} */ (4),
+                    items: [draw],
+                };
+                currentItems.push(group);
+                activeMsaaGroup = { markId: draw.mark.markId, group };
+            }
+        };
+
         let synchronizedMarks = 0;
         let changedMarks = 0;
         let resourceWrites = 0;
-        /** @type {boolean[]} */
-        const openedGroups = [];
         for (const command of this.#paintCommands) {
-            if (command.type === "pushView") {
-                const opacity = command.view.getOpacity();
-                const isolated = !picking && opacity !== 1;
-                openedGroups.push(isolated);
-                if (isolated) {
-                    frame.pushViewGroup(command.view, command.coords, opacity);
-                }
-            } else if (command.type === "popView") {
-                if (openedGroups.pop()) {
-                    frame.popViewGroup();
-                }
-            } else {
+            if (command.type === "occurrence") {
                 const writes = this.#submitOccurrenceDraw(
                     command.occurrence,
                     picking,
                     canvas,
-                    frame
+                    appendDraw
                 );
                 if (writes !== undefined) {
                     synchronizedMarks++;
                     changedMarks += writes > 0 ? 1 : 0;
                     resourceWrites += writes;
                 }
+            } else if (!picking && command.type === "pushView") {
+                const opacity = command.view.getOpacity();
+                if (opacity === 1) {
+                    parentItems.push(undefined);
+                } else {
+                    const clip = (command.clip ??= getViewClipDirections(
+                        command.view
+                    ));
+                    /** @type {import("@genome-spy/webgpu-renderer").RenderItem[]} */
+                    const children = [];
+                    currentItems.push({
+                        bounds: {
+                            x: clip.clipX ? command.coords.x : 0,
+                            y: clip.clipY ? command.coords.y : 0,
+                            width: clip.clipX
+                                ? command.coords.width
+                                : this.#target.width,
+                            height: clip.clipY
+                                ? command.coords.height
+                                : this.#target.height,
+                        },
+                        opacity,
+                        items: children,
+                    });
+                    parentItems.push(currentItems);
+                    currentItems = children;
+                    activeMsaaGroup = undefined;
+                }
+            } else if (!picking && command.type === "popView") {
+                const parent = parentItems.pop();
+                if (parent) {
+                    currentItems = parent;
+                    activeMsaaGroup = undefined;
+                }
             }
-        }
-        if (openedGroups.length) {
-            throw new Error("Unbalanced WebGPU paint command stack.");
         }
         countPerformance("retainedMarkSyncChecks", synchronizedMarks);
         countPerformance("retainedMarkSyncChanges", changedMarks);
         countPerformance("retainedResourceWrites", resourceWrites);
-        return frame.finish();
+        return items;
     }
 
     /**
@@ -440,10 +535,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      * @param {Occurrence} occurrence
      * @param {boolean} picking
      * @param {{width: number, height: number}} canvas
-     * @param {WebGpuFrameBuilder} frame
+     * @param {(draw: import("@genome-spy/webgpu-renderer").DrawCommand, sampleCount: 1 | 4) => void} appendDraw
      * @returns {number | undefined}
      */
-    #submitOccurrenceDraw(occurrence, picking, canvas, frame) {
+    #submitOccurrenceDraw(occurrence, picking, canvas, appendDraw) {
         const state = occurrence.state;
         if (
             !state.active ||
@@ -539,7 +634,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             draw.placement.index = placementIndex;
         }
         this.surface.prepareDraw(state.mark, draw, state.source);
-        frame.addDraw(state.mark, draw, picking, state.intent);
+        appendDraw(draw, state.intent.sampleCount);
         countPerformance("drawCommands");
         return resourceWrites;
     }
@@ -739,6 +834,19 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
 }
 
 /**
+ * @param {import("@genome-spy/webgpu-renderer").DrawRect} target
+ * @param {import("@genome-spy/webgpu-renderer").DrawRect} source
+ */
+function unionBounds(target, source) {
+    const x2 = Math.max(target.x + target.width, source.x + source.width);
+    const y2 = Math.max(target.y + target.height, source.y + source.height);
+    target.x = Math.min(target.x, source.x);
+    target.y = Math.min(target.y, source.y);
+    target.width = x2 - target.x;
+    target.height = y2 - target.y;
+}
+
+/**
  * @typedef {object} MarkState
  * @property {import("../../marks/mark.js").default} mark
  * @property {Occurrence[]} occurrences
@@ -769,8 +877,8 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
 
 /**
  * @typedef {
- *   | {type: "pushView", view: import("../../view/view.js").default, coords: Rectangle}
- *   | {type: "popView", view: import("../../view/view.js").default}
+ *   | {type: "pushView", view: import("../../view/view.js").default, coords: Rectangle, clip: {clipX: boolean, clipY: boolean} | undefined}
+ *   | {type: "popView"}
  *   | {type: "occurrence", occurrence: Occurrence}
  * } PaintCommand
  */

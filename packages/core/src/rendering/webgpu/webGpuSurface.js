@@ -191,8 +191,7 @@ export default class WebGpuSurface {
         });
         layoutResult.collectRenderCommands(framePlan);
         framePlan.finish();
-        const frame = framePlan.render({ picking: false });
-        target.handle.render({ items: frame.items, clearColor });
+        target.handle.render({ items: framePlan.render(), clearColor });
     }
 
     /**

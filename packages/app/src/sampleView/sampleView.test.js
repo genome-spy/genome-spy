@@ -199,11 +199,6 @@ function createWebGpuHarness(canvas) {
         surface,
         context: new WebGpuViewRenderingContext({
             surface: /** @type {any} */ (surface),
-            target: {
-                width: canvas.width,
-                height: canvas.height,
-                dpr: 1,
-            },
         }),
     };
 }
@@ -2227,8 +2222,8 @@ describe("axis layout and visibility", () => {
         view.arrange(pickingContext, coords, { firstFacet: true });
         visibleContext.finish();
         pickingContext.finish();
-        const visibleFrame = visibleContext.render({ picking: false });
-        const pickingFrame = pickingContext.render({ picking: true });
+        visibleContext.render();
+        const pickingFrame = pickingContext.renderPicking();
 
         const visibleRanges = getSampleRangeDraws(visibleHarness.surface);
         const pickingRanges = getSampleRangeDraws(pickingHarness.surface);
@@ -2237,9 +2232,7 @@ describe("axis layout and visibility", () => {
         expect(pickingRanges.map(getDrawRange)).toEqual(
             visibleRanges.map(getDrawRange)
         );
-        expect(visibleFrame.pickingDraws).toEqual([]);
-        expect(pickingFrame.items).toEqual([]);
-        expect(pickingFrame.pickingDraws).toEqual(
+        expect(pickingFrame).toEqual(
             expect.arrayContaining(pickingRanges.map((call) => call[1]))
         );
     });
