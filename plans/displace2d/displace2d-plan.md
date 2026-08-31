@@ -1360,6 +1360,10 @@ Evidence recorded on 2026-08-30:
   restores all 12 rows with exact canonical targets. Generated-example and SVG
   suites pass with 195 tests, and the tracked example passes focused WebGL
   capture without rendering errors.
+- After correcting the delay clock, user testing found 20 ms slightly too
+  noticeable. The tracked example and long-label private fixtures now use
+  `targetDelay: 10`, preserving a positive quiet period while normally
+  accepting a stable target on the next available animation frame.
 
 ## Reconciliation through the first user acid test (2026-08-28)
 
