@@ -193,7 +193,7 @@ function createWebGpuHarness(canvas) {
             return source;
         },
         updateMark: vi.fn(),
-        drawMark: vi.fn(),
+        prepareDraw: vi.fn(),
     };
     return {
         surface,
@@ -203,9 +203,9 @@ function createWebGpuHarness(canvas) {
     };
 }
 
-/** @param {{ drawMark: ReturnType<typeof vi.fn> }} surface */
+/** @param {{ prepareDraw: ReturnType<typeof vi.fn> }} surface */
 function getSampleRangeDraws(surface) {
-    return surface.drawMark.mock.calls.filter(
+    return surface.prepareDraw.mock.calls.filter(
         ([mark, options]) =>
             options.instanceCount !== undefined &&
             mark.encoders.sample &&
@@ -2222,8 +2222,8 @@ describe("axis layout and visibility", () => {
         view.arrange(pickingContext, coords, { firstFacet: true });
         visibleContext.finish();
         pickingContext.finish();
-        visibleContext.render({ picking: false });
-        pickingContext.render({ picking: true });
+        const visibleFrame = visibleContext.render({ picking: false });
+        const pickingFrame = pickingContext.render({ picking: true });
 
         const visibleRanges = getSampleRangeDraws(visibleHarness.surface);
         const pickingRanges = getSampleRangeDraws(pickingHarness.surface);
@@ -2232,12 +2232,11 @@ describe("axis layout and visibility", () => {
         expect(pickingRanges.map(getDrawRange)).toEqual(
             visibleRanges.map(getDrawRange)
         );
-        expect(visibleRanges.every((call) => call[3] === false)).toBe(true);
-        expect(visibleRanges.every((call) => call[4]?.sampleCount === 4)).toBe(
-            true
+        expect(visibleFrame.pickingDraws).toEqual([]);
+        expect(pickingFrame.items).toEqual([]);
+        expect(pickingFrame.pickingDraws).toEqual(
+            expect.arrayContaining(pickingRanges.map((call) => call[1]))
         );
-        expect(pickingRanges.every((call) => call[3] === true)).toBe(true);
-        expect(pickingRanges.every((call) => call[4] === undefined)).toBe(true);
     });
 
     test("skips sample rendering while sample locations are unavailable", async () => {
