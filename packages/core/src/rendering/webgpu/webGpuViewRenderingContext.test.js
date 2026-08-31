@@ -60,6 +60,34 @@ beforeEach(() => {
 });
 
 describe("WebGpuViewRenderingContext", () => {
+    test("requests MSAA for an un-faceted plain rectangle", () => {
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            updateMark: vi.fn(),
+            drawMark: vi.fn(),
+        };
+        const context = new WebGpuViewRenderingContext({
+            surface: /** @type {any} */ (surface),
+        });
+        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const mark = {
+            encoders: {},
+            encoding: {},
+            getType: () => "rect",
+            properties: {},
+            unitView: { getEffectiveOpacity: () => 1 },
+        };
+
+        context.pushView(/** @type {any} */ (view), Rectangle.ZERO);
+        context.renderMark(/** @type {any} */ (mark), {});
+        context.popView(/** @type {any} */ (view));
+        context.finish();
+        context.render({ picking: false });
+
+        expect(surface.drawMark.mock.calls[0][4]).toEqual({ sampleCount: 4 });
+    });
+
     test("compiles only marks selected for a raster run", () => {
         const surface = {
             getDevicePixelRatio: () => 1,
@@ -122,6 +150,7 @@ describe("WebGpuViewRenderingContext", () => {
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             encoders: {},
+            getType: () => "point",
             isPickingParticipant: () => true,
             properties: {},
             unitView: { getEffectiveOpacity: () => 1 },
@@ -162,6 +191,7 @@ describe("WebGpuViewRenderingContext", () => {
         });
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
+            getType: () => "point",
             properties: {},
             unitView: {
                 getEffectiveOpacity: () => opacity,
@@ -197,6 +227,7 @@ describe("WebGpuViewRenderingContext", () => {
         });
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
+            getType: () => "point",
             properties: { clip: "x" },
             unitView: {
                 getEffectiveOpacity: () => 0.25,
@@ -253,6 +284,7 @@ describe("WebGpuViewRenderingContext", () => {
         });
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
+            getType: () => "point",
             properties: { clip: "never", cullByVisibleRange: "y" },
             unitView: {
                 getEffectiveOpacity: () => 1,
@@ -325,6 +357,7 @@ describe("WebGpuViewRenderingContext", () => {
             .modify({ height: () => 80 + offset })
             .translate(() => offset, 0);
         const mark = {
+            getType: () => "point",
             isPickingParticipant: () => true,
             properties: { clip: true, cullByVisibleRange: "x" },
             unitView: { getEffectiveOpacity: () => 1 },
@@ -379,6 +412,7 @@ describe("WebGpuViewRenderingContext", () => {
         });
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
+            getType: () => "point",
             isPickingParticipant: () => false,
             properties: {},
             unitView: { getEffectiveOpacity: () => 1 },
@@ -422,6 +456,7 @@ describe("WebGpuViewRenderingContext", () => {
         });
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
+            getType: () => "point",
             properties: {},
             unitView: {
                 getEffectiveOpacity: () => 1,
@@ -677,6 +712,7 @@ describe("WebGpuViewRenderingContext", () => {
         };
         const mark = {
             encoders: {},
+            getType: () => "point",
             properties: {},
             unitView: view,
         };
@@ -727,6 +763,7 @@ describe("WebGpuViewRenderingContext", () => {
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             encoders: {},
+            getType: () => "point",
             isPickingParticipant: () => true,
             properties: {},
             unitView: {

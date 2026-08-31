@@ -6,6 +6,8 @@ Reviewed by a Luna subagent before branch creation. The review tightened
 placement-indexed MSAA grouping, Canvas2D opacity ownership, sample-count
 selection, export serialization, migration-plan reconciliation, and
 inspectable MCCA acceptance checks.
+Re-reviewed after the scope was generalized from sample-faceted rectangles to
+all undecorated rectangles.
 
 ## Context
 
@@ -25,18 +27,20 @@ bounds. The low-level WebGPU renderer owns pipelines, attachments, resolves,
 and texture lifetime. The legacy WebGL implementation is an intentional
 deletion boundary and must not gain any new behavior.
 
-The supplied MCCA visualization has two kinds of plain, sample-faceted
-rectangles that benefit from MSAA: variable-length copy-number segments and
-the metadata heatmap. Its mutation points, axes, text, summaries, and other
-marks must remain on the direct single-sample path.
+The supplied MCCA visualization has several kinds of plain rectangles that
+benefit from MSAA: cytobands, variable-length copy-number segments, gene exons,
+summary rectangles, legend ramps, and the metadata heatmap. Its mutation
+points, axes, text, and other mark types remain on the direct single-sample
+path.
 
 ## Goals
 
 - Add renderer-owned transient targets that preserve nested paint order,
   clipping, transparency, and premultiplied-alpha composition.
-- Apply four-sample MSAA only to Core's plain sample-faceted rectangle intent,
-  covering MCCA copy-number segments and metadata heatmaps without slowing
-  unrelated marks.
+- Apply four-sample MSAA only to Core's plain rectangle intent, covering all
+  undecorated MCCA rectangles, including cytobands, copy-number segments, gene
+  exons, summary rectangles, legend ramps, and metadata heatmaps, without
+  slowing unrelated mark types.
 - Apply view opacity once to the isolated result in WebGPU and Canvas2D rather
   than multiplying it into every child mark.
 - Render WebGPU raster exports at the requested logical dimensions and pixel
@@ -49,8 +53,8 @@ marks must remain on the direct single-sample path.
 ## Non-goals
 
 - Adding, refactoring, or otherwise changing the legacy WebGL renderer.
-- Enabling MSAA globally or for SDF points, rules, text, axes, summaries, or
-  arbitrary rectangles.
+- Enabling MSAA globally or for SDF points, rules, text, axes, or decorated
+  rectangles.
 - Exposing WebGPU-specific `useMSAA`, `useSdf`, texture, or render-pass
   properties in the visualization grammar.
 - Changing picking to use visual compositing or multisampled targets.
@@ -98,12 +102,12 @@ do not allocate targets.
 
 ### Core derives narrow antialiasing intent
 
-Core identifies plain sample-faceted rectangle marks as the quality-sensitive
-case. This semantic rule covers the MCCA copy-number segments and metadata
-heatmap because both are rectangle marks indexed by the sample-facet channel.
-It excludes the MCCA mutation points and all non-sample-faceted content. The
-intent is renderer-neutral and internal: capable raster backends may honor it,
-while WebGL remains unchanged and Canvas2D continues to use browser raster
+Core identifies plain rectangle marks as the quality-sensitive case. This
+semantic rule covers the MCCA cytobands, copy-number segments, gene exons, and
+metadata heatmap, as well as its summary rectangles and legend ramps. It
+excludes the MCCA mutation points and all non-rectangle content. The intent is
+renderer-neutral and internal: capable raster backends may honor it, while
+WebGL remains unchanged and Canvas2D continues to use browser raster
 antialiasing.
 
 The frame-plan compiler groups contiguous selected retained draw items, not
@@ -115,14 +119,10 @@ target is allocated per segment, datum, sample, or facet. Adjacent selected
 draw items may be coalesced only when that preserves the existing paint order
 and clip.
 
-The precise initial predicate is: a Core `rect` mark whose packed rendering
-uses either the sample-facet `facetIndex` channel or the source-backed `sample`
-channel and whose rectangle has no stroke, corner radius, shadow, or hatch
-decoration. The MCCA copy-number segments use `sample`, while the metadata
-heatmap and its missing-value background use `facetIndex`; both use MSAA.
-Tests lock down these MCCA-shaped positive cases and the negative cases:
-mutation points, labels, axes, copy-ratio summaries, selection overlays,
-decorated rectangles, non-sample rectangles, and dense points remain direct.
+The precise predicate is: a Core `rect` mark with no stroke, corner radius,
+shadow, or hatch decoration. Tests lock down MCCA-shaped positive cases and the
+negative cases: mutation points, labels, axes, selection overlays, decorated
+rectangles, and dense points remain direct.
 
 ### View opacity is local group state
 
@@ -180,7 +180,7 @@ which is the performance problem behind issue #478.
 
 Rejected because it exposes a backend mechanism in the grammar and makes
 authors choose between WebGPU implementation strategies. Core can express the
-narrow quality intent from existing sample-facet semantics.
+quality intent from existing rectangle-decoration semantics.
 
 ### Capture and scale the live WebGPU canvas for export
 
@@ -256,7 +256,7 @@ Tentative commit: `feat(webgpu-renderer): add selective render groups`
 
 ### Intended outcome
 
-WebGPU gives four-sample coverage only to plain sample-faceted rectangles, and
+WebGPU gives four-sample coverage only to plain rectangles, and
 WebGPU plus Canvas2D apply view opacity once per isolated view group. WebGL is
 untouched.
 
@@ -265,7 +265,7 @@ untouched.
 - [x] Add and test the local view-opacity accessor without changing
       `getEffectiveOpacity()` for legacy consumers.
 - [x] Add a renderer-neutral internal rendering-intent helper using the exact
-      undecorated sample-faceted rectangle predicate above.
+      undecorated rectangle predicate above.
 - [x] Compile WebGPU view nesting and selected rectangle occurrences into
       ordered renderer groups while keeping picking flat and direct. Aggregate
       placement-indexed marks into one bounded target and resolve, never one
@@ -275,8 +275,10 @@ untouched.
 - [x] Add Canvas2D offscreen view groups for true group opacity, render their
       descendants without effective-opacity baking, and retain browser-managed
       antialiasing plus selective-mark rendering.
-- [x] Cover MCCA-shaped copy-number rectangles, metadata rectangles, mutation
-      points, nested opacity, clipping, and picking with focused Core/App tests.
+- [x] Cover plain MCCA-shaped rectangles, including cytobands, copy-number
+      segments, gene exons, summaries, legend ramps, and metadata rectangles;
+      also cover mutation points, decorated rectangles, nested opacity,
+      clipping, and picking with focused Core/App tests.
 - [x] Expose a serializable development frame-plan summary containing group
       sample counts, bounds, and Core mark/view identities so browser smoke
       tests can prove the MCCA selection without inspecting GPU internals.
@@ -291,8 +293,8 @@ untouched.
 
 ### Verification
 
-- Core tests assert that copy-number-like and metadata-like rect marks produce
-  four-sample groups, while points and non-sample rectangles stay direct.
+- Core tests assert that plain rect marks produce four-sample groups, while
+  points and decorated rectangles stay direct.
 - A placement-indexed multi-facet regression test asserts one MSAA group and
   one resolve for its clipped occurrence draws, with no per-facet target.
 - A live opacity update changes only group composition state, not retained mark
@@ -348,8 +350,8 @@ and paint order.
   placement, and raster/vector document order.
 - Browser smoke-test the supplied MCCA URL with `renderer=webgpu`: smoothly
   zoom copy-number segments and metadata, inspect the serializable frame-plan
-  summary to verify only those draws use multisample groups, exercise picking,
-  export PNG at a non-live size, and export a hybrid SVG.
+  summary to verify every plain rectangle uses a multisample group, exercise
+  picking, export PNG at a non-live size, and export a hybrid SVG.
 - Open the supplied URL without a renderer override to confirm the unchanged
   WebGL path still loads and interacts normally.
 - Run focused Core and renderer tests, renderer GPU tests, workspace type
@@ -358,15 +360,18 @@ and paint order.
 ### Documentation and migration
 
 Update the renderer README and Core WebGPU integration README with detached
-targets and export ownership. Existing public image-export options are reused,
-so no user migration is needed.
+targets and export ownership. Existing asynchronous image-export options are
+reused. The App's chart download uses that API; the deprecated synchronous
+`exportCanvas()` remains available with legacy renderers but fails fast with
+WebGPU because its contract cannot await GPU completion.
 
 Tentative commit: `feat(core): rasterize exports with WebGPU`
 
 ## Final integration and acceptance
 
 - [x] Re-run the supplied MCCA visualization with WebGPU and verify that
-      copy-number segments and metadata heatmaps are the only MSAA groups.
+      all undecorated rectangles, including cytobands, copy-number segments,
+      gene exons, summaries, legend ramps, and metadata heatmaps, use MSAA.
 - [x] Verify dense point marks stay on the direct single-sample path during
       interaction and picking remains unchanged.
 - [x] Verify overlapping and nested view opacity against equivalent SVG-style
@@ -391,9 +396,9 @@ Tentative commit: `feat(core): rasterize exports with WebGPU`
   exceptions.
 - Canvas2D group surfaces can be expensive if opacity is used per sample. Keep
   the implementation lazy and bounded to views that actually isolate.
-- The sample-faceted-rectangle heuristic is intentionally narrow. If a future
-  use case needs different quality intent, add a backend-neutral policy rather
-  than a WebGPU flag.
+- The plain-rectangle heuristic intentionally excludes decorated rectangles. If
+  a future use case needs different quality intent, add a backend-neutral
+  policy rather than a WebGPU flag.
 
 ## Unresolved questions
 

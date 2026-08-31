@@ -1,11 +1,7 @@
 import latoRegularBitmap from "../../fonts/Lato-Regular.png";
 import WebGpuRenderCoordinator from "./webGpuRenderCoordinator.js";
 import WebGpuSurface from "./webGpuSurface.js";
-import {
-    exportCanvas,
-    exportRaster,
-    rasterizeSvgRuns,
-} from "./webGpuRasterExport.js";
+import { exportRaster, rasterizeSvgRuns } from "./webGpuRasterExport.js";
 
 /**
  * Creates the experimental WebGPU backend used by the first-example vertical
@@ -25,17 +21,8 @@ export async function createWebGpuRenderingBackend(options) {
     }
 
     let exportQueue = Promise.resolve();
-    let exportBusy = false;
     const serializeExport = (/** @type {() => Promise<any>} */ operation) => {
-        const run = async () => {
-            exportBusy = true;
-            try {
-                return await operation();
-            } finally {
-                exportBusy = false;
-            }
-        };
-        const result = exportQueue.then(run, run);
+        const result = exportQueue.then(operation, operation);
         exportQueue = result.then(
             completeExportOperation,
             completeExportOperation
@@ -53,13 +40,10 @@ export async function createWebGpuRenderingBackend(options) {
                 surface,
             }),
         readPickingId: (x, y) => surface.pick(x, y),
-        exportCanvas: (options) => {
-            if (exportBusy) {
-                throw new Error(
-                    "Synchronous canvas export cannot overlap an asynchronous WebGPU export."
-                );
-            }
-            return exportCanvas(surface, options);
+        exportCanvas: () => {
+            throw new Error(
+                "Synchronous canvas export is unavailable with WebGPU. Use imageExport.raster() instead."
+            );
         },
         exportRaster: (options) =>
             serializeExport(() => exportRaster(surface, options)),

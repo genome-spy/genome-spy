@@ -56,14 +56,13 @@ the renderer applies that opacity once when compositing the group. Mark alpha
 therefore stays independent of ancestor opacity. Nested views produce nested
 groups, while picking remains a flat single-sampled draw list.
 
-Four-sample coverage is limited to undecorated `rect` marks packed through a
-source-backed `sample` channel or the sample-facet `facetIndex` channel. This
-includes copy-number segments and both foreground and missing-value metadata
-rectangles. Points, text, ordinary rectangles, and rectangles with strokes,
-rounded corners, shadows, or hatches stay on the direct single-sample path. A
-placement-indexed retained mark keeps its clipped occurrence ranges as draws
-inside one group and therefore resolves once, regardless of its number of
-sample facets.
+Four-sample coverage is limited to undecorated `rect` marks. This includes all
+plain MCCA rectangles: cytobands, copy-number segments, gene exons, summary
+rectangles, legend ramps, and both foreground and missing-value metadata cells.
+Points, text, rules, and rectangles with strokes, rounded corners, shadows, or
+hatches stay on the direct single-sample path. A placement-indexed retained mark
+keeps its clipped occurrence ranges as draws inside one group and therefore
+resolves once, regardless of its number of sample facets.
 
 `EmbedResult.debug.getWebGpuFramePlanSummary()` exposes serializable group
 bounds, sample counts, opacities, mark types, and view paths for development
@@ -85,6 +84,9 @@ the SVG renderer. WebGPU receives one mark predicate per run, clears the
 export-sized target transparently, waits for the queue, and embeds the cropped
 PNG into the existing placeholder. Asynchronous raster and SVG exports are
 serialized because they synchronize shared retained mark configuration.
+The deprecated synchronous `exportCanvas()` API is unavailable with WebGPU
+because correct canvas readback requires waiting for submitted GPU work; use
+`imageExport.raster()` instead.
 
 ## Performance invariants
 

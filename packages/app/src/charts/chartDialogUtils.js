@@ -5,8 +5,9 @@ import { embed } from "@genome-spy/core";
  * @param {import("@genome-spy/core/types/embedApi.js").EmbedResult | null} api
  * @param {string} filename
  * @param {string} [selector]
+ * @returns {Promise<void>}
  */
-export function downloadChartPng(
+export async function downloadChartPng(
     renderRoot,
     api,
     filename,
@@ -23,18 +24,23 @@ export function downloadChartPng(
         throw new Error("Cannot find chart container.");
     }
 
-    const dataUrl = api.exportCanvas(
-        container.clientWidth,
-        container.clientHeight,
-        3,
-        "white"
-    );
+    const { blob } = await api.imageExport.raster({
+        logicalWidth: container.clientWidth,
+        logicalHeight: container.clientHeight,
+        pixelRatio: 3,
+        background: "white",
+    });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = dataUrl;
+    link.href = url;
     link.download = filename;
     document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+        link.click();
+    } finally {
+        link.remove();
+        URL.revokeObjectURL(url);
+    }
 }
 
 /**

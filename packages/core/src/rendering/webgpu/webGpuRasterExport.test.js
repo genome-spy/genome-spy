@@ -11,11 +11,7 @@ vi.mock("../../view/layout/layoutResult.js", () => ({
 }));
 
 import { RasterizationUnavailableError } from "../rasterization.js";
-import {
-    exportCanvas,
-    exportRaster,
-    rasterizeSvgRuns,
-} from "./webGpuRasterExport.js";
+import { exportRaster, rasterizeSvgRuns } from "./webGpuRasterExport.js";
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -62,22 +58,9 @@ describe("WebGPU raster export", () => {
         expect(target.handle.destroy).toHaveBeenCalledOnce();
     });
 
-    test("keeps legacy canvas export detached and validates MIME type", async () => {
-        const { surface, target } = createSurface({
-            toDataURL: vi.fn(() => "data:image/png;base64,export"),
-        });
+    test("validates the raster MIME type", async () => {
+        const { surface } = createSurface();
         const viewRoot = /** @type {any} */ ({});
-
-        expect(
-            exportCanvas(surface, {
-                viewRoot,
-                logicalWidth: 90,
-                logicalHeight: 60,
-                devicePixelRatio: 3,
-            })
-        ).toBe("data:image/png;base64,export");
-        expect(surface.createExportTarget).toHaveBeenCalledWith(90, 60, 3);
-        expect(target.handle.destroy).toHaveBeenCalledOnce();
 
         await expect(
             exportRaster(surface, {

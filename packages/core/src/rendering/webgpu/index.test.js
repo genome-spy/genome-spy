@@ -2,7 +2,6 @@ import { expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
     initialize: vi.fn(),
-    exportCanvas: vi.fn(),
     exportRaster: vi.fn(),
     rasterizeSvgRuns: vi.fn(),
 }));
@@ -14,7 +13,6 @@ vi.mock("./webGpuSurface.js", () => ({
 }));
 
 vi.mock("./webGpuRasterExport.js", () => ({
-    exportCanvas: mocks.exportCanvas,
     exportRaster: mocks.exportRaster,
     rasterizeSvgRuns: mocks.rasterizeSvgRuns,
 }));
@@ -41,18 +39,15 @@ test("serializes asynchronous raster and hybrid SVG exports", async () => {
 
     const rasterPromise = backend.exportRaster?.(/** @type {any} */ ({}));
     const svgPromise = backend.rasterizeSvgRuns?.(/** @type {any} */ ({}));
+    expect(() => backend.exportCanvas(/** @type {any} */ ({}))).toThrow(
+        "Synchronous canvas export is unavailable"
+    );
     await Promise.resolve();
     expect(mocks.exportRaster).toHaveBeenCalledOnce();
     expect(mocks.rasterizeSvgRuns).not.toHaveBeenCalled();
-    expect(() => backend.exportCanvas(/** @type {any} */ ({}))).toThrow(
-        "cannot overlap"
-    );
-    expect(mocks.exportCanvas).not.toHaveBeenCalled();
 
     releaseRaster?.(new Blob());
     await rasterPromise;
     await svgPromise;
     expect(mocks.rasterizeSvgRuns).toHaveBeenCalledOnce();
-    backend.exportCanvas(/** @type {any} */ ({}));
-    expect(mocks.exportCanvas).toHaveBeenCalledOnce();
 });

@@ -183,7 +183,7 @@ resources; mark/view and placement-source disposal do.
 
 Visible WebGPU frames may contain generic ordered render groups. Core derives
 group opacity from each view's local opacity and derives four-sample coverage
-only for undecorated sample-faceted rectangles. The renderer owns transient
+for undecorated rectangles. The renderer owns transient
 attachments, resolves, and premultiplied-alpha composition; Core owns the
 predicate, nesting, bounds, and mark/view identities. Placement-indexed marks
 retain clipped occurrence draws inside one group rather than expanding into
@@ -198,3 +198,5 @@ plan. Hybrid SVG passes each selected paint-order run as a mark predicate,
 waits for submission, and uses the shared SVG crop and placeholder helpers.
 The backend serializes asynchronous exports because layout synchronization can
 temporarily update shared retained mark resources.
+The deprecated synchronous canvas-export API is unavailable with WebGPU because
+GPU completion cannot be awaited through its synchronous contract.

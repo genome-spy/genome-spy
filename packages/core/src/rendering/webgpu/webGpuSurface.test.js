@@ -259,6 +259,37 @@ describe("WebGpuSurface", () => {
         });
     });
 
+    test("skips empty four-sample group occurrences", async () => {
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {any} */ ({});
+
+        surface.beginFrame();
+        useMark(
+            surface,
+            mark,
+            /** @type {any} */ ({ type: "rect" }),
+            createConfig(0),
+            {
+                viewport: { x: 0, y: 0, width: 0, height: 20 },
+                intent: { sampleCount: 4 },
+            }
+        );
+        surface.render();
+
+        expect(mocks.renderer.render).toHaveBeenCalledWith({ items: [] });
+        expect(surface.getFramePlanSummary()).toEqual({
+            groups: [],
+            directMarks: [],
+        });
+    });
+
     test("forwards unexpected device loss until the surface is finalized", async () => {
         const container = document.createElement("div");
         const onError = vi.fn();

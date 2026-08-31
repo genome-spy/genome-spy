@@ -26,22 +26,6 @@ export async function exportRaster(surface, options) {
 
 /**
  * @param {import("./webGpuSurface.js").default} surface
- * @param {import("../renderingBackend.js").RasterExportOptions & {devicePixelRatio?: number}} options
- */
-export function exportCanvas(surface, options) {
-    const target = renderExport(surface, {
-        ...options,
-        pixelRatio: options.devicePixelRatio ?? options.pixelRatio,
-    });
-    try {
-        return target.canvas.toDataURL("image/png");
-    } finally {
-        target.handle.destroy();
-    }
-}
-
-/**
- * @param {import("./webGpuSurface.js").default} surface
  * @param {import("../renderingBackend.js").SvgRunRasterizationOptions} options
  */
 export async function rasterizeSvgRuns(surface, options) {

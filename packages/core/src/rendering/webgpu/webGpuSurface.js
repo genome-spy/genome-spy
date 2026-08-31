@@ -493,6 +493,10 @@ export default class WebGpuSurface {
                         height: size.height,
                     }),
             };
+            if (bounds.width <= 0 || bounds.height <= 0) {
+                this.#activeMsaaGroup = undefined;
+                return;
+            }
             const parent = this.#currentFrameItems();
             if (
                 this.#activeMsaaGroup?.mark === mark &&

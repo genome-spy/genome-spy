@@ -1,24 +1,20 @@
 /**
  * Returns the backend-neutral raster quality intent for a Core mark.
  *
- * Four-sample coverage is deliberately limited to undecorated rectangles
- * packed by a source-backed sample channel or sample-facet index. Capable
- * raster backends may honor the intent; other backends keep their existing
- * rendering path.
+ * Four-sample coverage is deliberately limited to undecorated rectangles.
+ * Capable raster backends may honor the intent; other backends keep their
+ * existing rendering path.
  *
  * @param {import("../marks/mark.js").default} mark
  * @returns {{ sampleCount: 1 | 4 }}
  */
 export function getMarkRenderingIntent(mark) {
-    return { sampleCount: isPlainSampleFacetedRect(mark) ? 4 : 1 };
+    return { sampleCount: isPlainRect(mark) ? 4 : 1 };
 }
 
 /** @param {import("../marks/mark.js").default} mark */
-function isPlainSampleFacetedRect(mark) {
-    if (
-        (!mark.encoders?.facetIndex && !mark.encoders?.sample) ||
-        mark.getType() !== "rect"
-    ) {
+function isPlainRect(mark) {
+    if (mark.getType() !== "rect") {
         return false;
     }
 
