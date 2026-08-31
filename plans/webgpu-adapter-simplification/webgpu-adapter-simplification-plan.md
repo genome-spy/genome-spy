@@ -426,13 +426,13 @@ without bound.
 
 ### Work
 
-- [ ] Track recency and estimated sample-pixel cost only for released textures.
-- [ ] Enforce small fixed entry and cost budgets after every release; destroy
+- [x] Track recency and estimated sample-pixel cost only for released textures.
+- [x] Enforce small fixed entry and cost budgets after every release; destroy
       least-recently-used free textures until both budgets hold.
-- [ ] Destroy an individually oversized released texture immediately.
-- [ ] Preserve concurrent in-use attachments and exact key matching by width,
+- [x] Destroy an individually oversized released texture immediately.
+- [x] Preserve concurrent in-use attachments and exact key matching by width,
       height, sample count, and usage.
-- [ ] Keep `destroy()` idempotent and ensure evicted entries are removed from
+- [x] Keep `destroy()` idempotent and ensure evicted entries are removed from
       every owning collection exactly once.
 
 ### Affected areas and downstream consumers

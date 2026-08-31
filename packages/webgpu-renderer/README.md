@@ -247,7 +247,8 @@ parent using premultiplied-alpha blending. Nested groups preserve item order.
 Only sample counts `1` and `4` are accepted. A group with opacity `1` and one
 sample is flattened, so ordinary frames and groups that need no isolation keep
 the direct single-sample path. Multisample mark pipelines are created lazily,
-and exact-size transient attachments are pooled for the renderer lifetime.
+and exact-size transient attachments are pooled within a bounded free-cache
+budget.
 
 Picking remains a separate flat, single-sampled frame. Visual render groups do
 not change pick ordering, IDs, or attachment ownership.

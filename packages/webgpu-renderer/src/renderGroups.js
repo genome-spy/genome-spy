@@ -48,14 +48,18 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
 }
 `;
 
+const MAX_FREE_TEXTURES = 8;
+const MAX_FREE_SAMPLE_PIXELS = 16_777_216;
+
 /** Renderer-owned pool for short-lived color attachments. */
 export class TransientTexturePool {
     /** @param {GPUDevice} device @param {GPUTextureFormat} format */
     constructor(device, format) {
         this.device = device;
         this.format = format;
-        /** @type {Map<string, TransientTexture[]>} */
-        this.free = new Map();
+        /** @type {TransientTexture[]} */
+        this.free = [];
+        this.freeCost = 0;
         /** @type {Set<TransientTexture>} */
         this.all = new Set();
     }
@@ -69,9 +73,10 @@ export class TransientTexturePool {
      */
     acquire(width, height, sampleCount, usage) {
         const key = `${width}x${height}:${sampleCount}:${usage}`;
-        const available = this.free.get(key);
-        const pooled = available?.pop();
-        if (pooled) {
+        const freeIndex = this.free.findLastIndex((entry) => entry.key === key);
+        if (freeIndex >= 0) {
+            const pooled = this.free.splice(freeIndex, 1)[0];
+            this.freeCost -= pooled.cost;
             return pooled;
         }
 
@@ -94,6 +99,7 @@ export class TransientTexturePool {
             width,
             height,
             sampleCount,
+            cost: width * height * sampleCount,
         };
         this.all.add(entry);
         return entry;
@@ -101,12 +107,20 @@ export class TransientTexturePool {
 
     /** @param {TransientTexture} entry */
     release(entry) {
-        let available = this.free.get(entry.key);
-        if (!available) {
-            available = [];
-            this.free.set(entry.key, available);
+        if (entry.cost > MAX_FREE_SAMPLE_PIXELS) {
+            this.#destroyEntry(entry);
+            return;
         }
-        available.push(entry);
+        this.free.push(entry);
+        this.freeCost += entry.cost;
+        while (
+            this.free.length > MAX_FREE_TEXTURES ||
+            this.freeCost > MAX_FREE_SAMPLE_PIXELS
+        ) {
+            const evicted = this.free.shift();
+            this.freeCost -= evicted.cost;
+            this.#destroyEntry(evicted);
+        }
     }
 
     destroy() {
@@ -114,7 +128,14 @@ export class TransientTexturePool {
             entry.texture.destroy();
         }
         this.all.clear();
-        this.free.clear();
+        this.free.length = 0;
+        this.freeCost = 0;
+    }
+
+    /** @param {TransientTexture} entry */
+    #destroyEntry(entry) {
+        this.all.delete(entry);
+        entry.texture.destroy();
     }
 }
 
@@ -290,4 +311,5 @@ export function normalizeGroupBounds(bounds, globals) {
  * @property {number} width
  * @property {number} height
  * @property {1 | 4} sampleCount
+ * @property {number} cost
  */
