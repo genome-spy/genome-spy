@@ -1,15 +1,15 @@
 /**
- * Returns the backend-neutral raster quality intent for a Core mark.
+ * Whether a Core mark benefits from multisampled coverage antialiasing.
  *
  * Four-sample coverage is deliberately limited to undecorated rectangles.
  * Capable raster backends may honor the intent; other backends keep their
  * existing rendering path.
  *
  * @param {import("../marks/mark.js").default} mark
- * @returns {{ sampleCount: 1 | 4 }}
+ * @returns {boolean}
  */
-export function getMarkRenderingIntent(mark) {
-    return { sampleCount: isPlainRect(mark) ? 4 : 1 };
+export function needsCoverageAntialiasing(mark) {
+    return isPlainRect(mark);
 }
 
 /** @param {import("../marks/mark.js").default} mark */

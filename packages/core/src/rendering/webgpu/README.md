@@ -41,9 +41,9 @@ for the backend-neutral lifecycle and the
 6. The frame plan owns one stable plain draw command per occurrence.
    Before submission, the adapter resolves the guarded live x domain and
    refreshes `firstInstance` and `instanceCount` in place. A frame-local builder
-   collects ordered draws, opacity scopes, and MSAA runs against explicit target
-   metrics. `WebGpuSurface` only attaches retained handles and submits the
-   completed frame.
+   collects ordered draws and the view-scoped MSAA and opacity structure against
+   explicit target metrics. `WebGpuSurface` only attaches retained handles and
+   submits the completed frame.
 
 Normal and picking passes share the same frame plan, ranges, placements, and
 order. A completed picking frame is reused for pointer reads until layout,
@@ -51,20 +51,21 @@ rendering, data, or retained state invalidates it.
 
 ## Compositing intent
 
-Core derives two renderer-neutral groups from the completed view traversal.
-Views whose local opacity differs from one isolate their ordered descendants;
-the renderer applies that opacity once when compositing the group. Mark alpha
-therefore stays independent of ancestor opacity. Nested views produce nested
-groups, while picking remains a flat single-sampled draw list.
+Core derives renderer-neutral groups from the completed view traversal. A view
+with configured local opacity retains its structural group even while its live
+opacity is zero or one. The renderer prunes, flattens, or composites that group
+from the current value without recompiling layout. Mark alpha therefore stays
+independent of ancestor opacity. Nested views produce nested groups, while
+picking remains a flat single-sampled draw list.
 
 Four-sample coverage is limited to undecorated `rect` marks. This includes all
 plain MCCA rectangles: cytobands, copy-number segments, gene exons, summary
 rectangles, legend ramps, and both foreground and missing-value metadata cells.
 Points, text, rules, and rectangles with strokes, rounded corners, shadows, or
-hatches stay on the direct single-sample path. Ordinary source-backed marks use
-a draw-level placement index, so each clipped occurrence stays in paint order
-and consecutive compatible rectangles still share one resolve. Marks with a
-`facetIndex` encoder instead use their encoded per-instance placement index.
+hatches stay on the direct single-sample path. Maximal compatible view scopes
+share one accumulation; explicit sample-facet batches collect repeated logical
+views into that same layer. Marks with a `facetIndex` encoder use their encoded
+per-instance placement index.
 
 WebGL continues to consume effective per-mark opacity and receives no
 render-group behavior.

@@ -181,15 +181,16 @@ renderer-neutral placement sources remain owned by their Core or App layout
 producer. Neither an empty draw list nor offscreen placement releases retained
 resources; mark/view and placement-source disposal do.
 
-Visible WebGPU frames may contain generic ordered render groups. Core derives
-group opacity from each view's local opacity and derives four-sample coverage
-for undecorated rectangles. The renderer owns transient
+Visible WebGPU frames may contain generic ordered render groups. Core compiles
+stable view-scoped opacity boundaries and four-sample coverage for undecorated
+rectangles. The renderer evaluates live opacity each frame, coalescing matching
+opaque MSAA boundaries and isolating only fractional ones. It owns transient
 attachments, resolves, and premultiplied-alpha composition; Core owns the
-predicate, nesting, bounds, and mark/view identities. Placement-indexed marks
-retain clipped occurrence draws inside one group rather than expanding into
-per-facet targets. Picking stays flat and single-sampled. Canvas2D honors the
-same local view-opacity semantics with transparent offscreen canvases, while
-WebGL keeps its unchanged effective-opacity fallback.
+predicate, nesting, bounds, and mark/view identities. Explicit sample-facet
+batches collect repeated logical views without changing ordinary paint order.
+Picking stays flat and single-sampled. Canvas2D honors the same local
+view-opacity semantics with transparent offscreen canvases, while WebGL keeps
+its unchanged effective-opacity fallback.
 
 Compositing bounds follow semantic clipping. A zoomable positional scale makes
 both directions clip by default; explicit directional clipping leaves the

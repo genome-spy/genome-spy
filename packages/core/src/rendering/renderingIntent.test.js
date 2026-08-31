@@ -1,11 +1,13 @@
 import { describe, expect, test } from "vitest";
 
-import { getMarkRenderingIntent } from "./renderingIntent.js";
+import { needsCoverageAntialiasing } from "./renderingIntent.js";
 
-describe("getMarkRenderingIntent", () => {
+describe("needsCoverageAntialiasing", () => {
     test("selects plain rectangles including null strokes", () => {
-        expect(intent(rect())).toBe(4);
-        expect(intent(rect({ stroke: { value: null } }))).toBe(4);
+        expect(needsCoverageAntialiasing(rect())).toBe(true);
+        expect(
+            needsCoverageAntialiasing(rect({ stroke: { value: null } }))
+        ).toBe(true);
     });
 
     test.each([
@@ -16,7 +18,9 @@ describe("getMarkRenderingIntent", () => {
         ["shadowed rectangles", { properties: { shadowOpacity: 0.5 } }],
         ["hatched rectangles", { properties: { hatch: "diagonal" } }],
     ])("keeps %s direct", (_name, options) => {
-        expect(intent(rect(/** @type {any} */ (options)))).toBe(1);
+        expect(
+            needsCoverageAntialiasing(rect(/** @type {any} */ (options)))
+        ).toBe(false);
     });
 });
 
@@ -34,9 +38,4 @@ function rect(options = {}) {
             properties,
         })
     );
-}
-
-/** @param {import("../marks/mark.js").default} mark */
-function intent(mark) {
-    return getMarkRenderingIntent(mark).sampleCount;
 }

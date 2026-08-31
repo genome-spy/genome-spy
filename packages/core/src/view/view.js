@@ -841,6 +841,17 @@ export default class View {
         return this.opacityFunction(1.0);
     }
 
+    /**
+     * Whether this view introduces a local opacity transform.
+     *
+     * Unlike getOpacity(), this is stable across semantic zoom and reactive
+     * expression updates and can therefore be used when compiling retained
+     * rendering structure.
+     */
+    hasLocalOpacity() {
+        return this.opacityFunction !== defaultOpacityFunction;
+    }
+
     getPathString() {
         return this.getLayoutAncestors()
             .map((v) => v.name)
@@ -1577,7 +1588,7 @@ function createViewOpacityFunction(view) {
             return (parentOpacity) => fn(null) * parentOpacity;
         }
     }
-    return (parentOpacity) => parentOpacity;
+    return defaultOpacityFunction;
 }
 
 /**

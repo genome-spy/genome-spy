@@ -58,6 +58,16 @@ function createContext(surface, options = {}) {
     });
 }
 
+/** @param {boolean} [localOpacity] */
+function createView(localOpacity = false) {
+    return {
+        onBeforeRender: vi.fn(),
+        getOpacity: () => 1,
+        hasLocalOpacity: () => localOpacity,
+        visit: vi.fn(),
+    };
+}
+
 beforeEach(() => {
     vi.clearAllMocks();
     mocks.getPackedMarkData.mockReturnValue(mocks.packed);
@@ -79,7 +89,7 @@ describe("WebGpuViewRenderingContext", () => {
             prepareDraw: vi.fn(),
         };
         const context = createContext(surface);
-        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const view = createView();
         const mark = {
             encoders: {},
             encoding: {},
@@ -100,6 +110,115 @@ describe("WebGpuViewRenderingContext", () => {
         });
     });
 
+    test("promotes an all-rectangle layer to one MSAA group", () => {
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            updateMark: vi.fn(),
+            prepareDraw: vi.fn(),
+        };
+        const context = createContext(surface);
+        const layer = createView();
+        const firstView = createView();
+        const secondView = createView();
+        const first = {
+            encoders: {},
+            encoding: {},
+            getType: () => "rect",
+            properties: {},
+            unitView: { getEffectiveOpacity: () => 1 },
+        };
+        const second = { ...first };
+
+        context.pushView(/** @type {any} */ (layer), Rectangle.ZERO);
+        context.pushView(/** @type {any} */ (firstView), Rectangle.ZERO);
+        context.renderMark(/** @type {any} */ (first), {});
+        context.popView(/** @type {any} */ (firstView));
+        context.pushView(/** @type {any} */ (secondView), Rectangle.ZERO);
+        context.renderMark(/** @type {any} */ (second), {});
+        context.popView(/** @type {any} */ (secondView));
+        context.popView(/** @type {any} */ (layer));
+        context.finish();
+
+        expect(context.render()).toMatchObject([
+            {
+                sampleCount: 4,
+                items: [
+                    surface.prepareDraw.mock.calls[0][1],
+                    surface.prepareDraw.mock.calls[1][1],
+                ],
+            },
+        ]);
+    });
+
+    test("keeps a dynamic-opacity mixed layer structurally stable", () => {
+        let opacity = 0.5;
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            updateMark: vi.fn(),
+            prepareDraw: vi.fn(),
+        };
+        const context = createContext(surface);
+        const layer = {
+            ...createView(true),
+            getOpacity: () => opacity,
+        };
+        const exonView = createView();
+        const bodyView = createView();
+        const unitView = { getEffectiveOpacity: () => opacity };
+        const exon = {
+            encoders: {},
+            encoding: {},
+            getType: () => "rect",
+            properties: {},
+            unitView,
+        };
+        const body = {
+            getType: () => "rule",
+            properties: {},
+            unitView,
+        };
+
+        context.pushView(/** @type {any} */ (layer), Rectangle.ZERO);
+        context.pushView(/** @type {any} */ (exonView), Rectangle.ZERO);
+        context.renderMark(/** @type {any} */ (exon), {});
+        context.popView(/** @type {any} */ (exonView));
+        context.pushView(/** @type {any} */ (bodyView), Rectangle.ZERO);
+        context.renderMark(/** @type {any} */ (body), {});
+        context.popView(/** @type {any} */ (bodyView));
+        context.popView(/** @type {any} */ (layer));
+        context.finish();
+
+        const fractional = context.render();
+        opacity = 0;
+        const hidden = context.render();
+        opacity = 1;
+        const opaque = context.render();
+
+        expect(fractional).toMatchObject([
+            {
+                opacity: 0.5,
+                sampleCount: 1,
+                items: [{ sampleCount: 4 }, expect.anything()],
+            },
+        ]);
+        expect(hidden).toMatchObject([
+            {
+                opacity: 0,
+                sampleCount: 1,
+                items: [{ sampleCount: 4, items: [] }],
+            },
+        ]);
+        expect(opaque).toMatchObject([
+            {
+                opacity: 1,
+                sampleCount: 1,
+                items: [{ sampleCount: 4 }, expect.anything()],
+            },
+        ]);
+    });
+
     test("compiles only marks selected for a raster run", () => {
         const surface = {
             getDevicePixelRatio: () => 1,
@@ -107,7 +226,7 @@ describe("WebGpuViewRenderingContext", () => {
             updateMark: vi.fn(),
             prepareDraw: vi.fn(),
         };
-        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const view = createView();
         const selected = {
             encoders: {},
             encoding: {},
@@ -156,7 +275,7 @@ describe("WebGpuViewRenderingContext", () => {
             }),
         };
         const context = createContext(surface);
-        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const view = createView();
         const mark = {
             encoders: {},
             getType: () => "point",
@@ -196,7 +315,7 @@ describe("WebGpuViewRenderingContext", () => {
             prepareDraw: vi.fn(),
         };
         const context = createContext(surface);
-        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const view = createView();
         const mark = {
             getType: () => "point",
             properties: {},
@@ -230,7 +349,7 @@ describe("WebGpuViewRenderingContext", () => {
             prepareDraw: vi.fn(),
         };
         const context = createContext(surface);
-        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const view = createView();
         const mark = {
             getType: () => "point",
             properties: { clip: "x" },
@@ -284,7 +403,7 @@ describe("WebGpuViewRenderingContext", () => {
             prepareDraw: vi.fn(),
         };
         const context = createContext(surface);
-        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const view = createView();
         const mark = {
             getType: () => "point",
             properties: { clip: "never", cullByVisibleRange: "y" },
@@ -351,6 +470,7 @@ describe("WebGpuViewRenderingContext", () => {
         const view = {
             onBeforeRender: () => (offset += 10),
             getOpacity: () => 1,
+            hasLocalOpacity: () => false,
         };
         const coords = Rectangle.create(20, 30, 100, 80)
             .modify({ height: () => 80 + offset })
@@ -407,7 +527,7 @@ describe("WebGpuViewRenderingContext", () => {
             prepareDraw: vi.fn(),
         };
         const context = createContext(surface);
-        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const view = createView();
         const mark = {
             getType: () => "point",
             isPickingParticipant: () => false,
@@ -449,7 +569,7 @@ describe("WebGpuViewRenderingContext", () => {
             prepareDraw: vi.fn(),
         };
         const context = createContext(surface);
-        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const view = createView();
         const mark = {
             getType: () => "point",
             properties: {},
@@ -546,7 +666,7 @@ describe("WebGpuViewRenderingContext", () => {
             prepareDraw: vi.fn(),
         };
         const context = createContext(surface);
-        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const view = createView();
         const mark = {
             encoders: { facetIndex: vi.fn() },
             encoding: {},
@@ -632,7 +752,7 @@ describe("WebGpuViewRenderingContext", () => {
             prepareDraw: vi.fn(),
         };
         const context = createContext(surface);
-        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const view = createView();
         const mark = {
             encoders: { sample: vi.fn() },
             encoding: {},
@@ -646,6 +766,7 @@ describe("WebGpuViewRenderingContext", () => {
         };
         const coords = Rectangle.create(20, 30, 100, 80);
 
+        context.beginSampleFacetBatch();
         for (let index = 0; index < 2; index++) {
             context.pushView(/** @type {any} */ (view), coords);
             context.renderMark(/** @type {any} */ (mark), {
@@ -662,6 +783,7 @@ describe("WebGpuViewRenderingContext", () => {
             });
             context.popView(/** @type {any} */ (view));
         }
+        context.endSampleFacetBatch();
         context.finish();
         const frame = context.render();
 
@@ -698,6 +820,85 @@ describe("WebGpuViewRenderingContext", () => {
         expect(xIndex).toHaveBeenCalledTimes(2);
     });
 
+    test("coalesces only semantic layers inside a sample batch", () => {
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            updateOccurrencePlacements: vi.fn((_mark, rectangles) => ({
+                getSnapshot: () => ({
+                    topology: { revision: 0 },
+                    rectangles,
+                }),
+            })),
+            updateMark: vi.fn(),
+            prepareDraw: vi.fn(),
+        };
+        const context = createContext(surface);
+        const sample = createView();
+        const coverageLayer = createView();
+        const fadedView = {
+            ...createView(true),
+            getOpacity: () => 0.5,
+        };
+        const solidView = createView();
+        const pointView = createView();
+        const unitView = { getEffectiveOpacity: () => 1 };
+        const faded = {
+            encoders: {},
+            encoding: {},
+            getType: () => "rect",
+            properties: {},
+            unitView,
+        };
+        const solid = { ...faded };
+        const point = {
+            getType: () => "point",
+            properties: {},
+            unitView,
+        };
+
+        context.beginSampleFacetBatch();
+        for (let index = 0; index < 2; index++) {
+            const coords = Rectangle.create(0, index * 50, 100, 50);
+            context.pushView(/** @type {any} */ (sample), coords);
+            context.pushView(/** @type {any} */ (coverageLayer), coords);
+            context.pushView(/** @type {any} */ (fadedView), coords);
+            context.renderMark(/** @type {any} */ (faded), {});
+            context.popView(/** @type {any} */ (fadedView));
+            context.pushView(/** @type {any} */ (solidView), coords);
+            context.renderMark(/** @type {any} */ (solid), {});
+            context.popView(/** @type {any} */ (solidView));
+            context.popView(/** @type {any} */ (coverageLayer));
+            context.pushView(/** @type {any} */ (pointView), coords);
+            context.renderMark(/** @type {any} */ (point), {});
+            context.popView(/** @type {any} */ (pointView));
+            context.popView(/** @type {any} */ (sample));
+        }
+        context.endSampleFacetBatch();
+        context.finish();
+        const frame = context.render();
+        /** @param {any} mark */
+        const drawsFor = (mark) =>
+            surface.prepareDraw.mock.calls
+                .filter((call) => call[0] === mark)
+                .map((call) => call[1]);
+
+        expect(frame).toMatchObject([
+            {
+                sampleCount: 4,
+                items: [
+                    {
+                        opacity: 0.5,
+                        sampleCount: 4,
+                        items: drawsFor(faded),
+                    },
+                    ...drawsFor(solid),
+                ],
+            },
+            ...drawsFor(point),
+        ]);
+    });
+
     test("keeps repeated MSAA occurrences in paint order", () => {
         const source = new PlacementSource();
         source.replaceTopology(
@@ -713,7 +914,7 @@ describe("WebGpuViewRenderingContext", () => {
             prepareDraw: vi.fn((mark) => order.push(mark.name)),
         };
         const context = createContext(surface);
-        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const view = createView();
         const rectangle = {
             name: "rect A",
             encoders: {},
@@ -770,6 +971,7 @@ describe("WebGpuViewRenderingContext", () => {
             name: "first",
             onBeforeRender: vi.fn(),
             getOpacity: () => 0.5,
+            hasLocalOpacity: () => true,
             visit: (/** @type {(view: any) => void} */ visitor) =>
                 visitor({ mark }),
         };
@@ -777,6 +979,7 @@ describe("WebGpuViewRenderingContext", () => {
             name: "second",
             onBeforeRender: vi.fn(),
             getOpacity: () => 0.75,
+            hasLocalOpacity: () => true,
             visit: (/** @type {(view: any) => void} */ visitor) =>
                 visitor({ mark }),
         };
@@ -811,15 +1014,13 @@ describe("WebGpuViewRenderingContext", () => {
         expect(frame).toMatchObject([
             {
                 opacity: 0.5,
-                items: [
-                    { sampleCount: 4, items: [{ placement: { index: 0 } }] },
-                ],
+                sampleCount: 4,
+                items: [{ placement: { index: 0 } }],
             },
             {
                 opacity: 0.75,
-                items: [
-                    { sampleCount: 4, items: [{ placement: { index: 1 } }] },
-                ],
+                sampleCount: 4,
+                items: [{ placement: { index: 1 } }],
             },
         ]);
     });
@@ -836,6 +1037,7 @@ describe("WebGpuViewRenderingContext", () => {
         const view = {
             onBeforeRender: vi.fn(),
             getOpacity: () => opacity,
+            hasLocalOpacity: () => true,
             getEffectiveOpacity: () => opacity,
             getCollector: () => ({}),
             visit: (/** @type {(view: any) => void} */ visitor) =>
@@ -887,7 +1089,7 @@ describe("WebGpuViewRenderingContext", () => {
             prepareDraw: vi.fn(),
         };
         const context = createContext(surface);
-        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const view = createView();
         const mark = {
             encoders: {},
             getType: () => "point",
