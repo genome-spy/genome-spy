@@ -42,6 +42,9 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
     /** @type {[number, number]} */
     #indexedRange = [0, 0];
 
+    /** @type {CanvasPhysicalBounds} */
+    #targetBounds;
+
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
      * @param {{
@@ -65,6 +68,12 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         this.#markPredicate = options.markPredicate ?? (() => true);
         this.#profiler = getPerformanceProfiler();
         this.#xIndexManager = options.xIndexManager;
+        this.#targetBounds = {
+            x: 0,
+            y: 0,
+            width: this.context.canvas.width,
+            height: this.context.canvas.height,
+        };
 
         if (this.paint) {
             const context = this.context;
@@ -109,10 +118,16 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
 
         const opacity = view.getOpacity();
         let parentContext;
-        if (this.paint && opacity !== 1) {
+        let parentBounds;
+        if (this.paint && opacity > 0 && opacity !== 1) {
+            const bounds = normalizeOffscreenBounds(
+                coords,
+                this.devicePixelRatio,
+                this.#targetBounds
+            );
             const canvas = document.createElement("canvas");
-            canvas.width = this.context.canvas.width;
-            canvas.height = this.context.canvas.height;
+            canvas.width = bounds.width;
+            canvas.height = bounds.height;
             const context = canvas.getContext("2d");
             if (!context) {
                 throw new Error("Unable to create a Canvas2D view group.");
@@ -122,13 +137,21 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                 0,
                 0,
                 this.devicePixelRatio,
-                0,
-                0
+                -bounds.x,
+                -bounds.y
             );
             parentContext = this.context;
+            parentBounds = this.#targetBounds;
             this.context = context;
+            this.#targetBounds = bounds;
         }
-        this.#viewStack.push({ view, coords, opacity, parentContext });
+        this.#viewStack.push({
+            view,
+            coords,
+            opacity,
+            parentContext,
+            parentBounds,
+        });
     }
 
     /**
@@ -144,11 +167,21 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         }
         if (entry.parentContext) {
             const source = this.context.canvas;
+            const sourceBounds = this.#targetBounds;
             this.context = entry.parentContext;
+            this.#targetBounds = entry.parentBounds;
             this.context.save();
             try {
                 this.context.globalAlpha = entry.opacity;
-                this.context.drawImage(source, 0, 0, this.width, this.height);
+                if (sourceBounds.width && sourceBounds.height) {
+                    this.context.drawImage(
+                        source,
+                        sourceBounds.x / this.devicePixelRatio,
+                        sourceBounds.y / this.devicePixelRatio,
+                        sourceBounds.width / this.devicePixelRatio,
+                        sourceBounds.height / this.devicePixelRatio
+                    );
+                }
             } finally {
                 this.context.restore();
             }
@@ -279,4 +312,52 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
  * @property {import("../../view/layout/rectangle.js").default} coords
  * @property {number} opacity
  * @property {CanvasRenderingContext2D | undefined} parentContext
+ * @property {CanvasPhysicalBounds | undefined} parentBounds
  */
+
+/**
+ * @typedef {object} CanvasPhysicalBounds
+ * @property {number} x
+ * @property {number} y
+ * @property {number} width
+ * @property {number} height
+ */
+
+/**
+ * Rounds a logical view rectangle outwards and clips it to its parent target.
+ *
+ * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {number} devicePixelRatio
+ * @param {CanvasPhysicalBounds} parent
+ * @returns {CanvasPhysicalBounds}
+ */
+function normalizeOffscreenBounds(coords, devicePixelRatio, parent) {
+    const parentRight = parent.x + parent.width;
+    const parentBottom = parent.y + parent.height;
+    const x = clamp(
+        Math.floor(coords.x * devicePixelRatio),
+        parent.x,
+        parentRight
+    );
+    const y = clamp(
+        Math.floor(coords.y * devicePixelRatio),
+        parent.y,
+        parentBottom
+    );
+    const right = clamp(
+        Math.ceil((coords.x + coords.width) * devicePixelRatio),
+        x,
+        parentRight
+    );
+    const bottom = clamp(
+        Math.ceil((coords.y + coords.height) * devicePixelRatio),
+        y,
+        parentBottom
+    );
+    return { x, y, width: right - x, height: bottom - y };
+}
+
+/** @param {number} value @param {number} min @param {number} max */
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+}

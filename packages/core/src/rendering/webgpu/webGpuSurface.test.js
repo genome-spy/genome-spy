@@ -102,6 +102,7 @@ function useMark(surface, mark, definition, config, options, properties) {
         placement,
         picking = false,
         intent,
+        markBounds,
         ...drawOptions
     } = options ?? {};
     const draw = {
@@ -123,7 +124,14 @@ function useMark(surface, mark, definition, config, options, properties) {
               }
             : {}),
     };
-    surface.drawMark(mark, draw, placement?.source, picking, intent);
+    surface.drawMark(
+        mark,
+        draw,
+        placement?.source,
+        picking,
+        intent,
+        markBounds
+    );
 }
 
 /** @param {any} mark @param {any} definition */
@@ -256,6 +264,45 @@ describe("WebGpuSurface", () => {
                 },
             ],
             directMarks: [],
+        });
+    });
+
+    test("bounds four-sample groups to the mark when only x is clipped", async () => {
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {any} */ ({});
+        const markBounds = { x: 5, y: 20, width: 80, height: 10 };
+        const scissor = { x: 10, y: 0, width: 40, height: 50 };
+
+        surface.beginFrame();
+        useMark(
+            surface,
+            mark,
+            /** @type {any} */ ({ type: "rect" }),
+            createConfig(0),
+            { markBounds, scissor, intent: { sampleCount: 4 } }
+        );
+        surface.render();
+
+        expect(mocks.renderer.render).toHaveBeenCalledWith({
+            items: [
+                {
+                    bounds: { x: 10, y: 20, width: 40, height: 10 },
+                    sampleCount: 4,
+                    items: [
+                        {
+                            mark: mocks.handle,
+                            scissor,
+                        },
+                    ],
+                },
+            ],
         });
     });
 
