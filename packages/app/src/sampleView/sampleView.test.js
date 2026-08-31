@@ -199,6 +199,11 @@ function createWebGpuHarness(canvas) {
         surface,
         context: new WebGpuViewRenderingContext({
             surface: /** @type {any} */ (surface),
+            target: {
+                width: canvas.width,
+                height: canvas.height,
+                dpr: 1,
+            },
         }),
     };
 }

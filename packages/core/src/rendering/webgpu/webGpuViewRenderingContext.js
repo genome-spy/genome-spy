@@ -45,21 +45,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     #target;
 
     /**
-     * @param {{surface: import("./webGpuSurface.js").default, target?: {width: number, height: number, dpr: number}, markPredicate?: (mark: import("../../marks/mark.js").default) => boolean}} options
+     * @param {{surface: import("./webGpuSurface.js").default, target: {width: number, height: number, dpr: number}, markPredicate?: (mark: import("../../marks/mark.js").default) => boolean}} options
      */
     constructor(options) {
         super({});
         this.surface = options.surface;
-        if (options.target) {
-            this.#target = options.target;
-        } else {
-            const size = options.surface.getLogicalCanvasSize();
-            this.#target = {
-                width: size.width,
-                height: size.height,
-                dpr: options.surface.getDevicePixelRatio(),
-            };
-        }
+        this.#target = options.target;
         this.#markPredicate = options.markPredicate;
     }
 

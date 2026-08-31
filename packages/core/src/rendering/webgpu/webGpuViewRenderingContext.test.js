@@ -47,6 +47,23 @@ import Rectangle from "../../view/layout/rectangle.js";
 import PlacementSource from "../../view/layout/placementSource.js";
 import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 
+/**
+ * @param {any} surface
+ * @param {{markPredicate?: (mark: import("../../marks/mark.js").default) => boolean}} [options]
+ */
+function createContext(surface, options = {}) {
+    const { width, height } = surface.getLogicalCanvasSize();
+    return new WebGpuViewRenderingContext({
+        surface,
+        target: {
+            width,
+            height,
+            dpr: surface.getDevicePixelRatio(),
+        },
+        ...options,
+    });
+}
+
 beforeEach(() => {
     vi.clearAllMocks();
     mocks.getPackedMarkData.mockReturnValue(mocks.packed);
@@ -67,9 +84,7 @@ describe("WebGpuViewRenderingContext", () => {
             updateMark: vi.fn(),
             prepareDraw: vi.fn(),
         };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
-        });
+        const context = createContext(surface);
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             encoders: {},
@@ -108,8 +123,7 @@ describe("WebGpuViewRenderingContext", () => {
             unitView: { getEffectiveOpacity: () => 1 },
         };
         const other = { ...selected };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
+        const context = createContext(surface, {
             markPredicate: (mark) => mark === selected,
         });
 
@@ -147,9 +161,7 @@ describe("WebGpuViewRenderingContext", () => {
                 drawRanges.push([draw.firstInstance, draw.instanceCount]);
             }),
         };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
-        });
+        const context = createContext(surface);
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             encoders: {},
@@ -189,9 +201,7 @@ describe("WebGpuViewRenderingContext", () => {
             updateMark: vi.fn(),
             prepareDraw: vi.fn(),
         };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
-        });
+        const context = createContext(surface);
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             getType: () => "point",
@@ -225,9 +235,7 @@ describe("WebGpuViewRenderingContext", () => {
             updateMark: vi.fn(),
             prepareDraw: vi.fn(),
         };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
-        });
+        const context = createContext(surface);
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             getType: () => "point",
@@ -281,9 +289,7 @@ describe("WebGpuViewRenderingContext", () => {
             updateMark: vi.fn(),
             prepareDraw: vi.fn(),
         };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
-        });
+        const context = createContext(surface);
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             getType: () => "point",
@@ -347,9 +353,7 @@ describe("WebGpuViewRenderingContext", () => {
             updateMark: vi.fn(),
             prepareDraw: vi.fn(),
         };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
-        });
+        const context = createContext(surface);
         const view = {
             onBeforeRender: () => (offset += 10),
             getOpacity: () => 1,
@@ -408,9 +412,7 @@ describe("WebGpuViewRenderingContext", () => {
             updateMark: vi.fn(),
             prepareDraw: vi.fn(),
         };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
-        });
+        const context = createContext(surface);
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             getType: () => "point",
@@ -452,9 +454,7 @@ describe("WebGpuViewRenderingContext", () => {
             updateMark: vi.fn(),
             prepareDraw: vi.fn(),
         };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
-        });
+        const context = createContext(surface);
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             getType: () => "point",
@@ -551,9 +551,7 @@ describe("WebGpuViewRenderingContext", () => {
             updateMark: vi.fn(),
             prepareDraw: vi.fn(),
         };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
-        });
+        const context = createContext(surface);
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             encoders: { facetIndex: vi.fn() },
@@ -639,9 +637,7 @@ describe("WebGpuViewRenderingContext", () => {
             updateMark: vi.fn(),
             prepareDraw: vi.fn(),
         };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
-        });
+        const context = createContext(surface);
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             encoders: { sample: vi.fn() },
@@ -722,9 +718,7 @@ describe("WebGpuViewRenderingContext", () => {
             updateMark: vi.fn(),
             prepareDraw: vi.fn((mark) => order.push(mark.name)),
         };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
-        });
+        const context = createContext(surface);
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const rectangle = {
             name: "rect A",
@@ -777,9 +771,7 @@ describe("WebGpuViewRenderingContext", () => {
             updateMark: vi.fn(),
             prepareDraw: vi.fn(),
         };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
-        });
+        const context = createContext(surface);
         const firstView = {
             name: "first",
             onBeforeRender: vi.fn(),
@@ -846,9 +838,7 @@ describe("WebGpuViewRenderingContext", () => {
             updateMark: vi.fn(),
             prepareDraw: vi.fn(),
         };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
-        });
+        const context = createContext(surface);
         const view = {
             onBeforeRender: vi.fn(),
             getOpacity: () => opacity,
@@ -902,9 +892,7 @@ describe("WebGpuViewRenderingContext", () => {
             updateMark: vi.fn(),
             prepareDraw: vi.fn(),
         };
-        const context = new WebGpuViewRenderingContext({
-            surface: /** @type {any} */ (surface),
-        });
+        const context = createContext(surface);
         const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
         const mark = {
             encoders: {},

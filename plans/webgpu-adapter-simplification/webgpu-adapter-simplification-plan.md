@@ -2,10 +2,10 @@
 
 Status: Complete
 
-Completed on 2026-08-31. Milestones 1 through 5 removed 171 net production
-lines. The bounded texture cache added 22, leaving the complete implementation
-149 lines smaller. Tests and plan documentation are excluded from these
-path-based counts.
+Completed on 2026-08-31. Milestones 1 through 5 removed 173 net production
+lines. The bounded texture cache and review follow-ups added 28, leaving the
+complete implementation 145 lines smaller. Tests and plan documentation are
+excluded from these path-based counts.
 
 ## Context
 
@@ -436,7 +436,8 @@ without bound.
 - [x] Track recency and estimated sample-pixel cost only for released textures.
 - [x] Enforce small fixed entry and cost budgets after every release; destroy
       least-recently-used free textures until both budgets hold.
-- [x] Destroy an individually oversized released texture immediately.
+- [x] Remove an individually oversized released texture from the reuse pool
+      immediately and destroy it after submission or aborted encoding.
 - [x] Preserve concurrent in-use attachments and exact key matching by width,
       height, sample count, and usage.
 - [x] Keep `destroy()` idempotent and ensure evicted entries are removed from
@@ -459,6 +460,7 @@ The public group API does not change.
 - Releasing an oversized export texture does not retain it.
 - Renderer destruction destroys every still-owned texture once and leaves the
   pool empty.
+- Aborted frame encoding destroys entries that were evicted while encoding.
 - Renderer unit, GPU, and MCCA interaction smoke tests show no visible change.
 
 ### Documentation and migration

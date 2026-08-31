@@ -402,6 +402,20 @@ describe("Renderer mark definitions", () => {
         );
     });
 
+    test("destroys evicted textures when frame encoding aborts", () => {
+        const { renderer } = createRendererHarness();
+        renderer._encodeRenderItems = vi.fn(() => {
+            throw new Error("encoding failed");
+        });
+
+        expect(() => renderer.render({ draws: [] })).toThrow("encoding failed");
+
+        expect(
+            renderer._transientTextures.destroyEvicted
+        ).toHaveBeenCalledOnce();
+        expect(renderer.device.queue.submit).not.toHaveBeenCalled();
+    });
+
     test("reuses draw-global CPU staging while capacity is unchanged", () => {
         const { renderer } = createRendererHarness();
         const staging = renderer._globalUniformStaging;
@@ -845,7 +859,7 @@ function createRendererHarness() {
             };
         }),
         release: vi.fn(),
-        afterSubmit: vi.fn(),
+        destroyEvicted: vi.fn(),
         destroy: vi.fn(),
     };
     return {

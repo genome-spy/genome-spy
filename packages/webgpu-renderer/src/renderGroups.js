@@ -125,8 +125,8 @@ export class TransientTexturePool {
         }
     }
 
-    /** Destroys evicted textures after their encoded commands are submitted. */
-    afterSubmit() {
+    /** Destroys textures that have been removed from the reuse pool. */
+    destroyEvicted() {
         for (const entry of this.pendingDestroy) {
             entry.texture.destroy();
         }
@@ -140,7 +140,7 @@ export class TransientTexturePool {
         this.all.clear();
         this.free.length = 0;
         this.freeCost = 0;
-        this.afterSubmit();
+        this.destroyEvicted();
     }
 
     /** @param {TransientTexture} entry */

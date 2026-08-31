@@ -902,26 +902,29 @@ export class Renderer {
             label: gpuLabel(RENDERER_GPU_OWNER, "canvas texture view"),
         });
 
-        const encodingStart = startPhase();
-        this._encodeRenderItems(
-            commandEncoder,
-            {
-                view,
-                width: canvas.width,
-                height: canvas.height,
-                logicalX: 0,
-                logicalY: 0,
-            },
-            items,
-            1,
-            frame.clearColor ?? { r: 1, g: 1, b: 1, a: 1 }
-        );
-        this._textureCompositor.flush();
-        finishPhase("commandEncoding", encodingStart);
-        const submissionStart = startPhase();
-        this.device.queue.submit([commandEncoder.finish()]);
-        this._transientTextures.afterSubmit();
-        finishPhase("submission", submissionStart);
+        try {
+            const encodingStart = startPhase();
+            this._encodeRenderItems(
+                commandEncoder,
+                {
+                    view,
+                    width: canvas.width,
+                    height: canvas.height,
+                    logicalX: 0,
+                    logicalY: 0,
+                },
+                items,
+                1,
+                frame.clearColor ?? { r: 1, g: 1, b: 1, a: 1 }
+            );
+            this._textureCompositor.flush();
+            finishPhase("commandEncoding", encodingStart);
+            const submissionStart = startPhase();
+            this.device.queue.submit([commandEncoder.finish()]);
+            finishPhase("submission", submissionStart);
+        } finally {
+            this._transientTextures.destroyEvicted();
+        }
         if (rememberFrame) {
             this._renderFrame = draws;
             this._pickingDirty = true;
