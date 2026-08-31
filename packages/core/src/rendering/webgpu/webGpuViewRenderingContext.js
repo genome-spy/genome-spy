@@ -103,9 +103,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 packed: undefined,
                 source: undefined,
                 generatedSource: false,
-                placementIndexed: mark.encoders?.facetIndex !== undefined,
-                instancePlacementIndexed: false,
-                submittedPlacementIndexed: false,
+                facetIndexed: mark.encoders?.facetIndex !== undefined,
+                intent: getMarkRenderingIntent(mark),
                 xQueryDomain: [0, 0],
                 xIndexedRange: [0, 0],
                 xQueryEnabled: false,
@@ -187,7 +186,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
         const canvas = this.surface.getLogicalCanvasSize();
         for (const state of this.#marks.values()) {
-            state.submittedPlacementIndexed = false;
             state.updated = false;
             state.active = false;
             this.#prepareMarkState(state, picking, canvas);
@@ -214,7 +212,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                     this.surface.popViewGroup();
                 }
             } else {
-                const writes = this.#submitOccurrence(
+                const writes = this.#submitOccurrenceDraw(
                     command.occurrence,
                     picking,
                     canvas
@@ -245,8 +243,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.occurrences
                 .map((occurrence) => {
                     const placement = occurrence.options.placement;
-                    return state.placementIndexed ||
-                        placement?.index !== undefined
+                    return state.facetIndexed || placement?.index !== undefined
                         ? placement?.source
                         : undefined;
                 })
@@ -276,17 +273,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.ownerCoords = state.occurrences[0].markCoords;
         }
 
-        if (state.placementIndexed && !state.source) {
+        if (state.facetIndexed && !state.source) {
             throw createViewError(
                 state.mark,
                 "Indexed placement requires a placement source."
             );
         }
-
-        state.instancePlacementIndexed =
-            state.placementIndexed ||
-            (!!state.source &&
-                getMarkRenderingIntent(state.mark).sampleCount === 4);
 
         if (state.source) {
             state.viewport = createDrawRect();
@@ -304,6 +296,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      * @param {{width: number, height: number}} canvas
      */
     #prepareMarkState(state, picking, canvas) {
+        state.intent = getMarkRenderingIntent(state.mark);
         if (state.generatedRectangles) {
             writeOccurrencePlacements(state, canvas, state.generatedRectangles);
             this.surface.updateOccurrencePlacements(
@@ -326,7 +319,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
         const packed = getPackedMarkData(
             state.mark,
-            state.instancePlacementIndexed || !state.generatedSource
+            state.facetIndexed || !state.generatedSource
                 ? state.source
                 : undefined
         );
@@ -334,7 +327,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             return;
         }
         state.xQueryEnabled =
-            !state.instancePlacementIndexed &&
+            !state.facetIndexed &&
             !!packed.xIndexSpec &&
             resolveMarkXIndexQuery(packed.xIndexSpec, state.xQueryDomain);
         if (!state.xQueryEnabled) {
@@ -383,7 +376,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                     configCoords,
                     1,
                     packed.data,
-                    createPlacementIndexConfig(state, packed)
+                    createPlacementIndexConfig(state)
                 )
             );
             state.packed = packed;
@@ -438,36 +431,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      * @param {Occurrence} occurrence
      * @param {boolean} picking
      * @param {{width: number, height: number}} canvas
-     * @returns {number | undefined} Resource writes, or undefined when unchecked.
-     */
-    #submitOccurrence(occurrence, picking, canvas) {
-        const state = occurrence.state;
-        if (!state.instancePlacementIndexed) {
-            return this.#submitOccurrenceDraw(occurrence, picking, canvas);
-        }
-        if (state.submittedPlacementIndexed) {
-            return undefined;
-        }
-        state.submittedPlacementIndexed = true;
-
-        let resourceWrites;
-        for (const candidate of state.occurrences) {
-            const writes = this.#submitOccurrenceDraw(
-                candidate,
-                picking,
-                canvas
-            );
-            if (writes !== undefined) {
-                resourceWrites = (resourceWrites ?? 0) + writes;
-            }
-        }
-        return resourceWrites;
-    }
-
-    /**
-     * @param {Occurrence} occurrence
-     * @param {boolean} picking
-     * @param {{width: number, height: number}} canvas
      * @returns {number | undefined}
      */
     #submitOccurrenceDraw(occurrence, picking, canvas) {
@@ -494,12 +457,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         const occurrencePlacementIndex = state.generatedSource
             ? occurrence.placementIndex
             : occurrence.options.placement?.index;
-        const placementIndex = state.instancePlacementIndexed
+        const placementIndex = state.facetIndexed
             ? undefined
             : occurrencePlacementIndex;
         if (
             state.source &&
-            !state.instancePlacementIndexed &&
+            !state.facetIndexed &&
             placementIndex === undefined
         ) {
             throw createViewError(
@@ -565,14 +528,13 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (draw.placement) {
             draw.placement.index = placementIndex;
         }
-        const intent = getMarkRenderingIntent(state.mark);
-        if (!picking && intent.sampleCount === 4) {
+        if (!picking && state.intent.sampleCount === 4) {
             this.surface.drawMark(
                 state.mark,
                 draw,
                 state.source,
                 false,
-                intent
+                state.intent
             );
         } else {
             this.surface.drawMark(state.mark, draw, state.source, picking);
@@ -648,21 +610,10 @@ function createOccurrenceDraw(occurrence, state) {
 
 /**
  * @param {MarkState} state
- * @param {import("./webGpuMarkData.js").PackedMarkData} packed
  * @returns {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"] | undefined}
  */
-function createPlacementIndexConfig(state, packed) {
-    if (state.placementIndexed) {
-        return undefined;
-    } else if (state.instancePlacementIndexed) {
-        if (!packed.placementIndices) {
-            throw createViewError(
-                state.mark,
-                "Grouped sample placement requires complete facet topology."
-            );
-        }
-        return { data: packed.placementIndices, type: "u32" };
-    } else if (state.source) {
+function createPlacementIndexConfig(state) {
+    if (!state.facetIndexed && state.source) {
         return { source: "draw" };
     }
     return undefined;
@@ -793,9 +744,8 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
  * @property {import("./webGpuMarkData.js").PackedMarkData | undefined} packed
  * @property {import("../../view/layout/placementSource.js").default | undefined} source
  * @property {boolean} generatedSource
- * @property {boolean} placementIndexed
- * @property {boolean} instancePlacementIndexed
- * @property {boolean} submittedPlacementIndexed
+ * @property {boolean} facetIndexed
+ * @property {{sampleCount: 1 | 4}} intent
  * @property {[number, number]} xQueryDomain
  * @property {[number, number]} xIndexedRange
  * @property {boolean} xQueryEnabled

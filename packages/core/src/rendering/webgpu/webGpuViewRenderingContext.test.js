@@ -604,16 +604,28 @@ describe("WebGpuViewRenderingContext", () => {
             [["first"], ["second"]],
             new Float32Array([0, 0, 1, 0.5, 0, 0.5, 1, 0.5])
         );
-        const placementIndices = new Uint32Array([0, 1]);
+        const xIndex = vi.fn();
         mocks.getPackedMarkData.mockReturnValue({
             data: [{ sample: "first" }, { sample: "second" }],
-            placementIndices,
+            xIndexSpec: { domain: [0, 2] },
         });
         mocks.getPackedMarkRange.mockImplementation(
-            (/** @type {any} */ _mark, /** @type {any} */ options) => ({
-                firstInstance: options.placement.index,
-                instanceCount: 1,
-            })
+            (/** @type {any} */ _mark, /** @type {any} */ options) => {
+                const index = options.placement.index;
+                return {
+                    firstInstance: index,
+                    instanceCount: 1,
+                    xIndex: (
+                        /** @type {number} */ start,
+                        /** @type {number} */ end,
+                        /** @type {[number, number]} */ target
+                    ) => {
+                        xIndex(start, end, target);
+                        target[0] = index;
+                        target[1] = index + 1;
+                    },
+                };
+            }
         );
         const surface = {
             getDevicePixelRatio: () => 1,
@@ -660,10 +672,7 @@ describe("WebGpuViewRenderingContext", () => {
         const adapterCalls = /** @type {any[][]} */ (
             mocks.createWebGpuMarkConfig.mock.calls
         );
-        expect(adapterCalls[0][5]).toEqual({
-            data: placementIndices,
-            type: "u32",
-        });
+        expect(adapterCalls[0][5]).toEqual({ source: "draw" });
         expect(surface.drawMark).toHaveBeenCalledTimes(2);
         expect(
             surface.drawMark.mock.calls.map((call) => ({
@@ -677,17 +686,144 @@ describe("WebGpuViewRenderingContext", () => {
             {
                 firstInstance: 0,
                 instanceCount: 1,
-                placementIndex: undefined,
+                placementIndex: 0,
                 scissor: { x: 20, y: 30, width: 50, height: 80 },
                 intent: { sampleCount: 4 },
             },
             {
                 firstInstance: 1,
                 instanceCount: 1,
-                placementIndex: undefined,
+                placementIndex: 1,
                 scissor: { x: 70, y: 30, width: 50, height: 80 },
                 intent: { sampleCount: 4 },
             },
+        ]);
+        expect(xIndex).toHaveBeenCalledTimes(2);
+    });
+
+    test("keeps repeated MSAA occurrences in paint order", () => {
+        const source = new PlacementSource();
+        source.replaceTopology(
+            [["first"], ["second"]],
+            new Float32Array([0, 0, 0.5, 1, 0.5, 0, 0.5, 1])
+        );
+        /** @type {string[]} */
+        const order = [];
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            updateMark: vi.fn(),
+            drawMark: vi.fn((mark) => order.push(mark.name)),
+        };
+        const context = new WebGpuViewRenderingContext({
+            surface: /** @type {any} */ (surface),
+        });
+        const view = { onBeforeRender: vi.fn(), getOpacity: () => 1 };
+        const rectangle = {
+            name: "rect A",
+            encoders: {},
+            encoding: {},
+            getType: () => "rect",
+            properties: {},
+            unitView: { getEffectiveOpacity: () => 1 },
+        };
+        const point = {
+            name: "mark B",
+            getType: () => "point",
+            properties: {},
+            unitView: { getEffectiveOpacity: () => 1 },
+        };
+        /** @param {number} index */
+        const placement = (index) => ({
+            source,
+            index,
+            topologyRevision: source.getSnapshot().topology.revision,
+        });
+
+        context.pushView(
+            /** @type {any} */ (view),
+            Rectangle.create(0, 0, 100, 100)
+        );
+        context.renderMark(/** @type {any} */ (rectangle), {
+            placement: placement(0),
+        });
+        context.renderMark(/** @type {any} */ (point), {});
+        context.renderMark(/** @type {any} */ (rectangle), {
+            placement: placement(1),
+        });
+        context.popView(/** @type {any} */ (view));
+        context.finish();
+        context.render({ picking: false });
+
+        expect(order).toEqual(["rect A", "mark B", "rect A"]);
+    });
+
+    test("keeps repeated MSAA occurrences in their opacity scopes", () => {
+        const source = new PlacementSource();
+        source.replaceTopology(
+            [["first"], ["second"]],
+            new Float32Array([0, 0, 0.5, 1, 0.5, 0, 0.5, 1])
+        );
+        /** @type {string[]} */
+        const order = [];
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            updateMark: vi.fn(),
+            drawMark: vi.fn((_mark, draw) =>
+                order.push(`draw ${draw.placement.index}`)
+            ),
+            pushViewGroup: vi.fn((view) => order.push(`push ${view.name}`)),
+            popViewGroup: vi.fn(() => order.push("pop")),
+        };
+        const context = new WebGpuViewRenderingContext({
+            surface: /** @type {any} */ (surface),
+        });
+        const firstView = {
+            name: "first",
+            onBeforeRender: vi.fn(),
+            getOpacity: () => 0.5,
+        };
+        const secondView = {
+            name: "second",
+            onBeforeRender: vi.fn(),
+            getOpacity: () => 0.75,
+        };
+        const mark = {
+            encoders: {},
+            encoding: {},
+            getType: () => "rect",
+            properties: {},
+            unitView: { getEffectiveOpacity: () => 1 },
+        };
+
+        for (const [view, index] of /** @type {[any, number][]} */ ([
+            [firstView, 0],
+            [secondView, 1],
+        ])) {
+            context.pushView(
+                /** @type {any} */ (view),
+                Rectangle.create(0, 0, 100, 100)
+            );
+            context.renderMark(/** @type {any} */ (mark), {
+                placement: {
+                    source,
+                    index,
+                    topologyRevision: source.getSnapshot().topology.revision,
+                },
+            });
+            context.popView(/** @type {any} */ (view));
+        }
+        context.finish();
+        context.render({ picking: false });
+
+        expect(order).toEqual([
+            "push first",
+            "draw 0",
+            "pop",
+            "push second",
+            "draw 1",
+            "pop",
         ]);
     });
 

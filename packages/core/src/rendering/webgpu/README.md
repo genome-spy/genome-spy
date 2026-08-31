@@ -60,9 +60,10 @@ Four-sample coverage is limited to undecorated `rect` marks. This includes all
 plain MCCA rectangles: cytobands, copy-number segments, gene exons, summary
 rectangles, legend ramps, and both foreground and missing-value metadata cells.
 Points, text, rules, and rectangles with strokes, rounded corners, shadows, or
-hatches stay on the direct single-sample path. A placement-indexed retained mark
-keeps its clipped occurrence ranges as draws inside one group and therefore
-resolves once, regardless of its number of sample facets.
+hatches stay on the direct single-sample path. Ordinary source-backed marks use
+a draw-level placement index, so each clipped occurrence stays in paint order
+and consecutive compatible rectangles still share one resolve. Marks with a
+`facetIndex` encoder instead use their encoded per-instance placement index.
 
 WebGL continues to consume effective per-mark opacity and receives no
 render-group behavior.

@@ -227,18 +227,18 @@ encoder-provided per-instance placement continues to work.
 
 ### Work
 
-- [ ] Remove `instancePlacementIndexed`, `submittedPlacementIndexed`, and the
+- [x] Remove `instancePlacementIndexed`, `submittedPlacementIndexed`, and the
       first-occurrence loop that submits every later occurrence.
-- [ ] Keep one clearly named flag only for genuine encoder-provided
+- [x] Keep one clearly named flag only for genuine encoder-provided
       per-instance/facet placement.
-- [ ] Give ordinary source-backed rectangles a draw-level placement index and
+- [x] Give ordinary source-backed rectangles a draw-level placement index and
       preserve their individual packed ranges, clips, and visibility checks.
-- [ ] Generate `PackedMarkData.placementIndices` only for marks whose encoding
+- [x] Generate `PackedMarkData.placementIndices` only for marks whose encoding
       consumes them; remove the ordinary-MSAA upload path and its error branch.
-- [ ] Restore x-index queries for ordinary source-backed MSAA marks.
-- [ ] Derive rendering intent once per prepared mark and reuse it for all of
+- [x] Restore x-index queries for ordinary source-backed MSAA marks.
+- [x] Derive rendering intent once per prepared mark and reuse it for all of
       that mark's occurrences without adding a parallel revision graph.
-- [ ] Delete tests that assert the removed alternate representation and add
+- [x] Delete tests that assert the removed alternate representation and add
       paint-order and opacity-scope regressions.
 
 ### Affected areas and downstream consumers

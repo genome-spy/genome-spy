@@ -48,8 +48,6 @@ export function getPackedMarkData(mark, placementSource) {
     const ranges = new Map();
     /** @type {PackedMarkRange[] | undefined} */
     let placementRanges;
-    /** @type {Uint32Array | undefined} */
-    let placementIndices;
     /** @type {object[]} */
     let data;
 
@@ -71,7 +69,6 @@ export function getPackedMarkData(mark, placementSource) {
         );
         if (topology) {
             placementRanges = [];
-            placementIndices = new Uint32Array(data.length);
         }
         let dataIndex = 0;
         for (
@@ -84,9 +81,6 @@ export function getPackedMarkData(mark, placementSource) {
             placementRanges?.push(range);
             ranges.set(batch, range);
             for (const datum of batch) {
-                if (placementIndices) {
-                    placementIndices[dataIndex] = placementIndex;
-                }
                 data[dataIndex++] = datum;
             }
         }
@@ -105,7 +99,6 @@ export function getPackedMarkData(mark, placementSource) {
         data,
         ranges,
         placementRanges,
-        placementIndices,
     };
     PACKED_DATA_CACHE.set(mark, packed);
     return packed;
@@ -171,7 +164,6 @@ export function getPackedMarkRange(mark, options, packed) {
  * @property {object[]} data
  * @property {Map<object[], PackedMarkRange>} ranges
  * @property {PackedMarkRange[] | undefined} placementRanges
- * @property {Uint32Array | undefined} placementIndices
  */
 
 /**
