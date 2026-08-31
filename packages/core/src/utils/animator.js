@@ -209,7 +209,7 @@ export function makeLerpSmoother(
     return setTarget;
 }
 
-function getCurrentTimelineTime() {
+export function getCurrentTimelineTime() {
     const time = globalThis.document?.timeline?.currentTime;
     return typeof time === "number" ? time : performance.now();
 }
