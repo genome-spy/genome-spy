@@ -572,8 +572,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 draw,
                 state.source,
                 false,
-                intent,
-                occurrence.markCoords
+                intent
             );
         } else {
             this.surface.drawMark(state.mark, draw, state.source, picking);

@@ -2,6 +2,7 @@ import { createRenderer } from "@genome-spy/webgpu-renderer";
 
 import CanvasSizeHelper from "../canvasSizeHelper.js";
 import PlacementSource from "../../view/layout/placementSource.js";
+import { getViewClipDirections } from "../../view/renderingContext/clipOptions.js";
 import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 
 /** @type {Readonly<Record<string, {value: any}>>} */
@@ -286,11 +287,13 @@ export default class WebGpuSurface {
      * @param {number} opacity
      */
     pushViewGroup(view, coords, opacity) {
+        const clip = getViewClipDirections(view);
+        const size = this.getLogicalCanvasSize();
         const bounds = {
-            x: coords.x,
-            y: coords.y,
-            width: coords.width,
-            height: coords.height,
+            x: clip.clipX ? coords.x : 0,
+            y: clip.clipY ? coords.y : 0,
+            width: clip.clipX ? coords.width : size.width,
+            height: clip.clipY ? coords.height : size.height,
         };
         /** @type {import("@genome-spy/webgpu-renderer").RenderItem[]} */
         const items = [];
@@ -461,9 +464,8 @@ export default class WebGpuSurface {
      * @param {PlacementSource | undefined} placementSource
      * @param {boolean} picking
      * @param {{sampleCount: 1 | 4}} [intent]
-     * @param {import("@genome-spy/webgpu-renderer").DrawRect} [markBounds]
      */
-    drawMark(mark, draw, placementSource, picking, intent, markBounds) {
+    drawMark(mark, draw, placementSource, picking, intent) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
@@ -485,16 +487,15 @@ export default class WebGpuSurface {
             this.#pickingDraws.push(draw);
         } else if (intent?.sampleCount === 4) {
             const size = this.getLogicalCanvasSize();
-            const canvasBounds = {
-                x: 0,
-                y: 0,
-                width: size.width,
-                height: size.height,
+            const bounds = {
+                ...(draw.scissor ??
+                    draw.viewport ?? {
+                        x: 0,
+                        y: 0,
+                        width: size.width,
+                        height: size.height,
+                    }),
             };
-            const bounds = intersectBounds(
-                markBounds ?? draw.viewport ?? canvasBounds,
-                draw.scissor ?? canvasBounds
-            );
             if (bounds.width <= 0 || bounds.height <= 0) {
                 this.#activeMsaaGroup = undefined;
                 return;
@@ -647,27 +648,6 @@ function unionBounds(target, source) {
     target.y = Math.min(target.y, source.y);
     target.width = x2 - target.x;
     target.height = y2 - target.y;
-}
-
-/**
- * @param {import("@genome-spy/webgpu-renderer").DrawRect} first
- * @param {import("@genome-spy/webgpu-renderer").DrawRect} second
- */
-function intersectBounds(first, second) {
-    const x = Math.max(first.x, second.x);
-    const y = Math.max(first.y, second.y);
-    return {
-        x,
-        y,
-        width: Math.max(
-            0,
-            Math.min(first.x + first.width, second.x + second.width) - x
-        ),
-        height: Math.max(
-            0,
-            Math.min(first.y + first.height, second.y + second.height) - y
-        ),
-    };
 }
 
 /**

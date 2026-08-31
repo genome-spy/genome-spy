@@ -191,6 +191,12 @@ per-facet targets. Picking stays flat and single-sampled. Canvas2D honors the
 same local view-opacity semantics with transparent offscreen canvases, while
 WebGL keeps its unchanged effective-opacity fallback.
 
+Compositing bounds follow semantic clipping. A zoomable positional scale makes
+both directions clip by default; explicit directional clipping leaves the
+other direction unbounded. This keeps direct and composited rendering
+consistent while allowing the common zoomable-track case to use bounded
+attachments.
+
 WebGPU raster export compiles an export-sized layout and submits it to a
 same-device detached canvas target with target-local globals. The renderer
 reuses retained GPU resources without replacing the live coordinator's frame

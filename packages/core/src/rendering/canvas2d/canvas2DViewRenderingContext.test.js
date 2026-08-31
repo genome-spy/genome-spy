@@ -212,6 +212,7 @@ describe("Canvas2DViewRenderingContext", () => {
         const groupView = {
             onBeforeRender: vi.fn(),
             getOpacity: () => 0.5,
+            mark: { properties: { clip: true } },
         };
 
         try {
@@ -232,59 +233,78 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(main.calls.drawImages).toEqual([0.5]);
     });
 
-    test("bounds an opacity layer to outward-rounded view pixels", () => {
-        const main = createRecordingContext();
-        main.context.canvas.width = 200;
-        main.context.canvas.height = 100;
-        const offscreen = createRecordingContext();
-        offscreen.context.canvas.getContext = () => offscreen.context;
-        const originalCreateElement = document.createElement.bind(document);
-        const createElement = vi
-            .spyOn(document, "createElement")
-            .mockImplementation((tagName, options) => {
-                if (tagName === "canvas") {
-                    return /** @type {any} */ (offscreen.context.canvas);
+    test.each([
+        {
+            name: "xy clipping",
+            clip: true,
+            height: 21,
+            translationY: -10,
+            drawRect: [10, 5, 20.5, 10.5],
+        },
+        {
+            name: "x-only clipping",
+            clip: "x",
+            height: 100,
+            translationY: 0,
+            drawRect: [10, 0, 20.5, 50],
+        },
+    ])(
+        "bounds an opacity layer using $name",
+        ({ clip, height, translationY, drawRect }) => {
+            const main = createRecordingContext();
+            main.context.canvas.width = 200;
+            main.context.canvas.height = 100;
+            const offscreen = createRecordingContext();
+            offscreen.context.canvas.getContext = () => offscreen.context;
+            const originalCreateElement = document.createElement.bind(document);
+            const createElement = vi
+                .spyOn(document, "createElement")
+                .mockImplementation((tagName, options) => {
+                    if (tagName === "canvas") {
+                        return /** @type {any} */ (offscreen.context.canvas);
+                    }
+                    return originalCreateElement(tagName, options);
+                });
+            const context = new Canvas2DViewRenderingContext(
+                { picking: false },
+                {
+                    context: main.context,
+                    width: 100,
+                    height: 50,
+                    devicePixelRatio: 2,
+                    background: null,
+                    paint: true,
                 }
-                return originalCreateElement(tagName, options);
-            });
-        const context = new Canvas2DViewRenderingContext(
-            { picking: false },
-            {
-                context: main.context,
-                width: 100,
-                height: 50,
-                devicePixelRatio: 2,
-                background: null,
-                paint: true,
-            }
-        );
-        const groupView = {
-            onBeforeRender: vi.fn(),
-            getOpacity: () => 0.5,
-        };
-
-        try {
-            context.pushView(
-                /** @type {any} */ (groupView),
-                Rectangle.create(10.25, 5.25, 20, 10)
             );
-            context.popView(/** @type {any} */ (groupView));
-        } finally {
-            createElement.mockRestore();
-        }
+            const groupView = {
+                onBeforeRender: vi.fn(),
+                getOpacity: () => 0.5,
+                mark: { properties: { clip } },
+            };
 
-        expect(offscreen.context.canvas.width).toBe(41);
-        expect(offscreen.context.canvas.height).toBe(21);
-        expect(offscreen.context.setTransform).toHaveBeenLastCalledWith(
-            2,
-            0,
-            0,
-            2,
-            -20,
-            -10
-        );
-        expect(main.calls.drawImageRects).toEqual([[10, 5, 20.5, 10.5]]);
-    });
+            try {
+                context.pushView(
+                    /** @type {any} */ (groupView),
+                    Rectangle.create(10.25, 5.25, 20, 10)
+                );
+                context.popView(/** @type {any} */ (groupView));
+            } finally {
+                createElement.mockRestore();
+            }
+
+            expect(offscreen.context.canvas.width).toBe(41);
+            expect(offscreen.context.canvas.height).toBe(height);
+            expect(offscreen.context.setTransform).toHaveBeenLastCalledWith(
+                2,
+                0,
+                0,
+                2,
+                -20,
+                expect.closeTo(translationY)
+            );
+            expect(main.calls.drawImageRects).toEqual([drawRect]);
+        }
+    );
 
     test("passes indexed source-row bounds to immediate marks", async () => {
         const { view } = await createHeadlessEngine({

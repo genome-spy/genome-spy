@@ -4,6 +4,7 @@ import {
     visitMarkOccurrences,
 } from "../immediate/markData.js";
 import {
+    getViewClipDirections,
     normalizeClipOptions,
     prepareMarkClipOptionsFromClip,
 } from "../../view/renderingContext/clipOptions.js";
@@ -120,10 +121,12 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         let parentContext;
         let parentBounds;
         if (this.paint && opacity > 0 && opacity !== 1) {
+            const clip = getViewClipDirections(view);
             const bounds = normalizeOffscreenBounds(
                 coords,
                 this.devicePixelRatio,
-                this.#targetBounds
+                this.#targetBounds,
+                clip
             );
             const canvas = document.createElement("canvas");
             canvas.width = bounds.width;
@@ -329,31 +332,32 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
  * @param {import("../../view/layout/rectangle.js").default} coords
  * @param {number} devicePixelRatio
  * @param {CanvasPhysicalBounds} parent
+ * @param {{clipX: boolean, clipY: boolean}} clip
  * @returns {CanvasPhysicalBounds}
  */
-function normalizeOffscreenBounds(coords, devicePixelRatio, parent) {
+function normalizeOffscreenBounds(coords, devicePixelRatio, parent, clip) {
     const parentRight = parent.x + parent.width;
     const parentBottom = parent.y + parent.height;
-    const x = clamp(
-        Math.floor(coords.x * devicePixelRatio),
-        parent.x,
-        parentRight
-    );
-    const y = clamp(
-        Math.floor(coords.y * devicePixelRatio),
-        parent.y,
-        parentBottom
-    );
-    const right = clamp(
-        Math.ceil((coords.x + coords.width) * devicePixelRatio),
-        x,
-        parentRight
-    );
-    const bottom = clamp(
-        Math.ceil((coords.y + coords.height) * devicePixelRatio),
-        y,
-        parentBottom
-    );
+    const x = clip.clipX
+        ? clamp(Math.floor(coords.x * devicePixelRatio), parent.x, parentRight)
+        : parent.x;
+    const y = clip.clipY
+        ? clamp(Math.floor(coords.y * devicePixelRatio), parent.y, parentBottom)
+        : parent.y;
+    const right = clip.clipX
+        ? clamp(
+              Math.ceil((coords.x + coords.width) * devicePixelRatio),
+              x,
+              parentRight
+          )
+        : parentRight;
+    const bottom = clip.clipY
+        ? clamp(
+              Math.ceil((coords.y + coords.height) * devicePixelRatio),
+              y,
+              parentBottom
+          )
+        : parentBottom;
     return { x, y, width: right - x, height: bottom - y };
 }
 

@@ -119,6 +119,46 @@ export function createSelfClipOptions(clip, coords) {
 }
 
 /**
+ * Returns the directions in which every mark under a view is semantically
+ * clipped. Empty views report no guaranteed clipping.
+ *
+ * @param {import("../view.js").default} view
+ */
+export function getViewClipDirections(view) {
+    const ownMark =
+        /** @type {{mark?: import("../../marks/mark.js").default}} */ (view)
+            .mark;
+    if (ownMark) {
+        const clip = ownMark.properties.clip;
+        return {
+            clipX: clip === true || clip === "x",
+            clipY: clip === true || clip === "y",
+        };
+    }
+
+    let hasMarks = false;
+    let clipX = true;
+    let clipY = true;
+    view.visit((descendant) => {
+        const mark =
+            /** @type {{mark?: import("../../marks/mark.js").default}} */ (
+                descendant
+            ).mark;
+        if (mark) {
+            hasMarks = true;
+            const clip = mark.properties.clip;
+            clipX &&= clip === true || clip === "x";
+            clipY &&= clip === true || clip === "y";
+        }
+    });
+
+    return {
+        clipX: hasMarks && clipX,
+        clipY: hasMarks && clipY,
+    };
+}
+
+/**
  * @param {import("../../types/rendering.js").ClipOptions | undefined} inheritedClip
  * @param {import("../../spec/mark.js").MarkProps["clip"]} markClip
  * @param {import("../layout/rectangle.js").default} coords
