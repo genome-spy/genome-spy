@@ -1232,6 +1232,15 @@ export interface TransitionParams extends TransformParamsBase {
      * __Default value:__ `0.01`
      */
     epsilon?: number;
+
+    /**
+     * Time in milliseconds that a changed target batch must remain unchanged
+     * before interpolation begins. Repeated equal updates do not restart the
+     * delay.
+     *
+     * __Default value:__ `0`
+     */
+    targetDelay?: number;
 }
 
 export interface FlattenCompressedExonsParams extends TransformParamsBase {

@@ -4,6 +4,7 @@ import Transform from "./transform.js";
 
 const DEFAULT_HALF_LIFE = 80;
 const DEFAULT_EPSILON = 0.01;
+const DEFAULT_TARGET_DELAY = 0;
 
 /**
  * Smooths numeric fields between keyed dataflow updates.
@@ -23,6 +24,8 @@ export default class TransitionTransform extends Transform {
     /** @type {number | undefined} */
     #lastTimestamp;
 
+    #targetDelayRemaining = 0;
+
     get behavior() {
         return BEHAVIOR_COLLECTS | BEHAVIOR_MODIFIES;
     }
@@ -41,6 +44,7 @@ export default class TransitionTransform extends Transform {
         this.as = params.as ?? params.fields;
         this.halfLife = params.halfLife ?? DEFAULT_HALF_LIFE;
         this.epsilon = params.epsilon ?? DEFAULT_EPSILON;
+        this.targetDelay = params.targetDelay ?? DEFAULT_TARGET_DELAY;
         this.canAnimate = () =>
             typeof paramRuntimeProvider.hasRendered != "function" ||
             paramRuntimeProvider.hasRendered();
@@ -79,7 +83,10 @@ export default class TransitionTransform extends Transform {
 
     complete() {
         const nextStates = new Map();
+        let pendingChanged = false;
         let unsettled = false;
+        const snap =
+            this.animator.transitionsEnabled === false || !this.canAnimate();
 
         for (const datum of this.#data) {
             const key = this.keyAccessor(datum);
@@ -88,19 +95,27 @@ export default class TransitionTransform extends Transform {
                 throw new Error(`transition key must be unique: ${key}`);
             }
 
-            const target = this.accessors.map((accessor) => accessor(datum));
-            validateTarget(target, key);
+            const pending = this.accessors.map((accessor) => accessor(datum));
+            validateTarget(pending, key);
             const previous = this.#states.get(key);
-            const current = previous ? previous.current : target.slice();
-            const state = { current, target, datum };
+            const current = previous ? previous.current : pending.slice();
+            const target = previous ? previous.target : pending;
+            const state = { current, target, pending, datum };
             nextStates.set(key, state);
 
-            if (
-                this.animator.transitionsEnabled === false ||
-                !this.canAnimate() ||
-                maxDifference(current, target) <= this.epsilon
-            ) {
-                state.current = target.slice();
+            if (previous && !equalValues(previous.pending, pending)) {
+                pendingChanged = true;
+            }
+
+            if (snap) {
+                state.current = pending.slice();
+                state.target = pending;
+            } else if (this.targetDelay == 0) {
+                state.target = pending;
+            }
+
+            if (maxDifference(state.current, state.target) <= this.epsilon) {
+                state.current = state.target.slice();
             } else {
                 unsettled = true;
             }
@@ -108,12 +123,24 @@ export default class TransitionTransform extends Transform {
         }
 
         this.#states = nextStates;
+        if (snap || this.targetDelay == 0) {
+            this.#targetDelayRemaining = 0;
+        } else if (pendingChanged) {
+            this.#targetDelayRemaining = this.targetDelay;
+            this.#lastTimestamp = undefined;
+        }
+
+        const hasPendingTargets = this.#hasPendingTargets();
+        if (!hasPendingTargets) {
+            this.#targetDelayRemaining = 0;
+        }
+
         for (const datum of this.#data) {
             this._propagate(datum);
         }
         super.complete();
 
-        if (unsettled) {
+        if (hasPendingTargets || unsettled) {
             this.#requestAnimation();
         } else {
             this.#stopAnimation();
@@ -131,6 +158,7 @@ export default class TransitionTransform extends Transform {
         this.animator.cancelTransition(this.#animate);
         this.#animationRequested = false;
         this.#lastTimestamp = undefined;
+        this.#targetDelayRemaining = 0;
     }
 
     /** @param {number} timestamp */
@@ -145,14 +173,27 @@ export default class TransitionTransform extends Transform {
                 ? 0
                 : timestamp - this.#lastTimestamp;
         this.#lastTimestamp = timestamp;
+        this.#targetDelayRemaining = Math.max(
+            0,
+            this.#targetDelayRemaining - elapsed
+        );
+        if (this.#targetDelayRemaining == 0) {
+            for (const state of this.#states.values()) {
+                state.target = state.pending;
+            }
+        }
+
         const remainder = Math.pow(2, -elapsed / this.halfLife);
         let maxDiff = 0;
+        let changed = false;
 
         for (const state of this.#states.values()) {
             for (let i = 0; i < state.target.length; i++) {
-                state.current[i] =
+                const value =
                     state.target[i] +
                     (state.current[i] - state.target[i]) * remainder;
+                changed ||= value != state.current[i];
+                state.current[i] = value;
                 maxDiff = Math.max(
                     maxDiff,
                     Math.abs(state.target[i] - state.current[i])
@@ -162,20 +203,35 @@ export default class TransitionTransform extends Transform {
 
         if (maxDiff <= this.epsilon) {
             for (const state of this.#states.values()) {
+                changed ||= !equalValues(state.current, state.target);
                 state.current = state.target.slice();
             }
+        }
+
+        const hasPendingTargets = this.#hasPendingTargets();
+        if (maxDiff <= this.epsilon && !hasPendingTargets) {
             this.#lastTimestamp = undefined;
         }
-
-        for (const state of this.#states.values()) {
-            writeValues(state.datum, this.as, state.current);
+        if (changed || !hasPendingTargets) {
+            for (const state of this.#states.values()) {
+                writeValues(state.datum, this.as, state.current);
+            }
+            this.#replayChildren();
         }
-        this.#replayChildren();
 
-        if (maxDiff > this.epsilon) {
+        if (hasPendingTargets || maxDiff > this.epsilon) {
             this.#requestAnimation();
         }
     };
+
+    #hasPendingTargets() {
+        for (const state of this.#states.values()) {
+            if (!equalValues(state.target, state.pending)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     #replayChildren() {
         for (const child of this.children) {
@@ -205,6 +261,7 @@ export default class TransitionTransform extends Transform {
  * @typedef {object} TransitionState
  * @prop {number[]} current
  * @prop {number[]} target
+ * @prop {number[]} pending
  * @prop {import("../flowNode.js").Datum} datum
  */
 
@@ -247,6 +304,14 @@ function validateParams(params) {
     ) {
         throw new Error("transition epsilon must be a positive finite number.");
     }
+    if (
+        params.targetDelay !== undefined &&
+        (!Number.isFinite(params.targetDelay) || params.targetDelay < 0)
+    ) {
+        throw new Error(
+            "transition targetDelay must be a non-negative finite number."
+        );
+    }
 }
 
 /** @param {any} key */
@@ -275,6 +340,11 @@ function maxDifference(current, target) {
         maxDiff = Math.max(maxDiff, Math.abs(target[i] - current[i]));
     }
     return maxDiff;
+}
+
+/** @param {number[]} a @param {number[]} b */
+function equalValues(a, b) {
+    return a.every((value, i) => value == b[i]);
 }
 
 /**
