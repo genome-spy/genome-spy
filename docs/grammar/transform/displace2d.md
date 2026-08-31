@@ -16,8 +16,9 @@ SCHEMA Displace2DParams
 
 ## Example
 
-Zoom the scatterplot to see the labels recompute. The same displacement fields
-move both the centered text and one endpoint of each leader line.
+Zoom the scatterplot to see the labels recompute and move smoothly. The same
+transitioned displacement fields move both the centered text and one endpoint
+of each leader line.
 
 EXAMPLE examples/docs/grammar/transform/displace2d/displace2d-labels.json height=420
 
@@ -91,3 +92,11 @@ still control clipping, opacity, tooltips, and leader-line styling.
 The transform prevents collisions between the supplied rectangles and any
 configured anchors. It does not inspect rendered marks, avoid unrelated points,
 measure text automatically, or route leader lines.
+
+## Smooth updates
+
+`displace2d` produces a deterministic target layout for every input batch. Add
+a [`transition`](./transition.md) transform after it when scale or layout
+changes should move annotations smoothly. Keep the target fields separate from
+the displayed fields so repeated dataflow updates do not replace the targets
+with partially interpolated values. The example above uses this composition.

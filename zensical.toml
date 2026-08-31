@@ -45,6 +45,7 @@ nav = [
             "grammar/transform/sample.md",
             { "SetIntersection" = "grammar/transform/set-intersection.md" },
             "grammar/transform/stack.md",
+            "grammar/transform/transition.md",
             "grammar/transform/window.md",
         ] },
         { "Graphical Marks" = [
