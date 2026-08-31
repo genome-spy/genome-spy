@@ -61,13 +61,33 @@
           "sort": { "field": "priority", "order": "ascending" }
         },
         {
+          "type": "formula",
+          "expr": "datum.x >= min(domain('x')[0], domain('x')[1]) && datum.x <= max(domain('x')[0], domain('x')[1]) && datum.y >= min(domain('y')[0], domain('y')[1]) && datum.y <= max(domain('y')[0], domain('y')[1])",
+          "as": "inViewport"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.inViewport ? datum.collisionWidth : 0",
+          "as": "activeCollisionWidth"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.inViewport ? 20 : 0",
+          "as": "activeCollisionHeight"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.inViewport ? 10 : 0",
+          "as": "activeAnchorSize"
+        },
+        {
           "type": "displace2d",
           "x": "x",
           "y": "y",
-          "width": "collisionWidth",
-          "height": 20,
-          "anchorWidth": 10,
-          "anchorHeight": 10,
+          "width": "activeCollisionWidth",
+          "height": "activeCollisionHeight",
+          "anchorWidth": "activeAnchorSize",
+          "anchorHeight": "activeAnchorSize",
           "xPositionFactor": {
             "expr": "width * (scale('x', 1) - scale('x', 0))"
           },
@@ -86,7 +106,8 @@
           "targetDelay": 20,
           "halfLife": 100,
           "epsilon": 0.25
-        }
+        },
+        { "type": "filter", "expr": "datum.inViewport" }
       ],
       "encoding": {
         "x": { "field": "x", "type": "quantitative" },
