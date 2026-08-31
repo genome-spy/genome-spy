@@ -62,6 +62,8 @@ export class TransientTexturePool {
         this.freeCost = 0;
         /** @type {Set<TransientTexture>} */
         this.all = new Set();
+        /** @type {TransientTexture[]} */
+        this.pendingDestroy = [];
     }
 
     /**
@@ -108,7 +110,7 @@ export class TransientTexturePool {
     /** @param {TransientTexture} entry */
     release(entry) {
         if (entry.cost > MAX_FREE_SAMPLE_PIXELS) {
-            this.#destroyEntry(entry);
+            this.#evict(entry);
             return;
         }
         this.free.push(entry);
@@ -119,8 +121,16 @@ export class TransientTexturePool {
         ) {
             const evicted = this.free.shift();
             this.freeCost -= evicted.cost;
-            this.#destroyEntry(evicted);
+            this.#evict(evicted);
         }
+    }
+
+    /** Destroys evicted textures after their encoded commands are submitted. */
+    afterSubmit() {
+        for (const entry of this.pendingDestroy) {
+            entry.texture.destroy();
+        }
+        this.pendingDestroy.length = 0;
     }
 
     destroy() {
@@ -130,12 +140,13 @@ export class TransientTexturePool {
         this.all.clear();
         this.free.length = 0;
         this.freeCost = 0;
+        this.afterSubmit();
     }
 
     /** @param {TransientTexture} entry */
-    #destroyEntry(entry) {
+    #evict(entry) {
         this.all.delete(entry);
-        entry.texture.destroy();
+        this.pendingDestroy.push(entry);
     }
 }
 

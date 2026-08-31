@@ -1,6 +1,11 @@
 # WebGPU adapter simplification plan
 
-Status: Proposed
+Status: Complete
+
+Completed on 2026-08-31. Milestones 1 through 5 removed 171 net production
+lines. The bounded texture cache added 22, leaving the complete implementation
+149 lines smaller. Tests and plan documentation are excluded from these
+path-based counts.
 
 ## Context
 
@@ -87,7 +92,7 @@ Core currently combines two cases under `instancePlacementIndexed`:
 
 Only the first case remains. Ordinary MSAA rectangles use one ordered draw per
 visible occurrence with a draw-level placement index. Consecutive draws may
-still be grouped into one MSAA render group by `WebGpuSurface`, but draws must
+still be grouped into one MSAA render group by the frame builder, but draws must
 never be gathered from later paint commands or moved across opacity scopes.
 
 Packed `placementIndices` are generated and uploaded only when the mark's own
@@ -146,7 +151,9 @@ picking-frame ordering remain unchanged.
 Keep exact-size reuse. Add a small least-recently-used bound over released
 attachments, constrained by both entry count and estimated sample-pixel cost.
 In-use textures are never evicted. A released texture larger than the cache
-budget is destroyed immediately, and eviction calls `GPUTexture.destroy()`.
+budget is evicted immediately and destroyed after the current command buffer
+has been submitted, as are other evictions. This avoids invalidating resources
+that have been encoded but not yet submitted.
 
 Do not add power-of-two buckets or oversized texture reuse. They complicate
 logical origins and composite bounds and can trade allocation churn for excess

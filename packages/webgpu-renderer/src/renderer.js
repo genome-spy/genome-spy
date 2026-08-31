@@ -920,6 +920,7 @@ export class Renderer {
         finishPhase("commandEncoding", encodingStart);
         const submissionStart = startPhase();
         this.device.queue.submit([commandEncoder.finish()]);
+        this._transientTextures.afterSubmit();
         finishPhase("submission", submissionStart);
         if (rememberFrame) {
             this._renderFrame = draws;

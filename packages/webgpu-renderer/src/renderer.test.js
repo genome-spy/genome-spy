@@ -845,6 +845,7 @@ function createRendererHarness() {
             };
         }),
         release: vi.fn(),
+        afterSubmit: vi.fn(),
         destroy: vi.fn(),
     };
     return {

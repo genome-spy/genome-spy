@@ -50,6 +50,7 @@ describe("TransientTexturePool", () => {
         }
 
         expect(textures[0].destroy).not.toHaveBeenCalled();
+        pool.afterSubmit();
         expect(textures[1].destroy).toHaveBeenCalledOnce();
         pool.release(inUse);
         pool.destroy();
@@ -76,6 +77,8 @@ describe("TransientTexturePool", () => {
         pool.release(firstLarge);
         pool.release(secondLarge);
 
+        expect(textures[0].destroy).not.toHaveBeenCalled();
+        pool.afterSubmit();
         expect(textures[0].destroy).toHaveBeenCalledOnce();
         expect(textures[1].destroy).not.toHaveBeenCalled();
 
@@ -86,6 +89,8 @@ describe("TransientTexturePool", () => {
             GPUTextureUsage.RENDER_ATTACHMENT
         );
         pool.release(oversized);
+        expect(textures[2].destroy).not.toHaveBeenCalled();
+        pool.afterSubmit();
         expect(textures[2].destroy).toHaveBeenCalledOnce();
         expect(
             pool.acquire(5_000, 1_000, 4, GPUTextureUsage.RENDER_ATTACHMENT)
