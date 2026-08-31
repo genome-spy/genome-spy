@@ -88,6 +88,7 @@
   "TickProps": "/grammar/mark/tick/#properties",
   "Title": "/grammar/title/#properties",
   "TitleConfig": "/grammar/title/#config-properties",
+  "TransitionParams": "/grammar/transform/transition/#parameters",
   "TransitionedMultiscaleStops": "/grammar/composition/multiscale/#transitionedmultiscalestops",
   "UnitSpec": "/grammar/#properties",
   "UrlData": "/grammar/data/eager/#url-data",

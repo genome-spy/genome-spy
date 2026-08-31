@@ -913,6 +913,10 @@ SCHEMA TooltipDef
 
 SCHEMA TransformParams
 
+## TransitionParams
+
+See the [TransitionParams documentation](transform/transition.md#parameters).
+
 ## TransitionedMultiscaleStops
 
 See the [TransitionedMultiscaleStops documentation](composition/multiscale.md#transitionedmultiscalestops).

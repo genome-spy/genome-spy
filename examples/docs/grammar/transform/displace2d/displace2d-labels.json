@@ -76,7 +76,16 @@
           },
           "xExtent": { "expr": "domain('x')" },
           "yExtent": { "expr": "domain('y')" },
-          "as": ["labelDx", "labelDy"]
+          "as": ["labelTargetDx", "labelTargetDy"]
+        },
+        {
+          "type": "transition",
+          "key": "priority",
+          "fields": ["labelTargetDx", "labelTargetDy"],
+          "as": ["labelDx", "labelDy"],
+          "targetDelay": 20,
+          "halfLife": 100,
+          "epsilon": 0.25
         }
       ],
       "encoding": {
