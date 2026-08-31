@@ -1326,12 +1326,16 @@ Evidence recorded on 2026-08-30:
   passes all five private fixtures; the App smoke passes label-count changes,
   wheel zoom, and resize in the volcano, MA, 500-label stress, and overflow
   fixtures without console errors.
-- The long-label private fixtures use the selected `100 / 140 / 0.25` tuning.
+- The long-label private fixtures initially used `100 / 140 / 0.25` tuning.
   After correcting the diagnostic to key rows by stable `labelRank` rather than
   a downstream viewport-dependent identifier, the continuous out-and-back
   trace reports a 9.94 px p95 per-frame maximum. Its 268.60 px maximum belongs
   to initial settling captured before the gesture and remains a reason for
   direct user visual testing rather than a claimed interaction bound.
+- User review found the effect successful but slightly conservative. The
+  private fixtures now use `targetDelay: 50`, `halfLife: 100`, and
+  `epsilon: 0.25`; the public defaults remain unchanged and `targetDelay: 0`
+  continues to preserve immediate retargeting.
 
 ## Reconciliation through the first user acid test (2026-08-28)
 
