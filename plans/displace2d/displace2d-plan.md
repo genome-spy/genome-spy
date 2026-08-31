@@ -1333,9 +1333,10 @@ Evidence recorded on 2026-08-30:
   to initial settling captured before the gesture and remains a reason for
   direct user visual testing rather than a claimed interaction bound.
 - User review found the effect successful but slightly conservative. The
-  private fixtures now use `targetDelay: 50`, `halfLife: 100`, and
-  `epsilon: 0.25`; the public defaults remain unchanged and `targetDelay: 0`
-  continues to preserve immediate retargeting.
+  private fixtures were first retuned to `targetDelay: 50`, `halfLife: 100`,
+  and `epsilon: 0.25`. Further review selected `targetDelay: 20`; the public
+  defaults remain unchanged and `targetDelay: 0` continues to preserve
+  immediate retargeting.
 
 ## Reconciliation through the first user acid test (2026-08-28)
 
