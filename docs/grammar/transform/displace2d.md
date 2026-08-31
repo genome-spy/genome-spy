@@ -93,6 +93,15 @@ The transform prevents collisions between the supplied rectangles and any
 configured anchors. It does not inspect rendered marks, avoid unrelated points,
 measure text automatically, or route leader lines.
 
+## Viewport participation
+
+`displace2d` processes every input row, including rows whose source positions
+are outside the visible scale domains. To hide annotations with offscreen
+anchors, compute an `inViewport` field from both domains, set their collision
+and anchor dimensions to zero, and filter them after displacement and
+transition. Use `min` and `max` when comparing domains so the expression also
+works with reversed axes. The example above demonstrates this ordering.
+
 ## Smooth updates
 
 `displace2d` produces a deterministic target layout for every input batch. Add
