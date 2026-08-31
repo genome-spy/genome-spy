@@ -1337,6 +1337,18 @@ Evidence recorded on 2026-08-30:
   and `epsilon: 0.25`. Further review selected `targetDelay: 20`; the public
   defaults remain unchanged and `targetDelay: 0` continues to preserve
   immediate retargeting.
+- Final review found that the quiet period started at the first animation frame
+  rather than when the target changed. Commit `889f3983` records the target
+  update on Animator's existing timeline, removing the extra frame while
+  keeping interpolation timing independent. A regression covers a 20 ms delay
+  whose first animation frame arrives at 16 ms.
+- Commit `f1548b5f` makes the generic transition contract discoverable through
+  schema-backed documentation and composes it with `displace2d` in the tracked
+  documentation example. The example keeps canonical and displayed offsets in
+  separate fields and uses the selected `20 / 100 / 0.25` tuning.
+- After these review fixes, all 3,308 unit tests, every workspace TypeScript
+  check, lint, the documentation build, the focused WebGL example capture, and
+  the four-fixture App interaction smoke pass.
 
 ## Reconciliation through the first user acid test (2026-08-28)
 
