@@ -253,6 +253,112 @@ describe("WebGpuViewRenderingContext", () => {
         expect(surface.prepareDraw.mock.calls[0][0]).toBe(selected);
     });
 
+    test("classifies an exported rectangle after filtering its sibling", () => {
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            updateMark: vi.fn(),
+            prepareDraw: vi.fn(),
+        };
+        const layer = createView();
+        const selectedView = createView();
+        const otherView = createView();
+        const selected = {
+            encoders: {},
+            encoding: {},
+            getType: () => "rect",
+            properties: {},
+            unitView: { getEffectiveOpacity: () => 1 },
+        };
+        const other = { ...selected };
+        const context = createContext(surface, {
+            markPredicate: (mark) => mark === selected,
+        });
+
+        context.pushView(/** @type {any} */ (layer), Rectangle.ZERO);
+        context.pushView(/** @type {any} */ (selectedView), Rectangle.ZERO);
+        context.renderMark(/** @type {any} */ (selected), {});
+        context.popView(/** @type {any} */ (selectedView));
+        context.pushView(/** @type {any} */ (otherView), Rectangle.ZERO);
+        context.renderMark(/** @type {any} */ (other), {});
+        context.popView(/** @type {any} */ (otherView));
+        context.popView(/** @type {any} */ (layer));
+        context.finish();
+
+        expect(context.render()).toMatchObject([
+            {
+                sampleCount: 4,
+                items: [surface.prepareDraw.mock.calls[0][1]],
+            },
+        ]);
+        expect(surface.updateMark).toHaveBeenCalledOnce();
+    });
+
+    test.each(["exon", "body", "both"])(
+        "classifies a mixed opacity export when selecting %s",
+        (selection) => {
+            const surface = {
+                getDevicePixelRatio: () => 1,
+                getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+                updateMark: vi.fn(),
+                prepareDraw: vi.fn(),
+            };
+            const layer = {
+                ...createView(true),
+                getOpacity: () => 0.5,
+            };
+            const exonView = createView();
+            const bodyView = createView();
+            const unitView = { getEffectiveOpacity: () => 0.5 };
+            const exon = {
+                encoders: {},
+                encoding: {},
+                getType: () => "rect",
+                properties: {},
+                unitView,
+            };
+            const body = {
+                getType: () => "rule",
+                properties: {},
+                unitView,
+            };
+            const context = createContext(surface, {
+                markPredicate: (mark) =>
+                    selection === "both" ||
+                    (selection === "exon" ? mark === exon : mark === body),
+            });
+
+            context.pushView(/** @type {any} */ (layer), Rectangle.ZERO);
+            context.pushView(/** @type {any} */ (exonView), Rectangle.ZERO);
+            context.renderMark(/** @type {any} */ (exon), {});
+            context.popView(/** @type {any} */ (exonView));
+            context.pushView(/** @type {any} */ (bodyView), Rectangle.ZERO);
+            context.renderMark(/** @type {any} */ (body), {});
+            context.popView(/** @type {any} */ (bodyView));
+            context.popView(/** @type {any} */ (layer));
+            context.finish();
+
+            const frame = context.render();
+            if (selection === "both") {
+                expect(frame).toMatchObject([
+                    {
+                        opacity: 0.5,
+                        sampleCount: 1,
+                        items: [{ sampleCount: 4 }, expect.anything()],
+                    },
+                ]);
+            } else {
+                expect(frame).toMatchObject([
+                    {
+                        opacity: 0.5,
+                        sampleCount: selection === "exon" ? 4 : 1,
+                        items: [expect.anything()],
+                    },
+                ]);
+            }
+        }
+    );
+
     test("refreshes visible and picking ranges without mark uploads", () => {
         const domain = [20, 30];
         mocks.packed.xIndexSpec = { domain };
