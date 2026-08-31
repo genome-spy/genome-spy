@@ -1315,6 +1315,23 @@ Evidence recorded on 2026-08-30:
   remains reversible, and the transition accepts one settled target instead of
   following every intermediate arrangement. Quantized zoom levels, label
   hiding, interaction-state coupling, and a new solver remain deferred.
+- Commit `da712671` implements that experiment without changing `displace2d`.
+  Transition state now distinguishes displayed, accepted-target, and latest
+  pending values. One batch-level quiet-period clock runs in the existing
+  Animator callback; equal feedback replays preserve it, and waiting without
+  displayed movement causes no downstream replay. The default delay is zero.
+- Focused transition tests cover quiet waiting without replay, equal-target
+  feedback, latest-target promotion, reset by a genuinely changed target, and
+  validation. All 13 tests and Core TypeScript pass. The Core screenshot smoke
+  passes all five private fixtures; the App smoke passes label-count changes,
+  wheel zoom, and resize in the volcano, MA, 500-label stress, and overflow
+  fixtures without console errors.
+- The long-label private fixtures use the selected `100 / 140 / 0.25` tuning.
+  After correcting the diagnostic to key rows by stable `labelRank` rather than
+  a downstream viewport-dependent identifier, the continuous out-and-back
+  trace reports a 9.94 px p95 per-frame maximum. Its 268.60 px maximum belongs
+  to initial settling captured before the gesture and remains a reason for
+  direct user visual testing rather than a claimed interaction bound.
 
 ## Reconciliation through the first user acid test (2026-08-28)
 
