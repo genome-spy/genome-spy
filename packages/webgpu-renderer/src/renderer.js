@@ -1120,8 +1120,11 @@ export class Renderer {
                         );
                     }
                     assertRect("render group bounds", item.bounds);
+                    if (opacity === 0) {
+                        continue;
+                    }
                     const children = visit(item.items);
-                    if (!children.length || opacity === 0) {
+                    if (!children.length) {
                         continue;
                     }
                     if (opacity === 1 && sampleCount === 1) {

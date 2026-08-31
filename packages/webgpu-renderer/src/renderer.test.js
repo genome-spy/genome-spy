@@ -570,6 +570,30 @@ describe("Renderer mark definitions", () => {
         );
     });
 
+    test("ignores zero-opacity groups before normalizing their draws", () => {
+        const program = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, transientAcquires } = createRendererHarness();
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            items: [
+                {
+                    bounds: { x: 0, y: 0, width: 100, height: 50 },
+                    opacity: 0,
+                    items: [{ mark }],
+                },
+            ],
+        });
+
+        expect(renderer._renderFrame).toEqual([]);
+        expect(program.draw).not.toHaveBeenCalled();
+        expect(transientAcquires).toEqual([]);
+    });
+
     test("clips nested groups to their parent before compositing", () => {
         const program = createProgram();
         const definition = Object.freeze({
