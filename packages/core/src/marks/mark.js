@@ -85,21 +85,13 @@ export default class Mark {
                 configurable: true,
                 enumerable: true,
                 get() {
-                    const clipX = unitView
+                    const zoomableX = unitView
                         .getScaleResolution("x")
                         ?.isZoomable();
-                    const clipY = unitView
+                    const zoomableY = unitView
                         .getScaleResolution("y")
                         ?.isZoomable();
-                    /** @type {boolean | "x" | "y"} */
-                    let clip = false;
-                    if (clipX && clipY) {
-                        clip = true;
-                    } else if (clipX) {
-                        clip = "x";
-                    } else if (clipY) {
-                        clip = "y";
-                    }
+                    const clip = !!(zoomableX || zoomableY);
 
                     Object.defineProperty(properties, "clip", {
                         configurable: true,

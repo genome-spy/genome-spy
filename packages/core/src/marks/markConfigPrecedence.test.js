@@ -96,7 +96,7 @@ describe("mark config precedence", () => {
         expect(view.mark.properties.clip).toBe("y");
     });
 
-    test("zoomability-backed clip default uses the zoomable direction", async () => {
+    test("one zoomable positional scale defaults to xy clipping", async () => {
         const view = /** @type {UnitView} */ (
             await create(
                 {
@@ -116,12 +116,12 @@ describe("mark config precedence", () => {
         const xResolution = view.getScaleResolution("x");
         const zoomSpy = vi.spyOn(xResolution, "isZoomable");
 
-        expect(view.mark.properties.clip).toBe("x");
-        expect(view.mark.properties.clip).toBe("x");
+        expect(view.mark.properties.clip).toBe(true);
+        expect(view.mark.properties.clip).toBe(true);
         expect(zoomSpy).toHaveBeenCalledTimes(1);
     });
 
-    test("zoomability-backed clip default uses y when only y is zoomable", async () => {
+    test("a zoomable y scale also defaults to xy clipping", async () => {
         const view = /** @type {UnitView} */ (
             await create(
                 {
@@ -145,7 +145,7 @@ describe("mark config precedence", () => {
             true
         );
 
-        expect(view.mark.properties.clip).toBe("y");
+        expect(view.mark.properties.clip).toBe(true);
     });
 
     test("zoomability-backed clip default uses both directions when both axes are zoomable", async () => {
