@@ -51,7 +51,8 @@ export interface MarkPropsBase {
      * direction. Inherited clipping from parent containers still applies unless
      * `"never"` is used.
      *
-     * __Default value:__ the direction of zoomable positional scales
+     * __Default value:__ `true` when either positional scale is zoomable;
+     * otherwise `false`
      */
     clip?: boolean | "x" | "y" | "never";
 
