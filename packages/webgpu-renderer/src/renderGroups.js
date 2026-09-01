@@ -155,7 +155,7 @@ export class TextureCompositor {
         this.device = device;
         this.stride = Math.max(
             16,
-            device.limits?.minUniformBufferOffsetAlignment ?? 256
+            device.limits.minUniformBufferOffsetAlignment
         );
         this.capacity = 1;
         this.buffer = this.#createBuffer(this.capacity);

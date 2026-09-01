@@ -1116,19 +1116,10 @@ export class Renderer {
             const normalized = [];
             for (const item of source) {
                 if (isRenderScope(item)) {
-                    const opacity = item.opacity ?? 1;
-                    if (
-                        !Number.isFinite(opacity) ||
-                        opacity < 0 ||
-                        opacity > 1
-                    ) {
+                    const opacity = Math.min(1, Math.max(0, item.opacity ?? 1));
+                    if (Number.isNaN(opacity)) {
                         throw new RendererError(
-                            "Render scope opacity must be between zero and one."
-                        );
-                    }
-                    if ("sampleCount" in item) {
-                        throw new RendererError(
-                            "Render scopes do not accept an explicit sampleCount."
+                            "Render scope opacity must be a number."
                         );
                     }
                     assertRect("render scope bounds", item.bounds, true);
@@ -1575,7 +1566,7 @@ export class Renderer {
             set.destroy();
         }
         this._placementSets?.clear();
-        for (const target of Array.from(this._detachedTargets ?? [])) {
+        for (const target of this._detachedTargets) {
             target.destroy();
         }
         for (const resourcesByBitmap of this._fontResourceCache.values()) {

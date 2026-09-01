@@ -145,7 +145,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 packed: undefined,
                 source: undefined,
                 generatedSource: false,
-                facetIndexed: mark.encoders?.facetIndex !== undefined,
+                facetIndexed: mark.encoders.facetIndex !== undefined,
                 xQueryDomain: [0, 0],
                 xIndexedRange: [0, 0],
                 xQueryEnabled: false,

@@ -190,6 +190,7 @@ describe("WebGpuViewRenderingContext", () => {
             unitView,
         };
         const body = {
+            encoders: {},
             getType: () => "rule",
             properties: {},
             unitView,
@@ -334,6 +335,7 @@ describe("WebGpuViewRenderingContext", () => {
                 unitView,
             };
             const body = {
+                encoders: {},
                 getType: () => "rule",
                 properties: {},
                 unitView,
@@ -427,6 +429,7 @@ describe("WebGpuViewRenderingContext", () => {
         const context = createContext(surface);
         const view = createView();
         const mark = {
+            encoders: {},
             getType: () => "point",
             properties: {},
             unitView: {
@@ -461,6 +464,7 @@ describe("WebGpuViewRenderingContext", () => {
         const context = createContext(surface);
         const view = createView();
         const mark = {
+            encoders: {},
             getType: () => "point",
             properties: { clip: "x" },
             unitView: {
@@ -515,6 +519,7 @@ describe("WebGpuViewRenderingContext", () => {
         const context = createContext(surface);
         const view = createView();
         const mark = {
+            encoders: {},
             getType: () => "point",
             properties: { clip: "never", cullByVisibleRange: "y" },
             unitView: {
@@ -587,6 +592,7 @@ describe("WebGpuViewRenderingContext", () => {
             .modify({ height: () => 80 + offset })
             .translate(() => offset, 0);
         const mark = {
+            encoders: {},
             getType: () => "point",
             isPickingParticipant: () => true,
             properties: { clip: true, cullByVisibleRange: "x" },
@@ -646,6 +652,7 @@ describe("WebGpuViewRenderingContext", () => {
         };
         const context = createContext(surface);
         const mark = {
+            encoders: {},
             getType: () => "point",
             properties: { clip: true },
             unitView: {
@@ -690,6 +697,7 @@ describe("WebGpuViewRenderingContext", () => {
         const context = createContext(surface);
         const view = createView();
         const mark = {
+            encoders: {},
             getType: () => "point",
             isPickingParticipant: () => false,
             properties: {},
@@ -732,6 +740,7 @@ describe("WebGpuViewRenderingContext", () => {
         const context = createContext(surface);
         const view = createView();
         const mark = {
+            encoders: {},
             getType: () => "point",
             properties: {},
             unitView: {
@@ -1014,6 +1023,7 @@ describe("WebGpuViewRenderingContext", () => {
         };
         const solid = { ...faded };
         const point = {
+            encoders: {},
             getType: () => "point",
             isPickingParticipant: () => true,
             properties: {},
@@ -1095,6 +1105,7 @@ describe("WebGpuViewRenderingContext", () => {
         };
         const point = {
             name: "mark B",
+            encoders: {},
             getType: () => "point",
             properties: {},
             unitView: { getEffectiveOpacity: () => 1 },

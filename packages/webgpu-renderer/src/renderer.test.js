@@ -539,7 +539,7 @@ describe("Renderer mark definitions", () => {
         expect(renderer._pickingFrame).toBe(renderer._renderFrame);
     });
 
-    test("flattens opaque nested MSAA groups into one accumulation pass", () => {
+    test("clamps opaque nested MSAA groups into one accumulation pass", () => {
         const program = createProgram("multisample");
         const definition = Object.freeze({
             type: "custom",
@@ -558,12 +558,12 @@ describe("Renderer mark definitions", () => {
                     items: [
                         {
                             bounds,
-                            opacity: 1,
+                            opacity: 2,
                             items: [{ mark: first }],
                         },
                         {
                             bounds,
-                            opacity: 1,
+                            opacity: 2,
                             items: [{ mark: second }],
                         },
                     ],
@@ -737,7 +737,7 @@ describe("Renderer mark definitions", () => {
         );
     });
 
-    test("ignores zero-opacity groups before normalizing their draws", () => {
+    test("clamps negative-opacity groups before normalizing their draws", () => {
         const program = createProgram();
         const definition = Object.freeze({
             type: "custom",
@@ -750,7 +750,7 @@ describe("Renderer mark definitions", () => {
             items: [
                 {
                     bounds: { x: 0, y: 0, width: 100, height: 50 },
-                    opacity: 0,
+                    opacity: -1,
                     items: [{ mark }],
                 },
             ],
@@ -841,19 +841,19 @@ describe("Renderer mark definitions", () => {
         });
     });
 
-    test("rejects explicit render-scope sample counts", () => {
+    test("rejects NaN render-scope opacity", () => {
         const { renderer } = createRendererHarness();
         expect(() =>
             renderer.render({
                 items: [
-                    /** @type {any} */ ({
+                    {
                         bounds: { x: 0, y: 0, width: 10, height: 10 },
-                        sampleCount: 2,
+                        opacity: NaN,
                         items: [],
-                    }),
+                    },
                 ],
             })
-        ).toThrow("do not accept an explicit sampleCount");
+        ).toThrow("opacity must be a number");
     });
 
     test("skips zero-sized scissors from empty clipped views", () => {
