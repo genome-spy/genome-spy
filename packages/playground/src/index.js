@@ -509,6 +509,7 @@ async function update(force = false) {
 
         if (embedResult) {
             embedResult.finalize();
+            embedResult = undefined;
         }
 
         visTitle = asArray(parsedSpec.description)?.[0];
@@ -518,7 +519,17 @@ async function update(force = false) {
         );
         renderLayout();
 
-        // TODO: Fix possible race condition
+        // Do not start an embed while the spec is waiting for an uploaded
+        // dataset. Uploading otherwise starts a second embed before this one
+        // has finished, allowing the slower request to replace the active API.
+        if (missingFiles.size > 0) {
+            return;
+        }
+
+        // Lit updates the split-panel geometry asynchronously. Let that
+        // update reach the browser before GenomeSpy measures its container.
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+
         embedResult = await embed(
             /** @type {HTMLElement} */ (genomeSpyContainerRef.value),
             parsedSpec,
