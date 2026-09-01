@@ -261,6 +261,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
         /** @type {import("@genome-spy/webgpu-renderer").RenderItem[]} */
         const items = [];
+        // TODO: If profiling exposes allocation pressure, reuse retained scope
+        // objects and child arrays while refreshing only their live contents.
         /** @type {(import("@genome-spy/webgpu-renderer").RenderItem[] | undefined)[]} */
         const parentItems = [];
         let currentItems = items;

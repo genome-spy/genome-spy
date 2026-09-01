@@ -1094,6 +1094,9 @@ export class Renderer {
      */
     _normalizeRenderItems(items) {
         const phaseStart = startPhase();
+        // TODO: If normalization becomes costly, retain semantic topology with
+        // slots for live opacity and bounds. Physical layerization must still
+        // run when opacity changes between zero, one, and fractional values.
         const canvas = {
             x: 0,
             y: 0,
