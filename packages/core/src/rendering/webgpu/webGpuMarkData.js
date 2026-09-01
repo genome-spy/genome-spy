@@ -71,7 +71,12 @@ export function getPackedMarkData(mark, placementSource) {
             placementRanges = [];
         }
         let dataIndex = 0;
-        for (const batch of batches) {
+        for (
+            let placementIndex = 0;
+            placementIndex < batches.length;
+            placementIndex++
+        ) {
+            const batch = batches[placementIndex];
             const range = createPackedRange(xIndexSpec, batch, dataIndex);
             placementRanges?.push(range);
             ranges.set(batch, range);

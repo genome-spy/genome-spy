@@ -3,15 +3,13 @@
 Status: Core retained-frame optimization is complete; the independent package
 parity and cleanup backlog remains ongoing.
 
-The completed interaction-performance plan has been retired. Current adapter
-simplification and regression-gate work is specified in
-`plans/core-webgpu-integration-simplification/core-webgpu-integration-simplification-plan.md`.
-Keep milestone detail there rather than duplicating it here.
+Core submits renderer-neutral semantic scopes. The renderer derives immutable
+rectangle edge-AA modes from normalized channel configs and forms any required
+multisample layers itself; explicit sample counts are not part of the public
+frame contract.
 
-The retained renderer, Core adapter, ordinary repeated occurrences, and App
-sample facets are implemented. Completed milestone narratives live in Git
-history. This file contains only current work that still has a concrete
-renderer or Core consumer.
+Completed milestone narratives and retired plans live in Git history. This file
+contains only current work that still has a concrete renderer or Core consumer.
 
 ## Goals
 
@@ -129,9 +127,8 @@ Tentative commit: `refactor(webgpu-renderer): remove measured scale duplication`
   representation as the future font API.
 - Independent per-facet scale domains require a separate scale-state proposal;
   placement rectangles remain geometry-only.
-- Existing-device construction, worker transfer protocols, vector-backend
-  compatibility, and selection-only masking need a concrete consumer or
-  measurement before becoming milestones.
+- Worker transfer protocols, vector-backend compatibility, and selection-only
+  masking need a concrete consumer or measurement before becoming milestones.
 
 ## Final integration verification
 

@@ -36,6 +36,8 @@ export function createCanvas2DSvgRasterizer() {
     return (options) => {
         const width = Math.ceil(options.logicalWidth * options.pixelRatio);
         const height = Math.ceil(options.logicalHeight * options.pixelRatio);
+        /** @type {CanvasRenderingContext2D[]} */
+        const opacityLayers = [];
         canvas.width = width;
         canvas.height = height;
 
@@ -66,6 +68,7 @@ export function createCanvas2DSvgRasterizer() {
                 background: null,
                 paint: true,
                 markPredicate: (mark) => run.marks.has(mark),
+                opacityLayers,
             });
 
             const crop = getPhysicalCrop(

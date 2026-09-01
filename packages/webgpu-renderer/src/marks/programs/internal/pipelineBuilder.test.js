@@ -197,6 +197,23 @@ describe("buildPipelines", () => {
         );
     });
 
+    it("creates and shares the four-sample visible pipeline lazily", () => {
+        const harness = createHarness();
+
+        const first = harness.build();
+        const second = harness.build({ label: "second mark" });
+        expect(harness.renderPipelineArgs).toHaveLength(1);
+
+        const multisampled = first.getPipeline(4);
+
+        expect(second.getPipeline(4)).toBe(multisampled);
+        expect(harness.renderPipelineArgs).toHaveLength(2);
+        expect(harness.renderPipelineArgs[1].multisample).toEqual({ count: 4 });
+        expect(harness.renderPipelineArgs[1].label).toBe(
+            "webgpu-renderer program template #1 (first used by first mark): 4x render pipeline"
+        );
+    });
+
     it.each([
         ["WGSL", { shaderBody: "let cacheMiss = 1.0;" }],
         ["render format", { format: "bgra8unorm" }],

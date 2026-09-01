@@ -2,6 +2,7 @@ import { createRenderer } from "@genome-spy/webgpu-renderer";
 
 import CanvasSizeHelper from "../canvasSizeHelper.js";
 import PlacementSource from "../../view/layout/placementSource.js";
+import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 
 /** @type {Readonly<Record<string, {value: any}>>} */
 const EMPTY_PROPERTIES = Object.freeze({});
@@ -37,12 +38,6 @@ export default class WebGpuSurface {
 
     /** @type {WeakSet<import("../../marks/mark.js").default>} */
     #registeredMarkOwners = new WeakSet();
-
-    /** @type {import("@genome-spy/webgpu-renderer").DrawCommand[]} */
-    #frameDraws = [];
-
-    /** @type {import("@genome-spy/webgpu-renderer").DrawCommand[]} */
-    #pickingDraws = [];
 
     /** @type {{logicalWidth: number, logicalHeight: number, physicalWidth: number, physicalHeight: number} | undefined} */
     #appliedSize;
@@ -149,16 +144,54 @@ export default class WebGpuSurface {
     }
 
     /**
-     * Starts a new ordered frame without releasing retained marks.
+     * Creates an export canvas on the live renderer's device.
+     *
+     * @param {number} logicalWidth
+     * @param {number} logicalHeight
+     * @param {number} pixelRatio
      */
-    beginFrame() {
-        this.#frameDraws.length = 0;
-        this.#pickingDraws.length = 0;
+    createExportTarget(logicalWidth, logicalHeight, pixelRatio) {
+        if (!this.#renderer) {
+            throw new Error("The WebGPU surface has not been initialized.");
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(logicalWidth * pixelRatio);
+        canvas.height = Math.ceil(logicalHeight * pixelRatio);
+        return {
+            handle: this.#renderer.createDetachedTarget(canvas, {
+                width: logicalWidth,
+                height: logicalHeight,
+                dpr: pixelRatio,
+            }),
+            canvas,
+            logicalWidth,
+            logicalHeight,
+            pixelRatio,
+        };
     }
 
-    /** Starts collecting the next on-demand pick frame. */
-    beginPickingFrame() {
-        this.#pickingDraws.length = 0;
+    /**
+     * Compiles and submits an export layout without replacing the live
+     * coordinator's frame plan.
+     *
+     * @param {import("../../view/layout/layoutResult.js").default} layoutResult
+     * @param {WebGpuExportTarget} target
+     * @param {GPUColor} clearColor
+     * @param {(mark: import("../../marks/mark.js").default) => boolean} [markPredicate]
+     */
+    renderLayoutToTarget(layoutResult, target, clearColor, markPredicate) {
+        const framePlan = new WebGpuViewRenderingContext({
+            surface: this,
+            target: {
+                width: target.logicalWidth,
+                height: target.logicalHeight,
+                dpr: target.pixelRatio,
+            },
+            markPredicate,
+        });
+        layoutResult.collectRenderCommands(framePlan);
+        framePlan.finish();
+        target.handle.render({ items: framePlan.render(), clearColor });
     }
 
     /**
@@ -305,9 +338,8 @@ export default class WebGpuSurface {
      * @param {import("../../marks/mark.js").default} mark
      * @param {import("@genome-spy/webgpu-renderer").DrawCommand} draw
      * @param {PlacementSource | undefined} placementSource
-     * @param {boolean} picking
      */
-    drawMark(mark, draw, placementSource, picking) {
+    prepareDraw(mark, draw, placementSource) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
@@ -325,27 +357,28 @@ export default class WebGpuSurface {
             }
             draw.placement.set = this.getPlacementSet(placementSource);
         }
-        (picking ? this.#pickingDraws : this.#frameDraws).push(draw);
     }
 
     /**
+     * @param {import("@genome-spy/webgpu-renderer").RenderItem[]} items
      * @param {GPUColor} [clearColor]
      */
-    render(clearColor) {
+    render(items, clearColor) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
         this.#renderer.render({
-            draws: this.#frameDraws,
+            items,
             ...(clearColor ? { clearColor } : {}),
         });
     }
 
-    renderPicking() {
+    /** @param {import("@genome-spy/webgpu-renderer").DrawCommand[]} draws */
+    renderPicking(draws) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
-        this.#renderer.renderPicking({ draws: this.#pickingDraws });
+        this.#renderer.renderPicking({ draws });
     }
 
     /**
@@ -376,8 +409,6 @@ export default class WebGpuSurface {
         this.#placementSets = new WeakMap();
         this.#occurrencePlacementSources.clear();
         this.#registeredMarkOwners = new WeakSet();
-        this.#frameDraws.length = 0;
-        this.#pickingDraws.length = 0;
         this.#sizeHelper.finalize();
         this.canvas.remove();
     }
@@ -405,6 +436,15 @@ export default class WebGpuSurface {
         }
     }
 }
+
+/**
+ * @typedef {object} WebGpuExportTarget
+ * @property {import("@genome-spy/webgpu-renderer").DetachedTargetHandle} handle
+ * @property {HTMLCanvasElement} canvas
+ * @property {number} logicalWidth
+ * @property {number} logicalHeight
+ * @property {number} pixelRatio
+ */
 
 /** @param {Float32Array} first @param {Float32Array} second */
 function equalFloat32Arrays(first, second) {

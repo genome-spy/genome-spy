@@ -184,6 +184,7 @@ export default class BaseProgram {
             },
         });
         this._channels = normalizedChannels.channels;
+        this.antialiasing = this._resolveAntialiasing();
         this._visualChannelNames = new Set(Object.keys(this._channels));
         this._conditionalChannelNames = this._collectConditionalChannelNames();
         this._publicChannelNames = new Set(this._visualChannelNames);
@@ -312,6 +313,7 @@ export default class BaseProgram {
         const {
             bindGroupLayout,
             pipeline,
+            getPipeline,
             getPickPipeline,
             diagnostics,
             resourceLayout,
@@ -357,6 +359,7 @@ export default class BaseProgram {
         this._buildSlotHandles();
         this._bindGroupLayout = bindGroupLayout;
         this._pipeline = pipeline;
+        this._getPipeline = getPipeline;
         this._getPickPipeline = getPickPipeline;
 
         // Initialize any series-backed channels.
@@ -459,6 +462,15 @@ export default class BaseProgram {
      */
     get shaderBody() {
         return "";
+    }
+
+    /**
+     * Returns the immutable edge-antialiasing strategy for this program.
+     *
+     * @returns {"shader" | "multisample"}
+     */
+    _resolveAntialiasing() {
+        return "shader";
     }
 
     /**
@@ -1177,7 +1189,7 @@ export default class BaseProgram {
      * @param {import("../../../index.d.ts").ProgramDrawOptions} options
      */
     draw(pass, options) {
-        pass.setPipeline(this._pipeline);
+        pass.setPipeline(this._getPipeline(options.sampleCount));
         pass.setBindGroup(1, this._bindGroup);
         if (options.placement) {
             pass.setBindGroup(2, options.placement.bindGroup);

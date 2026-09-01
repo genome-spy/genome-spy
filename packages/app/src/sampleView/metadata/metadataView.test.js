@@ -795,6 +795,10 @@ describe("MetadataView", () => {
 
         expect(backgroundLayer?.encoding.fill).toEqual({ value: "#dddddd" });
         expect(backgroundLayer?.encoding.fillOpacity).toEqual({ value: 1 });
+        expect(backgroundLayer?.encoding.facetIndex).toEqual({
+            field: "indexNumber",
+        });
+        expect(backgroundLayer?.encoding.stroke).toEqual({ value: null });
 
         metadataView.dispose();
     });

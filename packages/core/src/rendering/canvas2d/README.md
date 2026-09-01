@@ -19,6 +19,9 @@ Live rendering and detached PNG export share `renderCanvas2D.js`. Both clear
 and repaint the full surface in draw order; there is no retained scene graph or
 dirty-region cache. The export path creates a detached canvas at the requested
 logical size and pixel ratio, renders once, and encodes it with `toBlob()`.
+Fractional view opacity uses transparent layers cached by active nesting depth;
+the live coordinator retains a bounded cache across frames, while detached
+exports reuse layers only within their invocation.
 
 The live coordinator owns source-row x indexes for eligible sorted point and
 rectangle batches. Normal rendering and software picking share the same cache

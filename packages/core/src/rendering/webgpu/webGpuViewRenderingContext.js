@@ -1,6 +1,7 @@
 import { peek } from "../../utils/arrayUtils.js";
 import ViewRenderingContext from "../../view/renderingContext/viewRenderingContext.js";
 import {
+    getViewClipDirections,
     normalizeClipOptions,
     prepareMarkClipOptionsFromClip,
 } from "../../view/renderingContext/clipOptions.js";
@@ -31,21 +32,61 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     /** @type {Map<import("../../marks/mark.js").default, MarkState>} */
     #marks = new Map();
 
-    /** @type {Occurrence[]} */
-    #occurrences = [];
+    /** @type {PaintCommand[]} */
+    #paintCommands = [];
+
+    /** @type {PaintCommand[]} */
+    #renderCommands = [];
+
+    #sampleFacetBatchDepth = 0;
 
     #finished = false;
 
+    /** @type {((mark: import("../../marks/mark.js").default) => boolean) | undefined} */
+    #markPredicate;
+
+    /** @type {{width: number, height: number, dpr: number}} */
+    #target;
+
     /**
-     * @param {{surface: import("./webGpuSurface.js").default}} options
+     * @param {{surface: import("./webGpuSurface.js").default, target?: {width: number, height: number, dpr: number}, markPredicate?: (mark: import("../../marks/mark.js").default) => boolean}} options
      */
     constructor(options) {
         super({});
         this.surface = options.surface;
+        if (options.target) {
+            this.#target = options.target;
+        } else {
+            const size = options.surface.getLogicalCanvasSize();
+            this.#target = {
+                width: size.width,
+                height: size.height,
+                dpr: options.surface.getDevicePixelRatio(),
+            };
+        }
+        this.#markPredicate = options.markPredicate;
     }
 
     getDevicePixelRatio() {
-        return this.surface.getDevicePixelRatio();
+        return this.#target.dpr;
+    }
+
+    /** @override */
+    beginSampleFacetBatch() {
+        if (this.#sampleFacetBatchDepth) {
+            throw new Error("Nested sample facet batches are not supported.");
+        }
+        this.#sampleFacetBatchDepth++;
+        this.#paintCommands.push({ type: "beginSampleFacetBatch" });
+    }
+
+    /** @override */
+    endSampleFacetBatch() {
+        if (!this.#sampleFacetBatchDepth) {
+            throw new Error("Unbalanced sample facet batch scope.");
+        }
+        this.#sampleFacetBatchDepth--;
+        this.#paintCommands.push({ type: "endSampleFacetBatch" });
     }
 
     /**
@@ -54,10 +95,17 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     pushView(view, coords) {
-        if (!this.#views.has(view)) {
-            this.#views.add(view);
-        }
+        this.#views.add(view);
         this.#viewStack.push({ view, coords });
+        this.#paintCommands.push({
+            type: "pushView",
+            view,
+            coords: [coords],
+            localOpacity: false,
+            clipX: false,
+            clipY: false,
+            bounds: createDrawRect(),
+        });
     }
 
     /**
@@ -69,6 +117,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (entry?.view !== view) {
             throw new Error("Unbalanced WebGPU view rendering context stack.");
         }
+        this.#paintCommands.push({ type: "popView" });
     }
 
     /**
@@ -79,6 +128,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     renderMark(mark, options) {
         if (this.#finished) {
             throw new Error("Cannot collect WebGPU marks after finishing.");
+        }
+        if (this.#markPredicate && !this.#markPredicate(mark)) {
+            return;
         }
         const coords = this.currentCoords;
         const markCoords = coords.translate(
@@ -93,8 +145,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 packed: undefined,
                 source: undefined,
                 generatedSource: false,
-                placementIndexed: mark.encoders?.facetIndex !== undefined,
-                submittedPlacementIndexed: false,
+                facetIndexed: mark.encoders.facetIndex !== undefined,
                 xQueryDomain: [0, 0],
                 xIndexedRange: [0, 0],
                 xQueryEnabled: false,
@@ -106,7 +157,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 properties: undefined,
                 configRevision: -1,
                 resourceRevision: -1,
-                viewOpacity: NaN,
                 resourcesDirty: true,
                 configX: NaN,
                 configY: NaN,
@@ -137,7 +187,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             draw: undefined,
         };
         state.occurrences.push(occurrence);
-        this.#occurrences.push(occurrence);
+        this.#paintCommands.push({ type: "occurrence", occurrence });
         countPerformance("markOccurrences");
     }
 
@@ -151,21 +201,45 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (this.#viewStack.length) {
             throw new Error("Cannot finish with an open WebGPU view scope.");
         }
+        if (this.#sampleFacetBatchDepth) {
+            throw new Error("Cannot finish with an open sample facet batch.");
+        }
         this.#finished = true;
 
-        const size = this.surface.getLogicalCanvasSize();
-        const canvas = Rectangle.create(0, 0, size.width, size.height);
+        const canvas = Rectangle.create(
+            0,
+            0,
+            this.#target.width,
+            this.#target.height
+        );
         for (const state of this.#marks.values()) {
             this.#compileMarkState(state, canvas);
         }
+        this.#renderCommands = coalesceSampleFacetBatches(this.#paintCommands);
+        this.#compileRenderScopes();
     }
 
     /**
      * Synchronizes live state and submits occurrences in original paint order.
      *
-     * @param {{picking: boolean}} options
+     * @returns {import("@genome-spy/webgpu-renderer").RenderItem[]}
      */
-    render({ picking }) {
+    render() {
+        return this.#render(false);
+    }
+
+    /** @returns {import("@genome-spy/webgpu-renderer").DrawCommand[]} */
+    renderPicking() {
+        return /** @type {import("@genome-spy/webgpu-renderer").DrawCommand[]} */ (
+            this.#render(true)
+        );
+    }
+
+    /**
+     * @param {boolean} picking
+     * @returns {import("@genome-spy/webgpu-renderer").RenderItem[]}
+     */
+    #render(picking) {
         if (!this.#finished) {
             throw new Error("Cannot render an unfinished WebGPU frame plan.");
         }
@@ -174,28 +248,84 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             measurePerformance("onBeforeRender", () => view.onBeforeRender());
             countPerformance("viewsVisited");
         }
+        if (!picking) {
+            this.#refreshScopeBounds();
+        }
 
-        const canvas = this.surface.getLogicalCanvasSize();
+        const canvas = this.#target;
         for (const state of this.#marks.values()) {
-            state.submittedPlacementIndexed = false;
             state.updated = false;
             state.active = false;
             this.#prepareMarkState(state, picking, canvas);
         }
+
+        /** @type {import("@genome-spy/webgpu-renderer").RenderItem[]} */
+        const items = [];
+        // TODO: If profiling exposes allocation pressure, reuse retained scope
+        // objects and child arrays while refreshing only their live contents.
+        /** @type {(import("@genome-spy/webgpu-renderer").RenderItem[] | undefined)[]} */
+        const parentItems = [];
+        let currentItems = items;
+
         let synchronizedMarks = 0;
         let changedMarks = 0;
         let resourceWrites = 0;
-        for (const occurrence of this.#occurrences) {
-            const writes = this.#submitOccurrence(occurrence, picking, canvas);
-            if (writes !== undefined) {
-                synchronizedMarks++;
-                changedMarks += writes > 0 ? 1 : 0;
-                resourceWrites += writes;
+        for (const command of picking
+            ? this.#paintCommands
+            : this.#renderCommands) {
+            if (command.type === "occurrence") {
+                const writes = this.#submitOccurrenceDraw(
+                    command.occurrence,
+                    picking,
+                    canvas,
+                    currentItems
+                );
+                if (writes !== undefined) {
+                    synchronizedMarks++;
+                    changedMarks += writes > 0 ? 1 : 0;
+                    resourceWrites += writes;
+                }
+            } else if (command.type === "pushView") {
+                if (picking) {
+                    parentItems.push(undefined);
+                } else {
+                    const group = createGroup(command);
+                    currentItems.push(group);
+                    parentItems.push(currentItems);
+                    currentItems = group.items;
+                }
+            } else if (command.type === "popView") {
+                const parent = parentItems.pop();
+                if (parent) {
+                    currentItems = parent;
+                }
             }
         }
         countPerformance("retainedMarkSyncChecks", synchronizedMarks);
         countPerformance("retainedMarkSyncChanges", changedMarks);
         countPerformance("retainedResourceWrites", resourceWrites);
+        return items;
+    }
+
+    /** Annotates retained view scopes with renderer-neutral semantics. */
+    #compileRenderScopes() {
+        for (const command of this.#renderCommands) {
+            if (command.type === "pushView") {
+                const clip = getViewClipDirections(command.view);
+                command.localOpacity = command.view.hasLocalOpacity();
+                command.clipX = clip.clipX;
+                command.clipY = clip.clipY;
+            }
+        }
+    }
+
+    /** Refreshes closure-backed scope coordinates without rebuilding topology. */
+    #refreshScopeBounds() {
+        for (const command of this.#renderCommands) {
+            if (command.type === "pushView") {
+                writeScopeBounds(command, this.#target);
+            }
+        }
     }
 
     /**
@@ -209,8 +339,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.occurrences
                 .map((occurrence) => {
                     const placement = occurrence.options.placement;
-                    return state.placementIndexed ||
-                        placement?.index !== undefined
+                    return state.facetIndexed || placement?.index !== undefined
                         ? placement?.source
                         : undefined;
                 })
@@ -240,7 +369,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.ownerCoords = state.occurrences[0].markCoords;
         }
 
-        if (state.placementIndexed && !state.source) {
+        if (state.facetIndexed && !state.source) {
             throw createViewError(
                 state.mark,
                 "Indexed placement requires a placement source."
@@ -285,12 +414,15 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
         const packed = getPackedMarkData(
             state.mark,
-            state.generatedSource ? undefined : state.source
+            state.facetIndexed || !state.generatedSource
+                ? state.source
+                : undefined
         );
         if (!packed.data.length) {
             return;
         }
         state.xQueryEnabled =
+            !state.facetIndexed &&
             !!packed.xIndexSpec &&
             resolveMarkXIndexQuery(packed.xIndexSpec, state.xQueryDomain);
         if (!state.xQueryEnabled) {
@@ -337,11 +469,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                     state.mark,
                     first.options,
                     configCoords,
-                    () => state.mark.unitView.getEffectiveOpacity(),
+                    1,
                     packed.data,
-                    state.source && !state.placementIndexed
-                        ? { source: "draw" }
-                        : undefined
+                    createPlacementIndexConfig(state)
                 )
             );
             state.packed = packed;
@@ -369,10 +499,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             packedChanged ||
             expressionChanged ||
             geometryChanged ||
-            state.resourceRevision !== resourceRevision ||
-            state.viewOpacity !== viewOpacity;
+            state.resourceRevision !== resourceRevision;
         state.resourceRevision = resourceRevision ?? -1;
-        state.viewOpacity = viewOpacity;
         state.active = !!state.config;
     }
 
@@ -398,9 +526,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      * @param {Occurrence} occurrence
      * @param {boolean} picking
      * @param {{width: number, height: number}} canvas
-     * @returns {number | undefined} Resource writes, or undefined when unchecked.
+     * @param {import("@genome-spy/webgpu-renderer").RenderItem[]} items
+     * @returns {number | undefined}
      */
-    #submitOccurrence(occurrence, picking, canvas) {
+    #submitOccurrenceDraw(occurrence, picking, canvas, items) {
         const state = occurrence.state;
         if (
             !state.active ||
@@ -410,10 +539,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         ) {
             return undefined;
         }
-        if (state.placementIndexed && state.submittedPlacementIndexed) {
-            return undefined;
-        }
-
         const range = occurrence.range;
         if (!range.instanceCount) {
             return undefined;
@@ -425,12 +550,15 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         refreshOccurrenceDraw(occurrence, state, draw, canvas);
 
-        const placementIndex = state.generatedSource
+        const occurrencePlacementIndex = state.generatedSource
             ? occurrence.placementIndex
             : occurrence.options.placement?.index;
+        const placementIndex = state.facetIndexed
+            ? undefined
+            : occurrencePlacementIndex;
         if (
             state.source &&
-            !state.placementIndexed &&
+            !state.facetIndexed &&
             placementIndex === undefined
         ) {
             throw createViewError(
@@ -440,10 +568,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         if (
             state.source &&
-            !state.placementIndexed &&
+            occurrencePlacementIndex !== undefined &&
             !isPlacementVisible(
                 state.source,
-                placementIndex,
+                occurrencePlacementIndex,
                 state.viewport,
                 draw.scissor,
                 canvas
@@ -496,11 +624,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (draw.placement) {
             draw.placement.index = placementIndex;
         }
-        this.surface.drawMark(state.mark, draw, state.source, picking);
+        this.surface.prepareDraw(state.mark, draw, state.source);
+        items.push(draw);
         countPerformance("drawCommands");
-        if (state.placementIndexed) {
-            state.submittedPlacementIndexed = true;
-        }
         return resourceWrites;
     }
 
@@ -511,6 +637,106 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         return entry.coords;
     }
+}
+
+/**
+ * Coalesces the stable topology of repeated sample views once per layout.
+ * Ordinary paints can then replay the resulting command sequence directly.
+ *
+ * @param {PaintCommand[]} commands
+ * @returns {PaintCommand[]}
+ */
+function coalesceSampleFacetBatches(commands) {
+    /** @type {PaintCommand[]} */
+    const result = [];
+    /** @type {BatchCollector | undefined} */
+    let batch;
+    /** @type {BatchCollector[]} */
+    const parents = [];
+
+    for (const command of commands) {
+        if (command.type === "beginSampleFacetBatch") {
+            batch = createBatchCollector();
+        } else if (command.type === "endSampleFacetBatch") {
+            materializeBatch(/** @type {BatchCollector} */ (batch), result);
+            batch = undefined;
+        } else if (!batch) {
+            result.push(command);
+        } else if (command.type === "occurrence") {
+            appendBatchItem(batch, command.occurrence.state.mark, command);
+        } else if (command.type === "pushView") {
+            parents.push(batch);
+            batch = openBatchGroup(batch, command);
+        } else {
+            batch = parents.pop();
+        }
+    }
+    return result;
+}
+
+/** @returns {BatchCollector} */
+function createBatchCollector() {
+    return { slots: new Map(), ordered: [] };
+}
+
+/** @param {BatchCollector} collector @param {object} key */
+function getBatchSlot(collector, key) {
+    let slot = collector.slots.get(key);
+    if (!slot) {
+        slot = { items: [] };
+        collector.slots.set(key, slot);
+        collector.ordered.push(slot);
+    }
+    return slot;
+}
+
+/** @param {BatchCollector} collector @param {object} key @param {PaintCommand} item */
+function appendBatchItem(collector, key, item) {
+    getBatchSlot(collector, key).items.push(item);
+}
+
+/**
+ * @param {BatchCollector} collector
+ * @param {Extract<PaintCommand, {type: "pushView"}>} command
+ */
+function openBatchGroup(collector, command) {
+    const slot = getBatchSlot(collector, command.view);
+    if (!slot.command) {
+        slot.command = command;
+        slot.collector = createBatchCollector();
+    } else {
+        slot.command.coords.push(...command.coords);
+    }
+    return slot.collector;
+}
+
+/** @param {BatchCollector} collector @param {PaintCommand[]} target */
+function materializeBatch(collector, target) {
+    for (const slot of collector.ordered) {
+        if (slot.command && slot.collector) {
+            target.push(slot.command);
+            materializeBatch(slot.collector, target);
+            target.push({ type: "popView" });
+        } else {
+            target.push(...slot.items);
+        }
+    }
+}
+
+/**
+ * @param {Extract<PaintCommand, {type: "pushView"}>} command
+ * @returns {import("@genome-spy/webgpu-renderer").RenderScope & {items: import("@genome-spy/webgpu-renderer").RenderItem[]}}
+ */
+function createGroup(command) {
+    /** @type {import("@genome-spy/webgpu-renderer").RenderScope & {items: import("@genome-spy/webgpu-renderer").RenderItem[]}} */
+    const group = {
+        bounds: command.bounds,
+        items: [],
+    };
+    if (command.localOpacity) {
+        group.opacity = command.view.getOpacity();
+    }
+    return group;
 }
 
 /** @returns {import("@genome-spy/webgpu-renderer").DrawRect} */
@@ -567,6 +793,17 @@ function createOccurrenceDraw(occurrence, state) {
         };
     }
     return draw;
+}
+
+/**
+ * @param {MarkState} state
+ * @returns {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"] | undefined}
+ */
+function createPlacementIndexConfig(state) {
+    if (!state.facetIndexed && state.source) {
+        return { source: "draw" };
+    }
+    return undefined;
 }
 
 /**
@@ -688,14 +925,36 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
 }
 
 /**
+ * @param {Extract<PaintCommand, {type: "pushView"}>} command
+ * @param {{width: number, height: number}} target
+ */
+function writeScopeBounds(command, target) {
+    const first = command.coords[0];
+    let x1 = first.x;
+    let y1 = first.y;
+    let x2 = x1 + first.width;
+    let y2 = y1 + first.height;
+    for (let index = 1; index < command.coords.length; index++) {
+        const coords = command.coords[index];
+        x1 = Math.min(x1, coords.x);
+        y1 = Math.min(y1, coords.y);
+        x2 = Math.max(x2, coords.x + coords.width);
+        y2 = Math.max(y2, coords.y + coords.height);
+    }
+    command.bounds.x = command.clipX ? x1 : 0;
+    command.bounds.y = command.clipY ? y1 : 0;
+    command.bounds.width = command.clipX ? x2 - x1 : target.width;
+    command.bounds.height = command.clipY ? y2 - y1 : target.height;
+}
+
+/**
  * @typedef {object} MarkState
  * @property {import("../../marks/mark.js").default} mark
  * @property {Occurrence[]} occurrences
  * @property {import("./webGpuMarkData.js").PackedMarkData | undefined} packed
  * @property {import("../../view/layout/placementSource.js").default | undefined} source
  * @property {boolean} generatedSource
- * @property {boolean} placementIndexed
- * @property {boolean} submittedPlacementIndexed
+ * @property {boolean} facetIndexed
  * @property {[number, number]} xQueryDomain
  * @property {[number, number]} xIndexedRange
  * @property {boolean} xQueryEnabled
@@ -707,7 +966,6 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
  * @property {Record<string, {value: any}> | undefined} properties
  * @property {number} configRevision
  * @property {number} resourceRevision
- * @property {number} viewOpacity
  * @property {boolean} resourcesDirty
  * @property {number} configX
  * @property {number} configY
@@ -715,6 +973,29 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
  * @property {number} configHeight
  * @property {import("@genome-spy/webgpu-renderer").DrawRect | undefined} viewport
  * @property {Float32Array | undefined} generatedRectangles
+ */
+
+/**
+ * @typedef {
+ *   | {type: "beginSampleFacetBatch"}
+ *   | {type: "endSampleFacetBatch"}
+ *   | {type: "pushView", view: import("../../view/view.js").default, coords: Rectangle[], localOpacity: boolean, clipX: boolean, clipY: boolean, bounds: import("@genome-spy/webgpu-renderer").DrawRect}
+ *   | {type: "popView"}
+ *   | {type: "occurrence", occurrence: Occurrence}
+ * } PaintCommand
+ */
+
+/**
+ * @typedef {object} BatchCollector
+ * @property {Map<object, BatchSlot>} slots
+ * @property {BatchSlot[]} ordered
+ */
+
+/**
+ * @typedef {object} BatchSlot
+ * @property {PaintCommand[]} items
+ * @property {Extract<PaintCommand, {type: "pushView"}> | undefined} [command]
+ * @property {BatchCollector | undefined} [collector]
  */
 
 /**

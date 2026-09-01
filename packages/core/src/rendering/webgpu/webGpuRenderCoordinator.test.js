@@ -10,7 +10,8 @@ vi.mock("./webGpuViewRenderingContext.js", () => ({
             this.pushView = vi.fn();
             this.popView = vi.fn();
             this.finish = vi.fn();
-            this.render = vi.fn();
+            this.render = vi.fn(() => ["visible"]);
+            this.renderPicking = vi.fn(() => ["pick"]);
             mocks.contexts.push(this);
         }
     },
@@ -34,7 +35,6 @@ describe("WebGpuRenderCoordinator", () => {
             invalidateSize: vi.fn(() => false),
             getLogicalCanvasSize: () => ({ width: 100, height: 50 }),
             getDevicePixelRatio: () => 2,
-            beginFrame: vi.fn(),
             render: vi.fn(),
         };
         const coordinator = new WebGpuRenderCoordinator({
@@ -51,9 +51,8 @@ describe("WebGpuRenderCoordinator", () => {
 
         expect(arrange).toHaveBeenCalledOnce();
         expect(arrange.mock.calls[0][0].getDevicePixelRatio()).toBe(2);
-        expect(surface.beginFrame).toHaveBeenCalledTimes(2);
         expect(surface.render).toHaveBeenCalledTimes(2);
-        expect(surface.render).toHaveBeenNthCalledWith(1, {
+        expect(surface.render).toHaveBeenNthCalledWith(1, ["visible"], {
             r: 0x33 / 255,
             g: 0x66 / 255,
             b: 0x99 / 255,
@@ -62,7 +61,7 @@ describe("WebGpuRenderCoordinator", () => {
         background = undefined;
         coordinator.renderAll();
 
-        expect(surface.render).toHaveBeenNthCalledWith(3, {
+        expect(surface.render).toHaveBeenNthCalledWith(3, ["visible"], {
             r: 0,
             g: 0,
             b: 0,
@@ -71,9 +70,6 @@ describe("WebGpuRenderCoordinator", () => {
         expect(mocks.contexts).toHaveLength(1);
         expect(mocks.contexts[0].finish).toHaveBeenCalledOnce();
         expect(mocks.contexts[0].render).toHaveBeenCalledTimes(3);
-        expect(mocks.contexts[0].render).toHaveBeenNthCalledWith(1, {
-            picking: false,
-        });
         expect(mocks.contexts[0].pushView).toHaveBeenCalledWith(
             viewRoot,
             expect.objectContaining({ width: 100, height: 50 })
@@ -86,8 +82,6 @@ describe("WebGpuRenderCoordinator", () => {
             invalidateSize: vi.fn(() => false),
             getLogicalCanvasSize: () => ({ width: 100, height: 50 }),
             getDevicePixelRatio: () => 1,
-            beginFrame: vi.fn(),
-            beginPickingFrame: vi.fn(),
             render: vi.fn(),
             renderPicking: vi.fn(),
         };
@@ -103,21 +97,14 @@ describe("WebGpuRenderCoordinator", () => {
         expect(mocks.contexts).toHaveLength(1);
         coordinator.renderPickingFramebuffer();
         coordinator.renderPickingFramebuffer();
-        expect(surface.beginPickingFrame).toHaveBeenCalledOnce();
         expect(surface.renderPicking).toHaveBeenCalledOnce();
+        expect(surface.renderPicking).toHaveBeenLastCalledWith(["pick"]);
 
         coordinator.renderAll();
         coordinator.renderPickingFramebuffer();
         expect(surface.renderPicking).toHaveBeenCalledTimes(2);
-        expect(mocks.contexts[0].render).toHaveBeenNthCalledWith(1, {
-            picking: true,
-        });
-        expect(mocks.contexts[0].render).toHaveBeenNthCalledWith(2, {
-            picking: false,
-        });
-        expect(mocks.contexts[0].render).toHaveBeenNthCalledWith(3, {
-            picking: true,
-        });
+        expect(mocks.contexts[0].render).toHaveBeenCalledOnce();
+        expect(mocks.contexts[0].renderPicking).toHaveBeenCalledTimes(2);
 
         coordinator.computeLayout();
         expect(mocks.contexts).toHaveLength(2);

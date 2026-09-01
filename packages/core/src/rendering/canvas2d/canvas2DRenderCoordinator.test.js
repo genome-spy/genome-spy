@@ -70,6 +70,9 @@ describe("Canvas2DRenderCoordinator", () => {
         expect(mocks.renderCanvas2D.mock.calls[0][0].layoutResult).toBe(
             mocks.renderCanvas2D.mock.calls[1][0].layoutResult
         );
+        expect(mocks.renderCanvas2D.mock.calls[0][0].opacityLayers).toBe(
+            mocks.renderCanvas2D.mock.calls[1][0].opacityLayers
+        );
     });
 
     test("replays picking only while dirty and allocates on the first write", () => {

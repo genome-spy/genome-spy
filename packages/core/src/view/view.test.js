@@ -42,6 +42,37 @@ function updateLaneData(context, ...lanes) {
 }
 
 describe("Trivial creations and initializations", () => {
+    test("separates local opacity from inherited effective opacity", () => {
+        const view = Object.create(View.prototype);
+        view.opacityFunction = (/** @type {number} */ parentOpacity) =>
+            parentOpacity * 0.4;
+        view.layoutParent = { getEffectiveOpacity: () => 0.5 };
+
+        expect(view.getOpacity()).toBe(0.4);
+        expect(view.getEffectiveOpacity()).toBe(0.2);
+        expect(view.hasLocalOpacity()).toBe(true);
+    });
+
+    test("identifies configured opacity without evaluating it", async () => {
+        const opaque = await createAndInitialize(
+            { data: { values: [{}] }, mark: "point" },
+            View
+        );
+        const translucent = await createAndInitialize(
+            {
+                data: { values: [{}] },
+                mark: "point",
+                opacity: { expr: "0.5" },
+            },
+            View
+        );
+        opaque.configureViewOpacity();
+        translucent.configureViewOpacity();
+
+        expect(opaque.hasLocalOpacity()).toBe(false);
+        expect(translucent.hasLocalOpacity()).toBe(true);
+    });
+
     test("Fails on empty spec", async () => {
         // @ts-expect-error
         await expect(create({}, View)).rejects.toThrow();

@@ -4,6 +4,7 @@ import {
     visitMarkOccurrences,
 } from "../immediate/markData.js";
 import {
+    getViewClipDirections,
     normalizeClipOptions,
     prepareMarkClipOptionsFromClip,
 } from "../../view/renderingContext/clipOptions.js";
@@ -18,12 +19,18 @@ import { warnOnce } from "../../utils/warning.js";
 import { getPerformanceProfiler } from "../../debug/performanceProfiler.js";
 import { isSampleFacetVisible } from "../sampleFacet.js";
 
+const MAX_RETAINED_OPACITY_LAYERS = 8;
+const MAX_RETAINED_OPACITY_LAYER_PIXELS = 16_777_216;
+
 export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
-    /** @type {{view: import("../../view/view.js").default, coords: import("../../view/layout/rectangle.js").default}[]} */
+    /** @type {CanvasViewStackEntry[]} */
     #viewStack = [];
 
-    /** @type {WeakMap<import("../../view/view.js").default, number | undefined>} */
-    #viewOpacities = new WeakMap();
+    /** @type {WeakSet<import("../../view/view.js").default>} */
+    #preparedViews = new WeakSet();
+
+    /** @type {WeakMap<import("../../view/view.js").default, number>} */
+    #effectiveViewOpacities = new WeakMap();
 
     /** @type {(mark: import("../../marks/mark.js").default) => boolean} */
     #markPredicate;
@@ -39,6 +46,15 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
     /** @type {[number, number]} */
     #indexedRange = [0, 0];
 
+    /** @type {CanvasPhysicalBounds} */
+    #targetBounds;
+
+    /** @type {CanvasRenderingContext2D[]} */
+    #opacityLayers;
+
+    /** @type {{context: CanvasRenderingContext2D, bounds: CanvasPhysicalBounds}[]} */
+    #opacityTargetStack = [];
+
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
      * @param {{
@@ -49,7 +65,8 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
      *     background: string | null,
      *     paint: boolean,
      *     markPredicate?: (mark: import("../../marks/mark.js").default) => boolean,
-     *     xIndexManager?: import("./canvasXIndexManager.js").default
+     *     xIndexManager?: import("./canvasXIndexManager.js").default,
+     *     opacityLayers?: CanvasRenderingContext2D[]
      * }} options
      */
     constructor(globalOptions, options) {
@@ -62,6 +79,13 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         this.#markPredicate = options.markPredicate ?? (() => true);
         this.#profiler = getPerformanceProfiler();
         this.#xIndexManager = options.xIndexManager;
+        this.#opacityLayers = options.opacityLayers ?? [];
+        this.#targetBounds = {
+            x: 0,
+            y: 0,
+            width: this.context.canvas.width,
+            height: this.context.canvas.height,
+        };
 
         if (this.paint) {
             const context = this.context;
@@ -99,11 +123,42 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     pushView(view, coords) {
-        if (this.paint && !this.#viewOpacities.has(view)) {
+        if (this.paint && !this.#preparedViews.has(view)) {
             view.onBeforeRender();
-            this.#viewOpacities.set(view, undefined);
+            this.#preparedViews.add(view);
         }
-        this.#viewStack.push({ view, coords });
+
+        const opacity = view.getOpacity();
+        if (this.paint && opacity > 0 && opacity !== 1) {
+            const clip = getViewClipDirections(view);
+            const bounds = normalizeOffscreenBounds(
+                coords,
+                this.devicePixelRatio,
+                this.#targetBounds,
+                clip
+            );
+            const context = acquireOpacityLayer(
+                this.#opacityLayers,
+                this.#opacityTargetStack.length,
+                bounds.width,
+                bounds.height
+            );
+            context.setTransform(
+                this.devicePixelRatio,
+                0,
+                0,
+                this.devicePixelRatio,
+                -bounds.x,
+                -bounds.y
+            );
+            this.#opacityTargetStack.push({
+                context: this.context,
+                bounds: this.#targetBounds,
+            });
+            this.context = context;
+            this.#targetBounds = bounds;
+        }
+        this.#viewStack.push({ view, coords, opacity });
     }
 
     /**
@@ -117,6 +172,31 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                 "Unbalanced Canvas2D view rendering context stack."
             );
         }
+        if (this.paint && entry.opacity > 0 && entry.opacity !== 1) {
+            const parent = this.#opacityTargetStack.pop();
+            if (!parent) {
+                throw new Error("Missing Canvas2D opacity parent target.");
+            }
+            const source = this.context.canvas;
+            const sourceBounds = this.#targetBounds;
+            this.context = parent.context;
+            this.#targetBounds = parent.bounds;
+            this.context.save();
+            try {
+                this.context.globalAlpha = entry.opacity;
+                if (sourceBounds.width && sourceBounds.height) {
+                    this.context.drawImage(
+                        source,
+                        sourceBounds.x / this.devicePixelRatio,
+                        sourceBounds.y / this.devicePixelRatio,
+                        sourceBounds.width / this.devicePixelRatio,
+                        sourceBounds.height / this.devicePixelRatio
+                    );
+                }
+            } finally {
+                this.context.restore();
+            }
+        }
     }
 
     /**
@@ -129,8 +209,12 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
             return;
         }
 
-        const viewOpacity = this.#getViewOpacity(mark.unitView);
-        if (viewOpacity <= 0) {
+        let effectiveOpacity = this.#effectiveViewOpacities.get(mark.unitView);
+        if (effectiveOpacity === undefined) {
+            effectiveOpacity = mark.unitView.getEffectiveOpacity();
+            this.#effectiveViewOpacities.set(mark.unitView, effectiveOpacity);
+        }
+        if (effectiveOpacity <= 0) {
             return;
         }
 
@@ -207,7 +291,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                         end,
                         visibleBounds,
                         anchorCullBounds,
-                        viewOpacity,
+                        viewOpacity: 1,
                         warn: (message) =>
                             warnOnce(
                                 `${message} View: ${mark.unitView.getPathString()}`
@@ -231,14 +315,105 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         }
         return entry.coords;
     }
+}
 
-    /** @param {import("../../view/unitView.js").default} view */
-    #getViewOpacity(view) {
-        let opacity = this.#viewOpacities.get(view);
-        if (opacity === undefined) {
-            opacity = view.getEffectiveOpacity();
-            this.#viewOpacities.set(view, opacity);
+/**
+ * @typedef {object} CanvasViewStackEntry
+ * @property {import("../../view/view.js").default} view
+ * @property {import("../../view/layout/rectangle.js").default} coords
+ * @property {number} opacity
+ */
+
+/**
+ * @typedef {object} CanvasPhysicalBounds
+ * @property {number} x
+ * @property {number} y
+ * @property {number} width
+ * @property {number} height
+ */
+
+/**
+ * Rounds a logical view rectangle outwards and clips it to its parent target.
+ *
+ * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {number} devicePixelRatio
+ * @param {CanvasPhysicalBounds} parent
+ * @param {{clipX: boolean, clipY: boolean}} clip
+ * @returns {CanvasPhysicalBounds}
+ */
+function normalizeOffscreenBounds(coords, devicePixelRatio, parent, clip) {
+    const parentRight = parent.x + parent.width;
+    const parentBottom = parent.y + parent.height;
+    const x = clip.clipX
+        ? clamp(Math.floor(coords.x * devicePixelRatio), parent.x, parentRight)
+        : parent.x;
+    const y = clip.clipY
+        ? clamp(Math.floor(coords.y * devicePixelRatio), parent.y, parentBottom)
+        : parent.y;
+    const right = clip.clipX
+        ? clamp(
+              Math.ceil((coords.x + coords.width) * devicePixelRatio),
+              x,
+              parentRight
+          )
+        : parentRight;
+    const bottom = clip.clipY
+        ? clamp(
+              Math.ceil((coords.y + coords.height) * devicePixelRatio),
+              y,
+              parentBottom
+          )
+        : parentBottom;
+    return { x, y, width: right - x, height: bottom - y };
+}
+
+/**
+ * Reuses one canvas per active opacity nesting depth. Oversized or excessively
+ * deep layers remain invocation-local and are released to garbage collection.
+ *
+ * @param {CanvasRenderingContext2D[]} layers
+ * @param {number} index
+ * @param {number} width
+ * @param {number} height
+ */
+function acquireOpacityLayer(layers, index, width, height) {
+    const pixelCount = width * height;
+    let context = layers[index];
+    const retainedWithoutLayer = layers.reduce(
+        (sum, retained, retainedIndex) =>
+            retainedIndex === index
+                ? sum
+                : sum + retained.canvas.width * retained.canvas.height,
+        0
+    );
+    const retain =
+        index < MAX_RETAINED_OPACITY_LAYERS &&
+        retainedWithoutLayer + pixelCount <= MAX_RETAINED_OPACITY_LAYER_PIXELS;
+
+    if (!context || !retain) {
+        const canvas = document.createElement("canvas");
+        context = canvas.getContext("2d");
+        if (!context) {
+            throw new Error("Unable to create a Canvas2D view group.");
         }
-        return opacity;
+        if (retain) {
+            layers[index] = context;
+        }
     }
+
+    if (context.canvas.width != width || context.canvas.height != height) {
+        context.canvas.width = width;
+        context.canvas.height = height;
+    } else {
+        context.resetTransform();
+        context.clearRect(0, 0, width, height);
+    }
+    context.globalAlpha = 1;
+    context.globalCompositeOperation = "source-over";
+    return context;
+}
+
+/** @param {number} value @param {number} min @param {number} max */
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
 }

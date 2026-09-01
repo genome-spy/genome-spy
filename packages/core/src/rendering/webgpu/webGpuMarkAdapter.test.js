@@ -1314,7 +1314,8 @@ describe("WebGPU mark adapter", () => {
         expect(channels.y.data).toEqual(new Float32Array([28, 55]));
         expect(channels.y2.value).toBe(220);
         expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
-        expect(channels.hatchPattern).toEqual(dynamicValue(0, "u32"));
+        expect(channels.strokeWidth).toEqual({ value: 0 });
+        expect(channels.hatchPattern).toEqual({ value: 0, type: "u32" });
     });
 
     test("preserves nested rect endpoint bands", () => {
@@ -1447,10 +1448,43 @@ describe("WebGPU mark adapter", () => {
         const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
         const channels = /** @type {any} */ (translated).config.channels;
 
-        expect(channels.cornerRadiusTopRight).toEqual(dynamicValue(1));
-        expect(channels.cornerRadiusBottomRight).toEqual(dynamicValue(2));
-        expect(channels.cornerRadiusTopLeft).toEqual(dynamicValue(3));
-        expect(channels.cornerRadiusBottomLeft).toEqual(dynamicValue(4));
+        expect(channels.cornerRadiusTopRight).toEqual({ value: 1 });
+        expect(channels.cornerRadiusBottomRight).toEqual({ value: 2 });
+        expect(channels.cornerRadiusTopLeft).toEqual({ value: 3 });
+        expect(channels.cornerRadiusBottomLeft).toEqual({ value: 4 });
+    });
+
+    test("keeps expression-backed rectangle edge properties updateable", () => {
+        const mark = createMark(
+            "rect",
+            [{}],
+            {
+                x: createConstantEncoder(0),
+                x2: createConstantEncoder(1),
+                y: createConstantEncoder(0),
+                y2: createConstantEncoder(1),
+                xOffset: createConstantEncoder(0),
+                x2Offset: createConstantEncoder(0),
+                yOffset: createConstantEncoder(0),
+                y2Offset: createConstantEncoder(0),
+                fill: createConstantEncoder("black"),
+                stroke: createConstantEncoder(null),
+                fillOpacity: createConstantEncoder(1),
+                strokeOpacity: createConstantEncoder(1),
+                strokeWidth: createConstantEncoder(0),
+            },
+            { cornerRadius: { expr: "radius" } }
+        );
+        /** @type {any} */ (mark.unitView).paramRuntime.evaluateAndGet = () =>
+            0;
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const channels = /** @type {any} */ (translated).config.channels;
+
+        expect(channels.cornerRadiusTopRight).toEqual(dynamicValue(0));
+        expect(channels.cornerRadiusBottomRight).toEqual(dynamicValue(0));
+        expect(channels.cornerRadiusTopLeft).toEqual(dynamicValue(0));
+        expect(channels.cornerRadiusBottomLeft).toEqual(dynamicValue(0));
     });
 
     test.each([
@@ -1839,6 +1873,7 @@ function createMark(type, data, encoders, properties = {}) {
         /** @type {unknown} */ ({
             encoders: { ...defaultEncoders, ...encoders },
             properties: {
+                cornerRadius: 0,
                 dx: 0,
                 dy: 0,
                 fillGradientStrength: 0,

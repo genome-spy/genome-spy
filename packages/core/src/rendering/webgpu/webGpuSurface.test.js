@@ -38,6 +38,7 @@ const mocks = vi.hoisted(() => {
         render: vi.fn(),
         renderPicking: vi.fn(),
         pick: vi.fn(async () => 42),
+        createDetachedTarget: vi.fn(),
     };
     return {
         handle,
@@ -83,6 +84,7 @@ beforeEach(() => {
     mocks.handle.extraValues = {};
     mocks.handle.scalarSlots = {};
     mocks.handle.selections = {};
+    mocks.renderer.createDetachedTarget.mockReset();
 });
 
 /**
@@ -96,7 +98,7 @@ beforeEach(() => {
 function useMark(surface, mark, definition, config, options, properties) {
     configureMockMark(mark, definition);
     surface.updateMark(mark, definition, config, properties);
-    const { placement, picking = false, ...drawOptions } = options ?? {};
+    const { placement, ...drawOptions } = options ?? {};
     const draw = {
         mark: mocks.handle,
         ...drawOptions,
@@ -116,7 +118,8 @@ function useMark(surface, mark, definition, config, options, properties) {
               }
             : {}),
     };
-    surface.drawMark(mark, draw, placement?.source, picking);
+    surface.prepareDraw(mark, draw, placement?.source);
+    return draw;
 }
 
 /** @param {any} mark @param {any} definition */
@@ -127,6 +130,75 @@ function configureMockMark(mark, definition) {
 }
 
 describe("WebGpuSurface", () => {
+    test("submits export layouts with detached target dimensions", async () => {
+        const detachedHandle = {
+            render: vi.fn(),
+            onSubmittedWorkDone: vi.fn(),
+            destroy: vi.fn(),
+        };
+        mocks.renderer.createDetachedTarget.mockReturnValue(detachedHandle);
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const liveMark = /** @type {any} */ ({});
+        const liveDraw = useMark(
+            surface,
+            liveMark,
+            /** @type {any} */ ({ type: "point" }),
+            createConfig(0),
+            { viewport: { x: 0, y: 0, width: 100, height: 50 } }
+        );
+        const target = surface.createExportTarget(80, 40, 3);
+        /** @type {{width: number, height: number, dpr: number}[]} */
+        const observedSizes = [];
+        const layoutResult = {
+            collectRenderCommands: vi.fn((context) => {
+                observedSizes.push({
+                    ...surface.getLogicalCanvasSize(),
+                    dpr: context.getDevicePixelRatio(),
+                });
+            }),
+        };
+        const clearColor = { r: 0, g: 0, b: 0, a: 0 };
+
+        surface.renderLayoutToTarget(
+            /** @type {any} */ (layoutResult),
+            target,
+            clearColor
+        );
+
+        expect(target.canvas.width).toBe(240);
+        expect(target.canvas.height).toBe(120);
+        expect(mocks.renderer.createDetachedTarget).toHaveBeenCalledWith(
+            target.canvas,
+            { width: 80, height: 40, dpr: 3 }
+        );
+        expect(observedSizes).toEqual([{ width: 100, height: 50, dpr: 3 }]);
+        expect(detachedHandle.render).toHaveBeenCalledWith({
+            items: [],
+            clearColor,
+        });
+        expect(surface.getLogicalCanvasSize()).toEqual({
+            width: 100,
+            height: 50,
+        });
+        expect(surface.getDevicePixelRatio()).toBe(2);
+        surface.render([liveDraw]);
+        expect(mocks.renderer.render).toHaveBeenCalledWith({
+            items: [
+                {
+                    mark: mocks.handle,
+                    viewport: { x: 0, y: 0, width: 100, height: 50 },
+                },
+            ],
+        });
+    });
+
     test("forwards unexpected device loss until the surface is finalized", async () => {
         const container = document.createElement("div");
         const onError = vi.fn();
@@ -186,8 +258,6 @@ describe("WebGpuSurface", () => {
             viewport: { x: 0, y: 0, width: 100, height: 50 },
             placement: { source, index: 0 },
         });
-        surface.beginFrame();
-        surface.render();
 
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
         expect(mocks.renderer.createMark).toHaveBeenCalledWith(
@@ -229,12 +299,10 @@ describe("WebGpuSurface", () => {
                 /** @type {unknown} */ ({ type: "point" })
             );
 
-        surface.beginFrame();
-        useMark(surface, mark, definition, createConfig(0));
-        surface.render();
-        surface.beginFrame();
-        useMark(surface, mark, definition, createConfig(1));
-        surface.render();
+        const firstDraw = useMark(surface, mark, definition, createConfig(0));
+        surface.render([firstDraw]);
+        const secondDraw = useMark(surface, mark, definition, createConfig(1));
+        surface.render([secondDraw]);
 
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
         expect(mocks.handle.series.replace).toHaveBeenCalledOnce();
@@ -248,10 +316,10 @@ describe("WebGpuSurface", () => {
         expect(mocks.handle.scales.x.default.setRange).not.toHaveBeenCalled();
         expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
         expect(mocks.renderer.render).toHaveBeenNthCalledWith(1, {
-            draws: [{ mark: mocks.handle }],
+            items: [{ mark: mocks.handle }],
         });
         expect(mocks.renderer.render).toHaveBeenNthCalledWith(2, {
-            draws: [{ mark: mocks.handle }],
+            items: [{ mark: mocks.handle }],
         });
         expect(mocks.renderer.destroyMark).not.toHaveBeenCalled();
 
@@ -281,9 +349,7 @@ describe("WebGpuSurface", () => {
                 /** @type {unknown} */ ({ type: "text" })
             );
 
-        surface.beginFrame();
         useMark(surface, mark, definition, createTextConfig(["0.00000"]));
-        surface.beginFrame();
         useMark(surface, mark, definition, createTextConfig(["-1.0", "1.0"]));
 
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
@@ -885,15 +951,13 @@ describe("WebGpuSurface", () => {
                 /** @type {unknown} */ ({ type: "point" })
             );
 
-        surface.beginFrame();
-        useMark(surface, mark, definition, createConfig(0));
-        surface.render();
-        surface.beginPickingFrame();
-        useMark(surface, mark, definition, createConfig(0), { picking: true });
-        surface.renderPicking();
+        const visibleDraw = useMark(surface, mark, definition, createConfig(0));
+        surface.render([visibleDraw]);
+        const pickingDraw = useMark(surface, mark, definition, createConfig(0));
+        surface.renderPicking([pickingDraw]);
 
         expect(mocks.renderer.render).toHaveBeenCalledWith({
-            draws: [{ mark: mocks.handle }],
+            items: [{ mark: mocks.handle }],
         });
         expect(mocks.renderer.renderPicking).toHaveBeenCalledWith({
             draws: [{ mark: mocks.handle }],

@@ -35,18 +35,58 @@ for the backend-neutral lifecycle and the
 5. `webGpuMarkAdapter.js` translates Core encoders, resolved scales,
    selections, properties, and typed series into a renderer mark definition and
    configuration. The plan caches this shape until packed data or an
-   expression-backed series changes; scale, opacity, semantic property, scalar,
+   expression-backed series changes; scale, semantic property, scalar,
    and selection leaves stay live. Unsupported behavior fails here with a
    contextual error.
 6. The frame plan owns one stable plain draw command per occurrence.
    Before submission, the adapter resolves the guarded live x domain and
-   refreshes `firstInstance` and `instanceCount` in place. `WebGpuSurface`
-   attaches retained mark and placement handles, appends those commands in
-   order, and submits the frame without rebuilding draw envelopes.
+   refreshes `firstInstance` and `instanceCount` in place. A frame-local builder
+   collects ordered draws and the view-scoped MSAA and opacity structure against
+   explicit target metrics. `WebGpuSurface` only attaches retained handles and
+   submits the completed frame.
 
 Normal and picking passes share the same frame plan, ranges, placements, and
 order. A completed picking frame is reused for pointer reads until layout,
 rendering, data, or retained state invalidates it.
+
+## Compositing intent
+
+Core derives renderer-neutral groups from the completed view traversal. A view
+with configured local opacity retains its structural group even while its live
+opacity is zero or one. The renderer prunes, flattens, or composites that group
+from the current value without recompiling layout. Mark alpha therefore stays
+independent of ancestor opacity. Nested views produce nested groups, while
+picking remains a flat single-sampled draw list.
+
+Four-sample coverage is limited to undecorated `rect` marks. This includes all
+plain MCCA rectangles: cytobands, copy-number segments, gene exons, summary
+rectangles, legend ramps, and both foreground and missing-value metadata cells.
+Points, text, rules, and rectangles with strokes, rounded corners, shadows, or
+hatches stay on the direct single-sample path. Maximal compatible view scopes
+share one accumulation; explicit sample-facet batches collect repeated logical
+views into that same layer. Marks with a `facetIndex` encoder use their encoded
+per-instance placement index.
+
+WebGL continues to consume effective per-mark opacity and receives no
+render-group behavior.
+
+## Raster export
+
+Full PNG and hybrid SVG rasterization reuse the live renderer's device, mark
+handles, placement sets, and pipelines through a detached canvas target. Each
+target has independent logical dimensions, backing dimensions, and device
+pixel ratio; export therefore compiles a fresh layout instead of stretching
+the live canvas. Export metrics are passed to the independent frame plan and
+never replace the live surface's size or frame state.
+
+Hybrid SVG keeps run discovery, placeholders, cropping, and document order in
+the SVG renderer. WebGPU receives one mark predicate per run, clears the
+export-sized target transparently, waits for the queue, and embeds the cropped
+PNG into the existing placeholder. Asynchronous raster and SVG exports are
+serialized because they synchronize shared retained mark configuration.
+The deprecated synchronous `exportCanvas()` API is unavailable with WebGPU
+because correct canvas readback requires waiting for submitted GPU work; use
+`imageExport.raster()` instead.
 
 ## Performance invariants
 
@@ -57,9 +97,10 @@ to the state that changed. Preserve these invariants when refactoring it:
   occurrences. Only a completed layout replaces the frame plan.
 - Stable packed data and expression revisions must preserve mark-configuration
   identity. That identity proves that series references are unchanged, while
-  live scale, opacity, value, property, scalar, and selection leaves are checked
-  through renderer slots and immutable snapshots. Core never names built-in
-  shader uniforms.
+  live scale, value, property, scalar, and selection leaves are checked through
+  renderer slots and immutable snapshots. Local view opacity is frame group
+  state and does not dirty mark resources. Core never names built-in shader
+  uniforms.
 - Existing scale, parameter, and selection notifications provide per-mark dirty
   revisions. Keep that dependency tracking in Core marks rather than adding a
   parallel graph solely for this adapter.
@@ -88,9 +129,9 @@ See `packages/core/scripts/README.md` for the command and interpretation rules.
 Core mark identity is the retained resource key. Repeated occurrences and
 facets reuse the same renderer mark instead of duplicating pipelines or data.
 Compatible changes update series, scale, value, semantic property, scalar, and
-selection slots in one batch. Packed-data/config revisions, scale and parameter
-notifications, and view-opacity changes select the marks that need
-synchronization. `WebGpuSurface` compiles scale, value, semantic-property, and
+selection slots in one batch. Packed-data/config revisions plus scale and
+parameter notifications select the marks that need synchronization.
+`WebGpuSurface` compiles scale, value, semantic-property, and
 scalar leaves into a flat list of direct slot updates when configuration shape
 changes. Dirty paints iterate that list without rediscovering configuration
 structure; immutable snapshots still detect in-place array changes. Selection
@@ -132,7 +173,7 @@ The context supports two forms through the same renderer placement contract:
 
 - draw-level indices select facet-specific packed ranges and allow Core to omit
   zero-area or offscreen occurrences; and
-- per-instance `facetIndex` values keep compatible labels and metadata in one
+- per-instance placement indices keep compatible sample-faceted marks in one
   coalesced draw.
 
 Active occurrences never define packed facet topology. Complete placement

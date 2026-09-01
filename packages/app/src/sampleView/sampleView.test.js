@@ -193,7 +193,7 @@ function createWebGpuHarness(canvas) {
             return source;
         },
         updateMark: vi.fn(),
-        drawMark: vi.fn(),
+        prepareDraw: vi.fn(),
     };
     return {
         surface,
@@ -203,17 +203,19 @@ function createWebGpuHarness(canvas) {
     };
 }
 
-/** @param {{ drawMark: ReturnType<typeof vi.fn> }} surface */
+/** @param {{ prepareDraw: ReturnType<typeof vi.fn> }} surface */
 function getSampleRangeDraws(surface) {
-    return surface.drawMark.mock.calls.filter(
+    return surface.prepareDraw.mock.calls.filter(
         ([mark, options]) =>
-            options.placement?.index !== undefined && mark.getType() === "rect"
+            options.instanceCount !== undefined &&
+            mark.encoders.sample &&
+            mark.getType() === "rect"
     );
 }
 
 /** @param {any[]} call */
-function getDrawPlacementIndex(call) {
-    return call[1].placement.index;
+function getDrawRange(call) {
+    return [call[1].firstInstance, call[1].instanceCount];
 }
 
 /**
@@ -2163,7 +2165,7 @@ describe("axis layout and visibility", () => {
         ).toBe(true);
     });
 
-    test("prunes 2,000 SampleView range occurrences equally for rendering and picking", async () => {
+    test("prunes 2,000 SampleView ranges equally for rendering and picking", async () => {
         const samples = Array.from({ length: 2000 }, (_, indexNumber) => ({
             id: `sample-${indexNumber}`,
             displayName: `Sample ${indexNumber}`,
@@ -2220,15 +2222,18 @@ describe("axis layout and visibility", () => {
         view.arrange(pickingContext, coords, { firstFacet: true });
         visibleContext.finish();
         pickingContext.finish();
-        visibleContext.render({ picking: false });
-        pickingContext.render({ picking: true });
+        visibleContext.render();
+        const pickingFrame = pickingContext.renderPicking();
 
         const visibleRanges = getSampleRangeDraws(visibleHarness.surface);
         const pickingRanges = getSampleRangeDraws(pickingHarness.surface);
         expect(visibleRanges.length).toBeGreaterThan(0);
         expect(visibleRanges.length).toBeLessThan(30);
-        expect(pickingRanges.map(getDrawPlacementIndex)).toEqual(
-            visibleRanges.map(getDrawPlacementIndex)
+        expect(pickingRanges.map(getDrawRange)).toEqual(
+            visibleRanges.map(getDrawRange)
+        );
+        expect(pickingFrame).toEqual(
+            expect.arrayContaining(pickingRanges.map((call) => call[1]))
         );
     });
 

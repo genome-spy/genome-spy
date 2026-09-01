@@ -822,7 +822,11 @@ export default class View {
      * Returns the effective opacity of this view, e.g., view's opacity multiplied
      * by opacities of its ancestors.
      *
-     * TODO: This methods makes sense only in Unit and Layer views.
+     * TODO: Remove ancestor-opacity multiplication when the WebGL renderer is
+     * retired. WebGL bakes effective view opacity into mark colors because it
+     * cannot isolate and composite view scopes like Canvas2D and WebGPU.
+     *
+     * TODO: This method makes sense only in Unit and Layer views.
      *
      * @returns {number}
      */
@@ -830,6 +834,26 @@ export default class View {
         return this.opacityFunction(
             this.layoutParent?.getEffectiveOpacity() ?? 1.0
         );
+    }
+
+    /**
+     * Returns this view's opacity without applying ancestor opacity.
+     *
+     * @returns {number}
+     */
+    getOpacity() {
+        return this.opacityFunction(1.0);
+    }
+
+    /**
+     * Whether this view introduces a local opacity transform.
+     *
+     * Unlike getOpacity(), this is stable across semantic zoom and reactive
+     * expression updates and can therefore be used when compiling retained
+     * rendering structure.
+     */
+    hasLocalOpacity() {
+        return this.opacityFunction !== defaultOpacityFunction;
     }
 
     getPathString() {
@@ -1425,6 +1449,10 @@ function isDynamicOpacity(opacity) {
 /**
  * Builds the effective opacity function for a view.
  *
+ * TODO: Remove the parent-opacity argument when the WebGL renderer is retired
+ * and make this function return local view opacity only. Hierarchical renderers
+ * apply ancestor opacity by compositing view scopes.
+ *
  * The resulting function multiplies parent opacity with one of:
  * 1. constant opacity (`number`)
  * 2. zoom-driven dynamic opacity (`DynamicOpacity`) that maps the current
@@ -1568,7 +1596,7 @@ function createViewOpacityFunction(view) {
             return (parentOpacity) => fn(null) * parentOpacity;
         }
     }
-    return (parentOpacity) => parentOpacity;
+    return defaultOpacityFunction;
 }
 
 /**

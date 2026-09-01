@@ -1,4 +1,3 @@
-import { color as parseColor } from "d3-color";
 import { createLayoutResult } from "../../view/layout/layoutResult.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import {
@@ -6,6 +5,7 @@ import {
     measurePerformance,
 } from "../../debug/performanceProfiler.js";
 import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
+import { toGpuColor } from "./webGpuColor.js";
 
 /**
  * Publishes settled Core layouts and consumes them with retained WebGPU marks.
@@ -67,12 +67,11 @@ export default class WebGpuRenderCoordinator {
 
         const profiler = getPerformanceProfiler();
         profiler?.beginFrame("webgpu");
-        this.surface.beginFrame();
-        measurePerformance("markTranslation", () =>
-            framePlan.render({ picking: false })
+        const items = measurePerformance("markTranslation", () =>
+            framePlan.render()
         );
         measurePerformance("surfaceRender", () =>
-            this.surface.render(toGpuColor(this.getBackground()))
+            this.surface.render(items, toGpuColor(this.getBackground()))
         );
         this.#dirtyPickingBuffer = true;
         profiler?.endFrame();
@@ -85,11 +84,12 @@ export default class WebGpuRenderCoordinator {
         }
         const profiler = getPerformanceProfiler();
         profiler?.beginFrame("webgpu", "picking");
-        this.surface.beginPickingFrame();
-        measurePerformance("markTranslation", () =>
-            framePlan.render({ picking: true })
+        const draws = measurePerformance("markTranslation", () =>
+            framePlan.renderPicking()
         );
-        measurePerformance("surfaceRender", () => this.surface.renderPicking());
+        measurePerformance("surfaceRender", () =>
+            this.surface.renderPicking(draws)
+        );
         this.#dirtyPickingBuffer = false;
         profiler?.endFrame();
     }
@@ -126,27 +126,4 @@ export default class WebGpuRenderCoordinator {
         });
         return framePlan;
     }
-}
-
-/**
- * @param {string | undefined} background
- * @returns {GPUColor | undefined}
- */
-function toGpuColor(background) {
-    if (background == null) {
-        return { r: 0, g: 0, b: 0, a: 0 };
-    }
-    const parsed = parseColor(background);
-    if (!parsed) {
-        throw new Error(
-            `Invalid WebGPU canvas background color: ${background}`
-        );
-    }
-    const rgb = parsed.rgb();
-    return {
-        r: rgb.r / 255,
-        g: rgb.g / 255,
-        b: rgb.b / 255,
-        a: rgb.opacity,
-    };
 }

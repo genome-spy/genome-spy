@@ -3,6 +3,57 @@ import { describe, expect, test, vi } from "vitest";
 import { Renderer } from "./renderer.js";
 
 describe("Renderer mark definitions", () => {
+    test("renders detached targets with target-local globals", async () => {
+        const { renderer, pass } = createRendererHarness();
+        renderer.format = "bgra8unorm";
+        renderer.alphaMode = "premultiplied";
+        renderer.device.queue.onSubmittedWorkDone = vi.fn();
+        const context = {
+            configure: vi.fn(),
+            getCurrentTexture: () => ({ createView: vi.fn() }),
+            unconfigure: vi.fn(),
+        };
+        const canvas = /** @type {HTMLCanvasElement} */ (
+            /** @type {unknown} */ ({
+                width: 300,
+                height: 150,
+                getContext: vi.fn(() => context),
+            })
+        );
+        const program = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi.fn(() => program),
+        });
+        const mark = renderer.createMark(definition, { channels: {} });
+        const target = renderer.createDetachedTarget(canvas, {
+            width: 200,
+            height: 100,
+            dpr: 1.5,
+        });
+
+        target.render({ draws: [{ mark }] });
+        await target.onSubmittedWorkDone();
+
+        expect(context.configure).toHaveBeenCalledWith({
+            device: renderer.device,
+            format: "bgra8unorm",
+            alphaMode: "premultiplied",
+        });
+        expect(pass.setViewport).toHaveBeenCalledWith(0, 0, 300, 150, 0, 1);
+        expect(renderer._globalUniformStaging.floats[2]).toBe(1.5);
+        expect(renderer._globals).toEqual({ width: 100, height: 50, dpr: 2 });
+        expect(renderer._renderFrame).toBeNull();
+        expect(
+            renderer.device.queue.onSubmittedWorkDone
+        ).toHaveBeenCalledOnce();
+
+        target.destroy();
+        target.destroy();
+        expect(context.unconfigure).toHaveBeenCalledOnce();
+        expect(() => target.render()).toThrow("has been destroyed");
+    });
+
     test("notifies the host instead of submitting an implicit frame", () => {
         const { renderer } = createRendererHarness();
         const onInvalidate = vi.fn();
@@ -312,7 +363,7 @@ describe("Renderer mark definitions", () => {
         expect(secondProgram.draw).toHaveBeenNthCalledWith(
             1,
             expect.anything(),
-            { firstInstance: 2, instanceCount: 3 }
+            { firstInstance: 2, instanceCount: 3, sampleCount: 1 }
         );
         expect(pass.setViewport).toHaveBeenNthCalledWith(
             1,
@@ -349,6 +400,20 @@ describe("Renderer mark definitions", () => {
         expect(renderPassDescriptors[0].label).toBe(
             "webgpu-renderer: main render pass"
         );
+    });
+
+    test("destroys evicted textures when frame encoding aborts", () => {
+        const { renderer } = createRendererHarness();
+        renderer._encodeRenderItems = vi.fn(() => {
+            throw new Error("encoding failed");
+        });
+
+        expect(() => renderer.render({ draws: [] })).toThrow("encoding failed");
+
+        expect(
+            renderer._transientTextures.destroyEvicted
+        ).toHaveBeenCalledOnce();
+        expect(renderer.device.queue.submit).not.toHaveBeenCalled();
     });
 
     test("reuses draw-global CPU staging while capacity is unchanged", () => {
@@ -405,6 +470,392 @@ describe("Renderer mark definitions", () => {
         expect(pass.setScissorRect).toHaveBeenCalledWith(0, 0, 99, 100);
     });
 
+    test("renders a bounded multisampled group and composites it once", () => {
+        const program = createProgram("multisample");
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, pass, renderPassDescriptors, transientAcquires } =
+            createRendererHarness();
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            items: [
+                {
+                    bounds: { x: 10, y: 5, width: 20, height: 10 },
+                    opacity: 0.5,
+                    items: [
+                        {
+                            mark,
+                            viewport: {
+                                x: 10,
+                                y: 5,
+                                width: 20,
+                                height: 10,
+                            },
+                            scissor: {
+                                x: 10,
+                                y: 5,
+                                width: 20,
+                                height: 10,
+                            },
+                        },
+                    ],
+                },
+            ],
+        });
+
+        expect(program.draw).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ sampleCount: 4 })
+        );
+        expect(transientAcquires).toEqual([
+            expect.objectContaining({ width: 40, height: 20, sampleCount: 1 }),
+            expect.objectContaining({ width: 40, height: 20, sampleCount: 4 }),
+        ]);
+        expect(renderPassDescriptors).toHaveLength(2);
+        expect(
+            Array.from(renderPassDescriptors[0].colorAttachments)[0]
+                .resolveTarget
+        ).toBeDefined();
+        expect(renderPassDescriptors[1].label).toBe(
+            "webgpu-renderer: group composite pass"
+        );
+        expect(pass.setViewport).toHaveBeenNthCalledWith(1, 0, 0, 40, 20, 0, 1);
+        expect(pass.setScissorRect).toHaveBeenNthCalledWith(1, 0, 0, 40, 20);
+        expect(pass.setViewport).toHaveBeenNthCalledWith(
+            2,
+            20,
+            10,
+            40,
+            20,
+            0,
+            1
+        );
+        expect(renderer._renderFrame).toHaveLength(1);
+
+        renderer.renderPicking();
+        expect(renderer._pickingFrame).toBe(renderer._renderFrame);
+    });
+
+    test("clamps opaque nested MSAA groups into one accumulation pass", () => {
+        const program = createProgram("multisample");
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, renderPassDescriptors, transientAcquires } =
+            createRendererHarness();
+        const first = renderer.createMark(definition, { channels: {} });
+        const second = renderer.createMark(definition, { channels: {} });
+        const bounds = { x: 0, y: 0, width: 100, height: 50 };
+
+        renderer.render({
+            items: [
+                {
+                    bounds,
+                    items: [
+                        {
+                            bounds,
+                            opacity: 2,
+                            items: [{ mark: first }],
+                        },
+                        {
+                            bounds,
+                            opacity: 2,
+                            items: [{ mark: second }],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        expect(transientAcquires).toEqual([
+            expect.objectContaining({ sampleCount: 1 }),
+            expect.objectContaining({ sampleCount: 4 }),
+        ]);
+        expect(renderPassDescriptors).toHaveLength(2);
+        expect(program.draw).toHaveBeenCalledTimes(2);
+    });
+
+    test("batches consecutive flat MSAA draws without reordering", () => {
+        const firstProgram = createProgram("multisample");
+        const middleProgram = createProgram();
+        const lastProgram = createProgram("multisample");
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi
+                .fn()
+                .mockReturnValueOnce(firstProgram)
+                .mockReturnValueOnce(middleProgram)
+                .mockReturnValueOnce(lastProgram),
+        });
+        const { renderer, renderPassDescriptors } = createRendererHarness();
+        const first = renderer.createMark(definition, { channels: {} });
+        const middle = renderer.createMark(definition, { channels: {} });
+        const last = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            items: [{ mark: first }, { mark: middle }, { mark: last }],
+        });
+
+        expect(renderPassDescriptors.map((pass) => pass.label)).toEqual([
+            "webgpu-renderer: multisample group pass",
+            "webgpu-renderer: group composite pass",
+            "webgpu-renderer: main render pass",
+            "webgpu-renderer: multisample group pass",
+            "webgpu-renderer: group composite pass",
+        ]);
+        expect(firstProgram.draw.mock.invocationCallOrder[0]).toBeLessThan(
+            middleProgram.draw.mock.invocationCallOrder[0]
+        );
+        expect(middleProgram.draw.mock.invocationCallOrder[0]).toBeLessThan(
+            lastProgram.draw.mock.invocationCallOrder[0]
+        );
+    });
+
+    test("keeps a mixed semantic scope single-sampled around its MSAA child", () => {
+        const exonProgram = createProgram("multisample");
+        const bodyProgram = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi
+                .fn()
+                .mockReturnValueOnce(exonProgram)
+                .mockReturnValueOnce(bodyProgram),
+        });
+        const { renderer, renderPassDescriptors, transientAcquires } =
+            createRendererHarness();
+        const exon = renderer.createMark(definition, { channels: {} });
+        const body = renderer.createMark(definition, { channels: {} });
+        const bounds = { x: 0, y: 0, width: 100, height: 50 };
+
+        renderer.render({
+            items: [
+                {
+                    bounds,
+                    opacity: 0.5,
+                    items: [{ mark: exon }, { mark: body }],
+                },
+            ],
+        });
+
+        expect(transientAcquires).toEqual([
+            expect.objectContaining({ sampleCount: 1 }),
+            expect.objectContaining({ sampleCount: 1 }),
+            expect.objectContaining({ sampleCount: 4 }),
+        ]);
+        expect(renderPassDescriptors.map((pass) => pass.label)).toEqual([
+            "webgpu-renderer: multisample group pass",
+            "webgpu-renderer: group composite pass",
+            "webgpu-renderer: main render pass",
+            "webgpu-renderer: group composite pass",
+        ]);
+        expect(exonProgram.draw).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ sampleCount: 4 })
+        );
+        expect(bodyProgram.draw).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ sampleCount: 1 })
+        );
+    });
+
+    test("clips inferred MSAA children to an opaque semantic scope", () => {
+        const coverageProgram = createProgram("multisample");
+        const directProgram = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi
+                .fn()
+                .mockReturnValueOnce(coverageProgram)
+                .mockReturnValueOnce(directProgram),
+        });
+        const { renderer, pass, transientAcquires } = createRendererHarness();
+        const coverage = renderer.createMark(definition, { channels: {} });
+        const direct = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            items: [
+                {
+                    bounds: { x: 10, y: 5, width: 20, height: 10 },
+                    items: [{ mark: coverage }, { mark: direct }],
+                },
+            ],
+        });
+
+        expect(transientAcquires).toEqual([
+            expect.objectContaining({ width: 40, height: 20, sampleCount: 1 }),
+            expect.objectContaining({ width: 40, height: 20, sampleCount: 4 }),
+        ]);
+        expect(pass.setScissorRect).toHaveBeenNthCalledWith(1, 0, 0, 40, 20);
+        expect(pass.setScissorRect).toHaveBeenNthCalledWith(3, 0, 0, 200, 100);
+    });
+
+    test("preserves draw order across nested opacity groups", () => {
+        const firstProgram = createProgram();
+        const nestedProgram = createProgram();
+        const lastProgram = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi
+                .fn()
+                .mockReturnValueOnce(firstProgram)
+                .mockReturnValueOnce(nestedProgram)
+                .mockReturnValueOnce(lastProgram),
+        });
+        const { renderer } = createRendererHarness();
+        const first = renderer.createMark(definition, { channels: {} });
+        const nested = renderer.createMark(definition, { channels: {} });
+        const last = renderer.createMark(definition, { channels: {} });
+        const bounds = { x: 0, y: 0, width: 100, height: 50 };
+
+        renderer.render({
+            items: [
+                {
+                    bounds,
+                    opacity: 0.5,
+                    items: [
+                        { mark: first },
+                        {
+                            bounds,
+                            opacity: 0.5,
+                            items: [{ mark: nested }],
+                        },
+                        { mark: last },
+                    ],
+                },
+            ],
+        });
+
+        expect(firstProgram.draw.mock.invocationCallOrder[0]).toBeLessThan(
+            nestedProgram.draw.mock.invocationCallOrder[0]
+        );
+        expect(nestedProgram.draw.mock.invocationCallOrder[0]).toBeLessThan(
+            lastProgram.draw.mock.invocationCallOrder[0]
+        );
+    });
+
+    test("clamps negative-opacity groups before normalizing their draws", () => {
+        const program = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, transientAcquires } = createRendererHarness();
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            items: [
+                {
+                    bounds: { x: 0, y: 0, width: 100, height: 50 },
+                    opacity: -1,
+                    items: [{ mark }],
+                },
+            ],
+        });
+
+        expect(renderer._renderFrame).toEqual([]);
+        expect(program.draw).not.toHaveBeenCalled();
+        expect(transientAcquires).toEqual([]);
+    });
+
+    test("ignores empty scope bounds before normalizing their draws", () => {
+        const program = createProgram("multisample");
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, transientAcquires } = createRendererHarness();
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            items: [
+                {
+                    bounds: { x: 0, y: 0, width: 100, height: 0 },
+                    items: [{ mark }],
+                },
+            ],
+        });
+
+        expect(renderer._renderFrame).toEqual([]);
+        expect(program.draw).not.toHaveBeenCalled();
+        expect(transientAcquires).toEqual([]);
+    });
+
+    test("clips nested groups to their parent before compositing", () => {
+        const program = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, pass, transientAcquires } = createRendererHarness();
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            items: [
+                {
+                    bounds: { x: 20, y: 10, width: 40, height: 20 },
+                    opacity: 0.5,
+                    items: [
+                        {
+                            bounds: { x: 10, y: 5, width: 30, height: 20 },
+                            opacity: 0.5,
+                            items: [{ mark }],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        expect(transientAcquires).toEqual([
+            expect.objectContaining({ width: 80, height: 40 }),
+            expect.objectContaining({ width: 40, height: 30 }),
+        ]);
+        expect(pass.setScissorRect.mock.calls).toEqual([
+            [0, 0, 40, 30],
+            [0, 0, 40, 30],
+            [40, 20, 80, 40],
+        ]);
+    });
+
+    test("keeps ordinary frames on the direct single-sample path", () => {
+        const program = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, renderPassDescriptors, transientAcquires } =
+            createRendererHarness();
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({ items: [{ mark }] });
+
+        expect(transientAcquires).toEqual([]);
+        expect(renderPassDescriptors).toHaveLength(1);
+        expect(program.draw).toHaveBeenCalledWith(expect.anything(), {
+            firstInstance: 0,
+            instanceCount: 10,
+            sampleCount: 1,
+        });
+    });
+
+    test("rejects NaN render-scope opacity", () => {
+        const { renderer } = createRendererHarness();
+        expect(() =>
+            renderer.render({
+                items: [
+                    {
+                        bounds: { x: 0, y: 0, width: 10, height: 10 },
+                        opacity: NaN,
+                        items: [],
+                    },
+                ],
+            })
+        ).toThrow("opacity must be a number");
+    });
+
     test("skips zero-sized scissors from empty clipped views", () => {
         const { renderer } = createRendererHarness();
         const program = createProgram();
@@ -419,6 +870,35 @@ describe("Renderer mark definitions", () => {
                 { mark, scissor: { x: 0, y: 0, width: 0, height: 50 } },
             ])
         ).toEqual([]);
+    });
+
+    test("normalizes grouped leaves directly with compact uniform indices", () => {
+        const { renderer } = createRendererHarness();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => createProgram(),
+        });
+        const skipped = renderer.createMark(definition, { channels: {} });
+        const visible = renderer.createMark(definition, { channels: {} });
+        const normalizeDraws = vi.spyOn(renderer, "_normalizeDraws");
+
+        const frame = renderer._normalizeRenderItems([
+            {
+                bounds: { x: 0, y: 0, width: 100, height: 50 },
+                opacity: 0.5,
+                items: [
+                    {
+                        mark: skipped,
+                        scissor: { x: 0, y: 0, width: 0, height: 50 },
+                    },
+                    { mark: visible },
+                ],
+            },
+        ]);
+
+        expect(normalizeDraws).not.toHaveBeenCalled();
+        expect(frame.draws).toHaveLength(1);
+        expect(frame.draws[0].uniformIndex).toBe(0);
     });
 
     test("destroys owned resources exactly once and rejects later work", () => {
@@ -466,6 +946,8 @@ describe("Renderer mark definitions", () => {
 function createRendererHarness() {
     const renderer = Object.create(Renderer.prototype);
     renderer._marks = new Map();
+    renderer._placementSets = new Map();
+    renderer._detachedTargets = new Set();
     renderer._fontResourceCache = new Map();
     renderer._nextMarkId = 1;
     renderer._state = "alive";
@@ -494,7 +976,9 @@ function createRendererHarness() {
     };
     renderer._globalBindGroup = {};
     const pass = {
+        draw: vi.fn(),
         end: vi.fn(),
+        setPipeline: vi.fn(),
         setViewport: vi.fn(),
         setScissorRect: vi.fn(),
         setBindGroup: vi.fn(),
@@ -528,17 +1012,44 @@ function createRendererHarness() {
         getCurrentTexture: () => ({ createView: vi.fn() }),
         unconfigure: vi.fn(),
     };
+    /** @type {{width: number, height: number, sampleCount: number, usage: number}[]} */
+    const transientAcquires = [];
+    let transientId = 0;
+    renderer._textureCompositor = {
+        prepare: vi.fn(),
+        flush: vi.fn(),
+        destroy: vi.fn(),
+        pipeline: {},
+        createBinding: vi.fn(() => ({})),
+    };
+    renderer._transientTextures = {
+        acquire: vi.fn((width, height, sampleCount, usage) => {
+            transientAcquires.push({ width, height, sampleCount, usage });
+            return {
+                key: `texture-${transientId++}`,
+                texture: {},
+                view: {},
+                cost: width * height * sampleCount,
+            };
+        }),
+        release: vi.fn(),
+        destroyEvicted: vi.fn(),
+        destroy: vi.fn(),
+    };
     return {
         renderer: /** @type {Renderer} */ (renderer),
         pass,
         commandEncoderDescriptors,
         renderPassDescriptors,
+        transientAcquires,
     };
 }
 
-function createProgram() {
+/** @param {"shader" | "multisample"} [antialiasing] */
+function createProgram(antialiasing = "shader") {
     const series = { replace: vi.fn() };
     return {
+        antialiasing,
         count: 10,
         drawCount: 10,
         /**

@@ -23,7 +23,11 @@ import { getMarkData } from "../immediate/markData.js";
 import { resolveMarkProperty } from "../immediate/markEncoding.js";
 import { isLargeIndexDomain } from "../../scales/indexLikeDomainUtils.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
-import { getSecondaryChannel } from "../../encoder/encoder.js";
+import {
+    getSecondaryChannel,
+    isDatumDef,
+    isValueDef,
+} from "../../encoder/encoder.js";
 
 const SHAPE_CODES = new Map(
     [
@@ -160,7 +164,13 @@ export function createWebGpuMarkConfig(
         return createTranslation(
             rectMark,
             addPlacementIndex(
-                createRectConfig(mark, data, coords, readViewOpacity),
+                createRectConfig(
+                    mark,
+                    data,
+                    coords,
+                    readViewOpacity,
+                    typeof viewOpacity != "function"
+                ),
                 resolvedPlacementIndex
             )
         );
@@ -226,7 +236,7 @@ export function getWebGpuMarkConfigRevision(mark) {
 
 /**
  * Returns the revision of live scale, property, and selection resources.
- * Packed data and view opacity have separate revisions at the call site.
+ * Packed data has a separate revision, while view opacity is frame-group state.
  *
  * @param {import("../../marks/mark.js").default} mark
  * @returns {number | undefined}
@@ -439,9 +449,10 @@ function assertScalarIntervalInput(mark, selectionName, channel) {
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
  * @param {() => number} viewOpacity
+ * @param {boolean} staticViewOpacity
  * @returns {object}
  */
-function createRectConfig(mark, data, coords, viewOpacity) {
+function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
     mark.initializeRenderingRevisions([
         "cornerRadius",
         "cornerRadiusTopRight",
@@ -484,15 +495,25 @@ function createRectConfig(mark, data, coords, viewOpacity) {
                 data,
                 viewOpacity
             ),
-            strokeWidth: createNumericChannel(mark, "strokeWidth", data),
-            cornerRadiusTopRight: liveValue(
+            strokeWidth: createNumericChannel(mark, "strokeWidth", data, true),
+            cornerRadiusTopRight: staticOrLivePropertyValue(
+                mark,
+                ["cornerRadius", "cornerRadiusTopRight"],
                 () => readCornerRadii(mark).topRight
             ),
-            cornerRadiusBottomRight: liveValue(
+            cornerRadiusBottomRight: staticOrLivePropertyValue(
+                mark,
+                ["cornerRadius", "cornerRadiusBottomRight"],
                 () => readCornerRadii(mark).bottomRight
             ),
-            cornerRadiusTopLeft: liveValue(() => readCornerRadii(mark).topLeft),
-            cornerRadiusBottomLeft: liveValue(
+            cornerRadiusTopLeft: staticOrLivePropertyValue(
+                mark,
+                ["cornerRadius", "cornerRadiusTopLeft"],
+                () => readCornerRadii(mark).topLeft
+            ),
+            cornerRadiusBottomLeft: staticOrLivePropertyValue(
+                mark,
+                ["cornerRadius", "cornerRadiusBottomLeft"],
                 () => readCornerRadii(mark).bottomLeft
             ),
             minWidth: liveValue(() => readNumericProperty(mark, "minWidth")),
@@ -509,15 +530,21 @@ function createRectConfig(mark, data, coords, viewOpacity) {
             shadowBlur: liveValue(() =>
                 readOptionalNumericProperty(mark, "shadowBlur", 0)
             ),
-            shadowOpacity: liveValue(
+            shadowOpacity: staticOrLivePropertyValue(
+                mark,
+                ["shadowOpacity"],
                 () =>
                     readOptionalNumericProperty(mark, "shadowOpacity", 0) *
-                    viewOpacity()
+                    viewOpacity(),
+                undefined,
+                !staticViewOpacity
             ),
             shadowColor: liveValue(() =>
                 toRgba(mark, readProperty(mark, "shadowColor") ?? "black")
             ),
-            hatchPattern: liveValue(
+            hatchPattern: staticOrLivePropertyValue(
+                mark,
+                ["hatch"],
                 () => mapProperty(mark, "hatch", HATCH_CODES, "none"),
                 "u32"
             ),
@@ -1157,11 +1184,25 @@ function createIndexPositionScale(scale, range, band) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {object[]} data
+ * @param {boolean} [keepLiteralStatic]
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createNumericChannel(mark, channel, data) {
+function createNumericChannel(mark, channel, data, keepLiteralStatic = false) {
     return createConditionalChannel(mark, channel, data, (encoder) =>
-        createNumericBranch(mark, channel, data, encoder)
+        keepLiteralStatic && isStaticConstantEncoder(encoder)
+            ? { value: Number(encoder(data[0])) }
+            : createNumericBranch(mark, channel, data, encoder)
+    );
+}
+
+/** @param {import("../../types/encoder.js").Encoder} encoder */
+function isStaticConstantEncoder(encoder) {
+    const channelDef = encoder.channelDef;
+    return (
+        encoder.constant &&
+        !encoder.scale &&
+        ((isValueDef(channelDef) && !isExprRef(channelDef.value)) ||
+            (isDatumDef(channelDef) && !isExprRef(channelDef.datum)))
     );
 }
 
@@ -2204,6 +2245,36 @@ function readProperty(mark, property) {
  */
 function liveValue(read, type) {
     return Object.assign(retainedValue(read, type), { dynamic: true });
+}
+
+/**
+ * Emits literal mark properties as renderer constants while keeping expression
+ * properties updateable. Every listed property contributes to the value.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string[]} properties
+ * @param {() => number | number[]} read
+ * @param {import("@genome-spy/webgpu-renderer").ScalarType} [type]
+ * @param {boolean} [forceDynamic]
+ */
+function staticOrLivePropertyValue(
+    mark,
+    properties,
+    read,
+    type,
+    forceDynamic = false
+) {
+    const rawProperties = /** @type {Record<string, any>} */ (mark.properties);
+    if (
+        forceDynamic ||
+        properties.some((property) => isExprRef(rawProperties[property]))
+    ) {
+        return liveValue(read, type);
+    }
+    return {
+        value: read(),
+        ...(type ? { type } : {}),
+    };
 }
 
 /**

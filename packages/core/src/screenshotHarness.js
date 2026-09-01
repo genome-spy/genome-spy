@@ -116,14 +116,15 @@ async function initializeHarness(url) {
                 const currentDevicePixelRatio = resolveCaptureDevicePixelRatio(
                     currentSize.height
                 );
+                const { blob } = await api.imageExport.raster({
+                    logicalWidth: currentSize.width,
+                    logicalHeight: currentSize.height,
+                    pixelRatio: currentDevicePixelRatio,
+                    background: "white",
+                });
                 return {
                     logicalSize: currentSize,
-                    dataUrl: api.exportCanvas(
-                        currentSize.width,
-                        currentSize.height,
-                        currentDevicePixelRatio,
-                        "white"
-                    ),
+                    dataUrl: await blobToDataUrl(blob),
                 };
             },
         };
@@ -136,6 +137,21 @@ async function initializeHarness(url) {
     } catch (error) {
         setFailure(error instanceof Error ? error.message : String(error));
     }
+}
+
+/**
+ * @param {Blob} blob
+ * @returns {Promise<string>}
+ */
+function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.addEventListener("load", () => resolve(String(reader.result)));
+        reader.addEventListener("error", () =>
+            reject(reader.error ?? new Error("Unable to read screenshot Blob."))
+        );
+        reader.readAsDataURL(blob);
+    });
 }
 
 async function waitForSettledRender() {

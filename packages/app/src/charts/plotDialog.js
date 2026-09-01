@@ -105,8 +105,8 @@ export class PlotDialog extends BaseDialog {
             ),
             this.makeButton(
                 "Save PNG",
-                () => {
-                    downloadChartPng(
+                async () => {
+                    await downloadChartPng(
                         this.renderRoot,
                         this._api,
                         this.plot.filename

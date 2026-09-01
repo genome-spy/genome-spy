@@ -222,6 +222,49 @@ Viewport-local position ranges are the caller's responsibility. This lets one
 handle serve several same-shaped viewport occurrences. Occurrence-local scale
 domains would require a separate draw-time scale-state contract.
 
+Visible frames may instead provide ordered `items`, where each item is either
+a draw command or a semantic render scope. A scope supplies logical-pixel
+`bounds`, an ordered `items` iterable, and optional `opacity`:
+
+```js
+renderer.render({
+  items: [
+    backgroundDraw,
+    {
+      bounds: { x: 20, y: 10, width: 400, height: 120 },
+      opacity: 0.6,
+      items: [heatmapDraw],
+    },
+    labelsDraw,
+  ],
+});
+```
+
+Scopes describe hierarchy, clipping bounds, and opacity without exposing the
+renderer implementation. The renderer decides which marks need multisampling,
+promotes compatible scopes, and batches consecutive compatible flat draws.
+Opaque compatible scopes are flattened; fractional opacity retains isolation
+so it is applied once after child overlap. Dynamic rectangle edge properties
+use shader antialiasing, while plain rectangles with static edge properties use
+multisampling. Multisample pipelines are created lazily, and exact-size
+transient attachments are pooled within a bounded free-cache budget.
+
+Picking remains a separate flat, single-sampled frame. Visual render scopes do
+not change pick ordering, IDs, or attachment ownership.
+
+### Detached targets
+
+`renderer.createDetachedTarget(canvas, { width, height, dpr })` configures a
+second WebGPU canvas on the renderer's device. Its `render()` method reuses all
+retained marks, placements, pipelines, and transient attachments while using
+target-local globals and physical canvas dimensions. It does not replace the
+live frame remembered for picking.
+
+Call `await target.onSubmittedWorkDone()` before reading the canvas with
+`toBlob()`, `toDataURL()`, or `drawImage()`. Call `target.destroy()` afterward
+to unconfigure its context. Destroying the renderer also destroys any targets
+that remain open.
+
 ## Retained updates
 
 ### Mark handles and slots

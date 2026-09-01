@@ -180,3 +180,30 @@ handle. Repeated ordinary marks use an adapter-owned placement source, while
 renderer-neutral placement sources remain owned by their Core or App layout
 producer. Neither an empty draw list nor offscreen placement releases retained
 resources; mark/view and placement-source disposal do.
+
+Visible WebGPU frames may contain generic ordered semantic scopes. Core
+compiles stable view hierarchy, bounds, and live opacity without selecting a
+rasterization technique. The renderer owns the rectangle antialiasing decision,
+promotes compatible scopes to multisampled layers, coalesces adjacent compatible
+draws, and isolates only fractional-opacity scopes. It also owns transient
+attachments, resolves, and premultiplied-alpha composition. Explicit
+sample-facet batches collect repeated logical views without changing ordinary
+paint order. Picking stays flat and single-sampled. Canvas2D honors the same
+local view-opacity semantics with transparent offscreen canvases, while WebGL
+keeps its unchanged effective-opacity fallback.
+
+Compositing bounds follow semantic clipping. A zoomable positional scale makes
+both directions clip by default; explicit directional clipping leaves the
+other direction unbounded. This keeps direct and composited rendering
+consistent while allowing the common zoomable-track case to use bounded
+attachments.
+
+WebGPU raster export compiles an export-sized layout and submits it to a
+same-device detached canvas target with target-local globals. The renderer
+reuses retained GPU resources without replacing the live coordinator's frame
+plan. Hybrid SVG passes each selected paint-order run as a mark predicate,
+waits for submission, and uses the shared SVG crop and placeholder helpers.
+The backend serializes asynchronous exports because layout synchronization can
+temporarily update shared retained mark resources.
+The deprecated synchronous canvas-export API is unavailable with WebGPU because
+GPU completion cannot be awaited through its synchronous contract.

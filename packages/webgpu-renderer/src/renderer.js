@@ -1,5 +1,8 @@
 import { gpuLabel, RENDERER_GPU_OWNER } from "./utils/gpuLabel.js";
 import { ProgramTemplateCache } from "./marks/programs/internal/programTemplateCache.js";
+import { TextureCompositor, TransientTexturePool } from "./renderGroups.js";
+
+const TRANSPARENT = { r: 0, g: 0, b: 0, a: 0 };
 
 /**
  * Renderer-level error for unsupported environments or invalid operations.
@@ -270,6 +273,7 @@ export class Renderer {
         this.context = context;
         this.format = format;
         this.canvas = canvas;
+        this.alphaMode = alphaMode;
         this._onInvalidate = onInvalidate ?? (() => {});
         this._onDeviceLoss = onDeviceLoss ?? (() => {});
         /** @type {"alive" | "lost" | "destroyed"} */
@@ -286,7 +290,11 @@ export class Renderer {
         this._marks = new Map();
         /** @type {Map<number, PlacementSet>} */
         this._placementSets = new Map();
+        /** @type {Set<import("./index.d.ts").DetachedTargetHandle>} */
+        this._detachedTargets = new Set();
         this._programTemplateCache = new ProgramTemplateCache(addCount);
+        this._transientTextures = new TransientTexturePool(device, format);
+        this._textureCompositor = new TextureCompositor(device, format);
         /** @type {Map<object, Map<unknown, { destroy: () => void }>>} */
         this._fontResourceCache = new Map();
         this._nextFontResourceId = 1;
@@ -379,12 +387,69 @@ export class Renderer {
      */
     updateGlobals(globals) {
         this._assertAlive();
-        const { width, height, dpr } = globals;
-        assertPositiveFinite("width", width);
-        assertPositiveFinite("height", height);
-        assertPositiveFinite("dpr", dpr);
-        this._globals = { width, height, dpr };
+        /** @type {import("./index.d.ts").GlobalUniforms} */
+        this._globals = validateGlobals(globals);
         this.markPickingDirty();
+    }
+
+    /**
+     * Creates an independently sized canvas target that shares this renderer's
+     * device and retained resources.
+     *
+     * @param {HTMLCanvasElement} canvas
+     * @param {import("./index.d.ts").GlobalUniforms} globals
+     * @returns {import("./index.d.ts").DetachedTargetHandle}
+     */
+    createDetachedTarget(canvas, globals) {
+        this._assertAlive();
+        const context = canvas.getContext("webgpu");
+        if (!context) {
+            throw new RendererError(
+                "Could not create a detached WebGPU context."
+            );
+        }
+        context.configure({
+            device: this.device,
+            format: this.format,
+            alphaMode: this.alphaMode,
+        });
+        const targetGlobals = validateGlobals(globals);
+        let destroyed = false;
+        const assertAlive = () => {
+            this._assertAlive();
+            if (destroyed) {
+                throw new RendererError(
+                    "Detached render target has been destroyed."
+                );
+            }
+        };
+        /** @type {import("./index.d.ts").DetachedTargetHandle} */
+        const target = {
+            canvas,
+            render: (frame = {}) => {
+                assertAlive();
+                this._renderTarget(
+                    context,
+                    canvas,
+                    targetGlobals,
+                    frame,
+                    false
+                );
+            },
+            onSubmittedWorkDone: async () => {
+                assertAlive();
+                await this.device.queue.onSubmittedWorkDone();
+            },
+            destroy: () => {
+                if (!destroyed) {
+                    destroyed = true;
+                    context.unconfigure();
+                    this._detachedTargets.delete(target);
+                }
+            },
+        };
+        this._detachedTargets.add(target);
+        return target;
     }
 
     /**
@@ -768,44 +833,83 @@ export class Renderer {
      */
     render(frame = {}) {
         this._assertAlive();
-        const draws = this._normalizeDraws(frame.draws ?? this._marks.keys());
+        this._renderTarget(
+            this.context,
+            this.canvas,
+            this._globals,
+            frame,
+            true
+        );
+    }
+
+    /**
+     * @param {GPUCanvasContext} context
+     * @param {HTMLCanvasElement} canvas
+     * @param {import("./index.d.ts").GlobalUniforms} globals
+     * @param {import("./index.d.ts").RenderFrame} frame
+     * @param {boolean} rememberFrame
+     */
+    _renderTarget(context, canvas, globals, frame, rememberFrame) {
+        const previousGlobals =
+            /** @type {import("./index.d.ts").GlobalUniforms} */ (
+                this._globals
+            );
+        this._globals = globals;
+        try {
+            this._renderTargetFrame(context, canvas, frame, rememberFrame);
+        } finally {
+            this._globals = previousGlobals;
+        }
+    }
+
+    /**
+     * @param {GPUCanvasContext} context
+     * @param {HTMLCanvasElement} canvas
+     * @param {import("./index.d.ts").RenderFrame} frame
+     * @param {boolean} rememberFrame
+     */
+    _renderTargetFrame(context, canvas, frame, rememberFrame) {
+        const { items, draws, groupCount } = this._normalizeRenderItems(
+            frame.items ?? frame.draws ?? this._marks.keys()
+        );
         addCount("renderDraws", draws.length);
+        addCount("renderGroups", groupCount);
         this._writeDrawGlobals(draws);
+        this._textureCompositor.prepare(draws.length + groupCount + 1);
         const commandEncoder = this.device.createCommandEncoder({
             label: gpuLabel(RENDERER_GPU_OWNER, "main command encoder"),
         });
-        const view = this.context.getCurrentTexture().createView({
+        const view = context.getCurrentTexture().createView({
             label: gpuLabel(RENDERER_GPU_OWNER, "canvas texture view"),
         });
 
-        // The pick pass is rendered on demand, separate from the main pass.
-        const pass = commandEncoder.beginRenderPass({
-            label: gpuLabel(RENDERER_GPU_OWNER, "main render pass"),
-            colorAttachments: [
+        try {
+            const encodingStart = startPhase();
+            this._encodeRenderItems(
+                commandEncoder,
                 {
                     view,
-                    clearValue: frame.clearColor ?? {
-                        r: 1,
-                        g: 1,
-                        b: 1,
-                        a: 1,
-                    },
-                    loadOp: "clear",
-                    storeOp: "store",
+                    width: canvas.width,
+                    height: canvas.height,
+                    logicalX: 0,
+                    logicalY: 0,
                 },
-            ],
-        });
-
-        const encodingStart = startPhase();
-        this._encodeDraws(pass, draws, false);
-        finishPhase("commandEncoding", encodingStart);
-
-        pass.end();
-        const submissionStart = startPhase();
-        this.device.queue.submit([commandEncoder.finish()]);
-        finishPhase("submission", submissionStart);
-        this._renderFrame = draws;
-        this._pickingDirty = true;
+                items,
+                1,
+                frame.clearColor ?? { r: 1, g: 1, b: 1, a: 1 }
+            );
+            this._textureCompositor.flush();
+            finishPhase("commandEncoding", encodingStart);
+            const submissionStart = startPhase();
+            this.device.queue.submit([commandEncoder.finish()]);
+            finishPhase("submission", submissionStart);
+        } finally {
+            this._transientTextures.destroyEvicted();
+        }
+        if (rememberFrame) {
+            this._renderFrame = draws;
+            this._pickingDirty = true;
+        }
     }
 
     /**
@@ -836,176 +940,586 @@ export class Renderer {
             width: this._globals.width,
             height: this._globals.height,
         };
-        const normalized = Array.from(draws, (draw) => {
-            const command =
-                typeof draw == "number" ? { mark: { markId: draw } } : draw;
-            const markId = command.mark.markId;
-            const mark = this._marks.get(markId);
-            if (!mark) {
-                throw new RendererError(`No such mark: ${markId}`);
-            }
-
-            const viewport = { ...(command.viewport ?? canvas) };
-            assertRect("viewport", viewport);
-            if (
-                viewport.x < 0 ||
-                viewport.y < 0 ||
-                viewport.x + viewport.width > canvas.width ||
-                viewport.y + viewport.height > canvas.height
-            ) {
-                throw new RendererError(
-                    "Viewport must be contained within the logical canvas."
-                );
-            }
-
-            let scissor = intersectRects(command.scissor ?? canvas, canvas);
-            const firstInstance = command.firstInstance ?? 0;
-            assertNonNegativeInteger("firstInstance", firstInstance);
-            const instanceCount =
-                command.instanceCount ?? mark.drawCount - firstInstance;
-            assertNonNegativeInteger("instanceCount", instanceCount);
-            if (firstInstance + instanceCount > mark.drawCount) {
-                throw new RendererError(
-                    `Instance range exceeds mark count: ${mark.drawCount}.`
-                );
-            }
-            const resolvedRange = mark.resolveDrawRange(
-                firstInstance,
-                instanceCount
+        /** @type {NormalizedDraw[]} */
+        const normalized = [];
+        for (const draw of draws) {
+            const normalizedDraw = this._normalizeDraw(
+                draw,
+                canvas,
+                normalized.length
             );
-
-            const placementConfig = mark._placementIndex;
-            let placement;
-            if (placementConfig) {
-                if (!command.placement) {
-                    throw new RendererError(
-                        "Placement-enabled marks require a placement binding."
-                    );
-                }
-                const set = this._placementSets.get(
-                    command.placement.set.placementSetId
-                );
-                if (!set) {
-                    throw new RendererError(
-                        `No such placement set: ${command.placement.set.placementSetId}`
-                    );
-                }
-                const index = command.placement.index;
-                if (
-                    "source" in placementConfig &&
-                    placementConfig.source === "draw"
-                ) {
-                    if (!Number.isInteger(index) || index < 0) {
-                        throw new RendererError(
-                            "Draw placement marks require a non-negative index."
-                        );
-                    }
-                    if (index >= set.count) {
-                        throw new RendererError(
-                            `Placement index ${index} exceeds set count ${set.count}.`
-                        );
-                    }
-                } else if (index !== undefined) {
-                    throw new RendererError(
-                        "Per-instance placement marks forbid a draw-level index."
-                    );
-                }
-                placement = {
-                    bindGroup: set.bindGroup,
-                    count: set.count,
-                    index,
-                    clipToPlacement: command.placement.clipToPlacement,
-                    clipMode: placementClipMode(
-                        command.placement.clipToPlacement
-                    ),
-                };
-                if (index !== undefined && placement.clipToPlacement) {
-                    const base = index * 4;
-                    const rectangles = set._rectangles;
-                    const placementRect = {
-                        x: viewport.x + rectangles[base] * viewport.width,
-                        y: viewport.y + rectangles[base + 1] * viewport.height,
-                        width: rectangles[base + 2] * viewport.width,
-                        height: rectangles[base + 3] * viewport.height,
-                    };
-                    const clip = placement.clipToPlacement;
-                    scissor = intersectRects(scissor, {
-                        x: clip.includes("x") ? placementRect.x : canvas.x,
-                        y: clip.includes("y") ? placementRect.y : canvas.y,
-                        width: clip.includes("x")
-                            ? placementRect.width
-                            : canvas.width,
-                        height: clip.includes("y")
-                            ? placementRect.height
-                            : canvas.height,
-                    });
-                }
-            } else if (command.placement) {
-                throw new RendererError(
-                    "Placement bindings require a placement-enabled mark."
-                );
+            if (normalizedDraw) {
+                normalized.push(normalizedDraw);
             }
-
-            return {
-                markId,
-                viewport,
-                scissor,
-                visibleRange: normalizeVisibleRange(
-                    command.visibleRange,
-                    canvas
-                ),
-                firstInstance: resolvedRange.firstInstance,
-                instanceCount: resolvedRange.instanceCount,
-                placement,
-            };
-        }).filter((draw) => draw.scissor.width > 0 && draw.scissor.height > 0);
+        }
         addCount("normalizedDraws", normalized.length);
         finishPhase("drawNormalization", phaseStart);
         return normalized;
     }
 
     /**
+     * @param {import("./index.d.ts").DrawCommand | MarkId} draw
+     * @param {import("./index.d.ts").DrawRect} canvas
+     * @param {number} uniformIndex
+     * @returns {NormalizedDraw | undefined}
+     */
+    _normalizeDraw(draw, canvas, uniformIndex) {
+        const command =
+            typeof draw == "number" ? { mark: { markId: draw } } : draw;
+        const markId = command.mark.markId;
+        const mark = this._marks.get(markId);
+        if (!mark) {
+            throw new RendererError(`No such mark: ${markId}`);
+        }
+
+        const viewport = { ...(command.viewport ?? canvas) };
+        assertRect("viewport", viewport);
+        if (
+            viewport.x < 0 ||
+            viewport.y < 0 ||
+            viewport.x + viewport.width > canvas.width ||
+            viewport.y + viewport.height > canvas.height
+        ) {
+            throw new RendererError(
+                "Viewport must be contained within the logical canvas."
+            );
+        }
+
+        let scissor = intersectRects(command.scissor ?? canvas, canvas);
+        const firstInstance = command.firstInstance ?? 0;
+        assertNonNegativeInteger("firstInstance", firstInstance);
+        const instanceCount =
+            command.instanceCount ?? mark.drawCount - firstInstance;
+        assertNonNegativeInteger("instanceCount", instanceCount);
+        if (firstInstance + instanceCount > mark.drawCount) {
+            throw new RendererError(
+                `Instance range exceeds mark count: ${mark.drawCount}.`
+            );
+        }
+        const resolvedRange = mark.resolveDrawRange(
+            firstInstance,
+            instanceCount
+        );
+
+        const placementConfig = mark._placementIndex;
+        let placement;
+        if (placementConfig) {
+            if (!command.placement) {
+                throw new RendererError(
+                    "Placement-enabled marks require a placement binding."
+                );
+            }
+            const set = this._placementSets.get(
+                command.placement.set.placementSetId
+            );
+            if (!set) {
+                throw new RendererError(
+                    `No such placement set: ${command.placement.set.placementSetId}`
+                );
+            }
+            const index = command.placement.index;
+            if (
+                "source" in placementConfig &&
+                placementConfig.source === "draw"
+            ) {
+                if (!Number.isInteger(index) || index < 0) {
+                    throw new RendererError(
+                        "Draw placement marks require a non-negative index."
+                    );
+                }
+                if (index >= set.count) {
+                    throw new RendererError(
+                        `Placement index ${index} exceeds set count ${set.count}.`
+                    );
+                }
+            } else if (index !== undefined) {
+                throw new RendererError(
+                    "Per-instance placement marks forbid a draw-level index."
+                );
+            }
+            placement = {
+                bindGroup: set.bindGroup,
+                count: set.count,
+                index,
+                clipToPlacement: command.placement.clipToPlacement,
+                clipMode: placementClipMode(command.placement.clipToPlacement),
+            };
+            if (index !== undefined && placement.clipToPlacement) {
+                const base = index * 4;
+                const rectangles = set._rectangles;
+                const placementRect = {
+                    x: viewport.x + rectangles[base] * viewport.width,
+                    y: viewport.y + rectangles[base + 1] * viewport.height,
+                    width: rectangles[base + 2] * viewport.width,
+                    height: rectangles[base + 3] * viewport.height,
+                };
+                const clip = placement.clipToPlacement;
+                scissor = intersectRects(scissor, {
+                    x: clip.includes("x") ? placementRect.x : canvas.x,
+                    y: clip.includes("y") ? placementRect.y : canvas.y,
+                    width: clip.includes("x")
+                        ? placementRect.width
+                        : canvas.width,
+                    height: clip.includes("y")
+                        ? placementRect.height
+                        : canvas.height,
+                });
+            }
+        } else if (command.placement) {
+            throw new RendererError(
+                "Placement bindings require a placement-enabled mark."
+            );
+        }
+
+        if (scissor.width <= 0 || scissor.height <= 0) {
+            return undefined;
+        }
+        return {
+            type: /** @type {"draw"} */ ("draw"),
+            requiredSampleCount: mark.antialiasing === "multisample" ? 4 : 1,
+            uniformIndex,
+            markId,
+            viewport,
+            scissor,
+            visibleRange: normalizeVisibleRange(command.visibleRange, canvas),
+            firstInstance: resolvedRange.firstInstance,
+            instanceCount: resolvedRange.instanceCount,
+            placement,
+        };
+    }
+
+    /**
+     * @param {Iterable<import("./index.d.ts").RenderItem | MarkId>} items
+     * @returns {{items: NormalizedRenderItem[], draws: NormalizedDraw[], groupCount: number}}
+     */
+    _normalizeRenderItems(items) {
+        const phaseStart = startPhase();
+        // TODO: If normalization becomes costly, retain semantic topology with
+        // slots for live opacity and bounds. Physical layerization must still
+        // run when opacity changes between zero, one, and fractional values.
+        const canvas = {
+            x: 0,
+            y: 0,
+            width: this._globals.width,
+            height: this._globals.height,
+        };
+        /** @type {NormalizedDraw[]} */
+        const draws = [];
+        let groupCount = 0;
+
+        /**
+         * @param {Iterable<import("./index.d.ts").RenderItem | MarkId>} source
+         * @returns {NormalizedSemanticItem[]}
+         */
+        const normalize = (source) => {
+            /** @type {NormalizedSemanticItem[]} */
+            const normalized = [];
+            for (const item of source) {
+                if (isRenderScope(item)) {
+                    const opacity = Math.min(1, Math.max(0, item.opacity ?? 1));
+                    if (Number.isNaN(opacity)) {
+                        throw new RendererError(
+                            "Render scope opacity must be a number."
+                        );
+                    }
+                    assertRect("render scope bounds", item.bounds, true);
+                    if (
+                        opacity === 0 ||
+                        item.bounds.width === 0 ||
+                        item.bounds.height === 0
+                    ) {
+                        continue;
+                    }
+                    const children = normalize(item.items);
+                    if (!children.length) {
+                        continue;
+                    }
+                    normalized.push({
+                        type: "scope",
+                        bounds: item.bounds,
+                        opacity,
+                        coverageOnly: children.every(requiresMultisampling),
+                        items: children,
+                    });
+                } else {
+                    const draw = this._normalizeDraw(
+                        item,
+                        canvas,
+                        draws.length
+                    );
+                    if (draw) {
+                        draws.push(draw);
+                        normalized.push(draw);
+                    }
+                }
+            }
+            return normalized;
+        };
+
+        /**
+         * @param {NormalizedSemanticItem[]} source
+         * @param {1 | 4} targetSampleCount
+         * @param {import("./index.d.ts").DrawRect} activeBounds
+         * @returns {NormalizedRenderItem[]}
+         */
+        const layerize = (source, targetSampleCount, activeBounds) => {
+            /** @type {NormalizedRenderItem[]} */
+            const normalized = [];
+            /** @type {NormalizedDraw[]} */
+            let coverageRun = [];
+            /** @type {import("./index.d.ts").DrawRect | undefined} */
+            let coverageBounds;
+
+            const flushCoverageRun = () => {
+                if (!coverageRun.length) {
+                    return;
+                }
+                groupCount++;
+                normalized.push({
+                    type: "group",
+                    bounds: /** @type {import("./index.d.ts").DrawRect} */ (
+                        coverageBounds
+                    ),
+                    opacity: 1,
+                    sampleCount: 4,
+                    items: coverageRun,
+                });
+                coverageRun = [];
+                coverageBounds = undefined;
+            };
+
+            for (const item of source) {
+                if (item.type === "scope") {
+                    flushCoverageRun();
+                    const bounds = intersectRects(item.bounds, activeBounds);
+                    if (!bounds.width || !bounds.height) {
+                        continue;
+                    }
+                    const sampleCount = item.coverageOnly ? 4 : 1;
+                    const children = layerize(item.items, sampleCount, bounds);
+                    if (!children.length) {
+                        continue;
+                    }
+                    if (
+                        item.opacity === 1 &&
+                        sampleCount === targetSampleCount
+                    ) {
+                        normalized.push(...children);
+                    } else {
+                        groupCount++;
+                        normalized.push({
+                            type: "group",
+                            bounds,
+                            opacity: item.opacity,
+                            sampleCount,
+                            items: children,
+                        });
+                    }
+                } else {
+                    if (
+                        targetSampleCount === 1 &&
+                        item.requiredSampleCount === 4
+                    ) {
+                        const bounds = intersectRects(
+                            item.scissor,
+                            activeBounds
+                        );
+                        if (!bounds.width || !bounds.height) {
+                            continue;
+                        }
+                        coverageRun.push(item);
+                        if (coverageBounds) {
+                            expandRect(coverageBounds, bounds);
+                        } else {
+                            coverageBounds = bounds;
+                        }
+                    } else {
+                        flushCoverageRun();
+                        normalized.push(item);
+                    }
+                }
+            }
+            flushCoverageRun();
+            return normalized;
+        };
+
+        const normalizedItems = layerize(normalize(items), 1, canvas);
+        addCount("normalizedDraws", draws.length);
+        finishPhase("drawNormalization", phaseStart);
+        return { items: normalizedItems, draws, groupCount };
+    }
+
+    /**
+     * Encodes ordered items into a single-sampled accumulation target.
+     *
+     * @param {GPUCommandEncoder} commandEncoder
+     * @param {RenderTarget} target
+     * @param {NormalizedRenderItem[]} items
+     * @param {1 | 4} sampleCount
+     * @param {GPUColor} clearValue
+     */
+    _encodeRenderItems(commandEncoder, target, items, sampleCount, clearValue) {
+        let initialized = false;
+        /** @type {NormalizedDraw[]} */
+        let pending = [];
+
+        const flush = () => {
+            if (!pending.length) {
+                return;
+            }
+            if (sampleCount === 1) {
+                this._encodeDrawPass(
+                    commandEncoder,
+                    target,
+                    pending,
+                    initialized ? undefined : clearValue
+                );
+            } else if (!initialized) {
+                this._encodeMultisampleDrawPass(
+                    commandEncoder,
+                    target,
+                    pending
+                );
+            } else {
+                const texture = this._transientTextures.acquire(
+                    target.width,
+                    target.height,
+                    1
+                );
+                const chunk = { texture, ...target, view: texture.view };
+                this._encodeMultisampleDrawPass(commandEncoder, chunk, pending);
+                this._encodeCompositePass(
+                    commandEncoder,
+                    target,
+                    chunk,
+                    1,
+                    initialized ? undefined : clearValue
+                );
+                this._transientTextures.release(chunk.texture);
+            }
+            initialized = true;
+            pending = [];
+        };
+
+        for (const item of items) {
+            if (item.type === "group") {
+                flush();
+                const group = this._renderGroup(commandEncoder, target, item);
+                if (group) {
+                    this._encodeCompositePass(
+                        commandEncoder,
+                        target,
+                        group,
+                        item.opacity,
+                        initialized ? undefined : clearValue
+                    );
+                    this._transientTextures.release(group.texture);
+                    initialized = true;
+                }
+            } else {
+                pending.push(item);
+            }
+        }
+        flush();
+
+        if (!initialized) {
+            this._encodeDrawPass(commandEncoder, target, [], clearValue);
+        }
+    }
+
+    /**
+     * @param {GPUCommandEncoder} commandEncoder
+     * @param {RenderTarget} parent
+     * @param {NormalizedRenderGroup} group
+     * @returns {RenderedGroup | undefined}
+     */
+    _renderGroup(commandEncoder, parent, group) {
+        const clippedBounds = intersectRects(group.bounds, {
+            x: parent.logicalX,
+            y: parent.logicalY,
+            width: parent.width / this._globals.dpr,
+            height: parent.height / this._globals.dpr,
+        });
+        const dpr = this._globals.dpr;
+        const bounds = toPhysicalScissor(
+            clippedBounds,
+            dpr,
+            Math.floor(parent.logicalX * dpr) + parent.width,
+            Math.floor(parent.logicalY * dpr) + parent.height
+        );
+        if (!bounds.width || !bounds.height) {
+            return undefined;
+        }
+        const texture = this._transientTextures.acquire(
+            bounds.width,
+            bounds.height,
+            1
+        );
+        const target = {
+            view: texture.view,
+            width: bounds.width,
+            height: bounds.height,
+            logicalX: bounds.x / dpr,
+            logicalY: bounds.y / dpr,
+        };
+        this._encodeRenderItems(
+            commandEncoder,
+            target,
+            group.items,
+            group.sampleCount,
+            TRANSPARENT
+        );
+        return { texture, ...target };
+    }
+
+    /**
+     * @param {GPUCommandEncoder} commandEncoder
+     * @param {RenderTarget} target
+     * @param {NormalizedDraw[]} draws
+     */
+    _encodeMultisampleDrawPass(commandEncoder, target, draws) {
+        const multisampled = this._transientTextures.acquire(
+            target.width,
+            target.height,
+            4
+        );
+        const pass = commandEncoder.beginRenderPass({
+            label: gpuLabel(RENDERER_GPU_OWNER, "multisample group pass"),
+            colorAttachments: [
+                {
+                    view: multisampled.view,
+                    resolveTarget: target.view,
+                    clearValue: TRANSPARENT,
+                    loadOp: "clear",
+                    storeOp: "discard",
+                },
+            ],
+        });
+        this._encodeDraws(pass, draws, false, target, 4);
+        pass.end();
+        this._transientTextures.release(multisampled);
+    }
+
+    /**
+     * @param {GPUCommandEncoder} commandEncoder
+     * @param {RenderTarget} target
+     * @param {NormalizedDraw[]} draws
+     * @param {GPUColor} [clearValue]
+     */
+    _encodeDrawPass(commandEncoder, target, draws, clearValue) {
+        const pass = commandEncoder.beginRenderPass({
+            label: gpuLabel(RENDERER_GPU_OWNER, "main render pass"),
+            colorAttachments: [
+                {
+                    view: target.view,
+                    ...(clearValue ? { clearValue } : {}),
+                    loadOp: clearValue ? "clear" : "load",
+                    storeOp: "store",
+                },
+            ],
+        });
+        this._encodeDraws(pass, draws, false, target);
+        pass.end();
+    }
+
+    /**
+     * @param {GPUCommandEncoder} commandEncoder
+     * @param {RenderTarget} target
+     * @param {RenderedGroup} source
+     * @param {number} opacity
+     * @param {GPUColor} [clearValue]
+     */
+    _encodeCompositePass(commandEncoder, target, source, opacity, clearValue) {
+        const pass = commandEncoder.beginRenderPass({
+            label: gpuLabel(RENDERER_GPU_OWNER, "group composite pass"),
+            colorAttachments: [
+                {
+                    view: target.view,
+                    ...(clearValue ? { clearValue } : {}),
+                    loadOp: clearValue ? "clear" : "load",
+                    storeOp: "store",
+                },
+            ],
+        });
+        const x = Math.round(
+            (source.logicalX - target.logicalX) * this._globals.dpr
+        );
+        const y = Math.round(
+            (source.logicalY - target.logicalY) * this._globals.dpr
+        );
+        pass.setViewport(x, y, source.width, source.height, 0, 1);
+        pass.setScissorRect(x, y, source.width, source.height);
+        pass.setPipeline(this._textureCompositor.pipeline);
+        pass.setBindGroup(
+            0,
+            this._textureCompositor.createBinding(source.view, opacity)
+        );
+        pass.draw(6);
+        pass.end();
+    }
+
+    /**
      * @param {GPURenderPassEncoder} pass
      * @param {NormalizedDraw[]} draws
      * @param {boolean} picking
+     * @param {RenderTarget} [target]
+     * @param {1 | 4} [sampleCount]
      * @returns {void}
      */
-    _encodeDraws(pass, draws, picking) {
+    _encodeDraws(
+        pass,
+        draws,
+        picking,
+        target = {
+            view: /** @type {GPUTextureView | undefined} */ (undefined),
+            width: this.canvas.width,
+            height: this.canvas.height,
+            logicalX: 0,
+            logicalY: 0,
+        },
+        sampleCount = 1
+    ) {
         const dpr = this._globals.dpr;
-        for (let i = 0; i < draws.length; i++) {
-            const draw = draws[i];
+        for (const draw of draws) {
             const mark = this._marks.get(draw.markId);
             if (!mark) {
                 continue;
             }
 
             pass.setViewport(
-                draw.viewport.x * dpr,
-                draw.viewport.y * dpr,
+                (draw.viewport.x - target.logicalX) * dpr,
+                (draw.viewport.y - target.logicalY) * dpr,
                 draw.viewport.width * dpr,
                 draw.viewport.height * dpr,
                 0,
                 1
             );
+            const targetScissor = intersectRects(draw.scissor, {
+                x: target.logicalX,
+                y: target.logicalY,
+                width: target.width / dpr,
+                height: target.height / dpr,
+            });
             const scissor = toPhysicalScissor(
-                draw.scissor,
+                targetScissor,
                 dpr,
-                this.canvas.width,
-                this.canvas.height
+                Math.floor(target.logicalX * dpr) + target.width,
+                Math.floor(target.logicalY * dpr) + target.height
             );
             pass.setScissorRect(
-                scissor.x,
-                scissor.y,
+                scissor.x - Math.floor(target.logicalX * dpr),
+                scissor.y - Math.floor(target.logicalY * dpr),
                 scissor.width,
                 scissor.height
             );
             pass.setBindGroup(0, this._globalBindGroup, [
-                i * this._globalUniformStride,
+                draw.uniformIndex * this._globalUniformStride,
             ]);
             /** @type {import("./index.d.ts").ProgramDrawOptions} */
             const options = {
                 firstInstance: draw.firstInstance,
                 instanceCount: draw.instanceCount,
+                sampleCount,
             };
             if (draw.placement) {
                 options.placement = draw.placement;
@@ -1052,6 +1566,9 @@ export class Renderer {
             set.destroy();
         }
         this._placementSets?.clear();
+        for (const target of this._detachedTargets) {
+            target.destroy();
+        }
         for (const resourcesByBitmap of this._fontResourceCache.values()) {
             for (const resources of resourcesByBitmap.values()) {
                 resources.destroy();
@@ -1060,6 +1577,8 @@ export class Renderer {
         this._fontResourceCache.clear();
         this._renderFrame = null;
         this._globalUniformBuffer.destroy();
+        this._transientTextures.destroy();
+        this._textureCompositor.destroy();
         this._pickTexture?.destroy();
         this._pickTexture = null;
         this._pickTextureView = null;
@@ -1093,6 +1612,18 @@ export class Renderer {
     _isAlive() {
         return this._state === "alive";
     }
+}
+
+/**
+ * @param {import("./index.d.ts").GlobalUniforms} globals
+ * @returns {import("./index.d.ts").GlobalUniforms}
+ */
+function validateGlobals(globals) {
+    const { width, height, dpr } = globals;
+    assertPositiveFinite("width", width);
+    assertPositiveFinite("height", height);
+    assertPositiveFinite("dpr", dpr);
+    return { width, height, dpr };
 }
 
 /**
@@ -1160,15 +1691,81 @@ function wrapMethod(target, name, before) {
 
 /**
  * @typedef {{
+ *   type: "draw",
+ *   requiredSampleCount: 1 | 4,
  *   markId: import("./index.d.ts").MarkId,
  *   viewport: import("./index.d.ts").DrawRect,
  *   scissor: import("./index.d.ts").DrawRect,
  *   visibleRange: import("./index.d.ts").DrawVisibleRange,
+ *   uniformIndex: number,
  *   firstInstance: number,
  *   instanceCount: number,
  *   placement?: { bindGroup: GPUBindGroup, count: number, index?: number, clipToPlacement?: "x"|"y"|"xy", clipMode?: number },
  * }} NormalizedDraw
  */
+
+/**
+ * @typedef {object} NormalizedRenderGroup
+ * @property {"group"} type
+ * @property {import("./index.d.ts").DrawRect} bounds
+ * @property {number} opacity
+ * @property {1 | 4} sampleCount
+ * @property {NormalizedRenderItem[]} items
+ */
+
+/** @typedef {NormalizedDraw | NormalizedRenderGroup} NormalizedRenderItem */
+
+/**
+ * @typedef {object} NormalizedRenderScope
+ * @property {"scope"} type
+ * @property {import("./index.d.ts").DrawRect} bounds
+ * @property {number} opacity
+ * @property {boolean} coverageOnly
+ * @property {NormalizedSemanticItem[]} items
+ */
+
+/** @typedef {NormalizedDraw | NormalizedRenderScope} NormalizedSemanticItem */
+
+/**
+ * @typedef {object} RenderTarget
+ * @property {GPUTextureView | undefined} view
+ * @property {number} width
+ * @property {number} height
+ * @property {number} logicalX
+ * @property {number} logicalY
+ */
+
+/**
+ * @typedef {RenderTarget & {texture: import("./renderGroups.js").TransientTexture}} RenderedGroup
+ */
+
+/** @param {unknown} value @returns {value is import("./index.d.ts").RenderScope} */
+function isRenderScope(value) {
+    return typeof value === "object" && value !== null && "items" in value;
+}
+
+/**
+ * @param {NormalizedSemanticItem} item
+ * @returns {boolean}
+ */
+function requiresMultisampling(item) {
+    return item.type === "scope"
+        ? item.coverageOnly
+        : item.requiredSampleCount === 4;
+}
+
+/**
+ * @param {import("./index.d.ts").DrawRect} a
+ * @param {import("./index.d.ts").DrawRect} b
+ */
+function expandRect(a, b) {
+    const right = Math.max(a.x + a.width, b.x + b.width);
+    const bottom = Math.max(a.y + a.height, b.y + b.height);
+    a.x = Math.min(a.x, b.x);
+    a.y = Math.min(a.y, b.y);
+    a.width = right - a.x;
+    a.height = bottom - a.y;
+}
 
 /**
  * @param {string} name
@@ -1193,18 +1790,19 @@ function assertNonNegativeInteger(name, value) {
 /**
  * @param {string} name
  * @param {import("./index.d.ts").DrawRect} rect
+ * @param {boolean} [allowEmpty]
  */
-function assertRect(name, rect) {
+function assertRect(name, rect, allowEmpty = false) {
     if (
         !Number.isFinite(rect.x) ||
         !Number.isFinite(rect.y) ||
         !Number.isFinite(rect.width) ||
         !Number.isFinite(rect.height) ||
-        rect.width <= 0 ||
-        rect.height <= 0
+        (allowEmpty ? rect.width < 0 : rect.width <= 0) ||
+        (allowEmpty ? rect.height < 0 : rect.height <= 0)
     ) {
         throw new RendererError(
-            `${name} must have finite coordinates and positive dimensions.`
+            `${name} must have finite coordinates and ${allowEmpty ? "non-negative" : "positive"} dimensions.`
         );
     }
 }

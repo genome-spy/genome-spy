@@ -34,6 +34,9 @@ export default class Canvas2DRenderCoordinator {
         this.pickingRasterizer = undefined;
         this.dirtyPickingBuffer = true;
         this.xIndexManager = new CanvasXIndexManager();
+
+        /** @type {CanvasRenderingContext2D[]} */
+        this.opacityLayers = [];
     }
 
     computeLayout() {
@@ -86,6 +89,7 @@ export default class Canvas2DRenderCoordinator {
                     background: this.getBackground(),
                     paint: true,
                     xIndexManager: this.xIndexManager,
+                    opacityLayers: this.opacityLayers,
                 })
             );
             this.dirtyPickingBuffer = true;

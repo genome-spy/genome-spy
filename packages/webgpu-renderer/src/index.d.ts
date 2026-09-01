@@ -1112,16 +1112,40 @@ export type DrawCommand = {
     placement?: DrawPlacement;
 };
 
+export type RenderScope = {
+    /** Ordered retained draws and nested semantic scopes. */
+    items: Iterable<RenderItem>;
+    /** Logical-pixel bounds available for clipping or isolation. */
+    bounds: DrawRect;
+    /** Opacity applied once to the scope's combined contents. */
+    opacity?: number;
+};
+
+export type RenderItem = DrawCommand | RenderScope;
+
 export type RenderFrame = {
     /** Ordered mark occurrences. Defaults to all retained marks in creation order. */
     draws?: Iterable<DrawCommand>;
+    /** Ordered draws and semantic scopes. Takes precedence over draws. */
+    items?: Iterable<RenderItem>;
     /** Canvas clear color. Defaults to opaque white. */
     clearColor?: GPUColor;
+};
+
+export type DetachedTargetHandle = {
+    readonly canvas: HTMLCanvasElement;
+    /** Draw using this target's logical dimensions without changing live globals. */
+    render(frame?: RenderFrame): void;
+    /** Wait for all previously submitted work before reading the canvas. */
+    onSubmittedWorkDone(): Promise<void>;
+    /** Unconfigure the detached canvas. Safe to call repeatedly. */
+    destroy(): void;
 };
 
 export type ProgramDrawOptions = {
     firstInstance: number;
     instanceCount: number;
+    sampleCount: 1 | 4;
     placement?: {
         bindGroup: GPUBindGroup;
         count: number;
@@ -1137,6 +1161,8 @@ export type MarkProgram<
     TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
     TProperties extends object = Record<never, never>,
 > = {
+    /** Immutable edge-antialiasing strategy selected when the program is created. */
+    readonly antialiasing?: "shader" | "multisample";
     /** Number of logical instances accepted by retained draw ranges. */
     readonly drawCount: number;
     readonly count: number;
@@ -1172,6 +1198,12 @@ export type MarkDefinition<
 export class Renderer {
     /** Update global viewport-related uniforms (pixel size + device pixel ratio). */
     updateGlobals(globals: GlobalUniforms): void;
+
+    /** Create a same-device canvas target with independent logical globals. */
+    createDetachedTarget(
+        canvas: HTMLCanvasElement,
+        globals: GlobalUniforms
+    ): DetachedTargetHandle;
 
     /** Create a retained mark from an explicitly imported definition. */
     createMark<
