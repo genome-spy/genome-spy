@@ -1,6 +1,7 @@
 import BaseProgram from "./internal/baseProgram.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import { linearScale } from "../../scales/linear.js";
+import { isValueChannelConfig } from "../../types.js";
 
 /**
  * @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput
@@ -43,6 +44,43 @@ const {
     defaultConfigs: DEFAULT_CHANNEL_CONFIGS,
     optionalChannels: OPTIONAL_CHANNELS,
 } = buildChannelMaps(RECT_CHANNEL_SPECS);
+
+const EDGE_CHANNELS = [
+    "strokeWidth",
+    "cornerRadiusTopRight",
+    "cornerRadiusBottomRight",
+    "cornerRadiusTopLeft",
+    "cornerRadiusBottomLeft",
+    "shadowOpacity",
+    "hatchPattern",
+];
+
+/**
+ * Selects one stable edge-antialiasing strategy from the normalized channels.
+ * Dynamic edge properties always use shader coverage so live updates cannot
+ * change render-layer topology.
+ *
+ * @param {Record<string, import("../../index.d.ts").ChannelConfigResolved>} channels
+ * @returns {"shader" | "multisample"}
+ */
+export function determineRectAntialiasing(channels) {
+    for (const name of EDGE_CHANNELS) {
+        const channel = channels[name];
+        if (
+            !isValueChannelConfig(channel) ||
+            channel.dynamic ||
+            channel.scale ||
+            channel.conditions?.length
+        ) {
+            return "shader";
+        }
+    }
+
+    const isPlain = EDGE_CHANNELS.every(
+        (name) => Number(channels[name].value) === 0
+    );
+    return isPlain ? "multisample" : "shader";
+}
 
 const RECT_SHADER_BODY = /* wgsl */ `
 fn clampMinSize(pos: ptr<function, f32>, frac: f32, size: f32, minSize: f32) -> f32 {
@@ -326,6 +364,11 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         // decorated rects for stroke antialiasing and the shadow kernel's support.
         decorationPadding = strokeWidth + 1.0 / globals.dpr + shadowPadding * 2.0;
     }
+    if (!USE_MULTISAMPLE_EDGE_COVERAGE) {
+        // Shader coverage needs geometry on both sides of a currently plain
+        // edge. The AA strategy is immutable even when decorations are dynamic.
+        decorationPadding = max(decorationPadding, 2.0 / globals.dpr);
+    }
     let centeredFrac = local - vec2<f32>(0.5);
     let expansion = centeredFrac * decorationPadding;
     px += expansion.x;
@@ -369,7 +412,8 @@ fn shade(in: VSOut) -> vec4<f32> {
 
     // Adjacent plain rectangles must share an exact rasterized edge. Applying
     // SDF coverage here would introduce translucent seams in dense heatmaps.
-    if (all(in.cornerRadii <= vec4<f32>(0.0)) && in.strokeWidth <= 0.0 &&
+    if (USE_MULTISAMPLE_EDGE_COVERAGE &&
+            all(in.cornerRadii <= vec4<f32>(0.0)) && in.strokeWidth <= 0.0 &&
             in.shadowOpacity <= 0.0) {
         return fillColor;
     }
@@ -434,6 +478,11 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 `;
 
 export default class RectProgram extends BaseProgram {
+    /** @override */
+    _resolveAntialiasing() {
+        return determineRectAntialiasing(this._channels);
+    }
+
     /**
      * @returns {string[]}
      */
@@ -473,7 +522,9 @@ export default class RectProgram extends BaseProgram {
      * @returns {string}
      */
     get shaderBody() {
-        return RECT_SHADER_BODY;
+        return `const USE_MULTISAMPLE_EDGE_COVERAGE = ${
+            this.antialiasing === "multisample"
+        };\n${RECT_SHADER_BODY}`;
     }
 
     /**

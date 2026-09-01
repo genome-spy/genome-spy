@@ -184,6 +184,7 @@ export default class BaseProgram {
             },
         });
         this._channels = normalizedChannels.channels;
+        this.antialiasing = this._resolveAntialiasing();
         this._visualChannelNames = new Set(Object.keys(this._channels));
         this._conditionalChannelNames = this._collectConditionalChannelNames();
         this._publicChannelNames = new Set(this._visualChannelNames);
@@ -461,6 +462,15 @@ export default class BaseProgram {
      */
     get shaderBody() {
         return "";
+    }
+
+    /**
+     * Returns the immutable edge-antialiasing strategy for this program.
+     *
+     * @returns {"shader" | "multisample"}
+     */
+    _resolveAntialiasing() {
+        return "shader";
     }
 
     /**

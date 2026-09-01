@@ -1163,6 +1163,8 @@ export type MarkProgram<
     TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
     TProperties extends object = Record<never, never>,
 > = {
+    /** Immutable edge-antialiasing strategy selected when the program is created. */
+    readonly antialiasing?: "shader" | "multisample";
     /** Number of logical instances accepted by retained draw ranges. */
     readonly drawCount: number;
     readonly count: number;
