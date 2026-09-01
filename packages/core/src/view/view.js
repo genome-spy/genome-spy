@@ -822,7 +822,11 @@ export default class View {
      * Returns the effective opacity of this view, e.g., view's opacity multiplied
      * by opacities of its ancestors.
      *
-     * TODO: This methods makes sense only in Unit and Layer views.
+     * TODO: Remove ancestor-opacity multiplication when the WebGL renderer is
+     * retired. WebGL bakes effective view opacity into mark colors because it
+     * cannot isolate and composite view scopes like Canvas2D and WebGPU.
+     *
+     * TODO: This method makes sense only in Unit and Layer views.
      *
      * @returns {number}
      */
@@ -1444,6 +1448,10 @@ function isDynamicOpacity(opacity) {
 
 /**
  * Builds the effective opacity function for a view.
+ *
+ * TODO: Remove the parent-opacity argument when the WebGL renderer is retired
+ * and make this function return local view opacity only. Hierarchical renderers
+ * apply ancestor opacity by compositing view scopes.
  *
  * The resulting function multiplies parent opacity with one of:
  * 1. constant opacity (`number`)
