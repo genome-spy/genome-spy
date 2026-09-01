@@ -170,6 +170,9 @@ function renderToFramebuffer({
         renderingContext.finish();
         renderingContext.render();
 
+        // The last rendered view may leave a restrictive scissor rectangle
+        // active. Disable it before resolving the complete export target.
+        gl.disable(gl.SCISSOR_TEST);
         gl.bindFramebuffer(
             gl.READ_FRAMEBUFFER,
             multisampleFramebufferInfo.framebuffer

@@ -83,6 +83,10 @@ describe("exportRaster", () => {
             gl.COLOR_BUFFER_BIT,
             gl.NEAREST
         );
+        expect(gl.disable).toHaveBeenCalledWith(gl.SCISSOR_TEST);
+        expect(gl.disable.mock.invocationCallOrder[0]).toBeLessThan(
+            gl.blitFramebuffer.mock.invocationCallOrder[0]
+        );
     });
 });
 
@@ -92,10 +96,12 @@ function createGl() {
         MAX_SAMPLES: "MAX_SAMPLES",
         READ_FRAMEBUFFER: "READ_FRAMEBUFFER",
         DRAW_FRAMEBUFFER: "DRAW_FRAMEBUFFER",
+        SCISSOR_TEST: "SCISSOR_TEST",
         COLOR_BUFFER_BIT: "COLOR_BUFFER_BIT",
         NEAREST: "NEAREST",
         getParameter: vi.fn().mockReturnValue(8),
         bindFramebuffer: vi.fn(),
+        disable: vi.fn(),
         blitFramebuffer: vi.fn(),
         deleteRenderbuffer: vi.fn(),
         deleteTexture: vi.fn(),
