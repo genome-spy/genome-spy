@@ -233,7 +233,6 @@ describe("InteractionDispatcher", () => {
  * @param {string} name
  * @param {any} layoutParent
  * @param {Array<{ view: string, type: string, relatedTarget?: string, capturing: boolean }>} calls
- * @returns {any}
  */
 function createMockView(name, layoutParent, calls) {
     return {

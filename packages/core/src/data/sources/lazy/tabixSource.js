@@ -21,7 +21,6 @@ export default class TabixSource extends SingleAxisWindowedSource {
      * @prop {Record<string, import("../../../spec/channel.js").Scalar>} [fields]
      * @prop {P} parserContext
      * @prop {string} url
-     * @prop {((refSeq: string) => string) | undefined} renameRefSeqs
      */
 
     /** @type {UrlDescriptorState<TabixHandle>} */
@@ -159,6 +158,7 @@ export default class TabixSource extends SingleAxisWindowedSource {
             tbiFilehandle: new RemoteFile(
                 descriptor.indexUrl ?? descriptor.url + ".tbi"
             ),
+            renameRefSeqs,
         });
         const header = await tbiIndex.getHeader();
 
@@ -166,7 +166,6 @@ export default class TabixSource extends SingleAxisWindowedSource {
             tbiIndex,
             fields: descriptor.fields,
             parserContext: await this._createParser(header, tbiIndex),
-            renameRefSeqs,
             url: descriptor.url,
         };
     }
@@ -188,8 +187,7 @@ export default class TabixSource extends SingleAxisWindowedSource {
                         const lines = [];
 
                         await handle.tbiIndex.getLines(
-                            handle.renameRefSeqs?.(discreteInterval.chrom) ??
-                                discreteInterval.chrom,
+                            discreteInterval.chrom,
                             discreteInterval.startPos,
                             discreteInterval.endPos,
                             {

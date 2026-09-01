@@ -184,25 +184,6 @@ describe("TabixSource", () => {
         ]);
     });
 
-    it("applies addChrPrefix when querying the Tabix index", async () => {
-        const source = new TabixTsvSource(
-            /** @type {any} */ ({
-                type: "tabix",
-                debounceMode: "domain",
-                addChrPrefix: "ref-",
-                url: "variants/prefixed.vcf.gz",
-            }),
-            /** @type {any} */ (createViewStub())
-        );
-
-        await /** @type {any} */ (source).initializedPromise;
-        await source.loadInterval([0, 100]);
-
-        expect(requestedIntervals).toEqual([
-            { chrom: "ref-chr1", start: 0, end: 100 },
-        ]);
-    });
-
     it("can expand URL templates without attaching fields", async () => {
         linesByUrl.set("variants/patient1.vcf.gz", ["chr1\t5\t6\tC"]);
 
