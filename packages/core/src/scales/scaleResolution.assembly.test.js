@@ -167,6 +167,45 @@ describe("Scale resolution genome assembly", () => {
         );
     });
 
+    test("configured locus domain uses scale assembly without root assembly", async () => {
+        const genomeStore = new GenomeStore(".");
+        const start = 43_000_000;
+        const end = 43_100_000;
+
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: {
+                values: [{ chrom: "chr17", pos: 43_044_295 }],
+            },
+            mark: "point",
+            encoding: {
+                x: {
+                    chrom: "chrom",
+                    pos: "pos",
+                    type: "locus",
+                    scale: {
+                        type: "locus",
+                        assembly: "hg38",
+                        domain: [
+                            { chrom: "chr17", pos: start },
+                            { chrom: "chr17", pos: end },
+                        ],
+                    },
+                },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec, {
+            contextOptions: { genomeStore },
+        });
+        const genome = genomeStore.getGenome("hg38");
+
+        expect(getRequiredScaleResolution(view, "x").getDomain()).toEqual([
+            genome.toContinuous("chr17", start),
+            genome.toContinuous("chr17", end) + 1,
+        ]);
+    });
+
     test("locus scales can use inline contigs in assembly definitions", async () => {
         const genomeStore = new GenomeStore(".");
 
