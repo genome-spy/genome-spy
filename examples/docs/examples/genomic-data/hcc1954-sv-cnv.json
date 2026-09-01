@@ -169,7 +169,8 @@
           "mark": {
             "type": "link",
             "arcFadingDistance": { "expr": "[height - 20, height + 20]" },
-            "segments": 200
+            "segments": 200,
+            "clip": "x"
           },
           "encoding": {
             "x": {

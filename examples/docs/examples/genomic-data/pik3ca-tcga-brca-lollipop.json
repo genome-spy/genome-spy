@@ -82,6 +82,8 @@
         }
       },
 
+      "config": { "mark": { "clip": "x" } },
+
       "vconcat": [
         {
           "name": "mutation-labels",
@@ -103,6 +105,7 @@
         },
         {
           "name": "mutations",
+
           "layer": [
             {
               "name": "stems",
