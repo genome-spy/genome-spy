@@ -130,14 +130,13 @@ export const RepeatedRangePlacements = withSource(
     }
 );
 
-export const RenderGroup = withSource(
+export const RenderScope = withSource(
     "runGroupScene",
-    { opacity: 0.65, multisample: true },
+    { opacity: 0.65 },
     {
-        args: { opacity: 0.65, multisample: true },
+        args: { opacity: 0.65 },
         argTypes: {
             opacity: { control: { type: "range", min: 0, max: 1, step: 0.01 } },
-            multisample: { control: "boolean" },
         },
         render: (args) => renderScene(runGroupScene, args),
     }

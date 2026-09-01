@@ -18,7 +18,6 @@ import {
 } from "./webGpuMarkAdapter.js";
 import { getPackedMarkData, getPackedMarkRange } from "./webGpuMarkData.js";
 import { resolveMarkXIndexQuery } from "../xIndex/markXIndex.js";
-import { needsCoverageAntialiasing } from "../renderingIntent.js";
 
 /**
  * Compiles a completed Core layout into an adapter-owned retained frame plan.
@@ -101,9 +100,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         this.#paintCommands.push({
             type: "pushView",
             view,
-            coords,
+            coords: [coords],
             localOpacity: false,
-            sampleCount: undefined,
+            clipX: false,
+            clipY: false,
             bounds: createDrawRect(),
         });
     }
@@ -146,7 +146,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 source: undefined,
                 generatedSource: false,
                 facetIndexed: mark.encoders?.facetIndex !== undefined,
-                coverageAntialiasing: needsCoverageAntialiasing(mark),
                 xQueryDomain: [0, 0],
                 xIndexedRange: [0, 0],
                 xQueryEnabled: false,
@@ -216,8 +215,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         for (const state of this.#marks.values()) {
             this.#compileMarkState(state, canvas);
         }
-        this.#compileRenderGroups();
         this.#renderCommands = coalesceSampleFacetBatches(this.#paintCommands);
+        this.#compileRenderScopes();
     }
 
     /**
@@ -248,6 +247,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         for (const view of this.#views) {
             measurePerformance("onBeforeRender", () => view.onBeforeRender());
             countPerformance("viewsVisited");
+        }
+        if (!picking) {
+            this.#refreshScopeBounds();
         }
 
         const canvas = this.#target;
@@ -282,7 +284,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                     resourceWrites += writes;
                 }
             } else if (command.type === "pushView") {
-                if (picking || !command.sampleCount) {
+                if (picking) {
                     parentItems.push(undefined);
                 } else {
                     const group = createGroup(command);
@@ -303,60 +305,23 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         return items;
     }
 
-    /** Annotates retained view scopes with their structural group contract. */
-    #compileRenderGroups() {
-        /** @type {ScopeState[]} */
-        const stack = [];
-        /** @type {ScopeState[]} */
-        const scopes = [];
-
-        for (const command of this.#paintCommands) {
+    /** Annotates retained view scopes with renderer-neutral semantics. */
+    #compileRenderScopes() {
+        for (const command of this.#renderCommands) {
             if (command.type === "pushView") {
-                const scope = {
-                    command,
-                    parent: peek(stack),
-                    hasDraws: false,
-                    coverageOnly: true,
-                };
-                scopes.push(scope);
-                stack.push(scope);
-            } else if (command.type === "occurrence") {
-                const scope = /** @type {ScopeState} */ (peek(stack));
-                scope.hasDraws = true;
-                scope.coverageOnly &&=
-                    command.occurrence.state.coverageAntialiasing;
-            } else if (command.type === "popView") {
-                const scope = /** @type {ScopeState} */ (stack.pop());
-                scope.coverageOnly &&= scope.hasDraws;
-
-                const parent = peek(stack);
-                if (parent && scope.hasDraws) {
-                    parent.hasDraws = true;
-                    parent.coverageOnly &&= scope.coverageOnly;
-                }
+                const clip = getViewClipDirections(command.view);
+                command.localOpacity = command.view.hasLocalOpacity();
+                command.clipX = clip.clipX;
+                command.clipY = clip.clipY;
             }
         }
-        for (const scope of scopes) {
-            const command = scope.command;
-            const localOpacity = command.view.hasLocalOpacity();
-            command.localOpacity = localOpacity;
-            if (localOpacity) {
-                command.sampleCount = scope.coverageOnly ? 4 : 1;
-            } else if (scope.coverageOnly && !scope.parent?.coverageOnly) {
-                command.sampleCount = 4;
-            }
-            if (command.sampleCount) {
-                const clip = getViewClipDirections(command.view);
-                command.bounds = {
-                    x: clip.clipX ? command.coords.x : 0,
-                    y: clip.clipY ? command.coords.y : 0,
-                    width: clip.clipX
-                        ? command.coords.width
-                        : this.#target.width,
-                    height: clip.clipY
-                        ? command.coords.height
-                        : this.#target.height,
-                };
+    }
+
+    /** Refreshes closure-backed scope coordinates without rebuilding topology. */
+    #refreshScopeBounds() {
+        for (const command of this.#renderCommands) {
+            if (command.type === "pushView") {
+                writeScopeBounds(command, this.#target);
             }
         }
     }
@@ -699,9 +664,7 @@ function coalesceSampleFacetBatches(commands) {
             appendBatchItem(batch, command.occurrence.state.mark, command);
         } else if (command.type === "pushView") {
             parents.push(batch);
-            if (command.sampleCount) {
-                batch = openBatchGroup(batch, command);
-            }
+            batch = openBatchGroup(batch, command);
         } else {
             batch = parents.pop();
         }
@@ -740,7 +703,7 @@ function openBatchGroup(collector, command) {
         slot.command = command;
         slot.collector = createBatchCollector();
     } else {
-        unionBounds(slot.command.bounds, command.bounds);
+        slot.command.coords.push(...command.coords);
     }
     return slot.collector;
 }
@@ -760,13 +723,12 @@ function materializeBatch(collector, target) {
 
 /**
  * @param {Extract<PaintCommand, {type: "pushView"}>} command
- * @returns {import("@genome-spy/webgpu-renderer").RenderGroup & {items: import("@genome-spy/webgpu-renderer").RenderItem[]}}
+ * @returns {import("@genome-spy/webgpu-renderer").RenderScope & {items: import("@genome-spy/webgpu-renderer").RenderItem[]}}
  */
 function createGroup(command) {
-    /** @type {import("@genome-spy/webgpu-renderer").RenderGroup & {items: import("@genome-spy/webgpu-renderer").RenderItem[]}} */
+    /** @type {import("@genome-spy/webgpu-renderer").RenderScope & {items: import("@genome-spy/webgpu-renderer").RenderItem[]}} */
     const group = {
-        bounds: { ...command.bounds },
-        sampleCount: /** @type {1 | 4} */ (command.sampleCount),
+        bounds: command.bounds,
         items: [],
     };
     if (command.localOpacity) {
@@ -961,16 +923,26 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
 }
 
 /**
- * @param {import("@genome-spy/webgpu-renderer").DrawRect} target
- * @param {import("@genome-spy/webgpu-renderer").DrawRect} source
+ * @param {Extract<PaintCommand, {type: "pushView"}>} command
+ * @param {{width: number, height: number}} target
  */
-function unionBounds(target, source) {
-    const x2 = Math.max(target.x + target.width, source.x + source.width);
-    const y2 = Math.max(target.y + target.height, source.y + source.height);
-    target.x = Math.min(target.x, source.x);
-    target.y = Math.min(target.y, source.y);
-    target.width = x2 - target.x;
-    target.height = y2 - target.y;
+function writeScopeBounds(command, target) {
+    const first = command.coords[0];
+    let x1 = first.x;
+    let y1 = first.y;
+    let x2 = x1 + first.width;
+    let y2 = y1 + first.height;
+    for (let index = 1; index < command.coords.length; index++) {
+        const coords = command.coords[index];
+        x1 = Math.min(x1, coords.x);
+        y1 = Math.min(y1, coords.y);
+        x2 = Math.max(x2, coords.x + coords.width);
+        y2 = Math.max(y2, coords.y + coords.height);
+    }
+    command.bounds.x = command.clipX ? x1 : 0;
+    command.bounds.y = command.clipY ? y1 : 0;
+    command.bounds.width = command.clipX ? x2 - x1 : target.width;
+    command.bounds.height = command.clipY ? y2 - y1 : target.height;
 }
 
 /**
@@ -981,7 +953,6 @@ function unionBounds(target, source) {
  * @property {import("../../view/layout/placementSource.js").default | undefined} source
  * @property {boolean} generatedSource
  * @property {boolean} facetIndexed
- * @property {boolean} coverageAntialiasing
  * @property {[number, number]} xQueryDomain
  * @property {[number, number]} xIndexedRange
  * @property {boolean} xQueryEnabled
@@ -1006,18 +977,10 @@ function unionBounds(target, source) {
  * @typedef {
  *   | {type: "beginSampleFacetBatch"}
  *   | {type: "endSampleFacetBatch"}
- *   | {type: "pushView", view: import("../../view/view.js").default, coords: Rectangle, localOpacity: boolean, sampleCount: 1 | 4 | undefined, bounds: import("@genome-spy/webgpu-renderer").DrawRect}
+ *   | {type: "pushView", view: import("../../view/view.js").default, coords: Rectangle[], localOpacity: boolean, clipX: boolean, clipY: boolean, bounds: import("@genome-spy/webgpu-renderer").DrawRect}
  *   | {type: "popView"}
  *   | {type: "occurrence", occurrence: Occurrence}
  * } PaintCommand
- */
-
-/**
- * @typedef {object} ScopeState
- * @property {Extract<PaintCommand, {type: "pushView"}>} command
- * @property {ScopeState | undefined} parent
- * @property {boolean} hasDraws
- * @property {boolean} coverageOnly
  */
 
 /**

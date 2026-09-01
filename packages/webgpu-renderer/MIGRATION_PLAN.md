@@ -3,6 +3,11 @@
 Status: Core retained-frame optimization is complete; the independent package
 parity and cleanup backlog remains ongoing.
 
+Core submits renderer-neutral semantic scopes. The renderer derives immutable
+rectangle edge-AA modes from normalized channel configs and forms any required
+multisample layers itself; explicit sample counts are not part of the public
+frame contract.
+
 Completed milestone narratives and retired plans live in Git history. This file
 contains only current work that still has a concrete renderer or Core consumer.
 

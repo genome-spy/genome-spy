@@ -471,7 +471,7 @@ describe("Renderer mark definitions", () => {
     });
 
     test("renders a bounded multisampled group and composites it once", () => {
-        const program = createProgram();
+        const program = createProgram("multisample");
         const definition = Object.freeze({
             type: "custom",
             createProgram: () => program,
@@ -485,7 +485,6 @@ describe("Renderer mark definitions", () => {
                 {
                     bounds: { x: 10, y: 5, width: 20, height: 10 },
                     opacity: 0.5,
-                    sampleCount: 4,
                     items: [
                         {
                             mark,
@@ -541,7 +540,7 @@ describe("Renderer mark definitions", () => {
     });
 
     test("flattens opaque nested MSAA groups into one accumulation pass", () => {
-        const program = createProgram();
+        const program = createProgram("multisample");
         const definition = Object.freeze({
             type: "custom",
             createProgram: () => program,
@@ -556,18 +555,15 @@ describe("Renderer mark definitions", () => {
             items: [
                 {
                     bounds,
-                    sampleCount: 4,
                     items: [
                         {
                             bounds,
                             opacity: 1,
-                            sampleCount: 4,
                             items: [{ mark: first }],
                         },
                         {
                             bounds,
                             opacity: 1,
-                            sampleCount: 4,
                             items: [{ mark: second }],
                         },
                     ],
@@ -581,6 +577,120 @@ describe("Renderer mark definitions", () => {
         ]);
         expect(renderPassDescriptors).toHaveLength(2);
         expect(program.draw).toHaveBeenCalledTimes(2);
+    });
+
+    test("batches consecutive flat MSAA draws without reordering", () => {
+        const firstProgram = createProgram("multisample");
+        const middleProgram = createProgram();
+        const lastProgram = createProgram("multisample");
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi
+                .fn()
+                .mockReturnValueOnce(firstProgram)
+                .mockReturnValueOnce(middleProgram)
+                .mockReturnValueOnce(lastProgram),
+        });
+        const { renderer, renderPassDescriptors } = createRendererHarness();
+        const first = renderer.createMark(definition, { channels: {} });
+        const middle = renderer.createMark(definition, { channels: {} });
+        const last = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            items: [{ mark: first }, { mark: middle }, { mark: last }],
+        });
+
+        expect(renderPassDescriptors.map((pass) => pass.label)).toEqual([
+            "webgpu-renderer: multisample group pass",
+            "webgpu-renderer: group composite pass",
+            "webgpu-renderer: main render pass",
+            "webgpu-renderer: multisample group pass",
+            "webgpu-renderer: group composite pass",
+        ]);
+        expect(firstProgram.draw.mock.invocationCallOrder[0]).toBeLessThan(
+            middleProgram.draw.mock.invocationCallOrder[0]
+        );
+        expect(middleProgram.draw.mock.invocationCallOrder[0]).toBeLessThan(
+            lastProgram.draw.mock.invocationCallOrder[0]
+        );
+    });
+
+    test("keeps a mixed semantic scope single-sampled around its MSAA child", () => {
+        const exonProgram = createProgram("multisample");
+        const bodyProgram = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi
+                .fn()
+                .mockReturnValueOnce(exonProgram)
+                .mockReturnValueOnce(bodyProgram),
+        });
+        const { renderer, renderPassDescriptors, transientAcquires } =
+            createRendererHarness();
+        const exon = renderer.createMark(definition, { channels: {} });
+        const body = renderer.createMark(definition, { channels: {} });
+        const bounds = { x: 0, y: 0, width: 100, height: 50 };
+
+        renderer.render({
+            items: [
+                {
+                    bounds,
+                    opacity: 0.5,
+                    items: [{ mark: exon }, { mark: body }],
+                },
+            ],
+        });
+
+        expect(transientAcquires).toEqual([
+            expect.objectContaining({ sampleCount: 1 }),
+            expect.objectContaining({ sampleCount: 1 }),
+            expect.objectContaining({ sampleCount: 4 }),
+        ]);
+        expect(renderPassDescriptors.map((pass) => pass.label)).toEqual([
+            "webgpu-renderer: multisample group pass",
+            "webgpu-renderer: group composite pass",
+            "webgpu-renderer: main render pass",
+            "webgpu-renderer: group composite pass",
+        ]);
+        expect(exonProgram.draw).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ sampleCount: 4 })
+        );
+        expect(bodyProgram.draw).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ sampleCount: 1 })
+        );
+    });
+
+    test("clips inferred MSAA children to an opaque semantic scope", () => {
+        const coverageProgram = createProgram("multisample");
+        const directProgram = createProgram();
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: vi
+                .fn()
+                .mockReturnValueOnce(coverageProgram)
+                .mockReturnValueOnce(directProgram),
+        });
+        const { renderer, pass, transientAcquires } = createRendererHarness();
+        const coverage = renderer.createMark(definition, { channels: {} });
+        const direct = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            items: [
+                {
+                    bounds: { x: 10, y: 5, width: 20, height: 10 },
+                    items: [{ mark: coverage }, { mark: direct }],
+                },
+            ],
+        });
+
+        expect(transientAcquires).toEqual([
+            expect.objectContaining({ width: 40, height: 20, sampleCount: 1 }),
+            expect.objectContaining({ width: 40, height: 20, sampleCount: 4 }),
+        ]);
+        expect(pass.setScissorRect).toHaveBeenNthCalledWith(1, 0, 0, 40, 20);
+        expect(pass.setScissorRect).toHaveBeenNthCalledWith(3, 0, 0, 200, 100);
     });
 
     test("preserves draw order across nested opacity groups", () => {
@@ -651,6 +761,29 @@ describe("Renderer mark definitions", () => {
         expect(transientAcquires).toEqual([]);
     });
 
+    test("ignores empty scope bounds before normalizing their draws", () => {
+        const program = createProgram("multisample");
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, transientAcquires } = createRendererHarness();
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            items: [
+                {
+                    bounds: { x: 0, y: 0, width: 100, height: 0 },
+                    items: [{ mark }],
+                },
+            ],
+        });
+
+        expect(renderer._renderFrame).toEqual([]);
+        expect(program.draw).not.toHaveBeenCalled();
+        expect(transientAcquires).toEqual([]);
+    });
+
     test("clips nested groups to their parent before compositing", () => {
         const program = createProgram();
         const definition = Object.freeze({
@@ -708,7 +841,7 @@ describe("Renderer mark definitions", () => {
         });
     });
 
-    test("rejects unsupported render group sample counts", () => {
+    test("rejects explicit render-scope sample counts", () => {
         const { renderer } = createRendererHarness();
         expect(() =>
             renderer.render({
@@ -720,7 +853,7 @@ describe("Renderer mark definitions", () => {
                     }),
                 ],
             })
-        ).toThrow("sampleCount must be 1 or 4");
+        ).toThrow("do not accept an explicit sampleCount");
     });
 
     test("skips zero-sized scissors from empty clipped views", () => {
@@ -743,7 +876,7 @@ describe("Renderer mark definitions", () => {
         const { renderer } = createRendererHarness();
         const definition = Object.freeze({
             type: "custom",
-            createProgram,
+            createProgram: () => createProgram(),
         });
         const skipped = renderer.createMark(definition, { channels: {} });
         const visible = renderer.createMark(definition, { channels: {} });
@@ -912,9 +1045,11 @@ function createRendererHarness() {
     };
 }
 
-function createProgram() {
+/** @param {"shader" | "multisample"} [antialiasing] */
+function createProgram(antialiasing = "shader") {
     const series = { replace: vi.fn() };
     return {
+        antialiasing,
         count: 10,
         drawCount: 10,
         /**

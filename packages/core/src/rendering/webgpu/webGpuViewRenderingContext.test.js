@@ -68,6 +68,23 @@ function createView(localOpacity = false) {
     };
 }
 
+/** @param {any[]} items @returns {any[]} */
+function collectDraws(items) {
+    return items.flatMap((item) =>
+        "items" in item ? collectDraws(item.items) : [item]
+    );
+}
+
+/** @param {any[]} items */
+function expectRendererNeutralScopes(items) {
+    for (const item of items) {
+        expect(item).not.toHaveProperty("sampleCount");
+        if ("items" in item) {
+            expectRendererNeutralScopes(item.items);
+        }
+    }
+}
+
 beforeEach(() => {
     vi.clearAllMocks();
     mocks.getPackedMarkData.mockReturnValue(mocks.packed);
@@ -81,7 +98,7 @@ beforeEach(() => {
 });
 
 describe("WebGpuViewRenderingContext", () => {
-    test("requests MSAA for an un-faceted plain rectangle", () => {
+    test("emits a renderer-neutral scope for a plain rectangle", () => {
         const surface = {
             getDevicePixelRatio: () => 1,
             getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
@@ -104,13 +121,13 @@ describe("WebGpuViewRenderingContext", () => {
         context.finish();
         const frame = context.render();
 
-        expect(frame[0]).toMatchObject({
-            sampleCount: 4,
-            items: [surface.prepareDraw.mock.calls[0][1]],
-        });
+        expect(collectDraws(frame)).toEqual([
+            surface.prepareDraw.mock.calls[0][1],
+        ]);
+        expectRendererNeutralScopes(frame);
     });
 
-    test("promotes an all-rectangle layer to one MSAA group", () => {
+    test("preserves semantic scopes for an all-rectangle layer", () => {
         const surface = {
             getDevicePixelRatio: () => 1,
             getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
@@ -140,15 +157,13 @@ describe("WebGpuViewRenderingContext", () => {
         context.popView(/** @type {any} */ (layer));
         context.finish();
 
-        expect(context.render()).toMatchObject([
-            {
-                sampleCount: 4,
-                items: [
-                    surface.prepareDraw.mock.calls[0][1],
-                    surface.prepareDraw.mock.calls[1][1],
-                ],
-            },
+        const frame = context.render();
+        expect(collectDraws(frame)).toEqual([
+            surface.prepareDraw.mock.calls[0][1],
+            surface.prepareDraw.mock.calls[1][1],
         ]);
+        expect(/** @type {any} */ (frame[0]).items).toHaveLength(2);
+        expectRendererNeutralScopes(frame);
     });
 
     test("keeps a dynamic-opacity mixed layer structurally stable", () => {
@@ -199,24 +214,26 @@ describe("WebGpuViewRenderingContext", () => {
         expect(fractional).toMatchObject([
             {
                 opacity: 0.5,
-                sampleCount: 1,
-                items: [{ sampleCount: 4 }, expect.anything()],
+                items: [expect.anything(), expect.anything()],
             },
         ]);
         expect(hidden).toMatchObject([
             {
                 opacity: 0,
-                sampleCount: 1,
-                items: [{ sampleCount: 4, items: [] }],
             },
         ]);
         expect(opaque).toMatchObject([
             {
                 opacity: 1,
-                sampleCount: 1,
-                items: [{ sampleCount: 4 }, expect.anything()],
+                items: [expect.anything(), expect.anything()],
             },
         ]);
+        expect(collectDraws(fractional)).toHaveLength(2);
+        expect(collectDraws(hidden)).toHaveLength(0);
+        expect(collectDraws(opaque)).toHaveLength(2);
+        expectRendererNeutralScopes(fractional);
+        expectRendererNeutralScopes(hidden);
+        expectRendererNeutralScopes(opaque);
     });
 
     test("compiles only marks selected for a raster run", () => {
@@ -285,12 +302,11 @@ describe("WebGpuViewRenderingContext", () => {
         context.popView(/** @type {any} */ (layer));
         context.finish();
 
-        expect(context.render()).toMatchObject([
-            {
-                sampleCount: 4,
-                items: [surface.prepareDraw.mock.calls[0][1]],
-            },
+        const frame = context.render();
+        expect(collectDraws(frame)).toEqual([
+            surface.prepareDraw.mock.calls[0][1],
         ]);
+        expectRendererNeutralScopes(frame);
         expect(surface.updateMark).toHaveBeenCalledOnce();
     });
 
@@ -339,23 +355,11 @@ describe("WebGpuViewRenderingContext", () => {
             context.finish();
 
             const frame = context.render();
-            if (selection === "both") {
-                expect(frame).toMatchObject([
-                    {
-                        opacity: 0.5,
-                        sampleCount: 1,
-                        items: [{ sampleCount: 4 }, expect.anything()],
-                    },
-                ]);
-            } else {
-                expect(frame).toMatchObject([
-                    {
-                        opacity: 0.5,
-                        sampleCount: selection === "exon" ? 4 : 1,
-                        items: [expect.anything()],
-                    },
-                ]);
-            }
+            expect(frame[0]).toMatchObject({ opacity: 0.5 });
+            expect(collectDraws(frame)).toHaveLength(
+                selection === "both" ? 2 : 1
+            );
+            expectRendererNeutralScopes(frame);
         }
     );
 
@@ -577,6 +581,7 @@ describe("WebGpuViewRenderingContext", () => {
             onBeforeRender: () => (offset += 10),
             getOpacity: () => 1,
             hasLocalOpacity: () => false,
+            visit: vi.fn(),
         };
         const coords = Rectangle.create(20, 30, 100, 80)
             .modify({ height: () => 80 + offset })
@@ -623,6 +628,56 @@ describe("WebGpuViewRenderingContext", () => {
             { x: 30.5, height: 90 },
             { x: 40.5, height: 100 },
         ]);
+    });
+
+    test("refreshes the union of coalesced semantic scope bounds", () => {
+        let offset = 0;
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            updateOccurrencePlacements: vi.fn((_mark, rectangles) => ({
+                getSnapshot: () => ({
+                    topology: { revision: 0 },
+                    rectangles,
+                }),
+            })),
+            updateMark: vi.fn(),
+            prepareDraw: vi.fn(),
+        };
+        const context = createContext(surface);
+        const mark = {
+            getType: () => "point",
+            properties: { clip: true },
+            unitView: {
+                getEffectiveOpacity: () => 1,
+                getCollector: () => ({}),
+            },
+        };
+        const view = {
+            ...createView(),
+            onBeforeRender: () => (offset += 5),
+            visit: (/** @type {(view: any) => void} */ visitor) =>
+                visitor({ mark }),
+        };
+
+        context.beginSampleFacetBatch();
+        for (const x of [0, 60]) {
+            const coords = Rectangle.create(x, 10, 20, 30).translate(
+                () => offset,
+                0
+            );
+            context.pushView(/** @type {any} */ (view), coords);
+            context.renderMark(/** @type {any} */ (mark), {});
+            context.popView(/** @type {any} */ (view));
+        }
+        context.endSampleFacetBatch();
+        context.finish();
+
+        const first = { .../** @type {any} */ (context.render()[0]).bounds };
+        const second = { .../** @type {any} */ (context.render()[0]).bounds };
+
+        expect(first).toEqual({ x: 5, y: 10, width: 80, height: 30 });
+        expect(second).toEqual({ x: 10, y: 10, width: 80, height: 30 });
     });
 
     test("omits non-picking marks from the pick draw list", () => {
@@ -816,10 +871,10 @@ describe("WebGpuViewRenderingContext", () => {
             placement: { set: { placementSetId: -1 } },
         });
         expect(surface.prepareDraw.mock.calls[0][2]).toBe(source);
-        expect(frame[0]).toMatchObject({
-            sampleCount: 4,
-            items: [surface.prepareDraw.mock.calls[0][1]],
-        });
+        expect(collectDraws(frame)).toEqual([
+            surface.prepareDraw.mock.calls[0][1],
+        ]);
+        expectRendererNeutralScopes(frame);
     });
 
     test("preserves repeated sample rectangle ranges for one MSAA group", () => {
@@ -919,10 +974,10 @@ describe("WebGpuViewRenderingContext", () => {
                 scissor: { x: 70, y: 30, width: 50, height: 80 },
             },
         ]);
-        expect(frame[0]).toMatchObject({
-            sampleCount: 4,
-            items: surface.prepareDraw.mock.calls.map((call) => call[1]),
-        });
+        expect(collectDraws(frame)).toEqual(
+            surface.prepareDraw.mock.calls.map((call) => call[1])
+        );
+        expectRendererNeutralScopes(frame);
         expect(xIndex).toHaveBeenCalledTimes(2);
     });
 
@@ -991,20 +1046,16 @@ describe("WebGpuViewRenderingContext", () => {
                 .filter((call) => call[0] === mark)
                 .map((call) => call[1]);
 
-        expect(frame).toMatchObject([
-            {
-                sampleCount: 4,
-                items: [
-                    {
-                        opacity: 0.5,
-                        sampleCount: 4,
-                        items: drawsFor(faded),
-                    },
-                    ...drawsFor(solid),
-                ],
-            },
+        expect(collectDraws(frame)).toEqual([
+            ...drawsFor(faded),
+            ...drawsFor(solid),
             ...drawsFor(point),
         ]);
+        expect(frame).toHaveLength(1);
+        const sampleScope = /** @type {any} */ (frame[0]);
+        expect(sampleScope.items).toHaveLength(2);
+        expect(sampleScope.items[0].items[0]).toMatchObject({ opacity: 0.5 });
+        expectRendererNeutralScopes(frame);
 
         surface.prepareDraw.mockClear();
         context.renderPicking();
@@ -1133,15 +1184,14 @@ describe("WebGpuViewRenderingContext", () => {
         expect(frame).toMatchObject([
             {
                 opacity: 0.5,
-                sampleCount: 4,
                 items: [{ placement: { index: 0 } }],
             },
             {
                 opacity: 0.75,
-                sampleCount: 4,
                 items: [{ placement: { index: 1 } }],
             },
         ]);
+        expectRendererNeutralScopes(frame);
     });
 
     test("updates local group opacity without rebuilding mark resources", () => {

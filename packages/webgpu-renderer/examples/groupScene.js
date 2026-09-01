@@ -4,7 +4,7 @@ import { createExampleRenderer, setupResize } from "./utils.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @param {{opacity?: number, multisample?: boolean}} [args]
+ * @param {{opacity?: number}} [args]
  */
 export default async function runGroupScene(canvas, args = {}) {
     const renderer = await createExampleRenderer(canvas);
@@ -29,7 +29,6 @@ export default async function runGroupScene(canvas, args = {}) {
             {
                 bounds,
                 opacity: args.opacity ?? 0.65,
-                sampleCount: args.multisample === false ? 1 : 4,
                 items: [{ mark: first }, { mark: second }],
             },
         ],

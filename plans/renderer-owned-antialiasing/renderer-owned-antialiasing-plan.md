@@ -1,6 +1,6 @@
 # Renderer-owned antialiasing and semantic render scopes
 
-Status: Independently reviewed; review blockers reconciled; ready to implement
+Status: Implemented and verified; pending retirement
 
 Issues: #478, #483
 
@@ -298,18 +298,18 @@ it consistently in both shader generation and draw classification.
 
 ### Work
 
-- [ ] Add the internal mark-program antialiasing-mode contract with a
+- [x] Add the internal mark-program antialiasing-mode contract with a
       single-sample default for programs that provide their own coverage or do
       not need edge AA.
-- [ ] Implement and unit-test the authoritative rectangle decision function
+- [x] Implement and unit-test the authoritative rectangle decision function
       against static plain, static decorated, series-backed, conditional, and
       updateable relevant channels.
-- [ ] Generate the plain exact-fill fast path only for the multisample mode.
+- [x] Generate the plain exact-fill fast path only for the multisample mode.
       Shader-mode rectangles must always compute SDF edge coverage and reserve
       at least one physical pixel of supporting quad geometry.
-- [ ] Expose the immutable resolved mode to renderer normalization without
+- [x] Expose the immutable resolved mode to renderer normalization without
       adding it to public mark handles.
-- [ ] Adjust Core's rectangle translation so literal relevant values are truly
+- [x] Adjust Core's rectangle translation so literal relevant values are truly
       static while all updateable forms retain their slots and revisions.
 
 ### Affected areas and consumers
@@ -352,23 +352,23 @@ normalization path.
 
 ### Work
 
-- [ ] Replace public `RenderGroup.sampleCount` with a sample-count-free
+- [x] Replace public `RenderGroup.sampleCount` with a sample-count-free
       `RenderScope`; keep sample count only on normalized internal layers.
-- [ ] Extend the existing recursive normalizer to classify scope contents and
+- [x] Extend the existing recursive normalizer to classify scope contents and
       form maximal ordered MSAA layers. Do not introduce a parallel planner.
-- [ ] Treat flat lists as root items and group only consecutive compatible
+- [x] Treat flat lists as root items and group only consecutive compatible
       draws.
-- [ ] Preserve dynamic opacity-zero pruning, opacity-one flattening, fractional
+- [x] Preserve dynamic opacity-zero pruning, opacity-one flattening, fractional
       isolation, bounds, clipping, resolve behavior, and target reuse.
-- [ ] Change Core frame compilation to retain semantic view scopes without
+- [x] Change Core frame compilation to retain semantic view scopes without
       inspecting mark types or renderer definitions.
-- [ ] Coalesce repeated semantic scopes only inside explicit sample-facet
+- [x] Coalesce repeated semantic scopes only inside explicit sample-facet
       batches and preserve original flat order for picking.
-- [ ] Refresh ordinary and coalesced scope bounds from their current coordinate
+- [x] Refresh ordinary and coalesced scope bounds from their current coordinate
       sources after `onBeforeRender()` without rebuilding hierarchy.
-- [ ] Delete Core's rendering-intent module, coverage fields, and
+- [x] Delete Core's rendering-intent module, coverage fields, and
       sample-count classification.
-- [ ] Remove obsolete explicit-sample-count fixtures and replace them with
+- [x] Remove obsolete explicit-sample-count fixtures and replace them with
       program-derived flat and hierarchical cases.
 
 ### Affected areas and consumers
@@ -469,6 +469,29 @@ growth.
 - Core and WebGPU renderer TypeScript checks.
 - Focused lint and `git diff --check`.
 - Real-browser MCCA and paper-example smoke and performance checks.
+
+## Implementation evidence
+
+- Luna reviewed the design before implementation and gave a final GO after the
+  implementation review. The final review found no remaining correctness or
+  KISS blockers.
+- The full Vitest suite passed: 448 files and 3,762 passing tests, with one
+  skipped test and two existing todos. Core and renderer TypeScript checks and
+  repository lint passed.
+- All 69 renderer GPU tests passed, including dynamic plain-rectangle shader
+  coverage and inferred multisample opacity composition.
+- Headless hardware-backed Chromium zoom runs passed without console or WebGPU
+  validation errors for both private specifications. MCCA used 25-28 physical
+  groups per visible frame; the paper example used 13-16.
+- Renderer draw normalization averaged 0.099 ms per MCCA visible frame and
+  0.047 ms per paper-example visible frame across 87-frame diagnostic runs.
+  These headless measurements support the absence of a material CPU regression
+  but are not authoritative GPU frame-pacing measurements.
+- The central production files grew from 7,196 to 7,374 lines (+178, 2.5%).
+  The growth is confined to the immutable program AA contract and the one
+  shared flat/hierarchical normalization path. It replaces Core's duplicate
+  predicate and public sample-count planning; no second renderer planner or
+  retained scene graph was added.
 
 ## Acceptance criteria
 

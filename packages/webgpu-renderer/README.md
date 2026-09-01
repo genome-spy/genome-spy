@@ -223,35 +223,33 @@ handle serve several same-shaped viewport occurrences. Occurrence-local scale
 domains would require a separate draw-time scale-state contract.
 
 Visible frames may instead provide ordered `items`, where each item is either
-a draw command or a render group. A group supplies logical-pixel `bounds`, an
-ordered `items` iterable, and optional `opacity` and `sampleCount` values:
+a draw command or a semantic render scope. A scope supplies logical-pixel
+`bounds`, an ordered `items` iterable, and optional `opacity`:
 
 ```js
 renderer.render({
-    items: [
-        backgroundDraw,
-        {
-            bounds: { x: 20, y: 10, width: 400, height: 120 },
-            opacity: 0.6,
-            sampleCount: 4,
-            items: [heatmapDraw],
-        },
-        labelsDraw,
-    ],
+  items: [
+    backgroundDraw,
+    {
+      bounds: { x: 20, y: 10, width: 400, height: 120 },
+      opacity: 0.6,
+      items: [heatmapDraw],
+    },
+    labelsDraw,
+  ],
 });
 ```
 
-Groups isolate their children into a transparent, bounded transient target.
-The renderer resolves four-sample groups and composites the result into the
-parent using premultiplied-alpha blending. Nested groups preserve item order.
-Only sample counts `1` and `4` are accepted. An opaque group whose sample count
-matches its parent is flattened during normalization. This keeps ordinary
-single-sampled frames direct and lets adjacent opaque four-sample opacity scopes
-share one accumulation. Fractional opacity retains isolation. Multisample mark
-pipelines are created lazily, and exact-size transient attachments are pooled
-within a bounded free-cache budget.
+Scopes describe hierarchy, clipping bounds, and opacity without exposing the
+renderer implementation. The renderer decides which marks need multisampling,
+promotes compatible scopes, and batches consecutive compatible flat draws.
+Opaque compatible scopes are flattened; fractional opacity retains isolation
+so it is applied once after child overlap. Dynamic rectangle edge properties
+use shader antialiasing, while plain rectangles with static edge properties use
+multisampling. Multisample pipelines are created lazily, and exact-size
+transient attachments are pooled within a bounded free-cache budget.
 
-Picking remains a separate flat, single-sampled frame. Visual render groups do
+Picking remains a separate flat, single-sampled frame. Visual render scopes do
 not change pick ordering, IDs, or attachment ownership.
 
 ### Detached targets

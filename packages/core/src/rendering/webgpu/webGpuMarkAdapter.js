@@ -495,7 +495,7 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
                 data,
                 viewOpacity
             ),
-            strokeWidth: createStaticNumericChannel(mark, "strokeWidth", data),
+            strokeWidth: createNumericChannel(mark, "strokeWidth", data, true),
             cornerRadiusTopRight: staticOrLivePropertyValue(
                 mark,
                 ["cornerRadius", "cornerRadiusTopRight"],
@@ -1184,48 +1184,26 @@ function createIndexPositionScale(scale, range, band) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {object[]} data
+ * @param {boolean} [keepLiteralStatic]
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createNumericChannel(mark, channel, data) {
+function createNumericChannel(mark, channel, data, keepLiteralStatic = false) {
     return createConditionalChannel(mark, channel, data, (encoder) =>
-        createNumericBranch(mark, channel, data, encoder)
+        keepLiteralStatic && isStaticConstantEncoder(encoder)
+            ? { value: Number(encoder(data[0])) }
+            : createNumericBranch(mark, channel, data, encoder)
     );
-}
-
-/**
- * Keeps a literal numeric channel as a renderer constant. Expression-backed,
- * conditional, and series channels retain their ordinary updateable shape.
- *
- * @param {import("../../marks/mark.js").default} mark
- * @param {string} channel
- * @param {object[]} data
- * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
- */
-function createStaticNumericChannel(mark, channel, data) {
-    return createConditionalChannel(mark, channel, data, (encoder) => {
-        const config = createNumericBranch(mark, channel, data, encoder);
-        if (!isStaticConstantEncoder(encoder)) {
-            return config;
-        }
-        const staticConfig = { ...config };
-        delete (/** @type {{dynamic?: boolean}} */ (staticConfig).dynamic);
-        return staticConfig;
-    });
 }
 
 /** @param {import("../../types/encoder.js").Encoder} encoder */
 function isStaticConstantEncoder(encoder) {
-    if (!encoder.constant) {
-        return false;
-    }
     const channelDef = encoder.channelDef;
-    if (isValueDef(channelDef)) {
-        return !isExprRef(channelDef.value);
-    } else if (isDatumDef(channelDef)) {
-        return !isExprRef(channelDef.datum);
-    } else {
-        return false;
-    }
+    return (
+        encoder.constant &&
+        !encoder.scale &&
+        ((isValueDef(channelDef) && !isExprRef(channelDef.value)) ||
+            (isDatumDef(channelDef) && !isExprRef(channelDef.datum)))
+    );
 }
 
 /**

@@ -1112,23 +1112,21 @@ export type DrawCommand = {
     placement?: DrawPlacement;
 };
 
-export type RenderGroup = {
-    /** Ordered retained draws and nested groups. */
+export type RenderScope = {
+    /** Ordered retained draws and nested semantic scopes. */
     items: Iterable<RenderItem>;
-    /** Logical-pixel bounds of the isolated target. */
+    /** Logical-pixel bounds available for clipping or isolation. */
     bounds: DrawRect;
-    /** Opacity applied once when the resolved group is composited. */
+    /** Opacity applied once to the scope's combined contents. */
     opacity?: number;
-    /** Color sample count for direct draws in this group. */
-    sampleCount?: 1 | 4;
 };
 
-export type RenderItem = DrawCommand | RenderGroup;
+export type RenderItem = DrawCommand | RenderScope;
 
 export type RenderFrame = {
     /** Ordered mark occurrences. Defaults to all retained marks in creation order. */
     draws?: Iterable<DrawCommand>;
-    /** Ordered draws and isolated render groups. Takes precedence over draws. */
+    /** Ordered draws and semantic scopes. Takes precedence over draws. */
     items?: Iterable<RenderItem>;
     /** Canvas clear color. Defaults to opaque white. */
     clearColor?: GPUColor;

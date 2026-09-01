@@ -1076,6 +1076,7 @@ export class Renderer {
         }
         return {
             type: /** @type {"draw"} */ ("draw"),
+            requiredSampleCount: mark.antialiasing === "multisample" ? 4 : 1,
             uniformIndex,
             markId,
             viewport,
@@ -1105,14 +1106,13 @@ export class Renderer {
 
         /**
          * @param {Iterable<import("./index.d.ts").RenderItem | MarkId>} source
-         * @param {1 | 4} targetSampleCount
-         * @returns {NormalizedRenderItem[]}
+         * @returns {NormalizedSemanticItem[]}
          */
-        const visit = (source, targetSampleCount) => {
-            /** @type {NormalizedRenderItem[]} */
+        const normalize = (source) => {
+            /** @type {NormalizedSemanticItem[]} */
             const normalized = [];
             for (const item of source) {
-                if (isRenderGroup(item)) {
+                if (isRenderScope(item)) {
                     const opacity = item.opacity ?? 1;
                     if (
                         !Number.isFinite(opacity) ||
@@ -1120,35 +1120,33 @@ export class Renderer {
                         opacity > 1
                     ) {
                         throw new RendererError(
-                            "Render group opacity must be between zero and one."
+                            "Render scope opacity must be between zero and one."
                         );
                     }
-                    const sampleCount = item.sampleCount ?? 1;
-                    if (sampleCount !== 1 && sampleCount !== 4) {
+                    if ("sampleCount" in item) {
                         throw new RendererError(
-                            "Render group sampleCount must be 1 or 4."
+                            "Render scopes do not accept an explicit sampleCount."
                         );
                     }
-                    assertRect("render group bounds", item.bounds);
-                    if (opacity === 0) {
+                    assertRect("render scope bounds", item.bounds, true);
+                    if (
+                        opacity === 0 ||
+                        item.bounds.width === 0 ||
+                        item.bounds.height === 0
+                    ) {
                         continue;
                     }
-                    const children = visit(item.items, sampleCount);
+                    const children = normalize(item.items);
                     if (!children.length) {
                         continue;
                     }
-                    if (opacity === 1 && sampleCount === targetSampleCount) {
-                        normalized.push(...children);
-                    } else {
-                        groupCount++;
-                        normalized.push({
-                            type: "group",
-                            bounds: { ...item.bounds },
-                            opacity,
-                            sampleCount,
-                            items: children,
-                        });
-                    }
+                    normalized.push({
+                        type: "scope",
+                        bounds: item.bounds,
+                        opacity,
+                        coverageOnly: children.every(requiresMultisampling),
+                        items: children,
+                    });
                 } else {
                     const draw = this._normalizeDraw(
                         item,
@@ -1164,7 +1162,94 @@ export class Renderer {
             return normalized;
         };
 
-        const normalizedItems = visit(items, 1);
+        /**
+         * @param {NormalizedSemanticItem[]} source
+         * @param {1 | 4} targetSampleCount
+         * @param {import("./index.d.ts").DrawRect} activeBounds
+         * @returns {NormalizedRenderItem[]}
+         */
+        const layerize = (source, targetSampleCount, activeBounds) => {
+            /** @type {NormalizedRenderItem[]} */
+            const normalized = [];
+            /** @type {NormalizedDraw[]} */
+            let coverageRun = [];
+            /** @type {import("./index.d.ts").DrawRect | undefined} */
+            let coverageBounds;
+
+            const flushCoverageRun = () => {
+                if (!coverageRun.length) {
+                    return;
+                }
+                groupCount++;
+                normalized.push({
+                    type: "group",
+                    bounds: /** @type {import("./index.d.ts").DrawRect} */ (
+                        coverageBounds
+                    ),
+                    opacity: 1,
+                    sampleCount: 4,
+                    items: coverageRun,
+                });
+                coverageRun = [];
+                coverageBounds = undefined;
+            };
+
+            for (const item of source) {
+                if (item.type === "scope") {
+                    flushCoverageRun();
+                    const bounds = intersectRects(item.bounds, activeBounds);
+                    if (!bounds.width || !bounds.height) {
+                        continue;
+                    }
+                    const sampleCount = item.coverageOnly ? 4 : 1;
+                    const children = layerize(item.items, sampleCount, bounds);
+                    if (!children.length) {
+                        continue;
+                    }
+                    if (
+                        item.opacity === 1 &&
+                        sampleCount === targetSampleCount
+                    ) {
+                        normalized.push(...children);
+                    } else {
+                        groupCount++;
+                        normalized.push({
+                            type: "group",
+                            bounds,
+                            opacity: item.opacity,
+                            sampleCount,
+                            items: children,
+                        });
+                    }
+                } else {
+                    if (
+                        targetSampleCount === 1 &&
+                        item.requiredSampleCount === 4
+                    ) {
+                        const bounds = intersectRects(
+                            item.scissor,
+                            activeBounds
+                        );
+                        if (!bounds.width || !bounds.height) {
+                            continue;
+                        }
+                        coverageRun.push(item);
+                        if (coverageBounds) {
+                            expandRect(coverageBounds, bounds);
+                        } else {
+                            coverageBounds = bounds;
+                        }
+                    } else {
+                        flushCoverageRun();
+                        normalized.push(item);
+                    }
+                }
+            }
+            flushCoverageRun();
+            return normalized;
+        };
+
+        const normalizedItems = layerize(normalize(items), 1, canvas);
         addCount("normalizedDraws", draws.length);
         finishPhase("drawNormalization", phaseStart);
         return { items: normalizedItems, draws, groupCount };
@@ -1613,6 +1698,7 @@ function wrapMethod(target, name, before) {
 /**
  * @typedef {{
  *   type: "draw",
+ *   requiredSampleCount: 1 | 4,
  *   markId: import("./index.d.ts").MarkId,
  *   viewport: import("./index.d.ts").DrawRect,
  *   scissor: import("./index.d.ts").DrawRect,
@@ -1636,6 +1722,17 @@ function wrapMethod(target, name, before) {
 /** @typedef {NormalizedDraw | NormalizedRenderGroup} NormalizedRenderItem */
 
 /**
+ * @typedef {object} NormalizedRenderScope
+ * @property {"scope"} type
+ * @property {import("./index.d.ts").DrawRect} bounds
+ * @property {number} opacity
+ * @property {boolean} coverageOnly
+ * @property {NormalizedSemanticItem[]} items
+ */
+
+/** @typedef {NormalizedDraw | NormalizedRenderScope} NormalizedSemanticItem */
+
+/**
  * @typedef {object} RenderTarget
  * @property {GPUTextureView | undefined} view
  * @property {number} width
@@ -1648,9 +1745,32 @@ function wrapMethod(target, name, before) {
  * @typedef {RenderTarget & {texture: import("./renderGroups.js").TransientTexture}} RenderedGroup
  */
 
-/** @param {unknown} value @returns {value is import("./index.d.ts").RenderGroup} */
-function isRenderGroup(value) {
+/** @param {unknown} value @returns {value is import("./index.d.ts").RenderScope} */
+function isRenderScope(value) {
     return typeof value === "object" && value !== null && "items" in value;
+}
+
+/**
+ * @param {NormalizedSemanticItem} item
+ * @returns {boolean}
+ */
+function requiresMultisampling(item) {
+    return item.type === "scope"
+        ? item.coverageOnly
+        : item.requiredSampleCount === 4;
+}
+
+/**
+ * @param {import("./index.d.ts").DrawRect} a
+ * @param {import("./index.d.ts").DrawRect} b
+ */
+function expandRect(a, b) {
+    const right = Math.max(a.x + a.width, b.x + b.width);
+    const bottom = Math.max(a.y + a.height, b.y + b.height);
+    a.x = Math.min(a.x, b.x);
+    a.y = Math.min(a.y, b.y);
+    a.width = right - a.x;
+    a.height = bottom - a.y;
 }
 
 /**
@@ -1676,18 +1796,19 @@ function assertNonNegativeInteger(name, value) {
 /**
  * @param {string} name
  * @param {import("./index.d.ts").DrawRect} rect
+ * @param {boolean} [allowEmpty]
  */
-function assertRect(name, rect) {
+function assertRect(name, rect, allowEmpty = false) {
     if (
         !Number.isFinite(rect.x) ||
         !Number.isFinite(rect.y) ||
         !Number.isFinite(rect.width) ||
         !Number.isFinite(rect.height) ||
-        rect.width <= 0 ||
-        rect.height <= 0
+        (allowEmpty ? rect.width < 0 : rect.width <= 0) ||
+        (allowEmpty ? rect.height < 0 : rect.height <= 0)
     ) {
         throw new RendererError(
-            `${name} must have finite coordinates and positive dimensions.`
+            `${name} must have finite coordinates and ${allowEmpty ? "non-negative" : "positive"} dimensions.`
         );
     }
 }
