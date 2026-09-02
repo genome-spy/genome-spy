@@ -598,7 +598,12 @@ point-plus-linear fixture from 273,506 to 187,781 minified bytes and from 92,969
 to 52,938 gzip bytes; the remaining delta is the production path parser,
 preparation, and WGSL generator. Remaining work includes the exhaustive visual
 matrix, benchmark reruns, and inward-stroke semantics. The temporary production
-mark and runtime comparison controls have been removed.
+mark and runtime comparison controls have been removed. A deterministic
+201-by-201 compatibility raster now compares every canonical path silhouette
+with a JavaScript translation of the retired analytic shader. It bounds both
+pixel disagreement and relative filled-area drift, including every directional
+triangle and tick. The remaining visual matrix concerns delivered
+antialiasing, strokes, DPR, and rotation rather than basic shape geometry.
 
 ### Intended outcome
 
