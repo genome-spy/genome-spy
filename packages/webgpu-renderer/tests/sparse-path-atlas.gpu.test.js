@@ -157,6 +157,97 @@ test("sparse GPU atlas preserves even-odd sign and dispatch bounds", async ({
     expect(result.repeatedHash).toBe(result.firstHash);
 });
 
+test("GPU atlas stores regular signed distance in alpha", async ({ page }) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const { createSparseGpuPathAtlas } =
+            await import("/src/symbols/sparseGpuPathAtlas.js");
+        const adapter = await navigator.gpu.requestAdapter();
+        const device = await adapter.requestDevice();
+        const options = {
+            tileSize: 32,
+            spread: 8,
+            shapePadding: 10,
+            gutter: 1,
+        };
+
+        const halfToFloat = (value) => {
+            const sign = value & 0x8000 ? -1 : 1;
+            const exponent = (value >> 10) & 0x1f;
+            const fraction = value & 0x03ff;
+            if (exponent === 0) {
+                return sign * 2 ** -14 * (fraction / 1024);
+            }
+            if (exponent === 0x1f) {
+                return fraction ? Number.NaN : sign * Number.POSITIVE_INFINITY;
+            }
+            return sign * 2 ** (exponent - 15) * (1 + fraction / 1024);
+        };
+
+        const readSamples = async (format) => {
+            const atlas = createSparseGpuPathAtlas(device, ["M-1-1H1V1H-1Z"], {
+                ...options,
+                format,
+            });
+            await atlas.completion;
+            const bytesPerPixel = format === "rgba16float" ? 8 : 4;
+            const bytesPerRow =
+                Math.ceil((atlas.width * bytesPerPixel) / 256) * 256;
+            const readback = device.createBuffer({
+                size: bytesPerRow * atlas.height,
+                usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+            });
+            const encoder = device.createCommandEncoder();
+            encoder.copyTextureToBuffer(
+                { texture: atlas.texture },
+                { buffer: readback, bytesPerRow, rowsPerImage: atlas.height },
+                [atlas.width, atlas.height]
+            );
+            device.queue.submit([encoder.finish()]);
+            await readback.mapAsync(GPUMapMode.READ);
+            const bytes = new Uint8Array(readback.getMappedRange());
+            const words = new Uint16Array(
+                bytes.buffer,
+                bytes.byteOffset,
+                bytes.byteLength / 2
+            );
+            const alphaAt = (x, y) => {
+                if (format === "rgba16float") {
+                    return halfToFloat(
+                        words[(y * bytesPerRow) / 2 + x * 4 + 3]
+                    );
+                }
+                return bytes[y * bytesPerRow + x * 4 + 3];
+            };
+            const samples = {
+                outside: alphaAt(2, 2),
+                nearEdge: alphaAt(11, 17),
+                inside: alphaAt(17, 17),
+            };
+            readback.unmap();
+            readback.destroy();
+            atlas.destroy();
+            return samples;
+        };
+
+        const samples = {
+            normalized: await readSamples("rgba8unorm"),
+            float: await readSamples("rgba16float"),
+        };
+        device.destroy();
+        return samples;
+    });
+
+    expect(result.normalized.outside).toBeLessThan(128);
+    expect(result.normalized.nearEdge).toBeGreaterThan(112);
+    expect(result.normalized.nearEdge).toBeLessThan(144);
+    expect(result.normalized.inside).toBeGreaterThan(128);
+    expect(result.float.outside).toBeLessThan(0);
+    expect(Math.abs(result.float.nearEdge)).toBeLessThan(2);
+    expect(result.float.inside).toBeGreaterThan(0);
+});
+
 test("quadratic extrema do not create one-pixel sign streaks", async ({
     page,
 }) => {

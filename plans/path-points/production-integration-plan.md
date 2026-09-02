@@ -250,9 +250,10 @@ dynamic atlas. No msdf-atlas-gen source is copied.
 
 ### Make `rgba16float` the initial production format
 
-Store signed atlas-pixel distances directly in RGB half floats and leave alpha
-unused for now. This avoids the visible eight-bit banding confirmed in both the
-symbol and text stories. Linear filtering remains the baseline; bicubic
+Store signed atlas-pixel distances directly in RGB half floats and use alpha
+for a regular signed-distance value when generating outline-font effects. This
+avoids the visible eight-bit banding confirmed in both the symbol and text
+stories. Linear filtering remains the baseline; bicubic
 filtering would multiply texture samples in the per-fragment hot path and does
 not address missing source resolution.
 
@@ -278,7 +279,8 @@ series replacement, and string-cardinality validation remain intact.
 
 Add fill/stroke coverage through the shared MSDF decoder. Ordinary un-stroked
 text uses the normal atlas class; a nonzero stroke selects a class with adequate
-encoded range. Other effects remain deferred. Empty glyphs advance the pen
+encoded range. The initial glyph-based shadow and glow experiment is specified
+in [`text-effects-plan.md`](text-effects-plan.md). Empty glyphs advance the pen
 without atlas allocation.
 
 Preserve the existing text shader's 2 by 2 subpixel supersampling for small

@@ -482,12 +482,23 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let pixelIndex = pixel.y * params.atlasSize.x + pixel.x;
     let sign = select(-1.0, 1.0, inside);
-    let value = vec3<f32>(
+    let unsignedValue = vec3<f32>(
         decodeMagnitude(atomicLoad(&scratch[pixelIndex * 3u])),
         decodeMagnitude(atomicLoad(&scratch[pixelIndex * 3u + 1u])),
         decodeMagnitude(atomicLoad(&scratch[pixelIndex * 3u + 2u]))
+    );
+    let value = unsignedValue * sign;
+    // Preserve a regular signed distance beside the colored distances. Wide,
+    // soft effects need the nearest edge regardless of its MSDF color.
+    let trueDistance = min(
+        unsignedValue.r,
+        min(unsignedValue.g, unsignedValue.b)
     ) * sign;
-    textureStore(rawOutput, vec2<i32>(pixel), vec4<f32>(value, 1.0));
+    textureStore(
+        rawOutput,
+        vec2<i32>(pixel),
+        vec4<f32>(value, trueDistance)
+    );
 }
 `;
 
@@ -697,7 +708,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let slotMin = vec2<i32>(job.edgeRange.zw);
     let slotMax = slotMin + vec2<i32>(job.tileInfo.xy);
     let coordinate = slotMin + vec2<i32>(gid.xy);
-    var value = textureLoad(rawInput, coordinate, 0).rgb;
+    let rawValue = textureLoad(rawInput, coordinate, 0);
+    var value = rawValue.rgb;
+    let trueDistance = rawValue.a;
     let offsets = array<vec2<i32>, 4>(
         vec2<i32>(-1, 0),
         vec2<i32>(1, 0),
@@ -763,14 +776,15 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
 const RGBA8_STORE = /* wgsl */ `
 let mapped = clamp(
-        vec3<f32>(0.5) + value / (2.0 * params.spread),
-        vec3<f32>(0.0),
-        vec3<f32>(1.0)
+        vec4<f32>(0.5) + vec4<f32>(value, trueDistance) /
+            (2.0 * params.spread),
+        vec4<f32>(0.0),
+        vec4<f32>(1.0)
     );
-    textureStore(finalOutput, coordinate, vec4<f32>(mapped, 1.0));`;
+    textureStore(finalOutput, coordinate, mapped);`;
 
 const RGBA16_FLOAT_STORE = /* wgsl */ `
-textureStore(finalOutput, coordinate, vec4<f32>(value, 1.0));`;
+textureStore(finalOutput, coordinate, vec4<f32>(value, trueDistance));`;
 
 /**
  * @param {"rgba8unorm" | "rgba16float"} format

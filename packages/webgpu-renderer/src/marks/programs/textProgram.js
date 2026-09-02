@@ -17,6 +17,7 @@ import {
 } from "../../utils/webgpuTextureUtils.js";
 import { gpuLabel, RENDERER_GPU_OWNER } from "../../utils/gpuLabel.js";
 import { TEXT_GEOMETRY_WGSL } from "./textGeometry.wgsl.js";
+import { buildGlyphOffsets } from "./textRenderItems.js";
 
 /**
  * Text rendering overview (SDF + per-glyph instancing).
@@ -1672,21 +1673,4 @@ export default class TextProgram extends BaseProgram {
         this._outlineAtlasUnsubscribe?.();
         super.destroy();
     }
-}
-
-/**
- * Build an exclusive prefix sum from logical strings to glyph instances.
- *
- * @param {import("../../fonts/layout.js").TextLayout} textLayout
- * @returns {Uint32Array}
- */
-function buildGlyphOffsets(textLayout) {
-    const offsets = new Uint32Array(textLayout.textWidth.length + 1);
-    for (const stringIndex of textLayout.stringIndex) {
-        offsets[stringIndex + 1]++;
-    }
-    for (let i = 1; i < offsets.length; i++) {
-        offsets[i] += offsets[i - 1];
-    }
-    return offsets;
 }
