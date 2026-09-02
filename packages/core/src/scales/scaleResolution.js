@@ -1382,8 +1382,8 @@ export default class ScaleResolution {
     /**
      * Returns locus assembly requirements without initializing the scale.
      *
-     * This is intentionally side-effect free: it only inspects merged scale
-     * properties from registered members and does not touch default domains or
+     * This is intentionally side-effect free: it only inspects explicit scale
+     * properties from registered members and does not resolve domains or
      * instantiate scale instances.
      *
      * @returns {{
@@ -1392,17 +1392,35 @@ export default class ScaleResolution {
      * }}
      */
     getAssemblyRequirement() {
-        const props = this.#getMergedScaleProps();
-        if (props === null || props.type === "null" || props.type !== LOCUS) {
+        if (this.type !== LOCUS) {
             return {
                 assembly: undefined,
                 needsDefaultAssembly: false,
             };
         }
 
+        const scaleProps = this.#viewLevelScaleProps
+            ? [this.#viewLevelScaleProps.props]
+            : this.#getOrderedMembers()
+                  .map((member) => member.channelDef.scale)
+                  .filter((props) => props !== undefined);
+
+        if (
+            scaleProps.some((props) => props === null || props.type === "null")
+        ) {
+            return {
+                assembly: undefined,
+                needsDefaultAssembly: false,
+            };
+        }
+
+        const assembly = scaleProps.find(
+            (props) => props?.assembly !== undefined
+        )?.assembly;
+
         return {
-            assembly: props.assembly,
-            needsDefaultAssembly: props.assembly === undefined,
+            assembly,
+            needsDefaultAssembly: assembly === undefined,
         };
     }
 
@@ -1973,7 +1991,10 @@ export default class ScaleResolution {
      */
     fromComplexInterval(interval) {
         if (this.type == LOCUS) {
-            return locusFromComplexInterval(this.#getGenomeSource(), interval);
+            return locusFromComplexInterval(
+                this.#getGenomeSource(this.getAssemblyRequirement().assembly),
+                interval
+            );
         }
         return /** @type {number[]} */ (interval);
     }
