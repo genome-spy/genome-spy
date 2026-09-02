@@ -156,7 +156,10 @@ reconstructs signed distance as `median(r, g, b)`. It decodes normalized
 per-instance scale derived from point diameter, device-pixel ratio, and atlas
 shape resolution converts the stored texel distance range into device pixels.
 Fill coverage uses the zero-distance contour; an outline shifts the same
-distance by half the requested stroke width.
+distance by half the requested stroke width. For `inwardStroke`, the nominal
+path boundary remains the outer edge and the full requested width is composed
+toward the interior. Its quad therefore omits directional outer-miter padding
+and retains only the fill antialiasing guard.
 
 The vertex shader expands and rotates a path-specific quad. CPU metadata stores
 the normalized fill bounds and directional unit-stroke miter extents, so

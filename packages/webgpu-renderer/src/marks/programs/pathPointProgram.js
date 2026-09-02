@@ -39,6 +39,7 @@ struct VSOut {
     @location(5) halfStrokeWidth: f32,
     @location(6) @interpolate(flat) pickId: u32,
     @location(7) @interpolate(flat) devicePixelsPerAtlas: f32,
+    @location(8) @interpolate(flat) inwardStroke: u32,
 };
 
 fn culledPoint() -> VSOut {
@@ -55,6 +56,7 @@ fn culledPoint() -> VSOut {
     out.halfStrokeWidth = 0.0;
     out.pickId = 0u;
     out.devicePixelsPerAtlas = 0.0;
+    out.inwardStroke = 0u;
     return out;
 }
 
@@ -86,15 +88,17 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     }
     let entry = pathAtlasEntries[shape];
     let halfStrokeWidth = strokeWidth * 0.5;
+    let inwardStroke = getScaled_inwardStroke(i);
+    let outwardStroke = halfStrokeWidth > 0.0 && inwardStroke == 0u;
     // The antialiased outer contour is another offset curve, so its radius
     // must use the path-specific miter extent too. Keep the remaining
     // pixel-center and rasterization safety isotropic.
-    let coverageRadius = halfStrokeWidth +
+    let coverageRadius = select(0.0, halfStrokeWidth, outwardStroke) +
         AA_COVERAGE_RADIUS_PIXELS / globals.dpr;
     let rasterSafety = select(
         FILL_RASTER_SAFETY_PIXELS,
         STROKE_RASTER_SAFETY_PIXELS,
-        halfStrokeWidth > 0.0
+        outwardStroke
     ) / globals.dpr;
     let localMin = entry.localBounds.xy * diameter -
         entry.strokePadding.xy * coverageRadius - rasterSafety;
@@ -154,6 +158,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         diameter * globals.dpr / params.uShapePixels,
         1.0 / params.uSpread
     );
+    out.inwardStroke = inwardStroke;
 #if defined(uniqueId_DEFINED)
     out.pickId = getScaled_uniqueId(i) + 1u;
 #endif
@@ -183,8 +188,8 @@ fn shade(in: VSOut) -> vec4<f32> {
         in.uv,
         in.devicePixelsPerAtlas
     );
-    let fillCoverage = clamp(distance + 0.5, 0.0, 1.0);
-    let outerCoverage = clamp(
+    let shapeCoverage = clamp(distance + 0.5, 0.0, 1.0);
+    let expandedCoverage = clamp(
         distance + in.halfStrokeWidth * globals.dpr + 0.5,
         0.0,
         1.0
@@ -196,8 +201,19 @@ fn shade(in: VSOut) -> vec4<f32> {
     fillColor = premultiplyAlpha(fillColor);
     strokeColor = premultiplyAlpha(strokeColor);
 
-    var color = strokeColor * outerCoverage;
-    color = mix(color, fillColor, fillCoverage);
+    var color: vec4<f32>;
+    if (in.inwardStroke != 0u) {
+        let innerCoverage = clamp(
+            distance - 2.0 * in.halfStrokeWidth * globals.dpr + 0.5,
+            0.0,
+            1.0
+        );
+        color = strokeColor * shapeCoverage;
+        color = mix(color, fillColor, innerCoverage);
+    } else {
+        color = strokeColor * expandedCoverage;
+        color = mix(color, fillColor, shapeCoverage);
+    }
     if (color.a <= 0.0) {
         discard;
     }

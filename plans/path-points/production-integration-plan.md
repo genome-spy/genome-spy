@@ -610,6 +610,10 @@ with a JavaScript translation of the retired analytic shader. It bounds both
 pixel disagreement and relative filled-area drift, including every directional
 triangle and tick. The remaining visual matrix concerns delivered
 antialiasing, strokes, DPR, and rotation rather than basic shape geometry.
+Path-backed points now also implement `inwardStroke`: the nominal path boundary
+is the outer edge, the full stroke is composed toward the fill, and the quad
+does not reserve outward miter or thick-stroke raster padding. A focused GPU
+test compares inside and outside pixels with the centered-stroke route.
 
 ### Intended outcome
 
