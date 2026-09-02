@@ -155,11 +155,15 @@ reconstructs signed distance as `median(r, g, b)`. It decodes normalized
 8-bit values or consumes floating-point atlas distances directly. A
 per-instance scale derived from point diameter, device-pixel ratio, and atlas
 shape resolution converts the stored texel distance range into device pixels.
-Fill coverage uses the zero-distance contour; an outline shifts the same
-distance by half the requested stroke width. For `inwardStroke`, the nominal
-path boundary remains the outer edge and the full requested width is composed
-toward the interior. Its quad therefore omits directional outer-miter padding
-and retains only the fill antialiasing guard.
+Fill coverage uses the zero-distance contour. Centered stroke coverage is the
+difference between contours offset outward and inward by half the requested
+width, so a zero-width stroke contributes exactly no coverage. The shader
+premultiplies both layers, paints the fill first, and composites the stroke over
+it with source-over blending, matching SVG and Canvas paint order in one pass.
+For `inwardStroke`, the nominal path boundary remains the outer edge and the
+full requested stroke band is composed toward the interior. Its quad therefore
+omits directional outer-miter padding and retains only the fill antialiasing
+guard.
 
 Path-backed points also preserve `fillGradientStrength`. The shader normalizes
 positive reconstructed interior distance by the delivered device-pixel radius,

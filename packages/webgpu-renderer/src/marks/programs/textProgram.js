@@ -563,13 +563,26 @@ fn sampleOutlineCoverage(
     let strokeMax = shapeBounds.zw + vec2<f32>(strokeGuard);
     let fillInside = all(tilePosition >= fillMin) && all(tilePosition <= fillMax);
     let strokeInside = all(tilePosition >= strokeMin) && all(tilePosition <= strokeMax);
+    let fillCoverage = select(
+        0.0,
+        clamp(distance + 0.5, 0.0, 1.0),
+        fillInside
+    );
+    let outerCoverage = select(
+        0.0,
+        clamp(distance + halfStrokeWidth + 0.5, 0.0, 1.0),
+        strokeInside
+    );
+    // Use the same guard for both stroke contours so their difference is
+    // exactly zero when the requested width is zero.
+    let innerCoverage = select(
+        0.0,
+        clamp(distance - halfStrokeWidth + 0.5, 0.0, 1.0),
+        strokeInside
+    );
     return vec2<f32>(
-        select(0.0, clamp(distance + 0.5, 0.0, 1.0), fillInside),
-        select(
-            0.0,
-            clamp(distance + halfStrokeWidth + 0.5, 0.0, 1.0),
-            strokeInside
-        )
+        fillCoverage,
+        max(outerCoverage - innerCoverage, 0.0)
     );
 }
 
@@ -618,6 +631,10 @@ fn getGammaForColor(rgb: vec3<f32>) -> f32 {
     );
 }
 
+fn sourceOver(above: vec4<f32>, below: vec4<f32>) -> vec4<f32> {
+    return above + below * (1.0 - above.a);
+}
+
 fn shadeBase(in: VSOut, edgeFadeOpacity: f32) -> vec4<f32> {
     if (params.uOutlineFont != 0u) {
         let coverage = sampleSuperOutline(in);
@@ -627,8 +644,9 @@ fn shadeBase(in: VSOut, edgeFadeOpacity: f32) -> vec4<f32> {
         strokeColor.a *= in.opacity * in.strokeOpacity;
         fillColor = premultiplyAlpha(fillColor);
         strokeColor = premultiplyAlpha(strokeColor);
-        var color = strokeColor * coverage.y;
-        color = mix(color, fillColor, coverage.x);
+        let fillLayer = fillColor * coverage.x;
+        let strokeLayer = strokeColor * coverage.y;
+        let color = sourceOver(strokeLayer, fillLayer);
         return color * edgeFadeOpacity;
     }
     let sigDist = sampleSuperSdf(in.uv);

@@ -155,6 +155,82 @@ test("text mark renders supersampled RGBA16F TrueType outlines", async ({
     });
 });
 
+test("outline text ignores stroke color when stroke width is zero", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { textMark },
+            { identityScale },
+            { createTrueTypeFont },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/text.js"),
+            import("/src/scales/identity.js"),
+            import("/src/fonts/trueTypeFont.js"),
+        ]);
+        const bytes = await fetch("/src/fonts/DefaultFont.ttf").then(
+            (response) => response.arrayBuffer()
+        );
+        const font = createTrueTypeFont(bytes);
+
+        /** @param {number[]} stroke */
+        const render = async (stroke) => {
+            const dpr = 2;
+            const canvas = document.createElement("canvas");
+            canvas.width = 96 * dpr;
+            canvas.height = 64 * dpr;
+            document.body.appendChild(canvas);
+            const renderer = await createRenderer(canvas);
+            renderer.updateGlobals({ width: 96, height: 64, dpr });
+            const mark = renderer.createMark(textMark, {
+                font,
+                fontSize: 40,
+                channels: {
+                    text: { value: "M+" },
+                    x: { value: 48, scale: identityScale() },
+                    y: { value: 32, scale: identityScale() },
+                    size: { value: 40 },
+                    fill: { value: [0.1, 0.4, 0.9, 1] },
+                    stroke: { value: stroke },
+                    strokeWidth: { value: 0 },
+                },
+            });
+            renderer.render({ draws: [{ mark }] });
+            await renderer.device.queue.onSubmittedWorkDone();
+            const bitmap = await createImageBitmap(
+                await (await fetch(canvas.toDataURL("image/png"))).blob()
+            );
+            const copy = new OffscreenCanvas(canvas.width, canvas.height);
+            const context = copy.getContext("2d");
+            context.drawImage(bitmap, 0, 0);
+            const pixels = Array.from(
+                context.getImageData(0, 0, canvas.width, canvas.height).data
+            );
+            bitmap.close();
+            renderer.destroy();
+            canvas.remove();
+            return pixels;
+        };
+
+        const redStroke = await render([1, 0, 0, 1]);
+        const greenStroke = await render([0, 1, 0, 1]);
+        let maximumDifference = 0;
+        for (let index = 0; index < redStroke.length; index++) {
+            maximumDifference = Math.max(
+                maximumDifference,
+                Math.abs(redStroke[index] - greenStroke[index])
+            );
+        }
+        return { maximumDifference };
+    });
+
+    expect(result.maximumDifference).toBe(0);
+});
+
 test("TrueType atlases grow across marks and accept new replacement glyphs", async ({
     page,
 }) => {

@@ -13,6 +13,12 @@ replacement append missing glyphs in batches of at most 32; geometric texture
 growth copies old texels at unchanged coordinates and synchronously rebinds
 every borrower. No CPU bitmap, GPU readback, or full-font atlas is involved.
 
+Outline text derives separate fill and centered stroke-band coverages from the
+same MSDF sample. A zero-width stroke has exactly zero band coverage. Fill is
+painted first and the premultiplied stroke is composited over it with
+source-over blending, matching SVG and Canvas paint order without another draw
+pass.
+
 The font allocator starts with a 512-by-128 texture and grows dimensions by
 1.5 times when needed. This keeps enough horizontal room for ordinary glyph
 shelves without forcing power-of-two height jumps. In a local Chrome/Metal
