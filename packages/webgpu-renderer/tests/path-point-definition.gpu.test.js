@@ -56,6 +56,69 @@ test("PathPoint renders and picks an MSDF path with an outline", async ({
     expect(result).toEqual({ center: 7, outside: null });
 });
 
+test("PathPoint marks share an exact renderer-owned GPU atlas", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pathPointMark }, { linearScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/pathPoint.js"),
+                import("/src/scales/linear.js"),
+            ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = 64;
+        canvas.height = 64;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 1 });
+        const config = {
+            count: 1,
+            paths: ["M-1-1H1V1H-1Z"],
+            atlasFormat: "rgba16float",
+            channels: {
+                uniqueId: { data: new Uint32Array([17]), type: "u32" },
+                x: {
+                    value: 32,
+                    scale: linearScale({ domain: [0, 64], range: [0, 64] }),
+                },
+                y: {
+                    value: 32,
+                    scale: linearScale({ domain: [0, 64], range: [0, 64] }),
+                },
+                size: { value: 400 },
+                shape: { value: 0 },
+                fill: { value: [0.2, 0.4, 0.8, 1] },
+            },
+        };
+        const first = renderer.createMark(pathPointMark, config);
+        const second = renderer.createMark(pathPointMark, config);
+        const programs = Array.from(renderer._marks.values());
+        const sharedTexture =
+            programs[0]._extraTextures.get("pathAtlas").texture ===
+            programs[1]._extraTextures.get("pathAtlas").texture;
+        const sharedEntries =
+            programs[0]._extraBuffers.get("pathAtlasEntries") ===
+            programs[1]._extraBuffers.get("pathAtlasEntries");
+
+        renderer.destroyMark(first.markId);
+        renderer.render({ draws: [{ mark: second }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const picked = await renderer.pick(32, 32);
+        renderer.destroy();
+        canvas.remove();
+        return { sharedTexture, sharedEntries, picked };
+    });
+
+    expect(result).toEqual({
+        sharedTexture: true,
+        sharedEntries: true,
+        picked: 17,
+    });
+});
+
 test("PathPoint retains an acute miter inside its path-specific quad", async ({
     page,
 }) => {

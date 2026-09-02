@@ -299,6 +299,8 @@ export class Renderer {
         /** @type {Map<object, Map<unknown, { destroy: () => void }>>} */
         this._fontResourceCache = new Map();
         this._nextFontResourceId = 1;
+        /** @type {Set<{ destroy: () => void }>} */
+        this._ownedResources = new Set();
         /** @type {NormalizedDraw[] | null} */
         this._renderFrame = null;
         /** @type {NormalizedDraw[] | null} */
@@ -600,6 +602,19 @@ export class Renderer {
         }
         this.markPickingDirty();
         this._onInvalidate();
+    }
+
+    /**
+     * Retain a lazily imported device resource until renderer destruction.
+     *
+     * @template {{ destroy: () => void }} T
+     * @param {T} resource
+     * @returns {T}
+     */
+    _ownResource(resource) {
+        this._assertAlive();
+        this._ownedResources.add(resource);
+        return resource;
     }
 
     /**
@@ -1622,6 +1637,10 @@ export class Renderer {
             }
         }
         this._fontResourceCache.clear();
+        for (const resource of this._ownedResources) {
+            resource.destroy();
+        }
+        this._ownedResources.clear();
         this._renderFrame = null;
         this._globalUniformBuffer.destroy();
         this._transientTextures.destroy();

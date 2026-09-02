@@ -118,6 +118,34 @@ describe("buildSparsePathAtlasLayout", () => {
         expect(layout.segments[0].p0.y).toBeCloseTo(63.8);
     });
 
+    test("packs narrow font-like paths into variable rectangles", () => {
+        const layout = buildSparsePathAtlasLayout(
+            ["M0 0H100V50H0Z", "M0 0H1000V1000H0Z"],
+            {
+                normalizationSpan: 1000,
+                tightPacking: true,
+                maxAtlasWidth: 256,
+            }
+        );
+
+        expect(layout).toMatchObject({
+            width: 217,
+            height: 130,
+            maxSlotWidth: 130,
+            maxSlotHeight: 130,
+        });
+        expect(layout.jobs[0]).toMatchObject({
+            slotWidth: 87,
+            slotHeight: 85,
+            tileWidth: 85,
+            tileHeight: 83,
+        });
+        const jobs = new DataView(layout.jobData);
+        expect(jobs.getUint32(16, true)).toBe(87);
+        expect(jobs.getUint32(20, true)).toBe(85);
+        expect(layout.width * layout.height).toBeLessThan(260 * 130);
+    });
+
     test("rejects open contours and invalid range geometry", () => {
         expect(() => buildSparsePathAtlasLayout(["M0 0Q.5 1 1 0"])).toThrow(
             /closed contours/i

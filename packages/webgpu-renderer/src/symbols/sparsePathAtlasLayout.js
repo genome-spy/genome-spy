@@ -49,8 +49,10 @@ const MAX_MITER_PADDING = 4;
  * @property {number} edgeCount
  * @property {number} slotX
  * @property {number} slotY
- * @property {number} slotSize
- * @property {number} tileSize
+ * @property {number} slotWidth
+ * @property {number} slotHeight
+ * @property {number} tileWidth
+ * @property {number} tileHeight
  * @property {number} gutter
  */
 
@@ -658,8 +660,8 @@ function packJobs(jobs) {
             job.edgeCount,
             job.slotX,
             job.slotY,
-            job.slotSize,
-            job.tileSize,
+            job.slotWidth,
+            job.slotHeight,
             job.gutter,
             0,
         ];
@@ -671,10 +673,51 @@ function packJobs(jobs) {
 }
 
 /**
+ * @param {{ slotWidth: number, slotHeight: number }[]} rectangles
+ * @param {number | undefined} requestedWidth
+ */
+function packRectangles(rectangles, requestedWidth) {
+    const totalArea = rectangles.reduce(
+        (sum, rectangle) => sum + rectangle.slotWidth * rectangle.slotHeight,
+        0
+    );
+    const widest = Math.max(...rectangles.map((entry) => entry.slotWidth));
+    const targetWidth =
+        requestedWidth ?? Math.max(widest, Math.ceil(Math.sqrt(totalArea)));
+    if (!Number.isInteger(targetWidth) || targetWidth < widest) {
+        throw new Error("Invalid sparse path atlas packing width.");
+    }
+    let x = 0;
+    let y = 0;
+    let rowHeight = 0;
+    let width = 0;
+    return {
+        placements: rectangles.map((rectangle) => {
+            if (x > 0 && x + rectangle.slotWidth > targetWidth) {
+                x = 0;
+                y += rowHeight;
+                rowHeight = 0;
+            }
+            const placement = { x, y };
+            x += rectangle.slotWidth;
+            rowHeight = Math.max(rowHeight, rectangle.slotHeight);
+            width = Math.max(width, x);
+            return placement;
+        }),
+        get width() {
+            return width;
+        },
+        get height() {
+            return y + rowHeight;
+        },
+    };
+}
+
+/**
  * Build the CPU metadata for sparse GPU path-atlas generation.
  *
  * @param {string[]} paths
- * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number }} [options]
+ * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, tightPacking?: boolean, maxAtlasWidth?: number }} [options]
  */
 export function buildSparsePathAtlasLayout(paths, options = {}) {
     if (!Array.isArray(paths) || paths.length === 0) {
@@ -690,6 +733,7 @@ export function buildSparsePathAtlasLayout(paths, options = {}) {
         options.cubicTolerance ??
         DEFAULT_SPARSE_PATH_ATLAS_OPTIONS.cubicTolerance;
     const normalizationSpan = options.normalizationSpan;
+    const tightPacking = options.tightPacking ?? false;
     const shapePixels = tileSize - shapePadding * 2;
     if (
         !Number.isInteger(tileSize) ||
@@ -714,17 +758,7 @@ export function buildSparsePathAtlasLayout(paths, options = {}) {
     const uniquePaths = Array.from(new Set(paths));
     const slotSize = tileSize + gutter * 2;
     const columns = Math.ceil(Math.sqrt(uniquePaths.length));
-    const rows = Math.ceil(uniquePaths.length / columns);
-    const width = columns * slotSize;
-    const height = rows * slotSize;
-    /** @type {SparsePathSegment[]} */
-    const segments = [];
-    /** @type {SparsePathJob[]} */
-    const jobs = [];
-    const entryByPath = new Map();
-
-    for (let jobIndex = 0; jobIndex < uniquePaths.length; jobIndex++) {
-        const pathString = uniquePaths[jobIndex];
+    const preparedPaths = uniquePaths.map((pathString) => {
         const path = svgPathToGlyphPath(pathString);
         if (!path.bounds) {
             throw new Error("Sparse path atlas path must have visible bounds.");
@@ -737,22 +771,64 @@ export function buildSparsePathAtlasLayout(paths, options = {}) {
                 "Sparse path atlas path must have non-zero bounds."
             );
         }
+        const scale = shapePixels / (normalizationSpan ?? maxSpan);
+        const tileWidth = tightPacking
+            ? Math.max(1, Math.ceil(pathWidth * scale + shapePadding * 2))
+            : tileSize;
+        const tileHeight = tightPacking
+            ? Math.max(1, Math.ceil(pathHeight * scale + shapePadding * 2))
+            : tileSize;
+        return {
+            pathString,
+            path,
+            pathWidth,
+            pathHeight,
+            scale,
+            tileWidth,
+            tileHeight,
+            slotWidth: tileWidth + gutter * 2,
+            slotHeight: tileHeight + gutter * 2,
+        };
+    });
+    const compactPacking = tightPacking
+        ? packRectangles(preparedPaths, options.maxAtlasWidth)
+        : null;
+    const rows = Math.ceil(uniquePaths.length / columns);
+    const width = compactPacking?.width ?? columns * slotSize;
+    const height = compactPacking?.height ?? rows * slotSize;
+    /** @type {SparsePathSegment[]} */
+    const segments = [];
+    /** @type {SparsePathJob[]} */
+    const jobs = [];
+    const entryByPath = new Map();
+
+    for (let jobIndex = 0; jobIndex < uniquePaths.length; jobIndex++) {
+        const prepared = preparedPaths[jobIndex];
+        const {
+            pathString,
+            path,
+            pathWidth,
+            pathHeight,
+            scale,
+            tileWidth,
+            tileHeight,
+            slotWidth,
+            slotHeight,
+        } = prepared;
         const column = jobIndex % columns;
         const row = Math.floor(jobIndex / columns);
-        const slotX = column * slotSize;
-        const slotY = row * slotSize;
-        const scale = shapePixels / (normalizationSpan ?? maxSpan);
+        const slotX =
+            compactPacking?.placements[jobIndex].x ?? column * slotSize;
+        const slotY = compactPacking?.placements[jobIndex].y ?? row * slotSize;
         const offsetX =
             slotX +
             gutter +
-            shapePadding +
-            (shapePixels - pathWidth * scale) * 0.5 -
+            (tileWidth - pathWidth * scale) * 0.5 -
             path.bounds.xMin * scale;
         const offsetY =
             slotY +
             gutter +
-            shapePadding +
-            (shapePixels - pathHeight * scale) * 0.5 -
+            (tileHeight - pathHeight * scale) * 0.5 -
             path.bounds.yMin * scale;
         const edgeOffset = segments.length;
         const contours = collectContours(path);
@@ -821,8 +897,10 @@ export function buildSparsePathAtlasLayout(paths, options = {}) {
             edgeCount: segments.length - edgeOffset,
             slotX,
             slotY,
-            slotSize,
-            tileSize,
+            slotWidth,
+            slotHeight,
+            tileWidth,
+            tileHeight,
             gutter,
         });
         const { localBounds, strokePadding } = computePathDrawMetadata(
@@ -833,8 +911,8 @@ export function buildSparsePathAtlasLayout(paths, options = {}) {
         entryByPath.set(pathString, [
             (slotX + gutter + 0.5) / width,
             (slotY + gutter + 0.5) / height,
-            (slotX + gutter + tileSize - 0.5) / width,
-            (slotY + gutter + tileSize - 0.5) / height,
+            (slotX + gutter + tileWidth - 0.5) / width,
+            (slotY + gutter + tileHeight - 0.5) / height,
             ...localBounds,
             ...strokePadding,
         ]);
@@ -853,6 +931,8 @@ export function buildSparsePathAtlasLayout(paths, options = {}) {
         spread,
         gutter,
         slotSize,
+        maxSlotWidth: Math.max(...jobs.map((job) => job.slotWidth)),
+        maxSlotHeight: Math.max(...jobs.map((job) => job.slotHeight)),
         columns,
         pathCount: paths.length,
         uniquePathCount: uniquePaths.length,

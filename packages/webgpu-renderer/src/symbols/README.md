@@ -64,10 +64,33 @@ irregular, topology-dependent, and cheap relative to rasterization:
    atlas-pixel tolerance. Lines and quadratics remain exact input primitives.
 8. Pack fixed-layout 64-byte segment records and 32-byte atlas-job records.
 
-The current packer deduplicates identical path strings but otherwise uses a
-simple square grid of fixed-size tiles. Tight rectangles, incremental packing,
-eviction, and resolution classes are production work rather than part of this
-generator experiment.
+The packer deduplicates identical path strings. Its compatibility mode retains
+the PoC's square grid, while `tightPacking` uses shelf-packed rectangles sized
+from each normalized outline. Narrow font-like outlines therefore no longer
+reserve a full square tile. Incremental free-space reuse, eviction, and
+resolution classes remain later production work.
+
+### Resource ownership
+
+`MsdfAtlasGenerator` owns reusable input buffers, two atomic distance buffers,
+the raw `rgba16float` texture, and the compiled device pipelines. A `Renderer`
+creates this service lazily on the first GPU path request and destroys it with
+the device. Exact path tables and generation options resolve to one immutable,
+device-lifetime atlas containing only the final texture and its entry buffer;
+two marks requesting the same table borrow those resources instead of
+generating duplicates.
+
+Scratch capacity grows to the largest submitted job and is reused through
+WebGPU queue ordering. Replaced scratch resources are destroyed only after
+previously submitted commands complete. The default 64 MiB ceiling includes
+both RGB atomic buffers and the raw half-float texture. A request beyond the
+ceiling currently fails explicitly; splitting a larger final atlas into
+bounded generation batches is the next resource-layer step.
+
+`MsdfAtlasTexture` provides the corresponding final-storage growth primitive
+for incremental consumers. It doubles dimensions as needed, copies the old
+rectangle, increments a version, notifies bind-group owners once, and retires
+the replaced texture after queued work completes.
 
 ### 2. Sparse nearest-distance rasterization
 
@@ -215,9 +238,10 @@ of source winding.
   debt.
 - Analytic circles remain smoother than atlas-sampled circles at some sizes.
   The production point mark should keep an analytic built-in fast path.
-- Tiles are fixed-size, square, single-resolution, and have no mipmaps.
-- Scratch storage is proportional to the generation surface. Production atlas
-  population should batch into bounded reusable scratch regions.
+- Atlas entries remain single-resolution and have no mipmaps. Tight shelf
+  packing is available, but incremental free-space reuse is not yet wired.
+- Scratch storage has a fixed configurable ceiling and is reused per device.
+  Atlases exceeding it still need to be split into generation batches.
 - `rgba16float` materially improves delivered edge smoothness over eight-bit
   output, at twice the texture bytes. The prototype keeps both formats for
   comparison; production policy is deferred to atlas resource classes.
@@ -226,7 +250,23 @@ of source winding.
 
 Focused unit and browser tests cover contour validation, cubic reduction,
 smooth quadratic tangents, miter metadata, holes, dispatch bounds, quadratic
-extrema, visible rendering, and picking.
+extrema, variable rectangles, scratch reuse and limits, atlas growth, visible
+rendering, and picking.
+
+One local headless Chrome/Metal run on 2026-09-02 measured the shared generator
+with 64-pixel `rgba16float` symbol tiles as follows. These are development
+figures, not performance thresholds:
+
+| Unique paths | Atlas     | JS prepare | GPU settled | Final bytes |
+| ------------ | --------- | ---------- | ----------- | ----------- |
+| 1 (cold)     | 66 x 66   | 1.2 ms     | 6.6 ms      | 34,848      |
+| 16 (warm)    | 264 x 264 | 0.7 ms     | 1.7 ms      | 557,568     |
+| 128 (warm)   | 792 x 726 | 3.5 ms     | 8.1 ms      | 4,599,936   |
+| 16 (reused)  | 264 x 264 | 0.1 ms     | 1.2 ms      | 557,568     |
+
+Peak reusable scratch after the 128-path job was 18,399,744 bytes. Pipeline
+compilation is reflected in the first settled measurement; later rows reuse
+the same pipelines and scratch allocations where capacity permits.
 
 The comparison tool renders the same printable-ASCII scene with both backends
 and writes WGSL, WASM, and high-contrast difference images:

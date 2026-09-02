@@ -57,6 +57,12 @@ and font-scale batching are specified in
 in `plans/path-points/path-points-plan.md` and
 `plans/path-points/wgsl-msdf-atlas-design.md`.
 
+The first production resource slice now lazily shares one bounded generator per
+renderer, reuses exact immutable path atlases, supports tight variable
+rectangles, and provides versioned geometric texture growth with queue-safe
+retirement. Oversized final atlases still require multi-batch generation before
+the point and text integrations can consume this as their production service.
+
 ## Milestone 1: Close current Core parity gaps
 
 ### Outcome

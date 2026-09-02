@@ -217,3 +217,153 @@ test("quadratic extrema do not create one-pixel sign streaks", async ({
     expect(result.extremumRow.every((value) => value < 128)).toBe(true);
     expect(result.interior).toBeGreaterThan(128);
 });
+
+test("MSDF generator reuses bounded scratch and exact immutable atlases", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const { MsdfAtlasGenerator } =
+            await import("/src/symbols/sparseGpuPathAtlas.js");
+        const adapter = await navigator.gpu.requestAdapter();
+        const device = await adapter.requestDevice();
+        const generator = new MsdfAtlasGenerator(device, {
+            maxScratchBytes: 1024 * 1024,
+        });
+        const paths = ["M-1-1H1V1H-1Z"];
+        const options = {
+            tileSize: 32,
+            spread: 8,
+            shapePadding: 10,
+            gutter: 1,
+            format: "rgba16float",
+        };
+        const first = generator.acquireAtlas(paths, options, "first");
+        const scratch = generator._scratchBuffer;
+        const second = generator.acquireAtlas(paths, options, "second");
+        const third = generator.acquireAtlas(
+            ["M0-1L1 1H-1Z"],
+            options,
+            "third"
+        );
+        await Promise.all([first.completion, third.completion]);
+        const summary = {
+            exactAtlasShared: first === second,
+            distinctTableSeparated: first !== third,
+            scratchReused: scratch === generator._scratchBuffer,
+            cacheSize: generator._atlasCache.size,
+            format: first.format,
+            version: first.version,
+        };
+        generator.destroy();
+        await device.queue.onSubmittedWorkDone();
+        device.destroy();
+        return summary;
+    });
+
+    expect(result).toEqual({
+        exactAtlasShared: true,
+        distinctTableSeparated: true,
+        scratchReused: true,
+        cacheSize: 2,
+        format: "rgba16float",
+        version: 1,
+    });
+});
+
+test("MSDF generator rejects jobs beyond its scratch budget", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const message = await page.evaluate(async () => {
+        const { MsdfAtlasGenerator } =
+            await import("/src/symbols/sparseGpuPathAtlas.js");
+        const adapter = await navigator.gpu.requestAdapter();
+        const device = await adapter.requestDevice();
+        const generator = new MsdfAtlasGenerator(device, {
+            maxScratchBytes: 1024,
+        });
+        try {
+            generator.createAtlas(["M-1-1H1V1H-1Z"], {
+                tileSize: 32,
+                spread: 8,
+                shapePadding: 10,
+                gutter: 1,
+            });
+            return "no error";
+        } catch (error) {
+            return String(error);
+        } finally {
+            generator.destroy();
+            device.destroy();
+        }
+    });
+
+    expect(message).toContain("exceeding its configured or device limit");
+});
+
+test("GPU generation supports tightly packed destination rectangles", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const { MsdfAtlasGenerator } =
+            await import("/src/symbols/sparseGpuPathAtlas.js");
+        const adapter = await navigator.gpu.requestAdapter();
+        const device = await adapter.requestDevice();
+        const generator = new MsdfAtlasGenerator(device);
+        const atlas = generator.createAtlas(
+            ["M0 0H100V50H0Z", "M0 0H1000V1000H0Z"],
+            {
+                tileSize: 64,
+                spread: 12,
+                shapePadding: 16,
+                gutter: 1,
+                normalizationSpan: 1000,
+                tightPacking: true,
+                maxAtlasWidth: 128,
+            }
+        );
+        await atlas.completion;
+        const bytesPerRow = Math.ceil((atlas.width * 4) / 256) * 256;
+        const readback = device.createBuffer({
+            size: bytesPerRow * atlas.height,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
+        const encoder = device.createCommandEncoder();
+        encoder.copyTextureToBuffer(
+            { texture: atlas.texture },
+            { buffer: readback, bytesPerRow, rowsPerImage: atlas.height },
+            [atlas.width, atlas.height]
+        );
+        device.queue.submit([encoder.finish()]);
+        await readback.mapAsync(GPUMapMode.READ);
+        const pixels = new Uint8Array(readback.getMappedRange());
+        const medianAt = (x, y) => {
+            const offset = y * bytesPerRow + x * 4;
+            const channels = pixels.slice(offset, offset + 3).sort();
+            return channels[1];
+        };
+        const summary = {
+            width: atlas.width,
+            height: atlas.height,
+            narrowCenter: medianAt(19, 18),
+            narrowOutside: medianAt(2, 2),
+            squareCenter: medianAt(71, 33),
+        };
+        readback.unmap();
+        readback.destroy();
+        atlas.destroy();
+        generator.destroy();
+        device.destroy();
+        return summary;
+    });
+
+    expect(result).toMatchObject({ width: 104, height: 66 });
+    expect(result.narrowCenter).toBeGreaterThan(128);
+    expect(result.narrowOutside).toBeLessThan(128);
+    expect(result.squareCenter).toBeGreaterThan(128);
+});

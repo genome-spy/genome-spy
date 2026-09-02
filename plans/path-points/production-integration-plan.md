@@ -533,6 +533,15 @@ capabilities should fail explicitly rather than silently selecting WASM.
 
 ## Milestone 1: Shared generation and atlas resource layer
 
+Progress (2026-09-02): the first resource-layer slice is implemented. The
+renderer now lazily owns one generator, exact immutable path tables share final
+textures and entry buffers, scratch grows under a 64 MiB ceiling with
+queue-safe retirement, tight shelf packing supports variable rectangles, and
+a versioned texture primitive preserves prior texels across geometric growth.
+The remaining work in this milestone is multi-batch generation into one final
+atlas, incremental allocation on top of the growth primitive, and dependent
+bind-group integration beyond the temporary PathPoint consumer.
+
 ### Intended outcome
 
 The PoC algorithm runs through renderer-owned reusable pipelines and bounded

@@ -24,11 +24,10 @@ struct Job {
 
 struct Params {
     atlasSize: vec2<u32>,
-    slotSize: u32,
-    jobCount: u32,
+    maxSlotSize: vec2<u32>,
     spread: f32,
     minDeviationRatio: f32,
-    columns: u32,
+    jobCount: u32,
     passMode: u32,
 };
 
@@ -62,7 +61,7 @@ fn vs_main(
     let p2 = segment.p2pad.xy;
     let margin = vec2<f32>(params.spread + 1.0);
     let slotMin = vec2<f32>(job.edgeRange.zw);
-    let slotMax = slotMin + vec2<f32>(job.tileInfo.xx);
+    let slotMax = slotMin + vec2<f32>(job.tileInfo.xy);
     let boundsMin = max(floor(min(p0, min(p1, p2)) - margin), slotMin);
     let boundsMax = min(ceil(max(p0, max(p1, p2)) + margin), slotMax);
     var corners = array<vec2<f32>, 6>(
@@ -361,12 +360,11 @@ struct Job {
 
 struct Params {
     atlasSize: vec2<u32>,
-    slotSize: u32,
-    jobCount: u32,
+    maxSlotSize: vec2<u32>,
     spread: f32,
     minDeviationRatio: f32,
-    columns: u32,
-    padding: u32,
+    jobCount: u32,
+    passMode: u32,
 };
 
 @group(0) @binding(0) var<storage, read> segments: array<Segment>;
@@ -458,21 +456,15 @@ fn decodeMagnitude(priority: u32) -> f32 {
 
 @compute @workgroup_size(8, 8)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= params.atlasSize.x || gid.y >= params.atlasSize.y) {
+    if (gid.z >= params.jobCount) {
         return;
     }
-    let slot = gid / vec3<u32>(params.slotSize, params.slotSize, 1u);
-    let jobIndex = slot.y * params.columns + slot.x;
-    if (jobIndex >= params.jobCount) {
-        textureStore(
-            rawOutput,
-            vec2<i32>(gid.xy),
-            vec4<f32>(-params.spread, -params.spread, -params.spread, 1.0)
-        );
+    let job = jobs[gid.z];
+    if (gid.x >= job.tileInfo.x || gid.y >= job.tileInfo.y) {
         return;
     }
-    let job = jobs[jobIndex];
-    let point = vec2<f32>(gid.xy) + vec2<f32>(0.5);
+    let pixel = job.edgeRange.zw + gid.xy;
+    let point = vec2<f32>(pixel) + vec2<f32>(0.5);
     var inside = false;
     let edgeEnd = job.edgeRange.x + job.edgeRange.y;
     for (var edgeIndex = job.edgeRange.x; edgeIndex < edgeEnd; edgeIndex++) {
@@ -488,31 +480,36 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             inside = !inside;
         }
     }
-    let pixelIndex = gid.y * params.atlasSize.x + gid.x;
+    let pixelIndex = pixel.y * params.atlasSize.x + pixel.x;
     let sign = select(-1.0, 1.0, inside);
     let value = vec3<f32>(
         decodeMagnitude(atomicLoad(&scratch[pixelIndex * 3u])),
         decodeMagnitude(atomicLoad(&scratch[pixelIndex * 3u + 1u])),
         decodeMagnitude(atomicLoad(&scratch[pixelIndex * 3u + 2u]))
     ) * sign;
-    textureStore(rawOutput, vec2<i32>(gid.xy), vec4<f32>(value, 1.0));
+    textureStore(rawOutput, vec2<i32>(pixel), vec4<f32>(value, 1.0));
 }
 `;
 
 const CORRECTION_SHADER = /* wgsl */ `
+struct Job {
+    edgeRange: vec4<u32>,
+    tileInfo: vec4<u32>,
+};
+
 struct Params {
     atlasSize: vec2<u32>,
-    slotSize: u32,
-    jobCount: u32,
+    maxSlotSize: vec2<u32>,
     spread: f32,
     minDeviationRatio: f32,
-    columns: u32,
-    padding: u32,
+    jobCount: u32,
+    passMode: u32,
 };
 
 @group(0) @binding(0) var rawInput: texture_2d<f32>;
 @group(0) @binding(1) var finalOutput: texture_storage_2d<OUTPUT_FORMAT, write>;
 @group(0) @binding(2) var<uniform> params: Params;
+@group(0) @binding(3) var<storage, read> jobs: array<Job>;
 
 fn median3(value: vec3<f32>) -> f32 {
     return max(min(value.r, value.g), min(max(value.r, value.g), value.b));
@@ -690,12 +687,17 @@ fn hasDiagonalArtifact(
 
 @compute @workgroup_size(8, 8)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= params.atlasSize.x || gid.y >= params.atlasSize.y) {
+    if (gid.z >= params.jobCount) {
         return;
     }
-    let coordinate = vec2<i32>(gid.xy);
+    let job = jobs[gid.z];
+    if (gid.x >= job.tileInfo.x || gid.y >= job.tileInfo.y) {
+        return;
+    }
+    let slotMin = vec2<i32>(job.edgeRange.zw);
+    let slotMax = slotMin + vec2<i32>(job.tileInfo.xy);
+    let coordinate = slotMin + vec2<i32>(gid.xy);
     var value = textureLoad(rawInput, coordinate, 0).rgb;
-    let slot = gid.xy / vec2<u32>(params.slotSize);
     let offsets = array<vec2<i32>, 4>(
         vec2<i32>(-1, 0),
         vec2<i32>(1, 0),
@@ -706,15 +708,11 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     for (var index = 0u; index < 4u; index++) {
         let neighbor = coordinate + offsets[index];
         if (
-            neighbor.x < 0 ||
-            neighbor.y < 0 ||
-            neighbor.x >= i32(params.atlasSize.x) ||
-            neighbor.y >= i32(params.atlasSize.y)
+            neighbor.x < slotMin.x ||
+            neighbor.y < slotMin.y ||
+            neighbor.x >= slotMax.x ||
+            neighbor.y >= slotMax.y
         ) {
-            continue;
-        }
-        let neighborSlot = vec2<u32>(neighbor) / vec2<u32>(params.slotSize);
-        if (any(neighborSlot != slot)) {
             continue;
         }
         let neighborValue = textureLoad(rawInput, neighbor, 0).rgb;
@@ -735,16 +733,11 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let vertical = coordinate + vec2<i32>(0, diagonalOffset.y);
         let diagonal = coordinate + diagonalOffset;
         if (
-            diagonal.x < 0 ||
-            diagonal.y < 0 ||
-            diagonal.x >= i32(params.atlasSize.x) ||
-            diagonal.y >= i32(params.atlasSize.y)
+            diagonal.x < slotMin.x ||
+            diagonal.y < slotMin.y ||
+            diagonal.x >= slotMax.x ||
+            diagonal.y >= slotMax.y
         ) {
-            continue;
-        }
-        let diagonalSlot =
-            vec2<u32>(diagonal) / vec2<u32>(params.slotSize);
-        if (any(diagonalSlot != slot)) {
             continue;
         }
         let horizontalValue = textureLoad(rawInput, horizontal, 0).rgb;
@@ -854,22 +847,6 @@ function getPipelines(device, format) {
 }
 
 /**
- * @param {GPUDevice} device
- * @param {ArrayBuffer} data
- * @param {GPUBufferUsageFlags} usage
- * @param {string} label
- */
-function createBuffer(device, data, usage, label) {
-    const buffer = device.createBuffer({ label, size: data.byteLength, usage });
-    device.queue.writeBuffer(
-        buffer,
-        0,
-        asGpuBufferSource(new Uint8Array(data))
-    );
-    return buffer;
-}
-
-/**
  * @param {ReturnType<typeof buildSparsePathAtlasLayout>} layout
  * @param {number} passMode
  */
@@ -878,13 +855,493 @@ function createParams(layout, passMode) {
     const view = new DataView(data);
     view.setUint32(0, layout.width, true);
     view.setUint32(4, layout.height, true);
-    view.setUint32(8, layout.slotSize, true);
-    view.setUint32(12, layout.uniquePathCount, true);
+    view.setUint32(8, layout.maxSlotWidth, true);
+    view.setUint32(12, layout.maxSlotHeight, true);
     view.setFloat32(16, layout.spread, true);
     view.setFloat32(20, 1.1111112, true);
-    view.setUint32(24, layout.columns, true);
+    view.setUint32(24, layout.uniquePathCount, true);
     view.setUint32(28, passMode, true);
     return data;
+}
+
+const BYTES_PER_SCRATCH_PIXEL = 3 * 4 * 2 + 4 * 2;
+const DEFAULT_MAX_SCRATCH_BYTES = 64 * 1024 * 1024;
+
+/** @param {number} value */
+function alignToFour(value) {
+    return Math.max(4, Math.ceil(value / 4) * 4);
+}
+
+/**
+ * @param {string[]} paths
+ * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, tightPacking?: boolean, maxAtlasWidth?: number, format?: "rgba8unorm" | "rgba16float" }} options
+ */
+function atlasCacheKey(paths, options) {
+    return JSON.stringify([
+        paths,
+        options.tileSize ?? null,
+        options.spread ?? null,
+        options.shapePadding ?? null,
+        options.gutter ?? null,
+        options.cubicTolerance ?? null,
+        options.normalizationSpan ?? null,
+        options.tightPacking ?? false,
+        options.maxAtlasWidth ?? null,
+        options.format ?? "rgba8unorm",
+    ]);
+}
+
+/**
+ * Reusable, device-owned resources for GPU MSDF generation.
+ */
+export class MsdfAtlasGenerator {
+    /**
+     * @param {GPUDevice} device
+     * @param {{ maxScratchBytes?: number }} [options]
+     */
+    constructor(device, options = {}) {
+        this.device = device;
+        this.maxScratchBytes =
+            options.maxScratchBytes ?? DEFAULT_MAX_SCRATCH_BYTES;
+        if (
+            !Number.isSafeInteger(this.maxScratchBytes) ||
+            this.maxScratchBytes < BYTES_PER_SCRATCH_PIXEL
+        ) {
+            throw new Error("MSDF scratch limit must be a positive integer.");
+        }
+
+        this._destroyed = false;
+        this._width = 0;
+        this._height = 0;
+        this._segmentCapacity = 0;
+        this._jobCapacity = 0;
+        /** @type {GPUBuffer | null} */
+        this._segmentBuffer = null;
+        /** @type {GPUBuffer | null} */
+        this._jobBuffer = null;
+        /** @type {GPUBuffer | null} */
+        this._trueParamsBuffer = null;
+        /** @type {GPUBuffer | null} */
+        this._pseudoParamsBuffer = null;
+        /** @type {GPUBuffer | null} */
+        this._scratchBuffer = null;
+        /** @type {GPUBuffer | null} */
+        this._trueScratchBuffer = null;
+        /** @type {GPUTexture | null} */
+        this._rawTexture = null;
+        /** @type {Set<Promise<void>>} */
+        this._retirements = new Set();
+        /** @type {Map<string, ReturnType<MsdfAtlasGenerator["createAtlas"]>>} */
+        this._atlasCache = new Map();
+    }
+
+    /** @param {GPUBuffer | GPUTexture | null} resource */
+    _retire(resource) {
+        if (!resource) {
+            return;
+        }
+        const retirement = this.device.queue.onSubmittedWorkDone().then(
+            () => resource.destroy(),
+            () => resource.destroy()
+        );
+        this._retirements.add(retirement);
+        void retirement.finally(() => this._retirements.delete(retirement));
+    }
+
+    /**
+     * @param {number} required
+     * @param {number} capacity
+     */
+    _nextCapacity(required, capacity) {
+        let next = Math.max(4, capacity);
+        while (next < required) {
+            next *= 2;
+        }
+        return next;
+    }
+
+    /**
+     * @param {number} required
+     * @param {"segments" | "jobs"} kind
+     */
+    _ensureInputBuffer(required, kind) {
+        const capacityProperty =
+            kind === "segments" ? "_segmentCapacity" : "_jobCapacity";
+        const bufferProperty =
+            kind === "segments" ? "_segmentBuffer" : "_jobBuffer";
+        if (required <= this[capacityProperty]) {
+            return;
+        }
+        const capacity = this._nextCapacity(
+            alignToFour(required),
+            this[capacityProperty]
+        );
+        const maxBindingSize =
+            this.device.limits.maxStorageBufferBindingSize ?? Infinity;
+        if (capacity > maxBindingSize) {
+            throw new Error(`MSDF ${kind} exceed the device buffer limit.`);
+        }
+        const oldBuffer = this[bufferProperty];
+        this[bufferProperty] = this.device.createBuffer({
+            label: `MSDF reusable ${kind}`,
+            size: capacity,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+        });
+        this[capacityProperty] = capacity;
+        this._retire(oldBuffer);
+    }
+
+    /** @param {number} width @param {number} height */
+    _ensureScratch(width, height) {
+        const nextWidth = Math.max(width, this._width);
+        const nextHeight = Math.max(height, this._height);
+        if (nextWidth === this._width && nextHeight === this._height) {
+            return;
+        }
+        const maxDimension = this.device.limits.maxTextureDimension2D;
+        const pixels = nextWidth * nextHeight;
+        const scratchBytes = pixels * BYTES_PER_SCRATCH_PIXEL;
+        const atomicBytes = pixels * 3 * 4;
+        const maxBindingSize =
+            this.device.limits.maxStorageBufferBindingSize ?? Infinity;
+        if (
+            nextWidth > maxDimension ||
+            nextHeight > maxDimension ||
+            scratchBytes > this.maxScratchBytes ||
+            atomicBytes > maxBindingSize
+        ) {
+            throw new Error(
+                `MSDF generation needs ${scratchBytes} scratch bytes, exceeding its configured or device limit.`
+            );
+        }
+
+        const oldScratch = this._scratchBuffer;
+        const oldTrueScratch = this._trueScratchBuffer;
+        const oldRawTexture = this._rawTexture;
+        this._scratchBuffer = this.device.createBuffer({
+            label: "MSDF reusable atomic scratch",
+            size: atomicBytes,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+        });
+        this._trueScratchBuffer = this.device.createBuffer({
+            label: "MSDF reusable true-distance scratch",
+            size: atomicBytes,
+            usage:
+                GPUBufferUsage.STORAGE |
+                GPUBufferUsage.COPY_SRC |
+                GPUBufferUsage.COPY_DST,
+        });
+        this._rawTexture = this.device.createTexture({
+            label: "MSDF reusable raw distances",
+            size: [nextWidth, nextHeight],
+            format: "rgba16float",
+            usage:
+                GPUTextureUsage.STORAGE_BINDING |
+                GPUTextureUsage.TEXTURE_BINDING,
+        });
+        this._width = nextWidth;
+        this._height = nextHeight;
+        this._retire(oldScratch);
+        this._retire(oldTrueScratch);
+        this._retire(oldRawTexture);
+    }
+
+    _ensureParams() {
+        if (this._trueParamsBuffer) {
+            return;
+        }
+        this._trueParamsBuffer = this.device.createBuffer({
+            label: "MSDF true-distance parameters",
+            size: 32,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+        this._pseudoParamsBuffer = this.device.createBuffer({
+            label: "MSDF pseudo-distance parameters",
+            size: 32,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+    }
+
+    /**
+     * Generate an immutable RGB MSDF path atlas.
+     *
+     * Calls are serialized by WebGPU queue ordering, so reusable inputs and
+     * scratch can be overwritten immediately after each submission.
+     *
+     * @param {string[]} paths
+     * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, tightPacking?: boolean, maxAtlasWidth?: number, format?: "rgba8unorm" | "rgba16float" }} [options]
+     * @param {string} [label]
+     */
+    createAtlas(paths, options = {}, label = "path atlas") {
+        if (this._destroyed) {
+            throw new Error("MSDF atlas generator has been destroyed.");
+        }
+        const layout = buildSparsePathAtlasLayout(paths, options);
+        const format = options.format ?? "rgba8unorm";
+        if (format !== "rgba8unorm" && format !== "rgba16float") {
+            throw new Error("Unsupported sparse path atlas texture format.");
+        }
+        this._ensureInputBuffer(layout.segmentData.byteLength, "segments");
+        this._ensureInputBuffer(layout.jobData.byteLength, "jobs");
+        this._ensureScratch(layout.width, layout.height);
+        this._ensureParams();
+
+        const segmentBuffer = /** @type {GPUBuffer} */ (this._segmentBuffer);
+        const jobBuffer = /** @type {GPUBuffer} */ (this._jobBuffer);
+        const trueParamsBuffer = /** @type {GPUBuffer} */ (
+            this._trueParamsBuffer
+        );
+        const pseudoParamsBuffer = /** @type {GPUBuffer} */ (
+            this._pseudoParamsBuffer
+        );
+        const scratchBuffer = /** @type {GPUBuffer} */ (this._scratchBuffer);
+        const trueScratchBuffer = /** @type {GPUBuffer} */ (
+            this._trueScratchBuffer
+        );
+        const rawTexture = /** @type {GPUTexture} */ (this._rawTexture);
+        const pipelines = getPipelines(this.device, format);
+        this.device.queue.writeBuffer(
+            segmentBuffer,
+            0,
+            asGpuBufferSource(new Uint8Array(layout.segmentData))
+        );
+        this.device.queue.writeBuffer(
+            jobBuffer,
+            0,
+            asGpuBufferSource(new Uint8Array(layout.jobData))
+        );
+        this.device.queue.writeBuffer(
+            trueParamsBuffer,
+            0,
+            asGpuBufferSource(new Uint8Array(createParams(layout, 0)))
+        );
+        this.device.queue.writeBuffer(
+            pseudoParamsBuffer,
+            0,
+            asGpuBufferSource(new Uint8Array(createParams(layout, 1)))
+        );
+
+        const texture = this.device.createTexture({
+            label,
+            size: [layout.width, layout.height],
+            format,
+            usage:
+                GPUTextureUsage.RENDER_ATTACHMENT |
+                GPUTextureUsage.STORAGE_BINDING |
+                GPUTextureUsage.TEXTURE_BINDING |
+                GPUTextureUsage.COPY_SRC,
+        });
+        const entryBuffer = this.device.createBuffer({
+            label: gpuLabel(label, "entries"),
+            size: layout.entries.byteLength,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+        });
+        this.device.queue.writeBuffer(
+            entryBuffer,
+            0,
+            asGpuBufferSource(layout.entries)
+        );
+        const trueEdgeBindGroup = this.device.createBindGroup({
+            label: gpuLabel(label, "true-distance edge raster bindings"),
+            layout: pipelines.edge.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: segmentBuffer } },
+                { binding: 1, resource: { buffer: jobBuffer } },
+                { binding: 2, resource: { buffer: scratchBuffer } },
+                { binding: 3, resource: { buffer: trueScratchBuffer } },
+                { binding: 4, resource: { buffer: trueParamsBuffer } },
+            ],
+        });
+        const pseudoEdgeBindGroup = this.device.createBindGroup({
+            label: gpuLabel(label, "pseudo-distance edge raster bindings"),
+            layout: pipelines.edge.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: segmentBuffer } },
+                { binding: 1, resource: { buffer: jobBuffer } },
+                { binding: 2, resource: { buffer: scratchBuffer } },
+                { binding: 3, resource: { buffer: trueScratchBuffer } },
+                { binding: 4, resource: { buffer: pseudoParamsBuffer } },
+            ],
+        });
+        const rawBindGroup = this.device.createBindGroup({
+            label: gpuLabel(label, "raw distance bindings"),
+            layout: pipelines.raw.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: segmentBuffer } },
+                { binding: 1, resource: { buffer: jobBuffer } },
+                { binding: 2, resource: { buffer: scratchBuffer } },
+                { binding: 3, resource: rawTexture.createView() },
+                { binding: 4, resource: { buffer: pseudoParamsBuffer } },
+            ],
+        });
+        const correctionBindGroup = this.device.createBindGroup({
+            label: gpuLabel(label, "correction bindings"),
+            layout: pipelines.correction.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: rawTexture.createView() },
+                { binding: 1, resource: texture.createView() },
+                { binding: 2, resource: { buffer: pseudoParamsBuffer } },
+                { binding: 3, resource: { buffer: jobBuffer } },
+            ],
+        });
+
+        const scratchSize = layout.width * layout.height * 3 * 4;
+        const encoder = this.device.createCommandEncoder({
+            label: gpuLabel(label, "generation commands"),
+        });
+        encoder.clearBuffer(scratchBuffer, 0, scratchSize);
+        encoder.clearBuffer(trueScratchBuffer, 0, scratchSize);
+        const trueRenderPass = encoder.beginRenderPass({
+            label: gpuLabel(label, "true-distance edge raster pass"),
+            colorAttachments: [
+                {
+                    view: texture.createView(),
+                    clearValue: [0, 0, 0, 0],
+                    loadOp: "clear",
+                    storeOp: "store",
+                },
+            ],
+        });
+        trueRenderPass.setPipeline(pipelines.edge);
+        trueRenderPass.setBindGroup(0, trueEdgeBindGroup);
+        trueRenderPass.draw(6, layout.segments.length);
+        trueRenderPass.end();
+        encoder.copyBufferToBuffer(
+            trueScratchBuffer,
+            0,
+            scratchBuffer,
+            0,
+            scratchSize
+        );
+        const pseudoRenderPass = encoder.beginRenderPass({
+            label: gpuLabel(label, "pseudo-distance edge raster pass"),
+            colorAttachments: [
+                {
+                    view: texture.createView(),
+                    loadOp: "load",
+                    storeOp: "store",
+                },
+            ],
+        });
+        pseudoRenderPass.setPipeline(pipelines.edge);
+        pseudoRenderPass.setBindGroup(0, pseudoEdgeBindGroup);
+        pseudoRenderPass.draw(6, layout.segments.length);
+        pseudoRenderPass.end();
+
+        const rawPass = encoder.beginComputePass({
+            label: gpuLabel(label, "raw distance pass"),
+        });
+        rawPass.setPipeline(pipelines.raw);
+        rawPass.setBindGroup(0, rawBindGroup);
+        rawPass.dispatchWorkgroups(
+            Math.ceil(layout.maxSlotWidth / 8),
+            Math.ceil(layout.maxSlotHeight / 8),
+            layout.uniquePathCount
+        );
+        rawPass.end();
+
+        const correctionPass = encoder.beginComputePass({
+            label: gpuLabel(label, "correction pass"),
+        });
+        correctionPass.setPipeline(pipelines.correction);
+        correctionPass.setBindGroup(0, correctionBindGroup);
+        correctionPass.dispatchWorkgroups(
+            Math.ceil(layout.maxSlotWidth / 8),
+            Math.ceil(layout.maxSlotHeight / 8),
+            layout.uniquePathCount
+        );
+        correctionPass.end();
+        this.device.queue.submit([encoder.finish()]);
+
+        let atlasDestroyed = false;
+        return {
+            ...layout,
+            texture,
+            entryBuffer,
+            format,
+            version: 1,
+            completion: this.device.queue.onSubmittedWorkDone(),
+            destroy: () => {
+                if (!atlasDestroyed) {
+                    atlasDestroyed = true;
+                    texture.destroy();
+                    entryBuffer.destroy();
+                }
+            },
+        };
+    }
+
+    /**
+     * Return a device-lifetime immutable atlas for an exact canonical table.
+     *
+     * @param {string[]} paths
+     * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, tightPacking?: boolean, maxAtlasWidth?: number, format?: "rgba8unorm" | "rgba16float" }} [options]
+     * @param {string} [label]
+     */
+    acquireAtlas(paths, options = {}, label = "path atlas") {
+        if (this._destroyed) {
+            throw new Error("MSDF atlas generator has been destroyed.");
+        }
+        const key = atlasCacheKey(paths, options);
+        let atlas = this._atlasCache.get(key);
+        if (!atlas) {
+            atlas = this.createAtlas(paths, options, label);
+            this._atlasCache.set(key, atlas);
+            void atlas.completion.catch(() => {
+                if (this._atlasCache.get(key) === atlas) {
+                    this._atlasCache.delete(key);
+                    atlas.destroy();
+                }
+            });
+        }
+        return atlas;
+    }
+
+    /** Destroy reusable scratch after all submitted generation completes. */
+    destroy() {
+        if (this._destroyed) {
+            return;
+        }
+        this._destroyed = true;
+        for (const atlas of this._atlasCache.values()) {
+            atlas.destroy();
+        }
+        this._atlasCache.clear();
+        this._retire(this._segmentBuffer);
+        this._retire(this._jobBuffer);
+        this._retire(this._trueParamsBuffer);
+        this._retire(this._pseudoParamsBuffer);
+        this._retire(this._scratchBuffer);
+        this._retire(this._trueScratchBuffer);
+        this._retire(this._rawTexture);
+        this._segmentBuffer = null;
+        this._jobBuffer = null;
+        this._trueParamsBuffer = null;
+        this._pseudoParamsBuffer = null;
+        this._scratchBuffer = null;
+        this._trueScratchBuffer = null;
+        this._rawTexture = null;
+    }
+}
+
+/** @type {WeakMap<import("../renderer.js").Renderer, MsdfAtlasGenerator>} */
+const generatorByRenderer = new WeakMap();
+
+/**
+ * Lazily create the shared generator without making the base renderer import
+ * path parsing or WGSL generation code.
+ *
+ * @param {import("../renderer.js").Renderer} renderer
+ */
+export function getMsdfAtlasGenerator(renderer) {
+    let generator = generatorByRenderer.get(renderer);
+    if (!generator) {
+        generator = renderer._ownResource(
+            new MsdfAtlasGenerator(renderer.device)
+        );
+        generatorByRenderer.set(renderer, generator);
+    }
+    return generator;
 }
 
 /**
@@ -892,7 +1349,7 @@ function createParams(layout, passMode) {
  *
  * @param {GPUDevice} device
  * @param {string[]} paths
- * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, format?: "rgba8unorm" | "rgba16float" }} [options]
+ * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, tightPacking?: boolean, maxAtlasWidth?: number, format?: "rgba8unorm" | "rgba16float" }} [options]
  * @param {string} [label]
  */
 export function createSparseGpuPathAtlas(
@@ -901,199 +1358,11 @@ export function createSparseGpuPathAtlas(
     options = {},
     label = "path atlas"
 ) {
-    const layout = buildSparsePathAtlasLayout(paths, options);
-    const format = options.format ?? "rgba8unorm";
-    if (format !== "rgba8unorm" && format !== "rgba16float") {
-        throw new Error("Unsupported sparse path atlas texture format.");
-    }
-    const pipelines = getPipelines(device, format);
-    const bufferUsage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST;
-    const segmentBuffer = createBuffer(
-        device,
-        layout.segmentData,
-        bufferUsage,
-        gpuLabel(label, "segments")
+    const generator = new MsdfAtlasGenerator(device);
+    const atlas = generator.createAtlas(paths, options, label);
+    atlas.completion.then(
+        () => generator.destroy(),
+        () => generator.destroy()
     );
-    const jobBuffer = createBuffer(
-        device,
-        layout.jobData,
-        bufferUsage,
-        gpuLabel(label, "jobs")
-    );
-    const trueParamsBuffer = createBuffer(
-        device,
-        createParams(layout, 0),
-        GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-        gpuLabel(label, "true-distance parameters")
-    );
-    const pseudoParamsBuffer = createBuffer(
-        device,
-        createParams(layout, 1),
-        GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-        gpuLabel(label, "pseudo-distance parameters")
-    );
-    const scratchSize = layout.width * layout.height * 3 * 4;
-    const scratchBuffer = device.createBuffer({
-        label: gpuLabel(label, "atomic scratch"),
-        size: scratchSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
-    const trueScratchBuffer = device.createBuffer({
-        label: gpuLabel(label, "true-distance atomic scratch"),
-        size: scratchSize,
-        usage:
-            GPUBufferUsage.STORAGE |
-            GPUBufferUsage.COPY_SRC |
-            GPUBufferUsage.COPY_DST,
-    });
-    const rawTexture = device.createTexture({
-        label: gpuLabel(label, "raw distances"),
-        size: [layout.width, layout.height],
-        format: "rgba16float",
-        usage:
-            GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
-    });
-    const texture = device.createTexture({
-        label,
-        size: [layout.width, layout.height],
-        format,
-        usage:
-            GPUTextureUsage.RENDER_ATTACHMENT |
-            GPUTextureUsage.STORAGE_BINDING |
-            GPUTextureUsage.TEXTURE_BINDING |
-            GPUTextureUsage.COPY_SRC,
-    });
-
-    const trueEdgeBindGroup = device.createBindGroup({
-        label: gpuLabel(label, "true-distance edge raster bindings"),
-        layout: pipelines.edge.getBindGroupLayout(0),
-        entries: [
-            { binding: 0, resource: { buffer: segmentBuffer } },
-            { binding: 1, resource: { buffer: jobBuffer } },
-            { binding: 2, resource: { buffer: scratchBuffer } },
-            { binding: 3, resource: { buffer: trueScratchBuffer } },
-            { binding: 4, resource: { buffer: trueParamsBuffer } },
-        ],
-    });
-    const pseudoEdgeBindGroup = device.createBindGroup({
-        label: gpuLabel(label, "pseudo-distance edge raster bindings"),
-        layout: pipelines.edge.getBindGroupLayout(0),
-        entries: [
-            { binding: 0, resource: { buffer: segmentBuffer } },
-            { binding: 1, resource: { buffer: jobBuffer } },
-            { binding: 2, resource: { buffer: scratchBuffer } },
-            { binding: 3, resource: { buffer: trueScratchBuffer } },
-            { binding: 4, resource: { buffer: pseudoParamsBuffer } },
-        ],
-    });
-    const rawBindGroup = device.createBindGroup({
-        label: gpuLabel(label, "raw distance bindings"),
-        layout: pipelines.raw.getBindGroupLayout(0),
-        entries: [
-            { binding: 0, resource: { buffer: segmentBuffer } },
-            { binding: 1, resource: { buffer: jobBuffer } },
-            { binding: 2, resource: { buffer: scratchBuffer } },
-            { binding: 3, resource: rawTexture.createView() },
-            { binding: 4, resource: { buffer: pseudoParamsBuffer } },
-        ],
-    });
-    const correctionBindGroup = device.createBindGroup({
-        label: gpuLabel(label, "correction bindings"),
-        layout: pipelines.correction.getBindGroupLayout(0),
-        entries: [
-            { binding: 0, resource: rawTexture.createView() },
-            { binding: 1, resource: texture.createView() },
-            { binding: 2, resource: { buffer: pseudoParamsBuffer } },
-        ],
-    });
-
-    const encoder = device.createCommandEncoder({
-        label: gpuLabel(label, "generation commands"),
-    });
-    encoder.clearBuffer(scratchBuffer);
-    encoder.clearBuffer(trueScratchBuffer);
-    const trueRenderPass = encoder.beginRenderPass({
-        label: gpuLabel(label, "true-distance edge raster pass"),
-        colorAttachments: [
-            {
-                view: texture.createView(),
-                clearValue: [0, 0, 0, 0],
-                loadOp: "clear",
-                storeOp: "store",
-            },
-        ],
-    });
-    trueRenderPass.setPipeline(pipelines.edge);
-    trueRenderPass.setBindGroup(0, trueEdgeBindGroup);
-    trueRenderPass.draw(6, layout.segments.length);
-    trueRenderPass.end();
-    encoder.copyBufferToBuffer(
-        trueScratchBuffer,
-        0,
-        scratchBuffer,
-        0,
-        scratchSize
-    );
-    const pseudoRenderPass = encoder.beginRenderPass({
-        label: gpuLabel(label, "pseudo-distance edge raster pass"),
-        colorAttachments: [
-            {
-                view: texture.createView(),
-                loadOp: "load",
-                storeOp: "store",
-            },
-        ],
-    });
-    pseudoRenderPass.setPipeline(pipelines.edge);
-    pseudoRenderPass.setBindGroup(0, pseudoEdgeBindGroup);
-    pseudoRenderPass.draw(6, layout.segments.length);
-    pseudoRenderPass.end();
-
-    const rawPass = encoder.beginComputePass({
-        label: gpuLabel(label, "raw distance pass"),
-    });
-    rawPass.setPipeline(pipelines.raw);
-    rawPass.setBindGroup(0, rawBindGroup);
-    rawPass.dispatchWorkgroups(
-        Math.ceil(layout.width / 8),
-        Math.ceil(layout.height / 8)
-    );
-    rawPass.end();
-
-    const correctionPass = encoder.beginComputePass({
-        label: gpuLabel(label, "correction pass"),
-    });
-    correctionPass.setPipeline(pipelines.correction);
-    correctionPass.setBindGroup(0, correctionBindGroup);
-    correctionPass.dispatchWorkgroups(
-        Math.ceil(layout.width / 8),
-        Math.ceil(layout.height / 8)
-    );
-    correctionPass.end();
-    device.queue.submit([encoder.finish()]);
-
-    const temporaryResources = [
-        segmentBuffer,
-        jobBuffer,
-        trueParamsBuffer,
-        pseudoParamsBuffer,
-        scratchBuffer,
-        trueScratchBuffer,
-        rawTexture,
-    ];
-    const completion = device.queue.onSubmittedWorkDone().then(
-        () => {
-            for (const resource of temporaryResources) {
-                resource.destroy();
-            }
-        },
-        (error) => {
-            for (const resource of temporaryResources) {
-                resource.destroy();
-            }
-            throw error;
-        }
-    );
-
-    return { ...layout, texture, format, completion };
+    return atlas;
 }

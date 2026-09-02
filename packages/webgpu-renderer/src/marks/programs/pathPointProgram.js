@@ -1,6 +1,6 @@
 import PointProgram from "./pointProgram.js";
 import { buildPathAtlas } from "../../symbols/pathAtlas.js";
-import { createSparseGpuPathAtlas } from "../../symbols/sparseGpuPathAtlas.js";
+import { getMsdfAtlasGenerator } from "../../symbols/sparseGpuPathAtlas.js";
 import {
     asGpuBufferSource,
     createTextureFromData,
@@ -274,19 +274,21 @@ export default class PathPointProgram extends PointProgram {
             throw new Error("Unsupported PathPoint atlas texture format.");
         }
         const atlasOptions =
-            /** @type {NonNullable<Parameters<typeof createSparseGpuPathAtlas>[2]>} */ (
+            /** @type {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number }} */ (
                 this._markConfig.atlasOptions ?? {}
             );
         let atlas;
         let texture;
+        /** @type {GPUBuffer | null} */
+        let sharedEntries = null;
         if (backend === "gpu") {
-            atlas = createSparseGpuPathAtlas(
-                this.device,
+            atlas = getMsdfAtlasGenerator(this.renderer).acquireAtlas(
                 paths,
                 { ...atlasOptions, format: atlasFormat },
                 gpuLabel(this.label, "path atlas")
             );
             texture = atlas.texture;
+            sharedEntries = atlas.entryBuffer;
             // Resource cleanup is tied to queue completion. Keep the rejection
             // observed here; GPU validation still reports the original error.
             atlas.completion.catch(() => {});
@@ -319,16 +321,8 @@ export default class PathPointProgram extends PointProgram {
             minFilter: "linear",
             mipmapFilter: "nearest",
         });
-        const entries = this.device.createBuffer({
-            label: gpuLabel(this.label, "path atlas entries"),
-            size: atlas.entries.byteLength,
-            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-        });
-        this.device.queue.writeBuffer(
-            entries,
-            0,
-            asGpuBufferSource(atlas.entries)
-        );
+        const entries =
+            sharedEntries ?? this._createPathAtlasEntries(atlas.entries);
         this._extraBuffers.set("pathAtlasEntries", entries);
         this._extraTextures.set("pathAtlas", {
             texture,
@@ -337,6 +331,10 @@ export default class PathPointProgram extends PointProgram {
             height: atlas.height,
             format: atlasFormat,
         });
+        if (backend === "gpu") {
+            this._borrowedExtraBuffers.add("pathAtlasEntries");
+            this._borrowedExtraTextures.add("pathAtlas");
+        }
         this._setUniformValue("uTileSize", atlas.tileSize);
         this._setUniformValue("uShapePixels", atlas.shapePixels);
         this._setUniformValue("uSpread", atlas.spread);
@@ -345,5 +343,16 @@ export default class PathPointProgram extends PointProgram {
             "uFloatAtlas",
             atlasFormat === "rgba16float" ? 1 : 0
         );
+    }
+
+    /** @param {Float32Array} data */
+    _createPathAtlasEntries(data) {
+        const entries = this.device.createBuffer({
+            label: gpuLabel(this.label, "path atlas entries"),
+            size: data.byteLength,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+        });
+        this.device.queue.writeBuffer(entries, 0, asGpuBufferSource(data));
+        return entries;
     }
 }
