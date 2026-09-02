@@ -1356,6 +1356,7 @@ export default class TextProgram extends BaseProgram {
      */
     _initializeOutlineFontResources(layout, font) {
         const atlas = getOutlineFontAtlas(this.renderer, font);
+        this._updateOutlineGlyphMetrics(layout, font, atlas);
         const atlasScale =
             (OUTLINE_ATLAS_OPTIONS.tileSize -
                 OUTLINE_ATLAS_OPTIONS.shapePadding * 2) /
@@ -1386,7 +1387,6 @@ export default class TextProgram extends BaseProgram {
                 OUTLINE_ATLAS_OPTIONS.shapePadding * 2) *
             0.35;
         this._updateTextLayoutBuffers(layout);
-        this._updateOutlineGlyphMetrics(layout, font, atlas);
         this._extraTextures.set("fontAtlas", {
             texture: atlas.texture,
             sampler: atlas.sampler,

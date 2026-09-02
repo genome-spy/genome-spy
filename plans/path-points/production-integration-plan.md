@@ -690,7 +690,11 @@ known tight glyph bounds while leaving a stroke- and antialiasing-aware guard
 for real outer coverage. Renderer-cached font atlases now append only missing
 glyphs, preserve earlier coordinates through geometric texture growth, rebind
 all marks sharing the font, and allow retained replacement to introduce new
-glyphs without recreating the mark.
+glyphs without recreating the mark. The Core quality smoke test exposed an
+initialization-order bug when a mark's first glyph batch itself grew the atlas;
+the mark now records atlas dimensions only after ensuring its glyphs, and the
+GPU regression test compares its sampling scale directly with the final texture
+dimensions.
 
 ### Intended outcome
 

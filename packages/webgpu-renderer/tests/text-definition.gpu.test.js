@@ -218,6 +218,15 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
         const preservedEntry = atlas.ensure([aPath])[0];
         const firstBoundAtlas =
             firstProgram._extraTextures.get("fontAtlas").texture;
+        const atlasScaleEntry =
+            secondProgram._uniformBufferState.entries.get("uAtlasScale");
+        const secondAtlasScale = Array.from(
+            new Float32Array(
+                secondProgram._uniformBufferState.data,
+                atlasScaleEntry.offset,
+                2
+            )
+        );
 
         renderer.render({ draws: [{ mark: first }] });
         await renderer.device.queue.onSubmittedWorkDone();
@@ -243,6 +252,8 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
             grew: atlas.version > initialVersion,
             replacedTexture: atlas.texture !== initialTexture,
             reboundFirstMark: firstBoundAtlas === atlas.texture,
+            secondAtlasScale,
+            atlasDimensions: [atlas.width, atlas.height],
             preservedEntry:
                 JSON.stringify(preservedEntry) === JSON.stringify(initialEntry),
             preservedHit,
@@ -254,7 +265,7 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
         return value;
     });
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
         sharedAtlas: true,
         grew: true,
         replacedTexture: true,
@@ -264,4 +275,10 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
         hit: 81,
         validationError: null,
     });
+    expect(result.secondAtlasScale[0]).toBeCloseTo(
+        1 / result.atlasDimensions[0]
+    );
+    expect(result.secondAtlasScale[1]).toBeCloseTo(
+        1 / result.atlasDimensions[1]
+    );
 });
