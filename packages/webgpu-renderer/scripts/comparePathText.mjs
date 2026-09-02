@@ -50,6 +50,16 @@ const pointSize =
     pointSizeArgument >= 0 && process.argv[pointSizeArgument + 1]
         ? Number(process.argv[pointSizeArgument + 1])
         : 60;
+const strokeWidthArgument = process.argv.indexOf("--stroke-width");
+const pointStrokeWidth =
+    strokeWidthArgument >= 0 && process.argv[strokeWidthArgument + 1]
+        ? Number(process.argv[strokeWidthArgument + 1])
+        : 4;
+const pathIndicesArgument = process.argv.indexOf("--path-indices");
+const selectedPathIndices =
+    pathIndicesArgument >= 0 && process.argv[pathIndicesArgument + 1]
+        ? process.argv[pathIndicesArgument + 1].split(",").map(Number)
+        : null;
 
 /** @param {string} name */
 function numericArgument(name) {
@@ -94,6 +104,20 @@ if (wgslFormat !== "rgba8unorm" && wgslFormat !== "rgba16float") {
 }
 if (!Number.isFinite(pointSize) || pointSize <= 0) {
     throw new Error("Point size must be greater than zero.");
+}
+if (!Number.isFinite(pointStrokeWidth) || pointStrokeWidth < 0) {
+    throw new Error("Stroke width must be non-negative.");
+}
+if (
+    selectedPathIndices &&
+    (selectedPathIndices.length === 0 ||
+        selectedPathIndices.some(
+            (index) => !Number.isSafeInteger(index) || index < 0
+        ))
+) {
+    throw new Error(
+        "Path indices must be comma-separated non-negative integers."
+    );
 }
 
 const server = spawn(
@@ -142,8 +166,10 @@ async function renderBackend(page, backend) {
             selectedWgslFormat,
             pixelRatio,
             selectedPointSize,
+            selectedPointStrokeWidth,
             selectedAtlasOverrides,
             selectedPointAngles,
+            requestedPathIndices,
         }) => {
             const [
                 { createRenderer },
@@ -199,21 +225,29 @@ async function renderBackend(page, backend) {
             } else {
                 const { PATHS, PATH_POINT_ATLAS_OPTIONS } =
                     await import("/examples/pathPointScene.js");
+                const pathIndices =
+                    requestedPathIndices ?? PATHS.map((_, index) => index);
+                if (pathIndices.some((index) => index >= PATHS.length)) {
+                    throw new Error(
+                        "Path index is outside the Path Points set."
+                    );
+                }
                 const rowAngles = selectedPointAngles;
-                const cellWidth = 76;
-                paths = PATHS;
+                const cellWidth = Math.max(76, selectedPointSize + 24);
+                const cellHeight = Math.max(80, selectedPointSize + 24);
+                paths = pathIndices.map((index) => PATHS[index]);
                 atlasOptions = Object.fromEntries(
                     Object.entries({
                         ...PATH_POINT_ATLAS_OPTIONS,
                         ...selectedAtlasOverrides,
                     }).filter(([, value]) => value !== undefined)
                 );
-                width = PATHS.length * cellWidth;
-                height = rowAngles.length * 80 + 20;
-                const instances = PATHS.flatMap((_, pathIndex) =>
+                width = paths.length * cellWidth;
+                height = rowAngles.length * cellHeight + 20;
+                const instances = paths.flatMap((_, pathIndex) =>
                     rowAngles.map((rowAngle, row) => ({
                         x: (pathIndex + 0.5) * cellWidth,
-                        y: 50 + row * 80,
+                        y: cellHeight * 0.5 + 10 + row * cellHeight,
                         shape: pathIndex,
                         angle: rowAngle,
                     }))
@@ -227,7 +261,9 @@ async function renderBackend(page, backend) {
                     instances,
                     (instance) => instance.shape
                 );
-                strokeWidth = new Float32Array(instances.length).fill(4);
+                strokeWidth = new Float32Array(instances.length).fill(
+                    selectedPointStrokeWidth
+                );
                 angle = Float32Array.from(
                     instances,
                     (instance) => instance.angle
@@ -280,8 +316,268 @@ async function renderBackend(page, backend) {
             selectedWgslFormat: wgslFormat,
             pixelRatio: dpr,
             selectedPointSize: pointSize,
+            selectedPointStrokeWidth: pointStrokeWidth,
             selectedAtlasOverrides: atlasOverrides,
             selectedPointAngles: pointAngles,
+            requestedPathIndices: selectedPathIndices,
+        }
+    );
+}
+
+/**
+ * Compare the generated RGBA8 atlas texels directly, before sampling and
+ * mark shading can affect the result.
+ *
+ * @param {import("@playwright/test").Page} page
+ */
+async function comparePathPointAtlases(page) {
+    return page.evaluate(
+        async ({
+            differenceThreshold,
+            requestedPathIndices,
+            atlasOverrides,
+        }) => {
+            const [
+                { createRenderer },
+                { MsdfAtlasGenerator },
+                { buildPathAtlas },
+                { PATHS, PATH_POINT_ATLAS_OPTIONS },
+            ] = await Promise.all([
+                import("/src/index.js"),
+                import("/src/symbols/sparseGpuPathAtlas.js"),
+                import("/tests/oracles/msdfgen/pathAtlas.js"),
+                import("/examples/pathPointScene.js"),
+            ]);
+            const pathIndices =
+                requestedPathIndices ?? PATHS.map((_, index) => index);
+            if (pathIndices.some((index) => index >= PATHS.length)) {
+                throw new Error("Path index is outside the Path Points set.");
+            }
+            const paths = pathIndices.map((index) => PATHS[index]);
+            const options = {
+                ...PATH_POINT_ATLAS_OPTIONS,
+                ...Object.fromEntries(
+                    Object.entries(atlasOverrides).filter(
+                        ([, value]) => value !== undefined
+                    )
+                ),
+                format: "rgba8unorm",
+            };
+            const wasmAtlas = buildPathAtlas(paths, options);
+            const canvas = document.createElement("canvas");
+            canvas.width = 1;
+            canvas.height = 1;
+            const renderer = await createRenderer(canvas);
+            const generator = new MsdfAtlasGenerator(renderer.device);
+            const gpuAtlas = generator.createAtlas(
+                paths,
+                options,
+                "path comparison atlas"
+            );
+            await gpuAtlas.completion;
+            if (
+                gpuAtlas.width !== wasmAtlas.width ||
+                gpuAtlas.height !== wasmAtlas.height
+            ) {
+                throw new Error("WGSL and WASM atlas dimensions differ.");
+            }
+
+            const width = gpuAtlas.width;
+            const height = gpuAtlas.height;
+            const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
+            const readback = renderer.device.createBuffer({
+                size: bytesPerRow * height,
+                usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+            });
+            const encoder = renderer.device.createCommandEncoder();
+            encoder.copyTextureToBuffer(
+                { texture: gpuAtlas.texture },
+                { buffer: readback, bytesPerRow, rowsPerImage: height },
+                [width, height]
+            );
+            renderer.device.queue.submit([encoder.finish()]);
+            await readback.mapAsync(GPUMapMode.READ);
+            const mapped = new Uint8Array(readback.getMappedRange());
+            const gpu = new Uint8ClampedArray(width * height * 4);
+            for (let y = 0; y < height; y++) {
+                gpu.set(
+                    mapped.subarray(
+                        y * bytesPerRow,
+                        y * bytesPerRow + width * 4
+                    ),
+                    y * width * 4
+                );
+            }
+            const wasm = new Uint8ClampedArray(wasmAtlas.data);
+            readback.unmap();
+            readback.destroy();
+
+            const diff = new Uint8ClampedArray(gpu.length);
+            const columns = Math.ceil(Math.sqrt(paths.length));
+            const slotSize = wasmAtlas.tileSize + wasmAtlas.gutter * 2;
+            const perPath = pathIndices.map((pathIndex) => ({
+                pathIndex,
+                rgbDifferingPixels: 0,
+                medianDifferingPixels: 0,
+                nearContourDifferingPixels: 0,
+                nearContourPixels: 0,
+                signMismatchPixels: 0,
+                maximumRgbDelta: 0,
+                maximumMedianDelta: 0,
+                maximumNearContourMedianDelta: 0,
+            }));
+            let rgbDifferingPixels = 0;
+            let medianDifferingPixels = 0;
+            let signMismatchPixels = 0;
+            let maximumRgbDelta = 0;
+            let maximumMedianDelta = 0;
+            let accumulatedRgbDelta = 0;
+            let accumulatedMedianDelta = 0;
+            let nearContourDifferingPixels = 0;
+            let nearContourPixels = 0;
+            let maximumNearContourMedianDelta = 0;
+            let accumulatedNearContourMedianDelta = 0;
+            const median = (r, g, b) =>
+                Math.max(Math.min(r, g), Math.min(Math.max(r, g), b));
+            const nearContourRadius = (8 * 127) / options.spread;
+            for (let offset = 0; offset < gpu.length; offset += 4) {
+                const pixel = offset / 4;
+                const x = pixel % width;
+                const y = Math.floor(pixel / width);
+                const pathIndex =
+                    Math.floor(y / slotSize) * columns +
+                    Math.floor(x / slotSize);
+                const path = perPath[pathIndex];
+                const redDelta = Math.abs(gpu[offset] - wasm[offset]);
+                const greenDelta = Math.abs(gpu[offset + 1] - wasm[offset + 1]);
+                const blueDelta = Math.abs(gpu[offset + 2] - wasm[offset + 2]);
+                const rgbDelta = Math.max(redDelta, greenDelta, blueDelta);
+                const gpuMedian = median(
+                    gpu[offset],
+                    gpu[offset + 1],
+                    gpu[offset + 2]
+                );
+                const wasmMedian = median(
+                    wasm[offset],
+                    wasm[offset + 1],
+                    wasm[offset + 2]
+                );
+                const medianDelta = Math.abs(gpuMedian - wasmMedian);
+                const signMismatch = gpuMedian >= 128 !== wasmMedian >= 128;
+                // Restrict this metric to eight atlas pixels around the edge:
+                // the part sampled by ordinary fills, outlines, and AA. Large
+                // far-field differences do not affect their reconstruction.
+                const nearContour =
+                    Math.abs(wasmMedian - 128) <= nearContourRadius;
+                if (rgbDelta > differenceThreshold) {
+                    rgbDifferingPixels++;
+                    if (path) {
+                        path.rgbDifferingPixels++;
+                    }
+                }
+                if (medianDelta > differenceThreshold) {
+                    medianDifferingPixels++;
+                    if (path) {
+                        path.medianDifferingPixels++;
+                    }
+                }
+                if (nearContour) {
+                    nearContourPixels++;
+                    accumulatedNearContourMedianDelta += medianDelta;
+                    maximumNearContourMedianDelta = Math.max(
+                        maximumNearContourMedianDelta,
+                        medianDelta
+                    );
+                    if (path) {
+                        path.nearContourPixels++;
+                        path.maximumNearContourMedianDelta = Math.max(
+                            path.maximumNearContourMedianDelta,
+                            medianDelta
+                        );
+                    }
+                    if (medianDelta > differenceThreshold) {
+                        nearContourDifferingPixels++;
+                        if (path) {
+                            path.nearContourDifferingPixels++;
+                        }
+                    }
+                }
+                if (signMismatch) {
+                    signMismatchPixels++;
+                    if (path) {
+                        path.signMismatchPixels++;
+                    }
+                }
+                maximumRgbDelta = Math.max(maximumRgbDelta, rgbDelta);
+                maximumMedianDelta = Math.max(maximumMedianDelta, medianDelta);
+                accumulatedRgbDelta += rgbDelta;
+                accumulatedMedianDelta += medianDelta;
+                if (path) {
+                    path.maximumRgbDelta = Math.max(
+                        path.maximumRgbDelta,
+                        rgbDelta
+                    );
+                    path.maximumMedianDelta = Math.max(
+                        path.maximumMedianDelta,
+                        medianDelta
+                    );
+                }
+                diff[offset] = Math.min(255, medianDelta * 8);
+                diff[offset + 1] = signMismatch ? 0 : diff[offset];
+                diff[offset + 2] = signMismatch ? 255 : diff[offset];
+                diff[offset + 3] = 255;
+                gpu[offset + 3] = 255;
+                wasm[offset + 3] = 255;
+            }
+
+            const toPng = async (pixels) => {
+                const output = new OffscreenCanvas(width, height);
+                output
+                    .getContext("2d")
+                    .putImageData(new ImageData(pixels, width, height), 0, 0);
+                const blob = await output.convertToBlob({ type: "image/png" });
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.addEventListener("load", () =>
+                        resolve(reader.result)
+                    );
+                    reader.readAsDataURL(blob);
+                });
+            };
+            const [wgslPng, wasmPng, diffPng] = await Promise.all([
+                toPng(gpu),
+                toPng(wasm),
+                toPng(diff),
+            ]);
+            generator.destroy();
+            renderer.destroy();
+            return {
+                wgslPng,
+                wasmPng,
+                diffPng,
+                width,
+                height,
+                rgbDifferingPixels,
+                medianDifferingPixels,
+                signMismatchPixels,
+                maximumRgbDelta,
+                maximumMedianDelta,
+                nearContourDifferingPixels,
+                nearContourPixels,
+                maximumNearContourMedianDelta,
+                meanMaximumRgbChannelDelta:
+                    accumulatedRgbDelta / (width * height),
+                meanMedianDelta: accumulatedMedianDelta / (width * height),
+                meanNearContourMedianDelta:
+                    accumulatedNearContourMedianDelta /
+                    Math.max(1, nearContourPixels),
+                perPath,
+            };
+        },
+        {
+            differenceThreshold: threshold,
+            requestedPathIndices: selectedPathIndices,
+            atlasOverrides,
         }
     );
 }
@@ -293,7 +589,13 @@ async function renderBackend(page, backend) {
  */
 async function createDiff(page, wgsl, wasm) {
     return page.evaluate(
-        async ({ wgslPng, wasmPng, differenceThreshold, selectedScene }) => {
+        async ({
+            wgslPng,
+            wasmPng,
+            differenceThreshold,
+            selectedScene,
+            requestedPathIndices,
+        }) => {
             const load = async (source) => {
                 const image = new Image();
                 image.src = source;
@@ -324,14 +626,17 @@ async function createDiff(page, wgsl, wasm) {
             let accumulatedDelta = 0;
             const symbolStats =
                 selectedScene === "path-points"
-                    ? Array.from({ length: 16 }, (_, pathIndex) => ({
-                          pathIndex,
+                    ? (
+                          requestedPathIndices ??
+                          Array.from({ length: 16 }, (_, index) => index)
+                      ).map((pathIndex) => ({
                           differingPixels: 0,
                           wgslOnlyPixels: 0,
                           wasmOnlyPixels: 0,
                           coverageMismatchPixels: 0,
                           wgslCoverageOnlyPixels: 0,
                           wasmCoverageOnlyPixels: 0,
+                          pathIndex,
                       }))
                     : [];
             for (let offset = 0; offset < diff.data.length; offset += 4) {
@@ -475,6 +780,7 @@ async function createDiff(page, wgsl, wasm) {
             wasmPng: wasm,
             differenceThreshold: threshold,
             selectedScene: scene,
+            requestedPathIndices: selectedPathIndices,
         }
     );
 }
@@ -500,8 +806,10 @@ try {
     const wgsl = await renderBackend(page, "gpu");
     const wasm = await renderBackend(page, "wasm");
     const comparison = await createDiff(page, wgsl, wasm);
+    const atlasComparison =
+        scene === "path-points" ? await comparePathPointAtlases(page) : null;
     await mkdir(outputDirectory, { recursive: true });
-    await Promise.all([
+    const writes = [
         writeFile(
             path.join(outputDirectory, `${outputStem}-wgsl.png`),
             decodePng(wgsl)
@@ -514,7 +822,24 @@ try {
             path.join(outputDirectory, `${outputStem}-diff.png`),
             decodePng(comparison.diffPng)
         ),
-    ]);
+    ];
+    if (atlasComparison) {
+        writes.push(
+            writeFile(
+                path.join(outputDirectory, `${outputStem}-atlas-wgsl.png`),
+                decodePng(atlasComparison.wgslPng)
+            ),
+            writeFile(
+                path.join(outputDirectory, `${outputStem}-atlas-wasm.png`),
+                decodePng(atlasComparison.wasmPng)
+            ),
+            writeFile(
+                path.join(outputDirectory, `${outputStem}-atlas-diff.png`),
+                decodePng(atlasComparison.diffPng)
+            )
+        );
+    }
+    await Promise.all(writes);
     console.log(
         JSON.stringify(
             {
@@ -523,6 +848,9 @@ try {
                 threshold,
                 dpr,
                 wgslFormat,
+                pointSize,
+                pointStrokeWidth,
+                pathIndices: selectedPathIndices,
                 width: comparison.width,
                 height: comparison.height,
                 differingPixels: comparison.differingPixels,
@@ -535,6 +863,35 @@ try {
                 maximumDelta: comparison.maximumDelta,
                 meanMaximumChannelDelta: comparison.meanMaximumChannelDelta,
                 symbolStats: comparison.symbolStats,
+                ...(atlasComparison
+                    ? {
+                          atlas: {
+                              width: atlasComparison.width,
+                              height: atlasComparison.height,
+                              rgbDifferingPixels:
+                                  atlasComparison.rgbDifferingPixels,
+                              medianDifferingPixels:
+                                  atlasComparison.medianDifferingPixels,
+                              signMismatchPixels:
+                                  atlasComparison.signMismatchPixels,
+                              maximumRgbDelta: atlasComparison.maximumRgbDelta,
+                              maximumMedianDelta:
+                                  atlasComparison.maximumMedianDelta,
+                              nearContourDifferingPixels:
+                                  atlasComparison.nearContourDifferingPixels,
+                              nearContourPixels:
+                                  atlasComparison.nearContourPixels,
+                              maximumNearContourMedianDelta:
+                                  atlasComparison.maximumNearContourMedianDelta,
+                              meanMaximumRgbChannelDelta:
+                                  atlasComparison.meanMaximumRgbChannelDelta,
+                              meanMedianDelta: atlasComparison.meanMedianDelta,
+                              meanNearContourMedianDelta:
+                                  atlasComparison.meanNearContourMedianDelta,
+                              perPath: atlasComparison.perPath,
+                          },
+                      }
+                    : {}),
             },
             null,
             2

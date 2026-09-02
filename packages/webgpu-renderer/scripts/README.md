@@ -92,15 +92,22 @@ npm run compare:path-text -- --output /tmp/path-text --threshold 8 --dpr 2
 symbols. It renders each path at 37 and 45 degrees with a four-pixel outline,
 writes `path-points-wgsl.png`, `path-points-wasm.png`, and
 `path-points-diff.png`, and reports mismatch counts separately for every path
-index. Per-symbol counts make the compound overlapping path distinguishable
-from regressions in stars, rectangles, and other ordinary contours. Both
-generators use RGBA8 by default so the diff isolates generation rather than
-texture quantization. Pass `--wgsl-format rgba16float` to compare the preferred
-WGSL rendering against the quantized WASM reference. The default point size of
-60 pixels matches the largest symbols in the Path Points story.
+index. It also writes raw `path-points-atlas-{wgsl,wasm,diff}.png` textures and
+reports per-path atlas RGB and reconstructed-sign differences. These isolate
+generation defects from filtering, distance decoding, stroke thresholds, quad
+bounds, and blending. Median statistics for the eight-pixel band around the
+canonical contour focus the report on distances ordinary fills and outlines
+actually sample. Per-symbol counts make the compound overlapping path
+distinguishable from regressions in stars, rectangles, and other ordinary
+contours. Both generators use RGBA8 by default so the diff isolates generation
+rather than texture quantization. Pass `--wgsl-format rgba16float` to compare
+the preferred WGSL rendering against the quantized WASM reference. The default
+point size of 60 pixels matches the largest symbols in the Path Points story.
 `--angles 0,15,30,45` expands the rotation matrix. `--tile-size`, `--spread`,
 and `--shape-padding` override the shared atlas geometry for controlled
-resolution and distance-range experiments.
+resolution and distance-range experiments. Use `--stroke-width 0` to isolate
+fill reconstruction and `--path-indices 2,12,14` to compare selected paths
+without the provisional overlapping-contour case.
 
 ```sh
 npm run compare:path-points -- --output /tmp/path-points --threshold 8 --dpr 2
