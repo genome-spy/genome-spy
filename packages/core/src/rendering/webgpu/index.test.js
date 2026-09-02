@@ -23,6 +23,7 @@ test("supplies Core's bundled default font bitmap", async () => {
     const backend = await createWebGpuRenderingBackend(/** @type {any} */ ({}));
 
     expect(backend.defaultFontBitmapUrl).toContain("Lato-Regular.png");
+    expect(backend.prepareOutlineFont).toBeTypeOf("function");
 });
 
 test("serializes asynchronous raster and hybrid SVG exports", async () => {

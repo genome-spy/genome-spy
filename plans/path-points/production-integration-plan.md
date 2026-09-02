@@ -678,8 +678,7 @@ fixture measures 282,325 / 122,069 because it deliberately embeds its test font.
 The first Core quality smoke test exposed isolated false-inside texels in glyph
 padding at small sizes. The text shader now rejects those samples against the
 known tight glyph bounds while leaving a stroke- and antialiasing-aware guard
-for real outer coverage. Core catalog selection and incremental atlas growth
-remain to be implemented.
+for real outer coverage. Incremental atlas growth remains to be implemented.
 
 ### Intended outcome
 
@@ -744,6 +743,23 @@ cross-mark atlas sharing, memory growth, bundle boundaries, and Core adapter
 impact before deleting the legacy font route.
 
 ## Milestone 4: Core WebGPU adoption and prototype cleanup
+
+Progress (2026-09-02): Core now retains its synchronous BMFont entries for
+measurement and optionally requests device-neutral outlines through a backend
+hook. Text marks can be constructed before loading completes; the existing
+readiness wait settles only the requested outlines before the WebGPU adapter
+creates its renderer mark. The dynamically imported WebGPU backend owns the
+temporary example catalog, maps implicit regular text to the renderer's compact
+Default Font, maps other implicit variants to exact Lato faces, and rejects
+missing explicit variants instead of substituting them. WebGL does not request
+or evaluate the catalog, Default Font, or TrueType modules.
+
+All 2,730 Core unit cases pass (2,727 passed, one skipped, two todo), along with
+Core TypeScript and focused lint. The repeatable browser harness passes the four
+mandatory WebGPU examples: PIK3CA lollipop, text quality, text baseline with
+four externally loaded TTF variants, and plenty-of-points. Prototype cleanup,
+application-supplied catalogs, late subtree loading tests, and oracle relocation
+remain.
 
 ### Intended outcome
 

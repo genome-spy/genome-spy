@@ -173,11 +173,12 @@ capabilities, but no retained-mark lifecycle.
 ### WebGPU integration boundary
 
 Core accesses `@genome-spy/webgpu-renderer` only from `src/rendering/webgpu/`
-through the documented package root and built-in `marks/*` and `scales/*`
-subpaths. The adapter may translate Core encoders, resolved scales, traversal,
-and view coordinates into renderer configs and frame state. It must not import
-renderer implementation modules, instantiate mark programs, inspect definition
-internals, or depend on WGSL and GPU resource layouts.
+through the documented package root and built-in `marks/*`, `scales/*`, and
+`fonts/*` subpaths. The adapter may translate Core encoders, resolved scales,
+renderer-owned font resources, traversal, and view coordinates into renderer
+configs and frame state. It must not import renderer implementation modules,
+instantiate mark programs, inspect definition internals, or depend on WGSL and
+GPU resource layouts.
 
 The renderer is unpublished and Core is its sole consumer. This boundary is a
 design hypothesis, not a compatibility constraint. When integration exposes an

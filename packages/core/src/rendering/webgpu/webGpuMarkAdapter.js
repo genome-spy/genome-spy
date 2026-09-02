@@ -794,6 +794,10 @@ function createTextConfig(mark, data, coords, viewOpacity) {
     const size = readNumericEncoder(mark, "size", data[0]);
     const encoders = /** @type {Record<string, any>} */ (mark.encoders);
     const fontEntry = /** @type {any} */ (mark).font;
+    const outlineFontEntry =
+        /** @type {{outlineFont?: import("@genome-spy/webgpu-renderer/fonts/truetype").TrueTypeFont}} */ (
+            /** @type {any} */ (mark).outlineFont
+        );
     return {
         count: data.length,
         channels: {
@@ -846,7 +850,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
             fill: createColorChannel(mark, "color", data),
             opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
         },
-        font: resolveFont(mark),
+        font: outlineFontEntry?.outlineFont ?? resolveFont(mark),
         ...(fontEntry?.metrics && fontEntry.bitmapUrl
             ? {
                   fontResource: {

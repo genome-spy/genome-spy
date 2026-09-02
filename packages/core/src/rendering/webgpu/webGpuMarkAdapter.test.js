@@ -605,6 +605,48 @@ describe("WebGPU mark adapter", () => {
         });
     });
 
+    test("uses a prepared outline while retaining BMFont measurement", () => {
+        const mark = createMark(
+            "text",
+            [{ label: "A" }],
+            {
+                x: createConstantEncoder(0),
+                y: createConstantEncoder(0),
+                text: createEncoder((datum) => datum.label),
+                size: createConstantEncoder(11),
+                angle: createConstantEncoder(0),
+                xOffset: createConstantEncoder(0),
+                yOffset: createConstantEncoder(0),
+                color: createConstantEncoder("black"),
+                opacity: createConstantEncoder(1),
+            },
+            {
+                align: "center",
+                baseline: "middle",
+                paddingX: 0,
+                paddingY: 0,
+                flushX: false,
+                flushY: false,
+                squeeze: false,
+            }
+        );
+        const outlineFont = /** @type {any} */ ({ getGlyph() {} });
+        Object.assign(mark, {
+            font: { metrics: {}, bitmapUrl: "measurement.png" },
+            outlineFont: { outlineFont },
+        });
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            /** @type {any} */ ({}),
+            Rectangle.ZERO
+        );
+
+        const config = /** @type {any} */ (translated?.config);
+        expect(config.font).toBe(outlineFont);
+        expect(config.fontResource.bitmap).toBe("measurement.png");
+    });
+
     test("applies the text channel number format", () => {
         const data = [{ value: 1.2345 }, { value: -0.5 }];
         const mark = createMark(
