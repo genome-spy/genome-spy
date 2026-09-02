@@ -307,6 +307,11 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let glyph = glyphs[i];
     let textMetrics = stringMetrics[glyph.stringIndex];
     let metrics = glyphMetrics[glyph.glyphId];
+    let tileSize = metrics.texRect.zw + select(
+        vec2<f32>(0.0),
+        vec2<f32>(1.0),
+        params.uOutlineFont != 0u
+    );
 
     // Base font size before range fitting.
     var size = getScaled_size(i);
@@ -356,6 +361,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     ).x + getScaled_x2Offset(i);
     if (params.uLogoLetters != 0u) {
         logoSize.x = abs(x2 - anchor.x);
+        anchor.x = (anchor.x + x2) * 0.5;
     } else {
         let xRange = positionInsideRange(
             min(anchor.x, x2),
@@ -428,16 +434,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let sizeRatio = size / params.uLayoutFontSize;
 
     let local = quad[v];
-    var width = select(
-        metrics.texRect.z,
-        metrics.metrics.y,
-        params.uOutlineFont != 0u
-    ) * sizeScale;
-    var height = select(
-        metrics.texRect.w,
-        metrics.metrics.z,
-        params.uOutlineFont != 0u
-    ) * sizeScale;
+    var width = tileSize.x * sizeScale;
+    var height = tileSize.y * sizeScale;
     var x = alignOffset(u32(getScaled_align(i)), textMetrics.width * sizeRatio) +
         glyph.xOffset * sizeRatio;
     var y = glyphVertexY(
@@ -453,13 +451,15 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         params.uDescent
     );
     if (params.uLogoLetters != 0u) {
-        width = logoSize.x * 0.5 *
-            (metrics.texRect.z + 2.0 * params.uSdfPadding) /
-            metrics.texRect.z;
-        height = logoSize.y *
-            (metrics.texRect.w + 2.0 * params.uSdfPadding) /
-            metrics.texRect.w;
-        x = (local.x - 0.5) * width;
+        var logoAtlasScale =
+            (metrics.texRect.zw + vec2<f32>(2.0 * params.uSdfPadding)) /
+            metrics.texRect.zw;
+        if (params.uOutlineFont != 0u) {
+            logoAtlasScale = metrics.texRect.zw / metrics.metrics.yz;
+        }
+        width = logoSize.x * logoAtlasScale.x;
+        height = logoSize.y * logoAtlasScale.y;
+        x = -0.5 * width;
         y = (local.y - 0.5) * height;
     }
     // Core encodes dy as a negative y-up glyph offset. Convert it to the
@@ -512,12 +512,12 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         size * globals.dpr / max(params.uShapePixels, 1.0),
         1.0 / max(params.uSpread, 1.0)
     );
-    out.tilePosition = local * metrics.metrics.yz;
+    out.tilePosition = local * tileSize;
     out.shapeBounds = vec4<f32>(
         params.uSpread,
         params.uSpread,
-        metrics.metrics.y - params.uSpread,
-        metrics.metrics.z - params.uSpread
+        tileSize.x - params.uSpread,
+        tileSize.y - params.uSpread
     );
     out.stemDarkening = 0.0;
     if (params.uOutlineFont != 0u) {
@@ -1504,8 +1504,12 @@ export default class TextProgram extends BaseProgram {
             glyphMetrics[metricOffset + 4] =
                 -(glyph.bounds.yMin + glyph.bounds.yMax) * 0.5 * atlasScale -
                 glyph.tileHeight * 0.5;
-            glyphMetrics[metricOffset + 5] = glyph.tileWidth;
-            glyphMetrics[metricOffset + 6] = glyph.tileHeight;
+            // Logo fitting needs the visible outline size separately from the
+            // padded atlas tile represented by texRect.
+            glyphMetrics[metricOffset + 5] =
+                (glyph.bounds.xMax - glyph.bounds.xMin) * atlasScale;
+            glyphMetrics[metricOffset + 6] =
+                (glyph.bounds.yMax - glyph.bounds.yMin) * atlasScale;
         }
         return this._writeExtraBuffer("glyphMetrics", glyphMetrics);
     }

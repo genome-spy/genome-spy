@@ -236,6 +236,89 @@ test("TrueType bottom baseline places glyph ink above its anchor", async ({
     expect(Math.abs(result.lastInkY - result.expectedBottomY)).toBeLessThan(1);
 });
 
+test("TrueType logo letters fit their visible outlines to the cell", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const bounds = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { textMark },
+            { identityScale },
+            { createTrueTypeFont },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/text.js"),
+            import("/src/scales/identity.js"),
+            import("/src/fonts/trueTypeFont.js"),
+        ]);
+        const bytes = await fetch("/src/fonts/DefaultFont.ttf").then(
+            (response) => response.arrayBuffer()
+        );
+        const font = createTrueTypeFont(bytes);
+        const canvas = document.createElement("canvas");
+        canvas.width = 128;
+        canvas.height = 128;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 128, height: 128, dpr: 1 });
+        const mark = renderer.createMark(textMark, {
+            font,
+            fontSize: 32,
+            logoLetters: true,
+            channels: {
+                text: { value: "H" },
+                x: { value: 16, scale: identityScale() },
+                x2: { value: 112, scale: identityScale() },
+                y: { value: 112, scale: identityScale() },
+                y2: { value: 16, scale: identityScale() },
+                size: { value: 32 },
+                fill: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: 0 },
+            },
+        });
+        renderer.render({
+            draws: [{ mark }],
+            clearColor: { r: 0, g: 0, b: 0, a: 0 },
+        });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const bitmap = await createImageBitmap(
+            await (await fetch(canvas.toDataURL("image/png"))).blob()
+        );
+        const context = new OffscreenCanvas(128, 128).getContext("2d");
+        context.drawImage(bitmap, 0, 0);
+        const pixels = context.getImageData(0, 0, 128, 128).data;
+        let left = 128;
+        let top = 128;
+        let right = -1;
+        let bottom = -1;
+        for (let y = 0; y < 128; y++) {
+            for (let x = 0; x < 128; x++) {
+                if (pixels[(y * 128 + x) * 4 + 3] > 16) {
+                    left = Math.min(left, x);
+                    top = Math.min(top, y);
+                    right = Math.max(right, x);
+                    bottom = Math.max(bottom, y);
+                }
+            }
+        }
+        bitmap.close();
+        renderer.destroy();
+        canvas.remove();
+        return { left, top, right, bottom };
+    });
+
+    expect(bounds.left).toBeGreaterThanOrEqual(12);
+    expect(bounds.top).toBeGreaterThanOrEqual(12);
+    expect(bounds.right).toBeLessThanOrEqual(115);
+    expect(bounds.bottom).toBeLessThanOrEqual(115);
+    expect(bounds.right - bounds.left).toBeGreaterThanOrEqual(94);
+    expect(bounds.bottom - bounds.top).toBeGreaterThanOrEqual(94);
+    expect(bounds.right - bounds.left).toBeLessThanOrEqual(102);
+    expect(bounds.bottom - bounds.top).toBeLessThanOrEqual(102);
+});
+
 test("outline text applies fill gamma without a zero-width stroke", async ({
     page,
 }) => {
