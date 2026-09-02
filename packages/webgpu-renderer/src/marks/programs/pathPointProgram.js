@@ -110,7 +110,9 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         entry.strokePadding.zw * coverageRadius + rasterSafety;
     let localScreen = mix(localMin, localMax, quad[v]);
 
-    let angle = -getScaled_angle(i) * PI / 180.0;
+    // Local point coordinates use screen-space axes, so positive angles rotate
+    // clockwise, matching Canvas, SVG, and the WebGPU text mark.
+    let angle = getScaled_angle(i) * PI / 180.0;
     let sinTheta = sin(angle);
     let cosTheta = cos(angle);
     let rot = mat2x2<f32>(cosTheta, sinTheta, -sinTheta, cosTheta);
