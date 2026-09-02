@@ -1,8 +1,8 @@
 import TextProgram from "./programs/textProgram.js";
 import { isTrueTypeFont } from "../fonts/outlineTextLayout.js";
-import { resolveTextEffectLayers } from "./programs/textRenderItems.js";
+import { resolveTextEffectFlags } from "./programs/textRenderItems.js";
 
-/** @type {WeakMap<object, Map<string, object>>} */
+/** @type {WeakMap<object, object[]>} */
 const outlineProgramKeys = new WeakMap();
 
 /** @param {import("../index.d.ts").MarkConfig<"text">} config */
@@ -11,26 +11,16 @@ function getOutlineProgramKey(config) {
         return "bitmap";
     }
     const font = config.font;
+    const effectFlags = resolveTextEffectFlags(config.channels);
+    if (effectFlags === 0) {
+        return font;
+    }
     let keys = outlineProgramKeys.get(font);
     if (!keys) {
-        keys = new Map();
+        keys = [{}, {}, {}, {}];
         outlineProgramKeys.set(font, keys);
     }
-    const text = config.channels?.text;
-    const strings =
-        text && "data" in text && Array.isArray(text.data)
-            ? text.data
-            : text && "value" in text && typeof text.value === "string"
-              ? [text.value]
-              : [];
-    const effects = resolveTextEffectLayers(config.channels);
-    const content = JSON.stringify([strings, effects.shadow, effects.outline]);
-    let key = keys.get(content);
-    if (!key) {
-        key = {};
-        keys.set(content, key);
-    }
-    return key;
+    return keys[effectFlags];
 }
 
 /**

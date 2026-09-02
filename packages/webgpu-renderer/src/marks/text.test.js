@@ -9,7 +9,7 @@ const font = {
 };
 
 describe("textMark program identity", () => {
-    test("reuses exact outline text and recreates changed glyph ordering", () => {
+    test("reuses outline programs when text content changes", () => {
         const config = /** @type {any} */ ({
             font,
             channels: { text: { data: ["AB"] } },
@@ -18,12 +18,29 @@ describe("textMark program identity", () => {
         expect(textMark.getProgramKey(config)).toBe(
             textMark.getProgramKey(config)
         );
-        expect(textMark.getProgramKey(config)).not.toBe(
+        expect(textMark.getProgramKey(config)).toBe(
             textMark.getProgramKey({
                 ...config,
                 channels: { text: { data: ["BA"] } },
             })
         );
+    });
+
+    test("does not inspect text data while resolving program identity", () => {
+        const text = new Proxy([], {
+            get() {
+                throw new Error("Text content was inspected.");
+            },
+        });
+
+        expect(() =>
+            textMark.getProgramKey(
+                /** @type {any} */ ({
+                    font,
+                    channels: { text: { data: text } },
+                })
+            )
+        ).not.toThrow();
     });
 
     test("separates effect-free and effect-enabled outline programs", () => {

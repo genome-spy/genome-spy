@@ -1,6 +1,8 @@
 export const TEXT_LAYER_SHADOW = 0;
 export const TEXT_LAYER_OUTLINE = 1;
 export const TEXT_LAYER_FILL = 2;
+export const TEXT_EFFECT_OUTLINE = 1;
+export const TEXT_EFFECT_SHADOW = 2;
 
 /**
  * @param {import("../../index.js").ChannelConfigInput | import("../../index.js").ConditionalChannelConfigInput | undefined} channel
@@ -53,17 +55,28 @@ function hasPositiveAlpha(value) {
  * series values. Series, conditional, and dynamic channels remain provisioned
  * for retained updates even when their initial values are zero.
  *
- * @param {import("../../index.js").TextChannels | undefined} channels
+ * @param {import("../../index.js").TextChannels} [channels]
+ * @returns {number}
+ */
+export function resolveTextEffectFlags(channels) {
+    const outline =
+        channelMayMatch(channels?.strokeWidth, 0, isPositive) &&
+        channelMayMatch(channels?.strokeOpacity, 1, isPositive) &&
+        channelMayMatch(channels?.stroke, [0, 0, 0, 1], hasPositiveAlpha);
+    const shadow =
+        channelMayMatch(channels?.shadowOpacity, 0, isPositive) &&
+        channelMayMatch(channels?.shadowColor, [0, 0, 0, 1], hasPositiveAlpha);
+    return +outline * TEXT_EFFECT_OUTLINE + +shadow * TEXT_EFFECT_SHADOW;
+}
+
+/**
+ * @param {import("../../index.js").TextChannels} [channels]
  * @returns {{ shadow: boolean, outline: boolean, enabled: boolean }}
  */
-export function resolveTextEffectLayers(channels = {}) {
-    const outline =
-        channelMayMatch(channels.strokeWidth, 0, isPositive) &&
-        channelMayMatch(channels.strokeOpacity, 1, isPositive) &&
-        channelMayMatch(channels.stroke, [0, 0, 0, 1], hasPositiveAlpha);
-    const shadow =
-        channelMayMatch(channels.shadowOpacity, 0, isPositive) &&
-        channelMayMatch(channels.shadowColor, [0, 0, 0, 1], hasPositiveAlpha);
+export function resolveTextEffectLayers(channels) {
+    const flags = resolveTextEffectFlags(channels);
+    const outline = (flags & TEXT_EFFECT_OUTLINE) !== 0;
+    const shadow = (flags & TEXT_EFFECT_SHADOW) !== 0;
     return { shadow, outline, enabled: shadow || outline };
 }
 

@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
     buildGlyphOffsets,
     buildTextRenderItems,
+    resolveTextEffectFlags,
     resolveTextEffectLayers,
+    TEXT_EFFECT_OUTLINE,
+    TEXT_EFFECT_SHADOW,
     TEXT_LAYER_FILL,
     TEXT_LAYER_OUTLINE,
     TEXT_LAYER_SHADOW,
@@ -67,6 +70,22 @@ describe("text render items", () => {
                 shadowColor: { value: [0, 0, 0, 0] },
             })
         ).toEqual({ shadow: false, outline: false, enabled: false });
+    });
+
+    it("encodes effect variants without allocating a layer object", () => {
+        expect(resolveTextEffectFlags()).toBe(0);
+        expect(resolveTextEffectFlags({ strokeWidth: { value: 2 } })).toBe(
+            TEXT_EFFECT_OUTLINE
+        );
+        expect(resolveTextEffectFlags({ shadowOpacity: { value: 0.5 } })).toBe(
+            TEXT_EFFECT_SHADOW
+        );
+        expect(
+            resolveTextEffectFlags({
+                strokeWidth: { value: 2 },
+                shadowOpacity: { value: 0.5 },
+            })
+        ).toBe(TEXT_EFFECT_OUTLINE | TEXT_EFFECT_SHADOW);
     });
 
     it("builds glyph offsets for empty and non-empty strings", () => {
