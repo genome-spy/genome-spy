@@ -26,6 +26,23 @@ describe("textMark program identity", () => {
         );
     });
 
+    test("separates effect-free and effect-enabled outline programs", () => {
+        const config = /** @type {any} */ ({
+            font,
+            channels: { text: { value: "AB" } },
+        });
+
+        expect(textMark.getProgramKey(config)).not.toBe(
+            textMark.getProgramKey({
+                ...config,
+                channels: {
+                    ...config.channels,
+                    strokeWidth: { value: 0, dynamic: true },
+                },
+            })
+        );
+    });
+
     test("keeps bitmap text on one program route", () => {
         expect(
             textMark.getProgramKey(/** @type {any} */ ({ font: "Lato" }))

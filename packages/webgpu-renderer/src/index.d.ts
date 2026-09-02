@@ -908,7 +908,12 @@ export type TextChannelName =
     | "stroke"
     | "opacity"
     | "strokeOpacity"
-    | "strokeWidth";
+    | "strokeWidth"
+    | "shadowColor"
+    | "shadowOpacity"
+    | "shadowOffsetX"
+    | "shadowOffsetY"
+    | "shadowBlur";
 
 export type TextStringChannelConfigInput =
     | (Omit<SeriesChannelConfigInput, "data" | "type"> & {

@@ -19,6 +19,65 @@ function getOnlyFontResources(renderer) {
 }
 
 describe("TextProgram series replacement", () => {
+    it("keeps effect-free text on the direct glyph path", () => {
+        const getShaderBody = Object.getOwnPropertyDescriptor(
+            TextProgram.prototype,
+            "shaderBody"
+        ).get;
+        const shaderBody = getShaderBody.call({});
+        const resourceDefs = TextProgram.prototype.getExtraResourceDefs.call({
+            _markConfig: {
+                effects: { enabled: false, shadow: false, outline: false },
+            },
+        });
+
+        expect(shaderBody).toContain("let glyph = glyphs[i];");
+        expect(shaderBody).not.toContain("let renderItem = renderItems[i];");
+        expect(
+            resourceDefs.map(
+                (/** @type {{ name: string }} */ definition) => definition.name
+            )
+        ).not.toContain("renderItems");
+    });
+
+    it("compiles effect text with render-item indirection", () => {
+        const getShaderBody = Object.getOwnPropertyDescriptor(
+            TextProgram.prototype,
+            "shaderBody"
+        ).get;
+        const context = {
+            _markConfig: {
+                effects: { enabled: true, shadow: true, outline: true },
+            },
+        };
+        const shaderBody = getShaderBody.call(context);
+        const resourceDefs =
+            TextProgram.prototype.getExtraResourceDefs.call(context);
+
+        expect(shaderBody).toContain("let renderItem = renderItems[i];");
+        expect(shaderBody).toContain("sampleTrueDistance(uv)");
+        expect(shaderBody).toContain("in.layer == TEXT_LAYER_SHADOW");
+        expect(
+            resourceDefs.map(
+                (/** @type {{ name: string }} */ definition) => definition.name
+            )
+        ).toContain("renderItems");
+    });
+
+    it("rejects effects on legacy bitmap fonts", () => {
+        expect(
+            () =>
+                new TextProgram(createMockRenderer(), {
+                    channels: {
+                        text: { value: "x" },
+                        x: { value: 0, scale: identityScale() },
+                        y: { value: 0, scale: identityScale() },
+                        strokeWidth: { value: 1 },
+                    },
+                })
+        ).toThrow("require a TrueType outline font");
+    });
+
     it("fits ranged text after applying facet placement", () => {
         const shaderBody = Object.getOwnPropertyDescriptor(
             TextProgram.prototype,
@@ -51,7 +110,7 @@ describe("TextProgram series replacement", () => {
             "return shadeBase(in, clamp(in.edgeFadeOpacity, 0.0, 1.0));"
         );
         expect(shaderBody).toContain(
-            "let localPixel = localAnchor + rotated;\n    let pixel = anchor + rotated"
+            "let localPixel = localAnchor + rotated + effectOffset;\n    let pixel = anchor + rotated + effectOffset"
         );
         expect(shaderBody).toContain(
             "let localUnit = localPixel / viewportSize;"
@@ -62,7 +121,7 @@ describe("TextProgram series replacement", () => {
         expect(shaderBody).toContain(
             "fn shade(in: VSOut) -> vec4<f32> {\n    return shadeBase(in, 1.0);"
         );
-        expect(shaderBody).toContain("let coverage = sampleSuperOutline(in);");
+        expect(shaderBody).toContain("let coverage = sampleSuperOutline(");
         expect(shaderBody).toContain(
             "coverage.x,\n            getGammaForColor(fillColor.rgb)"
         );
@@ -302,7 +361,7 @@ describe("TextProgram series replacement", () => {
         });
 
         expect(program.count).toBe(2);
-        expect(program._glyphOffsets).toEqual(new Uint32Array([0, 2, 3]));
+        expect(program._drawOffsets).toEqual(new Uint32Array([0, 2, 3]));
         expect(program._channels.x.data).toEqual(new Float32Array([10, 20]));
         expect(program._channels.y.data).toEqual(new Float32Array([30, 40]));
         expect(program._pipeline).toBe(pipeline);
@@ -357,7 +416,7 @@ describe("TextProgram series replacement", () => {
 
         program.getSlotHandles().series.replace({ text: "y" }, 2);
         expect(program.drawCount).toBe(2);
-        expect(program._glyphOffsets).toEqual(new Uint32Array([0, 1, 2]));
+        expect(program._drawOffsets).toEqual(new Uint32Array([0, 1, 2]));
     });
 
     it("preserves aliases between logical per-string arrays", () => {

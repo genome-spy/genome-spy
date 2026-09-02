@@ -155,6 +155,128 @@ test("text mark renders supersampled RGBA16F TrueType outlines", async ({
     });
 });
 
+test("TrueType text renders label-major outline and SDF shadow layers", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { textMark },
+            { identityScale },
+            { createTrueTypeFont },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/text.js"),
+            import("/src/scales/identity.js"),
+            import("/src/fonts/trueTypeFont.js"),
+        ]);
+        const bytes = await fetch("/src/fonts/DefaultFont.ttf").then(
+            (response) => response.arrayBuffer()
+        );
+        const font = createTrueTypeFont(bytes);
+        const dpr = 2;
+        const canvas = document.createElement("canvas");
+        canvas.width = 128 * dpr;
+        canvas.height = 128 * dpr;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 128, height: 128, dpr });
+        renderer.device.pushErrorScope("validation");
+        const mark = renderer.createMark(textMark, {
+            font,
+            fontSize: 48,
+            channels: {
+                uniqueId: { value: 91, type: "u32" },
+                text: { value: "H" },
+                x: { value: 58, scale: identityScale() },
+                y: { value: 58, scale: identityScale() },
+                size: { value: 48 },
+                fill: { value: [0.2, 0.5, 0.9, 1] },
+                stroke: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: 8 },
+                shadowColor: { value: [0.9, 0.2, 0.2, 1] },
+                shadowOpacity: { value: 0.8 },
+                shadowOffsetX: { value: 12 },
+                shadowOffsetY: { value: 8 },
+                shadowBlur: { value: 4 },
+            },
+        });
+        renderer.render({
+            draws: [{ mark }],
+            clearColor: { r: 0, g: 0, b: 0, a: 0 },
+        });
+        await renderer.device.queue.onSubmittedWorkDone();
+
+        const bitmap = await createImageBitmap(
+            await (await fetch(canvas.toDataURL("image/png"))).blob()
+        );
+        const context = new OffscreenCanvas(
+            canvas.width,
+            canvas.height
+        ).getContext("2d");
+        context.drawImage(bitmap, 0, 0);
+        const pixels = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        ).data;
+        bitmap.close();
+
+        const findPixel = (predicate) => {
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const offset = (y * canvas.width + x) * 4;
+                    if (predicate(pixels.subarray(offset, offset + 4))) {
+                        return [x / dpr, y / dpr];
+                    }
+                }
+            }
+            return null;
+        };
+        const fillPixel = findPixel(
+            ([r, g, b, a]) => a > 200 && b > r + 80 && b > g + 40
+        );
+        const outlinePixel = findPixel(
+            ([r, g, b, a]) => a > 200 && r < 24 && g < 24 && b < 24
+        );
+        const shadowPixel = findPixel(
+            ([r, g, b, a]) => a > 32 && r > g + 70 && r > b + 70
+        );
+        const program = renderer._marks.get(mark.markId);
+        const picks = await Promise.all(
+            [fillPixel, outlinePixel, shadowPixel].map((position) =>
+                position ? renderer.pick(position[0], position[1]) : null
+            )
+        );
+        const validationError = await renderer.device.popErrorScope();
+        const drawCount = program.drawCount;
+        const expandedInstances = program.resolveDrawRange(0, 1).instanceCount;
+        const hasRenderItems = program._extraBuffers.has("renderItems");
+        renderer.destroy();
+        canvas.remove();
+        return {
+            found: [fillPixel, outlinePixel, shadowPixel].map(Boolean),
+            picks,
+            drawCount,
+            expandedInstances,
+            hasRenderItems,
+            validationError: validationError?.message ?? null,
+        };
+    });
+
+    expect(result).toEqual({
+        found: [true, true, true],
+        picks: [91, null, null],
+        drawCount: 1,
+        expandedInstances: 3,
+        hasRenderItems: true,
+        validationError: null,
+    });
+});
+
 test("TrueType bottom baseline places glyph ink above its anchor", async ({
     page,
 }) => {

@@ -17,7 +17,11 @@ import {
 } from "../../utils/webgpuTextureUtils.js";
 import { gpuLabel, RENDERER_GPU_OWNER } from "../../utils/gpuLabel.js";
 import { TEXT_GEOMETRY_WGSL } from "./textGeometry.wgsl.js";
-import { buildGlyphOffsets } from "./textRenderItems.js";
+import {
+    buildGlyphOffsets,
+    buildTextRenderItems,
+    resolveTextEffectLayers,
+} from "./textRenderItems.js";
 
 /**
  * Text rendering overview (SDF + per-glyph instancing).
@@ -51,6 +55,7 @@ import { buildGlyphOffsets } from "./textRenderItems.js";
  * @typedef {ReturnType<BmFontManager["getFont"]>} FontEntry
  * @typedef {number|"thin"|"light"|"regular"|"normal"|"medium"|"bold"|"black"} FontWeightInput
  * @typedef {{ glyphMetrics: GPUBuffer, atlas: { texture: GPUTexture, sampler: GPUSampler, width: number, height: number, format: GPUTextureFormat }, upload: (image: ImageBitmap | HTMLImageElement) => void, destroy: () => void }} FontGpuResources
+ * @typedef {{ enabled: boolean, shadow: boolean, outline: boolean }} TextEffects
  */
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
@@ -76,6 +81,11 @@ export const TEXT_CHANNEL_SPECS = {
     opacity: { type: "f32", components: 1, default: 1.0 },
     strokeOpacity: { type: "f32", components: 1, default: 1.0 },
     strokeWidth: { type: "f32", components: 1, default: 0.0 },
+    shadowColor: { type: "f32", components: 4, optional: true },
+    shadowOpacity: { type: "f32", components: 1, optional: true },
+    shadowOffsetX: { type: "f32", components: 1, optional: true },
+    shadowOffsetY: { type: "f32", components: 1, optional: true },
+    shadowBlur: { type: "f32", components: 1, optional: true },
 };
 
 const {
@@ -85,12 +95,136 @@ const {
     optionalChannels: OPTIONAL_CHANNELS,
 } = buildChannelMaps(TEXT_CHANNEL_SPECS);
 
-const TEXT_SHADER_BODY = /* wgsl */ `
+/**
+ * @param {{ enabled: boolean, shadow: boolean, outline: boolean }} effects
+ * @returns {string}
+ */
+function createTextShaderBody(effects) {
+    const glyphLookup = effects.enabled
+        ? /* wgsl */ `
+    let renderItem = renderItems[i];
+    let layer = renderItem.layer;
+    let glyph = glyphs[renderItem.glyphIndex];`
+        : /* wgsl */ `
+    let layer = TEXT_LAYER_FILL;
+    let glyph = glyphs[i];`;
+    const effectSetup = effects.enabled
+        ? /* wgsl */ `
+    var layerColor = getScaled_fill(i);
+    var layerOpacityMultiplier = 1.0;
+    var layerExtent = 0.0;
+    var effectOffset = vec2<f32>(0.0);
+${
+    effects.outline
+        ? /* wgsl */ `    if (layer == TEXT_LAYER_OUTLINE) {
+        layerColor = getScaled_stroke(i);
+        layerOpacityMultiplier = getScaled_strokeOpacity(i);
+        layerExtent = max(getScaled_strokeWidth(i), 0.0) * 0.5 * globals.dpr;
+    }`
+        : ""
+}
+${
+    effects.shadow
+        ? /* wgsl */ `    if (layer == TEXT_LAYER_SHADOW) {
+        layerColor = getScaled_shadowColor(i);
+        layerOpacityMultiplier = getScaled_shadowOpacity(i);
+        layerExtent = max(getScaled_shadowBlur(i), 0.0) * globals.dpr;
+        effectOffset = vec2<f32>(
+            getScaled_shadowOffsetX(i),
+            getScaled_shadowOffsetY(i)
+        );
+    }`
+        : ""
+}
+    if (layerColor.a <= 0.0 || opacity * layerOpacityMultiplier <= 0.0 ||
+            (layer == TEXT_LAYER_OUTLINE && layerExtent <= 0.0)) {
+        return culledText();
+    }`
+        : /* wgsl */ `
+    let layerColor = getScaled_fill(i);
+    let layerOpacityMultiplier = 1.0;
+    let layerExtent = getScaled_strokeWidth(i) * 0.5 * globals.dpr;
+    let effectOffset = vec2<f32>(0.0);`;
+    const pickAssignment = effects.enabled
+        ? /* wgsl */ `
+    if (layer == TEXT_LAYER_FILL) {
+        out.pickId = getScaled_uniqueId(i) + 1u;
+    }`
+        : /* wgsl */ `
+    out.pickId = getScaled_uniqueId(i) + 1u;`;
+    const outlineShading = effects.enabled
+        ? /* wgsl */ `
+        let uvDx = dpdx(in.uv);
+        let uvDy = -dpdy(in.uv);
+        let tileDx = dpdx(in.tilePosition);
+        let tileDy = -dpdy(in.tilePosition);
+        let outlineCoverage = sampleSuperOutline(
+            in,
+            uvDx,
+            uvDy,
+            tileDx,
+            tileDy
+        );
+        var coverage = select(
+            outlineCoverage.x,
+            outlineCoverage.y,
+            in.layer == TEXT_LAYER_OUTLINE
+        );
+${
+    effects.shadow
+        ? /* wgsl */ `        let shadowCoverage = sampleSuperShadow(in, uvDx, uvDy);
+        coverage = select(
+            coverage,
+            shadowCoverage,
+            in.layer == TEXT_LAYER_SHADOW
+        );`
+        : ""
+}
+        coverage = pow(coverage, getGammaForColor(in.color.rgb));
+        let color = vec4<f32>(in.color.rgb, in.color.a * in.opacity);
+        return premultiplyAlpha(color) * coverage * edgeFadeOpacity;`
+        : /* wgsl */ `
+        let uvDx = dpdx(in.uv);
+        let uvDy = -dpdy(in.uv);
+        let tileDx = dpdx(in.tilePosition);
+        let tileDy = -dpdy(in.tilePosition);
+        let coverage = sampleSuperOutline(
+            in,
+            uvDx,
+            uvDy,
+            tileDx,
+            tileDy
+        );
+        var fillColor = in.color;
+        var strokeColor = in.stroke;
+        let fillCoverage = pow(
+            coverage.x,
+            getGammaForColor(fillColor.rgb)
+        );
+        let strokeCoverage = pow(
+            coverage.y,
+            getGammaForColor(strokeColor.rgb)
+        );
+        fillColor.a *= in.opacity;
+        strokeColor.a *= in.opacity * in.strokeOpacity;
+        fillColor = premultiplyAlpha(fillColor);
+        strokeColor = premultiplyAlpha(strokeColor);
+        let fillLayer = fillColor * fillCoverage;
+        let strokeLayer = strokeColor * strokeCoverage;
+        let color = sourceOver(strokeLayer, fillLayer);
+        return color * edgeFadeOpacity;`;
+
+    return /* wgsl */ `
 struct GlyphInstance {
     stringIndex: u32,
     glyphId: u32,
     xOffset: f32,
     yOffset: f32,
+};
+
+struct RenderItem {
+    glyphIndex: u32,
+    layer: u32,
 };
 
 struct StringMetrics {
@@ -110,6 +244,10 @@ const ALIGN_RIGHT: u32 = 2u;
 const ALIGN_AXIS_LEFT: i32 = -1;
 const ALIGN_AXIS_CENTER: i32 = 0;
 const ALIGN_AXIS_RIGHT: i32 = 1;
+
+const TEXT_LAYER_SHADOW: u32 = 0u;
+const TEXT_LAYER_OUTLINE: u32 = 1u;
+const TEXT_LAYER_FILL: u32 = 2u;
 
 ${TEXT_GEOMETRY_WGSL}
 
@@ -132,6 +270,7 @@ struct VSOut {
     @location(11) tilePosition: vec2<f32>,
     @location(12) @interpolate(flat) shapeBounds: vec4<f32>,
     @location(13) @interpolate(flat) stemDarkening: f32,
+    @location(14) @interpolate(flat) layer: u32,
 };
 
 fn culledText() -> VSOut {
@@ -154,6 +293,7 @@ fn culledText() -> VSOut {
     out.tilePosition = vec2<f32>(0.0);
     out.shapeBounds = vec4<f32>(0.0);
     out.stemDarkening = 0.0;
+    out.layer = TEXT_LAYER_FILL;
     return out;
 }
 
@@ -305,7 +445,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         vec2<f32>(1.0, 1.0)
     );
 
-    let glyph = glyphs[i];
+${glyphLookup}
     let textMetrics = stringMetrics[glyph.stringIndex];
     let metrics = glyphMetrics[glyph.glyphId];
     let tileSize = metrics.texRect.zw + select(
@@ -317,6 +457,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     // Base font size before range fitting.
     var size = getScaled_size(i);
     var opacity = getScaled_opacity(i);
+${effectSetup}
 
     // Rotation is applied both to range fitting and glyph placement.
     let angleDegrees = getScaled_angle(i);
@@ -470,8 +611,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         y + getScaled_dy(i)
     );
     let rotated = rot * localPos;
-    let localPixel = localAnchor + rotated;
-    let pixel = anchor + rotated;
+    let localPixel = localAnchor + rotated + effectOffset;
+    let pixel = anchor + rotated + effectOffset;
 
     var edgeFadeOpacity = 1.0;
     if (maxValue(params.uViewportEdgeFadeDistance) > -1e10) {
@@ -500,15 +641,15 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         1.0
     );
     out.uv = (metrics.texRect.xy + local * metrics.texRect.zw) * params.uAtlasScale;
-    out.color = getScaled_fill(i);
-    out.opacity = opacity;
+    out.color = layerColor;
+    out.opacity = opacity * layerOpacityMultiplier;
     out.slope = max(1.0, size / params.uSdfNumerator * globals.dpr);
     out.gamma = getGammaForColor(out.color.rgb);
     out.pickId = 0u;
     out.edgeFadeOpacity = edgeFadeOpacity;
     out.stroke = getScaled_stroke(i);
     out.strokeOpacity = getScaled_strokeOpacity(i);
-    out.halfStrokeWidth = getScaled_strokeWidth(i) * 0.5 * globals.dpr;
+    out.halfStrokeWidth = layerExtent;
     out.devicePixelsPerAtlas = max(
         size * globals.dpr / max(params.uShapePixels, 1.0),
         1.0 / max(params.uSpread, 1.0)
@@ -521,11 +662,12 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         tileSize.y - params.uSpread
     );
     out.stemDarkening = 0.0;
+    out.layer = layer;
     if (params.uOutlineFont != 0u) {
         out.stemDarkening = freeTypeLikeStemDarkening(size * globals.dpr);
     }
 #if defined(uniqueId_DEFINED)
-    out.pickId = getScaled_uniqueId(i) + 1u;
+${pickAssignment}
 #endif
     return out;
 }
@@ -537,6 +679,10 @@ fn median(r: f32, g: f32, b: f32) -> f32 {
 fn sampleSdf(uv: vec2<f32>) -> f32 {
     let c = textureSample(fontAtlas, fontSampler, uv).rgb;
     return 1.0 - median(c.r, c.g, c.b);
+}
+
+fn sampleTrueDistance(uv: vec2<f32>) -> f32 {
+    return textureSample(fontAtlas, fontSampler, uv).a;
 }
 
 fn sampleSuperSdf(uv: vec2<f32>) -> f32 {
@@ -610,25 +756,22 @@ fn sampleOutlineCoverage(
     );
     // Use the same guard for both stroke contours so their difference is
     // exactly zero when the requested width is zero.
-    let innerCoverage = select(
-        0.0,
-        clamp(distance - halfStrokeWidth + 0.5, 0.0, 1.0),
-        strokeInside
-    );
     return vec2<f32>(
         fillCoverage,
-        max(outerCoverage - innerCoverage, 0.0)
+        max(outerCoverage - fillCoverage, 0.0)
     );
 }
 
-fn sampleSuperOutline(in: VSOut) -> vec2<f32> {
-    let dx = dpdx(in.uv);
-    let dy = -dpdy(in.uv);
-    let tileDx = dpdx(in.tilePosition);
-    let tileDy = -dpdy(in.tilePosition);
+fn sampleSuperOutline(
+    in: VSOut,
+    uvDx: vec2<f32>,
+    uvDy: vec2<f32>,
+    tileDx: vec2<f32>,
+    tileDy: vec2<f32>
+) -> vec2<f32> {
     return (
         sampleOutlineCoverage(
-            in.uv + 0.25 * dx + 0.25 * dy,
+            in.uv + 0.25 * uvDx + 0.25 * uvDy,
             in.tilePosition + 0.25 * tileDx + 0.25 * tileDy,
             in.shapeBounds,
             in.devicePixelsPerAtlas,
@@ -636,7 +779,7 @@ fn sampleSuperOutline(in: VSOut) -> vec2<f32> {
             in.stemDarkening
         ) +
         sampleOutlineCoverage(
-            in.uv + 0.75 * dx + 0.25 * dy,
+            in.uv + 0.75 * uvDx + 0.25 * uvDy,
             in.tilePosition + 0.75 * tileDx + 0.25 * tileDy,
             in.shapeBounds,
             in.devicePixelsPerAtlas,
@@ -644,7 +787,7 @@ fn sampleSuperOutline(in: VSOut) -> vec2<f32> {
             in.stemDarkening
         ) +
         sampleOutlineCoverage(
-            in.uv + 0.25 * dx + 0.75 * dy,
+            in.uv + 0.25 * uvDx + 0.75 * uvDy,
             in.tilePosition + 0.25 * tileDx + 0.75 * tileDy,
             in.shapeBounds,
             in.devicePixelsPerAtlas,
@@ -652,13 +795,40 @@ fn sampleSuperOutline(in: VSOut) -> vec2<f32> {
             in.stemDarkening
         ) +
         sampleOutlineCoverage(
-            in.uv + 0.75 * dx + 0.75 * dy,
+            in.uv + 0.75 * uvDx + 0.75 * uvDy,
             in.tilePosition + 0.75 * tileDx + 0.75 * tileDy,
             in.shapeBounds,
             in.devicePixelsPerAtlas,
             in.halfStrokeWidth,
             in.stemDarkening
         )
+    ) * 0.25;
+}
+
+fn shadowCoverageAt(in: VSOut, uv: vec2<f32>) -> f32 {
+    let distance = sampleTrueDistance(uv) * in.devicePixelsPerAtlas +
+        in.stemDarkening;
+    let maxBlur = max(
+        (params.uSpread - 1.0) * in.devicePixelsPerAtlas,
+        0.0
+    );
+    let blur = min(in.halfStrokeWidth, maxBlur);
+    if (blur <= 0.0) {
+        return clamp(distance + 0.5, 0.0, 1.0);
+    }
+    return smoothstep(-blur, blur, distance);
+}
+
+fn sampleSuperShadow(
+    in: VSOut,
+    uvDx: vec2<f32>,
+    uvDy: vec2<f32>
+) -> f32 {
+    return (
+        shadowCoverageAt(in, in.uv + 0.25 * uvDx + 0.25 * uvDy) +
+        shadowCoverageAt(in, in.uv + 0.75 * uvDx + 0.25 * uvDy) +
+        shadowCoverageAt(in, in.uv + 0.25 * uvDx + 0.75 * uvDy) +
+        shadowCoverageAt(in, in.uv + 0.75 * uvDx + 0.75 * uvDy)
     ) * 0.25;
 }
 
@@ -676,25 +846,7 @@ fn sourceOver(above: vec4<f32>, below: vec4<f32>) -> vec4<f32> {
 
 fn shadeBase(in: VSOut, edgeFadeOpacity: f32) -> vec4<f32> {
     if (params.uOutlineFont != 0u) {
-        let coverage = sampleSuperOutline(in);
-        var fillColor = in.color;
-        var strokeColor = in.stroke;
-        let fillCoverage = pow(
-            coverage.x,
-            getGammaForColor(fillColor.rgb)
-        );
-        let strokeCoverage = pow(
-            coverage.y,
-            getGammaForColor(strokeColor.rgb)
-        );
-        fillColor.a *= in.opacity;
-        strokeColor.a *= in.opacity * in.strokeOpacity;
-        fillColor = premultiplyAlpha(fillColor);
-        strokeColor = premultiplyAlpha(strokeColor);
-        let fillLayer = fillColor * fillCoverage;
-        let strokeLayer = strokeColor * strokeCoverage;
-        let color = sourceOver(strokeLayer, fillLayer);
-        return color * edgeFadeOpacity;
+${outlineShading}
     }
     let sigDist = sampleSuperSdf(in.uv);
     var slope = in.slope;
@@ -725,6 +877,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     return shadeText(in);
 }
 `;
+}
 
 /**
  * @typedef {object} TextConfigInput
@@ -746,7 +899,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 
 /**
  * @param {TextConfigInput} [params]
- * @returns {{ normalized: { channels: Record<string, ChannelConfigInput>, count: number, seriesIndexExpression: string }, textLayout: import("../../fonts/layout.js").TextLayout, fontEntry: FontEntry | null, fontManager: BmFontManager | null }}
+ * @returns {{ normalized: { channels: Record<string, ChannelConfigInput>, count: number, seriesIndexExpression: string }, textLayout: import("../../fonts/layout.js").TextLayout, fontEntry: FontEntry | null, fontManager: BmFontManager | null, effects: { enabled: boolean, shadow: boolean, outline: boolean } }}
  */
 function normalizeTextConfig({
     channels = {},
@@ -762,6 +915,22 @@ function normalizeTextConfig({
 } = {}) {
     /** @type {Record<string, ChannelConfigInput | TextStringChannelConfigInput>} */
     const normalizedChannels = { ...channels };
+    const effects = resolveTextEffectLayers(channels);
+    if (effects.enabled && !isTrueTypeFont(font)) {
+        throw new Error(
+            "Text outlines and shadows require a TrueType outline font."
+        );
+    }
+    if (effects.shadow) {
+        normalizedChannels.shadowColor ??= { value: [0, 0, 0, 1] };
+        normalizedChannels.shadowOpacity ??= { value: 0 };
+        normalizedChannels.shadowOffsetX ??= { value: 0 };
+        normalizedChannels.shadowOffsetY ??= { value: 0 };
+        normalizedChannels.shadowBlur ??= { value: 0 };
+    }
+    const seriesIndexExpression = effects.enabled
+        ? "glyphs[renderItems[i].glyphIndex].stringIndex"
+        : "glyphs[i].stringIndex";
     if (isTrueTypeFont(font)) {
         if (textLayout) {
             throw new Error(
@@ -787,11 +956,12 @@ function normalizeTextConfig({
                     normalizedChannels
                 ),
                 count: strings.length,
-                seriesIndexExpression: "glyphs[i].stringIndex",
+                seriesIndexExpression,
             },
             textLayout: /** @type {any} */ (layout),
             fontEntry: null,
             fontManager: null,
+            effects,
         };
     }
     const resolvedStyle = fontStyle === "italic" ? "italic" : "normal";
@@ -847,11 +1017,12 @@ function normalizeTextConfig({
                     normalizedChannels
                 ),
                 count: stringCount,
-                seriesIndexExpression: "glyphs[i].stringIndex",
+                seriesIndexExpression,
             },
             textLayout: layout,
             fontEntry,
             fontManager,
+            effects,
         };
     }
 
@@ -907,11 +1078,12 @@ function normalizeTextConfig({
                 normalizedChannels
             ),
             count: strings.length,
-            seriesIndexExpression: "glyphs[i].stringIndex",
+            seriesIndexExpression,
         },
         textLayout: layout,
         fontEntry,
         fontManager,
+        effects,
     };
 }
 
@@ -1196,7 +1368,7 @@ export default class TextProgram extends BaseProgram {
      * @param {import("../../index.js").MarkProgramCreationContext} [context]
      */
     constructor(renderer, config, context) {
-        const { normalized, textLayout, fontEntry, fontManager } =
+        const { normalized, textLayout, fontEntry, fontManager, effects } =
             normalizeTextConfig(config);
         super(
             renderer,
@@ -1205,6 +1377,7 @@ export default class TextProgram extends BaseProgram {
                 ...normalized,
                 textLayout,
                 fontEntry,
+                effects,
             },
             context
         );
@@ -1221,7 +1394,6 @@ export default class TextProgram extends BaseProgram {
                 `Text series data count (${seriesCount}) does not match text count (${normalized.count}).`
             );
         }
-        this._glyphOffsets = buildGlyphOffsets(textLayout);
         this._fontManager = fontManager;
         delete this._markConfig.textLayout;
         delete this._markConfig.fontEntry;
@@ -1233,7 +1405,7 @@ export default class TextProgram extends BaseProgram {
      * @returns {number}
      */
     get drawCount() {
-        return this._glyphOffsets.length - 1;
+        return this._drawOffsets.length - 1;
     }
 
     /**
@@ -1242,8 +1414,8 @@ export default class TextProgram extends BaseProgram {
      * @returns {{ firstInstance: number, instanceCount: number }}
      */
     resolveDrawRange(firstInstance, instanceCount) {
-        const firstGlyph = this._glyphOffsets[firstInstance];
-        const lastGlyph = this._glyphOffsets[firstInstance + instanceCount];
+        const firstGlyph = this._drawOffsets[firstInstance];
+        const lastGlyph = this._drawOffsets[firstInstance + instanceCount];
         return {
             firstInstance: firstGlyph,
             instanceCount: lastGlyph - firstGlyph,
@@ -1289,7 +1461,12 @@ export default class TextProgram extends BaseProgram {
      * @returns {string}
      */
     get shaderBody() {
-        return TEXT_SHADER_BODY;
+        const effects = this._markConfig?.effects;
+        return createTextShaderBody(
+            effects
+                ? /** @type {TextEffects} */ (effects)
+                : { enabled: false, shadow: false, outline: false }
+        );
     }
 
     /**
@@ -1331,7 +1508,8 @@ export default class TextProgram extends BaseProgram {
      * @returns {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]}
      */
     getExtraResourceDefs() {
-        return [
+        /** @type {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]} */
+        const resources = [
             {
                 name: "glyphs",
                 role: "extraBuffer",
@@ -1377,6 +1555,19 @@ export default class TextProgram extends BaseProgram {
                 wgslName: "fontSampler",
             },
         ];
+        const effects = /** @type {TextEffects} */ (this._markConfig.effects);
+        if (effects.enabled) {
+            resources.push({
+                name: "renderItems",
+                role: "extraBuffer",
+                kind: "buffer",
+                bufferType: "read-only-storage",
+                visibility: "vertex",
+                wgslName: "renderItems",
+                wgslType: "array<RenderItem>",
+            });
+        }
+        return resources;
     }
 
     _initializeExtraResources() {
@@ -1542,6 +1733,16 @@ export default class TextProgram extends BaseProgram {
         }
         changed =
             this._writeExtraBuffer("stringMetrics", stringData) || changed;
+        const effects = /** @type {TextEffects} */ (this._markConfig.effects);
+        if (effects.enabled) {
+            const renderItems = buildTextRenderItems(layout, effects);
+            changed =
+                this._writeExtraBuffer("renderItems", renderItems.data) ||
+                changed;
+            this._drawOffsets = renderItems.offsets;
+        } else {
+            this._drawOffsets = buildGlyphOffsets(layout);
+        }
         return changed;
     }
 
@@ -1656,7 +1857,6 @@ export default class TextProgram extends BaseProgram {
                 `Text series data count (${seriesCount}) does not match text count (${strings.length}).`
             );
         }
-        this._glyphOffsets = buildGlyphOffsets(layout);
         let textBuffersChanged = this._updateTextLayoutBuffers(layout);
         if (outlineFont) {
             textBuffersChanged =

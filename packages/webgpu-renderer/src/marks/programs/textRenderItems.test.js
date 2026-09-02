@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
     buildGlyphOffsets,
     buildTextRenderItems,
+    resolveTextEffectLayers,
     TEXT_LAYER_FILL,
     TEXT_LAYER_OUTLINE,
     TEXT_LAYER_SHADOW,
@@ -23,6 +24,51 @@ function createLayout() {
 }
 
 describe("text render items", () => {
+    it("distinguishes static absence from retained effect potential", () => {
+        expect(resolveTextEffectLayers()).toEqual({
+            shadow: false,
+            outline: false,
+            enabled: false,
+        });
+        expect(
+            resolveTextEffectLayers({
+                strokeWidth: { value: 0 },
+                shadowOpacity: { value: 0 },
+            })
+        ).toEqual({ shadow: false, outline: false, enabled: false });
+        expect(
+            resolveTextEffectLayers({
+                strokeWidth: { value: 0, dynamic: true },
+            })
+        ).toEqual({ shadow: false, outline: true, enabled: true });
+        expect(
+            resolveTextEffectLayers({
+                shadowOpacity: { data: new Float32Array([0]), type: "f32" },
+            })
+        ).toEqual({ shadow: true, outline: false, enabled: true });
+        expect(
+            resolveTextEffectLayers({
+                strokeWidth: {
+                    value: 0,
+                    conditions: [
+                        {
+                            when: { selection: "selected", type: "single" },
+                            value: 2,
+                        },
+                    ],
+                },
+            })
+        ).toEqual({ shadow: false, outline: true, enabled: true });
+        expect(
+            resolveTextEffectLayers({
+                strokeWidth: { value: 2 },
+                strokeOpacity: { value: 0 },
+                shadowOpacity: { value: 0.5 },
+                shadowColor: { value: [0, 0, 0, 0] },
+            })
+        ).toEqual({ shadow: false, outline: false, enabled: false });
+    });
+
     it("builds glyph offsets for empty and non-empty strings", () => {
         expect(buildGlyphOffsets(createLayout())).toEqual(
             new Uint32Array([0, 2, 2, 3])

@@ -1,5 +1,6 @@
 import TextProgram from "./programs/textProgram.js";
 import { isTrueTypeFont } from "../fonts/outlineTextLayout.js";
+import { resolveTextEffectLayers } from "./programs/textRenderItems.js";
 
 /** @type {WeakMap<object, Map<string, object>>} */
 const outlineProgramKeys = new WeakMap();
@@ -22,7 +23,8 @@ function getOutlineProgramKey(config) {
             : text && "value" in text && typeof text.value === "string"
               ? [text.value]
               : [];
-    const content = JSON.stringify(strings);
+    const effects = resolveTextEffectLayers(config.channels);
+    const content = JSON.stringify([strings, effects.shadow, effects.outline]);
     let key = keys.get(content);
     if (!key) {
         key = {};

@@ -3,6 +3,71 @@ export const TEXT_LAYER_OUTLINE = 1;
 export const TEXT_LAYER_FILL = 2;
 
 /**
+ * @param {import("../../index.js").ChannelConfigInput | import("../../index.js").ConditionalChannelConfigInput | undefined} channel
+ * @param {number | number[]} fallback
+ * @param {(value: number | number[]) => boolean} predicate
+ * @returns {boolean}
+ */
+function channelMayMatch(channel, fallback, predicate) {
+    if (!channel) {
+        return predicate(fallback);
+    }
+    if (
+        channel.data !== undefined ||
+        ("dynamic" in channel && channel.dynamic)
+    ) {
+        return true;
+    }
+    const value =
+        channel.value ??
+        ("default" in channel ? channel.default : undefined) ??
+        fallback;
+    if (predicate(value)) {
+        return true;
+    }
+    const conditions = "conditions" in channel ? channel.conditions : [];
+    for (const condition of conditions ?? []) {
+        if (condition.value !== undefined) {
+            if (predicate(condition.value)) {
+                return true;
+            }
+        } else if (channelMayMatch(condition.channel, fallback, predicate)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/** @param {number | number[]} value */
+function isPositive(value) {
+    return typeof value !== "number" || value > 0;
+}
+
+/** @param {number | number[]} value */
+function hasPositiveAlpha(value) {
+    return !Array.isArray(value) || value.length < 4 || value[3] > 0;
+}
+
+/**
+ * Resolve which effect layers can become visible without scanning current
+ * series values. Series, conditional, and dynamic channels remain provisioned
+ * for retained updates even when their initial values are zero.
+ *
+ * @param {import("../../index.js").TextChannels | undefined} channels
+ * @returns {{ shadow: boolean, outline: boolean, enabled: boolean }}
+ */
+export function resolveTextEffectLayers(channels = {}) {
+    const outline =
+        channelMayMatch(channels.strokeWidth, 0, isPositive) &&
+        channelMayMatch(channels.strokeOpacity, 1, isPositive) &&
+        channelMayMatch(channels.stroke, [0, 0, 0, 1], hasPositiveAlpha);
+    const shadow =
+        channelMayMatch(channels.shadowOpacity, 0, isPositive) &&
+        channelMayMatch(channels.shadowColor, [0, 0, 0, 1], hasPositiveAlpha);
+    return { shadow, outline, enabled: shadow || outline };
+}
+
+/**
  * Build an exclusive prefix sum from logical strings to glyph instances.
  *
  * @param {import("../../index.js").TextLayout} textLayout
