@@ -767,8 +767,14 @@ moved from production `src/` to package-excluded `tools/msdfgen/` and
 `tests/oracles/msdfgen/`. Explicit path-point and path-text comparison commands
 still exercise the oracle. The ordinary package build verifies that no tool or
 oracle file is packed; its dry-run contains 139 files and is 283,905 bytes.
-Application-supplied catalogs, late subtree loading tests, and the remaining
-integration matrix still remain.
+Core now also accepts an application `fontCatalog` through `embed()`. Entries
+are indexed without loading, override matching temporary catalog variants, and
+load only when an initialized text consumer requests the exact family, style,
+and weight. A browser smoke test rendered an explicit Lato request through a
+local application mapping with one local TTF request and no temporary remote
+font request. The full Core suite passes 2,732 tests (one skipped, two todo),
+and the declaration and minimal-bundle checks pass. Late subtree loading tests
+and the remaining integration matrix still remain.
 
 ### Intended outcome
 

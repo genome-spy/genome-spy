@@ -325,6 +325,9 @@ export default class GenomeSpy {
             onCanvasResize: () => this.#renderCoordinator?.renderAll(),
             onRenderInvalidated: () => this.animator.requestRender(),
             onError: (error) => this.#reportRuntimeError(error),
+            ...(this.options.fontCatalog === undefined
+                ? {}
+                : { fontCatalog: this.options.fontCatalog }),
         });
 
         if (this.#destroyed) {

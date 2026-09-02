@@ -1,10 +1,15 @@
 import { expect, test, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-    initialize: vi.fn(),
-    exportRaster: vi.fn(),
-    rasterizeSvgRuns: vi.fn(),
-}));
+const mocks = vi.hoisted(() => {
+    const prepareOutlineFont = vi.fn();
+    return {
+        initialize: vi.fn(),
+        exportRaster: vi.fn(),
+        rasterizeSvgRuns: vi.fn(),
+        prepareOutlineFont,
+        createOutlineFontPreparer: vi.fn(() => prepareOutlineFont),
+    };
+});
 
 vi.mock("./webGpuSurface.js", () => ({
     default: class WebGpuSurface {
@@ -17,6 +22,10 @@ vi.mock("./webGpuRasterExport.js", () => ({
     rasterizeSvgRuns: mocks.rasterizeSvgRuns,
 }));
 
+vi.mock("./webGpuFontCatalog.js", () => ({
+    createOutlineFontPreparer: mocks.createOutlineFontPreparer,
+}));
+
 import { createWebGpuRenderingBackend } from "./index.js";
 
 test("supplies Core's bundled default font bitmap", async () => {
@@ -24,6 +33,19 @@ test("supplies Core's bundled default font bitmap", async () => {
 
     expect(backend.defaultFontBitmapUrl).toContain("Lato-Regular.png");
     expect(backend.prepareOutlineFont).toBeTypeOf("function");
+});
+
+test("constructs a lazy preparer from the application font catalog", async () => {
+    const fontCatalog = [
+        { family: "Study Sans", source: "https://example.test/study.ttf" },
+    ];
+    const backend = await createWebGpuRenderingBackend(
+        /** @type {any} */ ({ fontCatalog })
+    );
+
+    expect(mocks.createOutlineFontPreparer).toHaveBeenCalledWith(fontCatalog);
+    expect(backend.prepareOutlineFont).toBe(mocks.prepareOutlineFont);
+    expect(mocks.prepareOutlineFont).not.toHaveBeenCalled();
 });
 
 test("serializes asynchronous raster and hybrid SVG exports", async () => {

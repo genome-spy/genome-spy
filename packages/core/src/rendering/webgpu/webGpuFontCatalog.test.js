@@ -14,13 +14,13 @@ vi.mock("@genome-spy/webgpu-renderer/fonts/truetype", () => ({
 }));
 
 import {
-    prepareOutlineFont,
+    createOutlineFontPreparer,
     resolveExampleFontUrl,
 } from "./webGpuFontCatalog.js";
 
 describe("WebGPU example font catalog", () => {
     test("uses Default Font only for the implicit regular face", async () => {
-        await prepareOutlineFont({
+        await createOutlineFontPreparer()({
             family: undefined,
             style: "normal",
             weight: 400,
@@ -74,5 +74,60 @@ describe("WebGPU example font catalog", () => {
                 implicitFamily: false,
             })
         ).toThrow("No WebGPU TrueType font");
+    });
+
+    test("loads only a requested application face", async () => {
+        const catalog = Array.from({ length: 100 }, (_, index) => ({
+            family: `Study Sans ${index}`,
+            source: `https://example.test/study-sans-${index}.ttf`,
+        }));
+        const prepare = createOutlineFontPreparer(catalog);
+
+        expect(loaders.loadTrueTypeFont).not.toHaveBeenCalled();
+        await prepare({
+            family: "Study Sans 42",
+            style: "normal",
+            weight: 400,
+            implicitFamily: false,
+        });
+
+        expect(loaders.loadTrueTypeFont).toHaveBeenCalledOnce();
+        expect(loaders.loadTrueTypeFont).toHaveBeenCalledWith(
+            "https://example.test/study-sans-42.ttf"
+        );
+    });
+
+    test("application faces override temporary catalog variants", async () => {
+        const source = new URL("https://example.test/lato-bold.ttf");
+        const prepare = createOutlineFontPreparer([
+            { family: "Lato", weight: 700, source },
+        ]);
+
+        await prepare({
+            family: undefined,
+            style: "normal",
+            weight: 700,
+            implicitFamily: true,
+        });
+
+        expect(loaders.loadTrueTypeFont).toHaveBeenCalledWith(source);
+    });
+
+    test("validates catalog variants before loading", () => {
+        expect(() =>
+            createOutlineFontPreparer([
+                { family: "Study Sans", source: "first.ttf" },
+                { family: "Study Sans", source: "second.ttf" },
+            ])
+        ).toThrow("Duplicate font catalog entry");
+        expect(() =>
+            createOutlineFontPreparer([
+                {
+                    family: "Study Sans",
+                    style: /** @type {any} */ ("oblique"),
+                    source: "study-sans.ttf",
+                },
+            ])
+        ).toThrow("Unsupported font catalog style");
     });
 });

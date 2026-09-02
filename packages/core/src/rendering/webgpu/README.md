@@ -70,6 +70,26 @@ per-instance placement index.
 WebGL continues to consume effective per-mark opacity and receives no
 render-group behavior.
 
+## Outline font loading
+
+Core continues to use its bundled BMFont metrics for text measurement and
+layout. In parallel, the WebGPU backend asks the font manager to prepare a
+device-neutral TrueType outline only when an initialized text consumer requests
+that exact family, weight, and style. The low-level text mark is created after
+the existing readiness wait has populated the outline entry.
+
+`EmbedOptions.fontCatalog` adds application-owned TTF URLs to this resolution
+step. Catalog construction validates and indexes metadata but performs no
+fetch. Application entries take precedence over the temporary example catalog;
+missing explicit variants fail instead of selecting a different face. An
+implicit normal 400 request uses the renderer-owned Default Font, while other
+implicit variants resolve through exact Lato entries. URL loading and parsing
+are deduplicated by the renderer font loader.
+
+The catalog module and Default Font import remain under this dynamically loaded
+WebGPU directory. WebGL and Canvas2D backends neither evaluate the catalog nor
+request its font resources.
+
 ## Raster export
 
 Full PNG and hybrid SVG rasterization reuse the live renderer's device, mark
@@ -190,6 +210,7 @@ recreating mark resources.
 | `webGpuViewRenderingContext.js` | Compiles and executes the retained Core frame plan.                |
 | `webGpuMarkData.js`             | Packs collector topology and resolves occurrence ranges.           |
 | `webGpuMarkAdapter.js`          | Translates Core marks and encoders to renderer definitions.        |
+| `webGpuFontCatalog.js`          | Resolves lazy exact TTF variants for WebGPU text.                  |
 | `webGpuSurface.js`              | Owns the canvas integration and retained renderer handles.         |
 
 Tests are colocated with these modules. Run the focused suite with:

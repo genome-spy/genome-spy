@@ -74,6 +74,49 @@ function fontKey(family, style, weight) {
 }
 
 /**
+ * Validate and index an application catalog without loading any font data.
+ *
+ * @param {import("../../types/embedApi.js").FontCatalogEntry[]} entries
+ * @returns {Map<string, string | URL>}
+ */
+function indexFontCatalog(entries) {
+    const sources = new Map();
+    for (const entry of entries) {
+        if (typeof entry.family !== "string" || entry.family.trim() === "") {
+            throw new Error("Font catalog families must be non-empty strings.");
+        }
+        const style = entry.style ?? "normal";
+        if (style !== "normal" && style !== "italic") {
+            throw new Error(
+                `Unsupported font catalog style for ${entry.family}: ${style}.`
+            );
+        }
+        const weight = entry.weight ?? 400;
+        if (!Number.isInteger(weight) || weight < 1 || weight > 1000) {
+            throw new Error(
+                `Font catalog weight for ${entry.family} must be an integer from 1 to 1000.`
+            );
+        }
+        if (!(
+            entry.source instanceof URL ||
+            (typeof entry.source === "string" && entry.source.trim() !== "")
+        )) {
+            throw new Error(
+                `Font catalog source for ${entry.family} must be a non-empty URL.`
+            );
+        }
+        const key = fontKey(entry.family, style, weight);
+        if (sources.has(key)) {
+            throw new Error(
+                `Duplicate font catalog entry for ${entry.family} ${style} ${weight}.`
+            );
+        }
+        sources.set(key, entry.source);
+    }
+    return sources;
+}
+
+/**
  * Resolve only the exact variants needed by repository examples. The compact
  * renderer-owned Default Font is reserved for implicit normal 400 requests;
  * other implicit variants use Lato without silently substituting weights.
@@ -102,12 +145,26 @@ export function resolveExampleFontUrl(request) {
 }
 
 /**
- * Load one requested outline. Merely importing or registering the WebGPU
- * backend does not fetch any catalog font.
+ * Create a lazy outline loader that searches application entries before the
+ * built-in example catalog. Constructing it performs no network requests.
  *
- * @param {{family: string | undefined, style: "normal" | "italic", weight: number, implicitFamily: boolean}} request
+ * @param {import("../../types/embedApi.js").FontCatalogEntry[]} [entries]
+ * @returns {(request: {family: string | undefined, style: "normal" | "italic", weight: number, implicitFamily: boolean}) => Promise<object>}
  */
-export function prepareOutlineFont(request) {
-    const url = resolveExampleFontUrl(request);
-    return url === undefined ? loadDefaultFont() : loadTrueTypeFont(url);
+export function createOutlineFontPreparer(entries = []) {
+    const applicationSources = indexFontCatalog(entries);
+    return (request) => {
+        if (
+            request.implicitFamily &&
+            request.style === "normal" &&
+            request.weight === 400
+        ) {
+            return loadDefaultFont();
+        }
+        const family = request.implicitFamily ? "Lato" : request.family;
+        const key = fontKey(String(family), request.style, request.weight);
+        const source =
+            applicationSources.get(key) ?? resolveExampleFontUrl(request);
+        return loadTrueTypeFont(source);
+    };
 }

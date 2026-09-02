@@ -2,7 +2,7 @@ import latoRegularBitmap from "../../fonts/Lato-Regular.png";
 import WebGpuRenderCoordinator from "./webGpuRenderCoordinator.js";
 import WebGpuSurface from "./webGpuSurface.js";
 import { exportRaster, rasterizeSvgRuns } from "./webGpuRasterExport.js";
-import { prepareOutlineFont } from "./webGpuFontCatalog.js";
+import { createOutlineFontPreparer } from "./webGpuFontCatalog.js";
 
 /**
  * Creates the experimental WebGPU backend used by the first-example vertical
@@ -32,7 +32,7 @@ export async function createWebGpuRenderingBackend(options) {
         surface,
         glHelper: undefined,
         defaultFontBitmapUrl: latoRegularBitmap,
-        prepareOutlineFont,
+        prepareOutlineFont: createOutlineFontPreparer(options.fontCatalog),
         createRenderCoordinator: (coordinatorOptions) =>
             new WebGpuRenderCoordinator({
                 ...coordinatorOptions,

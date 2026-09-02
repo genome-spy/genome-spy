@@ -62,6 +62,7 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  * @property {() => void} onCanvasResize
  * @property {() => void} [onRenderInvalidated]
  * @property {(error: Error) => void} [onError]
+ * @property {import("../types/embedApi.js").FontCatalogEntry[]} [fontCatalog]
  */
 
 /**
