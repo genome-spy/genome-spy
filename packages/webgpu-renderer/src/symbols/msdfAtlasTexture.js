@@ -10,12 +10,18 @@ import { gpuLabel } from "../utils/gpuLabel.js";
 export class MsdfAtlasTexture {
     /**
      * @param {GPUDevice} device
-     * @param {{ width: number, height: number, format?: "rgba16float", label?: string }} options
+     * @param {{ width: number, height: number, format?: "rgba16float", label?: string, growthFactor?: number }} options
      */
     constructor(device, options) {
         this.device = device;
         this.format = options.format ?? "rgba16float";
         this.label = options.label ?? "MSDF atlas";
+        this.growthFactor = options.growthFactor ?? 2;
+        if (!(this.growthFactor > 1) || !Number.isFinite(this.growthFactor)) {
+            throw new Error(
+                "MSDF atlas growth factor must be greater than one."
+            );
+        }
         this._validateDimensions(options.width, options.height);
         this.width = options.width;
         this.height = options.height;
@@ -91,16 +97,26 @@ export class MsdfAtlasTexture {
         if (this._destroyed) {
             throw new Error("MSDF atlas texture has been destroyed.");
         }
+        this._validateDimensions(
+            Math.max(this.width, minimumWidth),
+            Math.max(this.height, minimumHeight)
+        );
         if (minimumWidth <= this.width && minimumHeight <= this.height) {
             return false;
         }
         let width = this.width;
         let height = this.height;
         while (width < minimumWidth) {
-            width *= 2;
+            width = Math.min(
+                this.device.limits.maxTextureDimension2D,
+                Math.ceil(width * this.growthFactor)
+            );
         }
         while (height < minimumHeight) {
-            height *= 2;
+            height = Math.min(
+                this.device.limits.maxTextureDimension2D,
+                Math.ceil(height * this.growthFactor)
+            );
         }
         this._validateDimensions(width, height);
 

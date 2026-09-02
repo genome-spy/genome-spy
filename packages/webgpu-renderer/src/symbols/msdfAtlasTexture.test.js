@@ -45,6 +45,33 @@ describe("MsdfAtlasTexture", () => {
         );
         atlas.destroy();
     });
+
+    test("supports denser geometric growth for incremental atlases", () => {
+        const { device } = createDevice();
+        const atlas = new MsdfAtlasTexture(device, {
+            width: 512,
+            height: 128,
+            growthFactor: 1.5,
+        });
+
+        atlas.grow(512, 877);
+
+        expect(atlas).toMatchObject({ width: 512, height: 972, version: 2 });
+        atlas.destroy();
+    });
+
+    test("rejects invalid geometric growth factors", () => {
+        const { device } = createDevice();
+
+        expect(
+            () =>
+                new MsdfAtlasTexture(device, {
+                    width: 64,
+                    height: 64,
+                    growthFactor: 1,
+                })
+        ).toThrow("growth factor must be greater than one");
+    });
 });
 
 /** @param {number} [maxTextureDimension2D] */

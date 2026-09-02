@@ -94,7 +94,8 @@ through `fonts/outlineFontAtlas.js`: missing glyphs are generated as tightly
 packed temporary batches of at most 32, assigned append-only shelf coordinates,
 and copied into the final texture. Existing glyph coordinates never move. Marks
 sharing the exact font object share this final atlas and rebind when its texture
-grows.
+grows. The generic primitive doubles by default; the font allocator uses a
+denser 1.5-times growth factor to limit final-texture slack.
 
 ### 2. Sparse nearest-distance rasterization
 

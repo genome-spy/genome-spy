@@ -3,7 +3,7 @@ import { getMsdfAtlasGenerator } from "../symbols/sparseGpuPathAtlas.js";
 import { gpuLabel } from "../utils/gpuLabel.js";
 import { OUTLINE_ATLAS_OPTIONS } from "./outlineTextLayout.js";
 
-const INITIAL_ATLAS_WIDTH = 256;
+const INITIAL_ATLAS_WIDTH = 512;
 const INITIAL_ATLAS_HEIGHT = 128;
 const MAX_GLYPHS_PER_BATCH = 32;
 
@@ -36,6 +36,7 @@ export class OutlineFontAtlas {
             width: INITIAL_ATLAS_WIDTH,
             height: INITIAL_ATLAS_HEIGHT,
             label: "outline font atlas",
+            growthFactor: 1.5,
         });
         this.sampler = this.device.createSampler({
             label: "outline font atlas sampler",

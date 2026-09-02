@@ -543,7 +543,10 @@ atlases. Outline fonts generate missing glyphs as tight temporary batches,
 append their slots to a stable shelf allocation in one final atlas, grow that
 texture geometrically, preserve old texels and coordinates, and synchronously
 rebind every borrowing text mark. Path-symbol atlases remain immutable because
-their finite table is known when the mark is created.
+their finite table is known when the mark is created. A 512-pixel font shelf
+with 1.5-times geometric growth reduced the measured 43-glyph story atlas from
+8,388,608 to 3,981,312 bytes and the 94-glyph printable-ASCII atlas from
+16,777,216 to 8,957,952 bytes while retaining stable entry coordinates.
 
 ### Intended outcome
 
