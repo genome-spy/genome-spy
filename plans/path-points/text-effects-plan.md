@@ -1,6 +1,6 @@
 # Glyph-based text effects plan
 
-Status: implementation underway; milestone 1 complete
+Status: proof of concept complete
 
 ## Summary
 
@@ -219,6 +219,8 @@ Tentative commit: `feat(webgpu-renderer): prepare glyph-layer text effects`
 
 ## Milestone 2: SDF outline and shadow rendering
 
+Status: complete
+
 ### Intended outcome
 
 The text program renders optional shadow/glow, outline, and fill glyph layers
@@ -251,6 +253,8 @@ Tentative commit: `feat(webgpu-renderer): render SDF text outlines and shadows`
 
 ## Milestone 3: Interactive Storybook evaluation
 
+Status: complete
+
 ### Intended outcome
 
 A focused Storybook scene makes outline and shadow quality, padding, dynamic
@@ -275,6 +279,33 @@ updates, and overlap artifacts easy to inspect without recreating the mark.
 - Capture a browser screenshot and check the console for validation errors.
 
 Tentative commit: `test(webgpu-renderer): demonstrate dynamic text effects`
+
+## Feasibility result
+
+The glyph-layer approach is feasible as a renderer-level prototype. A single
+instanced draw preserves label-major painter order while a render-item buffer
+expands each glyph to the statically provisioned shadow, outline, and fill
+layers. Effect-free text retains direct glyph indexing and binds no render-item
+buffer. Retained channel handles update all demonstrated effect parameters
+without reparsing the font or rebuilding layout.
+
+The existing `rgba16float` atlas now carries regular signed distance in alpha
+at no additional texture-memory cost. RGB MSDF remains visibly sharper for
+outlines, while alpha produces a stable soft shadow without RGB channel-switch
+artifacts. The Storybook result is suitable for evaluating the intended label
+effects, including rotation, acute glyphs, glow through zero offsets, and
+light/dark background contrast.
+
+Remaining limitations are deliberate:
+
+- the SDF shadow is a smooth distance ramp, not a Gaussian convolution, so it
+  does not exactly match Canvas or CSS blur;
+- translucent effects accumulate where glyph quads overlap;
+- the ordinary atlas spread limits very wide outlines and shadows, leaving a
+  wide-effect atlas quality class as a production follow-up;
+- effects currently require TrueType outline fonts; and
+- Core grammar plus Canvas/SVG implementation remain separate integration
+  work.
 
 ## Review gates
 

@@ -62,10 +62,12 @@ outline variants only for WebGPU rendering. Its WebGPU-only temporary catalog
 uses Default Font for implicit regular text and Lato for implicit variant
 fallback. The four required Core example specifications render successfully.
 
-An initial text-effects slice is tracked in
-`plans/path-points/text-effects-plan.md`. It keeps dynamic labels glyph-based,
-stores a scalar signed distance beside RGB MSDF data, and evaluates one
-outline plus one shadow/glow layer without per-label scratch textures.
+The initial text-effects proof of concept in
+`plans/path-points/text-effects-plan.md` keeps dynamic labels glyph-based,
+stores scalar signed distance beside RGB MSDF data, and evaluates one outline
+plus one shadow/glow layer without per-label scratch textures. Its dedicated
+Storybook scene exposes retained controls. Production integration still needs
+portable Core/Canvas/SVG semantics and a decision on wide-effect atlas ranges.
 
 Canonical msdfgen is no longer a production backend or Storybook toggle. Its
 pinned sources and generated runtime live under package-excluded `tools/` and
