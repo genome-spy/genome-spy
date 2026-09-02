@@ -68,7 +68,10 @@ function resolveFile(pathname) {
         root = packageRoot;
     } else if (pathname.startsWith("/examples/")) {
         root = packageRoot;
-    } else if (pathname.startsWith("/tests/oracles/")) {
+    } else if (
+        pathname.startsWith("/tests/oracles/") ||
+        pathname.startsWith("/tests/fixtures/")
+    ) {
         root = packageRoot;
     } else if (pathname.startsWith("/node_modules/")) {
         root = workspaceRoot;
