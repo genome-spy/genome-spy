@@ -66,6 +66,8 @@ function resolveFile(pathname) {
     let root;
     if (pathname.startsWith("/src/")) {
         root = packageRoot;
+    } else if (pathname.startsWith("/examples/")) {
+        root = packageRoot;
     } else if (pathname.startsWith("/node_modules/")) {
         root = workspaceRoot;
     } else {

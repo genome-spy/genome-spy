@@ -116,6 +116,10 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:default-font": "uv run scripts/buildDefaultFont.py",
+    "build:msdfgen-wasm": "node vendor/msdfgen/build.mjs",
+    "compare:path-points": "node scripts/comparePathText.mjs --scene path-points",
+    "compare:path-text": "node scripts/comparePathText.mjs",
     "benchmark:resources": "node scripts/resourceSharingBenchmark/run.mjs",
     "dev": "vite",
     "lint": "eslint .",

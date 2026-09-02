@@ -636,6 +636,10 @@ Storybook contains interactive retained-renderer scenes and controls.
 Storybook remains on 8.x because its 10.x addon set is not fully published.
 The upgrade notice can be ignored.
 
+The experimental PathPoint and runtime TrueType scenes share a CPU + WGSL MSDF
+atlas generator. Its architecture, provenance, and current limitations are
+documented in [src/symbols/README.md](src/symbols/README.md).
+
 ### Verification
 
 - Package delivery checks: [scripts/README.md](scripts/README.md)
