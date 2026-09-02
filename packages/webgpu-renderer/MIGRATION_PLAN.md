@@ -29,49 +29,22 @@ contains only current work that still has a concrete renderer or Core consumer.
 
 ## Active integration: GPU MSDF paths and outline fonts
 
-An internal `PathPoint` proof of concept established that SVG-path MSDF atlases
-can add custom point shapes and support runtime font atlases. Canonical msdfgen
-v1.13 WASM established the visual oracle. The production implementation
-preprocesses paths into colored quadratic edges, rasterizes conservative edge
-regions,
-atomically selects nearest true distances, applies nearest-edge-gated
-perpendicular endpoint pseudo-distances for sharp corners, and completes sign
-and correction passes on WebGPU. Its 520-by-520 atlas is sampled directly
-without CPU per-texel work, bitmap upload, or readback. Shared atlas entries
-also carry normalized local
-bounds and directional miter extents, allowing each rotated instance quad to
-cover only its path and requested half-stroke instead of reserving four stroke
-widths on every side.
-The same path now parses static TrueType fonts, normalizes glyphs by
-`unitsPerEm`, and applies focused GPOS Pair Adjustment or legacy `kern`
-fallback through the production text mark. The
-CPU/GPU division, msdfgen provenance, paper-derived architecture, and current
-limitations are documented in `src/symbols/README.md`.
-The existing point mark now accepts named shapes and SVG paths. A fixed circle
-keeps a minimal analytic fast path; other fixed and variable shapes use shared
-`rgba16float` atlases. The text mark accepts device-neutral TrueType resources,
-uses the same renderer-owned generator, and retains its logical-string contract
-with 2 by 2 fragment supersampling. Exact public APIs, cache policy,
-incremental packing, and font-scale batching are specified in
-`plans/path-points/production-integration-plan.md`; feasibility evidence remains
-in `plans/path-points/path-points-plan.md` and
-`plans/path-points/wgsl-msdf-atlas-design.md`.
+The production point mark accepts built-in names and closed SVG paths while a
+fixed circle retains the minimal analytic fast path. The text mark accepts
+device-neutral TrueType resources, uses incremental shared `rgba16float`
+atlases, applies basic GPOS/legacy kerning, and preserves 2 by 2 small-text
+supersampling. Core lazily loads exact WebGPU outline variants while retaining
+BMFont measurement. Canonical msdfgen is isolated as package-excluded oracle
+tooling.
 
-The first Core bridge keeps BMFont measurement intact while loading exact
-outline variants only for WebGPU rendering. Its WebGPU-only temporary catalog
-uses Default Font for implicit regular text and Lato for implicit variant
-fallback. The four required Core example specifications render successfully.
+The glyph-based text-effects PoC adds one outline and one scalar-SDF
+shadow/glow in label-major order without per-label textures. Text program keys
+are constant time and never serialize label contents during zoom or pan.
 
-The initial text-effects proof of concept in
-`plans/path-points/text-effects-plan.md` keeps dynamic labels glyph-based,
-stores scalar signed distance beside RGB MSDF data, and evaluates one outline
-plus one shadow/glow layer without per-label scratch textures. Its dedicated
-Storybook scene exposes retained controls. Production integration still needs
-portable Core/Canvas/SVG semantics and a decision on wide-effect atlas ranges.
-
-Canonical msdfgen is no longer a production backend or Storybook toggle. Its
-pinned sources and generated runtime live under package-excluded `tools/` and
-`tests/oracles/` trees and are exercised only by explicit comparison tooling.
+Only current path/font work is tracked in
+`plans/path-points/production-integration-plan.md`: performance and adapter
+validation, a compact wide-range tier for tiny stroked points, portable
+Core/Canvas/SVG text effects, public contract documentation, and final cleanup.
 
 ## Milestone 1: Close current Core parity gaps
 
