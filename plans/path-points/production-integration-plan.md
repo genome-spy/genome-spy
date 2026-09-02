@@ -774,7 +774,11 @@ and weight. A browser smoke test rendered an explicit Lato request through a
 local application mapping with one local TTF request and no temporary remote
 font request. The full Core suite passes 2,732 tests (one skipped, two todo),
 and the declaration and minimal-bundle checks pass. Late subtree loading tests
-and the remaining integration matrix still remain.
+and the remaining integration matrix still remain. A repository-wide inventory
+test now walks all 219 example JSON files and every built-in theme, resolves
+each declared font/style/weight combination through the WebGPU catalog, and
+checks every catalog face against a versioned gstatic path or the pinned Google
+Fonts commit.
 
 ### Intended outcome
 

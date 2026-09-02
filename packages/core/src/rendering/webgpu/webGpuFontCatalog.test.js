@@ -1,4 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { resolveThemeSelection } from "../../config/themes.js";
 
 const loaders = vi.hoisted(() => ({
     loadDefaultFont: vi.fn(async () => ({ name: "Default Font" })),
@@ -43,26 +47,58 @@ describe("WebGPU example font catalog", () => {
     });
 
     test.each([
-        ["Indie Flower", 400],
-        ["Lato", 400],
-        ["Lato", 900],
-        ["Lobster", 400],
-        ["Oswald", 400],
-        ["Oswald", 700],
-        ["Radley", 400],
-        ["Roboto Condensed", 700],
-        ["Source Sans Pro", 400],
-        ["Source Sans Pro", 700],
-        ["Teko", 400],
-    ])("contains the example face %s %i", (family, weight) => {
-        expect(
-            resolveExampleFontUrl({
-                family,
-                style: "normal",
-                weight,
-                implicitFamily: false,
-            })
-        ).toMatch(/^https:\/\//);
+        ["Indie Flower", "normal", 400],
+        ["Lato", "normal", 400],
+        ["Lato", "italic", 400],
+        ["Lato", "normal", 600],
+        ["Lato", "normal", 700],
+        ["Lato", "italic", 700],
+        ["Lato", "normal", 900],
+        ["Lobster", "normal", 400],
+        ["Oswald", "normal", 400],
+        ["Oswald", "normal", 700],
+        ["Radley", "normal", 400],
+        ["Roboto Condensed", "normal", 700],
+        ["Source Sans Pro", "normal", 400],
+        ["Source Sans Pro", "normal", 700],
+        ["Teko", "normal", 400],
+    ])("contains the example face %s %s %i", (family, style, weight) => {
+        const url = resolveExampleFontUrl({
+            family,
+            style: /** @type {"normal" | "italic"} */ (style),
+            weight,
+            implicitFamily: false,
+        });
+        expect(url).toMatch(
+            /^https:\/\/(fonts\.gstatic\.com\/s\/[^/]+\/v\d+\/|raw\.githubusercontent\.com\/google\/fonts\/[0-9a-f]{40}\/)/
+        );
+    });
+
+    test("covers font variants declared by examples and built-in themes", () => {
+        const examples = fileURLToPath(
+            new URL("../../../../../examples", import.meta.url)
+        );
+        const documents = listJsonFiles(examples).map((filename) =>
+            JSON.parse(readFileSync(filename, "utf8"))
+        );
+        documents.push(
+            ...[
+                "genomespy",
+                "vegalite",
+                "quartz",
+                "dark",
+                "fivethirtyeight",
+                "urbaninstitute",
+            ].map((name) => resolveThemeSelection(/** @type {any} */ (name)))
+        );
+        const requests = documents.flatMap(findFontRequests);
+
+        expect(requests.length).toBeGreaterThan(0);
+        expect(() => {
+            for (const request of requests) {
+                resolveExampleFontUrl(request);
+            }
+        }).not.toThrow();
     });
 
     test("fails instead of substituting an explicit missing variant", () => {
@@ -131,3 +167,68 @@ describe("WebGPU example font catalog", () => {
         ).toThrow("Unsupported font catalog style");
     });
 });
+
+/** @param {string} directory @returns {string[]} */
+function listJsonFiles(directory) {
+    return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+        const filename = path.join(directory, entry.name);
+        if (entry.isDirectory()) {
+            return listJsonFiles(filename);
+        }
+        return entry.isFile() && entry.name.endsWith(".json") ? [filename] : [];
+    });
+}
+
+/**
+ * @param {unknown} value
+ * @returns {{family: string | undefined, style: "normal" | "italic", weight: number, implicitFamily: boolean}[]}
+ */
+function findFontRequests(value) {
+    if (Array.isArray(value)) {
+        return value.flatMap(findFontRequests);
+    }
+    if (!value || typeof value !== "object") {
+        return [];
+    }
+    const object = /** @type {Record<string, unknown>} */ (value);
+    const prefixes = new Set(
+        Object.keys(object).flatMap((key) => {
+            if (/^font(?:Style|Weight)?$/.test(key)) {
+                return [""];
+            }
+            const match = /^(.*)Font(?:Style|Weight)?$/.exec(key);
+            return match ? [match[1].toLowerCase()] : [];
+        })
+    );
+    const requests = Array.from(prefixes, (prefix) => {
+        const propertyPrefix = prefix === "" ? "font" : prefix + "Font";
+        const familyValue = object[propertyPrefix];
+        const family =
+            typeof familyValue === "string" ? familyValue : undefined;
+        const styleValue = object[propertyPrefix + "Style"] ?? "normal";
+        const style = /** @type {"normal" | "italic"} */ (styleValue);
+        const weightValue = object[propertyPrefix + "Weight"] ?? 400;
+        const weight =
+            typeof weightValue === "number"
+                ? weightValue
+                : normalizeNamedWeight(weightValue);
+        const implicitFamily = family === undefined || family === "sans-serif";
+        return {
+            family: implicitFamily ? undefined : family,
+            style,
+            weight,
+            implicitFamily,
+        };
+    });
+    return requests.concat(Object.values(object).flatMap(findFontRequests));
+}
+
+/** @param {unknown} value */
+function normalizeNamedWeight(value) {
+    if (value === "normal" || value === "regular") {
+        return 400;
+    } else if (value === "bold") {
+        return 700;
+    }
+    return NaN;
+}
