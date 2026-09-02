@@ -675,7 +675,11 @@ canonical WASM oracle. Complete renderer verification passes: 258 unit tests,
 89 GPU tests, TypeScript, tree-shaking, and package export checks. The custom-font
 text fixture measures 181,569 minified / 51,616 gzip bytes; the Lato comparison
 fixture measures 282,325 / 122,069 because it deliberately embeds its test font.
-Core catalog selection and incremental atlas growth remain to be implemented.
+The first Core quality smoke test exposed isolated false-inside texels in glyph
+padding at small sizes. The text shader now rejects those samples against the
+known tight glyph bounds while leaving a stroke- and antialiasing-aware guard
+for real outer coverage. Core catalog selection and incremental atlas growth
+remain to be implemented.
 
 ### Intended outcome
 

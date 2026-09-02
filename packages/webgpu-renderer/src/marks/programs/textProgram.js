@@ -128,6 +128,8 @@ struct VSOut {
     @location(8) strokeOpacity: f32,
     @location(9) halfStrokeWidth: f32,
     @location(10) @interpolate(flat) devicePixelsPerAtlas: f32,
+    @location(11) tilePosition: vec2<f32>,
+    @location(12) @interpolate(flat) shapeBounds: vec4<f32>,
 };
 
 fn culledText() -> VSOut {
@@ -147,6 +149,8 @@ fn culledText() -> VSOut {
     out.strokeOpacity = 0.0;
     out.halfStrokeWidth = 0.0;
     out.devicePixelsPerAtlas = 0.0;
+    out.tilePosition = vec2<f32>(0.0);
+    out.shapeBounds = vec4<f32>(0.0);
     return out;
 }
 
@@ -506,6 +510,13 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         size * globals.dpr / max(params.uShapePixels, 1.0),
         1.0 / max(params.uSpread, 1.0)
     );
+    out.tilePosition = local * metrics.metrics.yz;
+    out.shapeBounds = vec4<f32>(
+        params.uSpread,
+        params.uSpread,
+        metrics.metrics.y - params.uSpread,
+        metrics.metrics.z - params.uSpread
+    );
 #if defined(uniqueId_DEFINED)
     out.pickId = getScaled_uniqueId(i) + 1u;
 #endif
@@ -536,38 +547,63 @@ fn sampleSuperSdf(uv: vec2<f32>) -> f32 {
 
 fn sampleOutlineCoverage(
     uv: vec2<f32>,
+    tilePosition: vec2<f32>,
+    shapeBounds: vec4<f32>,
     devicePixelsPerAtlas: f32,
     halfStrokeWidth: f32
 ) -> vec2<f32> {
     let sample = textureSample(fontAtlas, fontSampler, uv).rgb;
     let distance = median(sample.r, sample.g, sample.b) * devicePixelsPerAtlas;
+    let aaAtlas = 0.5 / devicePixelsPerAtlas + 1.0;
+    let fillMin = shapeBounds.xy - vec2<f32>(aaAtlas);
+    let fillMax = shapeBounds.zw + vec2<f32>(aaAtlas);
+    let strokeAtlas = halfStrokeWidth / devicePixelsPerAtlas;
+    let strokeGuard = aaAtlas + 4.0 * strokeAtlas;
+    let strokeMin = shapeBounds.xy - vec2<f32>(strokeGuard);
+    let strokeMax = shapeBounds.zw + vec2<f32>(strokeGuard);
+    let fillInside = all(tilePosition >= fillMin) && all(tilePosition <= fillMax);
+    let strokeInside = all(tilePosition >= strokeMin) && all(tilePosition <= strokeMax);
     return vec2<f32>(
-        clamp(distance + 0.5, 0.0, 1.0),
-        clamp(distance + halfStrokeWidth + 0.5, 0.0, 1.0)
+        select(0.0, clamp(distance + 0.5, 0.0, 1.0), fillInside),
+        select(
+            0.0,
+            clamp(distance + halfStrokeWidth + 0.5, 0.0, 1.0),
+            strokeInside
+        )
     );
 }
 
 fn sampleSuperOutline(in: VSOut) -> vec2<f32> {
     let dx = dpdx(in.uv);
     let dy = -dpdy(in.uv);
+    let tileDx = dpdx(in.tilePosition);
+    let tileDy = -dpdy(in.tilePosition);
     return (
         sampleOutlineCoverage(
             in.uv + 0.25 * dx + 0.25 * dy,
+            in.tilePosition + 0.25 * tileDx + 0.25 * tileDy,
+            in.shapeBounds,
             in.devicePixelsPerAtlas,
             in.halfStrokeWidth
         ) +
         sampleOutlineCoverage(
             in.uv + 0.75 * dx + 0.25 * dy,
+            in.tilePosition + 0.75 * tileDx + 0.25 * tileDy,
+            in.shapeBounds,
             in.devicePixelsPerAtlas,
             in.halfStrokeWidth
         ) +
         sampleOutlineCoverage(
             in.uv + 0.25 * dx + 0.75 * dy,
+            in.tilePosition + 0.25 * tileDx + 0.75 * tileDy,
+            in.shapeBounds,
             in.devicePixelsPerAtlas,
             in.halfStrokeWidth
         ) +
         sampleOutlineCoverage(
             in.uv + 0.75 * dx + 0.75 * dy,
+            in.tilePosition + 0.75 * tileDx + 0.75 * tileDy,
+            in.shapeBounds,
             in.devicePixelsPerAtlas,
             in.halfStrokeWidth
         )
