@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import {
     createAsciiTrueTypeFont,
+    createTrueTypeFont,
+    loadTrueTypeFont,
     trueTypeGlyphToPath,
 } from "./trueTypeFont.js";
 import { parseTrueTypeFont } from "../vendor/textShaper/font/trueType.js";
@@ -60,16 +62,43 @@ describe("ASCII TrueType adaptation", () => {
     });
 
     test("reads the plotting repertoire and kerning from Default Font", () => {
-        const font = parseTrueTypeFont(readFileSync(DEFAULT_FONT));
+        const font = createTrueTypeFont(readFileSync(DEFAULT_FONT));
         const characters = "AVαΩ²−åöäÅÖÄ≤∞";
 
         for (const character of characters) {
-            expect(font.getGlyph(character.charCodeAt(0)).glyphId).not.toBe(0);
+            const glyph = font.getGlyph(character);
+            expect(glyph.glyphId).not.toBe(0);
+            expect(glyph.path).toMatch(/^M.*Z$/);
         }
         const adjustment = font.getPairAdjustment(
-            font.getGlyph("A".charCodeAt(0)).glyphId,
-            font.getGlyph("V".charCodeAt(0)).glyphId
+            font.getGlyph("A").glyphId,
+            font.getGlyph("V").glyphId
         );
         expect(adjustment.firstAdvance).toBeLessThan(0);
+        expect(font.getGlyph("A")).toBe(font.getGlyph("A"));
+        expect(font.capHeight).toBe(font.getGlyph("H").bounds?.yMax);
+    });
+
+    test("deduplicates asynchronous loading by exact URL", async () => {
+        const bytes = readFileSync(DEFAULT_FONT);
+        const originalFetch = globalThis.fetch;
+        /** @type {string[]} */
+        const calls = [];
+        globalThis.fetch = async (url) => {
+            calls.push(String(url));
+            return new Response(bytes);
+        };
+        try {
+            const url = "https://example.test/fonts/default.ttf";
+            const [first, second] = await Promise.all([
+                loadTrueTypeFont(url),
+                loadTrueTypeFont(url),
+            ]);
+            expect(first).toBe(second);
+            expect(first.getGlyph("−").glyphId).not.toBe(0);
+            expect(calls).toEqual([url]);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
     });
 });

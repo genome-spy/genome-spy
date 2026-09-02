@@ -18,7 +18,9 @@ const packageName = "@genome-spy/webgpu-renderer";
 const publicEntries = new Map([
     ["", "src/index.js"],
     ["debug", "src/debug.js"],
+    ["fonts/default", "src/fonts/defaultFont.js"],
     ["fonts/lato", "src/fonts/lato.js"],
+    ["fonts/truetype", "src/fonts/trueTypeFont.js"],
     ["high-precision", "src/utils/highPrecision.js"],
     ["scale-authoring", "src/marks/scales/scale-authoring.js"],
     ["marks/arrow", "src/marks/arrow.js"],
@@ -45,6 +47,8 @@ const fixtures = [
     "pointLinear",
     "pointOrdinal",
     "customIdentityMark",
+    "fontTrueType",
+    "fontDefault",
     "textCustomFont",
     "textLato",
 ];
@@ -149,6 +153,36 @@ async function bundleFixture(name) {
 }
 
 function assertTreeShaking(result) {
+    if (result.name === "fontTrueType") {
+        for (const id of [
+            "src/fonts/trueTypeFont.js",
+            "src/vendor/textShaper/font/trueType.js",
+            "src/vendor/textShaper/font/positioning.js",
+        ]) {
+            if (!result.modules.has(id)) {
+                throw new Error(`TrueType bundle is missing module: ${id}`);
+            }
+        }
+        if (result.modules.has("src/fonts/defaultFont.js")) {
+            throw new Error(
+                "TrueType construction unexpectedly includes Default Font."
+            );
+        }
+        return;
+    }
+
+    if (result.name === "fontDefault") {
+        for (const id of [
+            "src/fonts/defaultFont.js",
+            "src/fonts/trueTypeFont.js",
+        ]) {
+            if (!result.modules.has(id)) {
+                throw new Error(`Default Font bundle is missing module: ${id}`);
+            }
+        }
+        return;
+    }
+
     if (result.name === "textLato") {
         for (const id of [
             "src/marks/programs/textProgram.js",
@@ -157,7 +191,9 @@ function assertTreeShaking(result) {
             "src/fonts/Lato-Regular.png",
         ]) {
             if (!result.modules.has(id)) {
-                throw new Error(`Lato bundle is missing required module: ${id}`);
+                throw new Error(
+                    `Lato bundle is missing required module: ${id}`
+                );
             }
         }
         return;

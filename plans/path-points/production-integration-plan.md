@@ -656,6 +656,16 @@ Tentative commit: `feat(webgpu): render custom path point symbols`
 
 ## Milestone 3: Outline-font resources and MSDF text
 
+Progress (2026-09-02): the device-neutral font boundary is implemented as the
+first text slice. `createTrueTypeFont` parses one exact static TTF and converts
+glyph outlines lazily by Unicode code point while retaining GPOS/legacy pair
+adjustments. `loadTrueTypeFont` deduplicates fetch and parsing by exact URL, and
+the compact 47,064-byte Default Font has a separate lazy package entry. The
+low-level TrueType entry measures 14,207 minified / 4,902 gzip bytes; adding the
+Default Font loader measures 14,540 / 5,058 bytes before the separately fetched
+font asset. Point bundles remain unchanged and exclude both entries. Production
+MSDF text rendering and Core catalog selection remain to be implemented.
+
 ### Intended outcome
 
 The existing text mark renders supported static TrueType fonts from incremental

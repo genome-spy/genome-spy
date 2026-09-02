@@ -94,6 +94,14 @@
       "types": "./src/fonts/lato.d.ts",
       "default": "./src/fonts/lato.js"
     },
+    "./fonts/truetype": {
+      "types": "./src/fonts/trueTypeFont.d.ts",
+      "default": "./src/fonts/trueTypeFont.js"
+    },
+    "./fonts/default": {
+      "types": "./src/fonts/defaultFont.d.ts",
+      "default": "./src/fonts/defaultFont.js"
+    },
     "./high-precision": {
       "types": "./src/utils/highPrecision.d.ts",
       "default": "./src/utils/highPrecision.js"

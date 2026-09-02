@@ -75,23 +75,112 @@ export function trueTypeGlyphToPath(glyph) {
 }
 
 /**
+ * Parse a static TrueType font and expose outlines lazily by Unicode code point.
+ *
+ * @param {ArrayBuffer | ArrayBufferView | DataView} source
+ */
+export function createTrueTypeFont(source) {
+    const font = parseTrueTypeFont(source);
+    /** @type {Map<number, ReturnType<typeof createGlyph>>} */
+    const glyphByCodePoint = new Map();
+    /** @type {Map<number, string | null>} */
+    const pathByGlyphId = new Map();
+
+    /** @param {number} codePoint */
+    function createGlyph(codePoint) {
+        const glyph = font.getGlyph(codePoint);
+        let path = pathByGlyphId.get(glyph.glyphId);
+        if (path === undefined) {
+            path = trueTypeGlyphToPath(glyph);
+            pathByGlyphId.set(glyph.glyphId, path);
+        }
+        return Object.freeze({
+            codePoint,
+            glyphId: glyph.glyphId,
+            advanceWidth: glyph.advanceWidth,
+            leftSideBearing: glyph.leftSideBearing,
+            bounds: glyph.bounds ? Object.freeze({ ...glyph.bounds }) : null,
+            path,
+        });
+    }
+
+    /** @param {number | string} value */
+    function getGlyph(value) {
+        const codePoint =
+            typeof value === "number" ? value : value.codePointAt(0);
+        if (codePoint === undefined || !Number.isInteger(codePoint)) {
+            throw new TypeError(
+                "A glyph requires a Unicode character or code point."
+            );
+        }
+        let glyph = glyphByCodePoint.get(codePoint);
+        if (!glyph) {
+            glyph = createGlyph(codePoint);
+            glyphByCodePoint.set(codePoint, glyph);
+        }
+        return glyph;
+    }
+
+    const capHeight =
+        font.getGlyph("H".codePointAt(0)).bounds?.yMax ?? font.ascender;
+    return Object.freeze({
+        unitsPerEm: font.unitsPerEm,
+        ascender: font.ascender,
+        descender: font.descender,
+        lineGap: font.lineGap,
+        capHeight,
+        glyphCount: font.glyphCount,
+        getGlyph,
+        getPairAdjustment: font.getPairAdjustment,
+    });
+}
+
+/** @type {Map<string, Promise<ReturnType<typeof createTrueTypeFont>>>} */
+const loadCache = new Map();
+
+/**
+ * Fetch and parse one exact static TrueType font URL. Calls for the same URL
+ * share loading and parsing; authenticated callers can fetch bytes themselves
+ * and pass them to `createTrueTypeFont`.
+ *
+ * @param {string | URL} url
+ */
+export function loadTrueTypeFont(url) {
+    const key = String(url);
+    let loading = loadCache.get(key);
+    if (!loading) {
+        loading = fetch(url).then(async (response) => {
+            if (!response.ok) {
+                throw new Error(
+                    `Could not load TrueType font ${key}: ${response.status}.`
+                );
+            }
+            return createTrueTypeFont(await response.arrayBuffer());
+        });
+        loadCache.set(key, loading);
+        void loading.catch(() => loadCache.delete(key));
+    }
+    return loading;
+}
+
+/**
  * Parse printable ASCII outlines and metrics from a TrueType font.
  *
  * @param {ArrayBuffer | ArrayBufferView | DataView} source
  */
 export function createAsciiTrueTypeFont(source) {
-    const font = parseTrueTypeFont(source);
+    const font = createTrueTypeFont(source);
     const paths = [];
     const characters = new Map();
     const pathIndexByGlyphId = new Map();
     for (let codePoint = 32; codePoint <= 126; codePoint++) {
         const glyph = font.getGlyph(codePoint);
         let pathIndex = -1;
-        if (glyph.contours.length > 0) {
+        if (glyph.path !== null) {
             const cachedPathIndex = pathIndexByGlyphId.get(glyph.glyphId);
             if (cachedPathIndex === undefined) {
                 pathIndex = paths.length;
-                paths.push(trueTypeGlyphToPath(glyph));
+                paths.push(glyph.path);
                 pathIndexByGlyphId.set(glyph.glyphId, pathIndex);
             } else {
                 pathIndex = cachedPathIndex;
