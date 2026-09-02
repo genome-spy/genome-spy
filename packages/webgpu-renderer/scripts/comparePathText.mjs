@@ -145,12 +145,15 @@ async function renderBackend(page, backend) {
             selectedAtlasOverrides,
             selectedPointAngles,
         }) => {
-            const [{ createRenderer }, { pathPointMark }, { identityScale }] =
-                await Promise.all([
-                    import("/src/index.js"),
-                    import("/src/marks/pathPoint.js"),
-                    import("/src/scales/identity.js"),
-                ]);
+            const [
+                { createRenderer },
+                { comparisonPathPointMark },
+                { identityScale },
+            ] = await Promise.all([
+                import("/src/index.js"),
+                import("/tests/oracles/msdfgen/pathPointMark.js"),
+                import("/src/scales/identity.js"),
+            ]);
             let paths;
             let atlasOptions;
             let width;
@@ -241,7 +244,7 @@ async function renderBackend(page, backend) {
                 height,
                 dpr: pixelRatio,
             });
-            const handle = renderer.createMark(pathPointMark, {
+            const handle = renderer.createMark(comparisonPathPointMark, {
                 count,
                 paths,
                 atlasBackend: selectedBackend,

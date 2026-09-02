@@ -1,7 +1,7 @@
-import { buildPathAtlas } from "../../symbols/pathAtlas.js";
-import { createTextureFromData } from "../../utils/webgpuTextureUtils.js";
-import { gpuLabel } from "../../utils/gpuLabel.js";
-import PathPointProgram from "./pathPointProgram.js";
+import { buildPathAtlas } from "./pathAtlas.js";
+import { createTextureFromData } from "../../../src/utils/webgpuTextureUtils.js";
+import { gpuLabel } from "../../../src/utils/gpuLabel.js";
+import PathPointProgram from "../../../src/marks/programs/pathPointProgram.js";
 
 /** Canonical comparison backend used only by explicit prototype tooling. */
 export default class WasmPathPointProgram extends PathPointProgram {

@@ -12,12 +12,12 @@ test("WGSL bounds acute symbol and glyph strokes like msdfgen", async ({
         const [
             { createRenderer },
             { createAsciiTrueTypeFont },
-            { pathPointMark },
+            { comparisonPathPointMark },
             { identityScale },
         ] = await Promise.all([
             import("/src/index.js"),
             import("/src/fonts/trueTypeFont.js"),
-            import("/src/marks/pathPoint.js"),
+            import("/tests/oracles/msdfgen/pathPointMark.js"),
             import("/src/scales/identity.js"),
         ]);
         const response = await fetch("/src/fonts/DefaultFont.ttf");
@@ -43,7 +43,7 @@ test("WGSL bounds acute symbol and glyph strokes like msdfgen", async ({
             document.body.appendChild(canvas);
             const renderer = await createRenderer(canvas);
             renderer.updateGlobals({ width: 512, height: 128, dpr: 2 });
-            const handle = renderer.createMark(pathPointMark, {
+            const handle = renderer.createMark(comparisonPathPointMark, {
                 count: x.length,
                 paths,
                 atlasBackend: backend,
@@ -105,12 +105,15 @@ test("WGSL retains 90-degree corners and star tips like msdfgen", async ({
     await ensureWebGPU(page);
 
     const mismatches = await page.evaluate(async () => {
-        const [{ createRenderer }, { pathPointMark }, { identityScale }] =
-            await Promise.all([
-                import("/src/index.js"),
-                import("/src/marks/pathPoint.js"),
-                import("/src/scales/identity.js"),
-            ]);
+        const [
+            { createRenderer },
+            { comparisonPathPointMark },
+            { identityScale },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/tests/oracles/msdfgen/pathPointMark.js"),
+            import("/src/scales/identity.js"),
+        ]);
         const paths = [
             "M-1-.2H1V.2H-1Z",
             "M-.25-1H.25V-.25H1V.25H.25V1H-.25V.25H-1V-.25H-.25Z",
@@ -147,7 +150,7 @@ test("WGSL retains 90-degree corners and star tips like msdfgen", async ({
             document.body.appendChild(canvas);
             const renderer = await createRenderer(canvas);
             renderer.updateGlobals({ width, height, dpr: 2 });
-            const handle = renderer.createMark(pathPointMark, {
+            const handle = renderer.createMark(comparisonPathPointMark, {
                 count: instances.length,
                 paths,
                 atlasBackend: backend,
@@ -220,12 +223,15 @@ test("WGSL star strokes have no deep white seams or detached spikes", async ({
     await ensureWebGPU(page);
 
     const result = await page.evaluate(async () => {
-        const [{ createRenderer }, { pathPointMark }, { identityScale }] =
-            await Promise.all([
-                import("/src/index.js"),
-                import("/src/marks/pathPoint.js"),
-                import("/src/scales/identity.js"),
-            ]);
+        const [
+            { createRenderer },
+            { comparisonPathPointMark },
+            { identityScale },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/tests/oracles/msdfgen/pathPointMark.js"),
+            import("/src/scales/identity.js"),
+        ]);
         const paths = [
             "M0-1 .24-.32.95-.31.38.12.59.81 0 .4-.59.81-.38.12-.95-.31-.24-.32Z",
             "M0-1L1 1H-1Z",
@@ -280,7 +286,7 @@ test("WGSL star strokes have no deep white seams or detached spikes", async ({
             document.body.appendChild(canvas);
             const renderer = await createRenderer(canvas);
             renderer.updateGlobals({ width, height, dpr: 2 });
-            const handle = renderer.createMark(pathPointMark, {
+            const handle = renderer.createMark(comparisonPathPointMark, {
                 count: instances.length,
                 paths,
                 atlasBackend: backend,

@@ -281,9 +281,8 @@ function assertTreeShaking(result) {
             throw new Error(`Point/linear bundle includes font support: ${id}`);
         }
         if (
-            id.startsWith("src/vendor/msdfgen/") ||
-            id === "src/symbols/pathAtlas.js" ||
-            id === "src/symbols/pathRasterizer.js"
+            id.startsWith("tests/oracles/msdfgen/") ||
+            id.startsWith("tools/msdfgen/")
         ) {
             throw new Error(
                 `Point/linear bundle includes the canonical WASM backend: ${id}`

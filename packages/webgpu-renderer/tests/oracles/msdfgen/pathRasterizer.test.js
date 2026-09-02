@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { svgPathToGlyphPath } from "../vendor/vegaScenegraph/toGlyphPath.js";
+import { svgPathToGlyphPath } from "../../../src/vendor/vegaScenegraph/toGlyphPath.js";
 import { encodePathEdges, renderPathMsdf } from "./pathRasterizer.js";
 
 /** @param {{ buffer: Uint8Array, pitch: number }} bitmap @param {number} x @param {number} y */

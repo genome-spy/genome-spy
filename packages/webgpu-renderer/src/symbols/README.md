@@ -1,19 +1,18 @@
 # CPU + WGSL MSDF atlas generator
 
-This directory contains the experimental path-to-MSDF pipeline used by the
-WebGPU `PathPoint` proof of concept. It accepts closed SVG path strings,
+This directory contains the path-to-MSDF pipeline used by WebGPU path points
+and TrueType text. It accepts closed SVG path strings,
 prepares their topology and edge metadata on the CPU, and generates an atlas
 directly on the GPU. The final texture is sampled by one shared mark shader for
 fill, variable-width outline, rotation, and picking.
 
-The implementation is deliberately split into two backends:
+The production implementation has one backend:
 
-- `createSparseGpuPathAtlas` is the fast CPU + WGSL experiment.
-- `buildPathAtlas` invokes canonical msdfgen v1.13 through WebAssembly and is
-  retained as the correctness oracle.
+- `createSparseGpuPathAtlas` prepares paths on the CPU and generates distances
+  through WGSL render and compute passes.
 
-They share path normalization, atlas-entry metadata, and the PathPoint decoder,
-but they are not expected to produce identical RGB bytes.
+Canonical msdfgen v1.13 remains available only through explicit test tooling as
+a visual and numerical oracle. It is not a runtime fallback.
 
 ## Pipeline overview
 
@@ -39,7 +38,7 @@ compute: even-odd sign + signed raw RGB distances
 compute: lightweight interpolation-error correction
     |
     v
-RGBA8 atlas -> median RGB reconstruction in PathPoint
+RGBA16F atlas -> median RGB reconstruction in point/text shaders
 ```
 
 ### 1. CPU path preparation
@@ -131,9 +130,10 @@ interpolation would create a false zero crossing or leave both endpoint medians
 by more than the maximum expected one-texel distance change. The diagonal
 bilinear classifier is deliberately narrower: it corrects only false
 inside/outside crossings. This removes faint seams without applying aggressive
-unprotected correction to legitimate acute tips. The default output maps the
-corrected distances to `rgba8unorm`; the GPU backend can instead retain signed
-atlas-pixel distances in `rgba16float` without changing the sampling filter.
+unprotected correction to legitimate acute tips. Production consumers retain
+signed atlas-pixel distances in `rgba16float` without changing the sampling
+filter. The generator can emit `rgba8unorm` only for controlled comparisons
+with the quantized canonical oracle.
 
 This correction adapts selected parts of msdfgen's artifact classifier. It
 still omits the canonical edge/corner protection stencil, local-extrema range
@@ -144,7 +144,7 @@ correction cannot silently collapse their tips or create detached spikes.
 
 ### 4. Rendering
 
-The PathPoint fragment shader samples the atlas with linear filtering and
+The point and text fragment shaders sample the atlas with linear filtering and
 reconstructs signed distance as `median(r, g, b)`. It decodes normalized
 8-bit values or consumes floating-point atlas distances directly. A
 per-instance scale derived from point diameter, device-pixel ratio, and atlas
@@ -165,9 +165,9 @@ class for large text.
 
 [msdfgen](https://github.com/Chlumsky/msdfgen) is the algorithmic and visual
 reference. The pinned v1.13 source, license, wrapper, and reproducible WASM
-build are documented under [`vendor/msdfgen`](../../vendor/msdfgen/README.md),
-with the packaged runtime under
-[`src/vendor/msdfgen`](../vendor/msdfgen/README.md).
+build are documented under [`tools/msdfgen`](../../tools/msdfgen/README.md),
+with the package-excluded runtime under
+[`tests/oracles/msdfgen`](../../tests/oracles/msdfgen/runtime/README.md).
 
 The CPU + WGSL generator closely follows these msdfgen ideas:
 
@@ -180,9 +180,9 @@ The CPU + WGSL generator closely follows these msdfgen ideas:
   wrong median.
 
 The JavaScript edge-coloring code is a focused adaptation of msdfgen's MIT-
-licensed `edgeColoringSimple` algorithm. The generated WASM backend uses the
-original C++ implementation, including contour orientation, overlap support,
-robust distance selection, and canonical error correction.
+licensed `edgeColoringSimple` algorithm. The test oracle uses the original C++
+implementation, including contour orientation, overlap support, robust
+distance selection, and canonical error correction.
 
 The WGSL backend does **not** port msdfgen's polynomial solvers, edge selectors,
 contour combiners, or correction machinery. Its quadratic minimization,

@@ -10,6 +10,7 @@ the repository root.
 npm run test:tsc
 npm run test:bundle
 npm run build:default-font
+npm run test:msdf-oracle
 npm run benchmark:resources -- --headless
 npm run compare:path-points
 npm run compare:path-text
@@ -57,7 +58,15 @@ npm run build:default-font -- --repertoire core --output /tmp/DefaultFont-core.t
 The [resource-sharing benchmark](./resourceSharingBenchmark/README.md) has its
 own runner, methodology, and checked-in baseline.
 
-## Path-text backend comparison
+## Canonical-oracle comparisons
+
+The comparison commands are development tools. They import the package-excluded
+canonical msdfgen oracle directly from `tests/oracles/msdfgen/`; production
+marks and ordinary browser bundles use only the WGSL generator.
+`test:msdf-oracle` runs the worker smoke test and the bounded visual-difference
+regressions without rebuilding the checked-in oracle.
+
+### Path-text backend comparison
 
 `compare:path-text` renders the same printable-ASCII TrueType scene using the
 sparse WGSL generator and canonical msdfgen WASM. It writes `path-text-wgsl.png`,
@@ -77,7 +86,7 @@ sampling; the default device pixel ratio is 1.
 npm run compare:path-text -- --output /tmp/path-text --threshold 8 --dpr 2
 ```
 
-## Path-point backend comparison
+### Path-point backend comparison
 
 `compare:path-points` uses the same comparison harness for all Path Points
 symbols. It renders each path at 37 and 45 degrees with a four-pixel outline,

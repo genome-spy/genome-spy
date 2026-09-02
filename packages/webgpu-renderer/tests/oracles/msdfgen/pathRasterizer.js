@@ -1,7 +1,7 @@
-import { renderMsdfWasm } from "../vendor/msdfgen/msdfgenWasm.js";
+import { renderMsdfWasm } from "./runtime/msdfgenWasm.js";
 
 /**
- * @typedef {import("./pathTypes.js").GlyphPath} GlyphPath
+ * @typedef {import("../../../src/symbols/pathTypes.js").GlyphPath} GlyphPath
  */
 
 const EDGE_LINE = 1;

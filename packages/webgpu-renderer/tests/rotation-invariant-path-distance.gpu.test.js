@@ -9,10 +9,10 @@ test("PathPoint distance scaling is invariant under rotation", async ({
     await ensureWebGPU(page);
 
     const counts = await page.evaluate(async () => {
-        const [{ createRenderer }, { pathPointMark }, { identityScale }] =
+        const [{ createRenderer }, { pointMark }, { identityScale }] =
             await Promise.all([
                 import("/src/index.js"),
-                import("/src/marks/pathPoint.js"),
+                import("/src/marks/point.js"),
                 import("/src/scales/identity.js"),
             ]);
         const canvas = document.createElement("canvas");
@@ -21,10 +21,9 @@ test("PathPoint distance scaling is invariant under rotation", async ({
         document.body.appendChild(canvas);
         const renderer = await createRenderer(canvas);
         renderer.updateGlobals({ width: 256, height: 128, dpr: 2 });
-        const handle = renderer.createMark(pathPointMark, {
+        const handle = renderer.createMark(pointMark, {
             count: 2,
-            paths: ["M0-1A1 1 0 1 1 0 1A1 1 0 1 1 0-1Z"],
-            atlasFormat: "rgba16float",
+            shapes: ["M0-1A1 1 0 1 1 0 1A1 1 0 1 1 0-1Z"],
             channels: {
                 x: {
                     data: new Float32Array([64, 192]),

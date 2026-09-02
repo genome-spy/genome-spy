@@ -1,5 +1,5 @@
 import { createExampleRenderer, setupResize } from "./utils.js";
-import { pathPointMark } from "../src/marks/pathPoint.js";
+import { pointMark } from "../src/marks/point.js";
 import { indexScale } from "../src/scales/index.js";
 import { ordinalScale } from "../src/scales/ordinal.js";
 import { DEFAULT_SPARSE_PATH_ATLAS_OPTIONS } from "../src/symbols/sparsePathAtlasLayout.js";
@@ -27,12 +27,10 @@ export const PATH_POINT_ATLAS_OPTIONS = DEFAULT_SPARSE_PATH_ATLAS_OPTIONS;
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @param {{ atlasBackend?: "gpu" | "wasm", atlasFormat?: "rgba8unorm" | "rgba16float" }} [args]
  * @returns {Promise<() => void>}
  */
-export default async function runPathPointScene(canvas, args = {}) {
+export default async function runPathPointScene(canvas) {
     const renderer = await createExampleRenderer(canvas);
-    const atlasBackend = args.atlasBackend ?? "gpu";
     const count = 160;
     const columns = 20;
     const rows = Math.ceil(count / columns);
@@ -65,14 +63,9 @@ export default async function runPathPointScene(canvas, args = {}) {
         fill[i] = column % palette.length;
     }
 
-    const { series, scales } = renderer.createMark(pathPointMark, {
+    const { series, scales } = renderer.createMark(pointMark, {
         count,
-        paths: PATHS,
-        atlasBackend,
-        atlasOptions: PATH_POINT_ATLAS_OPTIONS,
-        ...(atlasBackend === "gpu"
-            ? { atlasFormat: args.atlasFormat ?? "rgba8unorm" }
-            : {}),
+        shapes: PATHS,
         channels: {
             x: {
                 data: x,

@@ -8,15 +8,17 @@ This directory vendors the dependency-free core of
   `msdfgen.h`, and `LICENSE.txt`.
 - `wrapper.cpp` is GenomeSpy's narrow path-oriented C ABI.
 - `build.mjs` compiles the wrapper and upstream core with Emscripten and writes
-  the embedded runtime module to `src/vendor/msdfgen/wasmBinary.js`.
+  the embedded oracle module to
+  `tests/oracles/msdfgen/runtime/wasmBinary.js`.
 
-The package build uses the checked-in generated module. Package consumers do
-not need Emscripten. Regenerate with Emscripten 6.0.9 from the package root:
+The generated module is used only by explicit comparison tests and scripts.
+Neither these sources nor the generated runtime is included in the published
+package. Regenerate with Emscripten 6.0.9 from the package root:
 
 ```sh
-npm run build:msdfgen-wasm
+npm run build:msdf-oracle
 ```
 
 The build intentionally excludes msdfgen extensions, FreeType, Skia, TinyXML,
 libpng, and the standalone command-line application. The upstream MIT license
-is included in `upstream/LICENSE.txt` and copied beside the packaged runtime.
+is included in `upstream/LICENSE.txt` and copied beside the generated oracle.

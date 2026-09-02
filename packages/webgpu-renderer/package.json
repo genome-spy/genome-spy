@@ -125,7 +125,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:default-font": "uv run scripts/buildDefaultFont.py",
-    "build:msdfgen-wasm": "node vendor/msdfgen/build.mjs",
+    "build:msdf-oracle": "node tools/msdfgen/build.mjs",
+    "test:msdf-oracle": "playwright test -c playwright.config.js tests/oracles/msdfgen/pathAtlas.gpu.test.js tests/acute-path-strokes.gpu.test.js",
     "compare:path-points": "node scripts/comparePathText.mjs --scene path-points",
     "compare:path-text": "node scripts/comparePathText.mjs",
     "benchmark:resources": "node scripts/resourceSharingBenchmark/run.mjs",

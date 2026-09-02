@@ -9,10 +9,10 @@ test("PathPoint renders and picks an MSDF path with an outline", async ({
     await ensureWebGPU(page);
 
     const result = await page.evaluate(async () => {
-        const [{ createRenderer }, { pathPointMark }, { linearScale }] =
+        const [{ createRenderer }, { pointMark }, { linearScale }] =
             await Promise.all([
                 import("/src/index.js"),
-                import("/src/marks/pathPoint.js"),
+                import("/src/marks/point.js"),
                 import("/src/scales/linear.js"),
             ]);
         const canvas = document.createElement("canvas");
@@ -22,9 +22,9 @@ test("PathPoint renders and picks an MSDF path with an outline", async ({
 
         const renderer = await createRenderer(canvas);
         renderer.updateGlobals({ width: 64, height: 64, dpr: 2 });
-        const handle = renderer.createMark(pathPointMark, {
+        const handle = renderer.createMark(pointMark, {
             count: 1,
-            paths: ["M-1-1H1V1H-1Z"],
+            shapes: ["M-1-1H1V1H-1Z"],
             channels: {
                 uniqueId: { data: new Uint32Array([7]), type: "u32" },
                 x: {
@@ -62,10 +62,10 @@ test("PathPoint marks share an exact renderer-owned GPU atlas", async ({
     await ensureWebGPU(page);
 
     const result = await page.evaluate(async () => {
-        const [{ createRenderer }, { pathPointMark }, { linearScale }] =
+        const [{ createRenderer }, { pointMark }, { linearScale }] =
             await Promise.all([
                 import("/src/index.js"),
-                import("/src/marks/pathPoint.js"),
+                import("/src/marks/point.js"),
                 import("/src/scales/linear.js"),
             ]);
         const canvas = document.createElement("canvas");
@@ -76,8 +76,7 @@ test("PathPoint marks share an exact renderer-owned GPU atlas", async ({
         renderer.updateGlobals({ width: 64, height: 64, dpr: 1 });
         const config = {
             count: 1,
-            paths: ["M-1-1H1V1H-1Z"],
-            atlasFormat: "rgba16float",
+            shapes: ["M-1-1H1V1H-1Z"],
             channels: {
                 uniqueId: { data: new Uint32Array([17]), type: "u32" },
                 x: {
@@ -93,8 +92,8 @@ test("PathPoint marks share an exact renderer-owned GPU atlas", async ({
                 fill: { value: [0.2, 0.4, 0.8, 1] },
             },
         };
-        const first = renderer.createMark(pathPointMark, config);
-        const second = renderer.createMark(pathPointMark, config);
+        const first = renderer.createMark(pointMark, config);
+        const second = renderer.createMark(pointMark, config);
         const programs = Array.from(renderer._marks.values());
         const sharedTexture =
             programs[0]._extraTextures.get("pathAtlas").texture ===
@@ -125,10 +124,10 @@ test("PathPoint retains an acute miter inside its path-specific quad", async ({
     await ensureWebGPU(page);
 
     const result = await page.evaluate(async () => {
-        const [{ createRenderer }, { pathPointMark }, { linearScale }] =
+        const [{ createRenderer }, { pointMark }, { linearScale }] =
             await Promise.all([
                 import("/src/index.js"),
-                import("/src/marks/pathPoint.js"),
+                import("/src/marks/point.js"),
                 import("/src/scales/linear.js"),
             ]);
         const canvas = document.createElement("canvas");
@@ -137,9 +136,9 @@ test("PathPoint retains an acute miter inside its path-specific quad", async ({
         document.body.appendChild(canvas);
         const renderer = await createRenderer(canvas);
         renderer.updateGlobals({ width: 64, height: 64, dpr: 2 });
-        const handle = renderer.createMark(pathPointMark, {
+        const handle = renderer.createMark(pointMark, {
             count: 1,
-            paths: ["M0-1L1 1H-1Z"],
+            shapes: ["M0-1L1 1H-1Z"],
             channels: {
                 uniqueId: { data: new Uint32Array([11]), type: "u32" },
                 x: {
@@ -176,10 +175,10 @@ test("PathPoint bounds thick-stroke pseudo-distances to corner miters", async ({
     await ensureWebGPU(page);
 
     const result = await page.evaluate(async () => {
-        const [{ createRenderer }, { pathPointMark }, { linearScale }] =
+        const [{ createRenderer }, { pointMark }, { linearScale }] =
             await Promise.all([
                 import("/src/index.js"),
-                import("/src/marks/pathPoint.js"),
+                import("/src/marks/point.js"),
                 import("/src/scales/linear.js"),
             ]);
         const canvas = document.createElement("canvas");
@@ -188,10 +187,9 @@ test("PathPoint bounds thick-stroke pseudo-distances to corner miters", async ({
         document.body.appendChild(canvas);
         const renderer = await createRenderer(canvas);
         renderer.updateGlobals({ width: 128, height: 128, dpr: 2 });
-        const handle = renderer.createMark(pathPointMark, {
+        const handle = renderer.createMark(pointMark, {
             count: 1,
-            paths: ["M-.35-1H.35V-.35H1V.35H.35V1H-.35V.35H-1V-.35H-.35Z"],
-            atlasFormat: "rgba16float",
+            shapes: ["M-.35-1H.35V-.35H1V.35H.35V1H-.35V.35H-1V-.35H-.35Z"],
             channels: {
                 uniqueId: { data: new Uint32Array([17]), type: "u32" },
                 x: {
@@ -237,10 +235,10 @@ test("PathPoint retains symmetric circle coverage near quad boundaries", async (
     await ensureWebGPU(page);
 
     const result = await page.evaluate(async () => {
-        const [{ createRenderer }, { pathPointMark }, { linearScale }] =
+        const [{ createRenderer }, { pointMark }, { linearScale }] =
             await Promise.all([
                 import("/src/index.js"),
-                import("/src/marks/pathPoint.js"),
+                import("/src/marks/point.js"),
                 import("/src/scales/linear.js"),
             ]);
         const canvas = document.createElement("canvas");
@@ -249,10 +247,9 @@ test("PathPoint retains symmetric circle coverage near quad boundaries", async (
         document.body.appendChild(canvas);
         const renderer = await createRenderer(canvas);
         renderer.updateGlobals({ width: 64, height: 64, dpr: 2 });
-        const handle = renderer.createMark(pathPointMark, {
+        const handle = renderer.createMark(pointMark, {
             count: 1,
-            paths: ["M0-1A1 1 0 1 1 0 1A1 1 0 1 1 0-1Z"],
-            atlasFormat: "rgba16float",
+            shapes: ["M0-1A1 1 0 1 1 0 1A1 1 0 1 1 0-1Z"],
             channels: {
                 uniqueId: { data: new Uint32Array([13]), type: "u32" },
                 x: {
@@ -296,12 +293,12 @@ test("rotated diamond coverage retains a guard band inside its quad", async ({
     const result = await page.evaluate(async () => {
         const [
             { createRenderer },
-            { pathPointMark },
+            { pointMark },
             { identityScale },
             { buildSparsePathAtlasLayout },
         ] = await Promise.all([
             import("/src/index.js"),
-            import("/src/marks/pathPoint.js"),
+            import("/src/marks/point.js"),
             import("/src/scales/identity.js"),
             import("/src/symbols/sparsePathAtlasLayout.js"),
         ]);
@@ -317,10 +314,9 @@ test("rotated diamond coverage retains a guard band inside its quad", async ({
         document.body.appendChild(canvas);
         const renderer = await createRenderer(canvas);
         renderer.updateGlobals({ width: 80, height: 80, dpr });
-        const handle = renderer.createMark(pathPointMark, {
+        const handle = renderer.createMark(pointMark, {
             count: 1,
-            paths: [path],
-            atlasFormat: "rgba16float",
+            shapes: [path],
             channels: {
                 x: { value: center, scale: identityScale() },
                 y: { value: center, scale: identityScale() },
@@ -407,40 +403,4 @@ test("rotated diamond coverage retains a guard band inside its quad", async ({
 
     expect(result.coveredPixels).toBeGreaterThan(0);
     expect(result.minimumMargin).toBeGreaterThan(0.75);
-});
-
-test("embedded msdfgen initializes in a module worker", async ({ page }) => {
-    await page.goto("/");
-    const result = await page.evaluate(async () => {
-        const moduleUrl = location.origin + "/src/symbols/pathAtlas.js";
-        const source = `
-            import { buildPathAtlas } from ${JSON.stringify(moduleUrl)};
-            self.onmessage = () => {
-                const atlas = buildPathAtlas(["M-1-1H1V1H-1Z"], {
-                    tileSize: 32,
-                    spread: 8,
-                    shapePadding: 10,
-                    gutter: 1,
-                });
-                self.postMessage({ width: atlas.width, height: atlas.height });
-            };
-        `;
-        const worker = new Worker(
-            URL.createObjectURL(
-                new Blob([source], { type: "text/javascript" })
-            ),
-            { type: "module" }
-        );
-        try {
-            return await new Promise((resolve, reject) => {
-                worker.onmessage = (event) => resolve(event.data);
-                worker.onerror = reject;
-                worker.postMessage(null);
-            });
-        } finally {
-            worker.terminate();
-        }
-    });
-
-    expect(result).toEqual({ width: 34, height: 34 });
 });

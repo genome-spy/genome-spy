@@ -44,6 +44,8 @@ const forbidden = [
     /(^|\/)testUtils\//,
     /\.test\.js$/,
     /(^|\/)plans\//,
+    /(^|\/)tools\//,
+    /(^|\/)oracles\//,
     /MIGRATION_PLAN\.md$/,
 ];
 for (const filePath of files) {

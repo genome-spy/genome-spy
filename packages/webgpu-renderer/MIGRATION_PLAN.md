@@ -29,39 +29,42 @@ contains only current work that still has a concrete renderer or Core consumer.
 
 ## Active integration: GPU MSDF paths and outline fonts
 
-An internal `PathPoint` mark and renderer-generic Storybook scene established
-that SVG-path MSDF atlases can add custom point shapes and support runtime font
-atlases. Canonical msdfgen v1.13 WASM established the visual oracle. The frozen
-proof of concept preprocesses paths into colored quadratic edges, rasterizes
-conservative edge regions,
+An internal `PathPoint` proof of concept established that SVG-path MSDF atlases
+can add custom point shapes and support runtime font atlases. Canonical msdfgen
+v1.13 WASM established the visual oracle. The production implementation
+preprocesses paths into colored quadratic edges, rasterizes conservative edge
+regions,
 atomically selects nearest true distances, applies nearest-edge-gated
 perpendicular endpoint pseudo-distances for sharp corners, and completes sign
 and correction passes on WebGPU. Its 520-by-520 atlas is sampled directly
-without CPU per-texel work, bitmap upload, or readback. The WASM backend remains
-selectable for comparison. Shared atlas entries also carry normalized local
+without CPU per-texel work, bitmap upload, or readback. Shared atlas entries
+also carry normalized local
 bounds and directional miter extents, allowing each rotated instance quad to
 cover only its path and requested half-stroke instead of reserving four stroke
 widths on every side.
-The same path now parses printable ASCII from static TrueType fonts, normalizes
-glyphs by `unitsPerEm`, and applies focused basic-Latin GPOS Pair Adjustment or
-legacy `kern` fallback before drawing glyphs through PathPoint. It remains a
-font feasibility slice rather than a public text mark or shaping engine. The
+The same path now parses static TrueType fonts, normalizes glyphs by
+`unitsPerEm`, and applies focused GPOS Pair Adjustment or legacy `kern`
+fallback through the production text mark. The
 CPU/GPU division, msdfgen provenance, paper-derived architecture, and current
 limitations are documented in `src/symbols/README.md`.
-The existing point mark and Core grammar remain unchanged. Production work now
-keeps analytic built-ins as the fast path, moves generation and atlas ownership
-out of `PathPoint`, and replaces the legacy text atlas behind the existing
-logical-string contract. Exact public APIs, cache policy, incremental packing,
-and font-scale batching are specified in
+The existing point mark now accepts named shapes and SVG paths. A fixed circle
+keeps a minimal analytic fast path; other fixed and variable shapes use shared
+`rgba16float` atlases. The text mark accepts device-neutral TrueType resources,
+uses the same renderer-owned generator, and retains its logical-string contract
+with 2 by 2 fragment supersampling. Exact public APIs, cache policy,
+incremental packing, and font-scale batching are specified in
 `plans/path-points/production-integration-plan.md`; feasibility evidence remains
 in `plans/path-points/path-points-plan.md` and
 `plans/path-points/wgsl-msdf-atlas-design.md`.
 
-The first production resource slice now lazily shares one bounded generator per
-renderer, reuses exact immutable path atlases, supports tight variable
-rectangles, and provides versioned geometric texture growth with queue-safe
-retirement. Oversized final atlases still require multi-batch generation before
-the point and text integrations can consume this as their production service.
+The first Core bridge keeps BMFont measurement intact while loading exact
+outline variants only for WebGPU rendering. Its WebGPU-only temporary catalog
+uses Default Font for implicit regular text and Lato for implicit variant
+fallback. The four required Core example specifications render successfully.
+
+Canonical msdfgen is no longer a production backend or Storybook toggle. Its
+pinned sources and generated runtime live under package-excluded `tools/` and
+`tests/oracles/` trees and are exercised only by explicit comparison tooling.
 
 ## Milestone 1: Close current Core parity gaps
 

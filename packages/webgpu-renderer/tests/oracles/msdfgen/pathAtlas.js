@@ -1,6 +1,6 @@
-import { svgPathToGlyphPath } from "../vendor/vegaScenegraph/toGlyphPath.js";
+import { svgPathToGlyphPath } from "../../../src/vendor/vegaScenegraph/toGlyphPath.js";
 import { renderPathMsdf } from "./pathRasterizer.js";
-import { getPathDrawMetadata } from "./sparsePathAtlasLayout.js";
+import { getPathDrawMetadata } from "../../../src/symbols/sparsePathAtlasLayout.js";
 
 export const DEFAULT_PATH_ATLAS_OPTIONS = Object.freeze({
     tileSize: 256,

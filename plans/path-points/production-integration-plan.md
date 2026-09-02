@@ -1,6 +1,6 @@
 # Production integration plan for GPU MSDF paths and fonts
 
-Status: PoC feasibility accepted; production architecture proposed
+Status: production integration underway; renderer and initial Core slices complete
 
 ## Summary
 
@@ -538,9 +538,9 @@ renderer now lazily owns one generator, exact immutable path tables share final
 textures and entry buffers, scratch grows under a 64 MiB ceiling with
 queue-safe retirement, tight shelf packing supports variable rectangles, and
 a versioned texture primitive preserves prior texels across geometric growth.
-The remaining work in this milestone is multi-batch generation into one final
-atlas, incremental allocation on top of the growth primitive, and dependent
-bind-group integration beyond the temporary PathPoint consumer.
+The point and text integrations now consume the service and bind its shared
+atlases. The remaining work in this milestone is multi-batch generation into
+one final atlas and incremental allocation on top of the growth primitive.
 
 ### Intended outcome
 
@@ -590,15 +590,15 @@ fixed circle selects a stripped analytic shader without a shape series or MSDF
 resources. Fixed named shapes, SVG path strings, and finite variable shape
 tables select shared `rgba16float` GPU atlases. Core passes fixed paths directly,
 interns variable path strings once, and recreates a retained mark only when its
-path-table identity changes. The canonical WASM generator is isolated behind
-the temporary comparison mark and is excluded from the production point
+path-table identity changes. The canonical WASM generator is isolated behind a
+test-only comparison mark and is excluded from the production point
 bundle. The four requested Core example URLs render with WebGPU, including the
 mixed named-shape point example. Isolating WASM reduced the measured
 point-plus-linear fixture from 273,506 to 187,781 minified bytes and from 92,969
 to 52,938 gzip bytes; the remaining delta is the production path parser,
 preparation, and WGSL generator. Remaining work includes the exhaustive visual
-matrix, benchmark reruns, inward-stroke semantics, and removal of temporary
-comparison entry points after the text migration no longer needs them.
+matrix, benchmark reruns, and inward-stroke semantics. The temporary production
+mark and runtime comparison controls have been removed.
 
 ### Intended outcome
 
@@ -670,9 +670,10 @@ out logical strings with spaces and basic kerning, interns the required glyph
 paths, and obtains a shared `rgba16float` GPU-generated atlas. It preserves the
 existing alignment, baseline, ranged-text, replacement, and BMFont routes while
 adding centered strokes and 2 by 2 fragment supersampling. The production WGSL
-route is also wired into the existing Path Text comparison story beside the
-canonical WASM oracle. Complete renderer verification passes: 258 unit tests,
-89 GPU tests, TypeScript, tree-shaking, and package export checks. The custom-font
+route is exercised by the Path Text story, while an explicit development
+command compares it with the canonical WASM oracle. Complete renderer
+verification passes: 258 unit tests, 88 GPU tests, TypeScript, tree-shaking, and
+package export checks. The custom-font
 text fixture measures 181,569 minified / 51,616 gzip bytes; the Lato comparison
 fixture measures 282,325 / 122,069 because it deliberately embeds its test font.
 The first Core quality smoke test exposed isolated false-inside texels in glyph
@@ -757,9 +758,17 @@ or evaluate the catalog, Default Font, or TrueType modules.
 All 2,730 Core unit cases pass (2,727 passed, one skipped, two todo), along with
 Core TypeScript and focused lint. The repeatable browser harness passes the four
 mandatory WebGPU examples: PIK3CA lollipop, text quality, text baseline with
-four externally loaded TTF variants, and plenty-of-points. Prototype cleanup,
-application-supplied catalogs, late subtree loading tests, and oracle relocation
-remain.
+four externally loaded TTF variants, and plenty-of-points.
+
+The prototype cleanup is also complete. Storybook now exercises production
+`pointMark` and `textMark` without a backend toggle, the temporary PathPoint
+mark definition and obsolete text fixture are gone, and canonical msdfgen has
+moved from production `src/` to package-excluded `tools/msdfgen/` and
+`tests/oracles/msdfgen/`. Explicit path-point and path-text comparison commands
+still exercise the oracle. The ordinary package build verifies that no tool or
+oracle file is packed; its dry-run contains 139 files and is 283,905 bytes.
+Application-supplied catalogs, late subtree loading tests, and the remaining
+integration matrix still remain.
 
 ### Intended outcome
 

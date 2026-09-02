@@ -1,11 +1,7 @@
 /* global performance */
 
 import { createExampleRenderer, setupResize } from "./utils.js";
-import {
-    createAsciiTrueTypeFont,
-    createTrueTypeFont,
-} from "../src/fonts/trueTypeFont.js";
-import { pathPointMark } from "../src/marks/pathPoint.js";
+import { createTrueTypeFont } from "../src/fonts/trueTypeFont.js";
 import { textMark } from "../src/marks/text.js";
 import { identityScale } from "../src/scales/identity.js";
 
@@ -30,7 +26,7 @@ const LINES = [
 ];
 
 /**
- * @param {ReturnType<typeof createAsciiTrueTypeFont>} font
+ * @param {ReturnType<import("../src/fonts/trueTypeFont.js").createAsciiTrueTypeFont>} font
  * @param {typeof LINES} [lines]
  */
 export function layoutPathTextLines(font, lines = LINES) {
@@ -84,7 +80,7 @@ export function layoutPathTextLines(font, lines = LINES) {
     return instances;
 }
 
-/** @param {ReturnType<typeof createAsciiTrueTypeFont>} font */
+/** @param {ReturnType<import("../src/fonts/trueTypeFont.js").createAsciiTrueTypeFont>} font */
 export function getPathTextAtlasOptions(font) {
     return {
         tileSize: 128,
@@ -96,94 +92,54 @@ export function getPathTextAtlasOptions(font) {
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @param {{ atlasBackend?: "gpu" | "wasm" }} [args]
  * @returns {Promise<() => void>}
  */
-export default async function runPathTextScene(canvas, args = {}) {
-    const atlasBackend = args.atlasBackend ?? "gpu";
-    const atlasFormat = atlasBackend === "gpu" ? "rgba16float" : "rgba8unorm";
+export default async function runPathTextScene(canvas) {
     const response = await fetch(FONT_URL);
     if (!response.ok) {
         throw new Error(`Could not load Default Font: ${response.status}.`);
     }
     const parseStart = performance.now();
     const bytes = await response.arrayBuffer();
-    const font = createAsciiTrueTypeFont(bytes);
     const outlineFont = createTrueTypeFont(bytes);
-    const instances = layoutPathTextLines(font);
     const parseDuration = performance.now() - parseStart;
-    const count = instances.length;
-    const x = Float32Array.from(instances, (instance) => instance.x);
-    const y = Float32Array.from(instances, (instance) => instance.y);
-    const size = Float32Array.from(instances, (instance) => instance.size);
-    const shape = Uint32Array.from(instances, (instance) => instance.shape);
-    const strokeWidth = Float32Array.from(
-        instances,
-        (instance) => instance.strokeWidth
-    );
-    const atlasOptions = getPathTextAtlasOptions(font);
 
     const renderer = await createExampleRenderer(canvas);
-    if (atlasBackend === "gpu") {
-        renderer.createMark(textMark, {
-            count: LINES.length,
-            font: outlineFont,
-            fontSize: 32,
-            channels: {
-                text: { data: LINES.map((line) => line.text) },
-                x: {
-                    data: Float32Array.from(LINES, (line) => line.x),
-                    type: "f32",
-                    scale: identityScale(),
-                },
-                y: {
-                    data: Float32Array.from(LINES, (line) => line.baseline),
-                    type: "f32",
-                    scale: identityScale(),
-                },
-                size: {
-                    data: Float32Array.from(LINES, (line) => line.size),
-                    type: "f32",
-                },
-                align: { value: 0, type: "u32" },
-                baseline: { value: 0, type: "u32" },
-                fill: { value: [0.12, 0.33, 0.75, 1.0] },
-                stroke: { value: [0.02, 0.03, 0.06, 1.0] },
-                strokeWidth: {
-                    data: Float32Array.from(LINES, (line) => line.stroke),
-                    type: "f32",
-                },
+    renderer.createMark(textMark, {
+        count: LINES.length,
+        font: outlineFont,
+        fontSize: 32,
+        channels: {
+            text: { data: LINES.map((line) => line.text) },
+            x: {
+                data: Float32Array.from(LINES, (line) => line.x),
+                type: "f32",
+                scale: identityScale(),
             },
-        });
-    } else {
-        renderer.createMark(pathPointMark, {
-            count,
-            paths: font.paths,
-            atlasBackend,
-            atlasFormat,
-            atlasOptions,
-            channels: {
-                x: { data: x, type: "f32", scale: identityScale() },
-                y: { data: y, type: "f32", scale: identityScale() },
-                size: { data: size, type: "f32" },
-                shape: { data: shape, type: "u32" },
-                fill: { value: [0.12, 0.33, 0.75, 1.0] },
-                stroke: { value: [0.02, 0.03, 0.06, 1.0] },
-                strokeWidth: { data: strokeWidth, type: "f32" },
+            y: {
+                data: Float32Array.from(LINES, (line) => line.baseline),
+                type: "f32",
+                scale: identityScale(),
             },
-        });
-    }
+            size: {
+                data: Float32Array.from(LINES, (line) => line.size),
+                type: "f32",
+            },
+            align: { value: 0, type: "u32" },
+            baseline: { value: 0, type: "u32" },
+            fill: { value: [0.12, 0.33, 0.75, 1.0] },
+            stroke: { value: [0.02, 0.03, 0.06, 1.0] },
+            strokeWidth: {
+                data: Float32Array.from(LINES, (line) => line.stroke),
+                type: "f32",
+            },
+        },
+    });
 
     const cleanupResize = setupResize(canvas, renderer);
     renderer.render();
-    const slotSize = atlasOptions.tileSize + 2 * (atlasOptions.gutter ?? 1);
-    const columns = Math.ceil(Math.sqrt(font.paths.length));
-    const rows = Math.ceil(font.paths.length / columns);
     console.info(
-        `Path text PoC (${atlasBackend}, ${atlasFormat}) parsed ` +
-            `${font.paths.length} Default Font ASCII outlines in ` +
-            `${parseDuration.toFixed(1)} ms; atlas is ` +
-            `${columns * slotSize} x ${rows * slotSize}.`
+        `Path text parsed Default Font in ${parseDuration.toFixed(1)} ms.`
     );
 
     return () => {
