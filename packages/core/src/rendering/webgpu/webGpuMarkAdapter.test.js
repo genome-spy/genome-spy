@@ -922,22 +922,45 @@ describe("WebGPU mark adapter", () => {
         expect(requestRender).not.toHaveBeenCalled();
     });
 
-    test.each([
-        ["x", 12],
-        ["+", 13],
-    ])(
-        "maps the stroke-only point shape %s to renderer code %i",
-        (shape, code) => {
+    test.each(["x", "+"])(
+        "passes the fixed point shape %s to renderer program selection",
+        (shape) => {
             const mark = createMark("point", [{}], {
                 shape: createConstantEncoder(shape),
             });
             const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
 
+            expect(/** @type {any} */ (translated).config.shape).toBe(shape);
             expect(
-                /** @type {any} */ (translated).config.channels.shape
-            ).toEqual(dynamicValue(code, "u32"));
+                /** @type {any} */ (translated).config.channels
+            ).not.toHaveProperty("shape");
         }
     );
+
+    test("passes a fixed SVG path to renderer program selection", () => {
+        const path = "M-1-1H1V1H-1Z";
+        const mark = createMark("point", [{}], {
+            shape: createConstantEncoder(path),
+        });
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+
+        expect(/** @type {any} */ (translated).config.shape).toBe(path);
+    });
+
+    test("interns data-driven SVG point paths into a finite shape table", () => {
+        const path = "M-1-1H1V1H-1Z";
+        const data = [{ shape: "square" }, { shape: path }];
+        const mark = createMark("point", data, {
+            shape: createEncoder((datum) => datum.shape),
+        });
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const config = /** @type {any} */ (translated).config;
+
+        expect(config.shapes.at(-1)).toBe(path);
+        expect(config.channels.shape.data).toEqual(new Uint32Array([1, 14]));
+    });
 
     test("maps regular index positions to a single u32 component", () => {
         const data = [{ x: 4 }, { x: 9 }];

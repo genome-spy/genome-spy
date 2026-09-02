@@ -585,6 +585,21 @@ the service.
 
 ## Milestone 2: Production custom path symbols in `pointMark`
 
+Progress (2026-09-02): the first production point slice is implemented. A
+fixed circle selects a stripped analytic shader without a shape series or MSDF
+resources. Fixed named shapes, SVG path strings, and finite variable shape
+tables select shared `rgba16float` GPU atlases. Core passes fixed paths directly,
+interns variable path strings once, and recreates a retained mark only when its
+path-table identity changes. The canonical WASM generator is isolated behind
+the temporary comparison mark and is excluded from the production point
+bundle. The four requested Core example URLs render with WebGPU, including the
+mixed named-shape point example. Isolating WASM reduced the measured
+point-plus-linear fixture from 273,506 to 187,781 minified bytes and from 92,969
+to 52,938 gzip bytes; the remaining delta is the production path parser,
+preparation, and WGSL generator. Remaining work includes the exhaustive visual
+matrix, benchmark reruns, inward-stroke semantics, and removal of temporary
+comparison entry points after the text migration no longer needs them.
+
 ### Intended outcome
 
 The existing point mark accepts predefined names and SVG path strings as one

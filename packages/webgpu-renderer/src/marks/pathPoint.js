@@ -1,4 +1,5 @@
 import PathPointProgram from "./programs/pathPointProgram.js";
+import WasmPathPointProgram from "./programs/wasmPathPointProgram.js";
 
 /**
  * Temporary renderer-internal mark for the SVG-path MSDF proof of concept.
@@ -8,10 +9,10 @@ import PathPointProgram from "./programs/pathPointProgram.js";
 export const pathPointMark = Object.freeze({
     type: "pathPoint",
     createProgram(renderer, config, context) {
-        return new PathPointProgram(
-            /** @type {any} */ (renderer),
-            config,
-            context
-        );
+        const Program =
+            config.atlasBackend === "wasm"
+                ? WasmPathPointProgram
+                : PathPointProgram;
+        return new Program(/** @type {any} */ (renderer), config, context);
     },
 });

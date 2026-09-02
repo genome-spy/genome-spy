@@ -33,24 +33,22 @@ import {
     isValueDef,
 } from "../../encoder/encoder.js";
 
-const SHAPE_CODES = new Map(
-    [
-        "circle",
-        "square",
-        "cross",
-        "diamond",
-        "triangle-up",
-        "triangle-right",
-        "triangle-down",
-        "triangle-left",
-        "tick-up",
-        "tick-right",
-        "tick-down",
-        "tick-left",
-        "x",
-        "+",
-    ].map((shape, index) => [shape, index])
-);
+const SHAPE_NAMES = [
+    "circle",
+    "square",
+    "cross",
+    "diamond",
+    "triangle-up",
+    "triangle-right",
+    "triangle-down",
+    "triangle-left",
+    "tick-up",
+    "tick-right",
+    "tick-down",
+    "tick-left",
+    "x",
+    "+",
+];
 
 const ALIGN_CODES = new Map([
     ["left", 0],
@@ -582,14 +580,16 @@ function createPointConfig(mark, data, coords, viewOpacity) {
         "semanticZoomFraction",
     ]);
     const visibility = createPointVisibilityConfig(mark, data);
+    const shape = createPointShapeConfig(mark, data);
     return {
+        ...shape.config,
         count: data.length,
         channels: {
             ...createUniqueIdChannel(mark, data),
             x: createPositionChannel(mark, "x", data, coords),
             y: createPositionChannel(mark, "y", data, coords),
             size: createNumericChannel(mark, "size", data),
-            shape: createEnumChannel(mark, "shape", data, SHAPE_CODES),
+            ...shape.channel,
             strokeWidth: createNumericChannel(mark, "strokeWidth", data),
             xOffset: createNumericChannel(mark, "xOffset", data),
             yOffset: createNumericChannel(mark, "yOffset", data),
@@ -619,6 +619,50 @@ function createPointConfig(mark, data, coords, viewOpacity) {
             ),
         },
         ...visibility,
+    };
+}
+
+/**
+ * Resolve fixed circles to the analytic program and every other finite shape
+ * set to renderer-owned SVG paths.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {object[]} data
+ */
+function createPointShapeConfig(mark, data) {
+    const encoder = mark.encoders.shape;
+    if (encoder.constant) {
+        return {
+            config: { shape: String(encoder(data[0])) },
+            channel: {},
+        };
+    }
+
+    const shapes = Array.from(SHAPE_NAMES);
+    const seen = new Set(shapes);
+    /** @param {unknown} value */
+    const addShape = (value) => {
+        const shape = String(value);
+        if (!seen.has(shape)) {
+            seen.add(shape);
+            shapes.push(shape);
+        }
+    };
+    for (const branch of encoder.branches) {
+        if (encoder.scale) {
+            for (const value of encoder.scale.range()) {
+                addShape(value);
+            }
+        } else {
+            for (const datum of data) {
+                addShape(branch.accessor(datum));
+            }
+        }
+    }
+    const codes = new Map(shapes.map((shape, index) => [shape, index]));
+    return {
+        config: { shapes },
+        channel: { shape: createEnumChannel(mark, "shape", data, codes) },
     };
 }
 

@@ -5,6 +5,111 @@ import { scaleLinear } from "d3-scale";
 
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
+test("fixed circles keep the analytic path without MSDF resources", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { linearScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/linear.js"),
+            ]);
+        const canvas = document.createElement("canvas");
+        const renderer = await createRenderer(canvas);
+        const handle = renderer.createMark(pointMark, {
+            shape: "circle",
+            channels: {
+                x: {
+                    value: 0.5,
+                    scale: linearScale({ domain: [0, 1], range: [0, 1] }),
+                },
+                y: {
+                    value: 0.5,
+                    scale: linearScale({ domain: [0, 1], range: [0, 1] }),
+                },
+                size: { value: 100 },
+            },
+        });
+        const program = renderer._marks.get(handle.markId);
+        const result = {
+            program: program.constructor.name,
+            ownedResources: renderer._ownedResources.size,
+        };
+        renderer.destroy();
+        return result;
+    });
+
+    expect(result).toEqual({
+        program: "PointProgram",
+        ownedResources: 0,
+    });
+});
+
+test("fixed named and SVG point shapes use the shared path program", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { linearScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/linear.js"),
+            ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = 64;
+        canvas.height = 64;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 1 });
+        const channels = {
+            uniqueId: { data: new Uint32Array([23]), type: "u32" },
+            x: {
+                value: 32,
+                scale: linearScale({ domain: [0, 64], range: [0, 64] }),
+            },
+            y: {
+                value: 32,
+                scale: linearScale({ domain: [0, 64], range: [0, 64] }),
+            },
+            size: { value: 400 },
+            strokeOpacity: { value: 0 },
+        };
+        const named = renderer.createMark(pointMark, {
+            shape: "square",
+            channels,
+        });
+        renderer.createMark(pointMark, {
+            shape: "M-1-1H1V1H-1Z",
+            channels,
+        });
+        const programs = Array.from(renderer._marks.values());
+        renderer.render({ draws: [{ mark: named }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const corner = await renderer.pick(40, 40);
+        const result = {
+            programs: programs.map((program) => program.constructor.name),
+            sharedAtlas:
+                programs[0]._extraTextures.get("pathAtlas").texture ===
+                programs[1]._extraTextures.get("pathAtlas").texture,
+            corner,
+        };
+        renderer.destroy();
+        canvas.remove();
+        return result;
+    });
+
+    expect(result).toEqual({
+        programs: ["PathPointProgram", "PathPointProgram"],
+        sharedAtlas: true,
+        corner: 23,
+    });
+});
+
 test("retained scale updates keep rendered WGSL mapping aligned with d3", async ({
     page,
 }) => {

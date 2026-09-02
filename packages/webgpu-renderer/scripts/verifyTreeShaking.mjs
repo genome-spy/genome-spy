@@ -233,6 +233,15 @@ function assertTreeShaking(result) {
         if (id.startsWith("src/fonts/")) {
             throw new Error(`Point/linear bundle includes font support: ${id}`);
         }
+        if (
+            id.startsWith("src/vendor/msdfgen/") ||
+            id === "src/symbols/pathAtlas.js" ||
+            id === "src/symbols/pathRasterizer.js"
+        ) {
+            throw new Error(
+                `Point/linear bundle includes the canonical WASM backend: ${id}`
+            );
+        }
     }
 }
 

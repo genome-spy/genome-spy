@@ -1,11 +1,18 @@
 import PointProgram from "./pointProgram.js";
-import { buildPathAtlas } from "../../symbols/pathAtlas.js";
 import { getMsdfAtlasGenerator } from "../../symbols/sparseGpuPathAtlas.js";
-import {
-    asGpuBufferSource,
-    createTextureFromData,
-} from "../../utils/webgpuTextureUtils.js";
+import { asGpuBufferSource } from "../../utils/webgpuTextureUtils.js";
 import { gpuLabel } from "../../utils/gpuLabel.js";
+
+/**
+ * @typedef {object} InstalledPathAtlas
+ * @property {number} width
+ * @property {number} height
+ * @property {number} tileSize
+ * @property {number} shapePixels
+ * @property {number} spread
+ * @property {number} pathCount
+ * @property {Float32Array} entries
+ */
 
 const PATH_POINT_SHADER_BODY = /* wgsl */ `
 const PI: f32 = 3.141592653589793;
@@ -206,9 +213,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 }
 `;
 
-/**
- * Experimental point program backed by a fixed SVG-path MSDF atlas.
- */
+/** Point program backed by a finite SVG-path MSDF atlas. */
 export default class PathPointProgram extends PointProgram {
     /** @returns {string} */
     get shaderBody() {
@@ -268,7 +273,14 @@ export default class PathPointProgram extends PointProgram {
         if (!Array.isArray(paths)) {
             throw new Error("PathPoint config requires a paths array.");
         }
-        const backend = this._markConfig.atlasBackend ?? "gpu";
+        if (
+            this._markConfig.atlasBackend !== undefined &&
+            this._markConfig.atlasBackend !== "gpu"
+        ) {
+            throw new Error(
+                'PathPointProgram only supports atlasBackend "gpu".'
+            );
+        }
         const atlasFormat = this._markConfig.atlasFormat ?? "rgba8unorm";
         if (atlasFormat !== "rgba8unorm" && atlasFormat !== "rgba16float") {
             throw new Error("Unsupported PathPoint atlas texture format.");
@@ -277,42 +289,37 @@ export default class PathPointProgram extends PointProgram {
             /** @type {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number }} */ (
                 this._markConfig.atlasOptions ?? {}
             );
-        let atlas;
-        let texture;
-        /** @type {GPUBuffer | null} */
-        let sharedEntries = null;
-        if (backend === "gpu") {
-            atlas = getMsdfAtlasGenerator(this.renderer).acquireAtlas(
-                paths,
-                { ...atlasOptions, format: atlasFormat },
-                gpuLabel(this.label, "path atlas")
-            );
-            texture = atlas.texture;
-            sharedEntries = atlas.entryBuffer;
-            // Resource cleanup is tied to queue completion. Keep the rejection
-            // observed here; GPU validation still reports the original error.
-            atlas.completion.catch(() => {});
-        } else if (backend === "wasm") {
-            if (atlasFormat !== "rgba8unorm") {
-                throw new Error(
-                    "The PathPoint WASM backend only supports rgba8unorm atlases."
-                );
-            }
-            atlas = buildPathAtlas(paths, atlasOptions);
-            texture = createTextureFromData(
-                this.device,
-                {
-                    format: "rgba8unorm",
-                    width: atlas.width,
-                    height: atlas.height,
-                    data: atlas.data,
-                },
-                undefined,
-                gpuLabel(this.label, "path atlas")
-            );
-        } else {
-            throw new Error('PathPoint atlasBackend must be "gpu" or "wasm".');
-        }
+        const atlas = getMsdfAtlasGenerator(this.renderer).acquireAtlas(
+            paths,
+            { ...atlasOptions, format: atlasFormat },
+            gpuLabel(this.label, "path atlas")
+        );
+        // Resource cleanup is tied to queue completion. Keep the rejection
+        // observed here; GPU validation still reports the original error.
+        atlas.completion.catch(() => {});
+        this._installPathAtlas(
+            atlas,
+            atlas.texture,
+            atlasFormat,
+            atlas.entryBuffer,
+            true
+        );
+    }
+
+    /**
+     * @param {InstalledPathAtlas} atlas
+     * @param {GPUTexture} texture
+     * @param {GPUTextureFormat} atlasFormat
+     * @param {GPUBuffer | null} sharedEntries
+     * @param {boolean} borrowed
+     */
+    _installPathAtlas(
+        atlas,
+        texture,
+        atlasFormat,
+        sharedEntries = null,
+        borrowed = false
+    ) {
         const sampler = this.device.createSampler({
             label: gpuLabel(this.label, "path atlas sampler"),
             addressModeU: "clamp-to-edge",
@@ -331,7 +338,7 @@ export default class PathPointProgram extends PointProgram {
             height: atlas.height,
             format: atlasFormat,
         });
-        if (backend === "gpu") {
+        if (borrowed) {
             this._borrowedExtraBuffers.add("pathAtlasEntries");
             this._borrowedExtraTextures.add("pathAtlas");
         }
