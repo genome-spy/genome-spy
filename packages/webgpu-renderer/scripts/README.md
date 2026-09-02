@@ -96,8 +96,8 @@ index. Per-symbol counts make the compound overlapping path distinguishable
 from regressions in stars, rectangles, and other ordinary contours. Both
 generators use RGBA8 by default so the diff isolates generation rather than
 texture quantization. Pass `--wgsl-format rgba16float` to compare the preferred
-WGSL rendering against the quantized WASM reference. Pass `--point-size 30` to
-match the largest symbols in the Path Points story; the default is 60 pixels.
+WGSL rendering against the quantized WASM reference. The default point size of
+60 pixels matches the largest symbols in the Path Points story.
 `--angles 0,15,30,45` expands the rotation matrix. `--tile-size`, `--spread`,
 and `--shape-padding` override the shared atlas geometry for controlled
 resolution and distance-range experiments.

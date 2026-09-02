@@ -105,7 +105,7 @@ notices.
 
 ## Milestone 1: Close performance and compatibility gates
 
-Status: next
+Status: in progress
 
 ### Intended outcome
 
@@ -113,11 +113,13 @@ Representative interaction and scale workloads have recorded CPU, GPU, memory,
 and bundle baselines, with no content-sized work in animation-frame identity or
 resource checks.
 
+### Cleared gate
+
+- Manual profiling of `msa.json` zooming and panning after the constant-time
+  text program-key fix found interaction performance acceptable.
+
 ### Work
 
-- Re-profile `msa.json` while zooming and panning after the constant-time text
-  program-key fix. Investigate the next dominant avoidable CPU cost rather than
-  optimizing from synthetic assumptions.
 - Re-run the five-million-point benchmark for fixed analytic circles, fixed
   path symbols, and variable shapes.
 - Measure cold pipeline compilation, Default Font parse/preparation, warm glyph

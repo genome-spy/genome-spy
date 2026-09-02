@@ -31,9 +31,10 @@ export const PATH_POINT_ATLAS_OPTIONS = DEFAULT_SPARSE_PATH_ATLAS_OPTIONS;
  */
 export default async function runPathPointScene(canvas) {
     const renderer = await createExampleRenderer(canvas);
-    const count = 160;
-    const columns = 20;
-    const rows = Math.ceil(count / columns);
+    const columns = PATHS.length;
+    const rows = 6;
+    const count = columns * rows;
+    const maximumPointDiameter = 60;
     const x = new Uint32Array(count);
     const y = new Uint32Array(count);
     const size = new Float32Array(count);
@@ -56,7 +57,7 @@ export default async function runPathPointScene(canvas) {
         const yFraction = row / Math.max(1, rows - 1);
         x[i] = column;
         y[i] = row;
-        size[i] = xFraction ** 2 * 900;
+        size[i] = xFraction ** 2 * maximumPointDiameter ** 2;
         angle[i] = yFraction * 45;
         strokeWidth[i] = yFraction * 4;
         shape[i] = column % PATHS.length;
