@@ -84,3 +84,73 @@ test("text mark indexes logical series from glyph instances", async ({
     expect(result.before).toHaveLength(2);
     expect(result.after).toHaveLength(2);
 });
+
+test("text mark renders supersampled RGBA16F TrueType outlines", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { textMark },
+            { identityScale },
+            { createTrueTypeFont },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/text.js"),
+            import("/src/scales/identity.js"),
+            import("/src/fonts/trueTypeFont.js"),
+        ]);
+        const bytes = await fetch("/src/fonts/DefaultFont.ttf").then(
+            (response) => response.arrayBuffer()
+        );
+        const font = createTrueTypeFont(bytes);
+        const canvas = document.createElement("canvas");
+        canvas.width = 128;
+        canvas.height = 128;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 2 });
+        renderer.device.pushErrorScope("validation");
+        const mark = renderer.createMark(textMark, {
+            count: 1,
+            font,
+            fontSize: 32,
+            channels: {
+                uniqueId: { value: 71, type: "u32" },
+                text: { value: "AV" },
+                x: { value: 32, scale: identityScale() },
+                y: { value: 32, scale: identityScale() },
+                size: { value: 32 },
+                fill: { value: [0.2, 0.5, 0.9, 1] },
+                stroke: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: 1.5 },
+            },
+        });
+        renderer.render({ draws: [{ mark }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        let hit = null;
+        for (let y = 16; y <= 48 && hit === null; y += 4) {
+            for (let x = 8; x <= 56 && hit === null; x += 4) {
+                hit = await renderer.pick(x, y);
+            }
+        }
+        const program = renderer._marks.get(mark.markId);
+        const atlas = program._extraTextures.get("fontAtlas");
+        const validationError = await renderer.device.popErrorScope();
+        renderer.destroy();
+        canvas.remove();
+        return {
+            hit,
+            atlasFormat: atlas.format,
+            validationError: validationError?.message ?? null,
+        };
+    });
+
+    expect(result).toEqual({
+        hit: 71,
+        atlasFormat: "rgba16float",
+        validationError: null,
+    });
+});

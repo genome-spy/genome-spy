@@ -1,8 +1,12 @@
 /* global performance */
 
 import { createExampleRenderer, setupResize } from "./utils.js";
-import { createAsciiTrueTypeFont } from "../src/fonts/trueTypeFont.js";
+import {
+    createAsciiTrueTypeFont,
+    createTrueTypeFont,
+} from "../src/fonts/trueTypeFont.js";
 import { pathPointMark } from "../src/marks/pathPoint.js";
+import { textMark } from "../src/marks/text.js";
 import { identityScale } from "../src/scales/identity.js";
 
 const FONT_URL = new URL("../src/fonts/DefaultFont.ttf", import.meta.url);
@@ -103,7 +107,9 @@ export default async function runPathTextScene(canvas, args = {}) {
         throw new Error(`Could not load Default Font: ${response.status}.`);
     }
     const parseStart = performance.now();
-    const font = createAsciiTrueTypeFont(await response.arrayBuffer());
+    const bytes = await response.arrayBuffer();
+    const font = createAsciiTrueTypeFont(bytes);
+    const outlineFont = createTrueTypeFont(bytes);
     const instances = layoutPathTextLines(font);
     const parseDuration = performance.now() - parseStart;
     const count = instances.length;
@@ -118,25 +124,57 @@ export default async function runPathTextScene(canvas, args = {}) {
     const atlasOptions = getPathTextAtlasOptions(font);
 
     const renderer = await createExampleRenderer(canvas);
-    const { series } = renderer.createMark(pathPointMark, {
-        count,
-        paths: font.paths,
-        atlasBackend,
-        atlasFormat,
-        atlasOptions,
-        channels: {
-            x: { data: x, type: "f32", scale: identityScale() },
-            y: { data: y, type: "f32", scale: identityScale() },
-            size: { data: size, type: "f32" },
-            shape: { data: shape, type: "u32" },
-            fill: { value: [0.12, 0.33, 0.75, 1.0] },
-            stroke: { value: [0.02, 0.03, 0.06, 1.0] },
-            strokeWidth: { data: strokeWidth, type: "f32" },
-        },
-    });
+    if (atlasBackend === "gpu") {
+        renderer.createMark(textMark, {
+            count: LINES.length,
+            font: outlineFont,
+            fontSize: 32,
+            channels: {
+                text: { data: LINES.map((line) => line.text) },
+                x: {
+                    data: Float32Array.from(LINES, (line) => line.x),
+                    type: "f32",
+                    scale: identityScale(),
+                },
+                y: {
+                    data: Float32Array.from(LINES, (line) => line.baseline),
+                    type: "f32",
+                    scale: identityScale(),
+                },
+                size: {
+                    data: Float32Array.from(LINES, (line) => line.size),
+                    type: "f32",
+                },
+                align: { value: 0, type: "u32" },
+                baseline: { value: 0, type: "u32" },
+                fill: { value: [0.12, 0.33, 0.75, 1.0] },
+                stroke: { value: [0.02, 0.03, 0.06, 1.0] },
+                strokeWidth: {
+                    data: Float32Array.from(LINES, (line) => line.stroke),
+                    type: "f32",
+                },
+            },
+        });
+    } else {
+        renderer.createMark(pathPointMark, {
+            count,
+            paths: font.paths,
+            atlasBackend,
+            atlasFormat,
+            atlasOptions,
+            channels: {
+                x: { data: x, type: "f32", scale: identityScale() },
+                y: { data: y, type: "f32", scale: identityScale() },
+                size: { data: size, type: "f32" },
+                shape: { data: shape, type: "u32" },
+                fill: { value: [0.12, 0.33, 0.75, 1.0] },
+                stroke: { value: [0.02, 0.03, 0.06, 1.0] },
+                strokeWidth: { data: strokeWidth, type: "f32" },
+            },
+        });
+    }
 
     const cleanupResize = setupResize(canvas, renderer);
-    series.replace({ x, y, size, shape, strokeWidth }, count);
     renderer.render();
     const slotSize = atlasOptions.tileSize + 2 * (atlasOptions.gutter ?? 1);
     const columns = Math.ceil(Math.sqrt(font.paths.length));

@@ -62,6 +62,8 @@ describe("TextProgram series replacement", () => {
         expect(shaderBody).toContain(
             "fn shade(in: VSOut) -> vec4<f32> {\n    return shadeBase(in, 1.0);"
         );
+        expect(shaderBody).toContain("let coverage = sampleSuperOutline(in);");
+        expect(shaderBody).toContain("params.uOutlineFont != 0u");
     });
 
     it("updates coupled text uniforms through semantic properties", () => {

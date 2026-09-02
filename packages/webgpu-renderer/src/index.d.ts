@@ -905,7 +905,10 @@ export type TextChannelName =
     | "align"
     | "baseline"
     | "fill"
-    | "opacity";
+    | "stroke"
+    | "opacity"
+    | "strokeOpacity"
+    | "strokeWidth";
 
 export type TextStringChannelConfigInput =
     | (Omit<SeriesChannelConfigInput, "data" | "type"> & {
@@ -946,7 +949,7 @@ export type FontResource = {
 
 export type TextMarkOptions = {
     textLayout?: TextLayout;
-    font?: string;
+    font?: string | import("./fonts/trueTypeFont.js").TrueTypeFont;
     fontResource?: FontResource;
     fontStyle?: "normal" | "italic";
     fontWeight?: number | string;

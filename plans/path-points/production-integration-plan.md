@@ -663,8 +663,19 @@ adjustments. `loadTrueTypeFont` deduplicates fetch and parsing by exact URL, and
 the compact 47,064-byte Default Font has a separate lazy package entry. The
 low-level TrueType entry measures 14,207 minified / 4,902 gzip bytes; adding the
 Default Font loader measures 14,540 / 5,058 bytes before the separately fetched
-font asset. Point bundles remain unchanged and exclude both entries. Production
-MSDF text rendering and Core catalog selection remain to be implemented.
+font asset. Point bundles remain unchanged and exclude both entries.
+
+The renderer text mark now accepts the same device-neutral `TrueTypeFont`, lays
+out logical strings with spaces and basic kerning, interns the required glyph
+paths, and obtains a shared `rgba16float` GPU-generated atlas. It preserves the
+existing alignment, baseline, ranged-text, replacement, and BMFont routes while
+adding centered strokes and 2 by 2 fragment supersampling. The production WGSL
+route is also wired into the existing Path Text comparison story beside the
+canonical WASM oracle. Complete renderer verification passes: 258 unit tests,
+89 GPU tests, TypeScript, tree-shaking, and package export checks. The custom-font
+text fixture measures 181,569 minified / 51,616 gzip bytes; the Lato comparison
+fixture measures 282,325 / 122,069 because it deliberately embeds its test font.
+Core catalog selection and incremental atlas growth remain to be implemented.
 
 ### Intended outcome
 

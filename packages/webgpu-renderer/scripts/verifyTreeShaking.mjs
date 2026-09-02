@@ -215,6 +215,17 @@ function assertTreeShaking(result) {
                 "Custom-font bundle unexpectedly includes the Lato preset."
             );
         }
+        for (const id of result.modules) {
+            if (
+                id === "src/fonts/defaultFont.js" ||
+                id === "src/fonts/trueTypeFont.js" ||
+                id.startsWith("src/vendor/textShaper/")
+            ) {
+                throw new Error(
+                    `Custom bitmap-font bundle includes TrueType loading: ${id}`
+                );
+            }
+        }
         if (!result.minifiedCode.includes("Custom Sans")) {
             throw new Error(
                 "Custom-font bundle does not retain the configured font family."
