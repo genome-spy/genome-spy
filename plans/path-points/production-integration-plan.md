@@ -616,7 +616,12 @@ does not reserve outward miter or thick-stroke raster padding. A focused GPU
 test compares inside and outside pixels with the centered-stroke route.
 `fillGradientStrength` is likewise evaluated from positive interior MSDF
 distance normalized by delivered device-pixel radius, and has a focused center
-versus edge color test.
+versus edge color test. Path points now cull zero-area geometry and clamp
+centered or inward strokes before their antialiasing transition reaches the
+atlas saturation boundary. A GPU stress matrix covers tiny diameters, extreme
+stroke requests, both stroke placements, several path topologies and rotations,
+and DPR 1 and 2. A compact wide-range tier remains follow-up work so useful
+small strokes need less clamping.
 
 ### Intended outcome
 
@@ -646,6 +651,10 @@ every other case uses resolved paths. The temporary PathPoint mark is removed.
   index contract.
 - Preserve path-specific stroke/miter expansion and the current raster safety
   until measurements justify reducing it.
+- [ ] Add a compact, wide-range atlas tier for tiny stroked points. Select it
+      from the required stroke-to-diameter ratio, keep the ordinary detailed
+      tier for larger marks, and retain a final representability clamp for
+      requests that exceed both tiers.
 - Compare the analytic and path circle at DPR 1 and 2. Validate all other named
   shapes through their canonical path definitions and keep canonical WASM
   comparisons in explicit test tooling only.

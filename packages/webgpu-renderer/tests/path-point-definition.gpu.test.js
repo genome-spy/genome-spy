@@ -596,3 +596,244 @@ test("rotated diamond coverage retains a guard band inside its quad", async ({
     expect(result.coveredPixels).toBeGreaterThan(0);
     expect(result.minimumMargin).toBeGreaterThan(0.75);
 });
+
+test("PathPoint culls zero-area paths with extreme strokes", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { identityScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/identity.js"),
+            ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = 128;
+        canvas.height = 128;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 2 });
+        const mark = renderer.createMark(pointMark, {
+            count: 1,
+            shapes: ["M-1-1H1V1H-1Z"],
+            channels: {
+                uniqueId: { data: new Uint32Array([23]), type: "u32" },
+                x: { value: 32, scale: identityScale() },
+                y: { value: 32, scale: identityScale() },
+                size: { value: 0 },
+                shape: { value: 0 },
+                fill: { value: [0.25, 0.75, 0.4, 1] },
+                stroke: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: 128 },
+                angle: { value: 33 },
+            },
+        });
+
+        renderer.render({ draws: [{ mark }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const picked = await renderer.pick(32, 32);
+        renderer.destroy();
+        canvas.remove();
+        return picked;
+    });
+
+    expect(result).toBeNull();
+});
+
+test("PathPoint clamps pathological strokes across shapes and DPRs", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const results = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { identityScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/identity.js"),
+            ]);
+        const paths = [
+            "M0-1A1 1 0 1 1 0 1A1 1 0 1 1 0-1Z",
+            "M-1-1H1V1H-1Z",
+            "M0-1L1 1H-1Z",
+            "M-.25-1H.25V-.25H1V.25H.25V1H-.25V.25H-1V-.25H-.25Z",
+            "M0-1 .24-.32.95-.31.38.12.59.81 0 .4-.59.81-.38.12-.95-.31-.24-.32Z",
+        ];
+        const diameters = [0.5, 1, 2, 3];
+        const requestedStrokeWidths = [8, 32, 128];
+        const cellSize = 32;
+        const rows = paths.flatMap((_, shape) =>
+            diameters.flatMap((diameter) =>
+                [0, 1].map((inwardStroke) => ({
+                    shape,
+                    diameter,
+                    inwardStroke,
+                    angle: (shape * 29 + diameter * 17) % 180,
+                }))
+            )
+        );
+
+        /** @param {number} dpr */
+        const render = async (dpr) => {
+            const columns = requestedStrokeWidths.length;
+            const width = columns * cellSize;
+            const height = rows.length * cellSize;
+            const instances = rows.flatMap((row, rowIndex) =>
+                requestedStrokeWidths.map((strokeWidth, column) => ({
+                    ...row,
+                    strokeWidth,
+                    x: (column + 0.5) * cellSize,
+                    y: (rowIndex + 0.5) * cellSize,
+                }))
+            );
+            const canvas = document.createElement("canvas");
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            document.body.appendChild(canvas);
+            const renderer = await createRenderer(canvas);
+            renderer.updateGlobals({ width, height, dpr });
+            const mark = renderer.createMark(pointMark, {
+                count: instances.length,
+                shapes: paths,
+                channels: {
+                    x: {
+                        data: Float32Array.from(
+                            instances,
+                            (instance) => instance.x
+                        ),
+                        type: "f32",
+                        scale: identityScale(),
+                    },
+                    y: {
+                        data: Float32Array.from(
+                            instances,
+                            (instance) => instance.y
+                        ),
+                        type: "f32",
+                        scale: identityScale(),
+                    },
+                    size: {
+                        data: Float32Array.from(
+                            instances,
+                            (instance) => instance.diameter ** 2
+                        ),
+                        type: "f32",
+                    },
+                    shape: {
+                        data: Uint32Array.from(
+                            instances,
+                            (instance) => instance.shape
+                        ),
+                        type: "u32",
+                    },
+                    fill: { value: [0.25, 0.75, 0.4, 1] },
+                    stroke: { value: [0, 0, 0, 1] },
+                    strokeWidth: {
+                        data: Float32Array.from(
+                            instances,
+                            (instance) => instance.strokeWidth
+                        ),
+                        type: "f32",
+                    },
+                    inwardStroke: {
+                        data: Uint32Array.from(
+                            instances,
+                            (instance) => instance.inwardStroke
+                        ),
+                        type: "u32",
+                    },
+                    angle: {
+                        data: Float32Array.from(
+                            instances,
+                            (instance) => instance.angle
+                        ),
+                        type: "f32",
+                    },
+                },
+            });
+            renderer.render({ draws: [{ mark }] });
+            await renderer.device.queue.onSubmittedWorkDone();
+
+            const bitmap = await createImageBitmap(
+                await (await fetch(canvas.toDataURL("image/png"))).blob()
+            );
+            const copy = new OffscreenCanvas(canvas.width, canvas.height);
+            const context = copy.getContext("2d");
+            context.drawImage(bitmap, 0, 0);
+            const pixels = context.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            ).data;
+            const deviceCellSize = cellSize * dpr;
+            let maximumDifference = 0;
+            let emptyCells = 0;
+            let edgeContacts = 0;
+
+            const pixelOffset = (row, column, x, y) =>
+                ((row * deviceCellSize + y) * canvas.width +
+                    column * deviceCellSize +
+                    x) *
+                4;
+            for (let row = 0; row < rows.length; row++) {
+                let inkPixels = 0;
+                for (let y = 0; y < deviceCellSize; y++) {
+                    for (let x = 0; x < deviceCellSize; x++) {
+                        const reference = pixelOffset(row, 0, x, y);
+                        const ink =
+                            255 -
+                            Math.min(
+                                pixels[reference],
+                                pixels[reference + 1],
+                                pixels[reference + 2]
+                            );
+                        if (ink > 32) {
+                            inkPixels++;
+                            if (
+                                x === 0 ||
+                                y === 0 ||
+                                x === deviceCellSize - 1 ||
+                                y === deviceCellSize - 1
+                            ) {
+                                edgeContacts++;
+                            }
+                        }
+                        for (let column = 1; column < columns; column++) {
+                            const candidate = pixelOffset(row, column, x, y);
+                            for (let channel = 0; channel < 4; channel++) {
+                                maximumDifference = Math.max(
+                                    maximumDifference,
+                                    Math.abs(
+                                        pixels[reference + channel] -
+                                            pixels[candidate + channel]
+                                    )
+                                );
+                            }
+                        }
+                    }
+                }
+                if (inkPixels === 0) {
+                    emptyCells++;
+                }
+            }
+
+            bitmap.close();
+            renderer.destroy();
+            canvas.remove();
+            return { dpr, maximumDifference, emptyCells, edgeContacts };
+        };
+
+        return Promise.all([render(1), render(2)]);
+    });
+
+    for (const result of results) {
+        expect(result.maximumDifference).toBeLessThanOrEqual(1);
+        // One half-pixel-wide inward-stroked shape may legitimately miss all
+        // sample centers at DPR 1.
+        expect(result.emptyCells).toBeLessThanOrEqual(1);
+        expect(result.edgeContacts).toBe(0);
+    }
+});

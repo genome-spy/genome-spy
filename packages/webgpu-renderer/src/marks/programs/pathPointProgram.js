@@ -85,14 +85,29 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     );
 
     let diameter = sqrt(max(getScaled_size(i), 0.0));
+    if (diameter <= 0.0) {
+        return culledPoint();
+    }
     var strokeWidth = max(getScaled_strokeWidth(i), 0.0);
     let strokeOpacity = getScaled_strokeOpacity(i);
     if (strokeOpacity <= 0.0) {
         strokeWidth = 0.0;
     }
     let entry = pathAtlasEntries[shape];
-    let halfStrokeWidth = strokeWidth * 0.5;
     let inwardStroke = getScaled_inwardStroke(i);
+    let devicePixelsPerAtlas = max(
+        diameter * globals.dpr / params.uShapePixels,
+        1.0 / params.uSpread
+    );
+    // The generated field saturates at uSpread. Clamp effects before their AA
+    // transition reaches that boundary; otherwise tiny marks with thick
+    // strokes sample the saturated tile edge and produce malformed contours.
+    let strokeDistanceMultiplier = select(1.0, 2.0, inwardStroke != 0u);
+    let maxHalfStrokeWidth = max(
+        params.uSpread * devicePixelsPerAtlas - AA_COVERAGE_RADIUS_PIXELS,
+        0.0
+    ) / (strokeDistanceMultiplier * globals.dpr);
+    let halfStrokeWidth = min(strokeWidth * 0.5, maxHalfStrokeWidth);
     let outwardStroke = halfStrokeWidth > 0.0 && inwardStroke == 0u;
     // The antialiased outer contour is another offset curve, so its radius
     // must use the path-specific miter extent too. Keep the remaining
@@ -160,10 +175,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.strokeOpacity = strokeOpacity;
     out.halfStrokeWidth = halfStrokeWidth;
     out.pickId = 0u;
-    out.devicePixelsPerAtlas = max(
-        diameter * globals.dpr / params.uShapePixels,
-        1.0 / params.uSpread
-    );
+    out.devicePixelsPerAtlas = devicePixelsPerAtlas;
     out.inwardStroke = inwardStroke;
     out.gradientStrength = getScaled_gradientStrength(i);
     out.deviceRadius = diameter * globals.dpr * 0.5;
