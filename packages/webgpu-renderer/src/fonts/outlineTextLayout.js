@@ -149,7 +149,9 @@ export function buildOutlineTextLayout(strings, font, options = {}) {
         fontSize,
         lineAdvance,
         ascent: font.ascender * scale,
-        descent: font.descender * scale,
+        // TrueType descenders are signed, while layout descent is a positive
+        // distance below the alphabetic baseline.
+        descent: -font.descender * scale,
         outlineGlyphs,
         paths: outlineGlyphs.map((glyph) => glyph.path),
     };

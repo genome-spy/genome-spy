@@ -1437,7 +1437,9 @@ export default class TextProgram extends BaseProgram {
             1 / atlas.height,
         ]);
         this._setUniformValue("uCapHeight", font.capHeight * atlasScale);
-        this._setUniformValue("uDescent", font.descender * atlasScale);
+        // TrueType descenders are signed, but baselineOffset expects the
+        // positive distance from the alphabetic baseline to the font bottom.
+        this._setUniformValue("uDescent", -font.descender * atlasScale);
         this._setUniformValue("uSdfPadding", 0);
         this._setUniformValue("uOutlineFont", 1);
         this._setUniformValue(

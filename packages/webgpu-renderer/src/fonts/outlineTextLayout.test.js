@@ -43,5 +43,8 @@ describe("outline text layout", () => {
         expect(layout.stringIndex).toEqual(new Uint32Array([0, 0, 1]));
         expect(layout.yOffset[1]).toBeCloseTo(-layout.lineAdvance);
         expect(layout.textHeight[0]).toBeCloseTo(layout.lineAdvance * 2);
+        expect(layout.descent).toBeCloseTo(
+            (-font.descender * 20) / font.unitsPerEm
+        );
     });
 });

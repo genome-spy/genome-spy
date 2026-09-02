@@ -155,6 +155,87 @@ test("text mark renders supersampled RGBA16F TrueType outlines", async ({
     });
 });
 
+test("TrueType bottom baseline places glyph ink above its anchor", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { textMark },
+            { identityScale },
+            { createTrueTypeFont },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/text.js"),
+            import("/src/scales/identity.js"),
+            import("/src/fonts/trueTypeFont.js"),
+        ]);
+        const bytes = await fetch("/src/fonts/DefaultFont.ttf").then(
+            (response) => response.arrayBuffer()
+        );
+        const font = createTrueTypeFont(bytes);
+        const dpr = 2;
+        const canvas = document.createElement("canvas");
+        canvas.width = 64 * dpr;
+        canvas.height = 64 * dpr;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr });
+        const mark = renderer.createMark(textMark, {
+            font,
+            fontSize: 32,
+            channels: {
+                text: { value: "H" },
+                x: { value: 32, scale: identityScale() },
+                y: { value: 32, scale: identityScale() },
+                size: { value: 32 },
+                baseline: { value: 3, type: "u32" },
+                fill: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: 0 },
+            },
+        });
+        renderer.render({
+            draws: [{ mark }],
+            clearColor: { r: 0, g: 0, b: 0, a: 0 },
+        });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const bitmap = await createImageBitmap(
+            await (await fetch(canvas.toDataURL("image/png"))).blob()
+        );
+        const context = new OffscreenCanvas(
+            canvas.width,
+            canvas.height
+        ).getContext("2d");
+        context.drawImage(bitmap, 0, 0);
+        const pixels = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        ).data;
+        let lastInkRow = -1;
+        for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x++) {
+                if (pixels[(y * canvas.width + x) * 4 + 3] > 16) {
+                    lastInkRow = y;
+                    break;
+                }
+            }
+        }
+        bitmap.close();
+        renderer.destroy();
+        canvas.remove();
+        return {
+            lastInkY: lastInkRow / dpr,
+            expectedBottomY: 32 + (font.descender * 32) / font.unitsPerEm,
+        };
+    });
+
+    expect(Math.abs(result.lastInkY - result.expectedBottomY)).toBeLessThan(1);
+});
+
 test("outline text applies fill gamma without a zero-width stroke", async ({
     page,
 }) => {
