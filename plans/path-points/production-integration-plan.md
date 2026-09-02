@@ -778,7 +778,10 @@ and the remaining integration matrix still remain. A repository-wide inventory
 test now walks all 219 example JSON files and every built-in theme, resolves
 each declared font/style/weight combination through the WebGPU catalog, and
 checks every catalog face against a versioned gstatic path or the pinned Google
-Fonts commit.
+Fonts commit. A dynamic-view test now inserts text after the initial view is
+ready, proves insertion waits for the new outline, verifies that the
+renderer-facing mark entry is populated before the insertion resolves, and confirms a
+second late view with the same descriptor performs no additional preparation.
 
 ### Intended outcome
 
