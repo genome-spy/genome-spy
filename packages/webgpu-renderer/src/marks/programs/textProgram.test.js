@@ -69,6 +69,14 @@ describe("TextProgram series replacement", () => {
         expect(shaderBody).toContain(
             "coverage.y,\n            getGammaForColor(strokeColor.rgb)"
         );
+        expect(shaderBody).toContain("fn freeTypeLikeStemDarkening");
+        expect(shaderBody).toContain(
+            "let estimatedStemWidth = deviceFontSize * 0.075;"
+        );
+        expect(shaderBody).toContain(
+            "out.stemDarkening = freeTypeLikeStemDarkening(size * globals.dpr);"
+        );
+        expect(shaderBody).toContain("in.stemDarkening");
         expect(shaderBody).toContain("params.uOutlineFont != 0u");
     });
 

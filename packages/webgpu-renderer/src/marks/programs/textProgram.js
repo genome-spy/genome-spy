@@ -130,6 +130,7 @@ struct VSOut {
     @location(10) @interpolate(flat) devicePixelsPerAtlas: f32,
     @location(11) tilePosition: vec2<f32>,
     @location(12) @interpolate(flat) shapeBounds: vec4<f32>,
+    @location(13) @interpolate(flat) stemDarkening: f32,
 };
 
 fn culledText() -> VSOut {
@@ -151,6 +152,7 @@ fn culledText() -> VSOut {
     out.devicePixelsPerAtlas = 0.0;
     out.tilePosition = vec2<f32>(0.0);
     out.shapeBounds = vec4<f32>(0.0);
+    out.stemDarkening = 0.0;
     return out;
 }
 
@@ -517,6 +519,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         metrics.metrics.y - params.uSpread,
         metrics.metrics.z - params.uSpread
     );
+    out.stemDarkening = 0.0;
+    if (params.uOutlineFont != 0u) {
+        out.stemDarkening = freeTypeLikeStemDarkening(size * globals.dpr);
+    }
 #if defined(uniqueId_DEFINED)
     out.pickId = getScaled_uniqueId(i) + 1u;
 #endif
@@ -545,16 +551,44 @@ fn sampleSuperSdf(uv: vec2<f32>) -> f32 {
     ) * 0.25;
 }
 
+fn freeTypeLikeStemDarkening(deviceFontSize: f32) -> f32 {
+    // FreeType's auto-hinter estimates a 0.075 em standard stem when the font
+    // provides no better value, then applies a piecewise darkening curve that
+    // fades to zero for sufficiently wide stems. We do not analyze hinted stem
+    // widths, so use the same fallback estimate and return half of FreeType's
+    // width increase as a symmetric signed-distance contour outset.
+    let estimatedStemWidth = deviceFontSize * 0.075;
+    var widthIncrease: f32;
+    if (estimatedStemWidth <= 0.5) {
+        widthIncrease = 0.4;
+    } else if (estimatedStemWidth < 1.0) {
+        widthIncrease = mix(0.4, 0.275, (estimatedStemWidth - 0.5) / 0.5);
+    } else if (estimatedStemWidth <= 1.667) {
+        widthIncrease = 0.275;
+    } else if (estimatedStemWidth < 2.333) {
+        widthIncrease = mix(
+            0.275,
+            0.0,
+            (estimatedStemWidth - 1.667) / (2.333 - 1.667)
+        );
+    } else {
+        widthIncrease = 0.0;
+    }
+    return widthIncrease * 0.5;
+}
+
 fn sampleOutlineCoverage(
     uv: vec2<f32>,
     tilePosition: vec2<f32>,
     shapeBounds: vec4<f32>,
     devicePixelsPerAtlas: f32,
-    halfStrokeWidth: f32
+    halfStrokeWidth: f32,
+    stemDarkening: f32
 ) -> vec2<f32> {
     let sample = textureSample(fontAtlas, fontSampler, uv).rgb;
-    let distance = median(sample.r, sample.g, sample.b) * devicePixelsPerAtlas;
-    let aaAtlas = 0.5 / devicePixelsPerAtlas + 1.0;
+    let distance = median(sample.r, sample.g, sample.b) * devicePixelsPerAtlas +
+        stemDarkening;
+    let aaAtlas = (0.5 + stemDarkening) / devicePixelsPerAtlas + 1.0;
     let fillMin = shapeBounds.xy - vec2<f32>(aaAtlas);
     let fillMax = shapeBounds.zw + vec2<f32>(aaAtlas);
     let strokeAtlas = halfStrokeWidth / devicePixelsPerAtlas;
@@ -597,28 +631,32 @@ fn sampleSuperOutline(in: VSOut) -> vec2<f32> {
             in.tilePosition + 0.25 * tileDx + 0.25 * tileDy,
             in.shapeBounds,
             in.devicePixelsPerAtlas,
-            in.halfStrokeWidth
+            in.halfStrokeWidth,
+            in.stemDarkening
         ) +
         sampleOutlineCoverage(
             in.uv + 0.75 * dx + 0.25 * dy,
             in.tilePosition + 0.75 * tileDx + 0.25 * tileDy,
             in.shapeBounds,
             in.devicePixelsPerAtlas,
-            in.halfStrokeWidth
+            in.halfStrokeWidth,
+            in.stemDarkening
         ) +
         sampleOutlineCoverage(
             in.uv + 0.25 * dx + 0.75 * dy,
             in.tilePosition + 0.25 * tileDx + 0.75 * tileDy,
             in.shapeBounds,
             in.devicePixelsPerAtlas,
-            in.halfStrokeWidth
+            in.halfStrokeWidth,
+            in.stemDarkening
         ) +
         sampleOutlineCoverage(
             in.uv + 0.75 * dx + 0.75 * dy,
             in.tilePosition + 0.75 * tileDx + 0.75 * tileDy,
             in.shapeBounds,
             in.devicePixelsPerAtlas,
-            in.halfStrokeWidth
+            in.halfStrokeWidth,
+            in.stemDarkening
         )
     ) * 0.25;
 }
