@@ -123,13 +123,19 @@ resource checks.
 
 - Manual profiling of `msa.json` zooming and panning after the constant-time
   text program-key fix found interaction performance acceptable.
+- Automated WebGPU stress coverage now grows and rebinds an outline atlas over
+  four 4,096-label updates, then verifies stable reuse across repeated 12,000
+  label / 72,000 glyph replacements.
+- `benchmark:font-atlas` provides a reproducible synthetic-font workload that
+  separates layout/upload time, time to GPU completion, steady atlas reuse,
+  static rendering, growth history, and final RGBA16F texture bytes.
 
 ### Work
 
 - Re-run the five-million-point benchmark for fixed analytic circles, fixed
   path symbols, and variable shapes.
-- Measure cold pipeline compilation, Default Font parse/preparation, warm glyph
-  additions, atlas growth, final atlas bytes, and peak scratch bytes.
+- Run and record headed `benchmark:font-atlas` results on target adapters, then
+  separately measure Default Font download/parsing and peak scratch bytes.
 - Measure single-sample versus supersampled text fragment cost while retaining
   supersampling wherever small-text quality materially benefits.
 - Confirm point-only, custom-point, custom-font, and Default Font browser and

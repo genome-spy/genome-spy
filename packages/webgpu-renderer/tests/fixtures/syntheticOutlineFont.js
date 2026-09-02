@@ -80,7 +80,9 @@ export function createSyntheticLabels(
         Array.from({ length: labelLength }, (_unused, characterIndex) =>
             String.fromCodePoint(
                 FIRST_CODE_POINT +
-                    ((labelIndex * 17 + characterIndex * 43 + phase) %
+                    ((characterIndex === 0
+                        ? labelIndex + phase
+                        : labelIndex * 17 + characterIndex * 43 + phase) %
                         uniqueGlyphs)
             )
         ).join("")

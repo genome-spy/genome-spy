@@ -129,6 +129,7 @@
     "test:msdf-oracle": "playwright test -c playwright.config.js tests/oracles/msdfgen/pathAtlas.gpu.test.js tests/acute-path-strokes.gpu.test.js",
     "compare:path-points": "node scripts/comparePathText.mjs --scene path-points",
     "compare:path-text": "node scripts/comparePathText.mjs",
+    "benchmark:font-atlas": "node scripts/fontAtlasBenchmark/run.mjs",
     "benchmark:resources": "node scripts/resourceSharingBenchmark/run.mjs",
     "dev": "vite",
     "lint": "eslint .",
