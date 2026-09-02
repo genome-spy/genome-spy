@@ -690,10 +690,10 @@ existing alignment, baseline, ranged-text, replacement, and BMFont routes while
 adding centered strokes and 2 by 2 fragment supersampling. The production WGSL
 route is exercised by the Path Text story, while an explicit development
 command compares it with the canonical WASM oracle. Complete renderer
-verification passes: 258 unit tests, 88 GPU tests, TypeScript, tree-shaking, and
-package export checks. The custom-font
-text fixture measures 181,569 minified / 51,616 gzip bytes; the Lato comparison
-fixture measures 282,325 / 122,069 because it deliberately embeds its test font.
+verification passes: 274 unit tests, 91 GPU tests, TypeScript, tree-shaking,
+Storybook, and package export checks. The custom-font text fixture measures
+187,692 minified / 53,211 gzip bytes; the Lato comparison fixture measures
+288,448 / 123,654 because it deliberately embeds its test font.
 The first Core quality smoke test exposed isolated false-inside texels in glyph
 padding at small sizes. The text shader now rejects those samples against the
 known tight glyph bounds while leaving a stroke- and antialiasing-aware guard
@@ -807,6 +807,17 @@ Fonts commit. A dynamic-view test now inserts text after the initial view is
 ready, proves insertion waits for the new outline, verifies that the
 renderer-facing mark entry is populated before the insertion resolves, and confirms a
 second late view with the same descriptor performs no additional preparation.
+
+The final local acceptance checkpoint reran all 274 renderer unit tests and all
+91 WebGPU browser tests, built Storybook, and passed the renderer production,
+tree-shaking, lint, TypeScript, and packed-package checks. The four mandatory
+Core URLs were inspected at DPR 2 without console errors: text remains readable
+from 1 through 19 pixels, all four baseline font variants are distinct, the
+PIK3CA mixed-mark composition is complete, and plenty-of-points exercises its
+named shapes, rotations, and 0 through 4 pixel strokes. Cross-adapter and DPR 1
+visual validation, latency and five-million-point benchmarks, and lifecycle
+stress remain explicit follow-up gates rather than implicit claims of this
+checkpoint.
 
 ### Intended outcome
 
