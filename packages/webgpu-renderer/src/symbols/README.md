@@ -57,8 +57,8 @@ irregular, topology-dependent, and cheap relative to rasterization:
    smooth font contours as corners.
 5. Assign two-channel cyan, magenta, and yellow masks to edge groups. The
    median decoder needs the nearby edge distance in at least two channels.
-6. Annotate sharp convex endpoints with channel masks and tangent domains for
-   pseudo-distance reconstruction.
+6. Annotate sharp convex and concave endpoints with channel masks and tangent
+   domains for pseudo-distance reconstruction.
 7. Recursively approximate cubic Béziers with quadratics to a configurable
    atlas-pixel tolerance. Lines and quadratics remain exact input primitives.
 8. Pack fixed-layout 64-byte segment records and 32-byte atlas-job records.
@@ -105,18 +105,19 @@ vertex shader expands the line or quadratic bounds by the configured distance
 range. The fragment shader computes the exact line distance or a sampled and
 Newton-refined quadratic distance only inside that edge-local rectangle.
 
-Each atlas pixel has three interleaved `atomic<u32>` distance slots. Positive
-finite `f32` magnitudes are converted to reversed ordered-bit keys, allowing a
-cleared zero buffer and `atomicMax` to retain the smallest distance without
-floating-point atomics.
+Each atlas pixel has three interleaved `atomic<u32>` distance slots. Finite
+`f32` magnitudes are converted to reversed ordered-bit keys and the remaining
+low bit retains the sign, allowing a cleared zero buffer and `atomicMax` to
+retain the smallest signed edge distance without floating-point atomics.
 
 Generation uses two edge passes:
 
 1. The first pass records the nearest true finite-segment distance per channel.
 2. The second pass considers tangent-based endpoint pseudo-distances. A pseudo
-   candidate is accepted only when its source edge was also the nearest true
-   edge for that channel. This gate prevents a remote corner from creating a
-   detached color island.
+   candidate must have the same sign as that channel's nearest true edge. This
+   mirrors msdfgen's choice between its nearest positive and negative
+   perpendicular candidates while allowing a relevant adjacent edge to supply
+   the corner continuation.
 
 The second pass starts from a copy of the true-distance buffer. Queue ordering
 makes the generated atlas visible to later draws without CPU readback.
@@ -128,9 +129,13 @@ an even-odd horizontal ray. Quadratics are split at vertical extrema before the
 half-open crossing rule is applied. This avoids the one-pixel sign streaks that
 occur when two roots at a shared extremum both count, or neither counts.
 
-The resulting global sign is applied to all three channel magnitudes and stored
-temporarily in `rgba16float`. A final compute pass checks channel-crossing
-points between horizontally, vertically, and diagonally neighboring texels.
+The independently signed channel distances are compared with the global
+even-odd fill result. The complete RGB triplet is inverted only when its median
+has the wrong fill sign, preserving the channel topology needed for sharp
+filtered corners. The nearest true edge distance is stored separately in alpha,
+and the raw four-channel field is kept temporarily in `rgba16float`. A final
+compute pass checks channel-crossing points between horizontally, vertically,
+and diagonally neighboring texels.
 The linear classifier collapses the farther texel to its median when
 interpolation would create a false zero crossing or leave both endpoint medians
 by more than the maximum expected one-texel distance change. The diagonal
@@ -242,7 +247,7 @@ of source winding.
   msdfgen remains more robust around degenerate control geometry.
 - One-corner contours containing fewer than three source edges use a white
   fallback instead of msdfgen's split-in-thirds teardrop treatment.
-- Pseudo-distance reconstruction currently targets convex sharp corners and
+- Pseudo-distance reconstruction covers sharp convex and concave corners but
   does not implement a configurable geometric miter limit.
 - Correction is local and lightweight rather than canonical.
 - At small sizes, some convex 90-degree corners can look slightly rounder or
@@ -298,3 +303,10 @@ Magenta in the diff means excess WGSL coverage, cyan means excess WASM
 coverage, and yellow/red means both cover the pixel but disagree in color or
 coverage. Always compare at the device-pixel ratios and screen sizes the atlas
 is expected to serve; a close DPR-1 comparison can hide DPR-2 undersampling.
+
+For path points, the comparison also writes the final WGSL and canonical WASM
+atlas textures plus a median-distance diff. It reports raw RGB, median, sign,
+and eight-atlas-pixel near-contour statistics per path. Channel permutations
+and saturated far-field values can differ without changing reconstruction, so
+the near-contour median and rendered coverage are the useful regression
+signals.

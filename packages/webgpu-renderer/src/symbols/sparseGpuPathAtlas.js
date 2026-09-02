@@ -155,7 +155,7 @@ fn quadraticDistance(
     );
 }
 
-fn perpendicularDistance(
+fn signedPerpendicularDistance(
     point: vec2<f32>,
     endpoint: vec2<f32>,
     direction: vec2<f32>,
@@ -166,10 +166,10 @@ fn perpendicularDistance(
         return fallback;
     }
     let delta = point - endpoint;
-    let perpendicular = abs(
-        delta.x * direction.y - delta.y * direction.x
-    ) / sqrt(lengthSquared);
-    return min(fallback, perpendicular);
+    let perpendicular =
+        (delta.x * direction.y - delta.y * direction.x) /
+        sqrt(lengthSquared);
+    return select(fallback, perpendicular, abs(perpendicular) < abs(fallback));
 }
 
 fn channelDistance(
@@ -182,35 +182,45 @@ fn channelDistance(
 ) -> f32 {
     var value = base;
     if ((startMask & channel) != 0u) {
-        value = min(value, startDistance);
+        value = select(
+            value,
+            startDistance,
+            abs(startDistance) < abs(value)
+        );
     }
     if ((endMask & channel) != 0u) {
-        value = min(value, endDistance);
+        value = select(value, endDistance, abs(endDistance) < abs(value));
     }
     return value;
 }
 
+// The high 31 bits rank the smallest magnitude first. The low bit retains the
+// sign of the winning edge without changing that ordering.
 fn candidatePriority(value: f32) -> u32 {
-    let ordered = bitcast<u32>(value) & 0xfffffffeu;
-    return 0xffffffffu - ordered;
+    let orderedMagnitude = bitcast<u32>(abs(value)) & 0xfffffffeu;
+    let rank = 0xfffffffeu - orderedMagnitude;
+    let positive = select(0u, 1u, value >= 0.0);
+    return rank | positive;
 }
 
-fn priorityMagnitude(priority: u32) -> f32 {
+fn priorityDistance(priority: u32) -> f32 {
     if (priority == 0u) {
-        return 1e30;
+        return params.spread;
     }
-    return bitcast<f32>(0xffffffffu - priority);
+    let orderedMagnitude = 0xfffffffeu - (priority & 0xfffffffeu);
+    let magnitude = bitcast<f32>(orderedMagnitude);
+    return select(-magnitude, magnitude, (priority & 1u) != 0u);
 }
 
-fn isNearestTrueDistance(
+fn matchesNearestTrueSign(
     pixelIndex: u32,
     channelIndex: u32,
-    value: f32
+    candidate: f32
 ) -> bool {
-    let nearest = priorityMagnitude(
+    let nearest = priorityDistance(
         atomicLoad(&trueScratch[pixelIndex * 3u + channelIndex])
     );
-    return value <= nearest + 1e-3;
+    return (candidate >= 0.0) == (nearest >= 0.0);
 }
 
 @fragment
@@ -223,10 +233,30 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     if (!(sample.magnitude >= 0.0)) {
         discard;
     }
+    var direction = in.p2 - in.p0;
+    var closestPoint = mix(in.p0, in.p2, sample.t);
+    if (in.kind == 1u) {
+        direction = 2.0 * (
+            (1.0 - sample.t) * (in.p1 - in.p0) +
+            sample.t * (in.p2 - in.p1)
+        );
+        closestPoint = quadraticPoint(in.p0, in.p1, in.p2, sample.t);
+        if (dot(direction, direction) <= 1e-12) {
+            direction = in.p2 - in.p0;
+        }
+    }
+    let closestDelta = point - closestPoint;
+    let edgeCross =
+        closestDelta.x * direction.y - closestDelta.y * direction.x;
+    let signedDistance = select(
+        -sample.magnitude,
+        sample.magnitude,
+        edgeCross >= 0.0
+    );
     let pixel = vec2<u32>(floor(point));
     let pixelIndex = pixel.y * params.atlasSize.x + pixel.x;
     if (params.passMode == 0u) {
-        let priority = candidatePriority(sample.magnitude);
+        let priority = candidatePriority(signedDistance);
         if ((in.colorMask & 1u) != 0u) {
             atomicMax(&trueScratch[pixelIndex * 3u], priority);
         }
@@ -250,16 +280,16 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
             endDirection = in.p2 - in.p0;
         }
     }
-    var startDistance = sample.magnitude;
+    var startDistance = signedDistance;
     if (
         sample.t <= 1e-5 &&
         dot(point - in.p0, startDirection) < 0.0
     ) {
-        let candidate = perpendicularDistance(
+        let candidate = signedPerpendicularDistance(
             point,
             in.p0,
             startDirection,
-            sample.magnitude
+            signedDistance
         );
         // Include the bisector itself so symmetric corners do not retain a
         // one-pixel radial seam.
@@ -267,16 +297,16 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
             startDistance = candidate;
         }
     }
-    var endDistance = sample.magnitude;
+    var endDistance = signedDistance;
     if (
         sample.t >= 1.0 - 1e-5 &&
         dot(point - in.p2, endDirection) > 0.0
     ) {
-        let candidate = perpendicularDistance(
+        let candidate = signedPerpendicularDistance(
             point,
             in.p2,
             endDirection,
-            sample.magnitude
+            signedDistance
         );
         if (dot(point - in.p2, in.endPseudoDomain) <= 0.0) {
             endDistance = candidate;
@@ -285,7 +315,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let startMask = in.pseudoMasks & 7u;
     let endMask = (in.pseudoMasks >> 3u) & 7u;
     let redDistance = channelDistance(
-        sample.magnitude,
+        signedDistance,
         1u,
         startMask,
         endMask,
@@ -293,7 +323,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         endDistance
     );
     let greenDistance = channelDistance(
-        sample.magnitude,
+        signedDistance,
         2u,
         startMask,
         endMask,
@@ -301,45 +331,45 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         endDistance
     );
     let blueDistance = channelDistance(
-        sample.magnitude,
+        signedDistance,
         4u,
         startMask,
         endMask,
         startDistance,
         endDistance
     );
-    if ((in.colorMask & 1u) != 0u && redDistance < sample.magnitude) {
-        if (
-            redDistance <= params.spread &&
-            isNearestTrueDistance(pixelIndex, 0u, sample.magnitude)
-        ) {
-            atomicMax(
-                &scratch[pixelIndex * 3u],
-                candidatePriority(redDistance)
-            );
-        }
+    if (
+        (in.colorMask & 1u) != 0u &&
+        abs(redDistance) < sample.magnitude &&
+        abs(redDistance) <= params.spread &&
+        matchesNearestTrueSign(pixelIndex, 0u, redDistance)
+    ) {
+        atomicMax(
+            &scratch[pixelIndex * 3u],
+            candidatePriority(redDistance)
+        );
     }
-    if ((in.colorMask & 2u) != 0u && greenDistance < sample.magnitude) {
-        if (
-            greenDistance <= params.spread &&
-            isNearestTrueDistance(pixelIndex, 1u, sample.magnitude)
-        ) {
-            atomicMax(
-                &scratch[pixelIndex * 3u + 1u],
-                candidatePriority(greenDistance)
-            );
-        }
+    if (
+        (in.colorMask & 2u) != 0u &&
+        abs(greenDistance) < sample.magnitude &&
+        abs(greenDistance) <= params.spread &&
+        matchesNearestTrueSign(pixelIndex, 1u, greenDistance)
+    ) {
+        atomicMax(
+            &scratch[pixelIndex * 3u + 1u],
+            candidatePriority(greenDistance)
+        );
     }
-    if ((in.colorMask & 4u) != 0u && blueDistance < sample.magnitude) {
-        if (
-            blueDistance <= params.spread &&
-            isNearestTrueDistance(pixelIndex, 2u, sample.magnitude)
-        ) {
-            atomicMax(
-                &scratch[pixelIndex * 3u + 2u],
-                candidatePriority(blueDistance)
-            );
-        }
+    if (
+        (in.colorMask & 4u) != 0u &&
+        abs(blueDistance) < sample.magnitude &&
+        abs(blueDistance) <= params.spread &&
+        matchesNearestTrueSign(pixelIndex, 2u, blueDistance)
+    ) {
+        atomicMax(
+            &scratch[pixelIndex * 3u + 2u],
+            candidatePriority(blueDistance)
+        );
     }
     return vec4<f32>(0.0);
 }
@@ -372,6 +402,7 @@ struct Params {
 @group(0) @binding(2) var<storage, read_write> scratch: array<atomic<u32>>;
 @group(0) @binding(3) var rawOutput: texture_storage_2d<rgba16float, write>;
 @group(0) @binding(4) var<uniform> params: Params;
+@group(0) @binding(5) var<storage, read> trueScratch: array<u32>;
 
 fn quadraticPoint(
     p0: vec2<f32>,
@@ -446,12 +477,13 @@ fn quadraticCrossingParity(
         monotonicQuadraticCrossesRay(point, split, p12, p2);
 }
 
-fn decodeMagnitude(priority: u32) -> f32 {
+fn decodeDistance(priority: u32) -> f32 {
     if (priority == 0u) {
         return params.spread;
     }
-    let ordered = 0xffffffffu - priority;
-    return min(bitcast<f32>(ordered), params.spread);
+    let orderedMagnitude = 0xfffffffeu - (priority & 0xfffffffeu);
+    let magnitude = min(bitcast<f32>(orderedMagnitude), params.spread);
+    return select(-magnitude, magnitude, (priority & 1u) != 0u);
 }
 
 @compute @workgroup_size(8, 8)
@@ -481,19 +513,32 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
     }
     let pixelIndex = pixel.y * params.atlasSize.x + pixel.x;
-    let sign = select(-1.0, 1.0, inside);
-    let unsignedValue = vec3<f32>(
-        decodeMagnitude(atomicLoad(&scratch[pixelIndex * 3u])),
-        decodeMagnitude(atomicLoad(&scratch[pixelIndex * 3u + 1u])),
-        decodeMagnitude(atomicLoad(&scratch[pixelIndex * 3u + 2u]))
+    let expectedSign = select(-1.0, 1.0, inside);
+    var value = vec3<f32>(
+        decodeDistance(atomicLoad(&scratch[pixelIndex * 3u])),
+        decodeDistance(atomicLoad(&scratch[pixelIndex * 3u + 1u])),
+        decodeDistance(atomicLoad(&scratch[pixelIndex * 3u + 2u]))
     );
-    let value = unsignedValue * sign;
+    let rawMedian = max(
+        min(value.r, value.g),
+        min(max(value.r, value.g), value.b)
+    );
+    // Like msdfgen's sign correction, preserve the independently signed color
+    // distances and only invert the triplet when its median disagrees with the
+    // shape fill. This channel topology is what keeps acute corners sharp when
+    // neighboring texels are filtered.
+    if ((rawMedian >= 0.0) != inside) {
+        value = -value;
+    }
     // Preserve a regular signed distance beside the colored distances. Wide,
     // soft effects need the nearest edge regardless of its MSDF color.
     let trueDistance = min(
-        unsignedValue.r,
-        min(unsignedValue.g, unsignedValue.b)
-    ) * sign;
+        abs(decodeDistance(trueScratch[pixelIndex * 3u])),
+        min(
+            abs(decodeDistance(trueScratch[pixelIndex * 3u + 1u])),
+            abs(decodeDistance(trueScratch[pixelIndex * 3u + 2u]))
+        )
+    ) * expectedSign;
     textureStore(
         rawOutput,
         vec2<i32>(pixel),
@@ -1186,6 +1231,7 @@ export class MsdfAtlasGenerator {
                 { binding: 2, resource: { buffer: scratchBuffer } },
                 { binding: 3, resource: rawTexture.createView() },
                 { binding: 4, resource: { buffer: pseudoParamsBuffer } },
+                { binding: 5, resource: { buffer: trueScratchBuffer } },
             ],
         });
         const correctionBindGroup = this.device.createBindGroup({

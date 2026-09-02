@@ -447,12 +447,6 @@ function colorContour(contour, colorState) {
  * @param {boolean[]} corners
  */
 function assignPseudoDistanceMasks(contour, corners) {
-    const orientation = Math.sign(
-        contour.reduce(
-            (area, edge) => area + cross(edge.p0, edge.p3 ?? edge.p2),
-            0
-        )
-    );
     for (let index = 0; index < contour.length; index++) {
         const previous = contour[(index + contour.length - 1) % contour.length];
         const edge = contour[index];
@@ -461,22 +455,14 @@ function assignPseudoDistanceMasks(contour, corners) {
         const startDirection = startTangent(edge);
         const endDirection = endTangent(edge);
         const nextDirection = startTangent(next);
-        const startIsConvex =
-            orientation !== 0 &&
-            previousDirection &&
-            startDirection &&
-            cross(previousDirection, startDirection) * orientation > 1e-9;
-        const endIsConvex =
-            orientation !== 0 &&
-            endDirection &&
-            nextDirection &&
-            cross(endDirection, nextDirection) * orientation > 1e-9;
         const startDomain =
-            corners[index] && startIsConvex
+            corners[index] && previousDirection && startDirection
                 ? normalize(add(previousDirection, startDirection))
                 : null;
         const endDomain =
-            corners[(index + 1) % contour.length] && endIsConvex
+            corners[(index + 1) % contour.length] &&
+            endDirection &&
+            nextDirection
                 ? normalize(add(endDirection, nextDirection))
                 : null;
         edge.startPseudoDomain = startDomain ?? { x: 0, y: 0 };

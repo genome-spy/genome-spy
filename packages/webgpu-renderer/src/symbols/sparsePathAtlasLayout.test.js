@@ -80,14 +80,16 @@ describe("buildSparsePathAtlasLayout", () => {
         expect([3, 5, 6]).toContain(layout.segments[0].colorMask);
     });
 
-    test("bounds convex endpoint pseudo-distances with corner bisectors", () => {
+    test("bounds endpoint pseudo-distances with corner bisectors", () => {
         const layout = buildSparsePathAtlasLayout([
             "M-.35-1H.35V-.35H1V.35H.35V1H-.35V.35H-1V-.35H-.35Z",
         ]);
         const concaveStart = layout.segments[2];
         const convexStart = layout.segments[3];
 
-        expect(concaveStart.startPseudoMask).toBe(0);
+        expect(concaveStart.startPseudoMask).toBe(concaveStart.colorMask);
+        expect(concaveStart.startPseudoDomain.x).toBeCloseTo(Math.SQRT1_2);
+        expect(concaveStart.startPseudoDomain.y).toBeCloseTo(Math.SQRT1_2);
         expect(convexStart.startPseudoDomain.x).toBeCloseTo(Math.SQRT1_2);
         expect(convexStart.startPseudoDomain.y).toBeCloseTo(Math.SQRT1_2);
     });

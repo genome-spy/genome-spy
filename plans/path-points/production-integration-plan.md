@@ -39,6 +39,12 @@ notices.
   preparation and deduplicates repeated font requests.
 - Canonical msdfgen is isolated under package-excluded `tools/` and
   `tests/oracles/`; production bundles and exports do not reference it.
+- The comparison harness checks both rendered symbols and final atlas texels.
+  Per-path median, sign, and near-contour statistics separate generator errors
+  from filtering, quad bounds, and known overlapping-contour behavior.
+- Endpoint pseudo-distances cover concave as well as convex corners, and
+  independently signed RGB candidates retain msdfgen-style channel topology
+  before global even-odd sign correction.
 - The glyph-based text-effects PoC renders label-major shadow, outline, and
   fill layers in one draw. Effect-free text retains its direct glyph fast path.
 - Text program-key lookup is constant time and does not serialize label
@@ -243,6 +249,10 @@ Tentative commit: `docs(core): document path points and outline fonts`
 ## Risks and unresolved decisions
 
 - `rgba16float` capabilities may differ across target adapters.
+- Ordinary path-point atlases now agree with canonical msdfgen at the
+  near-contour median and sign level. Small residual corner differences come
+  from channel layout and filtered subpixel coverage; same-winding overlapping
+  contours remain the material generator discrepancy.
 - Small high-stroke points need a range tier that improves quality without
   wasting cache bandwidth on common points.
 - Fixed-width font atlases can fragment; repacking would improve occupancy but
