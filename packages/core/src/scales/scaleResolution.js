@@ -1405,7 +1405,9 @@ export default class ScaleResolution {
                   .map((member) => member.channelDef.scale)
                   .filter((props) => props !== undefined);
 
-        if (scaleProps.some((props) => props?.type === "null")) {
+        if (
+            scaleProps.some((props) => props === null || props.type === "null")
+        ) {
             return {
                 assembly: undefined,
                 needsDefaultAssembly: false,

@@ -206,6 +206,34 @@ describe("Scale resolution genome assembly", () => {
         ]);
     });
 
+    test("disabled locus scales do not require a default assembly", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: {
+                values: [{ chrom: "chr1", pos: 1 }],
+            },
+            mark: "point",
+            encoding: {
+                x: {
+                    chrom: "chrom",
+                    pos: "pos",
+                    type: "locus",
+                    scale: null,
+                },
+            },
+        };
+
+        const context = createTestViewContext();
+        const view = await context.createOrImportView(spec, null, null, "root");
+
+        expect(
+            getRequiredScaleResolution(view, "x").getAssemblyRequirement()
+        ).toEqual({
+            assembly: undefined,
+            needsDefaultAssembly: false,
+        });
+    });
+
     test("locus scales can use inline contigs in assembly definitions", async () => {
         const genomeStore = new GenomeStore(".");
 
