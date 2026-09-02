@@ -63,6 +63,12 @@ describe("TextProgram series replacement", () => {
             "fn shade(in: VSOut) -> vec4<f32> {\n    return shadeBase(in, 1.0);"
         );
         expect(shaderBody).toContain("let coverage = sampleSuperOutline(in);");
+        expect(shaderBody).toContain(
+            "coverage.x,\n            getGammaForColor(fillColor.rgb)"
+        );
+        expect(shaderBody).toContain(
+            "coverage.y,\n            getGammaForColor(strokeColor.rgb)"
+        );
         expect(shaderBody).toContain("params.uOutlineFont != 0u");
     });
 

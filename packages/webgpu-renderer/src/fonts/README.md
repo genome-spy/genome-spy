@@ -17,7 +17,9 @@ Outline text derives separate fill and centered stroke-band coverages from the
 same MSDF sample. A zero-width stroke has exactly zero band coverage. Fill is
 painted first and the premultiplied stroke is composited over it with
 source-over blending, matching SVG and Canvas paint order without another draw
-pass.
+pass. Fill and stroke coverage then use the same color-dependent gamma
+compensation as the legacy BMFont path: dark edges are narrowed slightly and
+light edges are strengthened against dark backgrounds.
 
 The font allocator starts with a 512-by-128 texture and grows dimensions by
 1.5 times when needed. This keeps enough horizontal room for ordinary glyph

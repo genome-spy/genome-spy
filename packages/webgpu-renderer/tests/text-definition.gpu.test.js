@@ -155,7 +155,7 @@ test("text mark renders supersampled RGBA16F TrueType outlines", async ({
     });
 });
 
-test("outline text ignores stroke color when stroke width is zero", async ({
+test("outline text applies fill gamma without a zero-width stroke", async ({
     page,
 }) => {
     await ensureWebGPU(page);
@@ -177,8 +177,11 @@ test("outline text ignores stroke color when stroke width is zero", async ({
         );
         const font = createTrueTypeFont(bytes);
 
-        /** @param {number[]} stroke */
-        const render = async (stroke) => {
+        /**
+         * @param {number[]} fill
+         * @param {number[]} stroke
+         */
+        const render = async (fill, stroke) => {
             const dpr = 2;
             const canvas = document.createElement("canvas");
             canvas.width = 96 * dpr;
@@ -194,12 +197,15 @@ test("outline text ignores stroke color when stroke width is zero", async ({
                     x: { value: 48, scale: identityScale() },
                     y: { value: 32, scale: identityScale() },
                     size: { value: 40 },
-                    fill: { value: [0.1, 0.4, 0.9, 1] },
+                    fill: { value: fill },
                     stroke: { value: stroke },
                     strokeWidth: { value: 0 },
                 },
             });
-            renderer.render({ draws: [{ mark }] });
+            renderer.render({
+                draws: [{ mark }],
+                clearColor: { r: 0, g: 0, b: 0, a: 0 },
+            });
             await renderer.device.queue.onSubmittedWorkDone();
             const bitmap = await createImageBitmap(
                 await (await fetch(canvas.toDataURL("image/png"))).blob()
@@ -216,8 +222,11 @@ test("outline text ignores stroke color when stroke width is zero", async ({
             return pixels;
         };
 
-        const redStroke = await render([1, 0, 0, 1]);
-        const greenStroke = await render([0, 1, 0, 1]);
+        const blue = [0.1, 0.4, 0.9, 1];
+        const redStroke = await render(blue, [1, 0, 0, 1]);
+        const greenStroke = await render(blue, [0, 1, 0, 1]);
+        const whiteFill = await render([1, 1, 1, 1], [0, 0, 0, 1]);
+        const blackFill = await render([0, 0, 0, 1], [0, 0, 0, 1]);
         let maximumDifference = 0;
         for (let index = 0; index < redStroke.length; index++) {
             maximumDifference = Math.max(
@@ -225,10 +234,17 @@ test("outline text ignores stroke color when stroke width is zero", async ({
                 Math.abs(redStroke[index] - greenStroke[index])
             );
         }
-        return { maximumDifference };
+        let whiteAlpha = 0;
+        let blackAlpha = 0;
+        for (let index = 3; index < whiteFill.length; index += 4) {
+            whiteAlpha += whiteFill[index];
+            blackAlpha += blackFill[index];
+        }
+        return { maximumDifference, whiteAlpha, blackAlpha };
     });
 
     expect(result.maximumDifference).toBe(0);
+    expect(result.whiteAlpha).toBeGreaterThan(result.blackAlpha);
 });
 
 test("TrueType atlases grow across marks and accept new replacement glyphs", async ({

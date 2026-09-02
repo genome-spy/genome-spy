@@ -640,12 +640,20 @@ fn shadeBase(in: VSOut, edgeFadeOpacity: f32) -> vec4<f32> {
         let coverage = sampleSuperOutline(in);
         var fillColor = in.color;
         var strokeColor = in.stroke;
+        let fillCoverage = pow(
+            coverage.x,
+            getGammaForColor(fillColor.rgb)
+        );
+        let strokeCoverage = pow(
+            coverage.y,
+            getGammaForColor(strokeColor.rgb)
+        );
         fillColor.a *= in.opacity;
         strokeColor.a *= in.opacity * in.strokeOpacity;
         fillColor = premultiplyAlpha(fillColor);
         strokeColor = premultiplyAlpha(strokeColor);
-        let fillLayer = fillColor * coverage.x;
-        let strokeLayer = strokeColor * coverage.y;
+        let fillLayer = fillColor * fillCoverage;
+        let strokeLayer = strokeColor * strokeCoverage;
         let color = sourceOver(strokeLayer, fillLayer);
         return color * edgeFadeOpacity;
     }
