@@ -614,6 +614,9 @@ Path-backed points now also implement `inwardStroke`: the nominal path boundary
 is the outer edge, the full stroke is composed toward the fill, and the quad
 does not reserve outward miter or thick-stroke raster padding. A focused GPU
 test compares inside and outside pixels with the centered-stroke route.
+`fillGradientStrength` is likewise evaluated from positive interior MSDF
+distance normalized by delivered device-pixel radius, and has a focused center
+versus edge color test.
 
 ### Intended outcome
 

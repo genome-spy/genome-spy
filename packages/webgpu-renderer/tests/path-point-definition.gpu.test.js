@@ -126,6 +126,62 @@ test("PathPoint keeps inward strokes inside the nominal shape", async ({
     expect(result.inward.outer.slice(0, 3)).toEqual([255, 255, 255]);
 });
 
+test("PathPoint applies the configured fill gradient", async ({ page }) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { identityScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/identity.js"),
+            ]);
+        const dpr = 2;
+        const canvas = document.createElement("canvas");
+        canvas.width = 64 * dpr;
+        canvas.height = 64 * dpr;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr });
+        const mark = renderer.createMark(pointMark, {
+            shape: "square",
+            channels: {
+                x: { value: 32, scale: identityScale() },
+                y: { value: 32, scale: identityScale() },
+                size: { value: 400 },
+                fill: { value: [0.2, 0.4, 0.8, 1] },
+                strokeOpacity: { value: 0 },
+                gradientStrength: { value: 1 },
+            },
+        });
+        renderer.render({ draws: [{ mark }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const bitmap = await createImageBitmap(
+            await (await fetch(canvas.toDataURL("image/png"))).blob()
+        );
+        const copy = new OffscreenCanvas(canvas.width, canvas.height);
+        const context = copy.getContext("2d");
+        context.drawImage(bitmap, 0, 0);
+        const pixels = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        ).data;
+        const sample = (x) => {
+            const offset = (32 * dpr * canvas.width + x * dpr) * 4;
+            return Array.from(pixels.slice(offset, offset + 4));
+        };
+        const samples = { center: sample(32), edge: sample(40) };
+        renderer.destroy();
+        canvas.remove();
+        return samples;
+    });
+
+    expect(result.center.slice(0, 3).every((value) => value > 240)).toBe(true);
+    expect(result.edge[2]).toBeGreaterThan(result.edge[0] + 80);
+});
+
 test("PathPoint marks share an exact renderer-owned GPU atlas", async ({
     page,
 }) => {

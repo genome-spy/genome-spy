@@ -161,6 +161,10 @@ path boundary remains the outer edge and the full requested width is composed
 toward the interior. Its quad therefore omits directional outer-miter padding
 and retains only the fill antialiasing guard.
 
+Path-backed points also preserve `fillGradientStrength`. The shader normalizes
+positive reconstructed interior distance by the delivered device-pixel radius,
+matching the analytic point convention without another atlas channel.
+
 The vertex shader expands and rotates a path-specific quad. CPU metadata stores
 the normalized fill bounds and directional unit-stroke miter extents, so
 ordinary shapes do not pay for one worst-case global padding allowance.

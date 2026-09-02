@@ -40,6 +40,8 @@ struct VSOut {
     @location(6) @interpolate(flat) pickId: u32,
     @location(7) @interpolate(flat) devicePixelsPerAtlas: f32,
     @location(8) @interpolate(flat) inwardStroke: u32,
+    @location(9) gradientStrength: f32,
+    @location(10) @interpolate(flat) deviceRadius: f32,
 };
 
 fn culledPoint() -> VSOut {
@@ -57,6 +59,8 @@ fn culledPoint() -> VSOut {
     out.pickId = 0u;
     out.devicePixelsPerAtlas = 0.0;
     out.inwardStroke = 0u;
+    out.gradientStrength = 0.0;
+    out.deviceRadius = 0.0;
     return out;
 }
 
@@ -159,6 +163,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         1.0 / params.uSpread
     );
     out.inwardStroke = inwardStroke;
+    out.gradientStrength = getScaled_gradientStrength(i);
+    out.deviceRadius = diameter * globals.dpr * 0.5;
 #if defined(uniqueId_DEFINED)
     out.pickId = getScaled_uniqueId(i) + 1u;
 #endif
@@ -198,6 +204,11 @@ fn shade(in: VSOut) -> vec4<f32> {
     var strokeColor = in.stroke;
     fillColor.a *= in.fillOpacity;
     strokeColor.a *= in.strokeOpacity;
+    if (in.gradientStrength > 0.0) {
+        let gradient = max(distance, 0.0) * in.gradientStrength /
+            max(in.deviceRadius, 0.0001);
+        fillColor = mix(fillColor, vec4<f32>(1.0), gradient);
+    }
     fillColor = premultiplyAlpha(fillColor);
     strokeColor = premultiplyAlpha(strokeColor);
 
