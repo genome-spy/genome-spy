@@ -8,9 +8,9 @@ import {
     isTrueTypeFont,
     OUTLINE_ATLAS_OPTIONS,
 } from "../../fonts/outlineTextLayout.js";
+import { getOutlineFontAtlas } from "../../fonts/outlineFontAtlas.js";
 import BmFontManager, { fetchBmFontBitmap } from "../../fonts/bmFontManager.js";
 import { SDF_PADDING } from "../../fonts/bmFontMetrics.js";
-import { getMsdfAtlasGenerator } from "../../symbols/sparseGpuPathAtlas.js";
 import {
     asGpuBufferSource,
     writeTextureData,
@@ -1158,7 +1158,6 @@ export default class TextProgram extends BaseProgram {
         }
         this._glyphOffsets = buildGlyphOffsets(textLayout);
         this._fontManager = fontManager;
-        this._outlinePaths = /** @type {any} */ (textLayout).paths ?? null;
         delete this._markConfig.textLayout;
         delete this._markConfig.fontEntry;
     }
@@ -1356,42 +1355,17 @@ export default class TextProgram extends BaseProgram {
      * @param {import("../../fonts/trueTypeFont.js").TrueTypeFont} font
      */
     _initializeOutlineFontResources(layout, font) {
-        const paths = layout.paths.length > 0 ? layout.paths : ["M0 0H1V1H0Z"];
-        const atlas = getMsdfAtlasGenerator(this.renderer).acquireAtlas(
-            paths,
-            {
-                ...OUTLINE_ATLAS_OPTIONS,
-                normalizationSpan: font.unitsPerEm,
-                format: "rgba16float",
-            },
-            gpuLabel(this.label, "outline font atlas")
-        );
-        atlas.completion.catch(() => {});
-        const atlasScale = atlas.shapePixels / font.unitsPerEm;
-        const glyphMetrics = new Float32Array(paths.length * 8);
-        for (let index = 0; index < layout.outlineGlyphs.length; index++) {
-            const entryOffset = index * 12;
-            const metricOffset = index * 8;
-            const glyph = layout.outlineGlyphs[index];
-            glyphMetrics[metricOffset] =
-                atlas.entries[entryOffset] * atlas.width;
-            glyphMetrics[metricOffset + 1] =
-                atlas.entries[entryOffset + 1] * atlas.height;
-            glyphMetrics[metricOffset + 2] =
-                (atlas.entries[entryOffset + 2] - atlas.entries[entryOffset]) *
-                atlas.width;
-            glyphMetrics[metricOffset + 3] =
-                (atlas.entries[entryOffset + 3] -
-                    atlas.entries[entryOffset + 1]) *
-                atlas.height;
-            glyphMetrics[metricOffset + 4] =
-                -(glyph.bounds.yMin + glyph.bounds.yMax) * 0.5 * atlasScale -
-                glyph.tileHeight * 0.5;
-            glyphMetrics[metricOffset + 5] = glyph.tileWidth;
-            glyphMetrics[metricOffset + 6] = glyph.tileHeight;
-        }
+        const atlas = getOutlineFontAtlas(this.renderer, font);
+        const atlasScale =
+            (OUTLINE_ATLAS_OPTIONS.tileSize -
+                OUTLINE_ATLAS_OPTIONS.shapePadding * 2) /
+            font.unitsPerEm;
 
-        this._setUniformValue("uFontBase", atlas.shapePixels);
+        this._setUniformValue(
+            "uFontBase",
+            OUTLINE_ATLAS_OPTIONS.tileSize -
+                OUTLINE_ATLAS_OPTIONS.shapePadding * 2
+        );
         this._setUniformValue("uLayoutFontSize", layout.fontSize);
         this._setUniformValue("uAtlasScale", [
             1 / atlas.width,
@@ -1401,26 +1375,73 @@ export default class TextProgram extends BaseProgram {
         this._setUniformValue("uDescent", font.descender * atlasScale);
         this._setUniformValue("uSdfPadding", 0);
         this._setUniformValue("uOutlineFont", 1);
-        this._setUniformValue("uShapePixels", atlas.shapePixels);
-        this._setUniformValue("uSpread", atlas.spread);
-        this._sdfNumeratorBase = atlas.shapePixels * 0.35;
+        this._setUniformValue(
+            "uShapePixels",
+            OUTLINE_ATLAS_OPTIONS.tileSize -
+                OUTLINE_ATLAS_OPTIONS.shapePadding * 2
+        );
+        this._setUniformValue("uSpread", OUTLINE_ATLAS_OPTIONS.spread);
+        this._sdfNumeratorBase =
+            (OUTLINE_ATLAS_OPTIONS.tileSize -
+                OUTLINE_ATLAS_OPTIONS.shapePadding * 2) *
+            0.35;
         this._updateTextLayoutBuffers(layout);
-        this._writeExtraBuffer("glyphMetrics", glyphMetrics);
-        const sampler = this.device.createSampler({
-            label: gpuLabel(this.label, "outline font sampler"),
-            addressModeU: "clamp-to-edge",
-            addressModeV: "clamp-to-edge",
-            magFilter: "linear",
-            minFilter: "linear",
-        });
+        this._updateOutlineGlyphMetrics(layout, font, atlas);
         this._extraTextures.set("fontAtlas", {
             texture: atlas.texture,
-            sampler,
+            sampler: atlas.sampler,
             width: atlas.width,
             height: atlas.height,
             format: "rgba16float",
         });
         this._borrowedExtraTextures.add("fontAtlas");
+        this._outlineAtlas = atlas;
+        this._outlineAtlasUnsubscribe = atlas.subscribe((grownAtlas) => {
+            this._setUniformValue("uAtlasScale", [
+                1 / grownAtlas.width,
+                1 / grownAtlas.height,
+            ]);
+            this._extraTextures.set("fontAtlas", {
+                texture: grownAtlas.texture,
+                sampler: grownAtlas.sampler,
+                width: grownAtlas.width,
+                height: grownAtlas.height,
+                format: "rgba16float",
+            });
+            this._writeUniforms();
+            this._rebuildBindGroup();
+            this.renderer._invalidate();
+        });
+    }
+
+    /**
+     * @param {import("../../fonts/layout.js").TextLayout & { outlineGlyphs: { path: string, bounds: import("../../fonts/trueTypeFont.js").TrueTypeBounds, tileWidth: number, tileHeight: number }[], paths: string[] }} layout
+     * @param {import("../../fonts/trueTypeFont.js").TrueTypeFont} font
+     * @param {import("../../fonts/outlineFontAtlas.js").OutlineFontAtlas} atlas
+     * @returns {boolean} Whether the metric buffer identity changed.
+     */
+    _updateOutlineGlyphMetrics(layout, font, atlas) {
+        const entries = atlas.ensure(layout.paths);
+        const atlasScale =
+            (OUTLINE_ATLAS_OPTIONS.tileSize -
+                OUTLINE_ATLAS_OPTIONS.shapePadding * 2) /
+            font.unitsPerEm;
+        const glyphMetrics = new Float32Array(layout.paths.length * 8);
+        for (let index = 0; index < layout.outlineGlyphs.length; index++) {
+            const metricOffset = index * 8;
+            const glyph = layout.outlineGlyphs[index];
+            const entry = entries[index];
+            glyphMetrics[metricOffset] = entry.x;
+            glyphMetrics[metricOffset + 1] = entry.y;
+            glyphMetrics[metricOffset + 2] = entry.width;
+            glyphMetrics[metricOffset + 3] = entry.height;
+            glyphMetrics[metricOffset + 4] =
+                -(glyph.bounds.yMin + glyph.bounds.yMax) * 0.5 * atlasScale -
+                glyph.tileHeight * 0.5;
+            glyphMetrics[metricOffset + 5] = glyph.tileWidth;
+            glyphMetrics[metricOffset + 6] = glyph.tileHeight;
+        }
+        return this._writeExtraBuffer("glyphMetrics", glyphMetrics);
     }
 
     /**
@@ -1541,17 +1562,6 @@ export default class TextProgram extends BaseProgram {
                   lineHeight: this._markConfig.lineHeight,
                   letterSpacing: this._markConfig.letterSpacing,
               });
-        if (
-            outlineFont &&
-            !sameStringArray(
-                /** @type {any} */ (layout).paths,
-                this._outlinePaths
-            )
-        ) {
-            throw new Error(
-                "Replacing TrueType text with new glyphs requires mark recreation."
-            );
-        }
         /** @type {Record<string, import("../../index.js").TypedArray>} */
         const resolved = {};
         for (const [name, targets] of this._logicalSeriesTargets) {
@@ -1576,8 +1586,21 @@ export default class TextProgram extends BaseProgram {
             );
         }
         this._glyphOffsets = buildGlyphOffsets(layout);
-        const textBuffersChanged = this._updateTextLayoutBuffers(layout);
+        let textBuffersChanged = this._updateTextLayoutBuffers(layout);
+        if (outlineFont) {
+            textBuffersChanged =
+                this._updateOutlineGlyphMetrics(
+                    /** @type {any} */ (layout),
+                    outlineFont,
+                    this._outlineAtlas
+                ) || textBuffersChanged;
+        }
         this.updateSeries(resolved, strings.length, textBuffersChanged);
+    }
+
+    destroy() {
+        this._outlineAtlasUnsubscribe?.();
+        super.destroy();
     }
 }
 
@@ -1596,13 +1619,4 @@ function buildGlyphOffsets(textLayout) {
         offsets[i] += offsets[i - 1];
     }
     return offsets;
-}
-
-/** @param {string[]} left @param {string[] | null} right */
-function sameStringArray(left, right) {
-    return (
-        right !== null &&
-        left.length === right.length &&
-        left.every((value, index) => value === right[index])
-    );
 }

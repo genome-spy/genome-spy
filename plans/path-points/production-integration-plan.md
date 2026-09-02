@@ -539,8 +539,11 @@ textures and entry buffers, scratch grows under a 64 MiB ceiling with
 queue-safe retirement, tight shelf packing supports variable rectangles, and
 a versioned texture primitive preserves prior texels across geometric growth.
 The point and text integrations now consume the service and bind its shared
-atlases. The remaining work in this milestone is multi-batch generation into
-one final atlas and incremental allocation on top of the growth primitive.
+atlases. Outline fonts generate missing glyphs as tight temporary batches,
+append their slots to a stable shelf allocation in one final atlas, grow that
+texture geometrically, preserve old texels and coordinates, and synchronously
+rebind every borrowing text mark. Path-symbol atlases remain immutable because
+their finite table is known when the mark is created.
 
 ### Intended outcome
 
@@ -684,7 +687,10 @@ fixture measures 282,325 / 122,069 because it deliberately embeds its test font.
 The first Core quality smoke test exposed isolated false-inside texels in glyph
 padding at small sizes. The text shader now rejects those samples against the
 known tight glyph bounds while leaving a stroke- and antialiasing-aware guard
-for real outer coverage. Incremental atlas growth remains to be implemented.
+for real outer coverage. Renderer-cached font atlases now append only missing
+glyphs, preserve earlier coordinates through geometric texture growth, rebind
+all marks sharing the font, and allow retained replacement to introduce new
+glyphs without recreating the mark.
 
 ### Intended outcome
 

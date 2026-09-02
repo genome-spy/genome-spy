@@ -154,3 +154,114 @@ test("text mark renders supersampled RGBA16F TrueType outlines", async ({
         validationError: null,
     });
 });
+
+test("TrueType atlases grow across marks and accept new replacement glyphs", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { textMark },
+            { identityScale },
+            { createTrueTypeFont },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/text.js"),
+            import("/src/scales/identity.js"),
+            import("/src/fonts/trueTypeFont.js"),
+        ]);
+        const bytes = await fetch("/src/fonts/DefaultFont.ttf").then(
+            (response) => response.arrayBuffer()
+        );
+        const font = createTrueTypeFont(bytes);
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 128;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 128, height: 64, dpr: 2 });
+        renderer.device.pushErrorScope("validation");
+        const first = renderer.createMark(textMark, {
+            font,
+            fontSize: 32,
+            channels: {
+                uniqueId: { value: 81, type: "u32" },
+                text: { value: "A" },
+                x: { value: 24, scale: identityScale() },
+                y: { value: 32, scale: identityScale() },
+                size: { value: 32 },
+            },
+        });
+        const firstProgram = renderer._marks.get(first.markId);
+        const atlas = firstProgram._outlineAtlas;
+        const initialVersion = atlas.version;
+        const initialTexture = atlas.texture;
+        const aPath = font.getGlyph("A").path;
+        const initialEntry = { ...atlas.ensure([aPath])[0] };
+
+        const ascii = Array.from({ length: 95 }, (_, index) =>
+            String.fromCodePoint(index + 32)
+        ).join("");
+        const second = renderer.createMark(textMark, {
+            font,
+            fontSize: 20,
+            channels: {
+                text: { value: ascii },
+                x: { value: 64, scale: identityScale() },
+                y: { value: 16, scale: identityScale() },
+                size: { value: 20 },
+            },
+        });
+        const secondProgram = renderer._marks.get(second.markId);
+        const preservedEntry = atlas.ensure([aPath])[0];
+        const firstBoundAtlas =
+            firstProgram._extraTextures.get("fontAtlas").texture;
+
+        renderer.render({ draws: [{ mark: first }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        let preservedHit = null;
+        for (let y = 16; y <= 48 && preservedHit === null; y += 2) {
+            for (let x = 8; x <= 48 && preservedHit === null; x += 2) {
+                preservedHit = await renderer.pick(x, y);
+            }
+        }
+
+        first.series.replace({ text: "Ω−" }, 1);
+        renderer.render({ draws: [{ mark: first }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        let hit = null;
+        for (let y = 16; y <= 48 && hit === null; y += 2) {
+            for (let x = 8; x <= 48 && hit === null; x += 2) {
+                hit = await renderer.pick(x, y);
+            }
+        }
+        const validationError = await renderer.device.popErrorScope();
+        const value = {
+            sharedAtlas: secondProgram._outlineAtlas === atlas,
+            grew: atlas.version > initialVersion,
+            replacedTexture: atlas.texture !== initialTexture,
+            reboundFirstMark: firstBoundAtlas === atlas.texture,
+            preservedEntry:
+                JSON.stringify(preservedEntry) === JSON.stringify(initialEntry),
+            preservedHit,
+            hit,
+            validationError: validationError?.message ?? null,
+        };
+        renderer.destroy();
+        canvas.remove();
+        return value;
+    });
+
+    expect(result).toEqual({
+        sharedAtlas: true,
+        grew: true,
+        replacedTexture: true,
+        reboundFirstMark: true,
+        preservedEntry: true,
+        preservedHit: 81,
+        hit: 81,
+        validationError: null,
+    });
+});

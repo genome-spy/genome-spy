@@ -89,7 +89,12 @@ bounded generation batches is the next resource-layer step.
 `MsdfAtlasTexture` provides the corresponding final-storage growth primitive
 for incremental consumers. It doubles dimensions as needed, copies the old
 rectangle, increments a version, notifies bind-group owners once, and retires
-the replaced texture after queued work completes.
+the replaced texture after queued work completes. Outline-font atlases use it
+through `fonts/outlineFontAtlas.js`: missing glyphs are generated as tightly
+packed temporary batches of at most 32, assigned append-only shelf coordinates,
+and copied into the final texture. Existing glyph coordinates never move. Marks
+sharing the exact font object share this final atlas and rebind when its texture
+grows.
 
 ### 2. Sparse nearest-distance rasterization
 
@@ -238,8 +243,9 @@ of source winding.
   debt.
 - Analytic circles remain smoother than atlas-sampled circles at some sizes.
   The production point mark should keep an analytic built-in fast path.
-- Atlas entries remain single-resolution and have no mipmaps. Tight shelf
-  packing is available, but incremental free-space reuse is not yet wired.
+- Atlas entries remain single-resolution and have no mipmaps. Outline glyphs
+  append incrementally to stable shelf allocations, but deleted glyph space is
+  not reclaimed and path-symbol tables remain immutable.
 - Scratch storage has a fixed configurable ceiling and is reused per device.
   Atlases exceeding it still need to be split into generation batches.
 - `rgba16float` materially improves delivered edge smoothness over eight-bit
