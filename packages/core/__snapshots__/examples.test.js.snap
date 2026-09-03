@@ -8054,6 +8054,164 @@ exports[`shared examples > initializes examples/core/techniques/semantic_zoom.js
 }
 `;
 
+exports[`shared examples > initializes examples/core/transforms/displace2d/reversed-axes.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer0",
+            "type": "UnitView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "Leader lines",
+                "type": "UnitView",
+              },
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "Labels",
+                "type": "UnitView",
+              },
+            ],
+            "name": "Annotations",
+            "type": "LayerView",
+          },
+        ],
+        "name": "grid0",
+        "type": "LayerView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/core/transforms/displace2d/stress.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "SequenceSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer0",
+            "type": "UnitView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "Leader lines",
+                "type": "UnitView",
+              },
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "Labels",
+                "type": "UnitView",
+              },
+            ],
+            "name": "Annotations",
+            "type": "LayerView",
+          },
+        ],
+        "name": "grid0",
+        "type": "LayerView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
 exports[`shared examples > initializes examples/core/transforms/pileup.json 1`] = `
 {
   "assemblies": [],
