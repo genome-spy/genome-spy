@@ -16,6 +16,7 @@
     ".": "./src/index.js",
     "./minimal": "./src/minimal.js",
     "./full": "./src/full.js",
+    "./controls": "./src/controls.js",
     "./rendering/canvas.js": "./src/rendering/registerCanvas.js",
     "./rendering/svg.js": "./src/rendering/registerSvg.js",
     "./rendering/webgl.js": "./src/rendering/registerWebGL.js",

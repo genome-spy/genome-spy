@@ -47,6 +47,7 @@ const tempDir = fs.mkdtempSync(
 const minimalOutDir = path.join(tempDir, "minimal");
 const productionOutDir = path.join(tempDir, "production");
 const minimalCanvasOutDir = path.join(tempDir, "minimal-canvas");
+const controlsOutDir = path.join(tempDir, "controls");
 
 try {
     verifyImmediateRenderingImports();
@@ -70,6 +71,21 @@ try {
         readAllOutputSources(minimalOutput),
         "Minimal bundle"
     );
+
+    const controlsOutput = await buildEntry(
+        "controls.js",
+        "genomeSpyControls",
+        controlsOutDir
+    );
+    const controlsSources = readAllOutputSources(controlsOutput);
+    verifyNoOptionalRendererSources(controlsSources, "Controls bundle");
+    if (
+        controlsSources.some((source) =>
+            /src\/(genomeSpy|embedFactory)/.test(source)
+        )
+    ) {
+        throw new Error("Controls should not import the GenomeSpy runtime.");
+    }
 
     const minimalCanvasEntry = path.resolve(
         "scripts/fixtures/minimalCanvas.js"
@@ -128,6 +144,16 @@ try {
     }
 
     const productionBundleSources = readAllOutputSources(productionOutput);
+    for (const sources of [
+        readAllOutputSources(minimalOutput),
+        productionBundleSources,
+    ]) {
+        if (sources.some((source) => /src\/controls[/.]/.test(source))) {
+            throw new Error(
+                "Core entry points should not include optional controls."
+            );
+        }
+    }
     if (
         productionBundleSources.some((source) =>
             source.includes(webGpuRenderingDirectory)

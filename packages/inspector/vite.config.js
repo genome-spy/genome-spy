@@ -30,10 +30,12 @@ export default defineConfig(({ command }) => ({
             fileName: (format) => `index.${format === "es" ? "es." : ""}js`,
         },
         rollupOptions: {
-            external: [
-                /^@genome-spy\/app(\/.*)?$/,
-                /^@genome-spy\/core(\/.*)?$/,
-            ],
+            // Inline the dependency-free button helper so direct browser imports
+            // need no import map for a bare Core import. Keep the visualization
+            // runtime external; the inspected embed supplies it through api.debug.
+            external: (id) =>
+                id !== "@genome-spy/core/controls/button.js" &&
+                /^@genome-spy\/(app|core)(\/.*)?$/.test(id),
         },
     },
 }));

@@ -21,6 +21,27 @@ describe("InspectorSession", () => {
         expect(session.snapshot.nodes).toEqual([]);
     });
 
+    test("does not resume a pending refresh after disposal", async () => {
+        /** @type {(modules: typeof debugModules) => void} */
+        let finish;
+        const session = new InspectorSession({
+            getViewRoot: () => undefined,
+            getModules: () =>
+                new Promise((resolve) => {
+                    finish = resolve;
+                }),
+        });
+        let snapshotEvents = 0;
+        session.addEventListener("snapshot", () => {
+            snapshotEvents++;
+        });
+        const pending = session.refresh();
+        session.dispose();
+        finish(debugModules);
+        await pending;
+        expect(snapshotEvents).toBe(0);
+    });
+
     test("uses core runtime view ids for view nodes", async () => {
         const view = createFakeView();
         const session = new InspectorSession({

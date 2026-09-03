@@ -21,6 +21,7 @@ export default defineConfig({
                 brushLinkingApi: "src/brushLinkingApi.html",
                 viewMutationApi: "src/viewMutationApi.html",
                 inspectorOverlay: "src/inspectorOverlay.html",
+                controls: "src/controls.html",
                 linkedEmbeds: "src/linkedEmbeds.html",
                 dynamicNamedData: "src/dynamicNamedData.html",
                 multipleDynamicSources: "src/multipleDynamicSources.html",

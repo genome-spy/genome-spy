@@ -91,6 +91,9 @@ export default class InspectorSession extends EventTarget {
 
         const root = this.#getRoot();
         const debugModules = await this.#getDebugModules();
+        if (this.#disposed) {
+            return;
+        }
         this.#debugModules = debugModules;
         this.#objectsById = new Map();
         this.#views = collectViews(root);

@@ -60,7 +60,7 @@ export declare class InspectorSession extends EventTarget {
 }
 
 /**
- * Creates an embeddable inspector panel and its backing session.
+ * Creates an embeddable inspector panel with its initial snapshot ready.
  */
 export declare function createInspectorPanel(
     host: InspectorHost,
@@ -69,6 +69,9 @@ export declare function createInspectorPanel(
          * Inspector tab to show first, such as `"elements"` or `"dataflow"`.
          */
         activePanel?: string;
+
+        /** Cancels loading and disposes the panel when aborted. */
+        signal?: AbortSignal;
     }
 ): Promise<{
     /**
@@ -97,6 +100,9 @@ export declare function attachInspectorOverlay(
          * Container where the overlay is appended. Defaults to `document.body`.
          */
         container?: HTMLElement;
+
+        /** Cancels opening and disposes the overlay when aborted. */
+        signal?: AbortSignal;
 
         /**
          * CSS width for the overlay. Defaults to `min(46vw, 760px)`.
@@ -144,3 +150,23 @@ export declare function appInspector(options?: {
  * @deprecated Use `appInspector`.
  */
 export declare const genomeSpyInspector: typeof appInspector;
+
+/** Options for the Core controls integration. */
+export interface InspectorButtonOptions {
+    /** Visible text instead of the default bug icon. */
+    text?: string;
+    /** Hover title. Defaults to "Inspect visualization". */
+    title?: string;
+    /** CSS width of the Inspector overlay. */
+    width?: string;
+    /** Inspector tab to show first, such as "elements" or "dataflow". */
+    activePanel?: string;
+}
+
+/**
+ * Creates a control that lazily opens an Inspector for the attached embed.
+ * The overlay follows full-window expansion and is disposed with the controls.
+ */
+export declare function inspectorButton(
+    options?: InspectorButtonOptions
+): import("@genome-spy/core/controls").Control;

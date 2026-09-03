@@ -22,7 +22,8 @@
     }
   },
   "files": [
-    "dist/"
+    "dist/",
+    "src/index.d.ts"
   ],
   "repository": {
     "type": "git",

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="style.scss" />
+        <title>Optional visualization controls</title>
+        <style>
+            #plot {
+                position: relative;
+                height: 360px;
+                /*
+                 * Controls are absolutely positioned children of this element.
+                 * These margins leave room for top/bottom placement without
+                 * shrinking the plot. Keep overflow visible here and ensure
+                 * ancestors do not clip the outside buttons.
+                 */
+                margin-block: 48px;
+                max-width: 900px;
+                border: 1px solid #ddd;
+                background: white;
+            }
+            /*
+             * Full-window expansion reparents #plot into a dialog, so keep its
+             * styles independent of ancestor selectors such as .panel #plot.
+             * Controls inherit these optional custom properties from #plot:
+             * --gs-controls-color (default #333)
+             * --gs-controls-background (default #fff)
+             * --gs-controls-hover-opacity (default 0.3)
+             */
+        </style>
+    </head>
+    <body>
+        <h1>Optional visualization controls</h1>
+        <p>
+            Hover over the plot or focus it with the keyboard to reveal its
+            floating controls. Download PNG or SVG, or expand the plot to fill
+            this window. Press Escape or the restore button to return to the
+            page. Zooming and selections are preserved when expanding and
+            restoring.
+        </p>
+        <p>
+            Shift-drag across the points to select a region. Scroll over the
+            plot to zoom. The eraser button clears the selection; hover for its
+            title. The bug button opens the Inspector. Image downloads include
+            the current visualization state.
+        </p>
+        <p>
+            <label>
+                Placement
+                <select id="placement">
+                    <option value="inside">Inside (overlay)</option>
+                    <option value="top">Top</option>
+                    <option value="bottom">Bottom</option>
+                </select>
+            </label>
+            <label>
+                Visibility
+                <select id="visibility">
+                    <option value="default">Placement default</option>
+                    <option value="hover">On hover or focus</option>
+                    <option value="always">Always visible</option>
+                </select>
+            </label>
+            Changing controls preserves the current plot state. This page
+            provides margins above and below the plot for outside controls.
+        </p>
+        <div id="plot"></div>
+        <!-- Icon markup is cloned into each button's shadow root. Set its own
+             fill/stroke attributes so it needs no page-level CSS. -->
+        <template id="clear-selection-icon">
+            <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linejoin="round"
+            >
+                <path d="m3 12 8-8 6 6-7 7H7zM7 8l6 6M10 17h7" />
+            </svg>
+        </template>
+        <p>
+            <button id="reset">Reset example</button>
+            disposes the controls and embed before recreating them.
+        </p>
+        <script type="module" src="/controls.js"></script>
+    </body>
+</html>

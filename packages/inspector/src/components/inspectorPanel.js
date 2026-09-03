@@ -140,7 +140,9 @@ export class GsInspectorPanel extends LitElement {
             this.session?.removeEventListener("snapshot", onSnapshot);
             this.#disconnect = undefined;
         };
-        this.#refresh();
+        // Initialization belongs to the creator. Reconnecting only adopts the
+        // current snapshot; runtime events and the Refresh button keep it fresh.
+        onSnapshot();
     }
 
     #disconnectSession() {
@@ -210,9 +212,11 @@ export class GsInspectorPanel extends LitElement {
     #renderPanelTab(panel, label) {
         return html`
             <button
-                class=${this.activePanel === panel
-                    ? "panel-tab selected"
-                    : "panel-tab"}
+                class=${
+                    this.activePanel === panel
+                        ? "panel-tab selected"
+                        : "panel-tab"
+                }
                 @click=${() => {
                     this.activePanel = panel;
                 }}
@@ -262,9 +266,11 @@ export class GsInspectorPanel extends LitElement {
             <div class="main">
                 ${this.#renderHierarchyPane(root)}
                 <div class="details">
-                    ${selected
-                        ? this.#renderDetails(selected)
-                        : html`<div class="empty">No view selected.</div>`}
+                    ${
+                        selected
+                            ? this.#renderDetails(selected)
+                            : html`<div class="empty">No view selected.</div>`
+                    }
                 </div>
             </div>
         `;
@@ -294,11 +300,13 @@ export class GsInspectorPanel extends LitElement {
                         Show view chrome
                     </label>
                 </div>
-                ${root
-                    ? this.#renderNode(root, 0)
-                    : html`<div class="empty">
-                          Launch the app to inspect the hierarchy.
-                      </div>`}
+                ${
+                    root
+                        ? this.#renderNode(root, 0)
+                        : html`<div class="empty">
+                              Launch the app to inspect the hierarchy.
+                          </div>`
+                }
             </div>
         `;
     }
@@ -323,12 +331,16 @@ export class GsInspectorPanel extends LitElement {
             >
                 <span class="node-main">
                     ${node.childIds.length > 0 ? "v" : "-"} ${node.name}
-                    ${node.chrome
-                        ? html`<span class="badge">chrome</span>`
-                        : nothing}
-                    ${node.visible
-                        ? nothing
-                        : html`<span class="badge">hidden</span>`}
+                    ${
+                        node.chrome
+                            ? html`<span class="badge">chrome</span>`
+                            : nothing
+                    }
+                    ${
+                        node.visible
+                            ? nothing
+                            : html`<span class="badge">hidden</span>`
+                    }
                 </span>
                 <span class="node-meta"> ${node.markType ?? node.type} </span>
             </button>
@@ -516,9 +528,11 @@ export class GsInspectorPanel extends LitElement {
                             <tr>
                                 <td>${encoding.channel}</td>
                                 <td>
-                                    ${encoding.field ??
-                                    encoding.expr ??
-                                    formatValue(encoding.value)}
+                                    ${
+                                        encoding.field ??
+                                        encoding.expr ??
+                                        formatValue(encoding.value)
+                                    }
                                 </td>
                                 <td>${encoding.type ?? "-"}</td>
                                 <td>${encoding.scaleResolutionId ?? "-"}</td>
@@ -769,9 +783,13 @@ export class GsInspectorPanel extends LitElement {
                                   <span class="current-member">
                                       ${member.viewPath}:${member.channel}
                                   </span>
-                                  ${member.chrome
-                                      ? html`<span class="badge">chrome</span>`
-                                      : nothing}
+                                  ${
+                                      member.chrome
+                                          ? html`<span class="badge"
+                                                >chrome</span
+                                            >`
+                                          : nothing
+                                  }
                               </li>
                           `
                         : html`
@@ -793,41 +811,49 @@ export class GsInspectorPanel extends LitElement {
                                   >
                                       ${member.viewPath}:${member.channel}
                                   </button>
-                                  ${member.chrome
-                                      ? html`<span class="badge">chrome</span>`
-                                      : nothing}
+                                  ${
+                                      member.chrome
+                                          ? html`<span class="badge"
+                                                >chrome</span
+                                            >`
+                                          : nothing
+                                  }
                               </li>
                           `
                 )}
             </ul>
-            ${members.length > visibleMembers.length
-                ? html`
-                      <button
-                          class="inline-action"
-                          @click=${() =>
-                              this.#setResolutionMembersExpanded(
-                                  resolutionId,
-                                  true
-                              )}
-                      >
-                          Show all ${members.length}
-                      </button>
-                  `
-                : nothing}
-            ${expanded && members.length > 5
-                ? html`
-                      <button
-                          class="inline-action"
-                          @click=${() =>
-                              this.#setResolutionMembersExpanded(
-                                  resolutionId,
-                                  false
-                              )}
-                      >
-                          Show fewer
-                      </button>
-                  `
-                : nothing}
+            ${
+                members.length > visibleMembers.length
+                    ? html`
+                          <button
+                              class="inline-action"
+                              @click=${() =>
+                                  this.#setResolutionMembersExpanded(
+                                      resolutionId,
+                                      true
+                                  )}
+                          >
+                              Show all ${members.length}
+                          </button>
+                      `
+                    : nothing
+            }
+            ${
+                expanded && members.length > 5
+                    ? html`
+                          <button
+                              class="inline-action"
+                              @click=${() =>
+                                  this.#setResolutionMembersExpanded(
+                                      resolutionId,
+                                      false
+                                  )}
+                          >
+                              Show fewer
+                          </button>
+                      `
+                    : nothing
+            }
         `;
     }
 

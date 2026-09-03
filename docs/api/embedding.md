@@ -48,6 +48,59 @@ For practical examples of using the API, check the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
 
+## Optional controls
+
+`attachControls` mounts an explicit, ordered list of controls. It provides
+styles and hover/focus visibility but does not register renderers.
+
+```js
+import { embed } from "@genome-spy/core/minimal";
+import "@genome-spy/core/rendering/webgl.js";
+import "@genome-spy/core/rendering/svg.js";
+import {
+  attachControls,
+  pngButton,
+  svgButton,
+  fullWindowButton,
+} from "@genome-spy/core/controls";
+
+const container = document.getElementById("plot");
+const api = await embed(container, spec);
+const controls = attachControls(container, api, {
+  controls: [pngButton({ filename: "plot" }), svgButton(), fullWindowButton()],
+});
+
+// Before replacing or removing the embed:
+controls.dispose();
+api.finalize();
+```
+
+| Option       | Purpose                                                                                                                |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `controls`   | Required list of control definitions, in display order.                                                                |
+| `placement`  | `"inside"` (default), `"top"`, or `"bottom"`.                                                                          |
+| `visibility` | `"hover"` or `"always"`. Defaults to hover inside, always for top/bottom. Devices without hover keep controls visible. |
+| `onError`    | Error callback; errors and SVG warnings also appear beside the buttons.                                                |
+
+`pngButton` and `svgButton` accept two options:
+
+- `filename`: the download name without an extension; defaults to `"genomespy"`.
+- `exportOptions`: settings passed to the [image export API](./instance.md#exporting-raster-images).
+
+`button({ label, onClick })` adds a custom text button. The label also serves as
+its accessible name and hover title. Set `icon` to an SVG or HTML element for an
+icon button. An optional `title` overrides the hover tooltip.
+
+See the [commented example](https://github.com/genome-spy/genome-spy/blob/master/packages/embed-examples/src/controls.js)
+for custom actions, or the [Control contract](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/controls.js)
+for controls with their own lifecycle.
+
+The Inspector package also provides an [inspectorButton()](./inspector.md#core-embeds).
+
+All placements attach to the same container without changing its size.
+Top/bottom controls sit outside it: provide space (e.g. `margin-block: 48px`)
+and allow overflow. Inside controls overlay the plot.
+
 ## Debugging embeds
 
 Use the [Inspector](./inspector.md) to inspect the live view hierarchy,

@@ -42,25 +42,35 @@ inspector, so the plot and inspector are visible side by side.
 
 ## Core Embeds
 
-Core does not load the inspector by itself. Applications that embed Core can
-install `@genome-spy/inspector` and attach the inspector from their own debug
-UI.
-
-The Core embed result exposes `api.debug`, which gives the inspector access to
-the live internal root view and loads debug helpers from the same Core runtime:
+Add an Inspector button to the optional [embed controls](./embedding.md#optional-controls):
 
 ```js
 import { embed } from "@genome-spy/core";
-import { attachInspectorOverlay } from "@genome-spy/inspector";
+import { attachControls, pngButton } from "@genome-spy/core/controls";
+import { inspectorButton } from "@genome-spy/inspector";
 
 const api = await embed(element, spec);
+const controls = attachControls(element, api, {
+  controls: [pngButton(), inspectorButton()],
+});
 
-const inspector = await attachInspectorOverlay(api.debug);
-
-// Later, when the host page is destroyed:
-inspector.dispose();
+// Before removing the embed:
+controls.dispose();
 api.finalize();
 ```
+
+The button loads the Inspector UI on demand. It follows full-window expansion
+and closes when the controls are disposed. Options include `text` (instead of
+the bug icon), `title`, `width`, and `activePanel`.
+
+For direct browser imports, use the Inspector's `dist/index.es.js` and Core's
+`dist/src/controls.js` with its relative module files available. These work with
+Core's existing `dist/bundle/index.es.js`; no import map is required. Inspector
+gets debug helpers through `api.debug` from the same Core runtime as the plot.
+
+To manage an overlay from your own UI, use
+`const inspector = await attachInspectorOverlay(api.debug)` and call
+`inspector.dispose()` during cleanup.
 
 For applications with their own panels or split layouts, use
 `createInspectorPanel(...)` instead and place the returned `panel` element in
