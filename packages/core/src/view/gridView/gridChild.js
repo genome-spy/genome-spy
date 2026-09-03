@@ -232,6 +232,12 @@ export default class GridChild {
     }
 
     #setupRulers() {
+        // Descendant plots handle inherited rulers. Concat bounds include axes
+        // and must not overwrite plot coordinates as pointer events bubble up.
+        if (isAnyConcatSpec(this.view.spec)) {
+            return;
+        }
+
         for (const {
             owner,
             paramName,

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": [
+    "Ruler in nested plots",
+    "The ruler should follow the pointer across both tracks, including near the left plot edge beside the wide y-axis labels."
+  ],
+
+  "vconcat": [
+    {
+      "params": [
+        {
+          "name": "cursor",
+          "ruler": {
+            "encodings": ["x"],
+            "extent": "container",
+            "snap": false
+          }
+        }
+      ],
+      "data": {
+        "values": [
+          { "x": 10, "y": "A long category label" },
+          { "x": 50, "y": "Another category label" },
+          { "x": 90, "y": "A third category label" }
+        ]
+      },
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": [0, 100] }
+        },
+        "y": {
+          "field": "y",
+          "type": "nominal",
+          "axis": { "minExtent": 150, "title": null }
+        }
+      },
+      "resolve": { "scale": { "x": "shared" } },
+      "vconcat": [
+        { "width": 500, "height": 120, "mark": "point" },
+        { "width": 500, "height": 120, "mark": "point" }
+      ]
+    }
+  ],
+
+  "config": { "view": { "stroke": "lightgray" } }
+}

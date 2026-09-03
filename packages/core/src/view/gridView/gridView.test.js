@@ -9,7 +9,11 @@ import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
 import { normalizeClipOptions } from "../renderingContext/clipOptions.js";
 import UnitView from "../unitView.js";
 import AxisView from "../axisView.js";
-import { createAndInitialize, createTestViewContext } from "../testUtils.js";
+import {
+    createAndInitialize,
+    createTestViewContext,
+    renderToLayout,
+} from "../testUtils.js";
 import { createLogicalVisibleRect } from "../../rendering/webgl/marks/webGlMark.js";
 import { isChromeView } from "../viewSelectors.js";
 
@@ -2447,6 +2451,96 @@ describe("GridView wheel zoom", () => {
 });
 
 describe("GridView ruler interactions", () => {
+    test.each(/** @type {const} */ (["x", "y"]))(
+        "nested concat ruler uses the plot's %s coordinates",
+        async (channel) => {
+            // Parent bounds include axes; only the actual plot can invert the pointer.
+            const originalMouseEvent = globalThis.MouseEvent;
+            globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+                /** @type {any} */ (Event)
+            );
+
+            try {
+                /** @type {import("../../spec/view.js").UnitSpec} */
+                const plot = {
+                    ...makeUnitSpec(),
+                    width: 200,
+                    height: 100,
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: { domain: [0, 100] },
+                            axis: { orient: "top", minExtent: 40 },
+                        },
+                        y: {
+                            field: "y",
+                            type: "quantitative",
+                            scale: { domain: [0, 100] },
+                            axis: { minExtent: 100 },
+                        },
+                    },
+                };
+                const view = await createAndInitialize(
+                    {
+                        vconcat: [
+                            {
+                                params: [
+                                    {
+                                        name: "cursor",
+                                        ruler: {
+                                            encodings: [channel],
+                                            snap: false,
+                                        },
+                                    },
+                                ],
+                                resolve: {
+                                    scale: { x: "shared", y: "shared" },
+                                },
+                                vconcat: [
+                                    {
+                                        resolve: {
+                                            scale: { x: "shared", y: "shared" },
+                                        },
+                                        vconcat: [plot, plot],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                    ConcatView
+                );
+                renderToLayout(view);
+                const owner = /** @type {ConcatView} */ (view.children[0]);
+                const plots = /** @type {ConcatView} */ (owner.children[0]);
+
+                for (const child of plots.children) {
+                    for (const fraction of [0, 0.5, 0.99]) {
+                        const point = new Point(
+                            child.coords.x + child.coords.width * fraction,
+                            child.coords.y + child.coords.height * fraction
+                        );
+                        view.propagateInteraction(
+                            new Interaction(
+                                point,
+                                /** @type {MouseEvent} */ (
+                                    new Event("mousemove")
+                                )
+                            )
+                        );
+
+                        const value = owner.paramRuntime.findValue("cursor");
+                        expect(value.values[channel]).toBeCloseTo(
+                            (channel === "x" ? fraction : 1 - fraction) * 100
+                        );
+                    }
+                }
+            } finally {
+                globalThis.MouseEvent = originalMouseEvent;
+            }
+        }
+    );
+
     test("vconcat ruler follows mousemove coordinates", async () => {
         const originalMouseEvent = globalThis.MouseEvent;
 
