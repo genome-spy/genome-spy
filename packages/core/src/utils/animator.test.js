@@ -1,5 +1,13 @@
 import { describe, expect, test } from "vitest";
-import { makeLerpSmoother } from "./animator.js";
+import { makeLerpSmoother, smoothToTarget } from "./animator.js";
+
+describe("smoothToTarget", () => {
+    test("covers half of the remaining distance per half-life", () => {
+        expect(smoothToTarget(2, 10, 0, 100)).toBe(2);
+        expect(smoothToTarget(2, 10, 100, 100)).toBe(6);
+        expect(smoothToTarget(2, 10, 200, 100)).toBe(8);
+    });
+});
 
 function createTestAnimator() {
     /** @type {((timestamp: number) => void)[]} */
