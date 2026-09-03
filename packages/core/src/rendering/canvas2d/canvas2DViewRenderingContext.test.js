@@ -21,6 +21,7 @@ function createRecordingContext() {
      *     fillRects: [number, number, number, number][],
      *     fills: [number, string][],
      *     strokes: [number, string][],
+     *     shadows: {color: string, blur: number, offsetX: number, offsetY: number, opacity: number}[],
      *     moves: [number, number][],
      *     lines: [number, number][],
      *     beziers: [number, number, number, number, number, number][],
@@ -42,6 +43,7 @@ function createRecordingContext() {
         fillRects: [],
         fills: [],
         strokes: [],
+        shadows: [],
         moves: [],
         lines: [],
         beziers: [],
@@ -55,11 +57,17 @@ function createRecordingContext() {
         closes: 0,
         saves: 0,
     };
+    /** @type {Record<string, unknown>[]} */
+    const states = [];
     const context = /** @type {any} */ ({
         canvas: { width: 200, height: 100 },
         fillStyle: "#000000",
         strokeStyle: "#000000",
         globalAlpha: 1,
+        shadowColor: "rgba(0, 0, 0, 0)",
+        shadowBlur: 0,
+        shadowOffsetX: 0,
+        shadowOffsetY: 0,
         lineWidth: 1,
         lineCap: "butt",
         lineJoin: "miter",
@@ -69,8 +77,22 @@ function createRecordingContext() {
         resetTransform: vi.fn(),
         clearRect: vi.fn(),
         setTransform: vi.fn(),
-        save: () => calls.saves++,
-        restore: vi.fn(),
+        save: () => {
+            calls.saves++;
+            states.push(
+                Object.fromEntries(
+                    [
+                        "fillStyle",
+                        "globalAlpha",
+                        "shadowColor",
+                        "shadowBlur",
+                        "shadowOffsetX",
+                        "shadowOffsetY",
+                    ].map((key) => [key, context[key]])
+                )
+            );
+        },
+        restore: vi.fn(() => Object.assign(context, states.pop())),
         beginPath: vi.fn(),
         rect: (
             /** @type {number} */ x,
@@ -131,9 +153,18 @@ function createRecordingContext() {
             /** @type {number} */ height,
             /** @type {number[]} */ radii
         ) => calls.roundRects.push([x, y, width, height, Array.from(radii)]),
-        fill: vi.fn(() =>
-            calls.fills.push([context.globalAlpha, "" + context.fillStyle])
-        ),
+        fill: vi.fn(() => {
+            calls.fills.push([context.globalAlpha, "" + context.fillStyle]);
+            if (context.shadowColor !== "rgba(0, 0, 0, 0)") {
+                calls.shadows.push({
+                    color: context.shadowColor,
+                    blur: context.shadowBlur,
+                    offsetX: context.shadowOffsetX,
+                    offsetY: context.shadowOffsetY,
+                    opacity: context.globalAlpha,
+                });
+            }
+        }),
         stroke: vi.fn(() =>
             calls.strokes.push([context.globalAlpha, "" + context.strokeStyle])
         ),
@@ -908,15 +939,13 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(requestRender).toHaveBeenCalledOnce();
     });
 
-    test("draws rounded rectangles while warning about other effects", async () => {
+    test("draws rounded rectangles while warning about unsupported hatches", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },
             mark: {
                 type: "rect",
                 cornerRadius: 5,
                 hatch: "diagonal",
-                shadowBlur: 10,
-                shadowOpacity: 0.5,
             },
             encoding: {
                 x: { value: 0.2 },
@@ -945,7 +974,6 @@ describe("Canvas2DViewRenderingContext", () => {
             expect(warnings).toEqual(
                 expect.arrayContaining([
                     expect.stringContaining("unsupported rect hatch"),
-                    expect.stringContaining("unsupported rect shadow"),
                 ])
             );
             expect(warnings).not.toEqual(
@@ -956,6 +984,71 @@ describe("Canvas2DViewRenderingContext", () => {
         } finally {
             warn.mockRestore();
         }
+    });
+
+    test("draws independent rect shadows and updates expression-backed properties", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}, {}] },
+            params: [{ name: "shadowOpacity", value: 0.4 }],
+            mark: {
+                type: "rect",
+                cornerRadiusTopLeft: 5,
+                cornerRadiusBottomRight: 10,
+                stroke: "blue",
+                strokeWidth: 4,
+                shadowColor: "#abcdef",
+                shadowBlur: 10,
+                shadowOffsetX: -3,
+                shadowOffsetY: 4,
+                shadowOpacity: { expr: "shadowOpacity" },
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.2 },
+                y2: { value: 0.8 },
+                fill: { value: "red" },
+                fillOpacity: { value: 0.25 },
+            },
+        });
+        const recording = createRecordingContext();
+        render(view, recording.context);
+
+        // The helper renders at DPR 2. Shadows have their own opacity and a
+        // stroke-expanded cutout, and must not leak into either foreground.
+        expect(recording.calls.shadows).toEqual(
+            Array(2).fill({
+                color: "#abcdef",
+                blur: 16,
+                offsetX: -6,
+                offsetY: 8,
+                opacity: 0.4,
+            })
+        );
+        expect(recording.calls.roundRects[0]).toEqual([
+            18,
+            expect.closeTo(18),
+            64,
+            64,
+            [7, 2, 12, 2],
+        ]);
+        expect(recording.context.clip).toHaveBeenCalledWith("evenodd");
+        expect(recording.calls.fills).toEqual([
+            [0.4, "black"],
+            [0.25, "red"],
+            [0.4, "black"],
+            [0.25, "red"],
+        ]);
+        expect(recording.context.shadowColor).toBe("rgba(0, 0, 0, 0)");
+
+        view.paramRuntime.setValue("shadowOpacity", 0);
+        const disabled = createRecordingContext();
+        render(view, disabled.context);
+        expect(disabled.calls.shadows).toHaveLength(0);
+        expect(disabled.calls.fills).toEqual([
+            [0.25, "red"],
+            [0.25, "red"],
+        ]);
     });
 
     test("evaluates constant rect encoders once per render", async () => {

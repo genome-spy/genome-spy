@@ -285,6 +285,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                     }
                     return renderMarkCanvas(mark, {
                         context,
+                        devicePixelRatio: this.devicePixelRatio,
                         coords: occurrenceCoords,
                         data,
                         start,

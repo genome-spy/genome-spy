@@ -16,9 +16,6 @@ export function renderRectCanvas(baseMark, options) {
     if (properties.hatch != "none") {
         options.warn("Canvas2D ignored unsupported rect hatch.");
     }
-    if (properties.shadow.opacity > 0) {
-        options.warn("Canvas2D ignored unsupported rect shadow.");
-    }
     const start = options.start ?? 0;
     if (start === (options.end ?? options.data.length)) {
         return 0;
@@ -47,6 +44,9 @@ export function renderRectCanvas(baseMark, options) {
             : 0;
 
     return visitRectInstances(mark, properties, options, (instance) => {
+        if (properties.shadow.opacity > 0) {
+            drawShadow(instance, properties.shadow, options, radii);
+        }
         const opacityFactor = instance.opacityFactor;
         const fillVisible = instance.fill != "none" && instance.fillOpacity > 0;
         const stroke = strokeIsConstant
@@ -121,6 +121,56 @@ export function renderRectCanvas(baseMark, options) {
             }
         }
     });
+}
+
+/**
+ * Paints a solid silhouette's shadow outside the rect and its stroke, keeping
+ * transparent fills clear inside the shape, as in the SVG and GPU renderers.
+ *
+ * @param {import("../../immediate/marks/rect.js").RectInstance} instance
+ * @param {import("../../immediate/marks/rect.js").ResolvedRectProperties["shadow"]} shadow
+ * @param {import("./index.js").CanvasMarkRenderingOptions} options
+ * @param {number[]} radii Reused scratch space for the expanded corner radii.
+ */
+function drawShadow(instance, shadow, options, radii) {
+    const { context, devicePixelRatio, visibleBounds } = options;
+    const padding = instance.strokeWidth / 2;
+    const x = instance.x - padding;
+    const y = instance.y - padding;
+    const width = instance.width + padding * 2;
+    const height = instance.height + padding * 2;
+    radii[0] = instance.radii.topLeft + padding;
+    radii[1] = instance.radii.topRight + padding;
+    radii[2] = instance.radii.bottomRight + padding;
+    radii[3] = instance.radii.bottomLeft + padding;
+
+    context.save();
+    try {
+        context.beginPath();
+        context.rect(
+            visibleBounds.x1,
+            visibleBounds.y1,
+            visibleBounds.x2 - visibleBounds.x1,
+            visibleBounds.y2 - visibleBounds.y1
+        );
+        context.roundRect(x, y, width, height, radii);
+        context.clip("evenodd");
+
+        // Canvas shadow lengths ignore the current transform. Its blur uses
+        // sigma = shadowBlur / 2; match the SVG/GPU sigma in physical pixels.
+        context.shadowBlur =
+            Math.max(shadow.blur / 2.5, 0.25) * 2 * devicePixelRatio;
+        context.shadowOffsetX = shadow.offsetX * devicePixelRatio;
+        context.shadowOffsetY = shadow.offsetY * devicePixelRatio;
+        context.shadowColor = shadow.color;
+        context.globalAlpha = shadow.opacity * options.viewOpacity;
+        context.fillStyle = "black";
+        context.beginPath();
+        context.roundRect(x, y, width, height, radii);
+        context.fill();
+    } finally {
+        context.restore();
+    }
 }
 
 /** @param {CanvasRenderingContext2D} context @param {number} value */

@@ -8,6 +8,7 @@ import { renderTextCanvas } from "./text.js";
 /**
  * @typedef {object} CanvasMarkRenderingOptions
  * @prop {CanvasRenderingContext2D} context
+ * @prop {number} devicePixelRatio
  * @prop {import("../../../view/layout/rectangle.js").default} coords
  * @prop {object[]} data
  * @prop {import("../../immediate/bounds.js").RenderBounds} visibleBounds
