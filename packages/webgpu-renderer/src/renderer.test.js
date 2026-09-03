@@ -388,6 +388,64 @@ describe("Renderer mark definitions", () => {
         ]);
     });
 
+    test("retains effective state across consecutive placement draws", () => {
+        const pipeline = /** @type {GPURenderPipeline} */ ({});
+        const markBindGroup = /** @type {GPUBindGroup} */ ({});
+        const program = Object.assign(createProgram(), {
+            _placementIndex:
+                /** @type {import("./index.d.ts").MarkConfig["placementIndex"]} */ ({
+                    source: "draw",
+                }),
+        });
+        program.prepareDraw.mockImplementation((state) => {
+            state.setPipeline(pipeline);
+            state.setBindGroup(1, markBindGroup);
+        });
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, pass } = createRendererHarness();
+        renderer._placementBindGroupLayout =
+            /** @type {GPUBindGroupLayout} */ ({});
+        const placements = renderer.createPlacementSet({
+            rectangles: new Float32Array([0, 0, 1, 0.5, 0, 0.5, 1, 0.5]),
+        });
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            draws: [
+                { mark, placement: { set: placements, index: 0 } },
+                { mark, placement: { set: placements, index: 1 } },
+            ],
+        });
+
+        expect(pass.setViewport).toHaveBeenCalledOnce();
+        expect(pass.setScissorRect).toHaveBeenCalledOnce();
+        expect(pass.setPipeline).toHaveBeenCalledOnce();
+        expect(
+            pass.setBindGroup.mock.calls.filter(([index]) => index === 0)
+        ).toEqual([
+            [0, renderer._globalBindGroup, [0]],
+            [0, renderer._globalBindGroup, [256]],
+        ]);
+        expect(
+            pass.setBindGroup.mock.calls.filter(([index]) => index === 1)
+        ).toEqual([[1, markBindGroup]]);
+        expect(
+            pass.setBindGroup.mock.calls.filter(([index]) => index === 2)
+        ).toEqual([[2, placements._bindGroup]]);
+        expect(program.draw).toHaveBeenCalledTimes(2);
+
+        renderer.render({
+            draws: [{ mark, placement: { set: placements, index: 0 } }],
+        });
+
+        expect(pass.setViewport).toHaveBeenCalledTimes(2);
+        expect(pass.setScissorRect).toHaveBeenCalledTimes(2);
+        expect(pass.setPipeline).toHaveBeenCalledTimes(2);
+    });
+
     test("labels frame encoding resources", () => {
         const { renderer, commandEncoderDescriptors, renderPassDescriptors } =
             createRendererHarness();
@@ -1073,6 +1131,8 @@ function createProgram(antialiasing = "shader") {
         replaceSeries: series.replace,
         updateValues: vi.fn(),
         debugResources: vi.fn(),
+        prepareDraw: vi.fn(),
+        preparePick: vi.fn(),
         draw: vi.fn(),
         drawPick: vi.fn(),
         destroy: vi.fn(),

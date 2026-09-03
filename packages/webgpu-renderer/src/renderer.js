@@ -1,6 +1,7 @@
 import { gpuLabel, RENDERER_GPU_OWNER } from "./utils/gpuLabel.js";
 import { ProgramTemplateCache } from "./marks/programs/internal/programTemplateCache.js";
 import { TextureCompositor, TransientTexturePool } from "./renderGroups.js";
+import RenderPassState from "./renderPassState.js";
 
 const TRANSPARENT = { r: 0, g: 0, b: 0, a: 0 };
 
@@ -1480,13 +1481,14 @@ export class Renderer {
         sampleCount = 1
     ) {
         const dpr = this._globals.dpr;
+        const state = new RenderPassState(pass);
         for (const draw of draws) {
             const mark = this._marks.get(draw.markId);
             if (!mark) {
                 continue;
             }
 
-            pass.setViewport(
+            state.setViewport(
                 (draw.viewport.x - target.logicalX) * dpr,
                 (draw.viewport.y - target.logicalY) * dpr,
                 draw.viewport.width * dpr,
@@ -1506,13 +1508,13 @@ export class Renderer {
                 Math.floor(target.logicalX * dpr) + target.width,
                 Math.floor(target.logicalY * dpr) + target.height
             );
-            pass.setScissorRect(
+            state.setScissorRect(
                 scissor.x - Math.floor(target.logicalX * dpr),
                 scissor.y - Math.floor(target.logicalY * dpr),
                 scissor.width,
                 scissor.height
             );
-            pass.setBindGroup(0, this._globalBindGroup, [
+            state.setBindGroup(0, this._globalBindGroup, [
                 draw.uniformIndex * this._globalUniformStride,
             ]);
             /** @type {import("./index.d.ts").ProgramDrawOptions} */
@@ -1523,6 +1525,14 @@ export class Renderer {
             };
             if (draw.placement) {
                 options.placement = draw.placement;
+            }
+            if (picking) {
+                mark.preparePick(state, options);
+            } else {
+                mark.prepareDraw(state, options);
+            }
+            if (draw.placement) {
+                state.setBindGroup(2, draw.placement.bindGroup);
             }
             if (picking) {
                 mark.drawPick(pass, options);

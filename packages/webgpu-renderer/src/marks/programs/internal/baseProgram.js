@@ -1185,15 +1185,27 @@ export default class BaseProgram {
     // Uniform packing lives in utils/uniformBuffer.js.
 
     /**
+     * @param {import("../../../index.d.ts").RenderPassState} state
+     * @param {import("../../../index.d.ts").ProgramDrawOptions} options
+     */
+    prepareDraw(state, options) {
+        state.setPipeline(this._getPipeline(options.sampleCount));
+        state.setBindGroup(1, this._bindGroup);
+    }
+
+    /**
+     * @param {import("../../../index.d.ts").RenderPassState} state
+     */
+    preparePick(state) {
+        state.setPipeline(this._getPickPipeline());
+        state.setBindGroup(1, this._bindGroup);
+    }
+
+    /**
      * @param {GPURenderPassEncoder} pass
      * @param {import("../../../index.d.ts").ProgramDrawOptions} options
      */
     draw(pass, options) {
-        pass.setPipeline(this._getPipeline(options.sampleCount));
-        pass.setBindGroup(1, this._bindGroup);
-        if (options.placement) {
-            pass.setBindGroup(2, options.placement.bindGroup);
-        }
         pass.draw(6, options.instanceCount, 0, options.firstInstance);
     }
 
@@ -1203,11 +1215,6 @@ export default class BaseProgram {
      * @returns {void}
      */
     drawPick(pass, options) {
-        pass.setPipeline(this._getPickPipeline());
-        pass.setBindGroup(1, this._bindGroup);
-        if (options.placement) {
-            pass.setBindGroup(2, options.placement.bindGroup);
-        }
         pass.draw(6, options.instanceCount, 0, options.firstInstance);
     }
 
