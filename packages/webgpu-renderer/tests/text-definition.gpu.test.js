@@ -576,8 +576,8 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
         const atlas = firstProgram._outlineAtlas;
         const initialVersion = atlas.version;
         const initialTexture = atlas.texture;
-        const aPath = font.getGlyph("A").path;
-        const initialEntry = { ...atlas.ensure([aPath])[0] };
+        const aGlyph = font.getGlyph("A");
+        const initialEntry = { ...atlas.ensure([aGlyph])[0] };
 
         const ascii = Array.from({ length: 95 }, (_, index) =>
             String.fromCodePoint(index + 32)
@@ -593,7 +593,7 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
             },
         });
         const secondProgram = renderer._marks.get(second.markId);
-        const preservedEntry = atlas.ensure([aPath])[0];
+        const preservedEntry = atlas.ensure([aGlyph])[0];
         const firstBoundAtlas =
             firstProgram._extraTextures.get("fontAtlas").texture;
         const atlasScaleEntry =

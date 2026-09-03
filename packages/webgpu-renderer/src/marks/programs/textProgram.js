@@ -1607,7 +1607,7 @@ export default class TextProgram extends BaseProgram {
     }
 
     /**
-     * @param {import("../../fonts/layout.js").TextLayout & { outlineGlyphs: { path: string, bounds: import("../../fonts/trueTypeFont.js").TrueTypeBounds, tileWidth: number, tileHeight: number }[], paths: string[] }} layout
+     * @param {import("../../fonts/layout.js").TextLayout & { outlineGlyphs: { glyphId: number, path: string, bounds: import("../../fonts/trueTypeFont.js").TrueTypeBounds, tileWidth: number, tileHeight: number }[] }} layout
      * @param {import("../../fonts/trueTypeFont.js").TrueTypeFont} font
      */
     _initializeOutlineFontResources(layout, font) {
@@ -1673,18 +1673,18 @@ export default class TextProgram extends BaseProgram {
     }
 
     /**
-     * @param {import("../../fonts/layout.js").TextLayout & { outlineGlyphs: { path: string, bounds: import("../../fonts/trueTypeFont.js").TrueTypeBounds, tileWidth: number, tileHeight: number }[], paths: string[] }} layout
+     * @param {import("../../fonts/layout.js").TextLayout & { outlineGlyphs: { glyphId: number, path: string, bounds: import("../../fonts/trueTypeFont.js").TrueTypeBounds, tileWidth: number, tileHeight: number }[] }} layout
      * @param {import("../../fonts/trueTypeFont.js").TrueTypeFont} font
      * @param {import("../../fonts/outlineFontAtlas.js").OutlineFontAtlas} atlas
      * @returns {boolean} Whether the metric buffer identity changed.
      */
     _updateOutlineGlyphMetrics(layout, font, atlas) {
-        const entries = atlas.ensure(layout.paths);
+        const entries = atlas.ensure(layout.outlineGlyphs);
         const atlasScale =
             (OUTLINE_ATLAS_OPTIONS.tileSize -
                 OUTLINE_ATLAS_OPTIONS.shapePadding * 2) /
             font.unitsPerEm;
-        const glyphMetrics = new Float32Array(layout.paths.length * 8);
+        const glyphMetrics = new Float32Array(layout.outlineGlyphs.length * 8);
         for (let index = 0; index < layout.outlineGlyphs.length; index++) {
             const metricOffset = index * 8;
             const glyph = layout.outlineGlyphs[index];

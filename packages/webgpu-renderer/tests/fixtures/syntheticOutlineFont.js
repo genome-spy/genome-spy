@@ -17,7 +17,7 @@ export function createSyntheticOutlineFont(glyphCount) {
         const height = 560 + Math.floor(index / 37) * 7;
         return Object.freeze({
             codePoint,
-            glyphId: index + 1,
+            glyphId: index,
             advanceWidth: width + 80,
             leftSideBearing: 0,
             bounds: Object.freeze({

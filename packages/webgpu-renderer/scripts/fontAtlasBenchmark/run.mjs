@@ -299,7 +299,7 @@ async function runBrowserSample(page, benchmark, run) {
                     renderJsMs,
                     readyMs: performance.now() - start,
                     atlas: {
-                        entries: atlas._entryByPath.size,
+                        entries: atlas.entryCount,
                         version: atlas.version,
                         width: atlas.width,
                         height: atlas.height,

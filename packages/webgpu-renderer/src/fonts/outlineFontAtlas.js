@@ -16,6 +16,12 @@ const MAX_GLYPHS_PER_BATCH = 32;
  */
 
 /**
+ * @typedef {object} OutlineAtlasGlyph
+ * @property {number} glyphId
+ * @property {string} path
+ */
+
+/**
  * Renderer-owned, append-only atlas for one exact outline-font object.
  *
  * Missing glyphs are generated as tightly packed temporary batches. Their
@@ -45,8 +51,9 @@ export class OutlineFontAtlas {
             magFilter: "linear",
             minFilter: "linear",
         });
-        /** @type {Map<string, OutlineAtlasEntry>} */
-        this._entryByPath = new Map();
+        /** @type {Array<OutlineAtlasEntry | undefined>} */
+        this._entryByGlyphId = new Array(font.glyphCount);
+        this._entryCount = 0;
         this._shelfX = 0;
         this._shelfY = 0;
         this._shelfHeight = 0;
@@ -71,6 +78,10 @@ export class OutlineFontAtlas {
         return this.storage.version;
     }
 
+    get entryCount() {
+        return this._entryCount;
+    }
+
     /**
      * @param {(atlas: OutlineFontAtlas) => void} listener
      * @returns {() => void}
@@ -80,18 +91,26 @@ export class OutlineFontAtlas {
     }
 
     /**
-     * Ensure all paths have stable final-atlas entries.
+     * Ensure all glyphs have stable final-atlas entries.
      *
-     * @param {string[]} paths
+     * @param {OutlineAtlasGlyph[]} glyphs
      * @returns {OutlineAtlasEntry[]}
      */
-    ensure(paths) {
+    ensure(glyphs) {
         if (this._destroyed) {
             throw new Error("Outline font atlas has been destroyed.");
         }
-        const missing = Array.from(
-            new Set(paths.filter((path) => !this._entryByPath.has(path)))
-        );
+        const seen = new Set();
+        const missing = glyphs.filter((glyph) => {
+            if (
+                this._entryByGlyphId[glyph.glyphId] !== undefined ||
+                seen.has(glyph.glyphId)
+            ) {
+                return false;
+            }
+            seen.add(glyph.glyphId);
+            return true;
+        });
         for (
             let offset = 0;
             offset < missing.length;
@@ -101,14 +120,17 @@ export class OutlineFontAtlas {
                 missing.slice(offset, offset + MAX_GLYPHS_PER_BATCH)
             );
         }
-        return paths.map(
-            (path) =>
-                /** @type {OutlineAtlasEntry} */ (this._entryByPath.get(path))
+        return glyphs.map(
+            (glyph) =>
+                /** @type {OutlineAtlasEntry} */ (
+                    this._entryByGlyphId[glyph.glyphId]
+                )
         );
     }
 
-    /** @param {string[]} paths */
-    _appendBatch(paths) {
+    /** @param {OutlineAtlasGlyph[]} glyphs */
+    _appendBatch(glyphs) {
+        const paths = glyphs.map((glyph) => glyph.path);
         const batch = this.generator.createAtlas(
             paths,
             {
@@ -138,12 +160,13 @@ export class OutlineFontAtlas {
                 },
                 [job.slotWidth, job.slotHeight, 1]
             );
-            this._entryByPath.set(paths[index], {
+            this._entryByGlyphId[glyphs[index].glyphId] = {
                 x: placement.x + job.gutter + 0.5,
                 y: placement.y + job.gutter + 0.5,
                 width: job.tileWidth - 1,
                 height: job.tileHeight - 1,
-            });
+            };
+            this._entryCount++;
         }
 
         this.device.queue.submit([encoder.finish()]);
@@ -194,7 +217,8 @@ export class OutlineFontAtlas {
             return;
         }
         this._destroyed = true;
-        this._entryByPath.clear();
+        this._entryByGlyphId.length = 0;
+        this._entryCount = 0;
         this.storage.destroy();
     }
 }

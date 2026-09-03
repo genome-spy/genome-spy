@@ -67,8 +67,8 @@ test("outline atlas grows repeatedly across thousands of dynamic labels", async 
         });
         const program = renderer._marks.get(mark.markId);
         const atlas = program._outlineAtlas;
-        const firstPath = font.getGlyph(String.fromCodePoint(0x100)).path;
-        const firstEntry = { ...atlas.ensure([firstPath])[0] };
+        const firstGlyph = font.getGlyph(String.fromCodePoint(0x100));
+        const firstEntry = { ...atlas.ensure([firstGlyph])[0] };
         const snapshots = [];
 
         const renderAndRecord = async (uniqueGlyphs) => {
@@ -78,7 +78,7 @@ test("outline atlas grows repeatedly across thousands of dynamic labels", async 
             await Promise.resolve();
             snapshots.push({
                 uniqueGlyphs,
-                entries: atlas._entryByPath.size,
+                entries: atlas.entryCount,
                 version: atlas.version,
                 width: atlas.width,
                 height: atlas.height,
@@ -110,10 +110,10 @@ test("outline atlas grows repeatedly across thousands of dynamic labels", async 
             stableDimensions,
             finalVersion: atlas.version,
             finalDimensions: [atlas.width, atlas.height],
-            finalEntries: atlas._entryByPath.size,
+            finalEntries: atlas.entryCount,
             pendingBatches: atlas._pendingBatches.size,
             preservedFirstEntry:
-                JSON.stringify(atlas.ensure([firstPath])[0]) ===
+                JSON.stringify(atlas.ensure([firstGlyph])[0]) ===
                 JSON.stringify(firstEntry),
             validationError: validationError?.message ?? null,
         };
@@ -203,7 +203,7 @@ test("outline text reuses its atlas while replacing twelve thousand labels", asy
             version: atlas.version,
             width: atlas.width,
             height: atlas.height,
-            entries: atlas._entryByPath.size,
+            entries: atlas.entryCount,
         };
 
         for (let phase = 1; phase <= 3; phase++) {
@@ -217,7 +217,7 @@ test("outline text reuses its atlas while replacing twelve thousand labels", asy
             version: atlas.version,
             width: atlas.width,
             height: atlas.height,
-            entries: atlas._entryByPath.size,
+            entries: atlas.entryCount,
         };
         renderer.destroy();
         canvas.remove();

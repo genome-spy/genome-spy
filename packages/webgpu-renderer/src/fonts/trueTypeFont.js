@@ -81,18 +81,20 @@ export function trueTypeGlyphToPath(glyph) {
  */
 export function createTrueTypeFont(source) {
     const font = parseTrueTypeFont(source);
+    /** @type {Array<ReturnType<typeof createGlyph> | undefined>} */
+    const asciiGlyphByCodePoint = new Array(128);
     /** @type {Map<number, ReturnType<typeof createGlyph>>} */
-    const glyphByCodePoint = new Map();
-    /** @type {Map<number, string | null>} */
-    const pathByGlyphId = new Map();
+    const unicodeGlyphByCodePoint = new Map();
+    /** @type {Array<string | null | undefined>} */
+    const pathByGlyphId = new Array(font.glyphCount);
 
     /** @param {number} codePoint */
     function createGlyph(codePoint) {
         const glyph = font.getGlyph(codePoint);
-        let path = pathByGlyphId.get(glyph.glyphId);
+        let path = pathByGlyphId[glyph.glyphId];
         if (path === undefined) {
             path = trueTypeGlyphToPath(glyph);
-            pathByGlyphId.set(glyph.glyphId, path);
+            pathByGlyphId[glyph.glyphId] = path;
         }
         return Object.freeze({
             codePoint,
@@ -113,10 +115,17 @@ export function createTrueTypeFont(source) {
                 "A glyph requires a Unicode character or code point."
             );
         }
-        let glyph = glyphByCodePoint.get(codePoint);
-        if (!glyph) {
+        const ascii = codePoint >= 0 && codePoint < 128;
+        let glyph = ascii
+            ? asciiGlyphByCodePoint[codePoint]
+            : unicodeGlyphByCodePoint.get(codePoint);
+        if (glyph === undefined) {
             glyph = createGlyph(codePoint);
-            glyphByCodePoint.set(codePoint, glyph);
+            if (ascii) {
+                asciiGlyphByCodePoint[codePoint] = glyph;
+            } else {
+                unicodeGlyphByCodePoint.set(codePoint, glyph);
+            }
         }
         return glyph;
     }
@@ -172,16 +181,17 @@ export function createAsciiTrueTypeFont(source) {
     const font = createTrueTypeFont(source);
     const paths = [];
     const characters = new Map();
-    const pathIndexByGlyphId = new Map();
+    /** @type {Array<number | undefined>} */
+    const pathIndexByGlyphId = new Array(font.glyphCount);
     for (let codePoint = 32; codePoint <= 126; codePoint++) {
         const glyph = font.getGlyph(codePoint);
         let pathIndex = -1;
         if (glyph.path !== null) {
-            const cachedPathIndex = pathIndexByGlyphId.get(glyph.glyphId);
+            const cachedPathIndex = pathIndexByGlyphId[glyph.glyphId];
             if (cachedPathIndex === undefined) {
                 pathIndex = paths.length;
                 paths.push(glyph.path);
-                pathIndexByGlyphId.set(glyph.glyphId, pathIndex);
+                pathIndexByGlyphId[glyph.glyphId] = pathIndex;
             } else {
                 pathIndex = cachedPathIndex;
             }

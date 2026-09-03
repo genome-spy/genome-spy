@@ -24,6 +24,7 @@ export function isTrueTypeFont(value) {
 
 /**
  * @typedef {object} OutlineGlyph
+ * @property {number} glyphId
  * @property {string} path
  * @property {import("./trueTypeFont.js").TrueTypeBounds} bounds
  * @property {number} tileWidth
@@ -55,7 +56,8 @@ export function buildOutlineTextLayout(strings, font, options = {}) {
     const textHeight = new Float32Array(strings.length);
     /** @type {OutlineGlyph[]} */
     const outlineGlyphs = [];
-    const pathIndexByGlyphId = new Map();
+    /** @type {Array<number | undefined>} */
+    const pathIndexByGlyphId = new Array(font.glyphCount);
     const shapePixels =
         OUTLINE_ATLAS_OPTIONS.tileSize - OUTLINE_ATLAS_OPTIONS.shapePadding * 2;
     const atlasScale = shapePixels / unitsPerEm;
@@ -87,7 +89,7 @@ export function buildOutlineTextLayout(strings, font, options = {}) {
                 const glyph = glyphs[index];
                 const adjustment = adjustments[index];
                 if (glyph.path !== null && glyph.bounds !== null) {
-                    let pathIndex = pathIndexByGlyphId.get(glyph.glyphId);
+                    let pathIndex = pathIndexByGlyphId[glyph.glyphId];
                     if (pathIndex === undefined) {
                         const width = glyph.bounds.xMax - glyph.bounds.xMin;
                         const height = glyph.bounds.yMax - glyph.bounds.yMin;
@@ -107,12 +109,13 @@ export function buildOutlineTextLayout(strings, font, options = {}) {
                         );
                         pathIndex = outlineGlyphs.length;
                         outlineGlyphs.push({
+                            glyphId: glyph.glyphId,
                             path: glyph.path,
                             bounds: glyph.bounds,
                             tileWidth,
                             tileHeight,
                         });
-                        pathIndexByGlyphId.set(glyph.glyphId, pathIndex);
+                        pathIndexByGlyphId[glyph.glyphId] = pathIndex;
                     }
                     const outline = outlineGlyphs[pathIndex];
                     const centerX =
@@ -153,6 +156,5 @@ export function buildOutlineTextLayout(strings, font, options = {}) {
         // distance below the alphabetic baseline.
         descent: -font.descender * scale,
         outlineGlyphs,
-        paths: outlineGlyphs.map((glyph) => glyph.path),
     };
 }

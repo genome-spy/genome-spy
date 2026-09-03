@@ -28,7 +28,7 @@ describe("outline text layout", () => {
         );
 
         expect(kerned.glyphIds).toHaveLength(3);
-        expect(kerned.paths).toHaveLength(2);
+        expect(kerned.outlineGlyphs).toHaveLength(2);
         expect(kerned.xOffset[1]).toBeLessThan(unkerned.xOffset[1]);
         expect(kerned.textWidth[0]).toBeLessThan(unkerned.textWidth[0]);
     });

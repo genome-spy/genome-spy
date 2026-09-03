@@ -76,6 +76,7 @@ describe("ASCII TrueType adaptation", () => {
         );
         expect(adjustment.firstAdvance).toBeLessThan(0);
         expect(font.getGlyph("A")).toBe(font.getGlyph("A"));
+        expect(font.getGlyph("Ω")).toBe(font.getGlyph("Ω"));
         expect(font.capHeight).toBe(font.getGlyph("H").bounds?.yMax);
     });
 
