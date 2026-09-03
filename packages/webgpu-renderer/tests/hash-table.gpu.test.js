@@ -4,7 +4,10 @@
  */
 
 import { expect, test } from "@playwright/test";
-import HASH_TABLE_WGSL from "../src/wgsl/hashTable.wgsl.js";
+import HASH_TABLE_WGSL, {
+    emitHashLookupFunction,
+    hashLookupFunctionName,
+} from "../src/wgsl/hashTable.wgsl.js";
 import {
     buildHashTableMap,
     buildHashTableSet,
@@ -13,6 +16,7 @@ import {
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
 const WORKGROUP_SIZE = 64;
+const HASH_BUFFER_NAME = "hashEntries";
 
 const buildHashLookupShader = (inputLength, maxProbes) => `
 ${HASH_TABLE_WGSL}
@@ -20,6 +24,8 @@ ${HASH_TABLE_WGSL}
 @group(0) @binding(0) var<storage, read> hashEntries: array<HashEntry>;
 @group(0) @binding(1) var<storage, read> input: array<u32>;
 @group(0) @binding(2) var<storage, read_write> output: array<u32>;
+
+${emitHashLookupFunction(HASH_BUFFER_NAME)}
 
 const INPUT_LEN: u32 = ${inputLength}u;
 const MAX_PROBES: u32 = ${maxProbes}u;
@@ -31,7 +37,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let key = input[i];
-    output[i] = hashLookup(&hashEntries, key, MAX_PROBES);
+    output[i] = ${hashLookupFunctionName(HASH_BUFFER_NAME)}(key, MAX_PROBES);
 }
 `;
 

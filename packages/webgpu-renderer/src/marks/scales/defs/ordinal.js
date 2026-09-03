@@ -2,6 +2,7 @@ import {
     DOMAIN_MAP_COUNT_PREFIX,
     RANGE_COUNT_PREFIX,
 } from "../../../wgsl/prefixes.js";
+import { hashLookupFunctionName } from "../../../wgsl/hashTable.wgsl.js";
 import { isValueChannelConfig } from "../../../types.js";
 import { makeFnHeader, toU32Expr } from "../scaleEmitUtils.js";
 import { normalizeOrdinalDomain } from "../ordinalDomain.js";
@@ -72,7 +73,7 @@ function emitOrdinalScale({
         let slot = raw % count;
         return ${rangeName}[slot];
     }
-    let idx = hashLookup(&${domainMapName}, raw, arrayLength(&${domainMapName}));
+    let idx = ${hashLookupFunctionName(domainMapName)}(raw, arrayLength(&${domainMapName}));
     if (idx == HASH_NOT_FOUND) { return ${zero}; }
     let count = u32(params.${RANGE_COUNT_PREFIX}${name});
     if (count == 0u) { return ${zero}; }

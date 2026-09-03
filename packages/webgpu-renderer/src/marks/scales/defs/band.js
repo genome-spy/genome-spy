@@ -5,6 +5,7 @@ import {
     SCALE_PADDING_INNER_PREFIX,
     SCALE_PADDING_OUTER_PREFIX,
 } from "../../../wgsl/prefixes.js";
+import { hashLookupFunctionName } from "../../../wgsl/hashTable.wgsl.js";
 import {
     domainVec2,
     makeFnHeader,
@@ -114,7 +115,7 @@ function emitBandScale({
             params.${SCALE_BAND_PREFIX}${name}
         );
     }
-    let mapped = hashLookup(&${domainMapName}, raw, arrayLength(&${domainMapName}));
+    let mapped = ${hashLookupFunctionName(domainMapName)}(raw, arrayLength(&${domainMapName}));
     if (mapped == HASH_NOT_FOUND) { return ${rangeVec2(name)}.x; }
     return scaleBand(
         mapped,

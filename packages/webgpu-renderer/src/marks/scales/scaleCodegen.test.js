@@ -223,7 +223,7 @@ describe("scaleCodegen codegen", () => {
             domainMapName: "domainMap_x",
         });
 
-        expect(code).toContain("hashLookup");
+        expect(code).toContain("hashLookup_domainMap_x");
         expect(code).toContain("domainMap_x");
     });
 
@@ -247,7 +247,7 @@ describe("scaleCodegen codegen", () => {
             domainMapName: "domainMap_fill",
         });
 
-        expect(code).toContain("hashLookup");
+        expect(code).toContain("hashLookup_domainMap_fill");
         expect(code).toContain("domainMap_fill");
         expect(code).toContain("let slot = raw % count;");
         expect(code).toContain("let slot = idx % count;");
