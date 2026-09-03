@@ -1,6 +1,6 @@
 # Displace2D simplification plan
 
-Status: proposed
+Status: implemented and verified; retained for final delivery reconciliation
 
 ## Problem interpretation
 
@@ -176,7 +176,7 @@ concerns have shown a common stable contract.
 
 ## Milestones
 
-### Milestone 1: Share continuous smoothing math
+### Milestone 1: Share continuous smoothing math — completed
 
 Outcome:
 
@@ -206,7 +206,7 @@ Commit checkpoint:
 
 - `refactor(core): share continuous smoothing calculation`
 
-### Milestone 2: Add scale-aware displacement positions
+### Milestone 2: Add scale-aware displacement positions — completed
 
 Outcome:
 
@@ -246,7 +246,7 @@ Review gate:
   Do not proceed with extra convenience flags if the core example is not
   clearly simpler.
 
-### Milestone 3: Migrate and measure examples
+### Milestone 3: Migrate and measure examples — completed
 
 Outcome:
 
@@ -310,11 +310,34 @@ Commit checkpoint:
   require existing transition tests to pass unchanged before changing the
   displacement API.
 
-## Open questions and decision points
+## Resolved decision points
 
-1. Does the current example's viewport formula still dominate its size after
-   conversion expressions are removed? If so, record it as a separate design
-   problem rather than expanding this change.
+- Independent scale binding and scale-bound custom extents were discarded. The
+  implemented API has one explicit `scalePositions` mode for both axes and the
+  full viewport.
+- The viewport-participation formulas remain a substantial part of the
+  canonical example. They express a separate visibility policy and were not
+  folded into this transform.
+- Scale-aware output retains the original position fields as the data-domain
+  source. Scale and layout invalidations are coalesced, and invalidations
+  published during the transform's own replay are ignored to prevent domain
+  re-entry.
+
+## Verification record
+
+- All 3,315 runnable unit tests pass; one test is skipped and two remain marked
+  as future work.
+- Core TypeScript checks, lint, schema generation, and documentation type
+  generation pass.
+- Browser smoke checks pass for the three public examples and all six private
+  acid-test examples.
+- The three public examples decreased from 493 to 472 lines. Twelve manual
+  factor/extent properties became three `scalePositions` flags.
+- The six private specifications decreased from 1,151 to 1,133 lines.
+- In the dense synthetic interaction trace, `displace2d.complete` stayed below
+  2.4 ms in the sampled zoom run. No per-row smoother or alternate solver was
+  introduced.
+- The pure solver was unchanged.
 
 ## Acceptance criteria
 
