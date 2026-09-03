@@ -18,8 +18,9 @@ graph and expose only the capabilities needed by shared orchestration.
 - `immediate/` projects and culls mark occurrences for Canvas2D and SVG.
 - `webgl/` owns the complete legacy WebGL implementation: TWGL, GLSL, mark GPU
   delegates, batching, picking, textures, framebuffer export, and cleanup.
-- `webgpu/` is the development-only adapter for the independently selectable
-  WebGPU renderer.
+- `webgpu/` is the experimental adapter for the independently selectable
+  WebGPU renderer. Development builds and the playground preview can enable
+  it; published Core packages exclude it.
 
 ## Dependency boundaries
 

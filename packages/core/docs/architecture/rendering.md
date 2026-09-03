@@ -55,8 +55,9 @@ Modular rendering implementations live under `src/rendering/`:
   Canvas2D and SVG. It must not depend on a rendering backend.
 - `webgl/` owns the legacy WebGL surface, TWGL and GLSL implementation, mark GPU
   delegates, batching, picking, and rasterization.
-- `webgpu/` is the development-only Core adapter for the separate WebGPU
-  renderer package.
+- `webgpu/` is the experimental Core adapter for the separate WebGPU renderer
+  package. It is available in development and the playground preview, and
+  excluded from published Core packages.
 - `renderingModuleRegistry.js` holds opt-in loaders without importing renderer
   implementations.
 - `renderingBackend.js` selects a registered live surface and exposes
@@ -68,6 +69,11 @@ only the capabilities they use through public side-effect imports. Automatic
 selection tries registered WebGL first and then registered Canvas2D. Explicit
 Canvas2D and WebGPU selection does not initialize WebGL. An explicit WebGL
 failure is reported.
+
+The playground explicitly imports `webgpu/register.js` to register a dynamic
+WebGPU loader that its production build can bundle. Default Core entrypoints
+do not register or bundle WebGPU. Development builds can also select WebGPU
+without registration through the development-only import path.
 
 Semantic marks remain under `src/marks/`. They own configuration, encoders,
 data, facet semantics, and rendering revisions. WebGL's private adapter owns one

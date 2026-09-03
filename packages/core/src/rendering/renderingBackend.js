@@ -73,8 +73,15 @@ export async function createRenderingBackend(options) {
             throw rendererNotRegisteredError("canvas");
         }
         return renderingModules.canvasBackend(options);
-    } else if (options.renderer == "webgpu" && import.meta.env.DEV) {
-        return createWebGpuBackend(options);
+    } else if (options.renderer == "webgpu") {
+        if (renderingModules.webgpuBackend) {
+            return renderingModules.webgpuBackend(options);
+        } else if (import.meta.env.DEV) {
+            return createWebGpuBackend(options);
+        }
+        throw new Error(
+            "The experimental WebGPU renderer is only available in development and the playground preview."
+        );
     } else if (options.renderer != "auto" && options.renderer != "webgl") {
         throw new Error("Unknown renderer: " + options.renderer);
     }

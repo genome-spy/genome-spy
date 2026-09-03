@@ -11,6 +11,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import favIcon from "@genome-spy/core/img/genomespy-favicon.svg";
 import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
+import "@genome-spy/core/rendering/webgpu/register.js";
 import { createInspectorPanel } from "@genome-spy/inspector";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 import inferSpecBaseUrl, {
@@ -28,6 +29,7 @@ import "./imageExportDialog.js";
 import "./playground.scss";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createEditorState } from "./editorState.js";
+import { getRendererFromUrl, rendererMenu } from "./rendererMenu.js";
 import {
     addUploadedDatasets,
     findMissingNamedData,
@@ -69,6 +71,10 @@ export function getCurrentEmbedResult() {
 let previousStringifiedSpec = "";
 let suppressNextEditorChange = false;
 const editorState = createEditorState();
+let renderer = getRendererFromUrl(new URL(window.location.href));
+let updateInProgress = false;
+let pendingUpdate = false;
+let pendingForce = false;
 
 const layouts = ["vertical", "horizontal"];
 let layout = layouts[0];
@@ -213,9 +219,14 @@ async function ensureInspectorPanel() {
             return;
         }
 
-        inspectorHandle = await createInspectorPanel(embedResult.debug, {
-            activePanel: "elements",
-        });
+        inspectorHandle = await createInspectorPanel(
+            {
+                // Follow the current embed when the spec or renderer changes.
+                getViewRoot: () => embedResult?.debug.getViewRoot(),
+                getModules: () => import("@genome-spy/core/debug/index.js"),
+            },
+            { activePanel: "elements" }
+        );
         inspectorHandle.panel.addEventListener("close", () => {
             editorState.syncFromEditor(editorRef.value);
             sidePane = sidePanes[0];
@@ -475,7 +486,47 @@ function clearBaseUrl() {
     update(true);
 }
 
+/** @param {import("./rendererMenu.js").Renderer} value */
+function selectRenderer(value) {
+    if (renderer === value) {
+        return;
+    }
+    renderer = value;
+    const url = new URL(window.location.href);
+    if (renderer === "webgl") {
+        url.searchParams.delete("renderer");
+    } else {
+        url.searchParams.set("renderer", renderer);
+    }
+    window.history.replaceState({}, "", formatPlaygroundUrl(url));
+    renderLayout();
+    void update(true);
+}
+
 async function update(force = false) {
+    // Embeds share a container. Finish each one before replacing it, coalescing
+    // edits and renderer switches that arrive while data or code is loading.
+    pendingUpdate = true;
+    pendingForce ||= force;
+    if (updateInProgress) {
+        return;
+    }
+    updateInProgress = true;
+    try {
+        while (pendingUpdate) {
+            pendingUpdate = false;
+            const force = pendingForce;
+            pendingForce = false;
+            await updateVisualization(force);
+        }
+    } finally {
+        updateInProgress = false;
+    }
+}
+
+/** @param {boolean} force */
+async function updateVisualization(force) {
+    const selectedRenderer = renderer;
     missingFiles = new Set();
 
     const value = editorState.getCurrent(editorRef.value);
@@ -519,9 +570,7 @@ async function update(force = false) {
         );
         renderLayout();
 
-        // Do not start an embed while the spec is waiting for an uploaded
-        // dataset. Uploading otherwise starts a second embed before this one
-        // has finished, allowing the slower request to replace the active API.
+        // Wait for uploaded datasets before starting the visualization.
         if (missingFiles.size > 0) {
             return;
         }
@@ -538,6 +587,7 @@ async function update(force = false) {
                     inputBindingsHostRef.value
                 ),
                 powerPreference: "high-performance",
+                renderer: selectedRenderer,
             }
         );
         hasInputBindings = Boolean(
@@ -587,6 +637,7 @@ const toolbarTemplate = () => html`
             ${icon(faDownload).node[0]}
             <span>Export image</span>
         </button>
+        ${rendererMenu(renderer, selectRenderer)}
         <button
             @click=${toggleInspector}
             class=${
@@ -807,6 +858,7 @@ syncExamplePickerFromUrl();
 loadSpec().then(setEditorSpec);
 
 window.addEventListener("popstate", () => {
+    renderer = getRendererFromUrl(new URL(window.location.href));
     syncExamplePickerFromUrl();
     loadSpec().then(setEditorSpec);
 });

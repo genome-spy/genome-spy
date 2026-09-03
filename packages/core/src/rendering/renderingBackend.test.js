@@ -38,8 +38,47 @@ describe("createRenderingBackend", () => {
     });
 
     afterEach(() => {
+        vi.unstubAllEnvs();
         delete renderingModules.canvasBackend;
         delete renderingModules.webglBackend;
+        delete renderingModules.webgpuBackend;
+    });
+
+    test("uses an explicitly registered WebGPU preview in production", async () => {
+        vi.stubEnv("DEV", false);
+        const backend = /** @type {any} */ ({ surface: {} });
+        const factory = vi.fn().mockResolvedValue(backend);
+        renderingModules.webgpuBackend = factory;
+        const options = {
+            ...baseOptions,
+            renderer: /** @type {const} */ ("webgpu"),
+            container: document.createElement("div"),
+        };
+
+        await expect(createRenderingBackend(options)).resolves.toBe(backend);
+        expect(factory).toHaveBeenCalledWith(options);
+        expect(mocks.createWebGpuRenderingBackend).not.toHaveBeenCalled();
+        expect(mocks.createWebGLRenderingBackend).not.toHaveBeenCalled();
+        expect(mocks.createCanvas2DRenderingBackend).not.toHaveBeenCalled();
+
+        const failure = new Error("WebGPU adapter not available");
+        factory.mockRejectedValue(failure);
+        await expect(createRenderingBackend(options)).rejects.toBe(failure);
+    });
+
+    test("does not load the unregistered WebGPU adapter in production", async () => {
+        vi.stubEnv("DEV", false);
+
+        await expect(
+            createRenderingBackend({
+                ...baseOptions,
+                renderer: "webgpu",
+                container: document.createElement("div"),
+            })
+        ).rejects.toThrow("playground preview");
+        expect(mocks.createWebGpuRenderingBackend).not.toHaveBeenCalled();
+        expect(mocks.createWebGLRenderingBackend).not.toHaveBeenCalled();
+        expect(mocks.createCanvas2DRenderingBackend).not.toHaveBeenCalled();
     });
 
     test("loads WebGL without loading Canvas2D when WebGL is available", async () => {

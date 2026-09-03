@@ -4,6 +4,7 @@
  * @typedef {object} RenderingModules
  * @prop {RenderingBackendFactory} [canvasBackend]
  * @prop {RenderingBackendFactory} [webglBackend]
+ * @prop {RenderingBackendFactory} [webgpuBackend]
  * @prop {() => Promise<{exportRaster: typeof import("./canvas2d/rasterExport.js").exportRaster}>} [canvasRasterExport]
  * @prop {() => Promise<{createCanvas2DSvgRasterizer: typeof import("./canvas2d/svgRasterizer.js").createCanvas2DSvgRasterizer}>} [canvasSvgRasterizer]
  * @prop {SvgRendererLoader} [svgRenderer]
