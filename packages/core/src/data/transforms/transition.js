@@ -1,6 +1,9 @@
 import { BEHAVIOR_COLLECTS, BEHAVIOR_MODIFIES } from "../flowNode.js";
 import { field } from "../../utils/field.js";
-import { getCurrentTimelineTime } from "../../utils/animator.js";
+import {
+    getCurrentTimelineTime,
+    smoothToTarget,
+} from "../../utils/animator.js";
 import Transform from "./transform.js";
 
 const DEFAULT_HALF_LIFE = 80;
@@ -184,15 +187,17 @@ export default class TransitionTransform extends Transform {
             this.#targetChangedAt = undefined;
         }
 
-        const remainder = Math.pow(2, -elapsed / this.halfLife);
         let maxDiff = 0;
         let changed = false;
 
         for (const state of this.#states.values()) {
             for (let i = 0; i < state.target.length; i++) {
-                const value =
-                    state.target[i] +
-                    (state.current[i] - state.target[i]) * remainder;
+                const value = smoothToTarget(
+                    state.current[i],
+                    state.target[i],
+                    elapsed,
+                    this.halfLife
+                );
                 changed ||= value != state.current[i];
                 state.current[i] = value;
                 maxDiff = Math.max(
