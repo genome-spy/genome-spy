@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
+import { TransientTexturePool } from "./renderGroups.js";
 import { Renderer } from "./renderer.js";
 
 describe("Renderer mark definitions", () => {
@@ -460,7 +461,7 @@ describe("Renderer mark definitions", () => {
         );
     });
 
-    test("destroys evicted textures when frame encoding aborts", () => {
+    test("ends transient texture frames when encoding aborts", () => {
         const { renderer } = createRendererHarness();
         renderer._encodeRenderItems = vi.fn(() => {
             throw new Error("encoding failed");
@@ -468,9 +469,8 @@ describe("Renderer mark definitions", () => {
 
         expect(() => renderer.render({ draws: [] })).toThrow("encoding failed");
 
-        expect(
-            renderer._transientTextures.destroyEvicted
-        ).toHaveBeenCalledOnce();
+        expect(renderer._transientTextures.beginFrame).toHaveBeenCalledOnce();
+        expect(renderer._transientTextures.endFrame).toHaveBeenCalledOnce();
         expect(renderer.device.queue.submit).not.toHaveBeenCalled();
     });
 
@@ -599,6 +599,52 @@ describe("Renderer mark definitions", () => {
 
         renderer.renderPicking();
         expect(renderer._pickingFrame).toBe(renderer._renderFrame);
+    });
+
+    test("reuses grouped render textures across unchanged frames", () => {
+        const program = createProgram("multisample");
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer } = createRendererHarness();
+        /** @type {(GPUTexture & {destroy: ReturnType<typeof vi.fn>})[]} */
+        const textures = [];
+        renderer.device.createTexture = vi.fn(() => {
+            const texture =
+                /** @type {GPUTexture & {destroy: ReturnType<typeof vi.fn>}} */ (
+                    /** @type {unknown} */ ({
+                        createView: vi.fn(() => ({})),
+                        destroy: vi.fn(),
+                    })
+                );
+            textures.push(texture);
+            return texture;
+        });
+        renderer._transientTextures = new TransientTexturePool(
+            renderer.device,
+            "rgba8unorm"
+        );
+        const mark = renderer.createMark(definition, { channels: {} });
+        const frame = {
+            items: [
+                {
+                    bounds: { x: 10, y: 5, width: 20, height: 10 },
+                    opacity: 0.5,
+                    items: [{ mark }],
+                },
+            ],
+        };
+
+        renderer.render(frame);
+        renderer.render(frame);
+
+        expect(renderer.device.createTexture).toHaveBeenCalledTimes(2);
+        expect(
+            textures.every((texture) => !texture.destroy.mock.calls.length)
+        ).toBe(true);
+
+        renderer._transientTextures.destroy();
     });
 
     test("clamps opaque nested MSAA groups into one accumulation pass", () => {
@@ -1083,20 +1129,22 @@ function createRendererHarness() {
         flush: vi.fn(),
         destroy: vi.fn(),
         pipeline: {},
-        createBinding: vi.fn(() => ({})),
+        bind: vi.fn((pass) => pass.setBindGroup(0, {})),
     };
     renderer._transientTextures = {
+        beginFrame: vi.fn(),
         acquire: vi.fn((width, height, sampleCount, usage) => {
             transientAcquires.push({ width, height, sampleCount, usage });
             return {
                 key: `texture-${transientId++}`,
                 texture: {},
                 view: {},
-                cost: width * height * sampleCount,
+                generation: 0,
+                compositeBinding: null,
             };
         }),
         release: vi.fn(),
-        destroyEvicted: vi.fn(),
+        endFrame: vi.fn(),
         destroy: vi.fn(),
     };
     return {

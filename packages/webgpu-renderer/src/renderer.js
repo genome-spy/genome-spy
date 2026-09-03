@@ -884,6 +884,7 @@ export class Renderer {
             label: gpuLabel(RENDERER_GPU_OWNER, "canvas texture view"),
         });
 
+        this._transientTextures.beginFrame();
         try {
             const encodingStart = startPhase();
             this._encodeRenderItems(
@@ -906,7 +907,7 @@ export class Renderer {
             this.device.queue.submit([commandEncoder.finish()]);
             finishPhase("submission", submissionStart);
         } finally {
-            this._transientTextures.destroyEvicted();
+            this._transientTextures.endFrame();
         }
         if (rememberFrame) {
             this._renderFrame = draws;
@@ -1468,10 +1469,7 @@ export class Renderer {
         pass.setViewport(x, y, source.width, source.height, 0, 1);
         pass.setScissorRect(x, y, source.width, source.height);
         pass.setPipeline(this._textureCompositor.pipeline);
-        pass.setBindGroup(
-            0,
-            this._textureCompositor.createBinding(source.view, opacity)
-        );
+        this._textureCompositor.bind(pass, source.texture, opacity);
         pass.draw(6);
         pass.end();
     }
