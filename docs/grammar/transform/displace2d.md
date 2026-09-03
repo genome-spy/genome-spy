@@ -41,42 +41,38 @@ original center. Sorting by a priority field immediately before `displace2d`
 gives important annotations the first choice of positions. The transform always
 preserves every row.
 
-## Pixel-space placement
+## Scale-aware placement
 
-GenomeSpy positional scales use a unit range. Position factors convert source
-coordinates to the logical-pixel coordinate system used by the collision sizes
-and output offsets. For affine x and y scales, use:
+Set `scalePositions` to `true` when `x` and `y` contain values for the view's
+positional scales. The transform maps both fields to logical pixels, follows
+zoom and layout changes, respects reversed and nonlinear scales, and uses the
+viewport as the preferred placement extent. Collision dimensions and output
+offsets remain in logical pixels.
 
-```json
-"xPositionFactor": {
-  "expr": "width * (scale('x', 1) - scale('x', 0))"
-},
-"yPositionFactor": {
-  "expr": "height * (scale('y', 0) - scale('y', 1))"
-}
-```
-
-The reversed subtraction for y matches screen offsets: positive `yOffset`
-moves down, while a normal quantitative y scale increases upward. Negative
-position factors are supported.
-
-Scale and layout changes automatically update expression-backed factors. Set
-the offset channels' scales to `null` so the resulting logical-pixel offsets
-are applied directly:
+Set the offset channels' scales to `null` so the resulting offsets are applied
+directly:
 
 ```json
 "xOffset": { "field": "labelDx", "type": "quantitative", "scale": null },
 "yOffset": { "field": "labelDy", "type": "quantitative", "scale": null }
 ```
 
-The factor conversion supports affine mappings. For nonlinear scales, derive
-pixel positions upstream instead of using position factors.
+`scalePositions` cannot be combined with position factors or explicit extents.
+
+## Raw-coordinate placement
+
+By default, `displace2d` treats the `x` and `y` values as coordinates in the
+same logical-pixel space as the collision dimensions. `xPositionFactor` and
+`yPositionFactor` can convert other affine coordinate systems into pixels.
+Negative factors are supported. Nonlinear scales should use `scalePositions`
+instead.
 
 ## Preferred bounds and overflow
 
-`xExtent` and `yExtent` provide preferred outer bounds in the original x and y
-coordinate systems. Reactive domain expressions keep the preferred bounds at
-the visible plot edges:
+In raw-coordinate mode, `xExtent` and `yExtent` provide preferred outer bounds
+in the original x and y coordinate systems. When matching position factors are
+configured, reactive domain expressions can keep the preferred bounds at the
+visible plot edges:
 
 ```json
 "xExtent": { "expr": "domain('x')" },
