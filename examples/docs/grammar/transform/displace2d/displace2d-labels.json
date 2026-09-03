@@ -88,14 +88,7 @@
           "height": "activeCollisionHeight",
           "anchorWidth": "activeAnchorSize",
           "anchorHeight": "activeAnchorSize",
-          "xPositionFactor": {
-            "expr": "width * (scale('x', 1) - scale('x', 0))"
-          },
-          "yPositionFactor": {
-            "expr": "height * (scale('y', 0) - scale('y', 1))"
-          },
-          "xExtent": { "expr": "domain('x')" },
-          "yExtent": { "expr": "domain('y')" },
+          "scalePositions": true,
           "as": ["labelTargetDx", "labelTargetDy"]
         },
         {
