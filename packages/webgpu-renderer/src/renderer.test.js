@@ -541,6 +541,7 @@ describe("Renderer mark definitions", () => {
         renderer.render({
             items: [
                 {
+                    label: "viewRoot/samples/copy-ratios",
                     bounds: { x: 10, y: 5, width: 20, height: 10 },
                     opacity: 0.5,
                     items: [
@@ -573,12 +574,15 @@ describe("Renderer mark definitions", () => {
             expect.objectContaining({ width: 40, height: 20, sampleCount: 4 }),
         ]);
         expect(renderPassDescriptors).toHaveLength(2);
+        expect(renderPassDescriptors[0].label).toBe(
+            "viewRoot/samples/copy-ratios: multisample group pass"
+        );
         expect(
             Array.from(renderPassDescriptors[0].colorAttachments)[0]
                 .resolveTarget
         ).toBeDefined();
         expect(renderPassDescriptors[1].label).toBe(
-            "webgpu-renderer: group composite pass"
+            "viewRoot/samples/copy-ratios: group composite pass"
         );
         expect(pass.setViewport).toHaveBeenNthCalledWith(1, 0, 0, 40, 20, 0, 1);
         expect(pass.setScissorRect).toHaveBeenNthCalledWith(1, 0, 0, 40, 20);
@@ -692,6 +696,7 @@ describe("Renderer mark definitions", () => {
         renderer.render({
             items: [
                 {
+                    label: "viewRoot/transcripts",
                     bounds,
                     opacity: 0.5,
                     items: [{ mark: exon }, { mark: body }],
@@ -705,10 +710,10 @@ describe("Renderer mark definitions", () => {
             expect.objectContaining({ sampleCount: 4 }),
         ]);
         expect(renderPassDescriptors.map((pass) => pass.label)).toEqual([
-            "webgpu-renderer: multisample group pass",
-            "webgpu-renderer: group composite pass",
-            "webgpu-renderer: main render pass",
-            "webgpu-renderer: group composite pass",
+            "viewRoot/transcripts: multisample group pass",
+            "viewRoot/transcripts: group composite pass",
+            "viewRoot/transcripts: main render pass",
+            "viewRoot/transcripts: group composite pass",
         ]);
         expect(exonProgram.draw).toHaveBeenCalledWith(
             expect.anything(),

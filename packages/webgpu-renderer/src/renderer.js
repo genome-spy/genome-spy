@@ -894,6 +894,7 @@ export class Renderer {
                     height: canvas.height,
                     logicalX: 0,
                     logicalY: 0,
+                    label: RENDERER_GPU_OWNER,
                 },
                 items,
                 1,
@@ -1139,6 +1140,7 @@ export class Renderer {
                         type: "scope",
                         bounds: item.bounds,
                         opacity,
+                        label: item.label,
                         coverageOnly: children.every(requiresMultisampling),
                         items: children,
                     });
@@ -1161,9 +1163,10 @@ export class Renderer {
          * @param {NormalizedSemanticItem[]} source
          * @param {1 | 4} targetSampleCount
          * @param {import("./index.d.ts").DrawRect} activeBounds
+         * @param {string} label
          * @returns {NormalizedRenderItem[]}
          */
-        const layerize = (source, targetSampleCount, activeBounds) => {
+        const layerize = (source, targetSampleCount, activeBounds, label) => {
             /** @type {NormalizedRenderItem[]} */
             const normalized = [];
             /** @type {NormalizedDraw[]} */
@@ -1183,6 +1186,7 @@ export class Renderer {
                     ),
                     opacity: 1,
                     sampleCount: 4,
+                    label,
                     items: coverageRun,
                 });
                 coverageRun = [];
@@ -1197,7 +1201,13 @@ export class Renderer {
                         continue;
                     }
                     const sampleCount = item.coverageOnly ? 4 : 1;
-                    const children = layerize(item.items, sampleCount, bounds);
+                    const scopeLabel = item.label ?? label;
+                    const children = layerize(
+                        item.items,
+                        sampleCount,
+                        bounds,
+                        scopeLabel
+                    );
                     if (!children.length) {
                         continue;
                     }
@@ -1213,6 +1223,7 @@ export class Renderer {
                             bounds,
                             opacity: item.opacity,
                             sampleCount,
+                            label: scopeLabel,
                             items: children,
                         });
                     }
@@ -1244,7 +1255,12 @@ export class Renderer {
             return normalized;
         };
 
-        const normalizedItems = layerize(normalize(items), 1, canvas);
+        const normalizedItems = layerize(
+            normalize(items),
+            1,
+            canvas,
+            RENDERER_GPU_OWNER
+        );
         addCount("normalizedDraws", draws.length);
         finishPhase("drawNormalization", phaseStart);
         return { items: normalizedItems, draws, groupCount };
@@ -1362,6 +1378,7 @@ export class Renderer {
             height: bounds.height,
             logicalX: bounds.x / dpr,
             logicalY: bounds.y / dpr,
+            label: group.label,
         };
         this._encodeRenderItems(
             commandEncoder,
@@ -1385,7 +1402,7 @@ export class Renderer {
             4
         );
         const pass = commandEncoder.beginRenderPass({
-            label: gpuLabel(RENDERER_GPU_OWNER, "multisample group pass"),
+            label: gpuLabel(target.label, "multisample group pass"),
             colorAttachments: [
                 {
                     view: multisampled.view,
@@ -1409,7 +1426,7 @@ export class Renderer {
      */
     _encodeDrawPass(commandEncoder, target, draws, clearValue) {
         const pass = commandEncoder.beginRenderPass({
-            label: gpuLabel(RENDERER_GPU_OWNER, "main render pass"),
+            label: gpuLabel(target.label, "main render pass"),
             colorAttachments: [
                 {
                     view: target.view,
@@ -1432,7 +1449,7 @@ export class Renderer {
      */
     _encodeCompositePass(commandEncoder, target, source, opacity, clearValue) {
         const pass = commandEncoder.beginRenderPass({
-            label: gpuLabel(RENDERER_GPU_OWNER, "group composite pass"),
+            label: gpuLabel(source.label, "group composite pass"),
             colorAttachments: [
                 {
                     view: target.view,
@@ -1477,6 +1494,7 @@ export class Renderer {
             height: this.canvas.height,
             logicalX: 0,
             logicalY: 0,
+            label: RENDERER_GPU_OWNER,
         },
         sampleCount = 1
     ) {
@@ -1720,6 +1738,7 @@ function wrapMethod(target, name, before) {
  * @property {import("./index.d.ts").DrawRect} bounds
  * @property {number} opacity
  * @property {1 | 4} sampleCount
+ * @property {string} label
  * @property {NormalizedRenderItem[]} items
  */
 
@@ -1730,6 +1749,7 @@ function wrapMethod(target, name, before) {
  * @property {"scope"} type
  * @property {import("./index.d.ts").DrawRect} bounds
  * @property {number} opacity
+ * @property {string | undefined} label
  * @property {boolean} coverageOnly
  * @property {NormalizedSemanticItem[]} items
  */
@@ -1743,6 +1763,7 @@ function wrapMethod(target, name, before) {
  * @property {number} height
  * @property {number} logicalX
  * @property {number} logicalY
+ * @property {string} label
  */
 
 /**

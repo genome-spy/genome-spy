@@ -1119,6 +1119,8 @@ export type RenderScope = {
     bounds: DrawRect;
     /** Opacity applied once to the scope's combined contents. */
     opacity?: number;
+    /** Diagnostic owner used to relate physical GPU passes to this scope. */
+    label?: string;
 };
 
 export type RenderItem = DrawCommand | RenderScope;

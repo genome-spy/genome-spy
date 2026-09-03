@@ -58,12 +58,13 @@ function createContext(surface, options = {}) {
     });
 }
 
-/** @param {boolean} [localOpacity] */
-function createView(localOpacity = false) {
+/** @param {boolean} [localOpacity] @param {string} [path] */
+function createView(localOpacity = false, path = "test-view") {
     return {
         onBeforeRender: vi.fn(),
         getOpacity: () => 1,
         hasLocalOpacity: () => localOpacity,
+        getPathString: vi.fn(() => path),
         visit: vi.fn(),
     };
 }
@@ -124,6 +125,7 @@ describe("WebGpuViewRenderingContext", () => {
         expect(collectDraws(frame)).toEqual([
             surface.prepareDraw.mock.calls[0][1],
         ]);
+        expect(frame[0]).toMatchObject({ label: "test-view" });
         expectRendererNeutralScopes(frame);
     });
 
@@ -586,6 +588,7 @@ describe("WebGpuViewRenderingContext", () => {
             onBeforeRender: () => (offset += 10),
             getOpacity: () => 1,
             hasLocalOpacity: () => false,
+            getPathString: () => "viewRoot/dynamic",
             visit: vi.fn(),
         };
         const coords = Rectangle.create(20, 30, 100, 80)
@@ -1004,8 +1007,8 @@ describe("WebGpuViewRenderingContext", () => {
             prepareDraw: vi.fn(),
         };
         const context = createContext(surface);
-        const sample = createView();
-        const coverageLayer = createView();
+        const sample = createView(false, "viewRoot/samples");
+        const coverageLayer = createView(false, "viewRoot/samples/coverage");
         const fadedView = {
             ...createView(true),
             getOpacity: () => 0.5,
@@ -1063,6 +1066,8 @@ describe("WebGpuViewRenderingContext", () => {
         ]);
         expect(frame).toHaveLength(1);
         const sampleScope = /** @type {any} */ (frame[0]);
+        expect(sampleScope.label).toBe("viewRoot/samples");
+        expect(sample.getPathString).toHaveBeenCalledOnce();
         expect(sampleScope.items).toHaveLength(2);
         expect(sampleScope.items[0].items[0]).toMatchObject({ opacity: 0.5 });
         expectRendererNeutralScopes(frame);
@@ -1153,6 +1158,7 @@ describe("WebGpuViewRenderingContext", () => {
             onBeforeRender: vi.fn(),
             getOpacity: () => 0.5,
             hasLocalOpacity: () => true,
+            getPathString: () => "viewRoot/first",
             visit: (/** @type {(view: any) => void} */ visitor) =>
                 visitor({ mark }),
         };
@@ -1161,6 +1167,7 @@ describe("WebGpuViewRenderingContext", () => {
             onBeforeRender: vi.fn(),
             getOpacity: () => 0.75,
             hasLocalOpacity: () => true,
+            getPathString: () => "viewRoot/second",
             visit: (/** @type {(view: any) => void} */ visitor) =>
                 visitor({ mark }),
         };
@@ -1218,6 +1225,7 @@ describe("WebGpuViewRenderingContext", () => {
             onBeforeRender: vi.fn(),
             getOpacity: () => opacity,
             hasLocalOpacity: () => true,
+            getPathString: () => "viewRoot/dynamic-opacity",
             getEffectiveOpacity: () => opacity,
             getCollector: () => ({}),
             visit: (/** @type {(view: any) => void} */ visitor) =>

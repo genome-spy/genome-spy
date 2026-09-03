@@ -309,8 +309,16 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
     /** Annotates retained view scopes with renderer-neutral semantics. */
     #compileRenderScopes() {
+        /** @type {import("../../view/view.js").default | undefined} */
+        let previousView;
+        let previousLabel = "";
         for (const command of this.#renderCommands) {
             if (command.type === "pushView") {
+                if (command.view !== previousView) {
+                    previousView = command.view;
+                    previousLabel = command.view.getPathString();
+                }
+                command.label = previousLabel;
                 const clip = getViewClipDirections(command.view);
                 command.localOpacity = command.view.hasLocalOpacity();
                 command.clipX = clip.clipX;
@@ -732,6 +740,7 @@ function createGroup(command) {
     const group = {
         bounds: command.bounds,
         items: [],
+        label: command.label,
     };
     if (command.localOpacity) {
         group.opacity = command.view.getOpacity();
@@ -979,7 +988,7 @@ function writeScopeBounds(command, target) {
  * @typedef {
  *   | {type: "beginSampleFacetBatch"}
  *   | {type: "endSampleFacetBatch"}
- *   | {type: "pushView", view: import("../../view/view.js").default, coords: Rectangle[], localOpacity: boolean, clipX: boolean, clipY: boolean, bounds: import("@genome-spy/webgpu-renderer").DrawRect}
+ *   | {type: "pushView", view: import("../../view/view.js").default, label?: string, coords: Rectangle[], localOpacity: boolean, clipX: boolean, clipY: boolean, bounds: import("@genome-spy/webgpu-renderer").DrawRect}
  *   | {type: "popView"}
  *   | {type: "occurrence", occurrence: Occurrence}
  * } PaintCommand
