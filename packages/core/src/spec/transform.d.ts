@@ -1156,6 +1156,17 @@ export interface Displace2DParams extends TransformParamsBase {
     anchorHeight?: number | Field | ExprRef;
 
     /**
+     * Maps `x` and `y` through the owning view's positional scales before
+     * placement and uses the logical viewport as the placement extent. This
+     * supports nonlinear and reversed scales without manual pixel-conversion
+     * expressions. Cannot be combined with position factors or explicit
+     * extents.
+     *
+     * __Default value:__ `false`
+     */
+    scalePositions?: boolean;
+
+    /**
      * Multiplier that converts horizontal positions to logical pixels. An
      * expression can react to scale or layout changes. Negative factors are
      * valid. Nonlinear scales require pixel positions derived upstream.
