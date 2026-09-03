@@ -1106,6 +1106,143 @@ export interface Displace1DParams extends TransformParamsBase {
     as?: string;
 }
 
+/**
+ * Places generic axis-aligned rectangles in stable input order. Every input row
+ * receives signed pixel offsets; earlier rows have placement priority.
+ */
+export interface Displace2DParams extends TransformParamsBase {
+    type: "displace2d";
+
+    /** Field containing the original horizontal rectangle center. */
+    x: Field;
+
+    /** Field containing the original vertical rectangle center. */
+    y: Field;
+
+    /**
+     * Full collision width in logical pixels, including any desired spacing. A
+     * number is shared by all rows, a field supplies per-row values, and an
+     * expression supplies a reactive scalar shared by all rows. Values must be
+     * non-negative.
+     */
+    width: number | Field | ExprRef;
+
+    /**
+     * Full collision height in logical pixels, including any desired spacing.
+     * A number is shared by all rows, a field supplies per-row values, and an
+     * expression supplies a reactive scalar shared by all rows. Values must be
+     * non-negative.
+     */
+    height: number | Field | ExprRef;
+
+    /**
+     * Full width of a preplaced obstacle centered at each row's original
+     * position. A number is shared by all rows, a field supplies per-row
+     * values, and an expression supplies a reactive scalar shared by all rows.
+     * Set either anchor dimension to zero to disable the obstacle for that row.
+     *
+     * __Default value:__ `0`
+     */
+    anchorWidth?: number | Field | ExprRef;
+
+    /**
+     * Full height of a preplaced obstacle centered at each row's original
+     * position. A number is shared by all rows, a field supplies per-row
+     * values, and an expression supplies a reactive scalar shared by all rows.
+     * Set either anchor dimension to zero to disable the obstacle for that row.
+     *
+     * __Default value:__ `0`
+     */
+    anchorHeight?: number | Field | ExprRef;
+
+    /**
+     * Multiplier that converts horizontal positions to logical pixels. An
+     * expression can react to scale or layout changes. Negative factors are
+     * valid. Nonlinear scales require pixel positions derived upstream.
+     *
+     * __Default value:__ `1`
+     */
+    xPositionFactor?: number | ExprRef;
+
+    /**
+     * Multiplier that converts vertical positions to logical pixels. An
+     * expression can react to scale or layout changes. Negative factors are
+     * valid. Nonlinear scales require pixel positions derived upstream.
+     *
+     * __Default value:__ `1`
+     */
+    yPositionFactor?: number | ExprRef;
+
+    /**
+     * Preferred horizontal outer bounds in the original coordinate system.
+     * Rectangles that exhaust the bounded local search remain non-overlapping
+     * and extend beyond these bounds in a deterministic overflow row. An
+     * expression may evaluate to `undefined` to disable the bounds.
+     */
+    xExtent?: [number, number] | ExprRef;
+
+    /**
+     * Preferred vertical outer bounds in the original coordinate system. An
+     * expression may evaluate to `undefined` to disable the bounds.
+     */
+    yExtent?: [number, number] | ExprRef;
+
+    /**
+     * Output fields for signed horizontal and vertical pixel displacements.
+     * Positive values move right and down, respectively.
+     *
+     * __Default value:__ `["xDisplacement", "yDisplacement"]`
+     */
+    as?: [string, string];
+}
+
+/**
+ * Smooths numeric fields between dataflow updates. Rows are matched by a stable
+ * key, allowing replacement data objects to continue from their currently
+ * displayed values. Updates before the first render snap to their targets.
+ */
+export interface TransitionParams extends TransformParamsBase {
+    type: "transition";
+
+    /** Field containing a unique string or finite numeric key. */
+    key: Field;
+
+    /** Fields containing finite numeric target values. */
+    fields: Field[];
+
+    /**
+     * Output fields for the interpolated values. Omitting this property updates
+     * `fields` in place. Output fields must not overwrite `key`.
+     *
+     * __Default value:__ `fields`
+     */
+    as?: Field[];
+
+    /**
+     * Time in milliseconds for the remaining distance to halve.
+     *
+     * __Default value:__ `80`
+     */
+    halfLife?: number;
+
+    /**
+     * Positive distance from the target at which the output snaps to the exact
+     * target.
+     *
+     * __Default value:__ `0.01`
+     */
+    epsilon?: number;
+
+    /**
+     * Time in milliseconds that a changed target batch must remain unchanged
+     * before interpolation begins. Repeated equal updates do not restart the
+     * delay.
+     *
+     * __Default value:__ `0`
+     */
+    targetDelay?: number;
+}
+
 export interface FlattenCompressedExonsParams extends TransformParamsBase {
     type: "flattenCompressedExons";
 
@@ -1139,6 +1276,7 @@ export type TransformParams =
     | CoordinateLookupParams
     | CrossParams
     | Displace1DParams
+    | Displace2DParams
     | FlattenDelimitedParams
     | FormulaParams
     | LookupParams
@@ -1162,4 +1300,5 @@ export type TransformParams =
     | SampleParams
     | SetIntersectionParams
     | StackParams
+    | TransitionParams
     | WindowParams;

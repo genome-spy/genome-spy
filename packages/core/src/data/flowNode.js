@@ -22,6 +22,7 @@ export const BEHAVIOR_COLLECTS = 1 << 2;
  * @typedef {object} ParamRuntimeProvider
  * @prop {import("../paramRuntime/viewParamRuntime.js").default} [paramRuntime]
  * @prop {import("../types/viewContext.js").default} [context]
+ * @prop {() => boolean} [hasRendered]
  */
 
 /**

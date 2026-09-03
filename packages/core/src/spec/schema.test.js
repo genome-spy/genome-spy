@@ -314,6 +314,37 @@ describe("generated core schema", () => {
         );
     });
 
+    test("accepts two-dimensional displacement transform parameters", () => {
+        const validate = createCoreValidator();
+        /** @type {import("./coreSchemaRoot.js").CoreRootSpec} */
+        const spec = {
+            data: { values: [{ x: 1, y: 2, width: 20 }] },
+            transform: [
+                {
+                    type: "displace2d",
+                    x: "x",
+                    y: "y",
+                    width: "width",
+                    height: { expr: "fontSize" },
+                    xPositionFactor: { expr: "width / 10" },
+                    yExtent: [0, 100],
+                    as: ["dx", "dy"],
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+                xOffset: { field: "dx", type: "quantitative", scale: null },
+                yOffset: { field: "dy", type: "quantitative", scale: null },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
+
     test("includes shared lookup options in concrete transform schemas", () => {
         const schema = createCoreSchema();
         const lookupParams =

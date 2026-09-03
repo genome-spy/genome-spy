@@ -4,6 +4,7 @@ import CoordinateLookupTransform from "./coordinateLookup.js";
 import CrossTransform from "./cross.js";
 import CoverageTransform from "./coverage.js";
 import Displace1DTransform from "./displace1d.js";
+import Displace2DTransform from "./displace2d.js";
 import FilterScoredLabelsTransform from "./filterScoredLabels.js";
 import AxisLabelLayoutTransform from "./axisLabelLayout.js";
 import FilterTransform from "./filter.js";
@@ -27,6 +28,7 @@ import FlattenSequenceTransform from "./flattenSequence.js";
 import AggregateTransform from "./aggregate.js";
 import IdentifierTransform from "./identifier.js";
 import TruncateTextTransform from "./truncateText.js";
+import TransitionTransform from "./transition.js";
 import WindowTransform from "./window.js";
 
 /**
@@ -40,6 +42,7 @@ export const transforms = {
     collect: Collector,
     coverage: CoverageTransform,
     displace1d: Displace1DTransform,
+    displace2d: Displace2DTransform,
     axisLabelLayout: AxisLabelLayoutTransform,
     filterScoredLabels: FilterScoredLabelsTransform,
     filter: FilterTransform,
@@ -60,6 +63,7 @@ export const transforms = {
     sample: SampleTransform,
     setIntersection: SetIntersectionTransform,
     truncateText: TruncateTextTransform,
+    transition: TransitionTransform,
     window: WindowTransform,
     stack: StackTransform,
 };
