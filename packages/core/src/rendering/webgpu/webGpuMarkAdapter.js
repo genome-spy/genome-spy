@@ -1,6 +1,9 @@
 import { color as parseColor } from "d3-color";
 import { format as numberFormat } from "d3-format";
-import { packHighPrecisionU32Array } from "@genome-spy/webgpu-renderer/high-precision";
+import {
+    packHighPrecisionU32Array,
+    packHighPrecisionU32ArrayInto,
+} from "@genome-spy/webgpu-renderer/high-precision";
 import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
 import { rectMark } from "@genome-spy/webgpu-renderer/marks/rect";
 import { ruleMark } from "@genome-spy/webgpu-renderer/marks/rule";
@@ -1033,87 +1036,76 @@ function createPositionChannel(
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
-    const range = getRange(channel, coords, encoder.scale);
-    if (encoder.constant) {
-        return Object.assign(
-            liveValue(() => {
-                const rawValue = encoder.branches[0].accessor(data[0]);
-                const unitPosition = Number(
-                    encoder.scale
-                        ? /** @type {any} */ (encoder.scale)(rawValue)
-                        : encoder(data[0])
-                );
-                if (!Number.isFinite(unitPosition)) {
-                    throw unsupported(
-                        mark,
-                        `Channel "${channel}" is not finite.`
-                    );
-                }
-                return range[0] + unitPosition * (range[1] - range[0]);
-            }),
-            { scale: identityScale() }
-        );
-    }
-
     const accessor = encoder.branches[0].accessor;
-    if (encoder.scale?.type == "band" || encoder.scale?.type == "point") {
-        const { values, readDomain } = toCategoricalArray(
-            mark,
-            channel,
-            data,
-            accessor,
-            encoder.scale
-        );
-        return {
-            data: values,
-            type: "u32",
-            scale: createBandPositionScale(
-                encoder.scale,
-                range,
-                readDomain,
-                /** @type {import("../../spec/channel.js").BandMixins} */ (
-                    accessor.channelDef
-                ).band ?? 0.5
-            ),
-        };
-    } else if (encoder.scale?.type == "ordinal") {
-        const { values, readDomain } = toCategoricalArray(
-            mark,
-            channel,
-            data,
-            accessor,
-            encoder.scale
-        );
-        return {
-            data: values,
-            type: "u32",
-            scale: createOrdinalPositionScale(encoder.scale, range, readDomain),
-        };
-    } else if (
-        encoder.scale?.type == "index" ||
-        encoder.scale?.type == "locus"
+    // Value definitions are viewport-relative even when another conditional
+    // branch uses a data scale. Datum definitions share the field scale path.
+    const scale = isValueDef(encoder.channelDef) ? undefined : encoder.scale;
+    const range = getRange(channel, coords, scale);
+    const band =
+        /** @type {import("../../spec/channel.js").BandMixins} */ (
+            encoder.channelDef
+        ).band ?? 0.5;
+    if (
+        scale?.type == "band" ||
+        scale?.type == "point" ||
+        scale?.type == "ordinal"
     ) {
-        const large = isLargeIndexDomain(encoder.scale.domain().map(Number));
-        return {
-            data: toIndexArray(mark, channel, data, accessor, large),
-            type: "u32",
-            ...(large ? { inputComponents: 2 } : {}),
-            scale: createIndexPositionScale(
-                encoder.scale,
-                range,
-                /** @type {import("../../spec/channel.js").BandMixins} */ (
-                    accessor.channelDef
-                ).band ?? 0.5
-            ),
-        };
+        const { intern, readDomain } = getCategoricalMapping(
+            mark,
+            channel,
+            scale
+        );
+        const input = encoder.constant
+            ? liveValue(() => intern(accessor(data[0])), "u32")
+            : {
+                  data: getCachedSeries(mark, channel, data, accessor, () =>
+                      Uint32Array.from(data, (datum) => intern(accessor(datum)))
+                  ),
+                  type: /** @type {const} */ ("u32"),
+              };
+        return Object.assign(input, {
+            scale:
+                scale.type == "ordinal"
+                    ? // Ordinal outputs already include Core's range reversal.
+                      createOrdinalPositionScale(
+                          scale,
+                          getRange(channel, coords, undefined),
+                          readDomain
+                      )
+                    : createBandPositionScale(scale, range, readDomain, band),
+        });
+    } else if (scale?.type == "index" || scale?.type == "locus") {
+        const large = isLargeIndexDomain(scale.domain().map(Number));
+        const input = encoder.constant
+            ? createIndexValue(mark, channel, () => accessor(data[0]), large)
+            : {
+                  data: toIndexArray(mark, channel, data, accessor, large),
+                  type: /** @type {const} */ ("u32"),
+              };
+        return Object.assign(input, {
+            ...(large ? { inputComponents: /** @type {const} */ (2) } : {}),
+            scale: createIndexPositionScale(scale, range, band),
+        });
     }
 
-    const values = toFloat32Array(mark, channel, data, accessor);
-    return {
-        data: values,
-        type: "f32",
-        scale: createPositionScale(mark, channel, encoder.scale, range),
-    };
+    const input = encoder.constant
+        ? liveValue(() => {
+              const value = Number(accessor(data[0]));
+              if (!Number.isFinite(value)) {
+                  throw unsupported(
+                      mark,
+                      `Channel "${channel}" is not finite.`
+                  );
+              }
+              return value;
+          }, "f32")
+        : {
+              data: toFloat32Array(mark, channel, data, accessor),
+              type: /** @type {const} */ ("f32"),
+          };
+    return Object.assign(input, {
+        scale: createPositionScale(mark, channel, scale, range),
+    });
 }
 
 /**
@@ -1690,16 +1682,15 @@ function readNumericEncoder(mark, channel, datum) {
  * @returns {[number, number]}
  */
 function getAbsoluteRange(channel, coords, scale) {
-    if (channel[0] == "x") {
-        return [coords.x, coords.x2];
-    }
-
-    // Core's default y range is descending in pixel space. The reverse flag
-    // flips that range for both continuous and discrete scales.
     const reverse =
         /** @type {{ props?: { reverse?: boolean } } | undefined} */ (
             /** @type {unknown} */ (scale)
         )?.props?.reverse;
+    if (channel[0] == "x") {
+        return reverse ? [coords.x2, coords.x] : [coords.x, coords.x2];
+    }
+
+    // Core's default y range is descending in pixel space.
     return reverse ? [coords.y, coords.y2] : [coords.y2, coords.y];
 }
 
@@ -1714,14 +1705,13 @@ function getAbsoluteRange(channel, coords, scale) {
  * @returns {[number, number]}
  */
 function getTextRange(channel, coords, scale) {
-    if (channel[0] == "x") {
-        return [0, coords.width];
-    }
-
     const reverse =
         /** @type {{ props?: { reverse?: boolean } } | undefined} */ (
             /** @type {unknown} */ (scale)
         )?.props?.reverse;
+    if (channel[0] == "x") {
+        return reverse ? [coords.width, 0] : [0, coords.width];
+    }
     return reverse ? [0, coords.height] : [coords.height, 0];
 }
 
@@ -2035,21 +2025,53 @@ function toFloat32Array(mark, channel, data, accessor) {
 function toIndexArray(mark, channel, data, accessor, large) {
     const cacheChannel = `${channel}:${large ? "large" : "regular"}`;
     return getCachedSeries(mark, cacheChannel, data, accessor, () => {
-        const values = Array.from(data, (datum) => {
-            const rawValue = Number(accessor(datum));
-            const value = Math.floor(rawValue);
-            if (!Number.isSafeInteger(value) || value < 0) {
-                throw unsupported(
-                    mark,
-                    `Channel "${channel}" must contain finite non-negative values within the safe integer range.`
-                );
-            }
-            return value;
-        });
+        const values = Array.from(data, (datum) =>
+            readIndexValue(mark, channel, accessor(datum))
+        );
         return large
             ? packHighPrecisionU32Array(values)
             : Uint32Array.from(values);
     });
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {unknown} rawValue
+ */
+function readIndexValue(mark, channel, rawValue) {
+    const value = Math.floor(Number(rawValue));
+    if (!Number.isSafeInteger(value) || value < 0) {
+        throw unsupported(
+            mark,
+            `Channel "${channel}" must contain finite non-negative values within the safe integer range.`
+        );
+    }
+    return value;
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {() => unknown} read
+ * @param {boolean} large
+ */
+function createIndexValue(mark, channel, read, large) {
+    if (!large) {
+        return liveValue(() => readIndexValue(mark, channel, read()), "u32");
+    }
+
+    // Reuse the packing buffers when a parameter-backed datum changes.
+    const source = [0];
+    const packed = new Uint32Array(2);
+    const value = [0, 0];
+    return liveValue(() => {
+        source[0] = readIndexValue(mark, channel, read());
+        packHighPrecisionU32ArrayInto(source, packed);
+        value[0] = packed[0];
+        value[1] = packed[1];
+        return value;
+    }, "u32");
 }
 
 /**
@@ -2060,16 +2082,26 @@ function toIndexArray(mark, channel, data, accessor, large) {
  * @param {import("../../types/encoder.js").VegaScale} scale
  */
 function toCategoricalArray(mark, channel, data, accessor, scale) {
+    const { intern, readDomain } = getCategoricalMapping(mark, channel, scale);
+    const values = getCachedSeries(mark, channel, data, accessor, () =>
+        Uint32Array.from(data, (datum) => intern(accessor(datum)))
+    );
+    return { values, readDomain };
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} channel
+ * @param {import("../../types/encoder.js").VegaScale} scale
+ */
+function getCategoricalMapping(mark, channel, scale) {
     const indexer = /** @type {any} */ (scale).props?.domainIndexer;
     /** @param {import("../../spec/channel.js").Scalar} value */
     const intern = (value) =>
         readUnsignedInteger(mark, channel, indexer ? indexer(value) : value);
 
     const readDomain = () => scale.domain().map(intern);
-    const values = getCachedSeries(mark, channel, data, accessor, () =>
-        Uint32Array.from(data, (datum) => intern(accessor(datum)))
-    );
-    return { values, readDomain };
+    return { intern, readDomain };
 }
 
 /**

@@ -1,7 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import Rectangle from "../../view/layout/rectangle.js";
 import { bandScaleDefinition } from "@genome-spy/webgpu-renderer/scales/band";
-import { identityScaleDefinition } from "@genome-spy/webgpu-renderer/scales/identity";
 import { indexScaleDefinition } from "@genome-spy/webgpu-renderer/scales/index";
 import { linearScaleDefinition } from "@genome-spy/webgpu-renderer/scales/linear";
 import { thresholdScaleDefinition } from "@genome-spy/webgpu-renderer/scales/threshold";
@@ -193,33 +192,159 @@ describe("WebGPU mark adapter", () => {
         expect(opacity.scale.range).toEqual([0, 0.25]);
     });
 
-    test("reverses continuous Y scale ranges when requested", () => {
-        const mark = createMark("point", [{ y: 0 }], {
-            x: createConstantEncoder(0.5),
-            y: createEncoder((datum) => datum.y, {
-                scale: createLinearScale([0, 1], true),
-            }),
-            size: createConstantEncoder(4),
-            shape: createConstantEncoder("circle"),
-            strokeWidth: createConstantEncoder(0),
-            fill: createConstantEncoder("black"),
-            stroke: createConstantEncoder(null),
-            fillOpacity: createConstantEncoder(1),
-            strokeOpacity: createConstantEncoder(1),
-            angle: createConstantEncoder(0),
-        });
+    test.each(["text", "rect"])(
+        "scales raw %s datums and fields identically on reversed axes",
+        (type) => {
+            let position = 25;
+            const domain = /** @type {[number, number]} */ ([0, 100]);
+            const scale = createLinearScale(domain, true);
+            const datumEncoder = createEncoder(() => position, {
+                scale,
+                channelDef: { datum: { expr: "position" } },
+            });
+            datumEncoder.constant = true;
+            const fieldEncoder = createEncoder((datum) => datum.position, {
+                scale,
+                channelDef: { field: "position" },
+            });
+            const base = createMark("point", [{ position }], {});
+            // Text uses viewport-local ranges; other marks use absolute pixels.
+            const mark = createMark(
+                type,
+                [{ position }],
+                {
+                    ...base.encoders,
+                    x: fieldEncoder,
+                    x2: datumEncoder,
+                    y: fieldEncoder,
+                    y2: datumEncoder,
+                    x2Offset: createConstantEncoder(0),
+                    y2Offset: createConstantEncoder(0),
+                    text: createConstantEncoder("label"),
+                    color: createConstantEncoder("black"),
+                    opacity: createConstantEncoder(1),
+                },
+                {
+                    font: "sans-serif",
+                    align: "center",
+                    baseline: "middle",
+                    paddingX: 0,
+                    paddingY: 0,
+                }
+            );
+            const coords = Rectangle.create(10, 20, 100, 200);
+            const channels = /** @type {any} */ (
+                createWebGpuMarkConfig(mark, {}, coords)
+            ).config.channels;
 
-        const translated = createWebGpuMarkConfig(
-            mark,
-            /** @type {any} */ ({}),
-            Rectangle.create(10, 20, 100, 200)
-        );
-        if (!translated) {
-            throw new Error("Expected a translated point mark.");
+            for (const axis of ["x", "y"]) {
+                const field = channels[axis];
+                const datum = channels[axis + "2"];
+                expect(field.data).toEqual(new Float32Array([25]));
+                expect(datum.value).toBe(25);
+                expect(datum.dynamic).toBe(true);
+                expect(datum.data).toBeUndefined();
+                expect(datum.scale).toEqual(field.scale);
+            }
+            expect(channels.x.scale.range).toEqual(
+                type == "text" ? [100, 0] : [110, 10]
+            );
+            expect(channels.y.scale.range).toEqual(
+                type == "text" ? [0, 200] : [20, 220]
+            );
+            position = 87;
+            domain[1] = 200;
+            expect(channels.x2.value).toBe(87);
+            expect(channels.x2.scale.domain).toEqual([0, 200]);
         }
+    );
 
-        const channels = /** @type {any} */ (translated.config).channels;
-        expect(channels.y.scale.range).toEqual([20, 220]);
+    test("keeps a conditional value independent of the reversed data scale", () => {
+        const encoder = createConditionalEncoder([
+            {
+                accessor: createAccessor(
+                    /** @param {{x: number}} datum */ (datum) => datum.x,
+                    { field: "x" }
+                ),
+                predicate: { param: "selected", empty: false },
+            },
+            {
+                accessor: createAccessor(() => 0.25, { value: 0.25 }, true),
+                predicate: { empty: false },
+            },
+        ]);
+        encoder.scale = /** @type {any} */ (createLinearScale([0, 100], true));
+        const mark = createMark("point", [{ x: 25 }], { x: encoder });
+        /** @type {any} */ (mark.unitView).paramRuntime.findValue = () => ({
+            type: "single",
+        });
+        const x = /** @type {any} */ (
+            createWebGpuMarkConfig(mark, {}, Rectangle.create(10, 20, 100, 200))
+        ).config.channels.x;
+
+        expect(x.value).toBe(0.25);
+        expect(x.scale.domain).toEqual([0, 1]);
+        expect(x.scale.range).toEqual([10, 110]);
+        expect(x.conditions[0].channel.scale.range).toEqual([110, 10]);
+    });
+
+    test.each(["band", "ordinal"])(
+        "keeps categorical %s datums live and preserves scale placement",
+        (type) => {
+            let category = "B";
+            const domain = ["A", "B"];
+            const scale = {
+                ...createBandScale(domain, true),
+                type,
+                range: () => [1, 0],
+            };
+            const encoder = createEncoder(() => category, {
+                scale,
+                channelDef: { datum: { expr: "category" }, band: 1 },
+            });
+            encoder.constant = true;
+            const mark = createMark("point", [{}], { x: encoder });
+            const x = /** @type {any} */ (
+                createWebGpuMarkConfig(
+                    mark,
+                    {},
+                    Rectangle.create(10, 20, 100, 200)
+                )
+            ).config.channels.x;
+
+            expect(x).toMatchObject({ value: 1, type: "u32", dynamic: true });
+            expect(x.data).toBeUndefined();
+            expect(x.scale.range).toEqual([110, 10]);
+            if (type != "ordinal") {
+                expect(x.scale.band).toBe(1);
+            }
+            domain.reverse();
+            category = "A";
+            expect(x.value).toBe(0);
+            expect(x.scale.domain).toEqual([1, 0]);
+        }
+    );
+
+    test.each([0, 2 ** 32])("keeps raw index datums precise at %s", (start) => {
+        let position = start + 4.9;
+        const encoder = createEncoder(() => position, {
+            scale: createIndexScale([start, start + 10]),
+            channelDef: { datum: { expr: "position" }, band: 0.25 },
+        });
+        encoder.constant = true;
+        const mark = createMark("point", [{}], { x: encoder });
+        const x = /** @type {any} */ (
+            createWebGpuMarkConfig(mark, {}, Rectangle.create(10, 20, 100, 200))
+        ).config.channels.x;
+
+        expect(x.value).toEqual(start ? [1048576, 4] : 4);
+        expect(x.inputComponents ?? 1).toBe(start ? 2 : 1);
+        expect(x.type).toBe("u32");
+        expect(x.dynamic).toBe(true);
+        expect(x.data).toBeUndefined();
+        expect(x.scale.band).toBe(0.25);
+        position = start + 9;
+        expect(x.value).toEqual(start ? [1048576, 9] : 9);
     });
 
     test("keeps text anchor and glyph offsets separate", () => {
@@ -267,20 +392,10 @@ describe("WebGPU mark adapter", () => {
         }
 
         const config = /** @type {any} */ (translated.config);
-        expect(config.channels.x).toEqual({
-            ...dynamicValue(50),
-            scale: {
-                type: "identity",
-                definition: identityScaleDefinition,
-            },
-        });
-        expect(config.channels.y).toEqual({
-            ...dynamicValue(0),
-            scale: {
-                type: "identity",
-                definition: identityScaleDefinition,
-            },
-        });
+        expect(config.channels.x.value).toBe(0.5);
+        expect(config.channels.x.scale.range).toEqual([0, 100]);
+        expect(config.channels.y.value).toBe(1);
+        expect(config.channels.y.scale.range).toEqual([200, 0]);
         expect(config.channels.text).toEqual({ data: ["A", "B"] });
         expect(config.channels.xOffset).toEqual({
             data: new Float32Array([2, -3]),
@@ -1312,7 +1427,8 @@ describe("WebGPU mark adapter", () => {
         expect(channels.x.scale.band).toBe(0);
         expect(channels.x2.scale.band).toBe(1);
         expect(channels.y.data).toEqual(new Float32Array([28, 55]));
-        expect(channels.y2.value).toBe(220);
+        expect(channels.y2.value).toBe(0);
+        expect(channels.y2.scale.range).toEqual([220, 20]);
         expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
         expect(channels.strokeWidth).toEqual({ value: 0 });
         expect(channels.hatchPattern).toEqual({ value: 0, type: "u32" });
@@ -1407,8 +1523,10 @@ describe("WebGPU mark adapter", () => {
         );
         const channels = /** @type {any} */ (translated).config.channels;
 
-        expect(channels.x.value).toBe(10);
-        expect(channels.x2.value).toBe(110);
+        expect(channels.x.value).toBe(0);
+        expect(channels.x2.value).toBe(1);
+        expect(channels.x.scale.range).toEqual([10, 110]);
+        expect(channels.x2.scale.range).toEqual([10, 110]);
         expect(channels.xOffset.data).toEqual(new Float32Array([-1]));
         expect(channels.x2Offset.data).toEqual(new Float32Array([0.5]));
         expect(channels.xOffset.scale.range).toEqual([0, 20]);
