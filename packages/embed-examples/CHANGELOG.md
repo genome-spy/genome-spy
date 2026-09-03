@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.86.0](https://github.com/genome-spy/genome-spy/compare/v0.85.0...v0.86.0) (2026-09-03)
+
+### Features
+
+* add optional controls for embedded visualizations ([654de1b](https://github.com/genome-spy/genome-spy/commit/654de1b0561e179b623cd8a513b021d9e6f90525)) by @tuner
+* **core:** make minimal renderers opt-in ([#485](https://github.com/genome-spy/genome-spy/issues/485)) ([ab890e2](https://github.com/genome-spy/genome-spy/commit/ab890e232c4db398fa6316a6fc3f3c54db30ee52)) by @tuner
+
 # [0.85.0](https://github.com/genome-spy/genome-spy/compare/v0.84.0...v0.85.0) (2026-08-19)
 
 **Note:** Version bump only for package @genome-spy/embed-examples

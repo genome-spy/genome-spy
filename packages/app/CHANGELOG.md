@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.86.0](https://github.com/genome-spy/genome-spy/compare/v0.85.0...v0.86.0) (2026-09-03)
+
+### Features
+
+* **core:** add software picking to Canvas renderer ([#487](https://github.com/genome-spy/genome-spy/issues/487)) ([01c05e2](https://github.com/genome-spy/genome-spy/commit/01c05e21ff93da7a516ce871ad0c68a6a699d804)) by @tuner
+* **webgpu:** add development-only WebGPU renderer ([#479](https://github.com/genome-spy/genome-spy/issues/479)) ([6538841](https://github.com/genome-spy/genome-spy/commit/6538841d9be276db7d3536dadf84644ae0ec9707)), closes [hi#zoom](https://github.com/hi/issues/zoom) [hi#cardinality](https://github.com/hi/issues/cardinality) [hi#count](https://github.com/hi/issues/count) [#362](https://github.com/genome-spy/genome-spy/issues/362) by @tuner
+* **webgpu:** improve antialiasing, compositing, and raster export ([#498](https://github.com/genome-spy/genome-spy/issues/498)) ([ea2c7fc](https://github.com/genome-spy/genome-spy/commit/ea2c7fc68336846ad1f05997382b11f4da12d65c)) by @tuner
+
+### Performance Improvements
+
+* **core:** materialize mark properties ([476ee62](https://github.com/genome-spy/genome-spy/commit/476ee623a528c1e965b4f593614393d7b2603f0d)) by @tuner
+
 # [0.85.0](https://github.com/genome-spy/genome-spy/compare/v0.84.0...v0.85.0) (2026-08-19)
 
 ### Bug Fixes

@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.86.0](https://github.com/genome-spy/genome-spy/compare/v0.85.0...v0.86.0) (2026-09-03)
+
+### Bug Fixes
+
+* **playground:** avoid racing embeds for missing uploads ([2f3959c](https://github.com/genome-spy/genome-spy/commit/2f3959c51c06df227720c26851b6d06018312a0a)) by @tuner
+
+### Features
+
+* **playground:** add renderer selection with experimental WebGPU preview ([fea8da5](https://github.com/genome-spy/genome-spy/commit/fea8da50d4118949727620a266e42b97b43f9dc3)) by @tuner
+* **webgpu:** add development-only WebGPU renderer ([#479](https://github.com/genome-spy/genome-spy/issues/479)) ([6538841](https://github.com/genome-spy/genome-spy/commit/6538841d9be276db7d3536dadf84644ae0ec9707)), closes [hi#zoom](https://github.com/hi/issues/zoom) [hi#cardinality](https://github.com/hi/issues/cardinality) [hi#count](https://github.com/hi/issues/count) [#362](https://github.com/genome-spy/genome-spy/issues/362) by @tuner
+
 # [0.85.0](https://github.com/genome-spy/genome-spy/compare/v0.84.0...v0.85.0) (2026-08-19)
 
 **Note:** Version bump only for package @genome-spy/playground

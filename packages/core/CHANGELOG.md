@@ -3,6 +3,109 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.86.0](https://github.com/genome-spy/genome-spy/compare/v0.85.0...v0.86.0) (2026-09-03)
+
+* fix(core)!: scope scale parameters to their resolution (#482) ([78534a7](https://github.com/genome-spy/genome-spy/commit/78534a72bf73a1d2121d70897573ee5a57531839)), closes [#482](https://github.com/genome-spy/genome-spy/issues/482) [#471](https://github.com/genome-spy/genome-spy/issues/471) by @tuner
+
+### Bug Fixes
+
+* **core:** align rulers with plots in nested concats ([a31fb6c](https://github.com/genome-spy/genome-spy/commit/a31fb6cb7fbc7513b63f9441dcc736174e2b1f22)) by @tuner
+* **core:** avoid repeated indexed axis length scans ([74ff769](https://github.com/genome-spy/genome-spy/commit/74ff769e37ec95144a9dccf169f4e9242932c875)) by @tuner
+* **core:** default zoomable marks to xy clipping ([#499](https://github.com/genome-spy/genome-spy/issues/499)) ([4c865c7](https://github.com/genome-spy/genome-spy/commit/4c865c7c6457ec713b9b5d353296450ed06842f7)) by @tuner
+* **core:** honor scale assembly in configured locus domains ([#500](https://github.com/genome-spy/genome-spy/issues/500)) ([aa1c4ff](https://github.com/genome-spy/genome-spy/commit/aa1c4ff0149fba0d6370996049cee8ead601e556)) by @okunator
+* **core:** preserve heatmap cells with coincident index endpoints ([6badab7](https://github.com/genome-spy/genome-spy/commit/6badab704b69389d022f36d188d3c1eb99eb56bd)) by @tuner
+* **core:** preserve singleton scale expression scopes ([80e9e67](https://github.com/genome-spy/genome-spy/commit/80e9e67ad30090570d46d972231e4e1e251a3cbc)), closes [#413](https://github.com/genome-spy/genome-spy/issues/413) by @tuner
+* **core:** render rect drop shadows in Canvas ([1b0dad4](https://github.com/genome-spy/genome-spy/commit/1b0dad43079cb7ffccce117f5f2b861e7b1a4fbb)) by @tuner
+* **core:** resolve complete MSAA PNG exports ([4d6af59](https://github.com/genome-spy/genome-spy/commit/4d6af597039e7f2f2d302a071d2d25989a317198)) by @tuner
+* **core:** restore Tabix chromosome renaming ([acdcf0e](https://github.com/genome-spy/genome-spy/commit/acdcf0ee404f05056e03fdf02050e73d7b26e168)) by @tuner
+* **core:** satisfy interaction dispatcher test types ([660af65](https://github.com/genome-spy/genome-spy/commit/660af65e9f842d0caf17e885f8c944e79abb249b)) by @tuner
+* **core:** supply fallback font bitmap to WebGPU ([809e4dd](https://github.com/genome-spy/genome-spy/commit/809e4dd22069dfd1036bfecaf96880261d5daf11)) by @tuner
+* **core:** unify WebGPU position scaling ([bbca03b](https://github.com/genome-spy/genome-spy/commit/bbca03b5176c28c42190fe28ab346bc2eb219898)), closes [hi#precision](https://github.com/hi/issues/precision) by @tuner
+
+### Features
+
+* add optional controls for embedded visualizations ([654de1b](https://github.com/genome-spy/genome-spy/commit/654de1b0561e179b623cd8a513b021d9e6f90525)) by @tuner
+* **core:** add software picking to Canvas renderer ([#487](https://github.com/genome-spy/genome-spy/issues/487)) ([01c05e2](https://github.com/genome-spy/genome-spy/commit/01c05e21ff93da7a516ce871ad0c68a6a699d804)) by @tuner
+* **core:** make minimal renderers opt-in ([#485](https://github.com/genome-spy/genome-spy/issues/485)) ([ab890e2](https://github.com/genome-spy/genome-spy/commit/ab890e232c4db398fa6316a6fc3f3c54db30ee52)) by @tuner
+* **playground:** add renderer selection with experimental WebGPU preview ([fea8da5](https://github.com/genome-spy/genome-spy/commit/fea8da50d4118949727620a266e42b97b43f9dc3)) by @tuner
+* **webgpu:** add development-only WebGPU renderer ([#479](https://github.com/genome-spy/genome-spy/issues/479)) ([6538841](https://github.com/genome-spy/genome-spy/commit/6538841d9be276db7d3536dadf84644ae0ec9707)), closes [hi#zoom](https://github.com/hi/issues/zoom) [hi#cardinality](https://github.com/hi/issues/cardinality) [hi#count](https://github.com/hi/issues/count) [#362](https://github.com/genome-spy/genome-spy/issues/362) by @tuner
+* **webgpu:** improve antialiasing, compositing, and raster export ([#498](https://github.com/genome-spy/genome-spy/issues/498)) ([ea2c7fc](https://github.com/genome-spy/genome-spy/commit/ea2c7fc68336846ad1f05997382b11f4da12d65c)) by @tuner
+
+### Performance Improvements
+
+* **core:** avoid empty graph flush microtasks ([4bb6ec2](https://github.com/genome-spy/genome-spy/commit/4bb6ec2a01f61c428b4de003b12217275b866717)) by @tuner
+* **core:** index zoomable x ranges across renderers ([#496](https://github.com/genome-spy/genome-spy/issues/496)) ([6620225](https://github.com/genome-spy/genome-spy/commit/6620225324ff40f17795e2ec57fdd41c6c2e6128)) by @tuner
+* **core:** load fallback font bitmap with WebGL ([f92e068](https://github.com/genome-spy/genome-spy/commit/f92e0686e5fb9916258dac803089d0ffe0b9d468)) by @tuner
+* **core:** materialize mark properties ([476ee62](https://github.com/genome-spy/genome-spy/commit/476ee623a528c1e965b4f593614393d7b2603f0d)) by @tuner
+* **core:** optimize Canvas interaction rendering ([#495](https://github.com/genome-spy/genome-spy/issues/495)) ([2263560](https://github.com/genome-spy/genome-spy/commit/2263560a9a21e33c67569c939720d2ae1104310b)) by @tuner
+* **webgpu:** improve render reuse, diagnostics, and Firefox compatibility ([#501](https://github.com/genome-spy/genome-spy/issues/501)) ([a7d0708](https://github.com/genome-spy/genome-spy/commit/a7d0708e73c1d169d952446286a8c4cd0f5b58c4)) by @tuner
+
+### BREAKING CHANGES
+
+* Scale ExprRefs now resolve parameters from their scale resolution owner.
+
+* fix(core): reset removed scale ranges
+
+Restore the scale type default when dynamic membership removes the last explicit range.
+Preserve scheme and range-step configuration.
+
+* fix(core): support range-less scales
+
+Capture a default range only from scale implementations that expose a range function.
+
+* fix(core): preflight scale member expressions
+
+Validate every dirty resolution before applying a registration batch.
+A later expression error can no longer expose transient scale state.
+
+* chore(core): plan selection scope harmonization
+
+Extend the scale ownership plan so selection-domain names follow the same lookup rule as ExprRefs.
+
+* fix(core): keep range reset type-safe
+
+Check the internal range-step property without widening the public Scale specification type.
+
+* refactor(core)!: harmonize scale parameter scope
+
+Resolve selection-domain names through the scale owner.
+Retain interval-link behavior and feedback validation.
+* Selection-domain parameters now resolve from the scale resolution owner.
+
+* docs(core): unify reactive scale guidance
+
+Present one owner-scoped lookup rule for ExprRefs and selection domains.
+Keep specialized selection-link behavior in the same section.
+
+* chore(core): complete selection scope milestone
+
+Record the harmonized ownership contract.
+Include final code, example, and documentation verification.
+
+* docs(core): order selection domain guidance logically
+
+Keep behavioral guidance with the selection-domain explanation.
+
+Place the generated property reference last.
+
+* docs(core): refine shared scale expression example
+
+Improve the responsive example layout and give the embedded visualization enough room.
+
+* chore(core): reconcile scale expression plans
+
+Record the completed issue work and defer dynamic padding evaluation to a follow-up branch.
+
+* chore(core): retire scale expression plans
+
+Remove temporary planning artifacts after preserving their final dispositions in history.
+
+* test(core): simplify scale expression coverage
+
+Share repeated view fixtures and remove duplicate cases.
+
+Preserve the scope and lifecycle behavior matrix.
+
 # [0.85.0](https://github.com/genome-spy/genome-spy/compare/v0.84.0...v0.85.0) (2026-08-19)
 
 ### Bug Fixes
