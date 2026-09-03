@@ -1,6 +1,7 @@
 import { gpuLabel, RENDERER_GPU_OWNER } from "./utils/gpuLabel.js";
 import { ProgramTemplateCache } from "./marks/programs/internal/programTemplateCache.js";
 import { TextureCompositor, TransientTexturePool } from "./renderGroups.js";
+import RenderPassState from "./renderPassState.js";
 
 const TRANSPARENT = { r: 0, g: 0, b: 0, a: 0 };
 
@@ -883,6 +884,7 @@ export class Renderer {
             label: gpuLabel(RENDERER_GPU_OWNER, "canvas texture view"),
         });
 
+        this._transientTextures.beginFrame();
         try {
             const encodingStart = startPhase();
             this._encodeRenderItems(
@@ -893,6 +895,7 @@ export class Renderer {
                     height: canvas.height,
                     logicalX: 0,
                     logicalY: 0,
+                    label: RENDERER_GPU_OWNER,
                 },
                 items,
                 1,
@@ -904,7 +907,7 @@ export class Renderer {
             this.device.queue.submit([commandEncoder.finish()]);
             finishPhase("submission", submissionStart);
         } finally {
-            this._transientTextures.destroyEvicted();
+            this._transientTextures.endFrame();
         }
         if (rememberFrame) {
             this._renderFrame = draws;
@@ -1138,6 +1141,7 @@ export class Renderer {
                         type: "scope",
                         bounds: item.bounds,
                         opacity,
+                        label: item.label,
                         coverageOnly: children.every(requiresMultisampling),
                         items: children,
                     });
@@ -1160,9 +1164,10 @@ export class Renderer {
          * @param {NormalizedSemanticItem[]} source
          * @param {1 | 4} targetSampleCount
          * @param {import("./index.d.ts").DrawRect} activeBounds
+         * @param {string} label
          * @returns {NormalizedRenderItem[]}
          */
-        const layerize = (source, targetSampleCount, activeBounds) => {
+        const layerize = (source, targetSampleCount, activeBounds, label) => {
             /** @type {NormalizedRenderItem[]} */
             const normalized = [];
             /** @type {NormalizedDraw[]} */
@@ -1182,6 +1187,7 @@ export class Renderer {
                     ),
                     opacity: 1,
                     sampleCount: 4,
+                    label,
                     items: coverageRun,
                 });
                 coverageRun = [];
@@ -1196,7 +1202,13 @@ export class Renderer {
                         continue;
                     }
                     const sampleCount = item.coverageOnly ? 4 : 1;
-                    const children = layerize(item.items, sampleCount, bounds);
+                    const scopeLabel = item.label ?? label;
+                    const children = layerize(
+                        item.items,
+                        sampleCount,
+                        bounds,
+                        scopeLabel
+                    );
                     if (!children.length) {
                         continue;
                     }
@@ -1212,6 +1224,7 @@ export class Renderer {
                             bounds,
                             opacity: item.opacity,
                             sampleCount,
+                            label: scopeLabel,
                             items: children,
                         });
                     }
@@ -1243,7 +1256,12 @@ export class Renderer {
             return normalized;
         };
 
-        const normalizedItems = layerize(normalize(items), 1, canvas);
+        const normalizedItems = layerize(
+            normalize(items),
+            1,
+            canvas,
+            RENDERER_GPU_OWNER
+        );
         addCount("normalizedDraws", draws.length);
         finishPhase("drawNormalization", phaseStart);
         return { items: normalizedItems, draws, groupCount };
@@ -1361,6 +1379,7 @@ export class Renderer {
             height: bounds.height,
             logicalX: bounds.x / dpr,
             logicalY: bounds.y / dpr,
+            label: group.label,
         };
         this._encodeRenderItems(
             commandEncoder,
@@ -1384,7 +1403,7 @@ export class Renderer {
             4
         );
         const pass = commandEncoder.beginRenderPass({
-            label: gpuLabel(RENDERER_GPU_OWNER, "multisample group pass"),
+            label: gpuLabel(target.label, "multisample group pass"),
             colorAttachments: [
                 {
                     view: multisampled.view,
@@ -1408,7 +1427,7 @@ export class Renderer {
      */
     _encodeDrawPass(commandEncoder, target, draws, clearValue) {
         const pass = commandEncoder.beginRenderPass({
-            label: gpuLabel(RENDERER_GPU_OWNER, "main render pass"),
+            label: gpuLabel(target.label, "main render pass"),
             colorAttachments: [
                 {
                     view: target.view,
@@ -1431,7 +1450,7 @@ export class Renderer {
      */
     _encodeCompositePass(commandEncoder, target, source, opacity, clearValue) {
         const pass = commandEncoder.beginRenderPass({
-            label: gpuLabel(RENDERER_GPU_OWNER, "group composite pass"),
+            label: gpuLabel(source.label, "group composite pass"),
             colorAttachments: [
                 {
                     view: target.view,
@@ -1450,10 +1469,7 @@ export class Renderer {
         pass.setViewport(x, y, source.width, source.height, 0, 1);
         pass.setScissorRect(x, y, source.width, source.height);
         pass.setPipeline(this._textureCompositor.pipeline);
-        pass.setBindGroup(
-            0,
-            this._textureCompositor.createBinding(source.view, opacity)
-        );
+        this._textureCompositor.bind(pass, source.texture, opacity);
         pass.draw(6);
         pass.end();
     }
@@ -1476,17 +1492,19 @@ export class Renderer {
             height: this.canvas.height,
             logicalX: 0,
             logicalY: 0,
+            label: RENDERER_GPU_OWNER,
         },
         sampleCount = 1
     ) {
         const dpr = this._globals.dpr;
+        const state = new RenderPassState(pass);
         for (const draw of draws) {
             const mark = this._marks.get(draw.markId);
             if (!mark) {
                 continue;
             }
 
-            pass.setViewport(
+            state.setViewport(
                 (draw.viewport.x - target.logicalX) * dpr,
                 (draw.viewport.y - target.logicalY) * dpr,
                 draw.viewport.width * dpr,
@@ -1506,13 +1524,13 @@ export class Renderer {
                 Math.floor(target.logicalX * dpr) + target.width,
                 Math.floor(target.logicalY * dpr) + target.height
             );
-            pass.setScissorRect(
+            state.setScissorRect(
                 scissor.x - Math.floor(target.logicalX * dpr),
                 scissor.y - Math.floor(target.logicalY * dpr),
                 scissor.width,
                 scissor.height
             );
-            pass.setBindGroup(0, this._globalBindGroup, [
+            state.setBindGroup(0, this._globalBindGroup, [
                 draw.uniformIndex * this._globalUniformStride,
             ]);
             /** @type {import("./index.d.ts").ProgramDrawOptions} */
@@ -1523,6 +1541,14 @@ export class Renderer {
             };
             if (draw.placement) {
                 options.placement = draw.placement;
+            }
+            if (picking) {
+                mark.preparePick(state, options);
+            } else {
+                mark.prepareDraw(state, options);
+            }
+            if (draw.placement) {
+                state.setBindGroup(2, draw.placement.bindGroup);
             }
             if (picking) {
                 mark.drawPick(pass, options);
@@ -1710,6 +1736,7 @@ function wrapMethod(target, name, before) {
  * @property {import("./index.d.ts").DrawRect} bounds
  * @property {number} opacity
  * @property {1 | 4} sampleCount
+ * @property {string} label
  * @property {NormalizedRenderItem[]} items
  */
 
@@ -1720,6 +1747,7 @@ function wrapMethod(target, name, before) {
  * @property {"scope"} type
  * @property {import("./index.d.ts").DrawRect} bounds
  * @property {number} opacity
+ * @property {string | undefined} label
  * @property {boolean} coverageOnly
  * @property {NormalizedSemanticItem[]} items
  */
@@ -1733,6 +1761,7 @@ function wrapMethod(target, name, before) {
  * @property {number} height
  * @property {number} logicalX
  * @property {number} logicalY
+ * @property {string} label
  */
 
 /**

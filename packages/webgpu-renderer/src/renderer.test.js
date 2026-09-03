@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
+import { TransientTexturePool } from "./renderGroups.js";
 import { Renderer } from "./renderer.js";
 
 describe("Renderer mark definitions", () => {
@@ -388,6 +389,64 @@ describe("Renderer mark definitions", () => {
         ]);
     });
 
+    test("retains effective state across consecutive placement draws", () => {
+        const pipeline = /** @type {GPURenderPipeline} */ ({});
+        const markBindGroup = /** @type {GPUBindGroup} */ ({});
+        const program = Object.assign(createProgram(), {
+            _placementIndex:
+                /** @type {import("./index.d.ts").MarkConfig["placementIndex"]} */ ({
+                    source: "draw",
+                }),
+        });
+        program.prepareDraw.mockImplementation((state) => {
+            state.setPipeline(pipeline);
+            state.setBindGroup(1, markBindGroup);
+        });
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, pass } = createRendererHarness();
+        renderer._placementBindGroupLayout =
+            /** @type {GPUBindGroupLayout} */ ({});
+        const placements = renderer.createPlacementSet({
+            rectangles: new Float32Array([0, 0, 1, 0.5, 0, 0.5, 1, 0.5]),
+        });
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            draws: [
+                { mark, placement: { set: placements, index: 0 } },
+                { mark, placement: { set: placements, index: 1 } },
+            ],
+        });
+
+        expect(pass.setViewport).toHaveBeenCalledOnce();
+        expect(pass.setScissorRect).toHaveBeenCalledOnce();
+        expect(pass.setPipeline).toHaveBeenCalledOnce();
+        expect(
+            pass.setBindGroup.mock.calls.filter(([index]) => index === 0)
+        ).toEqual([
+            [0, renderer._globalBindGroup, [0]],
+            [0, renderer._globalBindGroup, [256]],
+        ]);
+        expect(
+            pass.setBindGroup.mock.calls.filter(([index]) => index === 1)
+        ).toEqual([[1, markBindGroup]]);
+        expect(
+            pass.setBindGroup.mock.calls.filter(([index]) => index === 2)
+        ).toEqual([[2, placements._bindGroup]]);
+        expect(program.draw).toHaveBeenCalledTimes(2);
+
+        renderer.render({
+            draws: [{ mark, placement: { set: placements, index: 0 } }],
+        });
+
+        expect(pass.setViewport).toHaveBeenCalledTimes(2);
+        expect(pass.setScissorRect).toHaveBeenCalledTimes(2);
+        expect(pass.setPipeline).toHaveBeenCalledTimes(2);
+    });
+
     test("labels frame encoding resources", () => {
         const { renderer, commandEncoderDescriptors, renderPassDescriptors } =
             createRendererHarness();
@@ -402,7 +461,7 @@ describe("Renderer mark definitions", () => {
         );
     });
 
-    test("destroys evicted textures when frame encoding aborts", () => {
+    test("ends transient texture frames when encoding aborts", () => {
         const { renderer } = createRendererHarness();
         renderer._encodeRenderItems = vi.fn(() => {
             throw new Error("encoding failed");
@@ -410,9 +469,8 @@ describe("Renderer mark definitions", () => {
 
         expect(() => renderer.render({ draws: [] })).toThrow("encoding failed");
 
-        expect(
-            renderer._transientTextures.destroyEvicted
-        ).toHaveBeenCalledOnce();
+        expect(renderer._transientTextures.beginFrame).toHaveBeenCalledOnce();
+        expect(renderer._transientTextures.endFrame).toHaveBeenCalledOnce();
         expect(renderer.device.queue.submit).not.toHaveBeenCalled();
     });
 
@@ -483,6 +541,7 @@ describe("Renderer mark definitions", () => {
         renderer.render({
             items: [
                 {
+                    label: "viewRoot/samples/copy-ratios",
                     bounds: { x: 10, y: 5, width: 20, height: 10 },
                     opacity: 0.5,
                     items: [
@@ -515,12 +574,15 @@ describe("Renderer mark definitions", () => {
             expect.objectContaining({ width: 40, height: 20, sampleCount: 4 }),
         ]);
         expect(renderPassDescriptors).toHaveLength(2);
+        expect(renderPassDescriptors[0].label).toBe(
+            "viewRoot/samples/copy-ratios: multisample group pass"
+        );
         expect(
             Array.from(renderPassDescriptors[0].colorAttachments)[0]
                 .resolveTarget
         ).toBeDefined();
         expect(renderPassDescriptors[1].label).toBe(
-            "webgpu-renderer: group composite pass"
+            "viewRoot/samples/copy-ratios: group composite pass"
         );
         expect(pass.setViewport).toHaveBeenNthCalledWith(1, 0, 0, 40, 20, 0, 1);
         expect(pass.setScissorRect).toHaveBeenNthCalledWith(1, 0, 0, 40, 20);
@@ -537,6 +599,52 @@ describe("Renderer mark definitions", () => {
 
         renderer.renderPicking();
         expect(renderer._pickingFrame).toBe(renderer._renderFrame);
+    });
+
+    test("reuses grouped render textures across unchanged frames", () => {
+        const program = createProgram("multisample");
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer } = createRendererHarness();
+        /** @type {(GPUTexture & {destroy: ReturnType<typeof vi.fn>})[]} */
+        const textures = [];
+        renderer.device.createTexture = vi.fn(() => {
+            const texture =
+                /** @type {GPUTexture & {destroy: ReturnType<typeof vi.fn>}} */ (
+                    /** @type {unknown} */ ({
+                        createView: vi.fn(() => ({})),
+                        destroy: vi.fn(),
+                    })
+                );
+            textures.push(texture);
+            return texture;
+        });
+        renderer._transientTextures = new TransientTexturePool(
+            renderer.device,
+            "rgba8unorm"
+        );
+        const mark = renderer.createMark(definition, { channels: {} });
+        const frame = {
+            items: [
+                {
+                    bounds: { x: 10, y: 5, width: 20, height: 10 },
+                    opacity: 0.5,
+                    items: [{ mark }],
+                },
+            ],
+        };
+
+        renderer.render(frame);
+        renderer.render(frame);
+
+        expect(renderer.device.createTexture).toHaveBeenCalledTimes(2);
+        expect(
+            textures.every((texture) => !texture.destroy.mock.calls.length)
+        ).toBe(true);
+
+        renderer._transientTextures.destroy();
     });
 
     test("clamps opaque nested MSAA groups into one accumulation pass", () => {
@@ -634,6 +742,7 @@ describe("Renderer mark definitions", () => {
         renderer.render({
             items: [
                 {
+                    label: "viewRoot/transcripts",
                     bounds,
                     opacity: 0.5,
                     items: [{ mark: exon }, { mark: body }],
@@ -647,10 +756,10 @@ describe("Renderer mark definitions", () => {
             expect.objectContaining({ sampleCount: 4 }),
         ]);
         expect(renderPassDescriptors.map((pass) => pass.label)).toEqual([
-            "webgpu-renderer: multisample group pass",
-            "webgpu-renderer: group composite pass",
-            "webgpu-renderer: main render pass",
-            "webgpu-renderer: group composite pass",
+            "viewRoot/transcripts: multisample group pass",
+            "viewRoot/transcripts: group composite pass",
+            "viewRoot/transcripts: main render pass",
+            "viewRoot/transcripts: group composite pass",
         ]);
         expect(exonProgram.draw).toHaveBeenCalledWith(
             expect.anything(),
@@ -1020,20 +1129,22 @@ function createRendererHarness() {
         flush: vi.fn(),
         destroy: vi.fn(),
         pipeline: {},
-        createBinding: vi.fn(() => ({})),
+        bind: vi.fn((pass) => pass.setBindGroup(0, {})),
     };
     renderer._transientTextures = {
+        beginFrame: vi.fn(),
         acquire: vi.fn((width, height, sampleCount, usage) => {
             transientAcquires.push({ width, height, sampleCount, usage });
             return {
                 key: `texture-${transientId++}`,
                 texture: {},
                 view: {},
-                cost: width * height * sampleCount,
+                generation: 0,
+                compositeBinding: null,
             };
         }),
         release: vi.fn(),
-        destroyEvicted: vi.fn(),
+        endFrame: vi.fn(),
         destroy: vi.fn(),
     };
     return {
@@ -1073,6 +1184,8 @@ function createProgram(antialiasing = "shader") {
         replaceSeries: series.replace,
         updateValues: vi.fn(),
         debugResources: vi.fn(),
+        prepareDraw: vi.fn(),
+        preparePick: vi.fn(),
         draw: vi.fn(),
         drawPick: vi.fn(),
         destroy: vi.fn(),

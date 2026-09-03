@@ -252,8 +252,53 @@ const placementSentinel = 1u;
             { name: "seriesU32", role: "series" },
             { name: "x", role: "domainMap" },
         ]);
-        expect(shaderCode).toContain("hashLookup");
+        expect(shaderCode).toContain("fn hashLookup_domainMap_x");
         expect(shaderCode).toContain("domainMap_x");
+        expect(shaderCode).not.toContain("ptr<storage");
+    });
+
+    it("emits portable hash lookups for multi selections", () => {
+        const selectionBufferName = "selection_picked";
+        const { shaderCode } = buildMarkShader({
+            channels: {
+                uniqueId: { value: 1, type: "u32", components: 1 },
+                fill: {
+                    value: 0,
+                    type: "f32",
+                    components: 1,
+                    conditions: [
+                        {
+                            when: { selection: "picked", type: "multi" },
+                            value: 1,
+                        },
+                    ],
+                },
+            },
+            uniformLayout: [
+                {
+                    name: "uSelectionCount_picked",
+                    type: "u32",
+                    components: 1,
+                },
+            ],
+            shaderBody,
+            selectionDefs: [{ name: "picked", type: "multi" }],
+            extraResources: [
+                {
+                    name: selectionBufferName,
+                    kind: "buffer",
+                    role: "extraBuffer",
+                    wgslName: selectionBufferName,
+                    wgslType: "array<HashEntry>",
+                    bufferType: "read-only-storage",
+                    visibility: "vertex",
+                },
+            ],
+        });
+
+        expect(shaderCode).toContain("fn hashLookup_selection_picked");
+        expect(shaderCode).toContain("hashLookup_selection_picked(id");
+        expect(shaderCode).not.toContain("ptr<storage");
     });
 
     it("emits conditional encoders with selection predicates", () => {

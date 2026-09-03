@@ -48,8 +48,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
 }
 `;
 
-const MAX_FREE_TEXTURES = 8;
-const MAX_FREE_SAMPLE_PIXELS = 16_777_216;
+const TEXTURE_IDLE_TIMEOUT_MS = 5_000;
 
 /** Renderer-owned pool for short-lived color attachments. */
 export class TransientTexturePool {
@@ -59,11 +58,16 @@ export class TransientTexturePool {
         this.format = format;
         /** @type {TransientTexture[]} */
         this.free = [];
-        this.freeCost = 0;
         /** @type {Set<TransientTexture>} */
         this.all = new Set();
-        /** @type {TransientTexture[]} */
-        this.pendingDestroy = [];
+        this.generation = 0;
+        /** @type {ReturnType<typeof setTimeout> | undefined} */
+        this.idleTimer = undefined;
+    }
+
+    beginFrame() {
+        this.generation++;
+        this.#cancelIdleCleanup();
     }
 
     /**
@@ -77,7 +81,7 @@ export class TransientTexturePool {
         const freeIndex = this.free.findLastIndex((entry) => entry.key === key);
         if (freeIndex >= 0) {
             const pooled = this.free.splice(freeIndex, 1)[0];
-            this.freeCost -= pooled.cost;
+            pooled.generation = this.generation;
             return pooled;
         }
 
@@ -93,58 +97,69 @@ export class TransientTexturePool {
                 GPUTextureUsage.RENDER_ATTACHMENT |
                 (sampleCount === 1 ? GPUTextureUsage.TEXTURE_BINDING : 0),
         });
-        const entry = {
+        const entry = /** @type {TransientTexture} */ ({
             key,
             texture,
             view: texture.createView({
                 label: gpuLabel(RENDERER_GPU_OWNER, "transient color view"),
             }),
-            cost: width * height * sampleCount,
-        };
+            generation: this.generation,
+            compositeBinding: null,
+        });
         this.all.add(entry);
         return entry;
     }
 
     /** @param {TransientTexture} entry */
     release(entry) {
-        if (entry.cost > MAX_FREE_SAMPLE_PIXELS) {
-            this.#evict(entry);
-            return;
-        }
         this.free.push(entry);
-        this.freeCost += entry.cost;
-        while (
-            this.free.length > MAX_FREE_TEXTURES ||
-            this.freeCost > MAX_FREE_SAMPLE_PIXELS
-        ) {
-            const evicted = this.free.shift();
-            this.freeCost -= evicted.cost;
-            this.#evict(evicted);
-        }
     }
 
-    /** Destroys textures that have been removed from the reuse pool. */
-    destroyEvicted() {
-        for (const entry of this.pendingDestroy) {
-            entry.texture.destroy();
+    endFrame() {
+        for (let i = this.free.length - 1; i >= 0; i--) {
+            const entry = this.free[i];
+            if (entry.generation !== this.generation) {
+                this.free.splice(i, 1);
+                this.#destroyEntry(entry);
+            }
         }
-        this.pendingDestroy.length = 0;
+        this.#scheduleIdleCleanup();
     }
 
     destroy() {
+        this.#cancelIdleCleanup();
         for (const entry of this.all) {
             entry.texture.destroy();
         }
         this.all.clear();
         this.free.length = 0;
-        this.freeCost = 0;
-        this.destroyEvicted();
     }
 
     /** @param {TransientTexture} entry */
-    #evict(entry) {
+    #destroyEntry(entry) {
         this.all.delete(entry);
-        this.pendingDestroy.push(entry);
+        entry.texture.destroy();
+    }
+
+    #scheduleIdleCleanup() {
+        this.#cancelIdleCleanup();
+        if (this.free.length === 0) {
+            return;
+        }
+        this.idleTimer = setTimeout(() => {
+            this.idleTimer = undefined;
+            for (const entry of this.free) {
+                this.#destroyEntry(entry);
+            }
+            this.free.length = 0;
+        }, TEXTURE_IDLE_TIMEOUT_MS);
+    }
+
+    #cancelIdleCleanup() {
+        if (this.idleTimer !== undefined) {
+            clearTimeout(this.idleTimer);
+            this.idleTimer = undefined;
+        }
     }
 }
 
@@ -166,9 +181,38 @@ export class TextureCompositor {
             label: gpuLabel(RENDERER_GPU_OWNER, "composite shader"),
             code: COMPOSITE_SHADER,
         });
+        this.layout = device.createBindGroupLayout({
+            label: gpuLabel(RENDERER_GPU_OWNER, "composite bind group layout"),
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    buffer: {
+                        type: "uniform",
+                        hasDynamicOffset: true,
+                        minBindingSize: 16,
+                    },
+                },
+                {
+                    binding: 1,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    texture: {
+                        sampleType: "float",
+                        viewDimension: "2d",
+                        multisampled: false,
+                    },
+                },
+            ],
+        });
         this.pipeline = device.createRenderPipeline({
             label: gpuLabel(RENDERER_GPU_OWNER, "composite pipeline"),
-            layout: "auto",
+            layout: device.createPipelineLayout({
+                label: gpuLabel(
+                    RENDERER_GPU_OWNER,
+                    "composite pipeline layout"
+                ),
+                bindGroupLayouts: [this.layout],
+            }),
             vertex: { module, entryPoint: "vs_main" },
             fragment: {
                 module,
@@ -193,7 +237,6 @@ export class TextureCompositor {
             },
             primitive: { topology: "triangle-list" },
         });
-        this.layout = this.pipeline.getBindGroupLayout(0);
     }
 
     /** @param {number} capacity */
@@ -213,28 +256,35 @@ export class TextureCompositor {
     }
 
     /**
-     * @param {GPUTextureView} view
+     * @param {GPURenderPassEncoder} pass
+     * @param {TransientTexture} source
      * @param {number} opacity
-     * @returns {GPUBindGroup}
      */
-    createBinding(view, opacity) {
+    bind(pass, source, opacity) {
         const index = this.count++;
         this.staging[(index * this.stride) / 4] = opacity;
-        return this.device.createBindGroup({
-            label: gpuLabel(RENDERER_GPU_OWNER, "composite bind group"),
-            layout: this.layout,
-            entries: [
-                {
-                    binding: 0,
-                    resource: {
-                        buffer: this.buffer,
-                        offset: index * this.stride,
-                        size: 16,
-                    },
-                },
-                { binding: 1, resource: view },
-            ],
-        });
+        let binding = source.compositeBinding;
+        if (binding === null || binding.buffer !== this.buffer) {
+            binding = {
+                buffer: this.buffer,
+                bindGroup: this.device.createBindGroup({
+                    label: gpuLabel(RENDERER_GPU_OWNER, "composite bind group"),
+                    layout: this.layout,
+                    entries: [
+                        {
+                            binding: 0,
+                            resource: {
+                                buffer: this.buffer,
+                                size: 16,
+                            },
+                        },
+                        { binding: 1, resource: source.view },
+                    ],
+                }),
+            };
+            source.compositeBinding = binding;
+        }
+        pass.setBindGroup(0, binding.bindGroup, [index * this.stride]);
     }
 
     flush() {
@@ -268,5 +318,6 @@ export class TextureCompositor {
  * @property {string} key
  * @property {GPUTexture} texture
  * @property {GPUTextureView} view
- * @property {number} cost
+ * @property {number} generation Last frame in which the texture was acquired.
+ * @property {{buffer: GPUBuffer, bindGroup: GPUBindGroup} | null} compositeBinding
  */

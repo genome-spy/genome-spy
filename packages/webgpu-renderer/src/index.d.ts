@@ -1119,6 +1119,8 @@ export type RenderScope = {
     bounds: DrawRect;
     /** Opacity applied once to the scope's combined contents. */
     opacity?: number;
+    /** Diagnostic owner used to relate physical GPU passes to this scope. */
+    label?: string;
 };
 
 export type RenderItem = DrawCommand | RenderScope;
@@ -1155,6 +1157,15 @@ export type ProgramDrawOptions = {
     };
 };
 
+export type RenderPassState = {
+    setPipeline(pipeline: GPURenderPipeline): void;
+    setBindGroup(
+        index: number,
+        bindGroup: GPUBindGroup,
+        dynamicOffsets?: readonly number[]
+    ): void;
+};
+
 export class RendererError extends Error {}
 
 export type MarkProgram<
@@ -1176,6 +1187,8 @@ export type MarkProgram<
     replaceSeries(channels: TSeries, count?: number): void;
     updateValues(values: Record<string, number | number[]>): void;
     debugResources(label?: string): void;
+    prepareDraw(state: RenderPassState, options: ProgramDrawOptions): void;
+    preparePick(state: RenderPassState, options: ProgramDrawOptions): void;
     draw(pass: GPURenderPassEncoder, options: ProgramDrawOptions): void;
     drawPick(pass: GPURenderPassEncoder, options: ProgramDrawOptions): void;
     destroy(): void;

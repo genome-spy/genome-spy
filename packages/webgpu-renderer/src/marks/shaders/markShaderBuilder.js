@@ -1,5 +1,8 @@
 import { buildScaleWgsl } from "../scales/scaleWgsl.js";
-import HASH_TABLE_WGSL from "../../wgsl/hashTable.wgsl.js";
+import HASH_TABLE_WGSL, {
+    emitHashLookupFunction,
+    hashLookupFunctionName,
+} from "../../wgsl/hashTable.wgsl.js";
 import { evaluateShaderConditionals } from "../../wgsl/conditionals.js";
 import { formatLiteral } from "../../wgsl/literals.js";
 import { __DEV__ } from "../../utils/dev.js";
@@ -233,13 +236,14 @@ fn ${fnName}(i: u32, allowEmpty: bool) -> bool {
             }
             case "multi": {
                 const bufferName = SELECTION_BUFFER_PREFIX + def.name;
+                const lookupName = hashLookupFunctionName(bufferName);
                 return /* wgsl */ `
 fn ${fnName}(i: u32, allowEmpty: bool) -> bool {
     let count = u32(params.${SELECTION_COUNT_PREFIX}${def.name});
     if (allowEmpty && count == 0u) { return true; }
     if (count == 0u) { return false; }
     let id = ${uniqueId?.rawValueExpr ?? "0u"};
-    return hashContains(&${bufferName}, id, arrayLength(&${bufferName}));
+    return ${lookupName}(id, arrayLength(&${bufferName})) != HASH_NOT_FOUND;
 }
 `;
             }
@@ -800,10 +804,18 @@ ${clauses.join("\n")}
             .map((channelIR) => channelIR.scaleDef)
     );
     const scalesWgsl = buildScaleWgsl(requiredScales);
-    const needsHashTable =
-        domainMapChannelIRs.length > 0 ||
-        (selectionDefs.length > 0 &&
-            selectionDefs.some((def) => def.type === "multi"));
+    const hashTableBufferNames = [
+        ...domainMapChannelIRs.map(
+            (channelIR) => DOMAIN_MAP_PREFIX + channelIR.name
+        ),
+        ...selectionDefs
+            .filter((def) => def.type === "multi")
+            .map((def) => SELECTION_BUFFER_PREFIX + def.name),
+    ];
+    const hashLookupFunctions = hashTableBufferNames
+        .map(emitHashLookupFunction)
+        .join("\n");
+    const needsHashTable = hashTableBufferNames.length > 0;
 
     // Compose the final WGSL with scale helpers, per-channel accessors,
     // and the mark-specific shader body.
@@ -1007,6 +1019,8 @@ ${selectionFns.join("\n")}
 ${channelFns.join("\n")}
 
 ${extraDecls.join("\n")}
+
+${hashLookupFunctions}
 
 ${visibilityPredicate}
 

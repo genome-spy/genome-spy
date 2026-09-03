@@ -18,16 +18,30 @@ fn hash32(key: u32) -> u32 {
     v ^= v >> 16u;
     return v;
 }
+`;
 
-fn hashLookup(entries: ptr<storage, array<HashEntry>>, key: u32, maxProbes: u32) -> u32 {
-    let size = arrayLength(entries);
+/** @param {string} bufferName */
+export function hashLookupFunctionName(bufferName) {
+    return `hashLookup_${bufferName}`;
+}
+
+/**
+ * Firefox does not yet support WGSL's unrestricted_pointer_parameters
+ * extension, so generated helpers access module-scope storage buffers directly.
+ *
+ * @param {string} bufferName
+ */
+export function emitHashLookupFunction(bufferName) {
+    return /* wgsl */ `
+fn ${hashLookupFunctionName(bufferName)}(key: u32, maxProbes: u32) -> u32 {
+    let size = arrayLength(&${bufferName});
     if (size == 0u) {
         return HASH_NOT_FOUND;
     }
     let mask = size - 1u;
     var index = hash32(key) & mask;
     for (var probe = 0u; probe < maxProbes; probe += 1u) {
-        let entry = (*entries)[index];
+        let entry = ${bufferName}[index];
         if (entry.key == key) {
             return entry.value;
         }
@@ -38,8 +52,5 @@ fn hashLookup(entries: ptr<storage, array<HashEntry>>, key: u32, maxProbes: u32)
     }
     return HASH_NOT_FOUND;
 }
-
-fn hashContains(entries: ptr<storage, array<HashEntry>>, key: u32, maxProbes: u32) -> bool {
-    return hashLookup(entries, key, maxProbes) != HASH_NOT_FOUND;
-}
 `;
+}

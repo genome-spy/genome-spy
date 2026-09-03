@@ -483,8 +483,6 @@ export default class LinkProgram extends BaseProgram {
     draw(pass, options) {
         const segmentCount = Math.max(1, this._segmentCount ?? 1);
         const vertexCount = (segmentCount + 1) * 2;
-        pass.setPipeline(this._getPipeline(options.sampleCount));
-        pass.setBindGroup(1, this._bindGroup);
         pass.draw(vertexCount, options.instanceCount, 0, options.firstInstance);
     }
 
@@ -495,8 +493,6 @@ export default class LinkProgram extends BaseProgram {
     drawPick(pass, options) {
         const segmentCount = Math.max(1, this._segmentCount ?? 1);
         const vertexCount = (segmentCount + 1) * 2;
-        pass.setPipeline(this._getPickPipeline());
-        pass.setBindGroup(1, this._bindGroup);
         pass.draw(vertexCount, options.instanceCount, 0, options.firstInstance);
     }
 }
