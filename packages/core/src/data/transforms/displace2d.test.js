@@ -97,7 +97,7 @@ describe("Displace2DTransform", () => {
         ]);
     });
 
-    test("reacts to zoom without affecting the data-driven domain", async () => {
+    test("uses data-driven domains and reacts to zoom", async () => {
         /** @type {import("../../spec/view.js").UnitSpec} */
         const spec = {
             width: 200,
@@ -120,10 +120,7 @@ describe("Displace2DTransform", () => {
                     y: "y",
                     width: 20,
                     height: 20,
-                    xPositionFactor: {
-                        expr: "width * (scale('x', 1) - scale('x', 0))",
-                    },
-                    xExtent: [9.5, 100.5],
+                    scalePositions: true,
                     as: ["dx", "dy"],
                 },
             ],
@@ -141,6 +138,8 @@ describe("Displace2DTransform", () => {
         };
         const view = await createAndInitialize(spec, UnitView);
         renderToLayout(view, Rectangle.create(0, 0, 200, 100));
+        view.handleBroadcast({ type: "layoutComputed" });
+        await Promise.resolve();
 
         const resolution = view.getScaleResolution("x");
         const initialDomain = resolution.getScale().domain();
@@ -153,17 +152,135 @@ describe("Displace2DTransform", () => {
             initialPlacement.some((datum) => datum.dx != 0 || datum.dy != 0)
         ).toBe(true);
 
-        const zoomPromise = resolution.zoomTo([0, 10], false);
+        const zoomPromise = resolution.zoomTo([9.5, 11.5], false);
         await view.paramRuntime.whenPropagated();
         await Promise.resolve();
         const zoomedPlacement = [...view.flowHandle.collector.getData()];
-        expect(zoomedPlacement.map(({ dx, dy }) => [dx, dy])).toEqual([
-            [0, 0],
+        expect(
+            zoomedPlacement.slice(0, 2).map(({ dx, dy }) => [dx, dy])
+        ).toEqual([
             [0, 0],
             [0, 0],
         ]);
+        expect(zoomedPlacement[2].dx).toBeLessThan(0);
         expect(zoomedPlacement[0]).not.toBe(initialPlacement[0]);
         await zoomPromise;
+    });
+
+    test("maps positions through view scales and reacts to zoom", async () => {
+        /** @type {import("../../spec/view.js").UnitSpec} */
+        const spec = {
+            width: 200,
+            height: 100,
+            data: {
+                values: [
+                    { x: 4.9, y: 5 },
+                    { x: 5.1, y: 5 },
+                ],
+            },
+            transform: [
+                {
+                    type: "displace2d",
+                    x: "x",
+                    y: "y",
+                    width: 10,
+                    height: 10,
+                    scalePositions: true,
+                    as: ["dx", "dy"],
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 10], zoom: true },
+                },
+                y: {
+                    field: "y",
+                    type: "quantitative",
+                    scale: { domain: [0, 10] },
+                },
+                xOffset: { field: "dx", type: "quantitative", scale: null },
+                yOffset: { field: "dy", type: "quantitative", scale: null },
+            },
+        };
+        const view = await createAndInitialize(spec, UnitView);
+        renderToLayout(view, Rectangle.create(0, 0, 200, 100));
+        view.handleBroadcast({ type: "layoutComputed" });
+        await Promise.resolve();
+
+        expect(
+            [...view.flowHandle.collector.getData()].some(
+                ({ dx, dy }) => dx != 0 || dy != 0
+            )
+        ).toBe(true);
+
+        const resolution = view.getScaleResolution("x");
+        const zoomPromise = resolution.zoomTo([4, 6], false);
+        await view.paramRuntime.whenPropagated();
+        expect(
+            [...view.flowHandle.collector.getData()].map(({ dx, dy }) => [
+                dx,
+                dy,
+            ])
+        ).toEqual([
+            [0, 0],
+            [0, 0],
+        ]);
+        await zoomPromise;
+
+        renderToLayout(view, Rectangle.create(0, 0, 40, 100));
+        view.handleBroadcast({ type: "layoutComputed" });
+        await Promise.resolve();
+        expect(
+            [...view.flowHandle.collector.getData()].some(
+                ({ dx, dy }) => dx != 0 || dy != 0
+            )
+        ).toBe(true);
+    });
+
+    test("respects nonlinear reversed scales", async () => {
+        /** @type {import("../../spec/view.js").UnitSpec} */
+        const spec = {
+            width: 200,
+            height: 100,
+            data: { values: [{ x: 1000, y: 5 }] },
+            transform: [
+                {
+                    type: "displace2d",
+                    x: "x",
+                    y: "y",
+                    width: 20,
+                    height: 20,
+                    scalePositions: true,
+                    as: ["dx", "dy"],
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { type: "log", domain: [1, 100], reverse: true },
+                },
+                y: {
+                    field: "y",
+                    type: "quantitative",
+                    scale: { domain: [0, 10] },
+                },
+                xOffset: { field: "dx", type: "quantitative", scale: null },
+                yOffset: { field: "dy", type: "quantitative", scale: null },
+            },
+        };
+        const view = await createAndInitialize(spec, UnitView);
+        renderToLayout(view, Rectangle.create(0, 0, 200, 100));
+        view.handleBroadcast({ type: "layoutComputed" });
+        await Promise.resolve();
+
+        const datum = [...view.flowHandle.collector.getData()][0];
+        expect(datum.dx).toBeCloseTo(110);
+        expect(datum.dy).toBe(0);
     });
 
     test("preserves input order and emits signed pixel offsets", () => {
@@ -446,6 +563,35 @@ describe("Displace2DTransform", () => {
                     /** @type {any} */ ({})
                 )
         ).toThrow("distinct output field names");
+        expect(
+            () =>
+                new Displace2DTransform(
+                    {
+                        type: "displace2d",
+                        x: "x",
+                        y: "y",
+                        width: 10,
+                        height: 10,
+                        scalePositions: true,
+                        xExtent: [0, 1],
+                    },
+                    /** @type {any} */ ({})
+                )
+        ).toThrow("cannot be combined");
+        expect(
+            () =>
+                new Displace2DTransform(
+                    {
+                        type: "displace2d",
+                        x: "x",
+                        y: "y",
+                        width: 10,
+                        height: 10,
+                        scalePositions: true,
+                    },
+                    /** @type {any} */ ({})
+                )
+        ).toThrow("requires a view");
     });
 
     test("is available through the transform factory", () => {

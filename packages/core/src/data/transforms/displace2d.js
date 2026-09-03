@@ -25,6 +25,14 @@ import { solveDisplacement } from "./displace2dSolver.js";
 export default class Displace2DTransform extends Transform {
     #placementBootstrapped = false;
     #bootstrapReplayPending = false;
+    #scaleReplayPending = false;
+    #repropagating = false;
+
+    /** @type {import("../../scales/scaleResolution.js").default} */
+    #xScaleResolution;
+
+    /** @type {import("../../scales/scaleResolution.js").default} */
+    #yScaleResolution;
 
     /** @type {import("../flowNode.js").Datum[]} */
     #data = [];
@@ -42,6 +50,25 @@ export default class Displace2DTransform extends Transform {
      */
     constructor(params, paramRuntimeProvider) {
         super(params, paramRuntimeProvider);
+
+        if (
+            params.scalePositions !== undefined &&
+            typeof params.scalePositions != "boolean"
+        ) {
+            throw new Error("displace2d scalePositions must be a boolean.");
+        }
+        this.scalePositions = params.scalePositions ?? false;
+        if (
+            this.scalePositions &&
+            (params.xPositionFactor !== undefined ||
+                params.yPositionFactor !== undefined ||
+                params.xExtent !== undefined ||
+                params.yExtent !== undefined)
+        ) {
+            throw new Error(
+                "displace2d scalePositions cannot be combined with position factors or extents."
+            );
+        }
 
         const as = params.as ?? ["xDisplacement", "yDisplacement"];
         if (
@@ -112,7 +139,7 @@ export default class Displace2DTransform extends Transform {
             yExtent: params.yExtent,
         };
         const hasReactiveProps = Object.values(placementProps).some(isExprRef);
-        this.#placementBootstrapped = !hasReactiveProps;
+        this.#placementBootstrapped = !hasReactiveProps && !this.scalePositions;
 
         const placementChanged = () => {
             if (!this.#placementBootstrapped || this.disposed) {
@@ -124,7 +151,7 @@ export default class Displace2DTransform extends Transform {
                 this.completed &&
                 !this.#bootstrapReplayPending
             ) {
-                this.repropagate();
+                this.#repropagateIfReady();
             }
         };
 
@@ -143,12 +170,50 @@ export default class Displace2DTransform extends Transform {
         if (this.#placementBootstrapped) {
             this.#refreshPlacementParameters();
         }
+
+        if (this.scalePositions) {
+            const view = /** @type {import("../../view/view.js").default} */ (
+                paramRuntimeProvider
+            );
+            if (
+                typeof view.getScaleResolution != "function" ||
+                typeof view._addBroadcastHandler != "function"
+            ) {
+                throw new Error("displace2d scalePositions requires a view.");
+            }
+
+            this.#xScaleResolution = view.getScaleResolution("x");
+            this.#yScaleResolution = view.getScaleResolution("y");
+            if (!this.#xScaleResolution || !this.#yScaleResolution) {
+                throw new Error(
+                    "displace2d scalePositions requires x and y scales."
+                );
+            }
+
+            const scaleChanged = () => this.#scheduleScaleReplay();
+            this.#xScaleResolution.addEventListener("domain", scaleChanged);
+            this.#yScaleResolution.addEventListener("domain", scaleChanged);
+            this.registerDisposer(() => {
+                this.#xScaleResolution.removeEventListener(
+                    "domain",
+                    scaleChanged
+                );
+                this.#yScaleResolution.removeEventListener(
+                    "domain",
+                    scaleChanged
+                );
+            });
+            this.registerDisposer(
+                view._addBroadcastHandler("layoutComputed", scaleChanged)
+            );
+        }
     }
 
     complete() {
         const data = this.#data;
 
         if (!this.#placementBootstrapped) {
+            // Establish data-driven scale domains before reading the scales.
             for (const datum of data) {
                 datum[this.as[0]] = 0;
                 datum[this.as[1]] = 0;
@@ -164,9 +229,20 @@ export default class Displace2DTransform extends Transform {
                 this.#bootstrapReplayPending = false;
                 if (!this.disposed) {
                     this.#refreshPlacementParameters();
-                    this.repropagate();
+                    this.#repropagateIfReady();
                 }
             });
+            return;
+        }
+
+        if (this.scalePositions && !this.#hasScaleLayout()) {
+            for (const datum of data) {
+                datum[this.as[0]] = 0;
+                datum[this.as[1]] = 0;
+                this._propagate(datum);
+            }
+            super.complete();
+            data.length = 0;
             return;
         }
 
@@ -181,11 +257,27 @@ export default class Displace2DTransform extends Transform {
         const anchorHeights = this.usesAnchorObstacles
             ? new Array(count)
             : undefined;
+        const xScale = this.scalePositions
+            ? this.#xScaleResolution.getScale()
+            : undefined;
+        const yScale = this.scalePositions
+            ? this.#yScaleResolution.getScale()
+            : undefined;
+        const xAxisLength = this.scalePositions
+            ? this.#xScaleResolution.getAxisLength()
+            : 0;
+        const yAxisLength = this.scalePositions
+            ? this.#yScaleResolution.getAxisLength()
+            : 0;
 
         for (let i = 0; i < count; i++) {
             const datum = data[i];
-            xPositions[i] = this.xAccessor(datum) * this.xPositionFactor;
-            yPositions[i] = this.yAccessor(datum) * this.yPositionFactor;
+            xPositions[i] = this.scalePositions
+                ? xScale(this.xAccessor(datum)) * xAxisLength
+                : this.xAccessor(datum) * this.xPositionFactor;
+            yPositions[i] = this.scalePositions
+                ? yScale(this.yAccessor(datum)) * yAxisLength
+                : this.yAccessor(datum) * this.yPositionFactor;
             widths[i] = this.widthAccessor(datum);
             heights[i] = this.heightAccessor(datum);
             if (this.usesAnchorObstacles) {
@@ -199,8 +291,12 @@ export default class Displace2DTransform extends Transform {
             yPositions,
             widths,
             heights,
-            scaleExtent(this.xExtent, this.xPositionFactor),
-            scaleExtent(this.yExtent, this.yPositionFactor),
+            this.scalePositions
+                ? [0, xAxisLength]
+                : scaleExtent(this.xExtent, this.xPositionFactor),
+            this.scalePositions
+                ? [0, yAxisLength]
+                : scaleExtent(this.yExtent, this.yPositionFactor),
             this.usesAnchorObstacles
                 ? {
                       x: xPositions,
@@ -248,6 +344,42 @@ export default class Displace2DTransform extends Transform {
         this.yExtent = copyExtent(props.yExtent);
 
         return placementChanged;
+    }
+
+    #hasScaleLayout() {
+        return (
+            this.#xScaleResolution.getAxisLength() > 0 &&
+            this.#yScaleResolution.getAxisLength() > 0
+        );
+    }
+
+    #repropagateIfReady() {
+        if (
+            this.#placementBootstrapped &&
+            !this.#bootstrapReplayPending &&
+            !this.disposed &&
+            this.completed &&
+            (!this.scalePositions || this.#hasScaleLayout())
+        ) {
+            this.#repropagating = true;
+            try {
+                this.repropagate();
+            } finally {
+                this.#repropagating = false;
+            }
+        }
+    }
+
+    #scheduleScaleReplay() {
+        // Domain publication during our own replay is not a new scale change.
+        // Coalesce external x/y domain and layout changes into one later replay.
+        if (!this.#repropagating && !this.#scaleReplayPending) {
+            this.#scaleReplayPending = true;
+            queueMicrotask(() => {
+                this.#scaleReplayPending = false;
+                this.#repropagateIfReady();
+            });
+        }
     }
 
     reset() {

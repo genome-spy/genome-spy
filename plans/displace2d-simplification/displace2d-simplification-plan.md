@@ -82,8 +82,8 @@ For each scale-bound axis, the transform adapter will:
 - respect the scale's normal or reversed screen direction;
 - use the logical viewport interval as the default placement extent;
 - react to scale-domain and layout-size changes; and
-- identify the bound channel as domain-sensitive so transformed output cannot
-  feed back into its own shared domain.
+- preserve the original `x` and `y` fields as the scale-domain source while
+  writing only scale-free offset fields.
 
 Scale-aware mode uses both positional scales and the complete logical viewport.
 It must not be combined with position factors or explicit extents;
@@ -227,8 +227,7 @@ Verification:
 - Cover zoom/domain updates, layout resize, reversed axes, and one nonlinear
   continuous scale.
 - Fail fast on conflicting position factors and explicit extents.
-- Verify domain-sensitive channels are exposed and no domain feedback loop is
-  introduced.
+- Verify scale domains remain data-driven where they are not explicit.
 - Verify raw pixel/factor mode produces unchanged results.
 - Run focused unit tests, schema generation checks, TypeScript checks, and lint.
 
@@ -294,8 +293,10 @@ Commit checkpoint:
 
 ## Risks and mitigations
 
-- **Scale-domain feedback.** Mark bound positional channels as domain-sensitive
-  and add an integration test with data-driven domains.
+- **Scale-domain feedback.** Preserve source positions unchanged and keep pixel
+  offsets on scale-free offset channels. Marking the source channels as
+  domain-sensitive would incorrectly remove the standalone view's own domain
+  contribution, so test data-driven domains instead.
 - **Coordinate-direction mistakes.** Test normal and reversed axes separately,
   including vertical screen direction and explicit extents.
 - **Duplicate reactive replays.** Use one scale/layout invalidation path and
