@@ -1,0 +1,173 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": [
+    "Dense displace2d stress test",
+    "Exercises 500 deterministic clustered annotations with variable-width labels."
+  ],
+
+  "title": "Deterministic dense-label stress test",
+  "width": 1000,
+  "height": 700,
+
+  "params": [
+    {
+      "name": "labelCount",
+      "value": 150,
+      "bind": { "input": "range", "min": 10, "max": 500, "step": 10 }
+    }
+  ],
+
+  "data": { "sequence": { "start": 0, "stop": 500, "as": "i" } },
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "50 + 7 * sin(datum.i * 2.399963)",
+      "as": "x"
+    },
+    {
+      "type": "formula",
+      "expr": "50 + 7 * cos(datum.i * 1.618034)",
+      "as": "y"
+    },
+    {
+      "type": "formula",
+      "expr": "datum.i % 9 == 0 ? 'long annotation ' + datum.i : 'item ' + datum.i",
+      "as": "label"
+    }
+  ],
+
+  "resolve": { "scale": { "x": "shared", "y": "shared" } },
+
+  "layer": [
+    {
+      "mark": { "type": "point", "filled": true, "opacity": 0.5, "size": 18 },
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": [35, 65], "zoom": true }
+        },
+        "y": {
+          "field": "y",
+          "type": "quantitative",
+          "scale": { "domain": [35, 65], "zoom": true }
+        },
+        "tooltip": [
+          { "field": "i", "type": "quantitative" },
+          { "field": "x", "type": "quantitative" },
+          { "field": "y", "type": "quantitative" }
+        ]
+      }
+    },
+
+    {
+      "name": "Annotations",
+      "transform": [
+        { "type": "filter", "expr": "datum.i < labelCount" },
+        {
+          "type": "measureText",
+          "field": "label",
+          "fontSize": 12,
+          "as": "labelWidth"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.labelWidth + 8",
+          "as": "collisionWidth"
+        },
+        { "type": "collect", "sort": { "field": "i", "order": "ascending" } },
+        {
+          "type": "formula",
+          "expr": "datum.x >= min(domain('x')[0], domain('x')[1]) && datum.x <= max(domain('x')[0], domain('x')[1]) && datum.y >= min(domain('y')[0], domain('y')[1]) && datum.y <= max(domain('y')[0], domain('y')[1])",
+          "as": "inViewport"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.inViewport ? datum.collisionWidth : 0",
+          "as": "activeCollisionWidth"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.inViewport ? 17 : 0",
+          "as": "activeCollisionHeight"
+        },
+        {
+          "type": "displace2d",
+          "x": "x",
+          "y": "y",
+          "width": "activeCollisionWidth",
+          "height": "activeCollisionHeight",
+          "xPositionFactor": {
+            "expr": "width * (scale('x', 1) - scale('x', 0))"
+          },
+          "yPositionFactor": {
+            "expr": "height * (scale('y', 0) - scale('y', 1))"
+          },
+          "xExtent": { "expr": "domain('x')" },
+          "yExtent": { "expr": "domain('y')" },
+          "as": ["labelTargetDx", "labelTargetDy"]
+        },
+        {
+          "type": "transition",
+          "key": "i",
+          "fields": ["labelTargetDx", "labelTargetDy"],
+          "as": ["labelDx", "labelDy"],
+          "targetDelay": 10,
+          "halfLife": 100,
+          "epsilon": 0.25
+        },
+        { "type": "filter", "expr": "datum.inViewport" }
+      ],
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" },
+        "tooltip": [
+          { "field": "label", "type": "nominal" },
+          { "field": "i", "type": "quantitative" }
+        ]
+      },
+      "layer": [
+        {
+          "name": "Leader lines",
+          "mark": { "type": "rule", "color": "#68717d", "opacity": 0.65 },
+          "encoding": {
+            "x2": { "field": "x" },
+            "y2": { "field": "y" },
+            "xOffset": {
+              "field": "labelDx",
+              "type": "quantitative",
+              "scale": null
+            },
+            "yOffset": {
+              "field": "labelDy",
+              "type": "quantitative",
+              "scale": null
+            }
+          }
+        },
+        {
+          "name": "Labels",
+          "mark": {
+            "type": "text",
+            "size": 12,
+            "align": "center",
+            "baseline": "middle"
+          },
+          "encoding": {
+            "text": { "field": "label", "type": "nominal" },
+            "xOffset": {
+              "field": "labelDx",
+              "type": "quantitative",
+              "scale": null
+            },
+            "yOffset": {
+              "field": "labelDy",
+              "type": "quantitative",
+              "scale": null
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
