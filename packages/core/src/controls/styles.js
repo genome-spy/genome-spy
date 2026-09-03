@@ -50,8 +50,9 @@ export default /* css */ `
             transition: none;
         }
     }
-    button {
+    button, a {
         display: inline-flex;
+        box-sizing: border-box;
         align-items: center;
         justify-content: center;
         gap: 4px;
@@ -63,12 +64,13 @@ export default /* css */ `
         background: var(--gs-controls-background, #fff);
         color: inherit;
         font: inherit;
+        text-decoration: none;
         cursor: pointer;
     }
-    button:hover {
+    button:hover, a:hover {
         outline: 1px solid #999;
     }
-    button:focus-visible {
+    button:focus-visible, a:focus-visible {
         outline: 2px solid currentColor;
         outline-offset: 2px;
     }
@@ -80,7 +82,7 @@ export default /* css */ `
         display: inline-flex;
         flex-shrink: 0;
     }
-    .icon, .icon > *, svg {
+    .icon, .icon > *, svg, img {
         width: 16px;
         height: 16px;
     }

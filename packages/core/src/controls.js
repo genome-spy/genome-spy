@@ -3,6 +3,7 @@ import css, { overrideStyle } from "./controls/styles.js";
 export { button } from "./controls/button.js";
 export { pngButton, svgButton } from "./controls/imageButtons.js";
 export { fullWindowButton } from "./controls/fullWindow.js";
+export { genomeSpyButton } from "./controls/genomeSpyButton.js";
 
 /** @typedef {"inside" | "top" | "bottom"} ControlsPlacement */
 

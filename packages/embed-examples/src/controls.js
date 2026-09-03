@@ -9,6 +9,7 @@ import {
     pngButton,
     svgButton,
     fullWindowButton,
+    genomeSpyButton,
     button,
 } from "@genome-spy/core/controls";
 
@@ -96,6 +97,8 @@ function createControls() {
             // selections. Escape restores it. Controls sit inside while expanded;
             // within an iframe, expansion fills only that iframe's viewport.
             fullWindowButton(),
+            // A native link styled like the buttons; opens GenomeSpy in a new tab.
+            genomeSpyButton(),
         ],
 
         // "inside" is the default overlay. "top" and "bottom" sit just

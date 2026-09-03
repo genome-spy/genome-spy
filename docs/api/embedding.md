@@ -95,6 +95,7 @@ See the [commented example](https://github.com/genome-spy/genome-spy/blob/master
 for custom actions, or the [Control contract](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/controls.js)
 for controls with their own lifecycle.
 
+`genomeSpyButton()` adds a favicon link to the GenomeSpy website, opening in a new tab.
 The Inspector package also provides an [inspectorButton()](./inspector.md#core-embeds).
 
 All placements attach to the same container without changing its size.

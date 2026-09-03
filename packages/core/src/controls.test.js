@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import favicon from "./img/genomespy-favicon.svg";
 import {
     attachControls,
     pngButton,
     svgButton,
     fullWindowButton,
+    genomeSpyButton,
     button as customButton,
 } from "./controls.js";
 
@@ -82,6 +84,19 @@ function setup(options = {}) {
 }
 
 describe("control composition", () => {
+    it("provides a GenomeSpy favicon link without replacing the embed page", () => {
+        const { controls } = setup({ controls: [genomeSpyButton()] });
+        const link = controls.element.shadowRoot.querySelector("a");
+        expect(link.href).toBe("https://genomespy.app/");
+        expect(link.target).toBe("_blank");
+        expect(link.relList.contains("noopener")).toBe(true);
+        expect(link.getAttribute("aria-label")).toBe("About GenomeSpy");
+        expect(link.title).toBe("About GenomeSpy");
+        expect(link.querySelector("img").src).toBe(favicon);
+        controls.dispose();
+        expect(link.isConnected).toBe(false);
+    });
+
     it("uses the label as text and permits a separate hover title", () => {
         const { button } = setup({
             controls: [
