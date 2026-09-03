@@ -136,7 +136,7 @@ export function createBinningRangeIndexer(
         lastStart = start;
 
         const startBin = getBin(start, false);
-        const endBin = getBin(end, true);
+        const endBin = start === end ? startBin : getBin(end, true);
 
         // TODO: This loop could probably be done as a more efficient post processing
         // step.

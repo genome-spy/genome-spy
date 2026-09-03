@@ -46,6 +46,23 @@ describe("Binning Indexer", () => {
         expect(index(0, 101)).toEqual([0, 16]);
     });
 
+    test("Equal endpoints on bin boundaries are indexed as points", () => {
+        const items = [0, 1, 1, 2];
+        // Index-band rectangles use distinct accessors for the same coordinate.
+        const indexer = createBinningRangeIndexer(
+            3,
+            [0, 3],
+            (x) => x,
+            (x) => x
+        );
+        items.forEach((x, i) => indexer(x, i, i + 1));
+
+        const index = indexer.getIndex();
+
+        expect(index(0, 3)).toEqual([0, items.length]);
+        expect(index(1, 2)).toEqual([1, 3]);
+    });
+
     test("Non-overlapping ranges are binned correctly", () => {
         const items = [
             [0, 5],
