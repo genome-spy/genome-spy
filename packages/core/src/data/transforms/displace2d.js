@@ -276,7 +276,7 @@ export default class Displace2DTransform extends Transform {
                 ? xScale(this.xAccessor(datum)) * xAxisLength
                 : this.xAccessor(datum) * this.xPositionFactor;
             yPositions[i] = this.scalePositions
-                ? yScale(this.yAccessor(datum)) * yAxisLength
+                ? (1 - yScale(this.yAccessor(datum))) * yAxisLength
                 : this.yAccessor(datum) * this.yPositionFactor;
             widths[i] = this.widthAccessor(datum);
             heights[i] = this.heightAccessor(datum);
