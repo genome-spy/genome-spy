@@ -181,6 +181,42 @@ export default class ViewParamRuntime {
     }
 
     /**
+     * Registers a read-only expression evaluated in another view's scope.
+     * Generated views use this to preserve the declaration scope of styling.
+     * Binding is deferred until first use so scale-dependent params are ready.
+     * The derived value and subscriptions are disposed with this runtime.
+     *
+     * @param {string} name
+     * @param {string} expr
+     * @param {ViewParamRuntime} source
+     */
+    registerScopedExpression(name, expr, source) {
+        if (this.#runtime !== source.#runtime) {
+            throw new Error(
+                "Scoped expressions must share a parameter runtime."
+            );
+        }
+        if (this.#paramConfigs.has(name)) {
+            throw new Error(
+                'Parameter "' + name + '" already registered in this scope.'
+            );
+        }
+        this.#runtime.registerInitializer(this.#scopeId, name, () => {
+            const ref = this.#runtime.registerDerived(
+                this.#scopeId,
+                name,
+                expr,
+                {
+                    expressionScope: source.#scopeId,
+                    resolveScaleResolution: source.#scaleResolutionResolver,
+                }
+            );
+            this.#localRefs.set(name, ref);
+        });
+        this.#paramConfigs.set(name, { name, expr });
+    }
+
+    /**
      * @param {Parameter} param
      * @returns {ParameterSetter}
      */

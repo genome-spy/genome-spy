@@ -432,6 +432,7 @@ describe("generated core schema", () => {
                             filter: "event.shiftKey",
                         },
                         clear: "mouseleave",
+                        disabled: false,
                         extent: "auto",
                         snap: "auto",
                         display: "center",
@@ -458,6 +459,33 @@ describe("generated core schema", () => {
         expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
             true
         );
+    });
+
+    test("accepts reactive ruler styling but keeps dash patterns static", () => {
+        const validate = createCoreValidator();
+        const mark = {
+            stroke: { expr: "color" },
+            strokeWidth: { expr: "width" },
+            opacity: { expr: "showRuler ? 0.8 : 0" },
+            fill: { expr: "color" },
+            fillOpacity: { expr: "alpha" },
+            shadowOpacity: { expr: "alpha" },
+            strokeDash: /** @type {number[] | { expr: string }} */ ([4, 2]),
+        };
+        const spec = {
+            params: [
+                {
+                    name: "cursor",
+                    ruler: { mark, disabled: { expr: "!trackRuler" } },
+                },
+            ],
+            data: { values: [{ x: 1 }] },
+            mark: "point",
+            encoding: { x: { field: "x", type: "quantitative" } },
+        };
+        expect(validate(spec), JSON.stringify(validate.errors)).toBe(true);
+        mark.strokeDash = { expr: "pattern" };
+        expect(validate(spec)).toBe(false);
     });
 
     test("accepts transitioned variable parameters", () => {

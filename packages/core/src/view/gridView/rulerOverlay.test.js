@@ -48,8 +48,8 @@ describe("createRulerOverlaySpec", () => {
                     mark: {
                         type: "rule",
                         clip: true,
-                        stroke: "red",
-                        strokeWidth: 2,
+                        color: "red",
+                        size: 2,
                         tooltip: null,
                     },
                 },

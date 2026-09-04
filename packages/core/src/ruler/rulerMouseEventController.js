@@ -1,3 +1,4 @@
+import { bindRulerDisabled } from "./rulerDisabled.js";
 import {
     asEventConfig,
     createEventPredicate,
@@ -54,6 +55,7 @@ export class RulerMouseEventController {
             config.clear ??
             (this.eventConfig.type === "mousemove" ? "mouseleave" : false);
 
+        this.disposeDisabled = bindRulerDisabled(this);
         this.#addListeners();
     }
 
@@ -69,6 +71,8 @@ export class RulerMouseEventController {
     /** @type {import("../spec/parameter.js").RulerClear | undefined} */
     clear;
 
+    disabled = false;
+
     dragging = false;
 
     /**
@@ -77,10 +81,17 @@ export class RulerMouseEventController {
      * @param {boolean} [capture]
      */
     #addViewInteractionListener(type, listener, capture) {
-        this.#viewListeners.add(type, listener, capture);
+        this.#viewListeners.add(
+            type,
+            (event) => {
+                if (!this.disabled) listener(event);
+            },
+            capture
+        );
     }
 
     dispose() {
+        this.disposeDisabled();
         this.#viewListeners.dispose();
     }
 
@@ -198,6 +209,8 @@ export class RulerMouseEventController {
      * @param {ReturnType<typeof createRulerValue>} value
      */
     #setValue(value) {
-        this.paramRuntime.setValue(this.paramName, value);
+        if (!this.disabled) {
+            this.paramRuntime.setValue(this.paramName, value);
+        }
     }
 }

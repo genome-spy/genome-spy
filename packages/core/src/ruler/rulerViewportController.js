@@ -1,3 +1,4 @@
+import { bindRulerDisabled } from "./rulerDisabled.js";
 import { createRulerValue } from "./rulerValue.js";
 import { normalizeRulerCoordinate } from "./rulerCoordinate.js";
 
@@ -36,12 +37,15 @@ export class RulerViewportController {
 
         this.listeners = [];
 
+        this.disposeDisabled = bindRulerDisabled(this);
         this.update();
         this.#subscribe();
     }
 
     /** @type {{ scaleResolution: import("../scales/scaleResolution.js").default, type: "domain" | "range", listener: () => void }[]} */
     listeners;
+
+    disabled = false;
 
     #subscribe() {
         for (const channel of this.channels) {
@@ -61,6 +65,7 @@ export class RulerViewportController {
      * Removes scale event listeners owned by this controller.
      */
     dispose() {
+        this.disposeDisabled();
         for (const { scaleResolution, type, listener } of this.listeners) {
             scaleResolution.removeEventListener(type, listener);
         }
@@ -68,6 +73,8 @@ export class RulerViewportController {
     }
 
     update() {
+        if (this.disabled) return;
+
         const value = createRulerValue(this.channels);
 
         for (const channel of this.channels) {

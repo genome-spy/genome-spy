@@ -1,6 +1,6 @@
 import { PrimaryPositionalChannel, Scalar } from "./channel.js";
 import { ChromosomalLocus } from "./genome.js";
-import { ShadowProps } from "./mark.js";
+import { ShadowProps, FillAndStrokeProps, MarkPropsBase } from "./mark.js";
 import { ZIndexProps } from "./decoration.js";
 
 export interface ExprRef {
@@ -486,6 +486,17 @@ export interface RulerParameter extends ParameterBase, PersistedParameter {
 
 export interface RulerConfig {
     /**
+     * Clears the coordinate and ignores tracking events while true. Expressions
+     * resolve where the ruler is declared. Re-enabling waits for the next
+     * pointer or viewport event; it does not restore the initial value.
+     * With `push: "outer"`, other enabled bindings can still update the shared
+     * coordinate.
+     *
+     * __Default value:__ `false`
+     */
+    disabled?: boolean | ExprRef;
+
+    /**
      * Positional channels whose domain coordinates are tracked by the ruler.
      *
      * __Default value:__ `["x"]`
@@ -550,7 +561,9 @@ export interface RulerConfig {
     display?: RulerDisplay;
 
     /**
-     * Rule or band appearance. Has no effect when `display` is `"none"`.
+     * Rule or band appearance. Expressions resolve in the scope where this
+     * ruler is declared, including when it uses `push: "outer"`. Has no effect
+     * when `display` is `"none"`.
      */
     mark?: RulerMarkConfig;
 }
@@ -584,32 +597,36 @@ export interface RulerMarkConfig extends ShadowProps, ZIndexProps {
     /**
      * Stroke color of ruler lines and band outlines.
      */
-    stroke?: string;
+    stroke?: FillAndStrokeProps["stroke"];
 
     /**
      * Stroke width of ruler lines and band outlines, in pixels.
      */
-    strokeWidth?: number;
+    strokeWidth?: FillAndStrokeProps["strokeWidth"];
 
     /**
-     * Alternating stroke and gap lengths for dashed ruler lines and band outlines.
+     * Alternating stroke and gap lengths for dashed ruler lines.
+     * Does not affect band outlines.
      */
+    // TODO: Make strokeDash reactive when WebGPU is the primary renderer and WebGL is retired.
     strokeDash?: number[];
 
     /**
-     * Opacity of ruler lines and bands.
+     * Overall opacity of the guide, including band fill, outline, and shadow.
+     * Setting opacity to zero hides the guide without stopping coordinate
+     * tracking or changing its clear behavior.
      */
-    opacity?: number;
+    opacity?: MarkPropsBase["opacity"];
 
     /**
      * Fill color for `display: "band"`.
      */
-    fill?: string;
+    fill?: FillAndStrokeProps["fill"];
 
     /**
      * Fill opacity for `display: "band"`.
      */
-    fillOpacity?: number;
+    fillOpacity?: FillAndStrokeProps["fillOpacity"];
 }
 
 export type RulerChannelValue = Scalar | ChromosomalLocus | null;

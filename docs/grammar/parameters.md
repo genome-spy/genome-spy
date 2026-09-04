@@ -279,6 +279,13 @@ transforms, or encodings.
 
 EXAMPLE examples/docs/grammar/parameters/ruler-push-outer.json height=240
 
+### Expression Scope
+
+[Expressions](expressions.md) in `ruler.mark` and `ruler.disabled` resolve
+parameter names in the scope where the ruler is declared. Same-named parameters
+in descendant views do not affect these expressions. Using `push: "outer"`
+changes where the coordinate is stored, but not where these expressions resolve.
+
 ### Properties
 
 `ruler` supports the following properties:

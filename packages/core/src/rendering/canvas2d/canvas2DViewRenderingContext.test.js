@@ -1041,7 +1041,10 @@ describe("Canvas2DViewRenderingContext", () => {
         ]);
         expect(recording.context.shadowColor).toBe("rgba(0, 0, 0, 0)");
 
+        const requestRender = vi.spyOn(view.context.animator, "requestRender");
         view.paramRuntime.setValue("shadowOpacity", 0);
+        await view.paramRuntime.whenPropagated();
+        expect(requestRender).toHaveBeenCalledOnce();
         const disabled = createRecordingContext();
         render(view, disabled.context);
         expect(disabled.calls.shadows).toHaveLength(0);

@@ -612,6 +612,7 @@ export default class GridView extends ContainerView {
                 layoutParent: this,
                 dataParent: this,
                 name: "rulerOverlay" + "_" + paramName,
+                expressionRuntime: this.paramRuntime,
             });
             this.#containerOverlays.push({
                 overlay,

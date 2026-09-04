@@ -312,6 +312,7 @@ export default class GridChild {
                 continue;
             } else {
                 this.#addRulerOverlay(
+                    owner,
                     paramName,
                     ruler,
                     channels,
@@ -377,12 +378,13 @@ export default class GridChild {
     }
 
     /**
+     * @param {import("../view.js").default} owner
      * @param {string} paramName
      * @param {import("../../spec/parameter.js").RulerConfig} ruler
      * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
      * @param {Partial<Record<import("../../spec/channel.js").PrimaryPositionalChannel, import("../../scales/scaleResolution.js").default>>} scaleResolutions
      */
-    #addRulerOverlay(paramName, ruler, channels, scaleResolutions) {
+    #addRulerOverlay(owner, paramName, ruler, channels, scaleResolutions) {
         const overlay = createConfiguredRulerOverlayView({
             paramName,
             channels,
@@ -392,6 +394,7 @@ export default class GridChild {
             layoutParent: this.layoutParent,
             dataParent: this.view,
             name: "rulerOverlay" + this.#serial + "_" + paramName,
+            expressionRuntime: owner.paramRuntime,
         });
 
         this.rulerOverlays.push(overlay);

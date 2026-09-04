@@ -142,20 +142,22 @@ export default class ParamRuntime {
     /**
      * Registers a derived read-only parameter in `scope`.
      *
-     * The expression is bound to current scope resolution and re-evaluated by
-     * the graph runtime when dependencies change.
+     * The expression is bound in `expressionScope` (by default, `scope`) and
+     * re-evaluated by the graph runtime when dependencies change. The derived
+     * value and its subscriptions are owned by `scope`.
      *
      * @template T
      * @param {ScopeId} scope
      * @param {string} name
      * @param {string} expr
-     * @param {{ resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined }} [options]
+     * @param {{ expressionScope?: ScopeId, resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined }} [options]
      * @returns {import("./types.js").ParamRef<T>}
      */
     registerDerived(scope, name, expr, options) {
         const { expression, dependencies } = bindExpression(
             expr,
-            (globalName) => this.resolve(scope, globalName),
+            (globalName) =>
+                this.resolve(options?.expressionScope ?? scope, globalName),
             options
         );
 

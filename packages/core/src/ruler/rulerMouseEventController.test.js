@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
+import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import Rectangle from "../view/layout/rectangle.js";
 import { RulerMouseEventController } from "./rulerMouseEventController.js";
 
@@ -31,13 +32,14 @@ function createScaleResolution(type, toComplex) {
 /**
  * @param {any} ruler
  * @param {Record<string, any>} scaleResolutions
+ * @param {ViewParamRuntime} [runtime]
  */
-function createController(ruler, scaleResolutions) {
+function createController(ruler, scaleResolutions, runtime) {
     /** @type {Map<string, any>} */
     const listeners = new Map();
     /** @type {Map<string, any>} */
     const documentListeners = new Map();
-    const setValue = vi.fn();
+    const setValue = runtime ? vi.spyOn(runtime, "setValue") : vi.fn();
     const view = {
         spec: {},
         coords: Rectangle.create(0, 0, 200, 100),
@@ -55,9 +57,7 @@ function createController(ruler, scaleResolutions) {
                 listeners.delete(type);
             }
         },
-        paramRuntime: {
-            setValue,
-        },
+        paramRuntime: runtime ?? { setValue },
     };
     const previousDocument = globalThis.document;
     installMockDocument(documentListeners);
@@ -315,4 +315,79 @@ describe("RulerMouseEventController", () => {
             },
         });
     });
+});
+
+test("disabling ignores active drag updates and releases its subscription on disposal", async () => {
+    const runtime = new ViewParamRuntime();
+    runtime.registerParam({ name: "off", value: false });
+    runtime.registerParam({ name: "cursor", ruler: {} });
+    const { controller, listeners, documentListeners, setValue } =
+        createController(
+            { on: "mousedown", clear: "mouseup", disabled: { expr: "off" } },
+            { x: createScaleResolution("linear") },
+            runtime
+        );
+    const previousDocument = globalThis.document;
+    installMockDocument(documentListeners);
+    try {
+        const event = {
+            point: { x: 50, y: 25 },
+            mouseEvent: createMouseEvent(),
+            proxiedMouseEvent: createMouseEvent(),
+            stopPropagation: vi.fn(),
+        };
+        listeners.get("mousedown")(event);
+        runtime.setValue("off", true);
+        expect(runtime.findValue("cursor").values.x).toBeNull();
+        setValue.mockClear();
+        event.stopPropagation.mockClear();
+        listeners.get("mousedown")(event);
+        documentListeners.get("mousemove")(createMouseEvent({ clientX: 80 }));
+        documentListeners.get("mouseup")(createMouseEvent());
+        expect(setValue).not.toHaveBeenCalled();
+        expect(event.stopPropagation).not.toHaveBeenCalled();
+        expect(documentListeners.size).toBe(0);
+        controller.dispose();
+        runtime.setValue("off", false);
+        runtime.setValue("cursor", { type: "ruler", values: { x: 12 } });
+        runtime.setValue("off", true);
+        await runtime.whenPropagated();
+        expect(runtime.findValue("cursor").values.x).toBe(12);
+    } finally {
+        controller.dispose();
+        globalThis.document = previousDocument;
+    }
+});
+
+test("disabling one pushed binding leaves another able to update the shared coordinate", async () => {
+    const parent = new ViewParamRuntime();
+    parent.registerParam({ name: "cursor", value: null });
+    const bindings = [false, false].map((off) => {
+        const runtime = new ViewParamRuntime(() => parent);
+        runtime.registerParam({ name: "off", value: off });
+        runtime.registerParam({ name: "cursor", push: "outer", ruler: {} });
+        return {
+            runtime,
+            ...createController(
+                { disabled: { expr: "off" } },
+                { x: createScaleResolution("linear") },
+                runtime
+            ),
+        };
+    });
+    const event = {
+        point: { x: 50, y: 25 },
+        proxiedMouseEvent: createMouseEvent(),
+    };
+    try {
+        bindings[0].runtime.setValue("off", true);
+        bindings[1].listeners.get("mousemove")(event);
+        await parent.whenPropagated();
+        expect(parent.findValue("cursor").values.x).toBe(25);
+        bindings[0].listeners.get("mouseleave")({});
+        expect(parent.findValue("cursor").values.x).toBe(25);
+    } finally {
+        for (const { controller } of bindings) controller.dispose();
+        parent.dispose();
+    }
 });

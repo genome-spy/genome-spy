@@ -219,9 +219,8 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         }
 
         // Immediate encoders read live parameter values during every paint.
-        // Register their dependencies so conditional encodings schedule that
-        // paint when a selection or expression changes.
-        mark.initializeRenderingRevisions([]);
+        // Also track properties read directly by painters, such as shadows.
+        mark.initializeRenderingRevisions(Object.keys(mark.properties));
 
         const sampleFacet = options.sampleFacetRenderingOptions;
         if (sampleFacet && !mark.encoders.facetIndex) {

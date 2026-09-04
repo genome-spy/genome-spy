@@ -1,0 +1,42 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Toggle and highlight a shared ruler",
+
+  "params": [
+    { "name": "showRuler", "value": true, "bind": { "input": "checkbox" } },
+    {
+      "name": "highlightRuler",
+      "value": false,
+      "bind": { "input": "checkbox" }
+    },
+    {
+      "name": "cursor",
+      "value": { "x": 25 },
+      "ruler": {
+        "encodings": ["x"],
+        "extent": "container",
+        "clear": false,
+        "mark": {
+          "opacity": { "expr": "showRuler ? 0.8 : 0" },
+          "stroke": { "expr": "highlightRuler ? 'red' : 'black'" },
+          "strokeWidth": { "expr": "highlightRuler ? 3 : 1" }
+        }
+      }
+    }
+  ],
+
+  "data": { "values": [{ "x": 10 }, { "x": 40 }, { "x": 75 }] },
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "domain": [0, 100], "zoom": true }
+    }
+  },
+  "resolve": { "scale": { "x": "shared" } },
+
+  "vconcat": [
+    { "height": 70, "mark": "point" },
+    { "height": 70, "mark": { "type": "tick", "orient": "vertical" } }
+  ]
+}

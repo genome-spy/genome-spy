@@ -1,3 +1,4 @@
+import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import { createGeneratedChromeOverlay } from "./generatedChromeOverlay.js";
 
 /**
@@ -14,6 +15,7 @@ import { createGeneratedChromeOverlay } from "./generatedChromeOverlay.js";
  *   layoutParent: import("../containerView.js").default,
  *   dataParent: import("../view.js").default,
  *   name: string,
+ *   expressionRuntime: import("../../paramRuntime/viewParamRuntime.js").default,
  * }} RulerOverlayViewOptions
  */
 
@@ -29,10 +31,13 @@ export function createRulerOverlaySpec({
     display = "line",
     mark = {},
 }) {
+    const { opacity, ...markStyle } = mark;
     /** @type {import("../../spec/view.js").LayerSpec} */
     const spec = {
         name: "rulerOverlay_" + paramName,
         domainInert: true,
+        // View opacity covers the fill, outline, and shadow together.
+        opacity: opacity ?? (display === "band" ? 1 : 0.8),
         resolve: {
             scale: {
                 x: "forced",
@@ -74,7 +79,8 @@ export function createRulerOverlaySpec({
                 fillOpacity: 0.15,
                 stroke: "black",
                 strokeWidth: 1,
-                ...mark,
+                opacity: 1,
+                ...markStyle,
                 // Rulers are decorative and must not replace hovered data marks.
                 tooltip: null,
             },
@@ -92,10 +98,10 @@ export function createRulerOverlaySpec({
                 mark: {
                     type: "rule",
                     clip: true,
-                    stroke: "black",
-                    strokeWidth: 1,
-                    opacity: 0.8,
-                    ...mark,
+                    color: markStyle.stroke ?? "black",
+                    size: markStyle.strokeWidth ?? 1,
+                    strokeDash: markStyle.strokeDash,
+                    opacity: 1,
                     // Rulers are decorative and must not replace hovered data marks.
                     tooltip: null,
                 },
@@ -129,13 +135,27 @@ export function createRulerOverlayView({
     layoutParent,
     dataParent,
     name,
+    expressionRuntime,
 }) {
-    return createGeneratedChromeOverlay({
+    const expressions = new Map();
+    const style = Object.fromEntries(
+        Object.entries(mark ?? {}).map(([key, value]) => {
+            if (isExprRef(value)) {
+                const alias = "__ruler_" + paramName + "_" + key;
+                expressions.set(alias, value.expr);
+                return [key, { expr: alias }];
+            } else {
+                return [key, value];
+            }
+        })
+    );
+
+    const overlay = createGeneratedChromeOverlay({
         spec: createRulerOverlaySpec({
             paramName,
             channels,
             display,
-            mark,
+            mark: style,
         }),
         context,
         layoutParent,
@@ -143,6 +163,14 @@ export function createRulerOverlayView({
         name,
         zindex: mark?.zindex ?? 1,
     });
+    for (const [alias, expr] of expressions) {
+        overlay.view.paramRuntime.registerScopedExpression(
+            alias,
+            expr,
+            expressionRuntime
+        );
+    }
+    return overlay;
 }
 
 /**
