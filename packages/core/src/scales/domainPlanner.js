@@ -108,7 +108,8 @@ export default class DomainPlanner {
     /** @type {SelectionDomainLinkInfo | undefined} */
     #selectionDomainLinkInfo = undefined;
 
-    #hasViewportDomain = false;
+    /** @type {boolean | undefined} */
+    #hasViewportDomain;
 
     /** @type {DomainArray | undefined} */
     #lastVisibleDataDomain;
@@ -185,6 +186,20 @@ export default class DomainPlanner {
             return this.#selectionDomainLinkInfo;
         }
 
+        // Metadata checks during view construction must not evaluate ordinary
+        // domain expressions before scale topology and parameters are ready.
+        if (
+            !isSelectionDomainRef(this.#getViewLevelDomainSource?.()?.domain) &&
+            !this.#getAllMembers()
+                .values()
+                .some(
+                    (member) =>
+                        member.contributesToDomain &&
+                        isSelectionDomainRef(member.channelDef.scale?.domain)
+                )
+        ) {
+            return;
+        }
         this.getConfiguredDomain();
         return this.#selectionDomainLinkInfo;
     }
@@ -204,14 +219,16 @@ export default class DomainPlanner {
     invalidateConfiguredDomain() {
         this.#configuredDomainDirty = true;
         this.#selectionDomainLinkInfo = undefined;
-        this.#hasViewportDomain = false;
+        this.#hasViewportDomain = undefined;
         this.#lastVisibleDataDomain = undefined;
         this.#configuredDomainsByInitialMode.clear();
     }
 
     hasViewportDomain() {
-        this.getConfiguredDomain();
-        return this.#hasViewportDomain;
+        return (this.#hasViewportDomain ??= validateSharedViewportDomain(
+            this.#getAllMembers(),
+            this.#getViewLevelDomainSource?.()
+        ));
     }
 
     /**
@@ -272,10 +289,7 @@ export default class DomainPlanner {
         }
 
         const viewLevelDomainSource = this.#getViewLevelDomainSource?.();
-        const hasViewportDomain = validateSharedViewportDomain(
-            this.#getAllMembers(),
-            viewLevelDomainSource
-        );
+        this.hasViewportDomain();
         const configuredDomain = resolveConfiguredDomain(
             this.#getActiveMembers(),
             viewLevelDomainSource,
@@ -289,7 +303,6 @@ export default class DomainPlanner {
             configuredDomain.selectionRef
         );
         this.#selectionDomainLinkInfo = configuredDomain.selectionRef;
-        this.#hasViewportDomain = hasViewportDomain;
         this.#configuredDomainsByInitialMode.set(
             includeSelectionInitial,
             configuredDomain.domain

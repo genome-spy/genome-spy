@@ -33,3 +33,13 @@ than embedding either runtime.
   such as `filter` and `formula`, or reload URL-backed sources.
 - `activateExprRefProps` converts expression-reference properties into getters
   and batches their updates through microtasks.
+- Scale-dependent parameters reserve scoped names during view construction and
+  materialize real derived refs on demand. Pending declarations shadow ancestor
+  names without exposing placeholder values.
+- New scale resolutions defer expression binding until initialization. Hierarchy
+  finalization initializes scales before remaining pending parameters; domains
+  are readable before range binding, allowing a domain-derived parameter to
+  control a range. Live member changes retain their preflight validation.
+- Selection/viewport domain metadata queries do not evaluate ordinary domain
+  expressions. Parameter initialization and scale helper guards reject recursive
+  initialization without introducing another runtime dependency scheduler.

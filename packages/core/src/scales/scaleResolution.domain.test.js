@@ -494,9 +494,7 @@ describe("Scale resolution domain handling", () => {
                 },
                 UnitView
             )
-        ).rejects.toThrow(
-            /Scale helper cycle detected while evaluating domain\("x"\)\./
-        );
+        ).rejects.toThrow(/Scale dependency cycle.*cannot read its own domain/);
     });
 
     test("Scales are shared and extracted domains merged properly", async () => {

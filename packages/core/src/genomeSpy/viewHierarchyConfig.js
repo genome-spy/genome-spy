@@ -29,6 +29,14 @@ export function finalizeViewConfiguration(viewRoot) {
  * @param {Iterable<import("../view/view.js").default>} views
  */
 export function configureViewsAfterScaleResolution(views) {
+    views = Array.from(views);
+    // Start from scales: their configured domains become available before range
+    // expressions materialize params that may read those very domains.
+    for (const view of views) {
+        for (const resolution of Object.values(view.resolutions.scale)) {
+            resolution.initializeScale();
+        }
+    }
     for (const view of views) {
         view.configurePostScaleParams();
         view.configureViewOpacity();

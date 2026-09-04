@@ -8,8 +8,8 @@ import { validateParameterName } from "./paramUtils.js";
  * 2. Store local bindings (`scope + name -> ParamRef`).
  * 3. Resolve names using nearest-scope lookup through the parent chain.
  *
- * This class is intentionally storage-only: propagation/lifecycle is handled
- * by higher-level runtime components.
+ * Initializers materialize pending local bindings on first lookup. Reactive
+ * propagation and lifecycle ownership remain in higher-level runtime components.
  */
 export default class ParamStore {
     #nextScopeId = 1;
@@ -18,6 +18,7 @@ export default class ParamStore {
      * @typedef {{
      *   parentScope?: string,
      *   params: Map<string, import("./types.js").ParamRef<any>>,
+     *   initializers: Map<string, { initialize: () => void, initializing: boolean }>,
      *   ownerId: string
      * }} ScopeRecord
      */
@@ -37,7 +38,11 @@ export default class ParamStore {
      */
     createRootScope(ownerId) {
         const scopeId = "scope:" + this.#nextScopeId++;
-        this.#scopes.set(scopeId, { params: new Map(), ownerId });
+        this.#scopes.set(scopeId, {
+            params: new Map(),
+            initializers: new Map(),
+            ownerId,
+        });
         return scopeId;
     }
 
@@ -54,7 +59,12 @@ export default class ParamStore {
         }
 
         const scopeId = "scope:" + this.#nextScopeId++;
-        this.#scopes.set(scopeId, { parentScope, params: new Map(), ownerId });
+        this.#scopes.set(scopeId, {
+            parentScope,
+            params: new Map(),
+            initializers: new Map(),
+            ownerId,
+        });
         return scopeId;
     }
 
@@ -85,6 +95,29 @@ export default class ParamStore {
         }
 
         scope.params.clear();
+        scope.initializers.clear();
+    }
+
+    /**
+     * Reserves a local name without publishing an uninitialized value.
+     * The initializer must register the real ref before returning.
+     *
+     * @param {string} scopeId
+     * @param {string} name
+     * @param {() => void} initialize
+     */
+    registerInitializer(scopeId, name, initialize) {
+        validateParameterName(name);
+        const scope = this.#scopes.get(scopeId);
+        if (!scope) {
+            throw new Error("Unknown scope: " + scopeId);
+        }
+        if (scope.params.has(name) || scope.initializers.has(name)) {
+            throw new Error(
+                `Parameter "${name}" already exists in scope ${scopeId}`
+            );
+        }
+        scope.initializers.set(name, { initialize, initializing: false });
     }
 
     /**
@@ -107,7 +140,10 @@ export default class ParamStore {
             throw new Error("Unknown scope: " + scopeId);
         }
 
-        if (scope.params.has(name)) {
+        if (
+            scope.params.has(name) ||
+            scope.initializers.get(name)?.initializing === false
+        ) {
             throw new Error(
                 'Parameter "' + name + '" already exists in scope ' + scopeId
             );
@@ -136,6 +172,26 @@ export default class ParamStore {
                 throw new Error("Unknown scope: " + currentScopeId);
             }
 
+            const initializer = scope.initializers.get(name);
+            if (initializer) {
+                if (initializer.initializing) {
+                    throw new Error(
+                        `Parameter dependency cycle while initializing "${name}" in ${currentScopeId}.`
+                    );
+                }
+                initializer.initializing = true;
+                try {
+                    initializer.initialize();
+                    if (!scope.params.has(name)) {
+                        throw new Error(
+                            `Initializer did not register parameter "${name}".`
+                        );
+                    }
+                    scope.initializers.delete(name);
+                } finally {
+                    initializer.initializing = false;
+                }
+            }
             const ref = scope.params.get(name);
             if (ref) {
                 return /** @type {import("./types.js").ParamRef<T>} */ (ref);

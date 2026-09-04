@@ -149,9 +149,10 @@ export default class ViewParamRuntime {
      * A parameter name can be registered only once per runtime scope.
      *
      * @param {Parameter} param
+     * @param {{ defer?: boolean }} [options] Defer expression binding until first use.
      * @returns {ParameterSetter}
      */
-    registerParam(param) {
+    registerParam(param, options = {}) {
         const name = param.name;
         validateParameterName(name);
 
@@ -162,6 +163,29 @@ export default class ViewParamRuntime {
         }
 
         validateParameterShape(param);
+
+        if (options.defer) {
+            if (!("expr" in param)) {
+                throw new Error("Only expression parameters can be deferred.");
+            }
+            this.#runtime.registerInitializer(this.#scopeId, name, () => {
+                this.#registerParamValue(param);
+            });
+            this.#paramConfigs.set(name, param);
+            return () => {
+                throw new Error('Cannot set derived parameter "' + name + '".');
+            };
+        }
+
+        return this.#registerParamValue(param);
+    }
+
+    /**
+     * @param {Parameter} param
+     * @returns {ParameterSetter}
+     */
+    #registerParamValue(param) {
+        const name = param.name;
 
         /** @type {ParameterSetter} */
         let setter;
@@ -329,6 +353,9 @@ export default class ViewParamRuntime {
      * @param {string} paramName
      */
     getValue(paramName) {
+        if (!this.#localRefs.has(paramName) && this.hasLocalParam(paramName)) {
+            this.#runtime.resolve(this.#scopeId, paramName);
+        }
         return this.#localRefs.get(paramName)?.get();
     }
 
@@ -362,7 +389,7 @@ export default class ViewParamRuntime {
             throw new Error("Parameter not found: " + paramName);
         }
 
-        const ref = runtime.#localRefs.get(paramName);
+        const ref = runtime.#runtime.resolve(runtime.#scopeId, paramName);
         if (!ref) {
             throw new Error(
                 "Parameter found without local reference: " + paramName
@@ -408,7 +435,20 @@ export default class ViewParamRuntime {
      */
     hasLocalParam(paramName) {
         validateParameterName(paramName);
-        return this.#localRefs.has(paramName);
+        const config = this.#paramConfigs.get(paramName);
+        return (
+            this.#localRefs.has(paramName) ||
+            (config !== undefined && "expr" in config)
+        );
+    }
+
+    /**
+     * Checks declarations without initializing them, including lexical ancestors.
+     * @param {string} paramName
+     */
+    isPendingParam(paramName) {
+        const runtime = this.findRuntimeForParam(paramName);
+        return runtime !== undefined && !runtime.#localRefs.has(paramName);
     }
 
     /**
@@ -441,7 +481,7 @@ export default class ViewParamRuntime {
      * @returns {ViewParamRuntime}
      */
     findRuntimeForParam(paramName) {
-        if (this.#localRefs.has(paramName)) {
+        if (this.hasLocalParam(paramName)) {
             return this;
         } else {
             return this.#parentFinder()?.findRuntimeForParam(paramName);

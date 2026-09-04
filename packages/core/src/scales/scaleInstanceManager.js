@@ -33,6 +33,8 @@ export default class ScaleInstanceManager {
 
     #domainNotificationsSuspended = 0;
 
+    #initializingRange = false;
+
     /**
      * @param {object} options
      * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
@@ -54,6 +56,10 @@ export default class ScaleInstanceManager {
 
     get scale() {
         return this.#scale;
+    }
+
+    get initializingRange() {
+        return this.#initializingRange;
     }
 
     resetScale() {
@@ -99,7 +105,12 @@ export default class ScaleInstanceManager {
         this.#defaultRange =
             typeof scale.range === "function" ? scale.range() : undefined;
         this.#bindGenomeIfNeeded(props);
-        this.#configureRange();
+        this.#initializingRange = true;
+        try {
+            this.#configureRange();
+        } finally {
+            this.#initializingRange = false;
+        }
         this.#wrapScaleInterceptors();
 
         return this.#scale;

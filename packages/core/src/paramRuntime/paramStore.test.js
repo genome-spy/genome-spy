@@ -66,4 +66,65 @@ describe("ParamStore", () => {
         expect(store.resolve(child, "bar")).toBeUndefined();
         expect(store.resolve(child, "foo")).toBe(rootFoo);
     });
+
+    test("pending declarations shadow ancestors and initialize only once", () => {
+        const store = new ParamStore();
+        const root = store.createRootScope("root");
+        const child = store.createChildScope("child", root);
+        const outer = createRef("outer", "value");
+        const inner = createRef("inner", "value");
+        store.register(root, "value", outer);
+        let calls = 0;
+        store.registerInitializer(child, "value", () => {
+            calls++;
+            store.register(child, "value", inner);
+        });
+
+        expect(calls).toBe(0);
+        expect(() => store.register(child, "value", outer)).toThrow(
+            /already exists/
+        );
+        expect(() =>
+            store.registerInitializer(child, "value", () => undefined)
+        ).toThrow(/already exists/);
+        expect(store.resolve(child, "value")).toBe(inner);
+        expect(store.resolve(child, "value")).toBe(inner);
+        expect(calls).toBe(1);
+        expect(store.resolve(root, "value")).toBe(outer);
+    });
+
+    test("failed initialization can be retried and pending scopes can be cleared", () => {
+        const store = new ParamStore();
+        const root = store.createRootScope("root");
+        let ready = false;
+        const ref = createRef("value", "value");
+        store.registerInitializer(root, "value", () => {
+            if (!ready) {
+                throw new Error("Not ready");
+            }
+            store.register(root, "value", ref);
+        });
+        expect(() => store.resolve(root, "value")).toThrow("Not ready");
+        ready = true;
+        expect(store.resolve(root, "value")).toBe(ref);
+        store.registerInitializer(root, "unused", () => {
+            throw new Error("Disposed initializer must not run");
+        });
+        store.clearScope(root);
+        expect(store.resolve(root, "unused")).toBeUndefined();
+    });
+
+    test("recursive initialization reports the parameter instead of overflowing", () => {
+        const store = new ParamStore();
+        const root = store.createRootScope("root");
+        store.registerInitializer(root, "a", () => {
+            store.resolve(root, "b");
+        });
+        store.registerInitializer(root, "b", () => {
+            store.resolve(root, "a");
+        });
+        expect(() => store.resolve(root, "a")).toThrow(/dependency cycle.*"a"/);
+        // Failure clears the in-progress flag, preserving the original cycle.
+        expect(() => store.resolve(root, "b")).toThrow(/dependency cycle.*"b"/);
+    });
 });

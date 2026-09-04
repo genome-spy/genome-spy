@@ -701,6 +701,13 @@ export default class ScaleResolution {
         this.#invalidateConfiguredDomain();
 
         const range = this.#getMergedScaleProps().range;
+        // New resolutions bind expressions when first initialized, after the
+        // authored hierarchy exists. Keep preflight atomic for live mutations.
+        if (!this.#scaleManager.scale) {
+            return;
+        }
+        // Validate domain expressions too, without changing any live scales.
+        this.#getConfiguredOrDefaultDomain();
         if (Array.isArray(range)) {
             for (const value of range) {
                 if (isExprRef(value)) {
@@ -1025,7 +1032,7 @@ export default class ScaleResolution {
     #refreshConfiguredDomainExprSubscriptions() {
         this.#clearConfiguredDomainExprSubscriptions();
 
-        if (this.#members.size === 0) {
+        if (this.#members.size === 0 || !this.#scaleManager.scale) {
             return;
         }
 
@@ -1759,7 +1766,12 @@ export default class ScaleResolution {
     getScale() {
         if (this.#resolvingScaleProps > 0) {
             throw new Error(
-                `Scale resolution for channel "${this.channel}" cannot read its own scale while its domain is being resolved.`
+                `Scale dependency cycle: channel "${this.channel}" cannot read its own scale while its domain is being resolved.`
+            );
+        }
+        if (this.#scaleManager.initializingRange) {
+            throw new Error(
+                `Scale dependency cycle: channel "${this.channel}" reads its scale while its range is being initialized.`
             );
         }
         return this.#scaleManager.scale ?? this.initializeScale();
@@ -1776,20 +1788,28 @@ export default class ScaleResolution {
         }
 
         const props = this.#getScaleProps();
-        const scale = this.#scaleManager.createScale(props);
-
-        return scale;
+        try {
+            const scale = this.#scaleManager.createScale(props);
+            this.#refreshConfiguredDomainExprSubscriptions();
+            return scale;
+        } catch (error) {
+            this.#clearConfiguredDomainExprSubscriptions();
+            this.#scaleManager.resetScale();
+            throw error;
+        }
     }
 
     getDomain() {
         if (this.#resolvingScaleProps > 0) {
             throw new Error(
-                `Scale resolution for channel "${this.channel}" cannot read its own domain while its domain is being resolved.`
+                `Scale dependency cycle: channel "${this.channel}" cannot read its own domain while its domain is being resolved.`
             );
         }
         // The underlying scale getter returns a fresh array. Treat this as a
         // read-only snapshot rather than a mutable backing store.
-        return this.getScale().domain();
+        // Domain configuration precedes range binding. Reading that domain
+        // from this scale's range expression is acyclic and must be allowed.
+        return (this.#scaleManager.scale ?? this.initializeScale()).domain();
     }
 
     /**

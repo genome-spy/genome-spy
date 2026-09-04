@@ -135,7 +135,7 @@ export default class View {
 
     #postScaleParamsConfigured = false;
 
-    /** @type {import("../spec/parameter.js").Parameter[]} */
+    /** @type {string[]} */
     #scaleDependentParams = [];
 
     /**
@@ -249,29 +249,30 @@ export default class View {
             { snapTransitionedUpdates: true }
         );
 
-        if (spec.params) {
-            const deferredParamNames = new Set();
-            for (const param of spec.params) {
-                // TODO: If interval selection, validate `encodings` or provides defaults
-                if ("expr" in param) {
-                    const { usesScaleHelper, globals } = analyzeExpression(
-                        param.expr
-                    );
-                    const dependsOnDeferredParam = globals.some((name) =>
-                        deferredParamNames.has(name)
-                    );
+        const params = [
+            ...(spec.params ?? []),
+            ...(getPostScaleParams(spec) ?? []),
+        ];
+        for (const param of params) {
+            // TODO: If interval selection, validate `encodings` or provides defaults
+            if ("expr" in param) {
+                const { usesScaleHelper, globals } = analyzeExpression(
+                    param.expr
+                );
+                const dependsOnDeferredParam = globals.some((name) =>
+                    this.paramRuntime.isPendingParam(name)
+                );
 
-                    if (usesScaleHelper || dependsOnDeferredParam) {
-                        // Scale resolutions are established by descendant
-                        // views, after ordinary params are registered.
-                        deferredParamNames.add(param.name);
-                        this.#scaleDependentParams.push(param);
-                        continue;
-                    }
+                if (usesScaleHelper || dependsOnDeferredParam) {
+                    // Scale resolutions are established by descendant
+                    // views, after ordinary params are registered.
+                    this.paramRuntime.registerParam(param, { defer: true });
+                    this.#scaleDependentParams.push(param.name);
+                    continue;
                 }
-
-                this.paramRuntime.registerParam(param);
             }
+
+            this.paramRuntime.registerParam(param);
         }
 
         if (this.options.layoutSizeParams !== "inherit") {
@@ -1089,21 +1090,18 @@ export default class View {
     }
 
     /**
-     * Registers macro-generated params that depend on resolved scales.
+     * Initializes remaining params that depend on resolved scales.
      * For example, multiscale stage wrappers use `domain('x')` to select a
      * detail level, but their child views create the x resolution later.
      */
     configurePostScaleParams() {
-        const postScaleParams = [
-            ...this.#scaleDependentParams,
-            ...(getPostScaleParams(this.spec) ?? []),
-        ];
+        const postScaleParams = this.#scaleDependentParams;
         if (postScaleParams.length && !this.#postScaleParamsConfigured) {
             this.#postScaleParamsConfigured = true;
             this.#postScaleParamDataReady = false;
 
-            for (const param of postScaleParams) {
-                this.paramRuntime.registerParam(param);
+            for (const name of postScaleParams) {
+                this.paramRuntime.getValue(name);
             }
 
             this.registerDisposer(

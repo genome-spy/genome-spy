@@ -409,6 +409,20 @@ Genuinely shared scales do not fall back to a child declaration scope. Move a
 child-only parameter to the resolution owner and use `"push": "outer"` when the
 child must write it.
 
+### Scale-dependent expressions
+
+An expression parameter can read a scale and drive another scale's domain or
+range. For example, `{"name": "cnDomain", "expr": "domain('y')"}` can drive an
+excluded depth scale with
+`"domain": {"expr": "[cnDomain[0] * 14.012 + 0.1, cnDomain[1] * 14.012 + 0.1]"}`.
+Declare the parameter where `domain('y')` resolves to the primary copy-number
+scale, and keep it visible to the depth scale using the scope rules above.
+
+The derived domain follows the primary scale's effective domain, including
+transition frames. Expression-driven domains do not start a separate transition
+by default. Set `zero` and `nice` to `false` when the calibrated bounds must be
+preserved exactly. Dependencies must be acyclic.
+
 ### Domain from Selection Parameters
 
 A scale domain can link directly to an interval selection parameter. The named

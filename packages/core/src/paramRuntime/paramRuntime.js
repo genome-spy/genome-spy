@@ -84,6 +84,15 @@ export default class ParamRuntime {
     }
 
     /**
+     * @param {ScopeId} scope
+     * @param {string} name
+     * @param {() => void} initialize
+     */
+    registerInitializer(scope, name, initialize) {
+        this.#paramStore.registerInitializer(scope, name, initialize);
+    }
+
+    /**
      * Registers a writable base parameter in `scope`.
      *
      * @template T
