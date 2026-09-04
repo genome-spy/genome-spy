@@ -312,6 +312,7 @@ function createStrokeSymbolLayer({
             symbolStyle.encoding ?? {}
         );
     const color =
+        createBaseColorEncoding(legend.symbolStrokeColor) ??
         styleEncoding.color ??
         styleEncoding.stroke ??
         styleEncoding.fill ??
@@ -396,6 +397,52 @@ export function createSymbolLegendSpec({
         channel,
         ...Object.keys(symbolChannels),
     ]);
+    const filled = symbolStyle.mark?.filled ?? channel == "fill";
+    const styledScaleChannels = new Set(scaledSymbolChannels);
+    if (styledScaleChannels.has("color")) {
+        styledScaleChannels.add(filled ? "fill" : "stroke");
+    }
+
+    // Legend overrides replace inherited constants and reactive expressions.
+    // The channel explained by the legend always retains its scale encoding.
+    const symbolEncoding = { ...symbolStyle.encoding };
+    for (const [channel, value] of /** @type {const} */ ([
+        ["opacity", legend.symbolOpacity],
+        ["fill", legend.symbolFillColor],
+        ["stroke", legend.symbolStrokeColor],
+        ["size", legend.symbolSize],
+        ["shape", legend.symbolType],
+        ["strokeWidth", legend.symbolStrokeWidth],
+    ])) {
+        if (value !== undefined && !styledScaleChannels.has(channel)) {
+            symbolEncoding[channel] = /** @type {any} */ (
+                channel == "fill" || channel == "stroke"
+                    ? createBaseColorEncoding(/** @type {string} */ (value))
+                    : { value }
+            );
+        }
+    }
+    if (
+        legend.symbolFillColor !== undefined &&
+        !styledScaleChannels.has("fill") &&
+        !styledScaleChannels.has("fillOpacity")
+    ) {
+        // Explicit fill colors also work for otherwise unfilled symbols.
+        symbolEncoding.fillOpacity ??= scaledSymbolChannels.has("opacity")
+            ? {
+                  field: "value",
+                  type: dataType,
+                  resolutionChannel: "opacity",
+                  domainInert: true,
+              }
+            : (symbolEncoding.opacity ?? {
+                  value:
+                      symbolStyle.mark?.fillOpacity ??
+                      symbolStyle.mark?.opacity ??
+                      1,
+              });
+    }
+    symbolStyle = { ...symbolStyle, encoding: symbolEncoding };
     const isBaseColorChannelScaled = (
         /** @type {import("../spec/channel.js").ChannelWithScale} */ channel
     ) => scaledSymbolChannels.has(channel) || scaledSymbolChannels.has("color");
@@ -439,9 +486,9 @@ export function createSymbolLegendSpec({
                       clip: false,
                       cullByVisibleRange: false,
                       filled: channel == "fill",
-                      shape: legend.symbolType,
+                      shape: legend.symbolType ?? "circle",
                       size: legend.symbolSize,
-                      strokeWidth: legend.symbolStrokeWidth,
+                      strokeWidth: legend.symbolStrokeWidth ?? 1.5,
                       ...symbolStyle.mark,
                   },
                   encoding: {

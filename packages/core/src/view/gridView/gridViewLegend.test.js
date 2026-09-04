@@ -2514,6 +2514,233 @@ describe("GridView legends", () => {
             );
         });
 
+        test.each([false, true, undefined])(
+            "keeps explicit symbol opacity stable with condition empty=%s",
+            async (empty) => {
+                const view = await createLegendTestView({
+                    params: [
+                        { name: "clicked", select: "point" },
+                        { name: "dim", value: 0.28 },
+                    ],
+                    config: { legend: { symbolOpacity: 0.8 } },
+                    vconcat: [
+                        {
+                            name: "plot",
+                            data: { values: [{ group: "a" }, { group: "b" }] },
+                            mark: { type: "point", filled: true, opacity: 0.4 },
+                            encoding: {
+                                color: {
+                                    field: "group",
+                                    type: "nominal",
+                                    legend: { symbolOpacity: 1 },
+                                },
+                                opacity: {
+                                    condition: {
+                                        param: "clicked",
+                                        empty,
+                                        value: 1,
+                                    },
+                                    value: { expr: "dim" },
+                                },
+                            },
+                        },
+                    ],
+                });
+                const symbols = getLegendUnitChild(
+                    getLegends(view)[0],
+                    "symbols"
+                );
+                const plot = /** @type {UnitView} */ (
+                    view.getDescendants().find((child) => child.name == "plot")
+                );
+                const datum = getUnitData(symbols)[0];
+
+                // Exercise the live fallback, including a retained-selection level
+                // of dimming. The override must replace the expression itself.
+                for (const dim of [0.28, 0.1, 0.035, 0.28]) {
+                    view.paramRuntime.setValue("dim", dim);
+                    await view.paramRuntime.whenPropagated();
+                    expect(symbols.mark.encoders.fillOpacity(datum)).toBe(1);
+                    expect(
+                        plot.mark.encoders.fillOpacity(getUnitData(plot)[0])
+                    ).toBe(empty === false ? dim : 1);
+                }
+            }
+        );
+
+        test.each([false, true])(
+            "applies configured symbol styles over inherited styles with filled=%s",
+            async (filled) => {
+                const view = await createLegendTestView({
+                    config: {
+                        legend: {
+                            symbolOpacity: 0.6,
+                            symbolFillColor: "red",
+                            symbolStrokeColor: "blue",
+                            symbolStrokeWidth: 4,
+                            symbolSize: 225,
+                            symbolType: "square",
+                        },
+                    },
+                    vconcat: [
+                        {
+                            data: { values: [{ group: "a" }, { group: "b" }] },
+                            mark: {
+                                type: "point",
+                                filled,
+                                shape: "circle",
+                                opacity: 0.2,
+                                strokeWidth: 2,
+                            },
+                            encoding: {
+                                color: { value: "black" },
+                                shape: { value: "diamond" },
+                                strokeWidth: { value: 1 },
+                                size: {
+                                    field: "group",
+                                    type: "ordinal",
+                                    scale: {
+                                        domain: ["a", "b"],
+                                        range: [25, 100],
+                                    },
+                                },
+                            },
+                        },
+                    ],
+                });
+                const symbols = getLegendUnitChild(
+                    getLegends(view)[0],
+                    "symbols"
+                );
+                const encoders = symbols.mark.encoders;
+                const data = getUnitData(symbols);
+                expect(encoders.fillOpacity(data[0])).toBe(0.6);
+                expect(encoders.strokeOpacity(data[0])).toBe(0.6);
+                expect(encoders.strokeWidth(data[0])).toBe(4);
+                expect(symbols.spec.encoding).toMatchObject({
+                    fill: { value: "red" },
+                    stroke: { value: "blue" },
+                    shape: { value: "square" },
+                });
+                expect(data.map((datum) => encoders.size(datum))).toEqual([
+                    25, 100,
+                ]);
+            }
+        );
+
+        test("keeps color scale symbols while overriding their outline and size", async () => {
+            const view = await createLegendTestView({
+                vconcat: [
+                    {
+                        data: { values: [{ group: "a" }] },
+                        mark: { type: "point", filled: true },
+                        encoding: {
+                            color: {
+                                field: "group",
+                                type: "nominal",
+                                scale: { domain: ["a"], range: ["red"] },
+                                legend: {
+                                    symbolFillColor: "blue",
+                                    symbolStrokeColor: "black",
+                                    symbolStrokeWidth: 3,
+                                    symbolSize: 225,
+                                },
+                            },
+                        },
+                    },
+                ],
+            });
+            const symbols = getLegendUnitChild(getLegends(view)[0], "symbols");
+            const datum = getUnitData(symbols)[0];
+            expect(symbols.mark.encoders.fill(datum)).toEqual(
+                symbols.getScaleResolution("color").getScale()(
+                    /** @type {any} */ ("a")
+                )
+            );
+            expect(symbols.spec.encoding.stroke).toEqual({ value: "black" });
+            expect(symbols.mark.encoders.strokeWidth(datum)).toBe(3);
+            expect(symbols.mark.encoders.size(datum)).toBe(225);
+        });
+
+        test.each(
+            /** @type {const} */ (["opacity", "fillOpacity", "strokeOpacity"])
+        )(
+            "preserves the %s scale with explicit symbol styling",
+            async (channel) => {
+                const view = await createLegendTestView({
+                    config: {
+                        legend: {
+                            symbolOpacity: 1,
+                            symbolFillColor: "red",
+                            symbolStrokeColor: "black",
+                        },
+                    },
+                    vconcat: [
+                        {
+                            data: { values: [{ value: 0 }, { value: 1 }] },
+                            mark: { type: "point", filled: true },
+                            encoding: {
+                                [channel]: {
+                                    field: "value",
+                                    type: "quantitative",
+                                    scale: {
+                                        domain: [0, 1],
+                                        range: [0.2, 0.8],
+                                    },
+                                    legend: { values: [0, 1] },
+                                },
+                            },
+                        },
+                    ],
+                });
+                const symbols = getLegendUnitChild(
+                    getLegends(view)[0],
+                    "symbols"
+                );
+                const encoder =
+                    symbols.mark.encoders[
+                        channel == "opacity" ? "fillOpacity" : channel
+                    ];
+                expect(
+                    getUnitData(symbols).map((datum) => encoder(datum))
+                ).toEqual([0.2, 0.8]);
+            }
+        );
+
+        test("styles rule size legends without replacing their width scale", async () => {
+            const view = await createLegendTestView({
+                config: {
+                    legend: {
+                        symbolOpacity: 0,
+                        symbolStrokeColor: "red",
+                        symbolStrokeWidth: 10,
+                    },
+                },
+                vconcat: [
+                    {
+                        data: { values: [{ value: 0 }, { value: 1 }] },
+                        mark: { type: "rule", color: "black", opacity: 0.4 },
+                        encoding: {
+                            x: { field: "value", type: "quantitative" },
+                            size: {
+                                field: "value",
+                                type: "quantitative",
+                                scale: { domain: [0, 1], range: [1, 5] },
+                                legend: { values: [0, 1] },
+                            },
+                        },
+                    },
+                ],
+            });
+            const symbols = getLegendUnitChild(getLegends(view)[0], "symbols");
+            const data = getUnitData(symbols);
+            expect(symbols.spec.encoding.color).toEqual({ value: "red" });
+            expect(symbols.mark.encoders.opacity(data[0])).toBe(0);
+            expect(
+                data.map((datum) => symbols.mark.encoders.size(datum))
+            ).toEqual([1, 5]);
+        });
+
         test("creates a discrete size symbol legend", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },

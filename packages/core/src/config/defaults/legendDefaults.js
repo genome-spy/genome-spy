@@ -26,10 +26,10 @@ export const LEGEND_DEFAULTS = {
     gradientOpacity: DEFAULT_GRADIENT_OPACITY,
     gradientStrokeWidth: DEFAULT_GRADIENT_STROKE_WIDTH,
     tickCount: DEFAULT_GRADIENT_TICK_COUNT,
-    symbolType: "circle",
+    // Shape and stroke width fall back in the generated symbol mark so that
+    // only author-configured legend properties override inherited styling.
     symbolSize: 100,
     symbolOffset: 0,
-    symbolStrokeWidth: 1.5,
     symbolBaseFillColor: "transparent",
     symbolBaseStrokeColor: "#888",
     titleLimit: 180,

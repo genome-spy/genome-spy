@@ -54,9 +54,9 @@ export interface LegendLayout extends LegendRegionLayout {
 
 // TODO: Consider adding more Vega/Vega-Lite legend properties when concrete
 // use cases appear. Known gaps include tick controls such as `tickMinStep`,
-// explicit legend `type`, label overlap controls, and symbol override
-// properties such as `symbolFillColor`, `symbolStrokeColor`, `symbolOpacity`,
-// and `symbolLimit`.
+// explicit legend `type`, label overlap controls, and `symbolLimit`.
+// TODO: Add `symbolDash` and `symbolDashOffset` when dash channels are supported
+// by Core. Dashes are already supported by webgpu-renderer.
 
 /**
  * Legend properties. The initial legend surface is adapted from Vega:
@@ -197,14 +197,46 @@ export interface Legend {
     backgroundStrokeOpacity?: number;
 
     /**
-     * Symbol size in pixels squared.
+     * Symbol size in pixels squared. Overrides inherited styling, except when
+     * the legend encodes size.
      */
     symbolSize?: number;
 
     /**
-     * Symbol shape.
+     * Symbol shape. Overrides inherited styling, except when the legend
+     * encodes shape.
      */
     symbolType?: string;
+
+    /**
+     * Symbol opacity. Overrides inherited mark and encoding opacity, except
+     * when the legend encodes opacity. Set to 1 to keep a category key opaque
+     * while selections dim the data marks.
+     *
+     * @minimum 0
+     * @maximum 1
+     */
+    symbolOpacity?: number;
+
+    /**
+     * Symbol fill color. Overrides inherited fill styling, except when the
+     * legend encodes fill or uses fill to encode color.
+     */
+    symbolFillColor?: string;
+
+    /**
+     * Symbol stroke color. Overrides inherited stroke styling, except when
+     * the legend encodes stroke or uses stroke to encode color.
+     */
+    symbolStrokeColor?: string;
+
+    /**
+     * Symbol stroke width in pixels. Overrides inherited styling, except when
+     * the legend encodes stroke width.
+     *
+     * @minimum 0
+     */
+    symbolStrokeWidth?: number;
 
     /**
      * The side of the legend on which to place the title.
@@ -291,11 +323,6 @@ export interface LegendConfig extends Legend {
      * Offset applied to legend symbols in pixels.
      */
     symbolOffset?: number;
-
-    /**
-     * Legend symbol stroke width in pixels.
-     */
-    symbolStrokeWidth?: number;
 
     /**
      * Base fill color for legend symbols when the legend does not encode fill.

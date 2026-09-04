@@ -12,6 +12,15 @@ create symbol legends. Quantitative encodings on symbol-like channels such as
 
 EXAMPLE examples/docs/grammar/legend/symbol-legend.json height=300
 
+Symbol styling can be set independently of the data marks. For example,
+`"legend": { "symbolOpacity": 1 }` keeps a category key opaque while hover or
+selection interactions dim the marks. The symbol properties override inherited
+mark and encoding styles; a channel that the legend explains still uses its
+scale. Thus `symbolSize` sets the symbol area in a color legend, while a size
+legend retains the sizes represented by its scale.
+
+These properties can also be set under `config.legend` for all legends.
+
 ## Gradient legends
 
 Continuous quantitative color channels create gradient legends. The gradient

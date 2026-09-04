@@ -170,8 +170,14 @@ function isConstantColor(value) {
  * @param {Record<string, import("../../spec/channel.js").ValueDef<any>>} encoding
  * @param {Set<string>} scaledChannels
  * @param {Partial<import("../../spec/mark.js").PointProps>} sourceProps
+ * @param {import("../../spec/legend.js").LegendConfig} legend
  */
-function applyConstantMarkColorStyle(encoding, scaledChannels, sourceProps) {
+function applyConstantMarkColorStyle(
+    encoding,
+    scaledChannels,
+    sourceProps,
+    legend
+) {
     if (isConstantColor(sourceProps.fill) && !scaledChannels.has("fill")) {
         encoding.fill = { value: sourceProps.fill };
     }
@@ -187,7 +193,10 @@ function applyConstantMarkColorStyle(encoding, scaledChannels, sourceProps) {
             if (!scaledChannels.has("stroke")) {
                 encoding.stroke = { value: null };
             }
-            if (!scaledChannels.has("strokeWidth")) {
+            if (
+                !scaledChannels.has("strokeWidth") &&
+                legend.symbolStrokeColor === undefined
+            ) {
                 encoding.strokeWidth = { value: 0 };
             }
         } else {
@@ -197,7 +206,10 @@ function applyConstantMarkColorStyle(encoding, scaledChannels, sourceProps) {
             if (!scaledChannels.has("fill")) {
                 encoding.fill = { value: sourceProps.color };
             }
-            if (!scaledChannels.has("fillOpacity")) {
+            if (
+                !scaledChannels.has("fillOpacity") &&
+                legend.symbolFillColor === undefined
+            ) {
                 encoding.fillOpacity = { value: 0 };
             }
         }
@@ -251,8 +263,14 @@ function applyConflictingScaledColorStyle(
  * @param {import("../../spec/channel.js").ChannelWithScale} channel
  * @param {Partial<Record<import("../../spec/channel.js").ChannelWithScale, string>>} symbolChannels
  * @param {import("../unitView.js").default} sourceView
+ * @param {import("../../spec/legend.js").LegendConfig} legend
  */
-function createInheritedSymbolStyle(channel, symbolChannels, sourceView) {
+function createInheritedSymbolStyle(
+    channel,
+    symbolChannels,
+    sourceView,
+    legend
+) {
     const scaledChannels = new Set([channel, ...Object.keys(symbolChannels)]);
 
     /** @type {import("../legendView.js").SymbolLegendStyle} */
@@ -291,7 +309,12 @@ function createInheritedSymbolStyle(channel, symbolChannels, sourceView) {
         styleMark.shape = "square";
     }
 
-    applyConstantMarkColorStyle(styleEncoding, scaledChannels, sourceProps);
+    applyConstantMarkColorStyle(
+        styleEncoding,
+        scaledChannels,
+        sourceProps,
+        legend
+    );
     applyConflictingScaledColorStyle(styleEncoding, scaledChannels, sourceView);
 
     const colorDef = sourceView.spec.encoding?.color;
@@ -301,11 +324,15 @@ function createInheritedSymbolStyle(channel, symbolChannels, sourceView) {
         if (filled) {
             styleEncoding.fill = colorValueDef;
             styleEncoding.stroke = { value: null };
-            styleEncoding.strokeWidth = { value: 0 };
+            if (legend.symbolStrokeColor === undefined) {
+                styleEncoding.strokeWidth = { value: 0 };
+            }
         } else {
             styleEncoding.stroke = colorValueDef;
             styleEncoding.fill = colorValueDef;
-            styleEncoding.fillOpacity = { value: 0 };
+            if (legend.symbolFillColor === undefined) {
+                styleEncoding.fillOpacity = { value: 0 };
+            }
         }
     }
 
@@ -414,7 +441,8 @@ export async function createGridChildLegend(definition, layoutParent) {
                   definition.symbolChannels ?? {},
                   // Multi-view arbitration is intentionally simple for now:
                   // use the first deterministic contributor.
-                  definition.scaleResolution.getOrderedMembers()[0].view
+                  definition.scaleResolution.getOrderedMembers()[0].view,
+                  legendProps
               )
             : undefined;
 
