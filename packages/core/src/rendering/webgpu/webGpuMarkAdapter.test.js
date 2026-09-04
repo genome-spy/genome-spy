@@ -769,6 +769,7 @@ describe("WebGPU mark adapter", () => {
                 linkShape: "dome",
                 orient: "horizontal",
                 arcFadingDistance: [10, 20],
+                noFadingOnPointSelection: true,
                 arcHeightFactor: 0.75,
                 minArcHeight: 3,
                 clampApex: true,
@@ -786,6 +787,7 @@ describe("WebGPU mark adapter", () => {
         expect(config.linkShape).toBe("dome");
         expect(config.orient).toBe("horizontal");
         expect(config.arcFadingDistance).toEqual([10, 20]);
+        expect(config.noFadingOnPointSelection).toBe(true);
         expect(config.segments).toBe(25);
     });
 

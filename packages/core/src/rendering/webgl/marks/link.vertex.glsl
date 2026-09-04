@@ -8,6 +8,9 @@ out float vNormalLengthInPixels;
 
 flat out float vGamma;
 
+// Centerline distance from the rendered endpoint baseline; negative disables fading.
+out float vFadeDistance;
+
 const int SHAPE_ARC = 0;
 const int SHAPE_DOME = 1;
 const int SHAPE_DIAGONAL = 2;
@@ -267,19 +270,15 @@ void main(void) {
 
     vNormalLengthInPixels = strip.y * paddedSize;
     
-    if (uShape == SHAPE_ARC &&
+    vFadeDistance = -1.0;
+    if ((uShape == SHAPE_ARC || uShape == SHAPE_DOME) &&
         uArcFadingDistance[0] > 0.0 &&
         uArcFadingDistance[1] > 0.0 &&
-        (!uNoFadingOnPointSelection || !isPointSelected()))
+        (!uNoFadingOnPointSelection || !isDatumSelected()))
     {
-        float d = distanceFromLine(p1, p4, p);
-        float distanceOpacity = smoothstep(uArcFadingDistance[1], uArcFadingDistance[0], d);    
-
-        // Fade out
-        opacity *= distanceOpacity;
-
-        // Collapse fully transparent triangles to skip fragment processing 
-        if (distanceOpacity <= 0.0) {
+        vFadeDistance = distanceFromLine(p1, p4, p);
+        // Keep fully faded triangles collapsed to avoid fragment processing.
+        if (1.0 - smoothstep(uArcFadingDistance[0], uArcFadingDistance[1], vFadeDistance) <= 0.0) {
             vNormalLengthInPixels = 0.0;
         }
     }

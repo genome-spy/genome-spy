@@ -1,12 +1,14 @@
+import { rgb } from "d3-color";
+import {
+    createLinkFadeEncoder,
+    normalizeLinkArcFade,
+    createFadeStops,
+} from "../../immediate/linkFading.js";
 import {
     resolveLinkProperties,
     visitLinkInstances,
 } from "../../immediate/marks/link.js";
-import {
-    encodeNumber,
-    resolveMarkProperty,
-    toPaintString,
-} from "../../immediate/markEncoding.js";
+import { encodeNumber, toPaintString } from "../../immediate/markEncoding.js";
 
 /**
  * @param {import("../../../marks/mark.js").default} baseMark
@@ -21,19 +23,8 @@ export function renderLinkCanvas(baseMark, options) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
-    const arcFadingDistance = resolveMarkProperty(
-        mark,
-        mark.properties.arcFadingDistance
-    );
     const properties = resolveLinkProperties(mark);
-    if (
-        properties.shape == "arc" &&
-        arcFadingDistance !== false &&
-        arcFadingDistance[0] > 0 &&
-        arcFadingDistance[1] > 0
-    ) {
-        options.warn("Canvas2D ignored unsupported link arc fading.");
-    }
+    const encodeFade = createLinkFadeEncoder(mark, properties.shape);
     context.lineCap = "butt";
     /** @type {string | undefined} */
     let strokeStyle;
@@ -46,7 +37,31 @@ export function renderLinkCanvas(baseMark, options) {
         if (stroke == "none" || opacity <= 0 || instance.strokeWidth <= 0) {
             return;
         }
-        if (strokeStyle != stroke) {
+        const distances = encodeFade(instance.datum);
+        const fade =
+            distances &&
+            normalizeLinkArcFade(
+                instance.points[0],
+                instance.points[3],
+                distances
+            );
+        if (fade) {
+            const { normalX, normalY, offset, start, end } = fade;
+            const gradient = context.createLinearGradient(
+                normalX * (offset - end),
+                normalY * (offset - end),
+                normalX * (offset + end),
+                normalY * (offset + end)
+            );
+            const color = rgb(stroke);
+            const colorOpacity = color.opacity;
+            for (const stop of createFadeStops(start, end)) {
+                color.opacity = colorOpacity * stop.opacity;
+                gradient.addColorStop(stop.offset, color.formatRgb());
+            }
+            context.strokeStyle = gradient;
+            strokeStyle = undefined;
+        } else if (strokeStyle != stroke) {
             context.strokeStyle = stroke;
             strokeStyle = stroke;
         }

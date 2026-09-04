@@ -69,6 +69,7 @@ struct VSOut {
     // Stroke width in pixels (with AA padding baked in).
     @location(2) size: f32,
     @location(3) @interpolate(flat) pickId: u32,
+    @location(4) fadeDistance: f32,
 };
 
 fn culledLink() -> VSOut {
@@ -81,6 +82,7 @@ fn culledLink() -> VSOut {
     out.normalDistance = 0.0;
     out.size = 0.0;
     out.pickId = 0u;
+    out.fadeDistance = -1.0;
     return out;
 }
 
@@ -325,15 +327,15 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let paddedSize = size + pixelSize;
     var normalDistance = side * paddedSize;
 
-    if (params.uShape == SHAPE_ARC &&
+    var fadeDistance = -1.0;
+    if ((params.uShape == SHAPE_ARC || params.uShape == SHAPE_DOME) &&
         params.uArcFadingDistance.x > 0.0 &&
-        params.uArcFadingDistance.y > 0.0)
+        params.uArcFadingDistance.y > 0.0 &&
+        (params.uNoFadingOnPointSelection == 0u || !isDatumSelected(i)))
     {
-        let d = distanceFromLine(p1, p4, p);
-        let distanceOpacity = smoothstep(params.uArcFadingDistance.y, params.uArcFadingDistance.x, d);
-        opacity *= distanceOpacity;
-        // Collapse fully transparent triangles to skip fragment processing.
-        if (distanceOpacity <= 0.0) {
+        fadeDistance = distanceFromLine(p1, p4, p);
+        // Keep fully faded triangles collapsed to avoid fragment processing.
+        if (1.0 - smoothstep(params.uArcFadingDistance.x, params.uArcFadingDistance.y, fadeDistance) <= 0.0) {
             normalDistance = 0.0;
         }
     }
@@ -354,6 +356,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let color = getScaled_color(i);
     out.color = premultiplyAlpha(vec4<f32>(color.rgb, color.a * opacity));
     out.normalDistance = normalDistance;
+    out.fadeDistance = fadeDistance;
     out.size = paddedSize;
     out.pickId = 0u;
 #if defined(uniqueId_DEFINED)
@@ -365,7 +368,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 fn shade(in: VSOut) -> vec4<f32> {
     // Linear AA ramp based on distance from the line center.
     let distance = abs(in.normalDistance);
-    let alpha = clamp(((in.size * 0.5 - distance) * globals.dpr), 0.0, 1.0);
+    var alpha = clamp(((in.size * 0.5 - distance) * globals.dpr), 0.0, 1.0);
+    if (in.fadeDistance >= 0.0) {
+        alpha *= 1.0 - smoothstep(params.uArcFadingDistance.x, params.uArcFadingDistance.y, in.fadeDistance);
+    }
     return in.color * alpha;
 }
 
@@ -384,6 +390,11 @@ export default class LinkProgram extends BaseProgram {
             arcFadingDistance: {
                 uniform: "uArcFadingDistance",
                 default: [0, 0],
+            },
+            noFadingOnPointSelection: {
+                uniform: "uNoFadingOnPointSelection",
+                default: true,
+                encode: (/** @type {boolean} */ value) => (value ? 1 : 0),
             },
             arcHeightFactor: { uniform: "uArcHeightFactor", default: 1 },
             minArcHeight: { uniform: "uMinArcHeight", default: 1.5 },
@@ -465,6 +476,7 @@ export default class LinkProgram extends BaseProgram {
         /** @type {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4 }[]} */
         const layout = [
             { name: "uArcFadingDistance", type: "f32", components: 2 },
+            { name: "uNoFadingOnPointSelection", type: "u32", components: 1 },
             { name: "uArcHeightFactor", type: "f32", components: 1 },
             { name: "uMinArcHeight", type: "f32", components: 1 },
             { name: "uShape", type: "u32", components: 1 },

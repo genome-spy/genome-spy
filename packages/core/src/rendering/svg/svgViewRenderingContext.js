@@ -1,3 +1,4 @@
+import { normalizeLinkArcFade } from "../immediate/linkFading.js";
 import { peek } from "../../utils/arrayUtils.js";
 import {
     normalizeClipOptions,
@@ -18,10 +19,7 @@ import { renderMarkSvg } from "./renderers/index.js";
 import { createSvgElement, SVG_NS } from "./svgElement.js";
 import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
 import { createRectHatchPattern } from "./rectHatchPattern.js";
-import {
-    createLinkArcFadeMask,
-    normalizeLinkArcFade,
-} from "./linkArcFadeMask.js";
+import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
 
 /**
  * @typedef {object} SvgRenderingOptions

@@ -1,4 +1,8 @@
 import {
+    createLinkFadeEncoder,
+    normalizeLinkArcFade,
+} from "../../../immediate/linkFading.js";
+import {
     encodeNumber,
     resolveMarkProperty,
 } from "../../../immediate/markEncoding.js";
@@ -216,26 +220,32 @@ function renderLink(baseMark, options) {
         mark,
         mark.properties.minPickingSize
     );
-    return visitLinkInstances(
-        mark,
-        resolveLinkProperties(mark),
-        options,
-        (instance) => {
-            const [p1, p2, p3, p4] = instance.points;
-            options.rasterizer.strokeCubic(
-                getPickingId(mark, instance.datum),
-                p1[0],
-                p1[1],
-                p2[0],
-                p2[1],
-                p3[0],
-                p3[1],
-                p4[0],
-                p4[1],
-                Math.max(instance.strokeWidth, minPickingSize)
-            );
-        }
-    );
+    const properties = resolveLinkProperties(mark);
+    const encodeFade = createLinkFadeEncoder(mark, properties.shape);
+    return visitLinkInstances(mark, properties, options, (instance) => {
+        const [p1, p2, p3, p4] = instance.points;
+        const distances = encodeFade(instance.datum);
+        const fade = distances && normalizeLinkArcFade(p1, p4, distances);
+        options.rasterizer.strokeCubic(
+            getPickingId(mark, instance.datum),
+            p1[0],
+            p1[1],
+            p2[0],
+            p2[1],
+            p3[0],
+            p3[1],
+            p4[0],
+            p4[1],
+            Math.max(instance.strokeWidth, minPickingSize),
+            undefined,
+            fade
+                ? (x, y) =>
+                      Math.abs(
+                          fade.normalX * x + fade.normalY * y - fade.offset
+                      ) < fade.end
+                : undefined
+        );
+    });
 }
 
 /**

@@ -252,8 +252,9 @@ export default class SoftwarePickingRasterizer {
      * @param {number} x2
      * @param {number} y2
      * @param {number} width
+     * @param {(x: number, y: number) => boolean} [contains]
      */
-    strokeSegment(id, x1, y1, x2, y2, width) {
+    strokeSegment(id, x1, y1, x2, y2, width, contains) {
         if (!(width > 0) || !Number.isFinite(width)) {
             return;
         }
@@ -280,7 +281,7 @@ export default class SoftwarePickingRasterizer {
         const dy = clipped[3] - clipped[1];
         const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)));
         if (steps == 0) {
-            this.#fillSquare(id, clipped[0], clipped[1], halfWidth);
+            this.#fillSquare(id, clipped[0], clipped[1], halfWidth, contains);
             return;
         }
 
@@ -290,7 +291,8 @@ export default class SoftwarePickingRasterizer {
                 id,
                 clipped[0] + dx * t,
                 clipped[1] + dy * t,
-                halfWidth
+                halfWidth,
+                contains
             );
         }
     }
@@ -307,6 +309,7 @@ export default class SoftwarePickingRasterizer {
      * @param {number} y4
      * @param {number} width
      * @param {number} [tolerance]
+     * @param {(x: number, y: number) => boolean} [contains] Optional pixel-center coverage test.
      */
     strokeCubic(
         id,
@@ -319,7 +322,8 @@ export default class SoftwarePickingRasterizer {
         x4,
         y4,
         width,
-        tolerance = DEFAULT_CUBIC_TOLERANCE
+        tolerance = DEFAULT_CUBIC_TOLERANCE,
+        contains
     ) {
         if (
             !(width > 0) ||
@@ -366,7 +370,7 @@ export default class SoftwarePickingRasterizer {
                     tolerance
                 )
             ) {
-                this.strokeSegment(id, bx1, by1, bx4, by4, width);
+                this.strokeSegment(id, bx1, by1, bx4, by4, width, contains);
                 continue;
             }
 
@@ -427,8 +431,9 @@ export default class SoftwarePickingRasterizer {
      * @param {number} x
      * @param {number} y
      * @param {number} halfSize
+     * @param {(x: number, y: number) => boolean} [contains]
      */
-    #fillSquare(id, x, y, halfSize) {
+    #fillSquare(id, x, y, halfSize, contains) {
         const left = Math.max(this.#clipLeft, Math.floor(x - halfSize));
         const top = Math.max(this.#clipTop, Math.floor(y - halfSize));
         const right = Math.min(this.#clipRight, Math.ceil(x + halfSize));
@@ -445,7 +450,13 @@ export default class SoftwarePickingRasterizer {
             this.#spans++;
             const start = row * rowWidth + left;
             const end = start + span;
-            if (span > 16) {
+            if (contains) {
+                for (let column = left; column < right; column++) {
+                    if (contains(column + 0.5, row + 0.5)) {
+                        ids[row * rowWidth + column] = value;
+                    }
+                }
+            } else if (span > 16) {
                 ids.fill(value, start, end);
             } else {
                 for (let offset = start; offset < end; offset++) {

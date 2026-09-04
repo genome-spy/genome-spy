@@ -40,7 +40,7 @@ void main(void) {
     float shapeAngle = 0.0;
 
     // Selected points should always be visible
-    float semanticThresholdFactor = isPointSelected()
+    float semanticThresholdFactor = isDatumSelected()
         ? 1.0
         : computeSemanticThresholdFactor();
 

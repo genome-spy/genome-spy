@@ -974,8 +974,11 @@ export type LinkMarkOptions = {
     /** Clamp arc apex to viewport bounds. */
     clampApex?: boolean;
 
-    /** Fade arcs by distance from the chord line. */
+    /** Fade arcs and domes by perpendicular distance from their endpoint baseline in logical pixels. */
     arcFadingDistance?: [number, number];
+
+    /** Bypass fading for members of selections referenced by conditional channels, including intervals. Requires uniqueId. Default: true. */
+    noFadingOnPointSelection?: boolean;
 };
 
 export type LinkMarkProperties = Required<LinkMarkOptions>;

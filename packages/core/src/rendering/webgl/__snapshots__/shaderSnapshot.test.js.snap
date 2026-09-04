@@ -975,7 +975,7 @@ return accessor_y2Offset_0();
 
 #define y2Offset_DEFINED
 
-bool isPointSelected() {
+bool isDatumSelected() {
     return false;
 }
 
@@ -2321,7 +2321,7 @@ return accessor_y2Offset_0();
 
 #define y2Offset_DEFINED
 
-bool isPointSelected() {
+bool isDatumSelected() {
     return false;
 }
 
@@ -3566,7 +3566,7 @@ return accessor_fillOpacity_0();
 
 #define fillOpacity_DEFINED
 
-bool isPointSelected() {
+bool isDatumSelected() {
     return checkSelection_brush(false);
 }
 
@@ -3694,7 +3694,7 @@ void main(void) {
     float shapeAngle = 0.0;
 
     // Selected points should always be visible
-    float semanticThresholdFactor = isPointSelected()
+    float semanticThresholdFactor = isDatumSelected()
         ? 1.0
         : computeSemanticThresholdFactor();
 
@@ -3980,6 +3980,7 @@ flat in vec4 vColor;
 flat in float vSize;
 in float vNormalLengthInPixels;
 flat in float vGamma;
+in float vFadeDistance;
 
 out lowp vec4 fragColor;
 
@@ -3990,6 +3991,13 @@ void main(void) {
     float opacity = clamp(((vSize / 2.0 - distance) * dpr), 0.0, 1.0);
 
     opacity = pow(opacity, vGamma);
+
+    if (vFadeDistance >= 0.0) {
+        opacity *= 1.0 - smoothstep(uArcFadingDistance[0], uArcFadingDistance[1], vFadeDistance);
+    }
+    if (opacity <= 0.0) {
+        discard;
+    }
 
     fragColor = vColor * opacity;
 
@@ -4524,7 +4532,7 @@ return accessor_y2Offset_0();
 
 #define y2Offset_DEFINED
 
-bool isPointSelected() {
+bool isDatumSelected() {
     return false;
 }
 
@@ -4619,6 +4627,9 @@ flat out float vSize;
 out float vNormalLengthInPixels;
 
 flat out float vGamma;
+
+// Centerline distance from the rendered endpoint baseline; negative disables fading.
+out float vFadeDistance;
 
 const int SHAPE_ARC = 0;
 const int SHAPE_DOME = 1;
@@ -4879,19 +4890,15 @@ void main(void) {
 
     vNormalLengthInPixels = strip.y * paddedSize;
     
-    if (uShape == SHAPE_ARC &&
+    vFadeDistance = -1.0;
+    if ((uShape == SHAPE_ARC || uShape == SHAPE_DOME) &&
         uArcFadingDistance[0] > 0.0 &&
         uArcFadingDistance[1] > 0.0 &&
-        (!uNoFadingOnPointSelection || !isPointSelected()))
+        (!uNoFadingOnPointSelection || !isDatumSelected()))
     {
-        float d = distanceFromLine(p1, p4, p);
-        float distanceOpacity = smoothstep(uArcFadingDistance[1], uArcFadingDistance[0], d);    
-
-        // Fade out
-        opacity *= distanceOpacity;
-
-        // Collapse fully transparent triangles to skip fragment processing 
-        if (distanceOpacity <= 0.0) {
+        vFadeDistance = distanceFromLine(p1, p4, p);
+        // Keep fully faded triangles collapsed to avoid fragment processing.
+        if (1.0 - smoothstep(uArcFadingDistance[0], uArcFadingDistance[1], vFadeDistance) <= 0.0) {
             vNormalLengthInPixels = 0.0;
         }
     }
@@ -5829,7 +5836,7 @@ return accessor_fillOpacity_0();
 
 #define fillOpacity_DEFINED
 
-bool isPointSelected() {
+bool isDatumSelected() {
     return checkSelection_brush(false);
 }
 
@@ -5957,7 +5964,7 @@ void main(void) {
     float shapeAngle = 0.0;
 
     // Selected points should always be visible
-    float semanticThresholdFactor = isPointSelected()
+    float semanticThresholdFactor = isDatumSelected()
         ? 1.0
         : computeSemanticThresholdFactor();
 
@@ -6928,7 +6935,7 @@ return accessor_fillOpacity_0();
 
 #define fillOpacity_DEFINED
 
-bool isPointSelected() {
+bool isDatumSelected() {
     return false;
 }
 
@@ -7056,7 +7063,7 @@ void main(void) {
     float shapeAngle = 0.0;
 
     // Selected points should always be visible
-    float semanticThresholdFactor = isPointSelected()
+    float semanticThresholdFactor = isDatumSelected()
         ? 1.0
         : computeSemanticThresholdFactor();
 
@@ -8176,7 +8183,7 @@ return accessor_y2Offset_0();
 
 #define y2Offset_DEFINED
 
-bool isPointSelected() {
+bool isDatumSelected() {
     return checkSelection_select(false) || checkSelection_highlight(false);
 }
 

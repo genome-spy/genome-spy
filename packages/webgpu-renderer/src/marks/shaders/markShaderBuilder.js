@@ -563,6 +563,19 @@ ${clauses.join("\n")}
         }
     }
 
+    // Match Core's GLSL aggregate: all referenced selections, empty=false,
+    // enabled only when the mark has a uniqueId channel.
+    const selectionTests = channelIRByName.has("uniqueId")
+        ? selectionDefs.map(
+              (def) => `${SELECTION_CHECKER_PREFIX}${def.name}(i, false)`
+          )
+        : [];
+    selectionFns.push(/* wgsl */ `
+fn isDatumSelected(i: u32) -> bool {
+    return ${selectionTests.join(" || ") || "false"};
+}
+`);
+
     // Ordinal scales pull range values from storage buffers. These bindings are
     // separate from series data so ranges can grow/shrink without reallocating
     // per-instance buffers.

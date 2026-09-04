@@ -835,9 +835,10 @@ export interface LinkProps
     maxChordLength?: number | ExprRef;
 
     /**
-     * The range of the `"arc"` shape's fading distance in pixels. This property allows for
-     * making the arc's opacity fade out as it extends away from the chord. The fading distance
-     * is interpolated from one to zero between the interval defined by this property.
+     * The fading distance range for `"arc"` and `"dome"` shapes, in logical screen pixels.
+     * Opacity fades smoothly from one to zero between these perpendicular distances from
+     * the line joining the rendered endpoints. For domes, this is the baseline rather than
+     * the apex position, regardless of orientation, direction, or the scale used for height.
      * Both `false` and `[0, 0]` disable fading.
      *
      * **Default value:** `false`
@@ -845,9 +846,10 @@ export interface LinkProps
     arcFadingDistance?: [number, number] | false | ExprRef;
 
     /**
-     * Disables fading of the link when an mark instance is subject to any point selection.
-     * As the fading distance is unavailable as a visual channel, this property allows for
-     * enhancing the visibility of the selected links.
+     * Disables fading for selected links. Tests selections referenced by conditional
+     * encodings, excluding empty selections. Despite the property name, interval selections
+     * also bypass fading when either link endpoint is inside each selected interval.
+     * Only marks that participate in picking use this bypass.
      *
      * **Default value:** `true`
      */

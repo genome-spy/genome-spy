@@ -36,8 +36,6 @@ tested renderer behavior.
 
 ### Work
 
-- Implement link `noFadingOnPointSelection` through a generic point-selection
-  aggregate predicate.
 - Reconcile text SDF edge fade and color-dependent gamma with WebGL using
   focused visual fixtures. Baseline and glyph-bearing geometry already have
   GPU coverage and are not part of this task unless the comparison exposes a

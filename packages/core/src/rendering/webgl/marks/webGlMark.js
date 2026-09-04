@@ -618,13 +618,13 @@ export default class WebGLMark {
             scaleCode.push(generateConditionalEncoderGlsl(channel, branches));
         }
 
-        // Generate a function that checks if the datum is subject to any point selection
+        // Check membership in any selection referenced by conditional encoders.
         const conditions = [...selectionParameterUniforms.keys()].map(
             (param) => `${SELECTION_CHECKER_PREFIX}${param}(false)`
         );
 
         scaleCode.push(
-            "bool isPointSelected() {\n" +
+            "bool isDatumSelected() {\n" +
                 (this.encoders.uniqueId && conditions.length > 0
                     ? `    return ${conditions.join(" || ")};`
                     : "    return false;") +

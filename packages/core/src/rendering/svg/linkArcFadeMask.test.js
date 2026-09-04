@@ -1,10 +1,8 @@
 // @vitest-environment jsdom
 
 import { describe, expect, test } from "vitest";
-import {
-    createLinkArcFadeMask,
-    normalizeLinkArcFade,
-} from "./linkArcFadeMask.js";
+import { normalizeLinkArcFade } from "../immediate/linkFading.js";
+import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
 
 describe("SVG link arc fade masks", () => {
     test("canonicalizes collinear chords independently of endpoints", () => {
