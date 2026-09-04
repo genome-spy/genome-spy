@@ -283,6 +283,63 @@ describe("Displace2DTransform", () => {
         expect(datum.dy).toBe(0);
     });
 
+    test.each([
+        [false, 110],
+        [true, -110],
+    ])(
+        "maps reverse=%s y scales to downward screen coordinates",
+        async (reverse, expectedDy) => {
+            /** @type {import("../../spec/view.js").UnitSpec} */
+            const spec = {
+                width: 200,
+                height: 100,
+                data: { values: [{ x: 5, y: 20 }] },
+                transform: [
+                    {
+                        type: "displace2d",
+                        x: "x",
+                        y: "y",
+                        width: 20,
+                        height: 20,
+                        scalePositions: true,
+                        as: ["dx", "dy"],
+                    },
+                ],
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { domain: [0, 10] },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { domain: [0, 10], reverse },
+                    },
+                    xOffset: {
+                        field: "dx",
+                        type: "quantitative",
+                        scale: null,
+                    },
+                    yOffset: {
+                        field: "dy",
+                        type: "quantitative",
+                        scale: null,
+                    },
+                },
+            };
+            const view = await createAndInitialize(spec, UnitView);
+            renderToLayout(view, Rectangle.create(0, 0, 200, 100));
+            view.handleBroadcast({ type: "layoutComputed" });
+            await Promise.resolve();
+
+            const datum = [...view.flowHandle.collector.getData()][0];
+            expect(datum.dx).toBe(0);
+            expect(datum.dy).toBeCloseTo(expectedDy);
+        }
+    );
+
     test("preserves input order and emits signed pixel offsets", () => {
         const input = [
             { x: 0, y: 0 },
