@@ -20,6 +20,10 @@ function createScaleResolution(type, toComplex) {
         getScale() {
             return scale;
         },
+        /** @returns {any[]} */
+        getOrderedMembers() {
+            return [];
+        },
         toComplex,
     };
 }
@@ -35,6 +39,7 @@ function createController(ruler, scaleResolutions) {
     const documentListeners = new Map();
     const setValue = vi.fn();
     const view = {
+        spec: {},
         coords: Rectangle.create(0, 0, 200, 100),
         addInteractionListener(
             /** @type {string} */ type,

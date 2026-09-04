@@ -19,6 +19,7 @@ import {
     validateEventType,
 } from "../../utils/interactionConfig.js";
 import { ViewInteractionListenerTracker } from "../viewInteractionListenerTracker.js";
+import { getRulerProjectionCoords } from "../scaleProjection.js";
 
 /**
  * Handles interval selection interaction listeners for one grid child.
@@ -205,13 +206,24 @@ export class IntervalSelectionController {
             /** @type {import("../layout/point.js").default} */ point
         ) => {
             const inverted = { x: 0, y: 0 };
-
-            const np = view.coords.normalizePoint(point.x, point.y, true);
+            const projectionCoords = getRulerProjectionCoords(
+                view,
+                channels,
+                channels[0],
+                scaleResolutions[channels[0]]
+            );
+            const normalizedPoint = projectionCoords.normalizePoint(
+                point.x,
+                point.y,
+                true
+            );
 
             for (const channel of channels) {
                 const scale = scaleResolutions[channel].getScale();
                 // @ts-ignore
-                const val = scale.invert(channel == "x" ? np.x : np.y);
+                const val = scale.invert(
+                    channel === "x" ? normalizedPoint.x : normalizedPoint.y
+                );
                 inverted[channel] =
                     val + (["index", "locus"].includes(scale.type) ? 0.5 : 0);
             }
@@ -226,6 +238,12 @@ export class IntervalSelectionController {
          */
         const selectionToRect = (selection) => {
             const { intervals } = selection;
+            const projectionCoords = getRulerProjectionCoords(
+                view,
+                channels,
+                channels[0],
+                scaleResolutions[channels[0]]
+            );
 
             const mapCorner = (
                 /** @type {number} */ xVal,
@@ -241,7 +259,7 @@ export class IntervalSelectionController {
                 };
                 const px = getCoord("x", xVal) ?? i;
                 const py = getCoord("y", yVal) ?? i;
-                return view.coords.denormalizePoint(px, py, true);
+                return projectionCoords.denormalizePoint(px, py, true);
             };
 
             const a = mapCorner(intervals.x?.[0], intervals.y?.[0], 0);

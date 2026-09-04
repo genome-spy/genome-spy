@@ -41,6 +41,7 @@ import {
     isHConcatSpec,
     isVConcatSpec,
 } from "../viewSpecGuards.js";
+import { isRulerGapChannel } from "../scaleProjection.js";
 
 export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js";
 
@@ -82,6 +83,25 @@ function getLegendOwners(view) {
  */
 function isAnyConcatSpec(spec) {
     return isVConcatSpec(spec) || isHConcatSpec(spec) || isConcatSpec(spec);
+}
+
+/**
+ * @param {import("../view.js").default} view
+ * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
+ */
+function supportsRulerGapTracking(view, channels) {
+    if (!isRulerGapChannel(view, channels)) {
+        return false;
+    }
+
+    const channel = channels[0];
+    const resolution = view.getScaleResolution(channel);
+    return (
+        resolution !== undefined &&
+        /** @type {import("./gridView.js").default} */ (view).children.every(
+            (child) => child.getScaleResolution(channel) === resolution
+        )
+    );
 }
 
 export default class GridChild {
@@ -232,18 +252,23 @@ export default class GridChild {
     }
 
     #setupRulers() {
-        // Descendant plots handle inherited rulers. Concat bounds include axes
-        // and must not overwrite plot coordinates as pointer events bubble up.
-        if (isAnyConcatSpec(this.view.spec)) {
-            return;
-        }
-
         for (const {
             owner,
             paramName,
             config: ruler,
         } of this.#getRulerBindings()) {
             const channels = ruler.encodings ?? ["x"];
+            // The concat owner handles points in its inter-child gaps. Its
+            // descendants still handle points inside their own plots.
+            if (
+                isAnyConcatSpec(this.view.spec) &&
+                (ruler.source === "viewport" ||
+                    owner !== this.view ||
+                    !supportsRulerGapTracking(this.view, channels))
+            ) {
+                continue;
+            }
+
             const scaleResolutions = this.#getRulerScaleResolutions(
                 paramName,
                 channels

@@ -4,6 +4,7 @@ import {
     validateEventType,
 } from "../utils/interactionConfig.js";
 import Point from "../view/layout/point.js";
+import { getRulerProjectionCoords } from "../view/scaleProjection.js";
 import { ViewInteractionListenerTracker } from "../view/viewInteractionListenerTracker.js";
 import { createRulerValue } from "./rulerValue.js";
 import { normalizeRulerCoordinate } from "./rulerCoordinate.js";
@@ -163,7 +164,13 @@ export class RulerMouseEventController {
      */
     #pointToRulerValue(point) {
         const value = createRulerValue(this.channels);
-        const normalizedPoint = this.gridChild.view.coords.normalizePoint(
+        const projectionCoords = getRulerProjectionCoords(
+            this.gridChild.view,
+            this.channels,
+            this.channels[0],
+            this.scaleResolutions[this.channels[0]]
+        );
+        const normalizedPoint = projectionCoords.normalizePoint(
             point.x,
             point.y,
             true

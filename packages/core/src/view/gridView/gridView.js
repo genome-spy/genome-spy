@@ -54,6 +54,7 @@ import { isRulerParameter } from "../../paramRuntime/paramUtils.js";
 import { createConfiguredRulerOverlayView } from "./rulerOverlay.js";
 import { createSelectionRectOverlay } from "./selectionRect.js";
 import { resolveOverlayExtent } from "./overlayExtent.js";
+import { getScaleProjectionCoords } from "../scaleProjection.js";
 import {
     asSelectionConfig,
     createIntervalSelection,
@@ -203,7 +204,7 @@ export default class GridView extends ContainerView {
     /** @type {KeyboardZoomController | null} */
     #keyboardZoomController = null;
 
-    /** @type {{ overlay: import("./generatedChromeOverlay.js").GeneratedChromeOverlay, order: number }[]} */
+    /** @type {{ overlay: import("./generatedChromeOverlay.js").GeneratedChromeOverlay, order: number, channel: import("../../spec/channel.js").PrimaryPositionalChannel }[]} */
     #containerOverlays = [];
 
     /**
@@ -572,6 +573,7 @@ export default class GridView extends ContainerView {
             this.#containerOverlays.push({
                 overlay,
                 order: DECORATION_ORDER.selectionRect,
+                channel,
             });
             promises.push(overlay.view.initializeChildren());
         }
@@ -614,6 +616,7 @@ export default class GridView extends ContainerView {
             this.#containerOverlays.push({
                 overlay,
                 order: DECORATION_ORDER.ruler,
+                channel,
             });
             promises.push(overlay.view.initializeChildren());
         }
@@ -1305,9 +1308,18 @@ export default class GridView extends ContainerView {
         }
 
         if (gridViewCoords) {
-            for (const { overlay, order } of this.#containerOverlays) {
+            for (const { overlay, order, channel } of this.#containerOverlays) {
                 queueDecoration(overlay.zindex, order, () =>
-                    overlay.view.arrange(context, gridViewCoords, options)
+                    overlay.view.arrange(
+                        context,
+                        getScaleProjectionCoords(
+                            this.getScaleResolution(channel),
+                            channel,
+                            gridViewCoords,
+                            this
+                        ),
+                        options
+                    )
                 );
             }
         }

@@ -2514,6 +2514,21 @@ describe("GridView ruler interactions", () => {
                 const owner = /** @type {ConcatView} */ (view.children[0]);
                 const plots = /** @type {ConcatView} */ (owner.children[0]);
 
+                if (channel === "x") {
+                    const rulerOverlay = owner
+                        .getDescendants()
+                        .find(
+                            (descendant) =>
+                                descendant.name === "rulerOverlay_cursor"
+                        );
+                    expect(rulerOverlay?.coords.x).toBeCloseTo(
+                        plots.children[0].coords.x
+                    );
+                    expect(rulerOverlay?.coords.width).toBeCloseTo(
+                        plots.children[0].coords.width
+                    );
+                }
+
                 for (const child of plots.children) {
                     for (const fraction of [0, 0.5, 0.99]) {
                         const point = new Point(
@@ -2534,6 +2549,25 @@ describe("GridView ruler interactions", () => {
                             (channel === "x" ? fraction : 1 - fraction) * 100
                         );
                     }
+                }
+
+                if (channel === "x") {
+                    const firstPlot = plots.children[0];
+                    const secondPlot = plots.children[1];
+                    const gapPoint = new Point(
+                        firstPlot.coords.x + firstPlot.coords.width / 2,
+                        (firstPlot.coords.y2 + secondPlot.coords.y) / 2
+                    );
+                    view.propagateInteraction(
+                        new Interaction(
+                            gapPoint,
+                            /** @type {MouseEvent} */ (new Event("mousemove"))
+                        )
+                    );
+
+                    expect(
+                        owner.paramRuntime.findValue("cursor").values.x
+                    ).toBeCloseTo(50);
                 }
             } finally {
                 globalThis.MouseEvent = originalMouseEvent;
@@ -2615,6 +2649,68 @@ describe("GridView ruler interactions", () => {
             expect(leftValue.values.x).toBeLessThan(rightValue.values.x);
             expect(requestRender.mock.calls.length).toBeGreaterThan(
                 renderRequestsAfterFirstMove
+            );
+        } finally {
+            globalThis.MouseEvent = originalMouseEvent;
+        }
+    });
+
+    test("hconcat ruler follows mousemove coordinates in gaps", async () => {
+        const originalMouseEvent = globalThis.MouseEvent;
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (Event)
+        );
+
+        try {
+            /** @type {import("../../spec/view.js").UnitSpec} */
+            const plot = {
+                ...makeUnitSpec(),
+                encoding: {
+                    ...makeUnitSpec().encoding,
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { domain: [0, 100] },
+                    },
+                },
+            };
+            const view = await createAndInitialize(
+                {
+                    hconcat: [
+                        {
+                            params: [
+                                {
+                                    name: "cursor",
+                                    ruler: { encodings: ["y"], snap: false },
+                                },
+                            ],
+                            resolve: {
+                                scale: { y: "shared" },
+                            },
+                            hconcat: [plot, plot],
+                        },
+                    ],
+                },
+                ConcatView
+            );
+            renderToLayout(view);
+
+            const owner = /** @type {ConcatView} */ (view.children[0]);
+            const firstPlot = owner.children[0];
+            const secondPlot = owner.children[1];
+            const gapPoint = new Point(
+                (firstPlot.coords.x2 + secondPlot.coords.x) / 2,
+                firstPlot.coords.y + firstPlot.coords.height * 0.25
+            );
+            view.propagateInteraction(
+                new Interaction(
+                    gapPoint,
+                    /** @type {MouseEvent} */ (new Event("mousemove"))
+                )
+            );
+
+            expect(owner.paramRuntime.findValue("cursor").values.y).toBeCloseTo(
+                75
             );
         } finally {
             globalThis.MouseEvent = originalMouseEvent;
