@@ -520,15 +520,13 @@ test("reloads the primary source when the table reloads", async () => {
     const output = new Collector({ type: "collect" });
     primary.addChild(lookup);
     lookup.addChild(output);
-    const load = vi.spyOn(primary, "load");
-
     await primary.load();
+    expect([...output.getData()]).toEqual([{ codon: "ATG", aminoAcid: "M" }]);
     foreign.reset();
     foreign.handle({ codon: "ATG", aminoAcid: "Start" });
     foreign.complete();
     await Promise.resolve();
 
-    expect(load).toHaveBeenCalledTimes(2);
     expect([...output.getData()]).toEqual([
         { codon: "ATG", aminoAcid: "Start" },
     ]);

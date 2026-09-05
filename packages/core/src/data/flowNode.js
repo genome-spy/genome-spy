@@ -60,6 +60,9 @@ export default class FlowNode {
     /** @type {(() => void)[]} */
     #disposers = [];
 
+    /** @type {(() => void) | undefined} */
+    #queuedReplay;
+
     /**
      * An object that provides a paramRuntime. (Most likely a View)
      *
@@ -439,6 +442,50 @@ export default class FlowNode {
             throw new Error("Cannot find paramRuntime!");
         }
         return this.parent.paramRuntime;
+    }
+
+    /** @returns {FlowNode} */
+    get replaySource() {
+        if (!this.parent) {
+            throw new Error("Cannot replay data: no upstream replay source.");
+        }
+        return this.parent.replaySource;
+    }
+
+    /** Whether replay publishes its complete output before returning. */
+    get replaysSynchronously() {
+        return false;
+    }
+
+    /**
+     * Coalesce parameter invalidations at the actual optimized replay boundary.
+     * Expression evaluation stays on the streaming path.
+     */
+    requestRepropagate() {
+        const root = this.replaySource;
+        const runtime = this.paramRuntime.updateScheduler;
+        if (!root.#queuedReplay) {
+            root.#queuedReplay = () => {
+                if (root.disposed) {
+                    return;
+                }
+                if (root.replaysSynchronously) {
+                    // This replay will complete every descendant. Cancel only
+                    // already-pending work; new invalidations remain eligible.
+                    root.visit((node) => {
+                        if (node.#queuedReplay) {
+                            runtime.cancelUpdate(node.#queuedReplay);
+                        }
+                    });
+                }
+                root.repropagate();
+            };
+        }
+        let depth = 0;
+        for (let ancestor = root.parent; ancestor; ancestor = ancestor.parent) {
+            depth++;
+        }
+        runtime.requestUpdate(root.#queuedReplay, depth);
     }
 
     /**

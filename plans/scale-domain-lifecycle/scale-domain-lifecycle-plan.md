@@ -190,14 +190,17 @@ Review that shared contract with a subagent before runtime implementation.
 
 ### 5. Establish coherent synchronous reactive updates
 
-- [ ] Detail and review the shared update contract before implementation. Map
+The [detailed contract and delivery record](milestone-5-plan.md) defines the
+streaming publication boundary, failure/retry semantics, and verification.
+
+- [x] Detail and review the shared update contract before implementation. Map
       current resolution responsibilities to the boundaries above, identifying
       the callbacks, state, and ordering guards the domain experiment will delete.
       Specify initialization, selection feedback, and binding lifecycle together
       with the update contract; do not assume graph batching alone solves them.
-- [ ] Expose the smallest internal computed/effect facilities needed through
+- [x] Expose the smallest internal computed/effect facilities needed through
       `ParamRuntime` / `ViewParamRuntime`.
-- [ ] Make the expression and grouped-update paths required by the domain
+- [x] Make the expression and grouped-update paths required by the domain
       experiment participate in that contract. Coordinate their streaming replay
       requests and publication of resulting domain/readiness facts.
 - Outcome: related writes produce coherent downstream inputs; computations,

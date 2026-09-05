@@ -30,7 +30,8 @@ const PRIORITY_STRIDE = 1000000;
  *   value: T,
  *   kind: "derived",
  *   name: string,
- *   fn: () => T
+ *   fn: () => T,
+ *   equals: (a: T, b: T) => boolean
  * }} ComputedNode
  */
 
@@ -45,14 +46,14 @@ const PRIORITY_STRIDE = 1000000;
 
 /**
  * @param {import("./lifecycleRegistry.js").default | undefined} lifecycleRegistry
- * @returns {(ownerId: string, disposer: () => void) => void}
+ * @returns {(ownerId: string, disposer: () => void) => () => void}
  */
 function createDisposerBinder(lifecycleRegistry) {
     if (!lifecycleRegistry) {
-        return () => undefined;
+        return () => () => undefined;
     } else {
         return (ownerId, disposer) => {
-            lifecycleRegistry.addDisposer(ownerId, disposer);
+            return lifecycleRegistry.addDisposer(ownerId, disposer);
         };
     }
 }
@@ -147,7 +148,7 @@ function notify(listeners) {
  * `GraphRuntime` is the scheduling engine behind `ParamRuntime`. It owns:
  * 1. Writable source nodes (`base` and `selection`).
  * 2. Derived/computed nodes with explicit dependencies.
- * 3. Side-effect nodes that run after computed stabilization.
+ * 3. Streaming publication jobs and effects that observe their settled results.
  * 4. Transaction-aware batching and deterministic topological flushing.
  *
  * Typical usage:
@@ -161,8 +162,8 @@ function notify(listeners) {
  * Notes:
  * 1. This class is intended for runtime internals; most call sites should use
  *    `ParamRuntime` / `ViewParamRuntime`.
- * 2. Equality is referential (`!==`), so object writes must use new identities
- *    to trigger propagation.
+ * 2. Equality is referential by default. Computeds may supply value equality.
+ * 3. Direct subscriptions are invalidations; use effects for settled observation.
  */
 export default class GraphRuntime {
     #nextNodeId = 1;
@@ -174,6 +175,16 @@ export default class GraphRuntime {
     #scheduled = false;
 
     #flushing = false;
+
+    #notificationDepth = 0;
+
+    #syncRequested = false;
+
+    /** @type {Map<() => void, number>} */
+    #updates = new Map();
+
+    /** @type {Map<object, number>} */
+    #runCounts = new Map();
 
     /** @type {Set<ComputedNode<any>>} */
     #dirtyComputeds = new Set();
@@ -187,10 +198,10 @@ export default class GraphRuntime {
     /** @type {FlatQueue<EffectNode>} */
     #effectQueue = new FlatQueue();
 
-    /** @type {Set<{resolve: () => void, reject: (error: Error) => void, abortHandler?: () => void, timeoutId?: ReturnType<typeof setTimeout>}>} */
+    /** @type {Set<{resolve: () => void, reject: (error: unknown) => void}>} */
     #propagatedWaiters = new Set();
 
-    /** @type {(ownerId: string, disposer: () => void) => void} */
+    /** @type {(ownerId: string, disposer: () => void) => () => void} */
     #bindDisposer;
 
     /**
@@ -269,7 +280,7 @@ export default class GraphRuntime {
                     // Computed/effect listeners schedule after they enqueue
                     // graph work. Direct listeners are synchronous and need no
                     // otherwise-empty flush microtask.
-                    notify(node.listeners);
+                    this.#notify(node.listeners);
                 }
             }
         };
@@ -290,7 +301,7 @@ export default class GraphRuntime {
      * Compute semantics:
      * 1. Initial value is computed eagerly at registration time.
      * 2. On dependency changes, recomputation is queued (deduplicated per flush).
-     * 3. Downstream listeners are notified only if computed value identity changes.
+     * 3. Downstream listeners are notified only if computed equality changes.
      * 4. Dependencies marked for synchronous propagation flush the queue before
      *    their notification returns.
      *
@@ -303,9 +314,10 @@ export default class GraphRuntime {
      * @param {string} name
      * @param {import("./types.js").ParamRef<any>[]} deps
      * @param {() => T} fn
-     * @returns {import("./types.js").ParamRef<T>}
+     * @param {{ equals?: (a: T, b: T) => boolean }} [options]
+     * @returns {import("./types.js").ComputedParamRef<T>}
      */
-    computed(ownerId, name, deps, fn) {
+    computed(ownerId, name, deps, fn, options = {}) {
         const maxRank = deps.reduce(
             (previous, dep) => Math.max(previous, getDependencyRank(dep)),
             0
@@ -321,6 +333,7 @@ export default class GraphRuntime {
             disposed: false,
             listeners: new Set(),
             fn,
+            equals: options.equals ?? ((a, b) => a === b),
             subscribe(
                 /** @type {() => void} */
                 listener
@@ -350,15 +363,17 @@ export default class GraphRuntime {
             }
 
             node.disposed = true;
+            unbind();
             unsubscribers.forEach((unsubscribe) => unsubscribe());
             node.listeners.clear();
             this.#dirtyComputeds.delete(node);
         };
 
-        this.#bindDisposer(ownerId, dispose);
+        const unbind = this.#bindDisposer(ownerId, dispose);
 
-        return /** @type {import("./types.js").ParamRef<T>} */ (
-            createRef(node)
+        return Object.assign(
+            /** @type {import("./types.js").ParamRef<T>} */ (createRef(node)),
+            { dispose }
         );
     }
 
@@ -367,7 +382,7 @@ export default class GraphRuntime {
      *
      * Effect semantics:
      * 1. Effect callbacks are queued on dependency changes.
-     * 2. Effects run after computed nodes for the same flush epoch.
+     * 2. Effects run after computed nodes and streaming jobs have settled.
      * 3. Multiple dependency changes before a flush coalesce to one queued run.
      *
      * @param {string} ownerId
@@ -389,14 +404,15 @@ export default class GraphRuntime {
             fn,
         });
 
-        const onDependencyChange = () => {
-            if (!node.disposed) {
-                this.#enqueueEffect(node);
-            }
-        };
-
         const unsubscribers = deps.map((dep) =>
-            dep.subscribe(onDependencyChange)
+            dep.subscribe(() => {
+                if (!node.disposed) {
+                    this.#enqueueEffect(node);
+                    if (dep.propagation === "sync") {
+                        this.flushNow();
+                    }
+                }
+            })
         );
 
         const dispose = () => {
@@ -405,11 +421,12 @@ export default class GraphRuntime {
             }
 
             node.disposed = true;
+            unbind();
             unsubscribers.forEach((unsubscribe) => unsubscribe());
             this.#dirtyEffects.delete(node);
         };
 
-        this.#bindDisposer(ownerId, dispose);
+        const unbind = this.#bindDisposer(ownerId, dispose);
 
         return dispose;
     }
@@ -456,60 +473,135 @@ export default class GraphRuntime {
      * Behavior:
      * 1. No-op if called while a transaction is open.
      * 2. No-op during re-entrant flush calls.
-     * 3. Runs computeds first, then effects, until the graph reaches a fixed
-     *    point for the current queued work.
+     * 3. Stabilizes computeds and streaming jobs before each effect.
+     * 4. Errors reject current barriers and stop automatic flushing. Pending
+     *    invalidations remain for an explicit retry; replay jobs must be resubmitted.
      */
     flushNow() {
+        if (this.#notificationDepth > 0) {
+            this.#syncRequested = true;
+            return;
+        }
         if (this.#transactionDepth > 0 || this.#flushing) {
             return;
-        } else {
-            this.#scheduled = false;
-            this.#flushing = true;
         }
+        this.#scheduled = false;
+        this.#flushing = true;
 
         try {
-            let hasWork = true;
-            while (hasWork) {
-                hasWork = false;
-
-                while (this.#computedQueue.length > 0) {
-                    hasWork = true;
+            while (
+                this.#computedQueue.length ||
+                this.#updates.size ||
+                this.#effectQueue.length
+            ) {
+                while (this.#computedQueue.length) {
                     const node = this.#computedQueue.pop();
                     this.#dirtyComputeds.delete(node);
-
                     if (node.disposed) {
                         continue;
                     }
-
-                    const previous = node.value;
-                    const next = node.fn();
-                    if (next !== previous) {
+                    this.#countRun(node, node.name);
+                    let next;
+                    try {
+                        next = node.fn();
+                    } catch (error) {
+                        this.#enqueueComputed(node);
+                        throw error;
+                    }
+                    if (!node.equals(next, node.value)) {
                         node.value = next;
-                        notify(node.listeners);
+                        this.#notify(node.listeners);
                     }
                 }
 
-                while (this.#effectQueue.length > 0) {
-                    hasWork = true;
-                    const effectNode = this.#effectQueue.pop();
-                    this.#dirtyEffects.delete(effectNode);
-
-                    if (effectNode.disposed) {
-                        continue;
+                if (this.#updates.size) {
+                    // Replay roots are few; ordering by tree depth lets an
+                    // ancestor subsume queued descendants without per-row work.
+                    let priority = Infinity;
+                    /** @type {() => void} */
+                    let update;
+                    for (const [candidate, rank] of this.#updates) {
+                        if (rank < priority) {
+                            update = candidate;
+                            priority = rank;
+                        }
                     }
-
-                    effectNode.fn();
+                    this.#updates.delete(update);
+                    this.#countRun(update, "streaming update");
+                    update();
+                } else if (this.#effectQueue.length) {
+                    const node = this.#effectQueue.pop();
+                    this.#dirtyEffects.delete(node);
+                    if (!node.disposed) {
+                        this.#countRun(node, "effect " + node.id);
+                        node.fn();
+                    }
                 }
+                // An update or effect may publish new sources. Stabilize those
+                // before allowing the next observer to run.
             }
+        } catch (error) {
+            // Keep invalidations: a retry may publish an equal value and must
+            // still repair caches. Do not automatically retry streaming work.
+            this.#updates.clear();
+            for (const waiter of this.#propagatedWaiters) {
+                waiter.reject(error);
+            }
+            this.#propagatedWaiters.clear();
+            throw error;
         } finally {
+            this.#runCounts.clear();
             this.#flushing = false;
             this.#maybeResolveWhenPropagatedWaiters();
         }
     }
 
     /**
+     * Queue a stable callback that publishes streaming results before effects.
+     * The caller owns its lifetime; rank orders upstream roots before descendants.
+     * @param {() => void} update
+     * @param {number} [rank]
+     */
+    requestUpdate(update, rank = 0) {
+        this.#updates.set(update, rank);
+        this.#scheduleFlush();
+    }
+
+    /** @param {() => void} update */
+    cancelUpdate(update) {
+        this.#updates.delete(update);
+    }
+
+    /** @param {Set<() => void>} listeners */
+    #notify(listeners) {
+        this.#notificationDepth++;
+        try {
+            notify(listeners);
+        } finally {
+            this.#notificationDepth--;
+            if (!this.#notificationDepth && this.#syncRequested) {
+                this.#syncRequested = false;
+                this.flushNow();
+            }
+        }
+    }
+
+    /**
+     * Bound imperative feedback without mistaking a second round for a cycle.
+     * @param {object} work
+     * @param {string} name
+     */
+    #countRun(work, name) {
+        const count = (this.#runCounts.get(work) ?? 0) + 1;
+        if (count > 100) {
+            throw new Error("Reactive propagation did not settle: " + name);
+        }
+        this.#runCounts.set(work, count);
+    }
+
+    /**
      * Returns a promise that resolves when currently pending graph propagation
-     * has completed (computed queue and effect queue are settled).
+     * has completed (computeds, streaming jobs, and effects are settled).
      *
      * This is a synchronization barrier for reactive propagation only. It does
      * not include animation/time-based convergence semantics.
@@ -529,39 +621,41 @@ export default class GraphRuntime {
         }
 
         return new Promise((resolve, reject) => {
-            const waiter =
-                /** @type {{resolve: () => void, reject: (error: Error) => void, abortHandler?: () => void, timeoutId?: ReturnType<typeof setTimeout>}} */ ({
-                    resolve,
-                    reject,
-                });
-
-            if (signal) {
-                waiter.abortHandler = () => {
-                    this.#propagatedWaiters.delete(waiter);
-                    reject(new Error("whenPropagated aborted"));
-                };
-                signal.addEventListener("abort", waiter.abortHandler, {
-                    once: true,
-                });
-            }
-
+            /** @type {ReturnType<typeof setTimeout> | undefined} */
+            let timeoutId;
+            const cleanup = () => {
+                this.#propagatedWaiters.delete(waiter);
+                signal?.removeEventListener("abort", abort);
+                if (timeoutId !== undefined) {
+                    clearTimeout(timeoutId);
+                }
+            };
+            const waiter = {
+                resolve: () => {
+                    cleanup();
+                    resolve();
+                },
+                reject: (/** @type {unknown} */ error) => {
+                    cleanup();
+                    reject(error);
+                },
+            };
+            const abort = () =>
+                waiter.reject(new Error("whenPropagated aborted"));
+            signal?.addEventListener("abort", abort, { once: true });
             if (timeoutMs != null) {
-                waiter.timeoutId = setTimeout(() => {
-                    this.#propagatedWaiters.delete(waiter);
-                    if (waiter.abortHandler) {
-                        signal?.removeEventListener(
-                            "abort",
-                            waiter.abortHandler
-                        );
-                    }
-                    reject(
-                        new Error(
-                            "whenPropagated timeout after " + timeoutMs + " ms"
-                        )
-                    );
-                }, timeoutMs);
+                timeoutId = setTimeout(
+                    () =>
+                        waiter.reject(
+                            new Error(
+                                "whenPropagated timeout after " +
+                                    timeoutMs +
+                                    " ms"
+                            )
+                        ),
+                    timeoutMs
+                );
             }
-
             this.#propagatedWaiters.add(waiter);
         });
     }
@@ -571,6 +665,7 @@ export default class GraphRuntime {
      */
     #enqueueComputed(node) {
         if (this.#dirtyComputeds.has(node)) {
+            this.#scheduleFlush();
             return;
         }
 
@@ -584,6 +679,7 @@ export default class GraphRuntime {
      */
     #enqueueEffect(node) {
         if (this.#dirtyEffects.has(node)) {
+            this.#scheduleFlush();
             return;
         }
 
@@ -609,7 +705,10 @@ export default class GraphRuntime {
         this.#scheduled = true;
 
         queueMicrotask(() => {
-            this.flushNow();
+            // A synchronous flush may have completed or failed since scheduling.
+            if (this.#scheduled) {
+                this.flushNow();
+            }
         });
     }
 
@@ -621,7 +720,8 @@ export default class GraphRuntime {
             this.#computedQueue.length === 0 &&
             this.#effectQueue.length === 0 &&
             this.#dirtyComputeds.size === 0 &&
-            this.#dirtyEffects.size === 0
+            this.#dirtyEffects.size === 0 &&
+            this.#updates.size === 0
         );
     }
 
@@ -631,10 +731,6 @@ export default class GraphRuntime {
         }
 
         for (const waiter of this.#propagatedWaiters) {
-            if (waiter.timeoutId) {
-                clearTimeout(waiter.timeoutId);
-            }
-
             waiter.resolve();
         }
         this.#propagatedWaiters.clear();

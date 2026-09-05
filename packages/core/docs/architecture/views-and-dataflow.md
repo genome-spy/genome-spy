@@ -50,6 +50,12 @@ arrangement.
   data: `BEHAVIOR_CLONES`, `BEHAVIOR_MODIFIES`, and `BEHAVIOR_COLLECTS`.
 - `Collector` materializes data, supports grouping and sorting, and provides
   indexed lookups such as unique-ID lookup for picking.
+- Parameter-driven Filter/Formula replay uses the shared reactive runtime's
+  streaming update queue. Replay roots are the actual optimized upstream
+  collectors/sources; synchronous ancestors subsume pending descendant replays.
+  Inline, sequence, and named source replay uses synchronous loading so row errors
+  reach that propagation boundary. Async sources retain their request lifecycle.
+  See `reactivity.md` for coherent observer, failure/retry, and disposal semantics.
 - `src/data/dataReadiness.js` walks the actual optimized primary path and
   `FlowNode.dataDependencies` side edges. Lookup/cross nodes record the foreign
   revision incorporated into completed output, so side arrival cannot report

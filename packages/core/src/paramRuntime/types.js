@@ -17,7 +17,13 @@
  */
 
 /**
+ * @template T
+ * @typedef {ParamRef<T> & { dispose: () => void }} ComputedParamRef
+ */
+
+/**
  * @typedef {import("../utils/expression.js").ExpressionFunction & {
+ *   dependencies: ParamRef<any>[],
  *   subscribe: (listener: () => void) => () => void,
  *   invalidate: () => void,
  *   identifier: () => string

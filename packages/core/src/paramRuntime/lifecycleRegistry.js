@@ -26,6 +26,7 @@ export default class LifecycleRegistry {
     /**
      * @param {string} ownerId
      * @param {() => void} disposer
+     * @returns {() => void} Removes the registration without invoking it.
      */
     addDisposer(ownerId, disposer) {
         const disposers = this.#ownerDisposers.get(ownerId);
@@ -34,6 +35,9 @@ export default class LifecycleRegistry {
         }
 
         disposers.add(disposer);
+        return () => {
+            disposers.delete(disposer);
+        };
     }
 
     /**

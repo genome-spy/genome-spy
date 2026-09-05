@@ -477,16 +477,20 @@ export default class ScaleResolution {
         if (type === "domain") {
             this.#domainNotificationSerial++;
         }
-        for (const listener of this.#listeners[type].values()) {
-            listener({ type, scaleResolution: this });
-            if (
-                type === "domain" &&
-                this.#domainState.visibleDomain !== displayed
-            ) {
-                // A nested commit already notified listeners of its replacement.
-                break;
+        const runtime = this.#resolutionView.paramRuntime;
+        runtime.runInTransaction(() => {
+            for (const listener of this.#listeners[type].values()) {
+                listener({ type, scaleResolution: this });
+                if (
+                    type === "domain" &&
+                    this.#domainState.visibleDomain !== displayed
+                ) {
+                    // A nested commit already notified listeners of its replacement.
+                    break;
+                }
             }
-        }
+        });
+        runtime.flushNow();
     }
 
     syncLinkedSelectionFromDomain() {

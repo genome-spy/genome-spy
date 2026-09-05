@@ -72,8 +72,25 @@ export default class DataSource extends FlowNode {
         // override
     }
 
+    get replaySource() {
+        return this;
+    }
+
+    get replaysSynchronously() {
+        return "loadSynchronously" in this;
+    }
+
     repropagate() {
         this.activate();
-        this.load();
+        if (
+            "loadSynchronously" in this &&
+            typeof this.loadSynchronously === "function"
+        ) {
+            // Preserve synchronous row errors instead of detaching them in the
+            // promise returned by load(). Async sources retain their own path.
+            this.loadSynchronously();
+        } else {
+            void this.load();
+        }
     }
 }

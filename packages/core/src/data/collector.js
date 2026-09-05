@@ -195,6 +195,14 @@ export default class Collector extends FlowNode {
         }
     }
 
+    get replaySource() {
+        return this;
+    }
+
+    get replaysSynchronously() {
+        return true;
+    }
+
     repropagate() {
         for (const child of this.children) {
             child.reset();

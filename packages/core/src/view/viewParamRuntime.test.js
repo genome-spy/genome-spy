@@ -935,6 +935,7 @@ test("activateExprRefProps falls back to flush when whenPropagated rejects", asy
         },
         invalidate: () => /** @type {void} */ (undefined),
         identifier: () => "expr",
+        dependencies: [],
         fields: [],
         globals: [],
         code: "expr",

@@ -206,6 +206,54 @@ export default class ParamRuntime {
     }
 
     /**
+     * Create an unnamed, owner-bound derived value with explicit dependencies.
+     * Dispose the returned ref when replacing a binding before its owner ends.
+     * @template T
+     * @param {ScopeId} scope
+     * @param {string} name Diagnostic name, not a parameter declaration.
+     * @param {import("./types.js").ParamRef<any>[]} deps
+     * @param {() => T} fn
+     * @param {{ equals?: (a: T, b: T) => boolean }} [options]
+     */
+    computed(scope, name, deps, fn, options) {
+        return this.#graphRuntime.computed(
+            this.#paramStore.getOwnerId(scope),
+            name,
+            deps,
+            fn,
+            options
+        );
+    }
+
+    /**
+     * Observe settled dependencies. Runs on changes, not at registration.
+     * @param {ScopeId} scope
+     * @param {import("./types.js").ParamRef<any>[]} deps
+     * @param {() => void} fn
+     */
+    effect(scope, deps, fn) {
+        return this.#graphRuntime.effect(
+            this.#paramStore.getOwnerId(scope),
+            deps,
+            fn
+        );
+    }
+
+    /**
+     * Queue caller-owned streaming publication before graph effects.
+     * @param {() => void} update Stable callback identity for coalescing.
+     * @param {number} [rank]
+     */
+    requestUpdate(update, rank = 0) {
+        this.#graphRuntime.requestUpdate(update, rank);
+    }
+
+    /** @param {() => void} update */
+    cancelUpdate(update) {
+        this.#graphRuntime.cancelUpdate(update);
+    }
+
+    /**
      * Runs a transactional update against the underlying graph runtime.
      *
      * Multiple writes inside `fn` are batched and propagated after the

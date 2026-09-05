@@ -73,4 +73,32 @@ describe("ParamRuntime", () => {
         // Non-obvious: disposed computeds keep their last value and no longer track updates.
         expect(bar.get()).toBe(2);
     });
+    test("grouped expressions preserve declaration scope and resource ownership", () => {
+        const runtime = new ParamRuntime();
+        const root = runtime.createScope();
+        const child = runtime.createScope(root);
+        const width = runtime.registerBase(root, "width", 10);
+        const height = runtime.registerBase(root, "height", 10);
+        runtime.registerBase(child, "width", 99);
+        const expression = runtime.createExpression(root, "width * height");
+        const area = runtime.computed(
+            child,
+            "area",
+            expression.dependencies,
+            () => expression()
+        );
+        /** @type {number[]} */
+        const seen = [];
+        runtime.effect(child, [area], () => seen.push(area.get()));
+        runtime.runInTransaction(() => {
+            width.set(20);
+            height.set(30);
+        });
+        runtime.flushNow();
+        expect(seen).toEqual([600]);
+        runtime.disposeScope(child);
+        width.set(40);
+        runtime.flushNow();
+        expect(seen).toEqual([600]);
+    });
 });

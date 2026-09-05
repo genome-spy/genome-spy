@@ -10,6 +10,50 @@
 - DAG propagation is transaction-aware through `runInTransaction` and provides
   `whenPropagated` as a deterministic synchronization barrier.
 
+### Coherent synchronous updates
+
+`ParamRuntime` and `ViewParamRuntime` expose owner-bound `computed` refs and
+`effect` callbacks with explicit dependencies. Expressions expose their bound
+dependency refs, retaining the declaration's lexical scope even when a different
+owner holds the computation. Computeds evaluate initially; effects first run on
+change. Computeds use identity equality by default, with an optional comparator
+for values such as domain arrays. Explicit disposal unregisters owner cleanup as
+well as dependencies, allowing bindings to be replaced in long-lived scopes.
+
+Direct ref/expression subscriptions remain synchronous invalidation callbacks.
+They may observe intermediate writes within a transaction; use graph effects
+for coherent observation. A flush stabilizes ranked computeds, runs queued
+streaming publication jobs, and then runs one effect. After each job or effect,
+newly invalidated work settles before the next observer. An effect's writes start
+another round; arbitrary imperative effects are not collectively atomic.
+
+`runInTransaction` batches until the outermost transaction exits. Call `flushNow`
+after it when propagation must finish synchronously; otherwise the existing
+microtask flush applies. Runtime-source and scale-notification fan-out batch graph
+scheduling, preventing synchronous subscribers from flushing before their sibling
+dependencies are notified. Animation and immediate rendering retain their
+synchronous flush boundaries.
+
+Filter/Formula parameter invalidations enqueue a stable callback for their actual
+upstream collector/source. Shared roots coalesce, and an ancestor's synchronous
+replay subsumes pending descendant replays. The entire replay/fan-out finishes
+before graph effects consume published values; expression evaluation per datum
+remains streaming. Async reload dispatch cannot subsume a cached descendant's
+replay. `whenPropagated` includes synchronous replay and resulting graph work,
+but excludes network completion and future animation frames.
+
+A failed flush rejects current propagation waiters and stops automatic flushing.
+Pending computed/effect invalidations remain, while queued replay jobs are dropped.
+There is no row rollback: callers must resubmit failed publication before explicitly
+retrying propagation/observation. Retaining invalidations lets an equal-value retry
+repair computed caches. Repeated non-settling work has a bounded error diagnostic;
+existing initialization and scale-helper cycle checks still apply.
+
+This contract currently covers migrated graph observers and Filter/Formula replay.
+Legacy direct collector/domain observers and other property/replay callbacks remain
+outside it. Subsequent domain integration must replace their manual coordination;
+the new queue alone does not establish coherent observation for those consumers.
+
 The design draws on Vega's explicit dependency-driven signal model and
 fine-grained systems such as Preact Signals, particularly batched updates and
 localized subscriptions. GenomeSpy uses its own purpose-built runtime rather
