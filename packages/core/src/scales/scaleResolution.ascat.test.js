@@ -177,14 +177,28 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
             )[0].meanRoundingError;
             crossSpy.mockClear();
 
-            target.paramRuntime.setValue("downweightBalanced", false);
-            await Promise.resolve();
+            const score = view.getDescendants().find((v) => v.name === "bar")
+                .flowHandle.collector;
+            const initialScore = Array.from(score.getData())[0].goodnessOfFit;
+            for (const enabled of [false, true, false, true]) {
+                target.paramRuntime.setValue("downweightBalanced", enabled);
+                await target.paramRuntime.whenPropagated();
 
-            expect(crossSpy).toHaveBeenCalled();
-            expect(
-                Array.from(sunrise.flowHandle.collector.getData())[0]
-                    .meanRoundingError
-            ).not.toBe(initialDistance);
+                expect(crossSpy).toHaveBeenCalled();
+                expect(sunrise.flowHandle.collector.getItemCount()).toBe(9);
+                expect(score.getItemCount()).toBe(1);
+                const distance = Array.from(
+                    sunrise.flowHandle.collector.getData()
+                )[0].meanRoundingError;
+                const goodness = Array.from(score.getData())[0].goodnessOfFit;
+                if (enabled) {
+                    expect(distance).toBeCloseTo(initialDistance);
+                    expect(goodness).toBeCloseTo(initialScore);
+                } else {
+                    expect(distance).not.toBe(initialDistance);
+                    expect(goodness).not.toBe(initialScore);
+                }
+            }
         } finally {
             crossSpy.mockRestore();
         }

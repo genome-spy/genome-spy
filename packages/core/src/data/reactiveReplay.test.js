@@ -194,6 +194,46 @@ describe("parameter-triggered streaming replay", () => {
             );
         }
     );
+    test("an async source reset defers cached replay until new data completes", async () => {
+        const runtime = makeRuntime();
+        const source = new DataSource(
+            /** @type {any} */ ({ paramRuntime: runtime })
+        );
+        const filter = makeFilter(runtime);
+        const cached = new Collector();
+        const formula = makeFormula(runtime);
+        const output = new Collector();
+        source.addChild(filter);
+        filter.addChild(cached);
+        cached.addChild(formula);
+        formula.addChild(output);
+        filter.initialize();
+        formula.initialize();
+        for (const x of [1, 2, 3]) filter.handle({ x });
+        source.complete();
+
+        // UrlSource resets descendants before awaiting a response. A parameter
+        // change can also queue replay at a collector in that same subtree.
+        const response = Promise.withResolvers();
+        const load = vi.spyOn(source, "load").mockImplementation(async () => {
+            source.reset();
+            await response.promise;
+            for (const x of [1, 2, 3]) filter.handle({ x });
+            source.complete();
+        });
+        runtime.runInTransaction(() => {
+            runtime.setValue("factor", 10);
+            runtime.setValue("lower", 2);
+        });
+        await runtime.whenPropagated();
+        expect(load).toHaveBeenCalledTimes(1);
+        expect(cached.completed).toBe(false);
+        expect(output.completed).toBe(false);
+        response.resolve();
+        await load.mock.results[0].value;
+        expect(Array.from(output.getData(), (d) => d.y)).toEqual([20, 30]);
+    });
+
     test("dispatching an async reload does not subsume cached descendant replay", async () => {
         const runtime = makeRuntime();
         const source = new DataSource(

@@ -204,6 +204,12 @@ export default class Collector extends FlowNode {
     }
 
     repropagate() {
+        // An upstream async reload may have reset this collector after replay
+        // was queued. Its completion will publish the new rows; replaying now
+        // would prematurely finalize downstream buffers still awaiting data.
+        if (!this.completed) {
+            return;
+        }
         // Batch the full downstream replay and observer fan-out so reactive
         // effects cannot run between sibling branches completing.
         if (this.parent)
