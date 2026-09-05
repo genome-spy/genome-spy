@@ -61,8 +61,10 @@ while keeping each integration boundary reviewable.
 
 ### 1. Establish the behavior contract and example-based characterization
 
-- [ ] Record intended contracts, existing quirks, and deliberate future fixes.
-- [ ] Add focused headless tests drawn from the documented/shared examples.
+- [x] Record intended contracts, existing quirks, and deliberate future fixes
+      in [behavior-contract.md](behavior-contract.md).
+- [x] Add six focused headless tests drawn from the documented/shared examples
+      in `scaleResolution.lifecycle.test.js`.
 - Outcome: a concrete regression boundary for current visuals and runtime APIs.
 - Areas: scale tests and this plan's companion contract; downstream selection,
   lazy data, layout, expression, and bookmark expectations are included.
