@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import Collector from "../collector.js";
-import { processData } from "../flowTestUtils.js";
+import { processData, makeParamRuntimeProvider } from "../flowTestUtils.js";
 import InlineSource from "../sources/inlineSource.js";
 import { createHeadlessEngine } from "../../view/testUtils.js";
 import LookupTransform from "./lookup.js";
@@ -225,6 +225,7 @@ test("scopes self-input indexes and duplicate keys to individual batches", () =>
     });
     const output = new Collector({ type: "collect" });
     lookup.addChild(output);
+    lookup.initializeOnce();
 
     lookup.beginBatch({ type: "file", url: "first.vcf" });
     lookup.handle({ id: "shared", mate: "later", label: "first-file" });
@@ -473,7 +474,9 @@ test("keeps the lookup index when only primary data is reset", () => {
 
 test("repropagates a buffered primary collector when the table reloads", () => {
     const foreign = collect([{ codon: "ATG", aminoAcid: "M" }]);
+    const provider = makeParamRuntimeProvider();
     const primary = new Collector({ type: "collect" });
+    primary.paramRuntimeProvider = provider;
     const lookup = new LookupTransform(
         {
             type: "lookup",
@@ -487,6 +490,7 @@ test("repropagates a buffered primary collector when the table reloads", () => {
     const output = new Collector({ type: "collect" });
     primary.addChild(lookup);
     lookup.addChild(output);
+    lookup.initializeOnce();
 
     primary.handle({ codon: "ATG" });
     primary.complete();
@@ -495,6 +499,7 @@ test("repropagates a buffered primary collector when the table reloads", () => {
     foreign.reset();
     foreign.handle({ codon: "ATG", aminoAcid: "Start" });
     foreign.complete();
+    provider.paramRuntime.flushNow();
 
     expect([...output.getData()]).toEqual([
         { codon: "ATG", aminoAcid: "Start" },
@@ -503,9 +508,10 @@ test("repropagates a buffered primary collector when the table reloads", () => {
 
 test("reloads the primary source when the table reloads", async () => {
     const foreign = collect([{ codon: "ATG", aminoAcid: "M" }]);
+    const provider = makeParamRuntimeProvider();
     const primary = new InlineSource(
         { values: [{ codon: "ATG" }] },
-        /** @type {any} */ ({})
+        /** @type {any} */ (provider)
     );
     const lookup = new LookupTransform(
         {
@@ -520,11 +526,13 @@ test("reloads the primary source when the table reloads", async () => {
     const output = new Collector({ type: "collect" });
     primary.addChild(lookup);
     lookup.addChild(output);
+    lookup.initializeOnce();
     await primary.load();
     expect([...output.getData()]).toEqual([{ codon: "ATG", aminoAcid: "M" }]);
     foreign.reset();
     foreign.handle({ codon: "ATG", aminoAcid: "Start" });
     foreign.complete();
+    provider.paramRuntime.flushNow();
     await Promise.resolve();
 
     expect([...output.getData()]).toEqual([

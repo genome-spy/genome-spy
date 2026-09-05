@@ -659,9 +659,10 @@ export default class ViewParamRuntime {
      * @param {() => void} update Stable callback identity for coalescing.
      * @param {number} [rank]
      * @param {(error: unknown) => void} [onError]
+     * @param {() => Iterable<() => void>} [prerequisites] Pending publication dependencies.
      */
-    requestUpdate(update, rank = 0, onError) {
-        this.#runtime.requestUpdate(update, rank, onError);
+    requestUpdate(update, rank = 0, onError, prerequisites) {
+        this.#runtime.requestUpdate(update, rank, onError, prerequisites);
     }
 
     /** @param {() => void} update */

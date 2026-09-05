@@ -57,10 +57,28 @@ arrangement.
   reach that propagation boundary. Async sources retain their request lifecycle.
   See `reactivity.md` for coherent observer, failure/retry, and disposal semantics.
 - `src/data/dataReadiness.js` walks the actual optimized primary path and
-  `FlowNode.dataDependencies` side edges. Lookup/cross nodes record the foreign
-  revision incorporated into completed output, so side arrival cannot report
-  readiness before primary replay. View ownership is not a dependency graph:
-  an inherited lookup affects its descendants but not an overriding data branch.
+  `FlowNode.dataDependencies` side edges. `SideInputBinding` owns observation and
+  consumed revisions for declared collectors. It binds during `initializeOnce()`,
+  after optimization, and unsubscribes before consumer-owned auxiliary pruning.
+  Lookup/cross declare their inputs and retain only their relation-specific caches.
+  View ownership is not a dependency graph: an inherited lookup affects its
+  descendants but not an overriding data branch.
+- Side-input consumers call `consumeDataDependencies()` during batch/index
+  preparation, including skipped pending batches. Completion can consume available
+  inputs for an empty primary; it cannot certify a newer revision than the one
+  used for nonempty output. `areDataDependenciesAvailable()` supplies availability
+  policy; coordinate lookup includes current viewport coverage. Pending output
+  may complete an empty stream while remaining unready.
+- New side revisions invalidate local caches and enqueue primary replay. An
+  unchanged cached-side replay does nothing when output is already current, but
+  can release a previously pending publication once coverage becomes available.
+  `invalidateDataDependencies()` only clears local relational state; the binding
+  handles readiness and replay. Self lookup has no side binding.
+- Replay jobs declare pending publishers of their side collectors as prerequisites.
+  These run first in the existing streaming queue, regardless of primary-tree
+  depth or enqueue order. The builder rejects nested auxiliary joins, and the
+  optimizer keeps auxiliary collectors terminal; collector revision timing is
+  unchanged. Data still streams and replays in full, without tuple change sets.
 
 ## Subtree initialization and readiness
 

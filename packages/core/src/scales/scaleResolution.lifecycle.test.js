@@ -388,6 +388,7 @@ describe("example scale-domain lifecycle contracts", () => {
         expect(foreign.observers.size).toBe(observerCount);
 
         source.publish([{ x: 0, score: 6 }], [0, 5]);
+        await view.paramRuntime.whenPropagated();
         expect(isSubtreeLazyReady(track, { x: [0, 5] })).toBe(true);
         expect(getRequiredScaleResolution(track, "y").getDomain()).toEqual([
             0, 6,
@@ -440,6 +441,7 @@ describe("example scale-domain lifecycle contracts", () => {
         expect(source.isDataReadyForDomain({ x: [0, 1] })).toBe(true);
 
         source.publish([{ x: 0, score: 6 }], [0, 1]);
+        await view.paramRuntime.whenPropagated();
         expect(getRequiredScaleResolution(view, "y").getDomain()).toEqual([
             0, 6,
         ]);

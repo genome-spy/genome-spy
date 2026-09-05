@@ -9,11 +9,6 @@ import Transform from "./transform.js";
  * field sets into new flat rows.
  */
 export default class CrossTransform extends Transform {
-    // TODO(#463): Share side-input invalidation, primary replay, and revision
-    // readiness with LookupTransform through the dataflow dependency protocol.
-    // Preserve ready-empty output and stamp consumed inputs before notifying
-    // downstream observers; keep Cartesian-product processing and caches local.
-
     get behavior() {
         return BEHAVIOR_CLONES;
     }
@@ -30,23 +25,10 @@ export default class CrossTransform extends Transform {
     /** @type {((primary: Datum, foreign: Datum) => Datum) | undefined} */
     #combine;
 
-    #primaryCompleted = false;
-
     #foreignRevision = -1;
-
-    #consumedForeignRevision = -1;
 
     get dataDependencies() {
         return [this.#foreignCollector];
-    }
-
-    isDataReady() {
-        return (
-            super.isDataReady() &&
-            this.#foreignCollector.completed &&
-            this.#consumedForeignRevision ===
-                this.#foreignCollector.dataRevision
-        );
     }
 
     /**
@@ -56,25 +38,17 @@ export default class CrossTransform extends Transform {
     constructor(params, foreignCollector) {
         super(params);
         this.#foreignCollector = foreignCollector;
+    }
 
-        this.registerDisposer(
-            foreignCollector.observe(() => {
-                this.#foreignData = undefined;
-                this.#foreignFields = undefined;
-                this.#combine = undefined;
-
-                if (this.#primaryCompleted && this.parent) {
-                    this.repropagate();
-                }
-            })
-        );
+    invalidateDataDependencies() {
+        this.#foreignData = undefined;
+        this.#foreignFields = undefined;
+        this.#combine = undefined;
     }
 
     reset() {
         super.reset();
         this.#combine = undefined;
-        this.#primaryCompleted = false;
-        this.#consumedForeignRevision = -1;
     }
 
     /**
@@ -90,6 +64,7 @@ export default class CrossTransform extends Transform {
      */
     handle(datum) {
         this.#prepareForeignData();
+        if (!this.#combine) this.consumeDataDependencies();
         if (this.#foreignData.length === 0) {
             return;
         }
@@ -102,14 +77,6 @@ export default class CrossTransform extends Transform {
         for (const foreignDatum of this.#foreignData) {
             this._propagate(this.#combine(datum, foreignDatum));
         }
-    }
-
-    complete() {
-        this.#primaryCompleted = true;
-        if (this.#foreignCollector.completed) {
-            this.#consumedForeignRevision = this.#foreignCollector.dataRevision;
-        }
-        super.complete();
     }
 
     #prepareForeignData() {

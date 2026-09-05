@@ -444,3 +444,18 @@ describe("GraphRuntime", () => {
         expect(derived.get()).toBe(4);
     });
 });
+
+test("cyclic pending publication prerequisites reject propagation without running jobs", async () => {
+    const runtime = new GraphRuntime();
+    const a = vi.fn();
+    const b = vi.fn();
+    runtime.requestUpdate(a, 0, undefined, () => [b]);
+    runtime.requestUpdate(b, 0, undefined, () => [a]);
+    const failed = expect(runtime.whenPropagated()).rejects.toThrow(
+        /Cyclic streaming/
+    );
+    expect(() => runtime.flushNow()).toThrow(/Cyclic streaming/);
+    await failed;
+    expect(a).not.toHaveBeenCalled();
+    expect(b).not.toHaveBeenCalled();
+});

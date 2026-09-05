@@ -1,7 +1,7 @@
 # Milestone 2 — Declared side-input publication
 
-Status: proposed, 2026-09-06. This document expands M2 in
-[next-refactors.md](next-refactors.md); it does not authorize implementation.
+Status: implemented and verified, 2026-09-06. This document expands M2 in
+[next-refactors.md](next-refactors.md).
 
 ## Goal and boundaries
 
@@ -199,13 +199,13 @@ assert which revision each observer sees, not merely the final rows.
 
 ## Implementation slices within one milestone
 
-- [ ] Establish the owned declaration/publication contract in FlowNode and the
+- [x] Establish the owned declaration/publication contract in FlowNode and the
       small binding; cover an ordinary consumer and empty publication. Resolve the
       collector ancestry ordering case against actual optimized graphs.
-- [ ] Migrate cross and foreign lookup to the binding and existing replay queue;
+- [x] Migrate cross and foreign lookup to the binding and existing replay queue;
       delete their observer/replay and consumed-output state. Preserve local cache
       specialization, batch boundaries, and eager validation.
-- [ ] Integrate coordinate lookup, self lookup, subtree lifetime, and readiness
+- [x] Integrate coordinate lookup, self lookup, subtree lifetime, and readiness
       consumers. Complete cross-subsystem checks and update permanent architecture
       documentation. Review and deliver M2 as one coherent implementation commit.
 
@@ -283,6 +283,45 @@ in equal-revision coverage handling, independent replay-root ordering, auxiliary
 initialization/disposal, collector revision attribution, and duplicate dependency
 identity. This revision incorporates explicit availability classification, pending
 replay prerequisites, initialization-order and teardown rules, a revision timeline
-gate bounded to supported topology, and identity deduplication. Implementation and
-its correctness review remain future work; this records a plan review, not a claim
-that the proposed protocol has been tested.
+gate bounded to supported topology, and identity deduplication. This section records the pre-implementation plan review; implementation evidence
+is recorded below.
+
+## Implementation outcome
+
+Implemented through `SideInputBinding`, the existing FlowNode lifecycle, and
+pending prerequisite callbacks in the existing GraphRuntime streaming queue.
+Lookup/cross lose separate foreign observers, primary-completed flags, consumed
+revision fields, and readiness overrides. Their relation caches and coordinate
+coverage/request policies remain local. No collector revision reordering was
+needed: the builder creates terminal auxiliary collectors and the optimizer merges
+sources, not collectors into primary ancestry. The supported timeline remains
+foreign preparation/completion → revision and side notification → queued primary
+consumption → output completion/domain observation.
+
+The implementation review checked synchronous side requests during primary
+preparation, cached same-revision notifications, failed replay, both independent
+root enqueue orders, shared surviving consumers after disposal, and downstream
+App lazy readiness. A few manually driven tests now initialize side bindings and
+wait for propagation instead of relying on recursive foreign-observer replay.
+
+Verification: full unit suite passes, along with workspace TypeScript and lint.
+New tests exercise both enqueue orders in a real built/optimized cross pipeline,
+shared roots, ready-empty output, pending coverage, unchanged revisions, failure
+and explicit retry, disposed subscribers, and cyclic publication prerequisites.
+Existing lifecycle tests cover inherited Dynseq, overriding branches, and lazy
+readiness; the browser fixture also uses the App's general lazy-readiness API.
+Real cross-heatmap and Dynseq examples pass WebGL/WebGPU smoke and comparison runs.
+Deterministic cross and lazy-coordinate browser fixtures pass WebGL, WebGPU and
+Canvas: one simultaneous-input output publication, pending-to-ready viewport
+replacement, correct rows, immediate SVG geometry, and picking of the new datum.
+The cross fixture checks one collector revision increment; no new GPU upload path
+was introduced or direct driver-level upload counts claimed.
+
+Size gate: production changes add 179 and remove 115 lines (net +64), including
+87 lines for the shared binding. Lookup/cross together shrink by 91 lines. The
+expected overall size reduction was not achieved: independent-root ordering and
+shared lifecycle/consumption semantics cost more than the duplicated transform
+code removed. Simplification retained the existing queue and `completed` flag,
+kept collector ordering unchanged, and avoided a new scheduler, generation system,
+or tuple protocol. This growth is accepted for the tested publication-ordering
+contract rather than presented as an overall code-size reduction.

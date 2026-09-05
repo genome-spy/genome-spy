@@ -22,36 +22,11 @@ import Transform from "./transform.js";
  * readiness and coverage behavior.
  */
 export default class LookupTransform extends Transform {
-    // TODO(#463): Let declared side-input dependencies coordinate invalidation,
-    // primary replay, and consumed-revision readiness, shared with CrossTransform.
-    // Keep index caching, self-input buffering, and lazy coverage policy local;
-    // a shared protocol should replace the duplicated observer/replay glue.
-
     /** @type {import("../collector.js").default | undefined} */
     #foreignCollector;
 
-    #consumedForeignRevision = -1;
-
     get dataDependencies() {
         return this.#foreignCollector ? [this.#foreignCollector] : [];
-    }
-
-    /**
-     * Completed output is ready only after incorporating the current foreign
-     * revision. Foreign completion alone is insufficient: observers may run
-     * before primary replay has updated the lookup output. Self-input lookups
-     * have no foreign collector and use the ordinary completion check.
-     *
-     * @returns {boolean}
-     */
-    isDataReady() {
-        return (
-            super.isDataReady() &&
-            (!this.#foreignCollector ||
-                (this.#foreignCollector.completed &&
-                    this.#consumedForeignRevision ===
-                        this.#foreignCollector.dataRevision))
-        );
     }
 
     get behavior() {
@@ -104,9 +79,7 @@ export default class LookupTransform extends Transform {
         let valueAccessors = values?.map((name) => field(name)) ?? [];
         let outputFields = as ?? values ?? [];
         const defaultValue = params.default ?? null;
-        let primaryCompleted = false;
         let pendingInput = false;
-        let evaluatedRevision = -1;
         let indexRevision = -1;
         // Self-input rows must wait for their group to end so forward
         // references can be resolved.
@@ -125,6 +98,11 @@ export default class LookupTransform extends Transform {
 
         const firstAccessor = primaryAccessors[0];
         const isForeignDataReady = options.isForeignDataReady ?? (() => true);
+        if (options.isForeignDataReady)
+            this.areDataDependenciesAvailable = () =>
+                foreignCollector.completed &&
+                !foreignCollector.disposed &&
+                isForeignDataReady();
         const requestForeignData =
             options.requestForeignData ?? (() => undefined);
         const prepareBatch = options.prepareBatch ?? (() => undefined);
@@ -158,6 +136,7 @@ export default class LookupTransform extends Transform {
          */
         const ensureIndex = (lookupData) => {
             prepareBatch();
+            this.consumeDataDependencies();
             if (
                 foreignCollector &&
                 indexRevision !== foreignCollector.dataRevision
@@ -165,7 +144,6 @@ export default class LookupTransform extends Transform {
                 index = null;
             }
             if (index) {
-                evaluatedRevision = indexRevision;
                 return;
             }
             if (!lookupData && !foreignCollector.completed) {
@@ -196,7 +174,6 @@ export default class LookupTransform extends Transform {
             );
             if (foreignCollector) {
                 indexRevision = foreignCollector.dataRevision;
-                evaluatedRevision = indexRevision;
             }
         };
 
@@ -233,6 +210,7 @@ export default class LookupTransform extends Transform {
                 requestForeignData();
                 if (!isForeignDataReady()) {
                     pendingInput = true;
+                    this.consumeDataDependencies();
                     this.handle = discardDatum;
                     return;
                 }
@@ -256,7 +234,7 @@ export default class LookupTransform extends Transform {
             propagate(datum);
         };
 
-        const invalidateIndex = () => {
+        this.invalidateDataDependencies = () => {
             index = null;
             if (implicitValues) {
                 // The refreshed table may expose a different set of output fields.
@@ -265,26 +243,6 @@ export default class LookupTransform extends Transform {
             }
             this.handle = specializeAndPropagate;
         };
-
-        /**
-         * Replays primary data after the lookup table has completed a reload.
-         */
-        const reloadPrimaryData = () => {
-            if (primaryCompleted && this.parent) {
-                this.repropagate();
-            }
-        };
-
-        if (foreignCollector) {
-            this.registerDisposer(
-                foreignCollector.observe(() => {
-                    // Keep the index for primary-only reloads, but rebuild it when
-                    // the lookup table itself has changed.
-                    invalidateIndex();
-                    reloadPrimaryData();
-                })
-            );
-        }
 
         /**
          * Builds one batch-local index and replays the batch in input order.
@@ -320,10 +278,7 @@ export default class LookupTransform extends Transform {
         const reset = this.reset.bind(this);
         this.reset = () => {
             reset();
-            this.#consumedForeignRevision = -1;
             pendingInput = false;
-            evaluatedRevision = -1;
-            primaryCompleted = false;
             clone = undefined;
             if (selfInput) {
                 bufferedData = [];
@@ -360,6 +315,7 @@ export default class LookupTransform extends Transform {
                     this.handle = specializeAndPropagate;
                 } else {
                     pendingInput = true;
+                    this.consumeDataDependencies();
                     this.handle = discardDatum;
                 }
                 beginBatch(flowBatch);
@@ -374,20 +330,6 @@ export default class LookupTransform extends Transform {
             }
             if (foreignCollector && !pendingInput && !isForeignDataReady()) {
                 requestForeignData();
-            }
-            primaryCompleted = true;
-            // Stamp before downstream completion notifies domain subscribers.
-            // An empty primary can incorporate an available empty side input
-            // without ever building an index or receiving a batch boundary.
-            if (
-                foreignCollector &&
-                !pendingInput &&
-                foreignCollector.completed &&
-                isForeignDataReady() &&
-                (evaluatedRevision === -1 ||
-                    evaluatedRevision === foreignCollector.dataRevision)
-            ) {
-                this.#consumedForeignRevision = foreignCollector.dataRevision;
             }
             complete();
         };

@@ -48,13 +48,23 @@ dependencies are notified. Source completion and collector replay batch the full
 Domain commands request a synchronous flush at the enclosing transaction exit;
 ordinary parameter-only transactions retain their microtask scheduling.
 
-Filter/Formula parameter invalidations enqueue a stable callback for their actual
+Filter/Formula parameter invalidations and declared side-input publications enqueue
+a stable callback for their actual
 upstream collector/source. Shared roots coalesce, and an ancestor's synchronous
 replay subsumes pending descendant replays. The entire replay/fan-out finishes
 before graph effects consume published values; expression evaluation per datum
 remains streaming. Async reload dispatch cannot subsume a cached descendant's
 replay. `whenPropagated` includes synchronous replay and resulting graph work,
 but excludes network completion and future animation frames.
+
+Streaming jobs may declare prerequisite callbacks. Only pending prerequisites
+participate: a queued publisher of a foreign collector runs before the primary
+replay that consumes it. Prerequisites derive from optimized FlowNode side edges;
+cyclic pending jobs fail rather than repeatedly deferring. This extends the same
+queue and does not introduce tuple-level incremental processing. Direct collector
+callbacks can observe pending output; consumers needing the updated rows use a
+propagation barrier or a graph effect. Coordinate coverage and asynchronous source
+completion remain governed by data-readiness APIs.
 
 A failed flush rejects current propagation waiters and stops automatic flushing.
 Pending computed/effect invalidations remain, while queued publication jobs are dropped. Caller-owned cleanup hooks discard their

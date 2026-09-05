@@ -36,6 +36,7 @@ test.each([true, false])(
         );
         const output = new Collector();
         lookup.addChild(output);
+        lookup.initializeOnce();
         lookup.reset();
         if (withBoundary) {
             lookup.beginBatch({ type: "file" });

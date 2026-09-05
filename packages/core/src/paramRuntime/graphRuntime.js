@@ -186,7 +186,7 @@ export default class GraphRuntime {
 
     #syncRequested = false;
 
-    /** @type {Map<() => void, {rank: number, onError?: (error: unknown) => void}>} */
+    /** @type {Map<() => void, {rank: number, onError?: (error: unknown) => void, prerequisites?: () => Iterable<() => void>}>} */
     #updates = new Map();
 
     /** @type {Map<object, number>} */
@@ -645,6 +645,21 @@ export default class GraphRuntime {
                             priority = rank;
                         }
                     }
+                    // Follow only pending prerequisites. Async dispatch remains
+                    // a job, not a promise included in synchronous propagation.
+                    const visited = new Set();
+                    while (true) {
+                        if (visited.has(update))
+                            throw new Error(
+                                "Cyclic streaming publication dependencies"
+                            );
+                        visited.add(update);
+                        const prerequisite = Array.from(
+                            this.#updates.get(update).prerequisites?.() ?? []
+                        ).find((candidate) => this.#updates.has(candidate));
+                        if (!prerequisite) break;
+                        update = prerequisite;
+                    }
                     activeCleanup = this.#updates.get(update).onError;
                     this.#updates.delete(update);
                     this.#countRun(update, "streaming update");
@@ -687,9 +702,10 @@ export default class GraphRuntime {
      * @param {() => void} update
      * @param {number} [rank]
      * @param {(error: unknown) => void} [onError] Cleanup when propagation abandons this job.
+     * @param {() => Iterable<() => void>} [prerequisites] Pending publication dependencies.
      */
-    requestUpdate(update, rank = 0, onError) {
-        this.#updates.set(update, { rank, onError });
+    requestUpdate(update, rank = 0, onError, prerequisites) {
+        this.#updates.set(update, { rank, onError, prerequisites });
         this.#scheduleFlush();
     }
 

@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../view/testUtils.js";
 import Collector from "../collector.js";
-import { processData } from "../flowTestUtils.js";
+import { processData, makeParamRuntimeProvider } from "../flowTestUtils.js";
 import CrossTransform from "./cross.js";
 
 /**
@@ -103,7 +103,9 @@ test("requires foreign data to complete before primary data", () => {
 
 test("repropagates buffered primary data after foreign data reloads", () => {
     const foreign = collect([{ y: "a" }]);
+    const provider = makeParamRuntimeProvider();
     const primary = new Collector({ type: "collect" });
+    primary.paramRuntimeProvider = provider;
     const cross = new CrossTransform(
         {
             type: "cross",
@@ -114,6 +116,7 @@ test("repropagates buffered primary data after foreign data reloads", () => {
     const output = new Collector({ type: "collect" });
     primary.addChild(cross);
     cross.addChild(output);
+    cross.initializeOnce();
 
     primary.handle({ x: 1 });
     primary.complete();
@@ -123,6 +126,7 @@ test("repropagates buffered primary data after foreign data reloads", () => {
     foreign.handle({ y: "b" });
     foreign.handle({ y: "c" });
     foreign.complete();
+    provider.paramRuntime.flushNow();
 
     expect([...output.getData()]).toEqual([
         { x: 1, y: "b" },
@@ -140,6 +144,7 @@ test("preserves primary facet boundaries", () => {
     );
     const output = new Collector({ type: "collect" });
     cross.addChild(output);
+    cross.initializeOnce();
 
     cross.beginBatch({ type: "facet", facetId: ["first"] });
     cross.handle({ x: 1 });

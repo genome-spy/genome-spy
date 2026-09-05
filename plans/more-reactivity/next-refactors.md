@@ -1,6 +1,6 @@
 # Next refactors
 
-Status: M1 implemented and verified, 2026-09-05. M2–M4 remain proposed.
+Status: M1–M2 implemented and verified, 2026-09-06. M3–M4 remain proposed.
 See [direction and research](more-reactivity-plan.md) for rationale and contracts.
 
 ## Sequence and review boundaries
@@ -134,7 +134,10 @@ public scale compatibility and CPU/GPU/export consumers. Resolve this before M4.
 See the [detailed M2 implementation plan](milestone-2.md) for publication
 contracts, implementation slices, risks, and the verification matrix.
 
-- [ ] Make lookup and cross use the same dependency/publication protocol.
+- [x] Make lookup and cross use the same dependency/publication protocol.
+
+Completed 2026-09-06; see the detailed plan's implementation outcome for verification
+and the net +64 production-line tradeoff.
 
 **Outcome:** `dataDependencies` determines side-input invalidation, replay and
 consumed-revision readiness, rather than merely describing readiness traversal.
