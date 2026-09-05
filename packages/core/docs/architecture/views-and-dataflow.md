@@ -128,6 +128,14 @@ gates viewport candidates without reopening initial readiness. UnitView retains
 a small subtree-ready selection synchronization bridge: domain-inert linked
 scales have no collector publication to seed their initial brush.
 
+Axis auto-extent measurement checks the displayed domain directly: categorical
+domains must be nonempty, and continuous domains must contain only finite
+values with at least two distinct values. Usable partial domains can size labels while other
+contributors are pending. Empty or degenerate domains cannot permanently enlarge
+the grow-only extent. The deprecated public `isDomainInitialized()` query retains
+its historical placeholder heuristic for embedding compatibility; it is not used
+as an internal readiness or axis-measurement condition.
+
 ## Dynamic view lifecycle
 
 - Prefer `ViewFactory.createOrImportView`; some App views are still constructed

@@ -952,23 +952,15 @@ export default class ScaleResolution {
         return this.#hasConfiguredDomain();
     }
 
+    /** @deprecated Legacy placeholder check, not data readiness or axis usability. */
     isDomainInitialized() {
-        const s = this.#scaleManager.scale;
-        if (!s) {
-            return false;
-        }
-
-        const domain = s.domain();
-
-        // We could alternatively have a flag that is set when the domain is initialized.
-        if (isContinuous(s.type)) {
-            return (
-                domain.length > 2 ||
-                (domain.length == 2 && (domain[0] !== 0 || domain[1] !== 0))
-            );
-        } else {
-            return domain.length > 0;
-        }
+        const scale = this.#scaleManager.scale;
+        if (!scale) return false;
+        const domain = scale.domain();
+        return isContinuous(scale.type)
+            ? domain.length > 2 ||
+                  (domain.length === 2 && domain.some((value) => value !== 0))
+            : domain.length > 0;
     }
 
     /**

@@ -317,17 +317,9 @@ export default class AxisView extends LayerView {
         const scaleResolution = this.dataParent.getScaleResolution(channel);
         if (
             scaleResolution &&
-            !scaleResolution.isDomainDefinedExplicitly() &&
-            !scaleResolution.isDomainInitialized()
+            !hasMeasurableDomain(scaleResolution.getScale())
         ) {
             return;
-        }
-
-        if (scaleResolution) {
-            const scale = scaleResolution.getScale();
-            if (hasDegenerateContinuousDomain(scale)) {
-                return;
-            }
         }
 
         const measuredLabelExtent = getMeasuredLabelExtent(
@@ -354,14 +346,18 @@ export default class AxisView extends LayerView {
 }
 
 /**
+ * Axis extent can grow as soon as the displayed domain is usable, even while
+ * other contributors are pending. Ignore empty or degenerate domains so their
+ * provisional labels cannot permanently enlarge the grow-only axis extent.
  * @param {import("../types/encoder.js").VegaScale} scale
  */
-function hasDegenerateContinuousDomain(scale) {
-    const domain = /** @type {unknown[]} */ (scale.domain());
+function hasMeasurableDomain(scale) {
+    const domain = scale.domain();
+    if (!isContinuous(scale.type)) return domain.length > 0;
     return (
-        isContinuous(scale.type) &&
         domain.length >= 2 &&
-        domain.every((value) => value === domain[0])
+        domain.every((value) => Number.isFinite(Number(value))) &&
+        domain.some((value) => Number(value) !== Number(domain[0]))
     );
 }
 

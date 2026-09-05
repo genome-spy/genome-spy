@@ -10,7 +10,7 @@ only the necessary historical interaction/loading policy and animation state.
 Success requires removing responsibilities and competing update paths, not merely
 extracting helpers from a large class. This follows
 [issue #464 and its comments](https://github.com/genome-spy/genome-spy/issues/464).
-Milestones 1–8 are complete. The
+Milestones 1–9 are complete. The
 [detailed milestone 3 record](milestone-3-plan.md) contains the readiness and
 owner integration, review outcomes, verification, and measured tradeoffs.
 That work supplied the tested baseline for the final simplification.
@@ -348,6 +348,31 @@ Follow-up evidence:
 - Verdict: a worthwhile deletion of a second subscription-lifetime owner and an
   obsolete App refresh path. Retaining the proven startup bridge keeps the scope
   bounded; no new scheduler or initialization protocol is introduced.
+
+### 9. Make axis domain usability explicit
+
+Status: complete; reviewed at the axis measurement and public API boundary.
+
+- [x] Replace the axis's configured/initialized heuristic and separate degeneracy
+      check with a local measurement predicate: nonempty categorical domains,
+      or continuous domains with at least two finite, differing numeric values.
+      Do not gate usable partial domains on complete contributor readiness.
+- [x] Preserve `isDomainInitialized()` because it is exposed by the embedding
+      API. Mark its unchanged legacy behavior deprecated instead of breaking
+      external callers. The axis no longer consumes this ambiguous query.
+- [x] Verify actual axis extents for empty quantitative/categorical -> populated
+      data, zero/nonzero degenerate domains, and a valid shared partial domain
+      while a real lazy contributor remains pending. Fifteen axis tests pass.
+- [x] Review the contract and public compatibility, run full unit tests and Core
+      TypeScript/lint/format checks, and update the architecture record.
+      Full suite: 3,975 passed, one skipped, two todo across 466 files.
+- Measurement: the two production JS files shrink from 2,776 to 2,764 lines;
+  including the public type annotation, the three files shrink from 2,867 to
+  2,857. No new domain state, scheduler, or resolution-level usability API.
+- Verdict: the useful simplification is removing an axis decision from the
+  generic resolution contract. Full removal of the deprecated public query is
+  reserved for an API-breaking release.
+- Commit: `refactor(core): make axis domain usability explicit`.
 
 Domain-only sharing is a later proposal, contingent on this refactor succeeding.
 It must define compatibility for domain-affecting properties and range-dependent
