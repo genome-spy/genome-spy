@@ -4,6 +4,8 @@ Milestone 2 introduces `packages/core/src/scales/domainLifecycle.js` and its
 colocated tests. It is deliberately not connected to live scales yet. The model
 proves a policy shape; it does not fix readiness or reduce the live coordinator
 until milestone 3 replaces the existing branches.
+The [detailed milestone 3 plan](milestone-3-plan.md) refines the integration
+mechanics, dependency contract, and verification gates below.
 
 ## State and input boundary
 
@@ -34,6 +36,9 @@ uses that form; source-specific viewport history/query logic can remain outside
 the model. Initial readiness requires all relevant active contributors, including
 constant versus field contributions and auxiliary lookup inputs. Viewport
 readiness additionally requires coverage of each requested positional interval.
+The prototype currently overloads `readiness` for both concerns. Integration
+will reserve it for initial readiness and keep current coverage gating in the
+viewport evaluator, submitting no display candidate while coverage is pending.
 
 Policy describes the resolved scale kind (`continuous`, structural `index`, or
 `discrete`), zoomability, render state, animation preference, and selection link.
@@ -71,9 +76,11 @@ display, because a linked initial domain may already match a physical startup
 domain but still need to seed its parameter. Equal parameter values are not
 republished. Selection echoes of committed animation frames carry explicit
 `selection-sync` provenance and preserve the active transition when unchanged.
-The owner must carry that provenance through parameter propagation; it must not
-guess origin from domain equality. External clears or configuration updates can
-cancel navigation even when equal to the display before its first frame.
+The owner must carry that provenance through parameter propagation; the detailed
+plan proposes a scoped outgoing-object identity marker against the current
+synchronous subscription contract. It must not guess origin from domain equality.
+External clears or configuration updates can cancel navigation even when equal
+to the display before its first frame.
 Passive data and membership refreshes that retain the displayed selection
 interval also preserve a running linked zoom, including bookmark navigation.
 
@@ -86,7 +93,8 @@ and subscriptions. An unchanged target does not restart a running transition.
 Readiness, reference, and extent changes can occur without a domain event. The
 future owner must expose their progress to actual readiness/extent consumers
 instead of emitting a fictitious domain change to wake lazy loading. Startup
-lazy requests remain explicit, as in the existing source initialization path.
+lazy requests need an explicit audit: the current source activation installs
+listeners but relies on domain/layout events to trigger its first request.
 
 ## Integration review requirements
 

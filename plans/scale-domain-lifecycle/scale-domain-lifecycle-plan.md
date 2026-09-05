@@ -7,6 +7,8 @@ preserving supported visual behavior. This follows
 [issue #464 and its comments](https://github.com/genome-spy/genome-spy/issues/464).
 The first delivery covers milestones 1 and 2 below. It establishes the contracts
 and tests the new policy before integrating it into live scales.
+Milestones 1–2 are complete. The next delivery follows the
+[detailed milestone 3 plan](milestone-3-plan.md).
 
 The key distinction is between calculating a candidate domain and deciding
 whether it may replace the displayed domain. Data arrival, expressions,
@@ -22,6 +24,8 @@ Goals:
 - Preserve navigation during asynchronous updates and suppress animations
   through partial initial domains.
 - Keep selection authority and calibrated expression propagation intact.
+- Preserve automatic domain animations, including eligible data, configuration,
+  membership, and viewport updates. Animation is required UX, not optional scope.
 - Delete write-then-restore behavior and duplicated lifecycle state.
 
 Non-goals are public specification changes, pixel ranges, domain-only sharing,
@@ -96,6 +100,10 @@ while keeping each integration boundary reviewable.
 
 ### 3. Integrate one domain owner and remove the old lifecycle
 
+The [detailed implementation plan](milestone-3-plan.md) defines readiness,
+ownership, commit ordering, example-based verification, and coherent commits.
+Review that shared contract with a subagent before runtime implementation.
+
 - [ ] Expose relevant initial readiness and lazy coverage from the dataflow,
       including auxiliary input dependencies and genuine empty completion.
 - [ ] Route configuration, data, selections, viewport updates, interaction,
@@ -110,8 +118,8 @@ while keeping each integration boundary reviewable.
   failed dynamic insertion, ordinal ordering, and layout invalidation.
 - Documentation: update architecture and document intentional bug fixes using
   the documentation skill; preserve public grammar and persisted bookmark data.
-- Commit: `refactor(core): centralize live domain lifecycle updates` (split at
-  dataflow/scale contract boundaries if needed for coherent review).
+- Commits: relevant-input readiness, then centralized commits/transitions, as
+  specified in the detailed plan. Final integration review covers both slices.
 
 ### 4. Verify integration and evaluate the simplification
 
@@ -180,3 +188,11 @@ current behavior first; do not silently turn a quirk into a permanent contract.
   are unchanged: the production-size reduction gate remains milestone 3.
 - No interactive browser run was needed for these headless characterization and
   provisional policy changes. Browser verification remains an integration gate.
+
+## Milestone 3 planning review
+
+The detailed plan received subagent review on 2026-09-05. Review corrections
+separate initial readiness from viewport eligibility and define reentrant commit
+validity without suppressing required effects during benign selection feedback.
+Automatic animations remain a fixed UX requirement. Runtime implementation has
+not started; readiness is the first implementation slice.

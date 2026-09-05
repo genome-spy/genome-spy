@@ -1,6 +1,6 @@
 # Domain lifecycle behavior contract
 
-Milestone 1 records the compatibility boundary. Milestone 2 will exercise a
+Milestone 1 records the compatibility boundary. Milestone 2 exercises a
 proposed policy separately; it does not change the live runtime. Paths below
 are relative to the repository root.
 
@@ -21,6 +21,9 @@ must still follow the linked selection's semantics.
 
 ## Behaviors to retain
 
+- Automatic domain animation is a required UX contract. Preserve existing
+  eligibility, timing, and interpolation for viewport, data, configuration, and
+  membership updates; do not limit automatic animation to viewport changes.
 - Configured index/locus intervals and zoom extents are inclusive at the public
   boundary. Internal intervals are half-open; selection intervals are already
   internal and must not receive a second end increment. Preserve chromosome-only
