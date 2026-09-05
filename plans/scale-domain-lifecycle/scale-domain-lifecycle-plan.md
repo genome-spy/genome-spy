@@ -76,9 +76,10 @@ while keeping each integration boundary reviewable.
 
 ### 2. Implement and test the explicit lifecycle policy
 
-- [ ] Build a small pure model for domain updates with explicit readiness.
-- [ ] Exercise asynchronous contributor, empty-result, early interaction,
-      baseline, membership, authority, and transition event sequences.
+- [x] Build a small pure model for domain updates with explicit readiness in
+      `domainLifecycle.js`.
+- [x] Exercise asynchronous contributor, empty-result, early interaction,
+      baseline, membership, authority, and transition event sequences with 29 tests.
 - Outcome: a reviewable policy independent of scale mutation. Live runtime
   integration remains milestone 3; tests must distinguish intended fixes from
   current behavior rather than pretending the new policy is already active.
@@ -160,3 +161,22 @@ Risks requiring explicit decisions are reset versus snapshot semantics,
 baseline completion after early interaction, dummy lazy startup completions,
 side-input coverage, and selection feedback during transitions. Characterize
 current behavior first; do not silently turn a quirk into a permanent contract.
+
+## Delivery record: milestones 1 and 2
+
+- The plan received subagent review before commit. The requested caller mapping
+  is recorded in [policy-integration.md](policy-integration.md).
+- Six new headless characterization tests use the documentation/example corpus;
+  29 pure model tests cover the proposed lifecycle. The focused scale, lazy-source,
+  and coordinate-lookup run passes 321 tests in 29 files. Workspace TypeScript,
+  repository lint, and formatting checks pass.
+- Subagent implementation review identified selection-origin ambiguity during
+  animation. The revised model distinguishes explicit selection synchronization
+  from external changes and preserves equal passive data/membership updates.
+  Regression tests cover clearing before the first frame and data arrival during
+  bookmark navigation. The reviewer confirmed the fixes and approved milestone 2.
+- The model is 302 lines including its JSDoc contracts, with 414 lines of tests.
+  It introduces no scheduler or provider framework. Existing live coordinators
+  are unchanged: the production-size reduction gate remains milestone 3.
+- No interactive browser run was needed for these headless characterization and
+  provisional policy changes. Browser verification remains an integration gate.
