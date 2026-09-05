@@ -205,6 +205,10 @@ export default class ScaleInstanceManager {
 
     /** @param {import("../spec/scale.js").Scale} props */
     configureRange(props) {
+        // TODO(#463): Apply reactive properties/range as one settled mapping
+        // update, replacing the separate subscriptions and range notifications.
+        // Keep displayed-domain dependencies distinct so same-scale domain-to-range
+        // expressions and frame-by-frame calibration remain valid.
         configureScaleRange(this.#scale, {
             ...this.#stripNonScaleProps(props),
             range: undefined,
@@ -291,6 +295,11 @@ export default class ScaleInstanceManager {
     }
 
     #wrapScaleInterceptors() {
+        // TODO(#463): When mapping configuration joins the reactive graph, keep
+        // the mutable D3 scale internal and replace these patches with an explicit
+        // configuration API. Methods such as nice() can bypass domain interception.
+        // Preserve a cached fast mapping function for encoders; benchmark any
+        // callable wrapper/proxy before putting it on the per-datum path.
         const scale = this.#scale;
         const range = scale.range;
         const domain = scale.domain;
