@@ -9,6 +9,11 @@ import Transform from "./transform.js";
  * field sets into new flat rows.
  */
 export default class CrossTransform extends Transform {
+    // TODO(#463): Share side-input invalidation, primary replay, and revision
+    // readiness with LookupTransform through the dataflow dependency protocol.
+    // Preserve ready-empty output and stamp consumed inputs before notifying
+    // downstream observers; keep Cartesian-product processing and caches local.
+
     get behavior() {
         return BEHAVIOR_CLONES;
     }
@@ -26,6 +31,23 @@ export default class CrossTransform extends Transform {
     #combine;
 
     #primaryCompleted = false;
+
+    #foreignRevision = -1;
+
+    #consumedForeignRevision = -1;
+
+    get dataDependencies() {
+        return [this.#foreignCollector];
+    }
+
+    isDataReady() {
+        return (
+            super.isDataReady() &&
+            this.#foreignCollector.completed &&
+            this.#consumedForeignRevision ===
+                this.#foreignCollector.dataRevision
+        );
+    }
 
     /**
      * @param {import("../../spec/transform.js").CrossParams} params
@@ -52,6 +74,7 @@ export default class CrossTransform extends Transform {
         super.reset();
         this.#combine = undefined;
         this.#primaryCompleted = false;
+        this.#consumedForeignRevision = -1;
     }
 
     /**
@@ -83,10 +106,16 @@ export default class CrossTransform extends Transform {
 
     complete() {
         this.#primaryCompleted = true;
+        if (this.#foreignCollector.completed) {
+            this.#consumedForeignRevision = this.#foreignCollector.dataRevision;
+        }
         super.complete();
     }
 
     #prepareForeignData() {
+        if (this.#foreignRevision !== this.#foreignCollector.dataRevision) {
+            this.#foreignData = undefined;
+        }
         if (this.#foreignData) {
             return;
         }
@@ -97,6 +126,7 @@ export default class CrossTransform extends Transform {
         }
 
         this.#foreignData = Array.from(this.#foreignCollector.getData());
+        this.#foreignRevision = this.#foreignCollector.dataRevision;
         this.#foreignFields =
             this.#foreignData.length === 0
                 ? []

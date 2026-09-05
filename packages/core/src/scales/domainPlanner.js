@@ -1,5 +1,3 @@
-import { span } from "vega-util";
-import { isContinuous } from "vega-scale";
 import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
 import {
     toInternalIndexLikeDataDomain,
@@ -9,11 +7,7 @@ import { hasIntervalSelectionBindingInScope } from "./selectionDomainUtils.js";
 import createDomain from "../utils/domainArray.js";
 import { resolveConfiguredDomainValue } from "./domainExpressions.js";
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
-import {
-    isViewportDomainRef,
-    resolveVisibleDataDomain,
-    validateSharedViewportDomain,
-} from "./viewportDomain.js";
+import { isViewportDomainRef } from "./viewportDomain.js";
 import { getEncoderAccessors, getPrimaryChannel } from "../encoder/encoder.js";
 import {
     hasExplicitLocusUpperBound,
@@ -38,8 +32,6 @@ import {
  * @typedef {import("../spec/parameter.js").ExprRef} ExprRef
  * @typedef {import("./scaleResolution.js").ScaleResolutionMember} ScaleResolutionMember
  * @typedef {{ channel: import("../spec/channel.js").ChannelWithScale, type: import("../spec/channel.js").Type, domain: import("../spec/scale.js").Scale["domain"] }} ConfiguredDomainSource
- * @typedef {() => Set<ScaleResolutionMember>} ScaleMembersGetter
- * @typedef {() => ConfiguredDomainSource | undefined} ViewLevelDomainSourceGetter
  * @typedef {(paramName: string, encoding: "x" | "y") => { runtime: any, selection: import("../types/selectionTypes.js").IntervalSelection | undefined }} SelectionBindingResolver
  * @typedef {(member: ScaleResolutionMember) => import("../data/viewportDomain.js").ViewportConstraint[]} ViewportConstraintsGetter
  * @typedef {(interval: ScalarDomain | ComplexDomain) => number[]} FromComplexInterval
@@ -71,345 +63,6 @@ import {
  * }} SelectionDomainLinkInfo
  */
 
-export default class DomainPlanner {
-    /** @type {ScaleMembersGetter} */
-    #getActiveMembers;
-
-    /** @type {ScaleMembersGetter} */
-    #getAllMembers;
-
-    /** @type {ScaleMembersGetter} */
-    #getDataMembers;
-
-    /** @type {ViewLevelDomainSourceGetter | undefined} */
-    #getViewLevelDomainSource;
-
-    /** @type {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} */
-    #createExpression;
-
-    /** @type {SelectionBindingResolver} */
-    #resolveSelectionBinding;
-
-    /** @type {ViewportConstraintsGetter | undefined} */
-    #getViewportConstraints;
-
-    /** @type {() => import("../spec/channel.js").Type} */
-    #getType;
-
-    /** @type {GetLocusExtent} */
-    #getLocusExtent;
-
-    /** @type {FromComplexInterval} */
-    #fromComplexInterval;
-
-    /** @type {any[]} */
-    #initialDomain;
-
-    /** @type {SelectionDomainLinkInfo | undefined} */
-    #selectionDomainLinkInfo = undefined;
-
-    /** @type {boolean | undefined} */
-    #hasViewportDomain;
-
-    /** @type {DomainArray | undefined} */
-    #lastVisibleDataDomain;
-
-    #configuredDomainDirty = true;
-
-    /** @type {Map<boolean, DomainArray | undefined>} */
-    #configuredDomainsByInitialMode = new Map();
-
-    /** @type {WeakMap<ScaleResolutionMember, import("../types/encoder.js").ScaleAccessor[]>} */
-    #accessorsByMember = new WeakMap();
-
-    /**
-     * @param {object} options
-     * @param {ScaleMembersGetter} options.getActiveMembers Active shared-scale members used for configured domain planning.
-     * @param {ScaleMembersGetter} [options.getAllMembers] All members, including inactive ones, used for conflict validation.
-     * @param {ScaleMembersGetter} [options.getDataMembers] Members used for data-domain extraction; defaults to `getActiveMembers`.
-     * @param {ViewLevelDomainSourceGetter} [options.getViewLevelDomainSource] View-level domain source.
-     * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression Scale expression factory.
-     * @param {SelectionBindingResolver} options.resolveSelectionBinding Scale selection binding resolver.
-     * @param {ViewportConstraintsGetter} [options.getViewportConstraints] Positional constraints for viewport-domain extraction.
-     * @param {() => import("../spec/channel.js").Type} options.getType
-     * @param {GetLocusExtent} options.getLocusExtent
-     * @param {FromComplexInterval} options.fromComplexInterval
-     */
-    constructor({
-        getActiveMembers,
-        getAllMembers,
-        getDataMembers,
-        getViewLevelDomainSource,
-        createExpression,
-        resolveSelectionBinding,
-        getViewportConstraints,
-        getType,
-        getLocusExtent,
-        fromComplexInterval,
-    }) {
-        this.#getActiveMembers = getActiveMembers;
-        this.#getAllMembers = getAllMembers ?? getActiveMembers;
-        this.#getDataMembers = getDataMembers ?? getActiveMembers;
-        this.#getViewLevelDomainSource = getViewLevelDomainSource;
-        this.#createExpression = createExpression;
-        this.#resolveSelectionBinding = resolveSelectionBinding;
-        this.#getViewportConstraints = getViewportConstraints;
-        this.#getType = getType;
-        this.#getLocusExtent = getLocusExtent;
-        this.#fromComplexInterval = fromComplexInterval;
-    }
-
-    /**
-     * @returns {any[]}
-     */
-    get initialDomainSnapshot() {
-        return this.#initialDomain;
-    }
-
-    /**
-     * @param {{ includeSelectionInitial?: boolean }} [options]
-     */
-    hasConfiguredDomain(options = {}) {
-        return !!this.getConfiguredDomain(options);
-    }
-
-    hasSelectionConfiguredDomain() {
-        this.getSelectionConfiguredDomainBindingInfo();
-        return !!this.#selectionDomainLinkInfo;
-    }
-
-    /**
-     * @returns {SelectionDomainLinkInfo | undefined}
-     */
-    getSelectionConfiguredDomainBindingInfo() {
-        if (this.#selectionDomainLinkInfo || !this.#configuredDomainDirty) {
-            return this.#selectionDomainLinkInfo;
-        }
-
-        // Metadata checks during view construction must not evaluate ordinary
-        // domain expressions before scale topology and parameters are ready.
-        if (
-            !isSelectionDomainRef(this.#getViewLevelDomainSource?.()?.domain) &&
-            !this.#getAllMembers()
-                .values()
-                .some(
-                    (member) =>
-                        member.contributesToDomain &&
-                        isSelectionDomainRef(member.channelDef.scale?.domain)
-                )
-        ) {
-            return;
-        }
-        this.getConfiguredDomain();
-        return this.#selectionDomainLinkInfo;
-    }
-
-    getSelectionConfiguredDomainInfo() {
-        const bindingInfo = this.getSelectionConfiguredDomainBindingInfo();
-        if (!bindingInfo) {
-            return;
-        }
-
-        return {
-            param: bindingInfo.param,
-            encoding: bindingInfo.encoding,
-        };
-    }
-
-    invalidateConfiguredDomain() {
-        this.#configuredDomainDirty = true;
-        this.#selectionDomainLinkInfo = undefined;
-        this.#hasViewportDomain = undefined;
-        this.#lastVisibleDataDomain = undefined;
-        this.#configuredDomainsByInitialMode.clear();
-    }
-
-    hasViewportDomain() {
-        return (this.#hasViewportDomain ??= validateSharedViewportDomain(
-            this.#getAllMembers(),
-            this.#getViewLevelDomainSource?.()
-        ));
-    }
-
-    /**
-     * Returns the default domain without considering configured domains.
-     *
-     * @param {boolean} [extractDataDomain]
-     * @param {import("../spec/scale.js").Scale["assembly"]} [locusAssembly]
-     * @returns {any[]}
-     */
-    getDefaultDomain(extractDataDomain = false, locusAssembly) {
-        const type = this.#getType();
-        return resolveDefaultDomain(
-            type,
-            this.#getLocusExtent,
-            extractDataDomain && type !== LOCUS
-                ? this.getDataDomain()
-                : undefined,
-            locusAssembly
-        );
-    }
-
-    /**
-     * Returns the configured domain or a data-derived/default domain.
-     *
-     * @param {boolean} [extractDataDomain]
-     * @param {import("../spec/scale.js").Scale["assembly"]} [locusAssembly]
-     * @param {{ includeSelectionInitial?: boolean }} [options]
-     * @returns {any[]}
-     */
-    getConfiguredOrDefaultDomain(
-        extractDataDomain = false,
-        locusAssembly,
-        options = {}
-    ) {
-        // TODO: intersect the domain with zoom extent (if it's defined)
-        return (
-            this.getConfiguredDomain(options) ??
-            this.getDefaultDomain(extractDataDomain, locusAssembly)
-        );
-    }
-
-    /**
-     * Unions the configured domains of all participating views.
-     *
-     * @param {{ includeSelectionInitial?: boolean }} [options]
-     * @return {DomainArray}
-     */
-    getConfiguredDomain(options = {}) {
-        const includeSelectionInitial = options.includeSelectionInitial ?? true;
-
-        if (
-            !this.#configuredDomainDirty &&
-            this.#configuredDomainsByInitialMode.has(includeSelectionInitial)
-        ) {
-            return this.#configuredDomainsByInitialMode.get(
-                includeSelectionInitial
-            );
-        }
-
-        const viewLevelDomainSource = this.#getViewLevelDomainSource?.();
-        this.hasViewportDomain();
-        const configuredDomain = resolveConfiguredDomain(
-            this.#getActiveMembers(),
-            viewLevelDomainSource,
-            this.#createExpression,
-            this.#resolveSelectionBinding,
-            this.#fromComplexInterval,
-            includeSelectionInitial
-        );
-        validateSharedSelectionDomain(
-            this.#getAllMembers(),
-            configuredDomain.selectionRef
-        );
-        this.#selectionDomainLinkInfo = configuredDomain.selectionRef;
-        this.#configuredDomainsByInitialMode.set(
-            includeSelectionInitial,
-            configuredDomain.domain
-        );
-        this.#configuredDomainDirty = false;
-        return configuredDomain.domain;
-    }
-
-    /**
-     * Extracts and unions the data domains of all participating views.
-     *
-     * @return {DomainArray | undefined}
-     */
-    getDataDomain() {
-        const members = this.#getDataMembers();
-        /** @param {ScaleResolutionMember} member */
-        const getAccessors = (member) => this.#getMemberAccessors(member);
-        if (this.hasViewportDomain()) {
-            if (!this.#getViewportConstraints) {
-                throw new Error(
-                    "Viewport-domain extraction requires positional constraints."
-                );
-            }
-            const domain = resolveVisibleDataDomain(
-                members,
-                this.#getType,
-                getAccessors,
-                this.#getViewportConstraints
-            );
-            if (domain && domain.length > 0) {
-                this.#lastVisibleDataDomain = domain;
-            }
-            return domain?.length ? domain : this.#lastVisibleDataDomain;
-        } else {
-            return resolveDataDomain(members, this.#getType, getAccessors);
-        }
-    }
-
-    /**
-     * Returns the data-derived domain in the internal coordinate system used
-     * by zoom interactions.
-     *
-     * @returns {number[] | undefined}
-     */
-    getDataZoomExtent() {
-        return toInternalIndexLikeDataDomain(
-            this.#getType(),
-            this.getDataDomain()
-        );
-    }
-
-    /**
-     * @param {import("../types/encoder.js").VegaScale} scale
-     * @param {boolean} domainWasInitialized
-     * @param {any[]} [snapshotDomain]
-     * @returns {boolean} true if listeners should be notified immediately
-     */
-    captureInitialDomain(scale, domainWasInitialized, snapshotDomain) {
-        if (!this.#initialDomain && isContinuous(scale.type)) {
-            const domain = snapshotDomain ?? scale.domain();
-            if (span(domain) > 0) {
-                this.#initialDomain = domain;
-            }
-        }
-
-        if (!domainWasInitialized) {
-            this.#initialDomain = snapshotDomain ?? scale.domain();
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * @param {ScaleResolutionMember} member
-     * @returns {import("../types/encoder.js").ScaleAccessor[]}
-     */
-    #getMemberAccessors(member) {
-        const cached = this.#accessorsByMember.get(member);
-        if (cached) {
-            return cached;
-        }
-
-        const encoders = member.view.mark.encoders;
-        if (!encoders) {
-            return [];
-        }
-
-        const encoder = encoders[member.channel];
-        if (!encoder) {
-            return [];
-        }
-
-        const accessors = getEncoderAccessors(encoder);
-        if (accessors.length === 0) {
-            return [];
-        }
-
-        const scaleAccessors = accessors
-            .filter(isScaleAccessor)
-            .filter((accessor) => !accessor.channelDef.domainInert);
-
-        this.#accessorsByMember.set(member, scaleAccessors);
-        return scaleAccessors;
-    }
-}
-
 /**
  * @param {Set<ScaleResolutionMember>} members
  * @param {ConfiguredDomainSource | undefined} viewLevelDomain
@@ -422,7 +75,7 @@ export default class DomainPlanner {
  *   selectionRef: SelectionDomainLinkInfo | undefined,
  * }}
  */
-function resolveConfiguredDomain(
+export function resolveConfiguredDomain(
     members,
     viewLevelDomain,
     createExpression,
@@ -477,6 +130,74 @@ function resolveConfiguredDomain(
     }
 
     return finishConfiguredDomainResolution(state);
+}
+
+/**
+ * Resolve link metadata without evaluating ordinary expressions or converting
+ * locus coordinates before assemblies and scale dependencies are initialized.
+ * @param {Set<ScaleResolutionMember>} members
+ * @param {ConfiguredDomainSource | undefined} viewLevelDomain
+ * @param {SelectionBindingResolver} resolveBinding
+ * @returns {SelectionDomainLinkInfo | undefined}
+ */
+export function resolveSelectionDomainInfo(
+    members,
+    viewLevelDomain,
+    resolveBinding
+) {
+    const sources = Array.from(members)
+        .filter((member) => member.contributesToDomain)
+        .map((member) => ({
+            channel: member.channel,
+            domain: member.channelDef.scale?.domain,
+        }));
+    if (viewLevelDomain) sources.push(viewLevelDomain);
+    let literal = false;
+    /** @type {SelectionDomainLinkInfo | undefined} */
+    let link;
+    for (const { channel, domain } of sources) {
+        if (domain === undefined || isViewportDomainRef(domain)) continue;
+        if (!isSelectionDomainRef(domain)) {
+            literal = true;
+            continue;
+        }
+        const encoding = resolveSelectionDomainChannel(
+            channel,
+            domain,
+            domain.param
+        );
+        const { runtime } = resolveBinding(domain.param, encoding);
+        if (
+            link &&
+            (link.runtime !== runtime ||
+                link.param !== domain.param ||
+                link.encoding !== encoding)
+        ) {
+            throw new Error(
+                "Conflicting selection domain references on a shared scale: " +
+                    link.param +
+                    "." +
+                    link.encoding +
+                    " vs " +
+                    domain.param +
+                    "." +
+                    encoding +
+                    "."
+            );
+        }
+        link = {
+            runtime,
+            param: domain.param,
+            encoding,
+            hasInitial:
+                (link?.hasInitial ?? false) || domain.initial !== undefined,
+        };
+    }
+    if (link && literal)
+        throw new Error(
+            "Cannot mix selection-driven and literal configured domains on a shared scale."
+        );
+    return link;
 }
 
 /**
@@ -703,7 +424,7 @@ function resolveConfiguredIntervalDomain(type, interval, fromComplexInterval) {
  * @param {Set<ScaleResolutionMember>} members
  * @param {SelectionDomainLinkInfo | undefined} selectionRef
  */
-function validateSharedSelectionDomain(members, selectionRef) {
+export function validateSharedSelectionDomain(members, selectionRef) {
     if (
         !selectionRef ||
         members.size < 2 ||
@@ -780,7 +501,7 @@ export function isSelectionDomainRef(domain) {
  * @param {(member: ScaleResolutionMember) => import("../types/encoder.js").ScaleAccessor[]} getAccessorsForMember
  * @returns {DomainArray | undefined}
  */
-function resolveDataDomain(members, getType, getAccessorsForMember) {
+export function resolveDataDomain(members, getType, getAccessorsForMember) {
     const type = getType();
 
     /** @type {Map<import("../data/collector.js").default | null, Map<string, DomainArray>>} */
@@ -847,12 +568,28 @@ function resolveDataDomain(members, getType, getAccessorsForMember) {
  * @param {import("../spec/scale.js").Scale["assembly"] | undefined} locusAssembly
  * @returns {any[]}
  */
-function resolveDefaultDomain(type, getLocusExtent, dataDomain, locusAssembly) {
+export function resolveDefaultDomain(
+    type,
+    getLocusExtent,
+    dataDomain,
+    locusAssembly
+) {
     if (type == LOCUS) {
         return getLocusExtent(locusAssembly);
     }
     if (type == INDEX) {
-        return toInternalIndexLikeDataDomain(type, dataDomain) ?? [];
+        return dataDomain?.length
+            ? toInternalIndexLikeDataDomain(type, dataDomain)
+            : [];
     }
     return dataDomain ?? [];
+}
+
+/**
+ * @param {ScaleResolutionMember} member
+ * @returns {import("../types/encoder.js").ScaleAccessor[]}
+ */
+export function getScaleMemberAccessors(member) {
+    const encoder = member.view.mark.encoders?.[member.channel];
+    return encoder ? getEncoderAccessors(encoder).filter(isScaleAccessor) : [];
 }

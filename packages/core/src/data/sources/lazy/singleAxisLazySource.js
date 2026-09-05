@@ -33,6 +33,7 @@ export default class SingleAxisLazySource extends DataSource {
     initializedPromise = Promise.resolve();
 
     /**
+     * Coverage of the latest published batch, not merely a finished fetch.
      * @type {number[] | undefined}
      * @protected
      */
@@ -221,6 +222,16 @@ export default class SingleAxisLazySource extends DataSource {
      */
     getLoadedDomain() {
         return this._lastLoadedDomain;
+    }
+
+    isDataReady() {
+        return (
+            super.isDataReady() &&
+            this._lastLoadedDomain !== undefined &&
+            this.isDataReadyForDomain({
+                [this.channel]: this._lastLoadedDomain,
+            })
+        );
     }
 
     /**

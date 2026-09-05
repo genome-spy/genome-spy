@@ -19,6 +19,8 @@ function createViewStub({
 }) {
     /** @type {(() => void) | undefined} */
     let lastDomainListener;
+    /** @type {(() => void) | undefined} */
+    let extentListener;
     let currentZoomExtent = zoomExtent;
 
     const scale = /** @type {any} */ ((/** @type {number} */ value) => value);
@@ -33,6 +35,12 @@ function createViewStub({
     }
 
     const scaleResolution = {
+        subscribeZoomExtent: (/** @type {() => void} */ listener) => {
+            extentListener = listener;
+            return () => {
+                extentListener = undefined;
+            };
+        },
         addEventListener: (
             /** @type {string} */ type,
             /** @type {() => void} */ listener
@@ -68,6 +76,7 @@ function createViewStub({
         paramRuntime,
         setZoomExtent: (/** @type {number[]} */ extent) => {
             currentZoomExtent = extent;
+            extentListener?.();
         },
         view: {
             paramRuntime,
@@ -314,7 +323,6 @@ describe("AxisTickSource", () => {
         const resetSpy = vi.spyOn(collector, "reset");
 
         setZoomExtent([0, 3]);
-        await source.onDomainChanged();
 
         expect(resetSpy).toHaveBeenCalledOnce();
         expect(

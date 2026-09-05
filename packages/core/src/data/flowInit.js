@@ -1,3 +1,5 @@
+import { getEncoderAccessors } from "../encoder/encoder.js";
+import { isScaleAccessor } from "../encoder/accessor.js";
 import UnitView from "../view/unitView.js";
 import { buildDataFlow } from "../view/flowBuilder.js";
 import { optimizeDataFlow } from "./flowOptimizer.js";
@@ -184,7 +186,6 @@ export function initializeViewSubtree(
     for (const view of unitViews) {
         const mark = view.mark;
         mark.initializeEncoders();
-        view.registerDomainSubscriptions();
 
         // Wire collector completion to semantic mark data updates.
         const observer = (
@@ -199,6 +200,19 @@ export function initializeViewSubtree(
     for (const view of viewsToInitialize) {
         view._setDataInitializationState("ready");
     }
+
+    // Shared resolutions bind once after every participating encoder is installed.
+    const resolutions = new Set(
+        unitViews.flatMap((view) =>
+            Object.values(view.mark.encoders)
+                .flatMap(getEncoderAccessors)
+                .filter(isScaleAccessor)
+                .map((accessor) =>
+                    view.getScaleResolution(accessor.scaleChannel)
+                )
+        )
+    );
+    for (const resolution of resolutions) resolution.bindDomainInputs();
 
     return {
         dataFlow,

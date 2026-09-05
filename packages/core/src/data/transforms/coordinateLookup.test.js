@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import Collector from "../collector.js";
+import { isDataReady } from "../dataReadiness.js";
 import { processData } from "../flowTestUtils.js";
 import { registerLazyDataSource } from "../sources/dataSourceFactory.js";
 import MockLazySource from "../sources/lazy/mockLazySource.js";
@@ -9,6 +10,43 @@ import CoordinateLookupTransform from "./coordinateLookup.js";
 
 /** @type {(() => void)[]} */
 const unregisters = [];
+
+test.each([true, false])(
+    "synchronous side publication processes the primary with batch boundary %s",
+    (withBoundary) => {
+        const view = { getScaleResolution: () => resolution };
+        const resolution = { getDomain: () => [0, 1], getScale: () => ({}) };
+        const source = new TestLazySource(view);
+        source.requestDataForDomain = () =>
+            source.publish([{ pos: 0, score: 8 }]);
+        const foreign = new Collector();
+        source.addChild(foreign);
+        const lookup = new CoordinateLookupTransform(
+            {
+                type: "coordinateLookup",
+                from: {
+                    data: { lazy: /** @type {any} */ ({ type: "mockLazy" }) },
+                },
+                key: "pos",
+                values: ["score"],
+            },
+            foreign,
+            source,
+            /** @type {any} */ (view)
+        );
+        const output = new Collector();
+        lookup.addChild(output);
+        lookup.reset();
+        if (withBoundary) {
+            lookup.beginBatch({ type: "file" });
+        }
+        lookup.handle({ pos: 0 });
+        lookup.complete();
+        expect(Array.from(output.getData())).toEqual([{ pos: 0, score: 8 }]);
+        expect(isDataReady(output)).toBe(true);
+        lookup.dispose();
+    }
+);
 
 afterEach(() => {
     for (const unregister of unregisters.splice(0)) {

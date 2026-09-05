@@ -44,7 +44,7 @@ export {
  * propagation, deterministic scheduling) while keeping GenomeSpy-specific
  * parameter and expression semantics.
  *
- * @typedef {import("../utils/expression.js").ExpressionFunction & { subscribe: (listener: () => void) => () => void, invalidate: () => void, identifier: () => string}} ExprRefFunction
+ * @typedef {import("./types.js").ExprRefFunction} ExprRefFunction
  */
 export default class ViewParamRuntime {
     /**
@@ -595,6 +595,61 @@ export default class ViewParamRuntime {
     }
 
     /**
+     * Owner-bound internal input, without a public parameter name binding.
+     * @template T
+     * @param {string} name
+     * @param {T} initial
+     */
+    signal(name, initial) {
+        return this.#runtime.signal(this.#scopeId, name, initial);
+    }
+
+    /**
+     * Create an unnamed, owner-bound derived value with explicit dependencies.
+     * Dispose the returned ref when replacing a binding before its owner ends.
+     * @template T
+     * @param {string} name Diagnostic name, not a parameter declaration.
+     * @param {import("./types.js").ParamRef<any>[]} deps
+     * @param {() => T} fn
+     * @param {{ equals?: (a: T, b: T) => boolean }} [options]
+     */
+    computed(name, deps, fn, options) {
+        return this.#runtime.computed(this.#scopeId, name, deps, fn, options);
+    }
+
+    /**
+     * Observe settled dependencies. Runs on changes, not at registration.
+     * @param {import("./types.js").ParamRef<any>[]} deps
+     * @param {() => void} fn
+     */
+    effect(deps, fn) {
+        return this.#runtime.effect(this.#scopeId, deps, fn);
+    }
+
+    /**
+     * Stable shared scheduler for work that outlives an individual view scope.
+     * @returns {Pick<ParamRuntime, "requestUpdate" | "cancelUpdate">}
+     */
+    get updateScheduler() {
+        return this.#runtime;
+    }
+
+    /**
+     * Queue caller-owned streaming publication before graph effects.
+     * @param {() => void} update Stable callback identity for coalescing.
+     * @param {number} [rank]
+     * @param {(error: unknown) => void} [onError]
+     */
+    requestUpdate(update, rank = 0, onError) {
+        this.#runtime.requestUpdate(update, rank, onError);
+    }
+
+    /** @param {() => void} update */
+    cancelUpdate(update) {
+        this.#runtime.cancelUpdate(update);
+    }
+
+    /**
      * @template T
      * @param {string} name
      * @param {T} defaultValue
@@ -745,8 +800,9 @@ export default class ViewParamRuntime {
         return this.#runtime.runInTransaction(fn);
     }
 
-    flushNow() {
-        this.#runtime.flushNow();
+    /** @param {{ afterTransaction?: boolean }} [options] */
+    flushNow(options) {
+        this.#runtime.flushNow(options);
     }
 
     /**

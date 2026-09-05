@@ -195,7 +195,39 @@ export default class Collector extends FlowNode {
         }
     }
 
+    get replaySource() {
+        return this;
+    }
+
+    get replaysSynchronously() {
+        return true;
+    }
+
     repropagate() {
+        // An upstream async reload may have reset this collector after replay
+        // was queued. Its completion will publish the new rows; replaying now
+        // would prematurely finalize downstream buffers still awaiting data.
+        if (!this.completed) {
+            return;
+        }
+        // Batch the full downstream replay and observer fan-out so reactive
+        // effects cannot run between sibling branches completing.
+        if (this.parent)
+            this.paramRuntime.runInTransaction(() => this.#replay());
+        else this.#replay();
+    }
+
+    /**
+     * Recompute downstream output from the rows already stored here, for example
+     * after a transform parameter or lookup side input changes. Reset descendants,
+     * resend stored rows with their facet boundaries, then complete descendants.
+     * Ungrouped rows have no explicit beginBatch boundary.
+     *
+     * This collector retains its materialized data and dataRevision: replay does
+     * not reload upstream data. Domain caches and observers are refreshed because
+     * their results can depend on changed parameters even when rows are unchanged.
+     */
+    #replay() {
         for (const child of this.children) {
             child.reset();
         }

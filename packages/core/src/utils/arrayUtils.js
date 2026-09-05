@@ -1,6 +1,6 @@
 /**
- * @param {T[]} a
- * @param {T[]} b
+ * @param {readonly T[]} a
+ * @param {readonly T[]} b
  * @template T
  */
 export function shallowArrayEquals(a, b) {

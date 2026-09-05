@@ -1,6 +1,13 @@
+import { isDiscrete } from "vega-scale";
+import createIndexer from "../utils/indexer.js";
+import { NominalDomain } from "../utils/domainArray.js";
 import { isArray } from "vega-util";
 
-import createScale, { configureScale } from "../scale/scale.js";
+import createScale, {
+    configureScaleProperties,
+    configureScaleRange,
+    configureDomain,
+} from "../scale/scale.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { isScaleLocus } from "../genome/scaleLocus.js";
 
@@ -25,22 +32,29 @@ export default class ScaleInstanceManager {
     /** @type {() => void} */
     #onRangeChange;
 
-    /** @type {() => void} */
+    /** @type {(domain: any[]) => void} */
     #onDomainChange;
+
+    /** @type {(domain: any[]) => void} */
+    #mirrorDomain;
 
     /** @type {() => import("../genome/genomeStore.js").default | undefined} */
     #getGenomeStore;
 
-    #domainNotificationsSuspended = 0;
-
     #initializingRange = false;
+
+    /** @type {ReturnType<typeof createIndexer> | undefined} */
+    #categoricalIndexer;
+
+    /** @type {VegaScale | undefined} */
+    #domainNormalizer;
 
     /**
      * @param {object} options
      * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
      * @param {() => void} options.onRangeChange
-     * @param {() => void} [options.onDomainChange]
-     * @param {() => import("../genome/genomeStore.js").default | undefined} [options.getGenomeStore]
+     * @param {(domain: any[]) => void} options.onDomainChange
+     * @param {() => import("../genome/genomeStore.js").default | undefined} options.getGenomeStore
      */
     constructor({
         createExpression,
@@ -65,6 +79,7 @@ export default class ScaleInstanceManager {
     resetScale() {
         this.dispose();
         this.#scale = undefined;
+        this.#domainNormalizer = undefined;
         this.#defaultRange = undefined;
     }
 
@@ -73,7 +88,7 @@ export default class ScaleInstanceManager {
      * @returns {import("../genome/genome.js").default}
      */
     getLocusGenome(assembly) {
-        const genomeStore = this.#getGenomeStore?.();
+        const genomeStore = this.#getGenomeStore();
         if (!genomeStore) {
             throw new Error("No genome has been defined!");
         }
@@ -87,9 +102,10 @@ export default class ScaleInstanceManager {
 
     /**
      * @param {import("../spec/scale.js").Scale} props
+     * @param {(domain: any[]) => void} initializeDomain Before range expressions bind.
      * @returns {ScaleWithProps}
      */
-    createScale(props) {
+    createScale(props, initializeDomain) {
         const scale = createScale({
             ...this.#stripNonScaleProps(props),
             range: undefined,
@@ -105,6 +121,10 @@ export default class ScaleInstanceManager {
         this.#defaultRange =
             typeof scale.range === "function" ? scale.range() : undefined;
         this.#bindGenomeIfNeeded(props);
+        this.#mirrorDomain = scale.domain;
+        if (scale.type !== "null") {
+            initializeDomain(scale.domain());
+        }
         this.#initializingRange = true;
         try {
             this.#configureRange();
@@ -129,33 +149,89 @@ export default class ScaleInstanceManager {
     }
 
     /**
+     * Attach an inferred domain and stable categorical mapping to resolved props.
+     * Used at bootstrap and on source publication, never during animation frames.
+     * @param {import("../spec/scale.js").Scale} props
+     * @param {any[] | undefined} domain
+     * @param {boolean} explicit
+     */
+    domainProps(props, domain, explicit) {
+        const result = { ...props };
+        if (isDiscrete(props.type)) {
+            // Intern IDs belong to retained GPU data, independently of display order.
+            // Reordering an explicit domain must not renumber already encoded rows.
+            const indexer = (this.#categoricalIndexer ??= createIndexer());
+            indexer.addAll(domain ?? []);
+            const active = domain && new Set(domain);
+            // TODO: Enable dynamic explicit categorical reordering/removal as a
+            // supported feature once WebGL is retired. This domain/ID separation
+            // and webgpu-renderer already support it; WebGL's range-texture mapping
+            // does not. Stable IDs remain necessary for retained WebGPU series.
+            const values = explicit
+                ? (domain ?? [])
+                : indexer
+                      .domain()
+                      .filter((value) => !active || active.has(value));
+            result.domain = values.length
+                ? /** @type {any[]} */ (values)
+                : new NominalDomain();
+            /** @type {any} */ (result).domainIndexer = indexer;
+        } else if (domain?.length) {
+            result.domain = domain;
+        }
+        if (!result.domain && result.domainMid !== undefined) {
+            result.domain = [result.domainMin ?? 0, result.domainMax ?? 1];
+        }
+        return result;
+    }
+
+    /**
+     * Normalize with final properties on a copy, before any live mutation.
      * @param {import("../spec/scale.js").Scale} props
      */
-    reconfigureScale(props) {
-        const scale = this.#scale;
-        if (!scale || scale.type == "null") {
-            return;
-        }
+    prepareDomain(props) {
+        const working = this.#scale.copy();
+        working.type = this.#scale.type;
+        configureScaleProperties(working, this.#stripNonScaleProps(props));
+        return configureDomain(working, props);
+    }
 
-        configureScale(
-            { ...this.#stripNonScaleProps(props), range: undefined },
-            scale
-        );
-        scale.props = props;
+    /** @param {import("../spec/scale.js").Scale} props */
+    configureProperties(props) {
+        this.#domainNormalizer = undefined;
+        configureScaleProperties(this.#scale, this.#stripNonScaleProps(props));
+        this.#scale.props = props;
+    }
+
+    /** @param {import("../spec/scale.js").Scale} props */
+    configureRange(props) {
+        // TODO(#463): Apply reactive properties/range as one settled mapping
+        // update, replacing the separate subscriptions and range notifications.
+        // Keep displayed-domain dependencies distinct so same-scale domain-to-range
+        // expressions and frame-by-frame calibration remain valid.
+        configureScaleRange(this.#scale, {
+            ...this.#stripNonScaleProps(props),
+            range: undefined,
+        });
         this.#configureRange();
     }
 
     /**
-     * @param {() => void} callback
-     * @returns {void}
+     * Reuse a setter-only copy so normalization does not allocate a scale per frame.
+     * @param {readonly any[]} domain
+     * @returns {any[]}
      */
-    withDomainNotificationsSuppressed(callback) {
-        this.#domainNotificationsSuspended += 1;
-        try {
-            callback();
-        } finally {
-            this.#domainNotificationsSuspended -= 1;
-        }
+    normalizeDomain(domain) {
+        this.#domainNormalizer ??= this.#scale.copy();
+        this.#domainNormalizer.domain(Array.from(domain));
+        return this.#domainNormalizer.domain();
+    }
+
+    /** Exact internal-domain mirror; never publishes an event itself.
+     * @param {readonly any[]} domain
+     */
+    mirrorDomain(domain) {
+        this.#mirrorDomain(Array.from(domain));
     }
 
     /**
@@ -219,73 +295,47 @@ export default class ScaleInstanceManager {
     }
 
     #wrapScaleInterceptors() {
+        // TODO(#463): When mapping configuration joins the reactive graph, keep
+        // the mutable D3 scale internal and replace these patches with an explicit
+        // configuration API. Methods such as nice() can bypass domain interception.
+        // Preserve a cached fast mapping function for encoders; benchmark any
+        // callable wrapper/proxy before putting it on the per-datum path.
         const scale = this.#scale;
-        if (!scale) {
-            return;
-        }
-
         const range = scale.range;
         const domain = scale.domain;
-        const notifyRange = () => this.#onRangeChange?.();
-        const notifyDomain = () => {
-            if (this.#domainNotificationsSuspended > 0) {
-                return;
-            }
-            this.#onDomainChange?.();
-        };
+        const notifyRange = this.#onRangeChange;
+        const updateDomain = this.#onDomainChange;
 
-        withScaleInterceptors(scale, {
-            onRangeChange: notifyRange,
-            onDomainChange: notifyDomain,
-            range,
-            domain,
-        });
-
+        if (typeof range === "function") {
+            scale.range = /** @type {any} */ (
+                function (/** @type {any} */ _) {
+                    if (arguments.length) {
+                        range(_);
+                        notifyRange();
+                    } else {
+                        return range();
+                    }
+                }
+            );
+        }
+        if (typeof domain === "function") {
+            scale.domain = /** @type {any} */ (
+                function (/** @type {any} */ _) {
+                    if (arguments.length) {
+                        updateDomain(Array.from(_));
+                        return scale;
+                    } else {
+                        return domain();
+                    }
+                }
+            );
+        }
         notifyRange();
     }
 
     dispose() {
         this.#rangeExprRefListeners.forEach((fn) => fn.invalidate());
         this.#rangeExprRefListeners.clear();
-    }
-}
-
-/**
- * @param {import("../types/encoder.js").VegaScale} scale
- * @param {object} options
- * @param {(value: any) => void} [options.onRangeChange]
- * @param {(value: any) => void} [options.onDomainChange]
- * @param {(value?: any) => any} options.range
- * @param {(value?: any) => any} options.domain
- */
-function withScaleInterceptors(
-    scale,
-    { onRangeChange, onDomainChange, range, domain }
-) {
-    if (typeof range === "function") {
-        scale.range = /** @type {any} */ (
-            function (/** @type {any} */ _) {
-                if (arguments.length) {
-                    range(_);
-                    onRangeChange?.();
-                } else {
-                    return range();
-                }
-            }
-        );
-    }
-
-    if (typeof domain === "function") {
-        scale.domain = /** @type {any} */ (
-            function (/** @type {any} */ _) {
-                if (arguments.length) {
-                    domain(_);
-                    onDomainChange?.();
-                } else {
-                    return domain();
-                }
-            }
-        );
     }
 }
 

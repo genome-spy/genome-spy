@@ -135,16 +135,7 @@ export function configureScale(
 ) {
     logger = ensureLogger(logger);
 
-    for (const key in _) {
-        if (!SKIP[key]) {
-            // padding is a scale property for band/point but not others
-            if (key === "padding" && includePad(scale.type)) continue;
-            // invoke scale property setter, raise warning if not found
-            isFunction(scale[key])
-                ? scale[key](_[key])
-                : logger.warn("Unsupported scale property: " + key);
-        }
-    }
+    configureScaleProperties(scale, _, logger);
 
     const domainConfig = configureDomain(
         scale,
@@ -160,6 +151,35 @@ export function configureScale(
     }
 
     configureRange(scale, _, configureBins(scale, _, domainConfig.count));
+}
+
+/**
+ * Applies generic properties without changing the domain or range.
+ * @param {import("../types/encoder.js").VegaScale} scale
+ * @param {import("../spec/scale.js").Scale} _
+ * @param {ReturnType<typeof ensureLogger>} [logger]
+ */
+export function configureScaleProperties(scale, _, logger) {
+    logger = ensureLogger(logger);
+    for (const key in _) {
+        if (!SKIP[key]) {
+            // padding is a scale property for band/point but not others
+            if (key === "padding" && includePad(scale.type)) continue;
+            // invoke scale property setter, raise warning if not found
+            isFunction(scale[key])
+                ? scale[key](_[key])
+                : logger.warn("Unsupported scale property: " + key);
+        }
+    }
+}
+
+/**
+ * Configures bins/range against the effective display cardinality.
+ * @param {import("../types/encoder.js").VegaScale} scale
+ * @param {import("../spec/scale.js").Scale} _
+ */
+export function configureScaleRange(scale, _) {
+    configureRange(scale, _, configureBins(scale, _, scale.domain().length));
 }
 
 /**

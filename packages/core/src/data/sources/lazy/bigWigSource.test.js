@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Collector from "../../collector.js";
+import { isDataReady } from "../../dataReadiness.js";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
 import BigWigSource from "./bigWigSource.js";
 
@@ -125,6 +126,32 @@ function createViewStub(initialVisibleSamples = ["A", "B"]) {
 }
 
 describe("BigWigSource", () => {
+    it("publishes ready-empty descriptor output for the requested interval", async () => {
+        const { view } = createViewStub([]);
+        const source = new BigWigSource(
+            {
+                type: "bigwig",
+                debounceMode: "domain",
+                url: {
+                    template: "signals/{sample}.bw",
+                    values: { expr: "visibleSamples" },
+                    field: "sample",
+                },
+            },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+        /** @type {boolean[]} */
+        const readiness = [];
+        collector.observe(() =>
+            readiness.push(isDataReady(collector, { x: [200, 300] }))
+        );
+        await source.onDomainChanged([200, 300]);
+        expect(Array.from(collector.getData())).toEqual([]);
+        expect(readiness.at(-1)).toBe(true);
+        expect(source.getLoadedDomain()).toEqual([200, 300]);
+    });
     beforeEach(() => {
         featuresByUrl.clear();
         requestedIntervals.length = 0;

@@ -93,10 +93,8 @@ export function bindExpression(expr, resolve, options = {}) {
             .concat((expression.scaleDependencies ?? []).map((ref) => ref.id))
             .join(",");
 
-    return {
-        expression,
-        dependencies: Array.from(refsForParams.values()).concat(
-            expression.scaleDependencies ?? []
-        ),
-    };
+    expression.dependencies = Array.from(refsForParams.values()).concat(
+        expression.scaleDependencies ?? []
+    );
+    return { expression, dependencies: expression.dependencies };
 }

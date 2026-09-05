@@ -12,6 +12,15 @@ function createConstantExpression() {
     return /** @type {any} */ (() => 0);
 }
 
+/**
+ * Isolate physical scale configuration from the domain owner's startup work.
+ * @param {ScaleInstanceManager} manager
+ * @param {import("../spec/scale.js").Scale} props
+ */
+function createScale(manager, props) {
+    return manager.createScale(props, () => {});
+}
+
 describe("ScaleInstanceManager", () => {
     afterEach(() => {
         vi.restoreAllMocks();
@@ -23,9 +32,11 @@ describe("ScaleInstanceManager", () => {
         const manager = new ScaleInstanceManager({
             createExpression: () => exprFn,
             onRangeChange,
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
         });
 
-        const scale = manager.createScale({
+        const scale = createScale(manager, {
             type: "linear",
             domain: [0, 1],
             range: [0, 10],
@@ -56,9 +67,12 @@ describe("ScaleInstanceManager", () => {
         const manager = new ScaleInstanceManager({
             createExpression: () => expr,
             onRangeChange: /** @returns {void} */ () => undefined,
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
         });
 
-        const scale = manager.createScale(
+        const scale = createScale(
+            manager,
             /** @type {import("../spec/scale.js").Scale} */ ({
                 type: "linear",
                 domain: [0, 1],
@@ -73,22 +87,26 @@ describe("ScaleInstanceManager", () => {
         expect(scale.range()[0]).toBe(5);
     });
 
-    test("domain changes notify listeners", () => {
+    test("domain writes delegate to the owner before changing the physical scale", () => {
         const onDomainChange = vi.fn();
         const manager = new ScaleInstanceManager({
             createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             onDomainChange,
+            getGenomeStore: () => undefined,
         });
 
-        const scale = manager.createScale({
+        const scale = createScale(manager, {
             type: "linear",
             domain: [0, 1],
             range: [0, 1],
         });
 
-        scale.domain([1, 2]);
-        expect(onDomainChange).toHaveBeenCalled();
+        expect(scale.domain([1, 2])).toBe(scale);
+        expect(onDomainChange).toHaveBeenCalledExactlyOnceWith([1, 2]);
+        expect(scale.domain()).toEqual([0, 1]);
+        manager.mirrorDomain([1, 2]);
+        expect(scale.domain()).toEqual([1, 2]);
     });
 
     test("binds a genome when creating locus scales", async () => {
@@ -102,9 +120,10 @@ describe("ScaleInstanceManager", () => {
             createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
+            onDomainChange: () => {},
         });
 
-        const scale = manager.createScale({
+        const scale = createScale(manager, {
             type: "locus",
             domain: [0, 1],
             range: [0, 1],
@@ -132,9 +151,10 @@ describe("ScaleInstanceManager", () => {
             createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
+            onDomainChange: () => {},
         });
 
-        const scale = manager.createScale({
+        const scale = createScale(manager, {
             type: "locus",
             domain: [0, 1],
             range: [0, 1],
@@ -157,10 +177,11 @@ describe("ScaleInstanceManager", () => {
             createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
+            onDomainChange: () => {},
         });
 
         expect(() =>
-            manager.createScale({
+            createScale(manager, {
                 type: "locus",
                 domain: [0, 1],
                 range: [0, 1],
@@ -175,9 +196,10 @@ describe("ScaleInstanceManager", () => {
             createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
+            onDomainChange: () => {},
         });
 
-        const scale = manager.createScale({
+        const scale = createScale(manager, {
             type: "locus",
             domain: [0, 1],
             range: [0, 1],
@@ -196,9 +218,10 @@ describe("ScaleInstanceManager", () => {
             createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
+            onDomainChange: () => {},
         });
 
-        const scale = manager.createScale({
+        const scale = createScale(manager, {
             type: "locus",
             domain: [0, 1],
             range: [0, 1],
@@ -230,9 +253,10 @@ describe("ScaleInstanceManager", () => {
             createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
+            onDomainChange: () => {},
         });
 
-        const scale = manager.createScale({
+        const scale = createScale(manager, {
             type: "locus",
             domain: [0, 1],
             range: [0, 1],
@@ -251,10 +275,11 @@ describe("ScaleInstanceManager", () => {
             createExpression: createConstantExpression,
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
+            onDomainChange: () => {},
         });
 
         expect(() =>
-            manager.createScale({
+            createScale(manager, {
                 type: "locus",
                 domain: [0, 1],
                 range: [0, 1],
@@ -277,9 +302,12 @@ describe("ScaleInstanceManager", () => {
         const manager = new ScaleInstanceManager({
             createExpression: () => expr,
             onRangeChange: /** @returns {void} */ () => undefined,
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
         });
 
-        manager.createScale(
+        createScale(
+            manager,
             /** @type {import("../spec/scale.js").Scale} */ ({
                 type: "linear",
                 domain: [0, 1],

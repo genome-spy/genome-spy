@@ -65,6 +65,14 @@ export default class DataSource extends FlowNode {
         // override
     }
 
+    complete() {
+        const runtime = this.view?.paramRuntime;
+        // Standalone dataflow tests can omit a view runtime. A live source's
+        // entire completion fan-out publishes in one synchronous boundary.
+        if (runtime) runtime.runInTransaction(() => super.complete());
+        else super.complete();
+    }
+
     /**
      * Starts live reactions that should not run before the initial load phase.
      */
@@ -72,8 +80,25 @@ export default class DataSource extends FlowNode {
         // override
     }
 
+    get replaySource() {
+        return this;
+    }
+
+    get replaysSynchronously() {
+        return "loadSynchronously" in this;
+    }
+
     repropagate() {
         this.activate();
-        this.load();
+        if (
+            "loadSynchronously" in this &&
+            typeof this.loadSynchronously === "function"
+        ) {
+            // Preserve synchronous row errors instead of detaching them in the
+            // promise returned by load(). Async sources retain their own path.
+            this.loadSynchronously();
+        } else {
+            void this.load();
+        }
     }
 }

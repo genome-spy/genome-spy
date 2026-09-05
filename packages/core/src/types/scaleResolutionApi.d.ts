@@ -55,6 +55,8 @@ export interface ScaleResolutionApi {
 
     /**
      * Returns true when the scale domain has moved beyond the placeholder startup state.
+     * @deprecated This legacy heuristic does not indicate data readiness.
+     * Inspect getDomain() for the usability conditions required by your consumer.
      */
     isDomainInitialized(): boolean;
 

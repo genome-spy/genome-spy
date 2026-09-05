@@ -1,6 +1,6 @@
 import fs from "node:fs";
 
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import Collector from "../data/collector.js";
 import CrossTransform from "../data/transforms/cross.js";
@@ -8,7 +8,20 @@ import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import View from "../view/view.js";
 import * as resolutionMemberOrder from "./resolutionMemberOrder.js";
 import * as scalePropsResolver from "./scalePropsResolver.js";
-import ScaleResolution from "./scaleResolution.js";
+
+/** @type {View[]} */
+const views = [];
+
+afterEach(() => {
+    for (const view of views.splice(0)) view.disposeSubtree();
+});
+
+/** @param {import("../spec/root.js").RootSpec} spec */
+async function createEngine(spec) {
+    const engine = await createHeadlessEngine(spec);
+    views.push(engine.view);
+    return engine;
+}
 
 describe("Interactive updates keep scale-resolution work bounded", () => {
     test("initialization still exercises the real ASCAT scale-resolution path", async () => {
@@ -28,7 +41,7 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
         const getDomainSpy = vi.spyOn(Collector.prototype, "getDomain");
 
         try {
-            await createHeadlessEngine(spec);
+            await createEngine(spec);
 
             expect(pathSpy).toHaveBeenCalled();
             expect(orderSpy).toHaveBeenCalled();
@@ -50,14 +63,10 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
             resolutionMemberOrder,
             "orderResolutionMembers"
         );
-        const reconfigureSpy = vi.spyOn(
-            ScaleResolution.prototype,
-            "reconfigureDomain"
-        );
         const crossSpy = vi.spyOn(CrossTransform.prototype, "handle");
 
         try {
-            const { view } = await createHeadlessEngine(spec);
+            const { view } = await createEngine(spec);
             const target = view
                 .getDescendants()
                 .find((descendant) =>
@@ -85,7 +94,6 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
             // Ignore the setup cost. This regression is about interactive updates.
             pathSpy.mockClear();
             orderSpy.mockClear();
-            reconfigureSpy.mockClear();
             crossSpy.mockClear();
 
             target.paramRuntime.setValue("selectedFit", {
@@ -95,7 +103,6 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
 
             await Promise.resolve();
 
-            expect(reconfigureSpy).toHaveBeenCalled();
             expect(crossSpy).not.toHaveBeenCalled();
             expect(orderSpy).not.toHaveBeenCalled();
             expect(pathSpy).not.toHaveBeenCalled();
@@ -106,7 +113,6 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
         } finally {
             pathSpy.mockRestore();
             orderSpy.mockRestore();
-            reconfigureSpy.mockRestore();
             crossSpy.mockRestore();
         }
     });
@@ -116,7 +122,7 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
         const crossSpy = vi.spyOn(CrossTransform.prototype, "handle");
 
         try {
-            const { view } = await createHeadlessEngine(spec);
+            const { view } = await createEngine(spec);
             const target = view
                 .getDescendants()
                 .find((descendant) =>
@@ -150,7 +156,7 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
         const crossSpy = vi.spyOn(CrossTransform.prototype, "handle");
 
         try {
-            const { view } = await createHeadlessEngine(spec);
+            const { view } = await createEngine(spec);
             const target = view
                 .getDescendants()
                 .find((descendant) =>
@@ -171,14 +177,28 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
             )[0].meanRoundingError;
             crossSpy.mockClear();
 
-            target.paramRuntime.setValue("downweightBalanced", false);
-            await Promise.resolve();
+            const score = view.getDescendants().find((v) => v.name === "bar")
+                .flowHandle.collector;
+            const initialScore = Array.from(score.getData())[0].goodnessOfFit;
+            for (const enabled of [false, true, false, true]) {
+                target.paramRuntime.setValue("downweightBalanced", enabled);
+                await target.paramRuntime.whenPropagated();
 
-            expect(crossSpy).toHaveBeenCalled();
-            expect(
-                Array.from(sunrise.flowHandle.collector.getData())[0]
-                    .meanRoundingError
-            ).not.toBe(initialDistance);
+                expect(crossSpy).toHaveBeenCalled();
+                expect(sunrise.flowHandle.collector.getItemCount()).toBe(9);
+                expect(score.getItemCount()).toBe(1);
+                const distance = Array.from(
+                    sunrise.flowHandle.collector.getData()
+                )[0].meanRoundingError;
+                const goodness = Array.from(score.getData())[0].goodnessOfFit;
+                if (enabled) {
+                    expect(distance).toBeCloseTo(initialDistance);
+                    expect(goodness).toBeCloseTo(initialScore);
+                } else {
+                    expect(distance).not.toBe(initialDistance);
+                    expect(goodness).not.toBe(initialScore);
+                }
+            }
         } finally {
             crossSpy.mockRestore();
         }
@@ -194,30 +214,40 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
         );
         const propsSpy = vi.spyOn(scalePropsResolver, "resolveScalePropsBase");
         const getDomainSpy = vi.spyOn(Collector.prototype, "getDomain");
-        const reconfigureSpy = vi.spyOn(
-            ScaleResolution.prototype,
-            "reconfigureDomain"
-        );
 
         try {
-            const { context } = await createHeadlessEngine(spec);
+            const { view, context } = await createEngine(spec);
             const dataSource =
                 context.dataFlow.findNamedDataSource("segments_S96");
+            const sunrise = view
+                .getDescendants()
+                .find((descendant) => descendant.name === "sunrise-rects");
 
-            if (!dataSource) {
-                throw new Error("Expected the named ASCAT dataset to exist.");
+            if (!dataSource || !sunrise?.flowHandle?.collector) {
+                throw new Error(
+                    "Expected the named ASCAT dataset and sunrise grid."
+                );
             }
+            const color = sunrise.getScaleResolution("color");
+            const initialDomain = color.getDomain();
 
             // Ignore initialization. We want to observe the incremental refresh.
             pathSpy.mockClear();
             orderSpy.mockClear();
             propsSpy.mockClear();
             getDomainSpy.mockClear();
-            reconfigureSpy.mockClear();
 
             dataSource.dataSource.updateDynamicData(SEGMENTS_S96.slice(0, 5));
 
-            expect(reconfigureSpy).toHaveBeenCalled();
+            const scores = Array.from(
+                sunrise.flowHandle.collector.getData(),
+                (datum) => datum.meanRoundingError
+            );
+            expect(color.getDomain()).toEqual([
+                Math.min(...scores),
+                Math.max(...scores),
+            ]);
+            expect(color.getDomain()).not.toEqual(initialDomain);
             expect(getDomainSpy).toHaveBeenCalled();
             expect(orderSpy).not.toHaveBeenCalled();
             expect(propsSpy).not.toHaveBeenCalled();
@@ -227,7 +257,6 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
             orderSpy.mockRestore();
             propsSpy.mockRestore();
             getDomainSpy.mockRestore();
-            reconfigureSpy.mockRestore();
         }
     });
 });

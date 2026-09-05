@@ -50,6 +50,17 @@ arrangement.
   data: `BEHAVIOR_CLONES`, `BEHAVIOR_MODIFIES`, and `BEHAVIOR_COLLECTS`.
 - `Collector` materializes data, supports grouping and sorting, and provides
   indexed lookups such as unique-ID lookup for picking.
+- Parameter-driven Filter/Formula replay uses the shared reactive runtime's
+  streaming update queue. Replay roots are the actual optimized upstream
+  collectors/sources; synchronous ancestors subsume pending descendant replays.
+  Inline, sequence, and named source replay uses synchronous loading so row errors
+  reach that propagation boundary. Async sources retain their request lifecycle.
+  See `reactivity.md` for coherent observer, failure/retry, and disposal semantics.
+- `src/data/dataReadiness.js` walks the actual optimized primary path and
+  `FlowNode.dataDependencies` side edges. Lookup/cross nodes record the foreign
+  revision incorporated into completed output, so side arrival cannot report
+  readiness before primary replay. View ownership is not a dependency graph:
+  an inherited lookup affects its descendants but not an overriding data branch.
 
 ## Subtree initialization and readiness
 
@@ -57,7 +68,18 @@ arrangement.
 - `loadViewSubtreeData` resolves its sources and emits `subtreeDataReady`.
 - `src/view/dataReadiness.js` supplies `buildReadinessRequest`,
   `isSubtreeReady`, `isSubtreeLazyReady`, and `awaitSubtreeLazyReady`. Lazy
-  waiting re-checks readiness after collector completion.
+  waiting re-checks readiness after output and dependency collector completion.
+  Entirely eager branches are ignored by lazy-only waits; eager primary data
+  with a lazy side input still waits for recomputed output. Aborted or failed
+  waits remove their subscriptions.
+- Initial contribution readiness requires meaningful publication, including
+  empty results. Dummy lazy startup completion is pending. Current viewport
+  readiness additionally uses each lazy source's coverage policy. Windowed
+  sources keep fetched coverage separate until publication; Tabix preserves
+  physical file batches while publishing its coverage at the same boundary.
+- Scale initial finalization uses contribution readiness independently of
+  effective-domain availability. Partial domains remain available to rendering
+  and lazy requests; readiness never gates creation of the scale itself.
 - Startup initialization is visibility-aware. Hidden subtrees skip dataflow and
   mark wiring until `initializeVisibleViewData` initializes them after a
   visibility change.
@@ -70,6 +92,49 @@ arrangement.
   duplicate flow nodes and collectors.
 - Disposing a subtree prunes its flow branches so orphaned nodes and unused data
   sources do not remain.
+
+## Scale domain ownership
+
+`DomainRuntime` owns the displayed domain, reset target, initial reference,
+loaded data extent, and active transition identity. `ScaleResolution` resolves
+shared configuration and rebinds inputs when participation changes. `domainLifecycle.js` decides
+updates from normalized snapshots before the live scale is changed. Its initial
+phase distinguishes collecting, early interaction, and complete readiness;
+interaction protects the display without ending reference collection.
+
+All scale kinds compile expression dependencies, accessors and viewport topology
+in `domainInputs.js`. Subtree initialization binds each affected resolution once
+after installing all encoders. The binding owns collector subscriptions and
+uses the same accessors for domain extraction and invalidation, deduplicating
+shared collector keys and suppressing inferred-domain feedback. Rebinding or
+disposal removes those subscriptions. App metadata needs no explicit domain
+refresh after publication. Pure functions in `domainPlanner.js` validate configured
+sources and combine domains; bootstrap and unbound `getDataDomain()` queries use
+the same readers without creating another state owner. `ScaleInstanceManager`
+normalizes candidates on a working scale, maintains categorical index mapping,
+configures properties/ranges, and mirrors committed domains. External `scale.domain(value)`
+calls submit immediate owner updates; they do not bypass the commit path.
+`ScaleInteractionController` retains coordinate conversion, zoom mathematics,
+and validation, submitting navigation to the same owner. Reset uses the current
+configured/default target, separately from the initial reference and data extent.
+
+Domain events describe effective display changes, including intermediate
+animation frames. Internal zoom-level and axis-tick inputs publish during domain
+jobs, including unchanged-display reference/extent progress. Source completion
+batches synchronous fan-out; initialization freezes the settled reference before
+observer effects. Immediate rendering uses this same settled boundary. Initial lazy requests still start
+through the existing post-load layout notifications. Current viewport coverage
+gates viewport candidates without reopening initial readiness. UnitView retains
+a small subtree-ready selection synchronization bridge: domain-inert linked
+scales have no collector publication to seed their initial brush.
+
+Axis auto-extent measurement checks the displayed domain directly: categorical
+domains must be nonempty, and continuous domains must contain only finite
+values with at least two distinct values. Usable partial domains can size labels while other
+contributors are pending. Empty or degenerate domains cannot permanently enlarge
+the grow-only extent. The deprecated public `isDomainInitialized()` query retains
+its historical placeholder heuristic for embedding compatibility; it is not used
+as an internal readiness or axis-measurement condition.
 
 ## Dynamic view lifecycle
 

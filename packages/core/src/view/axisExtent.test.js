@@ -13,6 +13,9 @@ import { VIEW_ROOT_NAME } from "./viewFactory.js";
 import { checkForDuplicateScaleNames } from "./viewUtils.js";
 import { initializeViewData } from "../genomeSpy/viewDataInit.js";
 import { getTextHeight } from "../fonts/textMetrics.js";
+import { registerLazyDataSource } from "../data/sources/dataSourceFactory.js";
+import SingleAxisWindowedSource from "../data/sources/lazy/singleAxisWindowedSource.js";
+import { isDataReady } from "../data/dataReadiness.js";
 
 /**
  * @typedef {import("./testUtils.js").BroadcastingViewContext} BroadcastingViewContext
@@ -689,32 +692,175 @@ describe("Axis extent measurement", () => {
         expect(implicitSnapshot.extent).toBe(explicitSnapshot.extent);
     });
 
-    test("degenerate quantitative domains do not grow measured y-axis extent", async () => {
-        const context = createBroadcastingTestViewContext();
-        const root = await createAndInitializeRoot(
-            {
-                data: {
-                    values: [{ y: 0 }],
-                },
-                mark: "point",
-                encoding: {
-                    y: {
-                        field: "y",
-                        type: "quantitative",
-                        scale: { domain: [0, 0] },
-                        axis: { format: ".8f" },
+    test.each([0, 12345.6789])(
+        "degenerate quantitative domain %s does not grow measured y-axis extent",
+        async (value) => {
+            const context = createBroadcastingTestViewContext();
+            const root = await createAndInitializeRoot(
+                {
+                    data: {
+                        values: [{ y: value }],
+                    },
+                    mark: "point",
+                    encoding: {
+                        y: {
+                            field: "y",
+                            type: "quantitative",
+                            scale: {
+                                domain: [value, value],
+                                zero: false,
+                                nice: false,
+                            },
+                            axis: { format: ".8f" },
+                        },
                     },
                 },
-            },
-            context
+                context
+            );
+
+            const axis = findAxisView(root, "left");
+            const initialExtent = axis.getPerpendicularSize();
+
+            await settleLayout(root, context);
+
+            expect(axis.getPerpendicularSize()).toBe(initialExtent);
+        }
+    );
+
+    test.each(/** @type {const} */ (["quantitative", "nominal"]))(
+        "empty %s domains defer measured extent until valid data arrive",
+        async (type) => {
+            const context = createBroadcastingTestViewContext();
+            const root = await createAndInitializeRoot(
+                {
+                    name: "empty-series",
+                    data: { values: [] },
+                    mark: "point",
+                    encoding: {
+                        y: {
+                            field: "value",
+                            type,
+                            ...(type === "quantitative"
+                                ? { scale: { zero: false, nice: false } }
+                                : {}),
+                            axis: {
+                                title: null,
+                                ...(type === "quantitative"
+                                    ? { format: ".8f" }
+                                    : {}),
+                            },
+                        },
+                    },
+                },
+                context
+            );
+            try {
+                const axis = findAxisView(root, "left");
+                const initialExtent = axis.getPerpendicularSize();
+                await settleLayout(root, context);
+                expect(axis.getPerpendicularSize()).toBe(initialExtent);
+
+                const series = root
+                    .getDescendants()
+                    .find((view) => view.name === "empty-series");
+                const source =
+                    /** @type {import("../data/sources/inlineSource.js").default} */ (
+                        series.flowHandle.dataSource
+                    );
+                source.updateDynamicData(
+                    type === "quantitative"
+                        ? [{ value: 1 }, { value: 2 }]
+                        : [
+                              { value: "A category with a long label" },
+                              { value: "Another long category label" },
+                          ]
+                );
+                await settleLayout(root, context);
+                expect(axis.getPerpendicularSize()).toBeGreaterThan(
+                    initialExtent
+                );
+            } finally {
+                root.disposeSubtree();
+            }
+        }
+    );
+
+    test("a usable partial shared domain measures labels while a lazy contributor remains pending", async () => {
+        class PendingSource extends SingleAxisWindowedSource {
+            /**
+             * @param {object} params
+             * @param {import("./view.js").default} view
+             */
+            constructor(params, view) {
+                super(view, "x");
+            }
+
+            onDomainChanged() {
+                // Leave the real lazy source pending after its dummy completion.
+            }
+        }
+        const unregister = registerLazyDataSource(
+            (params) =>
+                /** @type {any} */ (params).type === "axisExtentPending",
+            PendingSource
         );
-
-        const axis = findAxisView(root, "left");
-        const initialExtent = axis.getPerpendicularSize();
-
-        await settleLayout(root, context);
-
-        expect(axis.getPerpendicularSize()).toBe(initialExtent);
+        const context = createBroadcastingTestViewContext();
+        /** @type {import("./view.js").default | undefined} */
+        let root;
+        try {
+            root = await createAndInitializeRoot(
+                {
+                    layer: [
+                        {
+                            data: {
+                                values: [
+                                    { x: 0, y: 0 },
+                                    { x: 1, y: 1 },
+                                ],
+                            },
+                            mark: "point",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                y: {
+                                    field: "y",
+                                    type: "quantitative",
+                                    axis: { format: ".8f", title: null },
+                                },
+                            },
+                        },
+                        {
+                            name: "pending-series",
+                            data: {
+                                lazy: /** @type {any} */ ({
+                                    type: "axisExtentPending",
+                                }),
+                            },
+                            mark: "point",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+                context
+            );
+            const pending = /** @type {UnitView} */ (
+                root
+                    .getDescendants()
+                    .find((view) => view.name === "pending-series")
+            );
+            const axis = findAxisView(root, "left");
+            expect(isDataReady(pending.getCollector())).toBe(false);
+            expect(pending.getScaleResolution("y").getDomain()).toEqual([0, 1]);
+            const initialExtent = axis.getPerpendicularSize();
+            await settleLayout(root, context);
+            expect(axis.getPerpendicularSize()).toBeGreaterThan(initialExtent);
+            expect(isDataReady(pending.getCollector())).toBe(false);
+        } finally {
+            root?.disposeSubtree();
+            unregister();
+        }
     });
 
     test("zoomed vertical locus labels do not grow left axis extent", async () => {
