@@ -131,6 +131,9 @@ public scale compatibility and CPU/GPU/export consumers. Resolve this before M4.
 
 ## M2 — Declared side-input publication
 
+See the [detailed M2 implementation plan](milestone-2.md) for publication
+contracts, implementation slices, risks, and the verification matrix.
+
 - [ ] Make lookup and cross use the same dependency/publication protocol.
 
 **Outcome:** `dataDependencies` determines side-input invalidation, replay and
