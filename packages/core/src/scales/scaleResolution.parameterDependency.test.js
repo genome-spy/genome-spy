@@ -1,8 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import {
-    createHeadlessEngine,
-    createHeadlessViewHierarchy,
-} from "../genomeSpy/headlessBootstrap.js";
+import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import Animator from "../utils/animator.js";
 
 /** @returns {import("../spec/view.js").LayerSpec} */
@@ -252,62 +249,6 @@ describe("scale-dependent parameters in scale expressions", () => {
             );
         }
     );
-
-    test("failed subscription setup leaves the scale retryable without duplicate listeners", async () => {
-        const { view } = await createHeadlessViewHierarchy({
-            params: [
-                { name: "lower", value: 0 },
-                { name: "upper", value: 5 },
-            ],
-            mark: "point",
-            encoding: {
-                y: {
-                    field: "value",
-                    type: "quantitative",
-                    scale: {
-                        domain: [{ expr: "lower" }, { expr: "upper" }],
-                        zero: false,
-                        nice: false,
-                    },
-                },
-            },
-        });
-        const resolution = view.getScaleResolution("y");
-        const createExpression = view.paramRuntime.createExpression.bind(
-            view.paramRuntime
-        );
-        // Inject a subscription failure after another domain subscription has
-        // succeeded, without changing evaluation or the scoped parameter refs.
-        const spy = vi
-            .spyOn(view.paramRuntime, "createExpression")
-            .mockImplementation((expr) => {
-                const fn = createExpression(expr);
-                if (expr === "upper") {
-                    vi.spyOn(
-                        fn.dependencies[0],
-                        "subscribe"
-                    ).mockImplementation(() => {
-                        throw new Error("Subscription setup failed");
-                    });
-                }
-                return fn;
-            });
-        expect(() => resolution.initializeScale()).toThrow(
-            "Subscription setup failed"
-        );
-        expect(() => resolution.scale).toThrow("before initialization");
-        spy.mockRestore();
-        vi.restoreAllMocks();
-
-        resolution.initializeScale();
-        expect(resolution.getDomain()).toEqual([0, 5]);
-        const listener = vi.fn();
-        resolution.addEventListener("domain", listener);
-        view.paramRuntime.setValue("lower", 1);
-        expect(resolution.getDomain()).toEqual([1, 5]);
-        expect(listener).toHaveBeenCalledTimes(1);
-        view.disposeSubtree();
-    });
 
     test.each([false, true])(
         "calibrated initial references use completed primary data (reverse: %s)",

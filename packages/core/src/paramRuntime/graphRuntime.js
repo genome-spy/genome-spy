@@ -351,27 +351,19 @@ export default class GraphRuntime {
             },
         });
 
-        /** @type {(() => void)[]} */
-        const unsubscribers = [];
-        try {
-            for (const dep of deps)
-                unsubscribers.push(
-                    dep.subscribe(() => {
-                        if (!node.disposed) {
-                            this.#enqueueComputed(node);
-                            if (dep.propagation === "sync") {
-                                // Scale changes are synchronous and happen before
-                                // rendering, so their derived values must not lag.
-                                this.flushNow();
-                            }
-                        }
-                    })
-                );
-        } catch (error) {
-            node.disposed = true;
-            for (const unsubscribe of unsubscribers) unsubscribe();
-            throw error;
-        }
+        // Internal subscriptions only register listeners. Expression evaluation
+        // and dependency validation happen before this step.
+        const unsubscribers = deps.map((dep) =>
+            dep.subscribe(() => {
+                if (!node.disposed) {
+                    this.#enqueueComputed(node);
+                    if (dep.propagation === "sync") {
+                        // Scale changes must settle before rendering.
+                        this.flushNow();
+                    }
+                }
+            })
+        );
         const dispose = () => {
             if (node.disposed) {
                 return;

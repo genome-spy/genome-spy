@@ -53,8 +53,8 @@ export default class ScaleInstanceManager {
      * @param {object} options
      * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
      * @param {() => void} options.onRangeChange
-     * @param {(domain: any[]) => void} [options.onDomainChange]
-     * @param {() => import("../genome/genomeStore.js").default | undefined} [options.getGenomeStore]
+     * @param {(domain: any[]) => void} options.onDomainChange
+     * @param {() => import("../genome/genomeStore.js").default | undefined} options.getGenomeStore
      */
     constructor({
         createExpression,
@@ -88,7 +88,7 @@ export default class ScaleInstanceManager {
      * @returns {import("../genome/genome.js").default}
      */
     getLocusGenome(assembly) {
-        const genomeStore = this.#getGenomeStore?.();
+        const genomeStore = this.#getGenomeStore();
         if (!genomeStore) {
             throw new Error("No genome has been defined!");
         }
@@ -102,7 +102,7 @@ export default class ScaleInstanceManager {
 
     /**
      * @param {import("../spec/scale.js").Scale} props
-     * @param {(domain: any[]) => void} [initializeDomain] Before range expressions bind.
+     * @param {(domain: any[]) => void} initializeDomain Before range expressions bind.
      * @returns {ScaleWithProps}
      */
     createScale(props, initializeDomain) {
@@ -123,7 +123,7 @@ export default class ScaleInstanceManager {
         this.#bindGenomeIfNeeded(props);
         this.#mirrorDomain = scale.domain;
         if (scale.type !== "null") {
-            initializeDomain?.(scale.domain());
+            initializeDomain(scale.domain());
         }
         this.#initializingRange = true;
         try {
@@ -292,71 +292,41 @@ export default class ScaleInstanceManager {
 
     #wrapScaleInterceptors() {
         const scale = this.#scale;
-        if (!scale) {
-            return;
-        }
-
         const range = scale.range;
         const domain = scale.domain;
-        const notifyRange = () => this.#onRangeChange?.();
-        const notifyDomain = this.#onDomainChange;
+        const notifyRange = this.#onRangeChange;
+        const updateDomain = this.#onDomainChange;
 
-        withScaleInterceptors(scale, {
-            onRangeChange: notifyRange,
-            onDomainChange: notifyDomain,
-            range,
-            domain,
-        });
-
+        if (typeof range === "function") {
+            scale.range = /** @type {any} */ (
+                function (/** @type {any} */ _) {
+                    if (arguments.length) {
+                        range(_);
+                        notifyRange();
+                    } else {
+                        return range();
+                    }
+                }
+            );
+        }
+        if (typeof domain === "function") {
+            scale.domain = /** @type {any} */ (
+                function (/** @type {any} */ _) {
+                    if (arguments.length) {
+                        updateDomain(Array.from(_));
+                        return scale;
+                    } else {
+                        return domain();
+                    }
+                }
+            );
+        }
         notifyRange();
     }
 
     dispose() {
         this.#rangeExprRefListeners.forEach((fn) => fn.invalidate());
         this.#rangeExprRefListeners.clear();
-    }
-}
-
-/**
- * @param {import("../types/encoder.js").VegaScale} scale
- * @param {object} options
- * @param {(value: any) => void} [options.onRangeChange]
- * @param {(value: any) => void} [options.onDomainChange]
- * @param {(value?: any) => any} options.range
- * @param {(value?: any) => any} options.domain
- */
-function withScaleInterceptors(
-    scale,
-    { onRangeChange, onDomainChange, range, domain }
-) {
-    if (typeof range === "function") {
-        scale.range = /** @type {any} */ (
-            function (/** @type {any} */ _) {
-                if (arguments.length) {
-                    range(_);
-                    onRangeChange?.();
-                } else {
-                    return range();
-                }
-            }
-        );
-    }
-
-    if (typeof domain === "function") {
-        scale.domain = /** @type {any} */ (
-            function (/** @type {any} */ _) {
-                if (arguments.length) {
-                    if (onDomainChange) {
-                        onDomainChange(Array.from(_));
-                    } else {
-                        domain(_);
-                    }
-                    return scale;
-                } else {
-                    return domain();
-                }
-            }
-        );
     }
 }
 
