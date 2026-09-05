@@ -1,6 +1,6 @@
 # Next refactors
 
-Status: proposed. All milestone checkboxes are future work, not completed tasks.
+Status: M1 implemented and verified, 2026-09-05. M2–M4 remain proposed.
 See [direction and research](more-reactivity-plan.md) for rationale and contracts.
 
 ## Sequence and review boundaries
@@ -17,7 +17,33 @@ Tentative commit messages below follow the prepare-genomespy-change workflow.
 
 ## M1 — Grouped scale mapping as the first production consumer
 
-- [ ] Implement and verify one coherent mapping path.
+- [x] Implement and verify one coherent mapping path.
+
+Completed (2026-09-05): range configuration and all four mapping helpers now use
+one native operation output, retaining effective resolution scope. Stable rebinding
+validates cycles and reranks queued consumers. Mark resources and retained WebGL
+textures consume completed mappings; public range commands retain a compatibility
+bridge. The old range binding/listener helper and event-backed expression refs are
+removed. Domain and assembly-configuration dependencies remain separate.
+
+Verification includes the full unit suite (3,997 passing tests), all workspace
+TypeScript checks and lint. New behavioral tests cover grouped band padding,
+nested mixed-input updates, equality, rebinding, cycles, disposal, continuous
+padding, scheme interpolation, public range commands, and immediate Canvas/SVG
+geometry. Real browser animation checks observed 23–24 coherent mapping updates
+per renderer and verified immediate SVG radius and datum picking on WebGL, WebGPU
+and Canvas. The dedicated WebGPU harness and WebGL comparison both passed
+viewport-autoscale, viewport-index ruler, and lazy BigWig examples. The generic
+screenshot harness cannot initialize WebGPU with its software-renderer flags;
+the dedicated harness uses the supported Metal launch configuration.
+
+Size gate: changed production JavaScript totals 427 added / 246 removed lines
+(net +181). This milestone does not reduce total code size: stable producer
+rebinding, cycle validation, rank maintenance, and the public range-command bridge
+outweigh the deleted coordination paths. The growth supplies the missing ordering
+and lifetime contracts; the second grouped-property fixture needs no additional
+scheduler, event channel, or disposal subsystem. Future migrations must reuse this
+foundation and remove their old wiring.
 
 **Outcome:** existing ExprRef range arrays consume settled values and publish one
 coherent mapping. Band/index padding precedence is an internal fixture demonstrating that

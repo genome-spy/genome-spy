@@ -131,7 +131,10 @@ attachments, size observers, and the canvas.
   offscreen picking data.
 - The WebGL adapter supplies the embedded fallback bitmap URL and prepares font
   textures from renderer-neutral bitmap URLs. It also subscribes to the scale
-  resolutions used by its retained marks. Font and range textures are not
+  resolutions used by its retained marks through completed-mapping graph effects.
+  One shared subscription refreshes each range texture after domain and range
+  inputs settle; mark resource revisions use the same mapping contract.
+  Font and range textures are not
   stored in marks or scale planning.
 - Picking renders into a dedicated framebuffer owned by `WebGLHelper`.
 - Marks can opt out of picking; some render only into the picking target.

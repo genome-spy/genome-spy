@@ -1,6 +1,6 @@
 # First-class internal reactivity
 
-Status: proposed, 2026-09-05. No implementation is included in this proposal.
+Status: M1 implemented and verified, 2026-09-05. Later milestones remain proposed.
 Branch: `refactor/more-reactivity`, based on `720f1f8b384b929276b652ed89c5ef6e4a7878c6`.
 
 ## Recommendation

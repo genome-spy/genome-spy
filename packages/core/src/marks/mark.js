@@ -460,19 +460,11 @@ export default class Mark {
                         const resolution =
                             this.unitView.getScaleResolution(resolutionChannel);
                         if (resolution && !scales.has(resolution)) {
-                            const listener = () => state.resources++;
-                            resolution.addEventListener("domain", listener);
-                            resolution.addEventListener("range", listener);
-                            this.unitView.registerDisposer(() => {
-                                resolution.removeEventListener(
-                                    "domain",
-                                    listener
-                                );
-                                resolution.removeEventListener(
-                                    "range",
-                                    listener
-                                );
-                            });
+                            this.unitView.registerDisposer(
+                                resolution.observeMapping(
+                                    () => state.resources++
+                                )
+                            );
                             scales.add(resolution);
                         }
                     }

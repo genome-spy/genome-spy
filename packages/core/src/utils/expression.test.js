@@ -1,6 +1,7 @@
 // @ts-check
 import { describe, expect, test } from "vitest";
 import createFunction, { analyzeExpression } from "./expression.js";
+import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { bindExpression } from "../paramRuntime/expressionRef.js";
 
 describe("expression helpers", () => {
@@ -168,25 +169,15 @@ describe("expression helpers", () => {
 function createFakeScaleResolution(initialDomain, scaleFn, fromComplex) {
     let domain = initialDomain;
     let range = [0, 10];
-    /** @type {Record<"domain" | "range", Set<() => void>>} */
-    const listeners = {
-        domain: new Set(),
-        range: new Set(),
-    };
+    const runtime = new ViewParamRuntime();
+    const domainRef = runtime.signal("domain", domain);
+    const mapping = runtime.signal("mapping revision", 0);
+    const configuration = runtime.signal("configuration revision", 0);
 
     return {
-        addEventListener(
-            /** @type {"domain" | "range"} */ type,
-            /** @type {() => void} */ listener
-        ) {
-            listeners[type].add(listener);
-        },
-        removeEventListener(
-            /** @type {"domain" | "range"} */ type,
-            /** @type {() => void} */ listener
-        ) {
-            listeners[type].delete(listener);
-        },
+        getDomainRef: () => domainRef,
+        getMappingRef: () => mapping,
+        getConfigurationRef: () => configuration,
         getDomain() {
             return domain;
         },
@@ -202,15 +193,12 @@ function createFakeScaleResolution(initialDomain, scaleFn, fromComplex) {
         },
         setDomain(/** @type {number[]} */ nextDomain) {
             domain = nextDomain;
-            for (const listener of listeners.domain) {
-                listener();
-            }
+            domainRef.set(domain);
+            mapping.set(mapping.get() + 1);
         },
         setRange(/** @type {number[]} */ nextRange) {
             range = nextRange;
-            for (const listener of listeners.range) {
-                listener();
-            }
+            mapping.set(mapping.get() + 1);
         },
     };
 }

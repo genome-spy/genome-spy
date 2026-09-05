@@ -134,7 +134,13 @@ export function analyzeExpression(expr) {
                 usesScaleHelper = true;
                 // The compiler only captures this object in helper closures. The
                 // analysis never evaluates or subscribes to them.
-                return /** @type {any} */ ({ channel: "analysis" });
+                return /** @type {any} */ ({
+                    channel: "analysis",
+                    getDomainRef: /** @returns {undefined} */ () => undefined,
+                    getMappingRef: /** @returns {undefined} */ () => undefined,
+                    getConfigurationRef: /** @returns {undefined} */ () =>
+                        undefined,
+                });
             },
         }
     );
@@ -329,76 +335,13 @@ function runWithActiveScaleResolution(resolution, kind, fn) {
 
 /**
  * @param {ScaleHelperKind} kind
- * @param {string} channel
  * @param {import("../scales/scaleResolution.js").default} resolution
- * @param {string} codeName
  * @returns {import("../paramRuntime/types.js").ParamRef<any>}
  */
-function createScaleDependency(kind, channel, resolution, codeName) {
-    if (kind === "domain" && resolution.getDomainRef) {
-        return resolution.getDomainRef();
-    }
-    /** @type {Set<() => void>} */
-    const listeners = new Set();
-
-    const notify = () => {
-        for (const listener of listeners) {
-            listener();
-        }
-    };
-
-    const attach = () => {
-        if (kind === "domain") {
-            resolution.addEventListener("domain", notify);
-        } else if (kind === "range") {
-            resolution.addEventListener("range", notify);
-        } else {
-            resolution.addEventListener("domain", notify);
-            resolution.addEventListener("range", notify);
-        }
-    };
-
-    const detach = () => {
-        if (kind === "domain") {
-            resolution.removeEventListener("domain", notify);
-        } else if (kind === "range") {
-            resolution.removeEventListener("range", notify);
-        } else {
-            resolution.removeEventListener("domain", notify);
-            resolution.removeEventListener("range", notify);
-        }
-    };
-
-    return {
-        // The dependency is a lightweight invalidation token. It does not need
-        // to expose a separate scale value; the bound helper closure already
-        // closes over the actual resolution. The ref exists so the expression
-        // graph can subscribe to scale changes like any other reactive input.
-        id: `scale:${channel}:${codeName}`,
-        name: `scale(${channel})`,
-        kind: "derived",
-        rank: 0,
-        // Scale notifications run synchronously before rendering. Propagate
-        // derived parameters in the same turn so consumers never see a stale
-        // scale-derived value for one frame.
-        propagation: "sync",
-        get() {
-            return resolution.getScale();
-        },
-        subscribe(listener) {
-            const wasEmpty = listeners.size === 0;
-            listeners.add(listener);
-            if (wasEmpty) {
-                attach();
-            }
-            return () => {
-                const removed = listeners.delete(listener);
-                if (removed && listeners.size === 0) {
-                    detach();
-                }
-            };
-        },
-    };
+function createScaleDependency(kind, resolution) {
+    if (kind === "domain") return resolution.getDomainRef();
+    if (kind === "linearize") return resolution.getConfigurationRef();
+    return resolution.getMappingRef();
 }
 
 /**
@@ -444,12 +387,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
 
                 let dependency = scaleDependenciesByHelper.get(key);
                 if (!dependency) {
-                    dependency = createScaleDependency(
-                        kind,
-                        channel,
-                        resolution,
-                        "__scale_dependency_" + nextScaleHelperId++
-                    );
+                    dependency = createScaleDependency(kind, resolution);
                     scaleDependenciesByHelper.set(key, dependency);
                 }
 
@@ -500,7 +438,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
         // The expression runtime subscribes to these refs and invalidates the
         // compiled expression when the referenced scale changes.
         exprFunction.scaleDependencies = Array.from(
-            scaleDependenciesByHelper.values()
+            new Set(scaleDependenciesByHelper.values())
         );
 
         return exprFunction;

@@ -20,6 +20,19 @@ change. Computeds use identity equality by default, with an optional comparator
 for values such as domain arrays. Explicit disposal unregisters owner cleanup as
 well as dependencies, allowing bindings to be replaced in long-lived scopes.
 
+Internal `operation` refs use the same derived-node scheduling and ownership as
+computeds, with an application step before publishing a changed configuration.
+They evaluate and apply initially; equality suppresses subsequent application and
+publication together. Evaluation must validate the complete configuration before
+application mutates its owned resource. Application must not write reactive inputs
+or notify observers; downstream readers depend on the operation ref. Failed
+application does not publish the new configuration, but resource mutations are not
+rolled back. Operations can replace their explicit dependencies and evaluator with
+`rebind` while retaining the output ref. Rebinding rejects upstream cycles before
+disconnecting the old inputs and refreshes downstream ranks, including queued work.
+Ranks are cached between topology changes; normal frame updates do not traverse
+the graph to recompute them.
+
 Direct ref/expression subscriptions remain synchronous invalidation callbacks.
 They may observe intermediate writes within a transaction; use graph effects
 for coherent observation. A flush stabilizes ranked computeds, runs queued
@@ -53,11 +66,29 @@ existing initialization and scale-helper cycle checks still apply.
 
 Domain inputs for all scale kinds bind configured expression dependencies, contributor
 accessors and viewport topology when the bindings change. Candidate jobs use the
-same runtime queue as streaming replay. `DomainRuntime` publishes physical scale
-mapping and a stable native displayed-domain ref; calibrated expressions consume
+same runtime queue as streaming replay. `DomainRuntime` mirrors the physical scale
+domain and publishes a stable native displayed-domain ref; calibrated expressions consume
 that ref instead of a synthetic event dependency. Source/selection/zoom inputs
 settle before terminal domain notifications and rendering. Viewport debounce and
 coverage remain explicit input policy, with immediate initial calibration.
+
+`ScaleInstanceManager` binds existing range expressions into one mapping operation
+that depends on the displayed domain and the complete range configuration. Binding
+uses the effective resolution scope, preserving shared-scale ownership and the
+single-member compatibility lookup. It validates static configuration on a copy,
+applies the live configuration, and publishes a stable mapping ref. Range-array
+and domain equality suppress redundant application. `range()`, `bandwidth()`,
+`scale()` and `invert()` consume this native producer; `linearize()` instead
+consumes the resolution's assembly-configuration ref. Domain-to-range expressions
+remain valid, while mapping feedback is rejected by graph cycle validation.
+
+Marks and retained WebGL range textures observe completed mappings through owned
+graph effects. Compatibility range events are terminal notifications, not producer
+edges. Public `scale.range(value)` calls submit an explicit range command; it
+persists through navigation until the bound range values or configuration change.
+Identity scales have no mapping operation and expose their configuration ref.
+Reactive padding remains an internal grouped-operation fixture; the public grammar
+and continuous-padding domain-normalization policy are unchanged.
 
 Initial reference collection remains provisional throughout synchronous publication.
 A finalization job runs after all domain jobs and before observer effects, changing

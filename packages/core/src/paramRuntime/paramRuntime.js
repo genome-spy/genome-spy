@@ -242,6 +242,27 @@ export default class ParamRuntime {
     }
 
     /**
+     * Apply an owned configuration before publishing its graph output.
+     * @template T
+     * @param {ScopeId} scope
+     * @param {string} name
+     * @param {import("./types.js").ParamRef<any>[]} deps
+     * @param {() => T} fn Evaluate and validate the complete configuration.
+     * @param {(value: T) => void} apply Update the resource without notifying observers.
+     * @param {{ equals?: (a: T, b: T) => boolean }} [options]
+     */
+    operation(scope, name, deps, fn, apply, options) {
+        return this.#graphRuntime.operation(
+            this.#paramStore.getOwnerId(scope),
+            name,
+            deps,
+            fn,
+            apply,
+            options
+        );
+    }
+
+    /**
      * Observe settled dependencies. Runs on changes, not at registration.
      * @param {ScopeId} scope
      * @param {import("./types.js").ParamRef<any>[]} deps

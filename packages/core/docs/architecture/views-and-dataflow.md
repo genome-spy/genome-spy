@@ -112,7 +112,9 @@ refresh after publication. Pure functions in `domainPlanner.js` validate configu
 sources and combine domains; bootstrap and unbound `getDataDomain()` queries use
 the same readers without creating another state owner. `ScaleInstanceManager`
 normalizes candidates on a working scale, maintains categorical index mapping,
-configures properties/ranges, and mirrors committed domains. External `scale.domain(value)`
+applies properties/ranges through a graph-owned mapping operation, and mirrors
+committed domains. Mapping helpers consume the operation's stable output ref.
+External `scale.domain(value)`
 calls submit immediate owner updates; they do not bypass the commit path.
 `ScaleInteractionController` retains coordinate conversion, zoom mathematics,
 and validation, submitting navigation to the same owner. Reset uses the current

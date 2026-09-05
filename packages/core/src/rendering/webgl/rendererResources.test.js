@@ -164,17 +164,17 @@ test("shares scale-resolution subscriptions across marks", () => {
     resources.prepareMarks([first.mark, second.mark]);
 
     expect(glHelper.createRangeTexture).toHaveBeenCalledOnce();
-    expect(resolution.addEventListener).toHaveBeenCalledTimes(2);
-    resolution.listeners.get("domain")?.();
+    expect(resolution.observeMapping).toHaveBeenCalledTimes(1);
+    resolution.listeners.get("mapping")?.();
     expect(glHelper.createRangeTexture).toHaveBeenLastCalledWith(
         resolution,
         true
     );
 
     first.dispose();
-    expect(resolution.removeEventListener).not.toHaveBeenCalled();
+    expect(resolution.dispose).not.toHaveBeenCalled();
     second.dispose();
-    expect(resolution.removeEventListener).toHaveBeenCalledTimes(2);
+    expect(resolution.dispose).toHaveBeenCalledTimes(1);
 });
 
 test("disposed entries stay inactive for already compiled batches", () => {
@@ -262,7 +262,7 @@ test("releases scale listeners when shader finalization fails", () => {
         "failed failed"
     );
 
-    expect(resolution.removeEventListener).toHaveBeenCalledTimes(2);
+    expect(resolution.dispose).toHaveBeenCalledTimes(1);
     expect(resolution.listeners).toEqual(new Map());
 });
 
@@ -349,14 +349,14 @@ function createMark(name) {
 }
 
 function createScaleResolution() {
-    /** @type {Map<string, () => void>} */
     const listeners = new Map();
+    const dispose = vi.fn(() => listeners.delete("mapping"));
     return {
         listeners,
-        getScale: () => ({}),
-        addEventListener: vi.fn((type, listener) =>
-            listeners.set(type, listener)
-        ),
-        removeEventListener: vi.fn((type) => listeners.delete(type)),
+        dispose,
+        observeMapping: vi.fn((/** @type {() => void} */ listener) => {
+            listeners.set("mapping", listener);
+            return dispose;
+        }),
     };
 }

@@ -31,6 +31,8 @@ const PRIORITY_STRIDE = 1000000;
  *   kind: "derived",
  *   name: string,
  *   fn: () => T,
+ *   dependencies: import("./types.js").ParamRef<any>[],
+ *   apply?: (value: T) => void,
  *   equals: (a: T, b: T) => boolean
  * }} ComputedNode
  */
@@ -169,6 +171,8 @@ export default class GraphRuntime {
     #nextNodeId = 1;
 
     #nextQueueSequence = 1;
+
+    #topologyRevision = 0;
 
     #transactionDepth = 0;
 
@@ -324,21 +328,58 @@ export default class GraphRuntime {
      * @returns {import("./types.js").ComputedParamRef<T>}
      */
     computed(ownerId, name, deps, fn, options = {}) {
-        const maxRank = deps.reduce(
-            (previous, dep) => Math.max(previous, getDependencyRank(dep)),
-            0
-        );
+        return this.#derive(ownerId, name, deps, fn, options);
+    }
 
+    /**
+     * Applies a complete configuration before publishing its derived output.
+     * Unlike a terminal effect, the returned ref represents the operation's
+     * producer edge, so downstream computations run after configuration.
+     *
+     * Evaluate and validate in `fn`; `apply` only updates the owned resource and
+     * must not write reactive inputs or notify observers. There is no rollback
+     * of resource mutations if `apply` throws. Initial configuration is applied
+     * eagerly; subsequent equal configurations skip both apply and publication.
+     *
+     * @template T
+     * @param {string} ownerId
+     * @param {string} name
+     * @param {import("./types.js").ParamRef<any>[]} deps
+     * @param {() => T} fn
+     * @param {(value: T) => void} apply
+     * @param {{ equals?: (a: T, b: T) => boolean }} [options]
+     * @returns {import("./types.js").OperationRef<T>}
+     */
+    operation(ownerId, name, deps, fn, apply, options = {}) {
+        return this.#derive(ownerId, name, deps, fn, options, apply);
+    }
+
+    /**
+     * @template T
+     * @param {string} ownerId
+     * @param {string} name
+     * @param {import("./types.js").ParamRef<any>[]} deps
+     * @param {() => T} fn
+     * @param {{ equals?: (a: T, b: T) => boolean }} options
+     * @param {(value: T) => void} [apply]
+     * @returns {import("./types.js").OperationRef<T>}
+     */
+    #derive(ownerId, name, deps, fn, options, apply) {
+        const readRank = this.#createRankReader(() => node.dependencies);
         const nodeId = "n" + this.#nextNodeId++;
         const node = /** @type {ComputedNode<T>} */ ({
             id: nodeId,
             name,
             kind: "derived",
-            rank: maxRank + 1,
+            get rank() {
+                return readRank();
+            },
+            dependencies: deps,
             value: fn(),
             disposed: false,
             listeners: new Set(),
             fn,
+            apply,
             equals: options.equals ?? ((a, b) => a === b),
             subscribe(
                 /** @type {() => void} */
@@ -351,19 +392,23 @@ export default class GraphRuntime {
             },
         });
 
+        apply?.(node.value);
+
         // Internal subscriptions only register listeners. Expression evaluation
         // and dependency validation happen before this step.
-        const unsubscribers = deps.map((dep) =>
-            dep.subscribe(() => {
-                if (!node.disposed) {
-                    this.#enqueueComputed(node);
-                    if (dep.propagation === "sync") {
-                        // Scale changes must settle before rendering.
-                        this.flushNow();
+        const subscribe = () =>
+            node.dependencies.map((dep) =>
+                dep.subscribe(() => {
+                    if (!node.disposed) {
+                        this.#enqueueComputed(node);
+                        if (dep.propagation === "sync") {
+                            // Scale changes must settle before rendering.
+                            this.flushNow();
+                        }
                     }
-                }
-            })
-        );
+                })
+            );
+        let unsubscribers = subscribe();
         const dispose = () => {
             if (node.disposed) {
                 return;
@@ -380,7 +425,60 @@ export default class GraphRuntime {
 
         return Object.assign(
             /** @type {import("./types.js").ParamRef<T>} */ (createRef(node)),
-            { dispose }
+            {
+                dispose,
+                rebind: (
+                    /** @type {import("./types.js").ParamRef<any>[]} */ dependencies,
+                    /** @type {() => T} */ evaluate
+                ) => {
+                    if (node.disposed)
+                        throw new Error(
+                            "Cannot rebind disposed operation: " + name
+                        );
+                    // Validate before disconnecting the old producer. Keeping the
+                    // same ref lets existing consumers retain their dependency.
+                    const visited = new Set();
+                    const visit = (
+                        /** @type {import("./types.js").ParamRef<any>} */ ref
+                    ) => {
+                        const source =
+                            /** @type {ComputedNode<any> | undefined} */ (
+                                /** @type {any} */ (ref)[RUNTIME_NODE]
+                            );
+                        if (source === node)
+                            throw new Error(
+                                "Reactive dependency cycle: " + name
+                            );
+                        if (visited.has(source)) return;
+                        visited.add(source);
+                        for (const dep of source?.dependencies ?? [])
+                            visit(dep);
+                    };
+                    dependencies.forEach(visit);
+                    unsubscribers.forEach((unsubscribe) => unsubscribe());
+                    node.dependencies = dependencies;
+                    node.fn = evaluate;
+                    this.#topologyRevision++;
+                    unsubscribers = subscribe();
+                    this.#enqueueComputed(node);
+                    // A topology change can increase or decrease downstream ranks,
+                    // including work already queued by the surrounding transaction.
+                    this.#computedQueue.clear();
+                    for (const pending of this.#dirtyComputeds) {
+                        this.#computedQueue.push(
+                            pending,
+                            this.#computePriority(pending.rank)
+                        );
+                    }
+                    this.#effectQueue.clear();
+                    for (const pending of this.#dirtyEffects) {
+                        this.#effectQueue.push(
+                            pending,
+                            this.#computePriority(pending.rank)
+                        );
+                    }
+                },
+            }
         );
     }
 
@@ -398,15 +496,13 @@ export default class GraphRuntime {
      * @returns {() => void} explicit disposer for manual teardown
      */
     effect(ownerId, deps, fn) {
-        const maxRank = deps.reduce(
-            (previous, dep) => Math.max(previous, getDependencyRank(dep)),
-            0
-        );
-
+        const readRank = this.#createRankReader(() => deps);
         const nodeId = "n" + this.#nextNodeId++;
         const node = /** @type {EffectNode} */ ({
             id: nodeId,
-            rank: maxRank + 1,
+            get rank() {
+                return readRank();
+            },
             disposed: false,
             fn,
         });
@@ -520,13 +616,18 @@ export default class GraphRuntime {
                     }
                     this.#countRun(node, node.name);
                     let next;
+                    let changed;
                     try {
                         next = node.fn();
+                        changed = !node.equals(next, node.value);
+                        if (changed) {
+                            node.apply?.(next);
+                        }
                     } catch (error) {
                         this.#enqueueComputed(node);
                         throw error;
                     }
-                    if (!node.equals(next, node.value)) {
+                    if (changed) {
                         node.value = next;
                         this.#notify(node.listeners);
                     }
@@ -683,6 +784,29 @@ export default class GraphRuntime {
             }
             this.#propagatedWaiters.add(waiter);
         });
+    }
+
+    /**
+     * Cache ranks between topology changes, without maintaining a second graph
+     * of downstream links. Rebinding is rare; ordinary updates read cached ranks.
+     * @param {() => import("./types.js").ParamRef<any>[]} dependencies
+     */
+    #createRankReader(dependencies) {
+        let revision = -1;
+        let rank = 0;
+        return () => {
+            if (revision !== this.#topologyRevision) {
+                rank =
+                    1 +
+                    dependencies().reduce(
+                        (maximum, dep) =>
+                            Math.max(maximum, getDependencyRank(dep)),
+                        0
+                    );
+                revision = this.#topologyRevision;
+            }
+            return rank;
+        };
     }
 
     /**

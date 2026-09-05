@@ -1011,12 +1011,8 @@ test("activateExprRefProps supports propagated batching and deduped keys", async
  * @returns {any}
  */
 function createFakeScaleResolution() {
-    let domain = [0, 10];
-    /** @type {Record<"domain" | "range", Set<() => void>>} */
-    const listeners = {
-        domain: new Set(),
-        range: new Set(),
-    };
+    const runtime = new ViewParamRuntime();
+    const domain = runtime.signal("domain", [0, 10]);
 
     const scale = Object.assign(
         /** @param {number} value */
@@ -1028,29 +1024,13 @@ function createFakeScaleResolution() {
     );
 
     return {
-        addEventListener(
-            /** @type {"domain" | "range"} */ type,
-            /** @type {() => void} */ listener
-        ) {
-            listeners[type].add(listener);
-        },
-        removeEventListener(
-            /** @type {"domain" | "range"} */ type,
-            /** @type {() => void} */ listener
-        ) {
-            listeners[type].delete(listener);
-        },
-        getDomain() {
-            return domain;
-        },
+        getDomainRef: () => domain,
+        getDomain: () => domain.get(),
         getScale() {
             return scale;
         },
         setDomain(/** @type {number[]} */ nextDomain) {
-            domain = nextDomain;
-            for (const listener of listeners.domain) {
-                listener();
-            }
+            domain.set(nextDomain);
         },
     };
 }

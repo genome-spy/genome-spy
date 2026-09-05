@@ -618,6 +618,26 @@ export default class ViewParamRuntime {
     }
 
     /**
+     * Apply an owned configuration before publishing its graph output.
+     * @template T
+     * @param {string} name
+     * @param {import("./types.js").ParamRef<any>[]} deps
+     * @param {() => T} fn Evaluate and validate the complete configuration.
+     * @param {(value: T) => void} apply Update the resource without notifying observers.
+     * @param {{ equals?: (a: T, b: T) => boolean }} [options]
+     */
+    operation(name, deps, fn, apply, options) {
+        return this.#runtime.operation(
+            this.#scopeId,
+            name,
+            deps,
+            fn,
+            apply,
+            options
+        );
+    }
+
+    /**
      * Observe settled dependencies. Runs on changes, not at registration.
      * @param {import("./types.js").ParamRef<any>[]} deps
      * @param {() => void} fn
