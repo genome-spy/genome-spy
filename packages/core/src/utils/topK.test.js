@@ -40,6 +40,13 @@ test("topK returns top k objects in priority order within a start-end range", ()
     ]);
 });
 
+test("topK uses stable input order for equal priorities", () => {
+    const arr = Array.from({ length: 10 }, (_, index) => ({ index }));
+
+    expect(topK(arr, 3, () => 1)).toEqual(arr.slice(0, 3));
+    expect(topK(arr, 3, () => 1, 2, 8)).toEqual(arr.slice(2, 5));
+});
+
 test("topK returns empty array if start >= end", () => {
     const arr = [1, 2, 3, 4, 5];
     expect(topK(arr, 3, (x) => x, 4, 4)).toEqual([]);

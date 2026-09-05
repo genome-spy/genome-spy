@@ -105,7 +105,10 @@ export default class FilterScoredLabelsTransform extends Transform {
         const domain = scale.domain();
         const k = 70; // TODO: Configurable
 
-        // Find the maximum of k elements from the visible domain in priority order
+        // Find the maximum of k elements from the visible domain in priority
+        // order. _data is sorted by position, which provides stable tie ordering.
+        // TODO: Add hysteresis if equal-score labels still need more stability
+        // across small domain changes.
         const topElements = topK(
             this._data,
             k,
