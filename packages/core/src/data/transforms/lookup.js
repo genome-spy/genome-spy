@@ -22,6 +22,11 @@ import Transform from "./transform.js";
  * readiness and coverage behavior.
  */
 export default class LookupTransform extends Transform {
+    // TODO(#463): Let declared side-input dependencies coordinate invalidation,
+    // primary replay, and consumed-revision readiness, shared with CrossTransform.
+    // Keep index caching, self-input buffering, and lazy coverage policy local;
+    // a shared protocol should replace the duplicated observer/replay glue.
+
     /** @type {import("../collector.js").default | undefined} */
     #foreignCollector;
 
@@ -31,6 +36,14 @@ export default class LookupTransform extends Transform {
         return this.#foreignCollector ? [this.#foreignCollector] : [];
     }
 
+    /**
+     * Completed output is ready only after incorporating the current foreign
+     * revision. Foreign completion alone is insufficient: observers may run
+     * before primary replay has updated the lookup output. Self-input lookups
+     * have no foreign collector and use the ordinary completion check.
+     *
+     * @returns {boolean}
+     */
     isDataReady() {
         return (
             super.isDataReady() &&

@@ -9,6 +9,11 @@ import Transform from "./transform.js";
  * field sets into new flat rows.
  */
 export default class CrossTransform extends Transform {
+    // TODO(#463): Share side-input invalidation, primary replay, and revision
+    // readiness with LookupTransform through the dataflow dependency protocol.
+    // Preserve ready-empty output and stamp consumed inputs before notifying
+    // downstream observers; keep Cartesian-product processing and caches local.
+
     get behavior() {
         return BEHAVIOR_CLONES;
     }
