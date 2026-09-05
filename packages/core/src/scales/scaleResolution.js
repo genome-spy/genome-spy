@@ -158,9 +158,7 @@ export default class ScaleResolution {
 
     #resolvingScaleProps = 0;
 
-    #memberRegistrationBatchDepth = 0;
-
-    #membersDirty = false;
+    #registeringMembers = false;
 
     /**
      * @param {Channel} channel
@@ -582,7 +580,6 @@ export default class ScaleResolution {
     }
 
     #syncMembers() {
-        this.#membersDirty = false;
         this.#invalidateOrderedMembers();
         this.#invalidateMergedScaleProps();
 
@@ -591,10 +588,8 @@ export default class ScaleResolution {
         }
     }
 
-    #markMembersDirty() {
-        if (this.#memberRegistrationBatchDepth > 0) {
-            this.#membersDirty = true;
-        } else {
+    #onMembersChanged() {
+        if (!this.#registeringMembers) {
             this.#syncMembers();
         }
     }
@@ -626,7 +621,8 @@ export default class ScaleResolution {
 
     /**
      * Executes a group of member registrations without refreshing derived
-     * membership state until the callback completes.
+     * membership state until the callback completes. Each supplied resolution
+     * receives registrations; overlapping registration batches are unsupported.
      *
      * @template T
      * @param {Iterable<ScaleResolution>} resolutions
@@ -635,6 +631,15 @@ export default class ScaleResolution {
      */
     static registerInBatch(resolutions, callback) {
         const batchedResolutions = Array.from(resolutions);
+        if (
+            batchedResolutions.some(
+                (resolution) => resolution.#registeringMembers
+            )
+        ) {
+            throw new Error(
+                "Overlapping scale registration batches are not supported."
+            );
+        }
         let memberSyncStarted = false;
         const snapshots = batchedResolutions.map((resolution) => ({
             resolution,
@@ -642,30 +647,23 @@ export default class ScaleResolution {
             dataDomainMembers: new Set(resolution.#dataDomainMembers),
             type: resolution.type,
             name: resolution.name,
-            batchDepth: resolution.#memberRegistrationBatchDepth,
-            membersDirty: resolution.#membersDirty,
         }));
         for (const resolution of batchedResolutions) {
-            resolution.#memberRegistrationBatchDepth++;
+            resolution.#registeringMembers = true;
         }
 
         try {
             const result = callback();
             for (const resolution of batchedResolutions) {
-                resolution.#memberRegistrationBatchDepth--;
+                resolution.#registeringMembers = false;
             }
 
-            const resolutionsToSync = batchedResolutions.filter(
-                (resolution) =>
-                    resolution.#memberRegistrationBatchDepth === 0 &&
-                    resolution.#membersDirty
-            );
-            for (const resolution of resolutionsToSync) {
+            for (const resolution of batchedResolutions) {
                 resolution.#preflightMemberSync();
             }
 
             memberSyncStarted = true;
-            for (const resolution of resolutionsToSync) {
+            for (const resolution of batchedResolutions) {
                 resolution.#syncMembers();
             }
             return result;
@@ -676,8 +674,9 @@ export default class ScaleResolution {
                 resolution.#dataDomainMembers = snapshot.dataDomainMembers;
                 resolution.type = snapshot.type;
                 resolution.name = snapshot.name;
-                resolution.#memberRegistrationBatchDepth = snapshot.batchDepth;
-                resolution.#membersDirty = snapshot.membersDirty;
+                resolution.#registeringMembers = false;
+                resolution.#invalidateOrderedMembers();
+                resolution.#invalidateMergedScaleProps();
             }
 
             if (memberSyncStarted) {
@@ -685,24 +684,14 @@ export default class ScaleResolution {
                 // listeners. Restore every affected resolution before surfacing
                 // the original registration error.
                 try {
-                    for (const snapshot of snapshots) {
-                        const resolution = snapshot.resolution;
-                        if (snapshot.batchDepth === 0) {
-                            resolution.#syncMembers();
-                        } else {
-                            resolution.#membersDirty = true;
-                        }
+                    for (const resolution of batchedResolutions) {
+                        resolution.#syncMembers();
                     }
                 } catch (rollbackError) {
                     if (error && typeof error === "object") {
                         /** @type {any} */ (error).rollbackError =
                             rollbackError;
                     }
-                }
-            } else {
-                for (const snapshot of snapshots) {
-                    snapshot.resolution.#invalidateOrderedMembers();
-                    snapshot.resolution.#invalidateMergedScaleProps();
                 }
             }
 
@@ -716,12 +705,12 @@ export default class ScaleResolution {
      */
     registerMember(member) {
         const registeredMember = this.#addMember(member);
-        this.#markMembersDirty();
+        this.#onMembersChanged();
         return () => {
             const removed = this.#members.delete(registeredMember);
             if (removed) {
                 this.#dataDomainMembers.delete(registeredMember);
-                this.#markMembersDirty();
+                this.#onMembersChanged();
             }
             return removed && this.#members.size === 0;
         };
