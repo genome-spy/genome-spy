@@ -28,6 +28,18 @@ import { DOMAIN_UPDATE_PRIORITY } from "./domainRuntime.js";
 /**
  * Compile replaceable domain inputs for a shared scale. Membership, declaration
  * scope, accessors and viewport topology are resolved here, not during updates.
+ *
+ * This binding joins graph-based expressions/selections with collector and
+ * viewport invalidations. request() coalesces them into a source snapshot for
+ * DomainRuntime, which decides whether to preserve, replace, or animate the
+ * displayed domain. This module derives inputs; it does not own that lifecycle.
+ *
+ * The returned binding owns its subscriptions, computed refs and viewport timer.
+ * Replace it when configuration or participants change, retaining the owner.
+ * lastVisible and ignoreSelectionInitial carry input history across replacement:
+ * an empty viewport retains its last domain, and a cleared brush stays cleared.
+ * syncSelection() is the reverse path from the owner's display to a linked brush.
+ *
  * @param {object} options
  * @param {import("./domainRuntime.js").default} options.owner
  * @param {import("./scaleInstanceManager.js").default} options.manager
@@ -72,6 +84,7 @@ export default function createDomainInputs({
 }) {
     const runtime = owner.runtime;
     const views = Array.from(members, (member) => member.view);
+
     owner.policy = () => ({
         zoomable:
             isContinuous(props.type) && !isDiscrete(props.type) && !!props.zoom,
@@ -85,8 +98,10 @@ export default function createDomainInputs({
         animateChanges: props.domainTransition !== false,
         selectionLinked: !!link,
     });
+
     /** @type {(() => void)[]} */
     const disposers = [];
+
     try {
         /** @type {Map<string, import("../paramRuntime/types.js").ExprRefFunction>} */
         const expressions = new Map();
@@ -103,6 +118,7 @@ export default function createDomainInputs({
                     expressions.set(ref.expr, createExpression(ref.expr));
             }
         }
+
         const accessors = new Map(
             Array.from(dataMembers, (member) => [
                 member,
@@ -111,6 +127,7 @@ export default function createDomainInputs({
                 ),
             ])
         );
+
         const constraints = new Map(
             Array.from(dataMembers, (member) => {
                 // Encoders are installed after scale bootstrap. Subtree initialization
@@ -119,6 +136,9 @@ export default function createDomainInputs({
                     viewport && member.view.mark.encoders
                         ? getConstraints(member)
                         : [];
+
+                // Resolve dependency identities once, but read their current
+                // displayed intervals when querying rows, including during zoom.
                 const dynamic = bound.map((constraint) => {
                     const resolution = member.view.getScaleResolution(
                         constraint.channel
@@ -137,6 +157,7 @@ export default function createDomainInputs({
                 return [member, dynamic];
             })
         );
+
         const selection = runtime.signal("selection domain input", {
             value: link
                 ? getIntervalSelection(
@@ -148,13 +169,17 @@ export default function createDomainInputs({
             ignoreInitial: ignoreSelectionInitial,
         });
         disposers.push(selection.dispose);
+
         /** @type {unknown} */
         let outgoing;
+
         /** @type {import("./domainLifecycle.js").DomainSourceUpdate["type"] | undefined} */
         let pendingReason;
+
         /** @type {any[]} */
         let fallback = [];
         let disposed = false;
+
         const configured = runtime.computed(
             "configured domain",
             [
@@ -198,6 +223,11 @@ export default function createDomainInputs({
                 (member) => accessors.get(member)
             );
         };
+
+        // Initial readiness is independent of domain contents and viewport
+        // coverage. An uninitialized member can contribute an authored domain;
+        // installed constant-only accessors need no collector publication.
+        // Otherwise require meaningful data completion, even when empty.
         const ready = () =>
             Array.from(dataMembers).every((member) => {
                 if (!member.view.isDataInitialized()) {
@@ -209,14 +239,20 @@ export default function createDomainInputs({
                 const collector = member.view.getCollector();
                 return !!collector && isDataReady(collector);
             });
+
         /** @param {import("../utils/domainArray.js").DomainArray | undefined} data */
         const defaultDomain = (data) =>
             resolveDefaultDomain(type, getLocusExtent, data, props.assembly);
+
         const publish = () => {
             const reason = pendingReason;
             pendingReason = undefined;
             if (disposed || !reason) return;
+
             if (reason === "selection-sync") {
+                // The owner already committed this display. Its brush echo must
+                // not rescan data or advance readiness; real data invalidation
+                // takes precedence over an echo in request().
                 void owner.update({
                     type: reason,
                     candidate: owner.state.visibleDomain,
@@ -230,7 +266,9 @@ export default function createDomainInputs({
                 });
                 return;
             }
+
             const configuredDomain = configured.get();
+
             // Authored domains need rows only for linked fallback or loaded extent;
             // genomic fallback comes from the assembly rather than loaded rows.
             const needsData =
@@ -239,9 +277,11 @@ export default function createDomainInputs({
                     props.zoom.extent === "data");
             const data = needsData ? readData() : undefined;
             fallback = defaultDomain(data);
+
             const domain = configuredDomain ?? fallback;
             const finalProps = manager.domainProps(props, domain, explicit);
             const normalized = manager.prepareDomain(finalProps);
+
             if (normalized.applyOrdinalUnknown)
                 /** @type {import("d3-scale").ScaleOrdinal<any, any>} */ (
                     manager.scale
@@ -250,6 +290,7 @@ export default function createDomainInputs({
                 /** @type {any} */ (manager.scale.props).domainIndexer =
                     /** @type {any} */ (finalProps).domainIndexer;
             }
+
             const candidate =
                 reason === "viewport" &&
                 !isViewportDataReady(dataMembers, (member) =>
@@ -257,6 +298,11 @@ export default function createDomainInputs({
                 )
                     ? undefined
                     : (normalized.domain ?? undefined);
+
+            // These domains serve different purposes: candidate proposes a
+            // display, reset excludes a data-derived fallback, and reference
+            // collects the initial navigation baseline. A linked brush uses the
+            // fallback as its reference rather than its selected subinterval.
             void owner.update({
                 type: reason,
                 candidate,
@@ -279,10 +325,13 @@ export default function createDomainInputs({
                         : "pending",
             });
         };
+
         /** @param {import("./domainLifecycle.js").DomainSourceUpdate["type"]} reason */
         const request = (reason) => {
-            // Authored/selection changes retain authority when data invalidates in
-            // the same turn. Source publication reads all settled inputs once.
+            // Preserve the strongest update reason while reading all current
+            // values once: external selection wins, data cannot replace a more
+            // specific reason, and owner echoes cannot replace real changes.
+            // Other specific reasons use the latest request in this batch.
             if (
                 !pendingReason ||
                 reason === "selection" ||
@@ -291,10 +340,16 @@ export default function createDomainInputs({
                     (reason !== "data" || pendingReason === "selection-sync"))
             )
                 pendingReason = reason;
+
+            // Derive inputs after queued upstream replay, before domain commits.
             runtime.requestUpdate(publish, DOMAIN_UPDATE_PRIORITY - 1, () => {
                 pendingReason = undefined;
             });
         };
+
+        // Navigation/data bursts debounce viewport queries only after initial
+        // readiness. Bootstrap must publish promptly to initialize dependent
+        // scales and lazy requests; coverage still gates viewport candidates.
         const scheduler = new ViewportDomainScheduler({
             isReady: () =>
                 isViewportDataReady(dataMembers, (member) =>
@@ -305,6 +360,7 @@ export default function createDomainInputs({
                 runtime.flushNow({ afterTransaction: true });
             },
         });
+
         for (const resolution of viewportDependencies) {
             disposers.push(
                 resolution.getDomainRef().subscribe(() => {
@@ -315,6 +371,7 @@ export default function createDomainInputs({
             );
         }
         disposers.push(() => scheduler.clear());
+
         disposers.push(
             configured.subscribe(() =>
                 request(
@@ -326,6 +383,7 @@ export default function createDomainInputs({
                 )
             )
         );
+
         if (link) {
             disposers.push(
                 link.runtime.subscribe(link.param, () => {
@@ -335,16 +393,23 @@ export default function createDomainInputs({
                         link.param
                     );
                     const interval = value?.intervals[link.encoding];
+
+                    // Capture origin while setValue() is notifying listeners.
+                    // Deferred publication cannot use the stack-scoped outgoing
+                    // marker; equal-valued external writes are still commands.
                     const own = outgoing !== undefined && value === outgoing;
                     selection.set({
                         value,
                         own,
+                        // After a populated brush is cleared, do not resurrect
+                        // the authored initial interval on the next evaluation.
                         ignoreInitial: interval
                             ? false
                             : previous.value?.intervals[link.encoding]
                               ? true
                               : previous.ignoreInitial,
                     });
+
                     // Even a clear with an unchanged normalized domain is a command.
                     request(own ? "selection-sync" : "selection");
                 })
@@ -357,6 +422,7 @@ export default function createDomainInputs({
             else request("data");
             runtime.flushNow({ afterTransaction: true });
         };
+
         // The same bound accessors drive domain extraction and invalidation.
         // A domain-sensitive flow must not invalidate its own inferred domain.
         /** @type {Map<import("../data/collector.js").default, {keys: Set<string>, sensitive: Set<import("../spec/channel.js").ChannelWithScale>}>} */
@@ -364,6 +430,7 @@ export default function createDomainInputs({
         for (const member of dataMembers) {
             const collector = member.view.getCollector();
             if (!collector) continue;
+
             let subscription = subscriptions.get(collector);
             if (!subscription) {
                 subscription = {
@@ -372,6 +439,7 @@ export default function createDomainInputs({
                 };
                 subscriptions.set(collector, subscription);
             }
+
             for (const accessor of accessors.get(member)) {
                 if (
                     !explicit &&
@@ -385,6 +453,7 @@ export default function createDomainInputs({
                 subscription.keys.add(getAccessorDomainKey(accessor, type));
             }
         }
+
         for (const [collector, { keys }] of subscriptions) {
             for (const key of keys)
                 disposers.push(
@@ -396,11 +465,14 @@ export default function createDomainInputs({
             get lastVisible() {
                 return lastVisible;
             },
+
             get ignoreSelectionInitial() {
                 return selection.get().ignoreInitial;
             },
+
             request,
             readData,
+
             syncSelection() {
                 if (
                     !link ||
@@ -409,25 +481,31 @@ export default function createDomainInputs({
                     isDiscrete(props.type)
                 )
                     return;
+
                 const current = getIntervalSelection(
                     link.runtime.getValue(link.param),
                     link.param
                 );
                 if (!current) return;
+
                 const interval = normalizeIntervalForSelection(
                     /** @type {number[]} */ (owner.state.visibleDomain),
                     getZoomExtent()
                 );
                 if (!interval) return;
+
                 const fallbackInterval = normalizeIntervalForSelection(
                     fallback,
                     getZoomExtent()
                 );
+                // The fallback is represented by an empty brush, so resetting
+                // navigation does not leave a redundant full-domain selection.
                 const synced = deepEqual(interval, fallbackInterval)
                     ? null
                     : interval;
                 if (deepEqual(current.intervals[link.encoding] ?? null, synced))
                     return;
+
                 const value = {
                     ...current,
                     intervals: {
@@ -435,6 +513,7 @@ export default function createDomainInputs({
                         [link.encoding]: synced,
                     },
                 };
+
                 outgoing = value;
                 try {
                     link.runtime.setValue(link.param, value);
@@ -442,6 +521,7 @@ export default function createDomainInputs({
                     outgoing = undefined;
                 }
             },
+
             dispose() {
                 disposed = true;
                 runtime.cancelUpdate(publish);

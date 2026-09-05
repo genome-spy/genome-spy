@@ -881,10 +881,14 @@ export default class ScaleResolution {
 
     /**
      * Rebind after configuration, membership, or encoder initialization changes.
-     * Owns the collector subscriptions; ordinary publication uses these bindings.
+     * The binding owns input subscriptions; DomainRuntime retains displayed-domain
+     * state and animation across replacements. Ordinary data/parameter updates
+     * use the installed binding instead of resolving membership again.
      * @internal
      */
     bindDomainInputs() {
+        // Preserve only input history. Drop queued snapshots from the old binding
+        // and its subscriptions; public navigation commands remain with the owner.
         const lastVisible = this.#domainInputs?.lastVisible;
         this.#domainRuntime?.cancelSourceUpdates();
         if (this.#domainInputs) {
@@ -893,8 +897,10 @@ export default class ScaleResolution {
             this.#domainInputs.dispose();
             this.#domainInputs = undefined;
         }
+
         const scale = this.#scaleManager.scale;
         if (!scale || scale.type === "null" || !this.#members.size) return;
+
         const members = new Set(
             this.#members
                 .values()
@@ -905,9 +911,14 @@ export default class ScaleResolution {
                 .values()
                 .filter((member) => member.view.isConfiguredVisible())
         );
+
         const props = this.#getMergedScaleProps();
         const link = this.#getLinkedSelectionInfo();
         const viewport = this.#hasViewportDomain();
+
+        // Pass resolved participants/configuration and scope-aware readers into
+        // one replaceable binding. It derives source snapshots for the owner;
+        // creating it does not itself request an initial source publication.
         this.#domainInputs = createDomainInputs({
             owner: this.#domainRuntime,
             manager: this.#scaleManager,

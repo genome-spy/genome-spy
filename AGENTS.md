@@ -84,6 +84,9 @@ Common checks from the repository root:
 - When removing a function or class, remove its JSDoc block too.
 - Formatting is defined by `.editorconfig` and Prettier: JavaScript and WGSL use
   four spaces, JSON uses two, and indentation uses spaces rather than tabs.
+- Use blank lines to separate logical blocks within functions, such as setup,
+  validation, computation, subscription wiring, and publication. Keep closely
+  related statements together; do not rely on comments alone to structure dense code.
 - Use modern ESNext syntax. Prefer `const` unless reassignment is necessary and
   use `Array.from` instead of spread when converting a `NodeList` to an array.
 - Prefer offensive over defensive code: rely on types, validate at boundaries,
