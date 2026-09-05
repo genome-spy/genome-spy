@@ -5,10 +5,9 @@
 Replace fragmented domain lifecycle decisions with one explicit update model,
 preserving supported visual behavior. This follows
 [issue #464 and its comments](https://github.com/genome-spy/genome-spy/issues/464).
-The first delivery covers milestones 1 and 2 below. It establishes the contracts
-and tests the new policy before integrating it into live scales.
-Milestones 1–2 are complete. The next delivery follows the
-[detailed milestone 3 plan](milestone-3-plan.md).
+Milestones 1–4 are complete. The
+[detailed milestone 3 record](milestone-3-plan.md) contains the readiness and
+owner integration, review outcomes, verification, and measured tradeoffs.
 
 The key distinction is between calculating a candidate domain and deciding
 whether it may replace the displayed domain. Data arrival, expressions,
@@ -108,9 +107,9 @@ Review that shared contract with a subagent before runtime implementation.
 
 - [x] Expose relevant initial readiness and lazy coverage from the dataflow,
       including auxiliary input dependencies and genuine empty completion.
-- [ ] Route configuration, data, selections, viewport updates, interaction,
+- [x] Route configuration, data, selections, viewport updates, interaction,
       reset, scale recreation, and animation frames through a single commit path.
-- [ ] Delete obsolete snapshot, restore, suppression, and notification branches.
+- [x] Delete obsolete snapshot, restore, suppression, and notification branches.
 - Outcome: live domains are decided before mutation; late loads cannot undo
   navigation, and completed membership changes cannot reopen initialization.
 - Areas: scales, dataflow readiness, parameter/selection subscriptions, and any
@@ -125,8 +124,8 @@ Review that shared contract with a subagent before runtime implementation.
 
 ### 4. Verify integration and evaluate the simplification
 
-- [ ] Exercise real examples and downstream consumers; resolve regressions.
-- [ ] Compare lifecycle state, branches, domain writers, and production size
+- [x] Exercise real examples and downstream consumers; resolve regressions.
+- [x] Compare lifecycle state, branches, domain writers, and production size
       with the baseline. Revise an extraction that only adds indirection.
 - Outcome: behavior-preserving integration with documented, tested fixes.
 - Areas: Core rendering/layout, App bookmark restoration, lazy data, and scales.
@@ -197,5 +196,5 @@ The detailed plan received subagent review on 2026-09-05. Review corrections
 separate initial readiness from viewport eligibility and define reentrant commit
 validity without suppressing required effects during benign selection feedback.
 Automatic animations remain a fixed UX requirement. Readiness slice A is now
-implemented and reviewed; its verification and size measurements are recorded in
-the detailed plan. Domain-owner integration remains open.
+implemented and reviewed. Domain-owner integration and cross-system verification
+are also complete; the detailed plan records their evidence and size measurements.

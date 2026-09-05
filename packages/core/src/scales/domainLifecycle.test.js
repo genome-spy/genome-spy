@@ -122,7 +122,11 @@ describe("domain lifecycle policy", () => {
         model.send({ ...configured, dataExtent: [0, 500] });
         expect(model.state.visibleDomain).toEqual([200, 211]);
         expect(model.state.dataExtent).toEqual([0, 500]);
-        const reset = model.send({ type: "reset" });
+        const reset = model.send({
+            type: "navigate",
+            domain: model.state.resetDomain,
+            duration: 0,
+        });
         expect(reset.state.visibleDomain).toEqual([190, 231]);
         expect(reset.state.initialReference).toEqual([190, 231]);
         expect(reset.state.dataExtent).toEqual([0, 500]);
@@ -152,11 +156,11 @@ describe("domain lifecycle policy", () => {
         expect(model.state.dataExtent).toEqual([0, 5]);
     });
 
-    test("viewport coverage gates candidates and ready-empty viewports preserve the display", () => {
+    test("withheld viewport candidates preserve the display independently of initial readiness", () => {
         const model = createModel();
         model.send(data([0, 20]));
         const pending = model.send(
-            data([0, 3], { type: "viewport", readiness: "pending" })
+            data(undefined, { type: "viewport", readiness: "pending" })
         );
         expect(pending.domainChanged).toBe(false);
         expect(pending.transition.type).toBe("none");

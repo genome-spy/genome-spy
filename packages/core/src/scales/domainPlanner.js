@@ -1,5 +1,3 @@
-import { span } from "vega-util";
-import { isContinuous } from "vega-scale";
 import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
 import {
     toInternalIndexLikeDataDomain,
@@ -72,6 +70,9 @@ import {
  */
 
 export default class DomainPlanner {
+    /** @type {FromComplexInterval} */
+    #fromComplexInterval;
+
     /** @type {ScaleMembersGetter} */
     #getActiveMembers;
 
@@ -98,12 +99,6 @@ export default class DomainPlanner {
 
     /** @type {GetLocusExtent} */
     #getLocusExtent;
-
-    /** @type {FromComplexInterval} */
-    #fromComplexInterval;
-
-    /** @type {any[]} */
-    #initialDomain;
 
     /** @type {SelectionDomainLinkInfo | undefined} */
     #selectionDomainLinkInfo = undefined;
@@ -157,13 +152,6 @@ export default class DomainPlanner {
         this.#getType = getType;
         this.#getLocusExtent = getLocusExtent;
         this.#fromComplexInterval = fromComplexInterval;
-    }
-
-    /**
-     * @returns {any[]}
-     */
-    get initialDomainSnapshot() {
-        return this.#initialDomain;
     }
 
     /**
@@ -352,28 +340,6 @@ export default class DomainPlanner {
             this.#getType(),
             this.getDataDomain()
         );
-    }
-
-    /**
-     * @param {import("../types/encoder.js").VegaScale} scale
-     * @param {boolean} domainWasInitialized
-     * @param {any[]} [snapshotDomain]
-     * @returns {boolean} true if listeners should be notified immediately
-     */
-    captureInitialDomain(scale, domainWasInitialized, snapshotDomain) {
-        if (!this.#initialDomain && isContinuous(scale.type)) {
-            const domain = snapshotDomain ?? scale.domain();
-            if (span(domain) > 0) {
-                this.#initialDomain = domain;
-            }
-        }
-
-        if (!domainWasInitialized) {
-            this.#initialDomain = snapshotDomain ?? scale.domain();
-            return true;
-        }
-
-        return false;
     }
 
     /**

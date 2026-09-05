@@ -86,6 +86,157 @@ async function createExample(spec) {
 }
 
 describe("example scale-domain lifecycle contracts", () => {
+    test("two-way linked animation publishes every frame without querying contributors", async () => {
+        const animator = new Animator(() => undefined);
+        vi.spyOn(animator, "requestRender").mockImplementation(() => undefined);
+        const { view } = await createHeadlessEngine(
+            readExample("core/selection/interval_linked_domain_two_way.json"),
+            { contextOptions: { animator } }
+        );
+        disposers.push(() => {
+            view.disposeSubtree();
+            animator.finalize();
+        });
+        const detail = /** @type {ConcatView} */ (view).children[1];
+        const x = getRequiredScaleResolution(detail, "x");
+        const query = vi.spyOn(
+            /** @type {import("../view/unitView.js").default} */ (
+                detail
+            ).getCollector(),
+            "getDomain"
+        );
+        /** @type {number[][]} */
+        const published = [];
+        x.addEventListener("domain", () => {
+            const domain = x.getDomain();
+            expect(view.paramRuntime.getValue("brush").intervals.x).toEqual(
+                domain
+            );
+            expect(x.scale.domain()).toEqual(domain);
+            published.push(domain);
+        });
+        const promise = x.zoomTo([20, 40], 500);
+        const start = performance.now();
+        for (const elapsed of [100, 200, 300, 600]) {
+            // Parameter transactions must not turn the owner's frame echo into
+            // an external brush update that cancels the remaining animation.
+            view.paramRuntime.runInTransaction(() => {
+                animator.transitions
+                    .splice(0)
+                    .forEach((frame) => frame(start + elapsed));
+            });
+        }
+        await promise;
+        expect(published.length).toBeGreaterThan(2);
+        expect(x.getDomain()).toEqual([20, 40]);
+        expect(query).not.toHaveBeenCalled();
+
+        let replaced = false;
+        const unsubscribe = view.paramRuntime.subscribe("brush", () => {
+            if (!replaced) {
+                replaced = true;
+                view.paramRuntime.setValue("brush", {
+                    type: "interval",
+                    intervals: { x: [60, 80] },
+                });
+            }
+        });
+        disposers.push(unsubscribe);
+        const interrupted = x.zoomTo([30, 50], 500);
+        animator.transitions
+            .splice(0)
+            .forEach((frame) => frame(performance.now() + 200));
+        animator.transitions
+            .splice(0)
+            .forEach((frame) => frame(performance.now() + 1000));
+        await interrupted;
+        expect(x.getDomain()).toEqual([60, 80]);
+        expect(published.at(-1)).toEqual([60, 80]);
+    });
+
+    test.each([false, true])(
+        "zoomable expression domains retain the domainTransition=%s contract",
+        async (domainTransition) => {
+            const view = await createExample({
+                params: [{ name: "upper", value: 10 }],
+                data: { values: [{ x: 0 }] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: {
+                            zoom: true,
+                            domain: { expr: "[0, upper]" },
+                            domainTransition,
+                        },
+                    },
+                },
+            });
+            const x = getRequiredScaleResolution(view, "x");
+            await x.zoomTo([2, 4]);
+            view.paramRuntime.setValue("upper", 20);
+            await view.paramRuntime.whenPropagated();
+            expect(x.getDomain()).toEqual(domainTransition ? [2, 4] : [0, 20]);
+        }
+    );
+
+    test("direct index setters use physical normalization and reset converts authored bounds once", async () => {
+        const view = await createExample({
+            data: { values: [{ x: 0 }, { x: 99 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "index",
+                    scale: {
+                        domain: [10, 19],
+                        zoom: { extent: "data" },
+                    },
+                },
+            },
+        });
+        const x = getRequiredScaleResolution(view, "x");
+        const physical = x.scale.copy();
+        for (const domain of [
+            [30, 20],
+            [2, 2.1],
+            [40, 51],
+        ]) {
+            physical.domain(domain);
+            expect(x.scale.domain(domain)).toBe(x.scale);
+            expect(x.getDomain()).toEqual(physical.domain());
+            expect(x.scale.domain()).toEqual(physical.domain());
+        }
+        x.resetZoom();
+        expect(x.getDomain()).toEqual([10, 20]);
+        expect(x.zoomExtent).toEqual([0, 100]);
+    });
+
+    test("reset keeps the raw configured target separate from nice and zero", async () => {
+        const view = await createExample({
+            data: { values: [{ x: 4 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: {
+                        domain: [3.2, 8.7],
+                        nice: true,
+                        zero: true,
+                        zoom: true,
+                    },
+                },
+            },
+        });
+        const x = getRequiredScaleResolution(view, "x");
+        expect(x.getDomain()).toEqual([0, 9]);
+        await x.zoomTo([4, 5]);
+        x.resetZoom();
+        expect(x.getDomain()).toEqual([3.2, 8.7]);
+    });
+
     test("ready-empty shared input ends initial loading so later updates animate", async () => {
         registerControlledSource();
         const animator = new Animator(() => undefined);
@@ -343,6 +494,15 @@ describe("example scale-domain lifecycle contracts", () => {
         sources[2].publish([], [0, 30]);
         expect(x.getDomain()).toEqual([2, 4]);
         expect(Array.from(x.getDataDomain())).toEqual([0, 30]);
+        expect(x.zoomExtent).toEqual([0, 30]);
+        expect(x.getZoomLevel()).toBe(15);
+        for (const child of /** @type {import("../view/layerView.js").default} */ (
+            view
+        ).children) {
+            expect(child.paramRuntime.getValue("zoomLevel")).toBeCloseTo(
+                Math.sqrt(15)
+            );
+        }
         expect(notified).not.toHaveBeenCalled();
     });
 

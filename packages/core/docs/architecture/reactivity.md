@@ -43,3 +43,13 @@ than embedding either runtime.
 - Selection/viewport domain metadata queries do not evaluate ordinary domain
   expressions. Parameter initialization and scale helper guards reject recursive
   initialization without introducing another runtime dependency scheduler.
+- Domain commits install owner state and mirror the display before synchronizing
+  linked selections and notifying dependents. `domain()` observes intermediate
+  animation frames, so calibrated expression domains settle before rendering.
+  ExprRef domains update immediately by default; opting into transitions on an
+  already initialized zoomable scale preserves its navigated display.
+- Two-way selection synchronization marks the exact outgoing object during the
+  synchronous parameter write. Its own echo preserves an active transition;
+  nested external writes remain authoritative. Effects validate display/transition
+  identity so benign echoes cannot suppress a required notification or animation.
+  Cancellation also invalidates retained callbacks and promise completions.

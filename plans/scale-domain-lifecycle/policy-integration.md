@@ -1,11 +1,10 @@
-# Provisional policy and live integration obligations
+# Domain policy and live integration
 
-Milestone 2 introduces `packages/core/src/scales/domainLifecycle.js` and its
-colocated tests. It is deliberately not connected to live scales yet. The model
-proves a policy shape; it does not fix readiness or reduce the live coordinator
-until milestone 3 replaces the existing branches.
-The [detailed milestone 3 plan](milestone-3-plan.md) refines the integration
-mechanics, dependency contract, and verification gates below.
+`packages/core/src/scales/domainLifecycle.js` is the live policy used by
+`ScaleResolution`. The owner installs its state and executes its effects; the
+old write/restore lifecycle has been removed. The
+[detailed milestone 3 record](milestone-3-plan.md) describes readiness,
+integration decisions, and verification.
 
 ## State and input boundary
 
@@ -25,7 +24,7 @@ Three phases represent the two independent concerns without combinatorial flags:
 
 The initial reference can finish collecting after interaction, then freezes.
 Reset target and loaded data extent continue to follow source snapshots. This
-intentionally differs from today's early-interaction snapshot workaround; see
+replaces the previous early-interaction snapshot workaround; see
 [the behavior contract](behavior-contract.md#intentional-corrections-and-integration-decisions).
 
 A source snapshot contains a candidate, reference domain, reset domain, data
@@ -36,9 +35,8 @@ uses that form; source-specific viewport history/query logic can remain outside
 the model. Initial readiness requires all relevant active contributors, including
 constant versus field contributions and auxiliary lookup inputs. Viewport
 readiness additionally requires coverage of each requested positional interval.
-The prototype currently overloads `readiness` for both concerns. Integration
-will reserve it for initial readiness and keep current coverage gating in the
-viewport evaluator, submitting no display candidate while coverage is pending.
+`readiness` describes initial contributions only. Current coverage gating stays
+in the viewport evaluator, which withholds the candidate while coverage is pending.
 
 Policy describes the resolved scale kind (`continuous`, structural `index`, or
 `discrete`), zoomability, render state, animation preference, and selection link.
@@ -51,19 +49,19 @@ unsupported public combinations before the policy is called.
 | Existing caller                                        | Model update/input                                                             | Execution obligations                                                                                                                                                                                   |
 | ------------------------------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `registerCollectorSubscriptions`                       | `data` with aggregate snapshot and relevant-input readiness                    | Readiness changes must trigger evaluation even if numeric domains do not change. Never infer readiness from collector values.                                                                           |
-| Domain expression subscriptions                        | `configuration` with freshly evaluated normalized candidate                    | Keep owner scope and pending parameter declarations; expression domains default to immediate updates.                                                                                                   |
+| Domain expression subscriptions                        | `expression` with freshly evaluated normalized candidate                       | Keep owner scope and pending parameter declarations; expression domains default to immediate updates.                                                                                                   |
 | `reconfigure`, member registration/disposal/visibility | `membership` and current resolved snapshot                                     | Membership is not an explicit authored-domain override. Preserve completed phase and interaction. Configuration changes need a deliberate reason instead of being inferred from every reconfigure call. |
 | View-level scale property replacement/recreation       | `configuration` only for a changed authored domain; otherwise `membership`     | Range/property-only recreation retains the owner's display and lifecycle. Normalize properties before deciding the committed display.                                                                   |
 | Selection subscription                                 | `selection` for external changes; `selection-sync` for owner-originated writes | Preserve source-specific `initial` bypass and interval normalization. When cleared, candidate is normal fallback; external clears remain authoritative even when numerically equal to the display.      |
 | `ViewportDomainScheduler`                              | `viewport` after debounce/coverage evaluation                                  | Preserve the query algorithm and per-contributor interval checks. Pending/empty candidates do not overwrite the display.                                                                                |
 | `zoom`, public/bookmark `zoomTo`                       | `navigate` with normalized target and explicit duration                        | Reuse scale-specific pan/zoom math and public-to-internal conversion. Zero-duration navigation cancels transitions. Public validation precedes model updates.                                           |
-| `resetZoom`                                            | `reset`                                                                        | Use the explicit reset target, not the initial reference. Reset during initial collection protects the display like navigation; verify this intended rule in integration.                               |
+| `resetZoom`                                            | `navigate` with the owner reset target and zero duration                       | Use the explicit reset target, not the initial reference. Reset during initial collection protects the display like navigation; verify this intended rule in integration.                               |
 | Animator callbacks                                     | `frame`/`finish` with transition ID                                            | Commit each effective frame. Ignore stale IDs; completion cannot overwrite a newer domain.                                                                                                              |
-| Separator views' direct scale-domain writes            | `configuration`                                                                | Keep layout-owned pixel domain updates explicit; physical setters must not bypass the future owner.                                                                                                     |
+| Separator views' direct scale-domain writes            | `set`                                                                          | Keep layout-owned pixel domain updates explicit; physical setters must not bypass the owner.                                                                                                            |
 
 ## Commit and notification boundary
 
-The future owner installs next state before any effect. If `domainChanged`, it
+The owner installs next state before any effect. If `domainChanged`, it
 mirrors the visible domain into the physical scale and emits the existing domain
 event, with selection synchronization ordered before dependent notifications.
 The scale setter must not also emit a duplicate event. Existing expression
@@ -76,9 +74,9 @@ display, because a linked initial domain may already match a physical startup
 domain but still need to seed its parameter. Equal parameter values are not
 republished. Selection echoes of committed animation frames carry explicit
 `selection-sync` provenance and preserve the active transition when unchanged.
-The owner must carry that provenance through parameter propagation; the detailed
-plan proposes a scoped outgoing-object identity marker against the current
-synchronous subscription contract. It must not guess origin from domain equality.
+The owner must carry that provenance through parameter propagation; the owner
+uses a scoped outgoing-object identity marker against the current synchronous
+subscription contract, including transaction-wrapped writes. It must not guess origin from domain equality.
 External clears or configuration updates can cancel navigation even when equal
 to the display before its first frame.
 Passive data and membership refreshes that retain the displayed selection
@@ -91,14 +89,14 @@ submits frames carrying the returned ID. Disposal cancels scheduled callbacks
 and subscriptions. An unchanged target does not restart a running transition.
 
 Readiness, reference, and extent changes can occur without a domain event. The
-future owner must expose their progress to actual readiness/extent consumers
+owner must expose their progress to actual readiness/extent consumers
 instead of emitting a fictitious domain change to wake lazy loading. Startup
 lazy requests need an explicit audit: the current source activation installs
 listeners but relies on domain/layout events to trigger its first request.
 
 ## Integration review requirements
 
-Milestone 3 must demonstrate a single live domain writer and delete the replaced
+Milestone 3 installs a single live domain writer and deletes the replaced
 snapshot, restore, and manual notification branches. Retaining both policies
 indefinitely is not an acceptable integration. The model's phase, transition
 identity, and domain values must become authoritative; adapters only provide

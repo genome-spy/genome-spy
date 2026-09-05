@@ -562,15 +562,4 @@ describe("DomainPlanner", () => {
         const planner = createPlanner([], "quantitative");
         expect(planner.getConfiguredOrDefaultDomain()).toEqual([]);
     });
-
-    test("captures initial domain for continuous scales", () => {
-        const planner = createPlanner([], "quantitative");
-        const scale = /** @type {any} */ ({
-            type: "linear",
-            domain: () => [2, 8],
-        });
-        const notify = planner.captureInitialDomain(scale, false);
-        expect(notify).toBe(true);
-        expect(planner.initialDomainSnapshot).toEqual([2, 8]);
-    });
 });

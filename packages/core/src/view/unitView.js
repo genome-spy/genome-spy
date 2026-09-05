@@ -116,6 +116,7 @@ export default class UnitView extends View {
                     this.#zoomLevelSetter(Math.sqrt(this.getZoomLevel()));
                 };
                 resolution.addEventListener("domain", listener);
+                this.registerDisposer(resolution.subscribeZoomExtent(listener));
                 this.registerDisposer(() =>
                     resolution.removeEventListener("domain", listener)
                 );

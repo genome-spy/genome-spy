@@ -1,7 +1,7 @@
 # Milestone 3: integrate the domain lifecycle
 
-Status: slice A implemented and reviewed; owner integration (B) and final
-verification (C) remain open.
+Status: slices A–C complete and reviewed. Integration evidence and measured
+tradeoffs are recorded below.
 This refines [milestone 3](scale-domain-lifecycle-plan.md#3-integrate-one-domain-owner-and-remove-the-old-lifecycle).
 The provisional model is a starting point, not a compatibility specification.
 Revise it when a real caller exposes a missing distinction or needless state.
@@ -274,12 +274,12 @@ are two substantial reviews: this contract before coding, and integrated milesto
 
 ### B. One owner for live writes and transitions
 
-- [ ] Wire normalized source snapshots, interactions, reset, selections, and
+- [x] Wire normalized source snapshots, interactions, reset, selections, and
       frame updates into one owner. Delete old finalizers, snapshots, and
       write/restore policy as the owner becomes authoritative.
-- [ ] Retain all automatic/explicit animation modes, interruption rules,
+- [x] Retain all automatic/explicit animation modes, interruption rules,
       calibration, and initialization ordering. Port prototype tests as needed.
-- [ ] Migrate scale recreation, dynamic membership, and direct live setters.
+- [x] Migrate scale recreation, dynamic membership, and direct live setters.
       Preserve categorical encoding and range/size invalidation contracts.
 - Verify scale, parameter, selection, lazy/viewport, and layout regressions;
   measure live production size and domain writers. Update scale/reactivity
@@ -288,12 +288,12 @@ are two substantial reviews: this contract before coding, and integrated milesto
 
 ### C. Cross-system integration and deletion check
 
-- [ ] Run the full unit suite, workspace TypeScript, lint, and relevant example
+- [x] Run the full unit suite, workspace TypeScript, lint, and relevant example
       validation; exercise the browser scenarios below and inspect console errors.
-- [ ] Review the integrated result with a subagent, including App bookmark/data
+- [x] Review the integrated result with a subagent, including App bookmark/data
       waits, renderer inputs, performance, and the deletion ledger. Revise if
       adapters recreate lifecycle decisions or two authorities remain.
-- [ ] Record verification and measured simplification; reconcile milestone 3.
+- [x] Record verification and measured simplification; reconcile milestone 3.
 - Commit: `test(core): verify domain lifecycle integration` if this produces
   additional regressions/fixes; keep review fixes with their coherent slice when
   practical. No permanent compatibility switch or dual execution mode remains.
@@ -370,4 +370,59 @@ adds another layer around the old code. Domain-only sharing stays deferred.
 - The follow-on ownership review favors state/commit directly in
   `ScaleResolution` over the proposed extra coordinator. It also identifies
   the reusable low-level property/domain/range phases and the zoomable ExprRef
-  compatibility case above. Slice B runtime changes have not started.
+  compatibility case above; slice B implements that boundary.
+
+## Slice B and integrated verification record
+
+- `ScaleResolution` now owns display/reset/reference/data-extent state and the
+  only live commit path. Planner snapshots, initial-domain finalizers,
+  write/restore branches, suppression counters, and Controller transition
+  ownership are deleted. Direct setters enter the owner; only the manager's raw
+  mirror writes a committed display. Scale creation and working copies remain
+  necessary initialization/normalization writes, not parallel authorities.
+- The pure model is live, with initial readiness separate from viewport coverage.
+  Expression changes have their own reason to preserve the existing opt-in
+  zoomable ExprRef behavior. Reset submits zero-duration navigation using the
+  stored reset target; the unused prototype reset variant was removed.
+- Selection echoes use scoped outgoing-object identity. Real transaction-wrapped
+  animation frames publish the brush and domain together without collector domain
+  queries. Nested external selection writes supersede the frame; duplicate domain
+  notifications cannot reintroduce stale listener effects. Extent-only progress
+  updates zoom-level parameters and axis ticks without a false domain event.
+- Review found and fixed cancellation after disposal, invalid interpolation from
+  a zero-span initial domain, reentrant range reconfiguration, and an inactive
+  selection marker matching an external undefined value. Eight owner integration
+  cases and the expanded example lifecycle tests cover these and reset/direct
+  cancellation, supersession, raw setter normalization, legacy reset targets,
+  range-only recreation, and independently completed initial references.
+- Final subagent review found no remaining blocking issue and judged the owner
+  design appropriate. A final normalization audit confirmed `configureDomain`
+  already returns the working scale's physically normalized getter value; no
+  extra normalization pass was added.
+- Full unit verification: 461 files passed; 3,928 tests passed, one skipped,
+  two TODOs. Workspace TypeScript, repository lint, formatting, and diff checks
+  pass. This includes App navigation/bookmark, lazy waits, calibration, dynamic
+  view membership, categorical ordering, and layout/rendering contract tests.
+- WebGL smoke checks passed the actual viewport-autoscale, two-way linked-domain,
+  MSA, and remote Dynseq examples. In an App browser embed, a 500 ms linked zoom
+  emitted 31 aligned domain/brush frames; external brush and clear applied their
+  expected targets. Actual viewport autoscaling emitted 32 finite frames after
+  navigation and retained the selected x interval. The final screenshot showed
+  marks and axes aligned. No application errors occurred in successful runs;
+  development-mode/GPU readback warnings are expected. These checks are not a
+  pixel-diff guarantee or exhaustive WebGPU browser coverage.
+- Slice B's eight changed production files total 5,357 → 5,380 lines (+23).
+  The five domain components total 4,083 → 4,077 lines (-6), including the
+  previously added policy. Across the entire branch, 19 changed/new production
+  files total 8,676 → 9,145 lines (+469), including explicit readiness and the
+  306-line live policy. Thus this is a reduction in competing state/decision/write
+  paths, not an overall line-count reduction. The added contracts and regression
+  coverage justify the modest production growth; no extra coordinator, scheduler,
+  provider hierarchy, or compatibility execution mode was introduced.
+- Existing grammar documentation and example expectations remain applicable.
+  Architecture documents describe the adopted readiness, reference, authority,
+  and notification corrections. Domain-only sharing remains separate work.
+
+Slices B and C ship together in the owner integration commit because final review
+fixes and regression coverage belong to that same coherent change. Plans remain
+as a delivery record until PR preparation; reconcile and retire them before a PR.

@@ -1,6 +1,10 @@
 import { isArray } from "vega-util";
 
-import createScale, { configureScale } from "../scale/scale.js";
+import createScale, {
+    configureScaleProperties,
+    configureScaleRange,
+    configureDomain,
+} from "../scale/scale.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { isScaleLocus } from "../genome/scaleLocus.js";
 
@@ -25,21 +29,25 @@ export default class ScaleInstanceManager {
     /** @type {() => void} */
     #onRangeChange;
 
-    /** @type {() => void} */
+    /** @type {(domain: any[]) => void} */
     #onDomainChange;
+
+    /** @type {(domain: any[]) => void} */
+    #mirrorDomain;
 
     /** @type {() => import("../genome/genomeStore.js").default | undefined} */
     #getGenomeStore;
 
-    #domainNotificationsSuspended = 0;
-
     #initializingRange = false;
+
+    /** @type {VegaScale | undefined} */
+    #domainNormalizer;
 
     /**
      * @param {object} options
      * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
      * @param {() => void} options.onRangeChange
-     * @param {() => void} [options.onDomainChange]
+     * @param {(domain: any[]) => void} [options.onDomainChange]
      * @param {() => import("../genome/genomeStore.js").default | undefined} [options.getGenomeStore]
      */
     constructor({
@@ -65,6 +73,7 @@ export default class ScaleInstanceManager {
     resetScale() {
         this.dispose();
         this.#scale = undefined;
+        this.#domainNormalizer = undefined;
         this.#defaultRange = undefined;
     }
 
@@ -87,9 +96,10 @@ export default class ScaleInstanceManager {
 
     /**
      * @param {import("../spec/scale.js").Scale} props
+     * @param {(domain: any[]) => void} [initializeDomain] Before range expressions bind.
      * @returns {ScaleWithProps}
      */
-    createScale(props) {
+    createScale(props, initializeDomain) {
         const scale = createScale({
             ...this.#stripNonScaleProps(props),
             range: undefined,
@@ -105,6 +115,10 @@ export default class ScaleInstanceManager {
         this.#defaultRange =
             typeof scale.range === "function" ? scale.range() : undefined;
         this.#bindGenomeIfNeeded(props);
+        this.#mirrorDomain = scale.domain;
+        if (scale.type !== "null") {
+            initializeDomain?.(scale.domain());
+        }
         this.#initializingRange = true;
         try {
             this.#configureRange();
@@ -129,33 +143,48 @@ export default class ScaleInstanceManager {
     }
 
     /**
+     * Normalize with final properties on a copy, before any live mutation.
      * @param {import("../spec/scale.js").Scale} props
      */
-    reconfigureScale(props) {
-        const scale = this.#scale;
-        if (!scale || scale.type == "null") {
-            return;
-        }
+    prepareDomain(props) {
+        const working = this.#scale.copy();
+        working.type = this.#scale.type;
+        configureScaleProperties(working, this.#stripNonScaleProps(props));
+        return configureDomain(working, props);
+    }
 
-        configureScale(
-            { ...this.#stripNonScaleProps(props), range: undefined },
-            scale
-        );
-        scale.props = props;
+    /** @param {import("../spec/scale.js").Scale} props */
+    configureProperties(props) {
+        this.#domainNormalizer = undefined;
+        configureScaleProperties(this.#scale, this.#stripNonScaleProps(props));
+        this.#scale.props = props;
+    }
+
+    /** @param {import("../spec/scale.js").Scale} props */
+    configureRange(props) {
+        configureScaleRange(this.#scale, {
+            ...this.#stripNonScaleProps(props),
+            range: undefined,
+        });
         this.#configureRange();
     }
 
     /**
-     * @param {() => void} callback
-     * @returns {void}
+     * Reuse a setter-only copy so normalization does not allocate a scale per frame.
+     * @param {readonly any[]} domain
+     * @returns {any[]}
      */
-    withDomainNotificationsSuppressed(callback) {
-        this.#domainNotificationsSuspended += 1;
-        try {
-            callback();
-        } finally {
-            this.#domainNotificationsSuspended -= 1;
-        }
+    normalizeDomain(domain) {
+        this.#domainNormalizer ??= this.#scale.copy();
+        this.#domainNormalizer.domain(Array.from(domain));
+        return this.#domainNormalizer.domain();
+    }
+
+    /** Exact internal-domain mirror; never publishes an event itself.
+     * @param {readonly any[]} domain
+     */
+    mirrorDomain(domain) {
+        this.#mirrorDomain(Array.from(domain));
     }
 
     /**
@@ -227,12 +256,7 @@ export default class ScaleInstanceManager {
         const range = scale.range;
         const domain = scale.domain;
         const notifyRange = () => this.#onRangeChange?.();
-        const notifyDomain = () => {
-            if (this.#domainNotificationsSuspended > 0) {
-                return;
-            }
-            this.#onDomainChange?.();
-        };
+        const notifyDomain = this.#onDomainChange;
 
         withScaleInterceptors(scale, {
             onRangeChange: notifyRange,
@@ -279,8 +303,12 @@ function withScaleInterceptors(
         scale.domain = /** @type {any} */ (
             function (/** @type {any} */ _) {
                 if (arguments.length) {
-                    domain(_);
-                    onDomainChange?.();
+                    if (onDomainChange) {
+                        onDomainChange(Array.from(_));
+                    } else {
+                        domain(_);
+                    }
+                    return scale;
                 } else {
                     return domain();
                 }

@@ -48,6 +48,14 @@ export default class AxisTickSource extends SingleAxisLazySource {
         super(view, paramsWithDefaults.channel);
 
         this.params = paramsWithDefaults;
+        this.registerDisposer(
+            this.scaleResolution.subscribeZoomExtent(() => {
+                // Before the first load, initialization will generate the ticks.
+                if (this.completed) {
+                    void this.onDomainChanged();
+                }
+            })
+        );
 
         const tickCountSpec = paramsWithDefaults.axis.tickCount;
         if (isExprRef(tickCountSpec)) {

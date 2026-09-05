@@ -871,7 +871,7 @@ describe("Scale resolution domain handling", () => {
         const yResolution = getRequiredScaleResolution(view, "y");
         const query = vi.spyOn(collector, "getViewportDomain");
         view.onBeforeRender();
-        const transition = vi.spyOn(yResolution, "zoomTo");
+        const transition = vi.spyOn(view.context.animator, "transition");
         vi.useFakeTimers();
         try {
             xResolution.getScale().domain([0, 1.5]);
@@ -1283,7 +1283,7 @@ describe("Scale resolution domain handling", () => {
         );
 
         const resolution = getRequiredScaleResolution(view, "x");
-        const spy = vi.spyOn(resolution, "zoomTo");
+        const spy = vi.spyOn(view.context.animator, "transition");
 
         // Non-obvious: set a different domain to force a reconfigure change.
         resolution.getScale().domain([0, 1]);
@@ -1307,7 +1307,7 @@ describe("Scale resolution domain handling", () => {
         );
 
         const resolution = getRequiredScaleResolution(view, "x");
-        const spy = vi.spyOn(resolution, "zoomTo");
+        const spy = vi.spyOn(view.context.animator, "transition");
 
         // Non-obvious: simulate the first render to allow transitions.
         view.onBeforeRender();
@@ -1346,7 +1346,7 @@ describe("Scale resolution domain handling", () => {
             initializeViewSubtree(view, view.context.dataFlow);
 
             const resolution = getRequiredScaleResolution(view, "y");
-            const zoomTo = vi.spyOn(resolution, "zoomTo");
+            const zoomTo = vi.spyOn(view.context.animator, "transition");
             const rootSource = /** @type {MockLazySource} */ (
                 view.flowHandle.dataSource
             );
@@ -1460,7 +1460,7 @@ describe("Scale resolution domain handling", () => {
         );
 
         const resolution = getRequiredScaleResolution(view, "y");
-        const spy = vi.spyOn(resolution, "zoomTo");
+        const spy = vi.spyOn(view.context.animator, "transition");
         const notify = vi.fn();
         resolution.addEventListener("domain", notify);
 

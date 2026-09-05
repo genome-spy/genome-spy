@@ -87,6 +87,28 @@ arrangement.
 - Disposing a subtree prunes its flow branches so orphaned nodes and unused data
   sources do not remain.
 
+## Scale domain ownership
+
+`ScaleResolution` owns the displayed domain, reset target, initial reference,
+loaded data extent, and active transition identity. `domainLifecycle.js` decides
+updates from normalized snapshots before the live scale is changed. Its initial
+phase distinguishes collecting, early interaction, and complete readiness;
+interaction protects the display without ending reference collection.
+
+`DomainPlanner` aggregates configured/data candidates and fallback domains.
+`ScaleInstanceManager` normalizes candidates on a working scale, configures
+properties/ranges, and mirrors committed domains. External `scale.domain(value)`
+calls submit immediate owner updates; they do not bypass the commit path.
+`ScaleInteractionController` retains coordinate conversion, zoom mathematics,
+and validation, submitting navigation to the same owner. Reset uses the current
+configured/default target, separately from the initial reference and data extent.
+
+Domain events describe effective display changes, including intermediate
+animation frames. Unchanged reference/data-extent progress instead notifies
+internal zoom-level and axis-tick consumers. Initial lazy requests still start
+through the existing post-load layout notifications. Current viewport coverage
+gates viewport candidates without reopening initial readiness.
+
 ## Dynamic view lifecycle
 
 - Prefer `ViewFactory.createOrImportView`; some App views are still constructed

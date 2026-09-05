@@ -9,14 +9,10 @@ import {
     span,
 } from "vega-util";
 import { isContinuous, isDiscrete } from "vega-scale";
-import { easeCubicInOut } from "d3-ease";
 
-import eerp from "../utils/eerp.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
-import { createCancelToken } from "../utils/transition.js";
 import { zoomDomainByScaleType } from "./zoomDomainUtils.js";
 import { toInternalIndexLikeInterval } from "./indexLikeDomainUtils.js";
-import { INDEX } from "./scaleResolutionConstants.js";
 import {
     hasExplicitLocusUpperBound,
     isChromosomalLocusInterval,
@@ -36,8 +32,8 @@ export default class ScaleInteractionController {
     /** @type {() => ScaleWithProps} */
     #getScale;
 
-    /** @type {() => import("../utils/animator.js").default} */
-    #getAnimator;
+    /** @type {(domain: number[], duration: number, renderImmediately?: boolean) => Promise<void>} */
+    #navigate;
 
     /** @type {() => void} */
     #renderImmediately;
@@ -57,13 +53,10 @@ export default class ScaleInteractionController {
     /** @type {() => number[]} */
     #getGenomeExtent;
 
-    /** @type {{ canceled: boolean } | null} */
-    #zoomTransitionToken = null;
-
     /**
      * @param {object} options
      * @param {() => ScaleWithProps} options.getScale
-     * @param {() => import("../utils/animator.js").default} options.getAnimator
+     * @param {(domain: number[], duration: number, renderImmediately?: boolean) => Promise<void>} options.navigate
      * @param {() => void} options.renderImmediately
      * @param {() => number[]} options.getInitialDomainSnapshot
      * @param {() => number[] | undefined} options.getDataZoomExtent
@@ -73,7 +66,7 @@ export default class ScaleInteractionController {
      */
     constructor({
         getScale,
-        getAnimator,
+        navigate,
         renderImmediately,
         getInitialDomainSnapshot,
         getDataZoomExtent,
@@ -82,7 +75,7 @@ export default class ScaleInteractionController {
         getGenomeExtent,
     }) {
         this.#getScale = getScale;
-        this.#getAnimator = getAnimator;
+        this.#navigate = navigate;
         this.#renderImmediately = renderImmediately;
         this.#getInitialDomainSnapshot = getInitialDomainSnapshot;
         this.#getDataZoomExtent = getDataZoomExtent;
@@ -111,29 +104,6 @@ export default class ScaleInteractionController {
     isZoomingSupported() {
         const type = this.#getScale().type;
         return isContinuous(type) && !isDiscrete(type);
-    }
-
-    /**
-     * @param {number[]} previousDomain
-     * @param {number[]} newDomain
-     * @returns {"restore" | "animate" | "notify" | "none"}
-     */
-    getDomainChangeAction(previousDomain, newDomain) {
-        if (shallowArrayEquals(newDomain, previousDomain)) {
-            return "none";
-        }
-        if (this.isZoomable()) {
-            return "restore";
-        }
-        if (this.#getScale().type === INDEX) {
-            // Index domains describe structural lane counts. Interpolating them
-            // produces transient partial lanes and delays the final state.
-            return "notify";
-        }
-        if (this.isZoomingSupported()) {
-            return "animate";
-        }
-        return "notify";
     }
 
     /**
@@ -179,7 +149,7 @@ export default class ScaleInteractionController {
         newDomain = clampRange(newDomain, zoomExtent[0], zoomExtent[1]);
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
-            scale.domain(newDomain);
+            void this.#navigate(newDomain, 0);
             return true;
         }
 
@@ -209,70 +179,16 @@ export default class ScaleInteractionController {
 
         // TODO: Intersect the domain with zoom extent
 
-        const animator = this.#getAnimator();
-        const from = /** @type {number[]} */ (scale.domain());
-
-        if (duration > 0 && from.length == 2) {
-            if (renderImmediately) {
-                throw new Error(
-                    "renderImmediately is not supported for animated zooms."
-                );
-            }
-
-            // Spans
-            const fw = from[1] - from[0];
-            const tw = to[1] - to[0];
-
-            // Centers
-            const fc = from[0] + fw / 2;
-            const tc = to[0] + tw / 2;
-
-            // Constant endpoints. Skip calculation to maintain precision.
-            const ac = from[0] == to[0];
-            const bc = from[1] == to[1];
-
-            this.#cancelZoomTransition();
-            const cancelToken = createCancelToken();
-            this.#zoomTransitionToken = cancelToken;
-
-            await animator.transition({
-                duration,
-                easingFunction: easeCubicInOut,
-                cancelToken,
-                onUpdate: (t) => {
-                    const w = eerp(fw, tw, t);
-                    const wt = fw == tw ? t : (fw - w) / (fw - tw);
-                    const c = wt * tc + (1 - wt) * fc;
-                    const newDomain = [
-                        ac ? from[0] : c - w / 2,
-                        bc ? from[1] : c + w / 2,
-                    ];
-                    scale.domain(newDomain);
-                },
-            });
-
-            if (this.#zoomTransitionToken !== cancelToken) {
-                return;
-            }
-
-            this.#zoomTransitionToken = null;
-            scale.domain(to);
-        } else {
-            this.#cancelZoomTransition();
-            scale.domain(to);
-            if (renderImmediately) {
-                this.#renderImmediately();
-            } else {
-                animator?.requestRender();
-            }
+        if (duration > 0 && renderImmediately) {
+            throw new Error(
+                "renderImmediately is not supported for animated zooms."
+            );
         }
-    }
-
-    #cancelZoomTransition() {
-        if (this.#zoomTransitionToken) {
-            this.#zoomTransitionToken.canceled = true;
-            this.#zoomTransitionToken = null;
+        const transition = this.#navigate(to, duration, renderImmediately);
+        if (renderImmediately) {
+            this.#renderImmediately();
         }
+        return transition;
     }
 
     /**
@@ -289,11 +205,9 @@ export default class ScaleInteractionController {
         const oldDomain = scale.domain();
         const newDomain = this.#getResetDomain();
 
-        if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
-            scale.domain(newDomain);
-            return true;
-        }
-        return false;
+        // Even an equal reset cancels an active transition.
+        void this.#navigate(newDomain, 0);
+        return !shallowArrayEquals(oldDomain, scale.domain());
     }
 
     /**
@@ -490,8 +404,3 @@ function normalizeInteractionInterval(type, interval, fromComplexInterval) {
 function isZoomParams(zoom) {
     return isObject(zoom);
 }
-
-/**
- * @param {any[]} a
- * @param {any[]} b
- */

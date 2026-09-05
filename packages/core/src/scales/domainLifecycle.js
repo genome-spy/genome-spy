@@ -1,8 +1,7 @@
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 
 /**
- * Provisional lifecycle policy for the domain-owner extraction. Live scale
- * integration follows separately. Inputs are normalized internal domains;
+ * Lifecycle policy for the scale resolution's single domain commit path. Inputs are normalized internal domains;
  * this module never reads collectors, mutates scales, or schedules callbacks.
  *
  * @typedef {readonly (number | string | boolean)[]} Domain
@@ -33,11 +32,11 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
  * Source snapshots contain current resolved values, not patches. In particular,
  * a cleared selection remains authoritative and supplies its fallback candidate.
  * `undefined` candidate means no proposed display, not an empty domain.
- * Readiness includes relevant side inputs; viewport readiness includes current
- * interval coverage. Membership must not reopen a completed initial phase.
+ * Readiness covers initial contributions, including side inputs. Viewport
+ * coverage is checked before submitting a candidate. Membership must not reopen a completed initial phase.
  *
  * @typedef {{
- *   type: "data" | "configuration" | "selection" | "selection-sync" | "viewport" | "membership",
+ *   type: "data" | "expression" | "configuration" | "selection" | "selection-sync" | "viewport" | "membership",
  *   candidate: Domain | undefined,
  *   resetDomain: Domain,
  *   referenceDomain: Domain | undefined,
@@ -45,11 +44,12 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
  *   readiness: "pending" | "ready",
  * }} DomainSourceUpdate
  * @typedef {DomainSourceUpdate | {
+ *   type: "set",
+ *   domain: Domain,
+ * } | {
  *   type: "navigate",
  *   domain: Domain,
  *   duration: number,
- * } | {
- *   type: "reset",
  * } | {
  *   type: "frame",
  *   id: number,
@@ -106,6 +106,8 @@ export function createDomainState(visibleDomain, resetDomain) {
  */
 export function planDomainUpdate(state, update, policy) {
     switch (update.type) {
+        case "set":
+            return applyDomain(state, update.domain, 0, policy);
         case "frame":
         case "finish": {
             if (state.transition?.id !== update.id) {
@@ -123,8 +125,7 @@ export function planDomainUpdate(state, update, policy) {
                 policy
             );
         }
-        case "navigate":
-        case "reset": {
+        case "navigate": {
             if (policy.scaleKind === "discrete") {
                 throw new Error(
                     "Discrete domains do not support navigation or reset."
@@ -134,15 +135,11 @@ export function planDomainUpdate(state, update, policy) {
                 state.phase === "collecting"
                     ? { ...state, phase: /** @type {const} */ ("interacted") }
                     : state;
-            return applyDomain(
-                next,
-                update.type === "reset" ? state.resetDomain : update.domain,
-                update.type === "reset" ? 0 : update.duration,
-                policy
-            );
+            return applyDomain(next, update.domain, update.duration, policy);
         }
         case "data":
         case "configuration":
+        case "expression":
         case "selection":
         case "selection-sync":
         case "viewport":
@@ -177,10 +174,7 @@ function planSourceUpdate(state, update, policy) {
                 : state.phase,
     };
 
-    if (
-        update.candidate === undefined ||
-        (update.type === "viewport" && update.readiness === "pending")
-    ) {
+    if (update.candidate === undefined) {
         return unchanged(next);
     }
 
@@ -191,7 +185,8 @@ function planSourceUpdate(state, update, policy) {
     const authoritative =
         policy.selectionLinked ||
         fromSelection ||
-        update.type === "configuration";
+        update.type === "configuration" ||
+        (update.type === "expression" && !policy.animateChanges);
     if (!authoritative && state.phase !== "collecting" && policy.zoomable) {
         return unchanged(next);
     }
@@ -242,6 +237,15 @@ function applyDomain(state, domain, duration, policy) {
     if (
         duration > 0 &&
         policy.scaleKind !== "discrete" &&
+        state.visibleDomain.length === 2 &&
+        domain.length === 2 &&
+        // Exponential span interpolation requires nonzero spans of the same sign.
+        // Empty startup domains acquire their first effective extent immediately.
+        Number.isFinite(+domain[1] - +domain[0]) &&
+        Number.isFinite(+state.visibleDomain[1] - +state.visibleDomain[0]) &&
+        (+domain[1] - +domain[0]) *
+            (+state.visibleDomain[1] - +state.visibleDomain[0]) >
+            0 &&
         !shallowArrayEquals(domain, state.visibleDomain)
     ) {
         const id = state.transitionSerial + 1;
