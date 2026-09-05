@@ -29,6 +29,8 @@ export default class UrlSource extends DataSource {
     /** @type {UrlDescriptorController} */
     #urlDescriptors;
 
+    #loadId = 0;
+
     /**
      * @param {import("../../spec/data.js").UrlData} params
      * @param {import("../../view/view.js").default} view
@@ -90,6 +92,11 @@ export default class UrlSource extends DataSource {
     }
 
     async load() {
+        if (this.disposed) return;
+
+        const loadId = ++this.#loadId;
+        const isCurrent = () => !this.disposed && loadId === this.#loadId;
+
         this.setLoadingStatus("loading");
         this.reset();
 
@@ -103,6 +110,8 @@ export default class UrlSource extends DataSource {
                           url,
                       }))
                     : await this.#urlDescriptors.normalize();
+
+            if (!isCurrent()) return;
 
             const urls = descriptors.map((descriptor) => descriptor.url);
             if (urls.length > 0 && urls[0]) {
@@ -142,6 +151,8 @@ export default class UrlSource extends DataSource {
                             dataOrPromise instanceof Promise
                                 ? await dataOrPromise
                                 : dataOrPromise;
+                        if (!isCurrent()) return;
+
                         this.beginBatch({ type: "file", url: descriptor.url });
                         const attachFields = createDescriptorFieldAttacher(
                             descriptor.fields
@@ -150,6 +161,7 @@ export default class UrlSource extends DataSource {
                             this._propagate(attachFields(d));
                         }
                     } catch (e) {
+                        if (!isCurrent()) return;
                         console.warn(e);
                         throw new Error(
                             `Cannot parse: ${descriptor.url}: ${e.message}`,
@@ -177,8 +189,10 @@ export default class UrlSource extends DataSource {
                     )
                 );
             }
+            if (!isCurrent()) return;
             this.setLoadingStatus("complete");
         } catch (e) {
+            if (!isCurrent()) return;
             if (e instanceof UrlLimitExceededError) {
                 this.setLoadingStatus("complete");
             } else {

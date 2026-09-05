@@ -56,6 +56,10 @@ arrangement.
   Inline, sequence, and named source replay uses synchronous loading so row errors
   reach that propagation boundary. Async sources retain their request lifecycle.
   See `reactivity.md` for coherent observer, failure/retry, and disposal semantics.
+- Eager `UrlSource` loads use a source-local counter: once a replacement load
+  starts, older loads cannot publish rows, status or completion. Disposal also
+  prevents publication. Reset still occurs at load start; this does not introduce
+  retained pending data, cancellation, or a shared async scheduler.
 - `src/data/dataReadiness.js` walks the actual optimized primary path and
   `FlowNode.dataDependencies` side edges. `SideInputBinding` owns observation and
   consumed revisions for declared collectors. It binds during `initializeOnce()`,

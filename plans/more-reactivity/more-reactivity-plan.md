@@ -1,6 +1,6 @@
 # First-class internal reactivity
 
-Status: M1–M2 implemented and verified, 2026-09-06. Later milestones remain proposed.
+Status: M1–M3 implemented and verified, 2026-09-06. Later milestones remain proposed.
 Branch: `refactor/more-reactivity`, based on `720f1f8b384b929276b652ed89c5ef6e4a7878c6`.
 
 ## Recommendation
@@ -36,7 +36,7 @@ its inputs and how to apply their settled values. This should provide:
   before downstream consumers observe it. CPU geometry, GPU inputs and scale
   expressions remain aligned during zoom and animation.
 - **More reliable data updates:** lookup and cross share replay and readiness
-  coordination. Generation-protected URL publication prevents obsolete requests
+  coordination. Generation-protected URL publication prevents superseded loads
   from overwriting newer results or incorrectly reporting completion.
 - **Less redundant work:** unchanged computed results can stop propagation, and
   shared dependencies can coalesce repeated updates. Performance gains must be
@@ -121,7 +121,7 @@ inspection; this planning task does not claim a new browser reproduction.
 | Scale helpers      | `utils/expression.js`: `domain()` uses the native domain ref, while other helpers use event adapters with rank zero.                                                                                                    | Give final mapping a real producer dependency; preserve the distinct domain dependency.                                                                       |
 | Scope and topology | `scales/scaleResolution.js` resolves expressions through its scope logic and reconfigures shared participants.                                                                                                          | Use the existing effective resolution scope; preserve shared-owner lookup and single-member compatibility. Rebuild bindings when participants change.         |
 | Streaming          | `data/flowNode.js` already deduplicates replay roots for Filter/Formula. `data/transforms/lookup.js` and `cross.js` still observe foreign collectors and manage readiness/replay locally.                               | One declared dependency/publication protocol; keep indexing, self-buffering, and cross-product processing local.                                              |
-| Async sources      | `data/sources/urlSource.js`: `load` resets before awaiting descriptors/fetch/parsing, then publishes rows/status/completion without a load-generation check.                                                            | Request-owned staged output and guarded synchronous publication; obsolete work cannot reset or complete current output.                                       |
+| Async sources      | `data/sources/urlSource.js`: `load` resets before awaiting descriptors/fetch/parsing, then guards rows/status/completion with a source-local load counter.                                                              | Source-local load counter guards rows, status and completion once a replacement load starts; preserve reset-at-start behavior.                                |
 | Layout             | `view/view.js`: explicit domain listeners for step sizing and ancestor cache-prefix invalidation. Directly constructed App views require equivalent wiring.                                                             | Derive size demand from explicit inputs and topology; centralize layout invalidation before pursuing incremental layout.                                      |
 | Render boundary    | Core architecture separates completed `LayoutResult` from retained backend resources and collector/mark revisions.                                                                                                      | Render/export/picking consume one settled state; keep GPU resources and row buffers outside value-level reactivity.                                           |
 | App                | `packages/app/APP_ARCHITECTURE.md`, `sampleView/metadata/derivedMetadataConfigurator.js`: intent/readiness orchestration and cached observed domains.                                                                   | Later derive transient metadata/readiness from Core publication facts; retain serializable Redux intents and undo history.                                    |
@@ -201,7 +201,7 @@ a new completed revision; that publication can trigger another bounded round.
 2. Make declared primary/side data dependencies drive publication and readiness.
    Add targeted branch replay only once the shared protocol makes its correctness
    explicit. Tuple-level incremental changesets remain a separate performance idea.
-3. Add async resource generations and explicit pending-versus-published state.
+3. Guard superseded eager URL loads with a source-local counter; preserve loading policy.
    Eager replacement and lazy window caches need different resource identities;
    a global epoch must not discard useful independent viewport fetches.
 4. Make layout inputs and invalidation explicit. Preserve full arrangement and

@@ -1,6 +1,6 @@
 # Next refactors
 
-Status: M1–M2 implemented and verified, 2026-09-06. M3–M4 remain proposed.
+Status: M1–M3 implemented and verified, 2026-09-06. M4 remains proposed.
 See [direction and research](more-reactivity-plan.md) for rationale and contracts.
 
 ## Sequence and review boundaries
@@ -176,58 +176,41 @@ guidance on declaring dependencies. Preserve public transform behavior and schem
 **Review gate:** shared completion/readiness contract, optimized replay topology,
 coordinate lookup and App consumers, not merely lookup/cross class size.
 
-## M3 — Fresh asynchronous URL publication
+## M3 — Ignore superseded eager URL loads
 
-- [ ] Give eager URL replacements explicit generations and guarded publication.
+- [x] Reproduce overlapping eager loads and guard stale publication locally.
 
-**Outcome:** an obsolete request cannot publish rows, reset newer output, alter its
-status, or signal its completion. Synchronous propagation remains independent of
-network readiness.
+**Outcome:** once a replacement `load()` starts, an older load cannot emit rows,
+change loading status, or signal completion. Disposed sources cannot publish or
+start another load. The regression reproduced an extra collector revision when
+A finished after B; the fix uses a source-local counter and the existing disposed
+flag.
 
-**Affected areas:** `data/sources/{urlSource,urlDescriptorController,urlDescriptor,dataSource}.js`,
-source disposal, loading status, source tests and downstream availability waiters.
-Audit lazy sources separately before extending the same policy to their caches.
+**Implementation:** `data/sources/urlSource.js` checks ownership after descriptor
+resolution, before parsed rows enter the flow, and before status/completion or
+error handling. No shared runtime or descriptor-controller changes are needed.
+Reset still occurs at load start, and current-request error/limit handling remains
+unchanged.
 
-**Implementation shape:**
+**Verification:** controlled A/B fetch completion, old success and rejection while
+B is pending, a delayed asynchronous parser, and disposal. Existing source tests
+cover compression, multi-file URL lists, templates, optional files and errors.
+Full unit suite: 4017 passed, 1 skipped, 2 todo across 470 files. Core TypeScript
+and repository lint pass. Production growth is 14 lines, including spacing.
 
-1. Capture a complete request snapshot (URL descriptors, format and related inputs)
-   after graph stabilization. Advance a source-owned generation when replacement
-   inputs become authoritative, not only when the delayed fetch callback starts.
-   This closes the gap in which an old response could beat a scheduled reload.
-2. Best-effort abort superseded fetches. Keep generation validation after descriptor
-   expansion, fetch, decompression and async parsing; abort is not the proof of
-   freshness. Disposal invalidates the generation too.
-3. Stage results per request and publish reset, file batches, rows, revision,
-   status and completion in one guarded synchronous boundary. Preserve file batch
-   identity, descriptor fields, optional missing files, format handling and limits.
-   Do not let concurrent async parsers append into live downstream state.
-4. Proposed policy: retain last completed output during replacement, explicitly
-   distinguish pending/fresh output for availability, and apply current-request
-   errors to status without fabricating fresh completion. Confirm this behavior
-   against loading UI and existing error/limit tests before changing it.
-5. Permit ordinary parameter-driven replay against retained old data while pending,
-   but it cannot satisfy a request requiring the new source generation. New data
-   uses current transform parameters when it commits. Cross-source atomic snapshot
-   publication is not promised by a per-source generation.
+**KISS scope decision:** discard request snapshots, abort orchestration, staged
+output, new pending-versus-published state, and changes to pending-data display
+from this milestone. The guarantee starts when the replacement load starts;
+parameter changes awaiting a scheduled reload are outside this contract.
+Lazy-source caching and cross-source atomic publication remain outside scope.
 
-**Verification:** controlled out-of-order requests A/B (including A → B → A),
-supersession before fetch dispatch, old rejection after new success, pending async
-parser, multi-file publication, disposal, ready-empty input, descriptor failures
-and current-request errors. Verify stale work never changes downstream rows,
-readiness or loading status. Test URL plus filter changes in one transaction.
-Measure staged-result memory for a representative multi-file eager load.
+**Documentation:** record the source-local ownership rule in views/dataflow
+architecture. No grammar or public API migration.
 
-**Deletion and size gate:** remove request paths that mutate live output before
-freshness is established; avoid layered token checks spread across consumers.
-Growth is justified by the concrete stale-publication race, not hypothetical recovery.
+**Commit:** `fix(core): ignore superseded URL load results`
 
-**Documentation/migration:** document pending-data presentation and distinguish
-propagation barriers from data-availability waits. No universal async-ready promise.
-
-**Tentative commit:** `fix(core): reject superseded URL loads before publication`
-
-**Review gate:** async ownership, publication ordering, loading/error semantics,
-memory and availability. Do not close #463 after M1 alone.
+**Review gate:** stale publication and status ownership, with existing loading
+semantics preserved.
 
 ## M4 — Expand the successful contract to layout and rendering
 
