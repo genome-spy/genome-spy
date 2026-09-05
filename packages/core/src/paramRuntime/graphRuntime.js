@@ -172,6 +172,8 @@ export default class GraphRuntime {
 
     #transactionDepth = 0;
 
+    #flushAfterTransaction = false;
+
     #scheduled = false;
 
     #flushing = false;
@@ -180,7 +182,7 @@ export default class GraphRuntime {
 
     #syncRequested = false;
 
-    /** @type {Map<() => void, number>} */
+    /** @type {Map<() => void, {rank: number, onError?: (error: unknown) => void}>} */
     #updates = new Map();
 
     /** @type {Map<object, number>} */
@@ -235,7 +237,7 @@ export default class GraphRuntime {
      * @param {"base" | "selection"} kind
      * @param {T} initialValue
      * @param {{ notify?: boolean }} [options]
-     * @returns {import("./types.js").WritableParamRef<T>}
+     * @returns {import("./types.js").WritableParamRef<T> & { dispose: () => void }}
      */
     createWritable(ownerId, name, kind, initialValue, options = {}) {
         const nodeId = "n" + this.#nextNodeId++;
@@ -285,13 +287,17 @@ export default class GraphRuntime {
             }
         };
 
-        this.#bindDisposer(ownerId, () => {
+        const dispose = () => {
             node.disposed = true;
             node.listeners.clear();
-        });
-
-        return /** @type {import("./types.js").WritableParamRef<T>} */ (
-            createRef(node, setter)
+            unbind();
+        };
+        const unbind = this.#bindDisposer(ownerId, dispose);
+        return Object.assign(
+            /** @type {import("./types.js").WritableParamRef<T>} */ (
+                createRef(node, setter)
+            ),
+            { dispose }
         );
     }
 
@@ -345,18 +351,27 @@ export default class GraphRuntime {
             },
         });
 
-        const unsubscribers = deps.map((dep) =>
-            dep.subscribe(() => {
-                if (!node.disposed) {
-                    this.#enqueueComputed(node);
-                    if (dep.propagation === "sync") {
-                        // Scale changes are synchronous and happen before
-                        // rendering, so their derived values must not lag.
-                        this.flushNow();
-                    }
-                }
-            })
-        );
+        /** @type {(() => void)[]} */
+        const unsubscribers = [];
+        try {
+            for (const dep of deps)
+                unsubscribers.push(
+                    dep.subscribe(() => {
+                        if (!node.disposed) {
+                            this.#enqueueComputed(node);
+                            if (dep.propagation === "sync") {
+                                // Scale changes are synchronous and happen before
+                                // rendering, so their derived values must not lag.
+                                this.flushNow();
+                            }
+                        }
+                    })
+                );
+        } catch (error) {
+            node.disposed = true;
+            for (const unsubscribe of unsubscribers) unsubscribe();
+            throw error;
+        }
         const dispose = () => {
             if (node.disposed) {
                 return;
@@ -462,7 +477,12 @@ export default class GraphRuntime {
         } finally {
             this.#transactionDepth -= 1;
             if (this.#transactionDepth === 0) {
-                this.#scheduleFlush();
+                if (this.#flushAfterTransaction) {
+                    this.#flushAfterTransaction = false;
+                    this.flushNow();
+                } else {
+                    this.#scheduleFlush();
+                }
             }
         }
     }
@@ -476,8 +496,12 @@ export default class GraphRuntime {
      * 3. Stabilizes computeds and streaming jobs before each effect.
      * 4. Errors reject current barriers and stop automatic flushing. Pending
      *    invalidations remain for an explicit retry; replay jobs must be resubmitted.
+     * @param {{ afterTransaction?: boolean }} [options]
      */
-    flushNow() {
+    flushNow({ afterTransaction = false } = {}) {
+        if (afterTransaction && this.#transactionDepth > 0) {
+            this.#flushAfterTransaction = true;
+        }
         if (this.#notificationDepth > 0) {
             this.#syncRequested = true;
             return;
@@ -488,6 +512,8 @@ export default class GraphRuntime {
         this.#scheduled = false;
         this.#flushing = true;
 
+        /** @type {((error: unknown) => void) | undefined} */
+        let activeCleanup;
         try {
             while (
                 this.#computedQueue.length ||
@@ -520,15 +546,17 @@ export default class GraphRuntime {
                     let priority = Infinity;
                     /** @type {() => void} */
                     let update;
-                    for (const [candidate, rank] of this.#updates) {
+                    for (const [candidate, { rank }] of this.#updates) {
                         if (rank < priority) {
                             update = candidate;
                             priority = rank;
                         }
                     }
+                    activeCleanup = this.#updates.get(update).onError;
                     this.#updates.delete(update);
                     this.#countRun(update, "streaming update");
                     update();
+                    activeCleanup = undefined;
                 } else if (this.#effectQueue.length) {
                     const node = this.#effectQueue.pop();
                     this.#dirtyEffects.delete(node);
@@ -543,7 +571,11 @@ export default class GraphRuntime {
         } catch (error) {
             // Keep invalidations: a retry may publish an equal value and must
             // still repair caches. Do not automatically retry streaming work.
+            const abandoned = Array.from(this.#updates.values());
             this.#updates.clear();
+            // Cleanup hooks may only discard work, never schedule a retry.
+            activeCleanup?.(error);
+            for (const job of abandoned) job.onError?.(error);
             for (const waiter of this.#propagatedWaiters) {
                 waiter.reject(error);
             }
@@ -561,9 +593,10 @@ export default class GraphRuntime {
      * The caller owns its lifetime; rank orders upstream roots before descendants.
      * @param {() => void} update
      * @param {number} [rank]
+     * @param {(error: unknown) => void} [onError] Cleanup when propagation abandons this job.
      */
-    requestUpdate(update, rank = 0) {
-        this.#updates.set(update, rank);
+    requestUpdate(update, rank = 0, onError) {
+        this.#updates.set(update, { rank, onError });
         this.#scheduleFlush();
     }
 

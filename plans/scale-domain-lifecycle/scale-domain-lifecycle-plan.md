@@ -225,14 +225,14 @@ streaming publication boundary, failure/retry semantics, and verification.
 
 ### 6. Prove domain simplification with a representative integration
 
-- [ ] Move viewport-derived candidate calculation and a calibrated dependent
+- [x] Move viewport-derived candidate calculation and a calibrated dependent
       scale onto the shared reactive foundation, preserving domain policy and
       actual animation frames.
-- [ ] Prove the feedback boundary with a minimal two-way linked animated
+- [x] Prove the feedback boundary with a minimal two-way linked animated
       navigation/clear integration before judging the foundation sufficient.
       Include owner echoes and authoritative external clears equal to the display;
       the full selection migration can follow in milestone 7.
-- [ ] Delete superseded subscriptions, cache invalidation, and ordering logic
+- [x] Delete superseded subscriptions, cache invalidation, and ordering logic
       for that path, including their orchestration in `ScaleResolution`. Keep
       resolution responsible for setting up bindings, not driving their updates.
       Review the result before extending the migration.
@@ -261,6 +261,11 @@ streaming publication boundary, failure/retry semantics, and verification.
   design and reconcile the remaining milestone;
   do not expand migration or silently treat the branch as merge-ready.
 - Commit: `refactor(core): drive viewport domains through reactive dependencies`.
+
+Milestone 6's reviewed result is recorded in [milestone-6-plan.md](milestone-6-plan.md).
+The continuous path has simpler propagation, but total production size increased.
+The next milestone must delete the parallel legacy adapter and planner caches;
+the overall simplification and merge gates have not passed.
 
 ### 7. Complete the justified migration and verify integration
 

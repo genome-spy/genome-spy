@@ -105,6 +105,12 @@ describe("example scale-domain lifecycle contracts", () => {
             ).getCollector(),
             "getDomain"
         );
+        // Chrome observers still check their own visibility. Domain contribution
+        // topology must not be rediscovered from the data member on each frame.
+        const topologyReads = [
+            vi.spyOn(detail, "isConfiguredVisible"),
+            vi.spyOn(detail, "getScaleResolution"),
+        ];
         /** @type {number[][]} */
         const published = [];
         x.addEventListener("domain", () => {
@@ -130,6 +136,10 @@ describe("example scale-domain lifecycle contracts", () => {
         expect(published.length).toBeGreaterThan(2);
         expect(x.getDomain()).toEqual([20, 40]);
         expect(query).not.toHaveBeenCalled();
+        for (const read of topologyReads) {
+            expect(read).not.toHaveBeenCalled();
+            read.mockRestore();
+        }
 
         let replaced = false;
         const unsubscribe = view.paramRuntime.subscribe("brush", () => {
@@ -560,6 +570,44 @@ describe("example scale-domain lifecycle contracts", () => {
         });
         expect(x.getDomain()).toEqual([0, 200]);
         expect(view.paramRuntime.getValue("brush").intervals.x).toBeNull();
+    });
+
+    test("data published during an own brush echo updates fallback and loaded extent", async () => {
+        const spec = readExample(
+            "core/selection/interval_linked_domain_two_way.json"
+        );
+        spec.data = { values: [{ x: 0 }, { x: 100 }] };
+        const detailSpec = /** @type {import("../spec/view.js").UnitSpec} */ (
+            /** @type {import("../spec/view.js").VConcatSpec} */ (spec)
+                .vconcat[1]
+        );
+        /** @type {import("../spec/channel.js").ChannelDefWithScale} */ (
+            detailSpec.encoding.x
+        ).scale.zoom = { extent: "data" };
+        const view = await createExample(spec);
+        const detail = /** @type {ConcatView} */ (view).children[1];
+        const x = getRequiredScaleResolution(detail, "x");
+        const source =
+            /** @type {import("../data/sources/inlineSource.js").default} */ (
+                view.flowHandle.dataSource
+            );
+        let published = false;
+        disposers.push(
+            view.paramRuntime.subscribe("brush", () => {
+                if (!published) {
+                    published = true;
+                    source.updateDynamicData([{ x: 0 }, { x: 200 }]);
+                }
+            })
+        );
+        await x.zoomTo([30, 50]);
+        expect(x.getDomain()).toEqual([30, 50]);
+        expect(x.zoomExtent).toEqual([0, 200]);
+        view.paramRuntime.setValue("brush", {
+            type: "interval",
+            intervals: { x: null },
+        });
+        expect(x.getDomain()).toEqual([0, 200]);
     });
 
     test("viewport autoscaling debounces navigation and retains its last nonempty domain", async () => {

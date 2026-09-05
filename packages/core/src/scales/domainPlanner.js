@@ -388,7 +388,7 @@ export default class DomainPlanner {
  *   selectionRef: SelectionDomainLinkInfo | undefined,
  * }}
  */
-function resolveConfiguredDomain(
+export function resolveConfiguredDomain(
     members,
     viewLevelDomain,
     createExpression,
@@ -746,7 +746,7 @@ export function isSelectionDomainRef(domain) {
  * @param {(member: ScaleResolutionMember) => import("../types/encoder.js").ScaleAccessor[]} getAccessorsForMember
  * @returns {DomainArray | undefined}
  */
-function resolveDataDomain(members, getType, getAccessorsForMember) {
+export function resolveDataDomain(members, getType, getAccessorsForMember) {
     const type = getType();
 
     /** @type {Map<import("../data/collector.js").default | null, Map<string, DomainArray>>} */
@@ -813,7 +813,12 @@ function resolveDataDomain(members, getType, getAccessorsForMember) {
  * @param {import("../spec/scale.js").Scale["assembly"] | undefined} locusAssembly
  * @returns {any[]}
  */
-function resolveDefaultDomain(type, getLocusExtent, dataDomain, locusAssembly) {
+export function resolveDefaultDomain(
+    type,
+    getLocusExtent,
+    dataDomain,
+    locusAssembly
+) {
     if (type == LOCUS) {
         return getLocusExtent(locusAssembly);
     }
@@ -821,4 +826,13 @@ function resolveDefaultDomain(type, getLocusExtent, dataDomain, locusAssembly) {
         return toInternalIndexLikeDataDomain(type, dataDomain) ?? [];
     }
     return dataDomain ?? [];
+}
+
+/**
+ * @param {ScaleResolutionMember} member
+ * @returns {import("../types/encoder.js").ScaleAccessor[]}
+ */
+export function getScaleMemberAccessors(member) {
+    const encoder = member.view.mark.encoders?.[member.channel];
+    return encoder ? getEncoderAccessors(encoder).filter(isScaleAccessor) : [];
 }

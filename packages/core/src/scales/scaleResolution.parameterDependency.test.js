@@ -283,9 +283,12 @@ describe("scale-dependent parameters in scale expressions", () => {
             .mockImplementation((expr) => {
                 const fn = createExpression(expr);
                 if (expr === "upper") {
-                    fn.subscribe = () => {
+                    vi.spyOn(
+                        fn.dependencies[0],
+                        "subscribe"
+                    ).mockImplementation(() => {
                         throw new Error("Subscription setup failed");
-                    };
+                    });
                 }
                 return fn;
             });
@@ -294,6 +297,7 @@ describe("scale-dependent parameters in scale expressions", () => {
         );
         expect(() => resolution.scale).toThrow("before initialization");
         spy.mockRestore();
+        vi.restoreAllMocks();
 
         resolution.initializeScale();
         expect(resolution.getDomain()).toEqual([0, 5]);
@@ -304,6 +308,40 @@ describe("scale-dependent parameters in scale expressions", () => {
         expect(listener).toHaveBeenCalledTimes(1);
         view.disposeSubtree();
     });
+
+    test.each([false, true])(
+        "calibrated initial references use completed primary data (reverse: %s)",
+        async (reverse) => {
+            const spec = calibratedDomainSpec();
+            const primary = /** @type {import("../spec/view.js").UnitSpec} */ (
+                spec.layer[0]
+            );
+            const tracking = /** @type {import("../spec/view.js").UnitSpec} */ (
+                spec.layer[1]
+            );
+            /** @type {import("../spec/channel.js").ChannelDefWithScale} */ (
+                primary.encoding.y
+            ).scale = { zero: false, nice: false };
+            /** @type {import("../spec/channel.js").ChannelDefWithScale} */ (
+                tracking.encoding.y
+            ).scale.zoom = true;
+            if (reverse) spec.layer.reverse();
+            const { view } = await createHeadlessEngine(spec);
+            try {
+                const depth = view
+                    .getDescendants()
+                    .find((v) => v.name === "tracking-depth")
+                    .getScaleResolution("y");
+                expect(depth.getDomain()).toEqual([
+                    2 * 14.012 + 0.1,
+                    4 * 14.012 + 0.1,
+                ]);
+                expect(depth.zoomExtent).toEqual(depth.getDomain());
+            } finally {
+                view.disposeSubtree();
+            }
+        }
+    );
 
     test("initialization supports a dynamically inserted dependent subtree", async () => {
         const { view } = await createHeadlessEngine({ vconcat: [] });

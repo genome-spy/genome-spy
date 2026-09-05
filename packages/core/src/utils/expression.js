@@ -332,9 +332,12 @@ function runWithActiveScaleResolution(resolution, kind, fn) {
  * @param {string} channel
  * @param {import("../scales/scaleResolution.js").default} resolution
  * @param {string} codeName
- * @returns {import("../paramRuntime/types.js").ParamRef<any> & { rank: number }}
+ * @returns {import("../paramRuntime/types.js").ParamRef<any>}
  */
 function createScaleDependency(kind, channel, resolution, codeName) {
+    if (kind === "domain" && resolution.getDomainRef) {
+        return resolution.getDomainRef();
+    }
     /** @type {Set<() => void>} */
     const listeners = new Set();
 

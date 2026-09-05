@@ -65,6 +65,14 @@ export default class DataSource extends FlowNode {
         // override
     }
 
+    complete() {
+        const runtime = this.view?.paramRuntime;
+        // Standalone dataflow tests can omit a view runtime. A live source's
+        // entire completion fan-out publishes in one synchronous boundary.
+        if (runtime) runtime.runInTransaction(() => super.complete());
+        else super.complete();
+    }
+
     /**
      * Starts live reactions that should not run before the initial load phase.
      */

@@ -595,6 +595,16 @@ export default class ViewParamRuntime {
     }
 
     /**
+     * Owner-bound internal input, without a public parameter name binding.
+     * @template T
+     * @param {string} name
+     * @param {T} initial
+     */
+    signal(name, initial) {
+        return this.#runtime.signal(this.#scopeId, name, initial);
+    }
+
+    /**
      * Create an unnamed, owner-bound derived value with explicit dependencies.
      * Dispose the returned ref when replacing a binding before its owner ends.
      * @template T
@@ -628,9 +638,10 @@ export default class ViewParamRuntime {
      * Queue caller-owned streaming publication before graph effects.
      * @param {() => void} update Stable callback identity for coalescing.
      * @param {number} [rank]
+     * @param {(error: unknown) => void} [onError]
      */
-    requestUpdate(update, rank = 0) {
-        this.#runtime.requestUpdate(update, rank);
+    requestUpdate(update, rank = 0, onError) {
+        this.#runtime.requestUpdate(update, rank, onError);
     }
 
     /** @param {() => void} update */
@@ -789,8 +800,9 @@ export default class ViewParamRuntime {
         return this.#runtime.runInTransaction(fn);
     }
 
-    flushNow() {
-        this.#runtime.flushNow();
+    /** @param {{ afterTransaction?: boolean }} [options] */
+    flushNow(options) {
+        this.#runtime.flushNow(options);
     }
 
     /**

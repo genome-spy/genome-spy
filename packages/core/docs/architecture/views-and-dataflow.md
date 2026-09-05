@@ -95,13 +95,16 @@ arrangement.
 
 ## Scale domain ownership
 
-`ScaleResolution` owns the displayed domain, reset target, initial reference,
-loaded data extent, and active transition identity. `domainLifecycle.js` decides
+`DomainRuntime` owns the displayed domain, reset target, initial reference,
+loaded data extent, and active transition identity. `ScaleResolution` resolves
+shared configuration and rebinds inputs when participation changes. `domainLifecycle.js` decides
 updates from normalized snapshots before the live scale is changed. Its initial
 phase distinguishes collecting, early interaction, and complete readiness;
 interaction protects the display without ending reference collection.
 
-`DomainPlanner` aggregates configured/data candidates and fallback domains.
+Continuous inputs compile expression dependencies, accessors and viewport topology
+in `domainInputs.js`. `DomainPlanner` still handles configuration validation,
+bootstrap and the remaining discrete/index/locus candidate adapters during migration.
 `ScaleInstanceManager` normalizes candidates on a working scale, configures
 properties/ranges, and mirrors committed domains. External `scale.domain(value)`
 calls submit immediate owner updates; they do not bypass the commit path.
@@ -110,8 +113,10 @@ and validation, submitting navigation to the same owner. Reset uses the current
 configured/default target, separately from the initial reference and data extent.
 
 Domain events describe effective display changes, including intermediate
-animation frames. Unchanged reference/data-extent progress instead notifies
-internal zoom-level and axis-tick consumers. Initial lazy requests still start
+animation frames. Internal zoom-level and axis-tick inputs publish during domain
+jobs, including unchanged-display reference/extent progress. Source completion
+batches synchronous fan-out; initialization freezes the settled reference before
+observer effects. Immediate rendering uses this same settled boundary. Initial lazy requests still start
 through the existing post-load layout notifications. Current viewport coverage
 gates viewport candidates without reopening initial readiness.
 

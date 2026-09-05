@@ -204,6 +204,12 @@ export default class Collector extends FlowNode {
     }
 
     repropagate() {
+        if (this.parent)
+            this.paramRuntime.runInTransaction(() => this.#replay());
+        else this.#replay();
+    }
+
+    #replay() {
         for (const child of this.children) {
             child.reset();
         }

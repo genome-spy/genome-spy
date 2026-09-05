@@ -42,6 +42,169 @@ function advanceFrame(animator, timestamp) {
 }
 
 describe("scale domain owner integration", () => {
+    test.each(["transaction", "publication"])(
+        "immediate rendering waits for calibrated domains inside %s",
+        async (boundary) => {
+            const { view } = await createHarness({
+                params: [{ name: "display", expr: "domain('x')" }],
+                data: { values: [{ x: 0 }, { x: 10 }] },
+                scales: { x: { domain: [0, 10], zoom: true } },
+                mark: "point",
+                encoding: { x: { field: "x", type: "quantitative" } },
+            });
+            const x = getRequiredScaleResolution(view, "x");
+            const render = vi
+                .spyOn(view.context, "renderImmediately")
+                .mockImplementation(() => {
+                    expect(x.getDomain()).toEqual([2, 4]);
+                    expect(view.paramRuntime.getValue("display")).toEqual([
+                        2, 4,
+                    ]);
+                });
+            let navigation = Promise.resolve();
+            const navigate = () => {
+                navigation = x.zoomTo([2, 4], { renderImmediately: true });
+            };
+            if (boundary === "transaction")
+                view.paramRuntime.runInTransaction(navigate);
+            else {
+                view.paramRuntime.requestUpdate(navigate);
+                view.paramRuntime.flushNow();
+            }
+            expect(render).toHaveBeenCalledTimes(1);
+            await navigation;
+        }
+    );
+
+    test("a failed replay discards queued navigation before a later successful command", async () => {
+        const { view } = await createHarness({
+            data: { values: [{ x: 0 }] },
+            scales: { x: { domain: [0, 10], zoom: true } },
+            mark: "point",
+            encoding: { x: { field: "x", type: "quantitative" } },
+        });
+        const x = getRequiredScaleResolution(view, "x");
+        let rejected = Promise.resolve();
+        expect(() =>
+            view.paramRuntime.runInTransaction(() => {
+                view.paramRuntime.requestUpdate(() => {
+                    throw new Error("bad replay");
+                });
+                rejected = expect(x.zoomTo([2, 4])).rejects.toThrow(
+                    "bad replay"
+                );
+            })
+        ).toThrow("bad replay");
+        await rejected;
+        expect(x.getDomain()).toEqual([0, 10]);
+        await x.zoomTo([6, 8]);
+        expect(x.getDomain()).toEqual([6, 8]);
+    });
+
+    test("one parameter settles authored domain and replayed data extent before notification", async () => {
+        const { view } = await createHarness({
+            params: [{ name: "upper", value: 10 }],
+            data: { values: [{ x: 0 }, { x: 4 }, { x: 8 }] },
+            transform: [{ type: "filter", expr: "datum.x <= upper" }],
+            scales: {
+                x: { domain: { expr: "[0, upper]" }, zoom: { extent: "data" } },
+            },
+            mark: "point",
+            encoding: { x: { field: "x", type: "quantitative" } },
+        });
+        const x = getRequiredScaleResolution(view, "x");
+        const observed = vi.fn(() => {
+            expect(x.getDomain()).toEqual([0, 5]);
+            expect(x.zoomExtent).toEqual([0, 4]);
+        });
+        x.addEventListener("domain", observed);
+        view.paramRuntime.setValue("upper", 5);
+        expect(observed).toHaveBeenCalledTimes(1);
+    });
+
+    test("removing a selection binding discards its queued candidate and preserves navigation", async () => {
+        const { view } = await createHarness({
+            params: [
+                {
+                    name: "brush",
+                    value: { type: "interval", intervals: { x: null } },
+                },
+            ],
+            data: { values: [{ x: 0 }, { x: 10 }] },
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: { domain: { param: "brush" }, zoom: true },
+                        },
+                    },
+                },
+                {
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: { zoom: true },
+                        },
+                    },
+                },
+            ],
+        });
+        const x = getRequiredScaleResolution(view, "x");
+        await x.zoomTo([2, 4]);
+        // Remove a contributor between candidate calculation and publication.
+        view.paramRuntime.runInTransaction(() => {
+            view.paramRuntime.setValue("brush", {
+                type: "interval",
+                intervals: { x: [6, 8] },
+            });
+            view.paramRuntime.requestUpdate(() => {
+                /** @type {import("../view/layerView.js").default} */ (
+                    view
+                ).children[0].disposeSubtree();
+            }, Number.MAX_SAFE_INTEGER - 1);
+        });
+        await view.paramRuntime.whenPropagated();
+        expect(x.getDomain()).toEqual([2, 4]);
+    });
+
+    test("viewport bindings retain the last nonempty domain across range recreation", async () => {
+        const { view } = await createHarness({
+            data: {
+                values: [
+                    { x: 0, y: 2 },
+                    { x: 1, y: 8 },
+                ],
+            },
+            scales: {
+                x: { domain: [0, 1] },
+                y: { domain: { source: "viewport" }, zero: false, nice: false },
+            },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        });
+        const y = getRequiredScaleResolution(view, "y");
+        const source =
+            /** @type {import("../data/sources/inlineSource.js").default} */ (
+                view.flowHandle.dataSource
+            );
+        source.updateDynamicData([]);
+        y.attachViewLevelScaleProps(view, {
+            domain: { source: "viewport" },
+            zero: false,
+            nice: false,
+            range: [0, 2],
+        });
+        expect(y.getDomain()).toEqual([2, 8]);
+    });
+
     test.each(["direct", "reset", "supersede"])(
         "%s navigation invalidates queued frames and resolves the old promise",
         async (operation) => {

@@ -106,21 +106,23 @@ export default class UnitView extends View {
 
         this.resolve();
 
-        for (const channel of /** @type {import("../spec/channel.js").ChannelWithScale[]} */ ([
-            "x",
-            "y",
-        ])) {
-            const resolution = this.getScaleResolution(channel);
-            if (resolution) {
-                const listener = () => {
-                    this.#zoomLevelSetter(Math.sqrt(this.getZoomLevel()));
-                };
-                resolution.addEventListener("domain", listener);
-                this.registerDisposer(resolution.subscribeZoomExtent(listener));
-                this.registerDisposer(() =>
-                    resolution.removeEventListener("domain", listener)
-                );
-            }
+        const zoomResolutions = primaryPositionalChannels
+            .map((channel) => this.getScaleResolution(channel))
+            .filter((resolution) => resolution !== undefined);
+        const publishZoomLevel = () =>
+            this.#zoomLevelSetter(
+                Math.sqrt(
+                    zoomResolutions.reduce(
+                        (level, resolution) =>
+                            level * resolution.getZoomLevel(),
+                        1
+                    )
+                )
+            );
+        for (const resolution of zoomResolutions) {
+            this.registerDisposer(
+                resolution.subscribeZoomExtent(publishZoomLevel)
+            );
         }
 
         this.registerDisposer(

@@ -1,8 +1,6 @@
 import deepEqual from "../utils/deepEqual.js";
-import { createDomainState, planDomainUpdate } from "./domainLifecycle.js";
-import { createCancelToken } from "../utils/transition.js";
-import eerp from "../utils/eerp.js";
-import { easeCubicInOut } from "d3-ease";
+import DomainRuntime from "./domainRuntime.js";
+import createDomainInputs from "./domainInputs.js";
 import { isDataReady } from "../data/dataReadiness.js";
 import scaleLocus, {
     fromComplexInterval as locusFromComplexInterval,
@@ -18,7 +16,7 @@ import { scale as vegaScale, isDiscrete, isContinuous } from "vega-scale";
 
 import ScaleInstanceManager from "./scaleInstanceManager.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
-import DomainPlanner from "./domainPlanner.js";
+import DomainPlanner, { getScaleMemberAccessors } from "./domainPlanner.js";
 import {
     getViewportConstraints,
     getViewportDependencies,
@@ -36,10 +34,9 @@ import {
     QUANTITATIVE,
 } from "./scaleResolutionConstants.js";
 
-import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
+import { getAccessorDomainKey } from "../encoder/accessor.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import {
-    getEncoderAccessors,
     isSecondaryChannel,
     primaryPositionalChannels,
 } from "../encoder/encoder.js";
@@ -120,18 +117,20 @@ export default class ScaleResolution {
     /** @type {Set<ScaleResolutionMember>} */
     #dataDomainMembers = new Set();
 
-    /** @type {import("./domainLifecycle.js").DomainState | undefined} */
-    #domainState;
+    /** @type {DomainRuntime | undefined} */
+    #domainRuntime;
 
-    /** @type {{ canceled: boolean } | undefined} */
-    #transitionToken;
+    /** @type {ReturnType<typeof createDomainInputs> | undefined} */
+    #domainInputs;
+
+    get #domainState() {
+        return this.#domainRuntime?.state;
+    }
 
     /** Exact outgoing selection object, scoped around synchronous publication.
      * @type {unknown}
      */
     #selectionWrite;
-
-    #domainNotificationSerial = 0;
 
     /** @type {Set<() => void>} */
     #zoomExtentListeners = new Set();
@@ -256,7 +255,7 @@ export default class ScaleResolution {
                     },
                     !renderImmediately
                 ),
-            renderImmediately: () => this.#viewContext.renderImmediately(),
+            renderImmediately: () => this.#domainRuntime.renderImmediately(),
             getInitialDomainSnapshot: () =>
                 /** @type {number[]} */ (this.#domainState.initialReference),
             getDataZoomExtent: () =>
@@ -459,8 +458,8 @@ export default class ScaleResolution {
     }
 
     /**
-     * Progress of the zoom reference/extent can change without a displayed-domain
-     * event. Internal consumers subscribe here in addition to domain changes.
+     * Publishes zoom inputs during domain propagation, before observer effects.
+     * Covers display, initial reference and loaded-extent changes.
      * @param {() => void} listener
      * @returns {() => void}
      */
@@ -473,27 +472,17 @@ export default class ScaleResolution {
      * @param {ScaleResolutionEventType} type
      */
     #notifyListeners(type) {
-        const displayed = this.#domainState?.visibleDomain;
-        if (type === "domain") {
-            this.#domainNotificationSerial++;
-        }
         const runtime = this.#resolutionView.paramRuntime;
         runtime.runInTransaction(() => {
             for (const listener of this.#listeners[type].values()) {
                 listener({ type, scaleResolution: this });
-                if (
-                    type === "domain" &&
-                    this.#domainState.visibleDomain !== displayed
-                ) {
-                    // A nested commit already notified listeners of its replacement.
-                    break;
-                }
             }
         });
         runtime.flushNow();
     }
 
     syncLinkedSelectionFromDomain() {
+        if (this.#domainInputs) return this.#domainInputs.syncSelection();
         const linkInfo =
             this.#domainAggregator.getSelectionConfiguredDomainBindingInfo();
         if (!linkInfo || !this.isZoomable()) {
@@ -560,7 +549,10 @@ export default class ScaleResolution {
     }
 
     #shouldIncludeSelectionInitial() {
-        return !this.#ignoreSelectionInitial;
+        return !(
+            this.#domainInputs?.ignoreSelectionInitial ??
+            this.#ignoreSelectionInitial
+        );
     }
 
     /**
@@ -719,9 +711,7 @@ export default class ScaleResolution {
         this.#membersDirty = false;
         this.#invalidateOrderedMembers();
         this.#invalidateConfiguredDomain();
-        this.#refreshSelectionDomainParamSubscriptions();
-        this.#refreshConfiguredDomainExprSubscriptions();
-        this.#viewportDomainScheduler.refresh();
+
         if (this.#scaleManager.scale && this.#members.size > 0) {
             this.reconfigure();
         }
@@ -893,9 +883,7 @@ export default class ScaleResolution {
         this.#viewLevelScaleProps = { view, props };
         this.#invalidateMergedScaleProps();
         this.#invalidateConfiguredDomain();
-        this.#refreshSelectionDomainParamSubscriptions();
-        this.#refreshConfiguredDomainExprSubscriptions();
-        this.#viewportDomainScheduler.refresh();
+
         this.#recreateInitializedScale(
             domainConfigurationChanged(previousProps, props)
                 ? "configuration"
@@ -912,9 +900,7 @@ export default class ScaleResolution {
             this.#viewLevelScaleProps = undefined;
             this.#invalidateMergedScaleProps();
             this.#invalidateConfiguredDomain();
-            this.#refreshSelectionDomainParamSubscriptions();
-            this.#refreshConfiguredDomainExprSubscriptions();
-            this.#viewportDomainScheduler.refresh();
+
             this.#recreateInitializedScale(
                 domainConfigurationChanged(previousProps, undefined)
                     ? "configuration"
@@ -1027,13 +1013,14 @@ export default class ScaleResolution {
     }
 
     dispose() {
+        this.#domainInputs?.dispose();
         this.#clearSelectionDomainParamSubscriptions();
         this.#clearConfiguredDomainExprSubscriptions();
         this.#viewportDomainScheduler.clear();
         this.#zoomExtentListeners.clear();
         this.#listeners.domain.clear();
         this.#listeners.range.clear();
-        this.#cancelDomainTransition();
+        this.#domainRuntime?.dispose();
         this.#scaleManager.dispose();
     }
 
@@ -1050,6 +1037,79 @@ export default class ScaleResolution {
             unsubscribe();
         }
         this.#configuredDomainExprUnsubscribers = [];
+    }
+
+    // Domain inputs are rebound only when configuration, membership or encoders
+    // change. Remaining discrete/index/locus source adapters migrate in M7.
+    #bindDomainInputs() {
+        const lastVisible = this.#domainInputs?.lastVisible;
+        this.#domainRuntime?.cancelSourceUpdates();
+        if (this.#domainInputs) {
+            this.#ignoreSelectionInitial =
+                this.#domainInputs.ignoreSelectionInitial;
+            this.#domainInputs.dispose();
+            this.#domainInputs = undefined;
+        }
+        this.#clearSelectionDomainParamSubscriptions();
+        this.#clearConfiguredDomainExprSubscriptions();
+        this.#viewportDomainScheduler.clear();
+        const scale = this.#scaleManager.scale;
+        if (!scale || !this.#members.size) return;
+        if (
+            this.type === INDEX ||
+            this.type === LOCUS ||
+            !isContinuous(scale.type) ||
+            isDiscrete(scale.type)
+        ) {
+            this.#refreshSelectionDomainParamSubscriptions();
+            this.#refreshConfiguredDomainExprSubscriptions();
+            this.#viewportDomainScheduler.refresh();
+            return;
+        }
+        const members = new Set(
+            this.#members
+                .values()
+                .filter((member) => member.view.isConfiguredVisible())
+        );
+        const dataMembers = new Set(
+            this.#dataDomainMembers
+                .values()
+                .filter((member) => member.view.isConfiguredVisible())
+        );
+        const props = this.#getMergedScaleProps();
+        const link = this.#getLinkedSelectionInfo();
+        const viewport = this.#domainAggregator.hasViewportDomain();
+        this.#domainInputs = createDomainInputs({
+            owner: this.#domainRuntime,
+            manager: this.#scaleManager,
+            props,
+            type: this.type,
+            members,
+            dataMembers,
+            viewLevelDomain: this.#getViewLevelDomainSource(),
+            createExpression: (expr) => this.#createExpression(expr),
+            resolveSelectionBinding: (param, encoding) =>
+                this.#resolveSelectionBinding(param, encoding),
+            fromComplexInterval: this.fromComplexInterval.bind(this),
+            getLocusExtent: (assembly) => this.#getLocusExtent(assembly),
+            link,
+            viewport,
+            viewportDependencies: viewport
+                ? getViewportDependencies(dataMembers, this)
+                : new Set(),
+            getConstraints: (member) => this.#getViewportConstraints(member),
+            getZoomExtent: () => this.zoomExtent,
+            ignoreSelectionInitial: this.#ignoreSelectionInitial,
+            lastVisible,
+        });
+        const views = Array.from(members, (member) => member.view);
+        this.#domainRuntime.policy = () => ({
+            zoomable: !!props.zoom,
+            scaleKind: "continuous",
+            rendered: views.some((view) => view.hasRendered()),
+            animateChanges: props.domainTransition !== false,
+            selectionLinked: !!link,
+        });
     }
 
     #refreshSelectionDomainParamSubscriptions() {
@@ -1220,7 +1280,12 @@ export default class ScaleResolution {
             return () => undefined;
         }
 
+        this.#bindDomainInputs();
         const listener = () => {
+            if (this.#domainInputs) {
+                this.#domainInputs.dataChanged();
+                return;
+            }
             if (
                 this.#domainAggregator.hasViewportDomain() &&
                 this.#domainState?.phase === "ready"
@@ -1588,6 +1653,7 @@ export default class ScaleResolution {
      */
     reconfigure() {
         this.#invalidateConfiguredDomain();
+        this.#bindDomainInputs();
         this.#updateDomainSource("membership", true);
     }
 
@@ -1623,6 +1689,17 @@ export default class ScaleResolution {
     #updateDomainSource(reason, full) {
         const scale = this.#scaleManager.scale;
         if (!scale || scale.type === "null") {
+            return;
+        }
+        if (this.#domainInputs) {
+            if (full)
+                this.#scaleManager.configureProperties(
+                    this.#getMergedScaleProps()
+                );
+            this.#domainInputs.request(reason);
+            this.#domainRuntime.runtime.flushNow({ afterTransaction: true });
+            if (full)
+                this.#scaleManager.configureRange(this.#getMergedScaleProps());
             return;
         }
         const props = this.#getScaleProps(true);
@@ -1678,105 +1755,11 @@ export default class ScaleResolution {
     }
 
     /**
-     * Installs state before effects. Benign synchronous selection echoes may
-     * replace state without superseding its display or transition identity.
      * @param {import("./domainLifecycle.js").DomainUpdate} update
      * @param {boolean} [requestRender]
-     * @returns {Promise<void>}
      */
     #commitDomainUpdate(update, requestRender = true) {
-        if ("domain" in update) {
-            update = {
-                ...update,
-                domain: this.#scaleManager.normalizeDomain(update.domain),
-            };
-        }
-        const previous = this.#domainState;
-        const plan = planDomainUpdate(previous, update, this.#domainPolicy());
-        this.#domainState = plan.state;
-        if (plan.transition.type !== "none") {
-            this.#cancelDomainTransition();
-        }
-        if (plan.domainChanged) {
-            this.#scaleManager.mirrorDomain(plan.state.visibleDomain);
-        }
-        const notified = this.#domainNotificationSerial;
-        if (plan.syncSelection) {
-            this.syncLinkedSelectionFromDomain();
-        }
-        if (
-            plan.domainChanged &&
-            this.#domainState.visibleDomain === plan.state.visibleDomain &&
-            this.#domainNotificationSerial === notified
-        ) {
-            this.#notifyListeners("domain");
-        }
-        if (
-            !plan.domainChanged &&
-            (!deepEqual(
-                previous.initialReference,
-                this.#domainState.initialReference
-            ) ||
-                !deepEqual(previous.dataExtent, this.#domainState.dataExtent))
-        ) {
-            for (const listener of this.#zoomExtentListeners) {
-                listener();
-            }
-        }
-        if (
-            plan.transition.type === "start" &&
-            this.#domainState.transition?.id === plan.transition.id
-        ) {
-            return this.#animateDomain(plan.transition);
-        }
-        if (plan.domainChanged && requestRender) {
-            this.#viewContext.animator.requestRender();
-        }
-        return Promise.resolve();
-    }
-
-    #cancelDomainTransition() {
-        if (this.#transitionToken) {
-            this.#transitionToken.canceled = true;
-            this.#transitionToken = undefined;
-        }
-    }
-
-    /** @param {Extract<import("./domainLifecycle.js").TransitionAction, { type: "start" }>} action */
-    async #animateDomain(action) {
-        const from = /** @type {readonly number[]} */ (action.from);
-        const to = /** @type {readonly number[]} */ (action.to);
-        const fw = from[1] - from[0];
-        const tw = to[1] - to[0];
-        const fc = from[0] + fw / 2;
-        const tc = to[0] + tw / 2;
-        const token = createCancelToken();
-        this.#transitionToken = token;
-        await this.#viewContext.animator.transition({
-            duration: action.duration,
-            easingFunction: easeCubicInOut,
-            cancelToken: token,
-            onUpdate: (t) => {
-                if (token.canceled) {
-                    return;
-                }
-                const w = eerp(fw, tw, t);
-                const wt = fw === tw ? t : (fw - w) / (fw - tw);
-                const c = wt * tc + (1 - wt) * fc;
-                void this.#commitDomainUpdate({
-                    type: "frame",
-                    id: action.id,
-                    domain: [
-                        from[0] === to[0] ? from[0] : c - w / 2,
-                        from[1] === to[1] ? from[1] : c + w / 2,
-                    ],
-                });
-            },
-        });
-        if (!token.canceled && this.#domainState.transition?.id === action.id) {
-            this.#transitionToken = undefined;
-            await this.#commitDomainUpdate({ type: "finish", id: action.id });
-        }
+        return this.#domainRuntime.update(update, requestRender);
     }
 
     /**
@@ -1826,30 +1809,54 @@ export default class ScaleResolution {
         }
 
         const props = this.#getScaleProps();
-        const previousState = this.#domainState;
+        const previousRuntime = this.#domainRuntime;
         try {
             const scale = this.#scaleManager.createScale(props, (domain) => {
                 if (!this.#domainState) {
-                    this.#domainState = createDomainState(
+                    this.#domainRuntime = new DomainRuntime({
+                        runtime: this.#resolutionView.paramRuntime,
+                        manager: this.#scaleManager,
+                        animator: this.#viewContext.animator,
                         domain,
-                        this.#scaleManager.normalizeDomain(
+                        resetDomain: this.#scaleManager.normalizeDomain(
                             this.#getConfiguredOrDefaultDomain()
-                        )
-                    );
+                        ),
+                        policy: () => this.#domainPolicy(),
+                        renderImmediately: () =>
+                            this.#viewContext.renderImmediately(),
+                        notifyDomain: () => this.#notifyListeners("domain"),
+                        publishZoom: () => {
+                            for (const listener of this.#zoomExtentListeners)
+                                listener();
+                        },
+                    });
+                    this.#domainRuntime.syncSelection = () =>
+                        this.syncLinkedSelectionFromDomain();
                 } else {
                     this.#scaleManager.mirrorDomain(
                         this.#domainState.visibleDomain
                     );
                 }
             });
-            this.#refreshConfiguredDomainExprSubscriptions();
+            this.#bindDomainInputs();
             return scale;
         } catch (error) {
+            this.#domainInputs?.dispose();
+            this.#domainInputs = undefined;
             this.#clearConfiguredDomainExprSubscriptions();
             this.#scaleManager.resetScale();
-            this.#domainState = previousState;
+            if (this.#domainRuntime !== previousRuntime) {
+                this.#domainRuntime?.dispose();
+            }
+            this.#domainRuntime = previousRuntime;
             throw error;
         }
+    }
+
+    /** Internal stable dependency; independent of final range/mapping. */
+    getDomainRef() {
+        this.getDomain();
+        return this.#domainRuntime.domain;
     }
 
     /** @returns {any[]} A fresh snapshot of the committed display. */
@@ -2086,15 +2093,6 @@ function intervalsEqual(a, b) {
     }
 
     return a.length === b.length && shallowArrayEquals(a, b);
-}
-
-/**
- * @param {ScaleResolutionMember} member
- * @returns {import("../types/encoder.js").ScaleAccessor[]}
- */
-function getScaleMemberAccessors(member) {
-    const encoder = member.view.mark.encoders?.[member.channel];
-    return encoder ? getEncoderAccessors(encoder).filter(isScaleAccessor) : [];
 }
 
 /**
