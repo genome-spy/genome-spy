@@ -127,9 +127,11 @@ with their owning view/flow node; failed initialization must leave no listeners.
 
 ## 2. Ownership and source snapshots
 
-Add an internal `DomainResolution` owned one-to-one by `ScaleResolution`.
-It owns `DomainState`, transition identity/cancellation, update planning, commit
-ordering, and selection synchronization origin. Keep scale properties, member
+Keep authoritative `DomainState` and one commit method directly in
+`ScaleResolution`, which already owns bindings and notifications. It owns
+transition identity/cancellation, update planning, commit ordering, and selection
+synchronization origin. Do not add a callback-heavy `DomainResolution`
+coordinator around those existing responsibilities. Keep scale properties, member
 topology, physical scale creation/range, categorical indexing, and assembly
 lookup in their existing appropriate components.
 
@@ -140,7 +142,11 @@ Keep aggregation and normalization separate from lifecycle decisions:
 - Reuse `configureDomain()` and domain/index/locus conversion helpers. Full
   property reconfiguration must calculate its candidate using the new resolved
   properties on a working scale; it must not first change the live domain.
-- `DomainResolution` receives normalized internal domains. Public interaction
+- Expose the existing property/domain/range configuration phases as needed.
+  Apply generic properties to the working copy before candidate normalization;
+  configure live ranges/bins using the decided display's cardinality. Deleting
+  domain properties to simulate a domain-free `configureScale()` is insufficient.
+- The lifecycle policy receives normalized internal domains. Public interaction
   bounds are converted once; selection and animation bounds are already internal.
 - Source snapshots keep reset target, initial reference, and loaded data extent
   distinct. Do not rescan data on every animation frame; frames/reset/navigation
@@ -150,6 +156,8 @@ The owner exists before expressions need a domain, independently of data-ready
 state. Preserve the #505 initialization ordering: pending parameter declarations
 precede expression binding, domain reads work before range binding, dependency
 cycles fail explicitly, and failed initialization remains retryable.
+Seed owner display after physical domain creation/genome binding and before
+range-expression binding; roll back that seed if initialization fails.
 
 `ScaleResolution.getDomain()` returns a fresh snapshot of the committed display.
 The physical scale mirrors that display; neither is an independently writable
@@ -179,6 +187,10 @@ integration-specific constraints:
 - Domain expression changes and actual authored-domain replacement use
   `configuration`. Characterize domain-affecting property edits (`nice`, bounds,
   zero) separately from range-only changes; evaluate all with their final props.
+  Pin the legacy zoomable ExprRef case with `domainTransition: true`: it currently
+  preserves the display, while default immediate ExprRef updates follow their
+  expression. The prototype's blanket configuration authority must be revised
+  rather than silently changing this behavior during integration.
 - External brush/parameter writes use `selection`, even when equal to the current
   displayed fallback. Owner-origin writes use `selection-sync`; equality alone
   never determines origin.
@@ -355,3 +367,7 @@ adds another layer around the old code. Domain-only sharing stays deferred.
 - Changed production files together grow from 5,614 to 5,758 lines (+144),
   including the new shared readiness helper. The growth buys explicit dependency
   and publication facts; the old owner-policy deletion remains slice B.
+- The follow-on ownership review favors state/commit directly in
+  `ScaleResolution` over the proposed extra coordinator. It also identifies
+  the reusable low-level property/domain/range phases and the zoomable ExprRef
+  compatibility case above. Slice B runtime changes have not started.

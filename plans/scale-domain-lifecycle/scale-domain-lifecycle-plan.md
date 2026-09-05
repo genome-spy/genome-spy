@@ -45,8 +45,10 @@ reasons. It must be testable without views, collectors, a renderer, or a physica
 scale. Keep normalization (`nice`, zero, genomic/index conventions) outside it.
 Transition frames represent displayed domains, not merely a final target.
 
-During integration, one `ScaleResolution` will privately own one domain lifecycle
-instance. Reuse existing aggregation, normalization, viewport debounce/coverage,
+During integration, each `ScaleResolution` will privately own authoritative
+domain state and one commit method, using the pure lifecycle policy. Avoid an
+extra coordinator with callbacks into the same resolution. Reuse existing
+aggregation, normalization, viewport debounce/coverage,
 and parameter propagation. A source/provider abstraction is optional and must
 earn its place by deleting duplication. Do not create a second scheduler.
 
