@@ -211,6 +211,13 @@ describe("Canvas2DViewRenderingContext", () => {
                 { name: "low", value: 0 },
                 { name: "high", value: 200 },
             ],
+            scales: {
+                size: {
+                    type: "linear",
+                    domain: [0, 10],
+                    range: [{ expr: "low" }, { expr: "high" }],
+                },
+            },
             data: { values: [{ value: 5 }] },
             mark: { type: "point", strokeWidth: 0 },
             encoding: {
@@ -220,11 +227,6 @@ describe("Canvas2DViewRenderingContext", () => {
                 size: {
                     field: "value",
                     type: "quantitative",
-                    scale: {
-                        type: "linear",
-                        domain: [0, 10],
-                        range: [{ expr: "low" }, { expr: "high" }],
-                    },
                     legend: null,
                 },
             },
@@ -249,6 +251,24 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(radius).toBe(10);
         expect(recording.calls.arcs).toContainEqual([50, 50, radius]);
         expect(warnings).toEqual([]);
+        view.getScaleResolution("size").attachViewLevelScaleProps(view, {
+            type: "linear",
+            domain: [0, 10],
+            range: [800, 1000],
+        });
+        render(view, recording.context);
+        const replacement = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        expect(
+            +replacement.svg
+                .querySelector('[data-mark-type="point"] circle')
+                .getAttribute("r")
+        ).toBe(15);
+        expect(recording.calls.arcs).toContainEqual([50, 50, 15]);
         view.disposeSubtree();
     });
 

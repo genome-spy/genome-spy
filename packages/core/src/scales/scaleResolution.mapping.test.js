@@ -182,3 +182,150 @@ describe("graph-owned scale mapping", () => {
         view.disposeSubtree();
     });
 });
+
+test("mapping dependencies survive view-level scale recreation", async () => {
+    const { view } = await createHeadlessEngine({
+        params: [{ name: "mapped", expr: "scale('size', 5)" }],
+        data: { values: [{ value: 5 }] },
+        mark: "point",
+        scales: { size: { type: "linear", domain: [0, 10], range: [0, 20] } },
+        encoding: {
+            size: { field: "value", type: "quantitative", legend: null },
+        },
+    });
+    try {
+        const resolution = view.getScaleResolution("size");
+        const mapping = resolution.getMappingRef();
+        const changed = vi.fn();
+        resolution.observeMapping(changed);
+        const mark = /** @type {import("../view/unitView.js").default} */ (view)
+            .mark;
+        mark.initializeRenderingRevisions([]);
+        const resources = mark.getRenderingRevision("resources");
+        const encoded = vi.fn(() => mark.encoders.size({ value: 5 }));
+        resolution.addEventListener("range", encoded);
+
+        resolution.scale.range([0, 40]);
+        changed.mockClear();
+        encoded.mockClear();
+        resolution.attachViewLevelScaleProps(view, {
+            type: "linear",
+            domain: [0, 10],
+            range: [0, 100],
+        });
+        view.paramRuntime.flushNow();
+
+        expect(resolution.getMappingRef()).toBe(mapping);
+        expect(view.paramRuntime.getValue("mapped")).toBe(50);
+        expect(encoded).toHaveReturnedWith(50);
+        expect(changed).toHaveBeenCalled();
+        expect(mark.getRenderingRevision("resources")).toBeGreaterThan(
+            resources
+        );
+
+        changed.mockClear();
+        // Equal configuration still replaces a resource that retained consumers read.
+        resolution.attachViewLevelScaleProps(
+            view,
+            resolution.getViewLevelScaleProps().props
+        );
+        view.paramRuntime.flushNow();
+        expect(changed).toHaveBeenCalled();
+        resolution.scale.range([0, 200]);
+        expect(view.paramRuntime.getValue("mapped")).toBe(100);
+
+        resolution.clearViewLevelScaleProps(view);
+        view.paramRuntime.flushNow();
+        expect(resolution.getMappingRef()).toBe(mapping);
+        expect(view.paramRuntime.getValue("mapped")).toBe(resolution.scale(5));
+    } finally {
+        view.disposeSubtree();
+    }
+});
+
+test.each(["band", "index"])(
+    "production %s mapping groups range and internal padding",
+    async (type) => {
+        const channel = type === "band" ? "xOffset" : "x";
+        const { view } = await createHeadlessEngine({
+            params: [
+                { name: "p", value: 0 },
+                { name: "end", value: 100 },
+                { name: "bandwidth", expr: `bandwidth('${channel}')` },
+            ],
+            data: { values: [{ category: type === "band" ? "a" : 0 }] },
+            mark: "point",
+            scales: {
+                [channel]: /** @type {any} */ ({
+                    type,
+                    domain: type === "band" ? ["a", "b"] : [0, 2],
+                    range: [0, { expr: "end" }],
+                    // Deliberately reverse property order to verify explicit overrides win.
+                    paddingOuter: { expr: `length(domain('${channel}')) / 20` },
+                    paddingInner: { expr: "p / 2" },
+                    padding: { expr: "p" },
+                }),
+            },
+            encoding: {
+                [channel]: {
+                    field: "category",
+                    type: type === "band" ? "nominal" : "quantitative",
+                    legend: null,
+                    axis: null,
+                },
+            },
+        });
+        try {
+            const resolution = view.getScaleResolution(channel);
+            const mapping = resolution.getMappingRef();
+            const observed = vi.fn(() =>
+                view.paramRuntime.getValue("bandwidth")
+            );
+            resolution.observeMapping(observed);
+            view.paramRuntime.runInTransaction(() => {
+                view.paramRuntime.setValue("p", 0.4);
+                view.paramRuntime.setValue("end", 200);
+            });
+            view.paramRuntime.flushNow();
+            expect(observed).toHaveBeenCalledExactlyOnceWith();
+            // Primary positional ranges are normalized; offsets retain authored ranges.
+            expect(observed).toHaveReturnedWith(type === "band" ? 80 : 0.4);
+            expect(resolution.getMappingRef()).toBe(mapping);
+            expect(
+                /** @type {import("d3-scale").ScaleBand<any>} */ (
+                    resolution.scale
+                ).paddingInner()
+            ).toBe(0.2);
+            expect(
+                /** @type {import("d3-scale").ScaleBand<any>} */ (
+                    resolution.scale
+                ).paddingOuter()
+            ).toBe(0.1);
+
+            observed.mockClear();
+            view.paramRuntime.setValue("p", 0.4);
+            view.paramRuntime.flushNow();
+            expect(observed).not.toHaveBeenCalled();
+
+            // This domain-to-padding input remains separate from mapping feedback.
+            resolution.scale.domain(
+                type === "band" ? ["a", "b", "c", "d"] : [0, 4]
+            );
+            expect(
+                /** @type {import("d3-scale").ScaleBand<any>} */ (
+                    resolution.scale
+                ).paddingOuter()
+            ).toBe(type === "band" ? 0.2 : 0.1);
+            const spec = /** @type {import("../spec/view.js").UnitSpec} */ (
+                view.spec
+            );
+            spec.scales[channel].padding = /** @type {any} */ ({
+                expr: `bandwidth('${channel}')`,
+            });
+            expect(() => resolution.reconfigure()).toThrow(/dependency cycle/);
+            spec.scales[channel].padding = /** @type {any} */ ({ expr: "p" });
+        } finally {
+            view.disposeSubtree();
+        }
+    }
+);

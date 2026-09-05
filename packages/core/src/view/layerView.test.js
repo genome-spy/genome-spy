@@ -246,3 +246,34 @@ describe("LayerView dynamic children", () => {
         });
     });
 });
+
+test("child removal retains mapping consumers across scale declaration reattachment", async () => {
+    const { view } = await createHeadlessEngine({
+        params: [{ name: "mapped", expr: "scale('size', 5)" }],
+        scales: { size: { type: "linear", domain: [0, 10], range: [0, 20] } },
+        data: { values: [{ value: 5 }] },
+        layer: [0, 1].map(
+            () =>
+                /** @type {import("../spec/view.js").UnitSpec} */ ({
+                    mark: "point",
+                    encoding: {
+                        size: {
+                            field: "value",
+                            type: "quantitative",
+                            legend: null,
+                        },
+                    },
+                })
+        ),
+    });
+    try {
+        const resolution = view.getScaleResolution("size");
+        const mapping = resolution.getMappingRef();
+        await /** @type {LayerView} */ (view).removeChildAt(0);
+        resolution.scale.range([0, 100]);
+        expect(resolution.getMappingRef()).toBe(mapping);
+        expect(view.paramRuntime.getValue("mapped")).toBe(50);
+    } finally {
+        view.disposeSubtree();
+    }
+});

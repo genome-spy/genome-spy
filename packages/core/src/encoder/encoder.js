@@ -6,6 +6,11 @@ import { createAccessor } from "./accessor.js";
 import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
 
 /**
+ * @typedef {(channel: import("../spec/channel.js").ChannelWithScale,
+ *   listener: (scale: import("../types/encoder.js").VegaScale) => void) => void} ScaleBinding
+ */
+
+/**
  * Creates a host-side predicate for selection-driven conditional encoding.
  * The selection test expression is compiled lazily when the predicate is
  * first evaluated so encoder construction does not depend on eager selection
@@ -170,6 +175,17 @@ export default function createEncoders(unitView, encoding) {
     const scaleSource = (channel) =>
         unitView.getScaleResolution(channel)?.getScale();
 
+    /** @type {ScaleBinding} */
+    const bindScale = (channel, listener) => {
+        const resolution = unitView.getScaleResolution(channel);
+        unitView.paramRuntime.operation(
+            "encoder scale",
+            [resolution.getMappingRef()],
+            () => resolution.getScale(),
+            listener
+        );
+    };
+
     for (const [channel, channelDef] of Object.entries(encoding)) {
         if (!channelDef) {
             continue;
@@ -190,7 +206,8 @@ export default function createEncoders(unitView, encoding) {
                 encoding,
                 unitView.paramRuntime
             ),
-            scaleSource
+            scaleSource,
+            bindScale
         );
     }
 
@@ -231,15 +248,24 @@ export function getEncoderDataAccessor(encoder) {
  *
  * @param {import("../types/encoder.js").EncodingBranch[]} branches
  * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} scaleSource
+ * @param {ScaleBinding} [bindScale]
  * @returns {Encoder}
  */
-export function createSimpleOrConditionalEncoder(branches, scaleSource) {
+export function createSimpleOrConditionalEncoder(
+    branches,
+    scaleSource,
+    bindScale
+) {
     /**
      * @typedef {import("../types/encoder.js").Encoder} Encoder
      * @typedef {import("../data/flowNode.js").Datum} Datum
      */
     if (branches.length === 1) {
-        const encoder = createEncoder(branches[0].accessor, scaleSource);
+        const encoder = createEncoder(
+            branches[0].accessor,
+            scaleSource,
+            bindScale
+        );
         return Object.assign(encoder, {
             branches,
         });
@@ -248,7 +274,7 @@ export function createSimpleOrConditionalEncoder(branches, scaleSource) {
     const predicates = branches.map((branch) => branch.predicate);
 
     const encoders = branches.map((branch) =>
-        createEncoder(branch.accessor, scaleSource)
+        createEncoder(branch.accessor, scaleSource, bindScale)
     );
 
     const encoder = Object.assign(
@@ -262,12 +288,14 @@ export function createSimpleOrConditionalEncoder(branches, scaleSource) {
         {
             constant: false,
             branches,
-            scale: encoders.map((e) => e.scale).find((s) => s),
             channelDef: branches.at(-1).accessor.channelDef,
         }
     );
 
-    return encoder;
+    return Object.defineProperty(encoder, "scale", {
+        enumerable: true,
+        get: () => encoders.find((encoder) => encoder.scale)?.scale,
+    });
 }
 
 /**
@@ -275,9 +303,10 @@ export function createSimpleOrConditionalEncoder(branches, scaleSource) {
  *
  * @param {Accessor} accessor
  * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} scaleSource
+ * @param {ScaleBinding} [bindScale]
  * @returns {Encoder}
  */
-export function createEncoder(accessor, scaleSource) {
+export function createEncoder(accessor, scaleSource, bindScale) {
     /**
      * @typedef {import("../types/encoder.js").Encoder} Encoder
      * @typedef {import("../types/encoder.js").Accessor} Accessor
@@ -286,7 +315,7 @@ export function createEncoder(accessor, scaleSource) {
 
     const { channel, scaleChannel, channelDef } = accessor;
 
-    const scale = accessor.scaleChannel ? scaleSource(scaleChannel) : undefined;
+    let scale = accessor.scaleChannel ? scaleSource(scaleChannel) : undefined;
 
     if (scaleChannel && !scale) {
         throw new Error(
@@ -294,7 +323,7 @@ export function createEncoder(accessor, scaleSource) {
         );
     }
 
-    return Object.assign(
+    const encoder = Object.assign(
         scale
             ? (/** @type {Datum} */ datum) =>
                   scale(
@@ -314,6 +343,13 @@ export function createEncoder(accessor, scaleSource) {
             channelDef,
         }
     );
+    if (scale) {
+        bindScale?.(scaleChannel, (replacement) => {
+            scale = replacement;
+            encoder.scale = replacement;
+        });
+    }
+    return encoder;
 }
 
 /**

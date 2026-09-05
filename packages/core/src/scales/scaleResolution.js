@@ -790,9 +790,12 @@ export default class ScaleResolution {
             return;
         }
 
-        this.#scaleManager.resetScale();
-        this.initializeScale();
-        this.#updateDomainSource(reason, true);
+        this.#runtime.runInTransaction(() => {
+            this.#scaleManager.resetScale();
+            this.initializeScale();
+            this.#updateDomainSource(reason, true);
+            this.#runtime.flushNow({ afterTransaction: true });
+        });
     }
 
     /**
@@ -1255,7 +1258,7 @@ export default class ScaleResolution {
         this.#domainInputs.request(reason);
         this.#domainRuntime.runtime.flushNow({ afterTransaction: true });
         if (full && this.#scaleManager.scale === scale && scale.props === props)
-            this.#scaleManager.configureRange(props);
+            this.#scaleManager.configureMapping(props);
     }
 
     /**
@@ -1358,14 +1361,7 @@ export default class ScaleResolution {
 
     /** Final mapping producer, stable across configuration replacement. */
     getMappingRef() {
-        if (
-            !this.#scaleManager.initializingRange &&
-            this.getScale().type === "null"
-        ) {
-            // Identity mappings have no domain/range operation, but retained
-            // renderers still track their resolution configuration.
-            return this.getConfigurationRef();
-        }
+        if (!this.#scaleManager.initializingRange) this.getScale();
         return this.#scaleManager.mapping;
     }
 

@@ -1,6 +1,7 @@
 # Next refactors
 
 Status: M1–M3 implemented and verified, 2026-09-06. M4 remains proposed.
+The [bonus milestone](bonus-milestone.md) implements the branch-review fixes.
 See [direction and research](more-reactivity-plan.md) for rationale and contracts.
 
 ## Sequence and review boundaries

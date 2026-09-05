@@ -303,6 +303,43 @@ describe("ScaleInstanceManager", () => {
         ).toThrow("Inline URL assemblies must be loaded first.");
     });
 
+    test("one mapping survives identity replacements and detaches old expressions", () => {
+        const runtime = new ViewParamRuntime();
+        const setValue = runtime.registerParam({ name: "value", value: 10 });
+        const manager = createManager({
+            runtime,
+            onRangeChange: () => {},
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
+        });
+        createScale(manager, {
+            type: "linear",
+            domain: [0, 1],
+            range: [0, { expr: "value" }],
+        });
+        const mapping = manager.mapping;
+        const changed = vi.fn();
+        runtime.effect([mapping], changed);
+
+        manager.resetScale();
+        createScale(manager, /** @type {any} */ ({ type: "null" }));
+        expect(manager.mapping).toBe(mapping);
+        expect(changed).toHaveBeenCalledTimes(1);
+        setValue(20);
+        runtime.flushNow();
+        expect(changed).toHaveBeenCalledTimes(1);
+
+        manager.resetScale();
+        const scale = createScale(manager, {
+            type: "linear",
+            domain: [0, 1],
+            range: [0, 40],
+        });
+        expect(manager.mapping).toBe(mapping);
+        expect(scale(0.5)).toBe(20);
+        expect(changed).toHaveBeenCalledTimes(2);
+    });
+
     test("dispose prevents pending and future range changes", () => {
         const runtime = new ViewParamRuntime();
         const setValue = runtime.registerParam({ name: "value", value: 1 });

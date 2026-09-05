@@ -58,7 +58,8 @@ arrangement.
   See `reactivity.md` for coherent observer, failure/retry, and disposal semantics.
 - Eager `UrlSource` loads use a source-local counter: once a replacement load
   starts, older loads cannot publish rows, status or completion. Disposal also
-  prevents publication. Reset still occurs at load start; this does not introduce
+  prevents publication. Superseded fetched content skips parsing; async parser
+  results are checked again before publication. Reset still occurs at load start; this does not introduce
   retained pending data, cancellation, or a shared async scheduler.
 - `src/data/dataReadiness.js` walks the actual optimized primary path and
   `FlowNode.dataDependencies` side edges. `SideInputBinding` owns observation and

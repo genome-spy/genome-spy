@@ -216,3 +216,9 @@ The backend serializes asynchronous exports because layout synchronization can
 temporarily update shared retained mark resources.
 The deprecated synchronous canvas-export API is unavailable with WebGPU because
 GPU completion cannot be awaited through its synchronous contract.
+
+Scale mapping dependencies survive physical scale replacement. CPU encoders keep
+owned operations depending on mapping so captured scale functions and metadata
+stay current, including conditional branches. Retained marks and WebGL range textures continue
+observing the same resolution-owned mapping ref; replacement needs no renderer
+subscription reconnection.

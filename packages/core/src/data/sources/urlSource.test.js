@@ -656,3 +656,31 @@ test("a superseded asynchronous format reader cannot emit a file batch", async (
     expect(Array.from(collector.getData())).toEqual([{ value: "B" }]);
     expect(collector.dataRevision).toBe(1);
 });
+
+test("superseded fetched content never invokes its format reader", async () => {
+    const response = Promise.withResolvers();
+    const reader = vi.fn((text) => [{ value: text }]);
+    vegaFormats("url-stale-parse-fixture", reader);
+    global.fetch = vi.fn(async (url) =>
+        url === "a.data" ? response.promise : new Response("B")
+    );
+    const source = new UrlSource(
+        {
+            url: "a.data",
+            format: { type: /** @type {any} */ ("url-stale-parse-fixture") },
+        },
+        createViewStub()
+    );
+    const collector = new Collector();
+    source.addChild(collector);
+    const first = source.load();
+    await vi.waitFor(() => expect(global.fetch).toHaveBeenCalledWith("a.data"));
+    source.params.url = "b.data";
+    await source.load();
+    response.resolve(new Response("A"));
+    await first;
+
+    expect(reader).toHaveBeenCalledTimes(1);
+    expect(reader.mock.calls[0][0]).toBe("B");
+    expect(Array.from(collector.getData())).toEqual([{ value: "B" }]);
+});

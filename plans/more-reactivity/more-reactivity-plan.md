@@ -1,6 +1,7 @@
 # First-class internal reactivity
 
-Status: M1–M3 implemented and verified, 2026-09-06. Later milestones remain proposed.
+Status: M1–M3 implemented and verified, 2026-09-06.
+The [bonus milestone](bonus-milestone.md) closes branch-review gaps; M4 remains deferred.
 Branch: `refactor/more-reactivity`, based on `720f1f8b384b929276b652ed89c5ef6e4a7878c6`.
 
 ## Recommendation

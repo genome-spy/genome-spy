@@ -14,7 +14,9 @@ import { isScaleLocus } from "../genome/scaleLocus.js";
 
 /**
  * @typedef {{
+ *   scale: import("../types/encoder.js").VegaScale,
  *   props: import("../spec/scale.js").Scale,
+ *   padding: (number | undefined)[] | undefined,
  *   domain: readonly any[],
  *   configuredRange: any[] | undefined,
  *   range: any[] | undefined,
@@ -106,8 +108,10 @@ export default class ScaleInstanceManager {
     }
 
     resetScale() {
-        this.dispose();
+        this.#rangeCommand?.set(null);
         this.#scale = undefined;
+        this.#setRange = undefined;
+        this.#mirrorDomain = undefined;
         this.#domainNormalizer = undefined;
         this.#defaultRange = undefined;
     }
@@ -151,24 +155,26 @@ export default class ScaleInstanceManager {
             typeof scale.range === "function" ? scale.range() : undefined;
         this.#bindGenomeIfNeeded(props);
         this.#mirrorDomain = scale.domain;
-        if (scale.type === "null") return this.#scale;
-        this.#domain = initializeDomain(scale.domain());
+        if (scale.type !== "null")
+            this.#domain = initializeDomain(scale.domain());
         this.#setRange = scale.range;
-        this.#runtime = new ViewParamRuntime(() => this.#getRuntime());
-        this.#rangeCommand = this.#runtime.signal("range command", null);
-        this.mapping = this.#runtime.operation(
-            "scale mapping",
-            [],
-            /** @returns {MappingConfiguration | null} */ () => null,
-            (configuration) => {
-                if (configuration) this.#applyMapping(configuration);
-            },
-            { equals: equalMapping }
-        );
-        this.#runtime.effect([this.mapping], this.#onRangeChange);
+        if (!this.#runtime) {
+            this.#runtime = new ViewParamRuntime(() => this.#getRuntime());
+            this.#rangeCommand = this.#runtime.signal("range command", null);
+            this.mapping = this.#runtime.operation(
+                "scale mapping",
+                [],
+                /** @returns {MappingConfiguration | null} */ () => null,
+                (configuration) => {
+                    if (configuration) this.#applyMapping(configuration);
+                },
+                { equals: equalMapping }
+            );
+            this.#runtime.effect([this.mapping], this.#onRangeChange);
+        }
         this.#initializingRange = true;
         try {
-            this.configureRange(props);
+            this.configureMapping(props);
             this.#runtime.flushNow();
         } finally {
             this.#initializingRange = false;
@@ -245,28 +251,36 @@ export default class ScaleInstanceManager {
     }
 
     /** @param {import("../spec/scale.js").Scale} props */
-    configureRange(props) {
+    configureMapping(props) {
+        const scale = this.#scale;
+        const dependencies =
+            scale.type === "null" ? [] : [this.#domain, this.#rangeCommand];
+        /** @param {any} value */
+        const bind = (value) => {
+            if (!isExprRef(value)) return () => value;
+            const expression = this.#createExpression(value.expr);
+            dependencies.push(...expression.dependencies);
+            return expression;
+        };
         const expressions = Array.isArray(props.range)
-            ? props.range.map((value) =>
-                  isExprRef(value)
-                      ? this.#createExpression(value.expr)
-                      : () => value
-              )
+            ? props.range.map(bind)
             : undefined;
-        // Binding can initialize parameters that reference this scale. Once
-        // expressions are bound, graph cycle checks guard feedback and settled
-        // observers are allowed to read the completed mapping during the flush.
+        // Internal band/index fixture: the public padding grammar remains numeric.
+        const paddingExpressions =
+            scale.type === "band" || scale.type === "index"
+                ? PADDING_PROPERTIES.map((key) => bind(props[key]))
+                : undefined;
+        // Expressions may bootstrap parameters that reference this scale. Once
+        // bound, graph cycle checks guard feedback and observers can read mapping.
         this.#initializingRange = false;
-        const dependencies = [this.#domain, this.#rangeCommand];
-        for (const expression of expressions ?? []) {
-            if ("dependencies" in expression)
-                dependencies.push(...expression.dependencies);
-        }
         this.mapping.rebind(dependencies, () => {
             const configuredRange = expressions?.map((expression) =>
                 expression(null)
             );
             if (props.reverse) configuredRange?.reverse();
+            const padding = paddingExpressions?.map((expression) =>
+                expression(null)
+            );
             const command = this.#rangeCommand.get();
             const range =
                 command &&
@@ -274,13 +288,19 @@ export default class ScaleInstanceManager {
                 equalRange(command.configuredRange, configuredRange)
                     ? command.range
                     : configuredRange;
+            const previous = this.mapping.get();
             const prepared =
-                this.mapping.get()?.props === props
+                scale.type === "null" ||
+                (previous?.scale === scale &&
+                    previous?.props === props &&
+                    equalRange(previous?.padding, padding))
                     ? undefined
-                    : this.#prepareMapping(props);
+                    : this.#prepareMapping(withPadding(props, padding));
             return {
+                scale,
                 props,
-                domain: this.#domain.get(),
+                padding,
+                domain: scale.type === "null" ? [] : this.#domain.get(),
                 configuredRange,
                 range,
                 prepared,
@@ -304,8 +324,10 @@ export default class ScaleInstanceManager {
     }
 
     /** @param {MappingConfiguration} configuration */
-    #applyMapping({ props, range, prepared }) {
+    #applyMapping({ props, padding, range, prepared }) {
+        if (this.#scale.type === "null") return;
         if (prepared) {
+            props = withPadding(props, padding);
             configureScaleProperties(
                 this.#scale,
                 this.#stripNonScaleProps(props)
@@ -360,6 +382,11 @@ export default class ScaleInstanceManager {
             domainIndexer: _domainIndexer,
             ...rest
         } = propsAny;
+        if (props.type === "band" || props.type === "index") {
+            for (const key of PADDING_PROPERTIES) {
+                if (isExprRef(rest[key])) delete rest[key];
+            }
+        }
         void _assembly;
         void _domainIndexer;
         return rest;
@@ -424,9 +451,33 @@ function equalMapping(a, b) {
         a === b ||
         (!!a &&
             !!b &&
+            a.scale === b.scale &&
             a.props === b.props &&
+            equalRange(a.padding, b.padding) &&
             shallowArrayEquals(a.domain, b.domain) &&
             equalRange(a.configuredRange, b.configuredRange) &&
             equalRange(a.range, b.range))
     );
+}
+
+const PADDING_PROPERTIES = /** @type {const} */ ([
+    "padding",
+    "paddingInner",
+    "paddingOuter",
+]);
+
+/** Resolve band/index defaults and precedence independently of property order.
+ * @param {import("../spec/scale.js").Scale} props
+ * @param {(number | undefined)[] | undefined} padding
+ */
+function withPadding(props, padding) {
+    if (!padding) return props;
+    const rest = { ...props };
+    for (const key of PADDING_PROPERTIES) delete rest[key];
+    return {
+        ...rest,
+        padding: padding[0] ?? 0,
+        paddingInner: padding[1] ?? padding[0] ?? 0,
+        paddingOuter: padding[2] ?? padding[0] ?? 0,
+    };
 }

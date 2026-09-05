@@ -83,6 +83,7 @@ vi.mock("./marks/rule.js", () => ({ default: mocks.FakeWebGLMark }));
 vi.mock("./marks/text.js", () => ({ default: mocks.FakeWebGLMark }));
 
 import WebGLRendererResources from "./rendererResources.js";
+import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 
 beforeEach(() => {
     vi.resetAllMocks();
@@ -360,3 +361,44 @@ function createScaleResolution() {
         }),
     };
 }
+
+test("range textures keep observing a recreated physical scale", async () => {
+    const { view } = await createHeadlessEngine({
+        data: { values: [{ value: 5 }] },
+        mark: "point",
+        scales: {
+            color: { type: "linear", domain: [0, 10], range: ["red", "blue"] },
+        },
+        encoding: {
+            color: { field: "value", type: "quantitative", legend: null },
+        },
+    });
+    const glHelper = createGlHelper();
+    const resources = new WebGLRendererResources(glHelper);
+    const fixture = createMark("point");
+    const resolution = view.getScaleResolution("color");
+    fixture.mark.encoders = {
+        color: { scale: { type: "linear" }, scaleResolution: resolution },
+    };
+    fixture.mark.unitView.getScaleResolution = () => resolution;
+    resources.prepareMarks([fixture.mark]);
+    glHelper.createRangeTexture.mockClear();
+    try {
+        resolution.attachViewLevelScaleProps(view, {
+            type: "linear",
+            domain: [0, 10],
+            range: ["black", "white"],
+        });
+        expect(glHelper.createRangeTexture).toHaveBeenCalledWith(
+            resolution,
+            true
+        );
+        fixture.dispose();
+        glHelper.createRangeTexture.mockClear();
+        resolution.scale.range(["red", "blue"]);
+        expect(glHelper.createRangeTexture).not.toHaveBeenCalled();
+    } finally {
+        fixture.dispose();
+        view.disposeSubtree();
+    }
+});

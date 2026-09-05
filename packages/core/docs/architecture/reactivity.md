@@ -96,9 +96,20 @@ Marks and retained WebGL range textures observe completed mappings through owned
 graph effects. Compatibility range events are terminal notifications, not producer
 edges. Public `scale.range(value)` calls submit an explicit range command; it
 persists through navigation until the bound range values or configuration change.
-Identity scales have no mapping operation and expose their configuration ref.
-Reactive padding remains an internal grouped-operation fixture; the public grammar
-and continuous-padding domain-normalization policy are unchanged.
+The mapping operation and its owner live for the resolution lifetime, including
+identity scales. Replacing the physical scale retains this ref, clears old range
+commands, and uses physical identity in equality so retained consumers are notified
+even when numeric values are unchanged. The domain owner retains navigation state.
+CPU encoders use owned operations depending on mapping to refresh their captured
+physical scale and metadata before observer effects. Equality skips in-place scale
+updates; per-datum evaluation still calls the captured scale directly. Conditional
+encoders expose their active scale metadata through their branch encoders.
+
+Band/index padding expressions are an internal fixture through the production
+mapping manager. They share range binding, dependency collection and application;
+explicit inner/outer padding overrides general padding regardless of property order.
+The public padding grammar remains numeric, and continuous padding retains its
+existing domain-normalization policy.
 
 Initial reference collection remains provisional throughout synchronous publication.
 A finalization job runs after all domain jobs and before observer effects, changing

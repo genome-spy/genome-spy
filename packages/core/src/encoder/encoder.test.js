@@ -179,3 +179,27 @@ describe("Conditional encoder with interval selection", () => {
         expect(encoder(datum)).toBe(0.1);
     });
 });
+
+test("conditional encoders retain their branch behavior and current scale metadata", () => {
+    const runtime = new ViewParamRuntime();
+    const select = runtime.allocateSetter(
+        "p",
+        createSinglePointSelection(null)
+    );
+    /** @type {((scale: import("../types/encoder.js").VegaScale) => void)[]} */
+    const listeners = [];
+    const encoder = createSimpleOrConditionalEncoder(
+        createConditionalBranches("size", encoding.size, encoding, runtime),
+        scaleSource,
+        (_channel, listener) => listeners.push(listener)
+    );
+    const replacement = scaleSource("size");
+    replacement.range([0, 40]);
+    for (const listener of listeners) listener(replacement);
+
+    expect(encoder(datum)).toBe(40);
+    expect(encoder.scale).toBe(replacement);
+    select(createSinglePointSelection(datum));
+    expect(encoder(datum)).toBe(5000);
+    runtime.dispose();
+});

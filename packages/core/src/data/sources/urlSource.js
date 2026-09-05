@@ -181,6 +181,8 @@ export default class UrlSource extends DataSource {
                     )
                 );
 
+                if (!isCurrent()) return;
+
                 await Promise.all(
                     loaded.map((entry) =>
                         entry
