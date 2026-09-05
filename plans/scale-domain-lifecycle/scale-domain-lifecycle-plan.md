@@ -21,6 +21,41 @@ The reviewed migration and its final verdict are recorded in
 [milestone-7-plan.md](milestone-7-plan.md). Plan retirement and whole-branch PR
 preparation remain separate; no merge is performed as part of this milestone.
 
+## Final reconciliation for PR delivery
+
+All nine implementation milestones and their review gates are complete. This
+record reconciles the seven files in this plan directory before their deletion
+in a separate commit. Earlier milestone documents remain historical evidence;
+their provisional integration gates are superseded by milestones 7–9.
+
+- Completed: behavior characterization, explicit readiness and lifecycle policy,
+  shared synchronous propagation, migration of every scale kind, contributor
+  binding consolidation, and axis usability. Architecture documents retain the
+  resulting contracts after plan retirement.
+- Completed: independent integration reviews, representative example/browser
+  checks, and final milestone validation (3,975 unit tests passed, one skipped,
+  two todo; Core TypeScript and lint passed). Delivery validation will also run
+  after incorporating the current master top-k fix.
+- Completed: whole-branch assessment. Production code grows by 734 lines and
+  tests by 2,613 lines relative to the common ancestor with master.
+  ScaleResolution shrinks from 2,087 to 1,645 lines. The justification is clearer
+  ownership and fewer competing propagation paths, not overall code reduction.
+- Discarded from this delivery: a throughput benchmark and any claim of measured
+  throughput improvement. Bounded topology/query work, replay coalescing, stable
+  categorical IDs, and animation propagation have regression coverage.
+- Discarded from this delivery: migrating every reactive property/consumer and
+  generalized asynchronous generations or cancellation. These remain follow-up
+  work under #463; synchronous readiness does not establish request freshness.
+- Discarded from this delivery: public reactive padding, domain-only sharing,
+  pixel ranges, removal of the deprecated public initialization query, and
+  enabling dynamic categorical reorder/removal in WebGL. These require separate
+  feature/API/backend work; the existing UX and renderer limitation are retained.
+
+Next recommended step for #463: exercise graph-native expression inputs and one
+grouped property effect with the padding scenario, preserving same-frame updates
+and legitimate domain-to-range dependencies while deleting replaced microtask
+batching. General asynchronous publication remains a separate acceptance gate.
+
 The key distinction is between calculating a candidate domain and deciding
 whether it may replace the displayed domain. Data arrival, expressions,
 selections, viewport navigation, interaction, reset, and membership changes
