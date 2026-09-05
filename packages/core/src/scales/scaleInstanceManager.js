@@ -163,6 +163,10 @@ export default class ScaleInstanceManager {
             const indexer = (this.#categoricalIndexer ??= createIndexer());
             indexer.addAll(domain ?? []);
             const active = domain && new Set(domain);
+            // TODO: Enable dynamic explicit categorical reordering/removal as a
+            // supported feature once WebGL is retired. This domain/ID separation
+            // and webgpu-renderer already support it; WebGL's range-texture mapping
+            // does not. Stable IDs remain necessary for retained WebGPU series.
             const values = explicit
                 ? (domain ?? [])
                 : indexer

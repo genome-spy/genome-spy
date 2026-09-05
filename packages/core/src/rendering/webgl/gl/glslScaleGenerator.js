@@ -381,6 +381,9 @@ export function generateScaleGlsl(channel, scale, channelDef) {
             );
             break;
 
+        // TODO: Enable dynamic reordering/removal in explicit categorical domains
+        // once WebGL is fully retired. webgpu-renderer already supports this;
+        // WebGL treats stable category IDs as fixed range-texture positions.
         case "ordinal": // Use identity transform and lookup the value from a texture
         case "null":
         case "identity":
