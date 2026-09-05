@@ -2,6 +2,15 @@
 
 Status: slices A–C complete and reviewed. Integration evidence and measured
 tradeoffs are recorded below.
+The main plan's [milestones 5–7](scale-domain-lifecycle-plan.md#5-establish-coherent-synchronous-reactive-updates)
+continue the simplification using the existing reactive runtime. This document
+records the completed baseline; its completion is not the branch's merge gate.
+The follow-on target restores `ScaleResolution` to participant/configuration
+resolution and binding lifecycle. The owner placement and synchronous callback
+protocol described here record the implemented baseline, not constraints on the
+next design. Preserve their tested behavior while replacing manual coordination
+with the shared reactive contract; moving these methods into helpers is not the
+simplification criterion.
 This refines [milestone 3](scale-domain-lifecycle-plan.md#3-integrate-one-domain-owner-and-remove-the-old-lifecycle).
 The provisional model is a starting point, not a compatibility specification.
 Revise it when a real caller exposes a missing distinction or needless state.
@@ -425,4 +434,4 @@ adds another layer around the old code. Domain-only sharing stays deferred.
 
 Slices B and C ship together in the owner integration commit because final review
 fixes and regression coverage belong to that same coherent change. Plans remain
-as a delivery record until PR preparation; reconcile and retire them before a PR.
+active for the follow-on milestones; reconcile and retire them before a PR.

@@ -3,11 +3,21 @@
 ## Purpose and scope
 
 Replace fragmented domain lifecycle decisions with one explicit update model,
-preserving supported visual behavior. This follows
+preserving supported visual behavior. Restore `ScaleResolution` to its original
+role: collecting participants and resolving shared-scale configuration. Domain
+dependencies and propagation should use the existing reactive machinery, leaving
+only the necessary historical interaction/loading policy and animation state.
+Success requires removing responsibilities and competing update paths, not merely
+extracting helpers from a large class. This follows
 [issue #464 and its comments](https://github.com/genome-spy/genome-spy/issues/464).
 Milestones 1–4 are complete. The
 [detailed milestone 3 record](milestone-3-plan.md) contains the readiness and
 owner integration, review outcomes, verification, and measured tradeoffs.
+That work is the tested baseline, not the end of the simplification effort.
+Milestones 5–7 below address the essential synchronous part of
+[issue #463](https://github.com/genome-spy/genome-spy/issues/463), following the
+[design discussion](https://github.com/genome-spy/genome-spy/issues/463#issuecomment-5551252304).
+Hold the branch merge while that foundation and the domain experiment are assessed.
 
 The key distinction is between calculating a candidate domain and deciding
 whether it may replace the displayed domain. Data arrival, expressions,
@@ -16,6 +26,8 @@ must eventually use one decision and commit path.
 
 Goals:
 
+- Make participant collection, compatibility checks, property resolution, and
+  binding lifecycle the primary responsibilities of `ScaleResolution`.
 - Separate displayed domain, reset target, initial reference, data zoom extent,
   readiness, and permission for initial loading to replace the display.
 - Distinguish pending inputs from completed empty inputs, including lazy side
@@ -26,10 +38,15 @@ Goals:
 - Preserve automatic domain animations, including eligible data, configuration,
   membership, and viewport updates. Animation is required UX, not optional scope.
 - Delete write-then-restore behavior and duplicated lifecycle state.
+- Establish one coherent synchronous update boundary across reactive inputs,
+  domain-related data replay, scale updates, and dependent expressions.
+- Reuse the existing reactive runtime while retaining streaming row processing.
 
 Non-goals are public specification changes, pixel ranges, domain-only sharing,
-a replacement parameter scheduler, or rewriting domain aggregation, spatial
-queries, scale mathematics, or property resolution without a demonstrated need.
+a second reactive scheduler, adoption of Vega's tuple-change dataflow, or
+rewriting spatial queries and scale mathematics. General async generations and
+latest-wins source publication remain separate work under #463. Shipping reactive
+padding and migrating every reactive consumer are also outside this delivery.
 
 ## Architecture and decisions
 
@@ -44,18 +61,53 @@ reasons. It must be testable without views, collectors, a renderer, or a physica
 scale. Keep normalization (`nice`, zero, genomic/index conventions) outside it.
 Transition frames represent displayed domains, not merely a final target.
 
-During integration, each `ScaleResolution` will privately own authoritative
-domain state and one commit method, using the pure lifecycle policy. Avoid an
-extra coordinator with callbacks into the same resolution. Reuse existing
-aggregation, normalization, viewport debounce/coverage,
-and parameter propagation. A source/provider abstraction is optional and must
-earn its place by deleting duplication. Do not create a second scheduler.
+The completed integration puts authoritative domain state and one commit method
+in `ScaleResolution`, using the pure lifecycle policy. That stabilized behavior,
+but left the resolution coordinating source callbacks, selection feedback,
+notifications, and transitions. Treat it as a tested migration baseline, not the
+target architecture. A smaller resolution that still orchestrates those updates
+through helpers would not meet the objective.
+
+### Intended responsibilities
+
+These are ownership boundaries, not a prescription for one new class per row.
+Use existing facilities and functions where possible.
+
+| Boundary                     | Responsibility                                                                                                                                                                                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ScaleResolution`            | Collect active participants, validate compatibility, resolve shared properties with their declaration scopes, and establish/rebind/dispose the resulting bindings. Retain compatible public access and navigation entry points as thin delegates. |
+| Existing reactive runtime    | Represent dependencies and derived values, order coherent propagation, and run grouped effects. Coordinate the narrow streaming replay/publication boundary needed by domains.                                                                    |
+| Domain derivation and policy | Derive candidate/reset/extent/readiness inputs from resolved bindings. Keep explicit historical state only where current inputs cannot determine behavior: initial loading versus navigation, selection authority, and transition decisions.      |
+| Animation                    | Own transition execution and cancellation, publishing each displayed-domain frame through the same reactive boundary. Preserve interpolation, timing, interruption, and promise semantics.                                                        |
+| Physical scale integration   | Normalize domains and apply settled domain/property/range inputs to the physical scale; expose compatible notifications and renderer inputs without a competing domain authority.                                                                 |
+
+`ScaleResolution` may retain references to runtime resources without implementing
+their update protocol. Resolve dependency topology when participants or authored
+configuration change; parameter changes, collector publication, and animation
+frames should propagate through established bindings. Do not rediscover view
+dependencies or call back into a resolution-wide refresh for every update.
+
+Keep one authority for each state value, especially the displayed domain. The
+target domain and animated display are different values, not duplicate caches.
+Graph dependencies should replace manual invalidation and notification ordering;
+the small policy retains UX decisions that are inherently historical. Do not
+rebuild the current coordinator under a new name, introduce a second scheduler,
+or add a generic provider hierarchy. Reuse aggregation, normalization, viewport
+debounce/coverage, and the existing animation mathematics.
 
 [Vega's scale properties](https://vega.github.io/vega/docs/scales/#scale-properties)
 separate data-derived domains from interactive `domainRaw` overrides. That is
 a useful precedent for separating candidate and displayed state; GenomeSpy's
 lazy coverage, side inputs, and initial-loading rules require explicit policy
 of their own. No external implementation is copied.
+
+The relevant lesson from the local Vega parser and scale operator
+(`tmp/vega/packages/vega-parser/src/parsers/scale.js` and
+`tmp/vega/packages/vega-encode/src/Scale.js`) is to resolve dependencies up front
+and consume settled properties through the reactive graph. Preserve GenomeSpy's
+streaming dataflow rather than adopting Vega's tuple-change machinery. Distinguish
+domain dependencies from the final mapping so useful same-scale domain-to-range
+expressions do not become false cycles.
 
 An all-at-once rewrite with E2E tests would obscure intermediate notifications,
 readiness, and reset semantics. A wrapper around the existing branches would
@@ -136,9 +188,122 @@ Review that shared contract with a subagent before runtime implementation.
 - Documentation: reconcile this plan and retire it before a PR or merge.
 - Commit: `test(core): verify integrated domain lifecycle behavior`.
 
+### 5. Establish coherent synchronous reactive updates
+
+- [ ] Detail and review the shared update contract before implementation. Map
+      current resolution responsibilities to the boundaries above, identifying
+      the callbacks, state, and ordering guards the domain experiment will delete.
+      Specify initialization, selection feedback, and binding lifecycle together
+      with the update contract; do not assume graph batching alone solves them.
+- [ ] Expose the smallest internal computed/effect facilities needed through
+      `ParamRuntime` / `ViewParamRuntime`.
+- [ ] Make the expression and grouped-update paths required by the domain
+      experiment participate in that contract. Coordinate their streaming replay
+      requests and publication of resulting domain/readiness facts.
+- Outcome: related writes produce coherent downstream inputs; computations,
+  grouped effects, and required data replay settle before rendering. Data rows
+  and datum-dependent formula evaluation remain on the existing streaming path.
+- Areas: `paramRuntime/`, scale-expression dependency bindings in
+  `utils/expression.js`, and the narrow `FlowNode`/collector/transform bridge
+  required by milestone 6. Extend the existing graph runtime rather than adding
+  another scheduler or converting the whole dataflow into signal nodes.
+- Verification: transaction and diamond dependencies, nested transactions,
+  unchanged results, declaration scopes, disposal, lazy bootstrap, effects that
+  invalidate further computations, and multiple transforms sharing upstream data.
+  Prove coherent values and deduplicated replay, including synchronous scale
+  changes. Direct callbacks must not bypass the new boundary in migrated paths.
+- Documentation: specify equality, update/flush semantics, ownership/rebinding,
+  cycle handling, and the signal → replay → signal boundary in the architecture.
+  Explicitly distinguish propagation settling from animation or network completion.
+- Review gate: a subagent reviews the shared contract and its concrete domain
+  integration sketch before coding. Every proposed runtime extension must support
+  a required domain scenario; a general reactive-system overhaul is out of scope.
+- Commit: `refactor(core): coordinate synchronous reactive updates`.
+
+### 6. Prove domain simplification with a representative integration
+
+- [ ] Move viewport-derived candidate calculation and a calibrated dependent
+      scale onto the shared reactive foundation, preserving domain policy and
+      actual animation frames.
+- [ ] Prove the feedback boundary with a minimal two-way linked animated
+      navigation/clear integration before judging the foundation sufficient.
+      Include owner echoes and authoritative external clears equal to the display;
+      the full selection migration can follow in milestone 7.
+- [ ] Delete superseded subscriptions, cache invalidation, and ordering logic
+      for that path, including their orchestration in `ScaleResolution`. Keep
+      resolution responsible for setting up bindings, not driving their updates.
+      Review the result before extending the migration.
+- Outcome: a working comparison against the milestone 4 baseline demonstrates
+  simpler coordination with the same visible behavior. Target and displayed
+  domains remain distinct; small stateful readiness/navigation policy is retained
+  wherever necessary.
+- Areas: domain planning/ownership, viewport evaluation, collector publication,
+  expression calibration, and physical scale updates. Resolve bindings when
+  topology/configuration changes instead of rediscovering them on every update.
+- Verification: the real `viewport-autoscale.json` example and deterministic
+  calibrated-domain tests, including same-frame propagation, pending/ready-empty
+  data, cancellation, and no duplicate replay. Test valid same-scale domain-to-range
+  dependencies separately from true mapping/bandwidth cycles. The padding scenario
+  in #463 may test grouped properties without adding a public padding feature.
+- Documentation: record the chosen graph boundaries and measured changes in
+  production size, replay work, subscriptions, and ordering assumptions. Include
+  a before/after responsibility and deletion ledger across all affected modules,
+  including shared runtime additions; a shorter resolution alone is insufficient.
+- Decision gate: migrate further only if review finds a material simplification.
+  Trace a data publication, navigation frame, and calibrated-domain update: each
+  must use established dependencies without resolution-managed refresh ordering.
+  Any retained origin/cancellation guard must enforce a specific UX contract,
+  not compensate for missing propagation ordering. Relocating the existing
+  complexity into adapters is insufficient. If the experiment fails, revise the
+  design and reconcile the remaining milestone;
+  do not expand migration or silently treat the branch as merge-ready.
+- Commit: `refactor(core): drive viewport domains through reactive dependencies`.
+
+### 7. Complete the justified migration and verify integration
+
+- [ ] After milestone 6 passes its decision gate, migrate the remaining applicable
+      domain paths and remove their replaced coordination machinery.
+- [ ] Review the combined runtime/dataflow/scale result, resolve regressions,
+      and reconcile this plan before PR preparation.
+- Outcome: domain handling uses the shared synchronous consistency contract with
+  one displayed-domain authority and no permanent parallel compatibility path.
+  `ScaleResolution` primarily resolves participants/configuration and manages
+  bindings; it no longer implements the domain update protocol. Existing public
+  methods may delegate to the appropriate runtime resources.
+  Unrelated reactive consumers and broader async work remain explicitly deferred.
+- Areas: configured and selection-linked domains, navigation/reset, dynamic
+  membership, lazy readiness, range/layout consumers, and App bookmark restoration.
+- Verification: full unit suite, workspace TypeScript, lint, example validation,
+  and browser checks for viewport autoscaling, two-way brushing/animated zoom,
+  MSA data extents, and Dynseq lazy loading. Include calibration, immediate rendering,
+  dynamic insertion/visibility/disposal, index/locus conventions, categorical order,
+  and existing WebGL/WebGPU and Canvas/SVG scale-consumption contracts.
+  Check that performance gains survive real streaming workloads.
+- Documentation: update architecture, record evidence and any intentionally
+  unmigrated boundaries, document the completed subset of #463 while leaving its
+  async requirements open, and retire temporary plans before creating a PR.
+- Commit: `refactor(core): unify domain propagation and remove legacy coordination`.
+
 Domain-only sharing is a later proposal, contingent on this refactor succeeding.
 It must define compatibility for domain-affecting properties and range-dependent
 padding. It does not replace expression-based calibration between unequal domains.
+
+### Final acceptance criteria
+
+- Required visible behavior, including automatic animations, passes the example
+  and integration checks. No UX requirement is removed to obtain a smaller design.
+- For each domain update path, identify its input, derived dependencies, necessary
+  historical policy, and display publication. Remove superseded resolution-level
+  subscriptions, refresh cascades, duplicated state, and ordering workarounds.
+- Ordinary propagation does not require `ScaleResolution` to sequence domain,
+  selection, calibration, and rendering callbacks. Construction, configuration
+  changes, and disposal remain explicit lifecycle operations.
+- Measure the entire affected production path against both the branch baseline
+  and milestone 4. Explain growth through correctness or shared machinery that
+  replaces local coordination; helper count and class line count are not success
+  measures. Record remaining complexity and why its behavior requires it.
+- A final subagent review confirms that responsibility was removed rather than
+  relocated and that the shared runtime remains proportional to the scale task.
 
 ## Example corpus and review gates
 
@@ -164,6 +329,32 @@ Review this plan with a subagent before committing it. Review milestones 1–2
 together with a subagent before the second implementation commit, including
 the prospective live adapter and downstream consumers. Integration in milestone
 3 needs its own review at the shared readiness/domain contract boundary.
+For the follow-on work, review milestone 5's shared consistency contract before
+coding, milestone 6's integrated experiment at its decision gate, and milestone
+7's final cross-system result. Include downstream consumers and performance in
+these reviews; avoid separate review gates for routine tests or plan wording.
+
+## Follow-on constraints and open design questions
+
+All existing UX requirements remain fixed, especially automatic domain animations,
+their timing/interpolation and cancellation, synchronous calibration, immediate
+render APIs, valid same-scale domain-to-range expressions, selection persistence,
+and initial readiness independent of viewport coverage. No blanket microtask delay
+or reduction in animation functionality is an acceptable simplification.
+
+Milestone 5 must settle how grouped effects that publish new reactive values are
+ordered, how replay requests sharing collectors are coalesced, which changes join
+the current update versus a subsequent one, and how real cycles are detected.
+It must also define equality for domain arrays/objects, declaration-scope binding,
+and ownership/rebinding when membership changes. Current graph primitives are a
+starting point; they do not already guarantee coherent propagation across all
+these boundaries.
+
+The change must preserve lazy bootstrap such as `displace1d` and meaningful empty
+publication. Existing asynchronous source protections remain in place. Readiness
+does not prove latest-request authority: generalized generations, cancellation,
+and stale-result rejection require separate design and must not be claimed solved
+by synchronous batching.
 
 Risks requiring explicit decisions are reset versus snapshot semantics,
 `domainTransition: false` currently also bypassing interaction preservation,
