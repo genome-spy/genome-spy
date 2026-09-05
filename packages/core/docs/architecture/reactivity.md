@@ -51,7 +51,7 @@ retrying propagation/observation. Retaining invalidations lets an equal-value re
 repair computed caches. Repeated non-settling work has a bounded error diagnostic;
 existing initialization and scale-helper cycle checks still apply.
 
-Continuous domain inputs bind configured expression dependencies, contributor
+Domain inputs for all scale kinds bind configured expression dependencies, contributor
 accessors and viewport topology when the bindings change. Candidate jobs use the
 same runtime queue as streaming replay. `DomainRuntime` publishes physical scale
 mapping and a stable native displayed-domain ref; calibrated expressions consume
@@ -67,10 +67,11 @@ another propagation round. Source bindings discard queued snapshots on replaceme
 public navigation survives binding changes. Readiness still excludes future network
 responses and is distinct from coverage of the current viewport.
 
-Discrete/index/locus candidate adapters, legacy property callbacks and unrelated
-reactive consumers remain outside the migrated input path. Their domain state and
-animation execution already use the common resource. The remaining adapter/cache
-deletion is an explicit migration requirement, not a permanent parallel model.
+Scale-kind differences are limited to candidate conversion and policy: index/locus
+interval conventions, assembly defaults, and categorical ordering. There is no
+second domain subscription or refresh path. Pure domain readers serve bootstrap
+and unbound data-domain queries; they do not cache lifecycle state. Unrelated
+reactive consumers and asynchronous loading remain outside this synchronous contract.
 
 The design draws on Vega's explicit dependency-driven signal model and
 fine-grained systems such as Preact Signals, particularly batched updates and

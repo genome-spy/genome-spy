@@ -102,11 +102,12 @@ updates from normalized snapshots before the live scale is changed. Its initial
 phase distinguishes collecting, early interaction, and complete readiness;
 interaction protects the display without ending reference collection.
 
-Continuous inputs compile expression dependencies, accessors and viewport topology
-in `domainInputs.js`. `DomainPlanner` still handles configuration validation,
-bootstrap and the remaining discrete/index/locus candidate adapters during migration.
-`ScaleInstanceManager` normalizes candidates on a working scale, configures
-properties/ranges, and mirrors committed domains. External `scale.domain(value)`
+All scale kinds compile expression dependencies, accessors and viewport topology
+in `domainInputs.js`. Pure functions in `domainPlanner.js` validate configured
+sources and combine domains; bootstrap and unbound `getDataDomain()` queries use
+the same readers without creating another state owner. `ScaleInstanceManager`
+normalizes candidates on a working scale, maintains categorical index mapping,
+configures properties/ranges, and mirrors committed domains. External `scale.domain(value)`
 calls submit immediate owner updates; they do not bypass the commit path.
 `ScaleInteractionController` retains coordinate conversion, zoom mathematics,
 and validation, submitting navigation to the same owner. Reset uses the current

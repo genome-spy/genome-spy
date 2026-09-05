@@ -1,3 +1,6 @@
+import { isDiscrete } from "vega-scale";
+import createIndexer from "../utils/indexer.js";
+import { NominalDomain } from "../utils/domainArray.js";
 import { isArray } from "vega-util";
 
 import createScale, {
@@ -39,6 +42,9 @@ export default class ScaleInstanceManager {
     #getGenomeStore;
 
     #initializingRange = false;
+
+    /** @type {ReturnType<typeof createIndexer> | undefined} */
+    #categoricalIndexer;
 
     /** @type {VegaScale | undefined} */
     #domainNormalizer;
@@ -140,6 +146,39 @@ export default class ScaleInstanceManager {
         }
 
         scale.genome(this.getLocusGenome(props.assembly));
+    }
+
+    /**
+     * Attach an inferred domain and stable categorical mapping to resolved props.
+     * Used at bootstrap and on source publication, never during animation frames.
+     * @param {import("../spec/scale.js").Scale} props
+     * @param {any[] | undefined} domain
+     * @param {boolean} explicit
+     */
+    domainProps(props, domain, explicit) {
+        const result = { ...props };
+        if (isDiscrete(props.type)) {
+            // Intern IDs belong to retained GPU data, independently of display order.
+            // Reordering an explicit domain must not renumber already encoded rows.
+            const indexer = (this.#categoricalIndexer ??= createIndexer());
+            indexer.addAll(domain ?? []);
+            const active = domain && new Set(domain);
+            const values = explicit
+                ? (domain ?? [])
+                : indexer
+                      .domain()
+                      .filter((value) => !active || active.has(value));
+            result.domain = values.length
+                ? /** @type {any[]} */ (values)
+                : new NominalDomain();
+            /** @type {any} */ (result).domainIndexer = indexer;
+        } else if (domain?.length) {
+            result.domain = domain;
+        }
+        if (!result.domain && result.domainMid !== undefined) {
+            result.domain = [result.domainMin ?? 0, result.domainMax ?? 1];
+        }
+        return result;
     }
 
     /**

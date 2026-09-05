@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
-import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
+import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import * as resolutionMemberOrder from "./resolutionMemberOrder.js";
 import ScaleResolution from "./scaleResolution.js";
 
@@ -31,34 +31,6 @@ function createMember({ path, channel = "x", type = "index", zoom }) {
         },
         contributesToDomain: true,
     });
-}
-
-/**
- * @param {object} options
- * @param {number} options.foo
- * @returns {import("../view/view.js").default}
- */
-function createHostView({ foo }) {
-    const paramRuntime = new ViewParamRuntime();
-    paramRuntime.registerParam({ name: "foo", value: foo });
-
-    const hostView = /** @type {any} */ ({
-        context: {
-            animator: {},
-            genomeStore: undefined,
-        },
-        /** @returns {import("../spec/config.js").GenomeSpyConfig[]} */
-        getConfigScopes() {
-            return [];
-        },
-        /** @returns {import("../view/view.js").default[]} */
-        getLayoutAncestors() {
-            return [hostView];
-        },
-        paramRuntime,
-    });
-
-    return hostView;
 }
 
 describe("scale resolution zoomability", () => {
@@ -119,106 +91,85 @@ describe("scale resolution zoomability", () => {
         expect(resolution.hasConfiguredZoomExtent()).toBe(false);
     });
 
-    test("binds range expressions through the resolution owner", () => {
-        const hostView = createHostView({ foo: 10 });
-        hostView.paramRuntime.registerParam({ name: "bar", value: 2 });
-        const resolution = new ScaleResolution("shape", hostView);
-        const memberRuntime = new ViewParamRuntime(() => hostView.paramRuntime);
-        memberRuntime.registerParam({ name: "bar", value: 20 });
-
-        resolution.registerMember(
-            /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
-                channel: "shape",
-                view: /** @type {any} */ ({
-                    /** @returns {import("../spec/config.js").GenomeSpyConfig[]} */
-                    getConfigScopes() {
-                        return [];
-                    },
-                    getPathString: () => "root/a",
-                    isConfiguredVisible: () => true,
-                    isDataInitialized: () => true,
-                    paramRuntime: memberRuntime,
-                }),
-                channelDef: {
-                    field: "value",
-                    type: "nominal",
-                    scale: {},
-                },
-                contributesToDomain: true,
-            })
-        );
-        resolution.registerMember(
-            /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
-                channel: "shape",
-                view: /** @type {any} */ ({
-                    /** @returns {import("../spec/config.js").GenomeSpyConfig[]} */
-                    getConfigScopes() {
-                        return [];
-                    },
-                    getPathString: () => "root/b",
-                    isConfiguredVisible: () => true,
-                    isDataInitialized: () => true,
-                    paramRuntime: memberRuntime,
-                }),
-                channelDef: {
-                    type: "nominal",
-                    scale: {
-                        domain: [0, 1],
-                        range: [
-                            { expr: "'c' + (foo + bar)" },
-                            { expr: "'c' + (foo + bar + 1)" },
-                        ],
+    test("binds range expressions through the resolution owner", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [
+                { name: "foo", value: 10 },
+                { name: "bar", value: 2 },
+            ],
+            data: { values: [{ category: "a" }, { category: "b" }] },
+            layer: [
+                {
+                    params: [{ name: "bar", value: 20 }],
+                    mark: "point",
+                    encoding: {
+                        shape: { field: "category", type: "nominal" },
                     },
                 },
-                contributesToDomain: true,
-            })
-        );
-
-        expect(resolution.getScale().range()).toEqual(["c12", "c13"]);
+                {
+                    mark: "point",
+                    encoding: {
+                        shape: {
+                            field: "category",
+                            type: "nominal",
+                            scale: {
+                                domain: ["a", "b"],
+                                range: [
+                                    {
+                                        expr: "foo + bar == 12 ? 'circle' : 'cross'",
+                                    },
+                                    {
+                                        expr: "foo + bar == 12 ? 'square' : 'cross'",
+                                    },
+                                ],
+                            },
+                        },
+                    },
+                },
+            ],
+        });
+        try {
+            const resolution = view.getScaleResolution("shape");
+            expect(resolution.getScale().range()).toEqual(["circle", "square"]);
+            view.paramRuntime.setValue("foo", 11);
+            expect(resolution.getScale().range()).toEqual(["cross", "cross"]);
+        } finally {
+            view.disposeSubtree();
+        }
     });
 
-    test("dispose unsubscribes configured-domain expressions exactly once", () => {
-        const hostView = createHostView({ foo: 10 });
-        const unsubscribe = vi.fn();
-        const expression = /** @type {any} */ (() => [0, 10]);
-        expression.subscribe = vi.fn(() => unsubscribe);
-        expression.invalidate = vi.fn();
-        expression.identifier = vi.fn(() => "domain-expression");
-        const createExpression = vi
-            .spyOn(hostView.paramRuntime, "createExpression")
-            .mockReturnValue(expression);
-        const resolution = new ScaleResolution("shape", hostView);
-
-        resolution.registerMember(
-            /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
-                channel: "shape",
-                view: /** @type {any} */ ({
-                    /** @returns {import("../spec/config.js").GenomeSpyConfig[]} */
-                    getConfigScopes() {
-                        return [];
-                    },
-                    getPathString: () => "root/a",
-                    isConfiguredVisible: () => true,
-                    isDataInitialized: () => true,
-                    paramRuntime: hostView.paramRuntime,
-                }),
-                channelDef: {
+    test("disposed scales stop following configured-domain parameters", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "category", value: "b" }],
+            data: { values: [{ category: "a" }] },
+            mark: "point",
+            encoding: {
+                color: {
+                    field: "category",
                     type: "nominal",
                     scale: {
-                        domain: { expr: "[0, foo]" },
-                        range: ["circle"],
+                        domain: { expr: "['a', category]" },
+                        range: ["red", "blue"],
                     },
                 },
-                contributesToDomain: true,
-            })
-        );
-        resolution.getScale();
+            },
+        });
+        try {
+            const resolution = view.getScaleResolution("color");
+            const scale = resolution.getScale();
+            expect(scale.domain()).toEqual(["a", "b"]);
+            view.paramRuntime.setValue("category", "d");
+            expect(scale.domain()).toEqual(["a", "d"]);
+            const notify = vi.fn();
+            resolution.addEventListener("domain", notify);
+            resolution.dispose();
+            resolution.dispose();
 
-        resolution.dispose();
-        resolution.dispose();
-
-        expect(expression.subscribe).toHaveBeenCalledTimes(1);
-        expect(unsubscribe).toHaveBeenCalledTimes(1);
-        createExpression.mockRestore();
+            view.paramRuntime.setValue("category", "c");
+            expect(scale.domain()).toEqual(["a", "d"]);
+            expect(notify).not.toHaveBeenCalled();
+        } finally {
+            view.disposeSubtree();
+        }
     });
 });

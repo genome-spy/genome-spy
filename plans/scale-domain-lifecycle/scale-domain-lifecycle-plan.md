@@ -10,14 +10,16 @@ only the necessary historical interaction/loading policy and animation state.
 Success requires removing responsibilities and competing update paths, not merely
 extracting helpers from a large class. This follows
 [issue #464 and its comments](https://github.com/genome-spy/genome-spy/issues/464).
-Milestones 1–4 are complete. The
+Milestones 1–7 are complete. The
 [detailed milestone 3 record](milestone-3-plan.md) contains the readiness and
 owner integration, review outcomes, verification, and measured tradeoffs.
-That work is the tested baseline, not the end of the simplification effort.
+That work supplied the tested baseline for the final simplification.
 Milestones 5–7 below address the essential synchronous part of
 [issue #463](https://github.com/genome-spy/genome-spy/issues/463), following the
 [design discussion](https://github.com/genome-spy/genome-spy/issues/463#issuecomment-5551252304).
-Hold the branch merge while that foundation and the domain experiment are assessed.
+The reviewed migration and its final verdict are recorded in
+[milestone-7-plan.md](milestone-7-plan.md). Plan retirement and whole-branch PR
+preparation remain separate; no merge is performed as part of this milestone.
 
 The key distinction is between calculating a candidate domain and deciding
 whether it may replace the displayed domain. Data arrival, expressions,
@@ -264,14 +266,14 @@ streaming publication boundary, failure/retry semantics, and verification.
 
 Milestone 6's reviewed result is recorded in [milestone-6-plan.md](milestone-6-plan.md).
 The continuous path has simpler propagation, but total production size increased.
-The next milestone must delete the parallel legacy adapter and planner caches;
-the overall simplification and merge gates have not passed.
+Milestone 7 subsequently removed the parallel legacy adapter and planner caches;
+its final assessment below supersedes that interim simplification gate.
 
 ### 7. Complete the justified migration and verify integration
 
-- [ ] After milestone 6 passes its decision gate, migrate the remaining applicable
+- [x] After milestone 6 passes its decision gate, migrate the remaining applicable
       domain paths and remove their replaced coordination machinery.
-- [ ] Review the combined runtime/dataflow/scale result, resolve regressions,
+- [x] Review the combined runtime/dataflow/scale result, resolve regressions,
       and reconcile this plan before PR preparation.
 - Outcome: domain handling uses the shared synchronous consistency contract with
   one displayed-domain authority and no permanent parallel compatibility path.
@@ -291,6 +293,12 @@ the overall simplification and merge gates have not passed.
   unmigrated boundaries, document the completed subset of #463 while leaving its
   async requirements open, and retire temporary plans before creating a PR.
 - Commit: `refactor(core): unify domain propagation and remove legacy coordination`.
+
+Milestone 7 passed its integrated review gate. The same affected production cohort
+is 672 lines smaller than milestone 6, while remaining 402 lines larger than
+milestone 4. This is accepted for the clearer single propagation/ownership path,
+not as a net line-count reduction. See the detailed record for tests, browser
+checks, reviewer findings, and intentionally deferred boundaries.
 
 Domain-only sharing is a later proposal, contingent on this refactor succeeding.
 It must define compatibility for domain-affecting properties and range-dependent

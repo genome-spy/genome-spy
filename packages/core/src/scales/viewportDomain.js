@@ -242,9 +242,6 @@ export function isViewportDataReady(members, getConstraints) {
 }
 
 export class ViewportDomainScheduler {
-    /** @type {(() => void)[]} */
-    #unsubscribers = [];
-
     /** @type {ReturnType<typeof setTimeout> | undefined} */
     #timer;
 
@@ -252,31 +249,12 @@ export class ViewportDomainScheduler {
 
     /**
      * @param {object} options
-     * @param {() => boolean} options.hasViewportDomain
-     * @param {() => Set<import("./scaleResolution.js").default>} options.getDependencies
      * @param {() => boolean} options.isReady
      * @param {() => void} options.update
      */
-    constructor({ hasViewportDomain, getDependencies, isReady, update }) {
-        this.hasViewportDomain = hasViewportDomain;
-        this.getDependencies = getDependencies;
+    constructor({ isReady, update }) {
         this.isReady = isReady;
         this.update = update;
-    }
-
-    refresh() {
-        this.clear();
-        if (!this.hasViewportDomain()) {
-            return;
-        }
-
-        const listener = () => this.schedule(false);
-        for (const resolution of this.getDependencies()) {
-            resolution.addEventListener("domain", listener);
-            this.#unsubscribers.push(() =>
-                resolution.removeEventListener("domain", listener)
-            );
-        }
     }
 
     /** @param {boolean} collectorChanged */
@@ -300,10 +278,6 @@ export class ViewportDomainScheduler {
     }
 
     clear() {
-        for (const unsubscribe of this.#unsubscribers) {
-            unsubscribe();
-        }
-        this.#unsubscribers = [];
         clearTimeout(this.#timer);
         this.#timer = undefined;
         this.#waitingForData = false;

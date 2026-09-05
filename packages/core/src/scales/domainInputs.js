@@ -1,3 +1,6 @@
+import { isContinuous, isDiscrete } from "vega-scale";
+import { LOCUS } from "./scaleResolutionConstants.js";
+import { toInternalIndexLikeDataDomain } from "./indexLikeDomainUtils.js";
 import {
     resolveConfiguredDomain,
     resolveDataDomain,
@@ -20,7 +23,7 @@ import deepEqual from "../utils/deepEqual.js";
 import { DOMAIN_UPDATE_PRIORITY } from "./domainRuntime.js";
 
 /**
- * Compile replaceable inputs for a continuous domain. Membership, declaration
+ * Compile replaceable domain inputs for a shared scale. Membership, declaration
  * scope, accessors and viewport topology are resolved here, not during updates.
  * @param {object} options
  * @param {import("./domainRuntime.js").default} options.owner
@@ -40,12 +43,14 @@ import { DOMAIN_UPDATE_PRIORITY } from "./domainRuntime.js";
  * @param {import("./domainPlanner.js").ViewportConstraintsGetter} options.getConstraints
  * @param {() => number[]} options.getZoomExtent
  * @param {import("../utils/domainArray.js").DomainArray | undefined} options.lastVisible
+ * @param {boolean} options.explicit
  * @param {boolean} options.ignoreSelectionInitial
  */
 export default function createDomainInputs({
     owner,
     manager,
     props,
+    explicit,
     type,
     members,
     dataMembers,
@@ -63,6 +68,20 @@ export default function createDomainInputs({
     lastVisible,
 }) {
     const runtime = owner.runtime;
+    const views = Array.from(members, (member) => member.view);
+    owner.policy = () => ({
+        zoomable:
+            isContinuous(props.type) && !isDiscrete(props.type) && !!props.zoom,
+        scaleKind:
+            props.type === "index"
+                ? "index"
+                : isContinuous(props.type) && !isDiscrete(props.type)
+                  ? "continuous"
+                  : "discrete",
+        rendered: views.some((view) => view.hasRendered()),
+        animateChanges: props.domainTransition !== false,
+        selectionLinked: !!link,
+    });
     /** @type {(() => void)[]} */
     const disposers = [];
     try {
@@ -208,18 +227,26 @@ export default function createDomainInputs({
                 });
                 return;
             }
-            const data = readData();
+            const configuredDomain = configured.get();
+            // Authored domains need rows only for linked fallback or loaded extent;
+            // genomic fallback comes from the assembly rather than loaded rows.
+            const needsData =
+                (type !== LOCUS && (!configuredDomain || !!link)) ||
+                (typeof props.zoom === "object" &&
+                    props.zoom.extent === "data");
+            const data = needsData ? readData() : undefined;
             fallback = defaultDomain(data);
-            const domain = configured.get() ?? fallback;
-            const finalProps = { ...props };
-            if (domain?.length) finalProps.domain = domain;
-            if (!finalProps.domain && finalProps.domainMid !== undefined) {
-                finalProps.domain = [
-                    finalProps.domainMin ?? 0,
-                    finalProps.domainMax ?? 1,
-                ];
-            }
+            const domain = configuredDomain ?? fallback;
+            const finalProps = manager.domainProps(props, domain, explicit);
             const normalized = manager.prepareDomain(finalProps);
+            if (normalized.applyOrdinalUnknown)
+                /** @type {import("d3-scale").ScaleOrdinal<any, any>} */ (
+                    manager.scale
+                ).unknown(normalized.ordinalUnknown);
+            if (isDiscrete(props.type)) {
+                /** @type {any} */ (manager.scale.props).domainIndexer =
+                    /** @type {any} */ (finalProps).domainIndexer;
+            }
             const candidate =
                 reason === "viewport" &&
                 !isViewportDataReady(dataMembers, (member) =>
@@ -231,13 +258,17 @@ export default function createDomainInputs({
                 type: reason,
                 candidate,
                 resetDomain: manager.normalizeDomain(
-                    configured.get() ?? defaultDomain(undefined)
+                    configuredDomain ?? defaultDomain(undefined)
                 ),
                 referenceDomain: link ? fallback : candidate,
                 dataExtent:
                     typeof props.zoom === "object" &&
                     props.zoom.extent === "data"
-                        ? data && Array.from(data)
+                        ? data?.length
+                            ? Array.from(
+                                  toInternalIndexLikeDataDomain(type, data)
+                              )
+                            : undefined
                         : undefined,
                 readiness:
                     owner.state.phase === "ready" || ready()
@@ -262,8 +293,6 @@ export default function createDomainInputs({
             });
         };
         const scheduler = new ViewportDomainScheduler({
-            hasViewportDomain: () => viewport,
-            getDependencies: () => viewportDependencies,
             isReady: () =>
                 isViewportDataReady(dataMembers, (member) =>
                     constraints.get(member)
@@ -327,6 +356,7 @@ export default function createDomainInputs({
                 return selection.get().ignoreInitial;
             },
             request,
+            readData,
             dataChanged() {
                 if (viewport && owner.state.phase === "ready")
                     scheduler.schedule(true);
@@ -334,7 +364,13 @@ export default function createDomainInputs({
                 runtime.flushNow({ afterTransaction: true });
             },
             syncSelection() {
-                if (!link || !props.zoom) return;
+                if (
+                    !link ||
+                    !props.zoom ||
+                    !isContinuous(props.type) ||
+                    isDiscrete(props.type)
+                )
+                    return;
                 const current = getIntervalSelection(
                     link.runtime.getValue(link.param),
                     link.param

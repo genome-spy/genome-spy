@@ -1,18 +1,23 @@
 import { describe, expect, test, vi } from "vitest";
 
-import DomainPlanner from "./domainPlanner.js";
+import {
+    getScaleMemberAccessors,
+    resolveConfiguredDomain,
+    resolveDataDomain,
+    resolveDefaultDomain,
+    resolveSelectionDomainInfo,
+} from "./domainPlanner.js";
 import createDomain, { toRegularArray } from "../utils/domainArray.js";
-import { resolveIntervalSelectionBinding } from "./selectionDomainUtils.js";
+import { validateSharedViewportDomain } from "./viewportDomain.js";
 
-/** @type {WeakMap<object, any>} */
-const selectionRuntimeByValue = new WeakMap();
+/** @typedef {import("./scaleResolution.js").ScaleResolutionMember} Member */
 
 /**
  * @param {string} expr
- * @returns {import("../paramRuntime/types.js").ExprRefFunction}
+ * @returns {never}
  */
 function rejectUnexpectedExpression(expr) {
-    throw new Error(`Unexpected expression in DomainPlanner test: ${expr}`);
+    throw new Error(`Unexpected expression: ${expr}`);
 }
 
 /**
@@ -20,546 +25,447 @@ function rejectUnexpectedExpression(expr) {
  * @returns {never}
  */
 function rejectUnexpectedSelection(paramName) {
-    throw new Error(`Unexpected selection in DomainPlanner test: ${paramName}`);
+    throw new Error(`Unexpected selection: ${paramName}`);
+}
+
+/** @type {import("./domainPlanner.js").FromComplexInterval} */
+const numericInterval = (interval) => /** @type {number[]} */ (interval);
+
+/**
+ * Only domain declarations are needed by the pure configured-domain functions.
+ * @param {import("../spec/scale.js").Scale["domain"]} domain
+ * @param {import("../spec/channel.js").Type} [type]
+ * @param {import("../spec/channel.js").ChannelWithScale} [channel]
+ * @returns {Member}
+ */
+function configuredMember(domain, type = "quantitative", channel = "x") {
+    return /** @type {Member} */ ({
+        channel,
+        channelDef: { type, scale: { domain } },
+        contributesToDomain: true,
+    });
 }
 
 /**
  * @param {string} field
- * @returns {import("../types/encoder.js").Accessor}
+ * @returns {import("../types/encoder.js").ScaleAccessor}
  */
 function createAccessor(field) {
-    const accessor = /** @type {import("../types/encoder.js").Accessor} */ (
-        /** @type {any} */ (
-            (/** @type {{ value: number }} */ datum) => datum.value
+    return /** @type {import("../types/encoder.js").ScaleAccessor} */ (
+        /** @type {unknown} */ (
+            Object.assign(
+                (/** @type {Record<string, number>} */ datum) => datum[field],
+                {
+                    constant: false,
+                    scaleChannel: "x",
+                    channel: "x",
+                    channelDef: { field, type: "quantitative" },
+                }
+            )
         )
     );
-    accessor.constant = false;
-    accessor.scaleChannel = "x";
-    accessor.channel = "x";
-    accessor.channelDef = { field, type: "quantitative" };
-    return accessor;
 }
 
 /**
- * @param {import("../types/encoder.js").Accessor[]} accessors
+ * @param {import("../types/encoder.js").ScaleAccessor[]} accessors
  * @param {object} collector
  * @param {boolean} [contributesToDomain]
+ * @returns {Member}
  */
-function createMember(accessors, collector, contributesToDomain = true) {
-    return {
-        channel: "x",
-        channelDef: { type: "quantitative", scale: {} },
-        contributesToDomain,
-        view: {
-            mark: {
-                encoders: {
-                    x: {
-                        branches: accessors.map((accessor) => ({
-                            accessor,
-                            predicate: () => true,
-                        })),
+function dataMember(accessors, collector, contributesToDomain = true) {
+    return /** @type {Member} */ (
+        /** @type {unknown} */ ({
+            channel: "x",
+            channelDef: { type: "quantitative", scale: {} },
+            contributesToDomain,
+            view: {
+                mark: {
+                    encoders: {
+                        x: {
+                            branches: accessors.map((accessor) => ({
+                                accessor,
+                                predicate: () => true,
+                            })),
+                        },
                     },
                 },
+                getCollector: () => collector,
             },
-            getCollector: () => collector,
-        },
-    };
+        })
+    );
 }
 
-/**
- * @param {any[]} members
- * @param {import("../spec/channel.js").Type} type
- */
-function createPlanner(members, type) {
-    return new DomainPlanner({
-        getActiveMembers: () => new Set(members),
-        createExpression: rejectUnexpectedExpression,
-        resolveSelectionBinding: (paramName, encoding) => {
-            const member = members.find(
-                (candidate) =>
-                    candidate.channelDef.scale?.domain?.param === paramName
-            );
-            if (!member) {
-                throw new Error(`Missing selection fixture: ${paramName}`);
-            }
-            return resolveIntervalSelectionBinding(
-                member.view,
-                paramName,
-                encoding
-            );
-        },
-        getType: () => type,
-        getLocusExtent: () => [0, 10],
-        fromComplexInterval: (interval) => /** @type {number[]} */ (interval),
-    });
-}
-
-/**
- * @param {object} params
- * @param {any} params.selectionValue
- * @param {import("../spec/channel.js").ChannelWithScale} [params.channel]
- * @param {import("../spec/channel.js").Type} [params.type]
- * @param {any} params.domain
- */
-function createSelectionDomainMember({
-    selectionValue,
-    channel = "x",
-    type = "quantitative",
-    domain,
-}) {
-    /** @type {{ findValue: () => any, findRuntimeForParam: () => any }} */
-    let paramRuntime;
-    if (selectionValue && typeof selectionValue === "object") {
-        paramRuntime = selectionRuntimeByValue.get(selectionValue);
-        if (!paramRuntime) {
-            paramRuntime = {
-                findValue: () => selectionValue,
-                findRuntimeForParam: () => paramRuntime,
-            };
-            selectionRuntimeByValue.set(selectionValue, paramRuntime);
-        }
-    } else {
-        paramRuntime = {
-            findValue: () => selectionValue,
-            findRuntimeForParam: () => paramRuntime,
-        };
-    }
-
-    return {
-        channel,
-        channelDef: {
-            type,
-            scale: { domain },
-        },
-        contributesToDomain: true,
-        view: {
-            paramRuntime,
-        },
-    };
-}
-
-describe("DomainPlanner", () => {
-    test("configured domains are unioned", () => {
-        const members = [
-            {
-                channelDef: {
-                    type: "quantitative",
-                    scale: { domain: [0, 5] },
-                },
-                contributesToDomain: true,
-            },
-            {
-                channelDef: {
-                    type: "quantitative",
-                    scale: { domain: [2, 7] },
-                },
-                contributesToDomain: true,
-            },
-        ];
-        const planner = createPlanner(members, "quantitative");
-        const domain = planner.getConfiguredDomain();
-        expect(toRegularArray(domain)).toEqual([0, 7]);
-    });
-
-    test("viewport domain references select a data-derived domain mode", () => {
-        const members = [
-            createSelectionDomainMember({
-                selectionValue: undefined,
-                domain: { source: "viewport" },
-            }),
-            {
-                channel: "x",
-                channelDef: { type: "quantitative", scale: {} },
-                contributesToDomain: true,
-            },
-        ];
-        const planner = createPlanner(members, "quantitative");
-
-        expect(planner.getConfiguredDomain()).toBeUndefined();
-        expect(planner.hasViewportDomain()).toBe(true);
-    });
-
-    test("repeated viewport domain references are compatible", () => {
-        const members = Array.from({ length: 2 }, () =>
-            createSelectionDomainMember({
-                selectionValue: undefined,
-                domain: { source: "viewport" },
-            })
+describe("configured domain resolution", () => {
+    test("member and view-level configured domains are unioned", () => {
+        const excluded = configuredMember([-100, 100]);
+        excluded.contributesToDomain = false;
+        const { domain } = resolveConfiguredDomain(
+            new Set([
+                configuredMember([0, 5]),
+                configuredMember([2, 7]),
+                excluded,
+            ]),
+            { channel: "x", type: "quantitative", domain: [-2, 3] },
+            rejectUnexpectedExpression,
+            rejectUnexpectedSelection,
+            numericInterval,
+            true
         );
-        const planner = createPlanner(members, "quantitative");
-
-        expect(planner.getConfiguredDomain()).toBeUndefined();
-        expect(planner.hasViewportDomain()).toBe(true);
+        expect(toRegularArray(domain)).toEqual([-2, 7]);
     });
 
-    test("visible and other configured domains cannot be mixed", () => {
-        const members = [
-            createSelectionDomainMember({
-                selectionValue: undefined,
-                domain: { source: "viewport" },
-            }),
-            createSelectionDomainMember({
-                selectionValue: undefined,
-                domain: [0, 10],
-            }),
-        ];
-        const planner = createPlanner(members, "quantitative");
-
-        expect(() => planner.getConfiguredDomain()).toThrow(
-            "Cannot mix viewport-derived and other configured domains"
-        );
-    });
-
-    test("viewport domains require a continuous data type", () => {
-        const member = createSelectionDomainMember({
-            selectionValue: undefined,
-            type: "nominal",
-            channel: "color",
-            domain: { source: "viewport" },
-        });
-        const planner = createPlanner([member], "nominal");
-
-        expect(() => planner.getConfiguredDomain()).toThrow(
-            'channel "color" has type "nominal"'
-        );
-    });
-
-    test("view-level viewport domains select the resolution-wide mode", () => {
-        const planner = new DomainPlanner({
-            getActiveMembers: () => new Set(),
-            createExpression: rejectUnexpectedExpression,
-            resolveSelectionBinding: rejectUnexpectedSelection,
-            getViewLevelDomainSource: () => ({
-                channel: "y",
-                type: "quantitative",
-                domain: { source: "viewport" },
-            }),
-            getType: () => "quantitative",
-            getLocusExtent: () => [0, 10],
-            fromComplexInterval: (interval) =>
-                /** @type {number[]} */ (interval),
-        });
-
-        expect(planner.getConfiguredDomain()).toBeUndefined();
-        expect(planner.hasViewportDomain()).toBe(true);
-    });
-
-    test("data domains are unioned", () => {
-        const domainsByKey = new Map([
-            ["quantitative|x|field|a", createDomain("quantitative", [1, 4])],
-            ["quantitative|x|field|b", createDomain("quantitative", [0, 6])],
-        ]);
-
-        const collector = {
-            getDomain: (/** @type {string} */ domainKey) =>
-                domainsByKey.get(domainKey),
-        };
-
-        const members = [
-            createMember([createAccessor("a")], collector),
-            createMember([createAccessor("b")], collector),
-        ];
-        const planner = createPlanner(members, "quantitative");
-        const domain = planner.getDataDomain();
-        expect(toRegularArray(domain)).toEqual([0, 6]);
-    });
-
-    test("non-contributing members are ignored", () => {
-        const domainsByKey = new Map([
-            ["quantitative|x|field|a", createDomain("quantitative", [1, 4])],
-            ["quantitative|x|field|b", createDomain("quantitative", [0, 6])],
-        ]);
-
-        const collector = {
-            getDomain: vi.fn((/** @type {string} */ domainKey) =>
-                domainsByKey.get(domainKey)
-            ),
-        };
-
-        const members = [
-            createMember([createAccessor("a")], collector, false),
-            createMember([createAccessor("b")], collector, true),
-        ];
-
-        const planner = createPlanner(members, "quantitative");
-        const domain = planner.getDataDomain();
-
-        expect(toRegularArray(domain)).toEqual([0, 6]);
-        expect(collector.getDomain).toHaveBeenCalledTimes(1);
-    });
-
-    test("locus defaults to genome extent when no domain is configured", () => {
-        const planner = createPlanner([], "locus");
-        expect(planner.getConfiguredOrDefaultDomain()).toEqual([0, 10]);
-    });
-
-    test("locus default domain does not extract data", () => {
-        const planner = createPlanner([], "locus");
-        const dataSpy = vi.spyOn(planner, "getDataDomain");
-
-        expect(planner.getDefaultDomain(true)).toEqual([0, 10]);
-        expect(dataSpy).not.toHaveBeenCalled();
-
-        dataSpy.mockRestore();
-    });
-
-    test("configured locus domains use complex conversion", () => {
-        const fromComplexInterval = vi.fn(() => [10, 20]);
-        const planner = new DomainPlanner({
-            getActiveMembers: () =>
-                new Set(
-                    /** @type {any} */ ([
-                        {
-                            channelDef: {
-                                type: "locus",
-                                scale: {
-                                    domain: [
-                                        { chrom: "chr1", pos: 0 },
-                                        { chrom: "chr1", pos: 9 },
-                                    ],
-                                },
-                            },
-                            contributesToDomain: true,
-                        },
-                    ])
-                ),
-            createExpression: rejectUnexpectedExpression,
-            resolveSelectionBinding: rejectUnexpectedSelection,
-            getType: () => "locus",
-            getLocusExtent: () => [0, 10],
-            fromComplexInterval,
-        });
-
-        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([10, 21]);
-        expect(fromComplexInterval).toHaveBeenCalledWith([
+    test("configured locus domains convert explicit endpoints to half-open intervals", () => {
+        const interval = [
             { chrom: "chr1", pos: 0 },
             { chrom: "chr1", pos: 9 },
-        ]);
-    });
-
-    test("configured locus domains are cached between calls", () => {
-        const fromComplexInterval = vi.fn(() => [10, 20]);
-        const planner = new DomainPlanner({
-            getActiveMembers: () =>
-                new Set(
-                    /** @type {any} */ ([
-                        {
-                            channelDef: {
-                                type: "locus",
-                                scale: {
-                                    domain: [
-                                        { chrom: "chr1", pos: 0 },
-                                        { chrom: "chr1", pos: 9 },
-                                    ],
-                                },
-                            },
-                            contributesToDomain: true,
-                        },
-                    ])
-                ),
-            createExpression: rejectUnexpectedExpression,
-            resolveSelectionBinding: rejectUnexpectedSelection,
-            getType: () => "locus",
-            getLocusExtent: () => [0, 10],
-            fromComplexInterval,
-        });
-
-        planner.getConfiguredDomain();
-        planner.getConfiguredDomain();
-
-        expect(fromComplexInterval).toHaveBeenCalledTimes(1);
-    });
-
-    test("configured locus domain cache can be invalidated", () => {
-        const fromComplexInterval = vi.fn((interval) =>
-            interval[0].chrom === "chr1" ? [10, 20] : [12, 30]
+        ];
+        const convert = vi.fn(() => [10, 20]);
+        const { domain } = resolveConfiguredDomain(
+            new Set([configuredMember(interval, "locus")]),
+            undefined,
+            rejectUnexpectedExpression,
+            rejectUnexpectedSelection,
+            convert,
+            true
         );
-
-        /** @type {Set<any>} */
-        const members = new Set([
-            {
-                channelDef: {
-                    type: "locus",
-                    scale: {
-                        domain: [
-                            { chrom: "chr1", pos: 0 },
-                            { chrom: "chr1", pos: 9 },
-                        ],
-                    },
-                },
-                contributesToDomain: true,
-            },
-        ]);
-
-        const planner = new DomainPlanner({
-            getActiveMembers: () => members,
-            createExpression: rejectUnexpectedExpression,
-            resolveSelectionBinding: rejectUnexpectedSelection,
-            getType: () => "locus",
-            getLocusExtent: () => [0, 10],
-            fromComplexInterval,
-        });
-
-        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([10, 21]);
-
-        members.add({
-            channelDef: {
-                type: "locus",
-                scale: {
-                    domain: [
-                        { chrom: "chr2", pos: 0 },
-                        { chrom: "chr2", pos: 17 },
-                    ],
-                },
-            },
-            contributesToDomain: true,
-        });
-
-        planner.invalidateConfiguredDomain();
-
-        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([10, 31]);
-        expect(fromComplexInterval).toHaveBeenCalledTimes(3);
+        expect(toRegularArray(domain)).toEqual([10, 21]);
+        expect(convert).toHaveBeenCalledWith(interval);
     });
 
-    test("configured domain can be linked to interval selection params", () => {
-        const selection = {
-            type: "interval",
-            intervals: { x: [2, 5] },
-        };
-
-        const planner = createPlanner(
-            [
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brush" },
-                }),
-            ],
-            "quantitative"
+    test("selection intervals already use internal index coordinates", () => {
+        const runtime = {};
+        const { domain, selectionRef } = resolveConfiguredDomain(
+            new Set([configuredMember({ param: "brush" }, "index")]),
+            undefined,
+            rejectUnexpectedExpression,
+            () => ({
+                runtime,
+                selection: { type: "interval", intervals: { x: [2, 5] } },
+            }),
+            numericInterval,
+            true
         );
-
-        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([2, 5]);
-        expect(planner.hasSelectionConfiguredDomain()).toBe(true);
-        expect(planner.getSelectionConfiguredDomainInfo()).toEqual({
+        expect(toRegularArray(domain)).toEqual([2, 5]);
+        expect(selectionRef).toMatchObject({
+            runtime,
             param: "brush",
             encoding: "x",
         });
     });
 
-    test("selection-linked configured domain falls back when selection is empty", () => {
-        /** @type {any} */
-        const selection = {
-            type: "interval",
-            intervals: { x: null },
-        };
-
-        const planner = createPlanner(
-            [
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brush" },
+    test.each([undefined, { type: "interval", intervals: { x: null } }])(
+        "an empty or missing selection retains its link without proposing a domain",
+        (selection) => {
+            const { domain, selectionRef } = resolveConfiguredDomain(
+                new Set([configuredMember({ param: "brush" })]),
+                undefined,
+                rejectUnexpectedExpression,
+                () => ({
+                    runtime: {},
+                    selection:
+                        /** @type {import("../types/selectionTypes.js").IntervalSelection} */ (
+                            selection
+                        ),
                 }),
-            ],
-            "quantitative"
-        );
+                numericInterval,
+                true
+            );
+            expect(domain).toBeUndefined();
+            expect(selectionRef).toMatchObject({
+                param: "brush",
+                encoding: "x",
+            });
+        }
+    );
 
-        expect(planner.getConfiguredDomain()).toBeUndefined();
-        expect(planner.getConfiguredOrDefaultDomain()).toEqual([]);
-        expect(planner.hasSelectionConfiguredDomain()).toBe(true);
+    test.each([true, false])(
+        "selection initial can be bypassed: include=%s",
+        (includeInitial) => {
+            const { domain } = resolveConfiguredDomain(
+                new Set([
+                    configuredMember({ param: "brush", initial: [3, 7] }),
+                ]),
+                undefined,
+                rejectUnexpectedExpression,
+                () => ({
+                    runtime: {},
+                    selection: { type: "interval", intervals: { x: null } },
+                }),
+                numericInterval,
+                includeInitial
+            );
+            expect(domain && toRegularArray(domain)).toEqual(
+                includeInitial ? [3, 7] : undefined
+            );
+        }
+    );
+
+    test("conflicting selection references are rejected", () => {
+        const runtime = {};
+        expect(() =>
+            resolveConfiguredDomain(
+                new Set([
+                    configuredMember({ param: "brushA" }),
+                    configuredMember({ param: "brushB" }),
+                ]),
+                undefined,
+                rejectUnexpectedExpression,
+                () => ({
+                    runtime,
+                    selection: { type: "interval", intervals: { x: [2, 5] } },
+                }),
+                numericInterval,
+                true
+            )
+        ).toThrow("Conflicting selection domain references");
     });
 
-    test("selection-linked configured domain tolerates a temporarily missing selection", () => {
-        const planner = createPlanner(
-            [
-                createSelectionDomainMember({
-                    selectionValue: null,
-                    domain: { param: "brush" },
-                }),
-            ],
-            "quantitative"
-        );
+    test("non-positional selections require an explicit encoding", () => {
+        expect(() =>
+            resolveConfiguredDomain(
+                new Set([
+                    configuredMember(
+                        { param: "brush" },
+                        "quantitative",
+                        "color"
+                    ),
+                ]),
+                undefined,
+                rejectUnexpectedExpression,
+                rejectUnexpectedSelection,
+                numericInterval,
+                true
+            )
+        ).toThrow('requires an explicit "encoding"');
+    });
+});
 
-        expect(planner.getConfiguredDomain()).toBeUndefined();
-        expect(planner.getConfiguredOrDefaultDomain()).toEqual([]);
-        expect(planner.hasSelectionConfiguredDomain()).toBe(true);
+describe("viewport domain declarations", () => {
+    test.each([1, 2])(
+        "%s viewport references select data extraction without a configured interval",
+        (count) => {
+            const members = new Set([
+                ...Array.from({ length: count }, () =>
+                    configuredMember({ source: "viewport" })
+                ),
+                configuredMember(undefined),
+            ]);
+            expect(validateSharedViewportDomain(members, undefined)).toBe(true);
+            expect(
+                resolveConfiguredDomain(
+                    members,
+                    undefined,
+                    rejectUnexpectedExpression,
+                    rejectUnexpectedSelection,
+                    numericInterval,
+                    true
+                ).domain
+            ).toBeUndefined();
+        }
+    );
+
+    test("viewport and other configured domains cannot be mixed", () => {
+        expect(() =>
+            validateSharedViewportDomain(
+                new Set([
+                    configuredMember({ source: "viewport" }),
+                    configuredMember([0, 10]),
+                ]),
+                undefined
+            )
+        ).toThrow("Cannot mix viewport-derived and other configured domains");
     });
 
-    test("selection-linked configured domain uses initial when selection is empty", () => {
-        /** @type {any} */
-        const selection = {
-            type: "interval",
-            intervals: { x: null },
+    test("viewport domains require a continuous data type", () => {
+        expect(() =>
+            validateSharedViewportDomain(
+                new Set([
+                    configuredMember(
+                        { source: "viewport" },
+                        "nominal",
+                        "color"
+                    ),
+                ]),
+                undefined
+            )
+        ).toThrow('channel "color" has type "nominal"');
+    });
+
+    test("view-level viewport declarations select the resolution-wide mode", () => {
+        /** @type {import("./domainPlanner.js").ConfiguredDomainSource} */
+        const source = {
+            channel: "y",
+            type: "quantitative",
+            domain: { source: "viewport" },
         };
-
-        const planner = createPlanner(
-            [
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brush", initial: [3, 7] },
-                }),
-            ],
-            "quantitative"
-        );
-
-        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([3, 7]);
+        expect(validateSharedViewportDomain(new Set(), source)).toBe(true);
         expect(
-            planner.getConfiguredDomain({ includeSelectionInitial: false })
+            resolveConfiguredDomain(
+                new Set(),
+                source,
+                rejectUnexpectedExpression,
+                rejectUnexpectedSelection,
+                numericInterval,
+                true
+            ).domain
         ).toBeUndefined();
+    });
+});
+
+describe("raw data and default domains", () => {
+    test("data domains union distinct accessors and de-duplicate shared collector queries", () => {
+        const domains = new Map([
+            ["quantitative|x|field|a", createDomain("quantitative", [1, 4])],
+            ["quantitative|x|field|b", createDomain("quantitative", [0, 6])],
+        ]);
+        const collector = {
+            getDomain: vi.fn((/** @type {string} */ key) => domains.get(key)),
+        };
+        const members = new Set([
+            dataMember([createAccessor("a")], collector),
+            dataMember([createAccessor("a"), createAccessor("b")], collector),
+            dataMember([createAccessor("excluded")], collector, false),
+        ]);
+        const domain = resolveDataDomain(
+            members,
+            () => "quantitative",
+            getScaleMemberAccessors
+        );
+        expect(toRegularArray(domain)).toEqual([0, 6]);
+        expect(collector.getDomain).toHaveBeenCalledTimes(2);
+    });
+
+    test("missing contributors do not propose a data domain", () => {
         expect(
-            planner.getConfiguredOrDefaultDomain(false, undefined, {
-                includeSelectionInitial: false,
-            })
+            resolveDataDomain(
+                new Set(),
+                () => "quantitative",
+                getScaleMemberAccessors
+            )
+        ).toBeUndefined();
+    });
+
+    test("locus defaults use the requested assembly extent rather than loaded data", () => {
+        const extent = vi.fn(() => [0, 100]);
+        expect(
+            resolveDefaultDomain(
+                "locus",
+                extent,
+                createDomain("locus", [10, 20]),
+                "hg38"
+            )
+        ).toEqual([0, 100]);
+        expect(extent).toHaveBeenCalledWith("hg38");
+    });
+
+    test("index data defaults convert raw inclusive coordinates once", () => {
+        const data = createDomain("index", [2, 5]);
+        expect(
+            resolveDefaultDomain("index", () => [], data, undefined)
+        ).toEqual([2, 6]);
+        expect(toRegularArray(data)).toEqual([2, 5]);
+    });
+
+    test("empty index data proposes an empty default rather than invalid endpoints", () => {
+        expect(
+            resolveDefaultDomain(
+                "index",
+                () => [],
+                createDomain("index"),
+                undefined
+            )
         ).toEqual([]);
     });
 
-    test("throws on conflicting selection domain refs", () => {
-        const selection = {
-            type: "interval",
-            intervals: { x: [2, 5] },
-        };
+    test("quantitative defaults preserve raw data and are empty without it", () => {
+        const data = createDomain("quantitative", [2, 5]);
+        expect(
+            toRegularArray(
+                resolveDefaultDomain("quantitative", () => [], data, undefined)
+            )
+        ).toEqual([2, 5]);
+        expect(
+            resolveDefaultDomain("quantitative", () => [], undefined, undefined)
+        ).toEqual([]);
+    });
+});
 
-        const planner = createPlanner(
-            [
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brushA" },
-                }),
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brushB" },
-                }),
-            ],
-            "quantitative"
-        );
-
-        expect(() => planner.getConfiguredDomain()).toThrow(
-            "Conflicting selection domain references"
-        );
+describe("selection domain metadata", () => {
+    test("ordinary expressions and complex locus domains require no evaluation", () => {
+        expect(
+            resolveSelectionDomainInfo(
+                new Set([
+                    configuredMember({ expr: "notInitialized" }),
+                    configuredMember(
+                        [{ chrom: "chr1" }, { chrom: "chr2" }],
+                        "locus"
+                    ),
+                ]),
+                undefined,
+                rejectUnexpectedSelection
+            )
+        ).toBeUndefined();
     });
 
-    test("throws when encoding cannot be inferred on non-positional channels", () => {
-        const selection = {
-            type: "interval",
-            intervals: { x: [2, 5] },
-        };
+    test("repeated references retain scope identity and combine initial metadata", () => {
+        const runtime = {};
+        expect(
+            resolveSelectionDomainInfo(
+                new Set([
+                    configuredMember({ param: "brush" }),
+                    configuredMember({ param: "brush", initial: [2, 4] }),
+                ]),
+                undefined,
+                () => ({ runtime, selection: undefined })
+            )
+        ).toEqual({
+            runtime,
+            param: "brush",
+            encoding: "x",
+            hasInitial: true,
+        });
+    });
 
-        const planner = createPlanner(
-            [
-                createSelectionDomainMember({
-                    selectionValue: selection,
+    test("a view-level selection with explicit encoding resolves on a non-positional channel", () => {
+        const runtime = {};
+        const resolve = vi.fn(() => ({ runtime, selection: undefined }));
+        expect(
+            resolveSelectionDomainInfo(
+                new Set(),
+                {
                     channel: "color",
-                    domain: { param: "brush" },
-                }),
-            ],
-            "quantitative"
-        );
-
-        expect(() => planner.getConfiguredDomain()).toThrow(
-            'requires an explicit "encoding"'
-        );
+                    type: "quantitative",
+                    domain: { param: "brush", encoding: "y" },
+                },
+                resolve
+            )
+        ).toMatchObject({ param: "brush", encoding: "y" });
+        expect(resolve).toHaveBeenCalledWith("brush", "y");
     });
 
-    test("default domain is empty when no data is requested", () => {
-        const planner = createPlanner([], "quantitative");
-        expect(planner.getConfiguredOrDefaultDomain()).toEqual([]);
+    test("equal parameter names in different scopes conflict", () => {
+        expect(() =>
+            resolveSelectionDomainInfo(
+                new Set([
+                    configuredMember({ param: "brush" }),
+                    configuredMember({ param: "brush" }),
+                ]),
+                undefined,
+                () => ({ runtime: {}, selection: undefined })
+            )
+        ).toThrow("Conflicting selection domain references");
+    });
+
+    test("literal and selection declarations conflict before domains are evaluated", () => {
+        expect(() =>
+            resolveSelectionDomainInfo(
+                new Set([
+                    configuredMember({ param: "brush" }),
+                    configuredMember({ expr: "notInitialized" }),
+                ]),
+                undefined,
+                () => ({ runtime: {}, selection: undefined })
+            )
+        ).toThrow("Cannot mix selection-driven and literal configured domains");
     });
 });

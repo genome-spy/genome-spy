@@ -28,7 +28,9 @@ export default class DomainRuntime {
     #state;
 
     /** @type {() => import("./domainLifecycle.js").DomainPolicy} */
-    policy;
+    policy = () => {
+        throw new Error("Domain inputs are not bound.");
+    };
 
     /** @type {{update: import("./domainLifecycle.js").DomainUpdate, render: boolean, resolve: () => void, reject: (error: unknown) => void}[]} */
     #pending = [];
@@ -60,7 +62,6 @@ export default class DomainRuntime {
      * @param {import("../utils/animator.js").default} options.animator
      * @param {import("./domainLifecycle.js").Domain} options.domain
      * @param {import("./domainLifecycle.js").Domain} options.resetDomain
-     * @param {() => import("./domainLifecycle.js").DomainPolicy} options.policy
      * @param {() => void} options.notifyDomain
      * @param {() => void} options.renderImmediately
      * @param {() => void} options.publishZoom
@@ -71,7 +72,6 @@ export default class DomainRuntime {
         animator,
         domain,
         resetDomain,
-        policy,
         notifyDomain,
         publishZoom,
         renderImmediately,
@@ -81,7 +81,6 @@ export default class DomainRuntime {
         this.#runtime = runtime;
         this.#manager = manager;
         this.#animator = animator;
-        this.policy = policy;
         this.#state = runtime.signal(
             "domain state",
             createDomainState(domain, resetDomain)
