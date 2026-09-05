@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import Genome from "../../../genome/genome.js";
 import Collector from "../../collector.js";
+import { isDataReady } from "../../dataReadiness.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
 const genome = new Genome({
@@ -29,6 +30,11 @@ class TestWindowedSource extends SingleAxisWindowedSource {
      */
     discretize(interval, loader) {
         return this.discretizeAndLoad(interval, loader);
+    }
+
+    /** @param {import("../../flowNode.js").Datum[][]} chunks */
+    publish(chunks) {
+        this.publishData(chunks);
     }
 }
 
@@ -99,6 +105,26 @@ async function flushPromises() {
 }
 
 describe("SingleAxisWindowedSource", () => {
+    test("fetched coverage becomes ready only when rows are published", async () => {
+        const source = new TestWindowedSource();
+        const collector = new Collector();
+        source.addChild(collector);
+        await source.load();
+        expect(isDataReady(collector)).toBe(false);
+
+        await source.discretize([0, 10], async () => []);
+        expect(isDataReady(collector, { x: [0, 10] })).toBe(false);
+        source.publish([]);
+        expect(isDataReady(collector, { x: [0, 10] })).toBe(true);
+
+        await source.discretize([20, 30], async () => []);
+        // Previous output is still a real publication, but cannot cover the
+        // freshly fetched interval until its dataflow evaluation completes.
+        expect(isDataReady(collector)).toBe(true);
+        expect(isDataReady(collector, { x: [20, 30] })).toBe(false);
+        source.publish([]);
+        expect(isDataReady(collector, { x: [20, 30] })).toBe(true);
+    });
     test("uses a batched loader when one is provided", async () => {
         const source = new TestWindowedSource();
         const load = vi.fn();

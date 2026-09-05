@@ -1,4 +1,5 @@
-import DataSource from "../data/sources/dataSource.js";
+import Collector from "../data/collector.js";
+import { isDataReady, iterateDataDependencies } from "../data/dataReadiness.js";
 import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
 import UnitView from "./unitView.js";
 
@@ -53,33 +54,8 @@ export function isSubtreeReady(subtreeRoot, readinessRequest, viewFilter) {
     for (const view of unitViews) {
         /** @type {import("../data/collector.js").default | undefined} */
         const collector = view.flowHandle?.collector;
-        if (!collector || !collector.completed) {
+        if (!collector || !isDataReady(collector, readinessRequest)) {
             return false;
-        }
-
-        /** @type {import("../data/flowNode.js").default | undefined} */
-        let node = collector;
-        while (node && !(node instanceof DataSource)) {
-            node = node.parent;
-        }
-
-        const dataSource = /** @type {DataSource | undefined} */ (node);
-        if (!dataSource) {
-            return false;
-        }
-
-        if ("isDataReadyForDomain" in dataSource) {
-            // It's available in SingleAxisLazySource and its subclasses
-            const checkableSource =
-                /** @type {import("../data/sources/lazy/singleAxisLazySource.js").DataReadinessCheckable} */ (
-                    dataSource
-                );
-            if (
-                !readinessRequest ||
-                !checkableSource.isDataReadyForDomain(readinessRequest)
-            ) {
-                return false;
-            }
         }
     }
 
@@ -96,14 +72,19 @@ export function isSubtreeReady(subtreeRoot, readinessRequest, viewFilter) {
  * @returns {boolean}
  */
 export function isSubtreeLazyReady(subtreeRoot, readinessRequest, viewFilter) {
-    const dataSources = collectLazyDataSources(subtreeRoot, viewFilter);
-
-    if (!dataSources.size) {
-        return true;
-    }
-
-    for (const dataSource of dataSources) {
-        if (!isLazySourceReady(dataSource, readinessRequest)) {
+    for (const collector of collectSubtreeCollectors(subtreeRoot, viewFilter)) {
+        const sources = Array.from(iterateDataDependencies(collector)).filter(
+            (node) => node instanceof SingleAxisLazySource
+        );
+        // Keep the lazy-only contract for App waits: wholly eager branches
+        // do not participate, but an eager primary with a lazy lookup does.
+        if (
+            sources.length &&
+            (!isDataReady(collector) ||
+                sources.some(
+                    (source) => !isLazySourceReady(source, readinessRequest)
+                ))
+        ) {
             return false;
         }
     }
@@ -171,23 +152,20 @@ export function awaitSubtreeLazyReady(
         };
 
         const attachCollectors = () => {
-            subtreeRoot.visit((view) => {
-                if (!(view instanceof UnitView)) {
-                    return;
+            for (const output of collectSubtreeCollectors(
+                subtreeRoot,
+                shouldConsiderView
+            )) {
+                for (const node of iterateDataDependencies(output)) {
+                    if (
+                        node instanceof Collector &&
+                        !observedCollectors.has(node)
+                    ) {
+                        observedCollectors.add(node);
+                        unregisters.add(node.observe(checkReady));
+                    }
                 }
-                if (!shouldConsiderView(view)) {
-                    return;
-                }
-                const collector = view.flowHandle?.collector;
-                if (!collector) {
-                    return;
-                }
-                if (observedCollectors.has(collector)) {
-                    return;
-                }
-                observedCollectors.add(collector);
-                unregisters.add(collector.observe(checkReady));
-            });
+            }
         };
 
         const abortHandler = () => {
@@ -205,13 +183,18 @@ export function awaitSubtreeLazyReady(
             signal.addEventListener("abort", abortHandler, { once: true });
         }
 
-        attachCollectors();
-        requestUnavailableLazyData(
-            subtreeRoot,
-            readinessRequest,
-            shouldConsiderView
-        );
-        checkReady();
+        try {
+            attachCollectors();
+            requestUnavailableLazyData(
+                subtreeRoot,
+                readinessRequest,
+                shouldConsiderView
+            );
+            checkReady();
+        } catch (error) {
+            cleanup();
+            reject(error);
+        }
     });
 }
 
@@ -221,41 +204,37 @@ export function awaitSubtreeLazyReady(
  * @returns {Set<SingleAxisLazySource>}
  */
 function collectLazyDataSources(subtreeRoot, viewFilter) {
-    const shouldConsiderView = viewFilter ?? isEffectivelyVisible;
-
     /** @type {Set<SingleAxisLazySource>} */
     const dataSources = new Set();
-
-    subtreeRoot.visit((view) => {
-        if (!(view instanceof UnitView)) {
-            return;
-        }
-        if (!shouldConsiderView(view)) {
-            return;
-        }
-
-        /** @type {View | null} */
-        let current = view;
-        while (current) {
-            if (current.flowHandle && current.flowHandle.dataSource) {
-                break;
+    for (const collector of collectSubtreeCollectors(subtreeRoot, viewFilter)) {
+        for (const node of iterateDataDependencies(collector)) {
+            if (node instanceof SingleAxisLazySource) {
+                dataSources.add(node);
             }
-            current = current.dataParent;
         }
-
-        if (!current || !current.flowHandle) {
-            return;
-        }
-
-        const dataSource = current.flowHandle.dataSource;
-        if (!(dataSource instanceof SingleAxisLazySource)) {
-            return;
-        }
-
-        dataSources.add(dataSource);
-    });
-
+    }
     return dataSources;
+}
+
+/**
+ * @param {View} subtreeRoot
+ * @param {(view: View) => boolean} [viewFilter]
+ * @returns {Set<Collector>}
+ */
+function collectSubtreeCollectors(subtreeRoot, viewFilter) {
+    const shouldConsiderView = viewFilter ?? isEffectivelyVisible;
+    /** @type {Set<Collector>} */
+    const collectors = new Set();
+    subtreeRoot.visit((view) => {
+        if (
+            view instanceof UnitView &&
+            shouldConsiderView(view) &&
+            view.flowHandle?.collector
+        ) {
+            collectors.add(view.flowHandle.collector);
+        }
+    });
+    return collectors;
 }
 
 /**

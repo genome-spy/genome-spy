@@ -1,3 +1,4 @@
+import { isDataReady } from "../data/dataReadiness.js";
 import scaleLocus, {
     fromComplexInterval as locusFromComplexInterval,
     fromComplexValue,
@@ -1079,7 +1080,7 @@ export default class ScaleResolution {
 
     /**
      * Finalizes the initial domain after every visible non-constant domain
-     * contributor has produced a value. Until then, apply partial domains
+     * contributor has completed real input, including empty results. Apply partial domains
      * directly instead of visibly transitioning between them.
      *
      * @returns {boolean} whether the initial domain was finalized now
@@ -1126,18 +1127,7 @@ export default class ScaleResolution {
         }
 
         const collector = member.view.getCollector();
-        if (!collector || !collector.completed) {
-            return false;
-        }
-
-        return accessors.some(
-            (accessor) =>
-                collector.getDomain(
-                    getAccessorDomainKey(accessor, this.type),
-                    this.type,
-                    accessor
-                ).length > 0
-        );
+        return !!collector && isDataReady(collector);
     }
 
     /**

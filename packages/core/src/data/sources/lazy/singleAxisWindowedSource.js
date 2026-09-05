@@ -29,6 +29,12 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
     /** @type {number[] | undefined} */
     #lastDomain;
 
+    /**
+     * Interval fetched but not yet published through the dataflow.
+     * @type {number[] | undefined}
+     */
+    #loadedInterval;
+
     #lastWindowSize = 0;
 
     /**
@@ -108,6 +114,7 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
     #reloadDomain(domain) {
         this.#lastQuantizedInterval = [0, 0];
         this._lastLoadedDomain = undefined;
+        this.#loadedInterval = undefined;
 
         this.onDomainChanged(domain);
     }
@@ -124,10 +131,11 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
 
     /**
      * @param {import("../../flowNode.js").Datum[][]} chunks
+     * @param {number[]} [loadedDomain]
      * @protected
      */
-    publishData(chunks) {
-        super.publishData(chunks, this._lastLoadedDomain);
+    publishData(chunks, loadedDomain = this.#loadedInterval) {
+        super.publishData(chunks, loadedDomain);
     }
 
     /**
@@ -176,7 +184,7 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
 
             if (!signal.aborted) {
                 this.setLoadingStatus("complete");
-                this._lastLoadedDomain = Array.from(interval);
+                this.#loadedInterval = Array.from(interval);
                 return resultByChrom;
             }
         } catch (e) {

@@ -83,6 +83,22 @@ export default class FlowNode {
     }
 
     /**
+     * Side inputs consumed by this node, separate from its primary parent.
+     * @returns {import("./collector.js").default[]}
+     */
+    get dataDependencies() {
+        return [];
+    }
+
+    /**
+     * Whether completed output represents available input, including empty data.
+     * Side-input transforms additionally check which input revision they used.
+     */
+    isDataReady() {
+        return this.completed && !this.disposed;
+    }
+
+    /**
      * A human-readable label for the node. Used for debugging and logging.
      *
      * @returns {string}

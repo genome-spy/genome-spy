@@ -162,8 +162,8 @@ export default class BigWigSource extends SingleAxisWindowedSource {
 
         const handles = this.#descriptorState.handles;
         if (!handles.length) {
-            this.publishData([]);
             this.#descriptorState.markLoaded();
+            this.publishData([], domain);
             return;
         }
 

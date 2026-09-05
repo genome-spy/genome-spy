@@ -1,6 +1,7 @@
 # Milestone 3: integrate the domain lifecycle
 
-Status: detailed implementation plan; runtime implementation has not started.
+Status: slice A implemented and reviewed; owner integration (B) and final
+verification (C) remain open.
 This refines [milestone 3](scale-domain-lifecycle-plan.md#3-integrate-one-domain-owner-and-remove-the-old-lifecycle).
 The provisional model is a starting point, not a compatibility specification.
 Revise it when a real caller exposes a missing distinction or needless state.
@@ -249,11 +250,11 @@ are two substantial reviews: this contract before coding, and integrated milesto
 
 ### A. Relevant readiness with a working shared-data vertical slice
 
-- [ ] Implement precise dependencies, consumed-input receipts, and reusable
+- [x] Implement precise dependencies, consumed-input receipts, and reusable
       initial/viewport readiness queries. Update relevant wait subscriptions.
-- [ ] Replace domain-length initial readiness with the new contract, retaining
+- [x] Replace domain-length initial readiness with the new contract, retaining
       current animation behavior while dataflow is verified.
-- [ ] Test a shared primary source, inherited delayed lookups, constant baseline,
+- [x] Test a shared primary source, inherited delayed lookups, constant baseline,
       one ready-empty contributor, early navigation, and a later real reload.
 - Verify narrow dataflow/scale suites and Core/App type checks. Update the
   dataflow architecture to explain the dependency/readiness boundary.
@@ -333,3 +334,24 @@ with the baseline, not only `ScaleResolution` line count. Count domain writers,
 independent lifecycle flags, and duplicated policy branches. Accept necessary
 dependency metadata, but revise integration that merely relocates branches or
 adds another layer around the old code. Domain-only sharing stays deferred.
+
+## Slice A delivery record
+
+- Actual flow-node side dependencies and consumed foreign revisions now support
+  initial readiness, viewport checks, App waits, and screenshot waits. Configured
+  domain/constant contribution handling and effective-domain availability remain
+  separate. Empty publications can finish initialization and enable later normal
+  automatic transitions.
+- Review found and corrected synchronous lookup-response handling, empty BigWig
+  descriptor notification order, failed-wait cleanup, and fetched coverage being
+  reported before publication. Windowed sources now retain fetched coverage until
+  publication; Tabix retains its per-file propagation boundaries.
+- Regression tests cover those ordering cases, inherited Dynseq lookup versus
+  an overriding baseline, aborted waits, empty collector replay, screenshot
+  waiting, and real automatic transition frames following ready-empty completion.
+- Subagent re-review found no remaining material issue. All 460 unit test files
+  pass (3,917 tests passed, one skipped, two TODOs); workspace TypeScript and
+  repository lint pass. Browser checks remain for the live-owner integration.
+- Changed production files together grow from 5,614 to 5,758 lines (+144),
+  including the new shared readiness helper. The growth buys explicit dependency
+  and publication facts; the old owner-policy deletion remains slice B.

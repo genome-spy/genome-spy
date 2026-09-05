@@ -104,7 +104,7 @@ The [detailed implementation plan](milestone-3-plan.md) defines readiness,
 ownership, commit ordering, example-based verification, and coherent commits.
 Review that shared contract with a subagent before runtime implementation.
 
-- [ ] Expose relevant initial readiness and lazy coverage from the dataflow,
+- [x] Expose relevant initial readiness and lazy coverage from the dataflow,
       including auxiliary input dependencies and genuine empty completion.
 - [ ] Route configuration, data, selections, viewport updates, interaction,
       reset, scale recreation, and animation frames through a single commit path.
@@ -194,5 +194,6 @@ current behavior first; do not silently turn a quirk into a permanent contract.
 The detailed plan received subagent review on 2026-09-05. Review corrections
 separate initial readiness from viewport eligibility and define reentrant commit
 validity without suppressing required effects during benign selection feedback.
-Automatic animations remain a fixed UX requirement. Runtime implementation has
-not started; readiness is the first implementation slice.
+Automatic animations remain a fixed UX requirement. Readiness slice A is now
+implemented and reviewed; its verification and size measurements are recorded in
+the detailed plan. Domain-owner integration remains open.

@@ -213,6 +213,8 @@ export default class TabixSource extends SingleAxisWindowedSource {
         );
 
         if (featureChunksByHandle) {
+            // This source preserves per-file batches instead of publishData().
+            this._lastLoadedDomain = Array.from(interval);
             this.#publishHandleData(handles, featureChunksByHandle);
         }
     }

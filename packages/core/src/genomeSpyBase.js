@@ -1,3 +1,4 @@
+import { iterateDataDependencies } from "./data/dataReadiness.js";
 import {
     createContainerUi,
     createMessageBox,
@@ -931,16 +932,11 @@ async function loadSvgRenderer() {
  * @param {View} view
  */
 function hasWindowedLazyDataSource(view) {
-    /** @type {View | null} */
-    let current = view;
-
-    while (current) {
-        const dataSource = current.flowHandle?.dataSource;
-        if (dataSource) {
-            return dataSource instanceof SingleAxisWindowedSource;
-        }
-        current = current.dataParent;
-    }
-
-    return false;
+    const collector = view.flowHandle?.collector;
+    return (
+        !!collector &&
+        iterateDataDependencies(collector).some(
+            (node) => node instanceof SingleAxisWindowedSource
+        )
+    );
 }

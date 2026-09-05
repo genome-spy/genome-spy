@@ -28,8 +28,10 @@ function createReadySubtree(options = {}) {
     })(/** @type {import("./view.js").default} */ (/** @type {any} */ ({})));
 
     const collector = new Collector();
-    collector.parent = dataSource;
-    collector.completed = completed;
+    dataSource.addChild(collector);
+    if (completed) {
+        dataSource.complete();
+    }
 
     unitView.flowHandle = { collector };
 
@@ -58,19 +60,26 @@ function createLazySubtree(options = {}) {
     unitView.isConfiguredVisible = () => visible;
     unitView.getEffectiveOpacity = () => opacity;
 
-    const dataSource = Object.create(SingleAxisLazySource.prototype);
-    dataSource.channel = "x";
-    dataSource.scaleResolution = {
-        getDomain: () => [0, 10],
-    };
-    dataSource.isDataReadyForDomain = function () {
-        return readyState.value;
-    };
-    dataSource.ensureDataForDomain = function (/** @type {number[]} */ domain) {
-        requests.push(domain);
-    };
+    unitView.getScaleResolution = () => ({ getDomain: () => [0, 10] });
+    const dataSource = new (class extends SingleAxisLazySource {
+        constructor() {
+            super(unitView, "x");
+            this.publishData([], [0, 10]);
+        }
+
+        isDataReadyForDomain() {
+            return readyState.value;
+        }
+
+        /** @param {number[]} domain */
+        ensureDataForDomain(domain) {
+            requests.push(domain);
+        }
+    })();
 
     const collector = new Collector();
+    dataSource.addChild(collector);
+    dataSource.complete();
 
     unitView.flowHandle = { collector, dataSource };
 
@@ -84,6 +93,7 @@ function createLazySubtree(options = {}) {
             })
         ),
         collector,
+        dataSource,
         readyState,
         requests,
     };
@@ -117,6 +127,22 @@ function createContextStub() {
 }
 
 describe("dataReadiness", () => {
+    it("cleans up subscriptions when a lazy request throws", async () => {
+        const { subtreeRoot, collector, dataSource } = createLazySubtree({
+            ready: false,
+        });
+        dataSource.ensureDataForDomain = () => {
+            throw new Error("unavailable");
+        };
+        const context = createContextStub();
+        await expect(
+            awaitSubtreeLazyReady(/** @type {any} */ (context), subtreeRoot, {
+                x: [0, 10],
+            })
+        ).rejects.toThrow("unavailable");
+        expect(collector.observers.size).toBe(0);
+        expect(context.getListenerCount()).toBe(0);
+    });
     it("builds readiness requests from scale domains", () => {
         const view = /** @type {import("./view.js").default} */ (
             /** @type {any} */ ({

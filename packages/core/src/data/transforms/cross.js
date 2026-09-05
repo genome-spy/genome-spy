@@ -27,6 +27,23 @@ export default class CrossTransform extends Transform {
 
     #primaryCompleted = false;
 
+    #foreignRevision = -1;
+
+    #consumedForeignRevision = -1;
+
+    get dataDependencies() {
+        return [this.#foreignCollector];
+    }
+
+    isDataReady() {
+        return (
+            super.isDataReady() &&
+            this.#foreignCollector.completed &&
+            this.#consumedForeignRevision ===
+                this.#foreignCollector.dataRevision
+        );
+    }
+
     /**
      * @param {import("../../spec/transform.js").CrossParams} params
      * @param {import("../collector.js").default} foreignCollector
@@ -52,6 +69,7 @@ export default class CrossTransform extends Transform {
         super.reset();
         this.#combine = undefined;
         this.#primaryCompleted = false;
+        this.#consumedForeignRevision = -1;
     }
 
     /**
@@ -83,10 +101,16 @@ export default class CrossTransform extends Transform {
 
     complete() {
         this.#primaryCompleted = true;
+        if (this.#foreignCollector.completed) {
+            this.#consumedForeignRevision = this.#foreignCollector.dataRevision;
+        }
         super.complete();
     }
 
     #prepareForeignData() {
+        if (this.#foreignRevision !== this.#foreignCollector.dataRevision) {
+            this.#foreignData = undefined;
+        }
         if (this.#foreignData) {
             return;
         }
@@ -97,6 +121,7 @@ export default class CrossTransform extends Transform {
         }
 
         this.#foreignData = Array.from(this.#foreignCollector.getData());
+        this.#foreignRevision = this.#foreignCollector.dataRevision;
         this.#foreignFields =
             this.#foreignData.length === 0
                 ? []

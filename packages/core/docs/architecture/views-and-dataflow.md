@@ -50,6 +50,11 @@ arrangement.
   data: `BEHAVIOR_CLONES`, `BEHAVIOR_MODIFIES`, and `BEHAVIOR_COLLECTS`.
 - `Collector` materializes data, supports grouping and sorting, and provides
   indexed lookups such as unique-ID lookup for picking.
+- `src/data/dataReadiness.js` walks the actual optimized primary path and
+  `FlowNode.dataDependencies` side edges. Lookup/cross nodes record the foreign
+  revision incorporated into completed output, so side arrival cannot report
+  readiness before primary replay. View ownership is not a dependency graph:
+  an inherited lookup affects its descendants but not an overriding data branch.
 
 ## Subtree initialization and readiness
 
@@ -57,7 +62,18 @@ arrangement.
 - `loadViewSubtreeData` resolves its sources and emits `subtreeDataReady`.
 - `src/view/dataReadiness.js` supplies `buildReadinessRequest`,
   `isSubtreeReady`, `isSubtreeLazyReady`, and `awaitSubtreeLazyReady`. Lazy
-  waiting re-checks readiness after collector completion.
+  waiting re-checks readiness after output and dependency collector completion.
+  Entirely eager branches are ignored by lazy-only waits; eager primary data
+  with a lazy side input still waits for recomputed output. Aborted or failed
+  waits remove their subscriptions.
+- Initial contribution readiness requires meaningful publication, including
+  empty results. Dummy lazy startup completion is pending. Current viewport
+  readiness additionally uses each lazy source's coverage policy. Windowed
+  sources keep fetched coverage separate until publication; Tabix preserves
+  physical file batches while publishing its coverage at the same boundary.
+- Scale initial finalization uses contribution readiness independently of
+  effective-domain availability. Partial domains remain available to rendering
+  and lazy requests; readiness never gates creation of the scale itself.
 - Startup initialization is visibility-aware. Hidden subtrees skip dataflow and
   mark wiring until `initializeVisibleViewData` initializes them after a
   visibility change.

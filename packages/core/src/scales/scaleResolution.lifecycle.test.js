@@ -2,9 +2,16 @@ import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { registerLazyDataSource } from "../data/sources/dataSourceFactory.js";
-import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
+import SingleAxisWindowedSource from "../data/sources/lazy/singleAxisWindowedSource.js";
+import GenomeSpy from "../genomeSpyBase.js";
+import Animator from "../utils/animator.js";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import { getRequiredScaleResolution } from "./scaleResolutionTestUtils.js";
+import { isDataReady } from "../data/dataReadiness.js";
+import {
+    awaitSubtreeLazyReady,
+    isSubtreeLazyReady,
+} from "../view/dataReadiness.js";
 
 /**
  * @typedef {import("../data/sources/inlineSource.js").default} InlineSource
@@ -27,7 +34,7 @@ afterEach(() => {
  * Real lazy publication with test-controlled completion order, without timers
  * or remote data. The inherited startup load still emits its dummy completion.
  */
-class ControlledSource extends SingleAxisLazySource {
+class ControlledSource extends SingleAxisWindowedSource {
     /**
      * @param {object} params
      * @param {import("../view/view.js").default} view
@@ -79,6 +86,153 @@ async function createExample(spec) {
 }
 
 describe("example scale-domain lifecycle contracts", () => {
+    test("ready-empty shared input ends initial loading so later updates animate", async () => {
+        registerControlledSource();
+        const animator = new Animator(() => undefined);
+        // Use real interpolation and advance its queued frames deterministically.
+        vi.spyOn(animator, "requestRender").mockImplementation(() => undefined);
+        const { view } = await createHeadlessEngine(
+            {
+                scales: { x: { domain: [0, 10] } },
+                layer: [0, 1].map(() => ({
+                    data: {
+                        lazy: /** @type {any} */ ({ type: "lifecycleTest" }),
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "score", type: "quantitative" },
+                    },
+                })),
+            },
+            { contextOptions: { animator } }
+        );
+        disposers.push(() => {
+            view.disposeSubtree();
+            animator.finalize();
+        });
+        view.getDescendants().forEach((v) => v.onBeforeRender());
+        const sources = view.context.dataFlow.dataSources.filter(
+            (source) => source instanceof ControlledSource
+        );
+        const y = getRequiredScaleResolution(view, "y");
+        sources[0].publish([{ x: 0, score: 4 }], [0, 10]);
+        expect(y.getDomain()).toEqual([0, 4]);
+        expect(animator.transitions).toHaveLength(0);
+        sources[1].publish([], [0, 10]);
+        expect(y.getDomain()).toEqual([0, 4]);
+        expect(animator.transitions).toHaveLength(0);
+
+        sources[0].publish([{ x: 0, score: 8 }], [0, 10]);
+        expect(y.getDomain()).toEqual([0, 4]);
+        const start = performance.now();
+        const upperBounds = new Set();
+        for (const elapsed of [0, 125, 250, 375, 600]) {
+            animator.transitions
+                .splice(0)
+                .forEach((callback) => callback(start + elapsed));
+            upperBounds.add(y.getDomain()[1]);
+        }
+        expect(upperBounds.size).toBeGreaterThan(2);
+        expect(y.getDomain()).toEqual([0, 8]);
+    });
+
+    test("inherited Dynseq lookup gates its output but not an inline baseline sibling", async () => {
+        registerControlledSource();
+        const view = await createExample({
+            data: { values: [{ x: 0 }, { x: 1 }] },
+            transform: [
+                {
+                    type: "coordinateLookup",
+                    from: {
+                        data: {
+                            lazy: /** @type {any} */ ({
+                                type: "lifecycleTest",
+                            }),
+                        },
+                    },
+                    key: "x",
+                    values: ["score"],
+                },
+                { type: "filter", expr: "isValid(datum.score)" },
+            ],
+            scales: { x: { domain: [0, 1] } },
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "score", type: "quantitative" },
+                    },
+                },
+                {
+                    data: { values: [{}] },
+                    mark: "rule",
+                    encoding: { y: { datum: 0, type: "quantitative" } },
+                },
+            ],
+        });
+        const [track, baseline] =
+            /** @type {import("../view/layerView.js").default} */ (view)
+                .children;
+        const source = view.context.dataFlow.dataSources.find(
+            (source) => source instanceof ControlledSource
+        );
+        const output = track.flowHandle.collector;
+        const foreign = view.flowHandle.auxiliaryCollectors
+            .values()
+            .next().value;
+        const observerCount = foreign.observers.size;
+        expect(output.completed).toBe(true);
+        expect(isDataReady(output)).toBe(false);
+        expect(isSubtreeLazyReady(track, { x: [0, 1] })).toBe(false);
+        expect(isSubtreeLazyReady(baseline, { x: [0, 1] })).toBe(true);
+
+        const wait = awaitSubtreeLazyReady(view.context, track, { x: [0, 1] });
+        // Exercise the embed/screenshot wait's windowed-source view filter
+        // without constructing a renderer or DOM surface.
+        const engine = Object.create(GenomeSpy.prototype);
+        engine.viewRoot = view;
+        const screenshotWait = engine.awaitVisibleLazyData();
+        const screenshotReady = vi.fn();
+        screenshotWait.then(screenshotReady);
+        await Promise.resolve();
+        expect(screenshotReady).not.toHaveBeenCalled();
+        /** @type {boolean[]} */
+        const beforeReplay = [];
+        const unsubscribe = foreign.subscribeDomainChanges("readiness", () => {
+            beforeReplay.push(isSubtreeLazyReady(track, { x: [0, 1] }));
+        });
+        source.publish([], [0, 1]);
+        await wait;
+        await screenshotWait;
+        expect(beforeReplay).toEqual([false]);
+        expect(isDataReady(output)).toBe(true);
+        expect(Array.from(output.getData())).toEqual([]);
+        expect(foreign.observers.size).toBe(observerCount);
+        unsubscribe();
+
+        // A new requested interval needs coverage without undoing publication.
+        expect(isDataReady(output)).toBe(true);
+        expect(isSubtreeLazyReady(track, { x: [0, 5] })).toBe(false);
+        const controller = new AbortController();
+        const laterWait = awaitSubtreeLazyReady(
+            view.context,
+            track,
+            { x: [0, 5] },
+            controller.signal
+        );
+        controller.abort();
+        await expect(laterWait).rejects.toThrow("aborted");
+        expect(foreign.observers.size).toBe(observerCount);
+
+        source.publish([{ x: 0, score: 6 }], [0, 5]);
+        expect(isSubtreeLazyReady(track, { x: [0, 5] })).toBe(true);
+        expect(getRequiredScaleResolution(track, "y").getDomain()).toEqual([
+            0, 6,
+        ]);
+    });
+
     test("a pending coordinate lookup and a ready-empty lookup both complete an empty collector", async () => {
         registerControlledSource();
         // Dynseq's primary sequence can finish before its BigWig lookup. A
