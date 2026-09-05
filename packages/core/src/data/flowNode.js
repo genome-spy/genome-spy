@@ -116,9 +116,6 @@ export default class FlowNode {
         );
     }
 
-    /** Invalidate relation-specific caches after a new side publication. */
-    invalidateDataDependencies() {}
-
     /** Record inputs at batch preparation, outside the per-row fast path. */
     consumeDataDependencies() {
         this.#sideInputs?.consume();

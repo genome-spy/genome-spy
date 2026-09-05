@@ -192,6 +192,60 @@ describe("declared side publications", () => {
         runtime.dispose();
     });
 
+    test("empty cross checks availability once while processing a primary batch", () => {
+        const { runtime, primary, foreign, transform } = fixture("cross");
+        publish(foreign, []);
+        runtime.flushNow();
+        transform.reset();
+        const available = vi.spyOn(transform, "areDataDependenciesAvailable");
+        // Empty output must still consume its input, without per-row policy work.
+        for (let x = 0; x < 1000; x++) transform.handle({ x });
+        expect(available).toHaveBeenCalledTimes(1);
+        transform.complete();
+        expect(transform.isDataReady()).toBe(true);
+        primary.disposeSubtree();
+        runtime.dispose();
+    });
+
+    test("failed cross preparation does not cache a successfully validated revision", () => {
+        const { runtime, primary, foreign, transform, output } =
+            fixture("cross");
+        publish(foreign, [{ a: 1 }, { b: 2 }]);
+        expect(() => runtime.flushNow()).toThrow(/homogeneous fields/);
+        expect(isDataReady(output)).toBe(false);
+        transform.requestRepropagate();
+        expect(() => runtime.flushNow()).toThrow(/homogeneous fields/);
+        primary.disposeSubtree();
+        runtime.dispose();
+    });
+
+    test("implicit lookup fields rebuild after empty and changed foreign schemas", () => {
+        const runtime = new ViewParamRuntime();
+        const primary = new Collector();
+        primary.paramRuntimeProvider = { paramRuntime: runtime };
+        const foreign = new Collector();
+        const lookup = new LookupTransform(
+            { type: "lookup", from: { values: [] }, key: "id" },
+            foreign
+        );
+        const output = new Collector();
+        primary.addChild(lookup);
+        lookup.addChild(output);
+        lookup.initializeOnce();
+        publish(foreign, [{ id: 0, score: 2 }]);
+        publish(primary, [{ id: 0 }]);
+        expect(Array.from(output.getData())).toEqual([{ id: 0, score: 2 }]);
+        publish(foreign, []);
+        runtime.flushNow();
+        expect(Array.from(output.getData())).toEqual([{ id: 0 }]);
+        publish(foreign, [{ id: 0, label: "new" }]);
+        runtime.flushNow();
+        expect(Array.from(output.getData())).toEqual([{ id: 0, label: "new" }]);
+        expect(isDataReady(output)).toBe(true);
+        primary.disposeSubtree();
+        runtime.dispose();
+    });
+
     test("pending primary collection cannot publish when a side input arrives", () => {
         const { runtime, primary, foreign, output } = fixture("lookup");
         primary.reset();

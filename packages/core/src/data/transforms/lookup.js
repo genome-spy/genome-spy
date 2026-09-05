@@ -136,7 +136,6 @@ export default class LookupTransform extends Transform {
          */
         const ensureIndex = (lookupData) => {
             prepareBatch();
-            this.consumeDataDependencies();
             if (
                 foreignCollector &&
                 indexRevision !== foreignCollector.dataRevision
@@ -144,6 +143,7 @@ export default class LookupTransform extends Transform {
                 index = null;
             }
             if (index) {
+                this.consumeDataDependencies();
                 return;
             }
             if (!lookupData && !foreignCollector.completed) {
@@ -175,6 +175,7 @@ export default class LookupTransform extends Transform {
             if (foreignCollector) {
                 indexRevision = foreignCollector.dataRevision;
             }
+            this.consumeDataDependencies();
         };
 
         /** @param {Datum} datum */
@@ -232,16 +233,6 @@ export default class LookupTransform extends Transform {
             // Subsequent rows use the indexed handler directly.
             this.handle = propagate;
             propagate(datum);
-        };
-
-        this.invalidateDataDependencies = () => {
-            index = null;
-            if (implicitValues) {
-                // The refreshed table may expose a different set of output fields.
-                valueAccessors = [];
-                outputFields = [];
-            }
-            this.handle = specializeAndPropagate;
         };
 
         /**

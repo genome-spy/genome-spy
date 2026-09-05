@@ -654,9 +654,16 @@ export default class GraphRuntime {
                                 "Cyclic streaming publication dependencies"
                             );
                         visited.add(update);
-                        const prerequisite = Array.from(
-                            this.#updates.get(update).prerequisites?.() ?? []
-                        ).find((candidate) => this.#updates.has(candidate));
+                        /** @type {(() => void) | undefined} */
+                        let prerequisite;
+                        for (const candidate of this.#updates
+                            .get(update)
+                            .prerequisites?.() ?? []) {
+                            if (this.#updates.has(candidate)) {
+                                prerequisite = candidate;
+                                break;
+                            }
+                        }
                         if (!prerequisite) break;
                         update = prerequisite;
                     }

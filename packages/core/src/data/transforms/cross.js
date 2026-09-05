@@ -27,6 +27,8 @@ export default class CrossTransform extends Transform {
 
     #foreignRevision = -1;
 
+    #batchPrepared = false;
+
     get dataDependencies() {
         return [this.#foreignCollector];
     }
@@ -40,22 +42,16 @@ export default class CrossTransform extends Transform {
         this.#foreignCollector = foreignCollector;
     }
 
-    invalidateDataDependencies() {
-        this.#foreignData = undefined;
-        this.#foreignFields = undefined;
-        this.#combine = undefined;
-    }
-
     reset() {
         super.reset();
-        this.#combine = undefined;
+        this.#batchPrepared = false;
     }
 
     /**
      * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
-        this.#combine = undefined;
+        this.#batchPrepared = false;
         super.beginBatch(flowBatch);
     }
 
@@ -63,16 +59,17 @@ export default class CrossTransform extends Transform {
      * @param {Datum} datum
      */
     handle(datum) {
-        this.#prepareForeignData();
-        if (!this.#combine) this.consumeDataDependencies();
-        if (this.#foreignData.length === 0) {
-            return;
+        if (!this.#batchPrepared) {
+            this.#prepareForeignData();
+            if (this.#foreignData.length) {
+                this.#combine = createCombiner(
+                    getAllProperties(datum),
+                    this.#foreignFields
+                );
+            }
+            this.consumeDataDependencies();
+            this.#batchPrepared = true;
         }
-
-        this.#combine ??= createCombiner(
-            getAllProperties(datum),
-            this.#foreignFields
-        );
 
         for (const foreignDatum of this.#foreignData) {
             this._propagate(this.#combine(datum, foreignDatum));
@@ -93,7 +90,6 @@ export default class CrossTransform extends Transform {
         }
 
         this.#foreignData = Array.from(this.#foreignCollector.getData());
-        this.#foreignRevision = this.#foreignCollector.dataRevision;
         this.#foreignFields =
             this.#foreignData.length === 0
                 ? []
@@ -111,6 +107,7 @@ export default class CrossTransform extends Transform {
                 );
             }
         }
+        this.#foreignRevision = this.#foreignCollector.dataRevision;
     }
 }
 

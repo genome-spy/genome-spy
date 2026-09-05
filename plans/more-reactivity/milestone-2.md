@@ -50,9 +50,9 @@ existing queued replay path, not merely move those callbacks into another class.
    construction and graph optimization through the graph initialization lifecycle;
    do not read subclass private fields from the FlowNode constructor. Dispose the
    observation with the consuming node. Self lookup declares no foreign edge.
-2. **Invalidation.** On foreign publication, invalidate only the local state that
-   depends on that publication and request primary replay if primary input has
-   completed. Readiness becomes false immediately when an input is pending or its
+2. **Invalidation.** On foreign publication, request primary replay if primary
+   input has completed. Refresh relation caches by revision during preparation,
+   without a separate observer-side cache invalidation path. Readiness becomes false immediately when an input is pending or its
    current revision differs from the revision consumed by completed output.
 3. **Replay.** Resolve the replay root through the actual optimized primary path.
    Queue its stable callback through `requestRepropagate()`. Multiple consumers or
@@ -94,7 +94,7 @@ uses its existing current-domain coverage predicate. It also records whether the
 last completed primary publication was accepted or skipped/pending. This is
 publication-level state, not a second relation revision or tuple change set.
 
-On a side callback: a changed revision invalidates relation caches; an unchanged
+On a side callback: a changed revision requests primary replay; an unchanged
 revision with already-accepted output and currently satisfied availability does
 nothing. Unchanged revision with a previously pending publication and now-satisfied
 availability requests primary replay without rebuilding an unchanged keyed index.
@@ -152,8 +152,9 @@ Method names are provisional; these responsibilities are the acceptance contract
 `FlowNode.dataDependencies` must remain the single source of side-edge identity.
 Do not maintain a second transform-specific list with independent ownership.
 
-The transform supplies cache invalidation, `isAvailable()`, and whether this publication actually
-used available foreign data. Keep the following local:
+The transform supplies availability policy and records which foreign inputs it
+actually used after successful preparation. Cache freshness is checked locally
+by revision during preparation. Keep the following local:
 
 - Lookup's keyed index, implicit output-field discovery, cached writer, cloning,
   and evaluated index revision. Retain the minimum index-version information
@@ -317,11 +318,27 @@ replacement, correct rows, immediate SVG geometry, and picking of the new datum.
 The cross fixture checks one collector revision increment; no new GPU upload path
 was introduced or direct driver-level upload counts claimed.
 
-Size gate: production changes add 179 and remove 115 lines (net +64), including
-87 lines for the shared binding. Lookup/cross together shrink by 91 lines. The
+Size gate: production changes add 186 and remove 135 lines (net +51), including
+82 lines for the shared binding. Lookup/cross together shrink by 103 lines. The
 expected overall size reduction was not achieved: independent-root ordering and
 shared lifecycle/consumption semantics cost more than the duplicated transform
 code removed. Simplification retained the existing queue and `completed` flag,
 kept collector ordering unchanged, and avoided a new scheduler, generation system,
 or tuple protocol. This growth is accepted for the tested publication-ordering
 contract rather than presented as an overall code-size reduction.
+
+### Implemented Luna simplifications
+
+Removed observer-side cache invalidation and the binding's redundant observed
+revision. Local revision checks rebuild keyed indexes, implicit field schemas,
+and Cartesian relation caches during preparation. Cross uses explicit batch
+preparation state so empty foreign data does not trigger availability checks for
+every primary row. Lookup consumption and cross's cached revision are recorded
+only after successful preparation; retrying invalid cross data must still fail
+validation. Prerequisite selection iterates directly without materializing an
+array. No topology cache was added without profiling evidence.
+
+The cleanup removes 13 production lines. Regression tests cover empty-cross
+batch work, implicit schema replacement through empty data, and failed cache
+preparation on retry. The full suite passes with 4,012 tests, together with Core
+TypeScript checks and lint.

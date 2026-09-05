@@ -69,11 +69,14 @@ arrangement.
   used for nonempty output. `areDataDependenciesAvailable()` supplies availability
   policy; coordinate lookup includes current viewport coverage. Pending output
   may complete an empty stream while remaining unready.
-- New side revisions invalidate local caches and enqueue primary replay. An
-  unchanged cached-side replay does nothing when output is already current, but
-  can release a previously pending publication once coverage becomes available.
-  `invalidateDataDependencies()` only clears local relational state; the binding
-  handles readiness and replay. Self lookup has no side binding.
+- New side revisions enqueue primary replay. Transforms compare cache revisions
+  during batch preparation and rebuild only when needed, including implicit
+  lookup fields. The binding handles readiness and replay without a separate
+  cache-invalidation hook. An unchanged cached-side replay does nothing when
+  output is current, but can release a pending publication once coverage becomes
+  available. Self lookup has no side binding. Cross prepares once per primary
+  batch even for empty foreign relations; cache revisions and consumption are
+  recorded after successful preparation.
 - Replay jobs declare pending publishers of their side collectors as prerequisites.
   These run first in the existing streaming queue, regardless of primary-tree
   depth or enqueue order. The builder rejects nested auxiliary joins, and the

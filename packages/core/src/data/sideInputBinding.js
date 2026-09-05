@@ -6,7 +6,7 @@ export default class SideInputBinding {
     /** @type {import("./flowNode.js").default} */
     #node;
 
-    /** @type {{collector: import("./collector.js").default, observed: number, consumed: number}[]} */
+    /** @type {{collector: import("./collector.js").default, consumed: number}[]} */
     #inputs;
 
     #prepared = false;
@@ -23,17 +23,12 @@ export default class SideInputBinding {
             new Set(node.dataDependencies),
             (collector) => ({
                 collector,
-                observed: collector.dataRevision,
                 consumed: -1,
             })
         );
         for (const input of this.#inputs) {
             this.#disposers.push(
                 input.collector.observe(() => {
-                    if (input.observed !== input.collector.dataRevision) {
-                        input.observed = input.collector.dataRevision;
-                        node.invalidateDataDependencies();
-                    }
                     if (
                         node.parent &&
                         node.completed &&

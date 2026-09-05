@@ -137,7 +137,7 @@ contracts, implementation slices, risks, and the verification matrix.
 - [x] Make lookup and cross use the same dependency/publication protocol.
 
 Completed 2026-09-06; see the detailed plan's implementation outcome for verification
-and the net +64 production-line tradeoff.
+and the net +51 production-line tradeoff.
 
 **Outcome:** `dataDependencies` determines side-input invalidation, replay and
 consumed-revision readiness, rather than merely describing readiness traversal.
@@ -147,8 +147,8 @@ consumed-revision readiness, rather than merely describing readiness traversal.
 view readiness waiters, domain contributor readers and App availability consumers.
 
 **Implementation shape:** retain stable optimized replay roots. On a declared
-foreign revision change, invalidate transform-specific caches through a narrow
-hook and enqueue the primary root once. On successful completion, record the exact
+foreign revision change, enqueue the primary root once; transforms refresh
+revision-checked caches during batch preparation. On successful completion, record the exact
 input revisions consumed before notifying downstream readers. Include empty output.
 If input is pending, retain the current supported readiness/loading policy rather
 than pretending completion consumed it. Let the protocol own and dispose observation;
