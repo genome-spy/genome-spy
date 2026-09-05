@@ -89,6 +89,12 @@ Common checks from the repository root:
 - Prefer offensive over defensive code: rely on types, validate at boundaries,
   fail fast on unexpected input, and avoid unnecessary null checks, optional
   chaining, and silent fallbacks.
+- Before adding recovery, rollback, retries, or reentrancy support, identify the
+  supported caller or user-visible requirement that needs it. A hypothetical
+  failure or a test introduced with the machinery is not sufficient justification.
+  Prefer rejecting unsupported operations at a clear boundary over supporting
+  arbitrary partial states. Preserve cleanup and handling of expected lifecycle
+  events such as loading, cancellation, and disposal.
 - Prefer an explicit `else` when both branches are similarly likely. Branches on
   enums must cover every case and fail loudly on unknown values.
 - Prefer explicit contracts over implicit behavior, such as requiring domains
