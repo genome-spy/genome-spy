@@ -18,6 +18,9 @@ import {
     getIntervalSelection,
     normalizeIntervalForSelection,
 } from "./selectionDomainUtils.js";
+import { getAccessorDomainKey } from "../encoder/accessor.js";
+import { getPrimaryChannel } from "../encoder/encoder.js";
+import { collectDomainSensitiveScaleChannels } from "../data/flowNode.js";
 import { isDataReady } from "../data/dataReadiness.js";
 import deepEqual from "../utils/deepEqual.js";
 import { DOMAIN_UPDATE_PRIORITY } from "./domainRuntime.js";
@@ -110,8 +113,8 @@ export default function createDomainInputs({
         );
         const constraints = new Map(
             Array.from(dataMembers, (member) => {
-                // Encoders are installed after scale bootstrap. Collector registration
-                // replaces these bindings once actual encoders/constraints are available.
+                // Encoders are installed after scale bootstrap. Subtree initialization
+                // replaces these bindings once all encoders are available.
                 const bound =
                     viewport && member.view.mark.encoders
                         ? getConstraints(member)
@@ -348,6 +351,47 @@ export default function createDomainInputs({
             );
         }
 
+        const dataChanged = () => {
+            if (viewport && owner.state.phase === "ready")
+                scheduler.schedule(true);
+            else request("data");
+            runtime.flushNow({ afterTransaction: true });
+        };
+        // The same bound accessors drive domain extraction and invalidation.
+        // A domain-sensitive flow must not invalidate its own inferred domain.
+        /** @type {Map<import("../data/collector.js").default, {keys: Set<string>, sensitive: Set<import("../spec/channel.js").ChannelWithScale>}>} */
+        const subscriptions = new Map();
+        for (const member of dataMembers) {
+            const collector = member.view.getCollector();
+            if (!collector) continue;
+            let subscription = subscriptions.get(collector);
+            if (!subscription) {
+                subscription = {
+                    keys: new Set(),
+                    sensitive: collectDomainSensitiveScaleChannels(collector),
+                };
+                subscriptions.set(collector, subscription);
+            }
+            for (const accessor of accessors.get(member)) {
+                if (
+                    !explicit &&
+                    subscription.sensitive.has(
+                        /** @type {import("../spec/channel.js").ChannelWithScale} */ (
+                            getPrimaryChannel(accessor.scaleChannel)
+                        )
+                    )
+                )
+                    continue;
+                subscription.keys.add(getAccessorDomainKey(accessor, type));
+            }
+        }
+        for (const [collector, { keys }] of subscriptions) {
+            for (const key of keys)
+                disposers.push(
+                    collector.subscribeDomainChanges(key, dataChanged)
+                );
+        }
+
         return {
             get lastVisible() {
                 return lastVisible;
@@ -357,12 +401,6 @@ export default function createDomainInputs({
             },
             request,
             readData,
-            dataChanged() {
-                if (viewport && owner.state.phase === "ready")
-                    scheduler.schedule(true);
-                else request("data");
-                runtime.flushNow({ afterTransaction: true });
-            },
             syncSelection() {
                 if (
                     !link ||

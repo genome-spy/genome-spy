@@ -40,7 +40,6 @@ import {
     QUANTITATIVE,
 } from "./scaleResolutionConstants.js";
 
-import { getAccessorDomainKey } from "../encoder/accessor.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import {
     isSecondaryChannel,
@@ -891,9 +890,12 @@ export default class ScaleResolution {
         this.#scaleManager.dispose();
     }
 
-    // Domain inputs are rebound only when configuration, membership or encoders
-    // change. Ordinary updates use the bound inputs directly.
-    #bindDomainInputs() {
+    /**
+     * Rebind after configuration, membership, or encoder initialization changes.
+     * Owns the collector subscriptions; ordinary publication uses these bindings.
+     * @internal
+     */
+    bindDomainInputs() {
         const lastVisible = this.#domainInputs?.lastVisible;
         this.#domainRuntime?.cancelSourceUpdates();
         if (this.#domainInputs) {
@@ -941,44 +943,6 @@ export default class ScaleResolution {
             ignoreSelectionInitial: this.#ignoreSelectionInitial,
             lastVisible,
         });
-    }
-
-    /**
-     * @param {import("../data/collector.js").default} collector
-     * @param {Iterable<import("../types/encoder.js").ScaleAccessor>} accessors
-     * @returns {() => void}
-     */
-    registerCollectorSubscriptions(collector, accessors) {
-        /** @type {Set<string>} */
-        const domainKeys = new Set();
-
-        for (const accessor of accessors) {
-            if (accessor.channelDef.domainInert) {
-                continue;
-            }
-            domainKeys.add(getAccessorDomainKey(accessor, this.type));
-        }
-
-        if (domainKeys.size === 0) {
-            return () => undefined;
-        }
-
-        this.#bindDomainInputs();
-        const listener = () => this.#domainInputs?.dataChanged();
-
-        /** @type {(() => void)[]} */
-        const unregisters = [];
-        for (const domainKey of domainKeys) {
-            unregisters.push(
-                collector.subscribeDomainChanges(domainKey, listener)
-            );
-        }
-
-        return () => {
-            for (const unregister of unregisters) {
-                unregister();
-            }
-        };
     }
 
     /**
@@ -1255,7 +1219,7 @@ export default class ScaleResolution {
      */
     reconfigure() {
         this.#invalidateMergedScaleProps();
-        this.#bindDomainInputs();
+        this.bindDomainInputs();
         this.#updateDomainSource("membership", true);
     }
 
@@ -1366,7 +1330,7 @@ export default class ScaleResolution {
                     );
                 }
             });
-            this.#bindDomainInputs();
+            this.bindDomainInputs();
             return scale;
         } catch (error) {
             this.#domainInputs?.dispose();

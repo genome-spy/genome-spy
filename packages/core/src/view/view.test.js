@@ -964,7 +964,7 @@ describe("Test domain handling", () => {
             LayerView
         ).then((view) => expect(view.children[0].isDomainInert()).toBe(true)));
 
-    test("domain-sensitive upstream flows do not register matching domain subscriptions", async () => {
+    test("domain-sensitive upstream publication does not change its inferred scale domain", async () => {
         const view = await create(
             {
                 data: { values: [{ a: 1 }] },
@@ -987,17 +987,16 @@ describe("Test domain handling", () => {
         };
 
         const resolution = view.getScaleResolution("x");
-        const registerSpy = vi.spyOn(
-            resolution,
-            "registerCollectorSubscriptions"
-        );
-
-        view.registerDomainSubscriptions();
-
-        expect(registerSpy).not.toHaveBeenCalled();
+        resolution.bindDomainInputs();
+        const initialDomain = resolution.getDomain();
+        collector.handle({ a: 1 });
+        collector.handle({ a: 9 });
+        collector.complete();
+        expect(resolution.getDomain()).toEqual(initialDomain);
+        view.disposeSubtree();
     });
 
-    test("domain-sensitive upstream flows still register when the scale domain is explicit", async () => {
+    test("domain-sensitive upstream publication updates an explicit scale data extent", async () => {
         const view = await create(
             {
                 data: { values: [{ a: 1 }] },
@@ -1006,7 +1005,7 @@ describe("Test domain handling", () => {
                     x: {
                         field: "a",
                         type: "quantitative",
-                        scale: { domain: [0, 10] },
+                        scale: { domain: [0, 10], zoom: { extent: "data" } },
                     },
                     y: { value: 0 },
                 },
@@ -1024,14 +1023,13 @@ describe("Test domain handling", () => {
         };
 
         const resolution = view.getScaleResolution("x");
-        const registerSpy = vi.spyOn(
-            resolution,
-            "registerCollectorSubscriptions"
-        );
-
-        view.registerDomainSubscriptions();
-
-        expect(registerSpy).toHaveBeenCalledTimes(1);
+        resolution.bindDomainInputs();
+        collector.handle({ a: 1 });
+        collector.handle({ a: 9 });
+        collector.complete();
+        expect(resolution.getDomain()).toEqual([0, 10]);
+        expect(resolution.zoomExtent).toEqual([1, 9]);
+        view.disposeSubtree();
     });
 });
 

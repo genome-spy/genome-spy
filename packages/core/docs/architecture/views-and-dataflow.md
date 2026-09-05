@@ -103,7 +103,12 @@ phase distinguishes collecting, early interaction, and complete readiness;
 interaction protects the display without ending reference collection.
 
 All scale kinds compile expression dependencies, accessors and viewport topology
-in `domainInputs.js`. Pure functions in `domainPlanner.js` validate configured
+in `domainInputs.js`. Subtree initialization binds each affected resolution once
+after installing all encoders. The binding owns collector subscriptions and
+uses the same accessors for domain extraction and invalidation, deduplicating
+shared collector keys and suppressing inferred-domain feedback. Rebinding or
+disposal removes those subscriptions. App metadata needs no explicit domain
+refresh after publication. Pure functions in `domainPlanner.js` validate configured
 sources and combine domains; bootstrap and unbound `getDataDomain()` queries use
 the same readers without creating another state owner. `ScaleInstanceManager`
 normalizes candidates on a working scale, maintains categorical index mapping,
@@ -119,7 +124,9 @@ jobs, including unchanged-display reference/extent progress. Source completion
 batches synchronous fan-out; initialization freezes the settled reference before
 observer effects. Immediate rendering uses this same settled boundary. Initial lazy requests still start
 through the existing post-load layout notifications. Current viewport coverage
-gates viewport candidates without reopening initial readiness.
+gates viewport candidates without reopening initial readiness. UnitView retains
+a small subtree-ready selection synchronization bridge: domain-inert linked
+scales have no collector publication to seed their initial brush.
 
 ## Dynamic view lifecycle
 

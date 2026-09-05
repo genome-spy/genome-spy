@@ -330,6 +330,91 @@ describe("MetadataView", () => {
         expect(attributeViews.foo.spec.overhang).toEqual({ bottom: false });
     });
 
+    it("publishes metadata color domains before an async rebuild becomes ready", async () => {
+        const sampleMetadata = {
+            attributeNames: ["group", "score"],
+            attributeDefs: {
+                group: { type: "nominal" },
+                score: {
+                    type: "quantitative",
+                    scale: { zero: false, nice: false },
+                },
+            },
+            entities: {
+                s1: { group: "A", score: 1 },
+                s2: { group: "B", score: 2 },
+            },
+        };
+        const { metadataView, sampleView, store } =
+            await createMetadataViewTestHarness({
+                sampleMetadata,
+                sampleDataEntities: {
+                    s1: { indexNumber: 0 },
+                    s2: { indexNumber: 1 },
+                },
+            });
+        expect(metadataView.getAttributeInfo("group").scale.domain()).toEqual([
+            "A",
+            "B",
+        ]);
+        expect(metadataView.getAttributeInfo("score").scale.domain()).toEqual([
+            1, 2,
+        ]);
+
+        // Hold the rebuild before its dynamic source publishes the new rows.
+        const syncGuideViews = metadataView.syncGuideViews.bind(metadataView);
+        /** @type {PromiseWithResolvers<void>} */
+        const publicationGate = Promise.withResolvers();
+        /** @type {PromiseWithResolvers<void>} */
+        const rebuildStarted = Promise.withResolvers();
+        const syncSpy = vi
+            .spyOn(metadataView, "syncGuideViews")
+            .mockImplementation(async () => {
+                rebuildStarted.resolve();
+                await publicationGate.promise;
+                return syncGuideViews();
+            });
+
+        try {
+            const updatedMetadata = {
+                ...sampleMetadata,
+                entities: {
+                    s1: { group: "C", score: 10 },
+                    s2: { group: "D", score: 20 },
+                },
+            };
+            sampleView.sampleHierarchy.sampleMetadata = updatedMetadata;
+            store.setState({
+                provenance: {
+                    present: {
+                        sampleView: { sampleMetadata: updatedMetadata },
+                    },
+                },
+            });
+            let ready = false;
+            const metadataReady = metadataView.awaitMetadataReady().then(() => {
+                ready = true;
+            });
+            await rebuildStarted.promise;
+            expect(ready).toBe(false);
+
+            publicationGate.resolve();
+            await metadataReady;
+
+            // Attribute actions and bookmark capture read these public scales.
+            expect(
+                metadataView.getAttributeInfo("group").scale.domain()
+            ).toEqual(["C", "D"]);
+            expect(
+                metadataView.getAttributeInfo("score").scale.domain()
+            ).toEqual([10, 20]);
+        } finally {
+            publicationGate.resolve();
+            syncSpy.mockRestore();
+            metadataView.dispose();
+        }
+    });
+
     it("serializes overlapping metadata subtree rebuilds", async () => {
         const { metadataView, sampleView, store } =
             await createMetadataViewTestHarness();

@@ -6,12 +6,9 @@ import LinkMark from "../marks/link.js";
 import TextMark from "../marks/text.js";
 
 import {
-    getEncoderAccessors,
     getEncoderDataAccessor,
-    getPrimaryChannel,
     primaryPositionalChannels,
 } from "../encoder/encoder.js";
-import { isScaleAccessor } from "../encoder/accessor.js";
 import View from "./view.js";
 import {
     asSelectionConfig,
@@ -24,7 +21,6 @@ import { getEncodingSearchFields } from "../encoder/metadataChannels.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { createEventPredicate } from "../utils/interactionConfig.js";
 import { field } from "../utils/field.js";
-import { collectDomainSensitiveScaleChannels } from "../data/flowNode.js";
 import { resolveViewResolutions } from "./resolutionPlanner.js";
 
 /**
@@ -66,11 +62,6 @@ export default class UnitView extends View {
      * @type {(zoomLevel: number) => void}
      */
     #zoomLevelSetter;
-
-    /**
-     * @type {boolean}
-     */
-    #domainSubscriptionsRegistered = false;
 
     /**
      * @type {import("vega-util").AccessorFn[] | null}
@@ -125,6 +116,8 @@ export default class UnitView extends View {
             );
         }
 
+        // Domain-inert linked scales have no collector publication to seed the
+        // brush. Keep this startup bridge until that case has an owner boundary.
         this.registerDisposer(
             this._addBroadcastHandler("subtreeDataReady", () => {
                 for (const channel of primaryPositionalChannels) {
@@ -379,97 +372,6 @@ export default class UnitView extends View {
         return this.flowHandle?.collector;
     }
 
-    /**
-     * Registers collector subscriptions that keep scale domains up to date.
-     */
-    registerDomainSubscriptions() {
-        if (this.#domainSubscriptionsRegistered) {
-            return;
-        }
-
-        if (this.isDomainInert()) {
-            return;
-        }
-
-        const collector = this.getCollector();
-        if (!collector) {
-            return;
-        }
-
-        const encoders = this.mark.encoders;
-        if (!encoders) {
-            throw new Error("Encoders are not initialized!");
-        }
-
-        this.#domainSubscriptionsRegistered = true;
-
-        const domainDependentChannels =
-            collectDomainSensitiveScaleChannels(collector);
-
-        /** @type {Map<import("../scales/scaleResolution.js").default, Set<import("../types/encoder.js").ScaleAccessor>>} */
-        const accessorsByResolution = new Map();
-
-        for (const encoder of Object.values(encoders)) {
-            if (!encoder) {
-                continue;
-            }
-
-            const accessors = getEncoderAccessors(encoder);
-            if (accessors.length === 0) {
-                continue;
-            }
-
-            for (const accessor of accessors) {
-                if (!isScaleAccessor(accessor)) {
-                    continue;
-                }
-                const resolution = this.getScaleResolution(
-                    accessor.scaleChannel
-                );
-                if (!resolution) {
-                    throw new Error(
-                        "Missing scale resolution for channel: " +
-                            accessor.scaleChannel
-                    );
-                }
-                if (accessor.channelDef.domainInert) {
-                    continue;
-                }
-                if (
-                    createsDomainFeedback(
-                        accessor,
-                        resolution,
-                        domainDependentChannels
-                    )
-                ) {
-                    continue;
-                }
-
-                let accessorsForResolution =
-                    accessorsByResolution.get(resolution);
-                if (!accessorsForResolution) {
-                    accessorsForResolution = new Set();
-                    accessorsByResolution.set(
-                        resolution,
-                        accessorsForResolution
-                    );
-                }
-                accessorsForResolution.add(accessor);
-            }
-        }
-
-        for (const [resolution, accessors] of accessorsByResolution) {
-            if (accessors.size === 0) {
-                continue;
-            }
-            const unregister = resolution.registerCollectorSubscriptions(
-                collector,
-                accessors
-            );
-            this.registerDisposer(unregister);
-        }
-    }
-
     getZoomLevel() {
         /** @param {import("../spec/channel.js").ChannelWithScale} channel */
         const getZoomLevel = (channel) =>
@@ -503,29 +405,4 @@ export default class UnitView extends View {
         // This affects the sample aggregate views.
         return channel == "x" ? "shared" : "independent";
     }
-}
-
-/**
- * Returns true when subscribing this accessor as a domain contributor would
- * create a feedback loop: the current scale domain already affects the
- * collector output upstream, so the derived values must not feed back into
- * the same shared-domain resolution.
- *
- * Example: `filterScoredLabels` recomputes visible labels from the current
- * x-domain, so downstream label x positions must not contribute to x-domain.
- *
- * @param {import("../types/encoder.js").ScaleAccessor} accessor
- * @param {import("../scales/scaleResolution.js").default} resolution
- * @param {Set<import("../spec/channel.js").ChannelWithScale>} domainDependentChannels
- * @returns {boolean}
- */
-function createsDomainFeedback(accessor, resolution, domainDependentChannels) {
-    return (
-        !resolution.isDomainDefinedExplicitly() &&
-        domainDependentChannels.has(
-            /** @type {import("../spec/channel.js").ChannelWithScale} */ (
-                getPrimaryChannel(accessor.scaleChannel)
-            )
-        )
-    );
 }

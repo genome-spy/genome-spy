@@ -10,7 +10,7 @@ only the necessary historical interaction/loading policy and animation state.
 Success requires removing responsibilities and competing update paths, not merely
 extracting helpers from a large class. This follows
 [issue #464 and its comments](https://github.com/genome-spy/genome-spy/issues/464).
-Milestones 1–7 are complete. The
+Milestones 1–8 are complete. The
 [detailed milestone 3 record](milestone-3-plan.md) contains the readiness and
 owner integration, review outcomes, verification, and measured tradeoffs.
 That work supplied the tested baseline for the final simplification.
@@ -299,6 +299,55 @@ is 672 lines smaller than milestone 6, while remaining 402 lines larger than
 milestone 4. This is accepted for the clearer single propagation/ownership path,
 not as a net line-count reduction. See the detailed record for tests, browser
 checks, reviewer findings, and intentionally deferred boundaries.
+
+### 8. Consolidate contributor bindings and remove redundant refreshes
+
+Status: complete; reviewed with contributor lifetime and App integration checks.
+
+- [x] Bind each affected resolution once after subtree encoders are installed.
+      Let domain inputs own collector subscriptions, using their bound accessors
+      and disposing subscriptions on replacement or resolution disposal.
+- [x] Preserve domain-sensitive feedback filtering, inert channels, shared
+      collectors, conditional accessors and color/fill/stroke channel aliases.
+- [x] Remove App metadata's explicit refresh only when a real dynamic metadata
+      test proves initial and replacement domains settle through publication.
+- [x] Review lifetime, dynamic insertion/visibility/removal, and measured net size;
+      run full tests, workspace types/lint and representative browser examples.
+- Retain UnitView's startup selection bridge: the deletion probe showed that a
+  domain-inert scale gets no collector publication to seed its initial brush.
+  This small required bridge is preferable to introducing a new initialization
+  protocol. Keep seeding, finite zoom-extent, and fallback-clear regression tests.
+- Do not change membership rollback, expression scope compatibility, axis domain
+  usability heuristics, or the domain policy/animation protocol in this follow-up.
+- Commit: `refactor(core): consolidate domain contributor bindings`.
+
+Follow-up evidence:
+
+- Removed UnitView's registration flag/accessor grouping/subscription lifetime and
+  ScaleResolution's collector registration wrapper. `domainInputs` owns subscriptions
+  from the accessors it already binds, deduplicated by collector/key. `flowInit`
+  binds each affected resolution once after all encoders are installed, using
+  accessor scale channels so color/fill/stroke aliases remain correct.
+- Removed App metadata's post-load refresh traversal. Its new test checks public
+  nominal and quantitative domains before readiness resolves, initially and after
+  a delayed asynchronous metadata rebuild.
+- Startup regression tests retain ordinary/domain-inert initial brush seeding,
+  finite zoom extents, and clearing an initial brush matching the loaded fallback.
+- Shared-collector and detached-contributor tests verify one coherent query/update,
+  no late detached publication, and continued active-source updates. Existing
+  domain-sensitive flow tests now assert domain/extent behavior instead of the
+  removed registration method.
+- Beauvoir and Euclid approved the integrated ownership/lifetime change. Heisenberg
+  verified the App removal with 211 focused tests and App source/test type checks.
+  Full suite: 3,971 passed, one skipped, two todo across 466 files. Workspace
+  TypeScript, lint, formatting and diff checks pass. Browser smoke checks pass for
+  viewport autoscale, two-way linked domains, MSA, and Dynseq.
+- Five changed production files total 4,008 -> 3,874 lines (-134): ScaleResolution
+  1,689 -> 1,653; UnitView 531 -> 408; domainInputs 417 -> 455; flowInit 376 -> 390;
+  MetadataView 995 -> 968. New comments are included in these totals.
+- Verdict: a worthwhile deletion of a second subscription-lifetime owner and an
+  obsolete App refresh path. Retaining the proven startup bridge keeps the scope
+  bounded; no new scheduler or initialization protocol is introduced.
 
 Domain-only sharing is a later proposal, contingent on this refactor succeeding.
 It must define compatibility for domain-affecting properties and range-dependent
