@@ -286,6 +286,10 @@ export function generateScaleGlsl(channel, scale, channelDef) {
     const primary = getPrimaryChannel(channel);
     const domainUniformName = DOMAIN_PREFIX + primary;
     const rangeUniformName = RANGE_PREFIX + primary;
+    const paddingUniformName = "uPadding_" + primary;
+    const dynamicPadding = ["padding", "paddingInner", "paddingOuter"].some(
+        (key) => isExprRef(scale.props?.[key])
+    );
 
     const { hp, attributeType } = getAttributeAndArrayTypes(scale, channel);
 
@@ -360,8 +364,12 @@ export function generateScaleGlsl(channel, scale, channelDef) {
                 "scaleBandHp",
                 "domain",
                 rangeUniformName,
-                scale.paddingInner(),
-                scale.paddingOuter(),
+                dynamicPadding
+                    ? paddingUniformName + ".x"
+                    : scale.paddingInner(),
+                dynamicPadding
+                    ? paddingUniformName + ".y"
+                    : scale.paddingOuter(),
                 scale.align(),
                 // @ts-expect-error TODO: fix typing
                 channelDef.band ?? 0.5
@@ -373,8 +381,12 @@ export function generateScaleGlsl(channel, scale, channelDef) {
                 "scaleBand",
                 "domain",
                 rangeUniformName,
-                scale.paddingInner(),
-                scale.paddingOuter(),
+                dynamicPadding
+                    ? paddingUniformName + ".x"
+                    : scale.paddingInner(),
+                dynamicPadding
+                    ? paddingUniformName + ".y"
+                    : scale.paddingOuter(),
                 scale.align(),
                 // @ts-expect-error TODO: fix typing
                 channelDef.band ?? 0.5
@@ -546,6 +558,11 @@ ${scaleBody.map((x) => `    ${x}\n`).join("")}
         domainUniform,
         rangeUniformName,
         rangeUniform,
+        paddingUniformName,
+        paddingUniform:
+            dynamicPadding && channel === primary
+                ? `    uniform vec2 ${paddingUniformName};`
+                : undefined,
     };
 }
 

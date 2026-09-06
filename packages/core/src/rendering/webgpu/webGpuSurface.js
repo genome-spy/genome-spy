@@ -558,6 +558,13 @@ function compileResourceBindings(
  */
 function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
     if (scaleSlot && channel.scale) {
+        if ("paddingInner" in channel.scale) {
+            add(
+                key + ":padding",
+                () => [channel.scale.paddingInner, channel.scale.paddingOuter],
+                ([inner, outer]) => scaleSlot.setPadding(inner, outer)
+            );
+        }
         if ("domain" in channel.scale) {
             add(
                 key + ":domain",

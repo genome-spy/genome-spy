@@ -554,11 +554,35 @@ export default class WebGLMark {
                     domainUniformName,
                     rangeUniform,
                     rangeUniformName,
+                    paddingUniform,
+                    paddingUniformName,
                 } = generateScaleGlsl(channel, scale, channelDef);
 
                 scaleCode.push(glsl);
                 dynamicMarkUniforms.push(domainUniform);
                 dynamicMarkUniforms.push(rangeUniform);
+
+                if (paddingUniform) {
+                    dynamicMarkUniforms.push(paddingUniform);
+                    this.#callAfterShaderCompilation.push(() => {
+                        const setter =
+                            this.createMarkUniformSetter(paddingUniformName);
+                        const set = () => {
+                            const current =
+                                /** @type {import("../../../genome/scaleIndex.js").ScaleIndex} */ (
+                                    scaleResolution.getScale()
+                                );
+                            setter([
+                                current.paddingInner(),
+                                current.paddingOuter(),
+                            ]);
+                        };
+                        this.scaleResolutionDisposers.push(
+                            scaleResolution.observeMapping(set)
+                        );
+                        set();
+                    });
+                }
 
                 if (rangeUniform) {
                     this.#callAfterShaderCompilation.push(() => {

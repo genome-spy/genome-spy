@@ -1,3 +1,7 @@
+import {
+    SCALE_PADDING_INNER_PREFIX,
+    SCALE_PADDING_OUTER_PREFIX,
+} from "../../../wgsl/prefixes.js";
 import { isSeriesChannelConfig, isValueChannelConfig } from "../../../types.js";
 import { UniformBuffer } from "../../../utils/uniformBuffer.js";
 import { SeriesBufferManager } from "./seriesBuffers.js";
@@ -780,6 +784,7 @@ export default class BaseProgram {
             group.default = slot;
             group.setDomain = slot.setDomain;
             group.setRange = slot.setRange;
+            group.setPadding = slot.setPadding;
         };
 
         /**
@@ -873,6 +878,30 @@ export default class BaseProgram {
     _createScaleSlot(name) {
         const updater = this._scaleResources.getScaleUpdater(name);
         return {
+            setPadding: (inner, outer) => {
+                this._assertAlive();
+                if (
+                    !this._uniformBufferState.entries.has(
+                        SCALE_PADDING_INNER_PREFIX + name
+                    )
+                )
+                    throw new Error(
+                        `Scale on "${name}" does not support padding updates.`
+                    );
+                if (
+                    !Number.isFinite(inner) ||
+                    !Number.isFinite(outer) ||
+                    inner < 0 ||
+                    inner > 1 ||
+                    outer < 0
+                )
+                    throw new Error(
+                        "Padding requires inner in [0, 1] and finite nonnegative outer padding."
+                    );
+                this._setUniformValue(SCALE_PADDING_INNER_PREFIX + name, inner);
+                this._setUniformValue(SCALE_PADDING_OUTER_PREFIX + name, outer);
+                this._queueSlotUpdate(false);
+            },
             setDomain: (domain) => {
                 this._assertAlive();
                 const needsRebind = updater.updateDomain(domain);

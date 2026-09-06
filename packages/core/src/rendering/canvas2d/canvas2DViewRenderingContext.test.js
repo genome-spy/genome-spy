@@ -1467,3 +1467,37 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(recording.context.textBaseline).toBe("alphabetic");
     });
 });
+
+test("reactive padding updates Canvas and immediate SVG band geometry", async () => {
+    const { view } = await createHeadlessEngine({
+        params: [{ name: "gap", value: 0 }],
+        data: { values: [{ x: "A" }, { x: "B" }] },
+        mark: { type: "rect", minWidth: 0 },
+        encoding: {
+            fill: { value: "steelblue" },
+            x: {
+                field: "x",
+                type: "nominal",
+                scale: { padding: { expr: "gap" } },
+            },
+        },
+    });
+    try {
+        view.paramRuntime.setValue("gap", 0.5);
+        const recording = createRecordingContext();
+        render(view, recording.context);
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const rect = svg.querySelector('[data-mark-type="rect"] rect');
+        // Rect rendering expands each edge by 0.1 px for seam suppression.
+        expect(+rect.getAttribute("width")).toBeCloseTo(20.2);
+        expect(recording.calls.fillRects[0][2]).toBeCloseTo(20.2);
+        expect(warnings).toEqual([]);
+    } finally {
+        view.disposeSubtree();
+    }
+});

@@ -1,3 +1,4 @@
+import reactivePaddingSpec from "../../../../examples/docs/grammar/scale/reactive-padding.json" with { type: "json" };
 import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 
@@ -238,6 +239,183 @@ test("mapping dependencies survive view-level scale recreation", async () => {
         view.paramRuntime.flushNow();
         expect(resolution.getMappingRef()).toBe(mapping);
         expect(view.paramRuntime.getValue("mapped")).toBe(resolution.scale(5));
+    } finally {
+        view.disposeSubtree();
+    }
+});
+
+test.each(["band", "index"])(
+    "production %s mapping groups range and reactive padding",
+    async (type) => {
+        const channel = type === "band" ? "xOffset" : "x";
+        const { view } = await createHeadlessEngine({
+            params: [
+                { name: "p", value: 0 },
+                { name: "end", value: 100 },
+                { name: "bandwidth", expr: `bandwidth('${channel}')` },
+            ],
+            data: { values: [{ category: type === "band" ? "a" : 0 }] },
+            mark: "point",
+            scales: {
+                [channel]: /** @type {any} */ ({
+                    type,
+                    domain: type === "band" ? ["a", "b"] : [0, 2],
+                    range: [0, { expr: "end" }],
+                    // Deliberately reverse property order to verify explicit overrides win.
+                    paddingOuter: { expr: `length(domain('${channel}')) / 20` },
+                    paddingInner: { expr: "p / 2" },
+                    padding: { expr: "p" },
+                }),
+            },
+            encoding: {
+                [channel]: {
+                    field: "category",
+                    type: type === "band" ? "nominal" : "quantitative",
+                    legend: null,
+                    axis: null,
+                },
+            },
+        });
+        try {
+            const resolution = view.getScaleResolution(channel);
+            const mapping = resolution.getMappingRef();
+            const observed = vi.fn(() =>
+                view.paramRuntime.getValue("bandwidth")
+            );
+            resolution.observeMapping(observed);
+            view.paramRuntime.runInTransaction(() => {
+                view.paramRuntime.setValue("p", 0.4);
+                view.paramRuntime.setValue("end", 200);
+            });
+            view.paramRuntime.flushNow();
+            expect(observed).toHaveBeenCalledExactlyOnceWith();
+            // Primary positional ranges are normalized; offsets retain authored ranges.
+            expect(observed).toHaveReturnedWith(type === "band" ? 80 : 0.4);
+            expect(resolution.getMappingRef()).toBe(mapping);
+            expect(
+                /** @type {import("d3-scale").ScaleBand<any>} */ (
+                    resolution.scale
+                ).paddingInner()
+            ).toBe(0.2);
+            expect(
+                /** @type {import("d3-scale").ScaleBand<any>} */ (
+                    resolution.scale
+                ).paddingOuter()
+            ).toBe(0.1);
+
+            observed.mockClear();
+            view.paramRuntime.setValue("p", 0.4);
+            view.paramRuntime.flushNow();
+            expect(observed).not.toHaveBeenCalled();
+
+            // This domain-to-padding input remains separate from mapping feedback.
+            resolution.scale.domain(
+                type === "band" ? ["a", "b", "c", "d"] : [0, 4]
+            );
+            expect(
+                /** @type {import("d3-scale").ScaleBand<any>} */ (
+                    resolution.scale
+                ).paddingOuter()
+            ).toBe(type === "band" ? 0.2 : 0.1);
+            const spec = /** @type {import("../spec/view.js").UnitSpec} */ (
+                view.spec
+            );
+            spec.scales[channel].padding = {
+                expr: `bandwidth('${channel}')`,
+            };
+            expect(() => resolution.reconfigure()).toThrow(/dependency cycle/);
+            spec.scales[channel].padding = { expr: "p" };
+        } finally {
+            view.disposeSubtree();
+        }
+    }
+);
+
+test.each(["point", "linear"])(
+    "rejects reactive padding on %s scales",
+    async (type) => {
+        await expect(
+            createHeadlessEngine({
+                data: { values: [{ x: 1 }] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: {
+                            type: /** @type {"point" | "linear" | "locus"} */ (
+                                type
+                            ),
+                            padding: { expr: "0.2" },
+                        },
+                    },
+                },
+            })
+        ).rejects.toThrow("expressions require a band or index scale");
+    }
+);
+
+test.each(["null", "'0.5'", "1 / 0", "-0.1", "1.1"])(
+    "rejects invalid inner padding %s before changing mapping",
+    async (expr) => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "gap", value: 0.2 }],
+            data: { values: [{ x: 0 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "index",
+                    scale: { paddingInner: { expr: "gap" } },
+                },
+            },
+        });
+        try {
+            const scale = view.getScaleResolution("x").getScale();
+            expect(() =>
+                view.paramRuntime.setValue(
+                    "gap",
+                    view.paramRuntime.createExpression(expr)(null)
+                )
+            ).toThrow("paddingInner expression must resolve");
+            expect(
+                /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
+                    scale
+                ).paddingInner()
+            ).toBe(0.2);
+        } finally {
+            view.disposeSubtree();
+        }
+    }
+);
+
+test("sequence example reveals pixel gaps without narrowing resolved bases below one pixel", async () => {
+    const { view } = await createHeadlessEngine(
+        /** @type {import("../spec/view.js").UnitSpec} */ (reactivePaddingSpec)
+    );
+    try {
+        view.paramRuntime.setValue("width", 700);
+        const resolution = view.getScaleResolution("x");
+        expect(view.paramRuntime.getValue("gapPx")).toBe(0);
+        // Exercise the actual domain-to-padding graph at and between the easing boundaries.
+        for (const step of [1, 1.5, 2, 2.5, 3, 10]) {
+            await resolution.zoomTo([100, 100 + 700 / step - 1]);
+            const gap = view.paramRuntime.getValue("gapPx");
+            expect(view.paramRuntime.getValue("stepPx")).toBeCloseTo(step);
+            expect(gap).toBeCloseTo(
+                step === 1
+                    ? 0
+                    : step >= 3
+                      ? 1
+                      : ((step - 1) / 2) ** 2 * (3 - (step - 1))
+            );
+            const scale =
+                /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
+                    resolution.getScale()
+                );
+            expect(scale.bandwidth() * 700).toBeCloseTo(step - gap);
+            expect(scale.bandwidth() * 700).toBeGreaterThanOrEqual(1 - 1e-10);
+        }
     } finally {
         view.disposeSubtree();
     }

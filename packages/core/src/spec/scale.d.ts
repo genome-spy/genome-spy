@@ -172,28 +172,34 @@ export interface Scale {
      *
      * For _[Vega-Lite point](https://vega.github.io/vega-lite/docs/scale.html#point)_ scales, alias for `paddingOuter`.
      *
+     * Expressions are supported on band and index scales only. Explicit inner/outer padding overrides general padding.
+     *
      * __Default value:__ For _continuous_ scales, derived from the [Vega-Lite scale config](https://vega.github.io/vega-lite/docs/scale.html#config)'s `continuousPadding`.
      * For _band and point_ scales, see `paddingInner` and `paddingOuter`. By default, Vega-Lite sets padding such that _width/height = number of unique values * step_.
      *
      * @minimum 0
      */
-    padding?: number;
+    padding?: number | ExprRef;
 
     /**
      * The inner padding (spacing) within each band step of band scales, as a fraction of the step size. This value must lie in the range [0,1].
      *
      * For point scale, this property is invalid as point scales do not have internal band widths (only step sizes between bands).
      *
+     * Expressions are supported on band and index scales only. Explicit inner/outer padding overrides general padding.
+     *
      * __Default value:__ derived from the [Vega-Lite scale config](https://vega.github.io/vega-lite/docs/scale.html#config)'s `bandPaddingInner`.
      *
      * @minimum 0
      * @maximum 1
      */
-    paddingInner?: number;
+    paddingInner?: number | ExprRef;
 
     /**
      * The outer padding (spacing) at the ends of the range of band and point scales,
      * as a fraction of the step size. This value must lie in the range [0,1].
+     *
+     * Expressions are supported on band and index scales only. Explicit inner/outer padding overrides general padding.
      *
      * __Default value:__ derived from the [Vega-Lite scale config](https://vega.github.io/vega-lite/docs/scale.html#config)'s `bandPaddingOuter` for band scales and `pointPadding` for point scales.
      * By default, Vega-Lite sets outer padding such that _width/height = number of unique values * step_.
@@ -201,7 +207,7 @@ export interface Scale {
      * @minimum 0
      * @maximum 1
      */
-    paddingOuter?: number;
+    paddingOuter?: number | ExprRef;
 
     // typical
     /**

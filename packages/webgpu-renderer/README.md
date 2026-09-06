@@ -285,6 +285,10 @@ scales.x.setDomain([0, 10]);
 values.size.set(4);
 ```
 
+Band and index scales also support `scales.x.setPadding(inner, outer)` to update
+spacing without recreating the mark. Padding updates participate in
+`batchUpdates`, including picking invalidation.
+
 `scales.x.setDomain(...)` is a convenience form of
 `scales.x.default.setDomain(...)`.
 

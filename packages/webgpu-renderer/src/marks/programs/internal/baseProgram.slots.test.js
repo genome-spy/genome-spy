@@ -414,3 +414,42 @@ function createSlotProgram(renderer, config) {
     attachScaleDefinitions(config.channels);
     return new SlotProgram(renderer, config);
 }
+
+it("updates padding uniforms in one upload and invalidates picking", () => {
+    const renderer = createMockRenderer();
+    const program = createSlotProgram(renderer, {
+        channels: {
+            uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
+            x: {
+                data: new Uint32Array([0, 1]),
+                type: "u32",
+                scale: { type: "band", domain: [0, 1], range: [0, 100] },
+            },
+            size: { value: 1, type: "f32" },
+            fill: { value: [0, 0, 0, 1], type: "f32", components: 4 },
+        },
+    });
+    const writeBuffer = vi.spyOn(renderer.device.queue, "writeBuffer");
+    const pickingDirty = vi.spyOn(renderer, "markPickingDirty");
+    const slot = program.getSlotHandles().scales.x;
+    slot.setPadding(0.4, 0.2);
+    expect(
+        program._uniformBufferState.view.getFloat32(
+            program._uniformBufferState.entries.get("uScalePaddingInner_x")
+                .offset,
+            true
+        )
+    ).toBeCloseTo(0.4);
+    expect(
+        program._uniformBufferState.view.getFloat32(
+            program._uniformBufferState.entries.get("uScalePaddingOuter_x")
+                .offset,
+            true
+        )
+    ).toBeCloseTo(0.2);
+    expect(writeBuffer).toHaveBeenCalledOnce();
+    expect(pickingDirty).toHaveBeenCalledOnce();
+    expect(() => slot.setPadding(NaN, 0)).toThrow("Padding requires");
+    program.destroy();
+    expect(() => slot.setPadding(0, 0)).toThrow();
+});
