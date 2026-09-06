@@ -1,0 +1,47 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "description": [
+    "Zoom-adaptive nucleotide spacing",
+    "Zoom in to reveal one-pixel gaps. Adaptive padding avoids subpixel gaps and keeps narrow bases visible."
+  ],
+
+  "width": 700,
+  "height": 70,
+  "params": [
+    { "name": "stepPx", "expr": "width / span(domain('x'))" },
+    { "name": "gapProgress", "expr": "clamp((stepPx - 1) / 2, 0, 1)" },
+    {
+      "name": "gapPx",
+      "expr": "gapProgress * gapProgress * (3 - 2 * gapProgress)"
+    },
+    { "name": "bandPadding", "expr": "gapPx / max(1, stepPx)" }
+  ],
+  "data": { "sequence": { "start": 0, "stop": 1000, "as": "position" } },
+  "transform": [
+    { "type": "formula", "expr": "floor(random() * 4)", "as": "base" }
+  ],
+
+  "mark": { "type": "rect", "minWidth": 1 },
+  "encoding": {
+    "x": {
+      "field": "position",
+      "type": "index",
+      "scale": {
+        "domain": [0, 999],
+        "zoom": true,
+        "paddingInner": { "expr": "bandPadding" },
+        "paddingOuter": { "expr": "bandPadding / 2" }
+      },
+      "axis": { "title": "Position (scroll to zoom)" }
+    },
+    "color": {
+      "field": "base",
+      "type": "nominal",
+      "scale": {
+        "domain": [0, 1, 2, 3],
+        "range": ["#57b894", "#5689c7", "#e6b84f", "#ce667b"]
+      },
+      "legend": null
+    }
+  }
+}

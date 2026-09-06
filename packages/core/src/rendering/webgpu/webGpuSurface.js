@@ -639,6 +639,15 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
          */
         const addScale = (name, read, write, skipUndefined = false) =>
             add(name, read, write, skipUndefined, true);
+        if (
+            Object.getOwnPropertyDescriptor(channel.scale, "paddingInner")?.get
+        ) {
+            addScale(
+                key + ":padding",
+                () => [channel.scale.paddingInner, channel.scale.paddingOuter],
+                ([inner, outer]) => scaleSlot.setPadding(inner, outer)
+            );
+        }
         if (channel.scale.gapEnabled && channel.scale.type === "index") {
             addScale(
                 key + ":domain",

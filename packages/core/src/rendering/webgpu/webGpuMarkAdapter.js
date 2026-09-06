@@ -1175,7 +1175,8 @@ function createBandPositionScale(
             band: reverse ? 1 - band : band,
         }),
         readDomain,
-        readRange
+        readRange,
+        scale.type === "band" ? configurableScale : undefined
     );
     Object.defineProperty(result, "viewport", {
         enumerable: true,
@@ -1224,7 +1225,9 @@ function createIndexPositionScale(scale, range, band, channel, peer) {
             align: configurableScale.align(),
             band,
         }),
-        () => scale.domain().map(Number)
+        () => scale.domain().map(Number),
+        undefined,
+        scale.type === "index" ? configurableScale : undefined
     );
     return retainGroupingGaps(result, scale, channel, peer);
 }
@@ -1827,8 +1830,20 @@ function createNumericScale(mark, channel, scale, range, domain) {
  * @param {import("@genome-spy/webgpu-renderer").DefinedChannelScale} scale
  * @param {(() => number[])} [readDomain]
  * @param {(() => any)} [readRange]
+ * @param {{paddingInner: () => number, paddingOuter: () => number}} [paddingSource]
  */
-function retainScaleLeaves(scale, readDomain, readRange) {
+function retainScaleLeaves(scale, readDomain, readRange, paddingSource) {
+    if (paddingSource) {
+        for (const key of /** @type {const} */ ([
+            "paddingInner",
+            "paddingOuter",
+        ])) {
+            Object.defineProperty(scale, key, {
+                enumerable: true,
+                get: () => paddingSource[key](),
+            });
+        }
+    }
     if (readDomain)
         Object.defineProperty(scale, "domain", {
             enumerable: true,
