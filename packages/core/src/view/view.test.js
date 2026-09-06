@@ -1398,6 +1398,24 @@ describe("Step sizing and domain updates", () => {
         };
     }
 
+    test("Offset padding resizes a step-sized view", async () => {
+        const spec = createGroupedBarStepSpec(
+            { step: 10 },
+            { padding: 0 },
+            { padding: { expr: "gap" } }
+        );
+        spec.params = [{ name: "gap", value: 0 }];
+        const { view } = await createHeadlessEngine(spec);
+        try {
+            expect(view.getSize().width.px).toBeCloseTo(40);
+            view.paramRuntime.setValue("gap", 0.5);
+            await view.paramRuntime.whenPropagated();
+            expect(view.getSize().width.px).toBeCloseTo(50);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("Step size defaults to nested offset groups", async () => {
         const spec = createGroupedBarStepSpec(
             { step: 10 },
@@ -1766,3 +1784,43 @@ describe("Utility methods", () => {
         );
     });
 });
+
+test.each(["band", "index"])(
+    "reactive %s padding updates step size",
+    async (type) => {
+        const requestLayoutReflow = vi.fn();
+        const { view } = await createHeadlessEngine(
+            {
+                params: [{ name: "gap", value: 0 }],
+                width: { step: 10, for: "position" },
+                data: { values: [{ x: 0 }, { x: 1 }] },
+                mark: "rect",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: type === "band" ? "nominal" : "index",
+                        scale: {
+                            type: /** @type {"band" | "index"} */ (type),
+                            padding: { expr: "gap" },
+                        },
+                    },
+                },
+            },
+            { contextOptions: { requestLayoutReflow } }
+        );
+        try {
+            expect(view.getSize().width.px).toBeCloseTo(20);
+            requestLayoutReflow.mockClear();
+            view.paramRuntime.setValue("gap", 0.5);
+            await view.paramRuntime.whenPropagated();
+            expect(view.getSize().width.px).toBeCloseTo(25);
+            expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+            requestLayoutReflow.mockClear();
+            view.paramRuntime.setValue("gap", 0.5);
+            await view.paramRuntime.whenPropagated();
+            expect(requestLayoutReflow).not.toHaveBeenCalled();
+        } finally {
+            view.disposeSubtree();
+        }
+    }
+);

@@ -383,7 +383,8 @@ drives default scale type inference.
 
 Scale properties can depend on parameters through expression references in
 `domain` and `range`, or through a selection-parameter reference in `domain`.
-Both forms use the same parameter scope.
+Band and index scales also support expressions in `padding`, `paddingInner`,
+and `paddingOuter`. These properties use the same parameter scope.
 
 ### Parameter scope
 
@@ -408,6 +409,29 @@ EXAMPLE examples/docs/grammar/scale/shared-scale-expression.json height=230
 Genuinely shared scales do not fall back to a child declaration scope. Move a
 child-only parameter to the resolution owner and use `"push": "outer"` when the
 child must write it.
+
+### Reactive padding
+
+Padding expressions can reveal gaps only when bands are wide enough to display
+them. Zoom into this random 1,000-base sequence: there are no gaps below a
+one-pixel step, then the gaps ease smoothly to one pixel at a three-pixel step.
+This avoids subpixel gaps that can accentuate aliasing at overview zoom levels.
+The padding never reduces a band below one pixel once the step reaches one pixel;
+`minWidth` keeps narrower overview marks visible.
+
+EXAMPLE examples/docs/grammar/scale/reactive-padding.json height=160
+
+The example derives the unpadded step from `width / span(domain('x'))` and uses
+smoothstep easing, `t * t * (3 - 2 * t)`, for the gap. Outer padding is half the
+inner padding, keeping the step independent of padding. Reading `bandwidth('x')`
+to set the same scale's padding would create a dependency cycle.
+
+Explicit `paddingInner` and `paddingOuter` override `padding`. Step-sized views
+resize when the effective padding changes.
+
+Padding expressions must produce finite, nonnegative numbers; inner and outer
+padding must be between 0 and 1. Point and continuous scales currently accept
+numeric padding only.
 
 ### Scale-dependent expressions
 

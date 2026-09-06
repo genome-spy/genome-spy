@@ -138,6 +138,8 @@ export type ChannelCondition =
       };
 
 export type ScaleSlotHandle = {
+    /** Update band/index inner and outer padding without rebuilding geometry. */
+    setPadding(inner: number, outer: number): void;
     /** Update the scale domain; shape changes require mark recreation. */
     setDomain(domain: number[]): void;
     /** Update the scale range or interpolator; shape changes require mark recreation. */

@@ -2158,3 +2158,55 @@ function createThresholdScale(domain, range) {
         range: () => range,
     };
 }
+
+test.each(["band", "index"])(
+    "retained %s scale padding follows Core without rebuilding columns",
+    (type) => {
+        const scale =
+            type === "band"
+                ? createBandScale(["A", "B"])
+                : createIndexScale([0, 2]);
+        const data = [{ x: type === "band" ? "A" : 0 }];
+        const mark = createMark("rect", data, {
+            y: createConstantEncoder(0),
+            y2: createConstantEncoder(1),
+            xOffset: createConstantEncoder(0),
+            x2Offset: createConstantEncoder(0),
+            yOffset: createConstantEncoder(0),
+            y2Offset: createConstantEncoder(0),
+            fill: createConstantEncoder("black"),
+            stroke: createConstantEncoder(null),
+            fillOpacity: createConstantEncoder(1),
+            strokeOpacity: createConstantEncoder(1),
+            strokeWidth: createConstantEncoder(0),
+            x: createEncoder((datum) => datum.x, {
+                scale,
+                channelDef: {
+                    field: "x",
+                    type: type === "band" ? "nominal" : "index",
+                    band: 0,
+                },
+            }),
+            x2: createEncoder((datum) => datum.x, {
+                scale,
+                channelDef: {
+                    field: "x",
+                    type: type === "band" ? "nominal" : "index",
+                    band: 1,
+                },
+            }),
+        });
+        const config = /** @type {any} */ (
+            createWebGpuMarkConfig(mark, {}, Rectangle.create(0, 0, 700, 70))
+        ).config;
+        const column = config.channels.x.data;
+        expect(config.channels.x.scale.paddingInner).toBe(0.2);
+        scale.paddingInner = () => 0.4;
+        scale.paddingOuter = () => 0.2;
+        for (const channel of [config.channels.x, config.channels.x2]) {
+            expect(channel.scale.paddingInner).toBe(0.4);
+            expect(channel.scale.paddingOuter).toBe(0.2);
+        }
+        expect(config.channels.x.data).toBe(column);
+    }
+);

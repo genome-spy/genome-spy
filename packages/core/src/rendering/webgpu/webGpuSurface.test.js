@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => {
                 default: {
                     setDomain: vi.fn(),
                     setRange: vi.fn(),
+                    setPadding: vi.fn(),
                 },
             },
         },
@@ -412,6 +413,7 @@ describe("WebGpuSurface", () => {
             );
         const domain = [0, 10];
         let size = 5;
+        let padding = 0;
         const config = {
             count: 2,
             channels: {
@@ -421,6 +423,12 @@ describe("WebGpuSurface", () => {
                     scale: {
                         get domain() {
                             return domain;
+                        },
+                        get paddingInner() {
+                            return padding;
+                        },
+                        get paddingOuter() {
+                            return padding / 2;
                         },
                         range: [0, 100],
                     },
@@ -437,6 +445,7 @@ describe("WebGpuSurface", () => {
         domain[0] = 1;
         domain[1] = 11;
         size = 6;
+        padding = 0.4;
         useMark(surface, mark, definition, config);
 
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
@@ -446,6 +455,10 @@ describe("WebGpuSurface", () => {
         ]);
         expect(mocks.handle.values.size.default.set).toHaveBeenCalledOnce();
         expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
+        expect(mocks.handle.scales.x.default.setPadding).toHaveBeenCalledWith(
+            0.4,
+            0.2
+        );
         expect(mocks.handle.series.replace).not.toHaveBeenCalled();
     });
 

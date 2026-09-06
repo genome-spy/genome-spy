@@ -456,3 +456,20 @@ describe("generated shader snapshots", () => {
         expect(sources).toMatchSnapshot();
     });
 });
+
+test("reactive index padding is supplied through a shared uniform for both band edges", async () => {
+    const sources = await captureShaderSources({
+        params: [{ name: "gap", value: 0 }],
+        data: { values: [{ x: 0 }] },
+        mark: "rect",
+        encoding: {
+            x: {
+                field: "x",
+                type: "index",
+                scale: { padding: { expr: "gap" } },
+            },
+        },
+    });
+    expect(sources.vertex).toContain("uniform vec2 uPadding_x;");
+    expect(sources.vertex).toContain("uPadding_x.x, uPadding_x.y");
+});

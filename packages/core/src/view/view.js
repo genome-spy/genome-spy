@@ -672,10 +672,7 @@ export default class View {
                 this.context.requestLayoutReflow();
             }
         };
-        resolution.addEventListener("domain", listener);
-        this.registerDisposer(() =>
-            resolution.removeEventListener("domain", listener)
-        );
+        this.registerDisposer(resolution.observeMapping(listener));
 
         if (value.for != "position") {
             const offsetChannel = dimension == "width" ? "xOffset" : "yOffset";
@@ -684,9 +681,8 @@ export default class View {
                 offsetResolution &&
                 isDiscrete(offsetResolution.getResolvedScaleType())
             ) {
-                offsetResolution.addEventListener("domain", listener);
-                this.registerDisposer(() =>
-                    offsetResolution.removeEventListener("domain", listener)
+                this.registerDisposer(
+                    offsetResolution.observeMapping(listener)
                 );
             }
         }
