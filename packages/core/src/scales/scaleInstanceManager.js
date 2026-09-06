@@ -20,7 +20,7 @@ import { isScaleLocus } from "../genome/scaleLocus.js";
  *   domain: readonly any[],
  *   configuredRange: any[] | undefined,
  *   range: any[] | undefined,
- *   prepared: import("../types/encoder.js").VegaScale | undefined
+ *   prepared: (import("../types/encoder.js").VegaScale & {props: import("../spec/scale.js").Scale}) | undefined
  * }} MappingConfiguration
  */
 
@@ -281,6 +281,11 @@ export default class ScaleInstanceManager {
             const padding = paddingExpressions?.map((expression) =>
                 expression(null)
             );
+            if (padding) {
+                padding[1] ??= padding[0] ?? 0;
+                padding[2] ??= padding[0] ?? 0;
+                padding.shift(); // Compare only effective inner/outer padding.
+            }
             const command = this.#rangeCommand.get();
             const range =
                 command &&
@@ -295,7 +300,7 @@ export default class ScaleInstanceManager {
                     previous?.props === props &&
                     equalRange(previous?.padding, padding))
                     ? undefined
-                    : this.#prepareMapping(withPadding(props, padding));
+                    : this.#prepareMapping(props, padding);
             return {
                 scale,
                 props,
@@ -309,29 +314,32 @@ export default class ScaleInstanceManager {
         this.#runtime.flushNow({ afterTransaction: true });
     }
 
-    /** Validate static configuration on a copy before changing the live scale.
+    /** Validate configuration once and retain its properties for live application.
      * @param {import("../spec/scale.js").Scale} props
+     * @param {(number | undefined)[] | undefined} padding
      */
-    #prepareMapping(props) {
+    #prepareMapping(props, padding) {
+        props = this.#stripNonScaleProps(props);
+        if (padding) {
+            for (const key of PADDING_PROPERTIES) delete props[key];
+            props.paddingInner = padding[0];
+            props.paddingOuter = padding[1];
+        }
         const working = this.#scale.copy();
         working.type = this.#scale.type;
-        configureScaleProperties(working, this.#stripNonScaleProps(props));
+        configureScaleProperties(working, props);
         configureScaleRange(working, {
-            ...this.#stripNonScaleProps(props),
+            ...props,
             range: undefined,
         });
-        return working;
+        return Object.assign(working, { props });
     }
 
     /** @param {MappingConfiguration} configuration */
-    #applyMapping({ props, padding, range, prepared }) {
+    #applyMapping({ props, range, prepared }) {
         if (this.#scale.type === "null") return;
         if (prepared) {
-            props = withPadding(props, padding);
-            configureScaleProperties(
-                this.#scale,
-                this.#stripNonScaleProps(props)
-            );
+            configureScaleProperties(this.#scale, prepared.props);
             // Copy through raw setters; public setters submit reactive commands.
             // Restore the interpolator last: range() replaces color schemes.
             if (this.#setRange) this.#setRange(prepared.range());
@@ -465,19 +473,3 @@ const PADDING_PROPERTIES = /** @type {const} */ ([
     "paddingInner",
     "paddingOuter",
 ]);
-
-/** Resolve band/index defaults and precedence independently of property order.
- * @param {import("../spec/scale.js").Scale} props
- * @param {(number | undefined)[] | undefined} padding
- */
-function withPadding(props, padding) {
-    if (!padding) return props;
-    const rest = { ...props };
-    for (const key of PADDING_PROPERTIES) delete rest[key];
-    return {
-        ...rest,
-        padding: padding[0] ?? 0,
-        paddingInner: padding[1] ?? padding[0] ?? 0,
-        paddingOuter: padding[2] ?? padding[0] ?? 0,
-    };
-}
