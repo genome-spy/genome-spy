@@ -1,7 +1,7 @@
 # First-class internal reactivity
 
 Status: M1–M3 implemented and verified, 2026-09-06.
-The [bonus milestone](bonus-milestone.md) closes branch-review gaps; M4 remains deferred.
+The [bonus milestone](bonus-milestone.md) closes branch-review gaps; M4 is discarded from this branch; layout follow-up belongs in a separate issue.
 Branch: `refactor/more-reactivity`, based on `720f1f8b384b929276b652ed89c5ef6e4a7878c6`.
 
 ## Recommendation
@@ -249,3 +249,35 @@ Decisions to resolve at the first shared-contract review:
 Success means fewer manually maintained subscriptions, invalidation cascades and
 coordination fields, with explicit owners and observable consistency guarantees.
 The graph becoming larger is not itself evidence of a simpler architecture.
+
+## Final delivery reconciliation — 2026-09-06
+
+M1, M2, M3 and the bonus milestone are completed. The final padding cleanup
+removes eight additional production lines and adds a behavioral regression.
+The latest full suite passes 4026 tests (1 skipped, 2 todo); Core TypeScript
+and repository lint pass. Workspace TypeScript checks passed at the bonus
+milestone. Browser verification is recorded in M1/M2, not rerun for delivery.
+
+Resolved design decisions: operations extend derived nodes; stable rebinding
+reranks consumers with cached ranks; public range commands retain a boundary
+bridge; URL loads retain reset-at-start presentation and use a source-local
+freshness counter. The earlier last-completed-data presentation proposal is
+discarded. No public reactive padding or incremental tuple processing is added.
+
+All unimplemented longer-term directions and M4 are explicitly discarded from
+this branch's scope. Layout invalidation and expression-property batching will
+be tracked as separate GitHub issues. Other speculative expansion, general
+property frameworks, incremental layout and additional App adapters are not
+commitments of this PR. The rejected scale-configuration consolidation remains
+discarded because its small line reduction did not justify its measured overhead.
+
+The broad final-verification wishlist is reconciled against the milestone records:
+completed browser/backend checks are those explicitly recorded in M1/M2. Any
+additional unrecorded App undo/bookmark scenarios, BigBed-specific browser runs,
+or driver-level GPU-upload measurements are discarded as delivery requirements
+for this bounded change, not claimed as passing. Existing automated regressions
+and the recorded integration checks cover the changed contracts.
+
+Permanent contracts are recorded in Core's reactivity, rendering, and
+views-and-dataflow architecture documents. Retire these four temporary plan
+files in the commit following this reconciliation.

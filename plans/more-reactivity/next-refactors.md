@@ -1,6 +1,6 @@
 # Next refactors
 
-Status: M1–M3 implemented and verified, 2026-09-06. M4 remains proposed.
+Status: M1–M3 implemented and verified, 2026-09-06. M4 is discarded from this branch and reserved for a separate issue.
 The [bonus milestone](bonus-milestone.md) implements the branch-review fixes.
 See [direction and research](more-reactivity-plan.md) for rationale and contracts.
 
@@ -215,7 +215,9 @@ semantics preserved.
 
 ## M4 — Expand the successful contract to layout and rendering
 
-- [ ] Propose and implement the next bounded layout/property consumer after M1.
+- [x] Discarded from this branch: propose and implement the next bounded
+      layout/property consumer. Track a bounded layout-invalidation follow-up
+      separately; no layout migration is claimed by this PR.
 
 **Outcome:** a representative step-sized view derives invalidation from explicit
 domain/topology/size inputs and needs no constructor-specific listener registration.

@@ -1,6 +1,6 @@
 # Bonus milestone — Close the branch review gaps
 
-Status: implemented and verified, 2026-09-06. M4 remains deferred.
+Status: implemented and verified, 2026-09-06. M4 is discarded from this branch; layout follow-up belongs in a separate issue.
 
 ## Outcome and scope
 
@@ -102,7 +102,7 @@ per-property disposal subsystem was introduced.
 
 Luna reviewed the plan for lifecycle cases, KISS and scope before implementation.
 The final combined diff was reviewed locally. Deliver as one coherent commit;
-M4 stays deferred.
+M4 is discarded from this branch and reserved for separate follow-up.
 
 Tentative commit: `fix(core): preserve mapping dependencies across scale replacement`
 
