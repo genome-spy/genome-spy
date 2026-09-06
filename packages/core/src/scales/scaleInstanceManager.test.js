@@ -340,54 +340,6 @@ describe("ScaleInstanceManager", () => {
         expect(changed).toHaveBeenCalledTimes(2);
     });
 
-    test("ignores overridden padding changes and preserves rangeStep fallback", () => {
-        const runtime = new ViewParamRuntime();
-        const setPadding = runtime.registerParam({
-            name: "padding",
-            value: 0.2,
-        });
-        const changed = vi.fn();
-        const manager = createManager({
-            runtime,
-            onRangeChange: changed,
-            onDomainChange: () => {},
-            getGenomeStore: () => undefined,
-        });
-        const props = /** @type {import("../spec/scale.js").Scale} */ ({
-            type: "band",
-            domain: ["a", "b"],
-            rangeStep: 10,
-            padding: /** @type {any} */ ({ expr: "padding" }),
-            paddingInner: 0.1,
-            paddingOuter: 0.3,
-        });
-        const scale = /** @type {import("d3-scale").ScaleBand<string>} */ (
-            createScale(manager, props)
-        );
-        changed.mockClear();
-
-        // Both explicit values override the changed general padding.
-        setPadding(0.5);
-        runtime.flushNow();
-        expect(changed).not.toHaveBeenCalled();
-        expect(scale.range()).toEqual([0, 25]);
-
-        delete props.paddingInner;
-        manager.configureMapping(props);
-        expect(scale.paddingInner()).toBe(0.5);
-        expect(scale.range()[1]).toBeCloseTo(21);
-        expect(changed).toHaveBeenCalledTimes(1);
-
-        delete props.paddingOuter;
-        manager.configureMapping(props);
-        expect(scale.paddingOuter()).toBe(0.5);
-        setPadding(null);
-        runtime.flushNow();
-        expect(scale.paddingInner()).toBe(0);
-        expect(scale.paddingOuter()).toBe(0);
-        expect(scale.range()).toEqual([0, 20]);
-    });
-
     test("dispose prevents pending and future range changes", () => {
         const runtime = new ViewParamRuntime();
         const setValue = runtime.registerParam({ name: "value", value: 1 });

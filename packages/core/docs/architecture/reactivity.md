@@ -105,12 +105,6 @@ physical scale and metadata before observer effects. Equality skips in-place sca
 updates; per-datum evaluation still calls the captured scale directly. Conditional
 encoders expose their active scale metadata through their branch encoders.
 
-Band/index padding expressions are an internal fixture through the production
-mapping manager. They share range binding, dependency collection and application;
-explicit inner/outer padding overrides general padding regardless of property order.
-The public padding grammar remains numeric, and continuous padding retains its
-existing domain-normalization policy.
-
 Initial reference collection remains provisional throughout synchronous publication.
 A finalization job runs after all domain jobs and before observer effects, changing
 only the historical phase to ready. This makes reversed contributor/calibration
