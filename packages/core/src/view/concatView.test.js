@@ -2,7 +2,11 @@ import { describe, expect, test, vi } from "vitest";
 
 import ConcatView from "./concatView.js";
 import UnitView from "./unitView.js";
-import { createTestViewContext } from "./testUtils.js";
+import {
+    createAndInitialize,
+    createTestViewContext,
+    renderToLayout,
+} from "./testUtils.js";
 
 /**
  * @returns {import("../spec/view.js").UnitSpec}
@@ -189,5 +193,91 @@ describe("ConcatView dynamic children", () => {
             x: { field: "x", type: "quantitative", buildIndex: true },
             y: { field: "y", type: "quantitative" },
         });
+    });
+});
+
+describe("ConcatView annotations", () => {
+    test("creates a front layer with an inert shared position and local styles", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        data: { values: [{ x: 0 }, { x: 10 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                value: 0.5,
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+                annotate: [
+                    {
+                        data: {
+                            values: [{ start: 100, end: 200, kind: "region" }],
+                        },
+                        mark: { type: "rect", opacity: 0.2 },
+                        encoding: {
+                            x: {
+                                field: "start",
+                                type: "quantitative",
+                            },
+                            x2: { field: "end" },
+                            y: { value: 0 },
+                            y2: { value: 1 },
+                            color: { field: "kind", type: "nominal" },
+                        },
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        renderToLayout(view);
+
+        const annotationLayer = view.getAnnotationLayer();
+        expect(annotationLayer).toBeDefined();
+        expect(annotationLayer.children).toHaveLength(1);
+        expect(annotationLayer.children[0].getEncoding()).toMatchObject({
+            x: { field: "start", domainInert: true },
+            x2: { field: "end", domainInert: true },
+            y: { value: 0 },
+            y2: { value: 1 },
+        });
+        expect(annotationLayer.children[0].getScaleResolution("x")).toBe(
+            view.getScaleResolution("x")
+        );
+        expect(view.getScaleResolution("x").getDomain()).toEqual([0, 10]);
+        expect(
+            annotationLayer.children[0].getScaleResolution("color").getDomain()
+        ).toEqual(["region"]);
+        expect(annotationLayer.coords.width).toBeGreaterThan(0);
+    });
+
+    test("requires unscaled perpendicular field positions", async () => {
+        await expect(
+            createAndInitialize(
+                {
+                    vconcat: [makeUnitSpec()],
+                    annotate: [
+                        {
+                            data: { values: [{ y: 0.5 }] },
+                            mark: "point",
+                            encoding: {
+                                x: { value: 0.5 },
+                                y: { field: "y", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+                ConcatView
+            )
+        ).rejects.toThrow("must use scale: null");
     });
 });

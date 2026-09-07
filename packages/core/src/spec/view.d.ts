@@ -657,6 +657,13 @@ export interface VConcatSpec extends ConcatBase {
      * Specifies views that will be concatenated vertically.
      */
     vconcat: (ViewSpec | ImportSpec)[];
+
+    /**
+     * Marks drawn across the plotting areas of the vertically concatenated
+     * views. The aligned x axis uses the concat's shared scale; y positions
+     * use normalized, unscaled coordinates.
+     */
+    annotate?: (UnitSpec | LayerSpec)[];
 }
 
 export interface HConcatSpec extends ConcatBase {
@@ -664,6 +671,13 @@ export interface HConcatSpec extends ConcatBase {
      * Specifies views that will be concatenated horizontally.
      */
     hconcat: (ViewSpec | ImportSpec)[];
+
+    /**
+     * Marks drawn across the plotting areas of the horizontally concatenated
+     * views. The aligned y axis uses the concat's shared scale; x positions
+     * use normalized, unscaled coordinates.
+     */
+    annotate?: (UnitSpec | LayerSpec)[];
 }
 
 export interface ConcatSpec extends ConcatBase {

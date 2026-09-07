@@ -176,6 +176,9 @@ export default class GridChild {
         /** @type {Rectangle} */
         this.coords = Rectangle.ZERO;
 
+        /** @type {Rectangle} */
+        this.plotCoords = Rectangle.ZERO;
+
         const needsAxes = view.needsAxes.x || view.needsAxes.y;
         const parentChromePolicy = view.getParentGridChromePolicy();
         const spec = view.spec;

@@ -17,6 +17,7 @@ import AxisView, {
     getExternalAxisOverhang,
 } from "../axisView.js";
 import ContainerView from "../containerView.js";
+import { VISIT_SKIP } from "../view.js";
 import {
     propagateInteraction,
     propagateInteractionSurface,
@@ -55,6 +56,7 @@ import { createConfiguredRulerOverlayView } from "./rulerOverlay.js";
 import { createSelectionRectOverlay } from "./selectionRect.js";
 import { resolveOverlayExtent } from "./overlayExtent.js";
 import { getScaleProjectionCoords } from "../scaleProjection.js";
+import { isInChromeSubtree } from "../viewChrome.js";
 import {
     asSelectionConfig,
     createIntervalSelection,
@@ -385,6 +387,128 @@ export default class GridView extends ContainerView {
     }
 
     /**
+     * Returns the annotation layer owned by this container, if any.
+     *
+     * @returns {import("../layerView.js").default | undefined}
+     */
+    getAnnotationLayer() {
+        return undefined;
+    }
+
+    /**
+     * Returns the axis used by container-spanning annotations, if any.
+     *
+     * @returns {import("../../spec/channel.js").PrimaryPositionalChannel | undefined}
+     */
+    getAnnotationChannel() {
+        return undefined;
+    }
+
+    /**
+     * Returns the plotting placements of visible track children. These
+     * placements intentionally exclude this grid's guides and any nested
+     * container annotations.
+     *
+     * @returns {{ content: Rectangle, viewport: Rectangle, views: UnitView[] }[]}
+     */
+    getTrackPlotPlacements() {
+        /** @type {{ content: Rectangle, viewport: Rectangle, views: UnitView[] }[]} */
+        const placements = [];
+
+        for (const gridChild of this.#visibleChildren) {
+            if (gridChild.view instanceof GridView) {
+                placements.push(...gridChild.view.getTrackPlotPlacements());
+                continue;
+            }
+
+            /** @type {UnitView[]} */
+            const trackViews = [];
+            gridChild.view.visit((view) => {
+                if (!view.isConfiguredVisible()) {
+                    return VISIT_SKIP;
+                }
+                if (
+                    view instanceof UnitView &&
+                    !isInChromeSubtree(view) &&
+                    view.isConfiguredVisible()
+                ) {
+                    trackViews.push(view);
+                }
+            });
+
+            if (trackViews.length === 0) {
+                continue;
+            }
+
+            placements.push({
+                content: gridChild.plotCoords,
+                viewport: gridChild.coords,
+                views: trackViews,
+            });
+        }
+
+        return placements;
+    }
+
+    /**
+     * Returns the shared plotting bounds used by container overlays and
+     * interactions.
+     *
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} [channel]
+     * @returns {{ content: Rectangle, viewport: Rectangle, placements: ReturnType<GridView["getTrackPlotPlacements"]> } | undefined}
+     */
+    getTrackPlotGeometry(channel) {
+        const placements = this.getTrackPlotPlacements().filter(
+            ({ content, viewport }) =>
+                content.width > 0 &&
+                content.height > 0 &&
+                viewport.width > 0 &&
+                viewport.height > 0
+        );
+        if (placements.length === 0) {
+            return undefined;
+        }
+
+        if (channel) {
+            const resolution = this.getScaleResolution(channel);
+            const expectedSpan =
+                placements[0].content[channel === "x" ? "width" : "height"];
+            const expectedStart =
+                placements[0].content[channel === "x" ? "x" : "y"];
+
+            for (const placement of placements) {
+                for (const view of placement.views) {
+                    if (view.getScaleResolution(channel) !== resolution) {
+                        throw new Error(
+                            `Container annotations require all visible tracks to use the shared ${channel} scale resolution.`
+                        );
+                    }
+                }
+
+                const span =
+                    placement.content[channel === "x" ? "width" : "height"];
+                const start = placement.content[channel === "x" ? "x" : "y"];
+                if (
+                    Math.abs(span - expectedSpan) > 1e-6 ||
+                    Math.abs(start - expectedStart) > 1e-6
+                ) {
+                    throw new Error(
+                        `Container annotations require equal aligned visible plotting spans on the shared ${channel} axis.`
+                    );
+                }
+            }
+        }
+
+        return {
+            content: getUnionCoords(placements.map(({ content }) => content)),
+            viewport: getUnionCoords(
+                placements.map(({ viewport }) => viewport)
+            ),
+            placements,
+        };
+    }
+
+    /**
      * Restricts which legends this grid and its children physically host.
      * Semantic legend ownership and scale resolution remain unchanged.
      *
@@ -648,6 +772,11 @@ export default class GridView extends ContainerView {
 
         for (const { overlay } of this.#containerOverlays) {
             yield overlay.view;
+        }
+
+        const annotationLayer = this.getAnnotationLayer();
+        if (annotationLayer) {
+            yield annotationLayer;
         }
 
         for (const separatorView of Object.values(this.#separatorViews)) {
@@ -1188,6 +1317,7 @@ export default class GridView extends ContainerView {
                 : viewportCoords;
 
             gridChild.coords = viewportCoords;
+            gridChild.plotCoords = viewCoords;
 
             const parentClip = normalizeClipOptions(options);
             const visibleChildCoords = clipCoords(viewportCoords, parentClip);
@@ -1565,6 +1695,23 @@ export default class GridView extends ContainerView {
         }
 
         arrangeDecorations(overlays);
+
+        const annotationLayer = this.getAnnotationLayer();
+        const annotationGeometry = annotationLayer
+            ? this.getTrackPlotGeometry(this.getAnnotationChannel())
+            : undefined;
+        if (annotationLayer && annotationGeometry) {
+            const parentClip = normalizeClipOptions(options);
+            const annotationClip = combineClipOptions(
+                parentClip,
+                createClipOptions(annotationGeometry.viewport, true, true)
+            );
+            annotationLayer.arrange(context, annotationGeometry.content, {
+                ...options,
+                clipRect: annotationClip?.rect,
+                clip: annotationClip,
+            });
+        }
 
         context.popView(this);
     }
