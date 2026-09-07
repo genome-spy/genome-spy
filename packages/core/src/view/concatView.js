@@ -9,6 +9,7 @@ import ContainerMutationHelper from "./containerMutationHelper.js";
 import { moveArrayItem } from "../utils/arrayUtils.js";
 import { isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
 import { markViewAsNonAddressable } from "./viewSelectors.js";
+import { getPrimaryChannel } from "../encoder/encoder.js";
 
 /**
  * Creates a vertically or horizontally concatenated layout for children.
@@ -311,10 +312,9 @@ function prepareAnnotationSpec(spec, sharedChannel, perpendicularChannel) {
 
     const prepared = structuredClone(spec);
     const resolveScale = prepared.resolve?.scale;
-    if (
-        resolveScale?.default === "independent" ||
-        resolveScale?.[sharedChannel] === "independent"
-    ) {
+    const sharedResolution =
+        resolveScale?.[sharedChannel] ?? resolveScale?.default;
+    if (sharedResolution === "independent" || sharedResolution === "excluded") {
         throw new Error(
             `Container annotations cannot use an independent ${sharedChannel} scale.`
         );
@@ -379,6 +379,15 @@ function prepareAnnotationEncoding(
             if (definition.scale !== undefined) {
                 throw new Error(
                     `Container annotation encodings on ${channel} cannot define scale settings.`
+                );
+            }
+            if (
+                definition.resolutionChannel !== undefined &&
+                getPrimaryChannel(definition.resolutionChannel) !==
+                    sharedChannel
+            ) {
+                throw new Error(
+                    `Container annotation channel ${channel} must resolve through ${sharedChannel}.`
                 );
             }
             if (!("value" in definition)) {

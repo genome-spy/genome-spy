@@ -54,6 +54,7 @@ import {
 import { isRulerParameter } from "../../paramRuntime/paramUtils.js";
 import { createConfiguredRulerOverlayView } from "./rulerOverlay.js";
 import { createSelectionRectOverlay } from "./selectionRect.js";
+import { IntervalSelectionController } from "./intervalSelectionController.js";
 import { resolveOverlayExtent } from "./overlayExtent.js";
 import { getScaleProjectionCoords } from "../scaleProjection.js";
 import { isInChromeSubtree } from "../viewChrome.js";
@@ -208,6 +209,9 @@ export default class GridView extends ContainerView {
 
     /** @type {{ overlay: import("./generatedChromeOverlay.js").GeneratedChromeOverlay, order: number, channel: import("../../spec/channel.js").PrimaryPositionalChannel }[]} */
     #containerOverlays = [];
+
+    /** @type {IntervalSelectionController[]} */
+    #intervalSelectionControllers = [];
 
     /**
      *
@@ -402,6 +406,44 @@ export default class GridView extends ContainerView {
      */
     getAnnotationChannel() {
         return undefined;
+    }
+
+    get view() {
+        return this;
+    }
+
+    getInteractionCoords() {
+        const channel = this.#getGapZoomChannel();
+        return this.getTrackPlotGeometry(channel)?.viewport;
+    }
+
+    /**
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
+     * @param {import("../../scales/scaleResolution.js").default} scaleResolution
+     */
+    getProjectionCoords(channels, channel, scaleResolution) {
+        const geometry = this.getTrackPlotGeometry(channel);
+        if (!geometry) {
+            throw new Error(
+                `Cannot project a container interval on an empty ${channel} grid.`
+            );
+        }
+        return geometry.content;
+    }
+
+    /** @returns {import("./selectionRect.js").SelectionRectOverlay | undefined} */
+    getSelectionRect() {
+        return undefined;
+    }
+
+    /**
+     * @param {import("./selectionRect.js").SelectionRectOverlay} _overlay
+     */
+    setSelectionRect(_overlay) {
+        throw new Error(
+            "GridView-owned interval selections use a container overlay."
+        );
     }
 
     /**
@@ -639,6 +681,11 @@ export default class GridView extends ContainerView {
     }
 
     async #syncContainerOverlays() {
+        for (const controller of this.#intervalSelectionControllers) {
+            controller.dispose();
+        }
+        this.#intervalSelectionControllers = [];
+
         for (const { overlay } of this.#containerOverlays) {
             overlay.view.disposeSubtree();
         }
@@ -699,6 +746,19 @@ export default class GridView extends ContainerView {
                 order: DECORATION_ORDER.selectionRect,
                 channel,
             });
+            this.#intervalSelectionControllers.push(
+                new IntervalSelectionController(
+                    this,
+                    paramName,
+                    /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
+                        param
+                    ),
+                    select,
+                    this.paramRuntime,
+                    false,
+                    overlay
+                )
+            );
             promises.push(overlay.view.initializeChildren());
         }
 
@@ -1748,6 +1808,14 @@ export default class GridView extends ContainerView {
         return offsetAxes;
     }
 
+    dispose() {
+        for (const controller of this.#intervalSelectionControllers) {
+            controller.dispose();
+        }
+        this.#intervalSelectionControllers = [];
+        super.dispose();
+    }
+
     /**
      * @param {import("../../utils/interaction.js").default} event
      */
@@ -1803,6 +1871,45 @@ export default class GridView extends ContainerView {
                 if (event.stopped) {
                     return;
                 }
+            }
+
+            const annotationLayer = this.getAnnotationLayer();
+            const annotationCoords = annotationLayer
+                ? this.getTrackPlotGeometry(this.getAnnotationChannel())
+                      ?.viewport
+                : undefined;
+            const pointedAnnotation =
+                annotationLayer &&
+                annotationCoords?.containsPoint(event.point.x, event.point.y) &&
+                this.context
+                    .getCurrentHover()
+                    ?.mark?.unitView?.getLayoutAncestors()
+                    .includes(annotationLayer);
+            if (pointedAnnotation) {
+                annotationLayer.propagateInteraction(event);
+                if (event.stopped) {
+                    return;
+                }
+
+                if (!pointedView) {
+                    if (gapZoomTarget) {
+                        this.#propagateGapZoomInteraction(event, gapZoomTarget);
+                    }
+                } else if (isZoomInteractionView(pointedView)) {
+                    interactionToZoom(
+                        event,
+                        pointedChild.coords,
+                        (zoomEvent) =>
+                            this.#handleZoom(
+                                pointedChild.coords,
+                                pointedChild.view,
+                                zoomEvent
+                            ),
+                        this.context.getCurrentHover(),
+                        this.context.animator
+                    );
+                }
+                return;
             }
 
             if (!pointedView) {

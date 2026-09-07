@@ -41,7 +41,10 @@ import {
     isHConcatSpec,
     isVConcatSpec,
 } from "../viewSpecGuards.js";
-import { isRulerGapChannel } from "../scaleProjection.js";
+import {
+    getRulerProjectionCoords,
+    isRulerGapChannel,
+} from "../scaleProjection.js";
 
 export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js";
 
@@ -442,11 +445,14 @@ export default class GridChild {
 
         for (const owner of this.view.getDataAncestors()) {
             for (const [paramName, param] of owner.paramRuntime.paramConfigs) {
-                if (seen.has(paramName) || !("select" in param)) {
+                if (seen.has(paramName)) {
                     continue;
                 }
 
                 seen.add(paramName);
+                if (!("select" in param)) {
+                    continue;
+                }
                 const select = asSelectionConfig(param.select);
                 if (
                     isIntervalSelectionConfig(select) &&
@@ -496,6 +502,41 @@ export default class GridChild {
                 label: `Interval selection param "${paramName}"`,
             }) === "container"
         );
+    }
+
+    get context() {
+        return this.layoutParent.context;
+    }
+
+    getInteractionCoords() {
+        return this.coords.width > 0 && this.coords.height > 0
+            ? this.coords
+            : this.view.coords;
+    }
+
+    /**
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
+     * @param {import("../../scales/scaleResolution.js").default} scaleResolution
+     */
+    getProjectionCoords(channels, channel, scaleResolution) {
+        return getRulerProjectionCoords(
+            this.view,
+            channels,
+            channel,
+            scaleResolution
+        );
+    }
+
+    getSelectionRect() {
+        return this.selectionRect;
+    }
+
+    /**
+     * @param {import("./selectionRect.js").SelectionRectOverlay} overlay
+     */
+    setSelectionRect(overlay) {
+        this.selectionRect = overlay;
     }
 
     *getChildren() {
