@@ -431,6 +431,13 @@ export default class GridView extends ContainerView {
             return true;
         }
 
+        if (
+            pointedChild.view instanceof GridView &&
+            !pointedChild.view.ownsInteraction(name, point)
+        ) {
+            return false;
+        }
+
         for (const owner of pointedChild.view.getDataAncestors()) {
             if (owner === this) {
                 return true;
