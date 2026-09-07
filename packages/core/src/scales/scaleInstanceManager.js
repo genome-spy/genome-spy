@@ -50,6 +50,9 @@ export default class ScaleInstanceManager {
     /** @type {import("../paramRuntime/types.js").WritableParamRef<{ range: any[], configuredRange: any[] | undefined, props: import("../spec/scale.js").Scale } | null>} */
     #rangeCommand;
 
+    // A public range command is invalidated by the first reactive range change.
+    #rangeCommandActive = false;
+
     /** @type {(range: any[]) => void} */
     #setRange;
 
@@ -107,6 +110,7 @@ export default class ScaleInstanceManager {
     }
 
     resetScale() {
+        this.#rangeCommandActive = false;
         this.#rangeCommand?.set(null);
         this.#scale = undefined;
         this.#setRange = undefined;
@@ -169,6 +173,8 @@ export default class ScaleInstanceManager {
                 },
                 { equals: equalMapping }
             );
+            // If profiling shows range() expressions are hot during domain animation,
+            // expose a range-only dependency instead of making them follow mapping.
             this.#runtime.effect([this.mapping], this.#onRangeChange);
         }
         this.#initializingRange = true;
@@ -273,12 +279,14 @@ export default class ScaleInstanceManager {
             );
             if (props.reverse) configuredRange?.reverse();
             const command = this.#rangeCommand.get();
-            const range =
-                command &&
+            const canUseCommand =
+                this.#rangeCommandActive &&
+                command !== null &&
                 command.props === props &&
-                equalRange(command.configuredRange, configuredRange)
-                    ? command.range
-                    : configuredRange;
+                equalRange(command.configuredRange, configuredRange);
+            if (command && !canUseCommand) this.#rangeCommandActive = false;
+            const range =
+                command && canUseCommand ? command.range : configuredRange;
             const previous = this.mapping.get();
             const prepared =
                 scale.type === "null" ||
@@ -381,6 +389,7 @@ export default class ScaleInstanceManager {
         const domain = scale.domain;
         const setRange = (/** @type {any[]} */ values) => {
             const configuration = this.mapping.get();
+            this.#rangeCommandActive = true;
             this.#rangeCommand.set({
                 range: Array.from(values),
                 configuredRange: configuration.configuredRange,

@@ -179,6 +179,9 @@ describe("graph-owned scale mapping", () => {
         view.paramRuntime.setValue("high", 20);
         expect(resolution.scale.range()).toEqual([0, 40]);
         expect(view.paramRuntime.getValue("mapped")).toBe(10);
+        view.paramRuntime.setValue("high", 10);
+        expect(resolution.scale.range()).toEqual([0, 20]);
+        expect(view.paramRuntime.getValue("mapped")).toBe(5);
         view.disposeSubtree();
     });
 });
