@@ -6,6 +6,7 @@ import { createSinglePointSelection } from "../../selection/selection.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import { startPerformanceProfiler } from "../../debug/performanceProfiler.js";
 import Canvas2DViewRenderingContext from "./canvas2DViewRenderingContext.js";
+import { createSvg } from "../svg/index.js";
 
 afterEach(() => {
     const globalObject = /** @type {Record<symbol, unknown>} */ (globalThis);
@@ -204,6 +205,73 @@ function render(
 }
 
 describe("Canvas2DViewRenderingContext", () => {
+    test("Canvas2D and immediate SVG export use the settled reactive size mapping", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [
+                { name: "low", value: 0 },
+                { name: "high", value: 200 },
+            ],
+            scales: {
+                size: {
+                    type: "linear",
+                    domain: [0, 10],
+                    range: [{ expr: "low" }, { expr: "high" }],
+                },
+            },
+            data: { values: [{ value: 5 }] },
+            mark: { type: "point", strokeWidth: 0 },
+            encoding: {
+                fill: { value: "black" },
+                x: { value: 0.5 },
+                y: { value: 0.5 },
+                size: {
+                    field: "value",
+                    type: "quantitative",
+                    legend: null,
+                },
+            },
+        });
+        view.paramRuntime.runInTransaction(() => {
+            view.paramRuntime.setValue("low", 200);
+            view.paramRuntime.setValue("high", 600);
+        });
+        view.paramRuntime.flushNow();
+
+        const recording = createRecordingContext();
+        render(view, recording.context);
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const radius = +svg
+            .querySelector('[data-mark-type="point"] circle')
+            .getAttribute("r");
+        expect(radius).toBe(10);
+        expect(recording.calls.arcs).toContainEqual([50, 50, radius]);
+        expect(warnings).toEqual([]);
+        view.getScaleResolution("size").attachViewLevelScaleProps(view, {
+            type: "linear",
+            domain: [0, 10],
+            range: [800, 1000],
+        });
+        render(view, recording.context);
+        const replacement = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        expect(
+            +replacement.svg
+                .querySelector('[data-mark-type="point"] circle')
+                .getAttribute("r")
+        ).toBe(15);
+        expect(recording.calls.arcs).toContainEqual([50, 50, 15]);
+        view.disposeSubtree();
+    });
+
     test("applies local view opacity once after overlapping child draws", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },

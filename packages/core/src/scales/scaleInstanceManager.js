@@ -1,7 +1,8 @@
 import { isDiscrete } from "vega-scale";
 import createIndexer from "../utils/indexer.js";
 import { NominalDomain } from "../utils/domainArray.js";
-import { isArray } from "vega-util";
+import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
+import { shallowArrayEquals } from "../utils/arrayUtils.js";
 
 import createScale, {
     configureScaleProperties,
@@ -10,6 +11,17 @@ import createScale, {
 } from "../scale/scale.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { isScaleLocus } from "../genome/scaleLocus.js";
+
+/**
+ * @typedef {{
+ *   scale: import("../types/encoder.js").VegaScale,
+ *   props: import("../spec/scale.js").Scale,
+ *   domain: readonly any[],
+ *   configuredRange: any[] | undefined,
+ *   range: any[] | undefined,
+ *   prepared: (import("../types/encoder.js").VegaScale & {props: import("../spec/scale.js").Scale}) | undefined
+ * }} MappingConfiguration
+ */
 
 export default class ScaleInstanceManager {
     /**
@@ -23,8 +35,26 @@ export default class ScaleInstanceManager {
     /** @type {any[] | undefined} */
     #defaultRange;
 
-    /** @type {Set<import("../paramRuntime/types.js").ExprRefFunction>} */
-    #rangeExprRefListeners = new Set();
+    /** @type {ViewParamRuntime} */
+    #runtime;
+
+    /** @type {() => ViewParamRuntime} */
+    #getRuntime;
+
+    /** @type {import("../paramRuntime/types.js").ParamRef<readonly any[]>} */
+    #domain;
+
+    /** @type {import("../paramRuntime/types.js").OperationRef<MappingConfiguration | null>} */
+    mapping;
+
+    /** @type {import("../paramRuntime/types.js").WritableParamRef<{ range: any[], configuredRange: any[] | undefined, props: import("../spec/scale.js").Scale } | null>} */
+    #rangeCommand;
+
+    // A public range command is invalidated by the first reactive range change.
+    #rangeCommandActive = false;
+
+    /** @type {(range: any[]) => void} */
+    #setRange;
 
     /** @type {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} */
     #createExpression;
@@ -51,17 +81,20 @@ export default class ScaleInstanceManager {
 
     /**
      * @param {object} options
+     * @param {() => ViewParamRuntime} options.getRuntime
      * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
      * @param {() => void} options.onRangeChange
      * @param {(domain: any[]) => void} options.onDomainChange
      * @param {() => import("../genome/genomeStore.js").default | undefined} options.getGenomeStore
      */
     constructor({
+        getRuntime,
         createExpression,
         onRangeChange,
         onDomainChange,
         getGenomeStore,
     }) {
+        this.#getRuntime = getRuntime;
         this.#createExpression = createExpression;
         this.#onRangeChange = onRangeChange;
         this.#onDomainChange = onDomainChange;
@@ -77,8 +110,11 @@ export default class ScaleInstanceManager {
     }
 
     resetScale() {
-        this.dispose();
+        this.#rangeCommandActive = false;
+        this.#rangeCommand?.set(null);
         this.#scale = undefined;
+        this.#setRange = undefined;
+        this.#mirrorDomain = undefined;
         this.#domainNormalizer = undefined;
         this.#defaultRange = undefined;
     }
@@ -102,7 +138,7 @@ export default class ScaleInstanceManager {
 
     /**
      * @param {import("../spec/scale.js").Scale} props
-     * @param {(domain: any[]) => void} initializeDomain Before range expressions bind.
+     * @param {(domain: any[]) => import("../paramRuntime/types.js").ParamRef<readonly any[]>} initializeDomain Before range expressions bind.
      * @returns {ScaleWithProps}
      */
     createScale(props, initializeDomain) {
@@ -122,12 +158,29 @@ export default class ScaleInstanceManager {
             typeof scale.range === "function" ? scale.range() : undefined;
         this.#bindGenomeIfNeeded(props);
         this.#mirrorDomain = scale.domain;
-        if (scale.type !== "null") {
-            initializeDomain(scale.domain());
+        if (scale.type !== "null")
+            this.#domain = initializeDomain(scale.domain());
+        this.#setRange = scale.range;
+        if (!this.#runtime) {
+            this.#runtime = new ViewParamRuntime(() => this.#getRuntime());
+            this.#rangeCommand = this.#runtime.signal("range command", null);
+            this.mapping = this.#runtime.operation(
+                "scale mapping",
+                [],
+                /** @returns {MappingConfiguration | null} */ () => null,
+                (configuration) => {
+                    if (configuration) this.#applyMapping(configuration);
+                },
+                { equals: equalMapping }
+            );
+            // If profiling shows range() expressions are hot during domain animation,
+            // expose a range-only dependency instead of making them follow mapping.
+            this.#runtime.effect([this.mapping], this.#onRangeChange);
         }
         this.#initializingRange = true;
         try {
-            this.#configureRange();
+            this.configureMapping(props);
+            this.#runtime.flushNow();
         } finally {
             this.#initializingRange = false;
         }
@@ -199,21 +252,97 @@ export default class ScaleInstanceManager {
     /** @param {import("../spec/scale.js").Scale} props */
     configureProperties(props) {
         this.#domainNormalizer = undefined;
-        configureScaleProperties(this.#scale, this.#stripNonScaleProps(props));
         this.#scale.props = props;
     }
 
     /** @param {import("../spec/scale.js").Scale} props */
-    configureRange(props) {
-        // TODO(#463): Apply reactive properties/range as one settled mapping
-        // update, replacing the separate subscriptions and range notifications.
-        // Keep displayed-domain dependencies distinct so same-scale domain-to-range
-        // expressions and frame-by-frame calibration remain valid.
-        configureScaleRange(this.#scale, {
-            ...this.#stripNonScaleProps(props),
+    configureMapping(props) {
+        const scale = this.#scale;
+        const dependencies =
+            scale.type === "null" ? [] : [this.#domain, this.#rangeCommand];
+        /** @param {any} value */
+        const bind = (value) => {
+            if (!isExprRef(value)) return () => value;
+            const expression = this.#createExpression(value.expr);
+            dependencies.push(...expression.dependencies);
+            return expression;
+        };
+        const expressions = Array.isArray(props.range)
+            ? props.range.map(bind)
+            : undefined;
+        // Expressions may bootstrap parameters that reference this scale. Once
+        // bound, graph cycle checks guard feedback and observers can read mapping.
+        this.#initializingRange = false;
+        this.mapping.rebind(dependencies, () => {
+            const configuredRange = expressions?.map((expression) =>
+                expression(null)
+            );
+            if (props.reverse) configuredRange?.reverse();
+            const command = this.#rangeCommand.get();
+            const canUseCommand =
+                this.#rangeCommandActive &&
+                command !== null &&
+                command.props === props &&
+                equalRange(command.configuredRange, configuredRange);
+            if (command && !canUseCommand) this.#rangeCommandActive = false;
+            const range =
+                command && canUseCommand ? command.range : configuredRange;
+            const previous = this.mapping.get();
+            const prepared =
+                scale.type === "null" ||
+                (previous?.scale === scale && previous?.props === props)
+                    ? undefined
+                    : this.#prepareMapping(props);
+            return {
+                scale,
+                props,
+                domain: scale.type === "null" ? [] : this.#domain.get(),
+                configuredRange,
+                range,
+                prepared,
+            };
+        });
+        this.#runtime.flushNow({ afterTransaction: true });
+    }
+
+    /** Validate configuration once and retain its properties for live application.
+     * @param {import("../spec/scale.js").Scale} props
+     */
+    #prepareMapping(props) {
+        props = this.#stripNonScaleProps(props);
+        const working = this.#scale.copy();
+        working.type = this.#scale.type;
+        configureScaleProperties(working, props);
+        configureScaleRange(working, {
+            ...props,
             range: undefined,
         });
-        this.#configureRange();
+        return Object.assign(working, { props });
+    }
+
+    /** @param {MappingConfiguration} configuration */
+    #applyMapping({ props, range, prepared }) {
+        // Reset can leave a queued update behind while scale recreation fails.
+        if (!this.#scale || this.#scale.type === "null") return;
+        if (prepared) {
+            configureScaleProperties(this.#scale, prepared.props);
+            // Copy through raw setters; public setters submit reactive commands.
+            // Restore the interpolator last: range() replaces color schemes.
+            if (this.#setRange) this.#setRange(prepared.range());
+            if ("interpolator" in prepared && "interpolator" in this.#scale)
+                this.#scale.interpolator(prepared.interpolator());
+            if ("bins" in prepared)
+                /** @type {any} */ (this.#scale).bins = prepared.bins;
+            else delete (/** @type {any} */ (this.#scale).bins);
+        }
+        if (range) this.#setRange(range);
+        else if (
+            props.scheme === undefined &&
+            !("rangeStep" in props) &&
+            this.#defaultRange
+        ) {
+            this.#setRange(this.#defaultRange);
+        }
     }
 
     /**
@@ -252,66 +381,30 @@ export default class ScaleInstanceManager {
         return rest;
     }
 
-    /**
-     * Configures range. If range is an array of expressions, they are evaluated
-     * and the scale is updated when the expressions change.
-     */
-    #configureRange() {
-        const scale = this.#scale;
-        if (!scale) {
-            return;
-        }
-
-        const props = scale.props;
-        this.#rangeExprRefListeners.forEach((fn) => fn.invalidate());
-        this.#rangeExprRefListeners.clear();
-
-        const resolved = resolveRange({
-            range: props.range,
-            reverse: props.reverse,
-            createExpression: this.#createExpression,
-            registerExpr: (fn) => this.#rangeExprRefListeners.add(fn),
-        });
-
-        if (!resolved) {
-            if (
-                props.scheme === undefined &&
-                !("rangeStep" in props) &&
-                this.#defaultRange
-            ) {
-                scale.range(this.#defaultRange);
-            }
-            return;
-        }
-
-        if ("values" in resolved) {
-            scale.range(/** @type {any[]} */ (resolved.values));
-            return;
-        }
-
-        const apply = () => scale.range(resolved.evaluate());
-        resolved.setup(apply);
-        apply();
-    }
-
     #wrapScaleInterceptors() {
-        // TODO(#463): When mapping configuration joins the reactive graph, keep
-        // the mutable D3 scale internal and replace these patches with an explicit
-        // configuration API. Methods such as nice() can bypass domain interception.
-        // Preserve a cached fast mapping function for encoders; benchmark any
-        // callable wrapper/proxy before putting it on the per-datum path.
+        // Public mutation compatibility (including App sample layout). Internal
+        // configuration uses the original setters and publishes through mapping.
         const scale = this.#scale;
         const range = scale.range;
         const domain = scale.domain;
-        const notifyRange = this.#onRangeChange;
+        const setRange = (/** @type {any[]} */ values) => {
+            const configuration = this.mapping.get();
+            this.#rangeCommandActive = true;
+            this.#rangeCommand.set({
+                range: Array.from(values),
+                configuredRange: configuration.configuredRange,
+                props: configuration.props,
+            });
+            this.#runtime.flushNow({ afterTransaction: true });
+        };
         const updateDomain = this.#onDomainChange;
 
         if (typeof range === "function") {
             scale.range = /** @type {any} */ (
                 function (/** @type {any} */ _) {
                     if (arguments.length) {
-                        range(_);
-                        notifyRange();
+                        setRange(_);
+                        return scale;
                     } else {
                         return range();
                     }
@@ -330,70 +423,28 @@ export default class ScaleInstanceManager {
                 }
             );
         }
-        notifyRange();
     }
 
     dispose() {
-        this.#rangeExprRefListeners.forEach((fn) => fn.invalidate());
-        this.#rangeExprRefListeners.clear();
+        this.#runtime?.dispose();
     }
 }
 
-/**
- * @param {object} options
- * @param {import("../spec/scale.js").Scale["range"]} options.range
- * @param {boolean | undefined} options.reverse
- * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
- * @param {(fn: import("../paramRuntime/types.js").ExprRefFunction) => void} options.registerExpr
- * @returns {{
- *   dynamic: true,
- *   evaluate: () => any[],
- *   setup: (listener: () => void) => void
- * } | {
- *   dynamic: false,
- *   values: any[]
- * } | null}
- */
-function resolveRange({ range, reverse, createExpression, registerExpr }) {
-    if (!range || !isArray(range)) {
-        return null;
-    }
+/** @param {any[] | undefined} a @param {any[] | undefined} b */
+function equalRange(a, b) {
+    return a === b || (!!a && !!b && shallowArrayEquals(a, b));
+}
 
-    /**
-     * @param {T} array
-     * @param {boolean} reverseFlag
-     * @returns {T}
-     * @template T
-     */
-    const flip = (array, reverseFlag) =>
-        // @ts-ignore TODO: Fix the type (should be a generic union array type)
-        reverseFlag ? array.slice().reverse() : array;
-
-    if (range.some(isExprRef)) {
-        /** @type {(() => any)[]} */
-        let expressions;
-        const evaluate = () =>
-            flip(
-                expressions.map((expr) => expr()),
-                reverse
-            );
-        const setup = (/** @type {() => void} */ listener) => {
-            expressions = range.map((elem) => {
-                if (isExprRef(elem)) {
-                    const fn = createExpression(elem.expr);
-                    fn.subscribe(listener);
-                    registerExpr(fn);
-                    return () => fn(null);
-                }
-                return () => elem;
-            });
-        };
-
-        return { dynamic: true, evaluate, setup };
-    }
-
-    return {
-        dynamic: false,
-        values: flip(range, reverse),
-    };
+/** @param {MappingConfiguration | null} a @param {MappingConfiguration | null} b */
+function equalMapping(a, b) {
+    return (
+        a === b ||
+        (!!a &&
+            !!b &&
+            a.scale === b.scale &&
+            a.props === b.props &&
+            shallowArrayEquals(a.domain, b.domain) &&
+            equalRange(a.configuredRange, b.configuredRange) &&
+            equalRange(a.range, b.range))
+    );
 }

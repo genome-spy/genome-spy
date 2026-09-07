@@ -1,3 +1,4 @@
+import SideInputBinding from "./sideInputBinding.js";
 import { range } from "d3-array";
 
 /**
@@ -63,6 +64,9 @@ export default class FlowNode {
     /** @type {(() => void) | undefined} */
     #queuedReplay;
 
+    /** @type {SideInputBinding | undefined} */
+    #sideInputs;
+
     /**
      * An object that provides a paramRuntime. (Most likely a View)
      *
@@ -98,7 +102,23 @@ export default class FlowNode {
      * Side-input transforms additionally check which input revision they used.
      */
     isDataReady() {
-        return this.completed && !this.disposed;
+        return (
+            this.completed &&
+            !this.disposed &&
+            (!this.#sideInputs || this.#sideInputs.isReady())
+        );
+    }
+
+    /** Availability policy; coordinate lookup also checks viewport coverage. */
+    areDataDependenciesAvailable() {
+        return this.dataDependencies.every(
+            (collector) => collector.completed && !collector.disposed
+        );
+    }
+
+    /** Record inputs at batch preparation, outside the per-row fast path. */
+    consumeDataDependencies() {
+        this.#sideInputs?.consume();
     }
 
     /**
@@ -160,6 +180,7 @@ export default class FlowNode {
      * for a new batch of data.
      */
     reset() {
+        this.#sideInputs?.reset();
         this.completed = false;
 
         for (const child of this.children) {
@@ -189,6 +210,8 @@ export default class FlowNode {
         if (this.#initialized) {
             return;
         }
+        if (this.dataDependencies.length)
+            this.#sideInputs = new SideInputBinding(this);
         this.initialize();
         this.#initialized = true;
     }
@@ -368,6 +391,7 @@ export default class FlowNode {
     }
 
     complete() {
+        this.#sideInputs?.complete();
         this.completed = true;
 
         for (const child of this.children) {
@@ -397,6 +421,7 @@ export default class FlowNode {
         }
 
         this.#disposed = true;
+        this.#sideInputs?.dispose();
 
         for (const disposer of this.#disposers) {
             disposer();
@@ -485,7 +510,29 @@ export default class FlowNode {
         for (let ancestor = root.parent; ancestor; ancestor = ancestor.parent) {
             depth++;
         }
-        runtime.requestUpdate(root.#queuedReplay, depth);
+        runtime.requestUpdate(root.#queuedReplay, depth, undefined, () =>
+            root.#replayPrerequisites()
+        );
+    }
+
+    /** Pending publishers of side collectors must precede this primary replay.
+     * @returns {Iterable<() => void>}
+     */
+    #replayPrerequisites() {
+        const prerequisites = new Set();
+        this.visit((node) => {
+            for (const side of node.dataDependencies) {
+                for (
+                    let producer = side.parent;
+                    producer;
+                    producer = producer.parent
+                ) {
+                    if (producer !== this && producer.#queuedReplay)
+                        prerequisites.add(producer.#queuedReplay);
+                }
+            }
+        });
+        return prerequisites;
     }
 
     /**

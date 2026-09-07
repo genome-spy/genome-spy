@@ -22,6 +22,13 @@
  */
 
 /**
+ * @template T
+ * @typedef {ComputedParamRef<T> & {
+ *   rebind: (deps: ParamRef<any>[], evaluate: () => T) => void
+ * }} OperationRef
+ */
+
+/**
  * @typedef {import("../utils/expression.js").ExpressionFunction & {
  *   dependencies: ParamRef<any>[],
  *   subscribe: (listener: () => void) => () => void,

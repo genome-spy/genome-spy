@@ -21,6 +21,7 @@ export function makeParamRuntimeProvider() {
 export function processData(flowNode, data) {
     const collector = new Collector();
     flowNode.addChild(collector);
+    if (flowNode.dataDependencies.length) flowNode.initializeOnce();
 
     for (const d of data) {
         flowNode.handle(d);

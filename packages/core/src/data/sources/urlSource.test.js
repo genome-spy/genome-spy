@@ -544,3 +544,143 @@ test("UrlSource reports conflicting template fields", async () => {
         ),
     });
 });
+
+test("an older request cannot republish after its replacement completes", async () => {
+    const older = Promise.withResolvers();
+    global.fetch = vi.fn(async (url) =>
+        url === "a.json" ? older.promise : new Response('[{"value":"B"}]')
+    );
+    const source = new UrlSource({ url: "a.json" }, createViewStub());
+    const collector = new Collector();
+    source.addChild(collector);
+
+    const a = source.load();
+    await vi.waitFor(() => expect(global.fetch).toHaveBeenCalledWith("a.json"));
+
+    source.params.url = "b.json";
+    await source.load();
+    older.resolve(new Response('[{"value":"A"}]'));
+    await a;
+
+    expect(Array.from(collector.getData())).toEqual([{ value: "B" }]);
+    // Stale completion can publish another revision even when rows still look correct.
+    expect(collector.dataRevision).toBe(1);
+});
+
+test.each([false, true])(
+    "superseded load cannot publish while a newer load is pending (reject: %s)",
+    async (reject) => {
+        const a = Promise.withResolvers();
+        const b = Promise.withResolvers();
+        global.fetch = vi.fn(async (url) =>
+            url === "a.json" ? a.promise : b.promise
+        );
+        const view = createViewStub();
+        const source = new UrlSource({ url: "a.json" }, view);
+        const collector = new Collector();
+        source.addChild(collector);
+
+        const first = source.load();
+        await vi.waitFor(() =>
+            expect(global.fetch).toHaveBeenCalledWith("a.json")
+        );
+
+        source.params.url = "b.json";
+        const second = source.load();
+        if (reject) {
+            a.reject(new Error("old failure"));
+        } else {
+            a.resolve(new Response('[{"value":"A"}]'));
+        }
+        await first;
+        expect(collector.completed).toBe(false);
+        expect(/** @type {any} */ (view).loadingStatus.status).toBe("loading");
+        b.resolve(new Response('[{"value":"B"}]'));
+        await second;
+
+        expect(Array.from(collector.getData())).toEqual([{ value: "B" }]);
+    }
+);
+
+test("disposal prevents pending URL publication and future loading", async () => {
+    const response = Promise.withResolvers();
+    global.fetch = vi.fn(async () => response.promise);
+    const view = createViewStub();
+    const source = new UrlSource({ url: "a.json" }, view);
+    const collector = new Collector();
+    source.addChild(collector);
+
+    const pending = source.load();
+    await vi.waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    source.dispose();
+    response.resolve(new Response('[{"value":"A"}]'));
+    await pending;
+    await source.load();
+
+    expect(collector.dataRevision).toBe(0);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test("a superseded asynchronous format reader cannot emit a file batch", async () => {
+    const parsed = Promise.withResolvers();
+    const started = Promise.withResolvers();
+    const reader = (/** @type {string} */ text) => {
+        if (text === "A") {
+            started.resolve();
+            return parsed.promise;
+        }
+        return [{ value: text }];
+    };
+    vegaFormats("url-race-fixture", reader);
+    global.fetch = vi.fn(
+        async (url) => new Response(url === "a.data" ? "A" : "B")
+    );
+    const source = new UrlSource(
+        {
+            url: "a.data",
+            format: { type: /** @type {any} */ ("url-race-fixture") },
+        },
+        createViewStub()
+    );
+    const collector = new Collector();
+    source.addChild(collector);
+
+    const first = source.load();
+    await started.promise;
+
+    source.params.url = "b.data";
+    await source.load();
+    parsed.resolve([{ value: "A" }]);
+    await first;
+
+    expect(Array.from(collector.getData())).toEqual([{ value: "B" }]);
+    expect(collector.dataRevision).toBe(1);
+});
+
+test("superseded fetched content never invokes its format reader", async () => {
+    const response = Promise.withResolvers();
+    const reader = vi.fn((text) => [{ value: text }]);
+    vegaFormats("url-stale-parse-fixture", reader);
+    global.fetch = vi.fn(async (url) =>
+        url === "a.data" ? response.promise : new Response("B")
+    );
+    const source = new UrlSource(
+        {
+            url: "a.data",
+            format: { type: /** @type {any} */ ("url-stale-parse-fixture") },
+        },
+        createViewStub()
+    );
+    const collector = new Collector();
+    source.addChild(collector);
+    const first = source.load();
+    await vi.waitFor(() => expect(global.fetch).toHaveBeenCalledWith("a.data"));
+    source.params.url = "b.data";
+    await source.load();
+    response.resolve(new Response("A"));
+    await first;
+
+    expect(reader).toHaveBeenCalledTimes(1);
+    expect(reader.mock.calls[0][0]).toBe("B");
+    expect(Array.from(collector.getData())).toEqual([{ value: "B" }]);
+});

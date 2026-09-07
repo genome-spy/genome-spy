@@ -168,19 +168,16 @@ describe("mark rendering revisions", () => {
             UnitView
         );
         const resolution = view.getScaleResolution("x");
-        const addEventListener = vi.spyOn(resolution, "addEventListener");
-
         view.mark.initializeEncoders();
         view.mark.initializeRenderingRevisions([]);
 
-        const listeners = addEventListener.mock.calls.map((call) => call[1]);
-        expect(addEventListener.mock.calls.map((call) => call[0])).toEqual([
-            "domain",
-            "range",
-        ]);
-        listeners[0]({ type: "domain", scaleResolution: resolution });
-        listeners[1]({ type: "range", scaleResolution: resolution });
-        expect(view.mark.getRenderingRevision("resources")).toBe(2);
+        view.paramRuntime.runInTransaction(() => {
+            resolution.scale.domain([0, 20]);
+            resolution.scale.range([0, 2]);
+        });
+        view.paramRuntime.flushNow();
+        expect(view.mark.getRenderingRevision("resources")).toBe(1);
+        view.disposeSubtree();
     });
 });
 

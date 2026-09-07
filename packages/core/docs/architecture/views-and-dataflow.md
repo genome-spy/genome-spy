@@ -56,11 +56,37 @@ arrangement.
   Inline, sequence, and named source replay uses synchronous loading so row errors
   reach that propagation boundary. Async sources retain their request lifecycle.
   See `reactivity.md` for coherent observer, failure/retry, and disposal semantics.
+- Eager `UrlSource` loads use a source-local counter: once a replacement load
+  starts, older loads cannot publish rows, status or completion. Disposal also
+  prevents publication. Superseded fetched content skips parsing; async parser
+  results are checked again before publication. Reset still occurs at load start; this does not introduce
+  retained pending data, cancellation, or a shared async scheduler.
 - `src/data/dataReadiness.js` walks the actual optimized primary path and
-  `FlowNode.dataDependencies` side edges. Lookup/cross nodes record the foreign
-  revision incorporated into completed output, so side arrival cannot report
-  readiness before primary replay. View ownership is not a dependency graph:
-  an inherited lookup affects its descendants but not an overriding data branch.
+  `FlowNode.dataDependencies` side edges. `SideInputBinding` owns observation and
+  consumed revisions for declared collectors. It binds during `initializeOnce()`,
+  after optimization, and unsubscribes before consumer-owned auxiliary pruning.
+  Lookup/cross declare their inputs and retain only their relation-specific caches.
+  View ownership is not a dependency graph: an inherited lookup affects its
+  descendants but not an overriding data branch.
+- Side-input consumers call `consumeDataDependencies()` during batch/index
+  preparation, including skipped pending batches. Completion can consume available
+  inputs for an empty primary; it cannot certify a newer revision than the one
+  used for nonempty output. `areDataDependenciesAvailable()` supplies availability
+  policy; coordinate lookup includes current viewport coverage. Pending output
+  may complete an empty stream while remaining unready.
+- New side revisions enqueue primary replay. Transforms compare cache revisions
+  during batch preparation and rebuild only when needed, including implicit
+  lookup fields. The binding handles readiness and replay without a separate
+  cache-invalidation hook. An unchanged cached-side replay does nothing when
+  output is current, but can release a pending publication once coverage becomes
+  available. Self lookup has no side binding. Cross prepares once per primary
+  batch even for empty foreign relations; cache revisions and consumption are
+  recorded after successful preparation.
+- Replay jobs declare pending publishers of their side collectors as prerequisites.
+  These run first in the existing streaming queue, regardless of primary-tree
+  depth or enqueue order. The builder rejects nested auxiliary joins, and the
+  optimizer keeps auxiliary collectors terminal; collector revision timing is
+  unchanged. Data still streams and replays in full, without tuple change sets.
 
 ## Subtree initialization and readiness
 
@@ -112,7 +138,9 @@ refresh after publication. Pure functions in `domainPlanner.js` validate configu
 sources and combine domains; bootstrap and unbound `getDataDomain()` queries use
 the same readers without creating another state owner. `ScaleInstanceManager`
 normalizes candidates on a working scale, maintains categorical index mapping,
-configures properties/ranges, and mirrors committed domains. External `scale.domain(value)`
+applies properties/ranges through a graph-owned mapping operation, and mirrors
+committed domains. Mapping helpers consume the operation's stable output ref.
+External `scale.domain(value)`
 calls submit immediate owner updates; they do not bypass the commit path.
 `ScaleInteractionController` retains coordinate conversion, zoom mathematics,
 and validation, submitting navigation to the same owner. Reset uses the current

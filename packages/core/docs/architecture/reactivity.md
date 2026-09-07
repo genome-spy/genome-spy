@@ -20,6 +20,19 @@ change. Computeds use identity equality by default, with an optional comparator
 for values such as domain arrays. Explicit disposal unregisters owner cleanup as
 well as dependencies, allowing bindings to be replaced in long-lived scopes.
 
+Internal `operation` refs use the same derived-node scheduling and ownership as
+computeds, with an application step before publishing a changed configuration.
+They evaluate and apply initially; equality suppresses subsequent application and
+publication together. Evaluation must validate the complete configuration before
+application mutates its owned resource. Application must not write reactive inputs
+or notify observers; downstream readers depend on the operation ref. Failed
+application does not publish the new configuration, but resource mutations are not
+rolled back. Operations can replace their explicit dependencies and evaluator with
+`rebind` while retaining the output ref. Rebinding rejects upstream cycles before
+disconnecting the old inputs and refreshes downstream ranks, including queued work.
+Ranks are cached between topology changes; normal frame updates do not traverse
+the graph to recompute them.
+
 Direct ref/expression subscriptions remain synchronous invalidation callbacks.
 They may observe intermediate writes within a transaction; use graph effects
 for coherent observation. A flush stabilizes ranked computeds, runs queued
@@ -35,13 +48,23 @@ dependencies are notified. Source completion and collector replay batch the full
 Domain commands request a synchronous flush at the enclosing transaction exit;
 ordinary parameter-only transactions retain their microtask scheduling.
 
-Filter/Formula parameter invalidations enqueue a stable callback for their actual
+Filter/Formula parameter invalidations and declared side-input publications enqueue
+a stable callback for their actual
 upstream collector/source. Shared roots coalesce, and an ancestor's synchronous
 replay subsumes pending descendant replays. The entire replay/fan-out finishes
 before graph effects consume published values; expression evaluation per datum
 remains streaming. Async reload dispatch cannot subsume a cached descendant's
 replay. `whenPropagated` includes synchronous replay and resulting graph work,
 but excludes network completion and future animation frames.
+
+Streaming jobs may declare prerequisite callbacks. Only pending prerequisites
+participate: a queued publisher of a foreign collector runs before the primary
+replay that consumes it. Prerequisites derive from optimized FlowNode side edges;
+cyclic pending jobs fail rather than repeatedly deferring. This extends the same
+queue and does not introduce tuple-level incremental processing. Direct collector
+callbacks can observe pending output; consumers needing the updated rows use a
+propagation barrier or a graph effect. Coordinate coverage and asynchronous source
+completion remain governed by data-readiness APIs.
 
 A failed flush rejects current propagation waiters and stops automatic flushing.
 Pending computed/effect invalidations remain, while queued publication jobs are dropped. Caller-owned cleanup hooks discard their
@@ -53,11 +76,34 @@ existing initialization and scale-helper cycle checks still apply.
 
 Domain inputs for all scale kinds bind configured expression dependencies, contributor
 accessors and viewport topology when the bindings change. Candidate jobs use the
-same runtime queue as streaming replay. `DomainRuntime` publishes physical scale
-mapping and a stable native displayed-domain ref; calibrated expressions consume
+same runtime queue as streaming replay. `DomainRuntime` mirrors the physical scale
+domain and publishes a stable native displayed-domain ref; calibrated expressions consume
 that ref instead of a synthetic event dependency. Source/selection/zoom inputs
 settle before terminal domain notifications and rendering. Viewport debounce and
 coverage remain explicit input policy, with immediate initial calibration.
+
+`ScaleInstanceManager` binds existing range expressions into one mapping operation
+that depends on the displayed domain and the complete range configuration. Binding
+uses the effective resolution scope, preserving shared-scale ownership and the
+single-member compatibility lookup. It validates static configuration on a copy,
+applies the live configuration, and publishes a stable mapping ref. Range-array
+and domain equality suppress redundant application. `range()`, `bandwidth()`,
+`scale()` and `invert()` consume this native producer; `linearize()` instead
+consumes the resolution's assembly-configuration ref. Domain-to-range expressions
+remain valid, while mapping feedback is rejected by graph cycle validation.
+
+Marks and retained WebGL range textures observe completed mappings through owned
+graph effects. Compatibility range events are terminal notifications, not producer
+edges. Public `scale.range(value)` calls submit an explicit range command; it
+persists through navigation until the bound range values or configuration change.
+The mapping operation and its owner live for the resolution lifetime, including
+identity scales. Replacing the physical scale retains this ref, clears old range
+commands, and uses physical identity in equality so retained consumers are notified
+even when numeric values are unchanged. The domain owner retains navigation state.
+CPU encoders use owned operations depending on mapping to refresh their captured
+physical scale and metadata before observer effects. Equality skips in-place scale
+updates; per-datum evaluation still calls the captured scale directly. Conditional
+encoders expose their active scale metadata through their branch encoders.
 
 Initial reference collection remains provisional throughout synchronous publication.
 A finalization job runs after all domain jobs and before observer effects, changing

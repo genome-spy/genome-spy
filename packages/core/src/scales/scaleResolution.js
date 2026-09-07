@@ -1,5 +1,6 @@
 import deepEqual from "../utils/deepEqual.js";
 import DomainRuntime from "./domainRuntime.js";
+import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import createDomainInputs from "./domainInputs.js";
 import scaleLocus, {
     fromComplexInterval as locusFromComplexInterval,
@@ -160,6 +161,18 @@ export default class ScaleResolution {
 
     #registeringMembers = false;
 
+    /** @type {ViewParamRuntime | undefined} */
+    #paramRuntime;
+
+    /** @type {import("../paramRuntime/types.js").WritableParamRef<number> | undefined} */
+    #configurationRef;
+
+    get #runtime() {
+        return (this.#paramRuntime ??= new ViewParamRuntime(
+            () => this.#resolutionView.paramRuntime
+        ));
+    }
+
     /**
      * @param {Channel} channel
      * @param {import("../view/view.js").default} [hostView]
@@ -175,6 +188,7 @@ export default class ScaleResolution {
         this.#hostView = hostView;
 
         this.#scaleManager = new ScaleInstanceManager({
+            getRuntime: () => this.#runtime,
             createExpression: (expr) => this.#createExpression(expr),
             onRangeChange: () => this.#notifyListeners("range"),
             onDomainChange: (domain) => {
@@ -776,9 +790,12 @@ export default class ScaleResolution {
             return;
         }
 
-        this.#scaleManager.resetScale();
-        this.initializeScale();
-        this.#updateDomainSource(reason, true);
+        this.#runtime.runInTransaction(() => {
+            this.#scaleManager.resetScale();
+            this.initializeScale();
+            this.#updateDomainSource(reason, true);
+            this.#runtime.flushNow({ afterTransaction: true });
+        });
     }
 
     /**
@@ -877,6 +894,7 @@ export default class ScaleResolution {
         this.#listeners.range.clear();
         this.#domainRuntime?.dispose();
         this.#scaleManager.dispose();
+        this.#paramRuntime?.dispose();
     }
 
     /**
@@ -989,6 +1007,8 @@ export default class ScaleResolution {
 
     #invalidateMergedScaleProps() {
         invalidate(this, "mergedScaleProps");
+        if (this.#configurationRef)
+            this.#configurationRef.set(this.#configurationRef.get() + 1);
     }
 
     #invalidateOrderedMembers() {
@@ -1210,9 +1230,11 @@ export default class ScaleResolution {
      * or when scale properties are otherwise re-resolved from the view hierarchy.
      */
     reconfigure() {
-        this.#invalidateMergedScaleProps();
-        this.bindDomainInputs();
-        this.#updateDomainSource("membership", true);
+        this.#runtime.runInTransaction(() => {
+            this.#invalidateMergedScaleProps();
+            this.bindDomainInputs();
+            this.#updateDomainSource("membership", true);
+        });
     }
 
     /**
@@ -1236,7 +1258,7 @@ export default class ScaleResolution {
         this.#domainInputs.request(reason);
         this.#domainRuntime.runtime.flushNow({ afterTransaction: true });
         if (full && this.#scaleManager.scale === scale && scale.props === props)
-            this.#scaleManager.configureRange(props);
+            this.#scaleManager.configureMapping(props);
     }
 
     /**
@@ -1321,6 +1343,7 @@ export default class ScaleResolution {
                         this.#domainState.visibleDomain
                     );
                 }
+                return this.#domainRuntime.domain;
             });
             this.bindDomainInputs();
             return scale;
@@ -1334,6 +1357,28 @@ export default class ScaleResolution {
             this.#domainRuntime = previousRuntime;
             throw error;
         }
+    }
+
+    /** Final mapping producer, stable across configuration replacement. */
+    getMappingRef() {
+        if (!this.#scaleManager.initializingRange) this.getScale();
+        return this.#scaleManager.mapping;
+    }
+
+    /** Observe completed mapping changes; disposal is owned by the consumer.
+     * @param {() => void} listener
+     * @returns {() => void}
+     */
+    observeMapping(listener) {
+        return this.#runtime.effect([this.getMappingRef()], listener);
+    }
+
+    /** Assembly conversion depends on configuration, not range or navigation. */
+    getConfigurationRef() {
+        return (this.#configurationRef ??= this.#runtime.signal(
+            "scale configuration",
+            0
+        ));
     }
 
     /** Internal stable dependency; independent of final range/mapping. */

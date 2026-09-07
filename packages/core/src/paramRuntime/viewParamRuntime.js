@@ -618,6 +618,26 @@ export default class ViewParamRuntime {
     }
 
     /**
+     * Apply an owned configuration before publishing its graph output.
+     * @template T
+     * @param {string} name
+     * @param {import("./types.js").ParamRef<any>[]} deps
+     * @param {() => T} fn Evaluate and validate the complete configuration.
+     * @param {(value: T) => void} apply Update the resource without notifying observers.
+     * @param {{ equals?: (a: T, b: T) => boolean }} [options]
+     */
+    operation(name, deps, fn, apply, options) {
+        return this.#runtime.operation(
+            this.#scopeId,
+            name,
+            deps,
+            fn,
+            apply,
+            options
+        );
+    }
+
+    /**
      * Observe settled dependencies. Runs on changes, not at registration.
      * @param {import("./types.js").ParamRef<any>[]} deps
      * @param {() => void} fn
@@ -639,9 +659,10 @@ export default class ViewParamRuntime {
      * @param {() => void} update Stable callback identity for coalescing.
      * @param {number} [rank]
      * @param {(error: unknown) => void} [onError]
+     * @param {() => Iterable<() => void>} [prerequisites] Pending publication dependencies.
      */
-    requestUpdate(update, rank = 0, onError) {
-        this.#runtime.requestUpdate(update, rank, onError);
+    requestUpdate(update, rank = 0, onError, prerequisites) {
+        this.#runtime.requestUpdate(update, rank, onError, prerequisites);
     }
 
     /** @param {() => void} update */

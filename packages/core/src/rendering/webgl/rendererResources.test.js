@@ -83,6 +83,7 @@ vi.mock("./marks/rule.js", () => ({ default: mocks.FakeWebGLMark }));
 vi.mock("./marks/text.js", () => ({ default: mocks.FakeWebGLMark }));
 
 import WebGLRendererResources from "./rendererResources.js";
+import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 
 beforeEach(() => {
     vi.resetAllMocks();
@@ -164,17 +165,17 @@ test("shares scale-resolution subscriptions across marks", () => {
     resources.prepareMarks([first.mark, second.mark]);
 
     expect(glHelper.createRangeTexture).toHaveBeenCalledOnce();
-    expect(resolution.addEventListener).toHaveBeenCalledTimes(2);
-    resolution.listeners.get("domain")?.();
+    expect(resolution.observeMapping).toHaveBeenCalledTimes(1);
+    resolution.listeners.get("mapping")?.();
     expect(glHelper.createRangeTexture).toHaveBeenLastCalledWith(
         resolution,
         true
     );
 
     first.dispose();
-    expect(resolution.removeEventListener).not.toHaveBeenCalled();
+    expect(resolution.dispose).not.toHaveBeenCalled();
     second.dispose();
-    expect(resolution.removeEventListener).toHaveBeenCalledTimes(2);
+    expect(resolution.dispose).toHaveBeenCalledTimes(1);
 });
 
 test("disposed entries stay inactive for already compiled batches", () => {
@@ -262,7 +263,7 @@ test("releases scale listeners when shader finalization fails", () => {
         "failed failed"
     );
 
-    expect(resolution.removeEventListener).toHaveBeenCalledTimes(2);
+    expect(resolution.dispose).toHaveBeenCalledTimes(1);
     expect(resolution.listeners).toEqual(new Map());
 });
 
@@ -349,14 +350,55 @@ function createMark(name) {
 }
 
 function createScaleResolution() {
-    /** @type {Map<string, () => void>} */
     const listeners = new Map();
+    const dispose = vi.fn(() => listeners.delete("mapping"));
     return {
         listeners,
-        getScale: () => ({}),
-        addEventListener: vi.fn((type, listener) =>
-            listeners.set(type, listener)
-        ),
-        removeEventListener: vi.fn((type) => listeners.delete(type)),
+        dispose,
+        observeMapping: vi.fn((/** @type {() => void} */ listener) => {
+            listeners.set("mapping", listener);
+            return dispose;
+        }),
     };
 }
+
+test("range textures keep observing a recreated physical scale", async () => {
+    const { view } = await createHeadlessEngine({
+        data: { values: [{ value: 5 }] },
+        mark: "point",
+        scales: {
+            color: { type: "linear", domain: [0, 10], range: ["red", "blue"] },
+        },
+        encoding: {
+            color: { field: "value", type: "quantitative", legend: null },
+        },
+    });
+    const glHelper = createGlHelper();
+    const resources = new WebGLRendererResources(glHelper);
+    const fixture = createMark("point");
+    const resolution = view.getScaleResolution("color");
+    fixture.mark.encoders = {
+        color: { scale: { type: "linear" }, scaleResolution: resolution },
+    };
+    fixture.mark.unitView.getScaleResolution = () => resolution;
+    resources.prepareMarks([fixture.mark]);
+    glHelper.createRangeTexture.mockClear();
+    try {
+        resolution.attachViewLevelScaleProps(view, {
+            type: "linear",
+            domain: [0, 10],
+            range: ["black", "white"],
+        });
+        expect(glHelper.createRangeTexture).toHaveBeenCalledWith(
+            resolution,
+            true
+        );
+        fixture.dispose();
+        glHelper.createRangeTexture.mockClear();
+        resolution.scale.range(["red", "blue"]);
+        expect(glHelper.createRangeTexture).not.toHaveBeenCalled();
+    } finally {
+        fixture.dispose();
+        view.disposeSubtree();
+    }
+});

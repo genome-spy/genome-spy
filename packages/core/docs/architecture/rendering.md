@@ -131,7 +131,10 @@ attachments, size observers, and the canvas.
   offscreen picking data.
 - The WebGL adapter supplies the embedded fallback bitmap URL and prepares font
   textures from renderer-neutral bitmap URLs. It also subscribes to the scale
-  resolutions used by its retained marks. Font and range textures are not
+  resolutions used by its retained marks through completed-mapping graph effects.
+  One shared subscription refreshes each range texture after domain and range
+  inputs settle; mark resource revisions use the same mapping contract.
+  Font and range textures are not
   stored in marks or scale planning.
 - Picking renders into a dedicated framebuffer owned by `WebGLHelper`.
 - Marks can opt out of picking; some render only into the picking target.
@@ -213,3 +216,9 @@ The backend serializes asynchronous exports because layout synchronization can
 temporarily update shared retained mark resources.
 The deprecated synchronous canvas-export API is unavailable with WebGPU because
 GPU completion cannot be awaited through its synchronous contract.
+
+Scale mapping dependencies survive physical scale replacement. CPU encoders keep
+owned operations depending on mapping so captured scale functions and metadata
+stay current, including conditional branches. Retained marks and WebGL range textures continue
+observing the same resolution-owned mapping ref; replacement needs no renderer
+subscription reconnection.

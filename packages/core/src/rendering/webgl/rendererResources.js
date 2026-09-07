@@ -53,7 +53,7 @@ export default class WebGLRendererResources {
     /** @type {Map<import("../../marks/mark.js").default, WebGLMarkEntry>} */
     #markEntries = new Map();
 
-    /** @type {Map<import("../../scales/scaleResolution.js").default, {count: number, listener: () => void}>} */
+    /** @type {Map<import("../../scales/scaleResolution.js").default, {count: number, dispose: () => void}>} */
     #scaleResolutionRefs = new Map();
 
     /** @type {Map<string, {texture: WebGLTexture, ready: Promise<void>}>} */
@@ -342,14 +342,12 @@ export default class WebGLRendererResources {
                 continue;
             }
 
-            const listener = () =>
-                this.glHelper.createRangeTexture(resolution, true);
             this.glHelper.createRangeTexture(resolution);
-            resolution.addEventListener("domain", listener);
-            resolution.addEventListener("range", listener);
             this.#scaleResolutionRefs.set(resolution, {
                 count: 1,
-                listener,
+                dispose: resolution.observeMapping(() =>
+                    this.glHelper.createRangeTexture(resolution, true)
+                ),
             });
         }
     }
@@ -363,8 +361,7 @@ export default class WebGLRendererResources {
             }
             retained.count--;
             if (retained.count == 0) {
-                resolution.removeEventListener("domain", retained.listener);
-                resolution.removeEventListener("range", retained.listener);
+                retained.dispose();
                 this.#scaleResolutionRefs.delete(resolution);
             }
         }
