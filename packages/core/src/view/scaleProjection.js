@@ -1,3 +1,4 @@
+import GridView from "./gridView/gridView.js";
 import { isInChromeSubtree } from "./viewChrome.js";
 import { isHConcatSpec, isVConcatSpec } from "./viewSpecGuards.js";
 
@@ -38,6 +39,14 @@ export function getScaleProjectionCoords(
         .filter(
             ({ view }) =>
                 !isInChromeSubtree(view) &&
+                !view
+                    .getLayoutAncestors()
+                    .some(
+                        (ancestor) =>
+                            ancestor.layoutParent instanceof GridView &&
+                            ancestor.layoutParent.getAnnotationLayer() ===
+                                ancestor
+                    ) &&
                 view.isVisible() &&
                 (!scopeView || view.getLayoutAncestors().includes(scopeView))
         )
@@ -83,7 +92,7 @@ export function getRulerProjectionCoords(
     channel,
     scaleResolution
 ) {
-    return isRulerGapChannel(view, channels)
-        ? getScaleProjectionCoords(scaleResolution, channel, view.coords, view)
+    return isRulerGapChannel(view, channels) && view instanceof GridView
+        ? (view.getTrackPlotGeometry(channel)?.content ?? view.coords)
         : view.coords;
 }

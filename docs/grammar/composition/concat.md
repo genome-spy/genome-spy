@@ -41,7 +41,7 @@ EXAMPLE examples/docs/grammar/composition/concat/concat-separators.json height=2
 
 ## Track annotations
 
-`vconcat` and `hconcat` can draw ordinary unit or layer marks across all their
+`vconcat` and `hconcat` can draw annotations using ordinary marks and layers across their
 visible tracks with the `annotate` array. A vertical concat maps annotation
 `x`/`x2` through its shared x scale, while `y`/`y2` use normalized plotting
 coordinates from `0` at the bottom to `1` at the top. A horizontal concat uses
@@ -50,10 +50,12 @@ or a field/expression with `scale: null` for the normalized positions.
 
 Annotation positional fields do not expand the shared track domain. Other
 encodings, such as color, remain ordinary data-driven encodings. Annotations
-are clipped to the union of the visible track plotting areas and render after
+span the gaps without reserving layout space. They are clipped to the bounding
+area of the visible track plots, excluding outer axes and titles, and render after
 the tracks, so they remain in front of track marks even when a track has a
 higher `zindex`. Set `clip: "never"` on a mark when it should extend beyond
-those bounds.
+those bounds. Entries render in array order by default, with ordinary layer
+`zindex` ordering within the annotation layer.
 
 The tracks must have aligned shared projections on the data axis. Annotation
 layers cannot define their own positional scales or request an independent or

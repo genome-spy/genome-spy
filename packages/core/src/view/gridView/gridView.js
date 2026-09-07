@@ -541,54 +541,71 @@ export default class GridView extends ContainerView {
      * @returns {{ content: Rectangle, viewport: Rectangle, placements: ReturnType<GridView["getTrackPlotPlacements"]> } | undefined}
      */
     getTrackPlotGeometry(channel) {
-        const placements = this.getTrackPlotPlacements().filter(
-            ({ content, viewport }) =>
-                content.width > 0 &&
-                content.height > 0 &&
-                viewport.width > 0 &&
-                viewport.height > 0
-        );
-        if (placements.length === 0) {
-            return undefined;
-        }
+        return this._cache("trackPlotGeometry/" + channel, () => {
+            const placements = this.getTrackPlotPlacements().filter(
+                ({ content, viewport }) =>
+                    content.width > 0 &&
+                    content.height > 0 &&
+                    viewport.width > 0 &&
+                    viewport.height > 0
+            );
+            if (placements.length === 0) {
+                return undefined;
+            }
 
-        if (channel) {
-            const resolution = this.getScaleResolution(channel);
-            const expectedSpan =
-                placements[0].content[channel === "x" ? "width" : "height"];
-            const expectedStart =
-                placements[0].content[channel === "x" ? "x" : "y"];
+            if (channel) {
+                const resolution = this.getScaleResolution(channel);
+                const trackViews = new Set(
+                    placements.flatMap(({ views }) => views)
+                );
+                if (
+                    !resolution
+                        ?.getOrderedMembers()
+                        .some(({ view }) => trackViews.has(view))
+                ) {
+                    throw new Error(
+                        `Container annotations require a shared ${channel} scale defined by tracks.`
+                    );
+                }
+                const expectedSpan =
+                    placements[0].content[channel === "x" ? "width" : "height"];
+                const expectedStart =
+                    placements[0].content[channel === "x" ? "x" : "y"];
 
-            for (const placement of placements) {
-                for (const view of placement.views) {
-                    if (view.getScaleResolution(channel) !== resolution) {
+                for (const placement of placements) {
+                    for (const view of placement.views) {
+                        if (view.getScaleResolution(channel) !== resolution) {
+                            throw new Error(
+                                `Container annotations require all visible tracks to use the shared ${channel} scale resolution.`
+                            );
+                        }
+                    }
+
+                    const span =
+                        placement.content[channel === "x" ? "width" : "height"];
+                    const start =
+                        placement.content[channel === "x" ? "x" : "y"];
+                    if (
+                        Math.abs(span - expectedSpan) > 1e-6 ||
+                        Math.abs(start - expectedStart) > 1e-6
+                    ) {
                         throw new Error(
-                            `Container annotations require all visible tracks to use the shared ${channel} scale resolution.`
+                            `Container annotations require equal aligned visible plotting spans on the shared ${channel} axis.`
                         );
                     }
                 }
-
-                const span =
-                    placement.content[channel === "x" ? "width" : "height"];
-                const start = placement.content[channel === "x" ? "x" : "y"];
-                if (
-                    Math.abs(span - expectedSpan) > 1e-6 ||
-                    Math.abs(start - expectedStart) > 1e-6
-                ) {
-                    throw new Error(
-                        `Container annotations require equal aligned visible plotting spans on the shared ${channel} axis.`
-                    );
-                }
             }
-        }
 
-        return {
-            content: getUnionCoords(placements.map(({ content }) => content)),
-            viewport: getUnionCoords(
-                placements.map(({ viewport }) => viewport)
-            ),
-            placements,
-        };
+            return {
+                content: getUnionCoords(
+                    placements.map(({ content }) => content)
+                ),
+                viewport: getUnionCoords(
+                    placements.map(({ viewport }) => viewport)
+                ),
+                placements,
+            };
+        });
     }
 
     /**
@@ -1207,6 +1224,7 @@ export default class GridView extends ContainerView {
      * @param {import("../../types/rendering.js").RenderingOptions} [options]
      */
     arrange(context, coords, options = {}) {
+        this._invalidateCacheByPrefix("trackPlotGeometry");
         super.arrange(context, coords, options);
 
         if (!this.isConfiguredVisible()) {
@@ -1541,18 +1559,25 @@ export default class GridView extends ContainerView {
 
         if (gridViewCoords) {
             for (const { overlay, order, channel } of this.#containerOverlays) {
-                queueDecoration(overlay.zindex, order, () =>
+                queueDecoration(overlay.zindex, order, () => {
+                    // Foreground overlays share the completed track layout with
+                    // annotations and controllers. Underlays precede nested layout.
+                    const geometry =
+                        overlay.zindex > 0
+                            ? this.getTrackPlotGeometry(channel)
+                            : undefined;
                     overlay.view.arrange(
                         context,
-                        getScaleProjectionCoords(
-                            this.getScaleResolution(channel),
-                            channel,
-                            gridViewCoords,
-                            this
-                        ),
+                        geometry?.content ??
+                            getScaleProjectionCoords(
+                                this.getScaleResolution(channel),
+                                channel,
+                                gridViewCoords,
+                                this
+                            ),
                         options
-                    )
-                );
+                    );
+                });
             }
         }
 
@@ -1931,26 +1956,6 @@ export default class GridView extends ContainerView {
                 if (event.stopped) {
                     return;
                 }
-
-                if (!pointedView) {
-                    if (gapZoomTarget) {
-                        this.#propagateGapZoomInteraction(event, gapZoomTarget);
-                    }
-                } else if (isZoomInteractionView(pointedView)) {
-                    interactionToZoom(
-                        event,
-                        pointedChild.coords,
-                        (zoomEvent) =>
-                            this.#handleZoom(
-                                pointedChild.coords,
-                                pointedChild.view,
-                                zoomEvent
-                            ),
-                        this.context.getCurrentHover(),
-                        this.context.animator
-                    );
-                }
-                return;
             }
 
             if (!pointedView) {
