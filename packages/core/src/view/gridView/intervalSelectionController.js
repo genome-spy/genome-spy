@@ -27,6 +27,7 @@ import { ViewInteractionListenerTracker } from "../viewInteractionListenerTracke
  * @property {import("../../types/viewContext.js").default} context
  * @property {boolean} [captureInteractions]
  * @property {() => Rectangle | undefined} getInteractionCoords
+ * @property {(name: string, point: Point) => boolean} [ownsInteraction]
  * @property {(channels: import("../../spec/channel.js").PrimaryPositionalChannel[], channel: import("../../spec/channel.js").PrimaryPositionalChannel, scaleResolution: import("../../scales/scaleResolution.js").default) => Rectangle} getProjectionCoords
  * @property {() => import("./selectionRect.js").SelectionRectOverlay | undefined} getSelectionRect
  * @property {(overlay: import("./selectionRect.js").SelectionRectOverlay) => void} setSelectionRect
@@ -215,6 +216,8 @@ export class IntervalSelectionController {
         const isInsideHost = (/** @type {Point} */ point) =>
             this.host.getInteractionCoords()?.containsPoint(point.x, point.y) ??
             false;
+        const ownsInteraction = (/** @type {Point} */ point) =>
+            this.host.ownsInteraction?.(name, point) ?? true;
 
         if (renderOverlay) {
             this.host.setSelectionRect(
@@ -307,7 +310,11 @@ export class IntervalSelectionController {
         };
 
         this.#addViewInteractionListener("mousedown", (event) => {
-            if (event.mouseEvent.button != 0 || !isInsideHost(event.point)) {
+            if (
+                event.mouseEvent.button != 0 ||
+                !isInsideHost(event.point) ||
+                !ownsInteraction(event.point)
+            ) {
                 return;
             }
 
@@ -488,6 +495,8 @@ export class IntervalSelectionController {
                 (event) => {
                     if (
                         clearEventPredicate(event.proxiedMouseEvent) &&
+                        isInsideHost(event.point) &&
+                        ownsInteraction(event.point) &&
                         isPointInsideSelection(event.point)
                     ) {
                         clearSelection();
@@ -507,7 +516,7 @@ export class IntervalSelectionController {
             ) {
                 return;
             }
-            if (!isInsideHost(event.point)) {
+            if (!isInsideHost(event.point) || !ownsInteraction(event.point)) {
                 return;
             }
 
@@ -580,6 +589,7 @@ export class IntervalSelectionController {
         this.#addViewInteractionListener("mousemove", (event) => {
             if (
                 isInsideHost(event.point) &&
+                ownsInteraction(event.point) &&
                 isPointInsideSelection(event.point)
             ) {
                 // Brushing and translating the existing brush are different actions.

@@ -416,6 +416,33 @@ export default class GridView extends ContainerView {
         return true;
     }
 
+    /**
+     * Preserve nearest parameter ownership when a nested view shadows a
+     * container-owned interval selection.
+     *
+     * @param {string} name
+     * @param {import("../layout/point.js").default} point
+     */
+    ownsInteraction(name, point) {
+        const pointedChild = this.#visibleChildren.find((gridChild) =>
+            gridChild.coords.containsPoint(point.x, point.y)
+        );
+        if (!pointedChild) {
+            return true;
+        }
+
+        for (const owner of pointedChild.view.getDataAncestors()) {
+            if (owner === this) {
+                return true;
+            }
+            if (owner.paramRuntime.paramConfigs.has(name)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     getInteractionCoords() {
         const channel = this.#getGapZoomChannel();
         return this.getTrackPlotGeometry(channel)?.viewport;
