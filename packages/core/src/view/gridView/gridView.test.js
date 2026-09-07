@@ -2453,10 +2453,16 @@ describe("GridView wheel zoom", () => {
             const listeners = {};
             globalThis.document = /** @type {Document} */ (
                 /** @type {any} */ ({
-                    addEventListener(type, listener) {
+                    addEventListener(
+                        /** @type {string} */ type,
+                        /** @type {EventListener} */ listener
+                    ) {
                         listeners[type] = listener;
                     },
-                    removeEventListener(type, listener) {
+                    removeEventListener(
+                        /** @type {string} */ type,
+                        /** @type {EventListener} */ listener
+                    ) {
                         if (listeners[type] === listener) {
                             listeners[type] = undefined;
                         }
@@ -2487,7 +2493,10 @@ describe("GridView wheel zoom", () => {
                     clientX: startPoint.x,
                     clientY: startPoint.y,
                 });
-                const interaction = new Interaction(startPoint, mousedown);
+                const interaction = new Interaction(
+                    startPoint,
+                    /** @type {any} */ (mousedown)
+                );
 
                 concatView.propagateInteraction(interaction);
 
@@ -2515,11 +2524,13 @@ describe("GridView wheel zoom", () => {
                 concatView.propagateInteraction(
                     new Interaction(
                         clearPoint,
-                        new FakeMouseEvent("dblclick", {
-                            button: 0,
-                            clientX: clearPoint.x,
-                            clientY: clearPoint.y,
-                        })
+                        /** @type {any} */ (
+                            new FakeMouseEvent("dblclick", {
+                                button: 0,
+                                clientX: clearPoint.x,
+                                clientY: clearPoint.y,
+                            })
+                        )
                     )
                 );
                 expect(
@@ -2553,10 +2564,16 @@ describe("GridView wheel zoom", () => {
         const listeners = {};
         globalThis.document = /** @type {Document} */ (
             /** @type {any} */ ({
-                addEventListener(type, listener) {
+                addEventListener(
+                    /** @type {string} */ type,
+                    /** @type {EventListener} */ listener
+                ) {
                     listeners[type] = listener;
                 },
-                removeEventListener(type, listener) {
+                removeEventListener(
+                    /** @type {string} */ type,
+                    /** @type {EventListener} */ listener
+                ) {
                     if (listeners[type] === listener) {
                         listeners[type] = undefined;
                     }
@@ -2585,12 +2602,14 @@ describe("GridView wheel zoom", () => {
             concatView.propagateInteraction(
                 new Interaction(
                     point,
-                    new FakeMouseEvent("mousedown", {
-                        button: 0,
-                        shiftKey: true,
-                        clientX: point.x,
-                        clientY: point.y,
-                    })
+                    /** @type {any} */ (
+                        new FakeMouseEvent("mousedown", {
+                            button: 0,
+                            shiftKey: true,
+                            clientX: point.x,
+                            clientY: point.y,
+                        })
+                    )
                 )
             );
             expect(listeners.mousemove).toBeDefined();
@@ -2627,7 +2646,10 @@ describe("GridView wheel zoom", () => {
             const listeners = {};
             globalThis.document = /** @type {Document} */ (
                 /** @type {any} */ ({
-                    addEventListener(type, listener) {
+                    addEventListener(
+                        /** @type {string} */ type,
+                        /** @type {EventListener} */ listener
+                    ) {
                         listeners[type] = listener;
                     },
                     removeEventListener() {},
@@ -2661,20 +2683,24 @@ describe("GridView wheel zoom", () => {
                 concatView.propagateInteraction(
                     new Interaction(
                         point,
-                        new FakeMouseEvent("mousemove", {
-                            clientX: point.x,
-                            clientY: point.y,
-                        })
+                        /** @type {any} */ (
+                            new FakeMouseEvent("mousemove", {
+                                clientX: point.x,
+                                clientY: point.y,
+                            })
+                        )
                     )
                 );
                 concatView.propagateInteraction(
                     new Interaction(
                         point,
-                        new FakeMouseEvent("mousedown", {
-                            button: 0,
-                            clientX: point.x,
-                            clientY: point.y,
-                        })
+                        /** @type {any} */ (
+                            new FakeMouseEvent("mousedown", {
+                                button: 0,
+                                clientX: point.x,
+                                clientY: point.y,
+                            })
+                        )
                     )
                 );
                 const delta = direction === "vconcat" ? 15 : 0;

@@ -25,6 +25,7 @@ import { ViewInteractionListenerTracker } from "../viewInteractionListenerTracke
  * @property {import("../view.js").default} view
  * @property {import("../containerView.js").default} layoutParent
  * @property {import("../../types/viewContext.js").default} context
+ * @property {boolean} [captureInteractions]
  * @property {() => Rectangle | undefined} getInteractionCoords
  * @property {(channels: import("../../spec/channel.js").PrimaryPositionalChannel[], channel: import("../../spec/channel.js").PrimaryPositionalChannel, scaleResolution: import("../../scales/scaleResolution.js").default) => Rectangle} getProjectionCoords
  * @property {() => import("./selectionRect.js").SelectionRectOverlay | undefined} getSelectionRect
