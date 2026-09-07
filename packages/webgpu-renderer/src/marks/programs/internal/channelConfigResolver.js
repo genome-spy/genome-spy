@@ -388,6 +388,11 @@ export function validateChannel(name, channel, context, analysisName = name) {
                 );
             }
             if ("selectionUnion" in when) {
+                if ("selection" in when) {
+                    throw new Error(
+                        `Channel "${name}" conditions must choose a selection or a selection union.`
+                    );
+                }
                 if (
                     when.empty !== undefined &&
                     typeof when.empty !== "boolean"
@@ -411,12 +416,18 @@ export function validateChannel(name, channel, context, analysisName = name) {
             }
             for (const when of leaves) {
                 if (
+                    !when ||
                     typeof when !== "object" ||
                     typeof when.selection !== "string" ||
                     when.selection.length < 1
                 ) {
                     throw new Error(
                         `Channel "${name}" conditions require a selection name.`
+                    );
+                }
+                if ("selectionUnion" in when) {
+                    throw new Error(
+                        `Channel "${name}" selection unions must be flat.`
                     );
                 }
                 if (

@@ -2466,53 +2466,73 @@ describe("GridView legends", () => {
             );
         });
 
-        test("uses fallback values from conditional constant symbol styles", async () => {
-            const view = await createLegendTestView({
-                params: [
-                    { name: "variantClick", select: "point" },
-                    { name: "variantHover", select: "point" },
-                ],
-                config: { legend: { disable: false } },
-                vconcat: [
-                    {
-                        data: {
-                            values: [
-                                { x: 1, y: 2, Origin: "Europe" },
-                                { x: 2, y: 3, Origin: "Japan" },
-                            ],
-                        },
-                        mark: "point",
-                        encoding: {
-                            x: { field: "x", type: "quantitative" },
-                            y: { field: "y", type: "quantitative" },
-                            color: { field: "Origin", type: "nominal" },
-                            strokeWidth: {
-                                value: 0.8,
-                                condition: [
-                                    {
-                                        param: "variantClick",
-                                        empty: false,
-                                        value: 2.5,
-                                    },
-                                    {
-                                        param: "variantHover",
-                                        empty: false,
-                                        value: 1.5,
-                                    },
+        test.each([false, true])(
+            "uses fallback symbol styles with union=%s",
+            async (union) => {
+                /** @type {import("../../spec/channel.js").ParameterPredicate | import("../../spec/channel.js").TestPredicate} */
+                const predicate = union
+                    ? {
+                          test: {
+                              selection: {
+                                  or: /** @type {[string, ...string[]]} */ ([
+                                      "variantClick",
+                                      "variantHover",
+                                  ]),
+                              },
+                              empty: false,
+                          },
+                      }
+                    : { param: "variantClick", empty: false };
+
+                const view = await createLegendTestView({
+                    params: [
+                        { name: "variantClick", select: "point" },
+                        { name: "variantHover", select: "point" },
+                    ],
+                    config: { legend: { disable: false } },
+                    vconcat: [
+                        {
+                            data: {
+                                values: [
+                                    { x: 1, y: 2, Origin: "Europe" },
+                                    { x: 2, y: 3, Origin: "Japan" },
                                 ],
                             },
+                            mark: "point",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                                color: { field: "Origin", type: "nominal" },
+                                strokeWidth: {
+                                    value: 0.8,
+                                    condition: [
+                                        {
+                                            ...predicate,
+                                            value: 2.5,
+                                        },
+                                        {
+                                            param: "variantHover",
+                                            empty: false,
+                                            value: 1.5,
+                                        },
+                                    ],
+                                },
+                            },
                         },
-                    },
-                ],
-            });
-            const symbols = getLegendUnitChild(getLegends(view)[0], "symbols");
+                    ],
+                });
+                const symbols = getLegendUnitChild(
+                    getLegends(view)[0],
+                    "symbols"
+                );
 
-            expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
-                expect.objectContaining({
-                    strokeWidth: { value: 0.8 },
-                })
-            );
-        });
+                expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
+                    expect.objectContaining({
+                        strokeWidth: { value: 0.8 },
+                    })
+                );
+            }
+        );
 
         test.each([false, true, undefined])(
             "keeps explicit symbol opacity stable with condition empty=%s",

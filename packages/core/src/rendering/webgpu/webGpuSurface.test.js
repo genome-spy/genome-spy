@@ -760,7 +760,7 @@ describe("WebGpuSurface", () => {
     test("updates an explicitly dynamic conditional value", async () => {
         const conditionalSet = vi.fn();
         /** @type {any} */ (mocks.handle.values).fill = {
-            conditions: { chosen: { set: conditionalSet } },
+            conditions: { 0: { set: conditionalSet } },
         };
         const container = document.createElement("div");
         const surface = new WebGpuSurface(

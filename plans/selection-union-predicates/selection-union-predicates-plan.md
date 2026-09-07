@@ -60,7 +60,9 @@ or WebGL implementation of #517's future quantitative predicates are intended.
   selection-union contract. The renderer must not import Core grammar/types.
 - Extend renderer condition validation, resource discovery, and WGSL emission
   through its public API. Share suitable selection traversal with visibility
-  predicates; do not broaden public visibility syntax merely for this feature.
+  predicates. Support the same union node in renderer visibility predicates
+  so semantic-zoom bypass preserves the new partial-interval membership
+  semantics. Core gains no new public GPU-filter grammar.
 - The renderer condition `when` accepts its existing single-selection form or
   `{ selectionUnion: [leaf, ...], empty?: boolean }`. Each leaf identifies a
   selection and its fixed kind/interval targets; leaf-level `empty` is not
@@ -196,3 +198,25 @@ Baseline: Core typecheck passes; focused encoder/adapter tests pass (75 tests);
 the WebGPU renderer unit suite passes (232 tests). Before implementation, the
 encoder, WebGL mark, WebGPU adapter, and WGSL builder total 5,615 lines. Measure
 the final focused diff and reconsider unnecessary complexity during review.
+
+
+Primary final review:
+
+- Fixed resource discovery for unions used only in renderer visibility trees;
+  conditional channels had previously masked the missing registration.
+- Reject ambiguous and nested renderer union nodes at validation, and cover
+  null leaves. Updated the Core surface test to use indexed conditional slots.
+- Added Canvas2D/SVG link-fading coverage for union endpoint membership and
+  partially active intervals, plus inactive legend symbol fallback coverage.
+- Live WebGL and WebGPU checks passed for point/brush unions and ranged links:
+  an interval crossing only a link interior does not match endpoint hit testing;
+  a selected second endpoint does. Point selection and brush membership combine,
+  and clearing the last selection restores all scale colors.
+- Final full unit suite: 471 files passed, 4,048 tests passed, one skipped and
+  two todo. All seven Chrome GPU selection tests passed. Workspace typechecks
+  and lint passed after correcting the legend fixture's tuple annotation.
+- The four measured implementation files total 5,840 lines, up 225 from 5,615.
+  Growth supports explicit group emptiness and preserved legacy interval behavior.
+  Review removed duplicate interval shader generation and per-row allocations;
+  no general predicate engine or quantitative grammar was introduced.
+- All review findings are resolved. No further implementation work is pending.

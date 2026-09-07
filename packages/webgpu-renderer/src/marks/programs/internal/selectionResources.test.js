@@ -174,6 +174,41 @@ describe("SelectionResourceManager", () => {
         ]);
     });
 
+    it("discovers unions used only in a visibility tree", () => {
+        const channels = makeIntervalChannels([{ input: "x" }]);
+        // No channel condition may supply the visibility predicate's resources.
+        delete channels.fill.conditions;
+        channels.uniqueId = { value: 1, type: "u32", components: 1 };
+        const manager = new SelectionResourceManager({
+            device: createDevice(),
+            channels,
+            visibleWhen: {
+                any: [
+                    {
+                        selectionUnion: [
+                            { selection: "picked", type: "multi" },
+                            {
+                                selection: "brush",
+                                type: "interval",
+                                targets: [{ input: "x" }],
+                            },
+                        ],
+                        empty: false,
+                    },
+                ],
+            },
+            setUniformValue: vi.fn(),
+        });
+
+        expect(manager.selectionDefs.map(({ name }) => name)).toEqual([
+            "picked",
+            "brush",
+        ]);
+        expect(manager.selectionDefs[1].targets).toEqual([
+            { input: "x", hitTest: "intersects", scalarType: "f32" },
+        ]);
+    });
+
     it("discovers visibility-only and shared interval selections", () => {
         const visibleWhen =
             /** @type {import("../../../index.d.ts").VisibilityPredicate} */ ({

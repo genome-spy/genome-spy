@@ -400,6 +400,35 @@ describe("BaseProgram channel validation", () => {
                 },
                 "selection union leaves must not specify empty",
             ],
+            [
+                "ambiguous selection predicate",
+                {
+                    selection: "brush",
+                    type: "single",
+                    selectionUnion: [{ selection: "brush", type: "single" }],
+                },
+                "must choose a selection or a selection union",
+            ],
+            [
+                "nested selection union",
+                {
+                    selectionUnion: [
+                        {
+                            selection: "brush",
+                            type: "single",
+                            selectionUnion: [
+                                { selection: "brush", type: "single" },
+                            ],
+                        },
+                    ],
+                },
+                "selection unions must be flat",
+            ],
+            [
+                "null selection union leaf",
+                { selectionUnion: [null] },
+                "conditions require a selection name",
+            ],
         ])
     )("rejects %s", (_label, when, message) => {
         expect(() =>

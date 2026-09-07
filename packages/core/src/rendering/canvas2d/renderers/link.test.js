@@ -151,9 +151,14 @@ function renderLinkOutputs(view) {
     return { context, svg, buffer, stops: addColorStop.mock.calls };
 }
 
-test.each([true, false])(
-    "interval fading bypass preserves endpoint tests and picking participation (%s)",
-    async (picking) => {
+test.each([
+    { picking: true, union: false },
+    { picking: false, union: false },
+    { picking: true, union: true },
+    { picking: false, union: true },
+])(
+    "interval fading preserves endpoints with picking=$picking and union=$union",
+    async ({ picking, union }) => {
         const { view } = await createHeadlessEngine({
             data: { values: [{ start: 90, end: 10, apex: 90, base: 20 }] },
             params: [
@@ -192,7 +197,15 @@ test.each([true, false])(
                 size: { value: 3 },
                 color: {
                     value: "red",
-                    condition: { param: "brush", empty: true, value: "red" },
+                    condition: union
+                        ? {
+                              test: {
+                                  selection: { or: ["brush"] },
+                                  empty: true,
+                              },
+                              value: "red",
+                          }
+                        : { param: "brush", empty: true, value: "red" },
                 },
             },
         });
@@ -223,7 +236,7 @@ test.each([true, false])(
         check([85, 95], [85, 95], true); // Primary endpoint; values are in data space.
         check([5, 15], [15, 25], true); // Secondary endpoint and reversed x order.
         check([85, 95], [40, 60], false); // All selected dimensions must match.
-        check([85, 95], null, false);
+        check([85, 95], null, union);
         check([0, 5], [0, 100], false);
         view.paramRuntime.setValue("bypass", false);
         check([85, 95], [85, 95], true);

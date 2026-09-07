@@ -200,7 +200,7 @@ function collectVisibilitySelections(node, defs, getAnalysis) {
     if (!node || typeof node !== "object") {
         return;
     }
-    if ("selection" in node) {
+    if ("selection" in node || "selectionUnion" in node) {
         addSelectionDef(defs, node, getAnalysis);
     } else if ("all" in node) {
         for (const child of node.all) {
