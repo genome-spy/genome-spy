@@ -467,18 +467,20 @@ export default class GridChild {
                             channels
                         );
 
-                    this.#intervalSelectionControllers.push(
-                        new IntervalSelectionController(
-                            this,
-                            paramName,
-                            /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
-                                param
-                            ),
-                            select,
-                            owner.paramRuntime,
-                            renderOverlay
-                        )
-                    );
+                    if (renderOverlay) {
+                        this.#intervalSelectionControllers.push(
+                            new IntervalSelectionController(
+                                this,
+                                paramName,
+                                /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
+                                    param
+                                ),
+                                select,
+                                owner.paramRuntime,
+                                true
+                            )
+                        );
+                    }
                 }
             }
         }

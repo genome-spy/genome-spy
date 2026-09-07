@@ -422,8 +422,9 @@ export default class GridView extends ContainerView {
      *
      * @param {string} name
      * @param {import("../layout/point.js").default} point
+     * @param {boolean} [includeSelf]
      */
-    ownsInteraction(name, point) {
+    ownsInteraction(name, point, includeSelf = false) {
         const pointedChild = this.#visibleChildren.find((gridChild) =>
             gridChild.coords.containsPoint(point.x, point.y)
         );
@@ -433,14 +434,16 @@ export default class GridView extends ContainerView {
 
         if (
             pointedChild.view instanceof GridView &&
-            !pointedChild.view.ownsInteraction(name, point)
+            !pointedChild.view.ownsInteraction(name, point, true)
         ) {
             return false;
         }
 
         for (const owner of pointedChild.view.getDataAncestors()) {
             if (owner === this) {
-                return true;
+                return (
+                    !includeSelf || !this.paramRuntime.paramConfigs.has(name)
+                );
             }
             if (owner.paramRuntime.paramConfigs.has(name)) {
                 return false;
