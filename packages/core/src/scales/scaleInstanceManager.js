@@ -314,7 +314,8 @@ export default class ScaleInstanceManager {
 
     /** @param {MappingConfiguration} configuration */
     #applyMapping({ props, range, prepared }) {
-        if (this.#scale.type === "null") return;
+        // Reset can leave a queued update behind while scale recreation fails.
+        if (!this.#scale || this.#scale.type === "null") return;
         if (prepared) {
             configureScaleProperties(this.#scale, prepared.props);
             // Copy through raw setters; public setters submit reactive commands.

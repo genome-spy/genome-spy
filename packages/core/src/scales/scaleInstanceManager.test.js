@@ -340,6 +340,28 @@ describe("ScaleInstanceManager", () => {
         expect(changed).toHaveBeenCalledTimes(2);
     });
 
+    test("ignores a pending mapping after reset", () => {
+        const runtime = new ViewParamRuntime();
+        const manager = createManager({
+            runtime,
+            onRangeChange: () => {},
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
+        });
+        const scale = createScale(manager, {
+            type: "linear",
+            domain: [0, 1],
+            range: [0, 10],
+        });
+
+        runtime.runInTransaction(() => {
+            scale.range([0, 5]);
+            manager.resetScale();
+        });
+
+        expect(() => runtime.flushNow()).not.toThrow();
+    });
+
     test("dispose prevents pending and future range changes", () => {
         const runtime = new ViewParamRuntime();
         const setValue = runtime.registerParam({ name: "value", value: 1 });
