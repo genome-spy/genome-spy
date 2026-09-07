@@ -314,11 +314,14 @@ describe("BaseProgram channel validation", () => {
 
     it("copies interval targets without adding hit testing to scalar inputs", () => {
         const targets = Object.freeze([Object.freeze({ input: "x" })]);
-        const predicate = Object.freeze({
-            selection: "brush",
-            type: "interval",
-            targets,
-        });
+        const predicate =
+            /** @type {import("../../../index.d.ts").LegacySelectionPredicate} */ (
+                Object.freeze({
+                    selection: "brush",
+                    type: "interval",
+                    targets,
+                })
+            );
         const program = createProgram({
             x: { value: 0.5, type: "f32" },
             vec: {
@@ -334,12 +337,16 @@ describe("BaseProgram channel validation", () => {
             },
         });
 
-        const when = program._channels.vec.conditions[0].when;
+        const when = /** @type {any} */ (
+            program._channels.vec.conditions[0].when
+        );
         expect(when.type).toBe("interval");
         if (when.type === "interval") {
             expect(when.targets).toEqual([{ input: "x" }]);
         }
-        expect(predicate.targets).toEqual([{ input: "x" }]);
+        expect(/** @type {any} */ (predicate).targets).toEqual([
+            { input: "x" },
+        ]);
     });
 
     it("inherits logical channel components for conditional channels", () => {
@@ -367,6 +374,43 @@ describe("BaseProgram channel validation", () => {
         });
 
         expect(program._channels.vec__cond0.components).toBe(4);
+    });
+
+    it.each([
+        [
+            "empty union",
+            { selectionUnion: [] },
+            "selection unions must be non-empty",
+        ],
+        [
+            "invalid union empty flag",
+            {
+                selectionUnion: [{ selection: "brush", type: "single" }],
+                empty: "yes",
+            },
+            "selection union empty flag must be boolean",
+        ],
+        [
+            "leaf empty flag",
+            {
+                selectionUnion: [
+                    { selection: "brush", type: "single", empty: true },
+                ],
+            },
+            "selection union leaves must not specify empty",
+        ],
+    ])("rejects %s", (_label, when, message) => {
+        expect(() =>
+            createProgram({
+                x: { value: 0.5, type: "f32" },
+                vec: {
+                    value: [1, 0, 0, 1],
+                    type: "f32",
+                    components: 4,
+                    conditions: [{ when, value: [0, 1, 0, 1] }],
+                },
+            })
+        ).toThrow(message);
     });
 
     it.each(

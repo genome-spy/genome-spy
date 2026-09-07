@@ -18,6 +18,8 @@ import {
     SELECTION_BUFFER_PREFIX,
     SELECTION_CHECKER_PREFIX,
     SELECTION_COUNT_PREFIX,
+    SELECTION_EMPTY_PREFIX,
+    SELECTION_MEMBERSHIP_PREFIX,
     SELECTION_PREFIX,
 } from "../../wgsl/prefixes.js";
 import { buildScaledFunction } from "../scales/scaleCodegen.js";
@@ -232,6 +234,12 @@ fn ${fnName}(i: u32, allowEmpty: bool) -> bool {
     let id = ${uniqueId?.rawValueExpr ?? "0u"};
     return id == selected;
 }
+fn ${SELECTION_MEMBERSHIP_PREFIX}${def.name}(i: u32) -> bool {
+    return ${fnName}(i, false);
+}
+fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
+    return params.${SELECTION_PREFIX}${def.name} == 0u;
+}
 `;
             }
             case "multi": {
@@ -244,6 +252,12 @@ fn ${fnName}(i: u32, allowEmpty: bool) -> bool {
     if (count == 0u) { return false; }
     let id = ${uniqueId?.rawValueExpr ?? "0u"};
     return ${lookupName}(id, arrayLength(&${bufferName})) != HASH_NOT_FOUND;
+}
+fn ${SELECTION_MEMBERSHIP_PREFIX}${def.name}(i: u32) -> bool {
+    return ${fnName}(i, false);
+}
+fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
+    return params.${SELECTION_COUNT_PREFIX}${def.name} == 0u;
 }
 `;
             }
@@ -330,6 +344,12 @@ fn ${fnName}(i: u32, allowEmpty: bool) -> bool {
 ${targetChecks.join("\n")}
     return matches;
 }
+fn ${SELECTION_MEMBERSHIP_PREFIX}${def.name}(i: u32) -> bool {
+    return !${SELECTION_EMPTY_PREFIX}${def.name}(i) && ${fnName}(i, true);
+}
+fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
+    return ${targets.map((_, index) => `params.${intervalSelectionActiveName(def.name, index)} == 0u`).join(" && ")};
+}
 `;
             }
             default: {
@@ -353,23 +373,47 @@ ${targetChecks.join("\n")}
                 : `vec${outputComponents}<f32>`;
         const conditions = channelIR.channel.conditions ?? [];
         const clauses = conditions.map((condition) => {
-            const selectionName = condition.when.selection;
-            const def = selectionDefsByName.get(selectionName);
-            if (__DEV__ && !def) {
-                throw new Error(
-                    `Channel "${name}" references unknown selection "${selectionName}".`
-                );
+            const when = condition.when;
+            const leaves =
+                "selectionUnion" in when ? when.selectionUnion : [when];
+            const selectionExpression =
+                "selectionUnion" in when
+                    ? `(${leaves
+                          .map(
+                              (leaf) =>
+                                  `${SELECTION_MEMBERSHIP_PREFIX}${leaf.selection}(i)`
+                          )
+                          .join(" || ")}${
+                          when.empty === true
+                              ? ` || (${leaves
+                                    .map(
+                                        (leaf) =>
+                                            `${SELECTION_EMPTY_PREFIX}${leaf.selection}(i)`
+                                    )
+                                    .join(" && ")})`
+                              : ""
+                      })`
+                    : null;
+            const selectionName = leaves[0].selection;
+            if (__DEV__) {
+                for (const leaf of leaves) {
+                    if (!selectionDefsByName.has(leaf.selection)) {
+                        throw new Error(
+                            `Channel "${name}" references unknown selection "${leaf.selection}".`
+                        );
+                    }
+                }
             }
-            const allowEmpty = condition.when.empty === true ? "true" : "false";
+            const allowEmpty = when.empty === true ? "true" : "false";
             if (condition.channelName) {
-                return `    if (${SELECTION_CHECKER_PREFIX}${selectionName}(i, ${allowEmpty})) { return ${SCALED_FUNCTION_PREFIX}${condition.channelName}(i); }`;
+                return `    if (${selectionExpression ?? `${SELECTION_CHECKER_PREFIX}${selectionName}(i, ${allowEmpty})`}) { return ${SCALED_FUNCTION_PREFIX}${condition.channelName}(i); }`;
             }
             const literal = formatLiteral(
                 outputComponents === 1 ? outputScalarType : "f32",
                 outputComponents,
                 condition.value
             );
-            return `    if (${SELECTION_CHECKER_PREFIX}${selectionName}(i, ${allowEmpty})) { return ${literal}; }`;
+            return `    if (${selectionExpression ?? `${SELECTION_CHECKER_PREFIX}${selectionName}(i, ${allowEmpty})`}) { return ${literal}; }`;
         });
         return /* wgsl */ `
 fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> ${returnType} {
@@ -563,11 +607,25 @@ ${clauses.join("\n")}
         }
     }
 
+    const unionSelectionNames = new Set(
+        channelIRs.flatMap((channelIR) =>
+            (channelIR.channel.conditions ?? []).flatMap((condition) =>
+                "selectionUnion" in condition.when
+                    ? condition.when.selectionUnion.map(
+                          (leaf) => leaf.selection
+                      )
+                    : []
+            )
+        )
+    );
+
     // Match Core's GLSL aggregate: all referenced selections, empty=false,
     // enabled only when the mark has a uniqueId channel.
     const selectionTests = channelIRByName.has("uniqueId")
-        ? selectionDefs.map(
-              (def) => `${SELECTION_CHECKER_PREFIX}${def.name}(i, false)`
+        ? selectionDefs.map((def) =>
+              unionSelectionNames.has(def.name)
+                  ? `${SELECTION_MEMBERSHIP_PREFIX}${def.name}(i)`
+                  : `${SELECTION_CHECKER_PREFIX}${def.name}(i, false)`
           )
         : [];
     selectionFns.push(/* wgsl */ `

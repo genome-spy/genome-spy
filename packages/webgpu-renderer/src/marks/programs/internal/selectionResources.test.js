@@ -135,6 +135,45 @@ function contains(table, key) {
 }
 
 describe("SelectionResourceManager", () => {
+    it("discovers every leaf of a selection union once", () => {
+        const channels = /** @type {any} */ ({
+            uniqueId: { value: 1, type: "u32", components: 1 },
+            x: { data: new Float32Array([0]), type: "f32", components: 1 },
+            fill: {
+                value: 0,
+                type: "f32",
+                components: 1,
+                conditions: [
+                    {
+                        when: {
+                            selectionUnion: [
+                                { selection: "a", type: "single" },
+                                {
+                                    selection: "b",
+                                    type: "interval",
+                                    targets: [{ input: "x" }],
+                                },
+                                { selection: "a", type: "single" },
+                            ],
+                            empty: true,
+                        },
+                        value: 1,
+                    },
+                ],
+            },
+        });
+        const manager = new SelectionResourceManager({
+            channels,
+            device: createDevice(),
+            setUniformValue: vi.fn(),
+        });
+
+        expect(manager.selectionDefs.map(({ name }) => name)).toEqual([
+            "a",
+            "b",
+        ]);
+    });
+
     it("discovers visibility-only and shared interval selections", () => {
         const visibleWhen =
             /** @type {import("../../../index.d.ts").VisibilityPredicate} */ ({
@@ -185,7 +224,9 @@ describe("SelectionResourceManager", () => {
                     },
                     setUniformValue: vi.fn(),
                 })
-        ).toThrow("exactly one of compare, selection, all, or any");
+        ).toThrow(
+            "exactly one of compare, selection, selectionUnion, all, or any"
+        );
     });
 
     it("allocates independently typed fields for an N-target interval", () => {

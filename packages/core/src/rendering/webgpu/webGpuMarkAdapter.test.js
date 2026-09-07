@@ -1269,6 +1269,73 @@ describe("WebGPU mark adapter", () => {
         ]);
     });
 
+    test("keeps unseen union members when a legacy selection overlaps", () => {
+        const mark = createMark("point", [{ id: 4, score: 0.25 }], {
+            uniqueId: createEncoder((datum) => datum.id),
+            semanticScore: createEncoder((datum) => datum.score),
+            fill: createConditionalEncoder([
+                {
+                    accessor: createAccessor(
+                        () => "red",
+                        { value: "red" },
+                        true
+                    ),
+                    predicate: { param: "first", empty: false },
+                },
+                {
+                    accessor: createAccessor(
+                        () => "blue",
+                        { value: "blue" },
+                        true
+                    ),
+                    predicate: {
+                        selection: {
+                            params: ["first", "second"],
+                            empty: false,
+                            legacy: false,
+                        },
+                        empty: false,
+                    },
+                },
+                {
+                    accessor: createAccessor(
+                        () => "black",
+                        { value: "black" },
+                        true
+                    ),
+                    predicate: { empty: false },
+                },
+            ]),
+        });
+        Object.assign(mark, {
+            getSemanticThreshold: () => 0.5,
+            unitView: {
+                ...mark.unitView,
+                paramRuntime: {
+                    findValue: () => ({ type: "single", uniqueId: 4 }),
+                },
+            },
+        });
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+
+        expect(/** @type {any} */ (translated).config.visibleWhen.any).toEqual([
+            { selection: "first", type: "single", empty: false },
+            {
+                selectionUnion: [
+                    { selection: "first", type: "single" },
+                    { selection: "second", type: "single" },
+                ],
+                empty: false,
+            },
+            {
+                compare: ">=",
+                left: { input: "semanticScoreInput" },
+                right: { slot: "semanticThreshold" },
+            },
+        ]);
+    });
+
     test("maps sequential and threshold color encodings", () => {
         const data = [{ value: -1 }, { value: 1 }];
         const interpolator = (/** @type {number} */ t) =>
@@ -1788,6 +1855,52 @@ describe("WebGPU mark adapter", () => {
             },
         ]);
         expect(getWebGpuMarkResourceRevision(mark)).toBe(0);
+    });
+
+    test("translates a selection union with a shared empty policy", () => {
+        const mark = createMark("point", [{ color: "red" }], {
+            fill: createConditionalEncoder([
+                {
+                    accessor: createAccessor(
+                        /** @param {{color: string}} datum */
+                        (datum) => datum.color,
+                        { field: "color" }
+                    ),
+                    predicate: {
+                        selection: {
+                            params: ["first", "second"],
+                            empty: true,
+                            legacy: false,
+                        },
+                        empty: true,
+                    },
+                },
+                {
+                    accessor: createAccessor(
+                        () => "black",
+                        { value: "black" },
+                        true
+                    ),
+                    predicate: { empty: false },
+                },
+            ]),
+        });
+        /** @type {any} */ (mark.unitView).paramRuntime = {
+            findValue: () => ({ type: "single", uniqueId: 1 }),
+        };
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+
+        expect(
+            /** @type {any} */ (translated).config.channels.fill.conditions[0]
+                .when
+        ).toEqual({
+            selectionUnion: [
+                { selection: "first", type: "single" },
+                { selection: "second", type: "single" },
+            ],
+            empty: true,
+        });
     });
 
     test("translates an interval condition on a numeric channel", () => {

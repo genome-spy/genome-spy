@@ -390,6 +390,36 @@ describe("createConditionalBranches", () => {
         expect(predicate({ x: 100, y: 8 })).toBe(false);
     });
 
+    test("Selection union interval predicates use the requested endpoint hit test", () => {
+        const runtime = new ViewParamRuntime(() => undefined);
+        const setBrush = runtime.allocateSetter(
+            "brush",
+            createIntervalSelection(["x"])
+        );
+        setBrush({ type: "interval", intervals: { x: [15, 16] } });
+        const encoding = /** @type {any} */ ({
+            x: { field: "x", type: "quantitative" },
+            x2: { field: "x2", type: "quantitative" },
+            color: {
+                value: "gray",
+                condition: {
+                    test: { selection: { or: ["brush"] }, empty: false },
+                    value: "blue",
+                },
+            },
+        });
+        const predicate = createConditionalBranches(
+            "color",
+            encoding.color,
+            encoding,
+            runtime,
+            "endpoints"
+        )[0].predicate;
+
+        expect(predicate({ x: 10, x2: 20 })).toBe(false);
+        expect(predicate({ x: 15, x2: 20 })).toBe(true);
+    });
+
     test("Selection union rejects malformed predicates", () => {
         const runtime = new ViewParamRuntime(() => undefined);
         const make = (/** @type {any} */ test) => () =>

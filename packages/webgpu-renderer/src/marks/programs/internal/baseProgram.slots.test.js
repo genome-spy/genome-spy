@@ -199,7 +199,7 @@ describe("BaseProgram slot handles", () => {
         ).toBe(5);
 
         const conditionSlot =
-            program.getSlotHandles().values.fill.conditions?.brush;
+            program.getSlotHandles().values.fill.conditions?.[0];
         expect(conditionSlot).toBeTruthy();
         const fillEntry =
             program._uniformBufferState.entries.get("u_fill__cond0");

@@ -371,9 +371,15 @@ function makeSelectionEmptyExpression(param, selection) {
  * @param {string} param
  * @param {import("../types/selectionTypes.js").Selection} selection
  * @param {Partial<Record<import("../spec/channel.js").PositionalChannel, string>>} fields
+ * @param {"intersects" | "encloses" | "endpoints"} hitTestMode
  * @returns {string}
  */
-function makeSelectionMembershipExpression(param, selection, fields) {
+function makeSelectionMembershipExpression(
+    param,
+    selection,
+    fields,
+    hitTestMode
+) {
     if (isSinglePointSelection(selection)) {
         return `${param}.uniqueId != null && ${param}.uniqueId === datum[${JSON.stringify(
             UNIQUE_ID_KEY
@@ -401,7 +407,13 @@ function makeSelectionMembershipExpression(param, selection, fields) {
                 );
             }
             const interval = `${param}.intervals.${channel}`;
-            return `(!${interval} || (${interval}[0] <= ${access(f2)} && ${access(f)} <= ${interval}[1]))`;
+            const test =
+                hitTestMode == "endpoints"
+                    ? `((${interval}[0] <= ${access(f)} && ${access(f)} <= ${interval}[1]) || (${interval}[0] <= ${access(f2)} && ${access(f2)} <= ${interval}[1]))`
+                    : hitTestMode == "encloses"
+                      ? `(${interval}[0] <= ${access(f)} && ${access(f2)} <= ${interval}[1])`
+                      : `(${interval}[0] <= ${access(f2)} && ${access(f)} <= ${interval}[1])`;
+            return `(!${interval} || ${test})`;
         });
         const active = channels
             .map((channel) => `${param}.intervals.${channel}`)
@@ -417,16 +429,21 @@ function makeSelectionMembershipExpression(param, selection, fields) {
  *
  * @param {{param: string, selection: import("../types/selectionTypes.js").Selection, fields: Partial<Record<import("../spec/channel.js").PositionalChannel, string>>}[]} entries
  * @param {boolean} empty
+ * @param {"intersects" | "encloses" | "endpoints"} [hitTestMode="intersects"]
  * @returns {string}
  */
-export function makeSelectionUnionTestExpression(entries, empty) {
+export function makeSelectionUnionTestExpression(
+    entries,
+    empty,
+    hitTestMode = "intersects"
+) {
     if (entries.length == 0) {
         throw new Error(
             "Selection unions must contain at least one selection."
         );
     }
     const membership = entries.map(({ param, selection, fields }) =>
-        makeSelectionMembershipExpression(param, selection, fields)
+        makeSelectionMembershipExpression(param, selection, fields, hitTestMode)
     );
     const anyMembership = `(${membership.join(" || ")})`;
     if (!empty) {

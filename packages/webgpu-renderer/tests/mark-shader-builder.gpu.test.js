@@ -1053,6 +1053,111 @@ test("markShaderBuilder applies single selections to conditional values", async 
     expect(output).toEqual([0, 0, 1, 0]);
 });
 
+test("markShaderBuilder applies flat selection unions and group emptiness", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const ids = new Uint32Array([10, 11, 12, 13]);
+    const channels = {
+        uniqueId: {
+            data: ids,
+            type: "u32",
+            components: 1,
+        },
+        fill: {
+            value: 0,
+            type: "f32",
+            components: 1,
+            conditions: [
+                {
+                    when: {
+                        selectionUnion: [
+                            { selection: "first", type: "single" },
+                            { selection: "second", type: "single" },
+                        ],
+                        empty: true,
+                    },
+                    value: 1,
+                },
+            ],
+        },
+    };
+    const selectionDefs = [
+        { name: "first", type: "single" },
+        { name: "second", type: "single" },
+    ];
+    const uniforms = {
+        uSelection_first: 0,
+        uSelection_second: 11,
+    };
+    const run = (values) =>
+        runScaleCase(page, {
+            channels,
+            channelName: "fill",
+            outputType: "f32",
+            outputLength: ids.length,
+            outputComponents: 1,
+            uniformLayout: [
+                { name: "uSelection_first", type: "u32", components: 1 },
+                { name: "uSelection_second", type: "u32", components: 1 },
+            ],
+            uniforms: values,
+            selectionDefs,
+            dumpLabel: test.info().title,
+        });
+
+    expect(await run(uniforms)).toEqual([0, 1, 0, 0]);
+    expect(await run({ uSelection_first: 0, uSelection_second: 0 })).toEqual([
+        1, 1, 1, 1,
+    ]);
+});
+
+test("markShaderBuilder culls points with selection-union visibility", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const ids = new Uint32Array([10, 11, 12]);
+    const channels = {
+        uniqueId: {
+            data: ids,
+            type: "u32",
+            components: 1,
+        },
+    };
+    const selectionDefs = [
+        { name: "first", type: "single" },
+        { name: "second", type: "single" },
+    ];
+    const run = (uSelection_first, uSelection_second) =>
+        runScaleCase(page, {
+            channels,
+            channelName: "uniqueId",
+            outputType: "f32",
+            outputLength: ids.length,
+            outputComponents: 1,
+            readVisibility: true,
+            uniformLayout: [
+                { name: "uSelection_first", type: "u32", components: 1 },
+                { name: "uSelection_second", type: "u32", components: 1 },
+            ],
+            uniforms: { uSelection_first, uSelection_second },
+            selectionDefs,
+            visibleWhen: {
+                selectionUnion: [
+                    { selection: "first", type: "single" },
+                    { selection: "second", type: "single" },
+                ],
+                empty: false,
+            },
+            dumpLabel: test.info().title,
+        });
+
+    expect(await run(0, 11)).toEqual([0, 1, 0]);
+    expect(await run(0, 0)).toEqual([0, 0, 0]);
+});
+
 test("markShaderBuilder applies interval selections over ranged channels", async ({
     page,
 }) => {

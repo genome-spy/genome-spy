@@ -509,16 +509,17 @@ function compileResourceBindings(
             channel
         );
 
-        for (const condition of channel.conditions ?? []) {
+        for (const [conditionIndex, condition] of (
+            channel.conditions ?? []
+        ).entries()) {
             if (!condition.channel) {
                 continue;
             }
-            const selection = condition.when.selection;
             compileChannelBindings(
                 add,
-                `channel:${name}:condition:${selection}`,
-                handle.scales[name]?.conditions?.[condition.when.selection],
-                handle.values[name]?.conditions?.[condition.when.selection],
+                `channel:${name}:condition:${conditionIndex}`,
+                handle.scales[name]?.conditions?.[conditionIndex],
+                handle.values[name]?.conditions?.[conditionIndex],
                 condition.channel
             );
         }

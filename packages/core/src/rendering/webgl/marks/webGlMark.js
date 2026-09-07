@@ -355,6 +355,16 @@ export default class WebGLMark {
                 if (!selectionParameterUniforms.has(param)) {
                     selectionParameterUniforms.set(param, "interval");
 
+                    const intervalChannels = Object.keys(
+                        selection.intervals
+                    ).filter((channel) => ["x", "y"].includes(channel));
+                    if (intervalChannels.length == 0) {
+                        throw new ViewError(
+                            `Interval selection "${param}" has no supported x or y targets.`,
+                            this.unitView
+                        );
+                    }
+
                     /** @type {string[]} */
                     const testSnippets = [];
 
@@ -362,7 +372,7 @@ export default class WebGLMark {
                     const emptySnippets = [];
 
                     // Handle both channels separately
-                    for (const channel of Object.keys(selection.intervals)) {
+                    for (const channel of intervalChannels) {
                         if (!["x", "y"].includes(channel)) {
                             continue;
                         }
@@ -477,6 +487,11 @@ export default class WebGLMark {
                             `}`
                     );
                 }
+            } else {
+                throw new ViewError(
+                    `Unsupported selection type "${selection.type}" for WebGL conditional encoding.`,
+                    this.unitView
+                );
             }
         }
 

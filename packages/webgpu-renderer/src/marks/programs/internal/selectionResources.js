@@ -79,7 +79,7 @@ function sameIntervalTargets(a, b) {
  * Resolve and validate one interval predicate's target descriptors.
  *
  * @param {string} selectionName
- * @param {import("../../../index.d.ts").SelectionPredicate} when
+ * @param {import("../../../index.d.ts").SelectionPredicateLeaf} when
  * @param {(name: string) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} getAnalysis
  * @returns {IntervalTargetDef[]}
  */
@@ -144,6 +144,12 @@ function resolveIntervalTargets(selectionName, when, getAnalysis) {
  * @returns {void}
  */
 function addSelectionDef(defs, when, getAnalysis) {
+    if ("selectionUnion" in when) {
+        for (const leaf of when.selectionUnion) {
+            addSelectionDef(defs, leaf, getAnalysis);
+        }
+        return;
+    }
     const selectionName = when.selection;
     const type = when.type;
     const existing = defs.get(selectionName);

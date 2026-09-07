@@ -812,7 +812,7 @@ export default class BaseProgram {
             if (!conditions.length) {
                 continue;
             }
-            for (const condition of conditions) {
+            for (const [conditionIndex, condition] of conditions.entries()) {
                 if (!condition.channelName) {
                     continue;
                 }
@@ -828,8 +828,9 @@ export default class BaseProgram {
                     if (!group.conditions) {
                         group.conditions = {};
                     }
-                    group.conditions[condition.when.selection] =
-                        this._createScaleSlot(condition.channelName);
+                    group.conditions[conditionIndex] = this._createScaleSlot(
+                        condition.channelName
+                    );
                 }
                 if (
                     isValueChannelConfig(conditionChannel) &&
@@ -842,8 +843,9 @@ export default class BaseProgram {
                     if (!group.conditions) {
                         group.conditions = {};
                     }
-                    group.conditions[condition.when.selection] =
-                        this._createValueSlot(condition.channelName);
+                    group.conditions[conditionIndex] = this._createValueSlot(
+                        condition.channelName
+                    );
                 }
             }
         }

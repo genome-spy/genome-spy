@@ -22,13 +22,15 @@ import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
  * @param {import("../spec/channel.js").Encoding} encoding
  * @param {{ findValue: (param: string) => any, createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
  * @param {boolean} [empty]
+ * @param {"intersects" | "encloses" | "endpoints"} [hitTestMode="intersects"]
  * @returns {import("../types/encoder.js").Predicate}
  */
 export function createSelectionPredicate(
     paramOrCondition,
     encoding,
     paramRuntime,
-    empty
+    empty,
+    hitTestMode = "intersects"
 ) {
     /**
      * @typedef {import("../data/flowNode.js").Datum} Datum
@@ -76,10 +78,10 @@ export function createSelectionPredicate(
             const fields = {};
             if (isIntervalSelection(selection)) {
                 for (const channel of Object.keys(selection.intervals)) {
-                    for (const target of [
-                        channel,
-                        getSecondaryChannel(channel),
-                    ]) {
+                    const targets = info.legacy
+                        ? [channel]
+                        : [channel, getSecondaryChannel(channel)];
+                    for (const target of targets) {
                         const channelDef = encoding[target];
                         if (isFieldDef(channelDef)) {
                             fields[target] = channelDef.field;
@@ -114,7 +116,11 @@ export function createSelectionPredicate(
                   },
                   entries[0].selection
               )
-            : makeSelectionUnionTestExpression(entries, info.empty);
+            : makeSelectionUnionTestExpression(
+                  entries,
+                  info.empty,
+                  hitTestMode
+              );
 
         compiled = paramRuntime.createExpression(expr);
         return compiled;
@@ -141,13 +147,15 @@ export function createSelectionPredicate(
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @param {import("../spec/channel.js").Encoding} encoding
  * @param {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction, findValue: (param: string) => any }} paramRuntime
+ * @param {"intersects" | "encloses" | "endpoints"} [hitTestMode="intersects"]
  * @returns {import("../types/encoder.js").EncodingBranch[]}
  */
 export function createConditionalBranches(
     channel,
     channelDef,
     encoding,
-    paramRuntime
+    paramRuntime,
+    hitTestMode = "intersects"
 ) {
     const conditions =
         isFieldOrDatumDefWithCondition(channelDef) ||
@@ -172,7 +180,13 @@ export function createConditionalBranches(
             ? normalizeSelectionPredicate(condition)
             : undefined;
         const predicate = selectionPredicate
-            ? createSelectionPredicate(condition, encoding, paramRuntime)
+            ? createSelectionPredicate(
+                  condition,
+                  encoding,
+                  paramRuntime,
+                  undefined,
+                  hitTestMode
+              )
             : Object.assign(
                   makeConstantExprRef(index === branchChannelDefs.length - 1),
                   {
@@ -245,7 +259,8 @@ export default function createEncoders(unitView, encoding) {
                 typedChannel,
                 typedChannelDef,
                 encoding,
-                unitView.paramRuntime
+                unitView.paramRuntime,
+                unitView.mark.defaultHitTestMode
             ),
             scaleSource,
             bindScale
