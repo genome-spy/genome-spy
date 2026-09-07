@@ -25,6 +25,8 @@ import {
     PARAM_PREFIX,
     RANGE_TEXTURE_PREFIX,
     SELECTION_CHECKER_PREFIX,
+    SELECTION_EMPTY_PREFIX,
+    SELECTION_MEMBERSHIP_PREFIX,
     splitLargeHighPrecision,
     toHighPrecisionDomainUniform,
 } from "../gl/glslScaleGenerator.js";
@@ -56,6 +58,7 @@ import {
     isMultiPointSelection,
     isSinglePointSelection,
 } from "../../../selection/selection.js";
+import { getSelectionPredicateParams } from "../../../selection/selection.js";
 
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -211,10 +214,21 @@ export default class WebGLMark {
         /** @type {string[]} */
         const dynamicMarkUniforms = [];
 
-        const paramPredicates = Object.values(encoders)
+        const selectionParams = Object.values(encoders)
             .flatMap((e) => e.branches ?? [])
-            .map((branch) => branch.predicate)
-            .filter((p) => p.param);
+            .flatMap((branch) => getSelectionPredicateParams(branch.predicate));
+        const selectionUnionParams = new Set(
+            Object.values(encoders)
+                .flatMap((e) => e.branches ?? [])
+                .filter(
+                    (branch) =>
+                        branch.predicate.selection &&
+                        !branch.predicate.selection.legacy
+                )
+                .flatMap((branch) =>
+                    getSelectionPredicateParams(branch.predicate)
+                )
+        );
 
         /**
          * Prevent duplicate registration.
@@ -222,8 +236,7 @@ export default class WebGLMark {
          */
         const selectionParameterUniforms = new Map();
 
-        for (const predicate of paramPredicates) {
-            const param = predicate.param;
+        for (const param of new Set(selectionParams)) {
             const paramRuntime = this.unitView.paramRuntime;
             const selection = paramRuntime.findValue(param);
 
@@ -264,6 +277,18 @@ export default class WebGLMark {
                             `    return ${PARAM_PREFIX}${param} == ${uniqueIdAttr} || (empty && ${PARAM_PREFIX}${param} == 0u);\n` +
                             `}`
                     );
+                    if (selectionUnionParams.has(param)) {
+                        scaleCode.push(
+                            `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
+                                `    return ${PARAM_PREFIX}${param} != 0u && ${PARAM_PREFIX}${param} == ${uniqueIdAttr};\n` +
+                                `}`
+                        );
+                        scaleCode.push(
+                            `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
+                                `    return ${PARAM_PREFIX}${param} == 0u;\n` +
+                                `}`
+                        );
+                    }
                 }
             } else if (isMultiPointSelection(selection)) {
                 // We need a texture for each multi-selection parameter.
@@ -301,6 +326,18 @@ export default class WebGLMark {
                             `   return hashContainsTexture(${texName}, ${uniqueIdAttr}) || (empty && isEmptyHashTexture(${texName}));\n` +
                             `}`
                     );
+                    if (selectionUnionParams.has(param)) {
+                        scaleCode.push(
+                            `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
+                                `    return hashContainsTexture(${texName}, ${uniqueIdAttr});\n` +
+                                `}`
+                        );
+                        scaleCode.push(
+                            `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
+                                `    return isEmptyHashTexture(${texName});\n` +
+                                `}`
+                        );
+                    }
 
                     // Create the initial texture
                     glHelper.createSelectionTexture(selection);
@@ -408,6 +445,35 @@ export default class WebGLMark {
                     scaleCode.push(
                         `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
                             `    return ${testSnippets.join(" && ")} || (empty && (${emptySnippets.join(" || ")}));\n` +
+                            `}`
+                    );
+                    if (!selectionUnionParams.has(param)) {
+                        continue;
+                    }
+                    const activeSnippets = [];
+                    for (const channel of Object.keys(selection.intervals)) {
+                        if (!["x", "y"].includes(channel)) {
+                            continue;
+                        }
+                        const uniformName =
+                            PARAM_PREFIX +
+                            validateParameterName(param) +
+                            `_${channel}`;
+                        activeSnippets.push(
+                            `${uniformName}[0] <= ${uniformName}[1]`
+                        );
+                    }
+                    const partialTests = testSnippets.map(
+                        (test, index) => `(${emptySnippets[index]} || ${test})`
+                    );
+                    scaleCode.push(
+                        `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
+                            `    return (${activeSnippets.join(" || ")}) && (${partialTests.join(" && ")});\n` +
+                            `}`
+                    );
+                    scaleCode.push(
+                        `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
+                            `    return !(${activeSnippets.join(" || ")});\n` +
                             `}`
                     );
                 }
@@ -620,7 +686,12 @@ export default class WebGLMark {
 
         // Check membership in any selection referenced by conditional encoders.
         const conditions = [...selectionParameterUniforms.keys()].map(
-            (param) => `${SELECTION_CHECKER_PREFIX}${param}(false)`
+            (param) =>
+                `${
+                    selectionUnionParams.has(param)
+                        ? SELECTION_MEMBERSHIP_PREFIX
+                        : SELECTION_CHECKER_PREFIX
+                }${param}(${selectionUnionParams.has(param) ? "" : "false"})`
         );
 
         scaleCode.push(
