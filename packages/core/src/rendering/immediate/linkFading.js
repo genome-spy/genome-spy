@@ -141,35 +141,25 @@ function createSelectionTests(mark) {
                     return { interval, start, end };
                 }
             );
+            const activeTargets = partialIntervals
+                ? targets.filter(({ interval }) => interval)
+                : targets;
             return (datum) => {
-                if (!partialIntervals) {
-                    return targets.every(({ interval, start, end }) => {
-                        if (!interval) {
-                            return false;
-                        }
-                        const a = +start(datum);
-                        const b = +end(datum);
-                        return (
-                            (interval[0] <= a && a <= interval[1]) ||
-                            (interval[0] <= b && b <= interval[1])
-                        );
-                    });
+                if (activeTargets.length == 0) {
+                    return false;
                 }
-                const activeTargets = targets.filter(
-                    ({ interval }) => interval
-                );
-                return (
-                    activeTargets.length > 0 &&
-                    activeTargets.every(({ interval, start, end }) => {
-                        const a = +start(datum);
-                        const b = +end(datum);
-                        // LinkMark's hit test is endpoints, not span intersection.
-                        return (
-                            (interval[0] <= a && a <= interval[1]) ||
-                            (interval[0] <= b && b <= interval[1])
-                        );
-                    })
-                );
+                return activeTargets.every(({ interval, start, end }) => {
+                    if (!interval) {
+                        return false;
+                    }
+                    const a = +start(datum);
+                    const b = +end(datum);
+                    // LinkMark's hit test is endpoints, not span intersection.
+                    return (
+                        (interval[0] <= a && a <= interval[1]) ||
+                        (interval[0] <= b && b <= interval[1])
+                    );
+                });
             };
         } else {
             throw new Error(

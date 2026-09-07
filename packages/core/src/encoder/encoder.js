@@ -18,18 +18,16 @@ import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
  * first evaluated so encoder construction does not depend on eager selection
  * materialization.
  *
- * @param {string | import("../spec/channel.js").Conditional<any>} paramOrCondition
+ * @param {import("../selection/selection.js").SelectionPredicateInfo} info
  * @param {import("../spec/channel.js").Encoding} encoding
  * @param {{ findValue: (param: string) => any, createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
- * @param {boolean} [empty]
  * @param {"intersects" | "encloses" | "endpoints"} [hitTestMode="intersects"]
  * @returns {import("../types/encoder.js").Predicate}
  */
 export function createSelectionPredicate(
-    paramOrCondition,
+    info,
     encoding,
     paramRuntime,
-    empty,
     hitTestMode = "intersects"
 ) {
     /**
@@ -38,14 +36,6 @@ export function createSelectionPredicate(
      * @typedef {import("../types/encoder.js").Predicate} Predicate
      */
 
-    const info =
-        typeof paramOrCondition == "string"
-            ? {
-                  params: [paramOrCondition],
-                  empty: empty ?? true,
-                  legacy: true,
-              }
-            : normalizeSelectionPredicate(paramOrCondition);
     if (!info) {
         throw new Error("Conditional branch has no selection predicate.");
     }
@@ -181,10 +171,9 @@ export function createConditionalBranches(
             : undefined;
         const predicate = selectionPredicate
             ? createSelectionPredicate(
-                  condition,
+                  selectionPredicate,
                   encoding,
                   paramRuntime,
-                  undefined,
                   hitTestMode
               )
             : Object.assign(

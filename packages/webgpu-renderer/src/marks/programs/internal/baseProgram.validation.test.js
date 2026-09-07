@@ -376,30 +376,32 @@ describe("BaseProgram channel validation", () => {
         expect(program._channels.vec__cond0.components).toBe(4);
     });
 
-    it.each([
-        [
-            "empty union",
-            { selectionUnion: [] },
-            "selection unions must be non-empty",
-        ],
-        [
-            "invalid union empty flag",
-            {
-                selectionUnion: [{ selection: "brush", type: "single" }],
-                empty: "yes",
-            },
-            "selection union empty flag must be boolean",
-        ],
-        [
-            "leaf empty flag",
-            {
-                selectionUnion: [
-                    { selection: "brush", type: "single", empty: true },
-                ],
-            },
-            "selection union leaves must not specify empty",
-        ],
-    ])("rejects %s", (_label, when, message) => {
+    it.each(
+        /** @type {Array<[string, unknown, string]>} */ ([
+            [
+                "empty union",
+                { selectionUnion: [] },
+                "selection unions must be non-empty",
+            ],
+            [
+                "invalid union empty flag",
+                {
+                    selectionUnion: [{ selection: "brush", type: "single" }],
+                    empty: "yes",
+                },
+                "selection union empty flag must be boolean",
+            ],
+            [
+                "leaf empty flag",
+                {
+                    selectionUnion: [
+                        { selection: "brush", type: "single", empty: true },
+                    ],
+                },
+                "selection union leaves must not specify empty",
+            ],
+        ])
+    )("rejects %s", (_label, when, message) => {
         expect(() =>
             createProgram({
                 x: { value: 0.5, type: "f32" },
@@ -407,7 +409,12 @@ describe("BaseProgram channel validation", () => {
                     value: [1, 0, 0, 1],
                     type: "f32",
                     components: 4,
-                    conditions: [{ when, value: [0, 1, 0, 1] }],
+                    conditions: [
+                        {
+                            when: /** @type {any} */ (when),
+                            value: [0, 1, 0, 1],
+                        },
+                    ],
                 },
             })
         ).toThrow(message);

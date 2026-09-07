@@ -105,48 +105,48 @@ field comparison grammar described in #517 under `test`.
 
 ### M1: Core grammar and CPU semantics
 
-- [ ] Add public types/schema and normalized predicate metadata/evaluation.
-- [ ] Update shared dependency discovery and CPU consumers.
-- [ ] Verify all-empty/one-active/both-active, `empty: false`, legacy shorthand,
+- [x] Add public types/schema and normalized predicate metadata/evaluation.
+- [x] Update shared dependency discovery and CPU consumers.
+- [x] Verify all-empty/one-active/both-active, `empty: false`, legacy shorthand,
   malformed grammar, duplicate names, scoped dependencies, and interval cases.
-- [ ] Add generated-schema acceptance/rejection tests in `spec/schema.test.js`
+- [x] Add generated-schema acceptance/rejection tests in `spec/schema.test.js`
   covering mutual exclusion, misplaced `empty`, and malformed union groups.
   Add regressions for immediate link fading and inactive legend styling.
-- [ ] Update user-facing conditional-encoding documentation and regenerate the
+- [x] Update user-facing conditional-encoding documentation and regenerate the
   schema using the repository workflow; read the documentation skill first.
 - Commit: `feat(core): add selection-union conditional predicates`
 
 ### M2: WebGL union compilation
 
-- [ ] Enumerate leaves, deduplicate resources, emit empty and membership tests.
-- [ ] Preserve actual-membership semantic zoom and existing branch/scale logic.
-- [ ] Test generated GLSL and representative selection updates; run focused
+- [x] Enumerate leaves, deduplicate resources, emit empty and membership tests.
+- [x] Preserve actual-membership semantic zoom and existing branch/scale logic.
+- [x] Test generated GLSL and representative selection updates; run focused
   Core checks and verify legacy consumers still work.
 - Commit: `feat(core): render selection-union conditions with WebGL`
 
 ### M3: WebGPU renderer and Core adapter
 
-- [ ] Add the generic union condition API, validation, resource discovery, and
+- [x] Add the generic union condition API, validation, resource discovery, and
   WGSL generation; migrate conditional slots to branch indices.
-- [ ] Translate Core groups and update resource bindings/semantic zoom.
-- [ ] Test union truth table, partial intervals, invalid input, deduplication,
+- [x] Translate Core groups and update resource bindings/semantic zoom.
+- [x] Test union truth table, partial intervals, invalid input, deduplication,
   live selection updates, and dynamic conditional scale/value slot updates.
-- [ ] Update renderer README and a focused renderer-generic Storybook example.
+- [x] Update renderer README and a focused renderer-generic Storybook example.
 - Commit: `feat: render selection-union conditions with WebGPU`
 
 ### M4: Integration verification and final review
 
-- [ ] Add a small self-contained point-plus-interval example (follow
+- [x] Add a small self-contained point-plus-interval example (follow
   `examples/README.md`) demonstrating the scale color and gray fallback.
-- [ ] Exercise initial emptiness, point selection, brush selection, their union,
+- [x] Exercise initial emptiness, point selection, brush selection, their union,
   and clearing each selection in both GPU backends. Include ranged/link marks
   representative of #507, CPU conditional-color export parity, and existing
   GPU point semantic-zoom membership bypass coverage. Do not change the existing
   CPU point renderer's separate semantic-zoom behavior.
-- [ ] Use the browser-debug skill for live checks and view-testing skill if
+- [x] Use the browser-debug skill for live checks and view-testing skill if
   structured export/layout testing is appropriate. Run relevant GPU tests,
   Core/renderer typechecks, lint, schema checks, and Storybook build.
-- [ ] Review the final diff and downstream consumers, fix actionable findings,
+- [x] Review the final diff and downstream consumers, fix actionable findings,
   rerun affected checks, and record evidence and any actual limitations below.
 - Commit: `test: verify selection-union rendering across backends`
 
@@ -167,6 +167,25 @@ No PR, push, or merge is requested here.
 No user input is required. Plan review may refine the internal representation
 and interval implementation while preserving the public scope and semantics.
 Verification results and review resolutions will be recorded during work.
+
+Implementation evidence:
+
+- M1 `bbb1a70ec`: Core schema, lazy CPU union predicates, link fading, legends,
+  docs, and schema tests. Core typecheck and 67 focused Core tests passed.
+- M2 `fc9e21fe1`: WebGL union resources, membership/emptiness GLSL, and shader
+  tests. Legacy shader snapshots and focused WebGL tests passed.
+- M3 `014320f5f`: WebGPU renderer contract, WGSL union visibility and channels,
+  indexed conditional slots, Core adapter translation, and overlap regressions.
+  Core/renderer typechecks and 148 focused unit tests passed; Chrome WebGPU
+  readback covered union values, all-empty behavior, visibility, and interval,
+  single, and multi selections.
+- M4: `examples/core/selection/selection_union.json`, SVG all-empty export
+  coverage, and renderer Storybook scene. Core examples (198 tests), WebGL and
+  WebGPU browser smoke checks, WebGL/WebGPU comparison, and Storybook build pass.
+  Live browser interaction checks covered initial emptiness, point and brush
+  activation, union behavior, and clearing each selection in both backends.
+- The implementation keeps the existing CPU point semantic-zoom behavior
+  separate and leaves quantitative test predicates out of scope.
 
 Luna's plan review identified the immediate link-fading and legend consumers,
 requested concrete renderer union and indexed-slot contracts, and called for

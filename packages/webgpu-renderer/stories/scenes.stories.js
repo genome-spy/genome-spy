@@ -10,6 +10,7 @@ import runRuleScene from "../examples/ruleScene.js";
 import runLinkScene from "../examples/linkScene.js";
 import runTextScene from "../examples/textScene.js";
 import runRangedTextScene from "../examples/rangedTextScene.js";
+import runSelectionUnionScene from "../examples/selectionUnionScene.js";
 import runGroupScene from "../examples/groupScene.js";
 import {
     runIndexedPlacementScene,
@@ -117,6 +118,10 @@ export const RangedText = withSource(
         render: (args) => renderScene(runRangedTextScene, args),
     }
 );
+
+export const SelectionUnion = withSource("runSelectionUnionScene", null, {
+    render: (args) => renderScene(runSelectionUnionScene, args),
+});
 
 export const IndexedPlacements = withSource("runIndexedPlacementScene", null, {
     render: (args) => renderScene(runIndexedPlacementScene, args),

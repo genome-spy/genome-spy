@@ -1,0 +1,44 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": [
+    "Point and interval selection union",
+    "Uses a nominal color scale while either a point selection or interval brush is active."
+  ],
+
+  "data": {
+    "values": [
+      { "x": 1, "y": 2, "group": "A" },
+      { "x": 2, "y": 5, "group": "B" },
+      { "x": 3, "y": 3, "group": "A" },
+      { "x": 4, "y": 7, "group": "C" },
+      { "x": 5, "y": 4, "group": "B" },
+      { "x": 6, "y": 6, "group": "C" }
+    ]
+  },
+
+  "params": [
+    { "name": "picked", "select": "point" },
+    {
+      "name": "brush",
+      "select": { "type": "interval", "encodings": ["x"] }
+    }
+  ],
+
+  "mark": { "type": "point", "size": 120 },
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "y", "type": "quantitative" },
+    "color": {
+      "condition": {
+        "test": {
+          "selection": { "or": ["picked", "brush"] },
+          "empty": true
+        },
+        "field": "group",
+        "type": "nominal"
+      },
+      "value": "#cbd2d6"
+    }
+  }
+}
