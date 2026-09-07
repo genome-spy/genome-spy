@@ -9,6 +9,7 @@ import {
     isIntervalSelection,
     isSinglePointSelection,
 } from "../../selection/selection.js";
+import { getSelectionPredicateParams } from "../../selection/selection.js";
 
 const FADE_STEPS = 4;
 
@@ -93,13 +94,22 @@ export function createLinkFadeEncoder(mark, shape) {
  * @returns {((datum: import("../../data/flowNode.js").Datum) => boolean)[]}
  */
 function createSelectionTests(mark) {
-    const paramNames = new Set(
-        Object.values(mark.encoders)
-            .flatMap((encoder) => encoder.branches)
-            .map((branch) => branch.predicate.param)
-            .filter((param) => param)
-    );
-    return Array.from(paramNames, (param) => {
+    const paramKinds = new Map();
+    for (const encoder of Object.values(mark.encoders)) {
+        for (const branch of encoder.branches) {
+            const predicate = branch.predicate;
+            for (const param of getSelectionPredicateParams(predicate)) {
+                paramKinds.set(
+                    param,
+                    Boolean(
+                        paramKinds.get(param) ||
+                        (predicate.selection && !predicate.selection.legacy)
+                    )
+                );
+            }
+        }
+    }
+    return Array.from(paramKinds, ([param, partialIntervals]) => {
         const selection =
             /** @type {import("../../types/selectionTypes.js").Selection} */ (
                 mark.unitView.paramRuntime.findValue(param)
@@ -131,19 +141,36 @@ function createSelectionTests(mark) {
                     return { interval, start, end };
                 }
             );
-            return (datum) =>
-                targets.every(({ interval, start, end }) => {
-                    if (!interval) {
-                        return false;
-                    }
-                    const a = +start(datum);
-                    const b = +end(datum);
-                    // LinkMark's hit test is endpoints, not span intersection.
-                    return (
-                        (interval[0] <= a && a <= interval[1]) ||
-                        (interval[0] <= b && b <= interval[1])
-                    );
-                });
+            return (datum) => {
+                if (!partialIntervals) {
+                    return targets.every(({ interval, start, end }) => {
+                        if (!interval) {
+                            return false;
+                        }
+                        const a = +start(datum);
+                        const b = +end(datum);
+                        return (
+                            (interval[0] <= a && a <= interval[1]) ||
+                            (interval[0] <= b && b <= interval[1])
+                        );
+                    });
+                }
+                const activeTargets = targets.filter(
+                    ({ interval }) => interval
+                );
+                return (
+                    activeTargets.length > 0 &&
+                    activeTargets.every(({ interval, start, end }) => {
+                        const a = +start(datum);
+                        const b = +end(datum);
+                        // LinkMark's hit test is endpoints, not span intersection.
+                        return (
+                            (interval[0] <= a && a <= interval[1]) ||
+                            (interval[0] <= b && b <= interval[1])
+                        );
+                    })
+                );
+            };
         } else {
             throw new Error(
                 `Unsupported link selection type: ${selection.type}`

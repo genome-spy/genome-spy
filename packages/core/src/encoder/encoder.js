@@ -1,6 +1,8 @@
 import {
     isIntervalSelection,
     makeSelectionTestExpression,
+    makeSelectionUnionTestExpression,
+    normalizeSelectionPredicate,
 } from "../selection/selection.js";
 import { createAccessor } from "./accessor.js";
 import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
@@ -16,18 +18,35 @@ import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
  * first evaluated so encoder construction does not depend on eager selection
  * materialization.
  *
- * @param {string} param
+ * @param {string | import("../spec/channel.js").Conditional<any>} paramOrCondition
  * @param {import("../spec/channel.js").Encoding} encoding
  * @param {{ findValue: (param: string) => any, createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
- * @param {boolean} empty
+ * @param {boolean} [empty]
  * @returns {import("../types/encoder.js").Predicate}
  */
-export function createSelectionPredicate(param, encoding, paramRuntime, empty) {
+export function createSelectionPredicate(
+    paramOrCondition,
+    encoding,
+    paramRuntime,
+    empty
+) {
     /**
      * @typedef {import("../data/flowNode.js").Datum} Datum
      * @typedef {import("../types/selectionTypes.js").Selection} Selection
      * @typedef {import("../types/encoder.js").Predicate} Predicate
      */
+
+    const info =
+        typeof paramOrCondition == "string"
+            ? {
+                  params: [paramOrCondition],
+                  empty: empty ?? true,
+                  legacy: true,
+              }
+            : normalizeSelectionPredicate(paramOrCondition);
+    if (!info) {
+        throw new Error("Conditional branch has no selection predicate.");
+    }
 
     /** @type {import("../paramRuntime/types.js").ExprRefFunction | undefined} */
     let compiled;
@@ -39,39 +58,63 @@ export function createSelectionPredicate(param, encoding, paramRuntime, empty) {
             return compiled;
         }
 
-        const selection = /** @type {Selection | undefined} */ (
-            paramRuntime.findValue(param)
-        );
-        if (!selection) {
+        if (info.legacy && !paramRuntime.findValue(info.params[0])) {
             return fallback;
         }
 
-        /** @type {Partial<Record<import("../spec/channel.js").PositionalChannel, import("../spec/channel.js").Field>>} */
-        const fields = {};
-        if (isIntervalSelection(selection)) {
-            const channels = Object.keys(selection.intervals);
-            for (const channel of channels) {
-                const channelDef = encoding[channel];
-                if (isFieldDef(channelDef)) {
-                    fields[channel] = channelDef.field;
-                    continue;
-                } else if (channelDef && "condition" in channelDef) {
-                    const condition = channelDef.condition;
-                    if (isFieldDef(condition)) {
-                        fields[channel] = condition.field;
-                        continue;
-                    }
-                }
+        const entries = info.params.map((param) => {
+            const selection = /** @type {Selection | undefined} */ (
+                paramRuntime.findValue(param)
+            );
+            if (!selection) {
                 throw new Error(
-                    `Selection "${param}" has an interval for "${channel}" channel, but could not find a fieldDef: ${JSON.stringify(encoding[channel])}`
+                    `Selection parameter "${param}" was not found.`
                 );
             }
-        }
 
-        const expr = makeSelectionTestExpression(
-            { type: "filter", param, fields, empty },
-            selection
-        );
+            /** @type {Partial<Record<import("../spec/channel.js").PositionalChannel, import("../spec/channel.js").Field>>} */
+            const fields = {};
+            if (isIntervalSelection(selection)) {
+                for (const channel of Object.keys(selection.intervals)) {
+                    for (const target of [
+                        channel,
+                        getSecondaryChannel(channel),
+                    ]) {
+                        const channelDef = encoding[target];
+                        if (isFieldDef(channelDef)) {
+                            fields[target] = channelDef.field;
+                        } else if (channelDef && "condition" in channelDef) {
+                            const condition = channelDef.condition;
+                            const conditionDefs = Array.isArray(condition)
+                                ? condition
+                                : [condition];
+                            const conditionDef = conditionDefs.find(isFieldDef);
+                            if (isFieldDef(conditionDef)) {
+                                fields[target] = conditionDef.field;
+                            }
+                        }
+                    }
+                    if (!fields[channel]) {
+                        throw new Error(
+                            `Selection "${param}" has an interval for "${channel}" channel, but could not find a fieldDef: ${JSON.stringify(encoding[channel])}`
+                        );
+                    }
+                }
+            }
+            return { param, selection, fields };
+        });
+
+        const expr = info.legacy
+            ? makeSelectionTestExpression(
+                  {
+                      type: "filter",
+                      param: info.params[0],
+                      fields: entries[0].fields,
+                      empty: info.empty,
+                  },
+                  entries[0].selection
+              )
+            : makeSelectionUnionTestExpression(entries, info.empty);
 
         compiled = paramRuntime.createExpression(expr);
         return compiled;
@@ -81,8 +124,9 @@ export function createSelectionPredicate(param, encoding, paramRuntime, empty) {
     const predicate = Object.assign(
         /** @param {Datum} datum */ (datum) => ensureCompiled()(datum),
         {
-            param,
-            empty: empty ?? true,
+            param: info.legacy ? info.params[0] : undefined,
+            selection: info,
+            empty: info.empty,
         }
     );
 
@@ -124,14 +168,11 @@ export function createConditionalBranches(
             paramRuntime
         );
 
-        /** @type {import("../types/encoder.js").Predicate} */
-        const predicate = condition?.param
-            ? createSelectionPredicate(
-                  condition.param,
-                  encoding,
-                  paramRuntime,
-                  condition.empty
-              )
+        const selectionPredicate = condition
+            ? normalizeSelectionPredicate(condition)
+            : undefined;
+        const predicate = selectionPredicate
+            ? createSelectionPredicate(condition, encoding, paramRuntime)
             : Object.assign(
                   makeConstantExprRef(index === branchChannelDefs.length - 1),
                   {

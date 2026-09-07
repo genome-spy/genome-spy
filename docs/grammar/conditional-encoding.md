@@ -55,6 +55,37 @@ selection contains data:
 }
 ```
 
+## Union of Selections
+
+Use a selection union when one branch should apply to rows selected by any of
+several point or interval selections:
+
+```json
+{
+  "encoding": {
+    "color": {
+      "condition": {
+        "test": {
+          "selection": { "or": ["select", "brush"] },
+          "empty": true
+        },
+        "value": "#3a86ff"
+      },
+      "value": "#d9d9d9"
+    }
+  }
+}
+```
+
+The branch matches when at least one selection contains the row. With
+`empty: true` (the default), it also matches all rows while every selection is
+empty. Set `empty: false` inside `test` to keep the fallback active until one
+selection is populated. Interval unions allow an active dimension to constrain
+the row while inactive dimensions impose no constraint.
+
+The `or` list must contain at least one selection name. A union is flat; nested
+tests and condition-level `empty` are not supported.
+
 ## Multiple Conditions
 
 You can provide an array of conditional value definitions. They are evaluated

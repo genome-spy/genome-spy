@@ -312,6 +312,116 @@ describe("createConditionalBranches", () => {
         expect(branches[0].predicate.param).toBe("brush");
         expect(branches[0].predicate.empty).toBe(false);
     });
+
+    test("Selection unions match all-empty and selected rows", () => {
+        const unionRuntime = new ViewParamRuntime(() => undefined);
+        const setA = unionRuntime.allocateSetter(
+            "a",
+            createSinglePointSelection(null)
+        );
+        const setB = unionRuntime.allocateSetter(
+            "b",
+            createSinglePointSelection(null)
+        );
+        const unionEncoding = /** @type {any} */ ({
+            color: {
+                value: "gray",
+                condition: {
+                    test: {
+                        selection: { or: ["a", "b", "a"] },
+                        empty: true,
+                    },
+                    value: "blue",
+                },
+            },
+        });
+        const branches = createConditionalBranches(
+            "color",
+            unionEncoding.color,
+            unionEncoding,
+            unionRuntime
+        );
+
+        expect(branches[0].predicate({ [UNIQUE_ID_KEY]: 0 })).toBe(true);
+        setA(createSinglePointSelection({ [UNIQUE_ID_KEY]: 1 }));
+        expect(branches[0].predicate({ [UNIQUE_ID_KEY]: 0 })).toBe(false);
+        expect(branches[0].predicate({ [UNIQUE_ID_KEY]: 1 })).toBe(true);
+        setB(createSinglePointSelection({ [UNIQUE_ID_KEY]: 0 }));
+        expect(branches[0].predicate({ [UNIQUE_ID_KEY]: 0 })).toBe(true);
+        expect(branches[0].predicate.selection.params).toEqual(["a", "b"]);
+    });
+
+    test("Selection unions support partial interval dimensions", () => {
+        const intervalRuntime = new ViewParamRuntime(() => undefined);
+        const setX = intervalRuntime.allocateSetter(
+            "xBrush",
+            createIntervalSelection(["x", "y"])
+        );
+        const setY = intervalRuntime.allocateSetter(
+            "yBrush",
+            createIntervalSelection(["x", "y"])
+        );
+        const unionEncoding = /** @type {any} */ ({
+            x: { field: "x", type: "quantitative" },
+            y: { field: "y", type: "quantitative" },
+            color: {
+                value: "gray",
+                condition: {
+                    test: {
+                        selection: { or: ["xBrush", "yBrush"] },
+                        empty: false,
+                    },
+                    value: "blue",
+                },
+            },
+        });
+        const predicate = createConditionalBranches(
+            "color",
+            unionEncoding.color,
+            unionEncoding,
+            intervalRuntime
+        )[0].predicate;
+
+        setX({ type: "interval", intervals: { x: [1, 2], y: null } });
+        expect(predicate({ x: 1.5, y: 100 })).toBe(true);
+        expect(predicate({ x: 3, y: 100 })).toBe(false);
+        setY({ type: "interval", intervals: { x: null, y: [4, 5] } });
+        expect(predicate({ x: 100, y: 4.5 })).toBe(true);
+        expect(predicate({ x: 100, y: 8 })).toBe(false);
+    });
+
+    test("Selection union rejects malformed predicates", () => {
+        const runtime = new ViewParamRuntime(() => undefined);
+        const make = (/** @type {any} */ test) => () =>
+            createConditionalBranches(
+                "color",
+                { value: "gray", condition: { test, value: "blue" } },
+                {
+                    color: {
+                        value: "gray",
+                        condition: { test, value: "blue" },
+                    },
+                },
+                runtime
+            );
+        expect(make({ selection: { or: [] } })).toThrow(/nonempty/);
+        expect(make({ selection: { or: ["a", 1] } })).toThrow(/strings/);
+        expect(() =>
+            createConditionalBranches(
+                "color",
+                /** @type {any} */ ({
+                    value: "gray",
+                    condition: {
+                        test: { selection: { or: ["a"] } },
+                        empty: false,
+                        value: "blue",
+                    },
+                }),
+                {},
+                runtime
+            )
+        ).toThrow(/inside/);
+    });
 });
 
 describe("Accessor domain keys", () => {

@@ -102,6 +102,16 @@ export interface Predicate {
     param?: string;
 
     /**
+     * All selection parameters referenced by this predicate. Legacy predicates
+     * contain one name; selection unions contain every deduplicated member.
+     */
+    selection?: {
+        params: string[];
+        empty: boolean;
+        legacy: boolean;
+    };
+
+    /**
      * If true, the predicate is true for empty selections.
      *
      * **Default:** `true`

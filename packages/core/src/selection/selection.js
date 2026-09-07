@@ -232,6 +232,215 @@ export function makeSelectionTestExpression(params, selection) {
 }
 
 /**
+ * Normalized representation of a selection predicate used by conditional
+ * encodings. Keeping the names together lets renderers and other consumers
+ * discover every dependency of a union without inspecting its expression.
+ *
+ * @typedef {{ params: string[], empty: boolean, legacy: boolean }} SelectionPredicateInfo
+ */
+
+/**
+ * Normalizes the legacy `param` condition and the structured selection union.
+ *
+ * @param {any} condition
+ * @returns {SelectionPredicateInfo | undefined}
+ */
+export function normalizeSelectionPredicate(condition) {
+    if (!condition || typeof condition != "object") {
+        return undefined;
+    }
+
+    if ("param" in condition) {
+        if ("test" in condition) {
+            throw new Error(
+                'Conditional predicates cannot specify both "param" and "test".'
+            );
+        }
+        if (typeof condition.param != "string" || !condition.param) {
+            throw new Error('Conditional predicate "param" must be a string.');
+        }
+        if (
+            condition.empty !== undefined &&
+            typeof condition.empty != "boolean"
+        ) {
+            throw new Error('Conditional predicate "empty" must be a boolean.');
+        }
+        return {
+            params: [validateParameterName(condition.param)],
+            empty: condition.empty ?? true,
+            legacy: true,
+        };
+    }
+
+    if (!("test" in condition)) {
+        return undefined;
+    }
+
+    if ("empty" in condition) {
+        throw new Error(
+            'Selection test predicates must put "empty" inside "test".'
+        );
+    }
+
+    const test = condition.test;
+    if (!test || typeof test != "object" || Array.isArray(test)) {
+        throw new Error('Conditional predicate "test" must be an object.');
+    }
+    if (Object.keys(test).some((key) => key != "selection" && key != "empty")) {
+        throw new Error(
+            'Selection test predicates support only "selection" and "empty".'
+        );
+    }
+
+    const selection = test.selection;
+    if (
+        !selection ||
+        typeof selection != "object" ||
+        Array.isArray(selection) ||
+        Object.keys(selection).some((key) => key != "or")
+    ) {
+        throw new Error(
+            'Selection test predicates require a selection object with an "or" array.'
+        );
+    }
+    if (!Array.isArray(selection.or) || selection.or.length == 0) {
+        throw new Error('Selection test "or" must be a nonempty array.');
+    }
+    const params = [];
+    const names = new Set();
+    for (const name of selection.or) {
+        if (typeof name != "string" || !name) {
+            throw new Error('Selection test "or" members must be strings.');
+        }
+        const validated = validateParameterName(name);
+        if (!names.has(validated)) {
+            names.add(validated);
+            params.push(validated);
+        }
+    }
+    if (test.empty !== undefined && typeof test.empty != "boolean") {
+        throw new Error('Selection test "empty" must be a boolean.');
+    }
+
+    return { params, empty: test.empty ?? true, legacy: false };
+}
+
+/**
+ * Returns the names referenced by a normalized selection predicate.
+ *
+ * @param {import("../types/encoder.js").Predicate | undefined} predicate
+ * @returns {string[]}
+ */
+export function getSelectionPredicateParams(predicate) {
+    if (!predicate) {
+        return [];
+    }
+    return (
+        predicate.selection?.params ??
+        (predicate.param ? [predicate.param] : [])
+    );
+}
+
+/**
+ * Creates the expression for the active state of one selection.
+ *
+ * @param {string} param
+ * @param {import("../types/selectionTypes.js").Selection} selection
+ * @returns {string}
+ */
+function makeSelectionEmptyExpression(param, selection) {
+    if (isSinglePointSelection(selection)) {
+        return `${param}.uniqueId == null`;
+    }
+    if (isMultiPointSelection(selection)) {
+        return `${param}.data.size == 0`;
+    }
+    if (isIntervalSelection(selection)) {
+        const channels = Object.keys(selection.intervals);
+        return channels.length == 0
+            ? "true"
+            : `!(${channels.map((channel) => `${param}.intervals.${channel}`).join(" || ")})`;
+    }
+    throw new Error(`Unsupported selection type: ${selection.type}`);
+}
+
+/**
+ * Creates a selection-membership expression using the union's partial interval
+ * semantics: inactive dimensions do not constrain an active interval.
+ *
+ * @param {string} param
+ * @param {import("../types/selectionTypes.js").Selection} selection
+ * @param {Partial<Record<import("../spec/channel.js").PositionalChannel, string>>} fields
+ * @returns {string}
+ */
+function makeSelectionMembershipExpression(param, selection, fields) {
+    if (isSinglePointSelection(selection)) {
+        return `${param}.uniqueId != null && ${param}.uniqueId === datum[${JSON.stringify(
+            UNIQUE_ID_KEY
+        )}]`;
+    }
+    if (isMultiPointSelection(selection)) {
+        return `${param}.data.size != 0 && mapHasKey(${param}.data, datum[${JSON.stringify(
+            UNIQUE_ID_KEY
+        )}])`;
+    }
+    if (isIntervalSelection(selection)) {
+        const channels = Object.keys(selection.intervals);
+        if (channels.length == 0) {
+            return "false";
+        }
+        const access = (/** @type {string} */ f) =>
+            `datum[${JSON.stringify(f)}]`;
+        const dimensions = channels.map((channel) => {
+            const secondary = getSecondaryChannel(channel);
+            const f = fields[channel];
+            const f2 = fields[secondary] ?? fields[channel];
+            if (!f || !f2) {
+                throw new Error(
+                    `Selection interval channel "${channel}" requires a field definition.`
+                );
+            }
+            const interval = `${param}.intervals.${channel}`;
+            return `(!${interval} || (${interval}[0] <= ${access(f2)} && ${access(f)} <= ${interval}[1]))`;
+        });
+        const active = channels
+            .map((channel) => `${param}.intervals.${channel}`)
+            .join(" || ");
+        return `!!(${active}) && (${dimensions.join(" && ")})`;
+    }
+    throw new Error(`Unsupported selection type: ${selection.type}`);
+}
+
+/**
+ * Creates a union predicate expression. The `empty` option applies to the
+ * group as a whole, so it only matches when every selection is empty.
+ *
+ * @param {{param: string, selection: import("../types/selectionTypes.js").Selection, fields: Partial<Record<import("../spec/channel.js").PositionalChannel, string>>}[]} entries
+ * @param {boolean} empty
+ * @returns {string}
+ */
+export function makeSelectionUnionTestExpression(entries, empty) {
+    if (entries.length == 0) {
+        throw new Error(
+            "Selection unions must contain at least one selection."
+        );
+    }
+    const membership = entries.map(({ param, selection, fields }) =>
+        makeSelectionMembershipExpression(param, selection, fields)
+    );
+    const anyMembership = `(${membership.join(" || ")})`;
+    if (!empty) {
+        return anyMembership;
+    }
+    const allEmpty = entries
+        .map(({ param, selection }) =>
+            makeSelectionEmptyExpression(param, selection)
+        )
+        .join(" && ");
+    return `((${allEmpty}) || ${anyMembership})`;
+}
+
+/**
  * @param {import("../types/selectionTypes.js").Selection} selection
  * @returns {selection is import("../types/selectionTypes.js").IntervalSelection}
  */

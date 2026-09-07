@@ -13,6 +13,7 @@ import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { getConfiguredMarkDefaults } from "../config/markConfig.js";
 import { validatePositionalEndpointCoordinateSpaces } from "./markUtils.js";
+import { getSelectionPredicateParams } from "../selection/selection.js";
 
 /**
  * @typedef {"intersects" | "encloses" | "endpoints"} HitTestMode
@@ -436,8 +437,10 @@ export default class Mark {
                     if (!trackResources) {
                         continue;
                     }
-                    if (branch.predicate?.param) {
-                        watchExpression(branch.predicate.param, "resources");
+                    for (const param of getSelectionPredicateParams(
+                        branch.predicate
+                    )) {
+                        watchExpression(param, "resources");
                     }
                     const values = [
                         isValueDef(channelDef) ? channelDef.value : undefined,

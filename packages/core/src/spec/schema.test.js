@@ -161,6 +161,41 @@ describe("generated core schema", () => {
         );
     });
 
+    test("accepts selection union predicates and rejects malformed forms", () => {
+        const validate = createCoreValidator();
+        const base = /** @type {any} */ ({
+            data: { values: [{ id: 1 }] },
+            mark: "point",
+            encoding: {
+                color: {
+                    condition: {
+                        test: {
+                            selection: { or: ["selected", "brush"] },
+                            empty: false,
+                        },
+                        value: "blue",
+                    },
+                    value: "gray",
+                },
+            },
+        });
+        expect(validate(base), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+
+        const condition = /** @type {any} */ (base.encoding.color.condition);
+        condition.test.selection.or = [];
+        expect(validate(base)).toBe(false);
+        condition.test.selection.or = ["selected", 1];
+        expect(validate(base)).toBe(false);
+        condition.test.selection.or = ["selected"];
+        condition.empty = false;
+        expect(validate(base)).toBe(false);
+        delete condition.empty;
+        condition.param = "selected";
+        expect(validate(base)).toBe(false);
+    });
+
     test("accepts the indexed FASTA six-frame translation example", () => {
         const spec = JSON.parse(
             fs.readFileSync(
