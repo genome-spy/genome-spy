@@ -412,6 +412,10 @@ export default class GridView extends ContainerView {
         return this;
     }
 
+    get captureInteractions() {
+        return true;
+    }
+
     getInteractionCoords() {
         const channel = this.#getGapZoomChannel();
         return this.getTrackPlotGeometry(channel)?.viewport;

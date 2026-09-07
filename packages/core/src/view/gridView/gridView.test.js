@@ -2424,6 +2424,282 @@ describe("GridView wheel zoom", () => {
         }
     });
 
+    test.each(
+        /** @type {const} */ ([
+            ["vconcat", false],
+            ["vconcat", true],
+            ["hconcat", false],
+            ["hconcat", true],
+        ])
+    )(
+        "%s container interval selection starts from %s",
+        async (direction, fromGap) => {
+            const originalDocument = globalThis.document;
+            const originalMouseEvent = globalThis.MouseEvent;
+            class FakeMouseEvent extends Event {
+                constructor(
+                    /** @type {string} */ type,
+                    /** @type {Record<string, any>} */ init = {}
+                ) {
+                    super(type);
+                    Object.assign(this, init);
+                }
+            }
+            globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+                /** @type {any} */ (FakeMouseEvent)
+            );
+            const channel = direction === "vconcat" ? "x" : "y";
+            /** @type {Record<string, EventListener | undefined>} */
+            const listeners = {};
+            globalThis.document = /** @type {Document} */ (
+                /** @type {any} */ ({
+                    addEventListener(type, listener) {
+                        listeners[type] = listener;
+                    },
+                    removeEventListener(type, listener) {
+                        if (listeners[type] === listener) {
+                            listeners[type] = undefined;
+                        }
+                    },
+                })
+            );
+
+            try {
+                const { concatView, point, childPoint } =
+                    await createGapHarness(direction, {
+                        params: [
+                            {
+                                name: "brush",
+                                select: {
+                                    type: "interval",
+                                    encodings: [channel],
+                                    extent: "container",
+                                },
+                            },
+                        ],
+                    });
+                const startPoint = fromGap ? point : childPoint;
+                const delta =
+                    direction === "vconcat" ? { x: 20, y: 0 } : { x: 0, y: 20 };
+                const mousedown = new FakeMouseEvent("mousedown", {
+                    button: 0,
+                    shiftKey: true,
+                    clientX: startPoint.x,
+                    clientY: startPoint.y,
+                });
+                const interaction = new Interaction(startPoint, mousedown);
+
+                concatView.propagateInteraction(interaction);
+
+                expect(interaction.stopped).toBe(true);
+                const before = concatView
+                    .getScaleResolution(channel)
+                    ?.getDomain();
+                listeners.mousemove?.(
+                    new FakeMouseEvent("mousemove", {
+                        clientX: startPoint.x + delta.x,
+                        clientY: startPoint.y + delta.y,
+                    })
+                );
+
+                const selection = concatView.paramRuntime.findValue("brush");
+                expect(selection.intervals[channel]).toHaveLength(2);
+                expect(
+                    concatView.getScaleResolution(channel)?.getDomain()
+                ).toEqual(before);
+
+                const clearPoint = new Point(
+                    startPoint.x + delta.x / 2,
+                    startPoint.y + delta.y / 2
+                );
+                concatView.propagateInteraction(
+                    new Interaction(
+                        clearPoint,
+                        new FakeMouseEvent("dblclick", {
+                            button: 0,
+                            clientX: clearPoint.x,
+                            clientY: clearPoint.y,
+                        })
+                    )
+                );
+                expect(
+                    concatView.paramRuntime.findValue("brush").intervals[
+                        channel
+                    ]
+                ).toBeNull();
+            } finally {
+                globalThis.document = originalDocument;
+                globalThis.MouseEvent = originalMouseEvent;
+            }
+        }
+    );
+
+    test("disposing a container brush releases an active document drag", async () => {
+        const originalDocument = globalThis.document;
+        const originalMouseEvent = globalThis.MouseEvent;
+        class FakeMouseEvent extends Event {
+            constructor(
+                /** @type {string} */ type,
+                /** @type {Record<string, any>} */ init = {}
+            ) {
+                super(type);
+                Object.assign(this, init);
+            }
+        }
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (FakeMouseEvent)
+        );
+        /** @type {Record<string, EventListener | undefined>} */
+        const listeners = {};
+        globalThis.document = /** @type {Document} */ (
+            /** @type {any} */ ({
+                addEventListener(type, listener) {
+                    listeners[type] = listener;
+                },
+                removeEventListener(type, listener) {
+                    if (listeners[type] === listener) {
+                        listeners[type] = undefined;
+                    }
+                },
+            })
+        );
+
+        try {
+            const { concatView, point } = await createGapHarness("vconcat", {
+                params: [
+                    {
+                        name: "brush",
+                        select: {
+                            type: "interval",
+                            encodings: ["x"],
+                            extent: "container",
+                        },
+                    },
+                ],
+            });
+            const resumeHoverTracking = vi.spyOn(
+                concatView.context,
+                "resumeHoverTracking"
+            );
+
+            concatView.propagateInteraction(
+                new Interaction(
+                    point,
+                    new FakeMouseEvent("mousedown", {
+                        button: 0,
+                        shiftKey: true,
+                        clientX: point.x,
+                        clientY: point.y,
+                    })
+                )
+            );
+            expect(listeners.mousemove).toBeDefined();
+
+            concatView.dispose();
+
+            expect(listeners.mousemove).toBeUndefined();
+            expect(listeners.mouseup).toBeUndefined();
+            expect(resumeHoverTracking).toHaveBeenCalledTimes(1);
+        } finally {
+            globalThis.document = originalDocument;
+            globalThis.MouseEvent = originalMouseEvent;
+        }
+    });
+
+    test.each(/** @type {const} */ (["vconcat", "hconcat"]))(
+        "%s container interval selection translates from a gap",
+        async (direction) => {
+            const originalDocument = globalThis.document;
+            const originalMouseEvent = globalThis.MouseEvent;
+            class FakeMouseEvent extends Event {
+                constructor(
+                    /** @type {string} */ type,
+                    /** @type {Record<string, any>} */ init = {}
+                ) {
+                    super(type);
+                    Object.assign(this, init);
+                }
+            }
+            globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+                /** @type {any} */ (FakeMouseEvent)
+            );
+            /** @type {Record<string, EventListener | undefined>} */
+            const listeners = {};
+            globalThis.document = /** @type {Document} */ (
+                /** @type {any} */ ({
+                    addEventListener(type, listener) {
+                        listeners[type] = listener;
+                    },
+                    removeEventListener() {},
+                })
+            );
+
+            try {
+                const channel = direction === "vconcat" ? "x" : "y";
+                const initialInterval =
+                    direction === "vconcat" ? [1.2, 2.8] : [2.2, 4.8];
+                const { concatView, point } = await createGapHarness(
+                    direction,
+                    {
+                        params: [
+                            {
+                                name: "brush",
+                                value: { [channel]: initialInterval },
+                                select: {
+                                    type: "interval",
+                                    encodings: [channel],
+                                    extent: "container",
+                                },
+                            },
+                        ],
+                    }
+                );
+                const beforeDomain = concatView
+                    .getScaleResolution(channel)
+                    ?.getDomain();
+                const before = concatView.paramRuntime.findValue("brush");
+                concatView.propagateInteraction(
+                    new Interaction(
+                        point,
+                        new FakeMouseEvent("mousemove", {
+                            clientX: point.x,
+                            clientY: point.y,
+                        })
+                    )
+                );
+                concatView.propagateInteraction(
+                    new Interaction(
+                        point,
+                        new FakeMouseEvent("mousedown", {
+                            button: 0,
+                            clientX: point.x,
+                            clientY: point.y,
+                        })
+                    )
+                );
+                const delta = direction === "vconcat" ? 15 : 0;
+                const deltaY = direction === "hconcat" ? 15 : 0;
+                listeners.mousemove?.(
+                    new FakeMouseEvent("mousemove", {
+                        clientX: point.x + delta,
+                        clientY: point.y + deltaY,
+                    })
+                );
+
+                const after = concatView.paramRuntime.findValue("brush");
+                expect(after.intervals[channel]).not.toEqual(
+                    before.intervals[channel]
+                );
+                expect(
+                    concatView.getScaleResolution(channel)?.getDomain()
+                ).toEqual(beforeDomain);
+            } finally {
+                globalThis.document = originalDocument;
+                globalThis.MouseEvent = originalMouseEvent;
+            }
+        }
+    );
+
     test("gap wheel does nothing when concat axis resolution is independent", async () => {
         const { concatView, firstChild, secondChild, point } =
             await createGapHarness("vconcat", {

@@ -81,7 +81,11 @@ export class IntervalSelectionController {
      * @param {import("../view.js").InteractionListener} listener
      * @param {boolean} [capture]
      */
-    #addViewInteractionListener(type, listener, capture) {
+    #addViewInteractionListener(
+        type,
+        listener,
+        capture = this.host.captureInteractions
+    ) {
         this.#viewListeners.add(type, listener, capture);
     }
 
