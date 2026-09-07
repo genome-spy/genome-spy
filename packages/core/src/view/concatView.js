@@ -9,7 +9,7 @@ import ContainerMutationHelper from "./containerMutationHelper.js";
 import { moveArrayItem } from "../utils/arrayUtils.js";
 import { isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
 import { markViewAsNonAddressable } from "./viewSelectors.js";
-import { getPrimaryChannel } from "../encoder/encoder.js";
+import { getPrimaryChannel, getSecondaryChannel } from "../encoder/encoder.js";
 
 /**
  * Creates a vertically or horizontally concatenated layout for children.
@@ -120,7 +120,11 @@ export default class ConcatView extends GridView {
         const perpendicularChannel = channel === "x" ? "y" : "x";
         const layer = {
             layer: annotationSpecs.map((annotation) =>
-                prepareAnnotationSpec(annotation, channel, perpendicularChannel)
+                prepareAnnotationSpec(
+                    structuredClone(annotation),
+                    channel,
+                    perpendicularChannel
+                )
             ),
             resolve: { scale: { [channel]: "forced" } },
         };
@@ -298,19 +302,18 @@ export default class ConcatView extends GridView {
 }
 
 /**
- * @param {import("../spec/view.js").UnitSpec | import("../spec/view.js").LayerSpec} spec
+ * @param {import("../spec/view.js").UnitSpec | import("../spec/view.js").LayerSpec} prepared
  * @param {import("../spec/channel.js").PrimaryPositionalChannel} sharedChannel
  * @param {import("../spec/channel.js").PrimaryPositionalChannel} perpendicularChannel
  * @returns {import("../spec/view.js").UnitSpec | import("../spec/view.js").LayerSpec}
  */
-function prepareAnnotationSpec(spec, sharedChannel, perpendicularChannel) {
-    if (!isUnitSpec(spec) && !isLayerSpec(spec)) {
+function prepareAnnotationSpec(prepared, sharedChannel, perpendicularChannel) {
+    if (!isUnitSpec(prepared) && !isLayerSpec(prepared)) {
         throw new Error(
             "Container annotations accept only unit or layer specifications."
         );
     }
 
-    const prepared = structuredClone(spec);
     const resolveScale = prepared.resolve?.scale;
     const sharedResolution =
         resolveScale?.[sharedChannel] ?? resolveScale?.default;
@@ -369,7 +372,7 @@ function prepareAnnotationEncoding(
     sharedChannel,
     perpendicularChannel
 ) {
-    for (const channel of [sharedChannel, getSecondary(sharedChannel)]) {
+    for (const channel of [sharedChannel, getSecondaryChannel(sharedChannel)]) {
         const channelDef = encoding[channel];
         if (!channelDef) {
             continue;
@@ -398,7 +401,7 @@ function prepareAnnotationEncoding(
 
     for (const channel of [
         perpendicularChannel,
-        getSecondary(perpendicularChannel),
+        getSecondaryChannel(perpendicularChannel),
     ]) {
         const channelDef = encoding[channel];
         if (!channelDef) {
@@ -436,12 +439,4 @@ function forEachAnnotationDefinition(channelDef, callback) {
             }
         }
     }
-}
-
-/**
- * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
- * @returns {import("../spec/channel.js").SecondaryPositionalChannel}
- */
-function getSecondary(channel) {
-    return channel === "x" ? "x2" : "y2";
 }

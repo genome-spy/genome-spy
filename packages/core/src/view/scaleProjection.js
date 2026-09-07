@@ -83,15 +83,9 @@ export function getScaleProjectionCoords(
  * @param {import("./view.js").default} view
  * @param {import("../spec/channel.js").PrimaryPositionalChannel[]} channels
  * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
- * @param {import("../scales/scaleResolution.js").default} scaleResolution
  * @returns {import("./layout/rectangle.js").default}
  */
-export function getRulerProjectionCoords(
-    view,
-    channels,
-    channel,
-    scaleResolution
-) {
+export function getRulerProjectionCoords(view, channels, channel) {
     return isRulerGapChannel(view, channels) && view instanceof GridView
         ? (view.getTrackPlotGeometry(channel)?.content ?? view.coords)
         : view.coords;

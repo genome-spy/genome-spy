@@ -41,10 +41,7 @@ import {
     isHConcatSpec,
     isVConcatSpec,
 } from "../viewSpecGuards.js";
-import {
-    getRulerProjectionCoords,
-    isRulerGapChannel,
-} from "../scaleProjection.js";
+import { isRulerGapChannel } from "../scaleProjection.js";
 
 export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js";
 
@@ -516,18 +513,8 @@ export default class GridChild {
             : this.view.coords;
     }
 
-    /**
-     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
-     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
-     * @param {import("../../scales/scaleResolution.js").default} scaleResolution
-     */
-    getProjectionCoords(channels, channel, scaleResolution) {
-        return getRulerProjectionCoords(
-            this.view,
-            channels,
-            channel,
-            scaleResolution
-        );
+    getProjectionCoords() {
+        return this.view.coords;
     }
 
     getSelectionRect() {

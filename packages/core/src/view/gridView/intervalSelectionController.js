@@ -28,7 +28,7 @@ import { ViewInteractionListenerTracker } from "../viewInteractionListenerTracke
  * @property {boolean} [captureInteractions]
  * @property {() => Rectangle | undefined} getInteractionCoords
  * @property {(name: string, point: Point) => boolean} [ownsInteraction]
- * @property {(channels: import("../../spec/channel.js").PrimaryPositionalChannel[], channel: import("../../spec/channel.js").PrimaryPositionalChannel, scaleResolution: import("../../scales/scaleResolution.js").default) => Rectangle} getProjectionCoords
+ * @property {(channel: import("../../spec/channel.js").PrimaryPositionalChannel) => Rectangle} getProjectionCoords
  * @property {() => import("./selectionRect.js").SelectionRectOverlay | undefined} getSelectionRect
  * @property {(overlay: import("./selectionRect.js").SelectionRectOverlay) => void} setSelectionRect
  */
@@ -74,9 +74,6 @@ export class IntervalSelectionController {
 
     /** @type {() => boolean} */
     #disposeActiveDrag = () => false;
-
-    /** @type {boolean} */
-    #documentDragActive = false;
 
     /**
      * @param {string} type
@@ -249,11 +246,7 @@ export class IntervalSelectionController {
             /** @type {import("../layout/point.js").default} */ point
         ) => {
             const inverted = { x: 0, y: 0 };
-            const projectionCoords = this.host.getProjectionCoords(
-                channels,
-                channels[0],
-                scaleResolutions[channels[0]]
-            );
+            const projectionCoords = this.host.getProjectionCoords(channels[0]);
             const normalizedPoint = projectionCoords.normalizePoint(
                 point.x,
                 point.y,
@@ -280,11 +273,7 @@ export class IntervalSelectionController {
          */
         const selectionToRect = (selection) => {
             const { intervals } = selection;
-            const projectionCoords = this.host.getProjectionCoords(
-                channels,
-                channels[0],
-                scaleResolutions[channels[0]]
-            );
+            const projectionCoords = this.host.getProjectionCoords(channels[0]);
 
             const mapCorner = (
                 /** @type {number} */ xVal,
@@ -456,18 +445,13 @@ export class IntervalSelectionController {
                 view.context.resumeHoverTracking(upEvent);
             };
             this.#disposeActiveDrag = () => {
-                if (!this.#documentDragActive) {
-                    return false;
-                }
                 document.removeEventListener("mousemove", mouseMoveListener);
                 document.removeEventListener("mouseup", mouseUpListener);
                 setIntervalDragActive(false);
                 nowBrushing = false;
                 translatedRectangle = null;
-                this.#documentDragActive = false;
                 return true;
             };
-            this.#documentDragActive = true;
             document.addEventListener("mousemove", mouseMoveListener);
 
             document.addEventListener("mouseup", mouseUpListener);

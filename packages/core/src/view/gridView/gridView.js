@@ -422,9 +422,8 @@ export default class GridView extends ContainerView {
      *
      * @param {string} name
      * @param {import("../layout/point.js").default} point
-     * @param {boolean} [includeSelf]
      */
-    ownsInteraction(name, point, includeSelf = false) {
+    ownsInteraction(name, point) {
         const pointedChild = this.#visibleChildren.find((gridChild) =>
             gridChild.coords.containsPoint(point.x, point.y)
         );
@@ -434,16 +433,14 @@ export default class GridView extends ContainerView {
 
         if (
             pointedChild.view instanceof GridView &&
-            !pointedChild.view.ownsInteraction(name, point, true)
+            !pointedChild.view.ownsInteraction(name, point)
         ) {
             return false;
         }
 
         for (const owner of pointedChild.view.getDataAncestors()) {
             if (owner === this) {
-                return (
-                    !includeSelf || !this.paramRuntime.paramConfigs.has(name)
-                );
+                return true;
             }
             if (owner.paramRuntime.paramConfigs.has(name)) {
                 return false;
@@ -459,11 +456,9 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
      * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
-     * @param {import("../../scales/scaleResolution.js").default} scaleResolution
      */
-    getProjectionCoords(channels, channel, scaleResolution) {
+    getProjectionCoords(channel) {
         const geometry = this.getTrackPlotGeometry(channel);
         if (!geometry) {
             throw new Error(
@@ -510,11 +505,7 @@ export default class GridView extends ContainerView {
                 if (!view.isConfiguredVisible()) {
                     return VISIT_SKIP;
                 }
-                if (
-                    view instanceof UnitView &&
-                    !isInChromeSubtree(view) &&
-                    view.isConfiguredVisible()
-                ) {
+                if (view instanceof UnitView && !isInChromeSubtree(view)) {
                     trackViews.push(view);
                 }
             });
@@ -538,7 +529,7 @@ export default class GridView extends ContainerView {
      * interactions.
      *
      * @param {import("../../spec/channel.js").PrimaryPositionalChannel} [channel]
-     * @returns {{ content: Rectangle, viewport: Rectangle, placements: ReturnType<GridView["getTrackPlotPlacements"]> } | undefined}
+     * @returns {{ content: Rectangle, viewport: Rectangle } | undefined}
      */
     getTrackPlotGeometry(channel) {
         return this._cache("trackPlotGeometry/" + channel, () => {
@@ -603,7 +594,6 @@ export default class GridView extends ContainerView {
                 viewport: getUnionCoords(
                     placements.map(({ viewport }) => viewport)
                 ),
-                placements,
             };
         });
     }
