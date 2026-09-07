@@ -39,6 +39,29 @@ Use `includePlotMargin: false` to keep the separators inside the plot area.
 
 EXAMPLE examples/docs/grammar/composition/concat/concat-separators.json height=280
 
+## Track annotations
+
+`vconcat` and `hconcat` can draw ordinary unit or layer marks across all their
+visible tracks with the `annotate` array. A vertical concat maps annotation
+`x`/`x2` through its shared x scale, while `y`/`y2` use normalized plotting
+coordinates from `0` at the bottom to `1` at the top. A horizontal concat uses
+the corresponding y scale and normalized x coordinates. Use a constant `value`
+or a field/expression with `scale: null` for the normalized positions.
+
+Annotation positional fields do not expand the shared track domain. Other
+encodings, such as color, remain ordinary data-driven encodings. Annotations
+are clipped to the union of the visible track plotting areas and render after
+the tracks, so they remain in front of track marks even when a track has a
+higher `zindex`. Set `clip: "never"` on a mark when it should extend beyond
+those bounds.
+
+The tracks must have aligned shared projections on the data axis. Annotation
+layers cannot define their own positional scales or request an independent or
+excluded shared scale. The example uses translucent rectangles to mark regions
+across two toy tracks:
+
+EXAMPLE examples/docs/grammar/composition/concat/track-annotations.json height=300
+
 ## Child sizing
 
 The concatenation operators mimic the behavior of the CSS

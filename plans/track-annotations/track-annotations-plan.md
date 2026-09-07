@@ -92,21 +92,21 @@ already use value: 1 for normalized placement.
 
 ## Milestones and review gates
 
-- [ ] M1 — Annotation grammar and container rendering foundation.
+- [x] M1 — Annotation grammar and container rendering foundation.
       Add typed grammar, implicit layer initialization, validation, common geometry,
       traversal and front rendering. Cover both orientations, layered/data-driven
       annotations, invalid scales/alignment, nesting, hidden/dynamic tracks, scope
       and disposal. Focused unit/layout tests plus SVG geometry, clipping, and paint
       order assertions; inspect shared backend consumers. Commit:
       `feat(core): add container-spanning annotation layers`.
-- [ ] M2 — Container interaction ownership and #515.
+- [x] M2 — Container interaction ownership and #515.
       Route annotation picking and container brushes using the common surface;
       remove duplicate child ownership. Behavioral tests for create/translate/clear
       from tracks and gaps, x/y orientations, filters, drag release outside, no
       duplicate updates or simultaneous pan, nested/shadowed params, local extents,
       preserved unclaimed gap navigation and disposal. Commit:
       `fix(core): route container brush gestures across track gaps`.
-- [ ] M3 — Documentation and integration.
+- [x] M3 — Documentation and integration.
       Document coordinate model and restrictions in concat reference and spec JSDoc;
       add self-contained toy tracks/rectangles example under examples/docs, following
       examples/README.md. Regenerate schema/doc artifacts as appropriate. Run focused
@@ -148,3 +148,11 @@ first.json smoke passes. Primary reproduced #515 using real mouse gestures:
 track creation yielded x=[26.25,51.25], gap translation left the interval unchanged.
 Scratch reproduction: /tmp/track-annotation-browser.mjs; local Core server :4173.
 Primary owns final browser integration verification while Luna implements M1–M3.
+
+Implementation progress: M1 committed as `0add6bdcc`. M2 committed as
+`4461ffc2b`, with capture-order and TypeScript fixture follow-ups in
+`1a007136a`, `8cb803c7c`, `0dddc3846`, and `1723696b2`. Focused annotation
+contracts pass 17 tests; GridView and GridChild interaction suites pass 69 and 24 tests
+respectively. M3 documents normalized coordinates, clipping, projection
+constraints, and the toy track example. The generated schema accepts the new
+example and the documentation type check is up to date.

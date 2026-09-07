@@ -28,13 +28,19 @@ interface MultiscaleSpec
 }
 
 interface VConcatSpec
-    extends Omit<CoreVConcatSpec, "templates" | "vconcat">, SchemaViewConfig {
+    extends
+        Omit<CoreVConcatSpec, "templates" | "vconcat" | "annotate">,
+        SchemaViewConfig {
     vconcat: (ViewSpec | ImportSpec)[];
+    annotate?: (UnitSpec | LayerSpec)[];
 }
 
 interface HConcatSpec
-    extends Omit<CoreHConcatSpec, "templates" | "hconcat">, SchemaViewConfig {
+    extends
+        Omit<CoreHConcatSpec, "templates" | "hconcat" | "annotate">,
+        SchemaViewConfig {
     hconcat: (ViewSpec | ImportSpec)[];
+    annotate?: (UnitSpec | LayerSpec)[];
 }
 
 interface ConcatSpec

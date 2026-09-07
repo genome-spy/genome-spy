@@ -1,0 +1,65 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Annotations spanning vertically concatenated tracks.",
+
+  "spacing": 16,
+
+  "annotate": [
+    {
+      "data": {
+        "values": [
+          { "start": 2, "end": 4, "label": "region A" },
+          { "start": 6, "end": 8, "label": "region B" }
+        ]
+      },
+      "mark": { "type": "rect", "fillOpacity": 0.2 },
+      "encoding": {
+        "x": { "field": "start", "type": "quantitative" },
+        "x2": { "field": "end" },
+        "y": { "value": 0 },
+        "y2": { "value": 1 },
+        "color": { "field": "label", "type": "nominal" },
+        "tooltip": { "field": "label", "type": "nominal" }
+      }
+    }
+  ],
+
+  "vconcat": [
+    {
+      "height": 100,
+      "data": {
+        "values": [
+          { "x": 1, "value": 2 },
+          { "x": 3, "value": 5 },
+          { "x": 5, "value": 3 },
+          { "x": 7, "value": 6 },
+          { "x": 9, "value": 4 }
+        ]
+      },
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "value", "type": "quantitative" }
+      }
+    },
+
+    {
+      "height": 100,
+      "data": {
+        "values": [
+          { "x": 1, "value": 8 },
+          { "x": 3, "value": 6 },
+          { "x": 5, "value": 7 },
+          { "x": 7, "value": 3 },
+          { "x": 9, "value": 5 }
+        ]
+      },
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "value", "type": "quantitative" }
+      }
+    }
+  ]
+}
