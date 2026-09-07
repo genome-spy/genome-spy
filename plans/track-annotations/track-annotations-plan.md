@@ -156,3 +156,42 @@ contracts pass 17 tests; GridView and GridChild interaction suites pass 69 and 2
 respectively. M3 documents normalized coordinates, clipping, projection
 constraints, and the toy track example. The generated schema accepts the new
 example and the documentation type check is up to date.
+
+## Final review and acceptance
+
+- [x] Primary independently reviewed the implementation and fixed defects.
+      Real-browser checks exposed duplicate descendant interval controllers,
+      gesture capture ordering, and nested annotation navigation. Regression
+      coverage now also rejects annotation-only projections, verifies current
+      nested overlay bounds after resize, and covers hidden/dynamic tracks,
+      parameter shadowing, SVG clipping, and front ordering.
+- [x] Separate removal-only review completed in `ec64673ff`.
+      Removed redundant drag state, unused geometry arguments/results, repeated
+      visibility checks, a duplicate channel helper, an unnecessary ownership
+      flag, and repeated cloning of nested annotation specs. This pass removed
+      51 net production lines without adding features.
+- [x] Final verification passed: 471 test files; 4057 tests passed, one skipped,
+      two existing todos. All workspace TypeScript checks and ESLint pass.
+      Documentation type generation is current; schema generation succeeds and
+      the toy example validates against it.
+- [x] Real WebGL mouse checks pass for both x and y: track creation, gap
+      translation with unchanged viewport domain, gap creation and clearing,
+      document-level drag continuation outside the canvas, annotation picking
+      over tracks and gaps, and unclaimed navigation in nested containers.
+      The docs screenshot was visually inspected; Canvas smoke rendering passes.
+
+Foreground generated overlays and ruler/brush pointer projection now share the
+current track geometry with annotations. Existing generated underlays retain
+legacy arrangement because they run before nested tracks are arranged; their
+projection explicitly excludes annotation members. Moving underlays into a new
+render phase and migrating axis grids remain outside the agreed scope.
+
+Final size: gridView.js 2365 lines and gridChild.js 1083 lines (3448 combined,
+323 above the 3125-line baseline). Across the six changed production JavaScript
+files, the feature adds 571 net lines; the larger branch diff is primarily
+behavioral tests and documentation. The added code implements the explicit
+annotation grammar, layout validation, and actual container gesture ownership;
+no placement API, wrapper syntax, or general interaction framework was added.
+
+All milestones and both review gates are complete. Retire this temporary plan
+in the next commit; its reviewed design and acceptance record remain in history.
