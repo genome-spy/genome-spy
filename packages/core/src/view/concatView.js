@@ -9,7 +9,11 @@ import { getLegendResolutionOwners } from "./gridView/legendCollection.js";
 import { moveArrayItem } from "../utils/arrayUtils.js";
 import { isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
 import { markViewAsNonAddressable } from "./viewSelectors.js";
-import { getPrimaryChannel, getSecondaryChannel } from "../encoder/encoder.js";
+import {
+    getPrimaryChannel,
+    getSecondaryChannel,
+    isPositionalChannel,
+} from "../encoder/encoder.js";
 
 /**
  * Creates a vertically or horizontally concatenated layout for children.
@@ -365,6 +369,28 @@ function prepareAnnotationEncoding(
     sharedChannel,
     perpendicularChannel
 ) {
+    for (const [channel, channelDef] of Object.entries(encoding)) {
+        if (Array.isArray(channelDef)) {
+            continue;
+        }
+
+        forEachAnnotationDefinition(
+            /** @type {import("../spec/channel.js").ChannelDef} */ (channelDef),
+            (definition) => {
+                const resolutionChannel = definition.resolutionChannel;
+                if (
+                    resolutionChannel !== undefined &&
+                    isPositionalChannel(getPrimaryChannel(resolutionChannel)) &&
+                    getPrimaryChannel(channel) !== sharedChannel
+                ) {
+                    throw new Error(
+                        `Container annotation channel ${channel} cannot resolve through positional channel ${resolutionChannel}.`
+                    );
+                }
+            }
+        );
+    }
+
     for (const channel of [sharedChannel, getSecondaryChannel(sharedChannel)]) {
         const channelDef = encoding[channel];
         if (!channelDef) {
