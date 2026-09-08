@@ -823,7 +823,7 @@ SCHEMA SingleUrlSourceRef
 
 ## SizeDef
 
-See the [SizeDef documentation](composition/concat.md#step-sizing).
+See the [SizeDef documentation](composition/concat.md#sizedef).
 
 ## SortOrder
 
@@ -835,7 +835,7 @@ See the [StackParams documentation](transform/stack.md#parameters).
 
 ## Step
 
-See the [Step documentation](composition/concat.md#scrollable-viewports).
+See the [Step documentation](composition/concat.md#step-sizing).
 
 ## StringDatumDef
 

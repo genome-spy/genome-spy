@@ -659,21 +659,9 @@ export interface VConcatSpec extends ConcatBase {
     vconcat: (ViewSpec | ImportSpec)[];
 
     /**
-     * Marks drawn across the plotting areas of the vertically concatenated
-     * views. The aligned x axis uses the concat's shared scale; y positions
-     * use normalized, unscaled coordinates (`0` is the bottom and `1` is the
-     * top). Use `value` or a field/expression with `scale: null` for y
-     * positions. Annotation x/x2 fields do not contribute to the shared x
-     * domain. Annotation marks are clipped to the plotting bounds by default
-     * and render in front of the tracks; set `clip: "never"` to allow a mark
-     * to escape those bounds.
-     *
-     * All visible tracks must provide the same shared x projection. Annotation
-     * layers may not use an independent or excluded x scale, or define
-     * positional scale settings of their own. Legends for supported
-     * non-positional encodings are hosted in the owning concat's legend
-     * regions; use the usual scale and legend resolution settings to share or
-     * collect them with track legends.
+     * Marks drawn across the tracks and gaps of the vertically concatenated
+     * views. Positional `x` and `x2` encodings use the shared x scale, while
+     * `y` and `y2` use normalized coordinates from 0 (bottom) to 1 (top).
      */
     annotate?: (UnitSpec | LayerSpec)[];
 }
@@ -685,21 +673,9 @@ export interface HConcatSpec extends ConcatBase {
     hconcat: (ViewSpec | ImportSpec)[];
 
     /**
-     * Marks drawn across the plotting areas of the horizontally concatenated
-     * views. The aligned y axis uses the concat's shared scale; x positions
-     * use normalized, unscaled coordinates (`0` is the left and `1` is the
-     * right). Use `value` or a field/expression with `scale: null` for x
-     * positions. Annotation y/y2 fields do not contribute to the shared y
-     * domain. Annotation marks are clipped to the plotting bounds by default
-     * and render in front of the tracks; set `clip: "never"` to allow a mark
-     * to escape those bounds.
-     *
-     * All visible tracks must provide the same shared y projection. Annotation
-     * layers may not use an independent or excluded y scale, or define
-     * positional scale settings of their own. Legends for supported
-     * non-positional encodings are hosted in the owning concat's legend
-     * regions; use the usual scale and legend resolution settings to share or
-     * collect them with track legends.
+     * Marks drawn across the tracks and gaps of the horizontally concatenated
+     * views. Positional `y` and `y2` encodings use the shared y scale, while
+     * `x` and `x2` use normalized coordinates from 0 (left) to 1 (right).
      */
     annotate?: (UnitSpec | LayerSpec)[];
 }
