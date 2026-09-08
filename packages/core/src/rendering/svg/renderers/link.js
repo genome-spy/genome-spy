@@ -40,6 +40,11 @@ export function renderLinkSvg(baseMark, options) {
     });
     group.setAttribute("fill", "none");
     group.setAttribute("stroke-linecap", "butt");
+    /** @type {SVGGElement} */
+    let pathGroup = group;
+
+    /** @type {string | undefined} */
+    let currentMask;
     return visitLinkInstances(
         mark,
         properties,
@@ -51,17 +56,21 @@ export function renderLinkSvg(baseMark, options) {
             }
             /** @type {Record<string, string | number>} */
             const styles = encodeStyles(datum);
-            if (arcFadingDistance) {
-                const mask = options.getLinkArcFadeMaskUrl({
-                    p1: /** @type {[number, number]} */ (p1),
-                    p4: /** @type {[number, number]} */ (p4),
-                    distances: arcFadingDistance,
-                });
+            const mask = arcFadingDistance
+                ? options.getLinkArcFadeMaskUrl({
+                      p1: /** @type {[number, number]} */ (p1),
+                      p4: /** @type {[number, number]} */ (p4),
+                      distances: arcFadingDistance,
+                  })
+                : undefined;
+            if (mask !== currentMask) {
+                currentMask = mask;
+                pathGroup = mask ? createSvgElement("g", { mask }) : group;
                 if (mask) {
-                    styles.mask = mask;
+                    group.appendChild(pathGroup);
                 }
             }
-            group.appendChild(
+            pathGroup.appendChild(
                 createSvgElement("path", {
                     d: `M ${formatSvgPoint(p1)} C ${formatSvgPoint(p2)} ${formatSvgPoint(p3)} ${formatSvgPoint(p4)}`,
                     ...styles,
