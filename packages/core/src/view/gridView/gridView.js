@@ -207,11 +207,8 @@ export default class GridView extends ContainerView {
     /** @type {KeyboardZoomController | null} */
     #keyboardZoomController = null;
 
-    /** @type {{ overlay: import("./generatedChromeOverlay.js").GeneratedChromeOverlay, order: number, channel: import("../../spec/channel.js").PrimaryPositionalChannel }[]} */
+    /** @type {{ overlay: import("./generatedChromeOverlay.js").GeneratedChromeOverlay, order: number, channel: import("../../spec/channel.js").PrimaryPositionalChannel, controller?: IntervalSelectionController }[]} */
     #containerOverlays = [];
-
-    /** @type {IntervalSelectionController[]} */
-    #intervalSelectionControllers = [];
 
     /**
      *
@@ -399,15 +396,6 @@ export default class GridView extends ContainerView {
         return undefined;
     }
 
-    /**
-     * Returns the axis used by container-spanning annotations, if any.
-     *
-     * @returns {import("../../spec/channel.js").PrimaryPositionalChannel | undefined}
-     */
-    getAnnotationChannel() {
-        return undefined;
-    }
-
     get view() {
         return this;
     }
@@ -466,20 +454,6 @@ export default class GridView extends ContainerView {
             );
         }
         return geometry.content;
-    }
-
-    /** @returns {import("./selectionRect.js").SelectionRectOverlay | undefined} */
-    getSelectionRect() {
-        return undefined;
-    }
-
-    /**
-     * @param {import("./selectionRect.js").SelectionRectOverlay} _overlay
-     */
-    setSelectionRect(_overlay) {
-        throw new Error(
-            "GridView-owned interval selections use a container overlay."
-        );
     }
 
     /**
@@ -721,15 +695,7 @@ export default class GridView extends ContainerView {
     }
 
     async #syncContainerOverlays() {
-        for (const controller of this.#intervalSelectionControllers) {
-            controller.dispose();
-        }
-        this.#intervalSelectionControllers = [];
-
-        for (const { overlay } of this.#containerOverlays) {
-            overlay.view.disposeSubtree();
-        }
-        this.#containerOverlays = [];
+        this.#disposeContainerOverlays();
 
         /** @type {Promise<void>[]} */
         const promises = [];
@@ -785,9 +751,7 @@ export default class GridView extends ContainerView {
                 overlay,
                 order: DECORATION_ORDER.selectionRect,
                 channel,
-            });
-            this.#intervalSelectionControllers.push(
-                new IntervalSelectionController(
+                controller: new IntervalSelectionController(
                     this,
                     paramName,
                     /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
@@ -797,8 +761,8 @@ export default class GridView extends ContainerView {
                     this.paramRuntime,
                     false,
                     overlay
-                )
-            );
+                ),
+            });
             promises.push(overlay.view.initializeChildren());
         }
 
@@ -1806,7 +1770,7 @@ export default class GridView extends ContainerView {
 
         const annotationLayer = this.getAnnotationLayer();
         const annotationGeometry = annotationLayer
-            ? this.getTrackPlotGeometry(this.getAnnotationChannel())
+            ? this.getTrackPlotGeometry(this.#getGapZoomChannel())
             : undefined;
         if (annotationLayer && annotationGeometry) {
             const parentClip = normalizeClipOptions(options);
@@ -1857,11 +1821,18 @@ export default class GridView extends ContainerView {
     }
 
     dispose() {
-        for (const controller of this.#intervalSelectionControllers) {
-            controller.dispose();
+        for (const { controller } of this.#containerOverlays) {
+            controller?.dispose();
         }
-        this.#intervalSelectionControllers = [];
         super.dispose();
+    }
+
+    #disposeContainerOverlays() {
+        for (const { controller, overlay } of this.#containerOverlays) {
+            controller?.dispose();
+            overlay.view.disposeSubtree();
+        }
+        this.#containerOverlays = [];
     }
 
     /**
@@ -1923,8 +1894,7 @@ export default class GridView extends ContainerView {
 
             const annotationLayer = this.getAnnotationLayer();
             const annotationCoords = annotationLayer
-                ? this.getTrackPlotGeometry(this.getAnnotationChannel())
-                      ?.viewport
+                ? this.getTrackPlotGeometry(this.#getGapZoomChannel())?.viewport
                 : undefined;
             const pointedAnnotation =
                 annotationLayer &&

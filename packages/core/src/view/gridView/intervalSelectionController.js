@@ -29,8 +29,8 @@ import { ViewInteractionListenerTracker } from "../viewInteractionListenerTracke
  * @property {() => Rectangle | undefined} getInteractionCoords
  * @property {(name: string, point: Point) => boolean} [ownsInteraction]
  * @property {(channel: import("../../spec/channel.js").PrimaryPositionalChannel) => Rectangle} getProjectionCoords
- * @property {() => import("./selectionRect.js").SelectionRectOverlay | undefined} getSelectionRect
- * @property {(overlay: import("./selectionRect.js").SelectionRectOverlay) => void} setSelectionRect
+ * @property {() => import("./selectionRect.js").SelectionRectOverlay | undefined} [getSelectionRect]
+ * @property {(overlay: import("./selectionRect.js").SelectionRectOverlay) => void} [setSelectionRect]
  */
 
 /** Handles interval selection interaction listeners for one layout host. */
@@ -160,12 +160,6 @@ export class IntervalSelectionController {
             );
         const clearEventPredicate = createEventPredicate(clearEventConfig);
 
-        if (renderOverlay && this.host.getSelectionRect()) {
-            throw new Error(
-                "Only one interval selection per container is currently allowed!"
-            );
-        }
-
         // --- Validation and early exits done ---
 
         let mouseOver = false;
@@ -216,23 +210,30 @@ export class IntervalSelectionController {
         const ownsInteraction = (/** @type {Point} */ point) =>
             this.host.ownsInteraction?.(name, point) ?? true;
 
+        let dragOverlay = selectionRect;
         if (renderOverlay) {
-            this.host.setSelectionRect(
-                createSelectionRectOverlay({
-                    selectionExpr,
-                    selectionExpression: name,
-                    channels,
-                    brushConfig: select.mark,
-                    context: this.host.context,
-                    layoutParent: this.host.layoutParent,
-                    dataParent: view,
-                    scaleResolutionSource: view,
-                })
-            );
+            if (!this.host.getSelectionRect || !this.host.setSelectionRect) {
+                throw new Error(
+                    "Interval selection hosts must provide a selection rectangle."
+                );
+            }
+            if (this.host.getSelectionRect()) {
+                throw new Error(
+                    "Only one interval selection per container is currently allowed!"
+                );
+            }
+            dragOverlay = createSelectionRectOverlay({
+                selectionExpr,
+                selectionExpression: name,
+                channels,
+                brushConfig: select.mark,
+                context: this.host.context,
+                layoutParent: this.host.layoutParent,
+                dataParent: view,
+                scaleResolutionSource: view,
+            });
+            this.host.setSelectionRect(dragOverlay);
         }
-        const dragOverlay = renderOverlay
-            ? this.host.getSelectionRect()
-            : selectionRect;
         const setIntervalDragActive = dragOverlay
             ? (/** @type {boolean} */ active) => {
                   dragOverlay.view.paramRuntime.setValue(

@@ -95,17 +95,12 @@ export default class ConcatView extends GridView {
         return this.#annotationLayer;
     }
 
-    /** @override */
-    getAnnotationChannel() {
-        if (isVConcatSpec(this.spec)) {
-            return "x";
-        } else if (isHConcatSpec(this.spec)) {
-            return "y";
-        }
-    }
-
     async #initializeAnnotationLayer() {
-        const channel = this.getAnnotationChannel();
+        const channel = isVConcatSpec(this.spec)
+            ? "x"
+            : isHConcatSpec(this.spec)
+              ? "y"
+              : undefined;
         const annotationSpecs =
             isVConcatSpec(this.spec) || isHConcatSpec(this.spec)
                 ? this.spec.annotate
