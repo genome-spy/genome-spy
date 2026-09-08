@@ -440,7 +440,13 @@ export default class GridView extends ContainerView {
 
     getInteractionCoords() {
         const channel = this.#getConcatSharedChannel();
-        return this.getTrackPlotGeometry(channel)?.viewport;
+        return channel
+            ? getCrossTrackBounds(
+                  this.#visibleChildren,
+                  this.#sharedAxes,
+                  channel
+              )
+            : undefined;
     }
 
     /**
@@ -1860,23 +1866,11 @@ export default class GridView extends ContainerView {
                 : undefined;
 
             if (event.type === "wheelclaimprobe") {
-                // Probe path: claim wheel ownership without executing regular wheel
-                // behavior. InteractionController uses this to decide whether native
-                // wheel should be preventDefault()'ed before inertia kicks in.
-                if (!pointedView) {
-                    if (gapZoomTarget) {
-                        event.claimWheel();
-                    }
-                    return;
-                }
-
-                if (isZoomInteractionView(pointedView)) {
-                    if (hasZoomableResolutions(pointedView)) {
-                        event.claimWheel();
-                    }
-                } else {
-                    pointedView.propagateInteraction(event);
-                }
+                this.#propagateWheelClaimProbe(
+                    event,
+                    pointedView,
+                    gapZoomTarget
+                );
                 return;
             }
 
@@ -1924,7 +1918,6 @@ export default class GridView extends ContainerView {
 
             if (!pointedView) {
                 if (gapZoomTarget) {
-                    event.target = this;
                     this.#propagateZoomInteraction(
                         event,
                         gapZoomTarget.coords,
@@ -1951,6 +1944,36 @@ export default class GridView extends ContainerView {
     }
 
     /**
+     * Claims a wheel only when the pointed surface would consume a wheel zoom.
+     *
+     * @param {import("../../utils/interaction.js").default} event
+     * @param {View | undefined} pointedView
+     * @param {{ coords: Rectangle, zoomableResolutions: ReturnType<typeof getZoomableResolutionSet> } | undefined} gapZoomTarget
+     */
+    #propagateWheelClaimProbe(event, pointedView, gapZoomTarget) {
+        if (!pointedView) {
+            if (gapZoomTarget) {
+                event.claimWheel();
+            }
+            return;
+        }
+
+        if (!isZoomInteractionView(pointedView)) {
+            pointedView.propagateInteraction(event);
+            return;
+        }
+
+        const zoomableResolutions = getZoomableResolutions(pointedView);
+        if (
+            Object.values(zoomableResolutions).some(
+                (resolutions) => resolutions.size > 0
+            )
+        ) {
+            event.claimWheel();
+        }
+    }
+
+    /**
      * @param {import("../layout/point.js").default} point
      * @returns {{ coords: Rectangle, zoomableResolutions: ReturnType<typeof getZoomableResolutionSet> } | undefined}
      */
@@ -1965,7 +1988,11 @@ export default class GridView extends ContainerView {
             return;
         }
 
-        const coords = this.getTrackPlotGeometry(channel)?.viewport;
+        const coords = getCrossTrackBounds(
+            this.#visibleChildren,
+            this.#sharedAxes,
+            channel
+        );
         if (!coords) {
             return;
         }
@@ -1997,28 +2024,18 @@ export default class GridView extends ContainerView {
      * @param {ReturnType<typeof getZoomableResolutions>} zoomableResolutions
      */
     #propagateZoomInteraction(event, coords, zoomableResolutions) {
+        event.target ??= this;
         interactionToZoom(
             event,
             coords,
             (zoomEvent) =>
-                this.#handleZoom(coords, zoomableResolutions, zoomEvent),
+                zoomResolutions(
+                    coords,
+                    zoomEvent,
+                    zoomableResolutions,
+                    this.context.animator
+                ),
             this.context.getCurrentHover(),
-            this.context.animator
-        );
-    }
-
-    /**
-     *
-     * @param {import("../layout/rectangle.js").default} coords Coordinates
-     * @param {ReturnType<typeof getZoomableResolutions>} zoomableResolutions
-     * @param {import("../zoom.js").ZoomEvent} zoomEvent
-     * @returns {boolean} `true` when there was at least one zoomable resolution
-     */
-    #handleZoom(coords, zoomableResolutions, zoomEvent) {
-        return zoomResolutions(
-            coords,
-            zoomEvent,
-            zoomableResolutions,
             this.context.animator
         );
     }
@@ -2180,15 +2197,6 @@ function hasClippedChildren(view) {
 
 /**
  * @param {View} view
- * @returns {boolean}
- */
-function hasZoomableResolutions(view) {
-    const zoomableResolutions = getZoomableResolutions(view);
-    return zoomableResolutions.x.size > 0 || zoomableResolutions.y.size > 0;
-}
-
-/**
- * @param {View} view
  * @returns {view is UnitView | LayerView}
  */
 function isZoomInteractionView(view) {
@@ -2242,50 +2250,54 @@ function getCrossTrackBounds(gridChildren, sharedAxes, channel) {
         return undefined;
     }
 
-    const aligned = channel == "x" ? 0 : 1;
-    const perpendicular = 1 - aligned;
-    const min = [Infinity, Infinity];
-    const max = [-Infinity, -Infinity];
-    min[aligned] = -Infinity;
-    max[aligned] = Infinity;
+    /** @type {[
+     *   "x" | "y",
+     *   "x2" | "y2",
+     *   "x" | "y",
+     *   "x2" | "y2",
+     *   "top" | "left",
+     *   "bottom" | "right"
+     * ]} */
+    const [aligned, alignedEnd, perpendicular, perpendicularEnd, start, end] =
+        channel == "x"
+            ? ["x", "x2", "y", "y2", "top", "bottom"]
+            : ["y", "y2", "x", "x2", "left", "right"];
+    let alignedMin = -Infinity;
+    let alignedMax = Infinity;
+    let perpendicularMin = Infinity;
+    let perpendicularMax = -Infinity;
 
     for (const gridChild of gridChildren) {
-        const viewport = gridChild.coords;
-        const expanded = viewport.expand(gridChild.getOverhang());
-        const viewportMin = [viewport.x, viewport.y];
-        const viewportMax = [viewport.x2, viewport.y2];
-        const expandedMin = [expanded.x, expanded.y];
-        const expandedMax = [expanded.x2, expanded.y2];
-
-        min[aligned] = Math.max(min[aligned], viewportMin[aligned]);
-        max[aligned] = Math.min(max[aligned], viewportMax[aligned]);
-        min[perpendicular] = Math.min(
-            min[perpendicular],
-            expandedMin[perpendicular]
+        const { coords } = gridChild;
+        const overhang = gridChild.getOverhang();
+        alignedMin = Math.max(alignedMin, coords[aligned]);
+        alignedMax = Math.min(alignedMax, coords[alignedEnd]);
+        perpendicularMin = Math.min(
+            perpendicularMin,
+            coords[perpendicular] - overhang[start]
         );
-        max[perpendicular] = Math.max(
-            max[perpendicular],
-            expandedMax[perpendicular]
+        perpendicularMax = Math.max(
+            perpendicularMax,
+            coords[perpendicularEnd] + overhang[end]
         );
     }
 
-    const axisOrients = channel == "x" ? ["top", "bottom"] : ["left", "right"];
+    const axisOrients = [start, end];
     for (const axisView of Object.values(sharedAxes)) {
         const coords = axisView.coords;
         if (!coords || !axisOrients.includes(axisView.axisProps.orient)) {
             continue;
         }
 
-        min[perpendicular] = Math.min(
-            min[perpendicular],
-            [coords.x, coords.y][perpendicular]
-        );
-        max[perpendicular] = Math.max(
-            max[perpendicular],
-            [coords.x2, coords.y2][perpendicular]
-        );
+        perpendicularMin = Math.min(perpendicularMin, coords[perpendicular]);
+        perpendicularMax = Math.max(perpendicularMax, coords[perpendicularEnd]);
     }
 
+    const alignedIndex = aligned == "x" ? 0 : 1;
+    const min = [perpendicularMin, perpendicularMin];
+    const max = [perpendicularMax, perpendicularMax];
+    min[alignedIndex] = alignedMin;
+    max[alignedIndex] = alignedMax;
     if (min[0] >= max[0] || min[1] >= max[1]) {
         return undefined;
     }
