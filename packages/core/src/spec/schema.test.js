@@ -222,7 +222,7 @@ describe("generated core schema", () => {
                 order: {
                     condition: {
                         test: {
-                            selection: { or: ["picked", "brush"] },
+                            param: { or: ["picked", "brush"] },
                             empty: false,
                         },
                         value: 20,

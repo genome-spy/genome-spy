@@ -292,7 +292,7 @@ describe("generated shader snapshots", () => {
                 order: {
                     condition: {
                         test: {
-                            selection: {
+                            param: {
                                 or: /** @type {[string]} */ (["picked"]),
                             },
                             empty: false,

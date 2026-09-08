@@ -226,7 +226,7 @@ describe("conditional order metadata", () => {
                     order: {
                         condition: {
                             test: {
-                                selection: {
+                                param: {
                                     or: /** @type {[string, ...string[]]} */ ([
                                         "picked",
                                         "picked",
