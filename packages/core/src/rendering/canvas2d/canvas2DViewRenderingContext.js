@@ -291,12 +291,18 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                      * @param {number} renderStart
                      * @param {number} renderEnd
                      */
-                    const render = (renderData, renderStart, renderEnd) =>
+                    const render = (
+                        renderData,
+                        renderStart,
+                        renderEnd,
+                        secondOrderPass = false
+                    ) =>
                         renderMarkCanvas(mark, {
                             context,
                             devicePixelRatio: this.devicePixelRatio,
                             coords: occurrenceCoords,
                             data: renderData,
+                            secondOrderPass,
                             start: renderStart,
                             end: renderEnd,
                             visibleBounds,
@@ -320,9 +326,14 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                         order.predicate,
                         order.passes
                     );
-                    for (const partition of partitions) {
+                    for (const [index, partition] of partitions.entries()) {
                         if (partition.length > 0) {
-                            count += render(partition, 0, partition.length);
+                            count += render(
+                                partition,
+                                0,
+                                partition.length,
+                                index === 1
+                            );
                         }
                     }
                     return count;

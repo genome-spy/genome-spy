@@ -846,12 +846,24 @@ export interface LinkProps
     arcFadingDistance?: [number, number] | false | ExprRef;
 
     /**
-     * Disables fading for selected links. Tests selections referenced by conditional
-     * encodings, excluding empty selections. Despite the property name, interval selections
-     * also bypass fading when either link endpoint is inside each selected interval.
-     * Only marks that participate in picking use this bypass.
+     * Shows foreground arcs in full by disabling distance fading during the second
+     * visual pass of an active conditional `order` encoding. Configure selected
+     * links with the higher order value to draw them unfaded above other links.
+     * Reversing the order values instead exempts the unselected links.
      *
-     * **Default value:** `true`
+     * Has no effect without active conditional ordering, including when all
+     * selections are empty. Picking always uses normal fading.
+     *
+     * __Default value:__ `false`
+     */
+    noFadingOnSecondPass?: boolean | ExprRef;
+
+    /**
+     * Alias for `noFadingOnSecondPass`, used only when that property is unspecified.
+     * Requires active conditional ordering; selections in color or size encodings
+     * alone no longer suppress fading.
+     *
+     * @deprecated Use `noFadingOnSecondPass`.
      */
     noFadingOnPointSelection?: boolean | ExprRef;
 }

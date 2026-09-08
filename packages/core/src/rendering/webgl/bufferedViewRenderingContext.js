@@ -252,10 +252,11 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                     ),
                     orderCallbacks:
                         order && !this.globalOptions.picking
-                            ? order.passes.map((orderPass) =>
+                            ? order.passes.map((orderPass, index) =>
                                   graphics.render({
                                       ...request.options,
                                       orderPass,
+                                      secondOrderPass: index === 1,
                                   })
                               )
                             : undefined,

@@ -70,6 +70,7 @@ import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
  * @prop {import("../immediate/bounds.js").RenderBounds} visibleBounds
  * @prop {import("../immediate/bounds.js").RenderBounds} anchorCullBounds
  * @prop {number} viewOpacity
+ * @prop {boolean} [secondOrderPass]
  * @prop {boolean} [countOnly]
  * @prop {(fade: SvgViewportEdgeFade) => string | undefined} getViewportEdgeFadeMaskUrl
  * @prop {(shadow: SvgShadow) => string} getShadowFilterUrl
@@ -414,7 +415,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             /**
              * @param {object[]} data
              */
-            const renderPass = (data) => {
+            const renderPass = (data, secondOrderPass = false) => {
                 const instanceCount = renderMarkSvg(mark, {
                     coords,
                     data,
@@ -422,6 +423,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                     visibleBounds,
                     anchorCullBounds,
                     viewOpacity: mark.unitView.getEffectiveOpacity(),
+                    secondOrderPass,
                     countOnly: this.#countingInstances,
                     getViewportEdgeFadeMaskUrl: (fade) =>
                         this.#countingInstances
@@ -475,11 +477,11 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                 order.predicate,
                 order.passes
             );
-            for (const passData of partitions) {
+            for (const [index, passData] of partitions.entries()) {
                 if (passData.length === 0) {
                     continue;
                 }
-                renderPass(passData);
+                renderPass(passData, index === 1);
             }
         };
 

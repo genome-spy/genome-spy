@@ -216,8 +216,8 @@ fn isInstanceVisible(i: u32) -> bool {
     if (!isInstanceVisibleBase(i)) { return false; }
     if (globals.orderPass == 0u) { return true; }
     let matches = isInstanceOrderMatch(i);
-    return (globals.orderPass == 1u && matches) ||
-        (globals.orderPass == 2u && !matches);
+    return ((globals.orderPass & 3u) == 1u && matches) ||
+        ((globals.orderPass & 3u) == 2u && !matches);
 }
 `
         : "";
@@ -631,33 +631,6 @@ ${clauses.join("\n")}
             selectionFns.push(emitSelectionPredicate(def));
         }
     }
-
-    // Only appearance selections bypass link fading; order/visibility resources
-    // do not change the mark's appearance.
-    const appearanceSelections = new Map();
-    for (const channelIR of channelIRs) {
-        for (const { when } of channelIR.channel.conditions ?? []) {
-            if ("selectionUnion" in when) {
-                for (const leaf of when.selectionUnion) {
-                    appearanceSelections.set(leaf.selection, true);
-                }
-            } else if (!appearanceSelections.has(when.selection)) {
-                appearanceSelections.set(when.selection, false);
-            }
-        }
-    }
-    const selectionTests = channelIRByName.has("uniqueId")
-        ? Array.from(appearanceSelections, ([name, union]) =>
-              union
-                  ? `${SELECTION_MEMBERSHIP_PREFIX}${name}(i)`
-                  : `${SELECTION_CHECKER_PREFIX}${name}(i, false)`
-          )
-        : [];
-    selectionFns.push(/* wgsl */ `
-fn isDatumSelected(i: u32) -> bool {
-    return ${selectionTests.join(" || ") || "false"};
-}
-`);
 
     // Ordinal scales pull range values from storage buffers. These bindings are
     // separate from series data so ranges can grow/shrink without reallocating

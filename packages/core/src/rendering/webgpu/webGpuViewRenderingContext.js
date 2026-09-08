@@ -637,8 +637,14 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         this.surface.prepareDraw(state.mark, draw, state.source);
         if (state.orderActive) {
-            for (const orderPass of state.mark.getOrder().passes) {
-                items.push({ ...draw, orderPass });
+            for (const [index, orderPass] of state.mark
+                .getOrder()
+                .passes.entries()) {
+                items.push({
+                    ...draw,
+                    orderPass,
+                    secondOrderPass: index === 1,
+                });
                 countPerformance("drawCommands");
             }
         } else {

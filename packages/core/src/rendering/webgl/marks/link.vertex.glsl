@@ -275,8 +275,11 @@ void main(void) {
     vFadeDistance = -1.0;
     if ((uShape == SHAPE_ARC || uShape == SHAPE_DOME) &&
         uArcFadingDistance[0] > 0.0 &&
-        uArcFadingDistance[1] > 0.0 &&
-        (!uNoFadingOnPointSelection || !isDatumSelected()))
+        uArcFadingDistance[1] > 0.0
+#ifdef CONDITIONAL_ORDER
+        && (!uNoFadingOnSecondPass || (uOrderMode & 4) == 0)
+#endif
+        )
     {
         vFadeDistance = distanceFromLine(p1, p4, p);
         // Keep fully faded triangles collapsed to avoid fragment processing.

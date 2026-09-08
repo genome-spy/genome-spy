@@ -987,8 +987,8 @@ export type LinkMarkOptions = {
     /** Fade arcs and domes by perpendicular distance from their endpoint baseline in logical pixels. */
     arcFadingDistance?: [number, number];
 
-    /** Bypass fading for members of selections referenced by conditional channels, including intervals. Requires uniqueId. Default: true. */
-    noFadingOnPointSelection?: boolean;
+    /** Disable arc fading on draws marked secondOrderPass. Default: false. */
+    noFadingOnSecondPass?: boolean;
 };
 
 export type LinkMarkProperties = Required<LinkMarkOptions>;
@@ -1128,6 +1128,8 @@ export type DrawCommand = {
     instanceCount?: number;
     /** Conditional order pass for ordinary rendering. Picking always uses all. */
     orderPass?: DrawOrderPass;
+    /** Mark the second conditional order partition; ignored during picking. */
+    secondOrderPass?: boolean;
     placement?: DrawPlacement;
 };
 

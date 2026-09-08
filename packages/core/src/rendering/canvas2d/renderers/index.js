@@ -15,6 +15,7 @@ import { renderTextCanvas } from "./text.js";
  * @prop {import("../../immediate/bounds.js").RenderBounds} anchorCullBounds
  * @prop {number} viewOpacity
  * @prop {(message: string) => void} warn
+ * @prop {boolean} [secondOrderPass]
  * @prop {number} [start]
  * @prop {number} [end]
  */

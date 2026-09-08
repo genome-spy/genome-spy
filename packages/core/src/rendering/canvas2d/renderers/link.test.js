@@ -11,7 +11,7 @@ import { createSvg } from "../../svg/index.js";
 import SoftwarePickingBuffer from "../picking/softwarePickingBuffer.js";
 import SoftwarePickingRasterizer from "../picking/softwarePickingRasterizer.js";
 import SoftwarePickingViewRenderingContext from "../picking/softwarePickingViewRenderingContext.js";
-import { renderLinkCanvas } from "./link.js";
+import Canvas2DViewRenderingContext from "../canvas2DViewRenderingContext.js";
 
 // Use nonzero baselines in both directions so the apex cannot masquerade as an endpoint.
 test.each([
@@ -48,6 +48,10 @@ test.each([
                 x2: { value: orient == "vertical" ? 0.9 : baseline },
                 y: { value: orient == "vertical" ? apex : 0.1 },
                 y2: { value: orient == "vertical" ? baseline : 0.9 },
+                order: {
+                    condition: { param: "selected", empty: false, value: 1 },
+                    value: 0,
+                },
                 color: {
                     value: "red",
                     condition: { param: "selected", value: "red" },
@@ -85,9 +89,7 @@ test.each([
         const selected = draw();
         expect(selected.context.createLinearGradient).not.toHaveBeenCalled();
         expect(selected.svg.querySelector("mask")).toBeNull();
-        expect(
-            selected.buffer.read(apexCoords[0], apexCoords[1])
-        ).toBeGreaterThan(0);
+        expect(selected.buffer.read(apexCoords[0], apexCoords[1])).toBe(0);
         view.paramRuntime.setValue("bypass", false);
         expect(draw().buffer.read(apexCoords[0], apexCoords[1])).toBe(0);
 
@@ -107,36 +109,43 @@ test.each([
 
 /** @param {import("../../../view/view.js").default} view */
 function renderLinkOutputs(view) {
-    const mark = /** @type {import("../../../view/unitView.js").default} */ (
-        view
-    ).mark;
-    const datum = mark.unitView.getCollector().facetBatches.get(undefined)[0];
     const addColorStop = vi.fn();
     const context = /** @type {any} */ ({
+        canvas: { width: 100, height: 100 },
+        save: vi.fn(),
+        restore: vi.fn(),
+        rect: vi.fn(),
+        clip: vi.fn(),
+        resetTransform: vi.fn(),
+        clearRect: vi.fn(),
+        setTransform: vi.fn(),
         createLinearGradient: vi.fn(() => ({ addColorStop })),
         beginPath: vi.fn(),
         moveTo: vi.fn(),
         bezierCurveTo: vi.fn(),
         stroke: vi.fn(),
     });
-    const warn = vi.fn();
-    renderLinkCanvas(mark, {
-        context,
-        warn,
-        devicePixelRatio: 1,
-        anchorCullBounds: { x1: 0, y1: 0, x2: 100, y2: 100 },
-        coords: Rectangle.create(0, 0, 100, 100),
-        data: [datum],
-        viewOpacity: 1,
-        visibleBounds: { x1: 0, y1: 0, x2: 100, y2: 100 },
-    });
+    view.arrange(
+        new Canvas2DViewRenderingContext(
+            { picking: false },
+            {
+                context,
+                width: 100,
+                height: 100,
+                devicePixelRatio: 1,
+                background: null,
+                paint: true,
+            }
+        ),
+        Rectangle.create(0, 0, 100, 100),
+        { firstFacet: true }
+    );
     const { svg, warnings } = createSvg({
         viewRoot: view,
         logicalWidth: 100,
         logicalHeight: 100,
     });
     expect(warnings).toEqual([]);
-    expect(warn).not.toHaveBeenCalled();
     const buffer = new SoftwarePickingBuffer(100, 100);
     view.arrange(
         new SoftwarePickingViewRenderingContext({
@@ -151,94 +160,87 @@ function renderLinkOutputs(view) {
     return { context, svg, buffer, stops: addColorStop.mock.calls };
 }
 
+// The deprecated spelling is only an alias; explicit new values take precedence.
 test.each([
-    { picking: true, union: false },
-    { picking: false, union: false },
-    { picking: true, union: true },
-    { picking: false, union: true },
-])(
-    "interval fading preserves endpoints with picking=$picking and union=$union",
-    async ({ picking, union }) => {
+    [{}, false],
+    [{ noFadingOnPointSelection: true }, true],
+    [{ noFadingOnPointSelection: true, noFadingOnSecondPass: false }, false],
+])("normalizes fading options %j", async (properties, expected) => {
+    const { view } = await createHeadlessEngine({
+        data: { values: [{}] },
+        mark: { type: "link", ...properties },
+    });
+    const mark = /** @type {import("../../../view/unitView.js").default} */ (
+        view
+    ).mark;
+    expect(
+        /** @type {import("../../../spec/mark.js").LinkProps} */ (
+            mark.properties
+        ).noFadingOnSecondPass
+    ).toBe(expected);
+});
+
+// One datum also exercises an empty first partition: pass identity must not shift.
+test.each([0, 1, null])(
+    "fading follows order level %s, not membership",
+    async (level) => {
         const { view } = await createHeadlessEngine({
-            data: { values: [{ start: 90, end: 10, apex: 90, base: 20 }] },
+            data: { values: [{}] },
             params: [
-                {
-                    name: "brush",
-                    select: { type: "interval", encodings: ["x", "y"] },
-                },
-                {
-                    name: "unreferenced",
-                    select: { type: "interval", encodings: ["x"] },
-                },
-                { name: "bypass", value: true },
+                { name: "picked", select: { type: "point", on: "mousemove" } },
             ],
             mark: {
                 type: "link",
-                linkShape: "dome",
                 arcFadingDistance: [10, 25],
-                noFadingOnPointSelection: { expr: "bypass" },
-                ...(picking ? {} : { tooltip: null }),
+                noFadingOnSecondPass: true,
             },
             encoding: {
-                x: {
-                    field: "start",
-                    type: "quantitative",
-                    scale: { domain: [0, 100] },
-                    axis: null,
-                },
-                x2: { field: "end" },
-                y: {
-                    field: "apex",
-                    type: "quantitative",
-                    scale: { domain: [0, 100] },
-                    axis: null,
-                },
-                y2: { field: "base" },
+                color: { value: "red" },
                 size: { value: 3 },
-                color: {
-                    value: "red",
-                    condition: union
-                        ? {
-                              test: {
-                                  param: { or: ["brush"] },
-                                  empty: true,
+                x: { value: 0.1 },
+                x2: { value: 0.9 },
+                y: { value: 0.2 },
+                y2: { value: 0.2 },
+                ...(level === null
+                    ? {}
+                    : {
+                          order: {
+                              condition: {
+                                  param: "picked",
+                                  empty: false,
+                                  value: level,
                               },
-                              value: "red",
-                          }
-                        : { param: "brush", empty: true, value: "red" },
-                },
+                              value: 1 - level,
+                          },
+                      }),
             },
         });
-        // An unrelated selection must not affect a mark's fading.
-        view.paramRuntime.setValue("unreferenced", {
-            type: "interval",
-            intervals: { x: [0, 100] },
-        });
-        /** @param {number[] | null} x @param {number[] | null} y @param {boolean} member */
-        const check = (x, y, member) => {
-            view.paramRuntime.setValue("brush", {
-                type: "interval",
-                intervals: { x, y },
-            });
+        const mark =
+            /** @type {import("../../../view/unitView.js").default} */ (view)
+                .mark;
+        const datum = mark.unitView
+            .getCollector()
+            .facetBatches.get(undefined)[0];
+        /** @param {boolean} unfaded */
+        const check = (unfaded) => {
             const result = renderLinkOutputs(view);
-            const bypass =
-                picking && member && view.paramRuntime.getValue("bypass");
             expect(result.context.createLinearGradient).toHaveBeenCalledTimes(
-                bypass ? 0 : 1
+                unfaded ? 0 : 1
             );
             expect(result.svg.querySelectorAll("mask")).toHaveLength(
-                bypass ? 0 : 1
+                unfaded ? 0 : 1
             );
-            expect(result.buffer.read(50, 10) > 0).toBe(!!bypass);
+            expect(result.buffer.read(50, 40)).toBe(0);
         };
-        check(null, null, false);
-        check([40, 60], [0, 100], false); // Crossing the span is insufficient.
-        check([85, 95], [85, 95], true); // Primary endpoint; values are in data space.
-        check([5, 15], [15, 25], true); // Secondary endpoint and reversed x order.
-        check([85, 95], [40, 60], false); // All selected dimensions must match.
-        check([85, 95], null, union);
-        check([0, 5], [0, 100], false);
-        view.paramRuntime.setValue("bypass", false);
-        check([85, 95], [85, 95], true);
+        check(false);
+        view.paramRuntime.setValue("picked", createSinglePointSelection(datum));
+        check(level === 1);
+        view.paramRuntime.setValue(
+            "picked",
+            createSinglePointSelection({ __uniqueId: 999 })
+        );
+        check(level === 0);
+        view.paramRuntime.setValue("picked", createSinglePointSelection(null));
+        check(false);
     }
 );

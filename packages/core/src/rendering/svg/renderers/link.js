@@ -6,7 +6,7 @@ import {
 import { toPaintString } from "../../immediate/markEncoding.js";
 import { createSvgAttributeEncoder } from "../svgAttributes.js";
 import { formatSvgNumber } from "../svgNumber.js";
-import { createLinkFadeEncoder } from "../../immediate/linkFading.js";
+import { resolveLinkFade } from "../../immediate/linkFading.js";
 
 /**
  * @param {import("../../../marks/mark.js").default} baseMark
@@ -22,7 +22,11 @@ export function renderLinkSvg(baseMark, options) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
-    const encodeFade = createLinkFadeEncoder(mark, properties.shape);
+    const arcFadingDistance = resolveLinkFade(
+        mark,
+        properties.shape,
+        options.secondOrderPass
+    );
     const encodeStyles = createSvgAttributeEncoder(group, {
         stroke: { encoder: encoders.color, transform: toPaintString },
         "stroke-opacity": {
@@ -47,7 +51,6 @@ export function renderLinkSvg(baseMark, options) {
             }
             /** @type {Record<string, string | number>} */
             const styles = encodeStyles(datum);
-            const arcFadingDistance = encodeFade(datum);
             if (arcFadingDistance) {
                 const mask = options.getLinkArcFadeMaskUrl({
                     p1: /** @type {[number, number]} */ (p1),

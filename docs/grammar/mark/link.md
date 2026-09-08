@@ -13,6 +13,43 @@ In addition to the primary and secondary [position](./index.md#channels)
 channels and the `color` and `opacity` channels, link mark supports the following
 channels: `size`.
 
+## Showing selected arcs in full
+
+Distance fading can hide the apex of a long arc. To show selected arcs in full,
+combine conditional [draw order](./index.md) with `noFadingOnSecondPass: true`:
+
+```json
+{
+  "mark": {
+    "type": "link",
+    "arcFadingDistance": [100, 200],
+    "noFadingOnSecondPass": true
+  },
+  "encoding": {
+    "order": {
+      "condition": { "param": "picked", "empty": false, "value": 1 },
+      "value": 0
+    }
+  }
+}
+```
+
+This fragment assumes a selection parameter named `picked` and positional
+encodings for the link endpoints. The lower order level draws first with normal
+fading. The higher level draws second without fading, so selected links appear
+in full above the others. The option follows the **second partition**, not
+selection membership: reversing the order values makes unselected links unfaded.
+
+The option defaults to `false`. Without active conditional ordering, including
+when every referenced selection is empty, all links retain normal fading.
+Picking also retains normal fading, so the newly revealed portions do not gain
+an expanded picking area.
+
+`noFadingOnPointSelection` is a deprecated alias. An explicitly supplied
+`noFadingOnSecondPass` takes precedence. The alias now enables this same
+second-pass behavior; it no longer discovers selections from color or other
+encoding channels.
+
 ## Properties
 
 SCHEMA LinkProps

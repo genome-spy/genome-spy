@@ -101,8 +101,8 @@ export default class WebGLLinkMark extends WebGLMark {
             (x) => x
         );
         this.registerMarkUniformValue(
-            "uNoFadingOnPointSelection",
-            props.noFadingOnPointSelection,
+            "uNoFadingOnSecondPass",
+            props.noFadingOnSecondPass,
             (x) => !!x
         );
     }

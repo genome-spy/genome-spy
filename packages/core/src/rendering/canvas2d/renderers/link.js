@@ -1,6 +1,6 @@
 import { rgb } from "d3-color";
 import {
-    createLinkFadeEncoder,
+    resolveLinkFade,
     normalizeLinkArcFade,
     createFadeStops,
 } from "../../immediate/linkFading.js";
@@ -24,7 +24,11 @@ export function renderLinkCanvas(baseMark, options) {
             mark.encoders
         );
     const properties = resolveLinkProperties(mark);
-    const encodeFade = createLinkFadeEncoder(mark, properties.shape);
+    const distances = resolveLinkFade(
+        mark,
+        properties.shape,
+        options.secondOrderPass
+    );
     context.lineCap = "butt";
     /** @type {string | undefined} */
     let strokeStyle;
@@ -37,7 +41,6 @@ export function renderLinkCanvas(baseMark, options) {
         if (stroke == "none" || opacity <= 0 || instance.strokeWidth <= 0) {
             return;
         }
-        const distances = encodeFade(instance.datum);
         const fade =
             distances &&
             normalizeLinkArcFade(

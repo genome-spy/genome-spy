@@ -1,5 +1,5 @@
 import {
-    createLinkFadeEncoder,
+    resolveLinkFade,
     normalizeLinkArcFade,
 } from "../../../immediate/linkFading.js";
 import {
@@ -221,10 +221,9 @@ function renderLink(baseMark, options) {
         mark.properties.minPickingSize
     );
     const properties = resolveLinkProperties(mark);
-    const encodeFade = createLinkFadeEncoder(mark, properties.shape);
+    const distances = resolveLinkFade(mark, properties.shape);
     return visitLinkInstances(mark, properties, options, (instance) => {
         const [p1, p2, p3, p4] = instance.points;
-        const distances = encodeFade(instance.datum);
         const fade = distances && normalizeLinkArcFade(p1, p4, distances);
         options.rasterizer.strokeCubic(
             getPickingId(mark, instance.datum),

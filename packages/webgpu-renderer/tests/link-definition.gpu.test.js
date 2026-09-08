@@ -161,9 +161,19 @@ for (const [
                         baseline + direction * height * 4 * t * (1 - t)
                     )
                 );
-                const read = async () => {
+                const read = async (secondOrderPass = false) => {
                     renderer.render({
-                        draws: [{ mark }],
+                        draws: [
+                            {
+                                mark,
+                                ...(secondOrderPass
+                                    ? {
+                                          orderPass: "matching",
+                                          secondOrderPass: true,
+                                      }
+                                    : {}),
+                            },
+                        ],
                         clearColor: { r: 0, g: 0, b: 0, a: 0 },
                     });
                     const bytesPerRow = canvas.width * 4;
@@ -221,7 +231,13 @@ for (const [
                     mark.selections.selected.set(17);
                 }
                 const selected = await read();
-                mark.properties.noFadingOnPointSelection.set(false);
+                let foreground = selected;
+                if (hasUniqueId) {
+                    mark.selections.ordering.set(17);
+                    mark.properties.noFadingOnSecondPass.set(true);
+                    foreground = await read(true);
+                }
+                mark.properties.noFadingOnSecondPass.set(false);
                 const forced = await read();
                 mark.properties.arcFadingDistance.set([0, 0]);
                 const disabled = await read();
@@ -231,6 +247,7 @@ for (const [
                     faded,
                     orderOnly,
                     selected,
+                    foreground,
                     forced,
                     disabled,
                     intervalStates,
@@ -239,11 +256,17 @@ for (const [
             { shape, orient, direction, dpr, selectionType, hasUniqueId }
         );
         expect(result.orderOnly).toEqual(result.faded);
+        if (hasUniqueId) {
+            expect(result.foreground.alpha.every((alpha) => alpha > 240)).toBe(
+                true
+            );
+            expect(result.foreground.picks).toEqual(result.faded.picks);
+        }
         for (const faded of [
             result.faded,
             result.forced,
             ...result.intervalStates,
-            ...(!hasUniqueId ? [result.selected] : []),
+            result.selected,
         ]) {
             expect(faded.alpha[0]).toBeGreaterThan(240);
             expect(faded.alpha[1]).toBeGreaterThan(65);
@@ -253,10 +276,7 @@ for (const [
                 hasUniqueId ? [17, 17, null] : [null, null, null]
             );
         }
-        for (const unfaded of [
-            result.disabled,
-            ...(hasUniqueId ? [result.selected] : []),
-        ]) {
+        for (const unfaded of [result.disabled]) {
             expect(unfaded.alpha.every((alpha) => alpha > 240)).toBe(true);
             expect(unfaded.picks).toEqual(
                 hasUniqueId ? [17, 17, 17] : [null, null, null]

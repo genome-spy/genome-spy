@@ -236,6 +236,7 @@ export default class WebGLMark {
         }
 
         if (order) {
+            extraHeaders.push("#define CONDITIONAL_ORDER");
             dynamicMarkUniforms.push("    // Conditional order pass");
             dynamicMarkUniforms.push("    uniform int uOrderMode;");
         }
@@ -717,7 +718,7 @@ export default class WebGLMark {
                 "#pragma orderGuard\n\n",
                 order
                     ? "    if (uOrderMode != 0 &&\n" +
-                          "        ((uOrderMode == 1) != isOrderMatch())) {\n" +
+                          "        (((uOrderMode & 3) == 1) != isOrderMatch())) {\n" +
                           "        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);\n" +
                           "        return;\n" +
                           "    }"
@@ -1054,10 +1055,12 @@ export default class WebGLMark {
      * Selects the conditional order pass on the existing mark uniform block.
      *
      * @param {"all" | "matching" | "nonmatching"} pass
+     * @param {boolean} [secondPass]
      */
-    setOrderPass(pass) {
+    setOrderPass(pass, secondPass = false) {
         setBlockUniforms(this.markUniformInfo, {
-            uOrderMode: ORDER_PASS_VALUES[pass],
+            // Low bits select the partition; bit 2 identifies the second visual pass.
+            uOrderMode: ORDER_PASS_VALUES[pass] | (secondPass ? 4 : 0),
         });
         this.markUniformsAltered = true;
     }
@@ -1208,7 +1211,7 @@ export default class WebGLMark {
         /** @type {(offset: number, count: number) => void} */
         const drawWithOrderPass = orderPass
             ? (offset, count) => {
-                  self.setOrderPass(orderPass);
+                  self.setOrderPass(orderPass, options.secondOrderPass);
                   self.bindOrSetMarkUniformBlock();
                   draw(offset, count);
               }

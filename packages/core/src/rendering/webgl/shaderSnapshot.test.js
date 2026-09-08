@@ -273,7 +273,7 @@ describe("generated shader snapshots", () => {
 
         expect(sources.vertex).toContain("uniform int uOrderMode;");
         expect(sources.vertex).toContain("bool isOrderMatch()");
-        expect(sources.vertex).toContain("uOrderMode == 1");
+        expect(sources.vertex).toContain("(uOrderMode & 3) == 1");
         expect(sources.vertex.match(/uniform int uOrderMode/g)).toHaveLength(1);
     });
 

@@ -152,7 +152,6 @@ export const LINK_MARK_DEFAULTS = {
     clampApex: false,
     maxChordLength: 50000,
     arcFadingDistance: false,
-    noFadingOnPointSelection: true,
     linkShape: "arc",
     orient: "vertical",
 };

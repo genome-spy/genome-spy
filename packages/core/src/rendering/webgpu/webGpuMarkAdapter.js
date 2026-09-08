@@ -890,10 +890,7 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
         linkShape: readProperty(mark, "linkShape") ?? "arc",
         orient: readProperty(mark, "orient") ?? "vertical",
         arcFadingDistance: readDistancePair(mark, "arcFadingDistance"),
-        noFadingOnPointSelection: !!readProperty(
-            mark,
-            "noFadingOnPointSelection"
-        ),
+        noFadingOnSecondPass: !!readProperty(mark, "noFadingOnSecondPass"),
         arcHeightFactor: readOptionalNumericProperty(
             mark,
             "arcHeightFactor",
@@ -909,7 +906,7 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
         segments: readOptionalNumericProperty(mark, "segments", 101),
         retainedProperties: createDynamicProperties(mark, {
             arcFadingDistance: (value) => value || [0, 0],
-            noFadingOnPointSelection: (value) => !!value,
+            noFadingOnSecondPass: (value) => !!value,
             arcHeightFactor: (value) => value,
             minArcHeight: (value) => value,
             linkShape: (value) => value ?? "arc",

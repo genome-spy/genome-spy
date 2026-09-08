@@ -509,6 +509,11 @@ draws in that order to promote selected instances. A picking frame always
 evaluates the mark in `"all"` mode, so conditional visual ordering does not
 change pick IDs or hit testing.
 
+For links with `arcFadingDistance`, `noFadingOnSecondPass: true` disables fading
+on the draw explicitly marked `secondOrderPass: true`. Mark the second
+conditional partition this way to show foreground arcs in full. Ordinary draws
+and picking retain normal fading. The option defaults to `false`.
+
 ## Selections and conditional encoding
 
 Selection predicates run on the GPU in data-domain space. Conditional channel

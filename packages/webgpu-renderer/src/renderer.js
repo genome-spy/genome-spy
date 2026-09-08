@@ -1102,7 +1102,10 @@ export class Renderer {
             visibleRange: normalizeVisibleRange(command.visibleRange, canvas),
             firstInstance: resolvedRange.firstInstance,
             instanceCount: resolvedRange.instanceCount,
-            orderPass: normalizeOrderPass(command.orderPass),
+            // Low bits select the partition; bit 2 identifies the second visual pass.
+            orderPass:
+                normalizeOrderPass(command.orderPass) |
+                (command.secondOrderPass ? 4 : 0),
             placement,
         };
     }
@@ -1742,7 +1745,7 @@ function wrapMethod(target, name, before) {
  *   uniformIndex: number,
  *   firstInstance: number,
  *   instanceCount: number,
- *   orderPass: 0|1|2,
+ *   orderPass: number,
  *   placement?: { bindGroup: GPUBindGroup, count: number, index?: number, clipToPlacement?: "x"|"y"|"xy", clipMode?: number },
  * }} NormalizedDraw
  */
