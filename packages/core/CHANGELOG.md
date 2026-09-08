@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.87.0](https://github.com/genome-spy/genome-spy/compare/v0.86.0...v0.87.0) (2026-09-08)
+
+### Bug Fixes
+
+* **core:** align rulers with nested plot coordinates ([5b7b0b7](https://github.com/genome-spy/genome-spy/commit/5b7b0b79d1bf594dff8842604d117e2e75c1c580)) by @tuner
+* **core:** initialize scale-dependent parameters before scale expression binding ([b0e7143](https://github.com/genome-spy/genome-spy/commit/b0e7143973400e41ebd4a9ede7c6c0a1f7c58909)), closes [#505](https://github.com/genome-spy/genome-spy/issues/505) by @tuner
+* **core:** stabilize equal-score top-k selection ([d7b6a6e](https://github.com/genome-spy/genome-spy/commit/d7b6a6e98356cf759ac672675c224550da84f424)) by @tuner
+* **core:** support independent legend symbol styling ([2b9cd1a](https://github.com/genome-spy/genome-spy/commit/2b9cd1af7c5713f71a6ecfb73526e467d4dc12f5)), closes [#506](https://github.com/genome-spy/genome-spy/issues/506) by @tuner
+* support dome fading across rendering backends ([47cd5de](https://github.com/genome-spy/genome-spy/commit/47cd5de6d3fc96359cd0342e7c56aacb22784eff)), closes [#502](https://github.com/genome-spy/genome-spy/issues/502) by @tuner
+
+### Features
+
+* **core:** add GenomeSpy favicon link control ([fe8e235](https://github.com/genome-spy/genome-spy/commit/fe8e2356c1d9518ab2bdf466d86366a1205752d0)) by @tuner
+* **core:** add reactive ruler styling and tracking control ([1d2ebd5](https://github.com/genome-spy/genome-spy/commit/1d2ebd5adb415719f3efe630a87c739b8748528c)), closes [#504](https://github.com/genome-spy/genome-spy/issues/504) by @tuner
+* **core:** add track annotations and container-wide brushing ([#518](https://github.com/genome-spy/genome-spy/issues/518)) ([680422c](https://github.com/genome-spy/genome-spy/commit/680422cd27004b87524d217ad8e5bb823af467ad)) by @tuner
+
 # [0.86.0](https://github.com/genome-spy/genome-spy/compare/v0.85.0...v0.86.0) (2026-09-03)
 
 * fix(core)!: scope scale parameters to their resolution (#482) ([78534a7](https://github.com/genome-spy/genome-spy/commit/78534a72bf73a1d2121d70897573ee5a57531839)), closes [#482](https://github.com/genome-spy/genome-spy/issues/482) [#471](https://github.com/genome-spy/genome-spy/issues/471) by @tuner

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.87.0](https://github.com/genome-spy/genome-spy/compare/v0.86.0...v0.87.0) (2026-09-08)
+
+### Features
+
+* **core:** add GenomeSpy favicon link control ([fe8e235](https://github.com/genome-spy/genome-spy/commit/fe8e2356c1d9518ab2bdf466d86366a1205752d0)) by @tuner
+
 # [0.86.0](https://github.com/genome-spy/genome-spy/compare/v0.85.0...v0.86.0) (2026-09-03)
 
 ### Features

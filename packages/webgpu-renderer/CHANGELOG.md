@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.87.0](https://github.com/genome-spy/genome-spy/compare/v0.86.0...v0.87.0) (2026-09-08)
+
+### Bug Fixes
+
+* support dome fading across rendering backends ([47cd5de](https://github.com/genome-spy/genome-spy/commit/47cd5de6d3fc96359cd0342e7c56aacb22784eff)), closes [#502](https://github.com/genome-spy/genome-spy/issues/502) by @tuner
+
 # [0.86.0](https://github.com/genome-spy/genome-spy/compare/v0.85.0...v0.86.0) (2026-09-03)
 
 ### Bug Fixes
