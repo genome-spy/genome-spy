@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from "vitest";
 import Interaction from "../utils/interaction.js";
 import Point from "./layout/point.js";
 import ConcatView from "./concatView.js";
+import LegendView from "./legendView.js";
 import UnitView from "./unitView.js";
 import { createAndInitialize, renderToLayout } from "./testUtils.js";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
@@ -60,6 +61,124 @@ function makeSpec(channel) {
 }
 
 describe("container annotation contracts", () => {
+    test("hosts annotation legends in the owning concat by default", async () => {
+        const spec = /** @type {import("../spec/view.js").VConcatSpec} */ (
+            makeSpec("x")
+        );
+        spec.config = { legend: { disable: false } };
+        for (const trackSpec of spec.vconcat) {
+            const track = /** @type {import("../spec/view.js").UnitSpec} */ (
+                trackSpec
+            );
+            track.data = {
+                values: [
+                    { position: 0, group: "track A" },
+                    { position: 100, group: "track B" },
+                ],
+            };
+            track.encoding.fill = {
+                field: "group",
+                type: "nominal",
+            };
+        }
+        const sourceAnnotation =
+            /** @type {import("../spec/view.js").UnitSpec} */ (
+                spec.annotate[0]
+            );
+        sourceAnnotation.data = {
+            values: [
+                { start: 20, end: 40, region: "A" },
+                { start: 60, end: 80, region: "B" },
+            ],
+        };
+        sourceAnnotation.encoding.fill = {
+            field: "region",
+            type: "nominal",
+        };
+
+        const view = await createAndInitialize(spec, ConcatView);
+        renderToLayout(view);
+
+        const track = view.children[0];
+        const annotation = view.getAnnotationLayer().children[0];
+
+        await view.syncGuideViews();
+        await view.syncGuideViews();
+        renderToLayout(view);
+
+        const legends = view
+            .getDescendants()
+            .filter((descendant) => descendant instanceof LegendView);
+        expect(legends).toHaveLength(3);
+        expect(
+            legends.filter((legend) =>
+                legend.dataParent
+                    .getLayoutAncestors()
+                    .includes(view.getAnnotationLayer())
+            )
+        ).toHaveLength(1);
+        expect(annotation.getScaleResolution("fill")).not.toBe(
+            track.getScaleResolution("fill")
+        );
+        expect(annotation.getScaleResolution("fill").getDomain()).toEqual([
+            "A",
+            "B",
+        ]);
+        expect(track.getScaleResolution("fill").getDomain()).toEqual([
+            "track A",
+            "track B",
+        ]);
+
+        view.disposeSubtree();
+    });
+
+    test("shares annotation and track legends only when requested", async () => {
+        const spec = /** @type {import("../spec/view.js").VConcatSpec} */ (
+            makeSpec("x")
+        );
+        spec.config = { legend: { disable: false } };
+        for (const trackSpec of spec.vconcat) {
+            const track = /** @type {import("../spec/view.js").UnitSpec} */ (
+                trackSpec
+            );
+            track.data = {
+                values: [
+                    { position: 0, region: "A" },
+                    { position: 100, region: "B" },
+                ],
+            };
+            track.encoding.fill = { field: "region", type: "nominal" };
+        }
+        const sourceAnnotation =
+            /** @type {import("../spec/view.js").UnitSpec} */ (
+                spec.annotate[0]
+            );
+        sourceAnnotation.data = {
+            values: [
+                { start: 20, end: 40, region: "A" },
+                { start: 60, end: 80, region: "B" },
+            ],
+        };
+        sourceAnnotation.encoding.fill = {
+            field: "region",
+            type: "nominal",
+        };
+        spec.resolve = { scale: { fill: "shared" } };
+
+        const view = await createAndInitialize(spec, ConcatView);
+        renderToLayout(view);
+
+        const legends = view
+            .getDescendants()
+            .filter((descendant) => descendant instanceof LegendView);
+        expect(legends).toHaveLength(1);
+        expect(
+            view.getAnnotationLayer().children[0].getScaleResolution("fill")
+        ).toBe(view.children[0].getScaleResolution("fill"));
+
+        view.disposeSubtree();
+    });
+
     test.each(/** @type {const} */ (["x", "y"]))(
         "spans %s tracks and gaps through nested annotation layers",
         async (channel) => {

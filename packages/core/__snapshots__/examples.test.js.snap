@@ -9767,6 +9767,14 @@ exports[`shared examples > initializes examples/docs/grammar/composition/concat/
       "identifier": null,
       "type": "InlineSource",
     },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
   ],
   "hierarchy": {
     "baseUrl": "examples/",

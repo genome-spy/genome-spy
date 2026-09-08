@@ -670,7 +670,10 @@ export interface VConcatSpec extends ConcatBase {
      *
      * All visible tracks must provide the same shared x projection. Annotation
      * layers may not use an independent or excluded x scale, or define
-     * positional scale settings of their own.
+     * positional scale settings of their own. Legends for supported
+     * non-positional encodings are hosted in the owning concat's legend
+     * regions; use the usual scale and legend resolution settings to share or
+     * collect them with track legends.
      */
     annotate?: (UnitSpec | LayerSpec)[];
 }
@@ -693,7 +696,10 @@ export interface HConcatSpec extends ConcatBase {
      *
      * All visible tracks must provide the same shared y projection. Annotation
      * layers may not use an independent or excluded y scale, or define
-     * positional scale settings of their own.
+     * positional scale settings of their own. Legends for supported
+     * non-positional encodings are hosted in the owning concat's legend
+     * regions; use the usual scale and legend resolution settings to share or
+     * collect them with track legends.
      */
     annotate?: (UnitSpec | LayerSpec)[];
 }

@@ -698,24 +698,16 @@ export default class GridView extends ContainerView {
     async #syncSharedLegends(owners) {
         disposeLegendViews(this.#sharedLegends);
         this.#sharedLegends = {};
-        const legendOwners =
-            owners ??
-            (Object.keys(this.resolutions.legend).length > 0 ? [this] : []);
+        const legendOwners = owners ?? getLegendResolutionOwners(this);
 
         for (const { definition, resolution, owner } of getOrderedLegendEntries(
             legendOwners
         )) {
-            const declaration = findLegendCollectionDeclaration(
+            const collectionTarget = getLegendLayoutHost(
                 owner,
                 resolution.channel
             );
-            const collectionTarget = declaration
-                ? getLegendCollectionLayoutHost(declaration, resolution.channel)
-                : undefined;
-            if (
-                collectionTarget !== this &&
-                !(collectionTarget === undefined && owner === this)
-            ) {
+            if (collectionTarget !== this) {
                 continue;
             }
 
@@ -2151,6 +2143,40 @@ export function getLegendCollectionLayoutHost(declaration, channel) {
         );
     }
     return host;
+}
+
+/**
+ * Resolves the physical host for a legend while leaving its semantic
+ * resolution owner unchanged.
+ *
+ * Annotation views are deliberately not GridChild instances. Their legends
+ * therefore use the nearest concat that owns their annotation layer, while
+ * ordinary child legends continue to be hosted by their GridChild. Explicit
+ * collection declarations take precedence over this annotation fallback.
+ *
+ * @param {View} owner
+ * @param {import("../../spec/channel.js").ChannelWithScale} channel
+ * @returns {GridView | undefined}
+ */
+export function getLegendLayoutHost(owner, channel) {
+    const declaration = findLegendCollectionDeclaration(owner, channel);
+    if (declaration) {
+        return getLegendCollectionLayoutHost(declaration, channel);
+    }
+
+    const layoutAncestors = owner.getLayoutAncestors();
+    for (const ancestor of layoutAncestors) {
+        if (!(ancestor instanceof GridView)) {
+            continue;
+        }
+
+        const annotationLayer = ancestor.getAnnotationLayer();
+        if (annotationLayer && layoutAncestors.includes(annotationLayer)) {
+            return ancestor;
+        }
+    }
+
+    return owner instanceof GridView ? owner : undefined;
 }
 
 /**

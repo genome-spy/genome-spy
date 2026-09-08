@@ -4,8 +4,8 @@ import {
     isVConcatSpec,
 } from "./viewSpecGuards.js";
 import GridView from "./gridView/gridView.js";
-import { getLegendResolutionOwners } from "./gridView/legendCollection.js";
 import ContainerMutationHelper from "./containerMutationHelper.js";
+import { getLegendResolutionOwners } from "./gridView/legendCollection.js";
 import { moveArrayItem } from "../utils/arrayUtils.js";
 import { isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
 import { markViewAsNonAddressable } from "./viewSelectors.js";
@@ -83,14 +83,7 @@ export default class ConcatView extends GridView {
 
         await this.#initializeAnnotationLayer();
 
-        const collectsLegends = Object.values(
-            this.spec.resolve?.legend ?? {}
-        ).includes("collected");
-        await this.syncGuideViews({
-            legendOwners: collectsLegends
-                ? getLegendResolutionOwners(this)
-                : undefined,
-        });
+        await this.syncGuideViews();
     }
 
     /** @override */

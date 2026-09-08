@@ -57,6 +57,14 @@ higher `zindex`. Set `clip: "never"` on a mark when it should extend beyond
 those bounds. Entries render in array order by default, with ordinary layer
 `zindex` ordering within the annotation layer.
 
+Annotation legends use the concat's existing legend regions, so a legend for a
+data-driven `fill`, `stroke`, or other supported encoding appears beside the
+whole composition automatically. Non-positional scales are shared among
+annotation entries, while the concat's regular track scales remain independent
+by default. Use the usual `resolve.scale` settings to share an annotation scale
+with tracks, and `resolve.legend: { "color": "collected" }` to collect
+independent legends into the concat's legend region.
+
 The tracks must have aligned shared projections on the data axis. Annotation
 layers cannot define their own positional scales or request an independent or
 excluded shared scale. The example uses translucent rectangles to mark regions
