@@ -196,6 +196,20 @@ function placementClipMode(value) {
     return value === "x" ? 1 : value === "y" ? 2 : value === "xy" ? 3 : 0;
 }
 
+/** @param {unknown} value @returns {0|1|2} */
+function normalizeOrderPass(value) {
+    if (value === undefined || value === "all") {
+        return 0;
+    }
+    if (value === "matching") {
+        return 1;
+    }
+    if (value === "nonmatching") {
+        return 2;
+    }
+    throw new RendererError(`Unknown order pass "${String(value)}".`);
+}
+
 /** @param {number} byteLength */
 function createGlobalUniformStaging(byteLength) {
     const buffer = new ArrayBuffer(byteLength);
@@ -497,7 +511,7 @@ export class Renderer {
      * @param {NormalizedDraw[]} draws
      * @returns {void}
      */
-    _writeDrawGlobals(draws) {
+    _writeDrawGlobals(draws, forceAll = false) {
         const phaseStart = startPhase();
         if (!draws.length) {
             finishPhase("drawGlobals", phaseStart);
@@ -525,6 +539,7 @@ export class Renderer {
             integers[offset + 16] = draw.placement?.index ?? 0;
             integers[offset + 17] = draw.placement?.clipMode ?? 0;
             integers[offset + 18] = draw.placement?.count ?? 0;
+            integers[offset + 19] = forceAll ? 0 : draw.orderPass;
         }
         this.device.queue.writeBuffer(
             this._globalUniformBuffer,
@@ -660,7 +675,7 @@ export class Renderer {
             this._pickingFrame ??
             this._renderFrame ??
             this._normalizeDraws(this._marks.keys());
-        this._writeDrawGlobals(draws);
+        this._writeDrawGlobals(draws, true);
         this._encodeDraws(pass, draws, true);
 
         pass.end();
@@ -1087,6 +1102,7 @@ export class Renderer {
             visibleRange: normalizeVisibleRange(command.visibleRange, canvas),
             firstInstance: resolvedRange.firstInstance,
             instanceCount: resolvedRange.instanceCount,
+            orderPass: normalizeOrderPass(command.orderPass),
             placement,
         };
     }
@@ -1726,6 +1742,7 @@ function wrapMethod(target, name, before) {
  *   uniformIndex: number,
  *   firstInstance: number,
  *   instanceCount: number,
+ *   orderPass: 0|1|2,
  *   placement?: { bindGroup: GPUBindGroup, count: number, index?: number, clipToPlacement?: "x"|"y"|"xy", clipMode?: number },
  * }} NormalizedDraw
  */

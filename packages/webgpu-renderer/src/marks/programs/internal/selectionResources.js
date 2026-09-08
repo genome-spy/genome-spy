@@ -219,9 +219,15 @@ function collectVisibilitySelections(node, defs, getAnalysis) {
  * @param {Record<string, ChannelConfigResolved>} channels
  * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} analysisByChannel
  * @param {VisibilityPredicate | undefined} visibleWhen
+ * @param {import("../../../index.d.ts").SelectionPredicate | undefined} orderWhen
  * @returns {Map<string, SelectionDef>}
  */
-function collectSelectionDefs(channels, analysisByChannel, visibleWhen) {
+function collectSelectionDefs(
+    channels,
+    analysisByChannel,
+    visibleWhen,
+    orderWhen
+) {
     /** @type {Map<string, SelectionDef>} */
     const defs = new Map();
     /** @param {string} name */
@@ -239,6 +245,7 @@ function collectSelectionDefs(channels, analysisByChannel, visibleWhen) {
         }
     }
     collectVisibilitySelections(visibleWhen, defs, getAnalysis);
+    collectVisibilitySelections(orderWhen, defs, getAnalysis);
 
     if (
         !channels.uniqueId &&
@@ -264,6 +271,7 @@ export class SelectionResourceManager {
      * @param {Record<string, ChannelConfigResolved>} params.channels
      * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} params.analysisByChannel
      * @param {VisibilityPredicate} [params.visibleWhen]
+     * @param {import("../../../index.d.ts").SelectionPredicate} [params.orderWhen]
      * @param {string} [params.label]
      * @param {(name: string, value: number|number[]) => void} params.setUniformValue
      */
@@ -272,6 +280,7 @@ export class SelectionResourceManager {
         channels,
         analysisByChannel,
         visibleWhen,
+        orderWhen,
         label = "mark",
         setUniformValue,
     }) {
@@ -284,7 +293,8 @@ export class SelectionResourceManager {
         this._selectionDefs = collectSelectionDefs(
             channels,
             analysisByChannel,
-            visibleWhen
+            visibleWhen,
+            orderWhen
         );
         /** @type {Map<string, { buffer: GPUBuffer, byteLength: number }>} */
         this._selectionBuffers = new Map();

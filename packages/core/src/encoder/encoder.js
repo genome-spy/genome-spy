@@ -255,7 +255,12 @@ export default function createEncoders(unitView, encoding) {
  * @returns {boolean}
  */
 export function isNonMarkPropertyChannel(channel) {
-    return channel === "key" || channel === "search" || channel === "tooltip";
+    return (
+        channel === "key" ||
+        channel === "search" ||
+        channel === "tooltip" ||
+        channel === "order"
+    );
 }
 
 /**

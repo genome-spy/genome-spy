@@ -256,6 +256,60 @@ describe("generated shader snapshots", () => {
         expect(sources.vertex).not.toContain("#define VISIBLE_RANGE_CULLING");
     });
 
+    test("conditional order adds one uniform guard to the existing shader", async () => {
+        const sources = await captureShaderSources({
+            data: { values: [{ x: 1, y: 2, id: "a" }] },
+            params: [{ name: "picked", select: "point" }],
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+                order: {
+                    condition: { param: "picked", value: 20 },
+                    value: 10,
+                },
+            },
+        });
+
+        expect(sources.vertex).toContain("uniform int uOrderMode;");
+        expect(sources.vertex).toContain("bool isOrderMatch()");
+        expect(sources.vertex).toContain("uOrderMode == 1");
+        expect(sources.vertex.match(/uniform int uOrderMode/g)).toHaveLength(1);
+    });
+
+    test("single-param appearance and union order can share a selection", async () => {
+        const sources = await captureShaderSources({
+            data: { values: [{ x: 1, y: 2 }] },
+            params: [{ name: "picked", select: "point" }],
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+                opacity: {
+                    condition: { param: "picked", empty: false, value: 1 },
+                    value: 0.2,
+                },
+                order: {
+                    condition: {
+                        test: {
+                            selection: {
+                                or: /** @type {[string]} */ (["picked"]),
+                            },
+                            empty: false,
+                        },
+                        value: 1,
+                    },
+                    value: 0,
+                },
+            },
+        });
+
+        // The single-param helper requires an empty-policy argument.
+        expect(sources.vertex).toMatch(
+            /bool isDatumSelected\(\) \{\s*return checkSelection_picked\(false\);/
+        );
+    });
+
     test("point mark includes the stroke-only x shape", async () => {
         const sources = await captureShaderSources({
             data: { values: [{}] },

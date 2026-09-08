@@ -63,6 +63,11 @@ import { collectAppearanceSelections } from "../../../selection/selection.js";
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
 const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
+const ORDER_PASS_VALUES = {
+    all: 0,
+    matching: 1,
+    nonmatching: 2,
+};
 
 /**
  * @typedef {import("../../../types/rendering.js").ClipOptions} ClipOptions
@@ -185,6 +190,7 @@ export default class WebGLMark {
     createAndLinkShaders(vertexShader, fragmentShader, extraHeaders = []) {
         const shaderChannels = this.getAttributes();
         const encoders = this.encoders;
+        const order = this.mark.getOrder();
         const sampleFacetMode = this.getSampleFacetMode();
         const useVisibleRangeCulling = Boolean(
             this.properties.cullByVisibleRange
@@ -215,11 +221,24 @@ export default class WebGLMark {
 
         const appearanceSelections = collectAppearanceSelections(encoders);
         const selectionParams = new Set(appearanceSelections.keys());
+        for (const param of order?.params ?? []) {
+            selectionParams.add(param);
+        }
         const selectionUnionParams = new Set(
             appearanceSelections
                 .keys()
                 .filter((param) => appearanceSelections.get(param))
         );
+        if (order && !order.predicate.selection.singleParam) {
+            for (const param of order.params) {
+                selectionUnionParams.add(param);
+            }
+        }
+
+        if (order) {
+            dynamicMarkUniforms.push("    // Conditional order pass");
+            dynamicMarkUniforms.push("    uniform int uOrderMode;");
+        }
 
         for (const param of selectionParams) {
             const paramRuntime = this.unitView.paramRuntime;
@@ -667,20 +686,48 @@ export default class WebGLMark {
                 "\n}"
         );
 
+        if (order) {
+            const checks = order.params.map((param) => {
+                const selectionUnion = !order.predicate.selection.singleParam;
+                return `${
+                    selectionUnion
+                        ? SELECTION_MEMBERSHIP_PREFIX
+                        : SELECTION_CHECKER_PREFIX
+                }${param}(${selectionUnion ? "" : String(order.predicate.selection.empty)})`;
+            });
+            scaleCode.push(
+                "bool isOrderMatch() {\n" +
+                    `    return ${checks.join(" || ")};\n` +
+                    "}"
+            );
+        }
+
         const vertexPrecision = "precision highp float;\nprecision highp int;";
 
         /**
          * @param {string} shaderCode
          */
-        const addDynamicMarkUniforms = (shaderCode) =>
+        const addDynamicMarkUniforms = (/** @type {string} */ shaderCode) =>
             shaderCode.replace(
                 "#pragma markUniforms",
                 dynamicMarkUniforms.join("\n")
+            );
+        const addOrderGuard = (/** @type {string} */ shaderCode) =>
+            shaderCode.replace(
+                "#pragma orderGuard\n\n",
+                order
+                    ? "    if (uOrderMode != 0 &&\n" +
+                          "        ((uOrderMode == 1) != isOrderMatch())) {\n" +
+                          "        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);\n" +
+                          "        return;\n" +
+                          "    }"
+                    : ""
             );
 
         extraHeaders = extraHeaders.map(addDynamicMarkUniforms);
         vertexShader = addDynamicMarkUniforms(vertexShader);
         fragmentShader = addDynamicMarkUniforms(fragmentShader);
+        vertexShader = addOrderGuard(vertexShader);
 
         const vertexParts = [
             vertexPrecision,
@@ -1004,6 +1051,18 @@ export default class WebGLMark {
     }
 
     /**
+     * Selects the conditional order pass on the existing mark uniform block.
+     *
+     * @param {"all" | "matching" | "nonmatching"} pass
+     */
+    setOrderPass(pass) {
+        setBlockUniforms(this.markUniformInfo, {
+            uOrderMode: ORDER_PASS_VALUES[pass],
+        });
+        this.markUniformsAltered = true;
+    }
+
+    /**
      * Configures the WebGL state for rendering the mark instances.
      * A separate preparation stage allows for efficient rendering of faceted
      * views, i.e., multiple views share the uniforms (such as mark properties
@@ -1144,6 +1203,16 @@ export default class WebGLMark {
         }
 
         const self = this;
+        const orderPass = options.orderPass;
+
+        /** @type {(offset: number, count: number) => void} */
+        const drawWithOrderPass = orderPass
+            ? (offset, count) => {
+                  self.setOrderPass(orderPass);
+                  self.bindOrSetMarkUniformBlock();
+                  draw(offset, count);
+              }
+            : draw;
 
         /** @type {function(import("../gl/dataToVertices.js").RangeEntry):void} rangeEntry */
         let drawWithRangeEntry;
@@ -1169,10 +1238,10 @@ export default class WebGLMark {
                 const offset = vertexIndices[0];
                 const count = vertexIndices[1] - offset;
                 if (count > 0) {
-                    draw(offset, count);
+                    drawWithOrderPass(offset, count);
                 }
             } else {
-                draw(rangeEntry.offset, rangeEntry.count);
+                drawWithOrderPass(rangeEntry.offset, rangeEntry.count);
             }
         };
 

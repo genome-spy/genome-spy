@@ -7,6 +7,7 @@ import { normalizeChannels } from "./channelConfigResolver.js";
 import { buildPipelines } from "./pipelineBuilder.js";
 import { SelectionResourceManager } from "./selectionResources.js";
 import {
+    normalizeSelectionPredicate,
     normalizeVisibilityPredicate,
     scalarSlotUniformName,
 } from "../../shaders/visibilityPredicate.js";
@@ -211,6 +212,11 @@ export default class BaseProgram {
                 config.visibleWhen
             )
         );
+        this._orderWhen = normalizeSelectionPredicate(
+            /** @type {import("../../../index.d.ts").SelectionPredicate | undefined} */ (
+                config.orderWhen
+            )
+        );
         this._channels = { ...this._channels, ...this._inputs };
         for (const [name, channel] of Object.entries(this._inputs)) {
             normalizedChannels.analysisByChannel.set(
@@ -250,6 +256,7 @@ export default class BaseProgram {
             channels: this._channels,
             analysisByChannel: this._compiledChannels.analysisByChannel,
             visibleWhen: this._visibleWhen,
+            orderWhen: this._orderWhen,
             label: this.label,
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
@@ -330,6 +337,7 @@ export default class BaseProgram {
                 this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
             selectionDefs: this._selectionResources.selectionDefs,
             visibleWhen: this._visibleWhen,
+            orderWhen: this._orderWhen,
             scalarSlots: this._scalarSlots,
             extraResources,
             primitiveTopology: this.primitiveTopology,

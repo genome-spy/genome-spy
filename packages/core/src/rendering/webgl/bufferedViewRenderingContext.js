@@ -205,6 +205,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
         let enabled = true;
 
         let viewportVisible = true;
+        let orderActive = false;
 
         /**
          * @type {function(function():void):(function():void)}
@@ -240,31 +241,48 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
             }
             this.#entries.add(entry);
 
+            const order = mark.getOrder?.();
             const drawableRequests = requests
                 .map((request) => ({
                     ...request,
-                    callback: graphics.render(request.options),
+                    callback: graphics.render(
+                        order
+                            ? { ...request.options, orderPass: "all" }
+                            : request.options
+                    ),
+                    orderCallbacks:
+                        order && !this.globalOptions.picking
+                            ? order.passes.map((orderPass) =>
+                                  graphics.render({
+                                      ...request.options,
+                                      orderPass,
+                                  })
+                              )
+                            : undefined,
                 }))
                 .filter((request) => request.callback);
             if (drawableRequests.length == 0) {
                 continue;
             }
 
-            this.#batch.push(() => {
-                enabled =
-                    this.#markAdapter.isEntryDrawable(entry) &&
-                    mark.unitView.getEffectiveOpacity() > 0;
-            });
-            // Change program, set common uniforms (mark properties, shared domains)
             const placement = drawableRequests[0].placement;
             const prepareOptions = placement
                 ? { ...this.globalOptions, placement }
                 : this.globalOptions;
-            this.#batch.push(
-                ...graphics
-                    .prepareRender(prepareOptions)
-                    .map((op) => ifEnabled(op))
-            );
+            const prepareOperations = graphics
+                .prepareRender(prepareOptions)
+                .map((op) => ifEnabled(op));
+
+            this.#batch.push(() => {
+                enabled =
+                    this.#markAdapter.isEntryDrawable(entry) &&
+                    mark.unitView.getEffectiveOpacity() > 0;
+                viewportVisible = true;
+                orderActive =
+                    !!order && !this.globalOptions.picking && order.isActive();
+            });
+            // Change program, set common uniforms (mark properties, shared domains)
+            this.#batch.push(...prepareOperations);
 
             /** @type {import("../../view/layout/rectangle.js").default} */
             let previousCoords;
@@ -294,11 +312,19 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                         })
                     );
                 }
-                this.#batch.push(
-                    ifEnabledAndVisible(
-                        /** @type {() => void} */ (request.callback)
-                    )
-                );
+                const { callback, orderCallbacks } = request;
+                const draw = orderCallbacks
+                    ? () => {
+                          if (orderActive) {
+                              for (const drawPass of orderCallbacks) {
+                                  drawPass();
+                              }
+                          } else {
+                              callback();
+                          }
+                      }
+                    : callback;
+                this.#batch.push(ifEnabledAndVisible(draw));
                 previousCoords = request.coords;
                 previousClip = request.clip;
                 previousCullClip = request.cullClip;

@@ -108,6 +108,13 @@ for (const [
                     orient,
                     segments: 101,
                     arcFadingDistance: [height * 0.4, height * 0.8],
+                    orderWhen: hasUniqueId
+                        ? {
+                              selection: "ordering",
+                              type: "single",
+                              empty: false,
+                          }
+                        : undefined,
                     channels: {
                         ...(hasUniqueId
                             ? { uniqueId: { value: 17, type: "u32" } }
@@ -191,6 +198,13 @@ for (const [
                     return { alpha, picks };
                 };
                 const faded = await read();
+                // An order-only selection must not bypass appearance fading.
+                let orderOnly = faded;
+                if (hasUniqueId) {
+                    mark.selections.ordering.set(17);
+                    orderOnly = await read();
+                    mark.selections.ordering.set(0);
+                }
                 const intervalStates = [];
                 if (selectionType == "interval") {
                     // Span intersection, partial/empty selections, and misses stay faded.
@@ -213,10 +227,18 @@ for (const [
                 const disabled = await read();
                 renderer.destroy();
                 canvas.remove();
-                return { faded, selected, forced, disabled, intervalStates };
+                return {
+                    faded,
+                    orderOnly,
+                    selected,
+                    forced,
+                    disabled,
+                    intervalStates,
+                };
             },
             { shape, orient, direction, dpr, selectionType, hasUniqueId }
         );
+        expect(result.orderOnly).toEqual(result.faded);
         for (const faded of [
             result.faded,
             result.forced,

@@ -131,6 +131,8 @@ void clampDomeApex(inout vec2 p1, inout vec2 p4, int orient) {
 }
 
 void main(void) {
+#pragma orderGuard
+
     float pixelSize = 1.0 / uDevicePixelRatio;
     float opacity = getScaled_opacity() * uViewOpacity;
 

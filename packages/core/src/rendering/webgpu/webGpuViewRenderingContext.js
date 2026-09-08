@@ -151,6 +151,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 xQueryEnabled: false,
                 updated: false,
                 active: false,
+                orderActive: false,
                 ownerCoords: undefined,
                 definition: undefined,
                 config: undefined,
@@ -256,6 +257,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         for (const state of this.#marks.values()) {
             state.updated = false;
             state.active = false;
+            state.orderActive =
+                !picking && !!state.mark.getOrder?.()?.isActive();
             this.#prepareMarkState(state, picking, canvas);
         }
 
@@ -633,8 +636,15 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             draw.placement.index = placementIndex;
         }
         this.surface.prepareDraw(state.mark, draw, state.source);
-        items.push(draw);
-        countPerformance("drawCommands");
+        if (state.orderActive) {
+            for (const orderPass of state.mark.getOrder().passes) {
+                items.push({ ...draw, orderPass });
+                countPerformance("drawCommands");
+            }
+        } else {
+            items.push(draw);
+            countPerformance("drawCommands");
+        }
         return resourceWrites;
     }
 
@@ -969,6 +979,7 @@ function writeScopeBounds(command, target) {
  * @property {boolean} xQueryEnabled
  * @property {boolean} updated
  * @property {boolean} active
+ * @property {boolean} orderActive
  * @property {Rectangle | undefined} ownerCoords
  * @property {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any> | undefined} definition
  * @property {object | undefined} config

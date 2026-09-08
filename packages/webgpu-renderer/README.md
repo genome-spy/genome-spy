@@ -483,6 +483,32 @@ mark.scalarSlots.threshold.set(0.75);
 Visibility affects rendering and picking only. It does not filter data,
 aggregates, or scale domains.
 
+### Conditional draw order
+
+Use `orderWhen` on a mark when selected instances should be painted after the
+other instances in an occurrence. The predicate uses the same selection state
+as conditional encodings, and the renderer keeps one mark program and pipeline
+while evaluating it per instance:
+
+```js
+const points = renderer.createMark(pointMark, {
+  channels: {
+    uniqueId: { data: ids, type: "u32" },
+    // x, y, and other channels...
+  },
+  orderWhen: { selection: "picked", type: "single", empty: false },
+});
+
+points.selections.picked.set(ids[0]);
+```
+
+`orderWhen` supplies the matching logic; it does not submit extra draws by
+itself. For low-level frame control, set `DrawCommand.orderPass` to `"all"`,
+`"matching"`, or `"nonmatching"`, and submit the nonmatching and matching
+draws in that order to promote selected instances. A picking frame always
+evaluates the mark in `"all"` mode, so conditional visual ordering does not
+change pick IDs or hit testing.
+
 ## Selections and conditional encoding
 
 Selection predicates run on the GPU in data-domain space. Conditional channel

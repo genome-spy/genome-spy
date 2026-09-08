@@ -1043,6 +1043,8 @@ export type MarkConfig<T extends MarkType = MarkType> = {
         scalarSlots?: Record<string, ScalarSlotConfig>;
         /** Immutable predicate controlling mark visibility and picking. */
         visibleWhen?: VisibilityPredicate;
+        /** Predicate used by conditional draw ordering in ordinary rendering. */
+        orderWhen?: SelectionPredicate;
     } & (T extends "link" ? LinkMarkOptions : unknown) &
     (T extends "text" ? TextMarkOptions : unknown) &
     (T extends "arrow" ? ArrowMarkOptions : unknown);
@@ -1088,6 +1090,8 @@ export type DrawVisibleRange = {
     cullY: boolean;
 };
 
+export type DrawOrderPass = "all" | "matching" | "nonmatching";
+
 export type PlacementSetData = {
     /** Packed viewport-local normalized [x, y, width, height] rectangles. */
     rectangles: Float32Array;
@@ -1122,6 +1126,8 @@ export type DrawCommand = {
     firstInstance?: number;
     /** Number of logical instances to draw. Defaults to the remaining count. */
     instanceCount?: number;
+    /** Conditional order pass for ordinary rendering. Picking always uses all. */
+    orderPass?: DrawOrderPass;
     placement?: DrawPlacement;
 };
 

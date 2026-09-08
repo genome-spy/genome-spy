@@ -207,6 +207,30 @@ not replaced by nested-band inference.
 }
 ```
 
+`order`
+: Draws instances in two selection partitions. The condition's `value` and
+  the definition's `value` are finite numeric levels; lower levels are drawn
+  first. Use one selection parameter or a selection union in the condition.
+  Equal levels and constant definitions have no ordering effect. When all
+  referenced selections are empty, instances retain their original order.
+  Ordering applies within one mark occurrence, and picking keeps the original
+  order.
+
+```json title="Draw selected points above unselected points"
+{
+  "params": [{ "name": "picked", "select": "point" }],
+  "mark": "point",
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "y", "type": "quantitative" },
+    "order": {
+      "condition": { "param": "picked", "value": 1 },
+      "value": 0
+    }
+  }
+}
+```
+
 #### Non-visual channels
 
 Some channels carry metadata for interaction features and are not encoded into

@@ -22,6 +22,8 @@ out highp vec2 vPosInPixels;
 
 
 void main(void) {
+#pragma orderGuard
+
     float pixelSize = 1.0 / uDevicePixelRatio;
 
     // Stroke width in pixels

@@ -14,6 +14,7 @@ import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { getConfiguredMarkDefaults } from "../config/markConfig.js";
 import { validatePositionalEndpointCoordinateSpaces } from "./markUtils.js";
 import { getSelectionPredicateParams } from "../selection/selection.js";
+import { normalizeOrderDefinition } from "../selection/order.js";
 
 /**
  * @typedef {"intersects" | "encloses" | "endpoints"} HitTestMode
@@ -47,6 +48,11 @@ export default class Mark {
     #renderingRevisionState;
 
     #encodedDataRevision = 0;
+
+    /** @type {import("../selection/order.js").ConditionalOrder | undefined} */
+    #order;
+
+    #orderInitialized = false;
 
     /**
      * Creates the semantic mark owned by a unit view and resolves its configured
@@ -180,6 +186,7 @@ export default class Mark {
             "search",
             "tooltip",
             "uniqueId",
+            "order",
         ];
     }
 
@@ -392,6 +399,25 @@ export default class Mark {
     }
 
     /**
+     * Returns the normalized conditional order metadata for this mark. Inert
+     * definitions are folded away before selection dependencies are retained.
+     *
+     * @returns {import("../selection/order.js").ConditionalOrder | undefined}
+     */
+    getOrder() {
+        if (!this.#orderInitialized) {
+            this.#order = normalizeOrderDefinition(
+                this.encoding.order,
+                this.encoding,
+                this.unitView.paramRuntime,
+                this.defaultHitTestMode
+            );
+            this.#orderInitialized = true;
+        }
+        return this.#order;
+    }
+
+    /**
      * Tracks expression and scale dependencies that retained renderers use to
      * decide whether configuration or resources must be refreshed.
      *
@@ -477,6 +503,12 @@ export default class Mark {
 
         if (!trackResources) {
             return;
+        }
+
+        // A retained renderer may have initialized configuration revisions
+        // before an immediate renderer starts consuming order resources.
+        for (const param of this.getOrder()?.params ?? []) {
+            watchExpression(param, "resources");
         }
 
         for (const property of resourceProperties) {

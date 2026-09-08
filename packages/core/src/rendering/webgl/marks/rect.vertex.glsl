@@ -54,6 +54,8 @@ vec2 getVertexPos() {
 }
 
 void main(void) {
+#pragma orderGuard
+
     vec2 frac = getVertexPos();
 
     vec2 normalizedMinSize = vec2(uMinWidth, uMinHeight) / uViewportSize;

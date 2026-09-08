@@ -178,6 +178,8 @@ vec2 getOutsideHeadExpansion(float outsideHeadOffset, float direction) {
 }
 
 void main(void) {
+#pragma orderGuard
+
     vec2 a = applyOffset(
         applySampleFacet(vec2(getScaled_x(), getScaled_y())),
         vec2(getScaled_xOffset(), getScaled_yOffset())

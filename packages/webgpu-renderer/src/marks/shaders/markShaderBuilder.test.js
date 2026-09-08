@@ -31,6 +31,33 @@ fn fs_main() -> @location(0) vec4<f32> {
 `;
 
 describe("buildMarkShader", () => {
+    it("adds one runtime order guard without creating a shader variant", () => {
+        const body = `
+@vertex
+fn vs_main(i: u32) -> @builtin(position) vec4<f32> {
+    if (!isInstanceVisible(i)) { return vec4<f32>(0.0); }
+    return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+}`;
+        const { shaderCode } = buildMarkShader({
+            channels: {
+                uniqueId: { value: 1, type: "u32", components: 1 },
+            },
+            uniformLayout: [
+                { name: "uSelection_pick", type: "u32", components: 1 },
+            ],
+            shaderBody: body,
+            selectionDefs: [{ name: "pick", type: "single" }],
+            orderWhen: { selection: "pick", type: "single" },
+        });
+
+        expect(shaderCode).toContain("fn isInstanceOrderMatch");
+        expect(shaderCode).toContain("globals.orderPass");
+        expect(shaderCode).toContain("fn isInstanceVisibleBase");
+        expect(shaderCode).not.toContain(
+            "fn isInstanceOrderMatch(i: u32) -> bool { return true; }"
+        );
+    });
+
     it("evaluates placement conditions from the mark configuration", () => {
         const conditionalBody = `${shaderBody}
 #if defined(PLACEMENT_ENABLED)

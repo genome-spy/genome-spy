@@ -64,6 +64,7 @@ import { buildVisibilityPredicate } from "./visibilityPredicate.js";
  * @prop {Map<string, import("../programs/internal/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
  * @prop {SelectionDef[]} [selectionDefs]
  * @prop {import("../../index.d.ts").VisibilityPredicate} [visibleWhen]
+ * @prop {import("../../index.d.ts").SelectionPredicate} [orderWhen]
  * @prop {Record<string, import("../../index.d.ts").ScalarSlotConfig>} [scalarSlots]
  * @prop {ExtraResourceDef[]} [extraResources]
  * @prop {import("../../index.d.ts").MarkConfig["placementIndex"]} [placementIndex]
@@ -107,6 +108,7 @@ export function buildMarkShader({
     packedSeriesLayout,
     selectionDefs = [],
     visibleWhen,
+    orderWhen,
     scalarSlots = {},
     extraResources = [],
     placementIndex,
@@ -190,12 +192,35 @@ export function buildMarkShader({
     );
     const visibilityPredicate = buildVisibilityPredicate({
         predicate: visibleWhen,
+        functionName: orderWhen ? "isInstanceVisibleBase" : "isInstanceVisible",
         channelIRs,
         channelNames,
         inputNames,
         scalarSlots,
         selectionDefs,
     });
+    const orderPredicate = orderWhen
+        ? buildVisibilityPredicate({
+              predicate: orderWhen,
+              functionName: "isInstanceOrderMatch",
+              channelIRs,
+              channelNames,
+              inputNames,
+              scalarSlots,
+              selectionDefs,
+          })
+        : "";
+    const orderVisibility = orderWhen
+        ? /* wgsl */ `
+fn isInstanceVisible(i: u32) -> bool {
+    if (!isInstanceVisibleBase(i)) { return false; }
+    if (globals.orderPass == 0u) { return true; }
+    let matches = isInstanceOrderMatch(i);
+    return (globals.orderPass == 1u && matches) ||
+        (globals.orderPass == 2u && !matches);
+}
+`
+        : "";
 
     /**
      * @param {string} name
@@ -928,7 +953,7 @@ struct Globals {
     placementIndex: u32,
     placementClipMode: u32,
     placementCount: u32,
-    placementPadding: u32,
+    orderPass: u32,
 };
 
 @group(0) @binding(0) var<uniform> globals: Globals;
@@ -1094,6 +1119,10 @@ ${extraDecls.join("\n")}
 ${hashLookupFunctions}
 
 ${visibilityPredicate}
+
+${orderPredicate}
+
+${orderVisibility}
 
 fn premultiplyAlpha(color: vec4<f32>) -> vec4<f32> {
     return vec4<f32>(color.rgb * color.a, color.a);

@@ -91,6 +91,38 @@ function createSeriesProgram(channels, count) {
 }
 
 describe("BaseProgram channel validation", () => {
+    it.each([
+        [{ visibleWhen: { all: [] } }, "all nodes must not be empty"],
+        [{ visibleWhen: { all: [], any: [] } }, "exactly one"],
+        [
+            {
+                orderWhen: {
+                    compare: ">=",
+                    left: { slot: "x" },
+                    right: { slot: "x" },
+                },
+            },
+            "Selection predicates",
+        ],
+    ])(
+        "validates predicate structure at the configuration boundary",
+        (options, message) => {
+            expect(() =>
+                createProgram(
+                    {
+                        x: { value: 0.5, type: "f32" },
+                        vec: {
+                            value: [1, 0, 0, 1],
+                            type: "f32",
+                            components: 4,
+                        },
+                    },
+                    options
+                )
+            ).toThrow(message);
+        }
+    );
+
     it("retains scalar inputs and validates scalar slot updates", () => {
         const program = createProgram(
             {
