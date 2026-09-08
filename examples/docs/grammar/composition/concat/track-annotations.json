@@ -17,17 +17,13 @@
       "encoding": {
         "x": { "field": "start", "type": "quantitative" },
         "x2": { "field": "end" },
-        "y": { "value": 0 },
-        "y2": { "value": 1 },
-        "color": { "field": "label", "type": "nominal" },
-        "tooltip": { "field": "label", "type": "nominal" }
+        "color": { "field": "label", "type": "nominal" }
       }
     }
   ],
 
   "vconcat": [
     {
-      "height": 100,
       "data": {
         "values": [
           { "x": 1, "value": 2 },
@@ -45,7 +41,6 @@
     },
 
     {
-      "height": 100,
       "data": {
         "values": [
           { "x": 1, "value": 8 },

@@ -39,50 +39,6 @@ Use `includePlotMargin: false` to keep the separators inside the plot area.
 
 EXAMPLE examples/docs/grammar/composition/concat/concat-separators.json height=280
 
-## Track annotations
-
-`vconcat` and `hconcat` can draw annotations using ordinary marks and layers across their
-visible tracks with the `annotate` array. A vertical concat maps annotation
-`x`/`x2` through its shared x scale, while `y`/`y2` use normalized plotting
-coordinates from `0` at the bottom to `1` at the top. A horizontal concat uses
-the corresponding y scale and normalized x coordinates. Use a constant `value`
-or a field/expression with `scale: null` for the normalized positions.
-
-Annotation positional fields do not expand the shared track domain. Other
-encodings, such as color, remain ordinary data-driven encodings. Annotations
-span the gaps without reserving layout space. They are clipped to the bounding
-area of the visible track plots, excluding outer axes and titles, and render after
-the tracks, so they remain in front of track marks even when a track has a
-higher `zindex`. Set `clip: "never"` on a mark when it should extend beyond
-those bounds. Entries render in array order by default, with ordinary layer
-`zindex` ordering within the annotation layer.
-
-Annotation legends appear around the whole concat using its usual legend regions.
-Non-positional scales, such as color and size, are shared among annotation entries
-and remain independent of track scales by default. The concat's
-`resolve.scale.color: "shared"` makes tracks and annotations use the same color
-scale and, by default, one legend.
-
-Sharing is per channel, even when annotations encode different fields. An
-annotation's `resolve.scale.color: "excluded"` isolates its color scale from
-siblings and tracks. An explicit layer entry with
-`resolve.scale.color: "independent"` gives its children separate color scales.
-Legend resolution follows the scale unless configured otherwise.
-
-The existing [legend collection](../legend.md#collected-legends) settings also
-apply to annotations. `resolve.legend: { "color": "collected" }` collects color
-legends around that concat, including legends from nested annotations, without
-merging independent scales. Explicit collection by an outer concat takes
-precedence over an annotation's default host. `resolve.legend.color: "excluded"`
-keeps a legend at its normal host; `legend: null` on the encoding hides it.
-
-The tracks must have aligned shared projections on the data axis. Annotation
-layers cannot define their own positional scales or request an independent or
-excluded shared scale. The example uses translucent rectangles to mark regions
-across two toy tracks:
-
-EXAMPLE examples/docs/grammar/composition/concat/track-annotations.json height=300
-
 ## Child sizing
 
 The concatenation operators mimic the behavior of the CSS
@@ -188,6 +144,37 @@ a middle protein track can render after lollipop tracks above and below it:
 
 Axes, titles, backgrounds, and other view decorations have their own `zindex`
 settings relative to composition content.
+
+## Track annotations
+
+`vconcat` and `hconcat` can draw annotations using ordinary marks and layers
+across their visible tracks with the `annotate` array. Annotations require an
+aligned scale shared across all visible tracks: `x` for `vconcat`, `y` for
+`hconcat` (the default in both cases). Annotation layers cannot define their own
+positional scales or request an independent or excluded shared scale.
+
+Annotation positional fields do not expand the shared track domain. Other
+encodings, such as color, remain ordinary data-driven encodings. Annotations
+span the gaps without reserving layout space. They are clipped to the bounding
+area of the visible track plots, excluding outer axes and titles, and render after
+the tracks, so they remain in front of track marks even when a track has a
+higher `zindex`.
+
+Annotation legends appear around the whole concat using its usual legend regions.
+Non-positional scales, such as color and size, are shared among annotation entries
+and remain independent of track scales by default. The concat's
+`resolve.scale.color: "shared"` makes tracks and annotations use the same color
+scale and, by default, one legend.
+
+Sharing is per channel, even when annotations encode different fields. An
+annotation's `resolve.scale.color: "excluded"` isolates its color scale from
+siblings and tracks. An explicit layer entry with
+`resolve.scale.color: "independent"` gives its children separate color scales.
+Legend resolution follows the scale unless configured otherwise.
+
+The example below uses translucent rectangles to mark regions across two tracks:
+
+EXAMPLE examples/docs/grammar/composition/concat/track-annotations.json height=300
 
 ## Resolve
 

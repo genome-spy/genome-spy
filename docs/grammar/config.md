@@ -168,5 +168,5 @@ SCHEMA ViewConfig continuousWidth discreteWidth continuousHeight discreteHeight 
 ```
 
 If these properties are omitted, GenomeSpy keeps its default `"container"`
-sizing behavior. See [child sizing](./composition/concat.md#sizedef) for
+sizing behavior. See [child sizing](./composition/concat.md#step-sizing) for
 details about `"container"` and other size shorthands.

@@ -145,7 +145,7 @@ See the [grouped bar example](rect.md#grouped-bars).
 }
 ```
 
-As described in [Step sizing](../composition/concat.md#step-sizing), a
+As described in [Step sizing](../composition/concat.md#scrollable-viewports), a
 step-based width or height normally describes a positional scale step. When a
 discrete offset scale is present, it describes each offset step by default. Use
 `{ "step": 12, "for": "position" }` to make the step describe each primary
