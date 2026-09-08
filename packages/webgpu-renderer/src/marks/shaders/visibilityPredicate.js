@@ -124,7 +124,6 @@ export function buildVisibilityPredicate({
     scalarSlots,
     selectionDefs,
 }) {
-    predicate = normalizeVisibilityPredicate(predicate);
     const channelIRByName = new Map(
         channelIRs.map((channelIR) => [channelIR.name, channelIR])
     );

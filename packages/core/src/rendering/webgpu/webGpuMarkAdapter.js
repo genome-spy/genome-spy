@@ -1,3 +1,4 @@
+import { collectAppearanceSelections } from "../../selection/selection.js";
 import { color as parseColor } from "d3-color";
 import { format as numberFormat } from "d3-format";
 import {
@@ -31,7 +32,6 @@ import {
     isDatumDef,
     isValueDef,
 } from "../../encoder/encoder.js";
-import { getSelectionPredicateParams } from "../../selection/selection.js";
 
 const SHAPE_CODES = new Map(
     [
@@ -309,7 +309,7 @@ function createConditionalChannel(mark, channel, data, build) {
     const conditions = branches.slice(0, -1).map((branch) => {
         const branchEncoder = createBranchEncoder(mark, encoder, branch);
         const branchConfig = build(branchEncoder, branch);
-        const when = createSelectionCondition(mark, channel, branch.predicate);
+        const when = createSelectionCondition(mark, branch.predicate.selection);
         return { when, channel: branchConfig };
     });
 
@@ -359,19 +359,11 @@ function createBranchEncoder(mark, encoder, branch) {
  * Converts a Core selection predicate to the renderer's selection contract.
  *
  * @param {import("../../marks/mark.js").default} mark
- * @param {string} channel
- * @param {import("../../types/encoder.js").Predicate} predicate
+ * @param {import("../../selection/selection.js").SelectionPredicateInfo} selectionInfo
  * @returns {import("@genome-spy/webgpu-renderer").SelectionPredicate}
  */
-function createSelectionCondition(mark, channel, predicate) {
-    const selectionInfo = predicate.selection;
-    const params = getSelectionPredicateParams(predicate);
-    if (params.length === 0) {
-        throw unsupported(
-            mark,
-            `Conditional channel "${channel}" has no selection parameter.`
-        );
-    }
+function createSelectionCondition(mark, selectionInfo) {
+    const { params, empty, singleParam } = selectionInfo;
 
     /** @param {string} param @param {boolean} [empty] */
     const createLeaf = (param, empty) => {
@@ -421,14 +413,14 @@ function createSelectionCondition(mark, channel, predicate) {
         return leaf;
     };
 
-    if (selectionInfo && !selectionInfo.legacy) {
+    if (!singleParam) {
         return {
             selectionUnion: params.map((param) => createLeaf(param)),
-            empty: selectionInfo.empty,
+            empty,
         };
     }
 
-    return createLeaf(params[0], predicate.empty ?? true);
+    return createLeaf(params[0], empty);
 }
 
 /**
@@ -678,55 +670,15 @@ function createPointVisibilitySelections(mark) {
         return [];
     }
 
-    const selections = [];
-    const names = new Set();
-    const unions = new Set();
-    for (const encoder of Object.values(
-        /** @type {Record<string, any>} */ (mark.encoders)
-    )) {
-        for (const branch of encoder.branches ?? []) {
-            const predicate = branch.predicate;
-            if (!predicate) {
-                continue;
-            }
-            if (predicate.selection && !predicate.selection.legacy) {
-                const params = getSelectionPredicateParams(predicate);
-                const unionKey = params.join("\u0000");
-                if (unions.has(unionKey)) {
-                    continue;
-                }
-                selections.push(
-                    createSelectionCondition(mark, "semanticScore", {
-                        ...predicate,
-                        selection: {
-                            ...predicate.selection,
-                            empty: false,
-                        },
-                    })
-                );
-                unions.add(unionKey);
-                params.forEach((param) => names.add(param));
-            } else {
-                for (const param of getSelectionPredicateParams(predicate)) {
-                    if (names.has(param)) {
-                        continue;
-                    }
-                    selections.push(
-                        createSelectionCondition(
-                            mark,
-                            "semanticScore",
-                            /** @type {any} */ ({
-                                param,
-                                empty: false,
-                            })
-                        )
-                    );
-                    names.add(param);
-                }
-            }
-        }
-    }
-    return selections;
+    return Array.from(
+        collectAppearanceSelections(mark.encoders),
+        ([param, partialIntervals]) =>
+            createSelectionCondition(mark, {
+                params: [param],
+                empty: false,
+                singleParam: !partialIntervals,
+            })
+    );
 }
 
 /**

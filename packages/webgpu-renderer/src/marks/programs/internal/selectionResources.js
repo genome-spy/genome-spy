@@ -10,7 +10,6 @@ import {
     SELECTION_COUNT_PREFIX,
     SELECTION_PREFIX,
 } from "../../../wgsl/prefixes.js";
-import { normalizeVisibilityPredicate } from "../../shaders/visibilityPredicate.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
 
 /**
@@ -239,11 +238,7 @@ function collectSelectionDefs(channels, analysisByChannel, visibleWhen) {
             addSelectionDef(defs, condition.when, getAnalysis);
         }
     }
-    collectVisibilitySelections(
-        normalizeVisibilityPredicate(visibleWhen),
-        defs,
-        getAnalysis
-    );
+    collectVisibilitySelections(visibleWhen, defs, getAnalysis);
 
     if (
         !channels.uniqueId &&

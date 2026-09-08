@@ -245,25 +245,6 @@ describe("SelectionResourceManager", () => {
         ).toThrow("must keep the same interval targets");
     });
 
-    it("rejects predicate nodes with multiple union members before discovery", () => {
-        expect(
-            () =>
-                new SelectionResourceManager({
-                    device: createDevice(),
-                    channels: makeIntervalChannels([{ input: "x" }]),
-                    visibleWhen: {
-                        selection: "brush",
-                        type: "interval",
-                        targets: [{ input: "x" }],
-                        any: [],
-                    },
-                    setUniformValue: vi.fn(),
-                })
-        ).toThrow(
-            "exactly one of compare, selection, selectionUnion, all, or any"
-        );
-    });
-
     it("allocates independently typed fields for an N-target interval", () => {
         const setUniformValue = vi.fn();
         const manager = new SelectionResourceManager({

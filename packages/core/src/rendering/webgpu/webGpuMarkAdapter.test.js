@@ -266,11 +266,17 @@ describe("WebGPU mark adapter", () => {
                     /** @param {{x: number}} datum */ (datum) => datum.x,
                     { field: "x" }
                 ),
-                predicate: { param: "selected", empty: false },
+                predicate: {
+                    selection: {
+                        params: ["selected"],
+                        empty: false,
+                        singleParam: true,
+                    },
+                },
             },
             {
                 accessor: createAccessor(() => 0.25, { value: 0.25 }, true),
-                predicate: { empty: false },
+                predicate: {},
             },
         ]);
         encoder.scale = /** @type {any} */ (createLinearScale([0, 100], true));
@@ -1153,7 +1159,13 @@ describe("WebGPU mark adapter", () => {
                         { value: "red" },
                         true
                     ),
-                    predicate: { param: "selected", empty: true },
+                    predicate: {
+                        selection: {
+                            params: ["selected"],
+                            empty: true,
+                            singleParam: true,
+                        },
+                    },
                 },
                 {
                     accessor: createAccessor(
@@ -1161,7 +1173,7 @@ describe("WebGPU mark adapter", () => {
                         { value: "black" },
                         true
                     ),
-                    predicate: { empty: false },
+                    predicate: {},
                 },
             ]),
         });
@@ -1227,7 +1239,13 @@ describe("WebGPU mark adapter", () => {
                         { value: "red" },
                         true
                     ),
-                    predicate: { param: "first", empty: false },
+                    predicate: {
+                        selection: {
+                            params: ["first"],
+                            empty: false,
+                            singleParam: true,
+                        },
+                    },
                 },
                 {
                     accessor: createAccessor(
@@ -1235,7 +1253,13 @@ describe("WebGPU mark adapter", () => {
                         { value: "blue" },
                         true
                     ),
-                    predicate: { param: "second", empty: false },
+                    predicate: {
+                        selection: {
+                            params: ["second"],
+                            empty: false,
+                            singleParam: true,
+                        },
+                    },
                 },
                 {
                     accessor: createAccessor(
@@ -1243,7 +1267,7 @@ describe("WebGPU mark adapter", () => {
                         { value: "black" },
                         true
                     ),
-                    predicate: { empty: false },
+                    predicate: {},
                 },
             ]),
         });
@@ -1269,7 +1293,7 @@ describe("WebGPU mark adapter", () => {
         ]);
     });
 
-    test("keeps unseen union members when a legacy selection overlaps", () => {
+    test("keeps unseen union members when a single-param selection overlaps", () => {
         const mark = createMark("point", [{ id: 4, score: 0.25 }], {
             uniqueId: createEncoder((datum) => datum.id),
             semanticScore: createEncoder((datum) => datum.score),
@@ -1280,7 +1304,13 @@ describe("WebGPU mark adapter", () => {
                         { value: "red" },
                         true
                     ),
-                    predicate: { param: "first", empty: false },
+                    predicate: {
+                        selection: {
+                            params: ["first"],
+                            empty: false,
+                            singleParam: true,
+                        },
+                    },
                 },
                 {
                     accessor: createAccessor(
@@ -1292,9 +1322,8 @@ describe("WebGPU mark adapter", () => {
                         selection: {
                             params: ["first", "second"],
                             empty: false,
-                            legacy: false,
+                            singleParam: false,
                         },
-                        empty: false,
                     },
                 },
                 {
@@ -1303,7 +1332,7 @@ describe("WebGPU mark adapter", () => {
                         { value: "black" },
                         true
                     ),
-                    predicate: { empty: false },
+                    predicate: {},
                 },
             ]),
         });
@@ -1320,14 +1349,10 @@ describe("WebGPU mark adapter", () => {
         const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
 
         expect(/** @type {any} */ (translated).config.visibleWhen.any).toEqual([
-            { selection: "first", type: "single", empty: false },
-            {
-                selectionUnion: [
-                    { selection: "first", type: "single" },
-                    { selection: "second", type: "single" },
-                ],
+            ...["first", "second"].map((selection) => ({
+                selectionUnion: [{ selection, type: "single" }],
                 empty: false,
-            },
+            })),
             {
                 compare: ">=",
                 left: { input: "semanticScoreInput" },
@@ -1816,7 +1841,13 @@ describe("WebGPU mark adapter", () => {
                         (datum) => datum.color,
                         { field: "color" }
                     ),
-                    predicate: { param: "chosen", empty: false },
+                    predicate: {
+                        selection: {
+                            params: ["chosen"],
+                            empty: false,
+                            singleParam: true,
+                        },
+                    },
                 },
                 {
                     accessor: createAccessor(
@@ -1824,7 +1855,7 @@ describe("WebGPU mark adapter", () => {
                         { value: "black" },
                         true
                     ),
-                    predicate: { empty: false },
+                    predicate: {},
                 },
             ]),
         });
@@ -1870,9 +1901,8 @@ describe("WebGPU mark adapter", () => {
                         selection: {
                             params: ["first", "second"],
                             empty: true,
-                            legacy: false,
+                            singleParam: false,
                         },
-                        empty: true,
                     },
                 },
                 {
@@ -1881,7 +1911,7 @@ describe("WebGPU mark adapter", () => {
                         { value: "black" },
                         true
                     ),
-                    predicate: { empty: false },
+                    predicate: {},
                 },
             ]),
         });
@@ -1915,11 +1945,17 @@ describe("WebGPU mark adapter", () => {
                             field: "x",
                         }
                     ),
-                    predicate: { param: "brush", empty: true },
+                    predicate: {
+                        selection: {
+                            params: ["brush"],
+                            empty: true,
+                            singleParam: true,
+                        },
+                    },
                 },
                 {
                     accessor: createAccessor(() => 0.5, { value: 0.5 }, true),
-                    predicate: { empty: false },
+                    predicate: {},
                 },
             ]),
         });
@@ -1955,11 +1991,17 @@ describe("WebGPU mark adapter", () => {
                         (datum) => datum[channel],
                         { field: channel }
                     ),
-                    predicate: { param: "brush", empty: false },
+                    predicate: {
+                        selection: {
+                            params: ["brush"],
+                            empty: false,
+                            singleParam: true,
+                        },
+                    },
                 },
                 {
                     accessor: createAccessor(() => 0.5, { value: 0.5 }, true),
-                    predicate: { empty: false },
+                    predicate: {},
                 },
             ]),
         });
@@ -1998,7 +2040,13 @@ describe("WebGPU mark adapter", () => {
                             (datum) => datum.color,
                             { field: "color" }
                         ),
-                        predicate: { param: "brush", empty: true },
+                        predicate: {
+                            selection: {
+                                params: ["brush"],
+                                empty: true,
+                                singleParam: true,
+                            },
+                        },
                     },
                     {
                         accessor: createAccessor(
@@ -2006,7 +2054,7 @@ describe("WebGPU mark adapter", () => {
                             { value: "gray" },
                             true
                         ),
-                        predicate: { empty: false },
+                        predicate: {},
                     },
                 ]),
                 stroke: createConstantEncoder(null),
@@ -2051,7 +2099,13 @@ describe("WebGPU mark adapter", () => {
                         (datum) => datum.color,
                         { field: "color" }
                     ),
-                    predicate: { param: "brush", empty: true },
+                    predicate: {
+                        selection: {
+                            params: ["brush"],
+                            empty: true,
+                            singleParam: true,
+                        },
+                    },
                 },
                 {
                     accessor: createAccessor(
@@ -2059,7 +2113,7 @@ describe("WebGPU mark adapter", () => {
                         { value: "gray" },
                         true
                     ),
-                    predicate: { empty: false },
+                    predicate: {},
                 },
             ]),
         });
@@ -2150,7 +2204,7 @@ function createEncoder(accessor, options = {}) {
             Object.assign(vi.fn(accessor), {
                 constant: false,
                 scale: options.scale,
-                branches: [{ accessor }],
+                branches: [{ accessor, predicate: () => true }],
                 channelDef,
             })
         )
@@ -2164,7 +2218,7 @@ function createConstantEncoder(value) {
         /** @type {unknown} */ (
             Object.assign(vi.fn(accessor), {
                 constant: true,
-                branches: [{ accessor }],
+                branches: [{ accessor, predicate: () => true }],
                 channelDef: { value },
             })
         )

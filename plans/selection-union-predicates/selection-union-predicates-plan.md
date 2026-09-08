@@ -220,3 +220,19 @@ Primary final review:
   Review removed duplicate interval shader generation and per-row allocations;
   no general predicate engine or quantitative grammar was introduced.
 - All review findings are resolved. No further implementation work is pending.
+
+## Delivery reconciliation (2026-09-08)
+
+All implementation milestones and review gates are complete. Subsequent review
+removed duplicate predicate metadata, repeated renderer validation, redundant
+WebGL registration guards, and repeated appearance-selection discovery.
+Order-only selections no longer affect WebGPU link fading.
+
+Validation after the first cleanup: 4,065 unit tests and 30 GPU tests passed,
+with workspace type checks and focused lint passing. The final shared-discovery
+refactor passed 121 focused tests, Core type checks, lint, and diff checks.
+
+Further CPU fading/compiler unification is discarded from this change: existing
+endpoint/accessor semantics make it a broader redesign without clear savings.
+Quantitative predicates and Boolean composition remain deferred to #517.
+No unfinished implementation tasks remain. Retire this plan before draft PR creation.

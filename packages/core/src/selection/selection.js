@@ -236,93 +236,33 @@ export function makeSelectionTestExpression(params, selection) {
  * encodings. Keeping the names together lets renderers and other consumers
  * discover every dependency of a union without inspecting its expression.
  *
- * @typedef {{ params: string[], empty: boolean, legacy: boolean }} SelectionPredicateInfo
+ * @typedef {{ params: string[], empty: boolean, singleParam: boolean }} SelectionPredicateInfo
  */
 
 /**
- * Normalizes the legacy `param` condition and the structured selection union.
+ * Normalizes the single-selection `param` condition and the structured selection union.
  *
- * @param {any} condition
+ * @param {import("../spec/channel.js").ParameterPredicate | import("../spec/channel.js").TestPredicate} condition
  * @returns {SelectionPredicateInfo | undefined}
  */
 export function normalizeSelectionPredicate(condition) {
-    if (!condition || typeof condition != "object") {
-        return undefined;
-    }
-
     if ("param" in condition) {
-        if ("test" in condition) {
-            throw new Error(
-                'Conditional predicates cannot specify both "param" and "test".'
-            );
-        }
-        if (typeof condition.param != "string" || !condition.param) {
-            throw new Error('Conditional predicate "param" must be a string.');
-        }
-        if (
-            condition.empty !== undefined &&
-            typeof condition.empty != "boolean"
-        ) {
-            throw new Error('Conditional predicate "empty" must be a boolean.');
-        }
         return {
             params: [validateParameterName(condition.param)],
             empty: condition.empty ?? true,
-            legacy: true,
+            singleParam: true,
         };
     }
-
     if (!("test" in condition)) {
         return undefined;
     }
 
-    if ("empty" in condition) {
-        throw new Error(
-            'Selection test predicates must put "empty" inside "test".'
-        );
-    }
-
-    const test = condition.test;
-    if (!test || typeof test != "object" || Array.isArray(test)) {
-        throw new Error('Conditional predicate "test" must be an object.');
-    }
-    if (Object.keys(test).some((key) => key != "selection" && key != "empty")) {
-        throw new Error(
-            'Selection test predicates support only "selection" and "empty".'
-        );
-    }
-
-    const selection = test.selection;
-    if (
-        !selection ||
-        typeof selection != "object" ||
-        Array.isArray(selection) ||
-        Object.keys(selection).some((key) => key != "or")
-    ) {
-        throw new Error(
-            'Selection test predicates require a selection object with an "or" array.'
-        );
-    }
-    if (!Array.isArray(selection.or) || selection.or.length == 0) {
+    const { selection, empty = true } = condition.test;
+    if (selection.or.length === 0) {
         throw new Error('Selection test "or" must be a nonempty array.');
     }
-    const params = [];
-    const names = new Set();
-    for (const name of selection.or) {
-        if (typeof name != "string" || !name) {
-            throw new Error('Selection test "or" members must be strings.');
-        }
-        const validated = validateParameterName(name);
-        if (!names.has(validated)) {
-            names.add(validated);
-            params.push(validated);
-        }
-    }
-    if (test.empty !== undefined && typeof test.empty != "boolean") {
-        throw new Error('Selection test "empty" must be a boolean.');
-    }
-
-    return { params, empty: test.empty ?? true, legacy: false };
+    const params = Array.from(new Set(selection.or.map(validateParameterName)));
+    return { params, empty, singleParam: false };
 }
 
 /**
@@ -332,13 +272,33 @@ export function normalizeSelectionPredicate(condition) {
  * @returns {string[]}
  */
 export function getSelectionPredicateParams(predicate) {
-    if (!predicate) {
-        return [];
+    return predicate?.selection?.params ?? [];
+}
+
+/**
+ * Collects appearance selections once per parameter. Union membership wins when
+ * a parameter also appears in a single-param condition: with empty=false its
+ * partial-interval membership includes the single-param membership.
+ *
+ * @param {Record<string, import("../types/encoder.js").Encoder>} encoders
+ * @returns {Map<string, boolean>} Parameter to partial-interval semantics.
+ */
+export function collectAppearanceSelections(encoders) {
+    const selections = new Map();
+    for (const encoder of Object.values(encoders)) {
+        for (const { predicate } of encoder.branches) {
+            const info = predicate.selection;
+            if (info) {
+                for (const param of info.params) {
+                    selections.set(
+                        param,
+                        selections.get(param) || !info.singleParam
+                    );
+                }
+            }
+        }
     }
-    return (
-        predicate.selection?.params ??
-        (predicate.param ? [predicate.param] : [])
-    );
+    return selections;
 }
 
 /**
@@ -401,11 +361,6 @@ function makeSelectionMembershipExpression(
             const secondary = getSecondaryChannel(channel);
             const f = fields[channel];
             const f2 = fields[secondary] ?? fields[channel];
-            if (!f || !f2) {
-                throw new Error(
-                    `Selection interval channel "${channel}" requires a field definition.`
-                );
-            }
             const interval = `${param}.intervals.${channel}`;
             const test =
                 hitTestMode == "endpoints"
@@ -437,11 +392,6 @@ export function makeSelectionUnionTestExpression(
     empty,
     hitTestMode = "intersects"
 ) {
-    if (entries.length == 0) {
-        throw new Error(
-            "Selection unions must contain at least one selection."
-        );
-    }
     const membership = entries.map(({ param, selection, fields }) =>
         makeSelectionMembershipExpression(param, selection, fields, hitTestMode)
     );

@@ -36,10 +36,6 @@ export function createSelectionPredicate(
      * @typedef {import("../types/encoder.js").Predicate} Predicate
      */
 
-    if (!info) {
-        throw new Error("Conditional branch has no selection predicate.");
-    }
-
     /** @type {import("../paramRuntime/types.js").ExprRefFunction | undefined} */
     let compiled;
 
@@ -50,7 +46,7 @@ export function createSelectionPredicate(
             return compiled;
         }
 
-        if (info.legacy && !paramRuntime.findValue(info.params[0])) {
+        if (info.singleParam && !paramRuntime.findValue(info.params[0])) {
             return fallback;
         }
 
@@ -68,7 +64,7 @@ export function createSelectionPredicate(
             const fields = {};
             if (isIntervalSelection(selection)) {
                 for (const channel of Object.keys(selection.intervals)) {
-                    const targets = info.legacy
+                    const targets = info.singleParam
                         ? [channel]
                         : [channel, getSecondaryChannel(channel)];
                     for (const target of targets) {
@@ -96,7 +92,7 @@ export function createSelectionPredicate(
             return { param, selection, fields };
         });
 
-        const expr = info.legacy
+        const expr = info.singleParam
             ? makeSelectionTestExpression(
                   {
                       type: "filter",
@@ -119,11 +115,7 @@ export function createSelectionPredicate(
     /** @type {Predicate} */
     const predicate = Object.assign(
         /** @param {Datum} datum */ (datum) => ensureCompiled()(datum),
-        {
-            param: info.legacy ? info.params[0] : undefined,
-            selection: info,
-            empty: info.empty,
-        }
+        { selection: info }
     );
 
     return predicate;
@@ -176,12 +168,7 @@ export function createConditionalBranches(
                   paramRuntime,
                   hitTestMode
               )
-            : Object.assign(
-                  makeConstantExprRef(index === branchChannelDefs.length - 1),
-                  {
-                      empty: false,
-                  }
-              );
+            : makeConstantExprRef(index === branchChannelDefs.length - 1);
 
         return {
             accessor,

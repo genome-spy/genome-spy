@@ -13,7 +13,7 @@ describe("GLSL conditional selection encoders", () => {
                     selection: {
                         params: ["selected", "brush"],
                         empty: true,
-                        legacy: false,
+                        singleParam: false,
                     },
                 },
             },

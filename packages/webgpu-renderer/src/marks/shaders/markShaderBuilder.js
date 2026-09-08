@@ -607,25 +607,25 @@ ${clauses.join("\n")}
         }
     }
 
-    const unionSelectionNames = new Set(
-        channelIRs.flatMap((channelIR) =>
-            (channelIR.channel.conditions ?? []).flatMap((condition) =>
-                "selectionUnion" in condition.when
-                    ? condition.when.selectionUnion.map(
-                          (leaf) => leaf.selection
-                      )
-                    : []
-            )
-        )
-    );
-
-    // Match Core's GLSL aggregate: all referenced selections, empty=false,
-    // enabled only when the mark has a uniqueId channel.
+    // Only appearance selections bypass link fading; order/visibility resources
+    // do not change the mark's appearance.
+    const appearanceSelections = new Map();
+    for (const channelIR of channelIRs) {
+        for (const { when } of channelIR.channel.conditions ?? []) {
+            if ("selectionUnion" in when) {
+                for (const leaf of when.selectionUnion) {
+                    appearanceSelections.set(leaf.selection, true);
+                }
+            } else if (!appearanceSelections.has(when.selection)) {
+                appearanceSelections.set(when.selection, false);
+            }
+        }
+    }
     const selectionTests = channelIRByName.has("uniqueId")
-        ? selectionDefs.map((def) =>
-              unionSelectionNames.has(def.name)
-                  ? `${SELECTION_MEMBERSHIP_PREFIX}${def.name}(i)`
-                  : `${SELECTION_CHECKER_PREFIX}${def.name}(i, false)`
+        ? Array.from(appearanceSelections, ([name, union]) =>
+              union
+                  ? `${SELECTION_MEMBERSHIP_PREFIX}${name}(i)`
+                  : `${SELECTION_CHECKER_PREFIX}${name}(i, false)`
           )
         : [];
     selectionFns.push(/* wgsl */ `

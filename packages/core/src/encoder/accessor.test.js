@@ -206,7 +206,7 @@ describe("createConditionalBranches", () => {
     // Conditional accessor
     test("Conditional accessor accesses the correct field", () => {
         expect(a[0].accessor(data[0])).toEqual(123);
-        expect(a[0].predicate.param).toEqual("p");
+        expect(a[0].predicate.selection.params).toEqual(["p"]);
     });
 
     test("Conditional predicate is true only for the selected datum", () => {
@@ -217,7 +217,7 @@ describe("createConditionalBranches", () => {
     // Default accessor
     test("Default accessor accesses the correct field", () => {
         expect(a[1].accessor(data[0])).toEqual(1);
-        expect(a[1].predicate.param).toBeFalsy();
+        expect(a[1].predicate.selection).toBeFalsy();
     });
 
     test("Default predicate is true for all data", () => {
@@ -309,8 +309,8 @@ describe("createConditionalBranches", () => {
         );
 
         expect(branches).toHaveLength(2);
-        expect(branches[0].predicate.param).toBe("brush");
-        expect(branches[0].predicate.empty).toBe(false);
+        expect(branches[0].predicate.selection.params).toEqual(["brush"]);
+        expect(branches[0].predicate.selection.empty).toBe(false);
     });
 
     test("Selection unions match all-empty and selected rows", () => {
@@ -420,37 +420,25 @@ describe("createConditionalBranches", () => {
         expect(predicate({ x: 15, x2: 20 })).toBe(true);
     });
 
-    test("Selection union rejects malformed predicates", () => {
+    test("Selection unions require members with valid parameter names", () => {
         const runtime = new ViewParamRuntime(() => undefined);
-        const make = (/** @type {any} */ test) => () =>
+        const make = (/** @type {any} */ members) => () =>
             createConditionalBranches(
                 "color",
-                { value: "gray", condition: { test, value: "blue" } },
                 {
-                    color: {
-                        value: "gray",
-                        condition: { test, value: "blue" },
-                    },
-                },
-                runtime
-            );
-        expect(make({ selection: { or: [] } })).toThrow(/nonempty/);
-        expect(make({ selection: { or: ["a", 1] } })).toThrow(/strings/);
-        expect(() =>
-            createConditionalBranches(
-                "color",
-                /** @type {any} */ ({
                     value: "gray",
                     condition: {
-                        test: { selection: { or: ["a"] } },
-                        empty: false,
+                        test: { selection: { or: members } },
                         value: "blue",
                     },
-                }),
+                },
                 {},
                 runtime
-            )
-        ).toThrow(/inside/);
+            );
+        expect(make([])).toThrow(/nonempty/);
+        expect(make(["a", "not.a.parameter"])).toThrow(
+            /Invalid parameter name/
+        );
     });
 });
 

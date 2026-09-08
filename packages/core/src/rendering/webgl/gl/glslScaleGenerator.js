@@ -567,8 +567,8 @@ export function generateConditionalEncoderGlsl(channel, branches) {
     for (let i = 0; i < branches.length; i++) {
         const { accessor, predicate } = branches[i];
         const accessorFunctionName = makeAccessorFunctionName(channel, i);
-        const { param, empty, selection } = predicate;
-        if (selection && !selection.legacy) {
+        const { selection } = predicate;
+        if (selection && !selection.singleParam) {
             const groupEmpty = selection.empty;
             const memberships = selection.params.map(
                 (name) => `${SELECTION_MEMBERSHIP_PREFIX}${name}()`
@@ -583,7 +583,9 @@ export function generateConditionalEncoderGlsl(channel, branches) {
             );
         } else {
             conditions.push(
-                param ? `${SELECTION_CHECKER_PREFIX}${param}(${!!empty})` : null
+                selection
+                    ? `${SELECTION_CHECKER_PREFIX}${selection.params[0]}(${selection.empty})`
+                    : null
             );
         }
 
