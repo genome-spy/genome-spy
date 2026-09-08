@@ -9,6 +9,7 @@ import {
     isIntervalSelection,
     isSinglePointSelection,
 } from "../../selection/selection.js";
+import { collectAppearanceSelections } from "../../selection/selection.js";
 
 const FADE_STEPS = 4;
 
@@ -93,63 +94,67 @@ export function createLinkFadeEncoder(mark, shape) {
  * @returns {((datum: import("../../data/flowNode.js").Datum) => boolean)[]}
  */
 function createSelectionTests(mark) {
-    const paramNames = new Set(
-        Object.values(mark.encoders)
-            .flatMap((encoder) => encoder.branches)
-            .map((branch) => branch.predicate.param)
-            .filter((param) => param)
-    );
-    return Array.from(paramNames, (param) => {
-        const selection =
-            /** @type {import("../../types/selectionTypes.js").Selection} */ (
-                mark.unitView.paramRuntime.findValue(param)
-            );
-        if (isSinglePointSelection(selection)) {
-            return (datum) =>
-                selection.uniqueId != null &&
-                selection.uniqueId == datum[UNIQUE_ID_KEY];
-        } else if (isMultiPointSelection(selection)) {
-            return (datum) => selection.data.has(datum[UNIQUE_ID_KEY]);
-        } else if (isIntervalSelection(selection)) {
-            const targets = Object.entries(selection.intervals).map(
-                ([channel, interval]) => {
-                    if (channel != "x" && channel != "y") {
-                        throw new Error(
-                            `Unsupported link selection channel: ${channel}`
-                        );
+    return Array.from(
+        collectAppearanceSelections(mark.encoders),
+        ([param, partialIntervals]) => {
+            const selection =
+                /** @type {import("../../types/selectionTypes.js").Selection} */ (
+                    mark.unitView.paramRuntime.findValue(param)
+                );
+            if (isSinglePointSelection(selection)) {
+                return (datum) =>
+                    selection.uniqueId != null &&
+                    selection.uniqueId == datum[UNIQUE_ID_KEY];
+            } else if (isMultiPointSelection(selection)) {
+                return (datum) => selection.data.has(datum[UNIQUE_ID_KEY]);
+            } else if (isIntervalSelection(selection)) {
+                const targets = Object.entries(selection.intervals).map(
+                    ([channel, interval]) => {
+                        if (channel != "x" && channel != "y") {
+                            throw new Error(
+                                `Unsupported link selection channel: ${channel}`
+                            );
+                        }
+                        const encoder = mark.encoders[channel];
+                        const secondary =
+                            mark.encoders[getSecondaryChannel(channel)];
+                        // GLSL tests the raw data branch, before scales and offsets.
+                        const start =
+                            getEncoderDataAccessor(encoder) ??
+                            encoder.branches[0].accessor;
+                        const end =
+                            getEncoderDataAccessor(secondary) ??
+                            secondary.branches[0].accessor;
+                        return { interval, start, end };
                     }
-                    const encoder = mark.encoders[channel];
-                    const secondary =
-                        mark.encoders[getSecondaryChannel(channel)];
-                    // GLSL tests the raw data branch, before scales and offsets.
-                    const start =
-                        getEncoderDataAccessor(encoder) ??
-                        encoder.branches[0].accessor;
-                    const end =
-                        getEncoderDataAccessor(secondary) ??
-                        secondary.branches[0].accessor;
-                    return { interval, start, end };
-                }
-            );
-            return (datum) =>
-                targets.every(({ interval, start, end }) => {
-                    if (!interval) {
+                );
+                const activeTargets = partialIntervals
+                    ? targets.filter(({ interval }) => interval)
+                    : targets;
+                return (datum) => {
+                    if (activeTargets.length == 0) {
                         return false;
                     }
-                    const a = +start(datum);
-                    const b = +end(datum);
-                    // LinkMark's hit test is endpoints, not span intersection.
-                    return (
-                        (interval[0] <= a && a <= interval[1]) ||
-                        (interval[0] <= b && b <= interval[1])
-                    );
-                });
-        } else {
-            throw new Error(
-                `Unsupported link selection type: ${selection.type}`
-            );
+                    return activeTargets.every(({ interval, start, end }) => {
+                        if (!interval) {
+                            return false;
+                        }
+                        const a = +start(datum);
+                        const b = +end(datum);
+                        // LinkMark's hit test is endpoints, not span intersection.
+                        return (
+                            (interval[0] <= a && a <= interval[1]) ||
+                            (interval[0] <= b && b <= interval[1])
+                        );
+                    });
+                };
+            } else {
+                throw new Error(
+                    `Unsupported link selection type: ${selection.type}`
+                );
+            }
         }
-    });
+    );
 }
 
 /**

@@ -32,6 +32,8 @@ export const SCALED_FUNCTION_PREFIX = "getScaled_";
 export const RANGE_TEXTURE_PREFIX = "uRangeTexture_";
 export const PARAM_PREFIX = "uParam_";
 export const SELECTION_CHECKER_PREFIX = "checkSelection_";
+export const SELECTION_MEMBERSHIP_PREFIX = "isSelectionMember_";
+export const SELECTION_EMPTY_PREFIX = "isSelectionEmpty_";
 
 // https://stackoverflow.com/a/47543127
 const FLT_MAX = 3.402823466e38;
@@ -565,11 +567,27 @@ export function generateConditionalEncoderGlsl(channel, branches) {
     for (let i = 0; i < branches.length; i++) {
         const { accessor, predicate } = branches[i];
         const accessorFunctionName = makeAccessorFunctionName(channel, i);
-        const { param, empty } = predicate;
-
-        conditions.push(
-            param ? `${SELECTION_CHECKER_PREFIX}${param}(${!!empty})` : null
-        );
+        const { selection } = predicate;
+        if (selection && !selection.singleParam) {
+            const groupEmpty = selection.empty;
+            const memberships = selection.params.map(
+                (name) => `${SELECTION_MEMBERSHIP_PREFIX}${name}()`
+            );
+            const allEmpty = selection.params.map(
+                (name) => `${SELECTION_EMPTY_PREFIX}${name}()`
+            );
+            conditions.push(
+                `(${memberships.join(" || ")}${
+                    groupEmpty ? ` || (${allEmpty.join(" && ")})` : ""
+                })`
+            );
+        } else {
+            conditions.push(
+                selection
+                    ? `${SELECTION_CHECKER_PREFIX}${selection.params[0]}(${selection.empty})`
+                    : null
+            );
+        }
 
         statements.push(
             accessor.scaleChannel

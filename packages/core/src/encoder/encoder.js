@@ -1,6 +1,8 @@
 import {
     isIntervalSelection,
     makeSelectionTestExpression,
+    makeSelectionUnionTestExpression,
+    normalizeSelectionPredicate,
 } from "../selection/selection.js";
 import { createAccessor } from "./accessor.js";
 import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
@@ -16,13 +18,18 @@ import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
  * first evaluated so encoder construction does not depend on eager selection
  * materialization.
  *
- * @param {string} param
+ * @param {import("../selection/selection.js").SelectionPredicateInfo} info
  * @param {import("../spec/channel.js").Encoding} encoding
  * @param {{ findValue: (param: string) => any, createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
- * @param {boolean} empty
+ * @param {"intersects" | "encloses" | "endpoints"} [hitTestMode="intersects"]
  * @returns {import("../types/encoder.js").Predicate}
  */
-export function createSelectionPredicate(param, encoding, paramRuntime, empty) {
+export function createSelectionPredicate(
+    info,
+    encoding,
+    paramRuntime,
+    hitTestMode = "intersects"
+) {
     /**
      * @typedef {import("../data/flowNode.js").Datum} Datum
      * @typedef {import("../types/selectionTypes.js").Selection} Selection
@@ -39,39 +46,67 @@ export function createSelectionPredicate(param, encoding, paramRuntime, empty) {
             return compiled;
         }
 
-        const selection = /** @type {Selection | undefined} */ (
-            paramRuntime.findValue(param)
-        );
-        if (!selection) {
+        if (info.singleParam && !paramRuntime.findValue(info.params[0])) {
             return fallback;
         }
 
-        /** @type {Partial<Record<import("../spec/channel.js").PositionalChannel, import("../spec/channel.js").Field>>} */
-        const fields = {};
-        if (isIntervalSelection(selection)) {
-            const channels = Object.keys(selection.intervals);
-            for (const channel of channels) {
-                const channelDef = encoding[channel];
-                if (isFieldDef(channelDef)) {
-                    fields[channel] = channelDef.field;
-                    continue;
-                } else if (channelDef && "condition" in channelDef) {
-                    const condition = channelDef.condition;
-                    if (isFieldDef(condition)) {
-                        fields[channel] = condition.field;
-                        continue;
-                    }
-                }
+        const entries = info.params.map((param) => {
+            const selection = /** @type {Selection | undefined} */ (
+                paramRuntime.findValue(param)
+            );
+            if (!selection) {
                 throw new Error(
-                    `Selection "${param}" has an interval for "${channel}" channel, but could not find a fieldDef: ${JSON.stringify(encoding[channel])}`
+                    `Selection parameter "${param}" was not found.`
                 );
             }
-        }
 
-        const expr = makeSelectionTestExpression(
-            { type: "filter", param, fields, empty },
-            selection
-        );
+            /** @type {Partial<Record<import("../spec/channel.js").PositionalChannel, import("../spec/channel.js").Field>>} */
+            const fields = {};
+            if (isIntervalSelection(selection)) {
+                for (const channel of Object.keys(selection.intervals)) {
+                    const targets = info.singleParam
+                        ? [channel]
+                        : [channel, getSecondaryChannel(channel)];
+                    for (const target of targets) {
+                        const channelDef = encoding[target];
+                        if (isFieldDef(channelDef)) {
+                            fields[target] = channelDef.field;
+                        } else if (channelDef && "condition" in channelDef) {
+                            const condition = channelDef.condition;
+                            const conditionDefs = Array.isArray(condition)
+                                ? condition
+                                : [condition];
+                            const conditionDef = conditionDefs.find(isFieldDef);
+                            if (isFieldDef(conditionDef)) {
+                                fields[target] = conditionDef.field;
+                            }
+                        }
+                    }
+                    if (!fields[channel]) {
+                        throw new Error(
+                            `Selection "${param}" has an interval for "${channel}" channel, but could not find a fieldDef: ${JSON.stringify(encoding[channel])}`
+                        );
+                    }
+                }
+            }
+            return { param, selection, fields };
+        });
+
+        const expr = info.singleParam
+            ? makeSelectionTestExpression(
+                  {
+                      type: "filter",
+                      param: info.params[0],
+                      fields: entries[0].fields,
+                      empty: info.empty,
+                  },
+                  entries[0].selection
+              )
+            : makeSelectionUnionTestExpression(
+                  entries,
+                  info.empty,
+                  hitTestMode
+              );
 
         compiled = paramRuntime.createExpression(expr);
         return compiled;
@@ -80,10 +115,7 @@ export function createSelectionPredicate(param, encoding, paramRuntime, empty) {
     /** @type {Predicate} */
     const predicate = Object.assign(
         /** @param {Datum} datum */ (datum) => ensureCompiled()(datum),
-        {
-            param,
-            empty: empty ?? true,
-        }
+        { selection: info }
     );
 
     return predicate;
@@ -97,13 +129,15 @@ export function createSelectionPredicate(param, encoding, paramRuntime, empty) {
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @param {import("../spec/channel.js").Encoding} encoding
  * @param {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction, findValue: (param: string) => any }} paramRuntime
+ * @param {"intersects" | "encloses" | "endpoints"} [hitTestMode="intersects"]
  * @returns {import("../types/encoder.js").EncodingBranch[]}
  */
 export function createConditionalBranches(
     channel,
     channelDef,
     encoding,
-    paramRuntime
+    paramRuntime,
+    hitTestMode = "intersects"
 ) {
     const conditions =
         isFieldOrDatumDefWithCondition(channelDef) ||
@@ -124,20 +158,17 @@ export function createConditionalBranches(
             paramRuntime
         );
 
-        /** @type {import("../types/encoder.js").Predicate} */
-        const predicate = condition?.param
+        const selectionPredicate = condition
+            ? normalizeSelectionPredicate(condition)
+            : undefined;
+        const predicate = selectionPredicate
             ? createSelectionPredicate(
-                  condition.param,
+                  selectionPredicate,
                   encoding,
                   paramRuntime,
-                  condition.empty
+                  hitTestMode
               )
-            : Object.assign(
-                  makeConstantExprRef(index === branchChannelDefs.length - 1),
-                  {
-                      empty: false,
-                  }
-              );
+            : makeConstantExprRef(index === branchChannelDefs.length - 1);
 
         return {
             accessor,
@@ -204,7 +235,8 @@ export default function createEncoders(unitView, encoding) {
                 typedChannel,
                 typedChannelDef,
                 encoding,
-                unitView.paramRuntime
+                unitView.paramRuntime,
+                unitView.mark.defaultHitTestMode
             ),
             scaleSource,
             bindScale

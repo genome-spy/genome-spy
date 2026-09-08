@@ -32,14 +32,12 @@ export type IntervalSelectionTarget = Readonly<{
     hitTest?: "intersects" | "encloses" | "endpoints";
 }>;
 
-export type SelectionPredicate =
+export type SelectionPredicateLeaf =
     | {
           /** Selection name declared in channel conditions. */
           selection: string;
           /** Fixed selection kind (cannot change after mark creation). */
           type: "single" | "multi";
-          /** Treat empty selections as true when set. */
-          empty?: boolean;
       }
     | {
           /** Selection name declared in channel conditions. */
@@ -48,7 +46,19 @@ export type SelectionPredicate =
           type: "interval";
           /** Ordered, non-empty scalar target descriptors. */
           targets: readonly IntervalSelectionTarget[];
-          /** Treat inactive targets as matching when set. */
+      };
+
+export type LegacySelectionPredicate = SelectionPredicateLeaf & {
+    /** Treat empty selections as true when set. */
+    empty?: boolean;
+};
+
+export type SelectionPredicate =
+    | LegacySelectionPredicate
+    | {
+          /** Flat OR over named selection leaves. */
+          selectionUnion: readonly SelectionPredicateLeaf[];
+          /** Treat the union as matching when every leaf is empty. */
           empty?: boolean;
       };
 
@@ -197,8 +207,8 @@ export type ChannelSlotGroup<T> = Partial<T> & {
      * `setDomain`, `setRange`, or `set` forward to this slot.
      */
     default?: T;
-    /** Conditional slots keyed by selection name. */
-    conditions?: Record<string, T>;
+    /** Conditional slots keyed by zero-based branch index. */
+    conditions?: Record<number, T>;
 };
 
 export type SeriesData = TypedArray | string | string[];

@@ -149,7 +149,11 @@ function getEmptySelectionValueDef(channelDef) {
             ? channelDef.condition
             : [channelDef.condition];
         for (const condition of conditions) {
-            if (condition.empty !== false && "value" in condition) {
+            const empty =
+                "test" in condition
+                    ? (condition.test.empty ?? true)
+                    : (condition.empty ?? true);
+            if (empty && "value" in condition) {
                 return { value: condition.value };
             }
         }

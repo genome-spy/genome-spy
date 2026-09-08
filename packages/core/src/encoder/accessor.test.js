@@ -206,7 +206,7 @@ describe("createConditionalBranches", () => {
     // Conditional accessor
     test("Conditional accessor accesses the correct field", () => {
         expect(a[0].accessor(data[0])).toEqual(123);
-        expect(a[0].predicate.param).toEqual("p");
+        expect(a[0].predicate.selection.params).toEqual(["p"]);
     });
 
     test("Conditional predicate is true only for the selected datum", () => {
@@ -217,7 +217,7 @@ describe("createConditionalBranches", () => {
     // Default accessor
     test("Default accessor accesses the correct field", () => {
         expect(a[1].accessor(data[0])).toEqual(1);
-        expect(a[1].predicate.param).toBeFalsy();
+        expect(a[1].predicate.selection).toBeFalsy();
     });
 
     test("Default predicate is true for all data", () => {
@@ -309,8 +309,136 @@ describe("createConditionalBranches", () => {
         );
 
         expect(branches).toHaveLength(2);
-        expect(branches[0].predicate.param).toBe("brush");
-        expect(branches[0].predicate.empty).toBe(false);
+        expect(branches[0].predicate.selection.params).toEqual(["brush"]);
+        expect(branches[0].predicate.selection.empty).toBe(false);
+    });
+
+    test("Selection unions match all-empty and selected rows", () => {
+        const unionRuntime = new ViewParamRuntime(() => undefined);
+        const setA = unionRuntime.allocateSetter(
+            "a",
+            createSinglePointSelection(null)
+        );
+        const setB = unionRuntime.allocateSetter(
+            "b",
+            createSinglePointSelection(null)
+        );
+        const unionEncoding = /** @type {any} */ ({
+            color: {
+                value: "gray",
+                condition: {
+                    test: {
+                        param: { or: ["a", "b", "a"] },
+                        empty: true,
+                    },
+                    value: "blue",
+                },
+            },
+        });
+        const branches = createConditionalBranches(
+            "color",
+            unionEncoding.color,
+            unionEncoding,
+            unionRuntime
+        );
+
+        expect(branches[0].predicate({ [UNIQUE_ID_KEY]: 0 })).toBe(true);
+        setA(createSinglePointSelection({ [UNIQUE_ID_KEY]: 1 }));
+        expect(branches[0].predicate({ [UNIQUE_ID_KEY]: 0 })).toBe(false);
+        expect(branches[0].predicate({ [UNIQUE_ID_KEY]: 1 })).toBe(true);
+        setB(createSinglePointSelection({ [UNIQUE_ID_KEY]: 0 }));
+        expect(branches[0].predicate({ [UNIQUE_ID_KEY]: 0 })).toBe(true);
+        expect(branches[0].predicate.selection.params).toEqual(["a", "b"]);
+    });
+
+    test("Selection unions support partial interval dimensions", () => {
+        const intervalRuntime = new ViewParamRuntime(() => undefined);
+        const setX = intervalRuntime.allocateSetter(
+            "xBrush",
+            createIntervalSelection(["x", "y"])
+        );
+        const setY = intervalRuntime.allocateSetter(
+            "yBrush",
+            createIntervalSelection(["x", "y"])
+        );
+        const unionEncoding = /** @type {any} */ ({
+            x: { field: "x", type: "quantitative" },
+            y: { field: "y", type: "quantitative" },
+            color: {
+                value: "gray",
+                condition: {
+                    test: {
+                        param: { or: ["xBrush", "yBrush"] },
+                        empty: false,
+                    },
+                    value: "blue",
+                },
+            },
+        });
+        const predicate = createConditionalBranches(
+            "color",
+            unionEncoding.color,
+            unionEncoding,
+            intervalRuntime
+        )[0].predicate;
+
+        setX({ type: "interval", intervals: { x: [1, 2], y: null } });
+        expect(predicate({ x: 1.5, y: 100 })).toBe(true);
+        expect(predicate({ x: 3, y: 100 })).toBe(false);
+        setY({ type: "interval", intervals: { x: null, y: [4, 5] } });
+        expect(predicate({ x: 100, y: 4.5 })).toBe(true);
+        expect(predicate({ x: 100, y: 8 })).toBe(false);
+    });
+
+    test("Selection union interval predicates use the requested endpoint hit test", () => {
+        const runtime = new ViewParamRuntime(() => undefined);
+        const setBrush = runtime.allocateSetter(
+            "brush",
+            createIntervalSelection(["x"])
+        );
+        setBrush({ type: "interval", intervals: { x: [15, 16] } });
+        const encoding = /** @type {any} */ ({
+            x: { field: "x", type: "quantitative" },
+            x2: { field: "x2", type: "quantitative" },
+            color: {
+                value: "gray",
+                condition: {
+                    test: { param: { or: ["brush"] }, empty: false },
+                    value: "blue",
+                },
+            },
+        });
+        const predicate = createConditionalBranches(
+            "color",
+            encoding.color,
+            encoding,
+            runtime,
+            "endpoints"
+        )[0].predicate;
+
+        expect(predicate({ x: 10, x2: 20 })).toBe(false);
+        expect(predicate({ x: 15, x2: 20 })).toBe(true);
+    });
+
+    test("Selection unions require members with valid parameter names", () => {
+        const runtime = new ViewParamRuntime(() => undefined);
+        const make = (/** @type {any} */ members) => () =>
+            createConditionalBranches(
+                "color",
+                {
+                    value: "gray",
+                    condition: {
+                        test: { param: { or: members } },
+                        value: "blue",
+                    },
+                },
+                {},
+                runtime
+            );
+        expect(make([])).toThrow(/nonempty/);
+        expect(make(["a", "not.a.parameter"])).toThrow(
+            /Invalid parameter name/
+        );
     });
 });
 

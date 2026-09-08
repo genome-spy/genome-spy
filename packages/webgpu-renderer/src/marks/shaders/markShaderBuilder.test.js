@@ -381,6 +381,80 @@ const placementSentinel = 1u;
         expect(shaderCode).toContain("checkSelection_brush");
     });
 
+    it("emits flat selection-union predicates with group emptiness", () => {
+        const packedSeriesLayout = /** @type {any} */ (
+            new Map([
+                [
+                    "x",
+                    {
+                        name: "x",
+                        scalarType: "f32",
+                        components: 1,
+                        offset: 0,
+                        stride: 1,
+                    },
+                ],
+            ])
+        );
+        const { shaderCode } = buildMarkShader({
+            channels: {
+                uniqueId: { value: 1, type: "u32", components: 1 },
+                fill: {
+                    value: [0, 0, 0, 1],
+                    components: 4,
+                    conditions: [
+                        {
+                            when: {
+                                selectionUnion: [
+                                    { selection: "picked", type: "single" },
+                                    {
+                                        selection: "brush",
+                                        type: "interval",
+                                        targets: [{ input: "x" }],
+                                    },
+                                ],
+                                empty: true,
+                            },
+                            value: [1, 0, 0, 1],
+                        },
+                    ],
+                },
+                x: {
+                    data: new Float32Array([0]),
+                    type: "f32",
+                    components: 1,
+                },
+            },
+            uniformLayout: [
+                { name: "uSelection_picked", type: "u32", components: 1 },
+                {
+                    name: "uSelection_brush_0_active",
+                    type: "u32",
+                    components: 1,
+                },
+                { name: "uSelection_brush_0", type: "f32", components: 2 },
+            ],
+            shaderBody,
+            packedSeriesLayout,
+            selectionDefs: [
+                { name: "picked", type: "single" },
+                {
+                    name: "brush",
+                    type: "interval",
+                    targets: [{ input: "x", scalarType: "f32" }],
+                },
+            ],
+        });
+
+        expect(shaderCode).toContain("isSelectionMember_picked");
+        expect(shaderCode).toContain("isSelectionMember_brush");
+        expect(shaderCode).toContain("isSelectionEmpty_picked");
+        expect(shaderCode).toContain("isSelectionEmpty_brush");
+        expect(shaderCode).toContain(
+            "isSelectionMember_picked(i) || isSelectionMember_brush(i)"
+        );
+    });
+
     it("emits visibility predicates over scalar inputs and slots", () => {
         const packedSeriesLayout = new Map(
             /** @type {[string, import("../programs/internal/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */
@@ -399,6 +473,11 @@ const placementSentinel = 1u;
         );
         const { shaderCode } = buildMarkShader({
             channels: {
+                uniqueId: {
+                    value: 1,
+                    type: "u32",
+                    components: 1,
+                },
                 score: {
                     data: new Float32Array([0, 1]),
                     type: "f32",
@@ -407,6 +486,8 @@ const placementSentinel = 1u;
             },
             uniformLayout: [
                 { name: "u_scalar_threshold", type: "f32", components: 1 },
+                { name: "uSelection_first", type: "u32", components: 1 },
+                { name: "uSelection_second", type: "u32", components: 1 },
             ],
             shaderBody,
             packedSeriesLayout,
@@ -415,6 +496,10 @@ const placementSentinel = 1u;
             scalarSlots: {
                 threshold: { value: 0.5, type: "f32" },
             },
+            selectionDefs: [
+                { name: "first", type: "single" },
+                { name: "second", type: "single" },
+            ],
             visibleWhen: {
                 any: [
                     {
@@ -431,6 +516,13 @@ const placementSentinel = 1u;
                             },
                         ],
                     },
+                    {
+                        selectionUnion: [
+                            { selection: "first", type: "single" },
+                            { selection: "second", type: "single" },
+                        ],
+                        empty: false,
+                    },
                 ],
             },
         });
@@ -438,6 +530,9 @@ const placementSentinel = 1u;
         expect(shaderCode).toContain("fn isInstanceVisible");
         expect(shaderCode).toContain("read_score(i)");
         expect(shaderCode).toContain("params.u_scalar_threshold");
+        expect(shaderCode).toContain(
+            "isSelectionMember_first(i) || isSelectionMember_second(i)"
+        );
         expect(shaderCode).toContain(">=");
         expect(shaderCode).toContain("<");
     });
@@ -463,80 +558,6 @@ const placementSentinel = 1u;
                 scalarSlots: {},
             })
         ).toThrow('unknown slot "missing"');
-
-        expect(() =>
-            buildMarkShader({
-                channels: {
-                    score: {
-                        data: new Float32Array([0, 1]),
-                        type: "f32",
-                        components: 1,
-                    },
-                },
-                uniformLayout: [],
-                shaderBody,
-                visibleWhen: { all: [] },
-                inputNames: new Set(["score"]),
-            })
-        ).toThrow("all nodes must not be empty");
-
-        expect(() =>
-            buildMarkShader({
-                channels: {
-                    score: {
-                        data: new Float32Array([0, 1]),
-                        type: "f32",
-                        components: 1,
-                    },
-                },
-                uniformLayout: [],
-                shaderBody,
-                visibleWhen: {
-                    compare: ">=",
-                    left: { input: "score" },
-                    right: { input: "score" },
-                    any: [
-                        {
-                            compare: ">=",
-                            left: { input: "score" },
-                            right: { input: "score" },
-                        },
-                    ],
-                },
-                inputNames: new Set(["score"]),
-            })
-        ).toThrow("exactly one of compare, selection, all, or any");
-
-        expect(() =>
-            buildMarkShader({
-                channels: {
-                    score: {
-                        data: new Float32Array([0, 1]),
-                        type: "f32",
-                        components: 1,
-                    },
-                },
-                uniformLayout: [],
-                shaderBody,
-                visibleWhen: {
-                    any: [
-                        {
-                            compare: ">=",
-                            left: { input: "score" },
-                            right: { input: "score" },
-                        },
-                    ],
-                    all: [
-                        {
-                            compare: ">=",
-                            left: { input: "score" },
-                            right: { input: "score" },
-                        },
-                    ],
-                },
-                inputNames: new Set(["score"]),
-            })
-        ).toThrow("exactly one of compare, selection, all, or any");
 
         expect(() =>
             buildMarkShader({

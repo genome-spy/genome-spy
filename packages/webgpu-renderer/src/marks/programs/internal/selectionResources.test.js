@@ -135,6 +135,80 @@ function contains(table, key) {
 }
 
 describe("SelectionResourceManager", () => {
+    it("discovers every leaf of a selection union once", () => {
+        const channels = /** @type {any} */ ({
+            uniqueId: { value: 1, type: "u32", components: 1 },
+            x: { data: new Float32Array([0]), type: "f32", components: 1 },
+            fill: {
+                value: 0,
+                type: "f32",
+                components: 1,
+                conditions: [
+                    {
+                        when: {
+                            selectionUnion: [
+                                { selection: "a", type: "single" },
+                                {
+                                    selection: "b",
+                                    type: "interval",
+                                    targets: [{ input: "x" }],
+                                },
+                                { selection: "a", type: "single" },
+                            ],
+                            empty: true,
+                        },
+                        value: 1,
+                    },
+                ],
+            },
+        });
+        const manager = new SelectionResourceManager({
+            channels,
+            device: createDevice(),
+            setUniformValue: vi.fn(),
+        });
+
+        expect(manager.selectionDefs.map(({ name }) => name)).toEqual([
+            "a",
+            "b",
+        ]);
+    });
+
+    it("discovers unions used only in a visibility tree", () => {
+        const channels = makeIntervalChannels([{ input: "x" }]);
+        // No channel condition may supply the visibility predicate's resources.
+        delete channels.fill.conditions;
+        channels.uniqueId = { value: 1, type: "u32", components: 1 };
+        const manager = new SelectionResourceManager({
+            device: createDevice(),
+            channels,
+            visibleWhen: {
+                any: [
+                    {
+                        selectionUnion: [
+                            { selection: "picked", type: "multi" },
+                            {
+                                selection: "brush",
+                                type: "interval",
+                                targets: [{ input: "x" }],
+                            },
+                        ],
+                        empty: false,
+                    },
+                ],
+            },
+            setUniformValue: vi.fn(),
+        });
+
+        expect(manager.selectionDefs.map(({ name }) => name)).toEqual([
+            "picked",
+            "brush",
+        ]);
+        expect(manager.selectionDefs[1].targets).toEqual([
+            { input: "x", hitTest: "intersects", scalarType: "f32" },
+        ]);
+    });
+
     it("discovers visibility-only and shared interval selections", () => {
         const visibleWhen =
             /** @type {import("../../../index.d.ts").VisibilityPredicate} */ ({
@@ -169,23 +243,6 @@ describe("SelectionResourceManager", () => {
                     setUniformValue: vi.fn(),
                 })
         ).toThrow("must keep the same interval targets");
-    });
-
-    it("rejects predicate nodes with multiple union members before discovery", () => {
-        expect(
-            () =>
-                new SelectionResourceManager({
-                    device: createDevice(),
-                    channels: makeIntervalChannels([{ input: "x" }]),
-                    visibleWhen: {
-                        selection: "brush",
-                        type: "interval",
-                        targets: [{ input: "x" }],
-                        any: [],
-                    },
-                    setUniformValue: vi.fn(),
-                })
-        ).toThrow("exactly one of compare, selection, all, or any");
     });
 
     it("allocates independently typed fields for an N-target interval", () => {

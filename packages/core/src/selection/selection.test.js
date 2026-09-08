@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
+    collectAppearanceSelections,
     createMultiPointSelection,
     createSinglePointSelection,
     getPointSelectionKeyTuples,
+    normalizeSelectionPredicate,
     resolvePointSelectionFromKeyTuples,
 } from "./selection.js";
 
@@ -90,5 +92,50 @@ describe("key-based selection helpers", () => {
             createMultiPointSelection([datumA, datumB])
         );
         expect(resolved.unresolved).toEqual([]);
+    });
+});
+
+// Membership bypasses ignore empty=true and must not depend on condition order.
+it.each([false, true])(
+    "collects appearance membership with union precedence (reverse=%s)",
+    (reverse) => {
+        const selections = [
+            { params: ["brush", "other"], singleParam: false, empty: true },
+            { params: ["brush"], singleParam: true, empty: false },
+            { params: ["picked"], singleParam: true, empty: true },
+        ];
+        if (reverse) selections.reverse();
+        const encoders = /** @type {any} */ ({
+            color: {
+                branches: selections.map((selection) => ({
+                    predicate: { selection },
+                })),
+            },
+            size: { branches: [{ predicate: {} }] },
+        });
+        expect(collectAppearanceSelections(encoders)).toEqual(
+            new Map([
+                ["brush", true],
+                ["other", true],
+                ["picked", false],
+            ])
+        );
+    }
+);
+
+it("normalizes direct and structured singleton selection predicates identically", () => {
+    const direct = normalizeSelectionPredicate({
+        param: "picked",
+        empty: false,
+    });
+    const structured = normalizeSelectionPredicate({
+        test: { param: "picked", empty: false },
+    });
+
+    expect(structured).toEqual(direct);
+    expect(structured).toEqual({
+        params: ["picked"],
+        empty: false,
+        singleParam: true,
     });
 });

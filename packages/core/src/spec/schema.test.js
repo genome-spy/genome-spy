@@ -161,6 +161,58 @@ describe("generated core schema", () => {
         );
     });
 
+    test("accepts structured selection predicates and rejects malformed forms", () => {
+        const validate = createCoreValidator();
+        const base = /** @type {any} */ ({
+            data: { values: [{ id: 1 }] },
+            mark: "point",
+            encoding: {
+                color: {
+                    condition: {
+                        test: {
+                            param: { or: ["selected", "brush"] },
+                            empty: false,
+                        },
+                        value: "blue",
+                    },
+                    value: "gray",
+                },
+            },
+        });
+        expect(validate(base), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+
+        const condition = /** @type {any} */ (base.encoding.color.condition);
+        condition.test.param.or = [];
+        expect(validate(base)).toBe(false);
+        condition.test.param.or = ["selected", 1];
+        expect(validate(base)).toBe(false);
+        condition.test.param.or = ["selected"];
+        condition.empty = false;
+        expect(validate(base)).toBe(false);
+        delete condition.empty;
+        condition.test.param = "selected";
+        expect(validate(base)).toBe(true);
+        condition.test.param = { or: ["selected"] };
+        condition.param = "selected";
+        expect(validate(base)).toBe(false);
+        delete condition.param;
+        condition.test = {
+            selection: { or: ["selected"] },
+            empty: false,
+        };
+        expect(validate(base)).toBe(false);
+        condition.test = {
+            param: { or: ["selected"] },
+            empty: false,
+        };
+        expect(validate(base)).toBe(true);
+        delete condition.test;
+        condition.param = { or: ["selected"] };
+        expect(validate(base)).toBe(false);
+    });
+
     test("accepts the indexed FASTA six-frame translation example", () => {
         const spec = JSON.parse(
             fs.readFileSync(

@@ -1,3 +1,4 @@
+import { collectAppearanceSelections } from "../../selection/selection.js";
 import { color as parseColor } from "d3-color";
 import { format as numberFormat } from "d3-format";
 import {
@@ -308,7 +309,7 @@ function createConditionalChannel(mark, channel, data, build) {
     const conditions = branches.slice(0, -1).map((branch) => {
         const branchEncoder = createBranchEncoder(mark, encoder, branch);
         const branchConfig = build(branchEncoder, branch);
-        const when = createSelectionCondition(mark, channel, branch.predicate);
+        const when = createSelectionCondition(mark, branch.predicate.selection);
         return { when, channel: branchConfig };
     });
 
@@ -358,70 +359,68 @@ function createBranchEncoder(mark, encoder, branch) {
  * Converts a Core selection predicate to the renderer's selection contract.
  *
  * @param {import("../../marks/mark.js").default} mark
- * @param {string} channel
- * @param {import("../../types/encoder.js").Predicate} predicate
+ * @param {import("../../selection/selection.js").SelectionPredicateInfo} selectionInfo
  * @returns {import("@genome-spy/webgpu-renderer").SelectionPredicate}
  */
-function createSelectionCondition(mark, channel, predicate) {
-    if (!predicate.param) {
-        throw unsupported(
-            mark,
-            `Conditional channel "${channel}" has no selection parameter.`
-        );
-    }
+function createSelectionCondition(mark, selectionInfo) {
+    const { params, empty, singleParam } = selectionInfo;
 
-    const selection = mark.unitView.paramRuntime.findValue(predicate.param);
-    if (
-        !selection ||
-        !["single", "multi", "interval"].includes(selection.type)
-    ) {
-        throw unsupported(
-            mark,
-            `Selection "${predicate.param}" is not available for WebGPU.`
-        );
-    }
-    /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate} */
-    const when = {
-        selection: predicate.param,
-        type: selection.type,
-        empty: predicate.empty ?? true,
+    /** @param {string} param @param {boolean} [empty] */
+    const createLeaf = (param, empty) => {
+        const selection = mark.unitView.paramRuntime.findValue(param);
+        if (
+            !selection ||
+            !["single", "multi", "interval"].includes(selection.type)
+        ) {
+            throw unsupported(
+                mark,
+                `Selection "${param}" is not available for WebGPU.`
+            );
+        }
+        /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate} */
+        const leaf = { selection: param, type: selection.type };
+        if (empty !== undefined) {
+            leaf.empty = empty;
+        }
+
+        if (selection.type == "interval") {
+            const intervalWhen = /** @type {any} */ (leaf);
+            intervalWhen.targets = Object.keys(selection.intervals).map(
+                (input) => {
+                    if (input != "x" && input != "y") {
+                        throw unsupported(
+                            mark,
+                            `Interval selection "${param}" has unsupported target "${String(input)}".`
+                        );
+                    }
+
+                    assertScalarIntervalInput(mark, param, input);
+
+                    const secondaryInput = getSecondaryChannel(input);
+                    const target = { input };
+                    if (mark.encoders[secondaryInput]) {
+                        assertScalarIntervalInput(mark, param, secondaryInput);
+                        return {
+                            ...target,
+                            secondaryInput,
+                            hitTest: mark.defaultHitTestMode,
+                        };
+                    }
+                    return target;
+                }
+            );
+        }
+        return leaf;
     };
 
-    if (selection.type == "interval") {
-        const intervalWhen =
-            /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate & {type: "interval"}} */ (
-                /** @type {unknown} */ (when)
-            );
-        intervalWhen.targets = Object.keys(selection.intervals).map((input) => {
-            if (input != "x" && input != "y") {
-                throw unsupported(
-                    mark,
-                    `Interval selection "${predicate.param}" has unsupported target "${String(input)}".`
-                );
-            }
-
-            assertScalarIntervalInput(mark, predicate.param, input);
-
-            const secondaryInput = getSecondaryChannel(input);
-            const target = { input };
-            if (mark.encoders[secondaryInput]) {
-                assertScalarIntervalInput(
-                    mark,
-                    predicate.param,
-                    secondaryInput
-                );
-                return {
-                    ...target,
-                    secondaryInput,
-                    hitTest: mark.defaultHitTestMode,
-                };
-            }
-            return target;
-        });
-        return intervalWhen;
+    if (!singleParam) {
+        return {
+            selectionUnion: params.map((param) => createLeaf(param)),
+            empty,
+        };
     }
 
-    return when;
+    return createLeaf(params[0], empty);
 }
 
 /**
@@ -671,26 +670,15 @@ function createPointVisibilitySelections(mark) {
         return [];
     }
 
-    const selections = [];
-    const names = new Set();
-    for (const encoder of Object.values(
-        /** @type {Record<string, any>} */ (mark.encoders)
-    )) {
-        for (const branch of encoder.branches ?? []) {
-            const predicate = branch.predicate;
-            if (!predicate?.param || names.has(predicate.param)) {
-                continue;
-            }
-            const selection = createSelectionCondition(
-                mark,
-                "semanticScore",
-                predicate
-            );
-            selections.push({ ...selection, empty: false });
-            names.add(predicate.param);
-        }
-    }
-    return selections;
+    return Array.from(
+        collectAppearanceSelections(mark.encoders),
+        ([param, partialIntervals]) =>
+            createSelectionCondition(mark, {
+                params: [param],
+                empty: false,
+                singleParam: !partialIntervals,
+            })
+    );
 }
 
 /**

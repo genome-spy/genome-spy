@@ -276,7 +276,7 @@ renderer.
 
 Scale and value slots exist only for channels configured with a scale or
 dynamic value. `default` identifies an unconditional channel branch, while
-`conditions` contains branches keyed by selection name.
+`conditions` contains branches keyed by their zero-based condition index.
 
 ```js
 const { scales, values } = points;
@@ -288,9 +288,9 @@ values.size.set(4);
 `scales.x.setDomain(...)` is a convenience form of
 `scales.x.default.setDomain(...)`.
 
-Conditional scale and value slots are keyed by selection name. For example,
-`mark.scales.color.conditions.brush.setRange(...)` updates the color scale used
-by a condition guarded by `brush`.
+Conditional scale and value slots are keyed by condition index. For example,
+`mark.scales.color.conditions[0].setRange(...)` updates the scale used by the
+first conditional branch.
 
 ### Built-in mark properties
 
@@ -506,6 +506,21 @@ mark.selections.brush.set({ x: [0, 10], y: [2, 8] });
 Interval slots expose their stable target order. A complete replacement may
 omit a target or set it to `null` to make it inactive; unknown targets are
 rejected.
+
+Conditional channels can also use a flat union of named selections. A union
+matches when any selection contains the datum; with `empty: true`, it also
+matches when every member is empty. Union leaves share the selection kind and
+interval target rules of ordinary selection conditions:
+
+```js
+{
+  selectionUnion: [
+    { selection: "picked", type: "single" },
+    { selection: "brush", type: "interval", targets: [{ input: "x" }] },
+  ],
+  empty: false,
+}
+```
 
 Conditional branches are normalized to private synthetic channels for shader
 generation. When a logical channel has exactly one series-backed branch,

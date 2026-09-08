@@ -199,7 +199,7 @@ describe("BaseProgram slot handles", () => {
         ).toBe(5);
 
         const conditionSlot =
-            program.getSlotHandles().values.fill.conditions?.brush;
+            program.getSlotHandles().values.fill.conditions?.[0];
         expect(conditionSlot).toBeTruthy();
         const fillEntry =
             program._uniformBufferState.entries.get("u_fill__cond0");
@@ -208,6 +208,63 @@ describe("BaseProgram slot handles", () => {
         expect(
             program._uniformBufferState.view.getFloat32(fillEntry.offset, true)
         ).toBeCloseTo(0.2);
+    });
+
+    it("keeps indexed dynamic slots for repeated selection branches", () => {
+        const renderer = createMockRenderer();
+        const program = createSlotProgram(renderer, {
+            channels: {
+                uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
+                x: { data: new Float32Array([0, 1]), type: "f32" },
+                size: { value: 1, type: "f32" },
+                fill: {
+                    value: [0, 0, 0, 1],
+                    type: "f32",
+                    components: 4,
+                    conditions: [
+                        {
+                            when: { selection: "brush", type: "single" },
+                            channel: {
+                                value: [1, 0, 0, 1],
+                                type: "f32",
+                                components: 4,
+                                dynamic: true,
+                            },
+                        },
+                        {
+                            when: { selection: "brush", type: "single" },
+                            channel: {
+                                value: [0, 1, 0, 1],
+                                type: "f32",
+                                components: 4,
+                                dynamic: true,
+                            },
+                        },
+                    ],
+                },
+            },
+        });
+
+        const conditions = program.getSlotHandles().values.fill.conditions;
+        expect(Object.keys(conditions ?? {})).toEqual(["0", "1"]);
+        if (!conditions) {
+            throw new Error("Expected conditional value slots.");
+        }
+        conditions[0].set([0.2, 0.3, 0.4, 1]);
+        conditions[1].set([0.6, 0.7, 0.8, 1]);
+
+        expect(
+            program._uniformBufferState.view.getFloat32(
+                program._uniformBufferState.entries.get("u_fill__cond0").offset,
+                true
+            )
+        ).toBeCloseTo(0.2);
+        expect(
+            program._uniformBufferState.view.getFloat32(
+                program._uniformBufferState.entries.get("u_fill__cond1").offset,
+                true
+            )
+        ).toBeCloseTo(0.6);
     });
 
     it("batches retained slot updates into one uniform upload", () => {

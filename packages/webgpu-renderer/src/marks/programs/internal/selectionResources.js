@@ -10,7 +10,6 @@ import {
     SELECTION_COUNT_PREFIX,
     SELECTION_PREFIX,
 } from "../../../wgsl/prefixes.js";
-import { normalizeVisibilityPredicate } from "../../shaders/visibilityPredicate.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
 
 /**
@@ -79,7 +78,7 @@ function sameIntervalTargets(a, b) {
  * Resolve and validate one interval predicate's target descriptors.
  *
  * @param {string} selectionName
- * @param {import("../../../index.d.ts").SelectionPredicate} when
+ * @param {import("../../../index.d.ts").SelectionPredicateLeaf} when
  * @param {(name: string) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} getAnalysis
  * @returns {IntervalTargetDef[]}
  */
@@ -144,6 +143,12 @@ function resolveIntervalTargets(selectionName, when, getAnalysis) {
  * @returns {void}
  */
 function addSelectionDef(defs, when, getAnalysis) {
+    if ("selectionUnion" in when) {
+        for (const leaf of when.selectionUnion) {
+            addSelectionDef(defs, leaf, getAnalysis);
+        }
+        return;
+    }
     const selectionName = when.selection;
     const type = when.type;
     const existing = defs.get(selectionName);
@@ -194,7 +199,7 @@ function collectVisibilitySelections(node, defs, getAnalysis) {
     if (!node || typeof node !== "object") {
         return;
     }
-    if ("selection" in node) {
+    if ("selection" in node || "selectionUnion" in node) {
         addSelectionDef(defs, node, getAnalysis);
     } else if ("all" in node) {
         for (const child of node.all) {
@@ -233,11 +238,7 @@ function collectSelectionDefs(channels, analysisByChannel, visibleWhen) {
             addSelectionDef(defs, condition.when, getAnalysis);
         }
     }
-    collectVisibilitySelections(
-        normalizeVisibilityPredicate(visibleWhen),
-        defs,
-        getAnalysis
-    );
+    collectVisibilitySelections(visibleWhen, defs, getAnalysis);
 
     if (
         !channels.uniqueId &&

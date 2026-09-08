@@ -25,6 +25,8 @@ import {
     PARAM_PREFIX,
     RANGE_TEXTURE_PREFIX,
     SELECTION_CHECKER_PREFIX,
+    SELECTION_EMPTY_PREFIX,
+    SELECTION_MEMBERSHIP_PREFIX,
     splitLargeHighPrecision,
     toHighPrecisionDomainUniform,
 } from "../gl/glslScaleGenerator.js";
@@ -56,6 +58,7 @@ import {
     isMultiPointSelection,
     isSinglePointSelection,
 } from "../../../selection/selection.js";
+import { collectAppearanceSelections } from "../../../selection/selection.js";
 
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -192,7 +195,6 @@ export default class WebGLMark {
         if (useVisibleRangeCulling) {
             extraHeaders.push("#define VISIBLE_RANGE_CULLING");
         }
-
         // For debugging
         const debugHeader = "// view: " + this.unitView.getPathString();
 
@@ -211,19 +213,15 @@ export default class WebGLMark {
         /** @type {string[]} */
         const dynamicMarkUniforms = [];
 
-        const paramPredicates = Object.values(encoders)
-            .flatMap((e) => e.branches ?? [])
-            .map((branch) => branch.predicate)
-            .filter((p) => p.param);
+        const appearanceSelections = collectAppearanceSelections(encoders);
+        const selectionParams = new Set(appearanceSelections.keys());
+        const selectionUnionParams = new Set(
+            appearanceSelections
+                .keys()
+                .filter((param) => appearanceSelections.get(param))
+        );
 
-        /**
-         * Prevent duplicate registration.
-         * @type {Map<string, "single" | "multi" | "interval">}
-         */
-        const selectionParameterUniforms = new Map();
-
-        for (const predicate of paramPredicates) {
-            const param = predicate.param;
+        for (const param of selectionParams) {
             const paramRuntime = this.unitView.paramRuntime;
             const selection = paramRuntime.findValue(param);
 
@@ -240,177 +238,213 @@ export default class WebGLMark {
             if (isSinglePointSelection(selection)) {
                 // Register a mark uniform for each param. The uniform will have
                 // the value of uniqueId of the selected datum.
-                if (!selectionParameterUniforms.has(param)) {
-                    selectionParameterUniforms.set(param, "single");
 
-                    const uniformName =
-                        PARAM_PREFIX + validateParameterName(param);
+                const uniformName = PARAM_PREFIX + validateParameterName(param);
 
-                    dynamicMarkUniforms.push(`    // Selection parameter`);
-                    dynamicMarkUniforms.push(
-                        `    uniform highp uint ${uniformName};`
+                dynamicMarkUniforms.push(`    // Selection parameter`);
+                dynamicMarkUniforms.push(
+                    `    uniform highp uint ${uniformName};`
+                );
+                this.#callAfterShaderCompilation.push(() => {
+                    this.registerMarkUniformValue(
+                        uniformName,
+                        { expr: param },
+                        (
+                            /** @type {import("../../../types/selectionTypes.js").SinglePointSelection} */ selection
+                        ) => selection.uniqueId ?? 0
                     );
-                    this.#callAfterShaderCompilation.push(() => {
-                        this.registerMarkUniformValue(
-                            uniformName,
-                            { expr: param },
-                            (
-                                /** @type {import("../../../types/selectionTypes.js").SinglePointSelection} */ selection
-                            ) => selection.uniqueId ?? 0
-                        );
-                    });
+                });
+                scaleCode.push(
+                    `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
+                        `    return ${PARAM_PREFIX}${param} == ${uniqueIdAttr} || (empty && ${PARAM_PREFIX}${param} == 0u);\n` +
+                        `}`
+                );
+                if (selectionUnionParams.has(param)) {
                     scaleCode.push(
-                        `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
-                            `    return ${PARAM_PREFIX}${param} == ${uniqueIdAttr} || (empty && ${PARAM_PREFIX}${param} == 0u);\n` +
+                        `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
+                            `    return ${PARAM_PREFIX}${param} != 0u && ${PARAM_PREFIX}${param} == ${uniqueIdAttr};\n` +
+                            `}`
+                    );
+                    scaleCode.push(
+                        `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
+                            `    return ${PARAM_PREFIX}${param} == 0u;\n` +
                             `}`
                     );
                 }
             } else if (isMultiPointSelection(selection)) {
                 // We need a texture for each multi-selection parameter.
                 // The texture stores an open-addressing hash table of selected uniqueIds.
-                if (!selectionParameterUniforms.has(param)) {
-                    selectionParameterUniforms.set(param, "multi");
 
-                    const uniformName =
-                        SELECTION_TEXTURE_PREFIX + validateParameterName(param);
-                    scaleCode.push(
-                        `// Selection texture\nuniform highp usampler2D ${uniformName};`
-                    );
+                const uniformName =
+                    SELECTION_TEXTURE_PREFIX + validateParameterName(param);
+                scaleCode.push(
+                    `// Selection texture\nuniform highp usampler2D ${uniformName};`
+                );
 
-                    const glHelper = this.glHelper;
-                    const selectionTextures = glHelper.selectionTextures;
+                const glHelper = this.glHelper;
+                const selectionTextures = glHelper.selectionTextures;
 
-                    this.selectionTextureOps.push(() => {
-                        // Texture is set in the prepareRender method
-                        const selection = paramRuntime.getValue(param);
-                        const texture = selectionTextures.get(selection);
-                        if (!texture) {
-                            throw new Error(
-                                `Bug: no selection texture found for "${param}"!`
-                            );
-                        }
-
-                        setUniforms(this.programInfo, {
-                            [uniformName]: texture,
-                        });
-                    });
-
-                    const texName = SELECTION_TEXTURE_PREFIX + param;
-                    scaleCode.push(
-                        `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
-                            `   return hashContainsTexture(${texName}, ${uniqueIdAttr}) || (empty && isEmptyHashTexture(${texName}));\n` +
-                            `}`
-                    );
-
-                    // Create the initial texture
-                    glHelper.createSelectionTexture(selection);
-
-                    paramRuntime.watchExpression(param, () => {
-                        const selection =
-                            /** @type {import("../../../types/selectionTypes.js").MultiPointSelection} */ (
-                                paramRuntime.getValue(param)
-                            );
-                        glHelper.createSelectionTexture(selection);
-                        this.unitView.context.animator.requestRender();
-                    });
-                }
-            } else if (isIntervalSelection(selection)) {
-                if (!selectionParameterUniforms.has(param)) {
-                    selectionParameterUniforms.set(param, "interval");
-
-                    /** @type {string[]} */
-                    const testSnippets = [];
-
-                    /** @type {string[]} */
-                    const emptySnippets = [];
-
-                    // Handle both channels separately
-                    for (const channel of Object.keys(selection.intervals)) {
-                        if (!["x", "y"].includes(channel)) {
-                            continue;
-                        }
-
-                        const uniformName =
-                            PARAM_PREFIX +
-                            validateParameterName(param) +
-                            `_${channel}`;
-
-                        // TODO: High precision scales
-                        const { attributeType } = getAttributeAndArrayTypes(
-                            this.unitView
-                                .getScaleResolution(channel)
-                                .getScale(),
-                            channel
+                this.selectionTextureOps.push(() => {
+                    // Texture is set in the prepareRender method
+                    const selection = paramRuntime.getValue(param);
+                    const texture = selectionTextures.get(selection);
+                    if (!texture) {
+                        throw new Error(
+                            `Bug: no selection texture found for "${param}"!`
                         );
-
-                        dynamicMarkUniforms.push(`    // Selection parameter`);
-                        dynamicMarkUniforms.push(
-                            `    uniform highp ${attributeType}[2] ${uniformName};`
-                        );
-                        this.#callAfterShaderCompilation.push(() => {
-                            this.registerMarkUniformValue(
-                                uniformName,
-                                { expr: param },
-                                (
-                                    /** @type {import("../../../types/selectionTypes.js").IntervalSelection} */ selection
-                                ) => selection.intervals[channel] ?? [1, 0]
-                            );
-                        });
-
-                        const getAttributeName = (
-                            /** @type {Channel} */ channel
-                        ) => {
-                            for (const [
-                                k,
-                                channels,
-                            ] of dedupedEncodingFields.entries()) {
-                                if (k[1] && channels.includes(channel)) {
-                                    return makeAttributeName(channels);
-                                }
-                            }
-                            return makeAttributeName(channel);
-                        };
-
-                        const c = getAttributeName(channel);
-                        const u = uniformName + "[0]";
-                        const u2 = uniformName + "[1]";
-                        const secondaryChannel = getSecondaryChannel(channel);
-                        if (this.encoding[secondaryChannel]) {
-                            const c2 = getAttributeName(secondaryChannel);
-                            const mode = this.defaultHitTestMode;
-                            if (mode == "endpoints") {
-                                testSnippets.push(
-                                    `((${u} <= ${c} && ${c} <= ${u2}) || (${u} <= ${c2} && ${c2} <= ${u2}))`
-                                );
-                            } else if (mode == "encloses") {
-                                testSnippets.push(
-                                    `(${u} <= ${c} && ${c2} <= ${u2})`
-                                );
-                            } else if (mode == "intersects") {
-                                testSnippets.push(
-                                    `(${u} <= ${c2} && ${c} <= ${u2})`
-                                );
-                            } else {
-                                throw new ViewError(
-                                    `Unsupported hit test mode "${mode}" for interval selection!`,
-                                    this.unitView
-                                );
-                            }
-                        } else {
-                            testSnippets.push(
-                                `(${u} <= ${c} && ${c} <= ${u2})`
-                            );
-                        }
-
-                        emptySnippets.push(`${u} > ${u2}`);
                     }
 
+                    setUniforms(this.programInfo, {
+                        [uniformName]: texture,
+                    });
+                });
+
+                const texName = SELECTION_TEXTURE_PREFIX + param;
+                scaleCode.push(
+                    `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
+                        `   return hashContainsTexture(${texName}, ${uniqueIdAttr}) || (empty && isEmptyHashTexture(${texName}));\n` +
+                        `}`
+                );
+                if (selectionUnionParams.has(param)) {
                     scaleCode.push(
-                        `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
-                            `    return ${testSnippets.join(" && ")} || (empty && (${emptySnippets.join(" || ")}));\n` +
+                        `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
+                            `    return hashContainsTexture(${texName}, ${uniqueIdAttr});\n` +
+                            `}`
+                    );
+                    scaleCode.push(
+                        `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
+                            `    return isEmptyHashTexture(${texName});\n` +
                             `}`
                     );
                 }
+
+                // Create the initial texture
+                glHelper.createSelectionTexture(selection);
+
+                paramRuntime.watchExpression(param, () => {
+                    const selection =
+                        /** @type {import("../../../types/selectionTypes.js").MultiPointSelection} */ (
+                            paramRuntime.getValue(param)
+                        );
+                    glHelper.createSelectionTexture(selection);
+                    this.unitView.context.animator.requestRender();
+                });
+            } else if (isIntervalSelection(selection)) {
+                const intervalChannels = Object.keys(
+                    selection.intervals
+                ).filter((channel) => ["x", "y"].includes(channel));
+                if (intervalChannels.length == 0) {
+                    throw new ViewError(
+                        `Interval selection "${param}" has no supported x or y targets.`,
+                        this.unitView
+                    );
+                }
+
+                /** @type {string[]} */
+                const testSnippets = [];
+
+                /** @type {string[]} */
+                const emptySnippets = [];
+
+                // Handle both channels separately
+                for (const channel of intervalChannels) {
+                    const uniformName =
+                        PARAM_PREFIX +
+                        validateParameterName(param) +
+                        `_${channel}`;
+
+                    // TODO: High precision scales
+                    const { attributeType } = getAttributeAndArrayTypes(
+                        this.unitView.getScaleResolution(channel).getScale(),
+                        channel
+                    );
+
+                    dynamicMarkUniforms.push(`    // Selection parameter`);
+                    dynamicMarkUniforms.push(
+                        `    uniform highp ${attributeType}[2] ${uniformName};`
+                    );
+                    this.#callAfterShaderCompilation.push(() => {
+                        this.registerMarkUniformValue(
+                            uniformName,
+                            { expr: param },
+                            (
+                                /** @type {import("../../../types/selectionTypes.js").IntervalSelection} */ selection
+                            ) => selection.intervals[channel] ?? [1, 0]
+                        );
+                    });
+
+                    const getAttributeName = (
+                        /** @type {Channel} */ channel
+                    ) => {
+                        for (const [
+                            k,
+                            channels,
+                        ] of dedupedEncodingFields.entries()) {
+                            if (k[1] && channels.includes(channel)) {
+                                return makeAttributeName(channels);
+                            }
+                        }
+                        return makeAttributeName(channel);
+                    };
+
+                    const c = getAttributeName(channel);
+                    const u = uniformName + "[0]";
+                    const u2 = uniformName + "[1]";
+                    const secondaryChannel = getSecondaryChannel(channel);
+                    if (this.encoding[secondaryChannel]) {
+                        const c2 = getAttributeName(secondaryChannel);
+                        const mode = this.defaultHitTestMode;
+                        if (mode == "endpoints") {
+                            testSnippets.push(
+                                `((${u} <= ${c} && ${c} <= ${u2}) || (${u} <= ${c2} && ${c2} <= ${u2}))`
+                            );
+                        } else if (mode == "encloses") {
+                            testSnippets.push(
+                                `(${u} <= ${c} && ${c2} <= ${u2})`
+                            );
+                        } else if (mode == "intersects") {
+                            testSnippets.push(
+                                `(${u} <= ${c2} && ${c} <= ${u2})`
+                            );
+                        } else {
+                            throw new ViewError(
+                                `Unsupported hit test mode "${mode}" for interval selection!`,
+                                this.unitView
+                            );
+                        }
+                    } else {
+                        testSnippets.push(`(${u} <= ${c} && ${c} <= ${u2})`);
+                    }
+
+                    emptySnippets.push(`${u} > ${u2}`);
+                }
+
+                scaleCode.push(
+                    `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
+                        `    return ${testSnippets.join(" && ")} || (empty && (${emptySnippets.join(" || ")}));\n` +
+                        `}`
+                );
+                if (!selectionUnionParams.has(param)) {
+                    continue;
+                }
+                const partialTests = testSnippets.map(
+                    (test, index) => `(${emptySnippets[index]} || ${test})`
+                );
+                scaleCode.push(
+                    `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
+                        `    return (!(${emptySnippets.join(" && ")})) && (${partialTests.join(" && ")});\n` +
+                        `}`
+                );
+                scaleCode.push(
+                    `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
+                        `    return ${emptySnippets.join(" && ")};\n` +
+                        `}`
+                );
+            } else {
+                throw new ViewError(
+                    `Unsupported selection type "${selection.type}" for WebGL conditional encoding.`,
+                    this.unitView
+                );
             }
         }
 
@@ -619,8 +653,10 @@ export default class WebGLMark {
         }
 
         // Check membership in any selection referenced by conditional encoders.
-        const conditions = [...selectionParameterUniforms.keys()].map(
-            (param) => `${SELECTION_CHECKER_PREFIX}${param}(false)`
+        const conditions = Array.from(
+            appearanceSelections,
+            ([param, partialIntervals]) =>
+                `${partialIntervals ? SELECTION_MEMBERSHIP_PREFIX : SELECTION_CHECKER_PREFIX}${param}(${partialIntervals ? "" : "false"})`
         );
 
         scaleCode.push(

@@ -55,6 +55,61 @@ selection contains data:
 }
 ```
 
+## Structured Selection Tests
+
+Use a structured test for a selection condition when you want the predicate
+to be explicit. A structured singleton has the same behavior as the direct
+`param` shorthand:
+
+```json
+{
+  "encoding": {
+    "color": {
+      "condition": {
+        "test": { "param": "select", "empty": false },
+        "value": "#3a86ff"
+      },
+      "value": "#d9d9d9"
+    }
+  }
+}
+```
+
+The direct `param` form remains the concise spelling for a singleton
+selection condition. The structured singleton follows the Vega-Lite predicate
+shape; GenomeSpy extends it with a flat union of selection names. Use a
+selection union when one branch should apply to rows selected by any of several
+point or interval selections:
+
+```json
+{
+  "encoding": {
+    "color": {
+      "condition": {
+        "test": {
+          "param": { "or": ["select", "brush"] },
+          "empty": true
+        },
+        "field": "class",
+        "type": "nominal"
+      },
+      "value": "#cbd2d6"
+    }
+  }
+}
+```
+
+The branch matches when at least one selection contains the row. With
+`empty: true` (the default), it also matches all rows while every selection in
+the group is empty. Once any member is active, the union matches rows selected
+by any active member. Set `empty: false` inside `test` to keep the fallback
+active until one selection is populated. Interval unions allow an active
+dimension to constrain the row while inactive dimensions impose no constraint.
+
+The `or` list must contain at least one selection name. A structured group test
+is flat; nested tests and condition-level `empty` are not supported. Direct
+`param` conditions continue to support `empty` as described above.
+
 ## Multiple Conditions
 
 You can provide an array of conditional value definitions. They are evaluated

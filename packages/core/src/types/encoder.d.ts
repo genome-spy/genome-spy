@@ -96,17 +96,8 @@ export interface ScaleAccessor<T = Scalar> extends Accessor<T> {
 export interface Predicate {
     (datum: Datum): boolean;
 
-    /**
-     * The parameter the predicate is based on
-     */
-    param?: string;
-
-    /**
-     * If true, the predicate is true for empty selections.
-     *
-     * **Default:** `true`
-     */
-    empty?: boolean;
+    /** Selection metadata; absent for unconditional branches. */
+    selection?: import("../selection/selection.js").SelectionPredicateInfo;
 }
 
 export interface EncodingBranch {

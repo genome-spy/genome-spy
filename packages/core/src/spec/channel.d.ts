@@ -262,7 +262,7 @@ export type ConditionalTemplate =
     FieldDef<any> | DatumDef | ValueDef<any> | ExprRef;
 
 export type Conditional<CD extends ConditionalTemplate> =
-    ConditionalParameter<CD>;
+    ConditionalParameter<CD> | ConditionalTest<CD>;
 
 // Source of ParameterPredicate: https://github.com/vega/vega-lite/blob/main/src/predicate.ts
 export interface ParameterPredicate {
@@ -278,8 +278,33 @@ export interface ParameterPredicate {
     empty?: boolean;
 }
 
+/** A flat union of named selection parameters used by a conditional encoding. */
+export interface SelectionUnionTest {
+    param: {
+        /** Names of selections joined with OR. Must contain at least one name. */
+        or: [string, ...string[]];
+    };
+
+    /**
+     * Whether the test matches when every selection in the group is empty.
+     *
+     * __Default value:__ `true`
+     */
+    empty?: boolean;
+}
+
+/** A structured selection predicate for a conditional encoding. */
+export interface TestPredicate {
+    test: ParameterPredicate | SelectionUnionTest;
+    empty?: never;
+    param?: never;
+}
+
 export type ConditionalParameter<CD extends ConditionalTemplate> =
     ParameterPredicate & CD;
+
+export type ConditionalTest<CD extends ConditionalTemplate> = TestPredicate &
+    CD;
 
 export interface ConditionValueDefMixins<V extends Value = Value> {
     /**

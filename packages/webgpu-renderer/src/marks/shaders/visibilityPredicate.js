@@ -1,4 +1,8 @@
-import { SELECTION_CHECKER_PREFIX } from "../../wgsl/prefixes.js";
+import {
+    SELECTION_CHECKER_PREFIX,
+    SELECTION_EMPTY_PREFIX,
+    SELECTION_MEMBERSHIP_PREFIX,
+} from "../../wgsl/prefixes.js";
 
 /**
  * @typedef {import("../../index.d.ts").ScalarSlotConfig} ScalarSlotConfig
@@ -36,12 +40,16 @@ export function normalizeVisibilityPredicate(predicate) {
         }
 
         const nodeRecord = /** @type {Record<string, unknown>} */ (node);
-        const kinds = ["compare", "selection", "all", "any"].filter((key) =>
-            Object.hasOwn(nodeRecord, key)
-        );
+        const kinds = [
+            "compare",
+            "selection",
+            "selectionUnion",
+            "all",
+            "any",
+        ].filter((key) => Object.hasOwn(nodeRecord, key));
         if (kinds.length !== 1) {
             throw new Error(
-                "Visibility predicate nodes must specify exactly one of compare, selection, all, or any."
+                "Visibility predicate nodes must specify exactly one of compare, selection, selectionUnion, all, or any."
             );
         }
 
@@ -54,6 +62,37 @@ export function normalizeVisibilityPredicate(predicate) {
                 );
             }
             children.forEach(normalizeNode);
+        } else if (kind === "selectionUnion") {
+            const leaves = nodeRecord.selectionUnion;
+            if (!Array.isArray(leaves) || leaves.length === 0) {
+                throw new Error(
+                    "Visibility selection unions must not be empty."
+                );
+            }
+            if (
+                nodeRecord.empty !== undefined &&
+                typeof nodeRecord.empty !== "boolean"
+            ) {
+                throw new Error(
+                    "Visibility selection union empty policy must be boolean."
+                );
+            }
+            if (
+                leaves.some(
+                    (leaf) =>
+                        !leaf ||
+                        typeof leaf !== "object" ||
+                        Array.isArray(leaf) ||
+                        !Object.hasOwn(leaf, "selection") ||
+                        Object.hasOwn(leaf, "selectionUnion") ||
+                        Object.hasOwn(leaf, "empty")
+                )
+            ) {
+                throw new Error(
+                    "Visibility selection union leaves must be single selections without empty flags."
+                );
+            }
+            leaves.forEach(normalizeNode);
         }
         return /** @type {VisibilityPredicate} */ (node);
     }
@@ -85,7 +124,6 @@ export function buildVisibilityPredicate({
     scalarSlots,
     selectionDefs,
 }) {
-    predicate = normalizeVisibilityPredicate(predicate);
     const channelIRByName = new Map(
         channelIRs.map((channelIR) => [channelIR.name, channelIR])
     );
@@ -214,6 +252,25 @@ export function buildVisibilityPredicate({
                 );
             }
             return `${SELECTION_CHECKER_PREFIX}${node.selection}(i, ${node.empty === true ? "true" : "false"})`;
+        }
+
+        if ("selectionUnion" in node) {
+            const leaves = node.selectionUnion;
+            const names = leaves.map((leaf) => {
+                if (!selectionNames.has(leaf.selection)) {
+                    throw new Error(
+                        `Visibility predicate references unknown selection "${leaf.selection}".`
+                    );
+                }
+                return leaf.selection;
+            });
+            const membership = names
+                .map((name) => `${SELECTION_MEMBERSHIP_PREFIX}${name}(i)`)
+                .join(" || ");
+            const allEmpty = names
+                .map((name) => `${SELECTION_EMPTY_PREFIX}${name}(i)`)
+                .join(" && ");
+            return `(${membership}${node.empty === true ? ` || (${allEmpty})` : ""})`;
         }
 
         if ("all" in node || "any" in node) {

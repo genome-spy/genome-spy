@@ -4,6 +4,10 @@ import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { RasterizationUnavailableError } from "../rasterization.js";
 import { analyzeSvgExport, createSvg, createSvgExport } from "./index.js";
+import {
+    createIntervalSelection,
+    createMultiPointSelection,
+} from "../../selection/selection.js";
 
 const { rasterizeSvgRuns } = vi.hoisted(() => ({
     rasterizeSvgRuns: vi.fn(
@@ -84,7 +88,6 @@ describe("SVG export", () => {
                 fill: { value: "black" },
             },
         });
-
         const { svg, warnings, rasterized } = await createSvgExport({
             viewRoot: view,
             logicalWidth: 100,
@@ -339,5 +342,98 @@ describe("SVG export", () => {
         expect(circle?.getAttribute("r")).toBe("5");
         expect(circle?.hasAttribute("fill")).toBe(false);
         expect(pointGroup?.getAttribute("fill")).toBe("#fedcba");
+    });
+
+    test("preserves all-empty selection-union color branches in SVG export", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: 1, y: 2, group: "A" },
+                    { x: 2, y: 5, group: "B" },
+                ],
+            },
+            params: [
+                { name: "picked", select: "point" },
+                {
+                    name: "brush",
+                    select: { type: "interval", encodings: ["x"] },
+                },
+            ],
+            mark: { type: "point", size: 100 },
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+                color: {
+                    condition: {
+                        test: {
+                            param: { or: ["picked", "brush"] },
+                            empty: true,
+                        },
+                        field: "group",
+                        type: "nominal",
+                    },
+                    value: "#cbd2d6",
+                },
+            },
+        });
+
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 200,
+            logicalHeight: 100,
+            background: null,
+        });
+        const fills = Array.from(
+            svg.querySelectorAll('[data-mark-type="point"] circle')
+        ).map((circle) => circle.getAttribute("fill"));
+
+        expect(fills).toHaveLength(2);
+        expect(fills).toEqual(["#4c78a8", "#f58518"]);
+
+        const data = Array.from(
+            /** @type {any} */ (view).getCollector().getData()
+        );
+        view.paramRuntime.setValue(
+            "picked",
+            createMultiPointSelection([data[0]])
+        );
+        const active = createSvg({
+            viewRoot: view,
+            logicalWidth: 200,
+            logicalHeight: 100,
+            background: null,
+        });
+        const activeFills = Array.from(
+            active.svg.querySelectorAll('[data-mark-type="point"] circle')
+        ).map((circle) => circle.getAttribute("fill"));
+        expect(activeFills).toEqual(["#4c78a8", "#cbd2d6"]);
+
+        view.paramRuntime.setValue("picked", createMultiPointSelection([]));
+        view.paramRuntime.setValue("brush", {
+            type: "interval",
+            intervals: { x: [1, 1.5] },
+        });
+        const brush = createSvg({
+            viewRoot: view,
+            logicalWidth: 200,
+            logicalHeight: 100,
+            background: null,
+        });
+        const brushFills = Array.from(
+            brush.svg.querySelectorAll('[data-mark-type="point"] circle')
+        ).map((circle) => circle.getAttribute("fill"));
+        expect(brushFills).toEqual(["#4c78a8", "#cbd2d6"]);
+
+        view.paramRuntime.setValue("brush", createIntervalSelection(["x"]));
+        const cleared = createSvg({
+            viewRoot: view,
+            logicalWidth: 200,
+            logicalHeight: 100,
+            background: null,
+        });
+        const clearedFills = Array.from(
+            cleared.svg.querySelectorAll('[data-mark-type="point"] circle')
+        ).map((circle) => circle.getAttribute("fill"));
+        expect(clearedFills).toEqual(["#4c78a8", "#f58518"]);
     });
 });

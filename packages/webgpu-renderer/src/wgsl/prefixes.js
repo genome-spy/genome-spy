@@ -17,6 +17,8 @@ export const SELECTION_PREFIX = "uSelection_";
 export const SELECTION_COUNT_PREFIX = "uSelectionCount_";
 export const SELECTION_BUFFER_PREFIX = "selection_";
 export const SELECTION_CHECKER_PREFIX = "checkSelection_";
+export const SELECTION_MEMBERSHIP_PREFIX = "isSelectionMember_";
+export const SELECTION_EMPTY_PREFIX = "isSelectionEmpty_";
 
 /**
  * @param {string} name
