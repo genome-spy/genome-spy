@@ -1861,16 +1861,9 @@ export default class GridView extends ContainerView {
                 gridChild.coords.containsPoint(event.point.x, event.point.y)
             );
             const pointedView = pointedChild?.view;
-            const gapZoomTarget = !pointedChild
-                ? this.#getGapZoomTarget(event.point)
-                : undefined;
 
             if (event.type === "wheelclaimprobe") {
-                this.#propagateWheelClaimProbe(
-                    event,
-                    pointedView,
-                    gapZoomTarget
-                );
+                this.#propagateWheelClaimProbe(event, pointedView);
                 return;
             }
 
@@ -1917,6 +1910,7 @@ export default class GridView extends ContainerView {
             }
 
             if (!pointedView) {
+                const gapZoomTarget = this.#getGapZoomTarget(event.point);
                 if (gapZoomTarget) {
                     this.#propagateZoomInteraction(
                         event,
@@ -1948,11 +1942,10 @@ export default class GridView extends ContainerView {
      *
      * @param {import("../../utils/interaction.js").default} event
      * @param {View | undefined} pointedView
-     * @param {{ coords: Rectangle, zoomableResolutions: ReturnType<typeof getZoomableResolutionSet> } | undefined} gapZoomTarget
      */
-    #propagateWheelClaimProbe(event, pointedView, gapZoomTarget) {
+    #propagateWheelClaimProbe(event, pointedView) {
         if (!pointedView) {
-            if (gapZoomTarget) {
+            if (this.#getGapZoomTarget(event.point)) {
                 event.claimWheel();
             }
             return;
@@ -1975,7 +1968,7 @@ export default class GridView extends ContainerView {
 
     /**
      * @param {import("../layout/point.js").default} point
-     * @returns {{ coords: Rectangle, zoomableResolutions: ReturnType<typeof getZoomableResolutionSet> } | undefined}
+     * @returns {{ coords: Rectangle, zoomableResolutions: ReturnType<typeof getZoomableResolutions> } | undefined}
      */
     #getGapZoomTarget(point) {
         const channel = this.#getConcatSharedChannel();
@@ -1984,7 +1977,7 @@ export default class GridView extends ContainerView {
         }
 
         const resolution = this.getScaleResolution(channel);
-        if (!resolution || !resolution.isZoomable()) {
+        if (!resolution?.isZoomable()) {
             return;
         }
 
@@ -1993,17 +1986,17 @@ export default class GridView extends ContainerView {
             this.#sharedAxes,
             channel
         );
-        if (!coords) {
+        if (!coords?.containsPoint(point.x, point.y)) {
             return;
         }
 
-        if (!coords.containsPoint(point.x, point.y)) {
-            return;
-        }
+        /** @type {ReturnType<typeof getZoomableResolutions>} */
+        const zoomableResolutions = { x: new Set(), y: new Set() };
+        zoomableResolutions[channel].add(resolution);
 
         return {
             coords,
-            zoomableResolutions: getZoomableResolutionSet(channel, resolution),
+            zoomableResolutions,
         };
     }
 
@@ -2011,11 +2004,11 @@ export default class GridView extends ContainerView {
      * @returns {import("../../spec/channel.js").PrimaryPositionalChannel | undefined}
      */
     #getConcatSharedChannel() {
-        if (isVConcatSpec(this.spec)) {
-            return "x";
-        } else if (isHConcatSpec(this.spec)) {
-            return "y";
-        }
+        return isVConcatSpec(this.spec)
+            ? "x"
+            : isHConcatSpec(this.spec)
+              ? "y"
+              : undefined;
     }
 
     /**
@@ -2103,19 +2096,6 @@ export function getLegendLayoutHost(owner, channel) {
     }
 
     return owner instanceof GridView ? owner : undefined;
-}
-
-/**
- * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
- * @param {import("../../scales/scaleResolution.js").default} resolution
- */
-function getZoomableResolutionSet(channel, resolution) {
-    const zoomableResolutions = {
-        x: new Set(),
-        y: new Set(),
-    };
-    zoomableResolutions[channel].add(resolution);
-    return zoomableResolutions;
 }
 
 /**
