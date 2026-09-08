@@ -439,8 +439,14 @@ export default class GridView extends ContainerView {
     }
 
     getInteractionCoords() {
-        const channel = this.#getGapZoomChannel();
-        return this.getTrackPlotGeometry(channel)?.viewport;
+        const channel = this.#getConcatSharedChannel();
+        return channel
+            ? getCrossTrackBounds(
+                  this.#visibleChildren,
+                  this.#sharedAxes,
+                  channel
+              )
+            : undefined;
     }
 
     /**
@@ -561,13 +567,24 @@ export default class GridView extends ContainerView {
                 }
             }
 
+            const content = getUnionCoords(
+                placements.map(({ content }) => content)
+            );
+            const viewports = placements.map(({ viewport }) => viewport);
+            const viewport = channel
+                ? getCrossTrackBounds(
+                      this.#visibleChildren,
+                      this.#sharedAxes,
+                      channel
+                  )
+                : getUnionCoords(viewports);
+            if (!content || !viewport) {
+                return undefined;
+            }
+
             return {
-                content: getUnionCoords(
-                    placements.map(({ content }) => content)
-                ),
-                viewport: getUnionCoords(
-                    placements.map(({ viewport }) => viewport)
-                ),
+                content,
+                viewport,
             };
         });
     }
@@ -1770,7 +1787,7 @@ export default class GridView extends ContainerView {
 
         const annotationLayer = this.getAnnotationLayer();
         const annotationGeometry = annotationLayer
-            ? this.getTrackPlotGeometry(this.#getGapZoomChannel())
+            ? this.getTrackPlotGeometry(this.#getConcatSharedChannel())
             : undefined;
         if (annotationLayer && annotationGeometry) {
             const parentClip = normalizeClipOptions(options);
@@ -1844,28 +1861,9 @@ export default class GridView extends ContainerView {
                 gridChild.coords.containsPoint(event.point.x, event.point.y)
             );
             const pointedView = pointedChild?.view;
-            const gapZoomTarget = !pointedChild
-                ? this.#getGapZoomTarget(event.point)
-                : undefined;
 
             if (event.type === "wheelclaimprobe") {
-                // Probe path: claim wheel ownership without executing regular wheel
-                // behavior. InteractionController uses this to decide whether native
-                // wheel should be preventDefault()'ed before inertia kicks in.
-                if (!pointedView) {
-                    if (gapZoomTarget) {
-                        event.claimWheel();
-                    }
-                    return;
-                }
-
-                if (isZoomInteractionView(pointedView)) {
-                    if (hasZoomableResolutions(pointedView)) {
-                        event.claimWheel();
-                    }
-                } else {
-                    pointedView.propagateInteraction(event);
-                }
+                this.#propagateWheelClaimProbe(event, pointedView);
                 return;
             }
 
@@ -1894,7 +1892,8 @@ export default class GridView extends ContainerView {
 
             const annotationLayer = this.getAnnotationLayer();
             const annotationCoords = annotationLayer
-                ? this.getTrackPlotGeometry(this.#getGapZoomChannel())?.viewport
+                ? this.getTrackPlotGeometry(this.#getConcatSharedChannel())
+                      ?.viewport
                 : undefined;
             const pointedAnnotation =
                 annotationLayer &&
@@ -1911,8 +1910,13 @@ export default class GridView extends ContainerView {
             }
 
             if (!pointedView) {
+                const gapZoomTarget = this.#getGapZoomTarget(event.point);
                 if (gapZoomTarget) {
-                    this.#propagateGapZoomInteraction(event, gapZoomTarget);
+                    this.#propagateZoomInteraction(
+                        event,
+                        gapZoomTarget.coords,
+                        gapZoomTarget.zoomableResolutions
+                    );
                 }
                 return;
             }
@@ -1923,17 +1927,10 @@ export default class GridView extends ContainerView {
                 () => pointedView.propagateInteraction(event),
                 isZoomInteractionView(pointedView)
                     ? () =>
-                          interactionToZoom(
+                          this.#propagateZoomInteraction(
                               event,
                               pointedChild.coords,
-                              (zoomEvent) =>
-                                  this.#handleZoom(
-                                      pointedChild.coords,
-                                      pointedChild.view,
-                                      zoomEvent
-                                  ),
-                              this.context.getCurrentHover(),
-                              this.context.animator
+                              getZoomableResolutions(pointedView)
                           )
                     : undefined
             );
@@ -1941,145 +1938,97 @@ export default class GridView extends ContainerView {
     }
 
     /**
+     * Claims a wheel only when the pointed surface would consume a wheel zoom.
+     *
+     * @param {import("../../utils/interaction.js").default} event
+     * @param {View | undefined} pointedView
+     */
+    #propagateWheelClaimProbe(event, pointedView) {
+        if (!pointedView) {
+            if (this.#getGapZoomTarget(event.point)) {
+                event.claimWheel();
+            }
+            return;
+        }
+
+        if (!isZoomInteractionView(pointedView)) {
+            pointedView.propagateInteraction(event);
+            return;
+        }
+
+        const zoomableResolutions = getZoomableResolutions(pointedView);
+        if (
+            Object.values(zoomableResolutions).some(
+                (resolutions) => resolutions.size > 0
+            )
+        ) {
+            event.claimWheel();
+        }
+    }
+
+    /**
      * @param {import("../layout/point.js").default} point
-     * @returns {{ coords: Rectangle, zoomableResolutions: ReturnType<typeof getZoomableResolutionSet> } | undefined}
+     * @returns {{ coords: Rectangle, zoomableResolutions: ReturnType<typeof getZoomableResolutions> } | undefined}
      */
     #getGapZoomTarget(point) {
-        const channel = this.#getGapZoomChannel();
+        const channel = this.#getConcatSharedChannel();
         if (!channel) {
             return;
         }
 
         const resolution = this.getScaleResolution(channel);
-        if (!resolution || !resolution.isZoomable()) {
+        if (!resolution?.isZoomable()) {
             return;
         }
 
-        const coords = this.#getGapZoomCoords(channel);
-        if (!coords) {
+        const coords = getCrossTrackBounds(
+            this.#visibleChildren,
+            this.#sharedAxes,
+            channel
+        );
+        if (!coords?.containsPoint(point.x, point.y)) {
             return;
         }
 
-        if (!coords.containsPoint(point.x, point.y)) {
-            return;
-        }
+        /** @type {ReturnType<typeof getZoomableResolutions>} */
+        const zoomableResolutions = { x: new Set(), y: new Set() };
+        zoomableResolutions[channel].add(resolution);
 
         return {
             coords,
-            zoomableResolutions: getZoomableResolutionSet(channel, resolution),
+            zoomableResolutions,
         };
     }
 
     /**
      * @returns {import("../../spec/channel.js").PrimaryPositionalChannel | undefined}
      */
-    #getGapZoomChannel() {
-        if (isVConcatSpec(this.spec)) {
-            return "x";
-        } else if (isHConcatSpec(this.spec)) {
-            return "y";
-        }
-    }
-
-    /**
-     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
-     * @returns {Rectangle | undefined}
-     */
-    #getGapZoomCoords(channel) {
-        const firstChild = this.#visibleChildren[0];
-        if (!firstChild) {
-            return;
-        }
-
-        const firstViewportCoords = firstChild.coords;
-        const firstExpandedCoords = firstChild.coords.expand(
-            firstChild.getOverhang()
-        );
-
-        let minX = firstViewportCoords.x;
-        let minY = firstExpandedCoords.y;
-        let maxX = firstViewportCoords.x2;
-        let maxY = firstExpandedCoords.y2;
-
-        for (const gridChild of this.#visibleChildren.slice(1)) {
-            const viewportCoords = gridChild.coords;
-            const expandedCoords = gridChild.coords.expand(
-                gridChild.getOverhang()
-            );
-
-            if (channel == "x") {
-                minX = Math.max(minX, viewportCoords.x);
-                maxX = Math.min(maxX, viewportCoords.x2);
-                minY = Math.min(minY, expandedCoords.y);
-                maxY = Math.max(maxY, expandedCoords.y2);
-            } else {
-                minX = Math.min(minX, expandedCoords.x);
-                maxX = Math.max(maxX, expandedCoords.x2);
-                minY = Math.max(minY, viewportCoords.y);
-                maxY = Math.min(maxY, viewportCoords.y2);
-            }
-        }
-
-        for (const axisView of Object.values(this.#sharedAxes)) {
-            const axisCoords = axisView.coords;
-            if (!axisCoords) {
-                continue;
-            }
-
-            const orient = axisView.axisProps.orient;
-            if (channel == "x" && (orient == "top" || orient == "bottom")) {
-                minY = Math.min(minY, axisCoords.y);
-                maxY = Math.max(maxY, axisCoords.y2);
-            } else if (
-                channel == "y" &&
-                (orient == "left" || orient == "right")
-            ) {
-                minX = Math.min(minX, axisCoords.x);
-                maxX = Math.max(maxX, axisCoords.x2);
-            }
-        }
-
-        if (minX >= maxX || minY >= maxY) {
-            return;
-        }
-
-        return Rectangle.create(minX, minY, maxX - minX, maxY - minY);
+    #getConcatSharedChannel() {
+        return isVConcatSpec(this.spec)
+            ? "x"
+            : isHConcatSpec(this.spec)
+              ? "y"
+              : undefined;
     }
 
     /**
      * @param {import("../../utils/interaction.js").default} event
-     * @param {{ coords: Rectangle, zoomableResolutions: ReturnType<typeof getZoomableResolutionSet> }} gapZoomTarget
+     * @param {Rectangle} coords
+     * @param {ReturnType<typeof getZoomableResolutions>} zoomableResolutions
      */
-    #propagateGapZoomInteraction(event, gapZoomTarget) {
-        event.target = this;
-
+    #propagateZoomInteraction(event, coords, zoomableResolutions) {
+        event.target ??= this;
         interactionToZoom(
             event,
-            gapZoomTarget.coords,
+            coords,
             (zoomEvent) =>
                 zoomResolutions(
-                    gapZoomTarget.coords,
+                    coords,
                     zoomEvent,
-                    gapZoomTarget.zoomableResolutions,
+                    zoomableResolutions,
                     this.context.animator
                 ),
             this.context.getCurrentHover(),
-            this.context.animator
-        );
-    }
-
-    /**
-     *
-     * @param {import("../layout/rectangle.js").default} coords Coordinates
-     * @param {View} view
-     * @param {import("../zoom.js").ZoomEvent} zoomEvent
-     * @returns {boolean} `true` when there was at least one zoomable resolution
-     */
-    #handleZoom(coords, view, zoomEvent) {
-        return zoomResolutions(
-            coords,
-            zoomEvent,
-            getZoomableResolutions(view),
             this.context.animator
         );
     }
@@ -2147,19 +2096,6 @@ export function getLegendLayoutHost(owner, channel) {
     }
 
     return owner instanceof GridView ? owner : undefined;
-}
-
-/**
- * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
- * @param {import("../../scales/scaleResolution.js").default} resolution
- */
-function getZoomableResolutionSet(channel, resolution) {
-    const zoomableResolutions = {
-        x: new Set(),
-        y: new Set(),
-    };
-    zoomableResolutions[channel].add(resolution);
-    return zoomableResolutions;
 }
 
 /**
@@ -2241,15 +2177,6 @@ function hasClippedChildren(view) {
 
 /**
  * @param {View} view
- * @returns {boolean}
- */
-function hasZoomableResolutions(view) {
-    const zoomableResolutions = getZoomableResolutions(view);
-    return zoomableResolutions.x.size > 0 || zoomableResolutions.y.size > 0;
-}
-
-/**
- * @param {View} view
  * @returns {view is UnitView | LayerView}
  */
 function isZoomInteractionView(view) {
@@ -2288,6 +2215,74 @@ function getUnionCoords(coords) {
     const y2 = Math.max(...coords.map((coord) => coord.y2));
 
     return Rectangle.create(x, y, x2 - x, y2 - y);
+}
+
+/**
+ * Intersects the aligned channel and unions the perpendicular channel.
+ *
+ * @param {GridChild[]} gridChildren
+ * @param {Partial<Record<import("../../spec/channel.js").PrimaryPositionalChannel, AxisView>>} sharedAxes
+ * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
+ * @returns {Rectangle | undefined}
+ */
+function getCrossTrackBounds(gridChildren, sharedAxes, channel) {
+    if (gridChildren.length === 0) {
+        return undefined;
+    }
+
+    /** @type {[
+     *   "x" | "y",
+     *   "x2" | "y2",
+     *   "x" | "y",
+     *   "x2" | "y2",
+     *   "top" | "left",
+     *   "bottom" | "right"
+     * ]} */
+    const [aligned, alignedEnd, perpendicular, perpendicularEnd, start, end] =
+        channel == "x"
+            ? ["x", "x2", "y", "y2", "top", "bottom"]
+            : ["y", "y2", "x", "x2", "left", "right"];
+    let alignedMin = -Infinity;
+    let alignedMax = Infinity;
+    let perpendicularMin = Infinity;
+    let perpendicularMax = -Infinity;
+
+    for (const gridChild of gridChildren) {
+        const { coords } = gridChild;
+        const overhang = gridChild.getOverhang();
+        alignedMin = Math.max(alignedMin, coords[aligned]);
+        alignedMax = Math.min(alignedMax, coords[alignedEnd]);
+        perpendicularMin = Math.min(
+            perpendicularMin,
+            coords[perpendicular] - overhang[start]
+        );
+        perpendicularMax = Math.max(
+            perpendicularMax,
+            coords[perpendicularEnd] + overhang[end]
+        );
+    }
+
+    const axisOrients = [start, end];
+    for (const axisView of Object.values(sharedAxes)) {
+        const coords = axisView.coords;
+        if (!coords || !axisOrients.includes(axisView.axisProps.orient)) {
+            continue;
+        }
+
+        perpendicularMin = Math.min(perpendicularMin, coords[perpendicular]);
+        perpendicularMax = Math.max(perpendicularMax, coords[perpendicularEnd]);
+    }
+
+    const alignedIndex = aligned == "x" ? 0 : 1;
+    const min = [perpendicularMin, perpendicularMin];
+    const max = [perpendicularMax, perpendicularMax];
+    min[alignedIndex] = alignedMin;
+    max[alignedIndex] = alignedMax;
+    if (min[0] >= max[0] || min[1] >= max[1]) {
+        return undefined;
+    }
+
+    return Rectangle.create(min[0], min[1], max[0] - min[0], max[1] - min[1]);
 }
 
 /**
