@@ -280,7 +280,7 @@ export interface ParameterPredicate {
 
 /** A flat union of named selection parameters used by a conditional encoding. */
 export interface SelectionUnionTest {
-    selection: {
+    param: {
         /** Names of selections joined with OR. Must contain at least one name. */
         or: [string, ...string[]];
     };
@@ -295,7 +295,7 @@ export interface SelectionUnionTest {
 
 /** A structured selection predicate for a conditional encoding. */
 export interface TestPredicate {
-    test: SelectionUnionTest;
+    test: ParameterPredicate | SelectionUnionTest;
     empty?: never;
     param?: never;
 }

@@ -366,7 +366,7 @@ describe("SVG export", () => {
                 color: {
                     condition: {
                         test: {
-                            selection: { or: ["picked", "brush"] },
+                            param: { or: ["picked", "brush"] },
                             empty: true,
                         },
                         field: "group",

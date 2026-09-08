@@ -200,7 +200,7 @@ test.each([
                     condition: union
                         ? {
                               test: {
-                                  selection: { or: ["brush"] },
+                                  param: { or: ["brush"] },
                                   empty: true,
                               },
                               value: "red",

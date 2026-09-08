@@ -4,6 +4,7 @@ import {
     createMultiPointSelection,
     createSinglePointSelection,
     getPointSelectionKeyTuples,
+    normalizeSelectionPredicate,
     resolvePointSelectionFromKeyTuples,
 } from "./selection.js";
 
@@ -121,3 +122,20 @@ it.each([false, true])(
         );
     }
 );
+
+it("normalizes direct and structured singleton selection predicates identically", () => {
+    const direct = normalizeSelectionPredicate({
+        param: "picked",
+        empty: false,
+    });
+    const structured = normalizeSelectionPredicate({
+        test: { param: "picked", empty: false },
+    });
+
+    expect(structured).toEqual(direct);
+    expect(structured).toEqual({
+        params: ["picked"],
+        empty: false,
+        singleParam: true,
+    });
+});

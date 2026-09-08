@@ -328,7 +328,7 @@ describe("createConditionalBranches", () => {
                 value: "gray",
                 condition: {
                     test: {
-                        selection: { or: ["a", "b", "a"] },
+                        param: { or: ["a", "b", "a"] },
                         empty: true,
                     },
                     value: "blue",
@@ -368,7 +368,7 @@ describe("createConditionalBranches", () => {
                 value: "gray",
                 condition: {
                     test: {
-                        selection: { or: ["xBrush", "yBrush"] },
+                        param: { or: ["xBrush", "yBrush"] },
                         empty: false,
                     },
                     value: "blue",
@@ -403,7 +403,7 @@ describe("createConditionalBranches", () => {
             color: {
                 value: "gray",
                 condition: {
-                    test: { selection: { or: ["brush"] }, empty: false },
+                    test: { param: { or: ["brush"] }, empty: false },
                     value: "blue",
                 },
             },
@@ -428,7 +428,7 @@ describe("createConditionalBranches", () => {
                 {
                     value: "gray",
                     condition: {
-                        test: { selection: { or: members } },
+                        test: { param: { or: members } },
                         value: "blue",
                     },
                 },

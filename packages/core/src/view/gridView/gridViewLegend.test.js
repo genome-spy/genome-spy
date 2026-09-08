@@ -2473,7 +2473,7 @@ describe("GridView legends", () => {
                 const predicate = union
                     ? {
                           test: {
-                              selection: {
+                              param: {
                                   or: /** @type {[string, ...string[]]} */ ([
                                       "variantClick",
                                       "variantHover",

@@ -240,28 +240,29 @@ export function makeSelectionTestExpression(params, selection) {
  */
 
 /**
- * Normalizes the single-selection `param` condition and the structured selection union.
+ * Normalizes direct and structured selection conditions.
  *
  * @param {import("../spec/channel.js").ParameterPredicate | import("../spec/channel.js").TestPredicate} condition
  * @returns {SelectionPredicateInfo | undefined}
  */
 export function normalizeSelectionPredicate(condition) {
-    if ("param" in condition) {
-        return {
-            params: [validateParameterName(condition.param)],
-            empty: condition.empty ?? true,
-            singleParam: true,
-        };
-    }
-    if (!("test" in condition)) {
+    if (!("param" in condition) && !("test" in condition)) {
         return undefined;
     }
 
-    const { selection, empty = true } = condition.test;
-    if (selection.or.length === 0) {
+    const predicate = "test" in condition ? condition.test : condition;
+    const { param, empty = true } = predicate;
+    if (typeof param === "string") {
+        return {
+            params: [validateParameterName(param)],
+            empty,
+            singleParam: true,
+        };
+    }
+    if (param.or.length === 0) {
         throw new Error('Selection test "or" must be a nonempty array.');
     }
-    const params = Array.from(new Set(selection.or.map(validateParameterName)));
+    const params = Array.from(new Set(param.or.map(validateParameterName)));
     return { params, empty, singleParam: false };
 }
 
