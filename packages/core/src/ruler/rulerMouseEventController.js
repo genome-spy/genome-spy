@@ -178,8 +178,7 @@ export class RulerMouseEventController {
         const projectionCoords = getRulerProjectionCoords(
             this.gridChild.view,
             this.channels,
-            this.channels[0],
-            this.scaleResolutions[this.channels[0]]
+            this.channels[0]
         );
         const normalizedPoint = projectionCoords.normalizePoint(
             point.x,

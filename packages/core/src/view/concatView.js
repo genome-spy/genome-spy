@@ -4,9 +4,16 @@ import {
     isVConcatSpec,
 } from "./viewSpecGuards.js";
 import GridView from "./gridView/gridView.js";
-import { getLegendResolutionOwners } from "./gridView/legendCollection.js";
 import ContainerMutationHelper from "./containerMutationHelper.js";
+import { getLegendResolutionOwners } from "./gridView/legendCollection.js";
 import { moveArrayItem } from "../utils/arrayUtils.js";
+import { isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
+import { markViewAsNonAddressable } from "./viewSelectors.js";
+import {
+    getPrimaryChannel,
+    getSecondaryChannel,
+    isPositionalChannel,
+} from "../encoder/encoder.js";
 
 /**
  * Creates a vertically or horizontally concatenated layout for children.
@@ -15,6 +22,9 @@ import { moveArrayItem } from "../utils/arrayUtils.js";
  * @extends {GridView<TSpec>}
  */
 export default class ConcatView extends GridView {
+    /** @type {import("./layerView.js").default | undefined} */
+    #annotationLayer;
+
     /**
      *
      * @param {TSpec} spec
@@ -75,14 +85,57 @@ export default class ConcatView extends GridView {
             )
         );
 
-        const collectsLegends = Object.values(
-            this.spec.resolve?.legend ?? {}
-        ).includes("collected");
-        await this.syncGuideViews({
-            legendOwners: collectsLegends
-                ? getLegendResolutionOwners(this)
-                : undefined,
-        });
+        await this.#initializeAnnotationLayer();
+
+        await this.syncGuideViews();
+    }
+
+    /** @override */
+    getAnnotationLayer() {
+        return this.#annotationLayer;
+    }
+
+    async #initializeAnnotationLayer() {
+        const channel = isVConcatSpec(this.spec)
+            ? "x"
+            : isHConcatSpec(this.spec)
+              ? "y"
+              : undefined;
+        const annotationSpecs =
+            isVConcatSpec(this.spec) || isHConcatSpec(this.spec)
+                ? this.spec.annotate
+                : undefined;
+        if (!annotationSpecs?.length || !channel) {
+            return;
+        }
+
+        const perpendicularChannel = channel === "x" ? "y" : "x";
+        const layer = {
+            layer: annotationSpecs.map((annotation) =>
+                prepareAnnotationSpec(
+                    structuredClone(annotation),
+                    channel,
+                    perpendicularChannel
+                )
+            ),
+            resolve: { scale: { [channel]: "forced" } },
+        };
+
+        this.#annotationLayer =
+            /** @type {import("./layerView.js").default} */ (
+                await this.context.createOrImportView(
+                    layer,
+                    this,
+                    this,
+                    this.getNextAutoName("annotation"),
+                    undefined,
+                    {
+                        inheritEncoding: false,
+                        layoutSizeParams: "inherit",
+                    }
+                )
+            );
+        markViewAsNonAddressable(this.#annotationLayer);
     }
 
     /**
@@ -237,5 +290,167 @@ export default class ConcatView extends GridView {
         }
 
         return guideRoots;
+    }
+}
+
+/**
+ * @param {import("../spec/view.js").UnitSpec | import("../spec/view.js").LayerSpec} prepared
+ * @param {import("../spec/channel.js").PrimaryPositionalChannel} sharedChannel
+ * @param {import("../spec/channel.js").PrimaryPositionalChannel} perpendicularChannel
+ * @returns {import("../spec/view.js").UnitSpec | import("../spec/view.js").LayerSpec}
+ */
+function prepareAnnotationSpec(prepared, sharedChannel, perpendicularChannel) {
+    if (!isUnitSpec(prepared) && !isLayerSpec(prepared)) {
+        throw new Error(
+            "Container annotations accept only unit or layer specifications."
+        );
+    }
+
+    const resolveScale = prepared.resolve?.scale;
+    const sharedResolution =
+        resolveScale?.[sharedChannel] ?? resolveScale?.default;
+    if (sharedResolution === "independent" || sharedResolution === "excluded") {
+        throw new Error(
+            `Container annotations cannot use an independent ${sharedChannel} scale.`
+        );
+    }
+
+    if (
+        prepared.scales?.[sharedChannel] !== undefined ||
+        prepared.scales?.[perpendicularChannel] !== undefined
+    ) {
+        throw new Error(
+            "Container annotations cannot override positional scale settings."
+        );
+    }
+
+    if (prepared.encoding) {
+        prepareAnnotationEncoding(
+            prepared.encoding,
+            sharedChannel,
+            perpendicularChannel
+        );
+    }
+
+    if (isLayerSpec(prepared)) {
+        prepared.resolve = {
+            ...prepared.resolve,
+            scale: {
+                ...prepared.resolve?.scale,
+                [sharedChannel]: "forced",
+            },
+        };
+        prepared.layer = prepared.layer.map((child) =>
+            prepareAnnotationSpec(
+                /** @type {import("../spec/view.js").UnitSpec | import("../spec/view.js").LayerSpec} */ (
+                    child
+                ),
+                sharedChannel,
+                perpendicularChannel
+            )
+        );
+    }
+
+    return prepared;
+}
+
+/**
+ * @param {import("../spec/channel.js").Encoding} encoding
+ * @param {import("../spec/channel.js").PrimaryPositionalChannel} sharedChannel
+ * @param {import("../spec/channel.js").PrimaryPositionalChannel} perpendicularChannel
+ */
+function prepareAnnotationEncoding(
+    encoding,
+    sharedChannel,
+    perpendicularChannel
+) {
+    for (const [channel, channelDef] of Object.entries(encoding)) {
+        if (Array.isArray(channelDef)) {
+            continue;
+        }
+
+        forEachAnnotationDefinition(
+            /** @type {import("../spec/channel.js").ChannelDef} */ (channelDef),
+            (definition) => {
+                const resolutionChannel = definition.resolutionChannel;
+                if (
+                    resolutionChannel !== undefined &&
+                    isPositionalChannel(getPrimaryChannel(resolutionChannel)) &&
+                    getPrimaryChannel(channel) !== sharedChannel
+                ) {
+                    throw new Error(
+                        `Container annotation channel ${channel} cannot resolve through positional channel ${resolutionChannel}.`
+                    );
+                }
+            }
+        );
+    }
+
+    for (const channel of [sharedChannel, getSecondaryChannel(sharedChannel)]) {
+        const channelDef = encoding[channel];
+        if (!channelDef) {
+            continue;
+        }
+
+        forEachAnnotationDefinition(channelDef, (definition) => {
+            if (definition.scale !== undefined) {
+                throw new Error(
+                    `Container annotation encodings on ${channel} cannot define scale settings.`
+                );
+            }
+            if (
+                definition.resolutionChannel !== undefined &&
+                getPrimaryChannel(definition.resolutionChannel) !==
+                    sharedChannel
+            ) {
+                throw new Error(
+                    `Container annotation channel ${channel} must resolve through ${sharedChannel}.`
+                );
+            }
+            if (!("value" in definition)) {
+                definition.domainInert = true;
+            }
+        });
+    }
+
+    for (const channel of [
+        perpendicularChannel,
+        getSecondaryChannel(perpendicularChannel),
+    ]) {
+        const channelDef = encoding[channel];
+        if (!channelDef) {
+            continue;
+        }
+
+        forEachAnnotationDefinition(channelDef, (definition) => {
+            if (!("value" in definition) && definition.scale !== null) {
+                throw new Error(
+                    `Container annotation encodings on ${channel} must use scale: null.`
+                );
+            }
+        });
+    }
+}
+
+/**
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @param {(definition: Record<string, any>) => void} callback
+ */
+function forEachAnnotationDefinition(channelDef, callback) {
+    if (!channelDef || typeof channelDef !== "object") {
+        return;
+    }
+
+    callback(/** @type {Record<string, any>} */ (channelDef));
+    const condition = /** @type {{ condition?: unknown }} */ (channelDef)
+        .condition;
+    if (condition) {
+        for (const definition of Array.isArray(condition)
+            ? condition
+            : [condition]) {
+            if (definition && typeof definition === "object") {
+                callback(/** @type {Record<string, any>} */ (definition));
+            }
+        }
     }
 }

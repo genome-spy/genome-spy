@@ -19,52 +19,81 @@ import {
     validateEventType,
 } from "../../utils/interactionConfig.js";
 import { ViewInteractionListenerTracker } from "../viewInteractionListenerTracker.js";
-import { getRulerProjectionCoords } from "../scaleProjection.js";
 
 /**
- * Handles interval selection interaction listeners for one grid child.
+ * @typedef {object} IntervalSelectionHost
+ * @property {import("../view.js").default} view
+ * @property {import("../containerView.js").default} layoutParent
+ * @property {import("../../types/viewContext.js").default} context
+ * @property {boolean} [captureInteractions]
+ * @property {() => Rectangle | undefined} getInteractionCoords
+ * @property {(name: string, point: Point) => boolean} [ownsInteraction]
+ * @property {(channel: import("../../spec/channel.js").PrimaryPositionalChannel) => Rectangle} getProjectionCoords
+ * @property {() => import("./selectionRect.js").SelectionRectOverlay | undefined} [getSelectionRect]
+ * @property {(overlay: import("./selectionRect.js").SelectionRectOverlay) => void} [setSelectionRect]
  */
+
+/** Handles interval selection interaction listeners for one layout host. */
 export class IntervalSelectionController {
     /**
-     * @param {import("./gridChild.js").default} gridChild
+     * @param {IntervalSelectionHost} host
      * @param {string} name
      * @param {import("../../spec/parameter.js").Parameter} param
      * @param {import("../../spec/parameter.js").IntervalSelectionConfig} select
      * @param {import("../../paramRuntime/viewParamRuntime.js").default} [paramRuntime]
      * @param {boolean} [renderOverlay]
+     * @param {import("./selectionRect.js").SelectionRectOverlay} [selectionRect]
      */
     constructor(
-        gridChild,
+        host,
         name,
         param,
         select,
-        paramRuntime = gridChild.view.paramRuntime,
-        renderOverlay = true
+        paramRuntime = host.view.paramRuntime,
+        renderOverlay = true,
+        selectionRect
     ) {
-        this.gridChild = gridChild;
-        this.#viewListeners = new ViewInteractionListenerTracker(
-            gridChild.view
-        );
+        this.host = host;
+        this.#viewListeners = new ViewInteractionListenerTracker(host.view);
 
-        this.#setup(name, param, select, paramRuntime, renderOverlay);
+        this.#setup(
+            name,
+            param,
+            select,
+            paramRuntime,
+            renderOverlay,
+            selectionRect
+        );
     }
 
-    /** @type {import("./gridChild.js").default} */
-    gridChild;
+    /** @type {IntervalSelectionHost} */
+    host;
 
     /** @type {ViewInteractionListenerTracker} */
     #viewListeners;
+
+    /** @type {() => boolean} */
+    #disposeActiveDrag = () => false;
 
     /**
      * @param {string} type
      * @param {import("../view.js").InteractionListener} listener
      * @param {boolean} [capture]
      */
-    #addViewInteractionListener(type, listener, capture) {
+    #addViewInteractionListener(
+        type,
+        listener,
+        capture = this.host.captureInteractions
+    ) {
         this.#viewListeners.add(type, listener, capture);
     }
 
     dispose() {
+        const wasDragging = this.#disposeActiveDrag();
+        this.#disposeActiveDrag = () => false;
+        if (wasDragging) {
+            this.host.context.resumeHoverTracking();
+        }
         this.#viewListeners.dispose();
     }
 
@@ -74,9 +103,10 @@ export class IntervalSelectionController {
      * @param {import("../../spec/parameter.js").IntervalSelectionConfig} select
      * @param {import("../../paramRuntime/viewParamRuntime.js").default} paramRuntime
      * @param {boolean} renderOverlay
+     * @param {import("./selectionRect.js").SelectionRectOverlay | undefined} selectionRect
      */
-    #setup(name, param, select, paramRuntime, renderOverlay) {
-        const view = this.gridChild.view;
+    #setup(name, param, select, paramRuntime, renderOverlay, selectionRect) {
+        const view = this.host.view;
         const channels = select.encodings ?? ["x"];
 
         const scaleResolutions = Object.fromEntries(
@@ -130,18 +160,11 @@ export class IntervalSelectionController {
             );
         const clearEventPredicate = createEventPredicate(clearEventConfig);
 
-        if (renderOverlay && this.gridChild.selectionRect) {
-            throw new Error(
-                "Only one interval selection per container is currently allowed!"
-            );
-        }
-
         // --- Validation and early exits done ---
 
         let mouseOver = false;
         let preventNextClickPropagation = false;
         let nowBrushing = false;
-
         /**
          * Selection rectangle in screen coordinates. Used when translating
          * an existing selection.
@@ -181,21 +204,39 @@ export class IntervalSelectionController {
             setter(createIntervalSelection(channels));
         };
 
+        const isInsideHost = (/** @type {Point} */ point) =>
+            this.host.getInteractionCoords()?.containsPoint(point.x, point.y) ??
+            false;
+        const ownsInteraction = (/** @type {Point} */ point) =>
+            this.host.ownsInteraction?.(name, point) ?? true;
+
+        let dragOverlay = selectionRect;
         if (renderOverlay) {
-            this.gridChild.selectionRect = createSelectionRectOverlay({
+            if (!this.host.getSelectionRect || !this.host.setSelectionRect) {
+                throw new Error(
+                    "Interval selection hosts must provide a selection rectangle."
+                );
+            }
+            if (this.host.getSelectionRect()) {
+                throw new Error(
+                    "Only one interval selection per container is currently allowed!"
+                );
+            }
+            dragOverlay = createSelectionRectOverlay({
                 selectionExpr,
                 selectionExpression: name,
                 channels,
                 brushConfig: select.mark,
-                context: this.gridChild.layoutParent.context,
-                layoutParent: this.gridChild.layoutParent,
+                context: this.host.context,
+                layoutParent: this.host.layoutParent,
                 dataParent: view,
                 scaleResolutionSource: view,
             });
+            this.host.setSelectionRect(dragOverlay);
         }
-        const setIntervalDragActive = renderOverlay
+        const setIntervalDragActive = dragOverlay
             ? (/** @type {boolean} */ active) => {
-                  this.gridChild.selectionRect.view.paramRuntime.setValue(
+                  dragOverlay.view.paramRuntime.setValue(
                       INTERVAL_DRAG_ACTIVE_PARAM,
                       active
                   );
@@ -206,12 +247,7 @@ export class IntervalSelectionController {
             /** @type {import("../layout/point.js").default} */ point
         ) => {
             const inverted = { x: 0, y: 0 };
-            const projectionCoords = getRulerProjectionCoords(
-                view,
-                channels,
-                channels[0],
-                scaleResolutions[channels[0]]
-            );
+            const projectionCoords = this.host.getProjectionCoords(channels[0]);
             const normalizedPoint = projectionCoords.normalizePoint(
                 point.x,
                 point.y,
@@ -238,12 +274,7 @@ export class IntervalSelectionController {
          */
         const selectionToRect = (selection) => {
             const { intervals } = selection;
-            const projectionCoords = getRulerProjectionCoords(
-                view,
-                channels,
-                channels[0],
-                scaleResolutions[channels[0]]
-            );
+            const projectionCoords = this.host.getProjectionCoords(channels[0]);
 
             const mapCorner = (
                 /** @type {number} */ xVal,
@@ -269,7 +300,11 @@ export class IntervalSelectionController {
         };
 
         this.#addViewInteractionListener("mousedown", (event) => {
-            if (event.mouseEvent.button != 0) {
+            if (
+                event.mouseEvent.button != 0 ||
+                !isInsideHost(event.point) ||
+                !ownsInteraction(event.point)
+            ) {
                 return;
             }
 
@@ -406,15 +441,17 @@ export class IntervalSelectionController {
             };
 
             const mouseUpListener = (/** @type {MouseEvent} */ upEvent) => {
+                this.#disposeActiveDrag();
+                this.#disposeActiveDrag = () => false;
+                view.context.resumeHoverTracking(upEvent);
+            };
+            this.#disposeActiveDrag = () => {
                 document.removeEventListener("mousemove", mouseMoveListener);
                 document.removeEventListener("mouseup", mouseUpListener);
-
                 setIntervalDragActive(false);
                 nowBrushing = false;
-                if (translatedRectangle) {
-                    translatedRectangle = null;
-                }
-                view.context.resumeHoverTracking(upEvent);
+                translatedRectangle = null;
+                return true;
             };
             document.addEventListener("mousemove", mouseMoveListener);
 
@@ -443,6 +480,8 @@ export class IntervalSelectionController {
                 (event) => {
                     if (
                         clearEventPredicate(event.proxiedMouseEvent) &&
+                        isInsideHost(event.point) &&
+                        ownsInteraction(event.point) &&
                         isPointInsideSelection(event.point)
                     ) {
                         clearSelection();
@@ -460,6 +499,9 @@ export class IntervalSelectionController {
                 !zoomEventConfig ||
                 !zoomEventPredicate(createPrimitiveEventProxy(wheelEvent))
             ) {
+                return;
+            }
+            if (!isInsideHost(event.point) || !ownsInteraction(event.point)) {
                 return;
             }
 
@@ -530,7 +572,11 @@ export class IntervalSelectionController {
 
         // Handle mouse cursor changes
         this.#addViewInteractionListener("mousemove", (event) => {
-            if (isPointInsideSelection(event.point)) {
+            if (
+                isInsideHost(event.point) &&
+                ownsInteraction(event.point) &&
+                isPointInsideSelection(event.point)
+            ) {
                 // Brushing and translating the existing brush are different actions.
                 if (!nowBrushing) {
                     mouseOver = true;

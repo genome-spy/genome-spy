@@ -1,8 +1,5 @@
-import GridView, { getLegendCollectionLayoutHost } from "./gridView.js";
-import {
-    filterLegendResolutionOwners,
-    findLegendCollectionDeclaration,
-} from "./legendCollection.js";
+import GridView, { getLegendLayoutHost } from "./gridView.js";
+import { filterLegendResolutionOwners } from "./legendCollection.js";
 
 /**
  * Recreates guide views after resolution-level properties have been attached.
@@ -25,15 +22,7 @@ export async function syncViewGuideViews(viewRoot) {
         for (const resolution of new Set(
             Object.values(owner.resolutions.legend)
         )) {
-            const declaration = findLegendCollectionDeclaration(
-                owner,
-                resolution.channel
-            );
-            const host = declaration
-                ? getLegendCollectionLayoutHost(declaration, resolution.channel)
-                : owner instanceof GridView
-                  ? owner
-                  : undefined;
+            const host = getLegendLayoutHost(owner, resolution.channel);
             if (host) {
                 const owners = legendOwnersByHost.get(host) ?? [];
                 if (!owners.includes(owner)) {

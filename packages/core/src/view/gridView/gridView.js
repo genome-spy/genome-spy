@@ -17,6 +17,7 @@ import AxisView, {
     getExternalAxisOverhang,
 } from "../axisView.js";
 import ContainerView from "../containerView.js";
+import { VISIT_SKIP } from "../view.js";
 import {
     propagateInteraction,
     propagateInteractionSurface,
@@ -53,8 +54,10 @@ import {
 import { isRulerParameter } from "../../paramRuntime/paramUtils.js";
 import { createConfiguredRulerOverlayView } from "./rulerOverlay.js";
 import { createSelectionRectOverlay } from "./selectionRect.js";
+import { IntervalSelectionController } from "./intervalSelectionController.js";
 import { resolveOverlayExtent } from "./overlayExtent.js";
 import { getScaleProjectionCoords } from "../scaleProjection.js";
+import { isInChromeSubtree } from "../viewChrome.js";
 import {
     asSelectionConfig,
     createIntervalSelection,
@@ -204,7 +207,7 @@ export default class GridView extends ContainerView {
     /** @type {KeyboardZoomController | null} */
     #keyboardZoomController = null;
 
-    /** @type {{ overlay: import("./generatedChromeOverlay.js").GeneratedChromeOverlay, order: number, channel: import("../../spec/channel.js").PrimaryPositionalChannel }[]} */
+    /** @type {{ overlay: import("./generatedChromeOverlay.js").GeneratedChromeOverlay, order: number, channel: import("../../spec/channel.js").PrimaryPositionalChannel, controller?: IntervalSelectionController }[]} */
     #containerOverlays = [];
 
     /**
@@ -385,6 +388,191 @@ export default class GridView extends ContainerView {
     }
 
     /**
+     * Returns the annotation layer owned by this container, if any.
+     *
+     * @returns {import("../layerView.js").default | undefined}
+     */
+    getAnnotationLayer() {
+        return undefined;
+    }
+
+    get view() {
+        return this;
+    }
+
+    get captureInteractions() {
+        return true;
+    }
+
+    /**
+     * Preserve nearest parameter ownership when a nested view shadows a
+     * container-owned interval selection.
+     *
+     * @param {string} name
+     * @param {import("../layout/point.js").default} point
+     */
+    ownsInteraction(name, point) {
+        const pointedChild = this.#visibleChildren.find((gridChild) =>
+            gridChild.coords.containsPoint(point.x, point.y)
+        );
+        if (!pointedChild) {
+            return true;
+        }
+
+        if (
+            pointedChild.view instanceof GridView &&
+            !pointedChild.view.ownsInteraction(name, point)
+        ) {
+            return false;
+        }
+
+        for (const owner of pointedChild.view.getDataAncestors()) {
+            if (owner === this) {
+                return true;
+            }
+            if (owner.paramRuntime.paramConfigs.has(name)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    getInteractionCoords() {
+        const channel = this.#getGapZoomChannel();
+        return this.getTrackPlotGeometry(channel)?.viewport;
+    }
+
+    /**
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
+     */
+    getProjectionCoords(channel) {
+        const geometry = this.getTrackPlotGeometry(channel);
+        if (!geometry) {
+            throw new Error(
+                `Cannot project a container interval on an empty ${channel} grid.`
+            );
+        }
+        return geometry.content;
+    }
+
+    /**
+     * Returns the plotting placements of visible track children. These
+     * placements intentionally exclude this grid's guides and any nested
+     * container annotations.
+     *
+     * @returns {{ content: Rectangle, viewport: Rectangle, views: UnitView[] }[]}
+     */
+    getTrackPlotPlacements() {
+        /** @type {{ content: Rectangle, viewport: Rectangle, views: UnitView[] }[]} */
+        const placements = [];
+
+        for (const gridChild of this.#visibleChildren) {
+            if (gridChild.view instanceof GridView) {
+                placements.push(...gridChild.view.getTrackPlotPlacements());
+                continue;
+            }
+
+            /** @type {UnitView[]} */
+            const trackViews = [];
+            gridChild.view.visit((view) => {
+                if (!view.isConfiguredVisible()) {
+                    return VISIT_SKIP;
+                }
+                if (view instanceof UnitView && !isInChromeSubtree(view)) {
+                    trackViews.push(view);
+                }
+            });
+
+            if (trackViews.length === 0) {
+                continue;
+            }
+
+            placements.push({
+                content: gridChild.plotCoords,
+                viewport: gridChild.coords,
+                views: trackViews,
+            });
+        }
+
+        return placements;
+    }
+
+    /**
+     * Returns the shared plotting bounds used by container overlays and
+     * interactions.
+     *
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} [channel]
+     * @returns {{ content: Rectangle, viewport: Rectangle } | undefined}
+     */
+    getTrackPlotGeometry(channel) {
+        return this._cache("trackPlotGeometry/" + channel, () => {
+            const placements = this.getTrackPlotPlacements().filter(
+                ({ content, viewport }) =>
+                    content.width > 0 &&
+                    content.height > 0 &&
+                    viewport.width > 0 &&
+                    viewport.height > 0
+            );
+            if (placements.length === 0) {
+                return undefined;
+            }
+
+            if (channel) {
+                const resolution = this.getScaleResolution(channel);
+                const trackViews = new Set(
+                    placements.flatMap(({ views }) => views)
+                );
+                if (
+                    !resolution
+                        ?.getOrderedMembers()
+                        .some(({ view }) => trackViews.has(view))
+                ) {
+                    throw new Error(
+                        `Container annotations require a shared ${channel} scale defined by tracks.`
+                    );
+                }
+                const expectedSpan =
+                    placements[0].content[channel === "x" ? "width" : "height"];
+                const expectedStart =
+                    placements[0].content[channel === "x" ? "x" : "y"];
+
+                for (const placement of placements) {
+                    for (const view of placement.views) {
+                        if (view.getScaleResolution(channel) !== resolution) {
+                            throw new Error(
+                                `Container annotations require all visible tracks to use the shared ${channel} scale resolution.`
+                            );
+                        }
+                    }
+
+                    const span =
+                        placement.content[channel === "x" ? "width" : "height"];
+                    const start =
+                        placement.content[channel === "x" ? "x" : "y"];
+                    if (
+                        Math.abs(span - expectedSpan) > 1e-6 ||
+                        Math.abs(start - expectedStart) > 1e-6
+                    ) {
+                        throw new Error(
+                            `Container annotations require equal aligned visible plotting spans on the shared ${channel} axis.`
+                        );
+                    }
+                }
+            }
+
+            return {
+                content: getUnionCoords(
+                    placements.map(({ content }) => content)
+                ),
+                viewport: getUnionCoords(
+                    placements.map(({ viewport }) => viewport)
+                ),
+            };
+        });
+    }
+
+    /**
      * Restricts which legends this grid and its children physically host.
      * Semantic legend ownership and scale resolution remain unchanged.
      *
@@ -484,24 +672,16 @@ export default class GridView extends ContainerView {
     async #syncSharedLegends(owners) {
         disposeLegendViews(this.#sharedLegends);
         this.#sharedLegends = {};
-        const legendOwners =
-            owners ??
-            (Object.keys(this.resolutions.legend).length > 0 ? [this] : []);
+        const legendOwners = owners ?? getLegendResolutionOwners(this);
 
         for (const { definition, resolution, owner } of getOrderedLegendEntries(
             legendOwners
         )) {
-            const declaration = findLegendCollectionDeclaration(
+            const collectionTarget = getLegendLayoutHost(
                 owner,
                 resolution.channel
             );
-            const collectionTarget = declaration
-                ? getLegendCollectionLayoutHost(declaration, resolution.channel)
-                : undefined;
-            if (
-                collectionTarget !== this &&
-                !(collectionTarget === undefined && owner === this)
-            ) {
+            if (collectionTarget !== this) {
                 continue;
             }
 
@@ -515,10 +695,7 @@ export default class GridView extends ContainerView {
     }
 
     async #syncContainerOverlays() {
-        for (const { overlay } of this.#containerOverlays) {
-            overlay.view.disposeSubtree();
-        }
-        this.#containerOverlays = [];
+        this.#disposeContainerOverlays();
 
         /** @type {Promise<void>[]} */
         const promises = [];
@@ -574,6 +751,17 @@ export default class GridView extends ContainerView {
                 overlay,
                 order: DECORATION_ORDER.selectionRect,
                 channel,
+                controller: new IntervalSelectionController(
+                    this,
+                    paramName,
+                    /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
+                        param
+                    ),
+                    select,
+                    this.paramRuntime,
+                    false,
+                    overlay
+                ),
             });
             promises.push(overlay.view.initializeChildren());
         }
@@ -648,6 +836,11 @@ export default class GridView extends ContainerView {
 
         for (const { overlay } of this.#containerOverlays) {
             yield overlay.view;
+        }
+
+        const annotationLayer = this.getAnnotationLayer();
+        if (annotationLayer) {
+            yield annotationLayer;
         }
 
         for (const separatorView of Object.values(this.#separatorViews)) {
@@ -977,6 +1170,7 @@ export default class GridView extends ContainerView {
      * @param {import("../../types/rendering.js").RenderingOptions} [options]
      */
     arrange(context, coords, options = {}) {
+        this._invalidateCacheByPrefix("trackPlotGeometry");
         super.arrange(context, coords, options);
 
         if (!this.isConfiguredVisible()) {
@@ -1188,6 +1382,7 @@ export default class GridView extends ContainerView {
                 : viewportCoords;
 
             gridChild.coords = viewportCoords;
+            gridChild.plotCoords = viewCoords;
 
             const parentClip = normalizeClipOptions(options);
             const visibleChildCoords = clipCoords(viewportCoords, parentClip);
@@ -1310,18 +1505,25 @@ export default class GridView extends ContainerView {
 
         if (gridViewCoords) {
             for (const { overlay, order, channel } of this.#containerOverlays) {
-                queueDecoration(overlay.zindex, order, () =>
+                queueDecoration(overlay.zindex, order, () => {
+                    // Foreground overlays share the completed track layout with
+                    // annotations and controllers. Underlays precede nested layout.
+                    const geometry =
+                        overlay.zindex > 0
+                            ? this.getTrackPlotGeometry(channel)
+                            : undefined;
                     overlay.view.arrange(
                         context,
-                        getScaleProjectionCoords(
-                            this.getScaleResolution(channel),
-                            channel,
-                            gridViewCoords,
-                            this
-                        ),
+                        geometry?.content ??
+                            getScaleProjectionCoords(
+                                this.getScaleResolution(channel),
+                                channel,
+                                gridViewCoords,
+                                this
+                            ),
                         options
-                    )
-                );
+                    );
+                });
             }
         }
 
@@ -1566,6 +1768,23 @@ export default class GridView extends ContainerView {
 
         arrangeDecorations(overlays);
 
+        const annotationLayer = this.getAnnotationLayer();
+        const annotationGeometry = annotationLayer
+            ? this.getTrackPlotGeometry(this.#getGapZoomChannel())
+            : undefined;
+        if (annotationLayer && annotationGeometry) {
+            const parentClip = normalizeClipOptions(options);
+            const annotationClip = combineClipOptions(
+                parentClip,
+                createClipOptions(annotationGeometry.viewport, true, true)
+            );
+            annotationLayer.arrange(context, annotationGeometry.content, {
+                ...options,
+                clipRect: annotationClip?.rect,
+                clip: annotationClip,
+            });
+        }
+
         context.popView(this);
     }
 
@@ -1599,6 +1818,21 @@ export default class GridView extends ContainerView {
         }
 
         return offsetAxes;
+    }
+
+    dispose() {
+        for (const { controller } of this.#containerOverlays) {
+            controller?.dispose();
+        }
+        super.dispose();
+    }
+
+    #disposeContainerOverlays() {
+        for (const { controller, overlay } of this.#containerOverlays) {
+            controller?.dispose();
+            overlay.view.disposeSubtree();
+        }
+        this.#containerOverlays = [];
     }
 
     /**
@@ -1653,6 +1887,24 @@ export default class GridView extends ContainerView {
                     () => scrollbar.propagateInteraction(event)
                 );
 
+                if (event.stopped) {
+                    return;
+                }
+            }
+
+            const annotationLayer = this.getAnnotationLayer();
+            const annotationCoords = annotationLayer
+                ? this.getTrackPlotGeometry(this.#getGapZoomChannel())?.viewport
+                : undefined;
+            const pointedAnnotation =
+                annotationLayer &&
+                annotationCoords?.containsPoint(event.point.x, event.point.y) &&
+                this.context
+                    .getCurrentHover()
+                    ?.mark?.unitView?.getLayoutAncestors()
+                    .includes(annotationLayer);
+            if (pointedAnnotation) {
+                annotationLayer.propagateInteraction(event);
                 if (event.stopped) {
                     return;
                 }
@@ -1861,6 +2113,40 @@ export function getLegendCollectionLayoutHost(declaration, channel) {
         );
     }
     return host;
+}
+
+/**
+ * Resolves the physical host for a legend while leaving its semantic
+ * resolution owner unchanged.
+ *
+ * Annotation views are deliberately not GridChild instances. Their legends
+ * therefore use the nearest concat that owns their annotation layer, while
+ * ordinary child legends continue to be hosted by their GridChild. Explicit
+ * collection declarations take precedence over this annotation fallback.
+ *
+ * @param {View} owner
+ * @param {import("../../spec/channel.js").ChannelWithScale} channel
+ * @returns {GridView | undefined}
+ */
+export function getLegendLayoutHost(owner, channel) {
+    const declaration = findLegendCollectionDeclaration(owner, channel);
+    if (declaration) {
+        return getLegendCollectionLayoutHost(declaration, channel);
+    }
+
+    const layoutAncestors = owner.getLayoutAncestors();
+    for (const ancestor of layoutAncestors) {
+        if (!(ancestor instanceof GridView)) {
+            continue;
+        }
+
+        const annotationLayer = ancestor.getAnnotationLayer();
+        if (annotationLayer && layoutAncestors.includes(annotationLayer)) {
+            return ancestor;
+        }
+    }
+
+    return owner instanceof GridView ? owner : undefined;
 }
 
 /**

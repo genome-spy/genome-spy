@@ -176,6 +176,9 @@ export default class GridChild {
         /** @type {Rectangle} */
         this.coords = Rectangle.ZERO;
 
+        /** @type {Rectangle} */
+        this.plotCoords = Rectangle.ZERO;
+
         const needsAxes = view.needsAxes.x || view.needsAxes.y;
         const parentChromePolicy = view.getParentGridChromePolicy();
         const spec = view.spec;
@@ -439,11 +442,14 @@ export default class GridChild {
 
         for (const owner of this.view.getDataAncestors()) {
             for (const [paramName, param] of owner.paramRuntime.paramConfigs) {
-                if (seen.has(paramName) || !("select" in param)) {
+                if (seen.has(paramName)) {
                     continue;
                 }
 
                 seen.add(paramName);
+                if (!("select" in param)) {
+                    continue;
+                }
                 const select = asSelectionConfig(param.select);
                 if (
                     isIntervalSelectionConfig(select) &&
@@ -458,18 +464,20 @@ export default class GridChild {
                             channels
                         );
 
-                    this.#intervalSelectionControllers.push(
-                        new IntervalSelectionController(
-                            this,
-                            paramName,
-                            /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
-                                param
-                            ),
-                            select,
-                            owner.paramRuntime,
-                            renderOverlay
-                        )
-                    );
+                    if (renderOverlay) {
+                        this.#intervalSelectionControllers.push(
+                            new IntervalSelectionController(
+                                this,
+                                paramName,
+                                /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
+                                    param
+                                ),
+                                select,
+                                owner.paramRuntime,
+                                true
+                            )
+                        );
+                    }
                 }
             }
         }
@@ -493,6 +501,31 @@ export default class GridChild {
                 label: `Interval selection param "${paramName}"`,
             }) === "container"
         );
+    }
+
+    get context() {
+        return this.layoutParent.context;
+    }
+
+    getInteractionCoords() {
+        return this.coords.width > 0 && this.coords.height > 0
+            ? this.coords
+            : this.view.coords;
+    }
+
+    getProjectionCoords() {
+        return this.view.coords;
+    }
+
+    getSelectionRect() {
+        return this.selectionRect;
+    }
+
+    /**
+     * @param {import("./selectionRect.js").SelectionRectOverlay} overlay
+     */
+    setSelectionRect(overlay) {
+        this.selectionRect = overlay;
     }
 
     *getChildren() {

@@ -657,6 +657,13 @@ export interface VConcatSpec extends ConcatBase {
      * Specifies views that will be concatenated vertically.
      */
     vconcat: (ViewSpec | ImportSpec)[];
+
+    /**
+     * Marks drawn across the tracks and gaps of the vertically concatenated
+     * views. Positional `x` and `x2` encodings use the shared x scale, while
+     * `y` and `y2` use normalized coordinates from 0 (bottom) to 1 (top).
+     */
+    annotate?: (UnitSpec | LayerSpec)[];
 }
 
 export interface HConcatSpec extends ConcatBase {
@@ -664,6 +671,13 @@ export interface HConcatSpec extends ConcatBase {
      * Specifies views that will be concatenated horizontally.
      */
     hconcat: (ViewSpec | ImportSpec)[];
+
+    /**
+     * Marks drawn across the tracks and gaps of the horizontally concatenated
+     * views. Positional `y` and `y2` encodings use the shared y scale, while
+     * `x` and `x2` use normalized coordinates from 0 (left) to 1 (right).
+     */
+    annotate?: (UnitSpec | LayerSpec)[];
 }
 
 export interface ConcatSpec extends ConcatBase {
