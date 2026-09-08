@@ -57,13 +57,24 @@ higher `zindex`. Set `clip: "never"` on a mark when it should extend beyond
 those bounds. Entries render in array order by default, with ordinary layer
 `zindex` ordering within the annotation layer.
 
-Annotation legends use the concat's existing legend regions, so a legend for a
-data-driven `fill`, `stroke`, or other supported encoding appears beside the
-whole composition automatically. Non-positional scales are shared among
-annotation entries, while the concat's regular track scales remain independent
-by default. Use the usual `resolve.scale` settings to share an annotation scale
-with tracks, and `resolve.legend: { "color": "collected" }` to collect
-independent legends into the concat's legend region.
+Annotation legends appear around the whole concat using its usual legend regions.
+Non-positional scales, such as color and size, are shared among annotation entries
+and remain independent of track scales by default. The concat's
+`resolve.scale.color: "shared"` makes tracks and annotations use the same color
+scale and, by default, one legend.
+
+Sharing is per channel, even when annotations encode different fields. An
+annotation's `resolve.scale.color: "excluded"` isolates its color scale from
+siblings and tracks. An explicit layer entry with
+`resolve.scale.color: "independent"` gives its children separate color scales.
+Legend resolution follows the scale unless configured otherwise.
+
+The existing [legend collection](../legend.md#collected-legends) settings also
+apply to annotations. `resolve.legend: { "color": "collected" }` collects color
+legends around that concat, including legends from nested annotations, without
+merging independent scales. Explicit collection by an outer concat takes
+precedence over an annotation's default host. `resolve.legend.color: "excluded"`
+keeps a legend at its normal host; `legend: null` on the encoding hides it.
 
 The tracks must have aligned shared projections on the data axis. Annotation
 layers cannot define their own positional scales or request an independent or
