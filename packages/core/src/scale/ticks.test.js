@@ -1,3 +1,4 @@
+import { scaleLinear } from "d3-scale";
 import { expect, test } from "vitest";
 /*!
  * Adapted from vega-encode:
@@ -9,7 +10,14 @@ import { expect, test } from "vitest";
  * BSD-3-Clause License: https://github.com/vega/vega-lite/blob/master/LICENSE
  */
 
-import { validTicks } from "./ticks.js";
+import { tickFormat, validTicks } from "./ticks.js";
+
+test("uses default precision for a zero tick count", function () {
+    const scale = scaleLinear().domain([0, 0.5]);
+    const format = tickFormat(scale, 0);
+
+    expect([0, 0.25, 0.5].map(format)).toEqual(["0.00", "0.25", "0.50"]);
+});
 
 test("validTicks uses count correctly", function () {
     var data = [0, 1, 2, 3, 4, 5, 6, 7];

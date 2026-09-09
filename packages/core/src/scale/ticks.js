@@ -129,8 +129,16 @@ function binValues(bins, count) {
  * @return {function(*):string} - The generated label formatter.
  */
 export function tickFormat(scale, count, specifier) {
+    // d3-format interprets a zero or invalid count as a request for six
+    // fractional digits. Expression-based axis counts can temporarily be
+    // zero while a view is waiting for its first layout pass, so use the
+    // scale's normal default precision in that case.
+    const formatCount =
+        typeof count == "number" && (!Number.isFinite(count) || count <= 0)
+            ? undefined
+            : count;
     var format = scale.tickFormat
-        ? scale.tickFormat(count, specifier)
+        ? scale.tickFormat(formatCount, specifier)
         : specifier
           ? numberFormat(specifier)
           : String;
@@ -196,7 +204,7 @@ function rightmostDigit(str, dec) {
     var i = str.lastIndexOf("e"),
         c;
     if (i > 0) return i;
-    for (i = str.length; --i > dec; ) {
+    for (i = str.length; --i > dec;) {
         c = str.charCodeAt(i);
         if (c >= 48 && c <= 57) return i + 1; // is digit
     }
