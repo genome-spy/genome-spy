@@ -231,10 +231,10 @@ export function createWebGpuMarkConfig(
 function createTranslation(definition, config, mark) {
     const order = mark.getOrder?.();
     if (order) {
-        config.orderWhen = createSelectionCondition(
-            mark,
-            order.predicate.selection
-        );
+        config.order = {
+            when: createSelectionCondition(mark, order.predicate.selection),
+            matching: order.passes[0] === "matching" ? "first" : "last",
+        };
     }
     const properties = config.retainedProperties ?? {};
     delete config.retainedProperties;

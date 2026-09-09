@@ -96,10 +96,12 @@ describe("BaseProgram channel validation", () => {
         [{ visibleWhen: { all: [], any: [] } }, "exactly one"],
         [
             {
-                orderWhen: {
-                    compare: ">=",
-                    left: { slot: "x" },
-                    right: { slot: "x" },
+                order: {
+                    when: {
+                        compare: ">=",
+                        left: { slot: "x" },
+                        right: { slot: "x" },
+                    },
                 },
             },
             "Selection predicates",

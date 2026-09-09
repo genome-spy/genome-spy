@@ -108,11 +108,14 @@ for (const [
                     orient,
                     segments: 101,
                     arcFadingDistance: [height * 0.4, height * 0.8],
-                    orderWhen: hasUniqueId
+                    order: hasUniqueId
                         ? {
-                              selection: "ordering",
-                              type: "single",
-                              empty: false,
+                              when: {
+                                  selection: "ordering",
+                                  type: "single",
+                                  empty: false,
+                              },
+                              matching: "last",
                           }
                         : undefined,
                     channels: {
@@ -161,19 +164,9 @@ for (const [
                         baseline + direction * height * 4 * t * (1 - t)
                     )
                 );
-                const read = async (secondOrderPass = false) => {
+                const read = async () => {
                     renderer.render({
-                        draws: [
-                            {
-                                mark,
-                                ...(secondOrderPass
-                                    ? {
-                                          orderPass: "matching",
-                                          secondOrderPass: true,
-                                      }
-                                    : {}),
-                            },
-                        ],
+                        draws: [{ mark }],
                         clearColor: { r: 0, g: 0, b: 0, a: 0 },
                     });
                     const bytesPerRow = canvas.width * 4;
@@ -235,7 +228,7 @@ for (const [
                 if (hasUniqueId) {
                     mark.selections.ordering.set(17);
                     mark.properties.noFadingOnSecondPass.set(true);
-                    foreground = await read(true);
+                    foreground = await read();
                 }
                 mark.properties.noFadingOnSecondPass.set(false);
                 const forced = await read();

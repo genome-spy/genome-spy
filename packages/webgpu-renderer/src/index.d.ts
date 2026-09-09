@@ -987,7 +987,7 @@ export type LinkMarkOptions = {
     /** Fade arcs and domes by perpendicular distance from their endpoint baseline in logical pixels. */
     arcFadingDistance?: [number, number];
 
-    /** Disable arc fading on draws marked secondOrderPass. Default: false. */
+    /** Disable arc fading on renderer-generated second order partitions. Default: false. */
     noFadingOnSecondPass?: boolean;
 };
 
@@ -1043,8 +1043,8 @@ export type MarkConfig<T extends MarkType = MarkType> = {
         scalarSlots?: Record<string, ScalarSlotConfig>;
         /** Immutable predicate controlling mark visibility and picking. */
         visibleWhen?: VisibilityPredicate;
-        /** Predicate used by conditional draw ordering in ordinary rendering. */
-        orderWhen?: SelectionPredicate;
+        /** Declarative conditional draw ordering in ordinary rendering. */
+        order?: MarkOrder;
     } & (T extends "link" ? LinkMarkOptions : unknown) &
     (T extends "text" ? TextMarkOptions : unknown) &
     (T extends "arrow" ? ArrowMarkOptions : unknown);
@@ -1090,7 +1090,12 @@ export type DrawVisibleRange = {
     cullY: boolean;
 };
 
-export type DrawOrderPass = "all" | "matching" | "nonmatching";
+export type MarkOrder = Readonly<{
+    /** Selection predicate used to partition the mark's instances. Empty selections use one draw. */
+    when: SelectionPredicate;
+    /** Whether matching instances are painted first or last. Defaults to last. */
+    matching?: "first" | "last";
+}>;
 
 export type PlacementSetData = {
     /** Packed viewport-local normalized [x, y, width, height] rectangles. */
@@ -1126,10 +1131,6 @@ export type DrawCommand = {
     firstInstance?: number;
     /** Number of logical instances to draw. Defaults to the remaining count. */
     instanceCount?: number;
-    /** Conditional order pass for ordinary rendering. Picking always uses all. */
-    orderPass?: DrawOrderPass;
-    /** Mark the second conditional order partition; ignored during picking. */
-    secondOrderPass?: boolean;
     placement?: DrawPlacement;
 };
 
@@ -1199,6 +1200,10 @@ export type MarkProgram<
     readonly drawCount: number;
     readonly count: number;
     readonly _placementIndex?: MarkConfig["placementIndex"];
+    /** Renderer-internal normalized conditional ordering configuration. */
+    readonly _order?: MarkOrder;
+    /** Renderer-internal activity cache for the order predicate. */
+    readonly _orderActive?: boolean;
     /** Translate a logical draw range to GPU instance indices. */
     resolveDrawRange(
         firstInstance: number,

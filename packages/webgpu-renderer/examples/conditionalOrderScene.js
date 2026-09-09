@@ -31,7 +31,10 @@ export default async function runConditionalOrderScene(canvas) {
             fillOpacity: { value: 0.65 },
             strokeWidth: { value: 0 },
         },
-        orderWhen: { selection: "picked", type: "single", empty: false },
+        order: {
+            when: { selection: "picked", type: "single", empty: false },
+            matching: "last",
+        },
     });
     const { scales } = mark;
 
@@ -44,12 +47,7 @@ export default async function runConditionalOrderScene(canvas) {
     };
 
     const getFrame = () => ({
-        draws: ordered
-            ? [
-                  { mark, orderPass: "nonmatching" },
-                  { mark, orderPass: "matching" },
-              ]
-            : [{ mark, orderPass: "all" }],
+        draws: [{ mark }],
     });
 
     const toggleOrder = () => {

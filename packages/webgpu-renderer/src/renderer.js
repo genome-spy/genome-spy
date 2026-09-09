@@ -196,20 +196,6 @@ function placementClipMode(value) {
     return value === "x" ? 1 : value === "y" ? 2 : value === "xy" ? 3 : 0;
 }
 
-/** @param {unknown} value @returns {0|1|2} */
-function normalizeOrderPass(value) {
-    if (value === undefined || value === "all") {
-        return 0;
-    }
-    if (value === "matching") {
-        return 1;
-    }
-    if (value === "nonmatching") {
-        return 2;
-    }
-    throw new RendererError(`Unknown order pass "${String(value)}".`);
-}
-
 /** @param {number} byteLength */
 function createGlobalUniformStaging(byteLength) {
     const buffer = new ArrayBuffer(byteLength);
@@ -1103,9 +1089,7 @@ export class Renderer {
             firstInstance: resolvedRange.firstInstance,
             instanceCount: resolvedRange.instanceCount,
             // Low bits select the partition; bit 2 identifies the second visual pass.
-            orderPass:
-                normalizeOrderPass(command.orderPass) |
-                (command.secondOrderPass ? 4 : 0),
+            orderPass: 0,
             placement,
         };
     }
@@ -1171,8 +1155,23 @@ export class Renderer {
                         draws.length
                     );
                     if (draw) {
+                        const mark = this._marks.get(draw.markId);
+                        const order = mark._order;
                         draws.push(draw);
                         normalized.push(draw);
+                        if (order && mark._orderActive) {
+                            const matchingFirst = order.matching === "first";
+                            const firstPass = matchingFirst ? 1 : 2;
+                            const secondPass = (matchingFirst ? 2 : 1) | 4;
+                            draw.orderPass = firstPass;
+                            const secondDraw = {
+                                ...draw,
+                                uniformIndex: draws.length,
+                                orderPass: secondPass,
+                            };
+                            draws.push(secondDraw);
+                            normalized.push(secondDraw);
+                        }
                     }
                 }
             }
@@ -1518,6 +1517,9 @@ export class Renderer {
         const dpr = this._globals.dpr;
         const state = new RenderPassState(pass);
         for (const draw of draws) {
+            if (picking && draw.orderPass & 4) {
+                continue;
+            }
             const mark = this._marks.get(draw.markId);
             if (!mark) {
                 continue;

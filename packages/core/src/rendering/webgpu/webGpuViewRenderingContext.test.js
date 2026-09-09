@@ -99,8 +99,7 @@ beforeEach(() => {
 });
 
 describe("WebGpuViewRenderingContext", () => {
-    test("updates conditional order passes without rebuilding retained marks", () => {
-        let active = false;
+    test("submits one semantic draw without renderer order passes", () => {
         const surface = {
             getDevicePixelRatio: () => 1,
             getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
@@ -114,10 +113,6 @@ describe("WebGpuViewRenderingContext", () => {
             encoding: {},
             getType: () => "point",
             isPickingParticipant: () => true,
-            getOrder: () => ({
-                isActive: () => active,
-                passes: ["nonmatching", "matching"],
-            }),
             properties: {},
             unitView: { getEffectiveOpacity: () => 1 },
         };
@@ -128,18 +123,12 @@ describe("WebGpuViewRenderingContext", () => {
 
         const empty = collectDraws(context.render());
         expect(empty).toHaveLength(1);
-        expect(empty[0].orderPass).toBeUndefined();
-        active = true;
-        expect(
-            collectDraws(context.render()).map((draw) => draw.orderPass)
-        ).toEqual(["nonmatching", "matching"]);
+        expect(empty[0]).not.toHaveProperty("orderPass");
         const picking = context.renderPicking();
         expect(picking).toHaveLength(1);
-        expect(picking[0].orderPass).toBeUndefined();
-        active = false;
         const cleared = collectDraws(context.render());
         expect(cleared).toHaveLength(1);
-        expect(cleared[0].orderPass).toBeUndefined();
+        expect(cleared[0]).not.toHaveProperty("orderPass");
         expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledOnce();
     });
 

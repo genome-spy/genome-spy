@@ -64,7 +64,7 @@ import { buildVisibilityPredicate } from "./visibilityPredicate.js";
  * @prop {Map<string, import("../programs/internal/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
  * @prop {SelectionDef[]} [selectionDefs]
  * @prop {import("../../index.d.ts").VisibilityPredicate} [visibleWhen]
- * @prop {import("../../index.d.ts").SelectionPredicate} [orderWhen]
+ * @prop {import("../../index.d.ts").MarkOrder} [order]
  * @prop {Record<string, import("../../index.d.ts").ScalarSlotConfig>} [scalarSlots]
  * @prop {ExtraResourceDef[]} [extraResources]
  * @prop {import("../../index.d.ts").MarkConfig["placementIndex"]} [placementIndex]
@@ -108,7 +108,7 @@ export function buildMarkShader({
     packedSeriesLayout,
     selectionDefs = [],
     visibleWhen,
-    orderWhen,
+    order,
     scalarSlots = {},
     extraResources = [],
     placementIndex,
@@ -192,16 +192,16 @@ export function buildMarkShader({
     );
     const visibilityPredicate = buildVisibilityPredicate({
         predicate: visibleWhen,
-        functionName: orderWhen ? "isInstanceVisibleBase" : "isInstanceVisible",
+        functionName: order ? "isInstanceVisibleBase" : "isInstanceVisible",
         channelIRs,
         channelNames,
         inputNames,
         scalarSlots,
         selectionDefs,
     });
-    const orderPredicate = orderWhen
+    const orderPredicate = order
         ? buildVisibilityPredicate({
-              predicate: orderWhen,
+              predicate: order.when,
               functionName: "isInstanceOrderMatch",
               channelIRs,
               channelNames,
@@ -210,7 +210,7 @@ export function buildMarkShader({
               selectionDefs,
           })
         : "";
-    const orderVisibility = orderWhen
+    const orderVisibility = order
         ? /* wgsl */ `
 fn isInstanceVisible(i: u32) -> bool {
     if (!isInstanceVisibleBase(i)) { return false; }

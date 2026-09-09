@@ -47,7 +47,7 @@ fn vs_main(i: u32) -> @builtin(position) vec4<f32> {
             ],
             shaderBody: body,
             selectionDefs: [{ name: "pick", type: "single" }],
-            orderWhen: { selection: "pick", type: "single" },
+            order: { when: { selection: "pick", type: "single" } },
         });
 
         expect(shaderCode).toContain("fn isInstanceOrderMatch");

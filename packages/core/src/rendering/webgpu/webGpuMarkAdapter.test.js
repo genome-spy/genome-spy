@@ -11,6 +11,34 @@ import {
 } from "./webGpuMarkAdapter.js";
 
 describe("WebGPU mark adapter", () => {
+    test("translates conditional order into declarative renderer config", () => {
+        const mark = createMark("point", [{ id: 17 }], {
+            uniqueId: createConstantEncoder(17),
+        });
+        mark.getOrder = /** @type {any} */ (
+            () => ({
+                predicate: {
+                    selection: {
+                        params: ["picked"],
+                        empty: false,
+                        singleParam: true,
+                    },
+                },
+                params: ["picked"],
+                passes: ["matching", "nonmatching"],
+                isActive: () => false,
+            })
+        );
+        mark.unitView.paramRuntime.findValue = () => ({ type: "single" });
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+
+        expect(/** @type {any} */ (translated.config).order).toEqual({
+            when: { selection: "picked", type: "single", empty: false },
+            matching: "first",
+        });
+    });
+
     test("packs and caches a 2,000-instance placement-index series", () => {
         const data = Array.from({ length: 2000 }, (_, index) => ({ index }));
         const facetIndex = createEncoder((datum) => datum.index);
