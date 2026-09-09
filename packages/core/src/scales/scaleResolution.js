@@ -757,6 +757,11 @@ export default class ScaleResolution {
         }
 
         const previousProps = this.#viewLevelScaleProps?.props;
+
+        if (props.name || previousProps?.name) {
+            this.name = props.name;
+        }
+
         this.#viewLevelScaleProps = { view, props };
         this.#invalidateMergedScaleProps();
 
@@ -774,6 +779,9 @@ export default class ScaleResolution {
         if (this.#viewLevelScaleProps?.view === view) {
             const previousProps = this.#viewLevelScaleProps.props;
             this.#viewLevelScaleProps = undefined;
+            if (previousProps.name) {
+                this.name = undefined;
+            }
             this.#invalidateMergedScaleProps();
 
             this.#recreateInitializedScale(

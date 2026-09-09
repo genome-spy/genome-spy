@@ -72,6 +72,32 @@ describe("Scale resolution named scales", () => {
         expect(view.getScaleResolution("x")).toHaveProperty("name", "scale_1");
     });
 
+    test("A view-level scale name is registered to the ScaleResolution object", async () => {
+        const view = await initView(
+            {
+                data: { values: [1, 2] },
+                scales: { x: { name: "scale_1" } },
+                layer: [
+                    {
+                        mark: "point",
+                        encoding: {
+                            x: { field: "data", type: "quantitative" },
+                        },
+                    },
+                    {
+                        mark: "point",
+                        encoding: {
+                            x: { field: "data", type: "quantitative" },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+
+        expect(view.getScaleResolution("x")).toHaveProperty("name", "scale_1");
+    });
+
     test("The scale name must be unique among the scale resolutions", async () => {
         await expect(
             initView(
