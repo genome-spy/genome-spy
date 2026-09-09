@@ -208,9 +208,13 @@ not replaced by nested-band inference.
 ```
 
 `order`
-: Draws instances in two selection partitions. The condition's `value` and
-  the definition's `value` are finite numeric levels; lower levels are drawn
-  first. Use one selection parameter or a selection union in the condition.
+: Keeps selected instances visible above unselected ones. In a dense plot,
+  highlighting a point or arc with a different color is not enough if other
+  instances cover it. Give selected instances a higher order level to draw
+  them last, bringing the highlighted instances to the foreground.
+  The condition's `value` and the fallback `value` define two finite numeric
+  levels; lower levels draw first. Use one selection parameter or a selection
+  union in the condition. Relative order within each level is preserved.
   Equal levels and constant definitions have no ordering effect. When all
   referenced selections are empty, instances retain their original order.
   Ordering applies within one mark occurrence, and picking keeps the original

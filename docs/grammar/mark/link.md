@@ -2,7 +2,7 @@
 
 The `"link"` mark displays each row as a curve that connects two points.
 The mark can be used to display structural variation and interactions, for
-example. The mark has several different [`linkShape`s](#properties) that control
+example. The mark has several different [`linkShape`s](#showing-selected-arcs-in-full) that control
 how the curve is drawn.
 
 EXAMPLE examples/docs/grammar/mark/link/link-mark.json height=250
@@ -13,10 +13,17 @@ In addition to the primary and secondary [position](./index.md#channels)
 channels and the `color` and `opacity` channels, link mark supports the following
 channels: `size`.
 
+## Properties
+
+SCHEMA LinkProps
+
 ## Showing selected arcs in full
 
-Distance fading can hide the apex of a long arc. To show selected arcs in full,
-combine conditional [draw order](./index.md) with `noFadingOnSecondPass: true`:
+Distance fading gives arcs a softer ending than abrupt clipping and reduces
+clutter when showing structural variants across [multiple samples](../../sample-collections/visualizing.md).
+Disabling fading for selected arcs makes their connections easier to follow,
+especially in dense multi-sample views. Combine conditional
+[draw order](./index.md) with `noFadingOnSecondPass: true`:
 
 ```json
 {
@@ -42,17 +49,6 @@ selection membership: reversing the order values makes unselected links unfaded.
 
 The option defaults to `false`. Without active conditional ordering, including
 when every referenced selection is empty, all links retain normal fading.
-Picking also retains normal fading, so the newly revealed portions do not gain
-an expanded picking area.
-
-`noFadingOnPointSelection` is a deprecated alias. An explicitly supplied
-`noFadingOnSecondPass` takes precedence. The alias now enables this same
-second-pass behavior; it no longer discovers selections from color or other
-encoding channels.
-
-## Properties
-
-SCHEMA LinkProps
 
 ## Examples
 
