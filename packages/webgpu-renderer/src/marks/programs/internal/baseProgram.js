@@ -7,6 +7,7 @@ import { normalizeChannels } from "./channelConfigResolver.js";
 import { buildPipelines } from "./pipelineBuilder.js";
 import { SelectionResourceManager } from "./selectionResources.js";
 import {
+    normalizeSelectionPredicate,
     normalizeVisibilityPredicate,
     scalarSlotUniformName,
 } from "../../shaders/visibilityPredicate.js";
@@ -112,6 +113,31 @@ function normalizeScalarSlots(slots) {
 }
 
 /**
+ * @param {unknown} value
+ * @returns {import("../../../index.d.ts").MarkOrder | undefined}
+ */
+function normalizeOrder(value) {
+    if (value === undefined) {
+        return undefined;
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        throw new Error('Mark "order" must be an object.');
+    }
+    const config = /** @type {import("../../../index.d.ts").MarkOrder} */ (
+        value
+    );
+    const when = normalizeSelectionPredicate(config.when);
+    if (!when) {
+        throw new Error('Mark "order" must specify a selection predicate.');
+    }
+    const matching = config.matching ?? "last";
+    if (matching !== "first" && matching !== "last") {
+        throw new Error('Mark "order.matching" must be "first" or "last".');
+    }
+    return { when, matching };
+}
+
+/**
  * @param {string} name
  * @param {unknown} type
  * @param {unknown} value
@@ -211,6 +237,7 @@ export default class BaseProgram {
                 config.visibleWhen
             )
         );
+        this._order = normalizeOrder(config.order);
         this._channels = { ...this._channels, ...this._inputs };
         for (const [name, channel] of Object.entries(this._inputs)) {
             normalizedChannels.analysisByChannel.set(
@@ -250,6 +277,7 @@ export default class BaseProgram {
             channels: this._channels,
             analysisByChannel: this._compiledChannels.analysisByChannel,
             visibleWhen: this._visibleWhen,
+            order: this._order,
             label: this.label,
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
@@ -330,6 +358,7 @@ export default class BaseProgram {
                 this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
             selectionDefs: this._selectionResources.selectionDefs,
             visibleWhen: this._visibleWhen,
+            order: this._order,
             scalarSlots: this._scalarSlots,
             extraResources,
             primitiveTopology: this.primitiveTopology,
@@ -380,6 +409,15 @@ export default class BaseProgram {
      */
     get drawCount() {
         return this.count;
+    }
+
+    /**
+     * Whether a referenced selection currently contains any selected values.
+     *
+     * @returns {boolean}
+     */
+    get _orderActive() {
+        return this._selectionResources.orderActive;
     }
 
     /**

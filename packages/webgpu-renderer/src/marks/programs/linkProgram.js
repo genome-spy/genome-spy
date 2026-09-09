@@ -331,7 +331,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     if ((params.uShape == SHAPE_ARC || params.uShape == SHAPE_DOME) &&
         params.uArcFadingDistance.x > 0.0 &&
         params.uArcFadingDistance.y > 0.0 &&
-        (params.uNoFadingOnPointSelection == 0u || !isDatumSelected(i)))
+        (params.uNoFadingOnSecondPass == 0u || (globals.orderPass & 4u) == 0u))
     {
         fadeDistance = distanceFromLine(p1, p4, p);
         // Keep fully faded triangles collapsed to avoid fragment processing.
@@ -391,9 +391,9 @@ export default class LinkProgram extends BaseProgram {
                 uniform: "uArcFadingDistance",
                 default: [0, 0],
             },
-            noFadingOnPointSelection: {
-                uniform: "uNoFadingOnPointSelection",
-                default: true,
+            noFadingOnSecondPass: {
+                uniform: "uNoFadingOnSecondPass",
+                default: false,
                 encode: (/** @type {boolean} */ value) => (value ? 1 : 0),
             },
             arcHeightFactor: { uniform: "uArcHeightFactor", default: 1 },
@@ -476,7 +476,7 @@ export default class LinkProgram extends BaseProgram {
         /** @type {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4 }[]} */
         const layout = [
             { name: "uArcFadingDistance", type: "f32", components: 2 },
-            { name: "uNoFadingOnPointSelection", type: "u32", components: 1 },
+            { name: "uNoFadingOnSecondPass", type: "u32", components: 1 },
             { name: "uArcHeightFactor", type: "f32", components: 1 },
             { name: "uMinArcHeight", type: "f32", components: 1 },
             { name: "uShape", type: "u32", components: 1 },

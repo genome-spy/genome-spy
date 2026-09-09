@@ -497,7 +497,7 @@ export class Renderer {
      * @param {NormalizedDraw[]} draws
      * @returns {void}
      */
-    _writeDrawGlobals(draws) {
+    _writeDrawGlobals(draws, forceAll = false) {
         const phaseStart = startPhase();
         if (!draws.length) {
             finishPhase("drawGlobals", phaseStart);
@@ -525,6 +525,7 @@ export class Renderer {
             integers[offset + 16] = draw.placement?.index ?? 0;
             integers[offset + 17] = draw.placement?.clipMode ?? 0;
             integers[offset + 18] = draw.placement?.count ?? 0;
+            integers[offset + 19] = forceAll ? 0 : draw.orderPass;
         }
         this.device.queue.writeBuffer(
             this._globalUniformBuffer,
@@ -660,7 +661,7 @@ export class Renderer {
             this._pickingFrame ??
             this._renderFrame ??
             this._normalizeDraws(this._marks.keys());
-        this._writeDrawGlobals(draws);
+        this._writeDrawGlobals(draws, true);
         this._encodeDraws(pass, draws, true);
 
         pass.end();
@@ -1087,6 +1088,8 @@ export class Renderer {
             visibleRange: normalizeVisibleRange(command.visibleRange, canvas),
             firstInstance: resolvedRange.firstInstance,
             instanceCount: resolvedRange.instanceCount,
+            // Low bits select the partition; bit 2 identifies the second visual pass.
+            orderPass: 0,
             placement,
         };
     }
@@ -1152,8 +1155,23 @@ export class Renderer {
                         draws.length
                     );
                     if (draw) {
+                        const mark = this._marks.get(draw.markId);
+                        const order = mark._order;
                         draws.push(draw);
                         normalized.push(draw);
+                        if (order && mark._orderActive) {
+                            const matchingFirst = order.matching === "first";
+                            const firstPass = matchingFirst ? 1 : 2;
+                            const secondPass = (matchingFirst ? 2 : 1) | 4;
+                            draw.orderPass = firstPass;
+                            const secondDraw = {
+                                ...draw,
+                                uniformIndex: draws.length,
+                                orderPass: secondPass,
+                            };
+                            draws.push(secondDraw);
+                            normalized.push(secondDraw);
+                        }
                     }
                 }
             }
@@ -1499,6 +1517,9 @@ export class Renderer {
         const dpr = this._globals.dpr;
         const state = new RenderPassState(pass);
         for (const draw of draws) {
+            if (picking && draw.orderPass & 4) {
+                continue;
+            }
             const mark = this._marks.get(draw.markId);
             if (!mark) {
                 continue;
@@ -1726,6 +1747,7 @@ function wrapMethod(target, name, before) {
  *   uniformIndex: number,
  *   firstInstance: number,
  *   instanceCount: number,
+ *   orderPass: number,
  *   placement?: { bindGroup: GPUBindGroup, count: number, index?: number, clipToPlacement?: "x"|"y"|"xy", clipMode?: number },
  * }} NormalizedDraw
  */

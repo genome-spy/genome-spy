@@ -15,6 +15,7 @@ import {
     hasVisibleArea,
 } from "../immediate/bounds.js";
 import { renderMarkCanvas } from "./renderers/index.js";
+import { partitionOrderData } from "../immediate/order.js";
 import { warnOnce } from "../../utils/warning.js";
 import { getPerformanceProfiler } from "../../debug/performanceProfiler.js";
 import { isSampleFacetVisible } from "../sampleFacet.js";
@@ -267,6 +268,8 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         }
 
         try {
+            const order = mark.getOrder?.();
+            const orderActive = order && order.isActive();
             visitMarkOccurrences(
                 mark,
                 options,
@@ -282,21 +285,58 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                         start = this.#indexedRange[0];
                         end = this.#indexedRange[1];
                     }
-                    return renderMarkCanvas(mark, {
-                        context,
-                        devicePixelRatio: this.devicePixelRatio,
-                        coords: occurrenceCoords,
+
+                    /**
+                     * @param {object[]} renderData
+                     * @param {number} renderStart
+                     * @param {number} renderEnd
+                     */
+                    const render = (
+                        renderData,
+                        renderStart,
+                        renderEnd,
+                        secondOrderPass = false
+                    ) =>
+                        renderMarkCanvas(mark, {
+                            context,
+                            devicePixelRatio: this.devicePixelRatio,
+                            coords: occurrenceCoords,
+                            data: renderData,
+                            secondOrderPass,
+                            start: renderStart,
+                            end: renderEnd,
+                            visibleBounds,
+                            anchorCullBounds,
+                            viewOpacity: 1,
+                            warn: (message) =>
+                                warnOnce(
+                                    `${message} View: ${mark.unitView.getPathString()}`
+                                ),
+                        });
+
+                    if (!orderActive) {
+                        return render(data, start, end);
+                    }
+
+                    let count = 0;
+                    const partitions = partitionOrderData(
                         data,
                         start,
                         end,
-                        visibleBounds,
-                        anchorCullBounds,
-                        viewOpacity: 1,
-                        warn: (message) =>
-                            warnOnce(
-                                `${message} View: ${mark.unitView.getPathString()}`
-                            ),
-                    });
+                        order.predicate,
+                        order.passes
+                    );
+                    for (const [index, partition] of partitions.entries()) {
+                        if (partition.length > 0) {
+                            count += render(
+                                partition,
+                                0,
+                                partition.length,
+                                index === 1
+                            );
+                        }
+                    }
+                    return count;
                 },
                 (facetIndex) =>
                     warnOnce(

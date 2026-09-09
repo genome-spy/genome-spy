@@ -15,7 +15,7 @@ layout(std140) uniform Mark {
     uniform float uMaxChordLength;
     // In pixels
     uniform vec2 uArcFadingDistance;
-    uniform bool uNoFadingOnPointSelection;
+    uniform bool uNoFadingOnSecondPass;
 
     uniform int uSegmentBreaks;
 

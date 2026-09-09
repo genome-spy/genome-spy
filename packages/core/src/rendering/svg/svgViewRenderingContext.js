@@ -16,6 +16,7 @@ import {
     visitMarkOccurrences,
 } from "../immediate/markData.js";
 import { renderMarkSvg } from "./renderers/index.js";
+import { partitionOrderData } from "../immediate/order.js";
 import { createSvgElement, SVG_NS } from "./svgElement.js";
 import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
 import { createRectHatchPattern } from "./rectHatchPattern.js";
@@ -69,6 +70,7 @@ import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
  * @prop {import("../immediate/bounds.js").RenderBounds} visibleBounds
  * @prop {import("../immediate/bounds.js").RenderBounds} anchorCullBounds
  * @prop {number} viewOpacity
+ * @prop {boolean} [secondOrderPass]
  * @prop {boolean} [countOnly]
  * @prop {(fade: SvgViewportEdgeFade) => string | undefined} getViewportEdgeFadeMaskUrl
  * @prop {(shadow: SvgShadow) => string} getShadowFilterUrl
@@ -401,57 +403,85 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             inheritedClip,
             mark.properties.cullByVisibleRange
         );
+        const order = mark.getOrder?.();
+        const orderActive =
+            !this.#countingInstances && order && order.isActive();
 
         /**
          * @param {import("../../view/layout/rectangle.js").default} coords
          * @param {object[]} facetData
          */
         const render = (coords, facetData) => {
-            const instanceCount = renderMarkSvg(mark, {
-                coords,
-                data: facetData,
-                group,
-                visibleBounds,
-                anchorCullBounds,
-                viewOpacity: mark.unitView.getEffectiveOpacity(),
-                countOnly: this.#countingInstances,
-                getViewportEdgeFadeMaskUrl: (fade) =>
-                    this.#countingInstances
-                        ? undefined
-                        : this.getViewportEdgeFadeMaskUrl(fade),
-                getShadowFilterUrl: (shadow) =>
-                    this.#countingInstances
-                        ? ""
-                        : this.getShadowFilterUrl(shadow),
-                getShadowClipPathUrl: (cutoutPath) =>
-                    this.#countingInstances
-                        ? ""
-                        : this.getShadowClipPathUrl(cutoutPath),
-                getRectHatchPatternUrl: (hatch) =>
-                    this.#countingInstances
-                        ? ""
-                        : this.getRectHatchPatternUrl(hatch),
-                getLinkArcFadeMaskUrl: (fade) =>
-                    this.#countingInstances
-                        ? undefined
-                        : this.getLinkArcFadeMaskUrl(fade),
-                getLegendGradientUrl: (gradient) =>
-                    this.#countingInstances
-                        ? ""
-                        : this.getLegendGradientUrl(gradient),
-                warn: (message) => {
-                    if (!this.#countingInstances) {
-                        this.#warnings.add(
-                            `${message} View: ${mark.unitView.getPathString()}`
-                        );
-                    }
-                },
-            });
-            if (this.#countingInstances) {
-                this.#instanceCounts.set(
-                    mark,
-                    this.getVisibleInstanceCount(mark) + instanceCount
-                );
+            /**
+             * @param {object[]} data
+             */
+            const renderPass = (data, secondOrderPass = false) => {
+                const instanceCount = renderMarkSvg(mark, {
+                    coords,
+                    data,
+                    group,
+                    visibleBounds,
+                    anchorCullBounds,
+                    viewOpacity: mark.unitView.getEffectiveOpacity(),
+                    secondOrderPass,
+                    countOnly: this.#countingInstances,
+                    getViewportEdgeFadeMaskUrl: (fade) =>
+                        this.#countingInstances
+                            ? undefined
+                            : this.getViewportEdgeFadeMaskUrl(fade),
+                    getShadowFilterUrl: (shadow) =>
+                        this.#countingInstances
+                            ? ""
+                            : this.getShadowFilterUrl(shadow),
+                    getShadowClipPathUrl: (cutoutPath) =>
+                        this.#countingInstances
+                            ? ""
+                            : this.getShadowClipPathUrl(cutoutPath),
+                    getRectHatchPatternUrl: (hatch) =>
+                        this.#countingInstances
+                            ? ""
+                            : this.getRectHatchPatternUrl(hatch),
+                    getLinkArcFadeMaskUrl: (fade) =>
+                        this.#countingInstances
+                            ? undefined
+                            : this.getLinkArcFadeMaskUrl(fade),
+                    getLegendGradientUrl: (gradient) =>
+                        this.#countingInstances
+                            ? ""
+                            : this.getLegendGradientUrl(gradient),
+                    warn: (message) => {
+                        if (!this.#countingInstances) {
+                            this.#warnings.add(
+                                `${message} View: ${mark.unitView.getPathString()}`
+                            );
+                        }
+                    },
+                });
+                if (this.#countingInstances) {
+                    this.#instanceCounts.set(
+                        mark,
+                        this.getVisibleInstanceCount(mark) + instanceCount
+                    );
+                }
+            };
+
+            if (!orderActive) {
+                renderPass(facetData);
+                return;
+            }
+
+            const partitions = partitionOrderData(
+                facetData,
+                0,
+                facetData.length,
+                order.predicate,
+                order.passes
+            );
+            for (const [index, passData] of partitions.entries()) {
+                if (passData.length === 0) {
+                    continue;
+                }
+                renderPass(passData, index === 1);
             }
         };
 

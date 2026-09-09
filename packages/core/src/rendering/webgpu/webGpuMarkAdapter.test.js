@@ -11,6 +11,34 @@ import {
 } from "./webGpuMarkAdapter.js";
 
 describe("WebGPU mark adapter", () => {
+    test("translates conditional order into declarative renderer config", () => {
+        const mark = createMark("point", [{ id: 17 }], {
+            uniqueId: createConstantEncoder(17),
+        });
+        mark.getOrder = /** @type {any} */ (
+            () => ({
+                predicate: {
+                    selection: {
+                        params: ["picked"],
+                        empty: false,
+                        singleParam: true,
+                    },
+                },
+                params: ["picked"],
+                passes: ["matching", "nonmatching"],
+                isActive: () => false,
+            })
+        );
+        mark.unitView.paramRuntime.findValue = () => ({ type: "single" });
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+
+        expect(/** @type {any} */ (translated.config).order).toEqual({
+            when: { selection: "picked", type: "single", empty: false },
+            matching: "first",
+        });
+    });
+
     test("packs and caches a 2,000-instance placement-index series", () => {
         const data = Array.from({ length: 2000 }, (_, index) => ({ index }));
         const facetIndex = createEncoder((datum) => datum.index);
@@ -775,7 +803,7 @@ describe("WebGPU mark adapter", () => {
                 linkShape: "dome",
                 orient: "horizontal",
                 arcFadingDistance: [10, 20],
-                noFadingOnPointSelection: true,
+                noFadingOnSecondPass: true,
                 arcHeightFactor: 0.75,
                 minArcHeight: 3,
                 clampApex: true,
@@ -793,7 +821,7 @@ describe("WebGPU mark adapter", () => {
         expect(config.linkShape).toBe("dome");
         expect(config.orient).toBe("horizontal");
         expect(config.arcFadingDistance).toEqual([10, 20]);
-        expect(config.noFadingOnPointSelection).toBe(true);
+        expect(config.noFadingOnSecondPass).toBe(true);
         expect(config.segments).toBe(25);
     });
 

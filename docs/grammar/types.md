@@ -553,6 +553,14 @@ SCHEMA OffsetChannel
 
 SCHEMA OffsetDef
 
+## OrderCondition
+
+SCHEMA OrderCondition
+
+## OrderDef
+
+SCHEMA OrderDef
+
 ## OtherDataFormat
 
 SCHEMA OtherDataFormat
@@ -580,6 +588,10 @@ See the [ParamTransition documentation](parameters.md#transition-properties).
 ## Parameter
 
 SCHEMA Parameter
+
+## ParameterPredicate
+
+SCHEMA ParameterPredicate
 
 ## Parse
 
@@ -796,6 +808,10 @@ See the [SelectionParameter documentation](parameters.md#selection-parameters).
 ## SelectionType
 
 SCHEMA SelectionType
+
+## SelectionUnionTest
+
+SCHEMA SelectionUnionTest
 
 ## SeparatorProps
 

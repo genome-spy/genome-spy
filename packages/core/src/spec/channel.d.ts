@@ -58,6 +58,7 @@ export type ChannelWithoutScale =
     | "text"
     | "tooltip"
     | "key"
+    | "order"
     | "facetIndex"
     | "semanticScore"
     | "uniqueId"
@@ -298,6 +299,24 @@ export interface TestPredicate {
     test: ParameterPredicate | SelectionUnionTest;
     empty?: never;
     param?: never;
+}
+
+/** A selection condition used by the restricted instance-order encoding. */
+export type OrderCondition =
+    | (ParameterPredicate & { value: number })
+    | (TestPredicate & { value: number });
+
+/**
+ * Draw-order levels for instances in one logical mark. The lower level is
+ * drawn first and the higher level last. Only selection conditions and finite
+ * numeric values are supported.
+ */
+export interface OrderDef {
+    /** Selection condition that determines the matching level. */
+    condition?: OrderCondition;
+
+    /** Fallback level, or the sole level when `condition` is omitted. */
+    value: number;
 }
 
 export type ConditionalParameter<CD extends ConditionalTemplate> =
@@ -551,6 +570,13 @@ export interface Encoding {
      * @deprecated Use `yOffset` instead.
      */
     dy?: NumericMarkPropDef | MarkPropExprDef;
+
+    /**
+     * Orders instances within this logical mark. The supported form has one
+     * selection condition with a finite numeric value and a finite numeric
+     * fallback. Lower levels draw first; equal or constant levels are inert.
+     */
+    order?: OrderDef;
 
     /**
      * Color of the marks – either fill or stroke color based on  the `filled` property of mark definition.

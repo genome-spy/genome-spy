@@ -154,6 +154,35 @@ describe("mark rendering revisions", () => {
         expect(requestRender).toHaveBeenCalledOnce();
     });
 
+    test("registers order selections when resource tracking starts later", async () => {
+        const view = await create(
+            {
+                data: { values: [{ x: 1, y: 2 }] },
+                params: [{ name: "picked", select: "point" }],
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                    order: {
+                        condition: { param: "picked", value: 1 },
+                        value: 0,
+                    },
+                },
+            },
+            UnitView
+        );
+        const requestRender = vi.spyOn(view.context.animator, "requestRender");
+
+        view.mark.initializeEncoders();
+        view.mark.initializeRenderingRevisions([], { trackResources: false });
+        view.mark.initializeRenderingRevisions([]);
+        const selection = view.paramRuntime.getValue("picked");
+        view.paramRuntime.setValue("picked", { ...selection });
+
+        expect(view.mark.getRenderingRevision("resources")).toBe(1);
+        expect(requestRender).toHaveBeenCalledOnce();
+    });
+
     test("deduplicates scale dependencies", async () => {
         const view = await create(
             {
@@ -178,6 +207,112 @@ describe("mark rendering revisions", () => {
         view.paramRuntime.flushNow();
         expect(view.mark.getRenderingRevision("resources")).toBe(1);
         view.disposeSubtree();
+    });
+});
+
+describe("conditional order metadata", () => {
+    test("sorts unequal levels and tracks union activity", async () => {
+        const view = await create(
+            {
+                data: { values: [{ x: 1, y: 2 }] },
+                params: [
+                    { name: "picked", select: "point" },
+                    { name: "brush", select: "point" },
+                ],
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                    order: {
+                        condition: {
+                            test: {
+                                param: {
+                                    or: /** @type {[string, ...string[]]} */ ([
+                                        "picked",
+                                        "picked",
+                                        "brush",
+                                    ]),
+                                },
+                                empty: false,
+                            },
+                            value: -4,
+                        },
+                        value: 12,
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const order = /** @type {UnitView} */ (view).mark.getOrder();
+        /** @type {UnitView} */ (view).mark.initializeEncoders();
+        expect(
+            /** @type {UnitView} */ (view).mark.encoders.order
+        ).toBeUndefined();
+        expect(order).toMatchObject({
+            params: ["picked", "brush"],
+            passes: ["matching", "nonmatching"],
+        });
+        expect(order.isActive()).toBe(false);
+
+        view.paramRuntime.setValue("picked", {
+            type: "single",
+            datum: { x: 1, y: 2 },
+            uniqueId: 1,
+        });
+        expect(order.isActive()).toBe(true);
+    });
+
+    test.each([
+        [{ value: 0 }, undefined],
+        [{ condition: { param: "picked", value: 2 }, value: 2 }, undefined],
+    ])("folds inert order definitions", async (definition, expected) => {
+        const view = await create(
+            {
+                data: { values: [{ x: 1, y: 2 }] },
+                params: [{ name: "picked", select: "point" }],
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                    order: /** @type {any} */ (definition),
+                },
+            },
+            UnitView
+        );
+
+        expect(/** @type {UnitView} */ (view).mark.getOrder()).toBe(expected);
+    });
+
+    test("rejects non-finite order levels", async () => {
+        const base = {
+            data: { values: [{ x: 1, y: 2 }] },
+            params: [{ name: "picked", select: "point" }],
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        };
+
+        for (const order of [
+            { value: Infinity },
+            { value: 0, condition: { param: "picked", value: NaN } },
+        ]) {
+            const view = await create(
+                /** @type {any} */ ({
+                    ...base,
+                    encoding: /** @type {any} */ ({
+                        ...base.encoding,
+                        order: /** @type {any} */ (order),
+                    }),
+                }),
+                UnitView
+            );
+            expect(() =>
+                /** @type {UnitView} */ (view).mark.getOrder()
+            ).toThrow();
+        }
     });
 });
 

@@ -699,6 +699,48 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(selected.calls.arcs).toEqual([[50, 50, 10]]);
     });
 
+    test("draws an active order partition after its unselected partition", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ x: 0.25 }, { x: 0.75 }] },
+            params: [{ name: "picked", select: "point" }],
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 1] },
+                },
+                y: { value: 0.5 },
+                size: { value: 100 },
+                fill: { value: "black" },
+                order: {
+                    condition: { param: "picked", value: 1 },
+                    value: 0,
+                },
+            },
+        });
+        const unitView =
+            /** @type {import("../../view/unitView.js").default} */ (view);
+        const datum = unitView.getCollector().facetBatches.get(undefined)[0];
+        const order = unitView.mark.getOrder();
+        const predicate = vi.spyOn(order, "predicate");
+        const requestRender = vi.spyOn(view.context.animator, "requestRender");
+        const initial = createRecordingContext();
+        render(view, initial.context);
+        expect(initial.calls.arcs.map(([x]) => x)).toEqual([25, 75]);
+        expect(predicate).not.toHaveBeenCalled();
+
+        requestRender.mockClear();
+        view.paramRuntime.setValue("picked", createSinglePointSelection(datum));
+        expect(requestRender).toHaveBeenCalled();
+        const recording = createRecordingContext();
+
+        render(view, recording.context);
+
+        expect(recording.calls.arcs.map(([x]) => x)).toEqual([75, 25]);
+        expect(predicate).toHaveBeenCalledTimes(2);
+    });
+
     test("draws points without per-datum save scopes", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{ x: 0.25 }, { x: 0.75 }] },

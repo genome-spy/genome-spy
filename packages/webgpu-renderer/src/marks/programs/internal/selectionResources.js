@@ -219,9 +219,10 @@ function collectVisibilitySelections(node, defs, getAnalysis) {
  * @param {Record<string, ChannelConfigResolved>} channels
  * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} analysisByChannel
  * @param {VisibilityPredicate | undefined} visibleWhen
+ * @param {import("../../../index.d.ts").MarkOrder | undefined} order
  * @returns {Map<string, SelectionDef>}
  */
-function collectSelectionDefs(channels, analysisByChannel, visibleWhen) {
+function collectSelectionDefs(channels, analysisByChannel, visibleWhen, order) {
     /** @type {Map<string, SelectionDef>} */
     const defs = new Map();
     /** @param {string} name */
@@ -239,6 +240,7 @@ function collectSelectionDefs(channels, analysisByChannel, visibleWhen) {
         }
     }
     collectVisibilitySelections(visibleWhen, defs, getAnalysis);
+    collectVisibilitySelections(order?.when, defs, getAnalysis);
 
     if (
         !channels.uniqueId &&
@@ -264,6 +266,7 @@ export class SelectionResourceManager {
      * @param {Record<string, ChannelConfigResolved>} params.channels
      * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} params.analysisByChannel
      * @param {VisibilityPredicate} [params.visibleWhen]
+     * @param {import("../../../index.d.ts").MarkOrder} [params.order]
      * @param {string} [params.label]
      * @param {(name: string, value: number|number[]) => void} params.setUniformValue
      */
@@ -272,6 +275,7 @@ export class SelectionResourceManager {
         channels,
         analysisByChannel,
         visibleWhen,
+        order,
         label = "mark",
         setUniformValue,
     }) {
@@ -284,10 +288,34 @@ export class SelectionResourceManager {
         this._selectionDefs = collectSelectionDefs(
             channels,
             analysisByChannel,
-            visibleWhen
+            visibleWhen,
+            order
         );
+        const orderLeaves = order
+            ? "selectionUnion" in order.when
+                ? order.when.selectionUnion
+                : [order.when]
+            : [];
+        /** @type {Map<string, boolean>} */
+        this._orderSelectionActive = new Map(
+            orderLeaves.map((leaf) => [leaf.selection, false])
+        );
+        this.orderActive = false;
         /** @type {Map<string, { buffer: GPUBuffer, byteLength: number }>} */
         this._selectionBuffers = new Map();
+    }
+
+    /**
+     * @param {string} name
+     * @param {boolean} active
+     * @returns {void}
+     */
+    _setOrderSelectionActive(name, active) {
+        if (!this._orderSelectionActive.has(name)) {
+            return;
+        }
+        this._orderSelectionActive.set(name, active);
+        this.orderActive = this._orderSelectionActive.values().some(Boolean);
     }
 
     /**
@@ -427,6 +455,7 @@ export class SelectionResourceManager {
 
         if (update.type === "single") {
             this._setUniformValue(SELECTION_PREFIX + name, update.id);
+            this._setOrderSelectionActive(name, update.id !== 0);
         } else if (update.type === "interval") {
             const intervals = update.intervals ?? {};
             const targets = def.targets ?? [];
@@ -459,10 +488,12 @@ export class SelectionResourceManager {
                 }
             }
 
+            let anyActive = false;
             for (const [index, target] of targets.entries()) {
                 const interval = intervals[target.input];
                 const active =
                     interval !== undefined && interval !== null ? 1 : 0;
+                anyActive ||= active !== 0;
                 this._setUniformValue(
                     intervalSelectionActiveName(name, index),
                     active
@@ -476,6 +507,7 @@ export class SelectionResourceManager {
                         : INACTIVE_INTERVAL_BOUNDS
                 );
             }
+            this._setOrderSelectionActive(name, anyActive);
         } else if (update.type === "multi") {
             const bufferName = SELECTION_BUFFER_PREFIX + name;
             const existing = this._selectionBuffers.get(name);
@@ -490,6 +522,7 @@ export class SelectionResourceManager {
                 reuseExisting ? { capacity: existingCapacity } : undefined
             );
             this._setUniformValue(SELECTION_COUNT_PREFIX + name, size);
+            this._setOrderSelectionActive(name, size > 0);
             if (!existing || existing.byteLength < table.byteLength) {
                 const buffer = this._device.createBuffer({
                     label: gpuLabel(this._label, `selection ${name}`),

@@ -987,8 +987,8 @@ export type LinkMarkOptions = {
     /** Fade arcs and domes by perpendicular distance from their endpoint baseline in logical pixels. */
     arcFadingDistance?: [number, number];
 
-    /** Bypass fading for members of selections referenced by conditional channels, including intervals. Requires uniqueId. Default: true. */
-    noFadingOnPointSelection?: boolean;
+    /** Disable arc fading on renderer-generated second order partitions. Default: false. */
+    noFadingOnSecondPass?: boolean;
 };
 
 export type LinkMarkProperties = Required<LinkMarkOptions>;
@@ -1043,6 +1043,8 @@ export type MarkConfig<T extends MarkType = MarkType> = {
         scalarSlots?: Record<string, ScalarSlotConfig>;
         /** Immutable predicate controlling mark visibility and picking. */
         visibleWhen?: VisibilityPredicate;
+        /** Declarative conditional draw ordering in ordinary rendering. */
+        order?: MarkOrder;
     } & (T extends "link" ? LinkMarkOptions : unknown) &
     (T extends "text" ? TextMarkOptions : unknown) &
     (T extends "arrow" ? ArrowMarkOptions : unknown);
@@ -1087,6 +1089,13 @@ export type DrawVisibleRange = {
     cullX: boolean;
     cullY: boolean;
 };
+
+export type MarkOrder = Readonly<{
+    /** Selection predicate used to partition the mark's instances. Empty selections use one draw. */
+    when: SelectionPredicate;
+    /** Whether matching instances are painted first or last. Defaults to last. */
+    matching?: "first" | "last";
+}>;
 
 export type PlacementSetData = {
     /** Packed viewport-local normalized [x, y, width, height] rectangles. */
@@ -1191,6 +1200,10 @@ export type MarkProgram<
     readonly drawCount: number;
     readonly count: number;
     readonly _placementIndex?: MarkConfig["placementIndex"];
+    /** Renderer-internal normalized conditional ordering configuration. */
+    readonly _order?: MarkOrder;
+    /** Renderer-internal activity cache for the order predicate. */
+    readonly _orderActive?: boolean;
     /** Translate a logical draw range to GPU instance indices. */
     resolveDrawRange(
         firstInstance: number,

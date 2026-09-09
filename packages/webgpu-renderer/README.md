@@ -483,6 +483,41 @@ mark.scalarSlots.threshold.set(0.75);
 Visibility affects rendering and picking only. It does not filter data,
 aggregates, or scale domains.
 
+### Conditional draw order
+
+Use `order` to bring selected instances to the foreground so that overlapping
+unselected instances do not cover them. Within each draw, selected instances
+are painted last by default. The predicate uses the same selection state as
+conditional encodings, and the renderer keeps one mark program and pipeline
+while evaluating it per instance:
+
+```js
+const points = renderer.createMark(pointMark, {
+  channels: {
+    uniqueId: { data: ids, type: "u32" },
+    // x, y, and other channels...
+  },
+  order: {
+    when: { selection: "picked", type: "single", empty: false },
+    matching: "last",
+  },
+});
+
+points.selections.picked.set(ids[0]);
+```
+
+The renderer submits one ordinary draw command when the referenced selections
+are empty. When any referenced selection is active, it creates adjacent
+nonmatching and matching partitions in the requested order. Set
+`matching: "first"` to paint matching instances first; the default is
+`"last"`. Picking always uses one all-instance draw, so visual ordering does not
+change pick IDs or hit testing.
+
+For links with `arcFadingDistance`, `noFadingOnSecondPass: true` disables fading
+on the renderer-generated second partition. This shows foreground arcs in full.
+Ordinary draws without ordering and picking retain normal fading. The option
+defaults to `false`.
+
 ## Selections and conditional encoding
 
 Selection predicates run on the GPU in data-domain space. Conditional channel

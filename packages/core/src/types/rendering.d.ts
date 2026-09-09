@@ -58,6 +58,12 @@ export interface RenderingOptions {
      * option when clipping should apply only horizontally or vertically.
      */
     clip?: ClipOptions;
+
+    /** @internal Per-draw conditional order pass selected by a renderer. */
+    orderPass?: "all" | "matching" | "nonmatching";
+
+    /** @internal Whether this is the second visual order partition. */
+    secondOrderPass?: boolean;
 }
 
 export interface ClipOptions {

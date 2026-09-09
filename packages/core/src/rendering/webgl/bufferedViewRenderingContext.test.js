@@ -138,4 +138,86 @@ describe("BufferedViewRenderingContext", () => {
         expect(markAdapter.prepareMarks).toHaveBeenCalledWith([mark, mark]);
         expect(markAdapter.synchronize).toHaveBeenCalledWith(new Set([entry]));
     });
+
+    test("updates retained order passes and keeps picking in the all pass", () => {
+        const coords = Rectangle.create(0, 0, 20, 10);
+        const gl = /** @type {WebGL2RenderingContext} */ (
+            /** @type {unknown} */ ({
+                COLOR_BUFFER_BIT: 0x4000,
+                SCISSOR_TEST: 0x0c11,
+                drawingBufferWidth: 100,
+                drawingBufferHeight: 100,
+                viewport: vi.fn(),
+                disable: vi.fn(),
+                clearColor: vi.fn(),
+                clear: vi.fn(),
+            })
+        );
+        const globalOptions = { picking: false };
+        const order = {
+            passes: /** @type {const} */ (["nonmatching", "matching"]),
+            isActive: vi.fn(() => active),
+            predicate: () => true,
+        };
+        let active = false;
+        /** @type {string[]} */
+        const renderCalls = [];
+        /** @type {string[]} */
+        const draws = [];
+        const render = vi.fn((options) => {
+            const pass = options.orderPass ?? "missing";
+            renderCalls.push(pass);
+            return () => draws.push(pass);
+        });
+        /** @returns {(() => void)[]} */
+        const prepareRender = () => [];
+        const graphics = {
+            isReady: () => true,
+            prepareRender,
+            setViewport: vi.fn(() => true),
+            render,
+        };
+        const entry = { graphics, state: "ready" };
+        const mark = /** @type {import("../../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({
+                properties: { clip: true },
+                unitView: { getEffectiveOpacity: () => 1 },
+                isPickingParticipant: () => true,
+                getOrder: () => order,
+            })
+        );
+        const markAdapter = {
+            prepareMarks: vi.fn(),
+            getMarkEntry: () => entry,
+            isEntryActive: () => true,
+            isEntryDrawable: () => true,
+            synchronize: vi.fn(),
+        };
+        const view = /** @type {import("../../view/view.js").default} */ (
+            /** @type {unknown} */ ({ onBeforeRender: vi.fn() })
+        );
+        const context = new BufferedViewRenderingContext(globalOptions, {
+            webGLHelper: /** @type {import("./gl/webGLHelper.js").default} */ (
+                /** @type {unknown} */ ({ gl })
+            ),
+            canvasSize: { width: 100, height: 100 },
+            devicePixelRatio: 1,
+            markAdapter: /** @type {any} */ (markAdapter),
+        });
+
+        context.pushView(view, coords);
+        context.renderMark(mark, {});
+        context.render();
+        active = true;
+        context.render();
+        active = false;
+        context.render();
+        globalOptions.picking = true;
+        context.render();
+
+        expect(renderCalls).toEqual(["all", "nonmatching", "matching"]);
+        expect(draws).toEqual(["all", "nonmatching", "matching", "all", "all"]);
+        expect(graphics.setViewport).toHaveBeenCalledTimes(4);
+        expect(order.isActive).toHaveBeenCalledTimes(3);
+    });
 });

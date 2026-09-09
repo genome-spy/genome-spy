@@ -3,6 +3,13 @@ import { isChannelDefWithScale } from "../encoder/encoder.js";
 
 /** @extends {Mark<import("../spec/mark.js").LinkProps>} */
 export default class LinkMark extends Mark {
+    /** @param {import("../view/unitView.js").default} unitView */
+    constructor(unitView) {
+        super(unitView);
+        this.properties.noFadingOnSecondPass ??=
+            this.properties.noFadingOnPointSelection ?? false;
+    }
+
     /** @returns {import("./mark.js").HitTestMode} */
     get defaultHitTestMode() {
         return "endpoints";

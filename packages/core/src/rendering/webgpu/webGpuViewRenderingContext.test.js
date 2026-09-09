@@ -99,6 +99,39 @@ beforeEach(() => {
 });
 
 describe("WebGpuViewRenderingContext", () => {
+    test("submits one semantic draw without renderer order passes", () => {
+        const surface = {
+            getDevicePixelRatio: () => 1,
+            getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
+            updateMark: vi.fn(),
+            prepareDraw: vi.fn(),
+        };
+        const context = createContext(surface);
+        const view = createView();
+        const mark = {
+            encoders: {},
+            encoding: {},
+            getType: () => "point",
+            isPickingParticipant: () => true,
+            properties: {},
+            unitView: { getEffectiveOpacity: () => 1 },
+        };
+        context.pushView(/** @type {any} */ (view), Rectangle.ZERO);
+        context.renderMark(/** @type {any} */ (mark), {});
+        context.popView(/** @type {any} */ (view));
+        context.finish();
+
+        const empty = collectDraws(context.render());
+        expect(empty).toHaveLength(1);
+        expect(empty[0]).not.toHaveProperty("orderPass");
+        const picking = context.renderPicking();
+        expect(picking).toHaveLength(1);
+        const cleared = collectDraws(context.render());
+        expect(cleared).toHaveLength(1);
+        expect(cleared[0]).not.toHaveProperty("orderPass");
+        expect(mocks.createWebGpuMarkConfig).toHaveBeenCalledOnce();
+    });
+
     test("emits a renderer-neutral scope for a plain rectangle", () => {
         const surface = {
             getDevicePixelRatio: () => 1,

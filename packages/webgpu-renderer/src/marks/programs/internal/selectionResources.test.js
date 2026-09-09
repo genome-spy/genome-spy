@@ -209,6 +209,91 @@ describe("SelectionResourceManager", () => {
         ]);
     });
 
+    it("caches activity for the selections referenced by order", () => {
+        const channels = makeIntervalChannels([{ input: "x" }]);
+        channels.uniqueId = { value: 1, type: "u32", components: 1 };
+        channels.fill.conditions = [
+            {
+                when: { selection: "unrelated", type: "single" },
+                value: 1,
+            },
+            {
+                when: {
+                    selection: "brush",
+                    type: "interval",
+                    targets: [{ input: "x" }],
+                },
+                value: 1,
+            },
+        ];
+        const manager = new SelectionResourceManager({
+            device: createDevice(),
+            channels,
+            order: /** @type {any} */ ({
+                when: {
+                    selectionUnion: [
+                        { selection: "picked", type: "single" },
+                        { selection: "chosen", type: "multi" },
+                        {
+                            selection: "brush",
+                            type: "interval",
+                            targets: [{ input: "x" }],
+                        },
+                    ],
+                },
+                matching: "last",
+            }),
+            setUniformValue: vi.fn(),
+        });
+        const extraBuffers = new Map();
+        manager.initializeSelections(extraBuffers);
+
+        manager.updateSelection(
+            "unrelated",
+            { type: "single", id: 1 },
+            extraBuffers
+        );
+        expect(manager.orderActive).toBe(false);
+
+        manager.updateSelection(
+            "picked",
+            { type: "single", id: 1 },
+            extraBuffers
+        );
+        manager.updateSelection(
+            "chosen",
+            { type: "multi", ids: new Uint32Array([2]) },
+            extraBuffers
+        );
+        expect(manager.orderActive).toBe(true);
+
+        manager.updateSelection(
+            "picked",
+            { type: "single", id: 0 },
+            extraBuffers
+        );
+        expect(manager.orderActive).toBe(true);
+
+        manager.updateSelection(
+            "chosen",
+            { type: "multi", ids: new Uint32Array() },
+            extraBuffers
+        );
+        expect(manager.orderActive).toBe(false);
+        manager.updateSelection(
+            "brush",
+            { type: "interval", intervals: { x: [0, 1] } },
+            extraBuffers
+        );
+        expect(manager.orderActive).toBe(true);
+        manager.updateSelection(
+            "brush",
+            { type: "interval", intervals: {} },
+            extraBuffers
+        );
+        expect(manager.orderActive).toBe(false);
+    });
+
     it("discovers visibility-only and shared interval selections", () => {
         const visibleWhen =
             /** @type {import("../../../index.d.ts").VisibilityPredicate} */ ({

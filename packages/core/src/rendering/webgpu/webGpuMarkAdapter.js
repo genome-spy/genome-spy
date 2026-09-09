@@ -162,7 +162,8 @@ export function createWebGpuMarkConfig(
             addPlacementIndex(
                 createPointConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
-            )
+            ),
+            mark
         );
     } else if (markType == "rect") {
         return createTranslation(
@@ -176,7 +177,8 @@ export function createWebGpuMarkConfig(
                     typeof viewOpacity != "function"
                 ),
                 resolvedPlacementIndex
-            )
+            ),
+            mark
         );
     } else if (markType == "rule" || markType == "tick") {
         return createTranslation(
@@ -184,7 +186,8 @@ export function createWebGpuMarkConfig(
             addPlacementIndex(
                 createRuleConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
-            )
+            ),
+            mark
         );
     } else if (markType == "text") {
         return createTranslation(
@@ -192,7 +195,8 @@ export function createWebGpuMarkConfig(
             addPlacementIndex(
                 createTextConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
-            )
+            ),
+            mark
         );
     } else if (markType == "link") {
         return createTranslation(
@@ -200,7 +204,8 @@ export function createWebGpuMarkConfig(
             addPlacementIndex(
                 createLinkConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
-            )
+            ),
+            mark
         );
     } else if (markType == "arrow") {
         return createTranslation(
@@ -208,7 +213,8 @@ export function createWebGpuMarkConfig(
             addPlacementIndex(
                 createArrowConfig(mark, data, coords, readViewOpacity),
                 resolvedPlacementIndex
-            )
+            ),
+            mark
         );
     }
 
@@ -220,8 +226,16 @@ export function createWebGpuMarkConfig(
  *
  * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
  * @param {Record<string, any>} config
+ * @param {import("../../marks/mark.js").default} mark
  */
-function createTranslation(definition, config) {
+function createTranslation(definition, config, mark) {
+    const order = mark.getOrder?.();
+    if (order) {
+        config.order = {
+            when: createSelectionCondition(mark, order.predicate.selection),
+            matching: order.passes[0] === "matching" ? "first" : "last",
+        };
+    }
     const properties = config.retainedProperties ?? {};
     delete config.retainedProperties;
     return { definition, config, properties };
@@ -876,10 +890,7 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
         linkShape: readProperty(mark, "linkShape") ?? "arc",
         orient: readProperty(mark, "orient") ?? "vertical",
         arcFadingDistance: readDistancePair(mark, "arcFadingDistance"),
-        noFadingOnPointSelection: !!readProperty(
-            mark,
-            "noFadingOnPointSelection"
-        ),
+        noFadingOnSecondPass: !!readProperty(mark, "noFadingOnSecondPass"),
         arcHeightFactor: readOptionalNumericProperty(
             mark,
             "arcHeightFactor",
@@ -895,7 +906,7 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
         segments: readOptionalNumericProperty(mark, "segments", 101),
         retainedProperties: createDynamicProperties(mark, {
             arcFadingDistance: (value) => value || [0, 0],
-            noFadingOnPointSelection: (value) => !!value,
+            noFadingOnSecondPass: (value) => !!value,
             arcHeightFactor: (value) => value,
             minArcHeight: (value) => value,
             linkShape: (value) => value ?? "arc",

@@ -213,6 +213,46 @@ describe("generated core schema", () => {
         expect(validate(base)).toBe(false);
     });
 
+    test("accepts restricted conditional order and rejects unsupported forms", () => {
+        const validate = createCoreValidator();
+        const base = /** @type {any} */ ({
+            data: { values: [{ id: 1 }] },
+            mark: "point",
+            encoding: {
+                order: {
+                    condition: {
+                        test: {
+                            param: { or: ["picked", "brush"] },
+                            empty: false,
+                        },
+                        value: 20,
+                    },
+                    value: 10,
+                },
+            },
+        });
+
+        expect(validate(base), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+
+        base.encoding.order.condition = {
+            param: "picked",
+            value: 20,
+        };
+        expect(validate(base)).toBe(true);
+
+        base.encoding.order.condition = {
+            field: "id",
+            value: 20,
+        };
+        expect(validate(base)).toBe(false);
+        base.encoding.order.condition = [{ param: "picked", value: 20 }];
+        expect(validate(base)).toBe(false);
+        base.encoding.order = { value: { expr: "level" } };
+        expect(validate(base)).toBe(false);
+    });
+
     test("accepts the indexed FASTA six-frame translation example", () => {
         const spec = JSON.parse(
             fs.readFileSync(

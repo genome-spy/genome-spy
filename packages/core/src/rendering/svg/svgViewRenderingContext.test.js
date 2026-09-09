@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
+import { createSinglePointSelection } from "../../selection/selection.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import PlacementSource from "../../view/layout/placementSource.js";
 import { markViewAsChrome } from "../../view/viewSelectors.js";
@@ -256,6 +257,64 @@ describe("SvgViewRenderingContext", () => {
             clipRect?.getAttribute("y"),
             clipRect?.getAttribute("height"),
         ]).toEqual(["10", "80"]);
+    });
+
+    test("appends SVG order partitions in ascending level order", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ x: 0.25 }, { x: 0.75 }] },
+            params: [{ name: "picked", select: "point" }],
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 1] },
+                },
+                y: { value: 0.5 },
+                size: { value: 100 },
+                fill: { value: "black" },
+                order: {
+                    condition: { param: "picked", value: 1 },
+                    value: 0,
+                },
+            },
+        });
+        const unitView =
+            /** @type {import("../../view/unitView.js").default} */ (view);
+        const datum = unitView.getCollector().facetBatches.get(undefined)[0];
+        const order = unitView.mark.getOrder();
+        const predicate = vi.spyOn(order, "predicate");
+        const initialContext = new SvgViewRenderingContext(
+            { picking: false },
+            { width: 100, height: 100 }
+        );
+        view.arrange(initialContext, Rectangle.create(0, 0, 100, 100), {
+            firstFacet: true,
+        });
+        expect(
+            Array.from(
+                initialContext.getSvg().querySelectorAll("circle"),
+                (circle) => circle.getAttribute("cx")
+            )
+        ).toEqual(["25", "75"]);
+        expect(predicate).not.toHaveBeenCalled();
+
+        view.paramRuntime.setValue("picked", createSinglePointSelection(datum));
+        const context = new SvgViewRenderingContext(
+            { picking: false },
+            { width: 100, height: 100 }
+        );
+
+        view.arrange(context, Rectangle.create(0, 0, 100, 100), {
+            firstFacet: true,
+        });
+
+        expect(
+            Array.from(context.getSvg().querySelectorAll("circle"), (circle) =>
+                circle.getAttribute("cx")
+            )
+        ).toEqual(["75", "25"]);
+        expect(predicate).toHaveBeenCalledTimes(2);
     });
 
     test("retains an offscreen sample occurrence that overflows into view", async () => {

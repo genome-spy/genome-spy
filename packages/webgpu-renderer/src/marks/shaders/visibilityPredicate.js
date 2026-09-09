@@ -101,6 +101,25 @@ export function normalizeVisibilityPredicate(predicate) {
 }
 
 /**
+ * @param {import("../../index.d.ts").SelectionPredicate | undefined} predicate
+ * @returns {import("../../index.d.ts").SelectionPredicate | undefined}
+ */
+export function normalizeSelectionPredicate(predicate) {
+    const normalized = normalizeVisibilityPredicate(predicate);
+    if (normalized === undefined) {
+        return undefined;
+    }
+    if (!("selection" in normalized) && !("selectionUnion" in normalized)) {
+        throw new Error(
+            "Selection predicates must be a selection or selection union."
+        );
+    }
+    return /** @type {import("../../index.d.ts").SelectionPredicate} */ (
+        normalized
+    );
+}
+
+/**
  * @typedef {object} VisibilityBuildParams
  * @property {VisibilityPredicate} [predicate]
  * @property {ChannelIR[]} channelIRs
@@ -108,6 +127,7 @@ export function normalizeVisibilityPredicate(predicate) {
  * @property {ReadonlySet<string>} inputNames
  * @property {Record<string, ScalarSlotConfig>} scalarSlots
  * @property {Array<{ name: string, type: import("../../index.d.ts").SelectionType, targets?: Array<{ input: string, secondaryInput?: string, hitTest?: "intersects"|"encloses"|"endpoints", scalarType?: import("../../types.js").ScalarType, secondaryScalarType?: import("../../types.js").ScalarType }> }>} selectionDefs
+ * @property {string} [functionName]
  */
 
 /**
@@ -123,6 +143,7 @@ export function buildVisibilityPredicate({
     inputNames,
     scalarSlots,
     selectionDefs,
+    functionName = "isInstanceVisible",
 }) {
     const channelIRByName = new Map(
         channelIRs.map((channelIR) => [channelIR.name, channelIR])
@@ -284,7 +305,7 @@ export function buildVisibilityPredicate({
 
     const expression = predicate ? emitNode(predicate) : "true";
     return /* wgsl */ `
-fn isInstanceVisible(i: u32) -> bool {
+fn ${functionName}(i: u32) -> bool {
     return ${expression};
 }
 `;

@@ -389,6 +389,68 @@ describe("Renderer mark definitions", () => {
         ]);
     });
 
+    test("expands active mark ordering and skips its second partition for picking", () => {
+        const program = /** @type {any} */ (
+            Object.assign(createProgram(), {
+                _order: {
+                    when: { selection: "picked", type: "single" },
+                    matching: "last",
+                },
+                _orderActive: false,
+            })
+        );
+        const definition = Object.freeze({
+            type: "custom",
+            createProgram: () => program,
+        });
+        const { renderer, pass } = createRendererHarness();
+        const mark = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({ draws: [{ mark }] });
+        expect(program.draw).toHaveBeenCalledOnce();
+        program._orderActive = true;
+        renderer.render({ draws: [{ mark }] });
+
+        expect(program.draw).toHaveBeenCalledTimes(3);
+        expect(renderer._renderFrame?.map((draw) => draw.orderPass)).toEqual([
+            2, 5,
+        ]);
+        expect(renderer._renderFrame?.map((draw) => draw.uniformIndex)).toEqual(
+            [0, 1]
+        );
+
+        const scoped = renderer._normalizeRenderItems([
+            {
+                items: [{ mark }],
+                bounds: { x: 0, y: 0, width: 100, height: 50 },
+                opacity: 0.5,
+            },
+        ]);
+        expect(scoped.draws.map((draw) => draw.orderPass)).toEqual([2, 5]);
+        expect(scoped.items).toHaveLength(1);
+        expect(scoped.items[0]).toMatchObject({ type: "group", opacity: 0.5 });
+        const scopedGroup = /** @type {any} */ (scoped.items[0]);
+        const scopedDraws = /** @type {Array<{ orderPass: number }>} */ (
+            scopedGroup.items
+        );
+        expect(scopedDraws.map((draw) => draw.orderPass)).toEqual([2, 5]);
+
+        program.drawPick.mockClear();
+        renderer._writeDrawGlobals(renderer._renderFrame, true);
+        renderer._encodeDraws(
+            /** @type {any} */ (pass),
+            renderer._renderFrame,
+            true
+        );
+        expect(program.drawPick).toHaveBeenCalledOnce();
+
+        program._order.matching = "first";
+        renderer.render({ draws: [{ mark }] });
+        expect(renderer._renderFrame?.map((draw) => draw.orderPass)).toEqual([
+            1, 6,
+        ]);
+    });
+
     test("retains effective state across consecutive placement draws", () => {
         const pipeline = /** @type {GPURenderPipeline} */ ({});
         const markBindGroup = /** @type {GPUBindGroup} */ ({});

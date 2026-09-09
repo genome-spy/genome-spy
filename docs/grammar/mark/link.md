@@ -2,7 +2,7 @@
 
 The `"link"` mark displays each row as a curve that connects two points.
 The mark can be used to display structural variation and interactions, for
-example. The mark has several different [`linkShape`s](#properties) that control
+example. The mark has several different [`linkShape`s](#showing-selected-arcs-in-full) that control
 how the curve is drawn.
 
 EXAMPLE examples/docs/grammar/mark/link/link-mark.json height=250
@@ -16,6 +16,39 @@ channels: `size`.
 ## Properties
 
 SCHEMA LinkProps
+
+## Showing selected arcs in full
+
+Distance fading gives arcs a softer ending than abrupt clipping and reduces
+clutter when showing structural variants across [multiple samples](../../sample-collections/visualizing.md).
+Disabling fading for selected arcs makes their connections easier to follow,
+especially in dense multi-sample views. Combine conditional
+[draw order](./index.md) with `noFadingOnSecondPass: true`:
+
+```json
+{
+  "mark": {
+    "type": "link",
+    "arcFadingDistance": [100, 200],
+    "noFadingOnSecondPass": true
+  },
+  "encoding": {
+    "order": {
+      "condition": { "param": "picked", "empty": false, "value": 1 },
+      "value": 0
+    }
+  }
+}
+```
+
+This fragment assumes a selection parameter named `picked` and positional
+encodings for the link endpoints. The lower order level draws first with normal
+fading. The higher level draws second without fading, so selected links appear
+in full above the others. The option follows the **second partition**, not
+selection membership: reversing the order values makes unselected links unfaded.
+
+The option defaults to `false`. Without active conditional ordering, including
+when every referenced selection is empty, all links retain normal fading.
 
 ## Examples
 

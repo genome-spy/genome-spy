@@ -1,15 +1,4 @@
-import {
-    getEncoderDataAccessor,
-    getSecondaryChannel,
-} from "../../encoder/encoder.js";
 import { resolveMarkProperty } from "./markEncoding.js";
-import { UNIQUE_ID_KEY } from "../../data/transforms/identifier.js";
-import {
-    isMultiPointSelection,
-    isIntervalSelection,
-    isSinglePointSelection,
-} from "../../selection/selection.js";
-import { collectAppearanceSelections } from "../../selection/selection.js";
 
 const FADE_STEPS = 4;
 
@@ -60,12 +49,13 @@ export function normalizeLinkArcFade(p1, p4, distances) {
 }
 
 /**
- * Resolves fading and the same selection membership used by the shaders.
+ * Resolves distance fading for one visual pass.
  * @param {import("../../marks/link.js").default} mark
  * @param {string} shape
- * @returns {(datum: object) => [number, number] | false}
+ * @param {boolean} [secondPass]
+ * @returns {[number, number] | false}
  */
-export function createLinkFadeEncoder(mark, shape) {
+export function resolveLinkFade(mark, shape, secondPass = false) {
     const distances = resolveMarkProperty(
         mark,
         mark.properties.arcFadingDistance
@@ -76,85 +66,12 @@ export function createLinkFadeEncoder(mark, shape) {
         distances[0] <= 0 ||
         distances[1] <= 0
     ) {
-        return () => false;
+        return false;
     }
-    const tests =
-        mark.encoders.uniqueId &&
-        resolveMarkProperty(mark, mark.properties.noFadingOnPointSelection)
-            ? createSelectionTests(mark)
-            : [];
-    return (datum) => (tests.some((test) => test(datum)) ? false : distances);
-}
-
-/**
- * Tests all selections referenced by conditional encoders with empty=false,
- * matching isDatumSelected() in GLSL and WGSL.
- *
- * @param {import("../../marks/link.js").default} mark
- * @returns {((datum: import("../../data/flowNode.js").Datum) => boolean)[]}
- */
-function createSelectionTests(mark) {
-    return Array.from(
-        collectAppearanceSelections(mark.encoders),
-        ([param, partialIntervals]) => {
-            const selection =
-                /** @type {import("../../types/selectionTypes.js").Selection} */ (
-                    mark.unitView.paramRuntime.findValue(param)
-                );
-            if (isSinglePointSelection(selection)) {
-                return (datum) =>
-                    selection.uniqueId != null &&
-                    selection.uniqueId == datum[UNIQUE_ID_KEY];
-            } else if (isMultiPointSelection(selection)) {
-                return (datum) => selection.data.has(datum[UNIQUE_ID_KEY]);
-            } else if (isIntervalSelection(selection)) {
-                const targets = Object.entries(selection.intervals).map(
-                    ([channel, interval]) => {
-                        if (channel != "x" && channel != "y") {
-                            throw new Error(
-                                `Unsupported link selection channel: ${channel}`
-                            );
-                        }
-                        const encoder = mark.encoders[channel];
-                        const secondary =
-                            mark.encoders[getSecondaryChannel(channel)];
-                        // GLSL tests the raw data branch, before scales and offsets.
-                        const start =
-                            getEncoderDataAccessor(encoder) ??
-                            encoder.branches[0].accessor;
-                        const end =
-                            getEncoderDataAccessor(secondary) ??
-                            secondary.branches[0].accessor;
-                        return { interval, start, end };
-                    }
-                );
-                const activeTargets = partialIntervals
-                    ? targets.filter(({ interval }) => interval)
-                    : targets;
-                return (datum) => {
-                    if (activeTargets.length == 0) {
-                        return false;
-                    }
-                    return activeTargets.every(({ interval, start, end }) => {
-                        if (!interval) {
-                            return false;
-                        }
-                        const a = +start(datum);
-                        const b = +end(datum);
-                        // LinkMark's hit test is endpoints, not span intersection.
-                        return (
-                            (interval[0] <= a && a <= interval[1]) ||
-                            (interval[0] <= b && b <= interval[1])
-                        );
-                    });
-                };
-            } else {
-                throw new Error(
-                    `Unsupported link selection type: ${selection.type}`
-                );
-            }
-        }
-    );
+    return secondPass &&
+        resolveMarkProperty(mark, mark.properties.noFadingOnSecondPass)
+        ? false
+        : distances;
 }
 
 /**

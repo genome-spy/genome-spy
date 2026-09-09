@@ -108,6 +108,16 @@ for (const [
                     orient,
                     segments: 101,
                     arcFadingDistance: [height * 0.4, height * 0.8],
+                    order: hasUniqueId
+                        ? {
+                              when: {
+                                  selection: "ordering",
+                                  type: "single",
+                                  empty: false,
+                              },
+                              matching: "last",
+                          }
+                        : undefined,
                     channels: {
                         ...(hasUniqueId
                             ? { uniqueId: { value: 17, type: "u32" } }
@@ -191,6 +201,13 @@ for (const [
                     return { alpha, picks };
                 };
                 const faded = await read();
+                // An order-only selection must not bypass appearance fading.
+                let orderOnly = faded;
+                if (hasUniqueId) {
+                    mark.selections.ordering.set(17);
+                    orderOnly = await read();
+                    mark.selections.ordering.set(0);
+                }
                 const intervalStates = [];
                 if (selectionType == "interval") {
                     // Span intersection, partial/empty selections, and misses stay faded.
@@ -207,21 +224,42 @@ for (const [
                     mark.selections.selected.set(17);
                 }
                 const selected = await read();
-                mark.properties.noFadingOnPointSelection.set(false);
+                let foreground = selected;
+                if (hasUniqueId) {
+                    mark.selections.ordering.set(17);
+                    mark.properties.noFadingOnSecondPass.set(true);
+                    foreground = await read();
+                }
+                mark.properties.noFadingOnSecondPass.set(false);
                 const forced = await read();
                 mark.properties.arcFadingDistance.set([0, 0]);
                 const disabled = await read();
                 renderer.destroy();
                 canvas.remove();
-                return { faded, selected, forced, disabled, intervalStates };
+                return {
+                    faded,
+                    orderOnly,
+                    selected,
+                    foreground,
+                    forced,
+                    disabled,
+                    intervalStates,
+                };
             },
             { shape, orient, direction, dpr, selectionType, hasUniqueId }
         );
+        expect(result.orderOnly).toEqual(result.faded);
+        if (hasUniqueId) {
+            expect(result.foreground.alpha.every((alpha) => alpha > 240)).toBe(
+                true
+            );
+            expect(result.foreground.picks).toEqual(result.faded.picks);
+        }
         for (const faded of [
             result.faded,
             result.forced,
             ...result.intervalStates,
-            ...(!hasUniqueId ? [result.selected] : []),
+            result.selected,
         ]) {
             expect(faded.alpha[0]).toBeGreaterThan(240);
             expect(faded.alpha[1]).toBeGreaterThan(65);
@@ -231,10 +269,7 @@ for (const [
                 hasUniqueId ? [17, 17, null] : [null, null, null]
             );
         }
-        for (const unfaded of [
-            result.disabled,
-            ...(hasUniqueId ? [result.selected] : []),
-        ]) {
+        for (const unfaded of [result.disabled]) {
             expect(unfaded.alpha.every((alpha) => alpha > 240)).toBe(true);
             expect(unfaded.picks).toEqual(
                 hasUniqueId ? [17, 17, 17] : [null, null, null]

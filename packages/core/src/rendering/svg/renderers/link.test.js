@@ -9,6 +9,7 @@ import {
     resolveThemeSelection,
 } from "../../../config/themes.js";
 import { createHeadlessEngine } from "../../../genomeSpy/headlessBootstrap.js";
+import { createSinglePointSelection } from "../../../selection/selection.js";
 import Rectangle from "../../../view/layout/rectangle.js";
 import { createSvg } from "../index.js";
 import SvgViewRenderingContext from "../svgViewRenderingContext.js";
@@ -89,6 +90,7 @@ describe("SVG link renderer", () => {
                     { x: 0.1, x2: 0.4, y: 0.5 },
                     { x: 0.6, x2: 0.9, y: 0.5 },
                     { x: 0.2, x2: 0.8, y: 0.7 },
+                    { x: 0.1, x2: 0.4, y: 0.5 },
                 ],
             },
             mark: {
@@ -114,15 +116,15 @@ describe("SVG link renderer", () => {
         const paths = Array.from(
             svg.querySelectorAll('[data-mark-type="link"] path')
         );
-        expect(paths).toHaveLength(3);
+        expect(paths).toHaveLength(4);
         expect(svg.querySelectorAll('mask[id^="link-arc-fade-"]')).toHaveLength(
             2
         );
-        expect(paths[0].getAttribute("mask")).toBe(
-            paths[1].getAttribute("mask")
-        );
-        expect(paths[2].getAttribute("mask")).not.toBe(
-            paths[0].getAttribute("mask")
+        expect(paths[0].parentElement).toBe(paths[1].parentElement);
+        expect(paths[2].parentElement).not.toBe(paths[0].parentElement);
+        expect(paths[3].parentElement).not.toBe(paths[0].parentElement);
+        expect(paths.every((path) => path.getAttribute("mask") === null)).toBe(
+            true
         );
         expect(warnings).toEqual([]);
     });
@@ -166,10 +168,9 @@ describe("SVG link renderer", () => {
         const paths = Array.from(
             svg.querySelectorAll('[data-mark-type="link"] path')
         );
-        expect(paths.map((path) => path.getAttribute("mask"))).toEqual([
-            "url(#link-arc-fade-0)",
-            "url(#link-arc-fade-1)",
-        ]);
+        expect(paths[0].parentElement?.getAttribute("mask")).not.toBeNull();
+        expect(paths[1].parentElement?.getAttribute("mask")).not.toBeNull();
+        expect(paths[0].parentElement).not.toBe(paths[1].parentElement);
         expect(
             Array.from(
                 svg.querySelectorAll('linearGradient[id$="-gradient"]'),
@@ -182,5 +183,53 @@ describe("SVG link renderer", () => {
             ["15", "35"],
             ["60", "80"],
         ]);
+    });
+
+    test("keeps the unfaded second order pass outside masked groups", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: 0.1, x2: 0.4, y: 0.5 },
+                    { x: 0.6, x2: 0.9, y: 0.5 },
+                ],
+            },
+            params: [{ name: "picked", select: "point" }],
+            mark: {
+                type: "link",
+                arcFadingDistance: [10, 20],
+                noFadingOnSecondPass: true,
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                x2: { field: "x2" },
+                y: { field: "y", type: "quantitative", scale: null },
+                y2: { field: "y" },
+                order: {
+                    condition: { param: "picked", value: 1 },
+                    value: 0,
+                },
+                color: { value: "black" },
+            },
+        });
+        const unitView =
+            /** @type {import("../../../view/unitView.js").default} */ (view);
+        const datum = unitView.mark.unitView
+            .getCollector()
+            .facetBatches.get(undefined)[0];
+        view.paramRuntime.setValue("picked", createSinglePointSelection(datum));
+
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 200,
+            logicalHeight: 100,
+        });
+        const paths = Array.from(
+            svg.querySelectorAll('[data-mark-type="link"] path')
+        );
+        expect(paths).toHaveLength(2);
+        expect(paths[0].parentElement?.getAttribute("mask")).toBe(
+            "url(#link-arc-fade-0)"
+        );
+        expect(paths[1].parentElement?.getAttribute("mask")).toBeNull();
     });
 });

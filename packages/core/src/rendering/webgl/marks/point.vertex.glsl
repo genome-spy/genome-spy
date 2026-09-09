@@ -37,6 +37,8 @@ vec2 getDxDy() {
 }
 
 void main(void) {
+#pragma orderGuard
+
     float shapeAngle = 0.0;
 
     // Selected points should always be visible
