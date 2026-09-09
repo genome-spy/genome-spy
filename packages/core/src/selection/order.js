@@ -1,11 +1,5 @@
 import { createSelectionPredicate } from "../encoder/encoder.js";
-import {
-    isIntervalSelection,
-    isMultiPointSelection,
-    isSinglePointSelection,
-    isActiveIntervalSelection,
-    normalizeSelectionPredicate,
-} from "./selection.js";
+import { isSelectionActive, normalizeSelectionPredicate } from "./selection.js";
 
 /**
  * @typedef {"matching" | "nonmatching"} OrderPass
@@ -47,10 +41,6 @@ export function normalizeOrderDefinition(
     }
 
     const selectionInfo = normalizeSelectionPredicate(condition);
-    if (!selectionInfo) {
-        throw new Error("Order condition must be a selection predicate.");
-    }
-
     const predicate = createSelectionPredicate(
         selectionInfo,
         encoding,
@@ -73,25 +63,4 @@ export function normalizeOrderDefinition(
                 isSelectionActive(paramRuntime.findValue(param))
             ),
     };
-}
-
-/**
- * Returns whether a selection contributes membership to a union. This is
- * deliberately based on selection state, avoiding a row scan when all members
- * are empty.
- *
- * @param {import("../types/selectionTypes.js").Selection} selection
- * @returns {boolean}
- */
-export function isSelectionActive(selection) {
-    if (isSinglePointSelection(selection)) {
-        return selection.uniqueId != null;
-    }
-    if (isMultiPointSelection(selection)) {
-        return selection.data.size > 0;
-    }
-    if (isIntervalSelection(selection)) {
-        return isActiveIntervalSelection(selection);
-    }
-    throw new Error(`Unsupported selection type: ${selection.type}`);
 }

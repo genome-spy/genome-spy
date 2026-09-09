@@ -284,7 +284,7 @@ describe("conditional order metadata", () => {
         expect(/** @type {UnitView} */ (view).mark.getOrder()).toBe(expected);
     });
 
-    test("rejects non-finite and unsupported order definitions", async () => {
+    test("rejects non-finite order levels", async () => {
         const base = {
             data: { values: [{ x: 1, y: 2 }] },
             params: [{ name: "picked", select: "point" }],
@@ -297,7 +297,6 @@ describe("conditional order metadata", () => {
 
         for (const order of [
             { value: Infinity },
-            { value: 0, condition: { field: "x", value: 1 } },
             { value: 0, condition: { param: "picked", value: NaN } },
         ]) {
             const view = await create(

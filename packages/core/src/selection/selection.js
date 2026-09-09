@@ -490,6 +490,27 @@ export function isIntervalSelectionConfig(config) {
 }
 
 /**
+ * Returns whether a selection contributes membership to a union. This is
+ * deliberately based on selection state, avoiding a row scan when all members
+ * are empty.
+ *
+ * @param {import("../types/selectionTypes.js").Selection} selection
+ * @returns {boolean}
+ */
+export function isSelectionActive(selection) {
+    if (isSinglePointSelection(selection)) {
+        return selection.uniqueId != null;
+    }
+    if (isMultiPointSelection(selection)) {
+        return selection.data.size > 0;
+    }
+    if (isIntervalSelection(selection)) {
+        return isActiveIntervalSelection(selection);
+    }
+    throw new Error(`Unsupported selection type: ${selection.type}`);
+}
+
+/**
  * @param {import("../types/selectionTypes.js").IntervalSelection} selection
  */
 export function isActiveIntervalSelection(selection) {
