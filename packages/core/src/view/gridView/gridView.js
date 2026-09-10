@@ -84,6 +84,10 @@ const DECORATION_ORDER = Object.freeze({
 
 const MAX_CONSTRAINT_LAYOUT_PASSES = 10;
 
+// Nested layouts can differ by half a physical pixel after device-pixel
+// snapping. Keep that harmless rounding from invalidating shared projections.
+const HALF_PHYSICAL_PIXEL = 0.5;
+
 /**
  * Returns the part of an allocated flex slot that fits in the layout extent.
  * Flex minimums may otherwise report more room than a constrained canvas has.
@@ -525,6 +529,11 @@ export default class GridView extends ContainerView {
             }
 
             if (channel) {
+                const alignmentTolerance =
+                    HALF_PHYSICAL_PIXEL /
+                    (typeof window === "undefined"
+                        ? 1
+                        : (window.devicePixelRatio ?? 1));
                 const resolution = this.getScaleResolution(channel);
                 const trackViews = new Set(
                     placements.flatMap(({ views }) => views)
@@ -557,8 +566,8 @@ export default class GridView extends ContainerView {
                     const start =
                         placement.content[channel === "x" ? "x" : "y"];
                     if (
-                        Math.abs(span - expectedSpan) > 1e-6 ||
-                        Math.abs(start - expectedStart) > 1e-6
+                        Math.abs(span - expectedSpan) > alignmentTolerance ||
+                        Math.abs(start - expectedStart) > alignmentTolerance
                     ) {
                         throw new Error(
                             `Container annotations require equal aligned visible plotting spans on the shared ${channel} axis.`

@@ -6,6 +6,7 @@ import Point from "./layout/point.js";
 import ConcatView from "./concatView.js";
 import UnitView from "./unitView.js";
 import { createAndInitialize, renderToLayout } from "./testUtils.js";
+import Rectangle from "./layout/rectangle.js";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import { createSvg } from "../rendering/svg/index.js";
 import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
@@ -60,6 +61,40 @@ function makeSpec(channel) {
 }
 
 describe("container annotation contracts", () => {
+    test("allows subpixel track alignment at fractional DPR", async () => {
+        const view = await createAndInitialize(
+            { ...makeSpec("x"), annotate: undefined },
+            ConcatView
+        );
+        renderToLayout(view);
+
+        const placements = view.getTrackPlotPlacements();
+        const dpr = vi
+            .spyOn(window, "devicePixelRatio", "get")
+            .mockReturnValue(1.25);
+        view.getTrackPlotPlacements = () =>
+            placements.map((placement, index) =>
+                index === 1
+                    ? {
+                          ...placement,
+                          content: Rectangle.create(
+                              placement.content.x + 0.3,
+                              placement.content.y,
+                              placement.content.width,
+                              placement.content.height
+                          ),
+                      }
+                    : placement
+            );
+
+        try {
+            expect(() => view.getTrackPlotGeometry("x")).not.toThrow();
+        } finally {
+            dpr.mockRestore();
+            view.disposeSubtree();
+        }
+    });
+
     test.each(/** @type {const} */ (["x", "y"]))(
         "spans %s tracks and gaps through nested annotation layers",
         async (channel) => {
