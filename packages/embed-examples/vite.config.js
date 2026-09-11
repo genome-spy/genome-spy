@@ -27,6 +27,7 @@ export default defineConfig({
                 multipleDynamicSources: "src/multipleDynamicSources.html",
                 namedDataForm: "src/namedDataForm.html",
                 dynamicFasta: "src/dynamicFasta.html",
+                sequenceEditor: "src/sequenceEditor.html",
                 reactComponent: "src/reactComponent.html",
                 annotationEditor: "src/annotationEditor.html",
                 selectionForm: "src/selectionForm.html",
