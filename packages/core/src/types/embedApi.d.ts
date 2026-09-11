@@ -116,6 +116,52 @@ export interface ParamApi<T = ParamValue> {
     subscribe: (listener: (value: T) => void) => () => void;
 }
 
+export interface SelectionSnapshot {
+    type: "interval";
+    active: boolean;
+    intervals: Partial<Record<"x" | "y", readonly [number, number] | null>>;
+}
+
+export interface SelectionApi {
+    readonly type: "interval";
+    getValue: () => SelectionSnapshot;
+    subscribe: (
+        listener: (value: SelectionSnapshot) => void,
+        options?: { delivery?: "change" | "commit" }
+    ) => () => void;
+    clear: () => void;
+    contains: (point: { x: number; y: number }) => boolean;
+}
+
+export interface ParamNamespace {
+    get: <T = ParamValue>(name: string) => ParamApi<T>;
+    getSelection: (name: string) => SelectionApi;
+}
+
+export interface NativeEvent {
+    readonly sourceEvent: Event;
+    readonly point: { readonly x: number; readonly y: number };
+    preventViewDefault: () => void;
+}
+
+export type NativeEventType =
+    | "click"
+    | "dblclick"
+    | "contextmenu"
+    | "mousedown"
+    | "mouseup"
+    | "mousemove"
+    | "mouseenter"
+    | "mouseleave"
+    | "wheel";
+
+export interface EmbedEventApi {
+    subscribe: (
+        type: NativeEventType,
+        listener: (event: NativeEvent) => void
+    ) => () => void;
+}
+
 /**
  * Address of a view in the live layout hierarchy.
  *
@@ -298,6 +344,9 @@ export interface ViewHandle {
      * Updates datasets declared by this exact view.
      */
     readonly datasets: DatasetApi;
+
+    /** Parameters resolved from this view's lexical scope. */
+    readonly params: ParamNamespace;
 }
 
 /**
@@ -576,6 +625,12 @@ export interface EmbedResult {
      * search nested views.
      */
     readonly datasets: DatasetApi;
+
+    /** Native canvas input subscriptions. */
+    readonly events: EmbedEventApi;
+
+    /** Parameters resolved from the authored top-level specification. */
+    readonly params: ParamNamespace;
 
     /**
      * Exports the current visualization as raster or vector images.

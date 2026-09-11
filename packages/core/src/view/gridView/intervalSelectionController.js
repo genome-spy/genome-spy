@@ -64,6 +64,12 @@ export class IntervalSelectionController {
             renderOverlay,
             selectionRect
         );
+
+        this.#unregisterSelectionController =
+            /** @type {any} */ (paramRuntime).registerSelectionController?.(
+                name,
+                this
+            ) ?? (() => {});
     }
 
     /** @type {IntervalSelectionHost} */
@@ -74,6 +80,12 @@ export class IntervalSelectionController {
 
     /** @type {() => boolean} */
     #disposeActiveDrag = () => false;
+
+    /** @type {(point: Point) => boolean} */
+    #containsPoint = () => false;
+
+    /** @type {() => void} */
+    #unregisterSelectionController = () => {};
 
     /**
      * @param {string} type
@@ -94,7 +106,19 @@ export class IntervalSelectionController {
         if (wasDragging) {
             this.host.context.resumeHoverTracking();
         }
+        this.#unregisterSelectionController();
         this.#viewListeners.dispose();
+    }
+
+    /**
+     * Tests a canvas point against this controller's actual interaction host,
+     * ownership, and current domain selection.
+     *
+     * @param {{ x: number, y: number }} point
+     * @returns {boolean}
+     */
+    contains(point) {
+        return this.#containsPoint(/** @type {Point} */ (point));
     }
 
     /**
@@ -473,6 +497,12 @@ export class IntervalSelectionController {
 
         const isPointInsideSelection = (/** @type {Point} */ point) =>
             selectionContainsPoint(selectionExpr(), invertPoint(point));
+
+        this.#containsPoint = (point) =>
+            isInsideHost(point) &&
+            ownsInteraction(point) &&
+            isActiveIntervalSelection(selectionExpr()) &&
+            isPointInsideSelection(point);
 
         if (clearEventConfig) {
             this.#addViewInteractionListener(

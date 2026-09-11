@@ -1198,4 +1198,67 @@ describe("InteractionController", () => {
         expect(tooltip.sticky).toBe(true);
         expect(clear).not.toHaveBeenCalled();
     });
+
+    it("delivers native subscriptions synchronously and can veto view handling", () => {
+        installEventTargetDocument();
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (
+                class MouseEvent extends Event {
+                    constructor(
+                        /** @type {string} */ type,
+                        /** @type {Record<string, any>} */ init = {}
+                    ) {
+                        super(type);
+                        Object.assign(this, {
+                            button: 2,
+                            buttons: 0,
+                            clientX: 10,
+                            clientY: 20,
+                            ...init,
+                        });
+                    }
+                }
+            )
+        );
+
+        const canvas = new CanvasStub();
+        /** @type {string[]} */
+        const order = [];
+        const viewRoot = {
+            propagateInteraction() {
+                order.push("view");
+            },
+            visit() {},
+        };
+        const controller = new InteractionController({
+            viewRoot: /** @type {any} */ (viewRoot),
+            canvas: /** @type {any} */ (canvas),
+            tooltip: /** @type {any} */ ({
+                clear() {},
+                containsEvent() {
+                    return false;
+                },
+                handleMouseMove() {},
+                pushEnabledState() {},
+                popEnabledState() {},
+                updateWithDatum() {},
+                sticky: false,
+                visible: false,
+            }),
+            animator: /** @type {any} */ ({ requestRender() {} }),
+            emitEvent() {},
+            tooltipHandlers: {},
+        });
+
+        controller.subscribeNativeEvent("contextmenu", (event) => {
+            order.push("native");
+            expect(event.point).toEqual({ x: 10, y: 20 });
+            event.preventViewDefault();
+        });
+        controller.registerInteractionEvents();
+
+        canvas.dispatchEvent(new MouseEvent("contextmenu"));
+
+        expect(order).toEqual(["native"]);
+    });
 });

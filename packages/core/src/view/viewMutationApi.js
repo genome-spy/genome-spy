@@ -14,6 +14,7 @@ import {
 import { getViewIdentityRegistry } from "./viewIdentityRegistry.js";
 import { getTopLevelSpecView } from "./viewFactory.js";
 import { readBinaryData } from "../data/formats/readBinary.js";
+import { createEmbedParamNamespace } from "../paramRuntime/embedParamApi.js";
 
 /**
  * Error thrown by the public view mutation API.
@@ -325,6 +326,8 @@ export function createViewMutationApi(genomeSpy, isActive) {
             },
 
             datasets: createViewDatasetApi(() => view, getRootView, isActive),
+
+            params: createEmbedParamNamespace(view),
         };
 
         handlesByView.set(view, handle);

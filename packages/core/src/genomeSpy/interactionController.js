@@ -7,6 +7,7 @@ import createTooltipContext from "../tooltip/tooltipContext.js";
 import { FREEZE_INTERACTION_CLASS_NAME } from "../utils/ui/tooltip.js";
 import InteractionDispatcher from "./interactionDispatcher.js";
 import CursorManager from "./cursorManager.js";
+import EventListenerRegistry from "./eventListenerRegistry.js";
 
 export default class InteractionController {
     /** @type {import("../view/view.js").default} */
@@ -45,6 +46,9 @@ export default class InteractionController {
     #hoverTrackingSuspensionCount = 0;
     #postRenderHoverRefreshRequested = false;
     #pickingRequestId = 0;
+    #nativeEventListeners = new EventListenerRegistry();
+    /** @type {(error: unknown) => void} */
+    #reportError = (error) => console.error(error);
 
     #dismissStickyTooltip() {
         this.#tooltip.sticky = false;
@@ -62,6 +66,7 @@ export default class InteractionController {
      * @param {Record<string, import("../tooltip/tooltipHandler.js").TooltipHandler>} options.tooltipHandlers
      * @param {() => void} [options.renderPickingFramebuffer]
      * @param {(x: number, y: number) => number | null | Promise<number | null>} [options.readPickingId]
+     * @param {(error: unknown) => void} [options.reportError]
      */
     constructor({
         viewRoot,
@@ -72,6 +77,7 @@ export default class InteractionController {
         tooltipHandlers,
         renderPickingFramebuffer,
         readPickingId,
+        reportError,
     }) {
         this.#viewRoot = viewRoot;
         this.#canvas = canvas;
@@ -81,6 +87,7 @@ export default class InteractionController {
         this.#tooltipHandlers = tooltipHandlers;
         this.#renderPickingFramebuffer = renderPickingFramebuffer ?? (() => {});
         this.#readPickingId = readPickingId;
+        this.#reportError = reportError ?? this.#reportError;
         this.#interactionDispatcher = new InteractionDispatcher({ viewRoot });
         this.#cursorManager = new CursorManager({ canvas });
 
@@ -99,6 +106,33 @@ export default class InteractionController {
 
     getCurrentHover() {
         return this.#currentHover;
+    }
+
+    /**
+     * Subscribes to native canvas input before Core routes the event.
+     *
+     * @param {string} type
+     * @param {(event: { sourceEvent: Event, point: Point, preventViewDefault: () => void }) => void} listener
+     * @returns {() => void}
+     */
+    subscribeNativeEvent(type, listener) {
+        const supported = [
+            "click",
+            "dblclick",
+            "contextmenu",
+            "mousedown",
+            "mouseup",
+            "mousemove",
+            "mouseenter",
+            "mouseleave",
+            "wheel",
+        ];
+        if (!supported.includes(type)) {
+            throw new Error(`Unsupported native event type: ${type}`);
+        }
+
+        this.#nativeEventListeners.add(type, listener);
+        return () => this.#nativeEventListeners.remove(type, listener);
     }
 
     suspendHoverTracking() {
@@ -280,6 +314,23 @@ export default class InteractionController {
             const wheeling = now - lastWheelEvent < 200;
 
             if (event instanceof MouseEvent) {
+                const point = this.#toCanvasPoint(event);
+                let viewDefaultPrevented = false;
+                this.#nativeEventListeners.emit(
+                    event.type,
+                    {
+                        sourceEvent: event,
+                        point,
+                        preventViewDefault: () => {
+                            viewDefaultPrevented = true;
+                        },
+                    },
+                    this.#reportError
+                );
+                if (viewDefaultPrevented) {
+                    return;
+                }
+
                 if (
                     event.type !== "contextmenu" &&
                     this.#isInteractionFrozen()
@@ -287,7 +338,6 @@ export default class InteractionController {
                     return;
                 }
 
-                const point = this.#toCanvasPoint(event);
                 this.#lastPointerPoint = point;
 
                 let hoverPickHandled = false;
@@ -555,6 +605,8 @@ export default class InteractionController {
             "mousemove",
             "contextmenu",
             "dblclick",
+            "mouseenter",
+            "mouseleave",
         ].forEach((type) => addListener(canvas, type, listener));
 
         /**
@@ -744,6 +796,7 @@ export default class InteractionController {
             for (const remove of removers) {
                 remove();
             }
+            this.#nativeEventListeners.clear();
         };
     }
 

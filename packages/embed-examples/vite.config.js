@@ -28,6 +28,7 @@ export default defineConfig({
                 namedDataForm: "src/namedDataForm.html",
                 dynamicFasta: "src/dynamicFasta.html",
                 reactComponent: "src/reactComponent.html",
+                annotationEditor: "src/annotationEditor.html",
             },
         },
     },

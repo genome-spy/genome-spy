@@ -6,6 +6,8 @@ import {
 } from "./view/viewMutationApi.js";
 import { fetchJson } from "./utils/fetchUtils.js";
 import inferSpecBaseUrl from "./utils/inferSpecBaseUrl.js";
+import { createEmbedParamNamespace } from "./paramRuntime/embedParamApi.js";
+import { getTopLevelSpecView } from "./view/viewFactory.js";
 
 /**
  * @param {new (container: HTMLElement, spec: import("./spec/root.js").RootSpec, options?: import("./types/embedApi.js").EmbedOptions) => import("./genomeSpy.js").default} GenomeSpy
@@ -68,6 +70,19 @@ export function createEmbed(GenomeSpy) {
         return {
             views: createViewMutationApi(genomeSpy, isActive),
             datasets: createTopLevelDatasetApi(genomeSpy, isActive),
+            events: {
+                subscribe(type, listener) {
+                    if (!active) {
+                        throw new Error(
+                            "Cannot subscribe to events through a finalized embed."
+                        );
+                    }
+                    return genomeSpy.subscribeNativeEvent(type, listener);
+                },
+            },
+            params: createEmbedParamNamespace(
+                getTopLevelSpecView(genomeSpy.viewRoot)
+            ),
 
             finalize() {
                 active = false;

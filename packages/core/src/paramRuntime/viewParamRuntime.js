@@ -85,6 +85,9 @@ export default class ViewParamRuntime {
     /** @type {Map<string, Parameter>} */
     #paramConfigs = new Map();
 
+    /** @type {Map<string, Set<object>>} */
+    #selectionControllers = new Map();
+
     /** @type {Map<string, TransitionState>} */
     #transitionStates = new Map();
 
@@ -525,6 +528,65 @@ export default class ViewParamRuntime {
     }
 
     /**
+     * Finds the nearest authored declaration, including declarations that
+     * write to an outer value through `push: "outer"`.
+     *
+     * @param {string} paramName
+     * @returns {{ runtime: ViewParamRuntime, config: Parameter } | undefined}
+     */
+    findConfiguredParam(paramName) {
+        const config = this.#paramConfigs.get(paramName);
+        if (config) {
+            return { runtime: this, config };
+        }
+
+        return this.#parentFinder()?.findConfiguredParam(paramName);
+    }
+
+    /**
+     * Registers the interaction host that owns a selection declaration.
+     * Selection controllers remain the source of geometry and lifecycle state.
+     *
+     * @param {string} paramName
+     * @param {object} controller
+     * @returns {() => void}
+     */
+    registerSelectionController(paramName, controller) {
+        let controllers = this.#selectionControllers.get(paramName);
+        if (!controllers) {
+            controllers = new Set();
+            this.#selectionControllers.set(paramName, controllers);
+        }
+        controllers.add(controller);
+
+        return () => {
+            controllers.delete(controller);
+            if (controllers.size === 0) {
+                this.#selectionControllers.delete(paramName);
+            }
+        };
+    }
+
+    /**
+     * Returns the interaction host for a local selection declaration.
+     *
+     * @param {string} paramName
+     * @returns {object | undefined}
+     */
+    getSelectionController(paramName) {
+        const controllers = this.#selectionControllers.get(paramName);
+        if (!controllers || controllers.size === 0) {
+            return;
+        }
+        if (controllers.size > 1) {
+            throw new Error(
+                `Selection "${paramName}" has ambiguous interaction ownership.`
+            );
+        }
+        return controllers.values().next().value;
+    }
+
+    /**
      * @returns {ViewParamRuntimeDebugState}
      */
     getDebugState() {
@@ -854,6 +916,7 @@ export default class ViewParamRuntime {
         this.#allocatedSetters.clear();
         this.#localRefs.clear();
         this.#paramConfigs.clear();
+        this.#selectionControllers.clear();
         this.#transitionStates.clear();
     }
 

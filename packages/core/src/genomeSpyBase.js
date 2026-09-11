@@ -584,6 +584,7 @@ export default class GenomeSpy {
                 ? this.renderPickingFramebuffer.bind(this)
                 : undefined,
             readPickingId: this.#renderingBackend.readPickingId,
+            reportError: this.#reportRuntimeError.bind(this),
         });
     }
 
@@ -717,6 +718,17 @@ export default class GenomeSpy {
      */
     updateTooltip(datum, converter) {
         this.#interactionController.updateTooltip(datum, converter);
+    }
+
+    /**
+     * Subscribes to native canvas input before Core routes the event.
+     *
+     * @param {string} type
+     * @param {(event: { sourceEvent: Event, point: import("./view/layout/point.js").default, preventViewDefault: () => void }) => void} listener
+     * @returns {() => void}
+     */
+    subscribeNativeEvent(type, listener) {
+        return this.#interactionController.subscribeNativeEvent(type, listener);
     }
 
     /**

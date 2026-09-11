@@ -1,7 +1,11 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
-import { resolveEmbedParam } from "./embedParamApi.js";
+import {
+    resolveEmbedParam,
+    resolveEmbedSelection,
+    resolveScopedEmbedParam,
+} from "./embedParamApi.js";
 import { intervalSelection } from "../selection/index.js";
 
 /**
@@ -125,6 +129,58 @@ describe("embed param API", () => {
 
         expect(() => resolveEmbedParam(root, "threshold")).toThrow(
             'Parameter "threshold" is ambiguous.'
+        );
+    });
+
+    test("returns detached interval selection snapshots from a scoped API", async () => {
+        const { view: root } = await createHeadlessEngine({
+            params: [
+                {
+                    name: "brush",
+                    select: { type: "interval", encodings: ["x"] },
+                },
+            ],
+            vconcat: [makeUnit("track")],
+        });
+
+        const selection = resolveEmbedSelection(root, "brush");
+        const param = resolveScopedEmbedParam(root, "brush");
+
+        expect(selection.getValue()).toEqual({
+            type: "interval",
+            active: false,
+            intervals: { x: null },
+        });
+
+        param.setValue(intervalSelection({ x: [1, 2] }));
+        const snapshot = selection.getValue();
+        expect(snapshot).toEqual({
+            type: "interval",
+            active: true,
+            intervals: { x: [1, 2] },
+        });
+
+        /** @type {any} */ (snapshot.intervals.x)[0] = 99;
+        expect(selection.getValue().intervals.x).toEqual([1, 2]);
+
+        selection.clear();
+        expect(selection.getValue().active).toBe(false);
+    });
+
+    test("a plain nearest declaration shadows an ancestor selection", async () => {
+        const { view: root } = await createHeadlessEngine({
+            params: [
+                {
+                    name: "brush",
+                    select: { type: "interval", encodings: ["x"] },
+                },
+            ],
+            vconcat: [makeUnit("track", [{ name: "brush", value: 1 }])],
+        });
+
+        const child = /** @type {any} */ (root).children[0];
+        expect(() => resolveEmbedSelection(child, "brush")).toThrow(
+            'Parameter "brush" is not a selection in this scope.'
         );
     });
 });

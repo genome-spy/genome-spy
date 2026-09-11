@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="stylesheet" href="style.scss" />
+        <title>Annotation editor</title>
+    </head>
+
+    <body>
+        <h1>Annotation editor</h1>
+        <p>
+            Brush a region, then right-click inside it to add an annotation.
+            The form and table belong to the embedding page.
+        </p>
+
+        <div id="annotation-plot"></div>
+        <p id="annotation-status" role="status"></p>
+
+        <div id="annotation-menu" hidden>
+            <strong>Add annotation</strong>
+            <form id="annotation-form">
+                <label>
+                    Name
+                    <input name="name" required />
+                </label>
+                <label>
+                    Description
+                    <textarea name="description" rows="3"></textarea>
+                </label>
+                <div>
+                    <button type="submit">Save</button>
+                    <button type="button" id="annotation-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        <table>
+            <thead>
+                <tr><th>Region</th><th>Name</th><th>Description</th></tr>
+            </thead>
+            <tbody id="annotation-rows"></tbody>
+        </table>
+
+        <script type="module" src="/annotationEditor.js"></script>
+    </body>
+</html>

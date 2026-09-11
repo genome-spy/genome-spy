@@ -3,3 +3,33 @@ body {
     padding: 0;
     font-family: sans-serif;
 }
+
+#annotation-menu {
+    z-index: 1;
+    padding: 1em;
+    background: white;
+    border: 1px solid #999;
+    box-shadow: 0 2px 8px #0003;
+}
+
+#annotation-menu form,
+#annotation-menu label {
+    display: grid;
+    gap: 0.5em;
+}
+
+#annotation-menu form {
+    gap: 1em;
+}
+
+table {
+    border-collapse: collapse;
+    margin-top: 1em;
+}
+
+th,
+td {
+    padding: 0.35em 0.75em;
+    border: 1px solid #ccc;
+    text-align: left;
+}

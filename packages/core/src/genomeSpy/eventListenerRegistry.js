@@ -31,8 +31,24 @@ export default class EventListenerRegistry {
     /**
      * @param {string} type
      * @param {any} event
+     * @param {(error: unknown) => void} [onError]
      */
-    emit(type, event) {
-        this.#listeners.get(type)?.forEach((listener) => listener(event));
+    emit(type, event, onError) {
+        if (!onError) {
+            this.#listeners.get(type)?.forEach((listener) => listener(event));
+            return;
+        }
+
+        this.#listeners.get(type)?.forEach((listener) => {
+            try {
+                listener(event);
+            } catch (error) {
+                onError(error);
+            }
+        });
+    }
+
+    clear() {
+        this.#listeners.clear();
     }
 }
