@@ -786,6 +786,10 @@ describe("GridChild interval selection interactions", () => {
                 name: "brush",
                 select: { type: "interval", encodings: ["x"] },
             },
+            {
+                name: "brushEnd",
+                expr: "brush.intervals.x ? brush.intervals.x[1] : 0",
+            },
         ]);
         view.addInteractionListener = (type, listener) => {
             listeners.set(type, [...(listeners.get(type) ?? []), listener]);
@@ -798,6 +802,21 @@ describe("GridChild interval selection interactions", () => {
             if (!controller) {
                 throw new Error("Expected an interval selection controller.");
             }
+
+            /** @type {{ end: number, interval: [number, number] }[]} */
+            const settledCommits = [];
+            controller.subscribeCommit((selection) => {
+                const interval = /** @type {[number, number]} */ (
+                    selection.intervals.x
+                );
+                if (!interval) {
+                    throw new Error("Expected a committed x interval.");
+                }
+                settledCommits.push({
+                    end: view.paramRuntime.getValue("brushEnd"),
+                    interval,
+                });
+            });
 
             const commitListener = vi.fn();
             let unsubscribeSecond = () => {};
@@ -812,11 +831,31 @@ describe("GridChild interval selection interactions", () => {
             });
             unsubscribeSecond = controller.subscribeCommit(commitListener);
 
-            listeners.get("mousedown")[0](createInteractionEvent());
+            expect(settledCommits).toHaveLength(0);
+            listeners.get("mousedown")[0](
+                createInteractionEvent({
+                    mouseEvent: /** @type {any} */ ({
+                        button: 0,
+                        clientX: 50,
+                        clientY: 50,
+                    }),
+                })
+            );
+            document.dispatchEvent(
+                /** @type {Event} */ (
+                    /** @type {any} */ ({
+                        type: "mousemove",
+                        clientX: 70,
+                        clientY: 50,
+                    })
+                )
+            );
             document.dispatchEvent(
                 /** @type {Event} */ (/** @type {any} */ ({ type: "mouseup" }))
             );
 
+            expect(settledCommits).toHaveLength(1);
+            expect(settledCommits[0].end).toBe(settledCommits[0].interval[1]);
             expect(commitListener).toHaveBeenCalledTimes(2);
 
             unsubscribeFirst();

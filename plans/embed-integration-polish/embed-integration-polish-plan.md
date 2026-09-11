@@ -58,12 +58,17 @@ requires a broader API or architectural expansion.
       notifications. Reuse the current runtime and controller; do not add a scheduler
       or transaction framework. If their integration needs a substantial change,
       present the tradeoff to the user rather than silently retaining incoherence.
-- [ ] Add representative tests: a batched update to two parameters where a modern
+- [x] Add representative tests: a batched update to two parameters where a modern
       callback reads both and a dependent expression; a selection update observed
       after dependent state settles; and brush completion delivering one settled
       commit. Assert that subscriptions do not fire initially and stop after disposal.
       Use the runtime propagation barrier instead of timers. Include legacy `getParam().subscribe()` in the
       coherent-delivery checks; no exhaustive reentrancy matrix is required.
+
+  Done: embed API tests cover modern and legacy batched observations, dependent
+  selection state, initial silence, and disposal. GridChild coverage exercises a
+  real brush completion, one settled commit, duplicate registrations, and
+  modification during delivery.
 
 Streamline these paths while fixing them, without creating a separate refactoring
 project:
