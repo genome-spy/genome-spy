@@ -499,7 +499,7 @@ contracts:
   interaction and parameter components.
 - [ ] Make lifecycle behavior uniform for embed-level and view-level parameter
   and selection handles after finalization or view removal.
-- [ ] Revisit and clearly encode the confirmed-hover rule for mark activation:
+- [x] Revisit and clearly encode the confirmed-hover rule for mark activation:
   either keep the documented synchronous behavior as an explicit contract or
   propose a materially different activation design for user review.
 

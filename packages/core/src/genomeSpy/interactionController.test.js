@@ -1348,6 +1348,103 @@ describe("InteractionController", () => {
         expect(events[0].hit.datum).toEqual({ label: "one" });
     });
 
+    it("does not replay mark activation from a pending hover pick", async () => {
+        installEventTargetDocument();
+        vi.spyOn(performance, "now").mockReturnValue(1_000);
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (
+                class MouseEvent extends Event {
+                    constructor(
+                        /** @type {string} */ type,
+                        /** @type {Record<string, any>} */ init = {}
+                    ) {
+                        super(type);
+                        Object.assign(this, {
+                            button: 0,
+                            buttons: 0,
+                            clientX: 0,
+                            clientY: 0,
+                            ...init,
+                        });
+                    }
+                }
+            )
+        );
+
+        const canvas = new CanvasStub();
+        const scope = /** @type {any} */ ({});
+        const mark = /** @type {any} */ ({
+            isPickingParticipant: () => true,
+            properties: { tooltip: /** @type {null} */ (null) },
+            unitView: {
+                getLayoutAncestors: () => [scope],
+            },
+        });
+        const pickerUnitView = Object.create(UnitView.prototype);
+        pickerUnitView.mark = mark;
+        pickerUnitView.facetCoords = new Map([
+            ["facet", { containsPoint: () => true }],
+        ]);
+        pickerUnitView.getCollector = () => ({
+            findDatumByUniqueId: (/** @type {number} */ uniqueId) =>
+                uniqueId === 1 ? { label: "one" } : undefined,
+        });
+
+        /** @type {((value: number) => void) | undefined} */
+        let resolveFirstHover;
+        readPickingId.mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    resolveFirstHover = resolve;
+                })
+        );
+
+        const viewRoot = {
+            visit(/** @type {(view: UnitView) => any} */ visitor) {
+                return visitor(pickerUnitView);
+            },
+            propagateInteraction() {},
+        };
+        const controller = new InteractionController({
+            viewRoot: /** @type {any} */ (viewRoot),
+            canvas: /** @type {any} */ (canvas),
+            tooltip: /** @type {any} */ ({
+                clear() {},
+                containsEvent() {
+                    return false;
+                },
+                handleMouseMove() {},
+                pushEnabledState() {},
+                popEnabledState() {},
+                updateWithDatum() {},
+                visible: false,
+                sticky: false,
+            }),
+            animator: /** @type {any} */ ({ requestRender() {} }),
+            emitEvent() {},
+            tooltipHandlers: {},
+            renderPickingFramebuffer() {},
+            readPickingId,
+        });
+        /** @type {any[]} */
+        const events = [];
+        controller.subscribeMarkEvent(scope, "click", (event) => {
+            events.push(event);
+        });
+        controller.registerInteractionEvents();
+
+        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 10 }));
+        canvas.dispatchEvent(new MouseEvent("click", { clientX: 10 }));
+
+        if (!resolveFirstHover) {
+            throw new Error("First hover pick did not start.");
+        }
+        resolveFirstHover(1);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(events).toHaveLength(0);
+    });
+
     it("reports initial hover listener errors without throwing", () => {
         const reportError = vi.fn();
         const { controller } = createMinimalInteractionController({
