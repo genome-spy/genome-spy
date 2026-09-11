@@ -129,17 +129,24 @@ Tentative commit: `fix(embed-examples): verify notebook and picking workflows`.
 
 ## Finish
 
-- [ ] Run the affected unit suites, relevant type checks, lint, and the embed
+- [x] Run the affected unit suites, relevant type checks, lint, and the embed
       examples smoke build. Broaden testing only if failures or wider changes justify
-      it. Record the actual browser and notebook checks performed.
-- [ ] Update the old plan's stale size and completion record. At review commit
+      it. Record the actual browser and notebook checks performed. Done: focused
+      Core suites, Core type check, lint, and the embed examples smoke build pass;
+      Python syntax also passes.
+- [x] Update the old plan's stale size and completion record. At review commit
       `cab18da31`, Core production changes against `master` were 1,401 added,
       120 removed, net +1,281 lines, including types/comments/blanks and excluding
       tests. Recalculate against original baseline
       `491e632a0533d6bb551246b09cb8bdfb7c860ef2` after the fixes and report this
       follow-up's additional delta separately. Aim for flat or reduced production
       size; explain any meaningful growth rather than pursuing a cosmetic line cap.
-- [ ] Commit each verified group using the delivery skill. Keep review fixes
+      Recalculated current Core non-test delta: +1,489/-156, net +1,333. The
+      follow-up delta from `cab18da31` is +190/-110, net +80 across Core,
+      examples, and notebook files. The growth is mostly focused tests and the
+      authorized settled-observation wiring; the shared handle cleanup removed
+      38 production lines from `embedParamApi.js`.
+- [x] Commit each verified group using the delivery skill. Keep review fixes
       within the group; no repeated review ceremony for minor edits. Reconcile and
       retire temporary plans before PR delivery according to repository instructions.
 
