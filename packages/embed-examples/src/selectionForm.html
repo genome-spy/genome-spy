@@ -9,15 +9,16 @@
     <body>
         <h1>Selection-driven annotation form</h1>
         <p>
-            Brush a region or click a point. A committed brush enables the
-            form; the optional marimo bridge exchanges JSON-safe state with
-            Python on <code>http://127.0.0.1:8765</code>.
+            Hold Shift while dragging to brush a region, or click a point. A
+            committed brush enables the form; the optional marimo bridge
+            exchanges JSON-safe state with Python on
+            <code>http://127.0.0.1:8765</code>.
         </p>
         <p>
             The page listens to the named interval and point selections, then
             writes saved annotations back to the embed's named dataset. Add
-            <code>?bridge=1</code> to connect this page to the notebook
-            example while keeping the browser UI in control.
+            <code>?bridge=1</code> to connect this page to the notebook example
+            while keeping the browser UI in control.
         </p>
 
         <div id="selection-plot"></div>
@@ -38,7 +39,11 @@
         <p id="selection-summary"></p>
         <table>
             <thead>
-                <tr><th>Region</th><th>Name</th><th>Description</th></tr>
+                <tr>
+                    <th>Region</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                </tr>
             </thead>
             <tbody id="selection-rows"></tbody>
         </table>

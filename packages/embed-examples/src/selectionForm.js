@@ -96,9 +96,14 @@ function renderRows() {
     rows.replaceChildren(
         ...annotations.map((annotation) => {
             const row = document.createElement("tr");
-            row.innerHTML =
-                `<td>${annotation.start}–${annotation.end}</td>` +
-                `<td>${annotation.name}</td><td>${annotation.description}</td>`;
+            for (const value of [
+                `${annotation.start}–${annotation.end}`,
+                annotation.name,
+                annotation.description,
+            ]) {
+                const cell = row.insertCell();
+                cell.textContent = String(value);
+            }
             return row;
         })
     );

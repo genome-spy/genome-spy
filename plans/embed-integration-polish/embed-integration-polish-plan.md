@@ -25,7 +25,8 @@ Execute the detailed work below in three reviewable groups:
    (implemented; focused checks pass).
 2. Gate B: coherent parameter and selection observations, including the
    authorized legacy timing correction (implemented; focused checks pass).
-3. Gate C: practical picking, notebook, and Observable verification.
+3. Gate C: practical picking, notebook, and Observable verification (partially
+   implemented; browser and environment limits recorded below).
 
 Commit each gate after its focused checks pass. Do not treat the observation
 timing correction as awaiting additional approval; stop only if implementation
@@ -33,8 +34,9 @@ requires a broader API or architectural expansion.
 
 ## 1. Fix the everyday interaction issues
 
-- [x] Render annotation table cells with `textContent` instead of interpolating
-      names/descriptions into `innerHTML`. Check literal angle brackets and quotes.
+- [x] Render annotation table cells in both examples with `textContent` instead
+      of interpolating names/descriptions into `innerHTML`. Check literal angle
+      brackets and quotes.
 - [x] Notify hover consumers when the pointer leaves or brushing suspends hover.
       Suppress repeated notifications for the same mark/ID/datum. Use the existing
       controller state and notification path, not a per-subscriber tracker. Do not
@@ -100,21 +102,24 @@ The annotation text fix can accompany it or be a small separate fix.
 
 ## 2. Check picking and notebook behavior in practice
 
-- [ ] Exercise overlapping marks sharing a dataset, particularly the DNA editor's
-      text and rectangle layers. Check whether scoped picking returns misleading
-      ownership. Apply a small resolution/filtering fix if it actually resolves the
-      case. If the existing picking ID cannot distinguish owners without renderer or
-      infrastructure changes, document that limitation and recommend subscribing at
-      the common parent, as the sequence editor already does. Do not implement a
-      general ambiguity-resolution system. Any change to the agreed public ownership
-      contract requires a short user-reviewed proposal before proceeding.
+- [x] Exercise overlapping marks sharing a dataset, particularly the DNA editor's
+      text and rectangle layers. The common parent scope works for the editor; no
+      ownership change is needed for the two layers sharing each datum.
 - [ ] Run the marimo example, not just a Python syntax check. Verify a browser
       selection reaches Python and published annotation rows return to GenomeSpy.
       Fix concrete startup, cell-reactivity, and cleanup problems with the smallest
-      working bridge. No reusable notebook framework or transport redesign.
-- [ ] Check the Observable recipe's subscription and cleanup usage. Document
+      working bridge. No reusable notebook framework or transport redesign. Blocked
+      here because `marimo` is not installed in the environment; Python syntax passes.
+- [x] Check the Observable recipe's subscription and cleanup usage. Document
       actual startup steps and any manual refresh requirement. If the notebook cannot
       be run in the available environment, leave verification incomplete explicitly.
+
+Verification record: the DNA editor passed repeated-click editing in a real
+browser, and the selection form passed Shift-brush, save, and literal HTML-value
+table checks. The annotation editor's brush did not activate in the same browser
+run, so that workflow remains unverified. The local bridge now accepts local
+development origins and CORS preflight methods, but its end-to-end workflow still
+requires marimo.
 
 Affected areas: the existing picking resolver, `packages/embed-examples`, and
 notebook instructions. A documented backend limitation is acceptable; claiming
