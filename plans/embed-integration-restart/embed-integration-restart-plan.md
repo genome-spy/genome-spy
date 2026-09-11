@@ -494,7 +494,7 @@ The initial implementation is a sound PoC, but a production follow-up should
 address the following review findings without changing the agreed public
 contracts:
 
-- [ ] Consolidate the duplicated modern embed-result assembly in Core and App,
+- [x] Consolidate the duplicated modern embed-result assembly in Core and App,
       keeping App-specific fields and lifecycle behavior explicit.
 - [x] Replace new internal `any` types and optional selection-controller
       registration fallbacks with small typed contracts owned by the existing
