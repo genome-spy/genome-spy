@@ -68,10 +68,7 @@ export class IntervalSelectionController {
         );
 
         this.#unregisterSelectionController =
-            /** @type {any} */ (paramRuntime).registerSelectionController?.(
-                name,
-                this
-            ) ?? (() => {});
+            paramRuntime.registerSelectionController(name, this);
     }
 
     /** @type {IntervalSelectionHost} */

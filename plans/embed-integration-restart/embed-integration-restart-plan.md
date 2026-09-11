@@ -48,13 +48,13 @@ observation is introduced so its needs inform the API's snapshot contract.
 
 ## Responsibilities and scope
 
-| GenomeSpy Core provides | The embedding application provides |
-| --- | --- |
-| Native input subscriptions and control of the current Core default action | Browser menu handling and application actions |
-| Scoped mark activation, hover observation, and explicit picking with datum access | Tooltips, inspectors, and other presentation |
-| Lexically scoped parameter access and coherent subscriptions | Application or notebook state and controls |
+| GenomeSpy Core provides                                                              | The embedding application provides                                 |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| Native input subscriptions and control of the current Core default action            | Browser menu handling and application actions                      |
+| Scoped mark activation, hover observation, and explicit picking with datum access    | Tooltips, inspectors, and other presentation                       |
+| Lexically scoped parameter access and coherent subscriptions                         | Application or notebook state and controls                         |
 | Point/interval selection snapshots, brush commit observation, clear, and containment | Annotation forms, table state, persistence, and notebook transport |
-| Existing dataset updates and annotation visualization | Annotation rows and the authored visualization specification |
+| Existing dataset updates and annotation visualization                                | Annotation rows and the authored visualization specification       |
 
 Success means both workflows run through the modern public API without private
 Core access or consumer-side workarounds for missing contracts. The hooks should
@@ -74,13 +74,15 @@ construction, but legacy lookup retains its historical semantics.
 ```js
 const view = api.views.get({ scope: [], view: "track" });
 const root = api.views.root();
-api.events.subscribe("contextmenu", event => { /* synchronous */ });
-view.marks.subscribe("click", event => inspect(event.hit));
-view.marks.observeHover(hit => showHover(hit));
+api.events.subscribe("contextmenu", (event) => {
+  /* synchronous */
+});
+view.marks.subscribe("click", (event) => inspect(event.hit));
+view.marks.observeHover((hit) => showHover(hit));
 const result = await view.marks.pick({ x, y });
 const param = view.params.get("threshold"); // also api.params.get(name)
 const brush = view.params.getSelection("brush"); // also api.params.getSelection(name)
-brush.subscribe(snapshot => updateForm(snapshot), { delivery: "commit" });
+brush.subscribe((snapshot) => updateForm(snapshot), { delivery: "commit" });
 if (brush.type === "interval") brush.contains({ x, y });
 ```
 
@@ -163,14 +165,14 @@ consumer-driven iteration; do not prebuild a coordination layer to satisfy them.
 
 ```ts
 type PointSnapshot = {
-    type: "point";
-    active: boolean;
-    data: ReadonlyArray<Readonly<Record<string, unknown>>>;
+  type: "point";
+  active: boolean;
+  data: ReadonlyArray<Readonly<Record<string, unknown>>>;
 };
 type IntervalSnapshot = {
-    type: "interval";
-    active: boolean;
-    intervals: Partial<Record<"x" | "y", readonly [number, number] | null>>;
+  type: "interval";
+  active: boolean;
+  intervals: Partial<Record<"x" | "y", readonly [number, number] | null>>;
 };
 ```
 
@@ -247,14 +249,14 @@ protocol. Substantial changes to the contracts above still require user review.
 
 Start with these baseline files, rather than the experimental adapter:
 
-| Area | Existing owner / integration point |
-| --- | --- |
-| Public namespaces, canonical handles, types | `packages/core/src/embedFactory.js`, `packages/core/src/view/viewMutationApi.js`, `packages/core/src/types/embedApi.d.ts` |
-| Picking, native ingress, hover, delayed requests | `packages/core/src/genomeSpy/interactionController.js` |
-| Existing internal routing | `packages/core/src/genomeSpy/interactionDispatcher.js`; preserve its ownership |
-| Parameter handles and lexical refs | `packages/core/src/paramRuntime/embedParamApi.js`, `viewParamRuntime.js` |
-| Brush geometry, gesture lifecycle, document listeners | `packages/core/src/view/gridView/intervalSelectionController.js` and its GridView host |
-| Annotation unit ownership | `packages/core/src/view/concatView.js` and existing unit hierarchy |
+| Area                                                  | Existing owner / integration point                                                                                        |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Public namespaces, canonical handles, types           | `packages/core/src/embedFactory.js`, `packages/core/src/view/viewMutationApi.js`, `packages/core/src/types/embedApi.d.ts` |
+| Picking, native ingress, hover, delayed requests      | `packages/core/src/genomeSpy/interactionController.js`                                                                    |
+| Existing internal routing                             | `packages/core/src/genomeSpy/interactionDispatcher.js`; preserve its ownership                                            |
+| Parameter handles and lexical refs                    | `packages/core/src/paramRuntime/embedParamApi.js`, `viewParamRuntime.js`                                                  |
+| Brush geometry, gesture lifecycle, document listeners | `packages/core/src/view/gridView/intervalSelectionController.js` and its GridView host                                    |
+| Annotation unit ownership                             | `packages/core/src/view/concatView.js` and existing unit hierarchy                                                        |
 
 Use graph effects for coherent observations and existing runtime/view disposal.
 Distinguish declaration metadata from effective value ownership in one small
@@ -389,34 +391,34 @@ before review.
 ### 1. Deliver an annotation PoC and prove the design
 
 - [x] First scaffold and link a minimal annotation editor in `packages/embed-examples`
-  with data tracks, a concat annotation layer, a named brush, and host-owned form
-  and table. Implement only the Core hooks needed to make brush → context menu →
-  name/description → save → visible annotation work, then browser-test that path
-  immediately. Its required Core slice is native context-menu subscription, scoped
-  interval lookup/snapshot, `contains`, and `clear`, together with the existing
-  dataset update API. Mark activation, hover, explicit picking, and outer-alias
-  edge cases follow this working path; they are not prerequisites for its delivery.
-  Deliver this runnable slice before widening the API or finishing
-  the remaining feasibility tests. Cancel must add no row; save updates the named
-  dataset through the modern API and clears the brush.
+      with data tracks, a concat annotation layer, a named brush, and host-owned form
+      and table. Implement only the Core hooks needed to make brush → context menu →
+      name/description → save → visible annotation work, then browser-test that path
+      immediately. Its required Core slice is native context-menu subscription, scoped
+      interval lookup/snapshot, `contains`, and `clear`, together with the existing
+      dataset update API. Mark activation, hover, explicit picking, and outer-alias
+      edge cases follow this working path; they are not prerequisites for its delivery.
+      Deliver this runnable slice before widening the API or finishing
+      the remaining feasibility tests. Cancel must add no row; save updates the named
+      dataset through the modern API and clears the brush.
 - [x] Extend that same consumer while implementing native context-menu veto,
-  scoped mark click/pick/hover, and one
-  lexically scoped interval selection with outer alias, commit, clear, and contains.
-  Add public types implementing the snapshot shapes above.
-  Use clicked annotation data and hover in the PoC as those hooks become available.
+      scoped mark click/pick/hover, and one
+      lexically scoped interval selection with outer alias, commit, clear, and contains.
+      Add public types implementing the snapshot shapes above.
+      Use clicked annotation data and hover in the PoC as those hooks become available.
 - [x] In parallel with commit observation, start a second selection-driven form
-  example: brush commits update host state and enable annotation entry without a
-  context menu. Begin the marimo bridge with this slice so Python transport needs
-  inform snapshots before their public shape is finalized.
+      example: brush commits update host state and enable annotation entry without a
+      context menu. Begin the marimo bridge with this slice so Python transport needs
+      inform snapshots before their public shape is finalized.
 - [ ] Use focused tests to prove confirmed-hit activation without extra readbacks,
-  omission while a newer pointer position is pending, scene-invalidated hits,
-  no delayed replay, explicit async query invalidation, click/selection coexistence,
-  shadowing, alias ownership, and
-  clear/disposal during a drag. Exercise actual geometry with gaps/clipping and
-  shared selection values. Record any unsupported ownership case explicitly.
+      omission while a newer pointer position is pending, scene-invalidated hits,
+      no delayed replay, explicit async query invalidation, click/selection coexistence,
+      shadowing, alias ownership, and
+      clear/disposal during a drag. Exercise actual geometry with gaps/clipping and
+      shared selection values. Record any unsupported ownership case explicitly.
 - [ ] Measure actual added/removed/net Core production lines against the baseline.
-  Inspect readback counts during movement, scene updates, and animation. Review
-  the architecture and contracts before widening coverage.
+      Inspect readback counts during movement, scene updates, and animation. Review
+      the architecture and contracts before widening coverage.
 
 This gate must expose the difficult costs early. The provisional final ceiling is
 **800 net production lines**, counting declarations/comments/blanks, excluding
@@ -435,19 +437,19 @@ Include its necessary Core changes in that commit; do not leave a broken example
 ### 2. Extend the API and both consumers together
 
 - [ ] Extend the selection-driven form with point selection and run the marimo
-  adapter against real Python state. Add the Observable subscription/cleanup recipe.
-  Exercise new capabilities in the examples as they land; do not defer consumer
-  integration until API completion.
+      adapter against real Python state. Add the Observable subscription/cleanup recipe.
+      Exercise new capabilities in the examples as they land; do not defer consumer
+      integration until API completion.
 - [ ] Complete the native event list, activation events, point selections,
-  programmatic updates, canonical annotation identity, and lifecycle behavior.
+      programmatic updates, canonical annotation identity, and lifecycle behavior.
 - [ ] Verify authored-root lookup through implicit wrappers, lexical overrides,
-  plain shadowing, computed parameters, and child select/outer aliases.
+      plain shadowing, computed parameters, and child select/outer aliases.
 - [ ] Test stale queries, ambiguous ownership, same-ID replacement, stationary
-  hover, owner removal, listener errors, unsubscribe, and finalization. Keep tests
-  about contracts rather than the chosen private machinery.
+      hover, owner removal, listener errors, unsubscribe, and finalization. Keep tests
+      about contracts rather than the chosen private machinery.
 - [ ] Retain/deprecate legacy entry points; verify App and React consumers still
-  work. Document the API, coordinates, timing, ID lifetime, snapshots, and migration
-  in the existing embed reference using the documentation skill.
+      work. Document the API, coordinates, timing, ID lifetime, snapshots, and migration
+      in the existing embed reference using the documentation skill.
 
 Run focused suites, workspace type checks, and lint. Recheck production size.
 Intended commit: `feat(core): complete scoped embed integration contracts`.
@@ -458,19 +460,19 @@ These examples must already be runnable from milestones 1–2. This milestone
 finishes their coverage, documentation, and integration checks.
 
 - [x] Finish the **annotation editor** in `packages/embed-examples`: data tracks plus
-  a concat annotation layer, named brush, host-owned context menu and form, visible
-  table, and `api.datasets.set("annotations", rows)` on save. Test brush containment
-  before opening the menu and capture its snapshot. Clear after save; cancel adds
-  no row. Clicking an annotation inspects its datum; hover shows a host readout.
+      a concat annotation layer, named brush, host-owned context menu and form, visible
+      table, and `api.datasets.set("annotations", rows)` on save. Test brush containment
+      before opening the menu and capture its snapshot. Clear after save; cancel adds
+      no row. Clicking an annotation inspects its datum; hover shows a host readout.
 - [x] Finish the **selection-driven form**: point and interval observation updates host
-  state without context menus; interval commits enable name/description entry and
-  publish annotation rows. Include a runnable marimo adapter/example exchanging
-  plain snapshots and rows with Python, plus an Observable subscription/cleanup
-  recipe. Keep generic notebook transport outside Core. A JavaScript form alone
-  does not count as verification of Python integration.
+      state without context menus; interval commits enable name/description entry and
+      publish annotation rows. Include a runnable marimo adapter/example exchanging
+      plain snapshots and rows with Python, plus an Observable subscription/cleanup
+      recipe. Keep generic notebook transport outside Core. A JavaScript form alone
+      does not count as verification of Python integration.
 - [x] Link examples from the package index and document startup/cleanup. Reuse the
-  historical examples only for specific useful UI or behavioral details. Write
-  consumers against this contract; do not bring over old compatibility glue.
+      historical examples only for specific useful UI or behavioral details. Write
+      consumers against this contract; do not bring over old compatibility glue.
 
 Use the browser-debug skill for real Canvas/WebGL interaction checks: brush,
 context menu, save/cancel, clicked annotation, hover after dataset replacement,
@@ -493,15 +495,15 @@ address the following review findings without changing the agreed public
 contracts:
 
 - [ ] Consolidate the duplicated modern embed-result assembly in Core and App,
-  keeping App-specific fields and lifecycle behavior explicit.
-- [ ] Replace new internal `any` types and optional selection-controller
-  registration fallbacks with small typed contracts owned by the existing
-  interaction and parameter components.
+      keeping App-specific fields and lifecycle behavior explicit.
+- [x] Replace new internal `any` types and optional selection-controller
+      registration fallbacks with small typed contracts owned by the existing
+      interaction and parameter components.
 - [ ] Make lifecycle behavior uniform for embed-level and view-level parameter
-  and selection handles after finalization or view removal.
+      and selection handles after finalization or view removal.
 - [x] Revisit and clearly encode the confirmed-hover rule for mark activation:
-  either keep the documented synchronous behavior as an explicit contract or
-  propose a materially different activation design for user review.
+      either keep the documented synchronous behavior as an explicit contract or
+      propose a materially different activation design for user review.
 
 Keep each cleanup independently verified and commit it separately. Do not
 expand the API, add a second interaction owner, or change renderer behavior.

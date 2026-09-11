@@ -9,7 +9,9 @@ import InteractionDispatcher from "./interactionDispatcher.js";
 import CursorManager from "./cursorManager.js";
 import EventListenerRegistry from "./eventListenerRegistry.js";
 
-/** @typedef {{ mark: import("../marks/mark.js").default, datum: import("../data/flowNode.js").Datum, uniqueId: number }} InternalMarkHit */
+/** @typedef {import("../types/interactionApi.d.ts").InternalMarkHit} InternalMarkHit */
+/** @typedef {import("../types/interactionApi.d.ts").MarkInteractionEvent} MarkInteractionEvent */
+/** @typedef {import("../types/interactionApi.d.ts").NativeInteractionEvent} NativeInteractionEvent */
 
 export default class InteractionController {
     /** @type {import("../view/view.js").default} */
@@ -20,7 +22,7 @@ export default class InteractionController {
     #tooltip;
     /** @type {import("../utils/animator.js").default} */
     #animator;
-    /** @type {(type: string, event: any) => void} */
+    /** @type {(type: string, event: object) => void} */
     #emitEvent;
     /** @type {Record<string, import("../tooltip/tooltipHandler.js").TooltipHandler>} */
     #tooltipHandlers;
@@ -32,9 +34,7 @@ export default class InteractionController {
     #interactionDispatcher;
     /** @type {CursorManager} */
     #cursorManager;
-    /**
-     * @type {{ mark: import("../marks/mark.js").default, datum: import("../data/flowNode.js").Datum, uniqueId: number }}
-     */
+    /** @type {InternalMarkHit | null | undefined} */
     #currentHover;
     /** @type {Inertia} */
     #wheelInertia;
@@ -48,10 +48,11 @@ export default class InteractionController {
     #hoverTrackingSuspensionCount = 0;
     #postRenderHoverRefreshRequested = false;
     #pickingRequestId = 0;
+    /** @type {EventListenerRegistry<NativeInteractionEvent>} */
     #nativeEventListeners = new EventListenerRegistry();
-    /** @type {{ view: import("../view/view.js").default, type: string, listener: (event: any) => void }[]} */
+    /** @type {{ view: import("../view/view.js").default, type: string, listener: (event: MarkInteractionEvent) => void }[]} */
     #markEventListeners = [];
-    /** @type {{ view: import("../view/view.js").default, listener: (hit: any) => void }[]} */
+    /** @type {{ view: import("../view/view.js").default, listener: (hit: InternalMarkHit | undefined) => void }[]} */
     #hoverListeners = [];
     /** @type {Point | undefined} */
     #currentHoverPoint;
@@ -72,7 +73,7 @@ export default class InteractionController {
      * @param {HTMLCanvasElement} options.canvas
      * @param {import("../utils/ui/tooltip.js").default} options.tooltip
      * @param {import("../utils/animator.js").default} options.animator
-     * @param {(type: string, event: any) => void} options.emitEvent
+     * @param {(type: string, event: object) => void} options.emitEvent
      * @param {Record<string, import("../tooltip/tooltipHandler.js").TooltipHandler>} options.tooltipHandlers
      * @param {() => void} [options.renderPickingFramebuffer]
      * @param {(x: number, y: number) => number | null | Promise<number | null>} [options.readPickingId]
@@ -104,10 +105,7 @@ export default class InteractionController {
         this.#interactionDispatcher = new InteractionDispatcher({ viewRoot });
         this.#cursorManager = new CursorManager({ canvas });
 
-        /**
-         * Currently hovered mark and datum
-         * @type {{ mark: import("../marks/mark.js").default, datum: import("../data/flowNode.js").Datum, uniqueId: number }}
-         */
+        /** Currently hovered mark and datum. */
         this.#currentHover = undefined;
 
         this.#wheelInertia = new Inertia(this.#animator);
@@ -124,7 +122,7 @@ export default class InteractionController {
     /**
      * @param {import("../view/view.js").default} view
      * @param {string} type
-     * @param {(event: any) => void} listener
+     * @param {(event: MarkInteractionEvent) => void} listener
      * @returns {() => void}
      */
     subscribeMarkEvent(view, type, listener) {
@@ -144,7 +142,7 @@ export default class InteractionController {
 
     /**
      * @param {import("../view/view.js").default} view
-     * @param {(hit: any) => void} listener
+     * @param {(hit: InternalMarkHit | undefined) => void} listener
      * @returns {() => void}
      */
     subscribeHover(view, listener) {
@@ -208,7 +206,7 @@ export default class InteractionController {
      * Subscribes to native canvas input before Core routes the event.
      *
      * @param {string} type
-     * @param {(event: { sourceEvent: Event, point: Point, preventViewDefault: () => void }) => void} listener
+     * @param {(event: NativeInteractionEvent) => void} listener
      * @returns {() => void}
      */
     subscribeNativeEvent(type, listener) {

@@ -14,6 +14,7 @@ import {
  * @typedef {import("../spec/parameter.js").Parameter} Parameter
  * @typedef {import("../types/embedApi.js").ParamApi} ParamApi
  * @typedef {import("../types/embedApi.js").SelectionApi} SelectionApi
+ * @typedef {import("../types/embedApi.js").SelectionSnapshot} SelectionSnapshot
  */
 
 /**
@@ -89,11 +90,7 @@ export function resolveEmbedSelection(view, name) {
     }
 
     const controller = isIntervalSelectionConfig(select)
-        ? /** @type {{
-           * contains: (point: { x: number, y: number }) => boolean,
-           * subscribeCommit: (listener: (selection: any) => void) => () => void,
-           * clear: () => void
-           * }} */ (runtime.getSelectionController(name))
+        ? runtime.getSelectionController(name)
         : undefined;
     if (isIntervalSelectionConfig(select) && !controller) {
         throw new Error(
@@ -109,7 +106,7 @@ export function resolveEmbedSelection(view, name) {
         },
 
         subscribe(
-            /** @type {(value: any) => void} */ listener,
+            /** @type {(value: SelectionSnapshot) => void} */ listener,
             /** @type {{ delivery?: "change" | "commit" }} */ options = {}
         ) {
             if (options.delivery === "commit") {

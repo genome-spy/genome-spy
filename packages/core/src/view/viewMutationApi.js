@@ -217,7 +217,7 @@ function updateNamedDataBinding(view, binding, data) {
 /**
  * Creates the public view hierarchy API for a GenomeSpy instance.
  *
- * @param {{ viewRoot: import("./view.js").default }} genomeSpy
+ * @param {{ viewRoot: import("./view.js").default } & Partial<import("../types/interactionApi.d.ts").InteractionApi>} genomeSpy
  * @param {() => boolean} [isActive]
  * @returns {import("../types/embedApi.js").ViewApi}
  */
@@ -233,6 +233,11 @@ export function createViewMutationApi(genomeSpy, isActive) {
 
     /** @type {WeakMap<import("../types/embedApi.js").ViewHandle, import("./view.js").default>} */
     const viewsByHandle = new WeakMap();
+
+    const interactionApi =
+        /** @type {import("../types/interactionApi.d.ts").InteractionApi} */ (
+            /** @type {unknown} */ (genomeSpy)
+        );
 
     let queue = Promise.resolve();
 
@@ -347,41 +352,34 @@ export function createViewMutationApi(genomeSpy, isActive) {
             subscribe(type, listener) {
                 ensureEmbedIsActive(isActive);
                 ensureViewIsLive(view);
-                return /** @type {any} */ (genomeSpy).subscribeMarkEvent(
-                    view,
-                    type,
-                    (/** @type {any} */ event) =>
-                        listener({
-                            sourceEvent: event.sourceEvent,
-                            point: event.point,
-                            hit: toPublicMarkHit(event.hit),
-                        })
+                return interactionApi.subscribeMarkEvent(view, type, (event) =>
+                    listener({
+                        sourceEvent: event.sourceEvent,
+                        point: event.point,
+                        hit: toPublicMarkHit(event.hit),
+                    })
                 );
             },
 
             observeHover(listener) {
                 ensureEmbedIsActive(isActive);
                 ensureViewIsLive(view);
-                return /** @type {any} */ (genomeSpy).subscribeHover(
-                    view,
-                    (/** @type {any} */ hit) =>
-                        listener(hit ? toPublicMarkHit(hit) : undefined)
+                return interactionApi.subscribeHover(view, (hit) =>
+                    listener(hit ? toPublicMarkHit(hit) : undefined)
                 );
             },
 
             pick(point) {
                 ensureEmbedIsActive(isActive);
                 ensureViewIsLive(view);
-                return /** @type {any} */ (genomeSpy)
-                    .pick(point, view)
-                    .then((/** @type {any} */ result) =>
-                        result.status === "hit"
-                            ? {
-                                  status: "hit",
-                                  hit: toPublicMarkHit(result.hit),
-                              }
-                            : result
-                    );
+                return interactionApi.pick(point, view).then((result) =>
+                    result.status === "hit"
+                        ? {
+                              status: "hit",
+                              hit: toPublicMarkHit(result.hit),
+                          }
+                        : result
+                );
             },
         };
     }

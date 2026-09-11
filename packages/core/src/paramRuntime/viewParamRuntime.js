@@ -85,7 +85,7 @@ export default class ViewParamRuntime {
     /** @type {Map<string, Parameter>} */
     #paramConfigs = new Map();
 
-    /** @type {Map<string, Set<object>>} */
+    /** @type {Map<string, Set<import("../types/interactionApi.d.ts").IntervalSelectionControllerApi>>} */
     #selectionControllers = new Map();
 
     /** @type {Map<string, TransitionState>} */
@@ -548,7 +548,7 @@ export default class ViewParamRuntime {
      * Selection controllers remain the source of geometry and lifecycle state.
      *
      * @param {string} paramName
-     * @param {object} controller
+     * @param {import("../types/interactionApi.d.ts").IntervalSelectionControllerApi} controller
      * @returns {() => void}
      */
     registerSelectionController(paramName, controller) {
@@ -571,7 +571,7 @@ export default class ViewParamRuntime {
      * Returns the interaction host for a local selection declaration.
      *
      * @param {string} paramName
-     * @returns {object | undefined}
+     * @returns {import("../types/interactionApi.d.ts").IntervalSelectionControllerApi | undefined}
      */
     getSelectionController(paramName) {
         const controllers = this.#selectionControllers.get(paramName);

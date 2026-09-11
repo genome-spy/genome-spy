@@ -93,7 +93,9 @@ export default class GenomeSpy {
     #reportedErrors = new Set();
 
     #keyboardListenerManager = new KeyboardListenerManager();
+    /** @type {EventListenerRegistry<object>} */
     #eventListeners = new EventListenerRegistry();
+    /** @type {EventListenerRegistry<import("./view/view.js").BroadcastMessage>} */
     #extraBroadcastListeners = new EventListenerRegistry();
 
     /**
@@ -233,7 +235,7 @@ export default class GenomeSpy {
 
     /**
      * @param {string} type
-     * @param {(event: any) => void} listener
+     * @param {(event: object) => void} listener
      */
     addEventListener(type, listener) {
         this.#eventListeners.add(type, listener);
@@ -241,7 +243,7 @@ export default class GenomeSpy {
 
     /**
      * @param {string} type
-     * @param {(event: any) => void} listener
+     * @param {(event: object) => void} listener
      */
     removeEventListener(type, listener) {
         this.#eventListeners.remove(type, listener);
@@ -726,7 +728,7 @@ export default class GenomeSpy {
      * Subscribes to native canvas input before Core routes the event.
      *
      * @param {string} type
-     * @param {(event: { sourceEvent: Event, point: import("./view/layout/point.js").default, preventViewDefault: () => void }) => void} listener
+     * @param {(event: import("./types/interactionApi.d.ts").NativeInteractionEvent) => void} listener
      * @returns {() => void}
      */
     subscribeNativeEvent(type, listener) {
@@ -736,7 +738,7 @@ export default class GenomeSpy {
     /**
      * @param {import("./view/view.js").default} view
      * @param {string} type
-     * @param {(event: any) => void} listener
+     * @param {(event: import("./types/interactionApi.d.ts").MarkInteractionEvent) => void} listener
      * @returns {() => void}
      */
     subscribeMarkEvent(view, type, listener) {
@@ -749,7 +751,7 @@ export default class GenomeSpy {
 
     /**
      * @param {import("./view/view.js").default} view
-     * @param {(hit: any) => void} listener
+     * @param {(hit: import("./types/interactionApi.d.ts").InternalMarkHit | undefined) => void} listener
      * @returns {() => void}
      */
     subscribeHover(view, listener) {
