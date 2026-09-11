@@ -194,25 +194,22 @@ function copySelection(selection) {
         };
     }
 
+    let data;
     if (isSinglePointSelection(selection)) {
-        return {
-            type: "point",
-            active: selection.datum !== null,
-            data: selection.datum ? [copyDatum(selection.datum)] : [],
-        };
+        data = selection.datum ? [selection.datum] : [];
+    } else if (isMultiPointSelection(selection)) {
+        data = Array.from(selection.data.values());
+    } else {
+        throw new Error(
+            `Selection snapshot does not support "${selection.type}" selections.`
+        );
     }
 
-    if (isMultiPointSelection(selection)) {
-        return {
-            type: "point",
-            active: selection.data.size > 0,
-            data: Array.from(selection.data.values(), copyDatum),
-        };
-    }
-
-    throw new Error(
-        `Selection snapshot does not support "${selection.type}" selections.`
-    );
+    return {
+        type: "point",
+        active: data.length > 0,
+        data: data.map(copyDatum),
+    };
 }
 
 /** @param {import("../data/flowNode.js").Datum} datum */

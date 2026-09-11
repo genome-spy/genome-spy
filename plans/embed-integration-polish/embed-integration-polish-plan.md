@@ -238,15 +238,15 @@ read; do not compress formatting or build abstractions to chase minor savings.
 - [x] Replace both `clearEmbedElement(element)` calls with
   `element.replaceChildren()`. Delete the helper, its JSDoc, and its imports from
   Core and App. Verify embed finalization still removes the owned DOM children.
-- [ ] Reuse `ViewParamRuntime.getParamRef()` in its internal `subscribe()` instead
+- [x] Reuse `ViewParamRuntime.getParamRef()` in its internal `subscribe()` instead
   of repeating effective-runtime/ref resolution. Preserve internal synchronous
   subscription timing, lazy expression resolution, and clear missing-parameter
   errors. Modern and legacy embed observations continue using graph effects.
-- [ ] Remove the redundant `hasLocalParam()` check in `getParamRef()` after
+- [x] Remove the redundant `hasLocalParam()` check in `getParamRef()` after
   `findRuntimeForParam()` has returned the runtime that owns the local parameter.
   Retain missing-runtime handling and lazy ref materialization. Measure this
   deletion separately from the subscription refactor.
-- [ ] Combine single/multi point snapshot construction: choose the source datum
+- [x] Combine single/multi point snapshot construction: choose the source datum
   collection in explicit branches, then share copying and the public
   `{ type: "point", active, data }` result. Preserve empty-selection behavior,
   detached datum copies, and explicit unsupported-selection rejection.
@@ -255,7 +255,7 @@ read; do not compress formatting or build abstractions to chase minor savings.
   Parameter and selection observations supply their appropriate readers. Retain
   owner-bound disposal and future-only coherent delivery. Keep this only if the
   helper and callers together become simpler; no observer framework.
-- [ ] Replace the legacy `addEventListener` and `removeEventListener` forwarding
+- [x] Replace the legacy `addEventListener` and `removeEventListener` forwarding
   wrappers in `createEmbedResult` with bound methods, matching neighboring entries.
   Preserve receiver binding and callback registration/removal behavior.
 
@@ -271,3 +271,13 @@ Measurement record for the second simplification round:
 | Change | Production lines before | After | Added | Removed | Net |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Replace embed child-clearing helper | 342 | 328 | 0 | 14 | -14 |
+| Reuse `getParamRef()` in internal subscription | 1074 | 1066 | 0 | 8 | -8 |
+| Remove redundant local-parameter check | 1066 | 1063 | 0 | 3 | -3 |
+| Combine point snapshot construction | 381 | 378 | 0 | 3 | -3 |
+| Bind legacy event methods directly | 77 | 72 | 2 | 7 | -5 |
+
+The settled-subscription helper experiment was not retained: it increased
+`embedParamApi.js` from 378 to 383 production lines, so the existing closures
+remain the simpler implementation.
+
+Cumulative retained production delta for this round: +2/-35, net -33 lines.

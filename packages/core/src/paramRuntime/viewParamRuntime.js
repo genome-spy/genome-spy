@@ -412,10 +412,7 @@ export default class ViewParamRuntime {
             return;
         }
 
-        if (
-            !runtime.#localRefs.has(paramName) &&
-            runtime.hasLocalParam(paramName)
-        ) {
+        if (!runtime.#localRefs.has(paramName)) {
             runtime.#runtime.resolve(runtime.#scopeId, paramName);
         }
         return runtime.#localRefs.get(paramName);
@@ -445,17 +442,9 @@ export default class ViewParamRuntime {
      * @returns {() => void}
      */
     subscribe(paramName, listener) {
-        validateParameterName(paramName);
-        const runtime = this.findRuntimeForParam(paramName);
-        if (!runtime) {
-            throw new Error("Parameter not found: " + paramName);
-        }
-
-        const ref = runtime.#runtime.resolve(runtime.#scopeId, paramName);
+        const ref = this.getParamRef(paramName);
         if (!ref) {
-            throw new Error(
-                "Parameter found without local reference: " + paramName
-            );
+            throw new Error("Parameter not found: " + paramName);
         }
 
         return ref.subscribe(listener);

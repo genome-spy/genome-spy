@@ -48,13 +48,8 @@ export function createEmbedResult({ genomeSpy, isActive, debug, finalize }) {
 
         finalize,
 
-        addEventListener(type, listener) {
-            genomeSpy.addEventListener(type, listener);
-        },
-
-        removeEventListener(type, listener) {
-            genomeSpy.removeEventListener(type, listener);
-        },
+        addEventListener: genomeSpy.addEventListener.bind(genomeSpy),
+        removeEventListener: genomeSpy.removeEventListener.bind(genomeSpy),
 
         getScaleResolutionByName(name) {
             return genomeSpy.getNamedScaleResolutions().get(name);
