@@ -121,10 +121,11 @@ The annotation text fix can accompany it or be a small separate fix.
 
 Verification record: the DNA editor passed repeated-click editing in a real
 browser, and the selection form passed Shift-brush, save, and literal HTML-value
-table checks. The annotation editor's brush did not activate in the same browser
-run, so that workflow remains unverified. The local bridge now accepts local
-development origins and CORS preflight methods, but its end-to-end workflow still
-requires marimo.
+table checks. The annotation editor also passed Shift-brush, context-menu,
+save, and literal HTML-value table checks in a fresh browser run. The local
+bridge now accepts local development origins and CORS preflight methods, but its
+end-to-end workflow still requires marimo, which is not installed in this
+environment.
 
 Affected areas: the existing picking resolver, `packages/embed-examples`, and
 notebook instructions. A documented backend limitation is acceptable; claiming
