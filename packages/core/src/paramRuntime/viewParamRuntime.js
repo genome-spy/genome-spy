@@ -399,6 +399,29 @@ export default class ViewParamRuntime {
     }
 
     /**
+     * Returns the graph reference for a parameter resolved from this scope.
+     * This is intended for internal graph effects that observe settled values.
+     *
+     * @param {string} paramName
+     * @returns {import("./types.js").ParamRef<any> | undefined}
+     */
+    getParamRef(paramName) {
+        validateParameterName(paramName);
+        const runtime = this.findRuntimeForParam(paramName);
+        if (!runtime) {
+            return;
+        }
+
+        if (
+            !runtime.#localRefs.has(paramName) &&
+            runtime.hasLocalParam(paramName)
+        ) {
+            runtime.#runtime.resolve(runtime.#scopeId, paramName);
+        }
+        return runtime.#localRefs.get(paramName);
+    }
+
+    /**
      * Gets the target value for a local parameter. Non-transitioned parameters
      * use their current value as the target.
      *

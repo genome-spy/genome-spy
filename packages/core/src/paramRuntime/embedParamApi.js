@@ -130,14 +130,16 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
             ensureParamApiIsLive(lifecycle);
             if (options.delivery === "commit") {
                 if (!controller) {
-                    return registerParamDisposer(
-                        lifecycle,
-                        effectiveRuntime.subscribe(name, () => {
+                    return subscribeToSettledValue(
+                        effectiveRuntime,
+                        name,
+                        () => {
                             callSelectionListener(
                                 listener,
                                 copySelection(effectiveRuntime.getValue(name))
                             );
-                        })
+                        },
+                        lifecycle
                     );
                 }
                 return registerParamDisposer(
@@ -151,14 +153,16 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
                 );
             }
 
-            return registerParamDisposer(
-                lifecycle,
-                effectiveRuntime.subscribe(name, () => {
+            return subscribeToSettledValue(
+                effectiveRuntime,
+                name,
+                () => {
                     callSelectionListener(
                         listener,
                         copySelection(effectiveRuntime.getValue(name))
                     );
-                })
+                },
+                lifecycle
             );
         },
 
@@ -259,6 +263,23 @@ function callParamListener(listener, value) {
 }
 
 /**
+ * Observes a parameter after graph propagation has settled.
+ *
+ * @param {import("../paramRuntime/viewParamRuntime.js").default} runtime
+ * @param {string} name
+ * @param {() => void} listener
+ * @param {ParamApiLifecycle} lifecycle
+ * @returns {() => void}
+ */
+function subscribeToSettledValue(runtime, name, listener, lifecycle) {
+    const ref = runtime.getParamRef(name);
+    if (!ref) {
+        throw new Error("Parameter not found: " + name);
+    }
+    return registerParamDisposer(lifecycle, runtime.effect([ref], listener));
+}
+
+/**
  * @param {import("../paramRuntime/viewParamRuntime.js").default} setterRuntime
  * @param {import("../paramRuntime/viewParamRuntime.js").default} valueRuntime
  * @param {string} name
@@ -287,11 +308,13 @@ function createParamApi(setterRuntime, valueRuntime, name, lifecycle) {
 
         subscribe(listener) {
             ensureParamApiIsLive(lifecycle);
-            return registerParamDisposer(
-                lifecycle,
-                valueRuntime.subscribe(name, () => {
+            return subscribeToSettledValue(
+                valueRuntime,
+                name,
+                () => {
                     callParamListener(listener, valueRuntime.getValue(name));
-                })
+                },
+                lifecycle
             );
         },
     };
@@ -395,7 +418,11 @@ export function resolveEmbedParam(root, name) {
         },
 
         subscribe(listener) {
-            return runtime.subscribe(name, () => {
+            const ref = runtime.getParamRef(name);
+            if (!ref) {
+                throw new Error("Parameter not found: " + name);
+            }
+            return runtime.effect([ref], () => {
                 listener(runtime.getValue(name));
             });
         },

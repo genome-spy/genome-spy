@@ -658,8 +658,15 @@ export class IntervalSelectionController {
             }
         });
 
+        const selectionRef = paramRuntime.getParamRef(name);
+        if (!selectionRef) {
+            throw new Error(
+                `Selection parameter "${name}" has no runtime value.`
+            );
+        }
+
         this.host.view.registerDisposer(
-            paramRuntime.subscribe(name, () => {
+            paramRuntime.effect([selectionRef], () => {
                 if (!nowBrushing) {
                     this.#notifyCommit();
                 }

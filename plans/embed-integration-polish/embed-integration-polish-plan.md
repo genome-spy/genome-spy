@@ -24,7 +24,7 @@ Execute the detailed work below in three reviewable groups:
 1. Gate A: hover lifecycle, stale-hit invalidation, and safe annotation rendering
    (implemented; focused checks pass).
 2. Gate B: coherent parameter and selection observations, including the
-   authorized legacy timing correction.
+   authorized legacy timing correction (implemented; focused checks pass).
 3. Gate C: practical picking, notebook, and Observable verification.
 
 Commit each gate after its focused checks pass. Do not treat the observation
@@ -43,14 +43,14 @@ requires a broader API or architectural expansion.
       invalidating the confirmed hit through the existing render/update path and
       letting the existing hover refresh restore it. Missing a click while refreshing
       is acceptable; adding a pick queue or another cache is not.
-- [ ] **Make parameter and selection observations coherent, including legacy subscriptions.** Replace
+- [x] **Make parameter and selection observations coherent, including legacy subscriptions.** Replace
       direct ref subscriptions in both legacy and modern embed adapters with owner-bound graph
       effects, using the existing runtime propagation and disposal mechanisms.
       Callbacks must observe settled dependent values rather than intermediate writes
       within a transaction. Keep subscriptions future-only. The user explicitly
       authorizes changing `getParam().subscribe()` to the same coherent timing; do not
       maintain a separate synchronous compatibility path. This is required.
-- [ ] Apply the same coherent publication rule to selection observations. Keep
+- [x] Apply the same coherent publication rule to selection observations. Keep
       interval commit delivery tied to gesture completion, but deliver its snapshot
       after pending runtime changes settle. Avoid duplicate completion/programmatic
       notifications. Reuse the current runtime and controller; do not add a scheduler
@@ -66,7 +66,7 @@ requires a broader API or architectural expansion.
 Streamline these paths while fixing them, without creating a separate refactoring
 project:
 
-- [ ] Share coherent observation wiring between parameter handles and ordinary
+- [x] Share coherent observation wiring between parameter handles and ordinary
       selection observations through one small graph-effect helper. Reuse existing
       ownership/disposal and allow selection snapshot conversion at the boundary.
 - [ ] Share parameter-handle construction after lookup. Keep legacy global lookup

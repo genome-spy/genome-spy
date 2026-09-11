@@ -50,6 +50,44 @@ describe("embed param API", () => {
         expect(listener).toHaveBeenCalledTimes(1);
     });
 
+    test("delivers legacy and scoped param observations after a batch settles", async () => {
+        const { view: root } = await createHeadlessEngine(
+            makeUnit("root", [
+                { name: "first", value: 1 },
+                { name: "second", value: 2 },
+                { name: "sum", expr: "first + second" },
+            ])
+        );
+
+        const scoped = createEmbedParamNamespace(root);
+        const scopedFirst = scoped.get("first");
+        const scopedSecond = scoped.get("second");
+        const legacyFirst = resolveEmbedParam(root, "first");
+        /** @type {{ first: number, second: number, sum: number }[]} */
+        const scopedValues = [];
+        /** @type {{ first: number, second: number, sum: number }[]} */
+        const legacyValues = [];
+        const readValues = () => ({
+            first: /** @type {number} */ (scopedFirst.getValue()),
+            second: /** @type {number} */ (scopedSecond.getValue()),
+            sum: /** @type {number} */ (scoped.get("sum").getValue()),
+        });
+
+        scopedFirst.subscribe(() => scopedValues.push(readValues()));
+        legacyFirst.subscribe(() => legacyValues.push(readValues()));
+        expect(scopedValues).toHaveLength(0);
+        expect(legacyValues).toHaveLength(0);
+
+        root.paramRuntime.runInTransaction(() => {
+            scopedFirst.setValue(3);
+            scopedSecond.setValue(4);
+        });
+        await root.paramRuntime.whenPropagated();
+
+        expect(scopedValues).toEqual([{ first: 3, second: 4, sum: 7 }]);
+        expect(legacyValues).toEqual([{ first: 3, second: 4, sum: 7 }]);
+    });
+
     test("ignores bookmarkability when resolving params", async () => {
         const { view: root } = await createHeadlessEngine(
             makeUnit("root", [{ name: "brush", persist: false }])
@@ -140,6 +178,10 @@ describe("embed param API", () => {
                     name: "brush",
                     select: { type: "interval", encodings: ["x"] },
                 },
+                {
+                    name: "brushEnd",
+                    expr: "brush.intervals.x ? brush.intervals.x[1] : 0",
+                },
             ],
             vconcat: [makeUnit("track")],
         });
@@ -184,9 +226,15 @@ describe("embed param API", () => {
         const selection = resolveEmbedSelection(root, "brush");
         /** @type {import("../types/embedApi.js").SelectionSnapshot[]} */
         const commits = [];
-        selection.subscribe((snapshot) => commits.push(snapshot), {
-            delivery: "commit",
-        });
+        selection.subscribe(
+            (snapshot) => {
+                commits.push(snapshot);
+                expect(root.paramRuntime.getValue("brushEnd")).toBe(2);
+            },
+            {
+                delivery: "commit",
+            }
+        );
 
         resolveScopedEmbedParam(root, "brush").setValue(
             intervalSelection({ x: [1, 2] })
