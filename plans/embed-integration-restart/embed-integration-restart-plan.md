@@ -4,6 +4,275 @@ Status: planned, not implemented. This is the only implementation plan for this
 fresh branch. It carries forward the agreed redesign and consumer workflows, not
 the rejected implementation. No production changes have been imported.
 
+## What we are building
+
+Build a public interaction and state-observation API for applications embedding
+GenomeSpy through the modern embed API. Build two working consumers alongside it:
+a browser annotation editor and a notebook integration. Their real workflows must
+shape and validate the API rather than follow an already completed abstraction.
+
+The API lets hosts respond to mouse input, inspect clicked or hovered mark data,
+access lexically scoped parameters, and observe or clear point and interval
+selections. It extends the existing embed namespaces and view handles; it is not
+an annotation feature inside GenomeSpy Core.
+
+## User workflows
+
+### Browser annotation editor
+
+A user views data tracks, brushes a region, and right-clicks the brush. The host
+opens an **Add annotation** menu and a form for a name and description. Saving adds
+a row containing the selected region and entered details to a visible table. The
+host publishes the updated table to a declared GenomeSpy dataset, and a concat
+annotation layer visualizes it. Canceling adds no row. Clicking or hovering an
+annotation lets the host inspect its data.
+
+The first deliverable is a minimal runnable version of this workflow in
+`packages/embed-examples`, using real public API calls. Add Core capabilities as
+the consumer needs them; demonstrate the complete brush-to-visible-annotation
+path before expanding coverage.
+
+### Selection-driven notebook form
+
+A user selects a point or brushes a region. A subscription exposes that selection
+to host state; a completed brush updates a form or notebook cell for annotation
+entry. Saving sends annotation rows back to GenomeSpy for visualization. This
+workflow does not require a context menu or a Python callback handling DOM events.
+
+Develop a selection-driven example alongside the browser editor, with a runnable
+marimo bridge exchanging selection snapshots and annotation rows with Python, and
+an Observable subscription/cleanup recipe. Begin that integration when selection
+observation is introduced so its needs inform the API's snapshot contract.
+
+## Responsibilities and scope
+
+| GenomeSpy Core provides | The embedding application provides |
+| --- | --- |
+| Native input subscriptions and control of the current Core default action | Browser menu handling and application actions |
+| Scoped mark activation, hover observation, and explicit picking with datum access | Tooltips, inspectors, and other presentation |
+| Lexically scoped parameter access and coherent subscriptions | Application or notebook state and controls |
+| Point/interval selection snapshots, brush commit observation, clear, and containment | Annotation forms, table state, persistence, and notebook transport |
+| Existing dataset updates and annotation visualization | Annotation rows and the authored visualization specification |
+
+Success means both workflows run through the modern public API without private
+Core access or consumer-side workarounds for missing contracts. The hooks should
+also be useful for other embed integrations; do not hard-code annotation actions
+into Core. Retain legacy APIs with historical behavior and `@deprecated` guidance.
+
+The implementation must reuse existing interaction and parameter owners, and must
+not change renderers. The detailed contract below defines timing and ownership;
+the later safeguards explain the lessons and boundaries of this fresh attempt.
+
+## Public contract
+
+Use the existing modern embed factory and canonical view handles. All subscription
+methods return an unsubscribe function. Root/scoped parameter APIs share handle
+construction, but legacy lookup retains its historical semantics.
+
+```js
+const view = api.views.get({ scope: [], view: "track" });
+const root = api.views.root();
+api.events.subscribe("contextmenu", event => { /* synchronous */ });
+view.marks.subscribe("click", event => inspect(event.hit));
+view.marks.observeHover(hit => showHover(hit));
+const result = await view.marks.pick({ x, y });
+const param = view.params.get("threshold"); // also api.params.get(name)
+const brush = view.params.getSelection("brush"); // also api.params.getSelection(name)
+brush.subscribe(snapshot => updateForm(snapshot), { delivery: "commit" });
+if (brush.type === "interval") brush.contains({ x, y });
+```
+
+### Native input and marks
+
+- `api.events.subscribe` covers canvas `click`, `dblclick`, `contextmenu`,
+  `mousedown`, `mouseup`, `mousemove`, `mouseenter`, `mouseleave`, and `wheel`.
+  Delivery is synchronous before Core processes the original native event.
+  Payload: `{ sourceEvent, point, preventViewDefault() }`; point uses canvas CSS
+  pixels. DOM fields and browser cancellation stay on `sourceEvent`.
+- `preventViewDefault()` vetoes the current Core action during the callback;
+  it does not roll back an active gesture. Do not publish synthetic inertia events
+  or internal wheel probes. Native subscriptions are canvas-wide.
+- `view.marks.subscribe` covers `click`, `dblclick`, and `contextmenu`, scoped to
+  the handle's subtree. Payload: `{ sourceEvent, point, hit }`. Delivery is always
+  synchronous, using the existing confirmed hover hit at native ingress, before
+  built-in handling changes the scene. Use it only when its confirmed position
+  matches the event point and it remains valid for the current scene and owner.
+  Missing, pending-for-another-position, stale, suspended, or out-of-scope hits
+  produce no mark callback. Do not start a pick, wait, queue, or replay activation.
+  A pending refresh alone need not invalidate an otherwise valid confirmed hit.
+  Snapshot the eligible hit before invoking host callbacks; recheck disposal before
+  delivery. Keep Core cancellation on the native hook, not a second mark facade.
+  Document that rapid clicks can be missed, and keyboard context menus or input
+  without a confirmed pointer pick cannot rely on mark activation. Hosts requiring
+  an answer use the native hook and explicitly call `marks.pick(event.point)`;
+  browser cancellation must still happen synchronously in that native callback.
+- `MarkHit` has readonly `view`, `uniqueId`, and `datum`. The view is the canonical
+  associated unit handle, including annotation units. Use the existing picking
+  ID, not a new mark ID or a promise of a persistent row key. Return a detached
+  datum tuple including transform outputs but excluding the internal ID field.
+  Document copy depth; do not promise arbitrary object serialization/deep cloning.
+- `pick(point)` returns `{ status: "hit", hit }`, `{ status: "empty" }`, or
+  `{ status: "invalidated" }`. It queries the current picking frame's frontmost
+  hit. Out-of-scope is empty; do not pick through it. In-flight scene changes
+  invalidate results. Unsupported or ambiguous queries reject; subscription
+  errors use the existing error reporter. Preserve legacy first-match behavior.
+- `observeHover` supplies the controller's current confirmed `MarkHit | undefined`
+  synchronously on subscription, then changes. No fresh initial probe. Departure,
+  drag suspension, and owner removal clear hover. Reuse coalesced scene refresh
+  for stationary pointers, including data replacement retaining the same ID.
+  Subscribers must not multiply readbacks. Hosts use native movement for positioning.
+
+### Parameters and selections
+
+- `api.params` starts at the authored top-level specification, through implicit
+  wrappers. `view.params` starts at that view's lexical scope. Resolve the nearest
+  declaration first; a plain parameter shadows an ancestor selection and causes
+  `getSelection` to reject. Missing/wrong-capability lookups fail clearly.
+- `get(name)` exposes `getValue()`, `setValue(value)`, and `subscribe(listener)`.
+  Preserve supported interval writes; computed values are read-only.
+- `getSelection(name)` exposes discriminant `type: "point" | "interval"`,
+  `getValue()`, `subscribe(listener, { delivery })`, and `clear()`. Snapshots are
+  detached, contain `active`, and expose interval ranges or selected point data.
+  Use the snapshot contract below; do not expose mutable runtime objects.
+- A child declaration containing both `select` and `push: "outer"` owns selection
+  capabilities while using the outer value ref. The outer declaration stays plain.
+  Never reverse-discover child selections by looking up their plain outer target.
+- Interval-only `contains(point)` combines the controller's interaction geometry
+  and ownership with the domain interval predicate. Respect clipping, scoped
+  ownership, and gaps; return false when inactive. A domain comparison alone is
+  insufficient. Test shared bindings without creating global discovery machinery.
+- Parameter/selection subscriptions are future-only, observing coherent runtime
+  updates. Selection delivery defaults to `"change"`; `"commit"` publishes the
+  settled selection after gesture completion and programmatic changes outside a
+  gesture. Point changes qualify for either. Cancellation alone is not a commit.
+  `clear()` cancels active document drag listeners before clearing and publishes
+  the cleared state. Reuse controller lifecycle; graph effects alone cannot infer
+  gesture completion.
+- Unsubscribe, scope removal, and embed finalization disconnect subscriptions and
+  prevent pending delivery. Listener failures are reported without aborting other
+  listeners. Async callback results are not awaited.
+
+### Consumer decisions for the first implementation
+
+These contracts are decided before coding. Their internal realization is left to
+consumer-driven iteration; do not prebuild a coordination layer to satisfy them.
+
+**Selection snapshots.** Use plain public envelopes with these shapes:
+
+```ts
+type PointSnapshot = {
+    type: "point";
+    active: boolean;
+    data: ReadonlyArray<Readonly<Record<string, unknown>>>;
+};
+type IntervalSnapshot = {
+    type: "interval";
+    active: boolean;
+    intervals: Partial<Record<"x" | "y", readonly [number, number] | null>>;
+};
+```
+
+Single-point selections contain zero or one row; multi-point selections contain
+zero or more. `active` means nonempty selected state, not “drag in progress,” and
+is independent of an empty-selection predicate's match-all behavior. For intervals,
+include declared projection channels, use `null` for an unset channel, and set
+`active` when at least one interval is set. Ranges use existing numeric selection
+domain coordinates (including linearized genomic coordinates), not screen pixels;
+do not introduce another locus conversion convention. Preserve endpoint semantics
+from the existing selection implementation.
+
+Copy the envelope, arrays, ranges, and each datum's own enumerable fields; exclude
+the internal ID field from datum copies. Nested datum values are not deep-cloned
+and are read-only to consumers. No `Map`, runtime ref, or view object occurs in the
+snapshot envelope. These are JavaScript values, not a promise that arbitrary datum
+contents are JSON-safe. The notebook example uses JSON-safe authored columns and
+explicitly projects outgoing data to those columns. Transport conversion belongs
+to the bridge. Row-backed single/multi point and interval selections are the first
+supported capabilities; if projected-value selections cannot supply rows, reject
+`getSelection` clearly for that capability rather than fabricating datum objects.
+Ordinary parameter access remains available for those values.
+
+**Containment ownership.** A selection handle retains its requesting view scope as
+well as its resolved declaration/value binding. Resolve containment through the
+existing interaction host associated with that binding and scope, including an
+inherited host where appropriate. A root handle may call `contains` when that
+binding has one unambiguous host, such as the annotation PoC's concat brush.
+If several hosts are possible, `contains` throws a descriptive ambiguity error;
+the caller must obtain the selection from a view scope that identifies one host.
+Do not union all rectangles, choose the first host, or scan unrelated selections.
+Within that host, gaps/clipping/ownership remain part of containment. Inactive
+selections return false once ownership is resolved. The PoC must demonstrate this
+with its actual container brush before the implementation is generalized.
+
+**Commit delivery.** A brush gesture with selection writes produces one settled
+commit on normal completion, even if its final value equals the starting value.
+Intermediate writes produce change observations but no commits. Cancellation or
+owner/embed disposal produces no completion commit and does not promise rollback.
+A changed programmatic value outside a gesture produces one commit after coherent
+propagation; an unchanged write does not create an artificial commit. Programmatic
+writes during a gesture are change observations and join its eventual completion;
+`clear()` is the explicit exception: cancel the active gesture, then publish the
+cleared state once if it changed, without a second completion commit. Point changes
+use the same coherent publication for both delivery modes. Lost mouseup alone
+must not be treated as successful completion. Reuse existing cancellation paths;
+identify a reproducible missing cancellation case in the PoC before adding more.
+
+**Explicit picking.** `pick(point)` requests a pick of the latest completed visible
+scene using existing picking-render orchestration; it may prepare that scene's
+picking buffer but must not wait for loading or force a future visual frame.
+With no completed usable scene, return `invalidated`; an available frame with no
+in-scope mark returns `empty`. If the scene or owner changes during the query, or
+finalization occurs while it is pending, resolve `invalidated`. Calls on an already
+finalized handle, invalid arguments, unsupported backends, ambiguous identity, and
+readback failures reject with descriptive errors. Do not log and swallow explicit
+query failures. Native handlers must prevent browser defaults before awaiting it.
+
+Native subscriptions expose actual canvas DOM enter/leave events, not synthetic
+view transitions. Capture an activation's eligible confirmed hit before host
+callbacks; deliver native subscribers before mark subscribers, and both before
+built-in interaction handling. Existing tooltip housekeeping is not a new public
+cancellation guarantee. Keep legacy callbacks' timing and payload unchanged.
+
+**What iteration must determine.** The minimal validity fields and existing
+invalidation signals, the controller notification boundary for gesture completion,
+and notebook transport/library choice are implementation questions. Prove them
+with the consumers, targeted tests, and size measurements. The notebook artifacts
+belong under `packages/embed-examples/notebooks/`, with startup dependencies,
+commands, and manual verification documented there. Do not introduce a Core wire
+protocol. Substantial changes to the contracts above still require user review.
+
+## Implementation ownership and research
+
+Start with these baseline files, rather than the experimental adapter:
+
+| Area | Existing owner / integration point |
+| --- | --- |
+| Public namespaces, canonical handles, types | `packages/core/src/embedFactory.js`, `packages/core/src/view/viewMutationApi.js`, `packages/core/src/types/embedApi.d.ts` |
+| Picking, native ingress, hover, delayed requests | `packages/core/src/genomeSpy/interactionController.js` |
+| Existing internal routing | `packages/core/src/genomeSpy/interactionDispatcher.js`; preserve its ownership |
+| Parameter handles and lexical refs | `packages/core/src/paramRuntime/embedParamApi.js`, `viewParamRuntime.js` |
+| Brush geometry, gesture lifecycle, document listeners | `packages/core/src/view/gridView/intervalSelectionController.js` and its GridView host |
+| Annotation unit ownership | `packages/core/src/view/concatView.js` and existing unit hierarchy |
+
+Use graph effects for coherent observations and existing runtime/view disposal.
+Distinguish declaration metadata from effective value ownership in one small
+runtime accessor. Do not create parallel registries or scan all views per event.
+Activation only reads the controller's confirmed hit; no activation queue or
+scheduler is needed. Keep position/scene validity with the existing hover owner,
+using existing invalidation signals rather than a second cache. Explicit queries
+and hover remain asynchronous where the backend requires it. Factor existing
+picking only where needed; retain the legacy click contract separately.
+
+[Vega's View API](https://vega.github.io/vega/docs/api/view/) separates native input
+from signal observation. [ECharts events](https://echarts.apache.org/handbook/en/concepts/event/)
+supply datum-bearing callbacks with filtering. Follow those distinctions while
+accommodating GenomeSpy's asynchronous picking. These are design references;
+no implementation is copied. Verify licensing before any future code adaptation.
+
+Alternatives rejected: trim the oversized implementation (retains duplicated
+owners); expose mutable internals (unstable public contract); remove selection
+capabilities (fails the intended annotation/notebook ergonomics).
+
 ## Starting state and session instructions
 
 - Branch: `codex/embed-integration-restart`, created directly from local `master`.
@@ -91,142 +360,6 @@ implementation, show the concrete proposal, and wait for approval.
 10. Do not silently weaken agreed contracts, exceed the complexity budget, or
     implement a substantial redesign before the user reviews and approves it.
 
-## Goals and boundaries
-
-Support host-owned annotation editing: brush a region, open a context menu over
-that brush, enter name/description, update a table, and publish the rows through
-the modern embed dataset API. Also support clicked-mark inspection, hover, and
-notebook forms driven by point or interval selection observations without DOM
-event callbacks in Python.
-
-**Do not change renderers, shaders, picking encodings, or rendering contracts.**
-Menus, forms, persistence, and notebook transport stay outside Core. Retain legacy
-APIs with historical behavior and mark them `@deprecated`, linking their modern
-replacements. Do not add custom public bubbling, selection enumeration, rich
-hover phases, a second hover tracker, or a general-purpose event framework.
-
-## Public contract
-
-Use the existing modern embed factory and canonical view handles. All subscription
-methods return an unsubscribe function. Root/scoped parameter APIs share handle
-construction, but legacy lookup retains its historical semantics.
-
-```js
-const view = api.views.get({ scope: [], view: "track" });
-const root = api.views.root();
-api.events.subscribe("contextmenu", event => { /* synchronous */ });
-view.marks.subscribe("click", event => inspect(event.hit));
-view.marks.observeHover(hit => showHover(hit));
-const result = await view.marks.pick({ x, y });
-const param = view.params.get("threshold"); // also api.params.get(name)
-const brush = view.params.getSelection("brush"); // also api.params.getSelection(name)
-brush.subscribe(snapshot => updateForm(snapshot), { delivery: "commit" });
-if (brush.type === "interval") brush.contains({ x, y });
-```
-
-### Native input and marks
-
-- `api.events.subscribe` covers canvas `click`, `dblclick`, `contextmenu`,
-  `mousedown`, `mouseup`, `mousemove`, `mouseenter`, `mouseleave`, and `wheel`.
-  Delivery is synchronous before Core processes the original native event.
-  Payload: `{ sourceEvent, point, preventViewDefault() }`; point uses canvas CSS
-  pixels. DOM fields and browser cancellation stay on `sourceEvent`.
-- `preventViewDefault()` vetoes the current Core action during the callback;
-  it does not roll back an active gesture. Do not publish synthetic inertia events
-  or internal wheel probes. Native subscriptions are canvas-wide.
-- `view.marks.subscribe` covers `click`, `dblclick`, and `contextmenu`, scoped to
-  the handle's subtree. Payload: `{ sourceEvent, point, hit }`. Delivery is always
-  synchronous, using the existing confirmed hover hit at native ingress, before
-  built-in handling changes the scene. Use it only when its confirmed position
-  matches the event point and it remains valid for the current scene and owner.
-  Missing, pending-for-another-position, stale, suspended, or out-of-scope hits
-  produce no mark callback. Do not start a pick, wait, queue, or replay activation.
-  A pending refresh alone need not invalidate an otherwise valid confirmed hit.
-  Snapshot the eligible hit before invoking host callbacks; recheck disposal before
-  delivery. Keep Core cancellation on the native hook, not a second mark facade.
-  Document that rapid clicks can be missed, and keyboard context menus or input
-  without a confirmed pointer pick cannot rely on mark activation. Hosts requiring
-  an answer use the native hook and explicitly call `marks.pick(event.point)`;
-  browser cancellation must still happen synchronously in that native callback.
-- `MarkHit` has readonly `view`, `uniqueId`, and `datum`. The view is the canonical
-  associated unit handle, including annotation units. Use the existing picking
-  ID, not a new mark ID or a promise of a persistent row key. Return a detached
-  datum tuple including transform outputs but excluding the internal ID field.
-  Document copy depth; do not promise arbitrary object serialization/deep cloning.
-- `pick(point)` returns `{ status: "hit", hit }`, `{ status: "empty" }`, or
-  `{ status: "invalidated" }`. It queries the current picking frame's frontmost
-  hit. Out-of-scope is empty; do not pick through it. In-flight scene changes
-  invalidate results. Unsupported or ambiguous queries reject; subscription
-  errors use the existing error reporter. Preserve legacy first-match behavior.
-- `observeHover` supplies the controller's current confirmed `MarkHit | undefined`
-  synchronously on subscription, then changes. No fresh initial probe. Departure,
-  drag suspension, and owner removal clear hover. Reuse coalesced scene refresh
-  for stationary pointers, including data replacement retaining the same ID.
-  Subscribers must not multiply readbacks. Hosts use native movement for positioning.
-
-### Parameters and selections
-
-- `api.params` starts at the authored top-level specification, through implicit
-  wrappers. `view.params` starts at that view's lexical scope. Resolve the nearest
-  declaration first; a plain parameter shadows an ancestor selection and causes
-  `getSelection` to reject. Missing/wrong-capability lookups fail clearly.
-- `get(name)` exposes `getValue()`, `setValue(value)`, and `subscribe(listener)`.
-  Preserve supported interval writes; computed values are read-only.
-- `getSelection(name)` exposes discriminant `type: "point" | "interval"`,
-  `getValue()`, `subscribe(listener, { delivery })`, and `clear()`. Snapshots are
-  detached, contain `active`, and expose interval ranges or selected point data.
-  Specify their exact declarations in milestone 1 using existing selection values
-  and coordinate conventions; do not expose mutable runtime objects.
-- A child declaration containing both `select` and `push: "outer"` owns selection
-  capabilities while using the outer value ref. The outer declaration stays plain.
-  Never reverse-discover child selections by looking up their plain outer target.
-- Interval-only `contains(point)` combines the controller's interaction geometry
-  and ownership with the domain interval predicate. Respect clipping, scoped
-  ownership, and gaps; return false when inactive. A domain comparison alone is
-  insufficient. Test shared bindings without creating global discovery machinery.
-- Parameter/selection subscriptions are future-only, observing coherent runtime
-  updates. Selection delivery defaults to `"change"`; `"commit"` publishes the
-  settled selection after gesture completion and programmatic changes outside a
-  gesture. Point changes qualify for either. Cancellation alone is not a commit.
-  `clear()` cancels active document drag listeners before clearing and publishes
-  the cleared state. Reuse controller lifecycle; graph effects alone cannot infer
-  gesture completion.
-- Unsubscribe, scope removal, and embed finalization disconnect subscriptions and
-  prevent pending delivery. Listener failures are reported without aborting other
-  listeners. Async callback results are not awaited.
-
-## Implementation ownership and research
-
-Start with these baseline files, rather than the experimental adapter:
-
-| Area | Existing owner / integration point |
-| --- | --- |
-| Public namespaces, canonical handles, types | `packages/core/src/embedFactory.js`, `packages/core/src/types/embedApi.d.ts` |
-| Picking, native ingress, hover, delayed requests | `packages/core/src/genomeSpy/interactionController.js` |
-| Existing internal routing | `packages/core/src/genomeSpy/interactionDispatcher.js`; preserve its ownership |
-| Parameter handles and lexical refs | `packages/core/src/paramRuntime/embedParamApi.js`, `viewParamRuntime.js` |
-| Brush geometry, gesture lifecycle, document listeners | `packages/core/src/view/gridView/intervalSelectionController.js` and its GridView host |
-| Annotation unit ownership | `packages/core/src/view/concatView.js` and existing unit hierarchy |
-
-Use graph effects for coherent observations and existing runtime/view disposal.
-Distinguish declaration metadata from effective value ownership in one small
-runtime accessor. Do not create parallel registries or scan all views per event.
-Activation only reads the controller's confirmed hit; no activation queue or
-scheduler is needed. Keep position/scene validity with the existing hover owner,
-using existing invalidation signals rather than a second cache. Explicit queries
-and hover remain asynchronous where the backend requires it. Factor existing
-picking only where needed; retain the legacy click contract separately.
-
-[Vega's View API](https://vega.github.io/vega/docs/api/view/) separates native input
-from signal observation. [ECharts events](https://echarts.apache.org/handbook/en/concepts/event/)
-supply datum-bearing callbacks with filtering. Follow those distinctions while
-accommodating GenomeSpy's asynchronous picking. These are design references;
-no implementation is copied. Verify licensing before any future code adaptation.
-
-Alternatives rejected: trim the oversized implementation (retains duplicated
-owners); expose mutable internals (unstable public contract); remove selection
-capabilities (fails the intended annotation/notebook ergonomics).
-
 ## Milestones
 
 Build Core and its consumers together. Do not complete the API before starting
@@ -257,13 +390,17 @@ before review.
   with data tracks, a concat annotation layer, a named brush, and host-owned form
   and table. Implement only the Core hooks needed to make brush → context menu →
   name/description → save → visible annotation work, then browser-test that path
-  immediately. Deliver this runnable slice before widening the API or finishing
+  immediately. Its required Core slice is native context-menu subscription, scoped
+  interval lookup/snapshot, `contains`, and `clear`, together with the existing
+  dataset update API. Mark activation, hover, explicit picking, and outer-alias
+  edge cases follow this working path; they are not prerequisites for its delivery.
+  Deliver this runnable slice before widening the API or finishing
   the remaining feasibility tests. Cancel must add no row; save updates the named
   dataset through the modern API and clears the brush.
 - [ ] Extend that same consumer while implementing native context-menu veto,
   scoped mark click/pick/hover, and one
   lexically scoped interval selection with outer alias, commit, clear, and contains.
-  Add provisional public types, including exact selection snapshot shapes.
+  Add public types implementing the snapshot shapes above.
   Use clicked annotation data and hover in the PoC as those hooks become available.
 - [ ] In parallel with commit observation, start a second selection-driven form
   example: brush commits update host state and enable annotation entry without a
