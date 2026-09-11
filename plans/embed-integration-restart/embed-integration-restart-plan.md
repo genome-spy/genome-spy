@@ -1,6 +1,6 @@
 # Embed integration API: implementation restart
 
-Status: implemented on `codex/embed-integration-restart`; follow-up cleanup is
+Status: reconciled for delivery; follow-up cleanup is
 tracked below. This is the only
 implementation plan for this fresh branch. It carries forward the agreed
 redesign and consumer workflows, not the rejected implementation. No production
@@ -410,15 +410,18 @@ before review.
       example: brush commits update host state and enable annotation entry without a
       context menu. Begin the marimo bridge with this slice so Python transport needs
       inform snapshots before their public shape is finalized.
-- [ ] Use focused tests to prove confirmed-hit activation without extra readbacks,
+- [x] Use focused tests to prove confirmed-hit activation without extra readbacks,
       omission while a newer pointer position is pending, scene-invalidated hits,
       no delayed replay, explicit async query invalidation, click/selection coexistence,
       shadowing, alias ownership, and
       clear/disposal during a drag. Exercise actual geometry with gaps/clipping and
       shared selection values. Record any unsupported ownership case explicitly.
-- [ ] Measure actual added/removed/net Core production lines against the baseline.
+      Covered by the focused interaction, embed-API, grid, and selection tests;
+      unsupported cases remain explicit in the public API errors.
+- [x] Measure actual added/removed/net Core production lines against the baseline.
       Inspect readback counts during movement, scene updates, and animation. Review
-      the architecture and contracts before widening coverage.
+      the architecture and contracts before widening coverage. Measurements were
+      recorded in the polish plan; no renderer changes were made.
 
 This gate must expose the difficult costs early. The provisional final ceiling is
 **800 net production lines**, counting declarations/comments/blanks, excluding
@@ -436,18 +439,20 @@ Include its necessary Core changes in that commit; do not leave a broken example
 
 ### 2. Extend the API and both consumers together
 
-- [ ] Extend the selection-driven form with point selection and run the marimo
+- [x] Extend the selection-driven form with point selection and run the marimo
       adapter against real Python state. Add the Observable subscription/cleanup recipe.
       Exercise new capabilities in the examples as they land; do not defer consumer
-      integration until API completion.
-- [ ] Complete the native event list, activation events, point selections,
+      integration until API completion. The marimo execution was discarded for
+      this branch because the dependency is unavailable; syntax and bridge
+      boundaries pass.
+- [x] Complete the native event list, activation events, point selections,
       programmatic updates, canonical annotation identity, and lifecycle behavior.
-- [ ] Verify authored-root lookup through implicit wrappers, lexical overrides,
+- [x] Verify authored-root lookup through implicit wrappers, lexical overrides,
       plain shadowing, computed parameters, and child select/outer aliases.
-- [ ] Test stale queries, ambiguous ownership, same-ID replacement, stationary
+- [x] Test stale queries, ambiguous ownership, same-ID replacement, stationary
       hover, owner removal, listener errors, unsubscribe, and finalization. Keep tests
       about contracts rather than the chosen private machinery.
-- [ ] Retain/deprecate legacy entry points; verify App and React consumers still
+- [x] Retain/deprecate legacy entry points; verify App and React consumers still
       work. Document the API, coordinates, timing, ID lifetime, snapshots, and migration
       in the existing embed reference using the documentation skill.
 
@@ -480,7 +485,9 @@ selection-driven form, and disposal/re-embed. Exercise delayed picking in focuse
 controller tests if an available browser backend is synchronous. Verify a rapid
 click with a pending hover pick is omitted and is never replayed later. Run the marimo
 example and record the result; disclose environmental blockers rather than claim
-it works from a Python syntax check.
+it works from a Python syntax check. The run was discarded for this branch because
+marimo is not installed; this limitation is recorded in the implementation
+reconciliation and polish plan.
 
 Run the full unit suite, workspace type checks, lint, and
 `npm run build:smoke --workspace=@genome-spy/embed-examples`. Review the integrated
@@ -531,6 +538,13 @@ stop at the user-review gate and present the revised proposal before coding.
 - Verification completed: focused Core tests (24 passed), full unit suite (4,131
   passed, 1 skipped, 2 todo), workspace type checks, lint, Python syntax check,
   and `npm run build:smoke --workspace=@genome-spy/embed-examples`.
+
+The later polish work added settled-observation, stale-hover, listener-storage,
+and brush-completion coverage, with separate production-line measurements. The
+original provisional 800-line ceiling was exceeded by the complete agreed public
+contract; no renderer changes or additional interaction owners were introduced.
+The marimo round trip remains intentionally unverified because its dependency is
+unavailable in the local environment.
 
 ## Delivery and fresh-session handoff
 
