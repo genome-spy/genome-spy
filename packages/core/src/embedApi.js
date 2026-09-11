@@ -29,7 +29,16 @@ export function createEmbedResult({ genomeSpy, isActive, debug, finalize }) {
                         "Cannot subscribe to events through a finalized embed."
                     );
                 }
-                return genomeSpy.subscribeNativeEvent(type, listener);
+                return genomeSpy.subscribeNativeEvent(type, (event) =>
+                    listener({
+                        sourceEvent: event.sourceEvent,
+                        point: Object.freeze({
+                            x: event.point.x,
+                            y: event.point.y,
+                        }),
+                        preventViewDefault: event.preventViewDefault,
+                    })
+                );
             },
         },
         params: createEmbedParamNamespace(

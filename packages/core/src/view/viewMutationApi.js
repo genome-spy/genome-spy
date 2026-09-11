@@ -16,6 +16,7 @@ import { getTopLevelSpecView } from "./viewFactory.js";
 import { readBinaryData } from "../data/formats/readBinary.js";
 import { createEmbedParamNamespace } from "../paramRuntime/embedParamApi.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
+import { bindDisposer } from "../utils/bindDisposer.js";
 
 /**
  * Error thrown by the public view mutation API.
@@ -221,7 +222,7 @@ function updateNamedDataBinding(view, binding, data) {
  * @param {() => boolean} [isActive]
  * @returns {import("../types/embedApi.js").ViewApi}
  */
-export function createViewMutationApi(genomeSpy, isActive) {
+export function createViewMutationApi(genomeSpy, isActive = () => true) {
     /**
      * @typedef {import("../types/embedApi.js").ViewAddress} ViewAddress
      * @typedef {import("../types/embedApi.js").ViewHandle} ViewHandle
@@ -356,20 +357,26 @@ export function createViewMutationApi(genomeSpy, isActive) {
             subscribe(type, listener) {
                 ensureEmbedIsActive(isActive);
                 ensureViewIsLive(view);
-                return interactionApi.subscribeMarkEvent(view, type, (event) =>
-                    listener({
-                        sourceEvent: event.sourceEvent,
-                        point: event.point,
-                        hit: toPublicMarkHit(event.hit),
-                    })
+                return bindDisposer(
+                    (disposer) => view.registerDisposer(disposer),
+                    interactionApi.subscribeMarkEvent(view, type, (event) =>
+                        listener({
+                            sourceEvent: event.sourceEvent,
+                            point: toPublicPoint(event.point),
+                            hit: toPublicMarkHit(event.hit),
+                        })
+                    )
                 );
             },
 
             observeHover(listener) {
                 ensureEmbedIsActive(isActive);
                 ensureViewIsLive(view);
-                return interactionApi.subscribeHover(view, (hit) =>
-                    listener(hit ? toPublicMarkHit(hit) : undefined)
+                return bindDisposer(
+                    (disposer) => view.registerDisposer(disposer),
+                    interactionApi.subscribeHover(view, (hit) =>
+                        listener(hit ? toPublicMarkHit(hit) : undefined)
+                    )
                 );
             },
 
@@ -400,6 +407,14 @@ export function createViewMutationApi(genomeSpy, isActive) {
             uniqueId: hit.uniqueId,
             datum,
         };
+    }
+
+    /**
+     * @param {import("../view/layout/point.js").default} point
+     * @returns {{ readonly x: number, readonly y: number }}
+     */
+    function toPublicPoint(point) {
+        return Object.freeze({ x: point.x, y: point.y });
     }
 
     /** @param {() => boolean} isActive */

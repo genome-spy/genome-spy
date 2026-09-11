@@ -8,6 +8,7 @@ import {
     isPointSelectionConfig,
     isSinglePointSelection,
 } from "../selection/selection.js";
+import { bindDisposer } from "../utils/bindDisposer.js";
 
 /**
  * @typedef {import("../view/view.js").default} View
@@ -318,16 +319,9 @@ function ensureParamApiIsLive(lifecycle) {
  * @returns {() => void}
  */
 function registerParamDisposer(lifecycle, unsubscribe) {
-    let disposed = false;
-    const disposer = () => {
-        if (disposed) {
-            return;
-        }
-        disposed = true;
-        unsubscribe();
-    };
-    lifecycle.registerDisposer?.(disposer);
-    return disposer;
+    return lifecycle.registerDisposer
+        ? bindDisposer(lifecycle.registerDisposer, unsubscribe)
+        : unsubscribe;
 }
 
 /**

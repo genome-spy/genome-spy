@@ -45,12 +45,14 @@ function installEventTargetDocument() {
  * @param {EventTarget} [options.canvas]
  * @param {Partial<import("../utils/ui/tooltip.js").default>} [options.tooltip]
  * @param {(error: unknown) => void} [options.reportError]
+ * @param {() => boolean} [options.canPick]
  * @returns {{ controller: InteractionController, tooltip: any }}
  */
 function createMinimalInteractionController({
     canvas,
     tooltip = {},
     reportError,
+    canPick,
 } = {}) {
     const actualTooltip = {
         clear: /** @returns {void} */ () => undefined,
@@ -82,6 +84,7 @@ function createMinimalInteractionController({
             renderPickingFramebuffer: /** @returns {void} */ () => undefined,
             readPickingId,
             reportError,
+            canPick,
         }),
         tooltip: actualTooltip,
     };
@@ -1460,6 +1463,16 @@ describe("InteractionController", () => {
         ).not.toThrow();
         expect(reportError).toHaveBeenCalledWith(
             expect.objectContaining({ message: "hover failed" })
+        );
+    });
+
+    it("validates pick points before checking renderer availability", async () => {
+        const { controller } = createMinimalInteractionController({
+            canPick: () => false,
+        });
+
+        await expect(controller.pick({ x: Number.NaN, y: 0 })).rejects.toThrow(
+            "Pick point must be finite and inside the canvas."
         );
     });
 });

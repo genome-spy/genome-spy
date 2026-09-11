@@ -174,9 +174,6 @@ export default class InteractionController {
                 "Explicit picking is not supported by this renderer."
             );
         }
-        if (!this.#canPick()) {
-            return { status: "invalidated" };
-        }
         const canvasPoint = new Point(point.x, point.y);
         if (
             !Number.isFinite(point.x) ||
@@ -184,6 +181,9 @@ export default class InteractionController {
             !this.#isInsideCanvas(canvasPoint)
         ) {
             throw new Error("Pick point must be finite and inside the canvas.");
+        }
+        if (!this.#canPick()) {
+            return { status: "invalidated" };
         }
 
         const requestId = this.#pickingRequestId;
