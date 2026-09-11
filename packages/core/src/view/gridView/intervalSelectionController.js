@@ -92,8 +92,8 @@ export class IntervalSelectionController {
     /** @type {import("../../paramRuntime/viewParamRuntime.js").default} */
     #selectionRuntime;
 
-    /** @type {((selection: import("../../types/selectionTypes.js").IntervalSelection) => void)[]} */
-    #commitListeners = [];
+    /** @type {Set<{ listener: (selection: import("../../types/selectionTypes.js").IntervalSelection) => void }>} */
+    #commitListeners = new Set();
 
     /**
      * @param {string} type
@@ -116,7 +116,7 @@ export class IntervalSelectionController {
         }
         this.#unregisterSelectionController();
         this.#viewListeners.dispose();
-        this.#commitListeners = [];
+        this.#commitListeners.clear();
     }
 
     /**
@@ -135,13 +135,9 @@ export class IntervalSelectionController {
      * @returns {() => void}
      */
     subscribeCommit(listener) {
-        this.#commitListeners.push(listener);
-        return () => {
-            const index = this.#commitListeners.indexOf(listener);
-            if (index >= 0) {
-                this.#commitListeners.splice(index, 1);
-            }
-        };
+        const entry = { listener };
+        this.#commitListeners.add(entry);
+        return () => this.#commitListeners.delete(entry);
     }
 
     /**
@@ -679,9 +675,9 @@ export class IntervalSelectionController {
 
     #notifyCommit() {
         const selection = this.#selectionRuntime.getValue(this.#selectionName);
-        for (const listener of [...this.#commitListeners]) {
+        for (const entry of [...this.#commitListeners]) {
             try {
-                listener(selection);
+                entry.listener(selection);
             } catch (error) {
                 console.error(error);
             }

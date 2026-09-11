@@ -154,3 +154,70 @@ Done means the ordinary example workflows work, the identified stale-hover and
 unsafe-text issues are fixed, legacy and modern observations are coherent, and
 remaining limitations are explicit. It does not mean every hypothetical race,
 alias configuration, or notebook host is supported.
+
+## Follow-up: remove remaining local duplication
+
+Implement these as small, separately measured changes. Preserve the public API
+and existing behavior; do not introduce a general subscription or lifecycle
+framework. Read the current code first because earlier milestones may already
+have removed some duplication.
+
+- [x] Remove namespace-level liveness checks immediately duplicated by the scoped
+  parameter/selection resolvers. Retain resolver checks and checks on subsequent
+  handle operations.
+- [x] Collapse point-selection commit and ordinary change subscriptions into the
+  same settled-value path. Only `delivery === "commit" && controller` needs the
+  distinct interval-completion branch.
+- [x] Use `declaration.config` directly when determining whether a scoped parameter
+  is computed. Remove the repeated config-map lookup and redundant existence check.
+- [x] Replace mark, hover, and interval-commit listener arrays with Sets of
+  registration objects, removing index/search/splice unsubscribe code. Preserve
+  independent registrations of the same callback and snapshot iteration during
+  delivery; use idempotent `delete()` for unsubscribe.
+- [x] Simplify legacy lookup into one traversal accumulating the effective-runtime
+  map. Remove the intermediate matches array and single-use collection/flag
+  helpers if this makes the complete implementation smaller and clearer. Preserve
+  missing/ambiguous lookup errors and computed/point-selection write restrictions.
+- [x] Combine hover replacement and change notification into one controller method
+  if notification still has only that caller. Retain the small clear operation
+  that resets the confirmed point, and preserve hit comparison and delivery order.
+
+### Required measurement after each change
+
+Before each checklist item, record line counts for the production files it will
+change. After that item, compare those same files and record added, removed, and
+net production lines for that item alone, including JSDoc, declarations, and blank
+lines. Also report the cumulative production delta for this follow-up. Do not
+report only the final combined reduction or count test deletions as production
+savings. A compact table in this plan is sufficient:
+
+| Change | Production lines before | After | Added | Removed | Net |
+| --- | ---: | ---: | ---: | ---: | ---: |
+
+Use `wc -l` plus a diff against a saved pre-change snapshot or commit. If unrelated
+edits exist, keep them out of the per-change measurement. Reconsider or discard a
+refactor that grows code without a clear readability or correctness benefit;
+never compress formatting to improve the count.
+
+Measurement record for this follow-up (baseline commit `9a4fdff69`):
+
+| Change | Production lines before | After | Added | Removed | Net |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Remove duplicated namespace liveness checks | 437 | 435 | 0 | 2 | -2 |
+| Share point commit/change observation path | 435 | 422 | 0 | 13 | -13 |
+| Read `declaration.config` directly | 422 | 421 | 1 | 2 | -1 |
+| Store mark and hover listeners as registration Sets | 1253 | 1243 | 8 | 18 | -10 |
+| Store interval commit listeners as registration Sets | 733 | 729 | 8 | 12 | -4 |
+| Simplify legacy lookup traversal | 421 | 381 | 18 | 58 | -40 |
+| Combine hover replacement and notification | 1243 | 1236 | 6 | 13 | -7 |
+
+Cumulative production delta for the follow-up: +42/-109, net -67 lines across
+the three production files. The additional test harness is not counted as a
+production saving or cost.
+
+Verify each affected behavior with the narrow existing tests. For listener storage,
+check duplicate registration, unsubscribe, and modification during delivery. For
+legacy lookup, run the existing ambiguity/alias/write-restriction tests. Keep
+necessary stale-handle checks, required-ref validation, and disposal protections.
+Commit coherent verified groups; a separate commit for every measurement is not
+required.

@@ -12,7 +12,6 @@ import { bindDisposer } from "../utils/bindDisposer.js";
 
 /**
  * @typedef {import("../view/view.js").default} View
- * @typedef {import("../spec/parameter.js").Parameter} Parameter
  * @typedef {import("../types/embedApi.js").ParamApi} ParamApi
  * @typedef {import("../types/embedApi.js").SelectionApi} SelectionApi
  * @typedef {import("../types/embedApi.js").SelectionSnapshot} SelectionSnapshot
@@ -32,12 +31,10 @@ import { bindDisposer } from "../utils/bindDisposer.js";
 export function createEmbedParamNamespace(view, lifecycle = {}) {
     return /** @type {import("../types/embedApi.js").ParamNamespace} */ ({
         get(name) {
-            ensureParamApiIsLive(lifecycle);
             return resolveScopedEmbedParam(view, name, lifecycle);
         },
 
         getSelection(name) {
-            ensureParamApiIsLive(lifecycle);
             return resolveEmbedSelection(view, name, lifecycle);
         },
     });
@@ -63,8 +60,7 @@ export function resolveScopedEmbedParam(view, name, lifecycle = {}) {
         throw new Error('Parameter "' + name + '" has no runtime value.');
     }
 
-    const config = declaration.runtime.paramConfigs.get(name);
-    const readOnly = Boolean(config && "expr" in config);
+    const readOnly = "expr" in declaration.config;
     return createParamApi(effectiveRuntime, name, lifecycle, (value) => {
         if (readOnly) {
             throw new Error('Cannot set computed parameter "' + name + '".');
@@ -130,20 +126,7 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
             /** @type {{ delivery?: "change" | "commit" }} */ options = {}
         ) {
             ensureParamApiIsLive(lifecycle);
-            if (options.delivery === "commit") {
-                if (!controller) {
-                    return subscribeToSettledValue(
-                        effectiveRuntime,
-                        name,
-                        () => {
-                            callEmbedListener(
-                                listener,
-                                copySelection(effectiveRuntime.getValue(name))
-                            );
-                        },
-                        lifecycle
-                    );
-                }
+            if (options.delivery === "commit" && controller) {
                 return registerParamDisposer(
                     lifecycle,
                     controller.subscribeCommit((selection) =>
@@ -342,26 +325,32 @@ function registerParamDisposer(lifecycle, unsubscribe) {
  * @returns {ParamApi}
  */
 export function resolveEmbedParam(root, name) {
-    const matches = collectParamMatches(root, name);
-    if (!matches.length) {
-        throw new Error('Parameter "' + name + '" not found.');
-    }
-
     const effectiveMatches = new Map();
-    for (const match of matches) {
-        const runtime = match.view.paramRuntime.findRuntimeForParam(name);
+    root.visit((view) => {
+        const param = view.paramRuntime.paramConfigs.get(name);
+        if (!param) {
+            return;
+        }
+
+        const runtime = view.paramRuntime.findRuntimeForParam(name);
         if (!runtime) {
             throw new Error('Parameter "' + name + '" has no runtime value.');
         }
 
+        const previous = effectiveMatches.get(runtime);
         effectiveMatches.set(runtime, {
             runtime,
-            readOnly: hasExprParam(effectiveMatches.get(runtime), match),
-            pointSelection: hasPointSelectionParam(
-                effectiveMatches.get(runtime),
-                match
+            readOnly: Boolean(previous?.readOnly || "expr" in param),
+            pointSelection: Boolean(
+                previous?.pointSelection ||
+                ("select" in param &&
+                    isPointSelectionConfig(asSelectionConfig(param.select)))
             ),
         });
+    });
+
+    if (effectiveMatches.size === 0) {
+        throw new Error('Parameter "' + name + '" not found.');
     }
 
     if (effectiveMatches.size > 1) {
@@ -389,49 +378,4 @@ export function resolveEmbedParam(root, name) {
     };
 
     return createParamApi(runtime, name, {}, setValue);
-}
-
-/**
- * @param {{ readOnly: boolean } | undefined} previous
- * @param {{ param: Parameter }} match
- * @returns {boolean}
- */
-function hasExprParam(previous, match) {
-    return Boolean(previous?.readOnly || "expr" in match.param);
-}
-
-/**
- * @param {{ pointSelection: boolean } | undefined} previous
- * @param {{ param: Parameter }} match
- * @returns {boolean}
- */
-function hasPointSelectionParam(previous, match) {
-    if (previous?.pointSelection) {
-        return true;
-    }
-
-    const param = match.param;
-    return (
-        "select" in param &&
-        isPointSelectionConfig(asSelectionConfig(param.select))
-    );
-}
-
-/**
- * @param {View} root
- * @param {string} name
- * @returns {{ view: View, param: Parameter }[]}
- */
-function collectParamMatches(root, name) {
-    /** @type {{ view: View, param: Parameter }[]} */
-    const matches = [];
-
-    root.visit((view) => {
-        const param = view.paramRuntime.paramConfigs.get(name);
-        if (param) {
-            matches.push({ view, param });
-        }
-    });
-
-    return matches;
 }

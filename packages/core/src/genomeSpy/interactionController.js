@@ -50,10 +50,10 @@ export default class InteractionController {
     #pickingRequestId = 0;
     /** @type {EventListenerRegistry<NativeInteractionEvent>} */
     #nativeEventListeners = new EventListenerRegistry();
-    /** @type {{ view: import("../view/view.js").default, type: string, listener: (event: MarkInteractionEvent) => void }[]} */
-    #markEventListeners = [];
-    /** @type {{ view: import("../view/view.js").default, listener: (hit: InternalMarkHit | undefined) => void }[]} */
-    #hoverListeners = [];
+    /** @type {Set<{ view: import("../view/view.js").default, type: string, listener: (event: MarkInteractionEvent) => void }>} */
+    #markEventListeners = new Set();
+    /** @type {Set<{ view: import("../view/view.js").default, listener: (hit: InternalMarkHit | undefined) => void }>} */
+    #hoverListeners = new Set();
     /** @type {Point | undefined} */
     #currentHoverPoint;
     /** @type {number | undefined} */
@@ -133,13 +133,8 @@ export default class InteractionController {
         }
 
         const entry = { view, type, listener };
-        this.#markEventListeners.push(entry);
-        return () => {
-            const index = this.#markEventListeners.indexOf(entry);
-            if (index >= 0) {
-                this.#markEventListeners.splice(index, 1);
-            }
-        };
+        this.#markEventListeners.add(entry);
+        return () => this.#markEventListeners.delete(entry);
     }
 
     /**
@@ -149,18 +144,13 @@ export default class InteractionController {
      */
     subscribeHover(view, listener) {
         const entry = { view, listener };
-        this.#hoverListeners.push(entry);
+        this.#hoverListeners.add(entry);
         try {
             listener(this.#getScopedHover(view));
         } catch (error) {
             this.#reportError(error);
         }
-        return () => {
-            const index = this.#hoverListeners.indexOf(entry);
-            if (index >= 0) {
-                this.#hoverListeners.splice(index, 1);
-            }
-        };
+        return () => this.#hoverListeners.delete(entry);
     }
 
     /**
@@ -902,8 +892,8 @@ export default class InteractionController {
                 remove();
             }
             this.#nativeEventListeners.clear();
-            this.#markEventListeners = [];
-            this.#hoverListeners = [];
+            this.#markEventListeners.clear();
+            this.#hoverListeners.clear();
         };
     }
 
@@ -1161,9 +1151,11 @@ export default class InteractionController {
     }
 
     /**
-     * @param {InternalMarkHit | null | undefined} previousHover
+     * @param {InternalMarkHit | null | undefined} hover
      */
-    #notifyHoverListeners(previousHover) {
+    #replaceHover(hover) {
+        const previousHover = this.#currentHover;
+        this.#currentHover = hover;
         if (
             (!previousHover && !this.#currentHover) ||
             (previousHover &&
@@ -1181,15 +1173,6 @@ export default class InteractionController {
                 this.#reportError(error);
             }
         }
-    }
-
-    /**
-     * @param {InternalMarkHit | null | undefined} hover
-     */
-    #replaceHover(hover) {
-        const previousHover = this.#currentHover;
-        this.#currentHover = hover;
-        this.#notifyHoverListeners(previousHover);
     }
 
     #clearHover() {

@@ -745,6 +745,89 @@ describe("GridChild interval selection interactions", () => {
         expect(setValue).not.toHaveBeenCalled();
     });
 
+    test("delivers independent interval commit registrations after brush completion", () => {
+        const originalDocument = globalThis.document;
+        /** @type {Map<string, Set<EventListener>>} */
+        const documentListeners = new Map();
+        globalThis.document = /** @type {Document} */ (
+            /** @type {any} */ ({
+                addEventListener(
+                    /** @type {string} */ type,
+                    /** @type {EventListener} */ listener
+                ) {
+                    let listeners = documentListeners.get(type);
+                    if (!listeners) {
+                        listeners = new Set();
+                        documentListeners.set(type, listeners);
+                    }
+                    listeners.add(listener);
+                },
+                removeEventListener(
+                    /** @type {string} */ type,
+                    /** @type {EventListener} */ listener
+                ) {
+                    documentListeners.get(type)?.delete(listener);
+                },
+                dispatchEvent(/** @type {Event} */ event) {
+                    for (const listener of [
+                        ...(documentListeners.get(event.type) ?? []),
+                    ]) {
+                        listener(event);
+                    }
+                    return true;
+                },
+            })
+        );
+
+        /** @type {Map<string, any[]>} */
+        const listeners = new Map();
+        const { view, layoutParent } = createIntervalGridChildView([
+            {
+                name: "brush",
+                select: { type: "interval", encodings: ["x"] },
+            },
+        ]);
+        view.addInteractionListener = (type, listener) => {
+            listeners.set(type, [...(listeners.get(type) ?? []), listener]);
+        };
+
+        try {
+            const child = new GridChild(view, layoutParent, 0);
+            const controller =
+                view.paramRuntime.getSelectionController("brush");
+            if (!controller) {
+                throw new Error("Expected an interval selection controller.");
+            }
+
+            const commitListener = vi.fn();
+            let unsubscribeSecond = () => {};
+            let unsubscribeThird = () => {};
+            const unsubscribeFirst = controller.subscribeCommit(() => {
+                commitListener();
+                if (commitListener.mock.calls.length === 1) {
+                    unsubscribeSecond();
+                    unsubscribeThird =
+                        controller.subscribeCommit(commitListener);
+                }
+            });
+            unsubscribeSecond = controller.subscribeCommit(commitListener);
+
+            listeners.get("mousedown")[0](createInteractionEvent());
+            document.dispatchEvent(
+                /** @type {Event} */ (/** @type {any} */ ({ type: "mouseup" }))
+            );
+
+            expect(commitListener).toHaveBeenCalledTimes(2);
+
+            unsubscribeFirst();
+            unsubscribeSecond();
+            unsubscribeThird();
+            child.dispose();
+        } finally {
+            globalThis.document = originalDocument;
+        }
+    });
+
     test("disposes interval selection view listeners", () => {
         /** @type {Map<string, any[]>} */
         const listeners = new Map();
