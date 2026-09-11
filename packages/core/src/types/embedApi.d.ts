@@ -115,54 +115,148 @@ export interface ParamApi<T = ParamValue> {
     subscribe: (listener: (value: T) => void) => () => void;
 }
 
+/**
+ * Detached value of an interval selection.
+ *
+ * An interval is active when at least one configured channel has a range. The
+ * ranges are expressed in data-domain values, not canvas coordinates.
+ */
 export interface IntervalSnapshot {
+    /** Discriminator for interval selection snapshots. */
     type: "interval";
+
+    /** Whether at least one interval is currently set. */
     active: boolean;
+
+    /** Selected range for each configured positional channel, or `null`. */
     intervals: Partial<Record<"x" | "y", readonly [number, number] | null>>;
 }
 
+/**
+ * Detached value of a point selection.
+ *
+ * Each row in `data` is a shallow copy of the selected datum without
+ * GenomeSpy's internal picking identifier.
+ */
 export interface PointSnapshot {
+    /** Discriminator for point selection snapshots. */
     type: "point";
+
+    /** Whether at least one row is currently selected. */
     active: boolean;
+
+    /** Selected data rows, in selection order. */
     data: ReadonlyArray<Readonly<Record<string, unknown>>>;
 }
 
+/** A detached snapshot of either an interval or point selection. */
 export type SelectionSnapshot = IntervalSnapshot | PointSnapshot;
 
+/**
+ * Capability for reading and clearing a row-backed point selection.
+ *
+ * Point selections are exposed as detached snapshots. Use `clear()` to empty
+ * the selection; writes through this capability are not supported.
+ */
 export interface PointSelectionApi {
+    /** Discriminator for this selection capability. */
     readonly type: "point";
+
+    /** Returns the current detached selection snapshot. */
     getValue: () => PointSnapshot;
+
+    /**
+     * Subscribes to future selection updates and returns an unsubscribe
+     * function. Delivery defaults to every change; `"commit"` is accepted for
+     * symmetry with interval selections and follows the point selection's
+     * normal update delivery.
+     */
     subscribe: (
         listener: (value: PointSnapshot) => void,
         options?: { delivery?: "change" | "commit" }
     ) => () => void;
+
+    /** Clears the selection and publishes the cleared state when it changed. */
     clear: () => void;
 }
 
+/**
+ * Capability for reading, clearing, and testing membership in an interval
+ * selection.
+ */
 export interface IntervalSelectionApi {
+    /** Discriminator for this selection capability. */
     readonly type: "interval";
+
+    /** Returns the current detached selection snapshot. */
     getValue: () => IntervalSnapshot;
+
+    /**
+     * Subscribes to future selection updates and returns an unsubscribe
+     * function. Delivery defaults to every change; `"commit"` reports a
+     * completed brush or a committed programmatic update.
+     */
     subscribe: (
         listener: (value: IntervalSnapshot) => void,
         options?: { delivery?: "change" | "commit" }
     ) => () => void;
+
+    /** Clears the selection and publishes the cleared state when it changed. */
     clear: () => void;
+
+    /**
+     * Tests whether a canvas point is inside the current interval selection.
+     * Coordinates are CSS pixels relative to the embedded GenomeSpy canvas.
+     */
     contains: (point: { x: number; y: number }) => boolean;
 }
 
+/** A public capability for either a point or interval selection. */
 export type SelectionApi = PointSelectionApi | IntervalSelectionApi;
 
+/**
+ * Parameters and selections resolved from one view's lexical scope.
+ *
+ * A scoped namespace resolves the nearest declaration in that view and its
+ * ancestors. Use `EmbedResult.params` for the authored top-level scope or a
+ * `ViewHandle.params` namespace for a particular view.
+ */
 export interface ParamNamespace {
+    /**
+     * Returns a handle for a parameter declared in this scope or an ancestor.
+     * Use a generic type argument when the parameter contains an object or
+     * array value.
+     */
     get: <T = ParamValue>(name: string) => ParamApi<T>;
+
+    /**
+     * Returns a capability for a named point or interval selection.
+     *
+     * Throws when the name is not declared as a supported selection in this
+     * scope.
+     */
     getSelection: (name: string) => SelectionApi;
 }
 
+/**
+ * Native input delivered before GenomeSpy handles an event.
+ *
+ * The point uses CSS-pixel coordinates relative to the embedded canvas. Calling
+ * `preventViewDefault()` vetoes Core's default interaction while leaving
+ * browser-level cancellation to `sourceEvent.preventDefault()`.
+ */
 export interface NativeEvent {
+    /** Browser event that triggered the input. */
     readonly sourceEvent: Event;
+
+    /** Canvas-relative CSS-pixel coordinates of the input event. */
     readonly point: { readonly x: number; readonly y: number };
+
+    /** Prevents GenomeSpy's default handling of this input event. */
     preventViewDefault: () => void;
 }
 
+/** Event names supported by `EmbedEventApi.subscribe()`. */
 export type NativeEventType =
     | "click"
     | "dblclick"
@@ -174,31 +268,73 @@ export type NativeEventType =
     | "mouseleave"
     | "wheel";
 
+/** Subscriptions for native input on the embedded GenomeSpy canvas. */
 export interface EmbedEventApi {
+    /**
+     * Subscribes synchronously before Core handles the event and returns an
+     * unsubscribe function.
+     */
     subscribe: (
         type: NativeEventType,
         listener: (event: NativeEvent) => void
     ) => () => void;
 }
 
+/**
+ * A mark hit from the current rendered scene.
+ *
+ * The datum is a detached shallow copy. Nested values are not cloned.
+ */
 export interface MarkHit {
+    /** Canonical handle for the unit view that owns the mark. */
     readonly view: ViewHandle;
+
+    /** Picking identifier for the mark in the current rendered scene. */
     readonly uniqueId: number;
+
+    /** Data row associated with the mark, without the internal picking id. */
     readonly datum: Readonly<Record<string, unknown>>;
 }
 
+/** A mark interaction event scoped to a `ViewHandle` subtree. */
 export interface MarkEvent {
+    /** Browser event that triggered the mark interaction. */
     readonly sourceEvent: MouseEvent;
+
+    /** Canvas-relative CSS-pixel coordinates of the interaction. */
     readonly point: { readonly x: number; readonly y: number };
+
+    /** Mark and datum confirmed by the renderer's picking state. */
     readonly hit: MarkHit;
 }
 
+/** Mark interaction subscriptions and explicit picking for one view subtree. */
 export interface MarksApi {
+    /**
+     * Subscribes to a mark event and returns an unsubscribe function.
+     *
+     * Events use the current confirmed hover hit and do not start another pick,
+     * so a rapid interaction can have no matching hit.
+     */
     subscribe: (
         type: "click" | "dblclick" | "contextmenu",
         listener: (event: MarkEvent) => void
     ) => () => void;
+
+    /**
+     * Subscribes to changes in the current hovered mark and returns an
+     * unsubscribe function. The listener is called once immediately with the
+     * current hit, or `undefined` when no mark is hovered.
+     */
     observeHover: (listener: (hit: MarkHit | undefined) => void) => () => void;
+
+    /**
+     * Explicitly queries the latest completed picking frame at a canvas point.
+     *
+     * The promise resolves with `"hit"`, `"empty"`, or `"invalidated"` when
+     * the scene changed or the embed was finalized before the query completed.
+     * It rejects when the active renderer does not support picking.
+     */
     pick: (point: {
         x: number;
         y: number;
@@ -391,10 +527,10 @@ export interface ViewHandle {
      */
     readonly datasets: DatasetApi;
 
-    /** Parameters resolved from this view's lexical scope. */
+    /** Parameters and selections resolved from this view's lexical scope. */
     readonly params: ParamNamespace;
 
-    /** Mark interaction scoped to this view's subtree. */
+    /** Mark interaction and picking scoped to this view's subtree. */
     readonly marks: MarksApi;
 }
 
@@ -675,10 +811,10 @@ export interface EmbedResult {
      */
     readonly datasets: DatasetApi;
 
-    /** Native canvas input subscriptions. */
+    /** Synchronous native input subscriptions for the embedded canvas. */
     readonly events: EmbedEventApi;
 
-    /** Parameters resolved from the authored top-level specification. */
+    /** Parameters and selections resolved from the authored top-level scope. */
     readonly params: ParamNamespace;
 
     /**
