@@ -1,6 +1,10 @@
 import { embed } from "@genome-spy/core/minimal";
 import "@genome-spy/core/rendering/webgl.js";
 
+/** @typedef {import("@genome-spy/core/types/embedApi.js").IntervalSelectionApi} IntervalSelectionApi */
+/** @typedef {import("@genome-spy/core/types/embedApi.js").PointSelectionApi} PointSelectionApi */
+/** @typedef {import("@genome-spy/core/types/embedApi.js").SelectionSnapshot} SelectionSnapshot */
+
 const bridgeUrl = "http://127.0.0.1:8765";
 const bridgeEnabled = new URLSearchParams(location.search).has("bridge");
 const values = Array.from({ length: 51 }, (_, x) => ({
@@ -21,7 +25,7 @@ const spec = {
         },
         {
             name: "selected",
-            select: { type: "point", encodings: ["x"], on: "pointerover" },
+            select: { type: "point", on: "pointerover" },
         },
     ],
     datasets: { annotations },
@@ -44,7 +48,7 @@ const spec = {
             name: "selection-reference",
             data: { values: values.map(({ x, y }) => ({ x, y: y / 2 + 35 })) },
             height: 70,
-            mark: { type: "rule", strokeWidth: 2 },
+            mark: { type: "rule", size: 2 },
             encoding: {
                 x: {
                     field: "x",
@@ -69,12 +73,24 @@ const spec = {
 };
 
 const api = await embed(document.getElementById("selection-plot"), spec);
-const brush = api.params.getSelection("brush");
-const selected = api.params.getSelection("selected");
-const form = document.getElementById("selection-form");
-const status = document.getElementById("selection-status");
-const summary = document.getElementById("selection-summary");
-const rows = document.getElementById("selection-rows");
+const brush = /** @type {IntervalSelectionApi} */ (
+    api.params.getSelection("brush")
+);
+const selected = /** @type {PointSelectionApi} */ (
+    api.params.getSelection("selected")
+);
+const form = /** @type {HTMLFormElement} */ (
+    document.getElementById("selection-form")
+);
+const status = /** @type {HTMLParagraphElement} */ (
+    document.getElementById("selection-status")
+);
+const summary = /** @type {HTMLParagraphElement} */ (
+    document.getElementById("selection-summary")
+);
+const rows = /** @type {HTMLTableSectionElement} */ (
+    document.getElementById("selection-rows")
+);
 
 function renderRows() {
     rows.replaceChildren(
@@ -88,13 +104,19 @@ function renderRows() {
     );
 }
 
+/** @param {boolean} enabled */
 function setFormEnabled(enabled) {
     form.disabled = !enabled;
     for (const control of form.elements) {
-        control.disabled = !enabled;
+        const formControl =
+            /** @type {HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement} */ (
+                control
+            );
+        formControl.disabled = !enabled;
     }
 }
 
+/** @param {SelectionSnapshot} snapshot */
 function showSelection(snapshot) {
     if (snapshot.type === "interval") {
         const interval = snapshot.intervals.x;
@@ -118,7 +140,7 @@ brush.subscribe(
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(snapshot),
-            }).catch(() => undefined);
+            }).catch(ignoreBridgeError);
         }
     },
     { delivery: "commit" }
@@ -131,7 +153,7 @@ selected.subscribe((snapshot) => {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(snapshot),
-        }).catch(() => undefined);
+        }).catch(ignoreBridgeError);
     }
 });
 
@@ -158,7 +180,7 @@ form.addEventListener("submit", (event) => {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(annotations),
-        }).catch(() => undefined);
+        }).catch(ignoreBridgeError);
     }
     brush.clear();
     form.reset();
@@ -180,6 +202,9 @@ async function pullBridgeAnnotations() {
         // The notebook bridge is optional for this browser-only example.
     }
 }
+
+/** @returns {void} */
+function ignoreBridgeError() {}
 
 renderRows();
 setFormEnabled(false);

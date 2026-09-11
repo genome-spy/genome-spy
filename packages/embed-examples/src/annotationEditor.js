@@ -1,7 +1,8 @@
 import { embed } from "@genome-spy/core/minimal";
 import "@genome-spy/core/rendering/webgl.js";
 
-/** @typedef {import("@genome-spy/core/types/embedApi.js").SelectionSnapshot} SelectionSnapshot */
+/** @typedef {import("@genome-spy/core/types/embedApi.js").IntervalSelectionApi} IntervalSelectionApi */
+/** @typedef {import("@genome-spy/core/types/embedApi.js").IntervalSnapshot} IntervalSnapshot */
 /** @typedef {import("@genome-spy/core/spec/root.js").RootSpec} RootSpec */
 
 const trackData = Array.from({ length: 101 }, (_, x) => ({
@@ -42,7 +43,7 @@ const spec = {
                 values: trackData.map(({ x, y }) => ({ x, y: y / 2 + 35 })),
             },
             height: 80,
-            mark: { type: "rule", strokeWidth: 2 },
+            mark: { type: "rule", size: 2 },
             encoding: {
                 x: {
                     field: "x",
@@ -67,19 +68,35 @@ const spec = {
 };
 
 const container = document.getElementById("annotation-plot");
-const menu = document.getElementById("annotation-menu");
-const form = document.getElementById("annotation-form");
-const cancel = document.getElementById("annotation-cancel");
-const rows = document.getElementById("annotation-rows");
-const status = document.getElementById("annotation-status");
-const hoverStatus = document.getElementById("annotation-hover");
-const clickStatus = document.getElementById("annotation-click");
+const menu = /** @type {HTMLDivElement} */ (
+    document.getElementById("annotation-menu")
+);
+const form = /** @type {HTMLFormElement} */ (
+    document.getElementById("annotation-form")
+);
+const cancel = /** @type {HTMLButtonElement} */ (
+    document.getElementById("annotation-cancel")
+);
+const rows = /** @type {HTMLTableSectionElement} */ (
+    document.getElementById("annotation-rows")
+);
+const status = /** @type {HTMLParagraphElement} */ (
+    document.getElementById("annotation-status")
+);
+const hoverStatus = /** @type {HTMLParagraphElement} */ (
+    document.getElementById("annotation-hover")
+);
+const clickStatus = /** @type {HTMLParagraphElement} */ (
+    document.getElementById("annotation-click")
+);
 
 const api = await embed(container, spec);
-const brush = api.params.getSelection("brush");
+const brush = /** @type {IntervalSelectionApi} */ (
+    api.params.getSelection("brush")
+);
 const marks = api.views.get({ scope: [], view: "annotations" }).marks;
 
-/** @type {SelectionSnapshot | undefined} */
+/** @type {IntervalSnapshot | undefined} */
 let pendingSelection;
 
 marks.subscribe("click", ({ hit }) => {
@@ -119,7 +136,8 @@ api.events.subscribe("contextmenu", (event) => {
         return;
     }
 
-    event.sourceEvent.preventDefault();
+    const sourceEvent = /** @type {MouseEvent} */ (event.sourceEvent);
+    sourceEvent.preventDefault();
     event.preventViewDefault();
     pendingSelection = brush.getValue();
     if (!pendingSelection.active || !pendingSelection.intervals.x) {
@@ -128,8 +146,8 @@ api.events.subscribe("contextmenu", (event) => {
 
     menu.hidden = false;
     menu.style.position = "fixed";
-    menu.style.left = `${event.sourceEvent.clientX}px`;
-    menu.style.top = `${event.sourceEvent.clientY}px`;
+    menu.style.left = `${sourceEvent.clientX}px`;
+    menu.style.top = `${sourceEvent.clientY}px`;
     form.querySelector("input").focus();
 });
 
