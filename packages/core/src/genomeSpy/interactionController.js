@@ -56,6 +56,8 @@ export default class InteractionController {
     #hoverListeners = [];
     /** @type {Point | undefined} */
     #currentHoverPoint;
+    /** @type {number | undefined} */
+    #currentHoverRequestId;
     /** @type {(error: unknown) => void} */
     #reportError = (error) => console.error(error);
     /** @type {() => boolean} */
@@ -235,6 +237,7 @@ export default class InteractionController {
             return;
         }
 
+        this.#clearHover();
         this.#tooltip.clear();
         this.#tooltipUpdateRequested = false;
     }
@@ -284,7 +287,7 @@ export default class InteractionController {
             return;
         }
 
-        this.#currentHover = null;
+        this.#clearHover();
         this.#cursorManager.clear();
     }
 
@@ -346,7 +349,11 @@ export default class InteractionController {
                 this.#tooltip.clear();
             }
 
-            if (uiEvent instanceof MouseEvent && uiEvent.type !== "mouseout") {
+            if (
+                uiEvent instanceof MouseEvent &&
+                uiEvent.type !== "mouseout" &&
+                this.#hoverTrackingSuspensionCount === 0
+            ) {
                 this.#cursorManager.update({
                     target: interaction.target,
                     hover: this.#currentHover,
@@ -507,7 +514,7 @@ export default class InteractionController {
                         // doesn't work incorrectly when zooming in/out.
 
                         // TODO: More robust solution (handle at higher level such as ScaleResolution's zoom method)
-                        this.#currentHover = null;
+                        this.#clearHover();
 
                         this.#wheelInertia.cancel();
                     } else {
@@ -884,7 +891,7 @@ export default class InteractionController {
             );
             this.#cursorManager.clear();
             this.#tooltip.clear();
-            this.#currentHover = null;
+            this.#clearHover();
             this.#pickingRequestId++;
             activeHoverPick = undefined;
             queuedMouseMove = undefined;
@@ -954,7 +961,7 @@ export default class InteractionController {
 
             const point = this.#lastPointerPoint;
             if (!point || !this.#isInsideCanvas(point)) {
-                this.#currentHover = null;
+                this.#clearHover();
                 this.#cursorManager.clear();
                 return;
             }
@@ -996,7 +1003,12 @@ export default class InteractionController {
                         shouldApply();
                     if (applied) {
                         this.#tooltipUpdateRequested = false;
-                        this.#applyPickingResult(x, y, uniqueId ?? 0);
+                        this.#applyPickingResult(
+                            x,
+                            y,
+                            uniqueId ?? 0,
+                            requestId
+                        );
                     }
                     return applied;
                 },
@@ -1008,7 +1020,7 @@ export default class InteractionController {
         }
         if (shouldApply()) {
             this.#tooltipUpdateRequested = false;
-            this.#applyPickingResult(x, y, result);
+            this.#applyPickingResult(x, y, result ?? 0, requestId);
         }
     }
 
@@ -1016,18 +1028,17 @@ export default class InteractionController {
      * @param {number} x
      * @param {number} y
      * @param {number} uniqueId
+     * @param {number} requestId
      */
-    #applyPickingResult(x, y, uniqueId) {
+    #applyPickingResult(x, y, uniqueId, requestId) {
         this.#currentHoverPoint = new Point(x, y);
-        const previousHover = this.#currentHover;
+        this.#currentHoverRequestId = requestId;
         if (uniqueId == 0) {
-            this.#currentHover = null;
-            this.#notifyHoverListeners(previousHover);
+            this.#replaceHover(null);
             return;
         }
 
-        this.#currentHover = this.#findHit(x, y, uniqueId);
-        this.#notifyHoverListeners(previousHover);
+        this.#replaceHover(this.#findHit(x, y, uniqueId));
 
         if (this.#currentHover) {
             const mark = this.#currentHover.mark;
@@ -1127,7 +1138,8 @@ export default class InteractionController {
         if (
             !point ||
             !this.#currentHoverPoint?.equals(point) ||
-            !this.#currentHover
+            !this.#currentHover ||
+            this.#currentHoverRequestId !== this.#pickingRequestId
         ) {
             return;
         }
@@ -1149,10 +1161,17 @@ export default class InteractionController {
     }
 
     /**
-     * @param {object | null | undefined} previousHover
+     * @param {InternalMarkHit | null | undefined} previousHover
      */
     #notifyHoverListeners(previousHover) {
-        if (previousHover === this.#currentHover) {
+        if (
+            (!previousHover && !this.#currentHover) ||
+            (previousHover &&
+                this.#currentHover &&
+                previousHover.mark === this.#currentHover.mark &&
+                previousHover.uniqueId === this.#currentHover.uniqueId &&
+                previousHover.datum === this.#currentHover.datum)
+        ) {
             return;
         }
         for (const entry of [...this.#hoverListeners]) {
@@ -1162,6 +1181,20 @@ export default class InteractionController {
                 this.#reportError(error);
             }
         }
+    }
+
+    /**
+     * @param {InternalMarkHit | null | undefined} hover
+     */
+    #replaceHover(hover) {
+        const previousHover = this.#currentHover;
+        this.#currentHover = hover;
+        this.#notifyHoverListeners(previousHover);
+    }
+
+    #clearHover() {
+        this.#currentHoverPoint = undefined;
+        this.#replaceHover(null);
     }
 
     /**

@@ -1351,6 +1351,101 @@ describe("InteractionController", () => {
         expect(events[0].hit.datum).toEqual({ label: "one" });
     });
 
+    it("notifies hover changes once and ignores invalidated mark activation", () => {
+        vi.spyOn(performance, "now")
+            .mockReturnValueOnce(0)
+            .mockReturnValue(1_000);
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (
+                class MouseEvent extends Event {
+                    constructor(
+                        /** @type {string} */ type,
+                        /** @type {Record<string, any>} */ init = {}
+                    ) {
+                        super(type);
+                        Object.assign(this, {
+                            button: 0,
+                            buttons: 0,
+                            clientX: 10,
+                            clientY: 20,
+                            ...init,
+                        });
+                    }
+                }
+            )
+        );
+
+        const canvas = new CanvasStub();
+        const scope = /** @type {any} */ ({});
+        const datum = { label: "one" };
+        const mark = /** @type {any} */ ({
+            isPickingParticipant: () => true,
+            properties: { tooltip: /** @type {null} */ (null) },
+            unitView: {
+                getLayoutAncestors: () => [scope],
+            },
+        });
+        const pickerUnitView = Object.create(UnitView.prototype);
+        pickerUnitView.mark = mark;
+        pickerUnitView.facetCoords = new Map([
+            ["facet", { containsPoint: () => true }],
+        ]);
+        pickerUnitView.getCollector = () => ({
+            findDatumByUniqueId: (/** @type {number} */ uniqueId) =>
+                uniqueId === 1 ? datum : undefined,
+        });
+
+        const controller = new InteractionController({
+            viewRoot: /** @type {any} */ ({
+                visit(/** @type {(view: UnitView) => any} */ visitor) {
+                    return visitor(pickerUnitView);
+                },
+                propagateInteraction() {},
+            }),
+            canvas: /** @type {any} */ (canvas),
+            tooltip: /** @type {any} */ ({
+                clear() {},
+                handleMouseMove() {},
+                updateWithDatum() {},
+                visible: false,
+                sticky: false,
+            }),
+            animator: /** @type {any} */ ({ requestRender() {} }),
+            emitEvent() {},
+            tooltipHandlers: {},
+            renderPickingFramebuffer() {},
+            readPickingId: () => 1,
+        });
+        /** @type {(import("../types/interactionApi.d.ts").InternalMarkHit | undefined)[]} */
+        const hoverChanges = [];
+        /** @type {any[]} */
+        const markEvents = [];
+        controller.subscribeHover(scope, (hit) => hoverChanges.push(hit));
+        controller.subscribeMarkEvent(scope, "click", (event) => {
+            markEvents.push(event);
+        });
+        controller.registerInteractionEvents();
+
+        canvas.dispatchEvent(new MouseEvent("mousemove"));
+        canvas.dispatchEvent(new MouseEvent("mousemove"));
+        expect(hoverChanges).toHaveLength(2);
+        expect(hoverChanges[1]?.datum).toBe(datum);
+
+        controller.invalidatePendingPicks();
+        canvas.dispatchEvent(new MouseEvent("click"));
+        expect(markEvents).toHaveLength(0);
+
+        canvas.dispatchEvent(new MouseEvent("mouseout"));
+        expect(hoverChanges).toHaveLength(3);
+        expect(hoverChanges.at(-1)).toBeUndefined();
+
+        canvas.dispatchEvent(new MouseEvent("mousemove"));
+        expect(hoverChanges).toHaveLength(4);
+        controller.suspendHoverTracking();
+        expect(hoverChanges).toHaveLength(5);
+        expect(hoverChanges.at(-1)).toBeUndefined();
+    });
+
     it("does not replay mark activation from a pending hover pick", async () => {
         installEventTargetDocument();
         vi.spyOn(performance, "now").mockReturnValue(1_000);
