@@ -1,6 +1,7 @@
 # Embed integration API: implementation restart
 
-Status: implemented on `codex/embed-integration-restart`. This is the only
+Status: implemented on `codex/embed-integration-restart`; follow-up cleanup is
+tracked below. This is the only
 implementation plan for this fresh branch. It carries forward the agreed
 redesign and consumer workflows, not the rejected implementation. No production
 changes were imported from the failed branch.
@@ -484,6 +485,28 @@ Run the full unit suite, workspace type checks, lint, and
 diff for duplicate machinery, renderer changes, downstream regressions, and total
 size. Intended commit:
 `feat(embed-examples): demonstrate annotations and notebook selections`.
+
+### 4. Review and clean up the implemented integration
+
+The initial implementation is a sound PoC, but a production follow-up should
+address the following review findings without changing the agreed public
+contracts:
+
+- [ ] Consolidate the duplicated modern embed-result assembly in Core and App,
+  keeping App-specific fields and lifecycle behavior explicit.
+- [ ] Replace new internal `any` types and optional selection-controller
+  registration fallbacks with small typed contracts owned by the existing
+  interaction and parameter components.
+- [ ] Make lifecycle behavior uniform for embed-level and view-level parameter
+  and selection handles after finalization or view removal.
+- [ ] Revisit and clearly encode the confirmed-hover rule for mark activation:
+  either keep the documented synchronous behavior as an explicit contract or
+  propose a materially different activation design for user review.
+
+Keep each cleanup independently verified and commit it separately. Do not
+expand the API, add a second interaction owner, or change renderer behavior.
+If resolving a finding requires changing timing, ownership, or public usage,
+stop at the user-review gate and present the revised proposal before coding.
 
 ## Implementation reconciliation
 
