@@ -19,6 +19,11 @@
             mark with the root view's scoped picking API, and the changed
             sequence is published through the named dataset API.
         </p>
+        <p>
+            The marks use <code>tooltip: false</code>: this hides tooltips while
+            keeping them available for picking. <code>tooltip: null</code> would
+            also disable picking unless a point selection enabled it.
+        </p>
 
         <div id="container"></div>
         <p id="status" role="status">Click a base to edit the sequence.</p>

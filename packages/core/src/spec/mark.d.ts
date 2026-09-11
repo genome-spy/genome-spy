@@ -105,8 +105,11 @@ export interface MarkPropsBase {
     cullByVisibleRange?: boolean | "x" | "y";
 
     /**
-     * Tooltip handler. If `null`, no tooltip is shown. If string, specifies
-     * the [tooltip handler](https://genomespy.app/docs/api/embed-options/#custom-tooltip-handlers)
+     * Tooltip handler. If `false`, no tooltip is shown but the mark remains
+     * available for renderer picking and mark interactions. If `null`, no
+     * tooltip is shown and the mark is excluded from picking unless its view
+     * declares a point selection. If string, specifies the
+     * [tooltip handler](https://genomespy.app/docs/api/embed-options/#custom-tooltip-handlers)
      * to use.
      */
     tooltip?: Tooltip;

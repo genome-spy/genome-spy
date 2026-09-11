@@ -309,7 +309,9 @@ export interface MarkHit {
  *
  * Mark activation uses the latest confirmed hover hit. It does not start a new
  * pick, so a fast interaction can produce no mark event. A pending hover result
- * is not replayed as a later activation.
+ * is not replayed as a later activation. Marks configured with `tooltip: null`
+ * are not pickable unless their view declares a point selection; use
+ * `tooltip: false` to suppress tooltips while keeping a mark interactive.
  */
 export interface MarkEvent {
     /** Browser event that triggered the mark interaction. */
@@ -333,7 +335,9 @@ export interface MarksApi {
      * Subscribes to a mark event and returns an unsubscribe function.
      *
      * Events use the current confirmed hover hit and do not start another pick,
-     * so a rapid interaction can have no matching hit.
+     * so a rapid interaction can have no matching hit. Use `pick()` together
+     * with `EmbedEventApi.subscribe()` when the click coordinates must be
+     * resolved independently of hover state.
      */
     subscribe: (
         type: "click" | "dblclick" | "contextmenu",
@@ -349,6 +353,9 @@ export interface MarksApi {
 
     /**
      * Explicitly queries the latest completed picking frame at a canvas point.
+     *
+     * This is the reliable choice for handling a native click at its exact
+     * coordinates; it does not depend on a previous hover result.
      *
      * The promise resolves with `"hit"`, `"empty"`, or `"invalidated"` when
      * the scene changed or the embed was finalized before the query completed.
