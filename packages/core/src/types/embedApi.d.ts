@@ -18,7 +18,7 @@ export type EmbedFunction = (
     el: HTMLElement | string,
     spec: RootSpec | string,
     options?: EmbedOptions
-) => EmbedResult;
+) => Promise<EmbedResult>;
 
 export interface EmbedOptions {
     /**
@@ -157,6 +157,10 @@ export type SelectionSnapshot = IntervalSnapshot | PointSnapshot;
  *
  * Point selections are exposed as detached snapshots. Use `clear()` to empty
  * the selection; writes through this capability are not supported.
+ *
+ * `"commit"` is accepted for future gesture-based point selections, such as a
+ * lasso. For the current point-selection implementation, it has the same
+ * delivery behavior as `"change"`.
  */
 export interface PointSelectionApi {
     /** Discriminator for this selection capability. */
@@ -219,7 +223,9 @@ export type SelectionApi = PointSelectionApi | IntervalSelectionApi;
  *
  * A scoped namespace resolves the nearest declaration in that view and its
  * ancestors. Use `EmbedResult.params` for the authored top-level scope or a
- * `ViewHandle.params` namespace for a particular view.
+ * `ViewHandle.params` namespace for a particular view. Handles returned from
+ * this namespace are live capabilities: operations fail after finalization or,
+ * for a view-scoped namespace, after that view is removed.
  */
 export interface ParamNamespace {
     /**
@@ -243,7 +249,9 @@ export interface ParamNamespace {
  *
  * The point uses CSS-pixel coordinates relative to the embedded canvas. Calling
  * `preventViewDefault()` vetoes Core's default interaction while leaving
- * browser-level cancellation to `sourceEvent.preventDefault()`.
+ * browser-level cancellation to `sourceEvent.preventDefault()`. Use this API
+ * for input at the canvas level; use `ViewHandle.marks` for interactions tied
+ * to a picked mark.
  */
 export interface NativeEvent {
     /** Browser event that triggered the input. */
@@ -296,7 +304,13 @@ export interface MarkHit {
     readonly datum: Readonly<Record<string, unknown>>;
 }
 
-/** A mark interaction event scoped to a `ViewHandle` subtree. */
+/**
+ * A mark interaction event scoped to a `ViewHandle` subtree.
+ *
+ * Mark activation uses the latest confirmed hover hit. It does not start a new
+ * pick, so a fast interaction can produce no mark event. A pending hover result
+ * is not replayed as a later activation.
+ */
 export interface MarkEvent {
     /** Browser event that triggered the mark interaction. */
     readonly sourceEvent: MouseEvent;
@@ -308,7 +322,12 @@ export interface MarkEvent {
     readonly hit: MarkHit;
 }
 
-/** Mark interaction subscriptions and explicit picking for one view subtree. */
+/**
+ * Mark interaction subscriptions and explicit picking for one view subtree.
+ *
+ * Subscriptions belong to the view handle that created them and are disposed
+ * automatically when that view is removed or the embed is finalized.
+ */
 export interface MarksApi {
     /**
      * Subscribes to a mark event and returns an unsubscribe function.
@@ -348,9 +367,11 @@ export interface MarksApi {
 /**
  * Address of a view in the live layout hierarchy.
  *
- * Use a `ViewSelector` for durable references to named views within import or
- * insertion scopes. Use a `ViewHandle` for views returned by this API,
- * including anonymous views. Use `"root"` to address the root view.
+ * Use a `ViewSelector` to resolve an authored, named view within import or
+ * insertion scopes. Selectors cannot reliably identify anonymous views,
+ * repeated instances, or one particular dynamically inserted instance. Use a
+ * `ViewHandle` for the exact live view returned by this API, including those
+ * cases. Use `"root"` to address the root view.
  */
 export type ViewAddress = ViewHandle | ViewSelector | "root";
 
@@ -479,9 +500,10 @@ export interface DatasetApi {
  * GenomeSpy may add an implicit root layout container, for example when a
  * root unit view needs space for axes, titles, or other guides.
  *
- * Handles are opaque public references. They do not expose internal `View`
- * objects, and callers should check `isAlive()` before reusing a handle after
- * mutations that may have removed its subtree.
+ * Handles are opaque public references to one concrete view instance. They do
+ * not expose internal `View` objects, are not bookmark or serialization
+ * formats, and should not be reused after `isAlive()` becomes false. Methods
+ * on a stale handle also fail rather than silently operating on another view.
  */
 export interface ViewHandle {
     /**
@@ -560,16 +582,17 @@ export interface ViewApi {
     /**
      * Resolves an address to a live view handle.
      *
-     * Returns `undefined` when the address cannot be resolved or when a handle
-     * no longer refers to a live view.
+     * Selectors resolve the current matching authored view. A selector that is
+     * missing or ambiguous, or a handle that no longer refers to a live view,
+     * returns `undefined`.
      */
     resolve: (address: ViewAddress) => ViewHandle | undefined;
 
     /**
      * Resolves an address to a live view handle.
      *
-     * Throws if the address cannot be resolved or if a handle no longer refers
-     * to a live view.
+     * Throws if the address cannot be resolved, is ambiguous, or if a handle no
+     * longer refers to a live view.
      */
     get: (address: ViewAddress) => ViewHandle;
 
