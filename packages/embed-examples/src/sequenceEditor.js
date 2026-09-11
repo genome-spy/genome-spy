@@ -17,69 +17,85 @@ const sequence = Array.from({ length: 50 }, (_, index) => ({
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
     datasets: { sequence },
-    genome: { name: "hg19" },
+    assembly: "hg19",
     layer: [
         {
-            name: "base-rects",
-            data: { name: "sequence" },
-            height: 70,
-            mark: {
-                type: "rect",
-                minWidth: 0.5,
-                minOpacity: 0.2,
-                tooltip: null,
-            },
-            encoding: {
-                x: {
-                    chrom: "chrom",
-                    pos: "pos",
-                    type: "locus",
-                    scale: {
-                        domain: [
-                            { chrom: "chr1", pos: start },
-                            { chrom: "chr1", pos: start + sequence.length },
-                        ],
+            name: "sequence",
+            layer: [
+                {
+                    name: "base-rects",
+                    data: { name: "sequence" },
+                    height: 70,
+                    mark: {
+                        type: "rect",
+                        minWidth: 0.5,
+                        minOpacity: 0.2,
+                        tooltip: false,
+                    },
+                    encoding: {
+                        x: {
+                            chrom: "chrom",
+                            pos: "pos",
+                            type: "locus",
+                            scale: {
+                                domain: [
+                                    { chrom: "chr1", pos: start },
+                                    {
+                                        chrom: "chr1",
+                                        pos: start + sequence.length,
+                                    },
+                                ],
+                            },
+                        },
+                        color: {
+                            field: "base",
+                            type: "nominal",
+                            scale: {
+                                type: "ordinal",
+                                domain: BASES,
+                                range: [
+                                    "#7BD56C",
+                                    "#86BBF1",
+                                    "#FFC56C",
+                                    "#FF9B9B",
+                                ],
+                            },
+                        },
                     },
                 },
-                color: {
-                    field: "base",
-                    type: "nominal",
-                    scale: {
-                        type: "ordinal",
-                        domain: BASES,
-                        range: ["#7BD56C", "#86BBF1", "#FFC56C", "#FF9B9B"],
+                {
+                    name: "base-labels",
+                    data: { name: "sequence" },
+                    height: 70,
+                    mark: {
+                        type: "text",
+                        size: 13,
+                        fitToBand: true,
+                        paddingX: 1.5,
+                        paddingY: 1,
+                        opacity: 0.7,
+                        tooltip: false,
+                    },
+                    encoding: {
+                        x: {
+                            chrom: "chrom",
+                            pos: "pos",
+                            type: "locus",
+                            scale: {
+                                domain: [
+                                    { chrom: "chr1", pos: start },
+                                    {
+                                        chrom: "chr1",
+                                        pos: start + sequence.length,
+                                    },
+                                ],
+                            },
+                        },
+                        color: { value: "black" },
+                        text: { field: "base" },
                     },
                 },
-            },
-        },
-        {
-            name: "base-labels",
-            data: { name: "sequence" },
-            height: 70,
-            mark: {
-                type: "text",
-                size: 13,
-                fitToBand: true,
-                paddingX: 1.5,
-                paddingY: 1,
-                opacity: 0.7,
-                tooltip: null,
-            },
-            encoding: {
-                x: {
-                    chrom: "chrom",
-                    pos: "pos",
-                    type: "locus",
-                    scale: {
-                        domain: [
-                            { chrom: "chr1", pos: start },
-                            { chrom: "chr1", pos: start + sequence.length },
-                        ],
-                    },
-                },
-                color: { value: "black" },
-                text: { field: "base" },
-            },
+            ],
         },
     ],
 };
@@ -89,9 +105,12 @@ const status = /** @type {HTMLParagraphElement} */ (
     document.getElementById("status")
 );
 const api = await embed(container, spec);
-const marks = api.views.root().marks;
+const marks = api.views.get({ scope: [], view: "sequence" }).marks;
 
-marks.subscribe("click", ({ hit }) => {
+/**
+ * @param {{ hit: import("@genome-spy/core/types/embedApi.js").MarkHit }} event
+ */
+function editBase({ hit }) {
     const index = hit.datum.index;
     if (typeof index !== "number") {
         throw new Error("Clicked sequence base is missing its index.");
@@ -106,4 +125,11 @@ marks.subscribe("click", ({ hit }) => {
     base.base = nextBase;
     api.datasets.set("sequence", sequence);
     status.textContent = `Base ${index + 1} changed to ${nextBase}.`;
+}
+
+api.events.subscribe("click", async ({ point }) => {
+    const result = await marks.pick(point);
+    if (result.status === "hit") {
+        editBase(result);
+    }
 });

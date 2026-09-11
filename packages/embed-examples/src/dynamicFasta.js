@@ -27,9 +27,7 @@ const spec = {
     },
     height: 30,
 
-    genome: {
-        name: "hg19",
-    },
+    assembly: "hg19",
 
     layer: [
         {

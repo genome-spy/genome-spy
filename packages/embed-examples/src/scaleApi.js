@@ -5,7 +5,7 @@ import { html, render } from "lit";
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
     height: 50,
-    genome: { name: "hg38" },
+    assembly: "hg38",
     data: {
         values: [
             { chrom: "chr3", pos: 134567890 },

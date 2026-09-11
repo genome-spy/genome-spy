@@ -15,9 +15,9 @@
         </p>
         <p>
             Click a base to replace it with the next base in the cycle
-            <code>A → C → G → T → A</code>. The click is handled through the
-            embed API's view-scoped mark events, and the changed sequence is
-            published through the named dataset API.
+            <code>A → C → G → T → A</code>. The canvas click is resolved to a
+            mark with the root view's scoped picking API, and the changed
+            sequence is published through the named dataset API.
         </p>
 
         <div id="container"></div>
