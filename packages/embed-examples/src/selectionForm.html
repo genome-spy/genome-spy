@@ -2,7 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <link rel="stylesheet" href="style.scss" />
+        <link rel="stylesheet" href="selectionForm.scss" />
         <title>Selection-driven form</title>
     </head>
 
@@ -12,6 +12,12 @@
             Brush a region or click a point. A committed brush enables the
             form; the optional marimo bridge exchanges JSON-safe state with
             Python on <code>http://127.0.0.1:8765</code>.
+        </p>
+        <p>
+            The page listens to the named interval and point selections, then
+            writes saved annotations back to the embed's named dataset. Add
+            <code>?bridge=1</code> to connect this page to the notebook
+            example while keeping the browser UI in control.
         </p>
 
         <div id="selection-plot"></div>

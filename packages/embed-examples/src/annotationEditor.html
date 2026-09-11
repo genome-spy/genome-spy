@@ -2,7 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <link rel="stylesheet" href="style.scss" />
+        <link rel="stylesheet" href="annotationEditor.scss" />
         <title>Annotation editor</title>
     </head>
 
@@ -11,6 +11,12 @@
         <p>
             Brush a region, then right-click inside it to add an annotation.
             The form and table belong to the embedding page.
+        </p>
+        <p>
+            The named <code>brush</code> selection provides the interval, and
+            saving publishes the updated rows to the named
+            <code>annotations</code> dataset. Hover or click a saved region to
+            see mark events reported by the embed API.
         </p>
 
         <div id="annotation-plot"></div>

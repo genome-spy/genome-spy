@@ -4,38 +4,9 @@ body {
     font-family: sans-serif;
 }
 
-#annotation-menu {
-    z-index: 1;
-    padding: 1em;
-    background: white;
-    border: 1px solid #999;
-    box-shadow: 0 2px 8px #0003;
-}
-
-#annotation-menu form,
-#annotation-menu label {
-    display: grid;
-    gap: 0.5em;
-}
-
-#annotation-menu form {
-    gap: 1em;
-}
-
 table {
     border-collapse: collapse;
     margin-top: 1em;
-}
-
-#selection-form {
-    display: grid;
-    max-width: 32em;
-    gap: 0.75em;
-}
-
-#selection-form label {
-    display: grid;
-    gap: 0.35em;
 }
 
 th,
