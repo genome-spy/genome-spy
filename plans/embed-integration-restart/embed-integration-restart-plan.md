@@ -499,7 +499,7 @@ contracts:
 - [x] Replace new internal `any` types and optional selection-controller
       registration fallbacks with small typed contracts owned by the existing
       interaction and parameter components.
-- [ ] Make lifecycle behavior uniform for embed-level and view-level parameter
+- [x] Make lifecycle behavior uniform for embed-level and view-level parameter
       and selection handles after finalization or view removal.
 - [x] Revisit and clearly encode the confirmed-hover rule for mark activation:
       either keep the documented synchronous behavior as an explicit contract or

@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import {
+    createEmbedParamNamespace,
     resolveEmbedParam,
     resolveEmbedSelection,
     resolveScopedEmbedParam,
@@ -265,5 +266,53 @@ describe("embed param API", () => {
 
         selection.clear();
         expect(selection.getValue().active).toBe(false);
+    });
+
+    test("invalidates handles and disposes subscriptions with their view", async () => {
+        const { view: root } = await createHeadlessEngine(
+            makeUnit("root", [
+                { name: "threshold", value: 1 },
+                {
+                    name: "brush",
+                    select: "point",
+                },
+            ])
+        );
+        let active = true;
+        let live = true;
+        /** @type {(() => void)[]} */
+        const disposers = [];
+        const namespace = createEmbedParamNamespace(root, {
+            isActive: () => active,
+            isLive: () => live,
+            registerDisposer: (disposer) => disposers.push(disposer),
+        });
+        const param = namespace.get("threshold");
+        const listener = vi.fn();
+        param.subscribe(listener);
+        const selection = namespace.getSelection("brush");
+        selection.subscribe(vi.fn());
+
+        active = false;
+        expect(() => namespace.get("threshold")).toThrow(/finalized/);
+        expect(() => param.getValue()).toThrow(/finalized/);
+        expect(() => param.setValue(2)).toThrow(/finalized/);
+        expect(() => param.subscribe(listener)).toThrow(/finalized/);
+        expect(() => selection.getValue()).toThrow(/finalized/);
+        expect(() => selection.clear()).toThrow(/finalized/);
+        expect(() => selection.subscribe(vi.fn())).toThrow(/finalized/);
+
+        active = true;
+        live = false;
+        expect(() => namespace.get("threshold")).toThrow(/removed/);
+        expect(() => param.getValue()).toThrow(/removed/);
+        expect(() => selection.getValue()).toThrow(/removed/);
+        expect(() => selection.clear()).toThrow(/removed/);
+
+        for (const disposer of disposers) {
+            disposer();
+        }
+        root.paramRuntime.setValue("threshold", 2);
+        expect(listener).not.toHaveBeenCalled();
     });
 });

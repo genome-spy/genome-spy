@@ -333,7 +333,11 @@ export function createViewMutationApi(genomeSpy, isActive) {
 
             datasets: createViewDatasetApi(() => view, getRootView, isActive),
 
-            params: createEmbedParamNamespace(view),
+            params: createEmbedParamNamespace(view, {
+                isActive,
+                isLive: () => isLiveView(view, getRootView),
+                registerDisposer: (disposer) => view.registerDisposer(disposer),
+            }),
 
             marks: createViewMarksApi(view),
         };

@@ -33,7 +33,8 @@ export function createEmbedResult({ genomeSpy, isActive, debug, finalize }) {
             },
         },
         params: createEmbedParamNamespace(
-            getTopLevelSpecView(genomeSpy.viewRoot)
+            getTopLevelSpecView(genomeSpy.viewRoot),
+            { isActive }
         ),
 
         finalize,

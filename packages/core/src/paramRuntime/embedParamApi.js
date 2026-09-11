@@ -15,22 +15,29 @@ import {
  * @typedef {import("../types/embedApi.js").ParamApi} ParamApi
  * @typedef {import("../types/embedApi.js").SelectionApi} SelectionApi
  * @typedef {import("../types/embedApi.js").SelectionSnapshot} SelectionSnapshot
+ * @typedef {object} ParamApiLifecycle
+ * @property {() => boolean} [isActive]
+ * @property {() => boolean} [isLive]
+ * @property {(disposer: () => void) => void} [registerDisposer]
  */
 
 /**
  * Creates the modern parameter namespace for a lexical view scope.
  *
  * @param {View} view
+ * @param {ParamApiLifecycle} [lifecycle]
  * @returns {import("../types/embedApi.js").ParamNamespace}
  */
-export function createEmbedParamNamespace(view) {
+export function createEmbedParamNamespace(view, lifecycle = {}) {
     return /** @type {import("../types/embedApi.js").ParamNamespace} */ ({
         get(name) {
-            return resolveScopedEmbedParam(view, name);
+            ensureParamApiIsLive(lifecycle);
+            return resolveScopedEmbedParam(view, name, lifecycle);
         },
 
         getSelection(name) {
-            return resolveEmbedSelection(view, name);
+            ensureParamApiIsLive(lifecycle);
+            return resolveEmbedSelection(view, name, lifecycle);
         },
     });
 }
@@ -40,9 +47,11 @@ export function createEmbedParamNamespace(view) {
  *
  * @param {View} view
  * @param {string} name
+ * @param {ParamApiLifecycle} [lifecycle]
  * @returns {ParamApi}
  */
-export function resolveScopedEmbedParam(view, name) {
+export function resolveScopedEmbedParam(view, name, lifecycle = {}) {
+    ensureParamApiIsLive(lifecycle);
     const declaration = view.paramRuntime.findConfiguredParam(name);
     if (!declaration) {
         throw new Error('Parameter "' + name + '" not found.');
@@ -53,7 +62,12 @@ export function resolveScopedEmbedParam(view, name) {
         throw new Error('Parameter "' + name + '" has no runtime value.');
     }
 
-    return createParamApi(declaration.runtime, effectiveRuntime, name);
+    return createParamApi(
+        declaration.runtime,
+        effectiveRuntime,
+        name,
+        lifecycle
+    );
 }
 
 /**
@@ -62,9 +76,11 @@ export function resolveScopedEmbedParam(view, name) {
  *
  * @param {View} view
  * @param {string} name
+ * @param {ParamApiLifecycle} [lifecycle]
  * @returns {SelectionApi}
  */
-export function resolveEmbedSelection(view, name) {
+export function resolveEmbedSelection(view, name, lifecycle = {}) {
+    ensureParamApiIsLive(lifecycle);
     const declaration = view.paramRuntime.findConfiguredParam(name);
     if (!declaration) {
         throw new Error('Selection "' + name + '" not found.');
@@ -102,6 +118,7 @@ export function resolveEmbedSelection(view, name) {
         type: select.type,
 
         getValue() {
+            ensureParamApiIsLive(lifecycle);
             return copySelection(effectiveRuntime.getValue(name));
         },
 
@@ -109,29 +126,43 @@ export function resolveEmbedSelection(view, name) {
             /** @type {(value: SelectionSnapshot) => void} */ listener,
             /** @type {{ delivery?: "change" | "commit" }} */ options = {}
         ) {
+            ensureParamApiIsLive(lifecycle);
             if (options.delivery === "commit") {
                 if (!controller) {
-                    return effectiveRuntime.subscribe(name, () => {
+                    return registerParamDisposer(
+                        lifecycle,
+                        effectiveRuntime.subscribe(name, () => {
+                            callSelectionListener(
+                                listener,
+                                copySelection(effectiveRuntime.getValue(name))
+                            );
+                        })
+                    );
+                }
+                return registerParamDisposer(
+                    lifecycle,
+                    controller.subscribeCommit((selection) =>
                         callSelectionListener(
                             listener,
-                            copySelection(effectiveRuntime.getValue(name))
-                        );
-                    });
-                }
-                return controller.subscribeCommit((selection) =>
-                    callSelectionListener(listener, copySelection(selection))
+                            copySelection(selection)
+                        )
+                    )
                 );
             }
 
-            return effectiveRuntime.subscribe(name, () => {
-                callSelectionListener(
-                    listener,
-                    copySelection(effectiveRuntime.getValue(name))
-                );
-            });
+            return registerParamDisposer(
+                lifecycle,
+                effectiveRuntime.subscribe(name, () => {
+                    callSelectionListener(
+                        listener,
+                        copySelection(effectiveRuntime.getValue(name))
+                    );
+                })
+            );
         },
 
         clear() {
+            ensureParamApiIsLive(lifecycle);
             if (controller) {
                 controller.clear();
             } else if (isPointSelectionConfig(select) && select.toggle) {
@@ -144,6 +175,7 @@ export function resolveEmbedSelection(view, name) {
         ...(controller
             ? {
                   contains(point) {
+                      ensureParamApiIsLive(lifecycle);
                       return controller.contains(point);
                   },
               }
@@ -229,18 +261,21 @@ function callParamListener(listener, value) {
  * @param {import("../paramRuntime/viewParamRuntime.js").default} setterRuntime
  * @param {import("../paramRuntime/viewParamRuntime.js").default} valueRuntime
  * @param {string} name
+ * @param {ParamApiLifecycle} lifecycle
  * @returns {ParamApi}
  */
-function createParamApi(setterRuntime, valueRuntime, name) {
+function createParamApi(setterRuntime, valueRuntime, name, lifecycle) {
     const config = setterRuntime.paramConfigs.get(name);
     const readOnly = Boolean(config && "expr" in config);
 
     return {
         getValue() {
+            ensureParamApiIsLive(lifecycle);
             return valueRuntime.getValue(name);
         },
 
         setValue(value) {
+            ensureParamApiIsLive(lifecycle);
             if (readOnly) {
                 throw new Error(
                     'Cannot set computed parameter "' + name + '".'
@@ -250,11 +285,49 @@ function createParamApi(setterRuntime, valueRuntime, name) {
         },
 
         subscribe(listener) {
-            return valueRuntime.subscribe(name, () => {
-                callParamListener(listener, valueRuntime.getValue(name));
-            });
+            ensureParamApiIsLive(lifecycle);
+            return registerParamDisposer(
+                lifecycle,
+                valueRuntime.subscribe(name, () => {
+                    callParamListener(listener, valueRuntime.getValue(name));
+                })
+            );
         },
     };
+}
+
+/**
+ * @param {ParamApiLifecycle} lifecycle
+ */
+function ensureParamApiIsLive(lifecycle) {
+    if (lifecycle.isActive && !lifecycle.isActive()) {
+        throw new Error(
+            "Cannot use a parameter or selection handle after the embed was finalized."
+        );
+    }
+    if (lifecycle.isLive && !lifecycle.isLive()) {
+        throw new Error(
+            "Cannot use a parameter or selection handle after its view was removed."
+        );
+    }
+}
+
+/**
+ * @param {ParamApiLifecycle} lifecycle
+ * @param {() => void} unsubscribe
+ * @returns {() => void}
+ */
+function registerParamDisposer(lifecycle, unsubscribe) {
+    let disposed = false;
+    const disposer = () => {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
+        unsubscribe();
+    };
+    lifecycle.registerDisposer?.(disposer);
+    return disposer;
 }
 
 /**
