@@ -54,6 +54,8 @@ export class IntervalSelectionController {
         selectionRect
     ) {
         this.host = host;
+        this.#selectionName = name;
+        this.#selectionRuntime = paramRuntime;
         this.#viewListeners = new ViewInteractionListenerTracker(host.view);
 
         this.#setup(
@@ -87,6 +89,15 @@ export class IntervalSelectionController {
     /** @type {() => void} */
     #unregisterSelectionController = () => {};
 
+    /** @type {string} */
+    #selectionName;
+
+    /** @type {import("../../paramRuntime/viewParamRuntime.js").default} */
+    #selectionRuntime;
+
+    /** @type {((selection: import("../../types/selectionTypes.js").IntervalSelection) => void)[]} */
+    #commitListeners = [];
+
     /**
      * @param {string} type
      * @param {import("../view.js").InteractionListener} listener
@@ -108,6 +119,7 @@ export class IntervalSelectionController {
         }
         this.#unregisterSelectionController();
         this.#viewListeners.dispose();
+        this.#commitListeners = [];
     }
 
     /**
@@ -119,6 +131,32 @@ export class IntervalSelectionController {
      */
     contains(point) {
         return this.#containsPoint(/** @type {Point} */ (point));
+    }
+
+    /**
+     * @param {(selection: import("../../types/selectionTypes.js").IntervalSelection) => void} listener
+     * @returns {() => void}
+     */
+    subscribeCommit(listener) {
+        this.#commitListeners.push(listener);
+        return () => {
+            const index = this.#commitListeners.indexOf(listener);
+            if (index >= 0) {
+                this.#commitListeners.splice(index, 1);
+            }
+        };
+    }
+
+    /**
+     * Cancels an active gesture and clears a changed selection.
+     */
+    clear() {
+        const wasDragging = this.#disposeActiveDrag();
+        this.#disposeActiveDrag = () => false;
+        if (wasDragging) {
+            this.host.context.resumeHoverTracking();
+        }
+        this.#clearSelection();
     }
 
     /**
@@ -225,8 +263,11 @@ export class IntervalSelectionController {
         }
 
         const clearSelection = () => {
-            setter(createIntervalSelection(channels));
+            if (isActiveIntervalSelection(selectionExpr())) {
+                setter(createIntervalSelection(channels));
+            }
         };
+        this.#clearSelection = clearSelection;
 
         const isInsideHost = (/** @type {Point} */ point) =>
             this.host.getInteractionCoords()?.containsPoint(point.x, point.y) ??
@@ -342,6 +383,7 @@ export class IntervalSelectionController {
             if (translatedRectangle) {
                 // Started dragging an existing selection
                 setIntervalDragActive(true);
+                nowBrushing = true;
                 // Start of dragging should prevent click propagation so that
                 // no other selections or events are triggered.
                 preventNextClickPropagation = true;
@@ -357,8 +399,8 @@ export class IntervalSelectionController {
                 const startSelection = eventPredicate(event.proxiedMouseEvent);
 
                 if (startSelection) {
-                    clearSelection();
                     nowBrushing = true;
+                    clearSelection();
                 } else if (
                     clearEventConfig &&
                     isActiveIntervalSelection(selectionExpr())
@@ -465,9 +507,12 @@ export class IntervalSelectionController {
             };
 
             const mouseUpListener = (/** @type {MouseEvent} */ upEvent) => {
-                this.#disposeActiveDrag();
+                const wasDragging = this.#disposeActiveDrag();
                 this.#disposeActiveDrag = () => false;
                 view.context.resumeHoverTracking(upEvent);
+                if (wasDragging) {
+                    this.#notifyCommit();
+                }
             };
             this.#disposeActiveDrag = () => {
                 document.removeEventListener("mousemove", mouseMoveListener);
@@ -615,6 +660,24 @@ export class IntervalSelectionController {
                 mouseOver = false;
             }
         });
+
+        this.host.view.registerDisposer(
+            paramRuntime.subscribe(name, () => {
+                if (!nowBrushing) {
+                    this.#notifyCommit();
+                }
+            })
+        );
+    }
+
+    /** @type {() => void} */
+    #clearSelection = () => {};
+
+    #notifyCommit() {
+        const selection = this.#selectionRuntime.getValue(this.#selectionName);
+        for (const listener of [...this.#commitListeners]) {
+            listener(selection);
+        }
     }
 }
 

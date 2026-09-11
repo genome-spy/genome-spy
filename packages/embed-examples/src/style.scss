@@ -27,6 +27,17 @@ table {
     margin-top: 1em;
 }
 
+#selection-form {
+    display: grid;
+    max-width: 32em;
+    gap: 0.75em;
+}
+
+#selection-form label {
+    display: grid;
+    gap: 0.35em;
+}
+
 th,
 td {
     padding: 0.35em 0.75em;

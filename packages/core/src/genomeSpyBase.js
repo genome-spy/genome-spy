@@ -351,6 +351,7 @@ export default class GenomeSpy {
             return;
         }
         this.#destroyed = true;
+        this.#interactionController?.invalidatePendingPicks();
         this.animator.finalize();
 
         const canvasWrapper = this.#canvasWrapper;
@@ -585,6 +586,7 @@ export default class GenomeSpy {
                 : undefined,
             readPickingId: this.#renderingBackend.readPickingId,
             reportError: this.#reportRuntimeError.bind(this),
+            canPick: () => Boolean(this.viewRoot?.hasRendered()),
         });
     }
 
@@ -729,6 +731,37 @@ export default class GenomeSpy {
      */
     subscribeNativeEvent(type, listener) {
         return this.#interactionController.subscribeNativeEvent(type, listener);
+    }
+
+    /**
+     * @param {import("./view/view.js").default} view
+     * @param {string} type
+     * @param {(event: any) => void} listener
+     * @returns {() => void}
+     */
+    subscribeMarkEvent(view, type, listener) {
+        return this.#interactionController.subscribeMarkEvent(
+            view,
+            type,
+            listener
+        );
+    }
+
+    /**
+     * @param {import("./view/view.js").default} view
+     * @param {(hit: any) => void} listener
+     * @returns {() => void}
+     */
+    subscribeHover(view, listener) {
+        return this.#interactionController.subscribeHover(view, listener);
+    }
+
+    /**
+     * @param {{ x: number, y: number }} point
+     * @param {import("./view/view.js").default} [scopeView]
+     */
+    pick(point, scopeView) {
+        return this.#interactionController.pick(point, scopeView);
     }
 
     /**
@@ -890,6 +923,7 @@ export default class GenomeSpy {
     }
 
     renderAll() {
+        this.#interactionController?.invalidatePendingPicks();
         this.#renderCoordinator.renderAll();
     }
 

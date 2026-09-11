@@ -29,6 +29,7 @@ export default defineConfig({
                 dynamicFasta: "src/dynamicFasta.html",
                 reactComponent: "src/reactComponent.html",
                 annotationEditor: "src/annotationEditor.html",
+                selectionForm: "src/selectionForm.html",
             },
         },
     },

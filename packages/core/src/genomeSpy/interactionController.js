@@ -9,6 +9,8 @@ import InteractionDispatcher from "./interactionDispatcher.js";
 import CursorManager from "./cursorManager.js";
 import EventListenerRegistry from "./eventListenerRegistry.js";
 
+/** @typedef {{ mark: import("../marks/mark.js").default, datum: import("../data/flowNode.js").Datum, uniqueId: number }} InternalMarkHit */
+
 export default class InteractionController {
     /** @type {import("../view/view.js").default} */
     #viewRoot;
@@ -47,8 +49,16 @@ export default class InteractionController {
     #postRenderHoverRefreshRequested = false;
     #pickingRequestId = 0;
     #nativeEventListeners = new EventListenerRegistry();
+    /** @type {{ view: import("../view/view.js").default, type: string, listener: (event: any) => void }[]} */
+    #markEventListeners = [];
+    /** @type {{ view: import("../view/view.js").default, listener: (hit: any) => void }[]} */
+    #hoverListeners = [];
+    /** @type {Point | undefined} */
+    #currentHoverPoint;
     /** @type {(error: unknown) => void} */
     #reportError = (error) => console.error(error);
+    /** @type {() => boolean} */
+    #canPick = () => true;
 
     #dismissStickyTooltip() {
         this.#tooltip.sticky = false;
@@ -67,6 +77,7 @@ export default class InteractionController {
      * @param {() => void} [options.renderPickingFramebuffer]
      * @param {(x: number, y: number) => number | null | Promise<number | null>} [options.readPickingId]
      * @param {(error: unknown) => void} [options.reportError]
+     * @param {() => boolean} [options.canPick]
      */
     constructor({
         viewRoot,
@@ -78,6 +89,7 @@ export default class InteractionController {
         renderPickingFramebuffer,
         readPickingId,
         reportError,
+        canPick,
     }) {
         this.#viewRoot = viewRoot;
         this.#canvas = canvas;
@@ -88,6 +100,7 @@ export default class InteractionController {
         this.#renderPickingFramebuffer = renderPickingFramebuffer ?? (() => {});
         this.#readPickingId = readPickingId;
         this.#reportError = reportError ?? this.#reportError;
+        this.#canPick = canPick ?? this.#canPick;
         this.#interactionDispatcher = new InteractionDispatcher({ viewRoot });
         this.#cursorManager = new CursorManager({ canvas });
 
@@ -106,6 +119,85 @@ export default class InteractionController {
 
     getCurrentHover() {
         return this.#currentHover;
+    }
+
+    /**
+     * @param {import("../view/view.js").default} view
+     * @param {string} type
+     * @param {(event: any) => void} listener
+     * @returns {() => void}
+     */
+    subscribeMarkEvent(view, type, listener) {
+        if (!["click", "dblclick", "contextmenu"].includes(type)) {
+            throw new Error(`Unsupported mark event type: ${type}`);
+        }
+
+        const entry = { view, type, listener };
+        this.#markEventListeners.push(entry);
+        return () => {
+            const index = this.#markEventListeners.indexOf(entry);
+            if (index >= 0) {
+                this.#markEventListeners.splice(index, 1);
+            }
+        };
+    }
+
+    /**
+     * @param {import("../view/view.js").default} view
+     * @param {(hit: any) => void} listener
+     * @returns {() => void}
+     */
+    subscribeHover(view, listener) {
+        const entry = { view, listener };
+        this.#hoverListeners.push(entry);
+        listener(this.#getScopedHover(view));
+        return () => {
+            const index = this.#hoverListeners.indexOf(entry);
+            if (index >= 0) {
+                this.#hoverListeners.splice(index, 1);
+            }
+        };
+    }
+
+    /**
+     * Explicitly queries the latest completed picking frame.
+     *
+     * @param {{ x: number, y: number }} point
+     * @param {import("../view/view.js").default} [scopeView]
+     * @returns {Promise<{ status: "hit", hit: InternalMarkHit } | { status: "empty" } | { status: "invalidated" }>}
+     */
+    async pick(point, scopeView) {
+        if (!this.#readPickingId) {
+            throw new Error(
+                "Explicit picking is not supported by this renderer."
+            );
+        }
+        if (!this.#canPick()) {
+            return { status: "invalidated" };
+        }
+        const canvasPoint = new Point(point.x, point.y);
+        if (
+            !Number.isFinite(point.x) ||
+            !Number.isFinite(point.y) ||
+            !this.#isInsideCanvas(canvasPoint)
+        ) {
+            throw new Error("Pick point must be finite and inside the canvas.");
+        }
+
+        const requestId = this.#pickingRequestId;
+        this.#renderPickingFramebuffer();
+        const result = this.#readPickingId(point.x, point.y);
+        const uniqueId = await result;
+        if (requestId !== this.#pickingRequestId) {
+            return { status: "invalidated" };
+        }
+
+        const hit = this.#findHit(point.x, point.y, uniqueId ?? 0, scopeView);
+        return hit ? { status: "hit", hit } : { status: "empty" };
+    }
+
+    invalidatePendingPicks() {
+        this.#pickingRequestId++;
     }
 
     /**
@@ -329,6 +421,10 @@ export default class InteractionController {
                 );
                 if (viewDefaultPrevented) {
                     return;
+                }
+
+                if (["click", "dblclick", "contextmenu"].includes(event.type)) {
+                    this.#emitMarkEvent(event, point);
                 }
 
                 if (
@@ -797,6 +893,8 @@ export default class InteractionController {
                 remove();
             }
             this.#nativeEventListeners.clear();
+            this.#markEventListeners = [];
+            this.#hoverListeners = [];
         };
     }
 
@@ -918,43 +1016,16 @@ export default class InteractionController {
      * @param {number} uniqueId
      */
     #applyPickingResult(x, y, uniqueId) {
+        this.#currentHoverPoint = new Point(x, y);
+        const previousHover = this.#currentHover;
         if (uniqueId == 0) {
             this.#currentHover = null;
+            this.#notifyHoverListeners(previousHover);
             return;
         }
 
-        if (uniqueId !== this.#currentHover?.uniqueId) {
-            this.#currentHover = null;
-        }
-
-        if (!this.#currentHover) {
-            this.#viewRoot.visit((view) => {
-                if (view instanceof UnitView) {
-                    if (
-                        view.mark.isPickingParticipant() &&
-                        [...view.facetCoords.values()].some((coords) =>
-                            coords.containsPoint(x, y)
-                        )
-                    ) {
-                        const collector = view.getCollector();
-                        if (!collector) {
-                            return;
-                        }
-                        const datum = collector.findDatumByUniqueId(uniqueId);
-                        if (datum) {
-                            this.#currentHover = {
-                                mark: view.mark,
-                                datum,
-                                uniqueId,
-                            };
-                        }
-                    }
-                    if (this.#currentHover) {
-                        return VISIT_STOP;
-                    }
-                }
-            });
-        }
+        this.#currentHover = this.#findHit(x, y, uniqueId);
+        this.#notifyHoverListeners(previousHover);
 
         if (this.#currentHover) {
             const mark = this.#currentHover.mark;
@@ -982,6 +1053,112 @@ export default class InteractionController {
                     return handler(datum, mark, tooltipProps?.params, context);
                 }
             });
+        }
+    }
+
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {number} uniqueId
+     * @param {import("../view/view.js").default} [scopeView]
+     * @returns {InternalMarkHit | undefined}
+     */
+    #findHit(x, y, uniqueId, scopeView) {
+        if (uniqueId === 0) {
+            return;
+        }
+
+        /** @type {InternalMarkHit | undefined} */
+        let hit;
+        this.#viewRoot.visit((view) => {
+            if (
+                view instanceof UnitView &&
+                view.mark.isPickingParticipant() &&
+                (!scopeView || view.getLayoutAncestors().includes(scopeView)) &&
+                [...view.facetCoords.values()].some((coords) =>
+                    coords.containsPoint(x, y)
+                )
+            ) {
+                const datum = view
+                    .getCollector()
+                    ?.findDatumByUniqueId(uniqueId);
+                if (datum) {
+                    hit = { mark: view.mark, datum, uniqueId };
+                }
+            }
+            if (hit) {
+                return VISIT_STOP;
+            }
+        });
+        return hit;
+    }
+
+    /**
+     * @param {MouseEvent} sourceEvent
+     * @param {Point} point
+     */
+    #emitMarkEvent(sourceEvent, point) {
+        const hit = this.#getConfirmedHit(point);
+        if (!hit) {
+            return;
+        }
+
+        for (const entry of [...this.#markEventListeners]) {
+            if (
+                entry.type === sourceEvent.type &&
+                hit.mark.unitView.getLayoutAncestors().includes(entry.view)
+            ) {
+                try {
+                    entry.listener({ sourceEvent, point, hit });
+                } catch (error) {
+                    this.#reportError(error);
+                }
+            }
+        }
+    }
+
+    /**
+     * @param {Point | undefined} point
+     * @returns {InternalMarkHit | undefined}
+     */
+    #getConfirmedHit(point) {
+        if (
+            !point ||
+            !this.#currentHoverPoint?.equals(point) ||
+            !this.#currentHover
+        ) {
+            return;
+        }
+        if (!this.#currentHover.mark.isPickingParticipant()) {
+            return;
+        }
+        return this.#currentHover;
+    }
+
+    /**
+     * @param {import("../view/view.js").default} view
+     * @returns {InternalMarkHit | undefined}
+     */
+    #getScopedHover(view) {
+        const hit = this.#getConfirmedHit(this.#currentHoverPoint);
+        return hit && hit.mark.unitView.getLayoutAncestors().includes(view)
+            ? hit
+            : undefined;
+    }
+
+    /**
+     * @param {object | null | undefined} previousHover
+     */
+    #notifyHoverListeners(previousHover) {
+        if (previousHover === this.#currentHover) {
+            return;
+        }
+        for (const entry of [...this.#hoverListeners]) {
+            try {
+                entry.listener(this.#getScopedHover(entry.view));
+            } catch (error) {
+                this.#reportError(error);
+            }
         }
     }
 

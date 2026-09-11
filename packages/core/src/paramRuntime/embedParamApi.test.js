@@ -153,7 +153,7 @@ describe("embed param API", () => {
         });
 
         param.setValue(intervalSelection({ x: [1, 2] }));
-        const snapshot = selection.getValue();
+        const snapshot = /** @type {any} */ (selection.getValue());
         expect(snapshot).toEqual({
             type: "interval",
             active: true,
@@ -161,10 +161,41 @@ describe("embed param API", () => {
         });
 
         /** @type {any} */ (snapshot.intervals.x)[0] = 99;
-        expect(selection.getValue().intervals.x).toEqual([1, 2]);
+        expect(/** @type {any} */ (selection.getValue()).intervals.x).toEqual([
+            1, 2,
+        ]);
 
         selection.clear();
         expect(selection.getValue().active).toBe(false);
+    });
+
+    test("delivers interval commits after programmatic writes", async () => {
+        const { view: root } = await createHeadlessEngine({
+            params: [
+                {
+                    name: "brush",
+                    select: { type: "interval", encodings: ["x"] },
+                },
+            ],
+            vconcat: [makeUnit("track")],
+        });
+
+        const selection = resolveEmbedSelection(root, "brush");
+        /** @type {import("../types/embedApi.js").SelectionSnapshot[]} */
+        const commits = [];
+        selection.subscribe((snapshot) => commits.push(snapshot), {
+            delivery: "commit",
+        });
+
+        resolveScopedEmbedParam(root, "brush").setValue(
+            intervalSelection({ x: [1, 2] })
+        );
+
+        expect(commits).toHaveLength(1);
+        expect(commits[0]).toMatchObject({
+            type: "interval",
+            active: true,
+        });
     });
 
     test("a plain nearest declaration shadows an ancestor selection", async () => {
@@ -182,5 +213,36 @@ describe("embed param API", () => {
         expect(() => resolveEmbedSelection(child, "brush")).toThrow(
             'Parameter "brush" is not a selection in this scope.'
         );
+    });
+
+    test("exposes row-backed point selection snapshots", async () => {
+        const { view: root } = await createHeadlessEngine(
+            makeUnit("root", [{ name: "selected", select: "point" }])
+        );
+
+        const selection = resolveEmbedSelection(root, "selected");
+        expect(selection.getValue()).toEqual({
+            type: "point",
+            active: false,
+            data: [],
+        });
+
+        const datum = /** @type {any} */ (root).getCollector().getData()[0];
+        /** @type {any} */ (resolveScopedEmbedParam(root, "selected")).setValue(
+            {
+                type: "single",
+                datum,
+                uniqueId: datum.__uniqueId,
+            }
+        );
+
+        expect(selection.getValue()).toEqual({
+            type: "point",
+            active: true,
+            data: [{ x: 1, y: 2 }],
+        });
+
+        selection.clear();
+        expect(selection.getValue().active).toBe(false);
     });
 });

@@ -1,9 +1,12 @@
 import {
     asSelectionConfig,
-    createIntervalSelection,
+    createMultiPointSelection,
+    createSinglePointSelection,
     isIntervalSelection,
     isIntervalSelectionConfig,
+    isMultiPointSelection,
     isPointSelectionConfig,
+    isSinglePointSelection,
 } from "../selection/selection.js";
 
 /**
@@ -74,11 +77,9 @@ export function resolveEmbedSelection(view, name) {
     }
 
     const select = asSelectionConfig(config.select);
-    if (!isIntervalSelectionConfig(select)) {
+    if (!isIntervalSelectionConfig(select) && !isPointSelectionConfig(select)) {
         throw new Error(
-            'Selection "' +
-                name +
-                '" does not expose a row-backed interval capability.'
+            'Selection "' + name + '" does not expose a row-backed capability.'
         );
     }
 
@@ -87,29 +88,40 @@ export function resolveEmbedSelection(view, name) {
         throw new Error('Selection "' + name + '" has no runtime value.');
     }
 
-    const controller =
-        /** @type {{ contains: (point: { x: number, y: number }) => boolean }} */ (
-            runtime.getSelectionController(name)
-        );
-    if (!controller) {
+    const controller = isIntervalSelectionConfig(select)
+        ? /** @type {{
+           * contains: (point: { x: number, y: number }) => boolean,
+           * subscribeCommit: (listener: (selection: any) => void) => () => void,
+           * clear: () => void
+           * }} */ (runtime.getSelectionController(name))
+        : undefined;
+    if (isIntervalSelectionConfig(select) && !controller) {
         throw new Error(
             'Selection "' + name + '" has no interaction host in this scope.'
         );
     }
 
-    return {
-        type: "interval",
+    return /** @type {SelectionApi} */ ({
+        type: select.type,
 
         getValue() {
             return copySelection(effectiveRuntime.getValue(name));
         },
 
-        subscribe(listener, options = {}) {
+        subscribe(
+            /** @type {(value: any) => void} */ listener,
+            /** @type {{ delivery?: "change" | "commit" }} */ options = {}
+        ) {
             if (options.delivery === "commit") {
-                throw new Error(
-                    'Selection commit delivery is not available yet for "' +
-                        name +
-                        '".'
+                if (!controller) {
+                    return effectiveRuntime.subscribe(name, () => {
+                        listener(
+                            copySelection(effectiveRuntime.getValue(name))
+                        );
+                    });
+                }
+                return controller.subscribeCommit((selection) =>
+                    listener(copySelection(selection))
                 );
             }
 
@@ -119,20 +131,23 @@ export function resolveEmbedSelection(view, name) {
         },
 
         clear() {
-            runtime.setValue(name, createIntervalSelection(select.encodings));
+            if (controller) {
+                controller.clear();
+            } else if (isPointSelectionConfig(select) && select.toggle) {
+                runtime.setValue(name, createMultiPointSelection());
+            } else {
+                runtime.setValue(name, createSinglePointSelection(null));
+            }
         },
 
-        contains(point) {
-            if (typeof controller.contains !== "function") {
-                throw new Error(
-                    'Selection "' +
-                        name +
-                        '" does not support containment queries.'
-                );
-            }
-            return controller.contains(point);
-        },
-    };
+        ...(controller
+            ? {
+                  contains(point) {
+                      return controller.contains(point);
+                  },
+              }
+            : {}),
+    });
 }
 
 /**
@@ -159,9 +174,32 @@ function copySelection(selection) {
         };
     }
 
+    if (isSinglePointSelection(selection)) {
+        return {
+            type: "point",
+            active: selection.datum !== null,
+            data: selection.datum ? [copyDatum(selection.datum)] : [],
+        };
+    }
+
+    if (isMultiPointSelection(selection)) {
+        return {
+            type: "point",
+            active: selection.data.size > 0,
+            data: Array.from(selection.data.values(), copyDatum),
+        };
+    }
+
     throw new Error(
         `Selection snapshot does not support "${selection.type}" selections.`
     );
+}
+
+/** @param {import("../data/flowNode.js").Datum} datum */
+function copyDatum(datum) {
+    const copy = { ...datum };
+    delete copy.__uniqueId;
+    return copy;
 }
 
 /**
@@ -204,8 +242,8 @@ function createParamApi(setterRuntime, valueRuntime, name) {
  * - Parameters are addressed by name only. Independent same-name parameters
  *   throw an ambiguity error.
  * - Computed `expr` parameters are readable but cannot be written.
- * - Point selection parameters are readable but cannot be written through this
- *   API because valid values require GenomeSpy-generated datum ids.
+ * - Point selection parameters remain read-only through the legacy parameter
+ *   API; use `getSelection()` for snapshots and clearing.
  * - Projected selections are not supported.
  *
  * @param {View} root

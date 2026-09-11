@@ -15,6 +15,7 @@ import { getViewIdentityRegistry } from "./viewIdentityRegistry.js";
 import { getTopLevelSpecView } from "./viewFactory.js";
 import { readBinaryData } from "../data/formats/readBinary.js";
 import { createEmbedParamNamespace } from "../paramRuntime/embedParamApi.js";
+import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 
 /**
  * Error thrown by the public view mutation API.
@@ -328,11 +329,82 @@ export function createViewMutationApi(genomeSpy, isActive) {
             datasets: createViewDatasetApi(() => view, getRootView, isActive),
 
             params: createEmbedParamNamespace(view),
+
+            marks: createViewMarksApi(view),
         };
 
         handlesByView.set(view, handle);
         viewsByHandle.set(handle, view);
         return handle;
+    }
+
+    /**
+     * @param {import("./view.js").default} view
+     * @returns {import("../types/embedApi.js").MarksApi}
+     */
+    function createViewMarksApi(view) {
+        return {
+            subscribe(type, listener) {
+                ensureEmbedIsActive(isActive);
+                return /** @type {any} */ (genomeSpy).subscribeMarkEvent(
+                    view,
+                    type,
+                    (/** @type {any} */ event) =>
+                        listener({
+                            sourceEvent: event.sourceEvent,
+                            point: event.point,
+                            hit: toPublicMarkHit(event.hit),
+                        })
+                );
+            },
+
+            observeHover(listener) {
+                ensureEmbedIsActive(isActive);
+                return /** @type {any} */ (genomeSpy).subscribeHover(
+                    view,
+                    (/** @type {any} */ hit) =>
+                        listener(hit ? toPublicMarkHit(hit) : undefined)
+                );
+            },
+
+            pick(point) {
+                ensureEmbedIsActive(isActive);
+                return /** @type {any} */ (genomeSpy)
+                    .pick(point, view)
+                    .then((/** @type {any} */ result) =>
+                        result.status === "hit"
+                            ? {
+                                  status: "hit",
+                                  hit: toPublicMarkHit(result.hit),
+                              }
+                            : result
+                    );
+            },
+        };
+    }
+
+    /**
+     * @param {{ mark: { unitView: import("./view.js").default }, datum: Record<string, unknown>, uniqueId: number }} hit
+     * @returns {import("../types/embedApi.js").MarkHit}
+     */
+    function toPublicMarkHit(hit) {
+        const datum = { ...hit.datum };
+        delete datum[UNIQUE_ID_KEY];
+        return {
+            view: getHandle(hit.mark.unitView),
+            uniqueId: hit.uniqueId,
+            datum,
+        };
+    }
+
+    /** @param {() => boolean} isActive */
+    function ensureEmbedIsActive(isActive) {
+        if (!isActive()) {
+            throw new ViewMutationError(
+                "staleEmbed",
+                "Cannot use an API handle after the embed was finalized."
+            );
+        }
     }
 
     /**

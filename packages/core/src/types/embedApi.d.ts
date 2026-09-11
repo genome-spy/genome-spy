@@ -89,9 +89,8 @@ export interface EmbedOptions {
  * - Parameters are addressed by name only. Independent same-name parameters
  *   throw an ambiguity error.
  * - Computed `expr` parameters are readable but cannot be written.
- * - Point selections are readable as runtime values but are not supported for
- *   writes through the initial API because valid values require
- *   GenomeSpy-generated datum ids.
+ * - Point selections are exposed through `ParamNamespace.getSelection()`;
+ *   they are not writable through the generic parameter API.
  * - Projected selections are not supported.
  */
 export type ParamValue = Scalar | null | undefined | IntervalSelection;
@@ -116,22 +115,42 @@ export interface ParamApi<T = ParamValue> {
     subscribe: (listener: (value: T) => void) => () => void;
 }
 
-export interface SelectionSnapshot {
+export interface IntervalSnapshot {
     type: "interval";
     active: boolean;
     intervals: Partial<Record<"x" | "y", readonly [number, number] | null>>;
 }
 
-export interface SelectionApi {
-    readonly type: "interval";
-    getValue: () => SelectionSnapshot;
+export interface PointSnapshot {
+    type: "point";
+    active: boolean;
+    data: ReadonlyArray<Readonly<Record<string, unknown>>>;
+}
+
+export type SelectionSnapshot = IntervalSnapshot | PointSnapshot;
+
+export interface PointSelectionApi {
+    readonly type: "point";
+    getValue: () => PointSnapshot;
     subscribe: (
-        listener: (value: SelectionSnapshot) => void,
+        listener: (value: PointSnapshot) => void,
+        options?: { delivery?: "change" | "commit" }
+    ) => () => void;
+    clear: () => void;
+}
+
+export interface IntervalSelectionApi {
+    readonly type: "interval";
+    getValue: () => IntervalSnapshot;
+    subscribe: (
+        listener: (value: IntervalSnapshot) => void,
         options?: { delivery?: "change" | "commit" }
     ) => () => void;
     clear: () => void;
     contains: (point: { x: number; y: number }) => boolean;
 }
+
+export type SelectionApi = PointSelectionApi | IntervalSelectionApi;
 
 export interface ParamNamespace {
     get: <T = ParamValue>(name: string) => ParamApi<T>;
@@ -160,6 +179,34 @@ export interface EmbedEventApi {
         type: NativeEventType,
         listener: (event: NativeEvent) => void
     ) => () => void;
+}
+
+export interface MarkHit {
+    readonly view: ViewHandle;
+    readonly uniqueId: number;
+    readonly datum: Readonly<Record<string, unknown>>;
+}
+
+export interface MarkEvent {
+    readonly sourceEvent: MouseEvent;
+    readonly point: { readonly x: number; readonly y: number };
+    readonly hit: MarkHit;
+}
+
+export interface MarksApi {
+    subscribe: (
+        type: "click" | "dblclick" | "contextmenu",
+        listener: (event: MarkEvent) => void
+    ) => () => void;
+    observeHover: (listener: (hit: MarkHit | undefined) => void) => () => void;
+    pick: (point: {
+        x: number;
+        y: number;
+    }) => Promise<
+        | { status: "hit"; hit: MarkHit }
+        | { status: "empty" }
+        | { status: "invalidated" }
+    >;
 }
 
 /**
@@ -347,6 +394,9 @@ export interface ViewHandle {
 
     /** Parameters resolved from this view's lexical scope. */
     readonly params: ParamNamespace;
+
+    /** Mark interaction scoped to this view's subtree. */
+    readonly marks: MarksApi;
 }
 
 /**

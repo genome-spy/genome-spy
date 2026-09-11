@@ -55,6 +55,7 @@ const spec = {
     ],
     annotate: [
         {
+            name: "annotations",
             data: { name: "annotations" },
             mark: { type: "rect", fill: "#f59e0b", fillOpacity: 0.35 },
             encoding: {
@@ -71,12 +72,29 @@ const form = document.getElementById("annotation-form");
 const cancel = document.getElementById("annotation-cancel");
 const rows = document.getElementById("annotation-rows");
 const status = document.getElementById("annotation-status");
+const hoverStatus = document.getElementById("annotation-hover");
+const clickStatus = document.getElementById("annotation-click");
 
 const api = await embed(container, spec);
 const brush = api.params.getSelection("brush");
+const marks = api.views.get({ scope: [], view: "annotations" }).marks;
 
 /** @type {SelectionSnapshot | undefined} */
 let pendingSelection;
+
+marks.subscribe("click", ({ hit }) => {
+    if ("start" in hit.datum) {
+        clickStatus.textContent = `Annotation clicked: ${hit.datum.name}`;
+    }
+});
+
+marks.observeHover((hit) => {
+    if (hit && "start" in hit.datum) {
+        hoverStatus.textContent = `Annotation hovered: ${hit.datum.name}`;
+    } else {
+        hoverStatus.textContent = "";
+    }
+});
 
 function renderRows() {
     rows.replaceChildren(
