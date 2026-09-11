@@ -108,7 +108,8 @@ export interface MarkPropsBase {
      * Tooltip handler. If `false`, no tooltip is shown but the mark remains
      * available for renderer picking and mark interactions. If `null`, no
      * tooltip is shown and the mark is excluded from picking unless its view
-     * declares a point selection. If string, specifies the
+     * declares a point selection; a point selection overrides this picking
+     * opt-out. If string, specifies the
      * [tooltip handler](https://genomespy.app/docs/api/embed-options/#custom-tooltip-handlers)
      * to use.
      */

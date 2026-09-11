@@ -310,8 +310,9 @@ export interface MarkHit {
  * Mark activation uses the latest confirmed hover hit. It does not start a new
  * pick, so a fast interaction can produce no mark event. A pending hover result
  * is not replayed as a later activation. Marks configured with `tooltip: null`
- * are not pickable unless their view declares a point selection; use
- * `tooltip: false` to suppress tooltips while keeping a mark interactive.
+ * are not pickable unless their view declares a point selection, which
+ * overrides that opt-out; use `tooltip: false` to suppress tooltips while
+ * keeping a mark interactive.
  */
 export interface MarkEvent {
     /** Browser event that triggered the mark interaction. */
