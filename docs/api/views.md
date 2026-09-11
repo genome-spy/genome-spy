@@ -93,6 +93,67 @@ if (tracks.isAlive()) {
 }
 ```
 
+## Marks and scoped interaction
+
+Each handle exposes `marks` for interaction with marks in that view's subtree.
+Mark events use the current confirmed pointer hit and are synchronous; they do
+not start a new pick or wait for GPU readback. Rapid clicks can therefore be
+missed when no confirmed hover hit exists. Hosts that need an answer can call
+`pick()` from a native event subscription after synchronously preventing the
+browser default.
+
+```js
+const track = api.views.get({ scope: [], view: "track" });
+
+const stopHover = track.marks.observeHover((hit) => {
+  inspector.textContent = hit ? JSON.stringify(hit.datum) : "No mark";
+});
+
+const stopClick = track.marks.subscribe("click", ({ hit }) => {
+  inspect(hit.view, hit.datum);
+});
+
+const result = await track.marks.pick({ x: 120, y: 80 });
+if (result.status === "hit") {
+  inspect(result.hit.view, result.hit.datum);
+}
+```
+
+`pick()` returns `hit`, `empty`, or `invalidated`. A query is invalidated when
+the scene changes or the embed is finalized while it is pending. `MarkHit.view`
+is the canonical unit handle, `uniqueId` is the existing picking ID for the
+current scene, and `datum` is a detached shallow copy without the internal ID.
+Nested datum values are not deep-cloned.
+
+## Parameters and selections
+
+`api.params` starts at the authored top-level specification, while
+`view.params` starts at that view's lexical scope. Both expose the nearest
+declaration and distinguish a child selection that writes to an outer value
+from the outer declaration itself.
+
+```js
+const brush = track.params.getSelection("brush");
+const stopBrush = brush.subscribe((snapshot) => updateForm(snapshot), {
+  delivery: "commit",
+});
+
+if (brush.type === "interval" && brush.contains({ x: 120, y: 80 })) {
+  brush.clear();
+}
+```
+
+Selection snapshots are detached plain objects. Interval snapshots contain
+numeric domain ranges and `null` for unset channels. Point snapshots contain
+zero or more detached row objects. `active` means the selection is nonempty.
+Subscriptions are future-only and default to `delivery: "change"`; committed
+interval delivery fires after a completed brush or changed programmatic write.
+Cancellation and disposal do not create a commit. Call `clear()` to cancel an
+active brush and publish the cleared state once when it changed.
+
+For a runnable browser form and notebook bridge, see the `annotationEditor` and
+`selectionForm` pages in the [embed examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples).
+
 ## Updating named data
 
 Use `api.datasets` for declarations in the top-level input specification. For a

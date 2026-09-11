@@ -289,8 +289,8 @@ Current limitations:
 - Parameters declared with `push: "outer"` are resolved as aliases of the
   outer parameter they write to.
 - Computed `expr` parameters are readable but cannot be written.
-- Point selections are readable but cannot be written through the API because
-  valid values require GenomeSpy-generated datum ids.
+- Point selection snapshots are available through `api.params.getSelection()`;
+  the legacy `getParam()` handle does not write point selections.
 - Projected selections are not supported.
 
 For spec-side parameter behavior, including input bindings, selections, and
@@ -300,3 +300,9 @@ For spec-side parameter behavior, including input bindings, selections, and
 For examples, see the `paramApi` and `brushLinkingApi` pages in the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
+
+For new integrations, use `api.params.getSelection(name)` or the corresponding
+`view.params` namespace. It provides detached point and interval snapshots,
+future-only subscriptions, interval containment, and `clear()`. See
+[Marks and scoped interaction](./views.md#marks-and-scoped-interaction) for the
+selection and lifecycle rules shared by these handles.

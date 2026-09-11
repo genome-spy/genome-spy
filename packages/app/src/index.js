@@ -6,6 +6,8 @@ import {
     createTopLevelDatasetApi,
     createViewMutationApi,
 } from "@genome-spy/core/view/viewMutationApi.js";
+import { createEmbedParamNamespace } from "@genome-spy/core/paramRuntime/embedParamApi.js";
+import { getTopLevelSpecView } from "@genome-spy/core/view/viewFactory.js";
 import App from "./app.js";
 import icon from "@genome-spy/core/img/bowtie.svg";
 import { html } from "lit";
@@ -78,6 +80,19 @@ export async function embed(el, spec, options = {}) {
     return {
         views: createViewMutationApi(genomeSpy, isActive),
         datasets: createTopLevelDatasetApi(genomeSpy, isActive),
+        events: {
+            subscribe(type, listener) {
+                if (!active) {
+                    throw new Error(
+                        "Cannot subscribe to events through a finalized embed."
+                    );
+                }
+                return genomeSpy.subscribeNativeEvent(type, listener);
+            },
+        },
+        params: createEmbedParamNamespace(
+            getTopLevelSpecView(genomeSpy.viewRoot)
+        ),
 
         debug: app.debug,
 

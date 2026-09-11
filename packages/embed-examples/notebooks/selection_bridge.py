@@ -88,7 +88,7 @@ def _():
 
 
 @app.cell
-def _(mo, state):
+def _(state):
     refresh = mo.ui.button(label="Refresh selection")
     rows = mo.ui.text_area(
         label="Annotation rows (JSON)",

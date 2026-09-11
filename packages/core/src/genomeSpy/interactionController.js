@@ -150,7 +150,11 @@ export default class InteractionController {
     subscribeHover(view, listener) {
         const entry = { view, listener };
         this.#hoverListeners.push(entry);
-        listener(this.#getScopedHover(view));
+        try {
+            listener(this.#getScopedHover(view));
+        } catch (error) {
+            this.#reportError(error);
+        }
         return () => {
             const index = this.#hoverListeners.indexOf(entry);
             if (index >= 0) {

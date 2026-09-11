@@ -115,18 +115,22 @@ export function resolveEmbedSelection(view, name) {
             if (options.delivery === "commit") {
                 if (!controller) {
                     return effectiveRuntime.subscribe(name, () => {
-                        listener(
+                        callSelectionListener(
+                            listener,
                             copySelection(effectiveRuntime.getValue(name))
                         );
                     });
                 }
                 return controller.subscribeCommit((selection) =>
-                    listener(copySelection(selection))
+                    callSelectionListener(listener, copySelection(selection))
                 );
             }
 
             return effectiveRuntime.subscribe(name, () => {
-                listener(copySelection(effectiveRuntime.getValue(name)));
+                callSelectionListener(
+                    listener,
+                    copySelection(effectiveRuntime.getValue(name))
+                );
             });
         },
 
@@ -203,6 +207,28 @@ function copyDatum(datum) {
 }
 
 /**
+ * Reports a host callback failure without preventing other selection listeners.
+ * @param {(value: import("../types/embedApi.js").SelectionSnapshot) => void} listener
+ * @param {import("../types/embedApi.js").SelectionSnapshot} value
+ */
+function callSelectionListener(listener, value) {
+    try {
+        listener(value);
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+/** @param {(value: any) => void} listener @param {any} value */
+function callParamListener(listener, value) {
+    try {
+        listener(value);
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+/**
  * @param {import("../paramRuntime/viewParamRuntime.js").default} setterRuntime
  * @param {import("../paramRuntime/viewParamRuntime.js").default} valueRuntime
  * @param {string} name
@@ -228,7 +254,7 @@ function createParamApi(setterRuntime, valueRuntime, name) {
 
         subscribe(listener) {
             return valueRuntime.subscribe(name, () => {
-                listener(valueRuntime.getValue(name));
+                callParamListener(listener, valueRuntime.getValue(name));
             });
         },
     };

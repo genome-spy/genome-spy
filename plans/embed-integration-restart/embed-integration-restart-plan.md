@@ -1,8 +1,9 @@
 # Embed integration API: implementation restart
 
-Status: planned, not implemented. This is the only implementation plan for this
-fresh branch. It carries forward the agreed redesign and consumer workflows, not
-the rejected implementation. No production changes have been imported.
+Status: implemented on `codex/embed-integration-restart`. This is the only
+implementation plan for this fresh branch. It carries forward the agreed
+redesign and consumer workflows, not the rejected implementation. No production
+changes were imported from the failed branch.
 
 ## What we are building
 
@@ -386,7 +387,7 @@ before review.
 
 ### 1. Deliver an annotation PoC and prove the design
 
-- [ ] First scaffold and link a minimal annotation editor in `packages/embed-examples`
+- [x] First scaffold and link a minimal annotation editor in `packages/embed-examples`
   with data tracks, a concat annotation layer, a named brush, and host-owned form
   and table. Implement only the Core hooks needed to make brush → context menu →
   name/description → save → visible annotation work, then browser-test that path
@@ -397,12 +398,12 @@ before review.
   Deliver this runnable slice before widening the API or finishing
   the remaining feasibility tests. Cancel must add no row; save updates the named
   dataset through the modern API and clears the brush.
-- [ ] Extend that same consumer while implementing native context-menu veto,
+- [x] Extend that same consumer while implementing native context-menu veto,
   scoped mark click/pick/hover, and one
   lexically scoped interval selection with outer alias, commit, clear, and contains.
   Add public types implementing the snapshot shapes above.
   Use clicked annotation data and hover in the PoC as those hooks become available.
-- [ ] In parallel with commit observation, start a second selection-driven form
+- [x] In parallel with commit observation, start a second selection-driven form
   example: brush commits update host state and enable annotation entry without a
   context menu. Begin the marimo bridge with this slice so Python transport needs
   inform snapshots before their public shape is finalized.
@@ -455,18 +456,18 @@ Intended commit: `feat(core): complete scoped embed integration contracts`.
 These examples must already be runnable from milestones 1–2. This milestone
 finishes their coverage, documentation, and integration checks.
 
-- [ ] Finish the **annotation editor** in `packages/embed-examples`: data tracks plus
+- [x] Finish the **annotation editor** in `packages/embed-examples`: data tracks plus
   a concat annotation layer, named brush, host-owned context menu and form, visible
   table, and `api.datasets.set("annotations", rows)` on save. Test brush containment
   before opening the menu and capture its snapshot. Clear after save; cancel adds
   no row. Clicking an annotation inspects its datum; hover shows a host readout.
-- [ ] Finish the **selection-driven form**: point and interval observation updates host
+- [x] Finish the **selection-driven form**: point and interval observation updates host
   state without context menus; interval commits enable name/description entry and
   publish annotation rows. Include a runnable marimo adapter/example exchanging
   plain snapshots and rows with Python, plus an Observable subscription/cleanup
   recipe. Keep generic notebook transport outside Core. A JavaScript form alone
   does not count as verification of Python integration.
-- [ ] Link examples from the package index and document startup/cleanup. Reuse the
+- [x] Link examples from the package index and document startup/cleanup. Reuse the
   historical examples only for specific useful UI or behavioral details. Write
   consumers against this contract; do not bring over old compatibility glue.
 
@@ -483,6 +484,28 @@ Run the full unit suite, workspace type checks, lint, and
 diff for duplicate machinery, renderer changes, downstream regressions, and total
 size. Intended commit:
 `feat(embed-examples): demonstrate annotations and notebook selections`.
+
+## Implementation reconciliation
+
+- The runnable annotation editor is implemented and browser-tested through brush,
+  vetoed context menu, save, dataset update, visible annotation, hover, click,
+  and cancel behavior.
+- The selection-driven browser form, Observable recipe, and marimo HTTP bridge
+  are implemented under `packages/embed-examples`. The local environment does
+  not have `marimo` installed, so the bridge was syntax-checked but not launched
+  here. Install it with the command in the notebook README before using the
+  Python round-trip.
+- Core exposes native events, scoped marks, explicit picking, scoped parameter
+  and selection APIs, detached snapshots, interval commit/clear/contains, and
+  lifecycle guards. The App embed surface exposes the same modern event and
+  parameter namespaces. Legacy entry points remain present.
+- Against baseline `491e632a0533d6bb551246b09cb8bdfb7c860ef2`, Core production
+  changes measure 961 gross additions, 47 removals, and 914 net lines. This is
+  114 net lines over the provisional 800-line ceiling; the complete public
+  contract and App compatibility are retained, and no renderer files changed.
+- Verification completed: focused Core tests (24 passed), full unit suite (4,131
+  passed, 1 skipped, 2 todo), workspace type checks, lint, Python syntax check,
+  and `npm run build:smoke --workspace=@genome-spy/embed-examples`.
 
 ## Delivery and fresh-session handoff
 

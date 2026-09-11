@@ -676,7 +676,11 @@ export class IntervalSelectionController {
     #notifyCommit() {
         const selection = this.#selectionRuntime.getValue(this.#selectionName);
         for (const listener of [...this.#commitListeners]) {
-            listener(selection);
+            try {
+                listener(selection);
+            } catch (error) {
+                console.error(error);
+            }
         }
     }
 }

@@ -215,6 +215,27 @@ describe("embed param API", () => {
         );
     });
 
+    test("keeps a child selection capability across a push outer alias", async () => {
+        const { view: root } = await createHeadlessEngine({
+            params: [{ name: "brush" }],
+            vconcat: [
+                makeUnit("track", [
+                    {
+                        name: "brush",
+                        select: { type: "interval", encodings: ["x"] },
+                        push: "outer",
+                    },
+                ]),
+            ],
+        });
+
+        const child = /** @type {any} */ (root).children[0];
+        expect(resolveEmbedSelection(child, "brush").type).toBe("interval");
+        expect(() => resolveEmbedSelection(root, "brush")).toThrow(
+            'Parameter "brush" is not a selection in this scope.'
+        );
+    });
+
     test("exposes row-backed point selection snapshots", async () => {
         const { view: root } = await createHeadlessEngine(
             makeUnit("root", [{ name: "selected", select: "point" }])

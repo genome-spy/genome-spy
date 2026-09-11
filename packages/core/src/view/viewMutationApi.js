@@ -346,6 +346,7 @@ export function createViewMutationApi(genomeSpy, isActive) {
         return {
             subscribe(type, listener) {
                 ensureEmbedIsActive(isActive);
+                ensureViewIsLive(view);
                 return /** @type {any} */ (genomeSpy).subscribeMarkEvent(
                     view,
                     type,
@@ -360,6 +361,7 @@ export function createViewMutationApi(genomeSpy, isActive) {
 
             observeHover(listener) {
                 ensureEmbedIsActive(isActive);
+                ensureViewIsLive(view);
                 return /** @type {any} */ (genomeSpy).subscribeHover(
                     view,
                     (/** @type {any} */ hit) =>
@@ -369,6 +371,7 @@ export function createViewMutationApi(genomeSpy, isActive) {
 
             pick(point) {
                 ensureEmbedIsActive(isActive);
+                ensureViewIsLive(view);
                 return /** @type {any} */ (genomeSpy)
                     .pick(point, view)
                     .then((/** @type {any} */ result) =>
@@ -403,6 +406,16 @@ export function createViewMutationApi(genomeSpy, isActive) {
             throw new ViewMutationError(
                 "staleEmbed",
                 "Cannot use an API handle after the embed was finalized."
+            );
+        }
+    }
+
+    /** @param {import("./view.js").default} view */
+    function ensureViewIsLive(view) {
+        if (!isLiveView(view, getRootView)) {
+            throw new ViewMutationError(
+                "staleHandle",
+                "Cannot use a mark API handle for a removed view."
             );
         }
     }

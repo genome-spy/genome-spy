@@ -330,10 +330,9 @@ export interface DatasetApi {
 
 // Design intent: "Opaque" below means that callers cannot access the internal
 // View representation; it does not mean that this is an inert address.
-// ViewHandle is a capability-bearing reference. Operations inherently scoped
-// to one view belong here under resource namespaces (such as datasets and,
-// eventually, params), while hierarchy-wide lookup and structural mutations
-// remain on ViewApi. Namespaces avoid accumulating unrelated flat methods.
+// ViewHandle is a capability-bearing reference. Operations scoped to one view
+// belong here under resource namespaces, while hierarchy-wide lookup and
+// structural mutations remain on ViewApi.
 
 /**
  * Live handle to a view in the embedded GenomeSpy instance.
