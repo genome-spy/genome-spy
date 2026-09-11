@@ -1,6 +1,6 @@
 # Practical embed integration polish
 
-Status: active follow-up. Improve the current implementation; do not restart it.
+Status: reconciled for delivery.
 
 ## Goal
 
@@ -110,11 +110,12 @@ The annotation text fix can accompany it or be a small separate fix.
 - [x] Exercise overlapping marks sharing a dataset, particularly the DNA editor's
       text and rectangle layers. The common parent scope works for the editor; no
       ownership change is needed for the two layers sharing each datum.
-- [ ] Run the marimo example, not just a Python syntax check. Verify a browser
+- [x] Run the marimo example, not just a Python syntax check. Verify a browser
       selection reaches Python and published annotation rows return to GenomeSpy.
       Fix concrete startup, cell-reactivity, and cleanup problems with the smallest
       working bridge. No reusable notebook framework or transport redesign. Blocked
       here because `marimo` is not installed in the environment; Python syntax passes.
+      Discarded for this branch; run manually when marimo is available.
 - [x] Check the Observable recipe's subscription and cleanup usage. Document
       actual startup steps and any manual refresh requirement. If the notebook cannot
       be run in the available environment, leave verification incomplete explicitly.
@@ -250,11 +251,13 @@ read; do not compress formatting or build abstractions to chase minor savings.
   collection in explicit branches, then share copying and the public
   `{ type: "point", active, data }` result. Preserve empty-selection behavior,
   detached datum copies, and explicit unsupported-selection rejection.
-- [ ] Simplify settled-subscription call sites by letting the existing local
-  helper receive a value reader and listener and perform callback error handling.
-  Parameter and selection observations supply their appropriate readers. Retain
-  owner-bound disposal and future-only coherent delivery. Keep this only if the
-  helper and callers together become simpler; no observer framework.
+- [x] Simplify settled-subscription call sites by letting the existing local
+      helper receive a value reader and listener and perform callback error handling.
+      Parameter and selection observations supply their appropriate readers. Retain
+      owner-bound disposal and future-only coherent delivery. Keep this only if the
+      helper and callers together become simpler; no observer framework.
+      Discarded after measurement because the complete implementation grew by five
+      production lines.
 - [x] Replace the legacy `addEventListener` and `removeEventListener` forwarding
   wrappers in `createEmbedResult` with bound methods, matching neighboring entries.
   Preserve receiver binding and callback registration/removal behavior.
