@@ -71,14 +71,14 @@ project:
 - [x] Share coherent observation wiring between parameter handles and ordinary
       selection observations through one small graph-effect helper. Reuse existing
       ownership/disposal and allow selection snapshot conversion at the boundary.
-- [ ] Share parameter-handle construction after lookup. Keep legacy global lookup
+- [x] Share parameter-handle construction after lookup. Keep legacy global lookup
       and modern lexical lookup separate, and preserve their write restrictions and
       necessary render behavior. Avoid a configurable handle framework; retain small
       explicit differences where sharing would cost more code than it removes.
-- [ ] Merge the identical parameter/selection listener-error wrappers. Route point
+- [x] Merge the identical parameter/selection listener-error wrappers. Route point
       selection commit subscriptions through the same path as change subscriptions;
       only interval gesture commits need a distinct path.
-- [ ] Centralize replacement/clearing of confirmed hover and change notification
+- [x] Centralize replacement/clearing of confirmed hover and change notification
       in the existing controller, removing scattered state assignments. Keep one hover
       owner; do not add per-subscriber state or another cache.
 

@@ -63,12 +63,14 @@ export function resolveScopedEmbedParam(view, name, lifecycle = {}) {
         throw new Error('Parameter "' + name + '" has no runtime value.');
     }
 
-    return createParamApi(
-        declaration.runtime,
-        effectiveRuntime,
-        name,
-        lifecycle
-    );
+    const config = declaration.runtime.paramConfigs.get(name);
+    const readOnly = Boolean(config && "expr" in config);
+    return createParamApi(effectiveRuntime, name, lifecycle, (value) => {
+        if (readOnly) {
+            throw new Error('Cannot set computed parameter "' + name + '".');
+        }
+        declaration.runtime.setValue(name, value);
+    });
 }
 
 /**
@@ -134,7 +136,7 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
                         effectiveRuntime,
                         name,
                         () => {
-                            callSelectionListener(
+                            callEmbedListener(
                                 listener,
                                 copySelection(effectiveRuntime.getValue(name))
                             );
@@ -145,10 +147,7 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
                 return registerParamDisposer(
                     lifecycle,
                     controller.subscribeCommit((selection) =>
-                        callSelectionListener(
-                            listener,
-                            copySelection(selection)
-                        )
+                        callEmbedListener(listener, copySelection(selection))
                     )
                 );
             }
@@ -157,7 +156,7 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
                 effectiveRuntime,
                 name,
                 () => {
-                    callSelectionListener(
+                    callEmbedListener(
                         listener,
                         copySelection(effectiveRuntime.getValue(name))
                     );
@@ -240,21 +239,8 @@ function copyDatum(datum) {
     return copy;
 }
 
-/**
- * Reports a host callback failure without preventing other selection listeners.
- * @param {(value: import("../types/embedApi.js").SelectionSnapshot) => void} listener
- * @param {import("../types/embedApi.js").SelectionSnapshot} value
- */
-function callSelectionListener(listener, value) {
-    try {
-        listener(value);
-    } catch (error) {
-        console.error(error);
-    }
-}
-
 /** @param {(value: any) => void} listener @param {any} value */
-function callParamListener(listener, value) {
+function callEmbedListener(listener, value) {
     try {
         listener(value);
     } catch (error) {
@@ -280,16 +266,13 @@ function subscribeToSettledValue(runtime, name, listener, lifecycle) {
 }
 
 /**
- * @param {import("../paramRuntime/viewParamRuntime.js").default} setterRuntime
  * @param {import("../paramRuntime/viewParamRuntime.js").default} valueRuntime
  * @param {string} name
  * @param {ParamApiLifecycle} lifecycle
+ * @param {(value: any) => void} setValue
  * @returns {ParamApi}
  */
-function createParamApi(setterRuntime, valueRuntime, name, lifecycle) {
-    const config = setterRuntime.paramConfigs.get(name);
-    const readOnly = Boolean(config && "expr" in config);
-
+function createParamApi(valueRuntime, name, lifecycle, setValue) {
     return {
         getValue() {
             ensureParamApiIsLive(lifecycle);
@@ -298,12 +281,7 @@ function createParamApi(setterRuntime, valueRuntime, name, lifecycle) {
 
         setValue(value) {
             ensureParamApiIsLive(lifecycle);
-            if (readOnly) {
-                throw new Error(
-                    'Cannot set computed parameter "' + name + '".'
-                );
-            }
-            setterRuntime.setValue(name, value);
+            setValue(value);
         },
 
         subscribe(listener) {
@@ -312,7 +290,7 @@ function createParamApi(setterRuntime, valueRuntime, name, lifecycle) {
                 valueRuntime,
                 name,
                 () => {
-                    callParamListener(listener, valueRuntime.getValue(name));
+                    callEmbedListener(listener, valueRuntime.getValue(name));
                 },
                 lifecycle
             );
@@ -394,39 +372,23 @@ export function resolveEmbedParam(root, name) {
         .values()
         .next().value;
 
-    return {
-        getValue() {
-            return runtime.getValue(name);
-        },
+    const setValue = (/** @type {any} */ value) => {
+        if (readOnly) {
+            throw new Error('Cannot set computed parameter "' + name + '".');
+        }
+        if (pointSelection) {
+            throw new Error(
+                'Cannot set point selection parameter "' +
+                    name +
+                    '" through the embed API.'
+            );
+        }
 
-        setValue(value) {
-            if (readOnly) {
-                throw new Error(
-                    'Cannot set computed parameter "' + name + '".'
-                );
-            }
-            if (pointSelection) {
-                throw new Error(
-                    'Cannot set point selection parameter "' +
-                        name +
-                        '" through the embed API.'
-                );
-            }
-
-            runtime.setValue(name, value);
-            root.context.animator.requestRender();
-        },
-
-        subscribe(listener) {
-            const ref = runtime.getParamRef(name);
-            if (!ref) {
-                throw new Error("Parameter not found: " + name);
-            }
-            return runtime.effect([ref], () => {
-                listener(runtime.getValue(name));
-            });
-        },
+        runtime.setValue(name, value);
+        root.context.animator.requestRender();
     };
+
+    return createParamApi(runtime, name, {}, setValue);
 }
 
 /**
