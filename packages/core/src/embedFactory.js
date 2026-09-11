@@ -1,13 +1,8 @@
 import { isObject, isString } from "vega-util";
 
-import {
-    createTopLevelDatasetApi,
-    createViewMutationApi,
-} from "./view/viewMutationApi.js";
+import { createEmbedResult, clearEmbedElement } from "./embedApi.js";
 import { fetchJson } from "./utils/fetchUtils.js";
 import inferSpecBaseUrl from "./utils/inferSpecBaseUrl.js";
-import { createEmbedParamNamespace } from "./paramRuntime/embedParamApi.js";
-import { getTopLevelSpecView } from "./view/viewFactory.js";
 
 /**
  * @param {new (container: HTMLElement, spec: import("./spec/root.js").RootSpec, options?: import("./types/embedApi.js").EmbedOptions) => import("./genomeSpy.js").default} GenomeSpy
@@ -67,57 +62,9 @@ export function createEmbed(GenomeSpy) {
             console.error(e);
         }
 
-        return {
-            views: createViewMutationApi(genomeSpy, isActive),
-            datasets: createTopLevelDatasetApi(genomeSpy, isActive),
-            events: {
-                subscribe(type, listener) {
-                    if (!active) {
-                        throw new Error(
-                            "Cannot subscribe to events through a finalized embed."
-                        );
-                    }
-                    return genomeSpy.subscribeNativeEvent(type, listener);
-                },
-            },
-            params: createEmbedParamNamespace(
-                getTopLevelSpecView(genomeSpy.viewRoot)
-            ),
-
-            finalize() {
-                active = false;
-                genomeSpy.destroy();
-                while (element.firstChild) {
-                    element.firstChild.remove();
-                }
-            },
-
-            addEventListener(type, listener) {
-                genomeSpy.addEventListener(type, listener);
-            },
-
-            removeEventListener(type, listener) {
-                genomeSpy.removeEventListener(type, listener);
-            },
-
-            getScaleResolutionByName(name) {
-                return genomeSpy.getNamedScaleResolutions().get(name);
-            },
-
-            getParam: genomeSpy.getParam.bind(genomeSpy),
-
-            awaitVisibleLazyData:
-                genomeSpy.awaitVisibleLazyData.bind(genomeSpy),
-            getRenderedBounds: genomeSpy.getRenderedBounds.bind(genomeSpy),
-            updateNamedData: genomeSpy.updateNamedData.bind(genomeSpy),
-            getLogicalCanvasSize:
-                genomeSpy.getLogicalCanvasSize.bind(genomeSpy),
-            exportCanvas: genomeSpy.exportCanvas.bind(genomeSpy),
-            imageExport: {
-                raster: genomeSpy.exportRaster.bind(genomeSpy),
-                svg: genomeSpy.exportSvg.bind(genomeSpy),
-                analyzeSvg: genomeSpy.analyzeSvgExport.bind(genomeSpy),
-            },
+        return createEmbedResult({
+            genomeSpy,
+            isActive,
             debug: {
                 getViewRoot() {
                     return genomeSpy ? genomeSpy.viewRoot : undefined;
@@ -131,7 +78,12 @@ export function createEmbed(GenomeSpy) {
                         : undefined;
                 },
             },
-        };
+            finalize() {
+                active = false;
+                genomeSpy.destroy();
+                clearEmbedElement(element);
+            },
+        });
     };
 }
 
