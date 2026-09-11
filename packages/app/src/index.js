@@ -2,10 +2,7 @@ import { isObject, isString } from "vega-util";
 
 import GenomeSpy from "@genome-spy/core/genomeSpy.js";
 import { loadSpec } from "@genome-spy/core/index.js";
-import {
-    clearEmbedElement,
-    createEmbedResult,
-} from "@genome-spy/core/embedApi.js";
+import { createEmbedResult } from "@genome-spy/core/embedApi.js";
 import App from "./app.js";
 import icon from "@genome-spy/core/img/bowtie.svg";
 import { html } from "lit";
@@ -87,7 +84,7 @@ export async function embed(el, spec, options = {}) {
             app?.finalize();
             genomeSpy?.destroy();
             genomeSpy = undefined;
-            clearEmbedElement(element);
+            element.replaceChildren();
         },
     });
 }

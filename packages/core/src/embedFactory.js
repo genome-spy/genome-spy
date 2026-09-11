@@ -1,6 +1,6 @@
 import { isObject, isString } from "vega-util";
 
-import { createEmbedResult, clearEmbedElement } from "./embedApi.js";
+import { createEmbedResult } from "./embedApi.js";
 import { fetchJson } from "./utils/fetchUtils.js";
 import inferSpecBaseUrl from "./utils/inferSpecBaseUrl.js";
 
@@ -81,7 +81,7 @@ export function createEmbed(GenomeSpy) {
             finalize() {
                 active = false;
                 genomeSpy.destroy();
-                clearEmbedElement(element);
+                element.replaceChildren();
             },
         });
     };

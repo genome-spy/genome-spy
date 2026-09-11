@@ -75,14 +75,3 @@ export function createEmbedResult({ genomeSpy, isActive, debug, finalize }) {
         debug,
     };
 }
-
-/**
- * Removes all DOM children owned by an embed.
- *
- * @param {HTMLElement} element
- */
-export function clearEmbedElement(element) {
-    while (element.firstChild) {
-        element.firstChild.remove();
-    }
-}

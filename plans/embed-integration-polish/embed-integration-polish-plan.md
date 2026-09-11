@@ -227,3 +227,47 @@ legacy lookup, run the existing ambiguity/alias/write-restriction tests. Keep
 necessary stale-handle checks, required-ref validation, and disposal protections.
 Commit coherent verified groups; a separate commit for every measurement is not
 required.
+
+## Second simplification round
+
+Apply the same per-change measurement rules above. Record before/after production
+counts and added/removed/net lines for each item, plus this round's cumulative
+delta. Keep only changes that make the complete code smaller or clearly easier to
+read; do not compress formatting or build abstractions to chase minor savings.
+
+- [x] Replace both `clearEmbedElement(element)` calls with
+  `element.replaceChildren()`. Delete the helper, its JSDoc, and its imports from
+  Core and App. Verify embed finalization still removes the owned DOM children.
+- [ ] Reuse `ViewParamRuntime.getParamRef()` in its internal `subscribe()` instead
+  of repeating effective-runtime/ref resolution. Preserve internal synchronous
+  subscription timing, lazy expression resolution, and clear missing-parameter
+  errors. Modern and legacy embed observations continue using graph effects.
+- [ ] Remove the redundant `hasLocalParam()` check in `getParamRef()` after
+  `findRuntimeForParam()` has returned the runtime that owns the local parameter.
+  Retain missing-runtime handling and lazy ref materialization. Measure this
+  deletion separately from the subscription refactor.
+- [ ] Combine single/multi point snapshot construction: choose the source datum
+  collection in explicit branches, then share copying and the public
+  `{ type: "point", active, data }` result. Preserve empty-selection behavior,
+  detached datum copies, and explicit unsupported-selection rejection.
+- [ ] Simplify settled-subscription call sites by letting the existing local
+  helper receive a value reader and listener and perform callback error handling.
+  Parameter and selection observations supply their appropriate readers. Retain
+  owner-bound disposal and future-only coherent delivery. Keep this only if the
+  helper and callers together become simpler; no observer framework.
+- [ ] Replace the legacy `addEventListener` and `removeEventListener` forwarding
+  wrappers in `createEmbedResult` with bound methods, matching neighboring entries.
+  Preserve receiver binding and callback registration/removal behavior.
+
+Affected areas: `embedApi.js`, Core/App embed entry points,
+`paramRuntime/viewParamRuntime.js`, and `paramRuntime/embedParamApi.js`. Read
+applicable package instructions before editing. Run the narrow existing runtime,
+embed, and selection suites and relevant type checks. Reuse behavioral coverage;
+add tests only for meaningful gaps exposed by these changes. No renderer, public
+API, or broader lifecycle refactors are part of this round.
+
+Measurement record for the second simplification round:
+
+| Change | Production lines before | After | Added | Removed | Net |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Replace embed child-clearing helper | 342 | 328 | 0 | 14 | -14 |
