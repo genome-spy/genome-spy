@@ -86,6 +86,59 @@ class InspectRenderingContext extends ViewRenderingContext {
     }
 }
 
+class FakeMouseEvent extends Event {
+    constructor(
+        /** @type {string} */ type,
+        /** @type {Record<string, any>} */ init = {}
+    ) {
+        super(type);
+        Object.assign(this, init);
+    }
+}
+
+/**
+ * @returns {{ installDocument: () => Record<string, EventListener | undefined>, restore: () => void }}
+ */
+function installDocumentDragTestEnvironment() {
+    const originalDocument = globalThis.document;
+    const originalMouseEvent = globalThis.MouseEvent;
+    globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+        /** @type {any} */ (FakeMouseEvent)
+    );
+
+    const installDocument = () => {
+        /** @type {Record<string, EventListener | undefined>} */
+        const listeners = {};
+        globalThis.document = /** @type {Document} */ (
+            /** @type {any} */ ({
+                addEventListener(
+                    /** @type {string} */ type,
+                    /** @type {EventListener} */ listener
+                ) {
+                    listeners[type] = listener;
+                },
+                removeEventListener(
+                    /** @type {string} */ type,
+                    /** @type {EventListener} */ listener
+                ) {
+                    if (listeners[type] === listener) {
+                        listeners[type] = undefined;
+                    }
+                },
+            })
+        );
+        return listeners;
+    };
+
+    return {
+        installDocument,
+        restore() {
+            globalThis.document = originalDocument;
+            globalThis.MouseEvent = originalMouseEvent;
+        },
+    };
+}
+
 /**
  * @returns {import("../../spec/view.js").UnitSpec}
  */
@@ -759,40 +812,8 @@ describe("GridView separators", () => {
     });
 
     test("disposing a scrollbar cancels its active document drag", async () => {
-        const originalDocument = globalThis.document;
-        const originalMouseEvent = globalThis.MouseEvent;
-        class FakeMouseEvent extends Event {
-            constructor(
-                /** @type {string} */ type,
-                /** @type {Record<string, any>} */ init = {}
-            ) {
-                super(type);
-                Object.assign(this, init);
-            }
-        }
-        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
-            /** @type {any} */ (FakeMouseEvent)
-        );
-        /** @type {Record<string, EventListener | undefined>} */
-        const listeners = {};
-        globalThis.document = /** @type {Document} */ (
-            /** @type {any} */ ({
-                addEventListener(
-                    /** @type {string} */ type,
-                    /** @type {EventListener} */ listener
-                ) {
-                    listeners[type] = listener;
-                },
-                removeEventListener(
-                    /** @type {string} */ type,
-                    /** @type {EventListener} */ listener
-                ) {
-                    if (listeners[type] === listener) {
-                        listeners[type] = undefined;
-                    }
-                },
-            })
-        );
+        const environment = installDocumentDragTestEnvironment();
+        const listeners = environment.installDocument();
 
         try {
             const view = await createAndInitialize(
@@ -846,8 +867,7 @@ describe("GridView separators", () => {
             expect(listeners.mouseup).toBeUndefined();
             expect(resumeHoverTracking).toHaveBeenCalledWith(undefined);
         } finally {
-            globalThis.document = originalDocument;
-            globalThis.MouseEvent = originalMouseEvent;
+            environment.restore();
         }
     });
 
@@ -2409,57 +2429,15 @@ describe("GridView wheel zoom", () => {
     });
 
     test("vconcat gap drag pan uses the shared x resolution and matches child pan", async () => {
-        const originalDocument = globalThis.document;
-        const originalMouseEvent = globalThis.MouseEvent;
+        const environment = installDocumentDragTestEnvironment();
 
         try {
-            /**
-             * @returns {Record<string, EventListener | undefined>}
-             */
-            const installDocumentStub = () => {
-                /** @type {Record<string, EventListener | undefined>} */
-                const listeners = {};
-                globalThis.document = /** @type {Document} */ (
-                    /** @type {any} */ ({
-                        addEventListener(
-                            /** @type {string} */ type,
-                            /** @type {EventListener} */ listener
-                        ) {
-                            listeners[type] = listener;
-                        },
-                        removeEventListener(
-                            /** @type {string} */ type,
-                            /** @type {EventListener} */ listener
-                        ) {
-                            if (listeners[type] === listener) {
-                                listeners[type] = undefined;
-                            }
-                        },
-                    })
-                );
-                return listeners;
-            };
-
-            class FakeMouseEvent extends Event {
-                constructor(
-                    /** @type {string} */ type,
-                    /** @type {Record<string, any>} */ init = {}
-                ) {
-                    super(type);
-                    Object.assign(this, init);
-                }
-            }
-
-            globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
-                /** @type {any} */ (FakeMouseEvent)
-            );
-
             const dispatchPan = (
                 /** @type {ConcatView} */ concatView,
                 /** @type {Point} */ startPoint,
                 /** @type {number} */ deltaX
             ) => {
-                const listeners = installDocumentStub();
+                const listeners = environment.installDocument();
                 concatView.propagateInteraction(
                     new Interaction(
                         startPoint,
@@ -2512,8 +2490,7 @@ describe("GridView wheel zoom", () => {
                 childResolution.getDomain()
             );
         } finally {
-            globalThis.document = originalDocument;
-            globalThis.MouseEvent = originalMouseEvent;
+            environment.restore();
         }
     });
 
@@ -2527,41 +2504,9 @@ describe("GridView wheel zoom", () => {
     )(
         "%s container interval selection starts from %s",
         async (direction, fromGap) => {
-            const originalDocument = globalThis.document;
-            const originalMouseEvent = globalThis.MouseEvent;
-            class FakeMouseEvent extends Event {
-                constructor(
-                    /** @type {string} */ type,
-                    /** @type {Record<string, any>} */ init = {}
-                ) {
-                    super(type);
-                    Object.assign(this, init);
-                }
-            }
-            globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
-                /** @type {any} */ (FakeMouseEvent)
-            );
+            const environment = installDocumentDragTestEnvironment();
+            const listeners = environment.installDocument();
             const channel = direction === "vconcat" ? "x" : "y";
-            /** @type {Record<string, EventListener | undefined>} */
-            const listeners = {};
-            globalThis.document = /** @type {Document} */ (
-                /** @type {any} */ ({
-                    addEventListener(
-                        /** @type {string} */ type,
-                        /** @type {EventListener} */ listener
-                    ) {
-                        listeners[type] = listener;
-                    },
-                    removeEventListener(
-                        /** @type {string} */ type,
-                        /** @type {EventListener} */ listener
-                    ) {
-                        if (listeners[type] === listener) {
-                            listeners[type] = undefined;
-                        }
-                    },
-                })
-            );
 
             try {
                 const { concatView, point, childPoint } =
@@ -2632,47 +2577,14 @@ describe("GridView wheel zoom", () => {
                     ]
                 ).toBeNull();
             } finally {
-                globalThis.document = originalDocument;
-                globalThis.MouseEvent = originalMouseEvent;
+                environment.restore();
             }
         }
     );
 
     test("disposing a container brush releases an active document drag", async () => {
-        const originalDocument = globalThis.document;
-        const originalMouseEvent = globalThis.MouseEvent;
-        class FakeMouseEvent extends Event {
-            constructor(
-                /** @type {string} */ type,
-                /** @type {Record<string, any>} */ init = {}
-            ) {
-                super(type);
-                Object.assign(this, init);
-            }
-        }
-        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
-            /** @type {any} */ (FakeMouseEvent)
-        );
-        /** @type {Record<string, EventListener | undefined>} */
-        const listeners = {};
-        globalThis.document = /** @type {Document} */ (
-            /** @type {any} */ ({
-                addEventListener(
-                    /** @type {string} */ type,
-                    /** @type {EventListener} */ listener
-                ) {
-                    listeners[type] = listener;
-                },
-                removeEventListener(
-                    /** @type {string} */ type,
-                    /** @type {EventListener} */ listener
-                ) {
-                    if (listeners[type] === listener) {
-                        listeners[type] = undefined;
-                    }
-                },
-            })
-        );
+        const environment = installDocumentDragTestEnvironment();
+        const listeners = environment.installDocument();
 
         try {
             const { concatView, point } = await createGapHarness("vconcat", {
@@ -2718,46 +2630,13 @@ describe("GridView wheel zoom", () => {
             expect(resumeHoverTracking).toHaveBeenCalledTimes(1);
             expect(commit).not.toHaveBeenCalled();
         } finally {
-            globalThis.document = originalDocument;
-            globalThis.MouseEvent = originalMouseEvent;
+            environment.restore();
         }
     });
 
     test("disposing the routing grid cancels an active pan", async () => {
-        const originalDocument = globalThis.document;
-        const originalMouseEvent = globalThis.MouseEvent;
-        class FakeMouseEvent extends Event {
-            constructor(
-                /** @type {string} */ type,
-                /** @type {Record<string, any>} */ init = {}
-            ) {
-                super(type);
-                Object.assign(this, init);
-            }
-        }
-        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
-            /** @type {any} */ (FakeMouseEvent)
-        );
-        /** @type {Record<string, EventListener | undefined>} */
-        const listeners = {};
-        globalThis.document = /** @type {Document} */ (
-            /** @type {any} */ ({
-                addEventListener(
-                    /** @type {string} */ type,
-                    /** @type {EventListener} */ listener
-                ) {
-                    listeners[type] = listener;
-                },
-                removeEventListener(
-                    /** @type {string} */ type,
-                    /** @type {EventListener} */ listener
-                ) {
-                    if (listeners[type] === listener) {
-                        listeners[type] = undefined;
-                    }
-                },
-            })
-        );
+        const environment = installDocumentDragTestEnvironment();
+        const listeners = environment.installDocument();
 
         try {
             const { concatView, point } = await createGapHarness("vconcat");
@@ -2788,41 +2667,15 @@ describe("GridView wheel zoom", () => {
             expect(resumeHoverTracking).toHaveBeenCalledOnce();
             expect(resumeHoverTracking).toHaveBeenCalledWith(undefined);
         } finally {
-            globalThis.document = originalDocument;
-            globalThis.MouseEvent = originalMouseEvent;
+            environment.restore();
         }
     });
 
     test.each(/** @type {const} */ (["vconcat", "hconcat"]))(
         "%s container interval selection translates a programmatic update without pointer warmup",
         async (direction) => {
-            const originalDocument = globalThis.document;
-            const originalMouseEvent = globalThis.MouseEvent;
-            class FakeMouseEvent extends Event {
-                constructor(
-                    /** @type {string} */ type,
-                    /** @type {Record<string, any>} */ init = {}
-                ) {
-                    super(type);
-                    Object.assign(this, init);
-                }
-            }
-            globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
-                /** @type {any} */ (FakeMouseEvent)
-            );
-            /** @type {Record<string, EventListener | undefined>} */
-            const listeners = {};
-            globalThis.document = /** @type {Document} */ (
-                /** @type {any} */ ({
-                    addEventListener(
-                        /** @type {string} */ type,
-                        /** @type {EventListener} */ listener
-                    ) {
-                        listeners[type] = listener;
-                    },
-                    removeEventListener() {},
-                })
-            );
+            const environment = installDocumentDragTestEnvironment();
+            const listeners = environment.installDocument();
 
             try {
                 const channel = direction === "vconcat" ? "x" : "y";
@@ -2881,8 +2734,7 @@ describe("GridView wheel zoom", () => {
                     concatView.getScaleResolution(channel)?.getDomain()
                 ).toEqual(beforeDomain);
             } finally {
-                globalThis.document = originalDocument;
-                globalThis.MouseEvent = originalMouseEvent;
+                environment.restore();
             }
         }
     );
