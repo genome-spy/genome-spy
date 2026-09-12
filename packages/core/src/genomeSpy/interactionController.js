@@ -361,7 +361,6 @@ export default class InteractionController {
         const startHoverPick = (point, event) => {
             const request = {};
             activeHoverPick = request;
-            this.#renderPickingFramebuffer();
             const promise = this.#handlePicking(
                 point.x,
                 point.y,
@@ -415,7 +414,6 @@ export default class InteractionController {
                 /** @type {Promise<boolean> | undefined} */
                 let markPickPromise;
                 if (["click", "dblclick", "contextmenu"].includes(event.type)) {
-                    this.#renderPickingFramebuffer();
                     markPickPromise = this.#handlePicking(
                         point.x,
                         point.y,
@@ -902,7 +900,6 @@ export default class InteractionController {
      */
     #refreshHover(point) {
         if (!isStillZooming()) {
-            this.#renderPickingFramebuffer();
             this.#handlePicking(point.x, point.y);
         }
     }
@@ -962,6 +959,7 @@ export default class InteractionController {
      */
     #handlePicking(x, y, shouldApply = () => true, onApplied) {
         const requestId = this.#pickingRequestId;
+        this.#renderPickingFramebuffer();
         const result = this.#readPickingId?.(x, y) ?? 0;
 
         /** @param {number | null} uniqueId */
