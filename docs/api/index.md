@@ -14,6 +14,7 @@ package.
 
 ## API topics
 
+- [API reference](./reference/index.md)
 - [Embedding and entry points](./embedding.md)
 - [View hierarchy](./views.md)
 - [Runtime state](./runtime-state.md)

@@ -1,0 +1,26 @@
+/* Keep generated API identifiers readable without affecting other documentation. */
+body:has(link[rel="canonical"][href*="/api/reference/"]) .md-typeset h3,
+body:has(link[rel="canonical"][href*="/api/reference/"]) .md-typeset h4,
+body:has(link[rel="canonical"][href*="/api/reference/"]) .md-nav__link {
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+body:has(link[rel="canonical"][href*="/api/reference/"]) .md-typeset h3 {
+    font-size: 1.05rem;
+    margin-top: 1.5rem;
+}
+
+body:has(link[rel="canonical"][href*="/api/reference/"]) .md-typeset h4 {
+    font-size: 0.95rem;
+    margin-top: 1rem;
+}
+
+body:has(link[rel="canonical"][href*="/api/reference/"]) .md-typeset blockquote {
+    margin: 0.5rem 0 1rem;
+    padding: 0.35rem 0.75rem;
+}
+
+body:has(link[rel="canonical"][href*="/api/reference/"]) .md-typeset blockquote p {
+    margin: 0;
+}

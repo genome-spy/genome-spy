@@ -1,0 +1,8 @@
+{
+  "extends": "../packages/core/tsconfig.json",
+  "compilerOptions": {
+    "checkJs": false,
+    "noEmit": true
+  },
+  "files": ["./api-docs-entry.d.ts"]
+}
