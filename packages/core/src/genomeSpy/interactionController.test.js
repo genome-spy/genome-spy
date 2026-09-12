@@ -874,7 +874,16 @@ describe("InteractionController", () => {
 
         expect(canvas.style.cursor).toBe("grabbing");
 
+        controller.suspendHoverTracking();
         resolvePick(0);
+        await Promise.resolve();
+
+        expect(canvas.style.cursor).toBe("grabbing");
+
+        readPickingId.mockResolvedValue(0);
+        controller.resumeHoverTracking(
+            new MouseEvent("mouseup", { clientX: 21, clientY: 31 })
+        );
         await Promise.resolve();
 
         expect(canvas.style.cursor).toBe("");

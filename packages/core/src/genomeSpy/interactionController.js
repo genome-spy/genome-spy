@@ -857,6 +857,7 @@ export default class InteractionController {
             this.#cursorManager.clear();
             this.#tooltip.clear();
             this.#clearHover();
+            this.#lastPointerPoint = undefined;
             activeHoverPick = undefined;
             queuedMouseMove = undefined;
         });
@@ -922,10 +923,17 @@ export default class InteractionController {
 
     #refreshHoverAndCursor(/** @type {Point} */ point) {
         if (!isStillZooming()) {
-            this.#handlePicking(point.x, point.y, undefined, () =>
-                this.#updateCursor(
-                    this.#interactionDispatcher.getCurrentTarget()
-                )
+            this.#handlePicking(
+                point.x,
+                point.y,
+                () =>
+                    this.#hoverTrackingSuspensionCount === 0 &&
+                    !this.#isInteractionFrozen() &&
+                    this.#lastPointerPoint === point,
+                () =>
+                    this.#updateCursor(
+                        this.#interactionDispatcher.getCurrentTarget()
+                    )
             );
             return;
         }
