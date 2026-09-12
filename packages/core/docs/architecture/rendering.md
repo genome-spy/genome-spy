@@ -139,6 +139,12 @@ attachments, size observers, and the canvas.
 - Picking renders into a dedicated framebuffer owned by `WebGLHelper`.
 - Marks can opt out of picking; some render only into the picking target.
 
+`InteractionController` owns the renderer-neutral pick policy. Its shared read
+boundary refreshes the picking frame, preserves synchronous or asynchronous
+renderer delivery, rejects results invalidated by a newer scene generation,
+and resolves IDs to scoped mark hits. Hover and mark events may publish those
+hits, while the explicit embedding `pick` API remains observational.
+
 ## WebGPU migration implications
 
 WebGL-specific behavior is concentrated under `src/rendering/webgl/`. WebGL and

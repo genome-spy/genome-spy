@@ -166,15 +166,15 @@ matrix below as the contract.
 
 ### 2. Consolidate picking mechanics
 
-- [ ] Factor the common frame-read, invalidation-generation, and hit-resolution
+- [x] Factor the common frame-read, invalidation-generation, and hit-resolution
       work used by `pick()` and `#handlePicking()` without conflating their policies.
-- [ ] Preserve synchronous renderer delivery, asynchronous hover coalescing,
+- [x] Preserve synchronous renderer delivery, asynchronous hover coalescing,
       individual mark-event results, explicit-pick scope filtering, and invalidation.
-- [ ] Test synchronous and delayed reads, rapid movement, multiple clicks at
+- [x] Test synchronous and delayed reads, rapid movement, multiple clicks at
       distinct coordinates, scene invalidation, leaving/suspending during a read,
       native veto, and explicit-pick errors/empty results. Check that public picks
       never publish hover or tooltips and pending results cannot act after disposal.
-- [ ] Inspect downstream mark/point selection and embedding interaction API
+- [x] Inspect downstream mark/point selection and embedding interaction API
       consumers for ordering assumptions; measure total changed production code.
 
 Affected areas: interaction controller, renderer picking boundary, scoped hit
@@ -184,6 +184,16 @@ frameworks. Exercise both sync and async backend contracts regardless of which
 renderer is available for browser smoke testing. No public docs/migration expected.
 
 Tentative commit: `refactor(core): share picking mechanics across interaction paths`
+
+Implementation result: `interactionController.js` increased from 1204 to 1226
+physical lines. The 22-line growth centralizes framebuffer refresh, generation
+validation, and scoped hit lookup while retaining separate hover, mark-event,
+and explicit-pick policies and the synchronous fast path. The focused controller,
+embedding parameter, and view mutation suites passed 85 tests; Core TypeScript
+and lint checks passed. Browser rendering smoke checks passed for the point and
+concat interval examples. Downstream inspection confirmed that point selections
+still consume routed hover, view mutation handles only convert the public result,
+and engine destruction invalidates reads before listener and renderer disposal.
 
 ### 3. Consolidate cursor publication if the audit supports it
 
