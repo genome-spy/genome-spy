@@ -226,8 +226,7 @@ export default class InteractionController {
         }
 
         this.#clearHover();
-        this.#tooltip.clear();
-        this.#tooltipUpdateRequested = false;
+        this.#clearTooltip();
     }
 
     /**
@@ -243,8 +242,7 @@ export default class InteractionController {
             return;
         }
 
-        this.#tooltip.clear();
-        this.#tooltipUpdateRequested = false;
+        this.#clearTooltip();
 
         if (this.#isInteractionFrozen()) {
             return;
@@ -666,8 +664,7 @@ export default class InteractionController {
                         clearTooltipOnMove &&
                         this.#hoverTrackingSuspensionCount > 0
                     ) {
-                        this.#tooltip.clear();
-                        this.#tooltipUpdateRequested = false;
+                        this.#clearTooltip();
                     }
                 };
                 document.addEventListener("mouseup", () => clear(false), {
@@ -850,8 +847,7 @@ export default class InteractionController {
             }
 
             if (this.#hoverTrackingSuspensionCount > 0) {
-                this.#tooltip.clear();
-                this.#tooltipUpdateRequested = false;
+                this.#clearTooltip();
                 return;
             }
 
@@ -928,8 +924,7 @@ export default class InteractionController {
                 return;
             }
 
-            this.#tooltip.clear();
-            this.#tooltipUpdateRequested = false;
+            this.#clearTooltip();
             this.#refreshHoverAndCursor(point);
         });
     }
@@ -940,6 +935,11 @@ export default class InteractionController {
             target: this.#interactionDispatcher.getCurrentTarget(),
             hover: this.#currentHover,
         });
+    }
+
+    #clearTooltip() {
+        this.#tooltip.clear();
+        this.#tooltipUpdateRequested = false;
     }
 
     #isInteractionFrozen() {
