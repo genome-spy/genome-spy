@@ -1,7 +1,7 @@
 # Interaction consolidation
 
-Status: proposed; reviewed by a Luna xhigh subagent and reconciled. Implementation
-has not started.
+Status: implemented and verified; reviewed by a Luna xhigh subagent before
+implementation.
 
 ## Goal and scope
 
@@ -228,9 +228,10 @@ read. Ordinary routed dispatch still publishes after hover acceptance; leave
 clears cursor ownership; frozen and suspended paths preserve it; and expression
 watchers continue updating the active source without pointer movement. Cursor
 publication now passes through one controller helper while `CursorManager` remains
-the owner of source precedence and subscriptions. The controller grew from 1226
-to 1229 physical lines; `cursorManager.js` remained at 131. The three-line growth
-is the explicit accepted-pick callback needed for asynchronous convergence.
+the owner of source precedence and subscriptions. Delayed refreshes also reject
+results after pointer movement, leave, resuspension, or frozen interaction. The
+controller grew from 1226 to 1237 physical lines; `cursorManager.js` remained at 131. The 11-line growth is the explicit acceptance predicate and callback needed
+for asynchronous convergence without reviving obsolete hover.
 Focused controller and cursor-manager suites passed 29 tests, including delayed
 double-click refresh, delayed resume, resume outside the canvas, frozen and
 suspended interaction, reactive expressions, and mark-over-view precedence.
@@ -244,10 +245,10 @@ and simplification fixes before committing each coherent milestone; avoid
 recursive reviews for minor fixes. Implementation review model is not prescribed
 by this plan; the initial plan review uses the requested Luna xhigh subagent.
 
-- [ ] Run narrow Vitest suites with `--reporter=agent` during implementation.
+- [x] Run narrow Vitest suites with `--reporter=agent` during implementation.
       At final integration run the full unit suite, workspace TypeScript checks,
       and lint; distinguish pre-existing failures from regressions.
-- [ ] Use `debug-genomespy-web` for browser verification of
+- [x] Use `debug-genomespy-web` for browser verification of
       `examples/core/selection/interval_points.json`, `interval_genome.json`,
       `interval_concat.json`, and `interval_linked_domain_two_way.json`, plus
       `examples/docs/grammar/composition/concat/scrollable-viewports.json`.
@@ -256,11 +257,32 @@ by this plan; the initial plan review uses the requested Luna xhigh subagent.
       Also exercise touch pan/pinch and synchronous page-scroll prevention on wheel.
       Exercise a mousedown ruler with release clearing and disposal during a drag.
       Use available interactive backends; explicitly report unavailable coverage.
-- [ ] Record final affected-file size deltas and explain any production growth.
+- [x] Record final affected-file size deltas and explain any production growth.
       Keep tests for behavior and contracts; remove temporary implementation tests.
-- [ ] Reconcile every checkbox as complete or explicitly discarded, commit the
+- [x] Reconcile every checkbox as complete or explicitly discarded, commit the
       reconciled record, then delete this temporary plan in a later commit before PR
       creation. Do not merge the plan.
+
+Final integration passed all 477 Vitest files (4158 tests passed, one skipped,
+and two todo), every workspace TypeScript check, and lint. The browser smoke
+runner passed all five named examples. Live Chromium checks repeated brush
+creation, translation, wheel zoom, clear, cursor recovery, and synchronous wheel
+page-scroll prevention; synthetic browser `TouchEvent`s covered one-pointer pan
+and two-pointer pinch with cancellation. The same browser session could not
+provide physical touchscreen input. Earlier live checks covered shared-view
+routing, outside-canvas release, pan inertia, scrollbar dragging, and ruler
+release clear; owner-disposal behavior is covered by focused tests because
+destroying the live example would remove the inspected canvas.
+
+Across all affected production files, physical lines increased from 5493 to
+5547 (+54). The original six baseline files finish unchanged in aggregate at
+3128 lines: the interaction controller's 33-line growth is offset by the
+33-line interval-controller reduction and the net reduction in zoom/scrollbar
+versus ruler changes. The remaining growth is the 46-line shared drag lifetime
+and eight lines of `GridView` ownership wiring. That cost replaces four temporary
+document-listener lifetimes with an idempotent, owner-cancelled contract and adds
+the tested async pick/cursor acceptance boundary; no general event abstraction
+or new scheduler was introduced.
 
 ## Risks and questions to resolve during implementation
 
