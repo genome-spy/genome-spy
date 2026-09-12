@@ -6,6 +6,8 @@ import "@genome-spy/core/rendering/webgl.js";
 /** @typedef {import("@genome-spy/core/types/embedApi.js").SelectionSnapshot} SelectionSnapshot */
 
 const bridgeUrl = "http://127.0.0.1:8765";
+// Add `?bridge` to exchange selections and annotations with the optional
+// notebook bridge. The browser-only example works without it.
 const bridgeEnabled = new URLSearchParams(location.search).has("bridge");
 const values = Array.from({ length: 51 }, (_, x) => ({
     x,
@@ -19,10 +21,14 @@ let annotations = [];
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
     params: [
+        // A committed interval drives the annotation form. The form is
+        // updated only after the drag has finished.
         {
             name: "brush",
             select: { type: "interval", encodings: ["x"], extent: "container" },
         },
+        // Hovering a point demonstrates point-selection snapshots alongside
+        // the interval selection used by the form.
         {
             name: "selected",
             select: { type: "point", on: "pointerover" },
@@ -61,6 +67,8 @@ const spec = {
     ],
     annotate: [
         {
+            // This view is backed by the mutable annotations dataset below,
+            // so newly saved or bridged annotations appear immediately.
             name: "selection-annotations",
             data: { name: "annotations" },
             mark: { type: "rect", fill: "#0ea5e9", fillOpacity: 0.35 },
@@ -92,6 +100,7 @@ const rows = /** @type {HTMLTableSectionElement} */ (
     document.getElementById("selection-rows")
 );
 
+// Keep the table as a plain HTML view of the annotations dataset.
 function renderRows() {
     rows.replaceChildren(
         ...annotations.map((annotation) => {
@@ -136,6 +145,8 @@ function showSelection(snapshot) {
         : "No point selected.";
 }
 
+// Commit interval selections before enabling the form. Point selections are
+// delivered on hover to show that both selection types use the same API.
 brush.subscribe(
     (snapshot) => {
         showSelection(snapshot);
@@ -170,6 +181,8 @@ form.addEventListener("submit", (event) => {
     }
 
     const formData = new FormData(form);
+    // Update the dataset through the embed API so the annotation overlay and
+    // the HTML table stay in sync.
     annotations = [
         ...annotations,
         {
