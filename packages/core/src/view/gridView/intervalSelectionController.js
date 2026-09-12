@@ -108,12 +108,19 @@ export class IntervalSelectionController {
         this.#viewListeners.add(type, listener, capture);
     }
 
-    dispose() {
+    /**
+     * @param {MouseEvent} [mouseEvent]
+     * @returns {boolean}
+     */
+    #endDrag(mouseEvent) {
         const wasDragging = this.#disposeActiveDrag();
         this.#disposeActiveDrag = () => false;
-        if (wasDragging) {
-            this.host.context.resumeHoverTracking();
-        }
+        if (wasDragging) this.host.context.resumeHoverTracking(mouseEvent);
+        return wasDragging;
+    }
+
+    dispose() {
+        this.#endDrag();
         this.#unregisterSelectionController();
         this.#viewListeners.dispose();
         this.#commitListeners.clear();
@@ -144,11 +151,7 @@ export class IntervalSelectionController {
      * Cancels an active gesture and clears a changed selection.
      */
     clear() {
-        const wasDragging = this.#disposeActiveDrag();
-        this.#disposeActiveDrag = () => false;
-        if (wasDragging) {
-            this.host.context.resumeHoverTracking();
-        }
+        this.#endDrag();
         this.#clearSelection();
     }
 
@@ -500,9 +503,7 @@ export class IntervalSelectionController {
             };
 
             const mouseUpListener = (/** @type {MouseEvent} */ upEvent) => {
-                const wasDragging = this.#disposeActiveDrag();
-                this.#disposeActiveDrag = () => false;
-                view.context.resumeHoverTracking(upEvent);
+                const wasDragging = this.#endDrag(upEvent);
                 if (wasDragging) {
                     this.#notifyCommit();
                 }

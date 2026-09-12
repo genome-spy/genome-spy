@@ -219,6 +219,10 @@ describe("embed param API", () => {
                     name: "brush",
                     select: { type: "interval", encodings: ["x"] },
                 },
+                {
+                    name: "brushEnd",
+                    expr: "brush.intervals.x ? brush.intervals.x[1] : 0",
+                },
             ],
             vconcat: [makeUnit("track")],
         });
@@ -226,10 +230,12 @@ describe("embed param API", () => {
         const selection = resolveEmbedSelection(root, "brush");
         /** @type {import("../types/embedApi.js").SelectionSnapshot[]} */
         const commits = [];
+        /** @type {number | undefined} */
+        let observedBrushEnd;
         selection.subscribe(
             (snapshot) => {
                 commits.push(snapshot);
-                expect(root.paramRuntime.getValue("brushEnd")).toBe(2);
+                observedBrushEnd = root.paramRuntime.getValue("brushEnd");
             },
             {
                 delivery: "commit",
@@ -241,6 +247,7 @@ describe("embed param API", () => {
         );
 
         expect(commits).toHaveLength(1);
+        expect(observedBrushEnd).toBe(2);
         expect(commits[0]).toMatchObject({
             type: "interval",
             active: true,

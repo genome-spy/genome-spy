@@ -41,6 +41,29 @@ export function createEmbedParamNamespace(view, lifecycle = {}) {
 }
 
 /**
+ * @param {View} view
+ * @param {string} name
+ * @param {"Parameter" | "Selection"} kind
+ * @param {ParamApiLifecycle} lifecycle
+ * @returns {{
+ *     config: import("../spec/parameter.js").Parameter,
+ *     runtime: import("./viewParamRuntime.js").default,
+ *     valueRuntime: import("./viewParamRuntime.js").default
+ * }}
+ */
+function resolveScopedEmbedDeclaration(view, name, kind, lifecycle) {
+    ensureParamApiIsLive(lifecycle);
+    const declaration = view.paramRuntime.findConfiguredParam(name);
+    if (!declaration) throw new Error(`${kind} "${name}" not found.`);
+
+    const valueRuntime = declaration.runtime.findRuntimeForParam(name);
+    if (!valueRuntime)
+        throw new Error(`${kind} "${name}" has no runtime value.`);
+
+    return { ...declaration, valueRuntime };
+}
+
+/**
  * Resolves a parameter using the nearest authored declaration in `view`.
  *
  * @param {View} view
@@ -49,23 +72,18 @@ export function createEmbedParamNamespace(view, lifecycle = {}) {
  * @returns {ParamApi}
  */
 export function resolveScopedEmbedParam(view, name, lifecycle = {}) {
-    ensureParamApiIsLive(lifecycle);
-    const declaration = view.paramRuntime.findConfiguredParam(name);
-    if (!declaration) {
-        throw new Error('Parameter "' + name + '" not found.');
-    }
-
-    const effectiveRuntime = declaration.runtime.findRuntimeForParam(name);
-    if (!effectiveRuntime) {
-        throw new Error('Parameter "' + name + '" has no runtime value.');
-    }
-
-    const readOnly = "expr" in declaration.config;
-    return createParamApi(effectiveRuntime, name, lifecycle, (value) => {
+    const { config, runtime, valueRuntime } = resolveScopedEmbedDeclaration(
+        view,
+        name,
+        "Parameter",
+        lifecycle
+    );
+    const readOnly = "expr" in config;
+    return createParamApi(valueRuntime, name, lifecycle, (value) => {
         if (readOnly) {
             throw new Error('Cannot set computed parameter "' + name + '".');
         }
-        declaration.runtime.setValue(name, value);
+        runtime.setValue(name, value);
     });
 }
 
@@ -79,13 +97,12 @@ export function resolveScopedEmbedParam(view, name, lifecycle = {}) {
  * @returns {SelectionApi}
  */
 export function resolveEmbedSelection(view, name, lifecycle = {}) {
-    ensureParamApiIsLive(lifecycle);
-    const declaration = view.paramRuntime.findConfiguredParam(name);
-    if (!declaration) {
-        throw new Error('Selection "' + name + '" not found.');
-    }
-
-    const { config, runtime } = declaration;
+    const { config, runtime, valueRuntime } = resolveScopedEmbedDeclaration(
+        view,
+        name,
+        "Selection",
+        lifecycle
+    );
     if (!("select" in config)) {
         throw new Error(
             'Parameter "' + name + '" is not a selection in this scope.'
@@ -97,11 +114,6 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
         throw new Error(
             'Selection "' + name + '" does not expose a row-backed capability.'
         );
-    }
-
-    const effectiveRuntime = runtime.findRuntimeForParam(name);
-    if (!effectiveRuntime) {
-        throw new Error('Selection "' + name + '" has no runtime value.');
     }
 
     const controller = isIntervalSelectionConfig(select)
@@ -118,7 +130,7 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
 
         getValue() {
             ensureParamApiIsLive(lifecycle);
-            return copySelection(effectiveRuntime.getValue(name));
+            return copySelection(valueRuntime.getValue(name));
         },
 
         subscribe(
@@ -130,18 +142,18 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
                 return registerParamDisposer(
                     lifecycle,
                     controller.subscribeCommit((selection) =>
-                        callEmbedListener(listener, copySelection(selection))
+                        listener(copySelection(selection))
                     )
                 );
             }
 
             return subscribeToSettledValue(
-                effectiveRuntime,
+                valueRuntime,
                 name,
                 () => {
                     callEmbedListener(
                         listener,
-                        copySelection(effectiveRuntime.getValue(name))
+                        copySelection(valueRuntime.getValue(name))
                     );
                 },
                 lifecycle
