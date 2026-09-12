@@ -758,6 +758,99 @@ describe("GridView separators", () => {
         expect(contentBottom).toBe(scrollableChild.coords.y2);
     });
 
+    test("disposing a scrollbar cancels its active document drag", async () => {
+        const originalDocument = globalThis.document;
+        const originalMouseEvent = globalThis.MouseEvent;
+        class FakeMouseEvent extends Event {
+            constructor(
+                /** @type {string} */ type,
+                /** @type {Record<string, any>} */ init = {}
+            ) {
+                super(type);
+                Object.assign(this, init);
+            }
+        }
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (FakeMouseEvent)
+        );
+        /** @type {Record<string, EventListener | undefined>} */
+        const listeners = {};
+        globalThis.document = /** @type {Document} */ (
+            /** @type {any} */ ({
+                addEventListener(
+                    /** @type {string} */ type,
+                    /** @type {EventListener} */ listener
+                ) {
+                    listeners[type] = listener;
+                },
+                removeEventListener(
+                    /** @type {string} */ type,
+                    /** @type {EventListener} */ listener
+                ) {
+                    if (listeners[type] === listener) {
+                        listeners[type] = undefined;
+                    }
+                },
+            })
+        );
+
+        try {
+            const view = await createAndInitialize(
+                {
+                    vconcat: [
+                        {
+                            viewportHeight: 50,
+                            vconcat: [
+                                { height: 100, ...makeUnitSpec() },
+                                { height: 100, ...makeUnitSpec() },
+                            ],
+                        },
+                    ],
+                },
+                ConcatView
+            );
+            renderForLayout(view);
+            const scrollbar = view
+                .getDescendants()
+                .find((descendant) => descendant.name === "scrollbar-vertical");
+            if (!scrollbar) {
+                throw new Error("Expected vertical scrollbar!");
+            }
+            const resumeHoverTracking = vi.spyOn(
+                scrollbar.context,
+                "resumeHoverTracking"
+            );
+            const point = new Point(
+                scrollbar.coords.x + scrollbar.coords.width / 2,
+                scrollbar.coords.y + scrollbar.coords.height / 2
+            );
+
+            scrollbar.propagateInteraction(
+                new Interaction(
+                    point,
+                    /** @type {any} */ (
+                        new FakeMouseEvent("mousedown", {
+                            button: 0,
+                            clientX: point.x,
+                            clientY: point.y,
+                            preventDefault: () => {},
+                        })
+                    )
+                )
+            );
+            expect(listeners.mousemove).toBeDefined();
+
+            scrollbar.dispose();
+
+            expect(listeners.mousemove).toBeUndefined();
+            expect(listeners.mouseup).toBeUndefined();
+            expect(resumeHoverTracking).toHaveBeenCalledWith(undefined);
+        } finally {
+            globalThis.document = originalDocument;
+            globalThis.MouseEvent = originalMouseEvent;
+        }
+    });
+
     test("text expressions see child size on the first render pass", async () => {
         const view = await createAndInitialize(
             {
@@ -2598,6 +2691,10 @@ describe("GridView wheel zoom", () => {
                 concatView.context,
                 "resumeHoverTracking"
             );
+            const commit = vi.fn();
+            concatView.paramRuntime
+                .getSelectionController("brush")
+                ?.subscribeCommit(commit);
 
             concatView.propagateInteraction(
                 new Interaction(
@@ -2619,6 +2716,77 @@ describe("GridView wheel zoom", () => {
             expect(listeners.mousemove).toBeUndefined();
             expect(listeners.mouseup).toBeUndefined();
             expect(resumeHoverTracking).toHaveBeenCalledTimes(1);
+            expect(commit).not.toHaveBeenCalled();
+        } finally {
+            globalThis.document = originalDocument;
+            globalThis.MouseEvent = originalMouseEvent;
+        }
+    });
+
+    test("disposing the routing grid cancels an active pan", async () => {
+        const originalDocument = globalThis.document;
+        const originalMouseEvent = globalThis.MouseEvent;
+        class FakeMouseEvent extends Event {
+            constructor(
+                /** @type {string} */ type,
+                /** @type {Record<string, any>} */ init = {}
+            ) {
+                super(type);
+                Object.assign(this, init);
+            }
+        }
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (FakeMouseEvent)
+        );
+        /** @type {Record<string, EventListener | undefined>} */
+        const listeners = {};
+        globalThis.document = /** @type {Document} */ (
+            /** @type {any} */ ({
+                addEventListener(
+                    /** @type {string} */ type,
+                    /** @type {EventListener} */ listener
+                ) {
+                    listeners[type] = listener;
+                },
+                removeEventListener(
+                    /** @type {string} */ type,
+                    /** @type {EventListener} */ listener
+                ) {
+                    if (listeners[type] === listener) {
+                        listeners[type] = undefined;
+                    }
+                },
+            })
+        );
+
+        try {
+            const { concatView, point } = await createGapHarness("vconcat");
+            const resumeHoverTracking = vi.spyOn(
+                concatView.context,
+                "resumeHoverTracking"
+            );
+
+            concatView.propagateInteraction(
+                new Interaction(
+                    point,
+                    /** @type {any} */ (
+                        new FakeMouseEvent("mousedown", {
+                            button: 0,
+                            clientX: point.x,
+                            clientY: point.y,
+                            preventDefault: () => {},
+                        })
+                    )
+                )
+            );
+            expect(listeners.mousemove).toBeDefined();
+
+            concatView.dispose();
+
+            expect(listeners.mousemove).toBeUndefined();
+            expect(listeners.mouseup).toBeUndefined();
+            expect(resumeHoverTracking).toHaveBeenCalledOnce();
+            expect(resumeHoverTracking).toHaveBeenCalledWith(undefined);
         } finally {
             globalThis.document = originalDocument;
             globalThis.MouseEvent = originalMouseEvent;
@@ -2626,7 +2794,7 @@ describe("GridView wheel zoom", () => {
     });
 
     test.each(/** @type {const} */ (["vconcat", "hconcat"]))(
-        "%s container interval selection translates from a gap",
+        "%s container interval selection translates a programmatic update without pointer warmup",
         async (direction) => {
             const originalDocument = globalThis.document;
             const originalMouseEvent = globalThis.MouseEvent;
@@ -2666,7 +2834,6 @@ describe("GridView wheel zoom", () => {
                         params: [
                             {
                                 name: "brush",
-                                value: { [channel]: initialInterval },
                                 select: {
                                     type: "interval",
                                     encodings: [channel],
@@ -2676,21 +2843,15 @@ describe("GridView wheel zoom", () => {
                         ],
                     }
                 );
+                concatView.paramRuntime.setValue("brush", {
+                    type: "interval",
+                    intervals: { [channel]: initialInterval },
+                });
+                await concatView.paramRuntime.whenPropagated();
                 const beforeDomain = concatView
                     .getScaleResolution(channel)
                     ?.getDomain();
                 const before = concatView.paramRuntime.findValue("brush");
-                concatView.propagateInteraction(
-                    new Interaction(
-                        point,
-                        /** @type {any} */ (
-                            new FakeMouseEvent("mousemove", {
-                                clientX: point.x,
-                                clientY: point.y,
-                            })
-                        )
-                    )
-                );
                 concatView.propagateInteraction(
                     new Interaction(
                         point,

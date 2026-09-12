@@ -125,17 +125,17 @@ caller-owned: interval/ruler use view offsets, pan uses client deltas, and scrol
 uses axis coordinates. Hover hooks apply only to consumers that already suspend
 hover; do not add hover suspension to rulers.
 
-- [ ] Inspect ownership/disposal callers and characterize release, cancellation,
+- [x] Inspect ownership/disposal callers and characterize release, cancellation,
       click suppression, and commit notification behavior before replacing handlers.
-- [ ] Replace duplicated drag listener setup/teardown in interval selection,
+- [x] Replace duplicated drag listener setup/teardown in interval selection,
       viewport pan, scrollbars, and mousedown rulers with the smallest shared lifetime mechanism.
       Normalize coordinate handling only where caller coordinate contracts match.
-- [ ] Remove cached `mouseOver`; test the current press against current selection,
+- [x] Remove cached `mouseOver`; test the current press against current selection,
       host bounds, and ownership. Consolidate active-brush state and overlay updates.
-- [ ] Ensure controller/view disposal removes temporary listeners, including the
+- [x] Ensure controller/view disposal removes temporary listeners, including the
       pending click-to-clear mouseup listener where applicable. Distinguish cleanup
       from successful release. Preserve clear/external-write/commit semantics.
-- [ ] Verify brush creation, translation, shift modifiers, drag-outside release,
+- [x] Verify brush creation, translation, shift modifiers, drag-outside release,
       panning with inertia, scrollbar movement, cancellation/disposal, balanced hover
       suspension, click propagation, and linked selection domains. Include a press
       after programmatic selection change without an intervening mousemove.
@@ -148,6 +148,17 @@ No user-facing documentation or migration should be needed. Update internal
 architecture documentation only if a shared ownership contract is introduced.
 
 Tentative commit: `refactor(core): consolidate drag lifecycle and brush state`
+
+Implementation result: the six baseline files decreased from 3128 to 3095
+physical lines. Including the newly affected `gridView.js` and the shared
+`documentDrag.js`, total affected production code increased from 5493 to 5514
+lines. The 21-line growth buys owner-driven cancellation for pan, scrollbar,
+ruler, and brush disposal, plus a tested release/cancellation ordering contract;
+the original gesture consumers and their independently maintained brush state
+shrank by 33 lines. Focused Vitest suites passed 121 tests. The five named
+integration examples passed the browser rendering smoke check, and live browser
+checks covered brush creation, translation after a programmatic update, wheel
+zoom, clear, outside-canvas release, scrollbar dragging, and ruler release clear.
 
 Release verification includes explicit ordering/cancellation assertions, scrollbar
 disposal, and ruler release-clear versus disposal behavior. Use the ordering

@@ -735,6 +735,7 @@ describe("GridChild interval selection interactions", () => {
         setValue.mockImplementation(() => {});
         listeners.get("mousedown")[0](
             createInteractionEvent({
+                point: new Point(90, 50),
                 proxiedMouseEvent: /** @type {any} */ ({ shiftKey: false }),
             })
         );
@@ -873,7 +874,12 @@ describe("GridChild interval selection interactions", () => {
         const { view, layoutParent } = createIntervalGridChildView([
             {
                 name: "brush",
-                select: { type: "interval", encodings: ["x"] },
+                value: { x: [0.1, 0.8] },
+                select: {
+                    type: "interval",
+                    encodings: ["x"],
+                    on: "mousedown[event.shiftKey]",
+                },
             },
         ]);
         view.addInteractionListener = (type, listener) => {
@@ -892,6 +898,14 @@ describe("GridChild interval selection interactions", () => {
 
         const child = new GridChild(view, layoutParent, 0);
         expect(listenerCount()).toBeGreaterThan(0);
+
+        listeners.get("mousedown")[0](
+            createInteractionEvent({
+                point: new Point(90, 50),
+                proxiedMouseEvent: /** @type {any} */ ({ shiftKey: false }),
+            })
+        );
+        expect(listeners.get("mouseup")).toHaveLength(1);
 
         child.dispose();
 

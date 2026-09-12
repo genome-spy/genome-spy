@@ -1,6 +1,7 @@
 import { isContinuous } from "vega-scale";
 import { createPrimitiveEventProxy } from "../../utils/interactionEvent.js";
 import { createEventPredicate } from "../../utils/interactionConfig.js";
+import { startDocumentDrag } from "../../utils/documentDrag.js";
 import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
 import {
@@ -78,7 +79,7 @@ export class IntervalSelectionController {
     #viewListeners;
 
     /** @type {() => boolean} */
-    #disposeActiveDrag = () => false;
+    #cancelActiveDrag = () => false;
 
     /** @type {(point: Point) => boolean} */
     #containsPoint = () => false;
@@ -111,19 +112,8 @@ export class IntervalSelectionController {
         this.#viewListeners.add(type, listener, capture);
     }
 
-    /**
-     * @param {MouseEvent} [mouseEvent]
-     * @returns {boolean}
-     */
-    #endDrag(mouseEvent) {
-        const wasDragging = this.#disposeActiveDrag();
-        this.#disposeActiveDrag = () => false;
-        if (wasDragging) this.host.context.resumeHoverTracking(mouseEvent);
-        return wasDragging;
-    }
-
     dispose() {
-        this.#endDrag();
+        this.#cancelActiveDrag();
         this.#unregisterSelectionController();
         this.#viewListeners.dispose();
         this.#commitListeners.clear();
@@ -184,7 +174,7 @@ export class IntervalSelectionController {
      * Cancels an active gesture and clears a changed selection.
      */
     clear() {
-        this.#endDrag();
+        this.#cancelActiveDrag();
         this.#clearSelection();
     }
 
@@ -257,15 +247,13 @@ export class IntervalSelectionController {
 
         // --- Validation and early exits done ---
 
-        let mouseOver = false;
         let preventNextClickPropagation = false;
-        let nowBrushing = false;
+        /** @type {Point | undefined} */
+        let pendingClearStart;
         /**
-         * Selection rectangle in screen coordinates. Used when translating
-         * an existing selection.
-         * @type {Rectangle}
+         * @type {{ start: Point, translatedRectangle: Rectangle | null } | null}
          */
-        let translatedRectangle = null;
+        let activeBrush = null;
 
         /**
          * @param {{x: number, y: number}} a
@@ -406,17 +394,18 @@ export class IntervalSelectionController {
                 return;
             }
 
-            // Coordinates of the selection rectangle, if it exists.
-            // Must be operated in the view's coordinate system, not in data domain,
-            // as non-linear scales may be used.
-            translatedRectangle = mouseOver
-                ? selectionToRect(selectionExpr())
-                : null;
+            const selection = selectionExpr();
+            pendingClearStart = undefined;
+            // Keep translation geometry in screen coordinates because scales
+            // may be nonlinear.
+            const translatedRectangle =
+                isActiveIntervalSelection(selection) &&
+                selectionContainsPoint(selection, invertPoint(event.point))
+                    ? selectionToRect(selection)
+                    : null;
 
             if (translatedRectangle) {
                 // Started dragging an existing selection
-                setIntervalDragActive(true);
-                nowBrushing = true;
                 // Start of dragging should prevent click propagation so that
                 // no other selections or events are triggered.
                 preventNextClickPropagation = true;
@@ -431,45 +420,33 @@ export class IntervalSelectionController {
 
                 const startSelection = eventPredicate(event.proxiedMouseEvent);
 
-                if (startSelection) {
-                    nowBrushing = true;
-                    clearSelection();
-                } else if (
-                    clearEventConfig &&
-                    isActiveIntervalSelection(selectionExpr())
-                ) {
+                if (!startSelection) {
+                    if (
+                        !clearEventConfig ||
+                        !isActiveIntervalSelection(selection)
+                    ) {
+                        return;
+                    }
+
                     // If mouse button is released and there was a selection,
                     // it should be cleared unless the viewport was panned by dragging.
-                    /** @type {import("../view.js").InteractionListener} */
-                    const listener = (event) => {
-                        view.removeInteractionListener("mouseup", listener);
-                        const mouseUpPoint = event.point;
-
-                        // Retain selection if the viewport is panned by dragging
-                        const movementThreshold = 2; // pixels
-                        if (
-                            mouseDownPoint.subtract(mouseUpPoint).length <
-                            movementThreshold
-                        ) {
-                            clearSelection();
-                        }
-                    };
-                    // This listener is intentionally one-shot and removes
-                    // itself on the first mouseup.
-                    view.addInteractionListener("mouseup", listener);
-                    return;
-                } else {
+                    pendingClearStart = mouseDownPoint;
                     return;
                 }
             }
 
             // Prevent panning interaction
             event.stopPropagation();
-            view.context.suspendHoverTracking();
 
-            const start = event.point;
+            const brush = { start: event.point, translatedRectangle };
+            activeBrush = brush;
+            setIntervalDragActive(Boolean(translatedRectangle));
+            if (!translatedRectangle) {
+                clearSelection();
+            }
+
             const viewOffset = Point.fromMouseEvent(event.mouseEvent).subtract(
-                start
+                brush.start
             );
 
             const mouseMoveListener = (/** @type {MouseEvent} */ event) => {
@@ -481,9 +458,9 @@ export class IntervalSelectionController {
                 /** @type {ReturnType<typeof pointsToIntervals>} */
                 let intervals;
 
-                if (translatedRectangle) {
-                    const offset = current.subtract(start);
-                    const newRect = translatedRectangle.translate(
+                if (brush.translatedRectangle) {
+                    const offset = current.subtract(brush.start);
+                    const newRect = brush.translatedRectangle.translate(
                         offset.x,
                         offset.y
                     );
@@ -494,7 +471,7 @@ export class IntervalSelectionController {
                     );
                 } else {
                     intervals = pointsToIntervals(
-                        invertPoint(start),
+                        invertPoint(brush.start),
                         invertPoint(current)
                     );
                 }
@@ -504,7 +481,7 @@ export class IntervalSelectionController {
                     const { zoomExtent } = scaleResolution;
                     const interval = intervals[channel];
 
-                    if (translatedRectangle) {
+                    if (brush.translatedRectangle) {
                         // When dragging, clamp the interval so that the size stays the same and the interval doesn't exceed zoomExtent
                         const size = interval[1] - interval[0];
                         const min = zoomExtent[0];
@@ -539,23 +516,29 @@ export class IntervalSelectionController {
                 setter({ type: "interval", intervals });
             };
 
-            const mouseUpListener = (/** @type {MouseEvent} */ upEvent) => {
-                const wasDragging = this.#endDrag(upEvent);
-                if (wasDragging) {
-                    this.#notifyCommit();
-                }
-            };
-            this.#disposeActiveDrag = () => {
-                document.removeEventListener("mousemove", mouseMoveListener);
-                document.removeEventListener("mouseup", mouseUpListener);
-                setIntervalDragActive(false);
-                nowBrushing = false;
-                translatedRectangle = null;
-                return true;
-            };
-            document.addEventListener("mousemove", mouseMoveListener);
+            this.#cancelActiveDrag = startDocumentDrag({
+                onMove: mouseMoveListener,
+                hoverContext: view.context,
+                onFinish: () => {
+                    activeBrush = null;
+                    setIntervalDragActive(false);
+                },
+                onRelease: () => this.#notifyCommit(),
+            });
+        });
 
-            document.addEventListener("mouseup", mouseUpListener);
+        this.#viewListeners.add("mouseup", (event) => {
+            if (!pendingClearStart) {
+                return;
+            }
+
+            const mouseDownPoint = pendingClearStart;
+            pendingClearStart = undefined;
+
+            // Retain the selection if the viewport was panned by dragging.
+            if (mouseDownPoint.subtract(event.point).length < 2) {
+                clearSelection();
+            }
         });
 
         this.#addViewInteractionListener(
@@ -676,28 +659,12 @@ export class IntervalSelectionController {
             }
         });
 
-        // Handle mouse cursor changes
-        this.#addViewInteractionListener("mousemove", (event) => {
-            if (
-                isInsideHost(event.point) &&
-                ownsInteraction(event.point) &&
-                isPointInsideSelection(event.point)
-            ) {
-                // Brushing and translating the existing brush are different actions.
-                if (!nowBrushing) {
-                    mouseOver = true;
-                }
-            } else {
-                mouseOver = false;
-            }
-        });
-
         // Setup has already initialized and read the selection expression.
         const selectionRef = paramRuntime.getParamRef(name);
 
         this.host.view.registerDisposer(
             paramRuntime.effect([selectionRef], () => {
-                if (!nowBrushing) {
+                if (!activeBrush) {
                     this.#notifyCommit();
                 }
             })

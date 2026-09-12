@@ -1,5 +1,6 @@
 import clamp from "../../utils/clamp.js";
 import { makeLerpSmoother } from "../../utils/animator.js";
+import { startDocumentDrag } from "../../utils/documentDrag.js";
 import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
 import {
@@ -36,6 +37,9 @@ export default class Scrollbar extends UnitView {
 
     /** @type {(offset: number) => void} */
     #onViewportOffsetChange;
+
+    /** @type {() => boolean} */
+    #cancelActiveDrag = () => false;
 
     /**
      * @param {import("./gridChild.js").default} gridChild
@@ -83,6 +87,7 @@ export default class Scrollbar extends UnitView {
         this.config = config;
         this.#scrollDirection = scrollDirection;
         this.#onViewportOffsetChange = options.onViewportOffsetChange;
+        this.registerDisposer(() => this.#cancelActiveDrag());
 
         const sPad = this.config.scrollbarPadding;
         const sSize = this.config.scrollbarSize;
@@ -126,8 +131,6 @@ export default class Scrollbar extends UnitView {
                     : mouseEvent.clientX;
 
             event.mouseEvent.preventDefault();
-            this.context.suspendHoverTracking();
-
             const initialScrollOffset = this.scrollOffset;
             const initialOffset = getMouseOffset(event.mouseEvent);
 
@@ -152,14 +155,10 @@ export default class Scrollbar extends UnitView {
                 });
             };
 
-            const onMouseup = (/** @type {MouseEvent} */ upEvent) => {
-                document.removeEventListener("mousemove", onMousemove);
-                document.removeEventListener("mouseup", onMouseup);
-                this.context.resumeHoverTracking(upEvent);
-            };
-
-            document.addEventListener("mouseup", onMouseup, false);
-            document.addEventListener("mousemove", onMousemove, false);
+            this.#cancelActiveDrag = startDocumentDrag({
+                onMove: onMousemove,
+                hoverContext: this.context,
+            });
         });
     }
 
