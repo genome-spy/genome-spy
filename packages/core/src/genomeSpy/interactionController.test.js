@@ -189,7 +189,7 @@ describe("InteractionController", () => {
         }
     });
 
-    it("refreshes the cursor after dblclick changes the hovered mark", () => {
+    it("refreshes the cursor after an asynchronous post-render pick", async () => {
         vi.spyOn(performance, "now")
             .mockReturnValueOnce(0)
             .mockReturnValue(1_000);
@@ -339,7 +339,10 @@ describe("InteractionController", () => {
         controller.registerInteractionEvents();
 
         let pickingUniqueId = 1;
-        readPickingId.mockImplementation(() => pickingUniqueId);
+        let asyncRead = false;
+        readPickingId.mockImplementation(() =>
+            asyncRead ? Promise.resolve(pickingUniqueId) : pickingUniqueId
+        );
 
         canvas.dispatchEvent(
             new MouseEvent("mousemove", { clientX: 20, clientY: 30 })
@@ -351,6 +354,7 @@ describe("InteractionController", () => {
         );
         expect(canvas.style.cursor).toBe("move");
 
+        asyncRead = true;
         while (animationFrameQueue.length) {
             const callback = animationFrameQueue.shift();
             if (!callback) {
@@ -359,6 +363,7 @@ describe("InteractionController", () => {
             callback(0);
         }
 
+        await Promise.resolve();
         expect(canvas.style.cursor).toBe("");
     });
 
@@ -711,7 +716,7 @@ describe("InteractionController", () => {
         expect(canvas.style.cursor).toBe("move");
     });
 
-    it("preserves the active cursor when hover tracking is suspended", () => {
+    it("preserves a suspended cursor and refreshes it on resume", async () => {
         vi.spyOn(performance, "now")
             .mockReturnValueOnce(0)
             .mockReturnValue(1_000);
@@ -855,6 +860,36 @@ describe("InteractionController", () => {
             })
         );
         expect(canvas.style.cursor).toBe("grabbing");
+
+        /** @type {(value: number) => void} */
+        let resolvePick;
+        readPickingId.mockReturnValue(
+            new Promise((resolve) => {
+                resolvePick = resolve;
+            })
+        );
+        controller.resumeHoverTracking(
+            new MouseEvent("mouseup", { clientX: 21, clientY: 31 })
+        );
+
+        expect(canvas.style.cursor).toBe("grabbing");
+
+        resolvePick(0);
+        await Promise.resolve();
+
+        expect(canvas.style.cursor).toBe("");
+
+        readPickingId.mockReturnValue(1);
+        canvas.dispatchEvent(
+            new MouseEvent("mousemove", { clientX: 21, clientY: 31 })
+        );
+        expect(canvas.style.cursor).toBe("grabbing");
+
+        controller.suspendHoverTracking();
+        controller.resumeHoverTracking(
+            new MouseEvent("mouseup", { clientX: 101, clientY: 31 })
+        );
+        expect(canvas.style.cursor).toBe("");
     });
 
     it("does not clear a visible tooltip immediately when long press starts", () => {

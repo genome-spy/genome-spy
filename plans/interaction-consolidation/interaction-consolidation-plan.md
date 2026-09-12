@@ -197,17 +197,17 @@ and engine destruction invalidates reads before listener and renderer disposal.
 
 ### 3. Consolidate cursor publication if the audit supports it
 
-- [ ] Decide whether delayed hover/resume leaving a stale cursor is a bug to fix.
+- [x] Decide whether delayed hover/resume leaving a stale cursor is a bug to fix.
       The intended result is cursor convergence after an accepted asynchronous hover
       result. Characterize any changed timing as a correctness fix, not merely
       behavior-preserving cleanup; reject broader timing changes.
-- [ ] Trace cursor changes through dispatch, accepted asynchronous hover, resume,
+- [x] Trace cursor changes through dispatch, accepted asynchronous hover, resume,
       leave, post-render refresh, cursor-expression changes, and frozen interaction.
-- [ ] Replace duplicate refresh wiring with one coherent publication path if it
+- [x] Replace duplicate refresh wiring with one coherent publication path if it
       reduces state/calls without weakening timing or lifecycle behavior. Keep tooltip
       gesture policy imperative. If this needs broader architecture or more machinery,
       mark implementation discarded with evidence and retain the audit findings.
-- [ ] Verify cursor state after delayed picks, double-click domain changes,
+- [x] Verify cursor state after delayed picks, double-click domain changes,
       stationary-pointer expression updates, suspended/frozen interaction, resume
       outside the canvas, and disposal. Preserve mark-over-view cursor precedence.
 
@@ -220,6 +220,20 @@ no public documentation or migration expected.
 
 Tentative commit if implemented:
 `refactor(core): consolidate interaction cursor publication`
+
+Implementation result: asynchronous resume and post-render refresh now keep the
+previous cursor while the read is pending and publish exactly when the accepted
+pick replaces hover. This fixes the stale cursor that previously survived the
+read. Ordinary routed dispatch still publishes after hover acceptance; leave
+clears cursor ownership; frozen and suspended paths preserve it; and expression
+watchers continue updating the active source without pointer movement. Cursor
+publication now passes through one controller helper while `CursorManager` remains
+the owner of source precedence and subscriptions. The controller grew from 1226
+to 1229 physical lines; `cursorManager.js` remained at 131. The three-line growth
+is the explicit accepted-pick callback needed for asynchronous convergence.
+Focused controller and cursor-manager suites passed 29 tests, including delayed
+double-click refresh, delayed resume, resume outside the canvas, frozen and
+suspended interaction, reactive expressions, and mark-over-view precedence.
 
 ## Review gates and integration verification
 

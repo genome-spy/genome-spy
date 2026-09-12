@@ -335,10 +335,7 @@ export default class InteractionController {
                 uiEvent.type !== "mouseout" &&
                 this.#hoverTrackingSuspensionCount === 0
             ) {
-                this.#cursorManager.update({
-                    target: interaction.target,
-                    hover: this.#currentHover,
-                });
+                this.#updateCursor(interaction.target);
             }
 
             return interaction;
@@ -894,15 +891,6 @@ export default class InteractionController {
         );
     }
 
-    /**
-     * @param {Point} point
-     */
-    #refreshHover(point) {
-        if (!isStillZooming()) {
-            this.#handlePicking(point.x, point.y);
-        }
-    }
-
     #scheduleHoverRefreshAfterRender() {
         if (this.#postRenderHoverRefreshRequested) {
             return;
@@ -933,9 +921,24 @@ export default class InteractionController {
     }
 
     #refreshHoverAndCursor(/** @type {Point} */ point) {
-        this.#refreshHover(point);
+        if (!isStillZooming()) {
+            this.#handlePicking(point.x, point.y, undefined, () =>
+                this.#updateCursor(
+                    this.#interactionDispatcher.getCurrentTarget()
+                )
+            );
+            return;
+        }
+
+        this.#updateCursor(this.#interactionDispatcher.getCurrentTarget());
+    }
+
+    /**
+     * @param {import("../view/view.js").default | undefined} target
+     */
+    #updateCursor(target) {
         this.#cursorManager.update({
-            target: this.#interactionDispatcher.getCurrentTarget(),
+            target,
             hover: this.#currentHover,
         });
     }
