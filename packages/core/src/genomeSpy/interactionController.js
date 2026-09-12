@@ -254,11 +254,7 @@ export default class InteractionController {
             const point = this.#toCanvasPoint(mouseEvent);
             this.#lastPointerPoint = point;
             if (this.#isInsideCanvas(point)) {
-                this.#refreshHover(point);
-                this.#cursorManager.update({
-                    target: this.#interactionDispatcher.getCurrentTarget(),
-                    hover: this.#currentHover,
-                });
+                this.#refreshHoverAndCursor(point);
                 return;
             }
 
@@ -267,11 +263,7 @@ export default class InteractionController {
             this.#lastPointerPoint &&
             this.#isInsideCanvas(this.#lastPointerPoint)
         ) {
-            this.#refreshHover(this.#lastPointerPoint);
-            this.#cursorManager.update({
-                target: this.#interactionDispatcher.getCurrentTarget(),
-                hover: this.#currentHover,
-            });
+            this.#refreshHoverAndCursor(this.#lastPointerPoint);
             return;
         }
 
@@ -705,14 +697,6 @@ export default class InteractionController {
          * @param {number} clientX
          * @param {number} clientY
          */
-        const toCanvasPoint = (clientX, clientY) => {
-            const rect = canvas.getBoundingClientRect();
-            return new Point(
-                clientX - rect.left - canvas.clientLeft,
-                clientY - rect.top - canvas.clientTop
-            );
-        };
-
         /**
          * @param {TouchList} touches
          */
@@ -759,7 +743,7 @@ export default class InteractionController {
             yDelta,
             zDelta
         ) => {
-            const point = toCanvasPoint(x, y);
+            const point = toCanvasPoint(canvas, x, y);
             dispatchInteraction(point, {
                 type: "touchgesture",
                 phase,
@@ -897,12 +881,7 @@ export default class InteractionController {
      * @param {MouseEvent} event
      */
     #toCanvasPoint(event) {
-        const canvas = this.#canvas;
-        const rect = canvas.getBoundingClientRect();
-        return new Point(
-            event.clientX - rect.left - canvas.clientLeft,
-            event.clientY - rect.top - canvas.clientTop
-        );
+        return toCanvasPoint(this.#canvas, event.clientX, event.clientY);
     }
 
     /**
@@ -954,11 +933,15 @@ export default class InteractionController {
 
             this.#tooltip.clear();
             this.#tooltipUpdateRequested = false;
-            this.#refreshHover(point);
-            this.#cursorManager.update({
-                target: this.#interactionDispatcher.getCurrentTarget(),
-                hover: this.#currentHover,
-            });
+            this.#refreshHoverAndCursor(point);
+        });
+    }
+
+    #refreshHoverAndCursor(point) {
+        this.#refreshHover(point);
+        this.#cursorManager.update({
+            target: this.#interactionDispatcher.getCurrentTarget(),
+            hover: this.#currentHover,
         });
     }
 
@@ -1192,6 +1175,19 @@ function getClientDistance(a, b) {
     const dx = b.clientX - a.clientX;
     const dy = b.clientY - a.clientY;
     return Math.hypot(dx, dy);
+}
+
+/**
+ * @param {HTMLCanvasElement} canvas
+ * @param {number} clientX
+ * @param {number} clientY
+ */
+function toCanvasPoint(canvas, clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    return new Point(
+        clientX - rect.left - canvas.clientLeft,
+        clientY - rect.top - canvas.clientTop
+    );
 }
 
 /**
