@@ -96,11 +96,10 @@ if (tracks.isAlive()) {
 ## Marks and scoped interaction
 
 Each handle exposes `marks` for interaction with marks in that view's subtree.
-Mark events use the current confirmed pointer hit and are synchronous; they do
-not start a new pick or wait for GPU readback. Rapid clicks can therefore be
-missed when no confirmed hover hit exists. Hosts that need an answer can call
-`pick()` from a native event subscription after synchronously preventing the
-browser default.
+Mark events pick the event coordinates before invoking the listener. GPU-backed
+readback can make delivery asynchronous, and the callback is skipped if the
+scene or owning view/embed is invalidated before the pick completes. Browser
+default cancellation must happen synchronously through `api.events`.
 
 ```js
 const track = api.views.get({ scope: [], view: "track" });
@@ -109,13 +108,23 @@ const stopHover = track.marks.observeHover((hit) => {
   inspector.textContent = hit ? JSON.stringify(hit.datum) : "No mark";
 });
 
-const stopClick = track.marks.subscribe("click", ({ hit }) => {
+const stopClick = track.marks.subscribe("click", async ({ hit }) => {
   inspect(hit.view, hit.datum);
 });
 
-const result = await track.marks.pick({ x: 120, y: 80 });
-if (result.status === "hit") {
+api.events.subscribe("contextmenu", (event) => {
+  event.sourceEvent.preventDefault();
+  event.preventViewDefault();
+  void openContextMenu(event.sourceEvent, event.point);
+});
+
+async function openContextMenu(sourceEvent, point) {
+  const result = await track.marks.pick(point);
+  if (result.status !== "hit") {
+    return;
+  }
   inspect(result.hit.view, result.hit.datum);
+  showMenuAt(sourceEvent.clientX, sourceEvent.clientY);
 }
 ```
 

@@ -1271,10 +1271,13 @@ describe("InteractionController", () => {
         expect(order).toEqual(["native"]);
     });
 
-    it("delivers mark events from the confirmed hover without another pick", () => {
+    it("delivers mark events from the event coordinates", () => {
         vi.spyOn(performance, "now")
             .mockReturnValueOnce(0)
             .mockReturnValue(1_000);
+        globalThis.window = /** @type {any} */ ({
+            requestAnimationFrame() {},
+        });
         globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
             /** @type {any} */ (
                 class MouseEvent extends Event {
@@ -1337,21 +1340,34 @@ describe("InteractionController", () => {
         });
         /** @type {any[]} */
         const events = [];
-        controller.subscribeMarkEvent(scope, "click", (event) => {
-            events.push(event);
-        });
+        for (const type of ["click", "dblclick", "contextmenu"]) {
+            controller.subscribeMarkEvent(scope, type, (event) => {
+                events.push(event);
+            });
+        }
         controller.registerInteractionEvents();
 
-        canvas.dispatchEvent(new MouseEvent("mousemove"));
-        expect(controller.getCurrentHover()?.uniqueId).toBe(1);
-        canvas.dispatchEvent(new MouseEvent("click"));
+        const inputEvents = [
+            new MouseEvent("click", { clientX: 14, clientY: 25 }),
+            new MouseEvent("dblclick", { clientX: 15, clientY: 26 }),
+            new MouseEvent("contextmenu", { clientX: 16, clientY: 27 }),
+        ];
+        inputEvents.forEach((event) => canvas.dispatchEvent(event));
 
-        expect(read).toHaveBeenCalledTimes(2);
-        expect(events).toHaveLength(1);
+        expect(read).toHaveBeenCalledTimes(3);
+        expect(events).toHaveLength(3);
         expect(events[0].hit.datum).toEqual({ label: "one" });
+        expect(events.map(({ sourceEvent }) => sourceEvent)).toEqual(
+            inputEvents
+        );
+        expect(events.map(({ point }) => [point.x, point.y])).toEqual([
+            [14, 25],
+            [15, 26],
+            [16, 27],
+        ]);
     });
 
-    it("notifies hover changes once and ignores invalidated mark activation", () => {
+    it("notifies hover changes once", () => {
         vi.spyOn(performance, "now")
             .mockReturnValueOnce(0)
             .mockReturnValue(1_000);
@@ -1418,22 +1434,13 @@ describe("InteractionController", () => {
         });
         /** @type {(import("../types/interactionApi.d.ts").InternalMarkHit | undefined)[]} */
         const hoverChanges = [];
-        /** @type {any[]} */
-        const markEvents = [];
         controller.subscribeHover(scope, (hit) => hoverChanges.push(hit));
-        controller.subscribeMarkEvent(scope, "click", (event) => {
-            markEvents.push(event);
-        });
         controller.registerInteractionEvents();
 
         canvas.dispatchEvent(new MouseEvent("mousemove"));
         canvas.dispatchEvent(new MouseEvent("mousemove"));
         expect(hoverChanges).toHaveLength(2);
         expect(hoverChanges[1]?.datum).toBe(datum);
-
-        controller.invalidatePendingPicks();
-        canvas.dispatchEvent(new MouseEvent("click"));
-        expect(markEvents).toHaveLength(0);
 
         canvas.dispatchEvent(new MouseEvent("mouseout"));
         expect(hoverChanges).toHaveLength(3);
@@ -1446,7 +1453,105 @@ describe("InteractionController", () => {
         expect(hoverChanges.at(-1)).toBeUndefined();
     });
 
-    it("does not replay mark activation from a pending hover pick", async () => {
+    it("preserves mark events when pointer movement supersedes hover", async () => {
+        installEventTargetDocument();
+        vi.spyOn(performance, "now").mockReturnValue(1_000);
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (
+                class MouseEvent extends Event {
+                    constructor(
+                        /** @type {string} */ type,
+                        /** @type {Record<string, any>} */ init = {}
+                    ) {
+                        super(type);
+                        Object.assign(this, {
+                            button: 0,
+                            buttons: 0,
+                            clientX: 0,
+                            clientY: 0,
+                            ...init,
+                        });
+                    }
+                }
+            )
+        );
+
+        const canvas = new CanvasStub();
+        const scope = /** @type {any} */ ({});
+        const mark = /** @type {any} */ ({
+            isPickingParticipant: () => true,
+            properties: { tooltip: /** @type {null} */ (null) },
+            unitView: {
+                getLayoutAncestors: () => [scope],
+            },
+        });
+        const pickerUnitView = Object.create(UnitView.prototype);
+        pickerUnitView.mark = mark;
+        pickerUnitView.facetCoords = new Map([
+            ["facet", { containsPoint: () => true }],
+        ]);
+        pickerUnitView.getCollector = () => ({
+            findDatumByUniqueId: (/** @type {number} */ uniqueId) =>
+                uniqueId === 1 ? { label: "one" } : undefined,
+        });
+
+        /** @type {((value: number) => void)[]} */
+        const pending = [];
+        readPickingId.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    pending.push(resolve);
+                })
+        );
+
+        const viewRoot = {
+            visit(/** @type {(view: UnitView) => any} */ visitor) {
+                return visitor(pickerUnitView);
+            },
+            propagateInteraction() {},
+        };
+        const controller = new InteractionController({
+            viewRoot: /** @type {any} */ (viewRoot),
+            canvas: /** @type {any} */ (canvas),
+            tooltip: /** @type {any} */ ({
+                clear() {},
+                containsEvent() {
+                    return false;
+                },
+                handleMouseMove() {},
+                pushEnabledState() {},
+                popEnabledState() {},
+                updateWithDatum() {},
+                visible: false,
+                sticky: false,
+            }),
+            animator: /** @type {any} */ ({ requestRender() {} }),
+            emitEvent() {},
+            tooltipHandlers: {},
+            renderPickingFramebuffer() {},
+            readPickingId,
+        });
+        /** @type {any[]} */
+        const events = [];
+        controller.subscribeMarkEvent(scope, "click", (event) => {
+            events.push(event);
+        });
+        controller.registerInteractionEvents();
+
+        canvas.dispatchEvent(new MouseEvent("click", { clientX: 20 }));
+        canvas.dispatchEvent(
+            new MouseEvent("mousemove", { clientX: 30, buttons: 1 })
+        );
+        canvas.dispatchEvent(new MouseEvent("mouseout"));
+
+        expect(pending).toHaveLength(1);
+        pending[0](1);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(events).toHaveLength(1);
+        expect(events[0].point.x).toBe(20);
+    });
+
+    it("does not deliver a mark event after scene invalidation", async () => {
         installEventTargetDocument();
         vi.spyOn(performance, "now").mockReturnValue(1_000);
         globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
@@ -1489,22 +1594,21 @@ describe("InteractionController", () => {
         });
 
         /** @type {((value: number) => void) | undefined} */
-        let resolveFirstHover;
-        readPickingId.mockImplementationOnce(
+        let resolvePick;
+        readPickingId.mockImplementation(
             () =>
                 new Promise((resolve) => {
-                    resolveFirstHover = resolve;
+                    resolvePick = resolve;
                 })
         );
 
-        const viewRoot = {
-            visit(/** @type {(view: UnitView) => any} */ visitor) {
-                return visitor(pickerUnitView);
-            },
-            propagateInteraction() {},
-        };
         const controller = new InteractionController({
-            viewRoot: /** @type {any} */ (viewRoot),
+            viewRoot: /** @type {any} */ ({
+                visit(/** @type {(view: UnitView) => any} */ visitor) {
+                    return visitor(pickerUnitView);
+                },
+                propagateInteraction() {},
+            }),
             canvas: /** @type {any} */ (canvas),
             tooltip: /** @type {any} */ ({
                 clear() {},
@@ -1531,13 +1635,13 @@ describe("InteractionController", () => {
         });
         controller.registerInteractionEvents();
 
-        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 10 }));
-        canvas.dispatchEvent(new MouseEvent("click", { clientX: 10 }));
+        canvas.dispatchEvent(new MouseEvent("click", { clientX: 20 }));
+        controller.invalidatePendingPicks();
 
-        if (!resolveFirstHover) {
-            throw new Error("First hover pick did not start.");
+        if (!resolvePick) {
+            throw new Error("Mark pick did not start.");
         }
-        resolveFirstHover(1);
+        resolvePick(1);
         await new Promise((resolve) => setTimeout(resolve, 0));
 
         expect(events).toHaveLength(0);

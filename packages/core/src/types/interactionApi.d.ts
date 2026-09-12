@@ -31,7 +31,7 @@ export interface InteractionApi {
     subscribeMarkEvent: (
         view: import("../view/view.js").default,
         type: string,
-        listener: (event: MarkInteractionEvent) => void
+        listener: (event: MarkInteractionEvent) => void | Promise<void>
     ) => () => void;
     subscribeHover: (
         view: import("../view/view.js").default,

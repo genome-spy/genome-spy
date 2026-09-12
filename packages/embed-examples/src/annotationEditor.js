@@ -94,6 +94,7 @@ const api = await embed(container, spec);
 const brush = /** @type {IntervalSelectionApi} */ (
     api.params.getSelection("brush")
 );
+const track = api.views.get({ scope: [], view: "signal-track" });
 const marks = api.views.get({ scope: [], view: "annotations" }).marks;
 
 /** @type {IntervalSnapshot | undefined} */
@@ -144,6 +145,19 @@ api.events.subscribe("contextmenu", (event) => {
     const sourceEvent = /** @type {MouseEvent} */ (event.sourceEvent);
     sourceEvent.preventDefault();
     event.preventViewDefault();
+    void openContextMenu(sourceEvent, event.point);
+});
+
+/**
+ * @param {MouseEvent} sourceEvent
+ * @param {{ x: number, y: number }} point
+ */
+async function openContextMenu(sourceEvent, point) {
+    const result = await track.marks.pick(point);
+    if (result.status !== "hit") {
+        return;
+    }
+
     pendingSelection = brush.getValue();
     if (!pendingSelection.active || !pendingSelection.intervals.x) {
         return;
@@ -154,7 +168,7 @@ api.events.subscribe("contextmenu", (event) => {
     menu.style.left = `${sourceEvent.clientX}px`;
     menu.style.top = `${sourceEvent.clientY}px`;
     form.querySelector("input").focus();
-});
+}
 
 form.addEventListener("submit", (event) => {
     event.preventDefault();

@@ -245,7 +245,10 @@ export interface ParamNamespace {
 }
 
 /**
- * Native input delivered before GenomeSpy handles an event.
+ * Native input delivered before GenomeSpy handles an event. The listener is
+ * synchronous; call `sourceEvent.preventDefault()` here when browser-level
+ * cancellation is required. Use mark subscriptions for work that may await
+ * picking.
  *
  * The point uses CSS-pixel coordinates relative to the embedded canvas. Calling
  * `preventViewDefault()` vetoes Core's default interaction while leaving
@@ -307,12 +310,13 @@ export interface MarkHit {
 /**
  * A mark interaction event scoped to a `ViewHandle` subtree.
  *
- * Mark activation uses the latest confirmed hover hit. It does not start a new
- * pick, so a fast interaction can produce no mark event. A pending hover result
- * is not replayed as a later activation. Marks configured with `tooltip: null`
- * are not pickable unless their view declares a point selection, which
- * overrides that opt-out; use `tooltip: false` to suppress tooltips while
- * keeping a mark interactive.
+ * Mark activation performs picking at the event coordinates before invoking
+ * the listener. GPU-backed picking can make delivery asynchronous, and the
+ * callback is skipped when the scene or its owning view/embed is invalidated
+ * before the pick completes. Marks configured with `tooltip: null` are not
+ * pickable unless their view declares a point selection, which overrides that
+ * opt-out; use `tooltip: false` to suppress tooltips while keeping a mark
+ * interactive.
  */
 export interface MarkEvent {
     /** Browser event that triggered the mark interaction. */
@@ -335,14 +339,14 @@ export interface MarksApi {
     /**
      * Subscribes to a mark event and returns an unsubscribe function.
      *
-     * Events use the current confirmed hover hit and do not start another pick,
-     * so a rapid interaction can have no matching hit. Use `pick()` together
-     * with `EmbedEventApi.subscribe()` when the click coordinates must be
-     * resolved independently of hover state.
+     * The event coordinates are picked before the listener is called. The
+     * listener may therefore run asynchronously when the active renderer uses
+     * asynchronous readback. Browser-level cancellation must happen
+     * synchronously through `EmbedEventApi.subscribe()`.
      */
     subscribe: (
         type: "click" | "dblclick" | "contextmenu",
-        listener: (event: MarkEvent) => void
+        listener: (event: MarkEvent) => void | Promise<void>
     ) => () => void;
 
     /**

@@ -738,7 +738,7 @@ export default class GenomeSpy {
     /**
      * @param {import("./view/view.js").default} view
      * @param {string} type
-     * @param {(event: import("./types/interactionApi.d.ts").MarkInteractionEvent) => void} listener
+     * @param {(event: import("./types/interactionApi.d.ts").MarkInteractionEvent) => void | Promise<void>} listener
      * @returns {() => void}
      */
     subscribeMarkEvent(view, type, listener) {

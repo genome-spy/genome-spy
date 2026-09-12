@@ -50,7 +50,7 @@ export default class InteractionController {
     #pickingRequestId = 0;
     /** @type {EventListenerRegistry<NativeInteractionEvent>} */
     #nativeEventListeners = new EventListenerRegistry();
-    /** @type {Set<{ view: import("../view/view.js").default, type: string, listener: (event: MarkInteractionEvent) => void }>} */
+    /** @type {Set<{ view: import("../view/view.js").default, type: string, listener: (event: MarkInteractionEvent) => void | Promise<void> }>} */
     #markEventListeners = new Set();
     /** @type {Set<{ view: import("../view/view.js").default, listener: (hit: InternalMarkHit | undefined) => void }>} */
     #hoverListeners = new Set();
@@ -124,7 +124,7 @@ export default class InteractionController {
     /**
      * @param {import("../view/view.js").default} view
      * @param {string} type
-     * @param {(event: MarkInteractionEvent) => void} listener
+     * @param {(event: MarkInteractionEvent) => void | Promise<void>} listener
      * @returns {() => void}
      */
     subscribeMarkEvent(view, type, listener) {
@@ -422,8 +422,16 @@ export default class InteractionController {
                     return;
                 }
 
+                /** @type {Promise<boolean> | undefined} */
+                let markPickPromise;
                 if (["click", "dblclick", "contextmenu"].includes(event.type)) {
-                    this.#emitMarkEvent(event, point);
+                    this.#renderPickingFramebuffer();
+                    markPickPromise = this.#handlePicking(
+                        point.x,
+                        point.y,
+                        undefined,
+                        (hit) => this.#emitMarkEvent(event, point, hit)
+                    );
                 }
 
                 if (
@@ -583,17 +591,8 @@ export default class InteractionController {
                         }
                     };
 
-                    // Resolve the datum from this click's coordinates instead
-                    // of cached hover state. Once received, a click remains
-                    // valid even if the pointer leaves before GPU readback.
-                    const promise = this.#handlePicking(
-                        point.x,
-                        point.y,
-                        undefined,
-                        false
-                    );
-                    if (promise) {
-                        void promise.then((applied) => {
+                    if (markPickPromise) {
+                        void markPickPromise.then((applied) => {
                             if (applied) {
                                 dispatchClick();
                             }
@@ -882,7 +881,6 @@ export default class InteractionController {
             this.#cursorManager.clear();
             this.#tooltip.clear();
             this.#clearHover();
-            this.#pickingRequestId++;
             activeHoverPick = undefined;
             queuedMouseMove = undefined;
         });
@@ -978,57 +976,50 @@ export default class InteractionController {
      * @param {number} x
      * @param {number} y
      * @param {() => boolean} [shouldApply]
-     * @param {boolean} [invalidateOnLeave]
+     * @param {(hit: InternalMarkHit | undefined) => void} [onApplied]
      * @returns {Promise<boolean> | undefined}
      */
-    #handlePicking(x, y, shouldApply = () => true, invalidateOnLeave = true) {
+    #handlePicking(x, y, shouldApply = () => true, onApplied) {
         const requestId = this.#pickingRequestId;
         const result = this.#readPickingId?.(x, y) ?? 0;
+
+        /** @param {number | null} uniqueId */
+        const applyResult = (uniqueId) => {
+            const applied =
+                requestId == this.#pickingRequestId && shouldApply();
+            if (!applied) {
+                return false;
+            }
+
+            this.#tooltipUpdateRequested = false;
+            const hit = this.#findHit(x, y, uniqueId ?? 0);
+            this.#applyPickingResult(x, y, requestId, hit);
+            onApplied?.(hit);
+            return true;
+        };
+
         if (result instanceof Promise) {
             return result.then(
-                (uniqueId) => {
-                    const applied =
-                        (!invalidateOnLeave ||
-                            requestId == this.#pickingRequestId) &&
-                        shouldApply();
-                    if (applied) {
-                        this.#tooltipUpdateRequested = false;
-                        this.#applyPickingResult(
-                            x,
-                            y,
-                            uniqueId ?? 0,
-                            requestId
-                        );
-                    }
-                    return applied;
-                },
+                (uniqueId) => applyResult(uniqueId),
                 (error) => {
                     console.error("Picking failed.", error);
                     return false;
                 }
             );
         }
-        if (shouldApply()) {
-            this.#tooltipUpdateRequested = false;
-            this.#applyPickingResult(x, y, result ?? 0, requestId);
-        }
+        applyResult(result);
     }
 
     /**
      * @param {number} x
      * @param {number} y
-     * @param {number} uniqueId
      * @param {number} requestId
+     * @param {InternalMarkHit | undefined} [hit]
      */
-    #applyPickingResult(x, y, uniqueId, requestId) {
+    #applyPickingResult(x, y, requestId, hit) {
         this.#currentHoverPoint = new Point(x, y);
         this.#currentHoverRequestId = requestId;
-        if (uniqueId == 0) {
-            this.#replaceHover(null);
-            return;
-        }
-
-        this.#replaceHover(this.#findHit(x, y, uniqueId));
+        this.#replaceHover(hit ?? null);
 
         if (this.#currentHover) {
             const mark = this.#currentHover.mark;
@@ -1099,9 +1090,9 @@ export default class InteractionController {
     /**
      * @param {MouseEvent} sourceEvent
      * @param {Point} point
+     * @param {InternalMarkHit | undefined} hit
      */
-    #emitMarkEvent(sourceEvent, point) {
-        const hit = this.#getConfirmedHit(point);
+    #emitMarkEvent(sourceEvent, point, hit) {
         if (!hit) {
             return;
         }
@@ -1112,7 +1103,10 @@ export default class InteractionController {
                 hit.mark.unitView.getLayoutAncestors().includes(entry.view)
             ) {
                 try {
-                    entry.listener({ sourceEvent, point, hit });
+                    const result = entry.listener({ sourceEvent, point, hit });
+                    if (result instanceof Promise) {
+                        void result.catch(this.#reportError);
+                    }
                 } catch (error) {
                     this.#reportError(error);
                 }

@@ -21,7 +21,8 @@ api.finalize();
 Modern embeds expose native canvas input through `events.subscribe()`. The
 listener runs synchronously before Core's default action and receives canvas CSS
 pixel coordinates. Call `preventViewDefault()` during the callback to veto that
-action; browser cancellation still belongs to `sourceEvent`.
+action; browser cancellation still belongs to `sourceEvent`. Call
+`sourceEvent.preventDefault()` before any asynchronous work.
 
 ```js
 const stopContextMenu = api.events.subscribe("contextmenu", (event) => {
