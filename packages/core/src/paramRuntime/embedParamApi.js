@@ -56,9 +56,8 @@ function resolveScopedEmbedDeclaration(view, name, kind, lifecycle) {
     const declaration = view.paramRuntime.findConfiguredParam(name);
     if (!declaration) throw new Error(`${kind} "${name}" not found.`);
 
+    // Initialized declarations have a runtime owner, including outer aliases.
     const valueRuntime = declaration.runtime.findRuntimeForParam(name);
-    if (!valueRuntime)
-        throw new Error(`${kind} "${name}" has no runtime value.`);
 
     return { ...declaration, valueRuntime };
 }
@@ -110,11 +109,7 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
     }
 
     const select = asSelectionConfig(config.select);
-    if (!isIntervalSelectionConfig(select) && !isPointSelectionConfig(select)) {
-        throw new Error(
-            'Selection "' + name + '" does not expose a row-backed capability.'
-        );
-    }
+    // Parameter initialization validates the selection kind.
 
     const controller = isIntervalSelectionConfig(select)
         ? runtime.getSelectionController(name)
@@ -189,12 +184,7 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
  */
 function copySelection(selection, intervalController) {
     if (isIntervalSelection(selection)) {
-        if (!intervalController) {
-            throw new Error(
-                "Interval selection has no interaction controller."
-            );
-        }
-
+        // Capability creation requires a controller for interval selections.
         return {
             type: "interval",
             active: Object.values(selection.intervals).some(
@@ -260,10 +250,8 @@ function callEmbedListener(listener, value) {
  * @returns {() => void}
  */
 function subscribeToSettledValue(runtime, name, listener, lifecycle) {
+    // Callers pass an initialized parameter resolved by handle creation.
     const ref = runtime.getParamRef(name);
-    if (!ref) {
-        throw new Error("Parameter not found: " + name);
-    }
     return registerParamDisposer(lifecycle, runtime.effect([ref], listener));
 }
 
@@ -351,10 +339,8 @@ export function resolveEmbedParam(root, name) {
             return;
         }
 
+        // Initialized declarations have a runtime owner, including outer aliases.
         const runtime = view.paramRuntime.findRuntimeForParam(name);
-        if (!runtime) {
-            throw new Error('Parameter "' + name + '" has no runtime value.');
-        }
 
         const previous = effectiveMatches.get(runtime);
         effectiveMatches.set(runtime, {

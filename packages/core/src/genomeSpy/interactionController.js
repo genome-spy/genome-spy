@@ -54,8 +54,6 @@ export default class InteractionController {
     #markEventListeners = new Set();
     /** @type {Set<{ view: import("../view/view.js").default, listener: (hit: InternalMarkHit | undefined) => void }>} */
     #hoverListeners = new Set();
-    /** @type {Point | undefined} */
-    #currentHoverPoint;
     /** @type {number | undefined} */
     #currentHoverRequestId;
     /** @type {(error: unknown) => void} */
@@ -993,7 +991,7 @@ export default class InteractionController {
 
             this.#tooltipUpdateRequested = false;
             const hit = this.#findHit(x, y, uniqueId ?? 0);
-            this.#applyPickingResult(x, y, requestId, hit);
+            this.#applyPickingResult(requestId, hit);
             onApplied?.(hit);
             return true;
         };
@@ -1011,13 +1009,10 @@ export default class InteractionController {
     }
 
     /**
-     * @param {number} x
-     * @param {number} y
      * @param {number} requestId
      * @param {InternalMarkHit | undefined} [hit]
      */
-    #applyPickingResult(x, y, requestId, hit) {
-        this.#currentHoverPoint = new Point(x, y);
+    #applyPickingResult(requestId, hit) {
         this.#currentHoverRequestId = requestId;
         this.#replaceHover(hit ?? null);
 
@@ -1115,31 +1110,15 @@ export default class InteractionController {
     }
 
     /**
-     * @param {Point | undefined} point
-     * @returns {InternalMarkHit | undefined}
-     */
-    #getConfirmedHit(point) {
-        if (
-            !point ||
-            !this.#currentHoverPoint?.equals(point) ||
-            !this.#currentHover ||
-            this.#currentHoverRequestId !== this.#pickingRequestId
-        ) {
-            return;
-        }
-        if (!this.#currentHover.mark.isPickingParticipant()) {
-            return;
-        }
-        return this.#currentHover;
-    }
-
-    /**
      * @param {import("../view/view.js").default} view
      * @returns {InternalMarkHit | undefined}
      */
     #getScopedHover(view) {
-        const hit = this.#getConfirmedHit(this.#currentHoverPoint);
-        return hit && hit.mark.unitView.getLayoutAncestors().includes(view)
+        const hit = this.#currentHover;
+        return hit &&
+            this.#currentHoverRequestId === this.#pickingRequestId &&
+            hit.mark.isPickingParticipant() &&
+            hit.mark.unitView.getLayoutAncestors().includes(view)
             ? hit
             : undefined;
     }
@@ -1172,7 +1151,6 @@ export default class InteractionController {
     }
 
     #clearHover() {
-        this.#currentHoverPoint = undefined;
         this.#replaceHover(null);
     }
 

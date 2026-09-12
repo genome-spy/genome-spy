@@ -587,7 +587,8 @@ export default class ViewParamRuntime {
      */
     getSelectionController(paramName) {
         const controllers = this.#selectionControllers.get(paramName);
-        if (!controllers || controllers.size === 0) {
+        // Unregistering the last controller removes the map entry.
+        if (!controllers) {
             return;
         }
         if (controllers.size > 1) {
