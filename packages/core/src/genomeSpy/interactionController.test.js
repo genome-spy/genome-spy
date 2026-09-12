@@ -1803,6 +1803,9 @@ describe("InteractionController", () => {
 
     it.each([
         { x: Number.NaN, y: 0 },
+        { x: 0, y: Number.NaN },
+        { x: Infinity, y: 0 },
+        { x: 0, y: -Infinity },
         { x: 101, y: 0 },
     ])(
         "validates pick point $x,$y before scene availability",
@@ -1813,7 +1816,7 @@ describe("InteractionController", () => {
             });
 
             await expect(controller.pick(point)).rejects.toThrow(
-                "Pick point must be finite and inside the canvas."
+                "Pick point must be inside the canvas."
             );
             expect(canPick).not.toHaveBeenCalled();
         }

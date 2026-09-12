@@ -165,12 +165,8 @@ export default class InteractionController {
             );
         }
         const canvasPoint = new Point(point.x, point.y);
-        if (
-            !Number.isFinite(point.x) ||
-            !Number.isFinite(point.y) ||
-            !this.#isInsideCanvas(canvasPoint)
-        ) {
-            throw new Error("Pick point must be finite and inside the canvas.");
+        if (!this.#isInsideCanvas(canvasPoint)) {
+            throw new Error("Pick point must be inside the canvas.");
         }
         if (!this.#canPick()) {
             return { status: "invalidated" };
