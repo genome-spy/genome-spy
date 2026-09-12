@@ -295,7 +295,7 @@ Current limitations:
   outer parameter they write to.
 - Computed `expr` parameters are readable but cannot be written.
 - Point selection snapshots are available through `api.params.getSelection()`;
-  the legacy `getParam()` handle does not write point selections.
+  the generic `getParam()` handle does not write point selections.
 - Projected selections are not supported.
 
 For spec-side parameter behavior, including input bindings, selections, and
@@ -306,7 +306,7 @@ For examples, see the `paramApi` and `brushLinkingApi` pages in the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
 
-For new integrations, use `api.params.getSelection(name)` or the corresponding
+To read a selection, use `api.params.getSelection(name)` or the corresponding
 `view.params` namespace. It provides detached point and interval snapshots,
 future-only subscriptions, interval containment, and `clear()`. See
 [Marks and scoped interaction](./views.md#marks-and-scoped-interaction) for the

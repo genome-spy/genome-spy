@@ -130,9 +130,9 @@ async function openContextMenu(sourceEvent, point) {
 
 `pick()` returns `hit`, `empty`, or `invalidated`. A query is invalidated when
 the scene changes or the embed is finalized while it is pending. `MarkHit.view`
-is the canonical unit handle, `uniqueId` is the existing picking ID for the
-current scene, and `datum` is a detached shallow copy without the internal ID.
-Nested datum values are not deep-cloned.
+identifies the unit view that owns the mark, `uniqueId` identifies the mark in
+the rendered scene, and `datum` is a detached shallow copy without the internal
+ID. Nested datum values are not deep-cloned.
 
 ## Parameters and selections
 

@@ -48,10 +48,11 @@ For practical examples of using the API, check the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
 
-The modern API includes `api.events`, `api.params`, and `api.views`. Use
+The embed API includes `api.events`, `api.params`, and `api.views`. Use
 `api.events` for synchronous canvas input, `api.params` for top-level state, and
-the scoped `params` and `marks` namespaces on view handles. These namespaces
-return unsubscribe functions and are disconnected by `finalize()`.
+the `params` and `marks` namespaces on view handles for view-scoped state and
+interaction. These namespaces return unsubscribe functions and are disconnected
+by `finalize()`.
 
 ## Optional controls
 

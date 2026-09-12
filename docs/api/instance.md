@@ -18,9 +18,9 @@ api.finalize();
 
 ## Interaction events
 
-Modern embeds expose native canvas input through `events.subscribe()`. The
-listener runs synchronously before Core's default action and receives canvas CSS
-pixel coordinates. Call `preventViewDefault()` during the callback to veto that
+An embed exposes native canvas input through `events.subscribe()`. The listener
+runs synchronously before Core's default action and receives canvas CSS-pixel
+coordinates. Call `preventViewDefault()` during the callback to veto that
 action; browser cancellation still belongs to `sourceEvent`. Call
 `sourceEvent.preventDefault()` before any asynchronous work.
 
@@ -44,10 +44,10 @@ interaction events emitted by GenomeSpy. Currently, only `"click"` events are
 supported. The event object includes `datum`, the underlying datum for the
 clicked mark instance.
 
-!!! warning "Legacy API"
+!!! warning "Deprecated API"
 
-    The instance-level interaction event API is legacy and will be removed in a
-    future version. Avoid using it in new code.
+    The instance-level interaction event API is deprecated and will be removed
+    in a future version. Use `api.events.subscribe()` or `ViewHandle.marks`.
 
 ```js
 const listener = (event) => {

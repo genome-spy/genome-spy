@@ -325,7 +325,7 @@ export interface EmbedEventApi {
  * The datum is a detached shallow copy. Nested values are not cloned.
  */
 export interface MarkHit {
-    /** Canonical handle for the unit view that owns the mark. */
+    /** Handle for the unit view that owns the mark. */
     readonly view: ViewHandle;
 
     /** Picking identifier for the mark in the current rendered scene. */
@@ -679,8 +679,7 @@ export interface ViewApi {
      * `options.index` is the destination index after temporarily removing the
      * target from its current position.
      *
-     * Moving a view to another branch of the hierarchy is not supported by the
-     * initial API.
+     * Moving a view to another branch of the hierarchy is not supported.
      */
     move: (
         target: ViewAddress,
@@ -896,6 +895,9 @@ export interface EmbedResult {
     finalize: () => void;
 
     /**
+     * @deprecated Use `EmbedResult.events.subscribe()` and its returned cleanup
+     * function.
+     *
      * Adds an event listener, which is called when the user interacts with a mark
      * instance. Currently, only `"click"` events are supported. The callback receives
      * an event object as its first (and only) parameter. Its `datum` property
@@ -904,6 +906,9 @@ export interface EmbedResult {
     addEventListener: (type: string, listener: (event: any) => void) => void;
 
     /**
+     * @deprecated Use the cleanup function returned by
+     * `EmbedResult.events.subscribe()`.
+     *
      * Removes a registered event listener.
      */
     removeEventListener: (type: string, listener: (event: any) => void) => void;
