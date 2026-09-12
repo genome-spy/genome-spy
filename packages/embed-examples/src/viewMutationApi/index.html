@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
+    <link rel="stylesheet" href="../style.scss" />
     <title>View Mutation API</title>
     <style>
         #view-mutation-stage {
@@ -26,13 +27,14 @@
 </head>
 
 <body>
+    <a class="back-link" href="../">← All embedding examples</a>
     <h1>View Mutation API</h1>
     <div id="dashboard"></div>
-    <div id="view-mutation-stage">
+    <div id="view-mutation-stage" class="visualization-surface">
         <div id="container"></div>
         <div id="track-controls"></div>
     </div>
-    <script type="module" src="/viewMutationApi.js"></script>
+    <script type="module" src="./index.js"></script>
 </body>
 
 </html>

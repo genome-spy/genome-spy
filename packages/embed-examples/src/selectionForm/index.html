@@ -2,11 +2,13 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <link rel="stylesheet" href="selectionForm.scss" />
+        <link rel="stylesheet" href="../style.scss" />
+        <link rel="stylesheet" href="./style.scss" />
         <title>Selection-driven form</title>
     </head>
 
     <body>
+        <a class="back-link" href="../">← All embedding examples</a>
         <h1>Selection-driven annotation form</h1>
         <p>
             Hold Shift while dragging to brush a region, or click a point. A
@@ -21,22 +23,31 @@
             while keeping the browser UI in control.
         </p>
 
-        <div id="selection-plot"></div>
+        <div id="selection-plot" class="visualization-surface"></div>
         <p id="selection-status" role="status"></p>
 
-        <form id="selection-form" disabled>
-            <label>
-                Name
-                <input name="name" required disabled />
-            </label>
-            <label>
-                Description
-                <textarea name="description" rows="2" disabled></textarea>
-            </label>
-            <button type="submit" disabled>Save annotation</button>
+        <form
+            id="selection-form"
+            class="form-surface"
+            aria-describedby="selection-summary"
+        >
+            <fieldset id="selection-fields" disabled>
+                <legend>New annotation</legend>
+                <label>
+                    Name
+                    <input name="name" required />
+                </label>
+                <label>
+                    Description
+                    <textarea name="description" rows="2"></textarea>
+                </label>
+                <button type="submit">Save annotation</button>
+            </fieldset>
         </form>
 
-        <p id="selection-summary"></p>
+        <p id="selection-summary" role="status" aria-live="polite">
+            Brush a region to enable the annotation form.
+        </p>
         <table>
             <thead>
                 <tr>
@@ -48,6 +59,6 @@
             <tbody id="selection-rows"></tbody>
         </table>
 
-        <script type="module" src="/selectionForm.js"></script>
+        <script type="module" src="./index.js"></script>
     </body>
 </html>

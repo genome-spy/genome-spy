@@ -44,9 +44,10 @@ The `embed` function returns a promise that resolves into an object that
 provides the current public API. The API is documented in the [interface
 definition](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/types/embedApi.d.ts).
 
-For practical examples of using the API, check the
-[embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
-package.
+For practical examples of using the API, explore the
+[live embed examples](https://genomespy.app/docs/api/embed-examples/) or browse
+their source in the
+[embed-examples package](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples).
 
 The embed API includes `api.events`, `api.params`, and `api.views`. Use
 `api.events` for synchronous canvas input, `api.params` for top-level state, and
@@ -97,7 +98,7 @@ api.finalize();
 its accessible name and hover title. Set `icon` to an SVG or HTML element for an
 icon button. An optional `title` overrides the hover tooltip.
 
-See the [commented example](https://github.com/genome-spy/genome-spy/blob/master/packages/embed-examples/src/controls.js)
+See the [commented example](https://github.com/genome-spy/genome-spy/blob/master/packages/embed-examples/src/controls/index.js)
 for custom actions, or the [Control contract](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/controls.js)
 for controls with their own lifecycle.
 

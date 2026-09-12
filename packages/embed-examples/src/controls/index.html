@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="stylesheet" href="style.scss" />
+        <link rel="stylesheet" href="../style.scss" />
         <title>Optional visualization controls</title>
         <style>
             #plot {
@@ -17,7 +17,6 @@
                  */
                 margin-block: 48px;
                 max-width: 900px;
-                border: 1px solid #ddd;
                 background: white;
             }
             /*
@@ -31,6 +30,7 @@
         </style>
     </head>
     <body>
+        <a class="back-link" href="../">← All embedding examples</a>
         <h1>Optional visualization controls</h1>
         <p>
             Hover over the plot or focus it with the keyboard to reveal its
@@ -65,7 +65,7 @@
             Changing controls preserves the current plot state. This page
             provides margins above and below the plot for outside controls.
         </p>
-        <div id="plot"></div>
+        <div id="plot" class="visualization-surface"></div>
         <!-- Icon markup is cloned into each button's shadow root. Set its own
              fill/stroke attributes so it needs no page-level CSS. -->
         <template id="clear-selection-icon">
@@ -83,6 +83,6 @@
             <button id="reset">Reset example</button>
             disposes the controls and embed before recreating them.
         </p>
-        <script type="module" src="/controls.js"></script>
+        <script type="module" src="./index.js"></script>
     </body>
 </html>

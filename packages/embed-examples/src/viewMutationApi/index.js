@@ -96,7 +96,7 @@ function getTitleText(title) {
         return title;
     }
 
-    return title?.text ?? "";
+    return typeof title?.text === "string" ? title.text : "";
 }
 
 /**

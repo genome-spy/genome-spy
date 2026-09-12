@@ -1,6 +1,10 @@
 {
+  "include": ["src/**/*", "../../external-typings/**/*"],
+  "exclude": ["node_modules", "**/*.test.js"],
   "compilerOptions": {
     "jsx": "react-jsx",
+    "types": ["node"],
+    "skipLibCheck": true,
     "paths": {
       "@genome-spy/react-component": ["packages/react-component/src"]
     }

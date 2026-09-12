@@ -77,7 +77,7 @@ For applications with their own panels or split layouts, use
 the application UI.
 
 See the
-[inspector overlay example](https://github.com/genome-spy/genome-spy/blob/master/packages/embed-examples/src/inspectorOverlay.html)
+[inspector overlay example](https://github.com/genome-spy/genome-spy/blob/master/packages/embed-examples/src/inspectorOverlay/index.html)
 for a complete Core embed.
 
 ## Debug Scope

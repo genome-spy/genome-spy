@@ -3,6 +3,11 @@
 This package contains examples on using the public GenomeSpy API to adjust
 scales, dynamically update data, etc.
 
+Each example lives in its own directory under `src/`. The directory contains
+an `index.html`, its entry module (`index.js` or `index.jsx`), and any
+example-specific styles. Open the package root in development to browse the
+examples by topic.
+
 You can launch the examples from the project root using the command:
 
 ```sh

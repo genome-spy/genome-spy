@@ -279,6 +279,6 @@ await api.views.transaction(async (views) => {
 ```
 
 The
-[view mutation example](https://github.com/genome-spy/genome-spy/blob/master/packages/embed-examples/src/viewMutationApi.js)
+[view mutation example](https://github.com/genome-spy/genome-spy/blob/master/packages/embed-examples/src/viewMutationApi/index.js)
 demonstrates adding, removing, reordering, and positioning external controls
 next to live views.

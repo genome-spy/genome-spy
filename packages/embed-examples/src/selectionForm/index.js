@@ -90,6 +90,9 @@ const selected = /** @type {PointSelectionApi} */ (
 const form = /** @type {HTMLFormElement} */ (
     document.getElementById("selection-form")
 );
+const fields = /** @type {HTMLFieldSetElement} */ (
+    document.getElementById("selection-fields")
+);
 const status = /** @type {HTMLParagraphElement} */ (
     document.getElementById("selection-status")
 );
@@ -120,27 +123,23 @@ function renderRows() {
 
 /** @param {boolean} enabled */
 function setFormEnabled(enabled) {
-    form.disabled = !enabled;
-    for (const control of form.elements) {
-        const formControl =
-            /** @type {HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement} */ (
-                control
-            );
-        formControl.disabled = !enabled;
-    }
+    fields.disabled = !enabled;
+    summary.textContent = enabled
+        ? "Annotation form enabled for the brushed region."
+        : "Brush a region to enable the annotation form.";
 }
 
 /** @param {SelectionSnapshot} snapshot */
 function showSelection(snapshot) {
     if (snapshot.type === "interval") {
         const interval = snapshot.intervals.x;
-        summary.textContent = interval
+        status.textContent = interval
             ? `Brushed ${interval[0]}–${interval[1]}`
             : "No region selected.";
         return;
     }
 
-    summary.textContent = snapshot.data.length
+    status.textContent = snapshot.data.length
         ? `Selected ${snapshot.data.map((datum) => datum.label).join(", ")}`
         : "No point selected.";
 }

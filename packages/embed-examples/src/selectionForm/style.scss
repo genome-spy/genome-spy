@@ -1,0 +1,46 @@
+#selection-form {
+    display: grid;
+    max-width: 32em;
+    gap: 0.75em;
+}
+
+#selection-fields {
+    display: grid;
+    gap: 0.75em;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+#selection-fields legend {
+    padding: 0;
+    color: var(--text);
+    font-weight: 700;
+}
+
+#selection-fields label {
+    display: grid;
+    gap: 0.35em;
+}
+
+#selection-fields:disabled {
+    color: #707070;
+}
+
+#selection-fields:disabled legend,
+#selection-fields:disabled label {
+    color: #707070;
+}
+
+#selection-fields:disabled input,
+#selection-fields:disabled textarea,
+#selection-fields:disabled button {
+    border-color: #cfcfcf;
+    background: #f1f1f1;
+    color: #707070;
+    cursor: not-allowed;
+}
+
+#selection-fields:disabled button {
+    box-shadow: none;
+}

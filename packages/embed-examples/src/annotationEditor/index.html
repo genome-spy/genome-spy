@@ -2,11 +2,13 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <link rel="stylesheet" href="annotationEditor.scss" />
+        <link rel="stylesheet" href="../style.scss" />
+        <link rel="stylesheet" href="./style.scss" />
         <title>Annotation editor</title>
     </head>
 
     <body>
+        <a class="back-link" href="../">← All embedding examples</a>
         <h1>Annotation editor</h1>
         <p>
             Hold Shift while dragging to brush a region, then right-click inside
@@ -23,7 +25,7 @@
             track is picked asynchronously before the form is shown.
         </p>
 
-        <div id="annotation-plot"></div>
+        <div id="annotation-plot" class="visualization-surface"></div>
         <p id="annotation-status" role="status"></p>
 
         <div id="annotation-menu" hidden>
@@ -55,6 +57,6 @@
             <tbody id="annotation-rows"></tbody>
         </table>
 
-        <script type="module" src="/annotationEditor.js"></script>
+        <script type="module" src="./index.js"></script>
     </body>
 </html>

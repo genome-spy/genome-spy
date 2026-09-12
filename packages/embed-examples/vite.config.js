@@ -1,8 +1,10 @@
+import process from "node:process";
 import { defineConfig } from "vite";
 import rawPlugin from "vite-raw-plugin";
 
 export default defineConfig({
     root: "src",
+    base: process.env.EMBED_EXAMPLES_BASE ?? "/",
     resolve: {
         conditions: ["development"],
         // The React wrapper is imported from a linked workspace package.
@@ -15,22 +17,24 @@ export default defineConfig({
         rollupOptions: {
             // Build every example page so refactors break CI instead of the examples site.
             input: {
-                index: "src/index.html",
-                scaleApi: "src/scaleApi.html",
-                paramApi: "src/paramApi.html",
-                brushLinkingApi: "src/brushLinkingApi.html",
-                viewMutationApi: "src/viewMutationApi.html",
-                inspectorOverlay: "src/inspectorOverlay.html",
-                controls: "src/controls.html",
-                linkedEmbeds: "src/linkedEmbeds.html",
-                dynamicNamedData: "src/dynamicNamedData.html",
-                multipleDynamicSources: "src/multipleDynamicSources.html",
-                namedDataForm: "src/namedDataForm.html",
-                dynamicFasta: "src/dynamicFasta.html",
-                sequenceEditor: "src/sequenceEditor.html",
-                reactComponent: "src/reactComponent.html",
-                annotationEditor: "src/annotationEditor.html",
-                selectionForm: "src/selectionForm.html",
+                index: "index.html",
+                "scaleApi/index": "scaleApi/index.html",
+                "paramApi/index": "paramApi/index.html",
+                "brushLinkingApi/index": "brushLinkingApi/index.html",
+                "viewMutationApi/index": "viewMutationApi/index.html",
+                "inspectorOverlay/index": "inspectorOverlay/index.html",
+                "controls/index": "controls/index.html",
+                "linkedEmbeds/index": "linkedEmbeds/index.html",
+                "dynamicNamedData/index": "dynamicNamedData/index.html",
+                "multipleDynamicSources/index":
+                    "multipleDynamicSources/index.html",
+                "namedDataForm/index": "namedDataForm/index.html",
+                "dynamicSequenceSource/index":
+                    "dynamicSequenceSource/index.html",
+                "sequenceEditor/index": "sequenceEditor/index.html",
+                "reactComponent/index": "reactComponent/index.html",
+                "annotationEditor/index": "annotationEditor/index.html",
+                "selectionForm/index": "selectionForm/index.html",
             },
         },
     },

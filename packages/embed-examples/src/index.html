@@ -1,56 +1,194 @@
 <!doctype html>
 <html lang="en">
     <head>
-        <title>GenomeSpy embedding examples</title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="Practical examples for embedding GenomeSpy visualizations."
+        />
+        <title>GenomeSpy · Embedding examples</title>
         <link rel="stylesheet" href="style.scss" />
     </head>
 
-    <body>
-        <h1>GenomeSpy embedding examples</h1>
-        <ul>
-            <li>
-                <a href="scaleApi.html"
-                    >Zooming using the ScaleResolution API</a
-                >
-            </li>
-            <li>
-                <a href="linkedEmbeds.html">Linked GenomeSpy embeds</a>
-            </li>
-            <li>
-                <a href="paramApi.html">Reading and writing parameters</a>
-            </li>
-            <li>
-                <a href="brushLinkingApi.html"
-                    >Brush linking using parameter and scale APIs</a
-                >
-            </li>
-            <li>
-                <a href="viewMutationApi.html">View mutation API</a>
-            </li>
-            <li>
-                <a href="inspectorOverlay.html">Inspector overlay</a>
-            </li>
-            <li>
-                <a href="controls.html"
-                    >Image downloads and full-window controls</a
-                >
-            </li>
-            <li>
-                <a href="dynamicNamedData.html"
-                    >Dynamically updated named data</a
-                >
-            </li>
-            <li>
-                <a href="multipleDynamicSources.html"
-                    >Multiple dynamic sources with a shared scale domain</a
-                >
-            </li>
-            <li><a href="namedDataForm.html">Named data form</a></li>
-            <li><a href="annotationEditor.html">Annotation editor</a></li>
-            <li><a href="selectionForm.html">Selection-driven annotation form</a></li>
-            <li><a href="dynamicFasta.html">Dynamic fasta experiment</a></li>
-            <li><a href="sequenceEditor.html">DNA sequence editor</a></li>
-            <li><a href="reactComponent.html">React component example</a></li>
-        </ul>
+    <body class="landing-page">
+        <header class="hero">
+            <p class="eyebrow">GenomeSpy</p>
+            <h1>Embedding examples</h1>
+            <p class="hero-summary">
+                Practical examples for connecting GenomeSpy to application
+                state, data sources, controls, and framework components.
+            </p>
+            <p class="hero-meta">
+                <span>15 examples</span>
+                <span>Core API · dynamic data · UI integration</span>
+            </p>
+        </header>
+
+        <main class="example-catalog">
+            <section class="category" aria-labelledby="api-category">
+                <div class="category-heading">
+                    <p class="category-number">01</p>
+                    <div>
+                        <h2 id="api-category">Control views and state</h2>
+                        <p>
+                            Coordinate embeds, scales, parameters, and live view
+                            hierarchies from your own application code.
+                        </p>
+                    </div>
+                </div>
+                <div class="example-grid">
+                    <a class="example-card" href="scaleApi/">
+                        <h3>Scale resolution API</h3>
+                        <p>Zoom a visualization through its named scale API.</p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                    <a class="example-card" href="paramApi/">
+                        <h3>Parameter API</h3>
+                        <p>Read and write parameters exposed by an embed.</p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                    <a class="example-card" href="brushLinkingApi/">
+                        <h3>Brush linking</h3>
+                        <p>
+                            Link an overview brush to a separate detail embed.
+                        </p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                    <a class="example-card" href="linkedEmbeds/">
+                        <h3>Linked embeds</h3>
+                        <p>
+                            Synchronize named scales across separate instances.
+                        </p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                    <a class="example-card" href="viewMutationApi/">
+                        <h3>View mutation API</h3>
+                        <p>Add, remove, move, and control live views.</p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                </div>
+            </section>
+
+            <section class="category" aria-labelledby="data-category">
+                <div class="category-heading">
+                    <p class="category-number">02</p>
+                    <div>
+                        <h2 id="data-category">Stream and edit data</h2>
+                        <p>
+                            Push new records into a running visualization and
+                            build selection-driven editing workflows.
+                        </p>
+                    </div>
+                </div>
+                <div class="example-grid">
+                    <a class="example-card" href="dynamicNamedData/">
+                        <h3>Dynamic named data</h3>
+                        <p>Update a named dataset through the embed API.</p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                    <a class="example-card" href="multipleDynamicSources/">
+                        <h3>Multiple dynamic sources</h3>
+                        <p>
+                            Keep several live sources on a shared scale domain.
+                        </p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                    <a class="example-card" href="namedDataForm/">
+                        <h3>Named data form</h3>
+                        <p>Connect ordinary form fields to named data.</p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                    <a class="example-card" href="annotationEditor/">
+                        <h3>Annotation editor</h3>
+                        <p>Create annotations from a brushed genomic region.</p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                    <a class="example-card" href="selectionForm/">
+                        <h3>Selection-driven form</h3>
+                        <p>
+                            Use interval and point selections to drive a form.
+                        </p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                </div>
+            </section>
+
+            <section class="category" aria-labelledby="tooling-category">
+                <div class="category-heading">
+                    <p class="category-number">03</p>
+                    <div>
+                        <h2 id="tooling-category">Add embedding tools</h2>
+                        <p>
+                            Give users export controls and an in-context view of
+                            the visualization inspector.
+                        </p>
+                    </div>
+                </div>
+                <div class="example-grid">
+                    <a class="example-card" href="controls/">
+                        <h3>Visualization controls</h3>
+                        <p>
+                            Download images, clear selections, and go
+                            full-screen.
+                        </p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                    <a class="example-card" href="inspectorOverlay/">
+                        <h3>Inspector overlay</h3>
+                        <p>
+                            Open the developer inspector over an embedded plot.
+                        </p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                </div>
+            </section>
+
+            <section class="category" aria-labelledby="specialized-category">
+                <div class="category-heading">
+                    <p class="category-number">04</p>
+                    <div>
+                        <h2 id="specialized-category">
+                            Genome data and frameworks
+                        </h2>
+                        <p>
+                            Combine embedding with sequence data or a modern UI
+                            framework.
+                        </p>
+                    </div>
+                </div>
+                <div class="example-grid">
+                    <a class="example-card" href="dynamicSequenceSource/">
+                        <h3>Dynamic sequence source</h3>
+                        <p>Replace data as the genomic locus changes.</p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                    <a class="example-card" href="sequenceEditor/">
+                        <h3>DNA sequence editor</h3>
+                        <p>Edit individual bases in a named dataset.</p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                    <a class="example-card" href="reactComponent/">
+                        <h3>React component</h3>
+                        <p>
+                            Use GenomeSpy as a React component with lifecycle
+                            cleanup.
+                        </p>
+                        <span class="card-arrow" aria-hidden="true">↗</span>
+                    </a>
+                </div>
+            </section>
+        </main>
+
+        <footer class="site-footer">
+            <a href="https://genomespy.app/docs/getting-started/"
+                >Read the embedding guide</a
+            >
+            <span>·</span>
+            <a
+                href="https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples"
+                >Browse the source</a
+            >
+        </footer>
     </body>
 </html>

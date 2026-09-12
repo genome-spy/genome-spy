@@ -7,7 +7,12 @@
   "scripts": {
     "dev": "vite",
     "build:smoke": "vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:tsc": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22"
   },
   "author": "Kari Lavikka",
   "license": "MIT",
@@ -15,8 +20,6 @@
     "@genome-spy/core": "^0.87.0",
     "@genome-spy/inspector": "^0.87.0",
     "@genome-spy/react-component": "^0.87.0",
-    "@gmod/indexedfasta": "^2.0.4",
-    "buffer": "^6.0.3",
     "lit": "^3.1.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

@@ -15,7 +15,7 @@ marimo edit packages/embed-examples/notebooks/selection_bridge.py
 npm -w @genome-spy/embed-examples run dev -- --host 127.0.0.1
 ```
 
-Open `selectionForm.html?bridge=1` from the Vite server. The notebook bridge listens on
+Open `selectionForm/?bridge=1` from the Vite server. The notebook bridge listens on
 `http://127.0.0.1:8765`; its CORS policy allows local `127.0.0.1` and
 `localhost` example pages, including alternate Vite development ports.
 

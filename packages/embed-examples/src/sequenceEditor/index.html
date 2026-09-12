@@ -2,16 +2,18 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <link rel="stylesheet" href="sequenceEditor.scss" />
+        <link rel="stylesheet" href="../style.scss" />
+        <link rel="stylesheet" href="./style.scss" />
         <title>DNA sequence editor</title>
     </head>
 
     <body>
+        <a class="back-link" href="../">← All embedding examples</a>
         <h1>DNA sequence editor</h1>
         <p>
             This example renders a randomized 50-base DNA sequence using the
-            same colored rectangles and base labels as the Dynamic Fasta
-            example.
+            same colored rectangles and base labels as the dynamic sequence
+            source example.
         </p>
         <p>
             Click a base to replace it with the next base in the cycle
@@ -25,9 +27,9 @@
             also disable picking unless a point selection enabled it.
         </p>
 
-        <div id="container"></div>
+        <div id="container" class="visualization-surface"></div>
         <p id="status" role="status">Click a base to edit the sequence.</p>
 
-        <script type="module" src="/sequenceEditor.js"></script>
+        <script type="module" src="./index.js"></script>
     </body>
 </html>

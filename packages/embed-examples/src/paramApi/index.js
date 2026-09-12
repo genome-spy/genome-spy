@@ -50,7 +50,7 @@ const spec = {
                 type: "rule",
             },
             encoding: {
-                y: { datum: { expr: "threshold" } },
+                y: { datum: { expr: "threshold" }, type: "quantitative" },
             },
         },
     ],

@@ -73,8 +73,12 @@ const spec = {
             data: { name: "annotations" },
             mark: { type: "rect", fill: "#f59e0b", fillOpacity: 0.35 },
             encoding: {
-                x: { field: "start", type: "locus" },
-                x2: { field: "end" },
+                x: {
+                    chrom: "startChrom",
+                    pos: "startPos",
+                    type: "locus",
+                },
+                x2: { chrom: "endChrom", pos: "endPos" },
             },
         },
     ],
@@ -181,13 +185,21 @@ form.addEventListener("submit", (event) => {
     if (!interval) {
         return;
     }
+    const [start, end] = interval;
+    if (typeof start === "number" || typeof end === "number") {
+        return;
+    }
 
     const values = new FormData(form);
     annotations = [
         ...annotations,
         {
-            start: interval[0],
-            end: interval[1],
+            start,
+            end,
+            startChrom: start.chrom,
+            startPos: start.pos,
+            endChrom: end.chrom,
+            endPos: end.pos,
             name: values.get("name"),
             description: values.get("description"),
         },

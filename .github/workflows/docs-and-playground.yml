@@ -54,6 +54,11 @@ jobs:
             - name: Build Playground
               run: npm -w @genome-spy/playground run build
 
+            - name: Build embedding examples
+              run: npm -w @genome-spy/embed-examples run build:smoke
+              env:
+                  EMBED_EXAMPLES_BASE: /docs/api/embed-examples/
+
             - name: Check out site repository
               uses: actions/checkout@v6
               with:
@@ -65,8 +70,9 @@ jobs:
             - name: Update site contents
               run: |
                   rm -rf deploy-site/docs deploy-site/playground
-                  mkdir -p deploy-site/docs deploy-site/playground
+                  mkdir -p deploy-site/docs/api/embed-examples deploy-site/playground
                   cp -R site/. deploy-site/docs/
+                  cp -R packages/embed-examples/dist/. deploy-site/docs/api/embed-examples/
                   cp -R packages/playground/dist/. deploy-site/playground/
 
             - name: Commit and push site update

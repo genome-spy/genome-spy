@@ -83,8 +83,8 @@ For applications with their own panels or split layouts, use
 the application UI.
 
 See the embed example:
-[Inspector overlay](../embed-examples/src/inspectorOverlay.html)
-([source](../embed-examples/src/inspectorOverlay.js)).
+[Inspector overlay](../embed-examples/src/inspectorOverlay/index.html)
+([source](../embed-examples/src/inspectorOverlay/index.js)).
 
 ## Architecture
 
