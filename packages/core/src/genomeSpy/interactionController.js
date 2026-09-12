@@ -176,19 +176,16 @@ export default class InteractionController {
             return { status: "invalidated" };
         }
 
-        const result = await this.#readPick(
-            point.x,
-            point.y,
-            (_requestId, hit) => ({ hit }),
-            scopeView
-        );
-        if (result === false) {
+        const requestId = this.#pickingRequestId;
+        this.#renderPickingFramebuffer();
+        const result = this.#readPickingId(point.x, point.y);
+        const uniqueId = await result;
+        if (requestId !== this.#pickingRequestId) {
             return { status: "invalidated" };
         }
 
-        return result.hit
-            ? { status: "hit", hit: result.hit }
-            : { status: "empty" };
+        const hit = this.#findHit(point.x, point.y, uniqueId ?? 0, scopeView);
+        return hit ? { status: "hit", hit } : { status: "empty" };
     }
 
     invalidatePendingPicks() {
@@ -972,54 +969,30 @@ export default class InteractionController {
      * @returns {Promise<boolean> | undefined}
      */
     #handlePicking(x, y, shouldApply = () => true, onApplied) {
-        const result = this.#readPick(
-            x,
-            y,
-            (requestId, hit) => {
-                if (!shouldApply()) {
-                    return false;
-                }
-
-                this.#tooltipUpdateRequested = false;
-                this.#applyPickingResult(requestId, hit);
-                onApplied?.(hit);
-                return true;
-            },
-            undefined,
-            (error) => {
-                console.error("Picking failed.", error);
-                return false;
-            }
-        );
-        return result instanceof Promise ? result : undefined;
-    }
-
-    /**
-     * @param {number} x
-     * @param {number} y
-     * @param {(requestId: number, hit: InternalMarkHit | undefined) => T} apply
-     * @param {import("../view/view.js").default} [scopeView]
-     * @param {(error: unknown) => T} [onRejected]
-     * @returns {T | false | Promise<T | false>}
-     * @template T
-     */
-    #readPick(x, y, apply, scopeView, onRejected) {
         const requestId = this.#pickingRequestId;
         this.#renderPickingFramebuffer();
         const result = this.#readPickingId?.(x, y) ?? 0;
 
         /** @param {number | null} uniqueId */
-        const resolve = (uniqueId) =>
-            requestId === this.#pickingRequestId
-                ? apply(
-                      requestId,
-                      this.#findHit(x, y, uniqueId ?? 0, scopeView)
-                  )
-                : false;
+        const applyResult = (uniqueId) => {
+            if (requestId !== this.#pickingRequestId || !shouldApply()) {
+                return false;
+            }
 
-        return result instanceof Promise
-            ? result.then(resolve, onRejected)
-            : resolve(result);
+            this.#tooltipUpdateRequested = false;
+            const hit = this.#findHit(x, y, uniqueId ?? 0);
+            this.#applyPickingResult(requestId, hit);
+            onApplied?.(hit);
+            return true;
+        };
+
+        if (result instanceof Promise) {
+            return result.then(applyResult, (error) => {
+                console.error("Picking failed.", error);
+                return false;
+            });
+        }
+        applyResult(result);
     }
 
     /**

@@ -463,6 +463,7 @@ describe("InteractionController", () => {
             renderPickingFramebuffer() {},
             readPickingId,
         });
+        const visit = vi.spyOn(viewRoot, "visit");
         controller.registerInteractionEvents();
 
         canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 10 }));
@@ -489,6 +490,9 @@ describe("InteractionController", () => {
         expect(pending).toHaveLength(5);
         expect(emitted).toHaveLength(0);
         expect(dispatched).toHaveLength(0);
+
+        // A superseded hover read must not traverse the view tree for a hit.
+        expect(visit).not.toHaveBeenCalled();
 
         pending[1](1);
         await Promise.resolve();

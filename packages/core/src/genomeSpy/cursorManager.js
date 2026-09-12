@@ -21,11 +21,14 @@ export default class CursorManager {
     /** @type {HTMLCanvasElement} */
     #canvas;
 
-    /** @type {CursorSource | undefined} */
-    #activeSource;
+    /** @type {CursorOwner | undefined} */
+    #activeOwner;
+
+    /** @type {unknown} */
+    #activeSpec;
 
     /** @type {(() => void) | undefined} */
-    #disposeActiveSource;
+    #disposeActiveOwner;
 
     /**
      * @param {object} options
@@ -41,91 +44,60 @@ export default class CursorManager {
      * @param {{ mark?: CursorOwner } | undefined} options.hover
      */
     update({ target, hover }) {
-        this.#setActiveSource(resolveCursorSource(target, hover));
+        this.#setActiveOwner(resolveCursorOwner(target, hover));
     }
 
     clear() {
-        this.#setActiveSource(undefined);
+        this.#setActiveOwner(undefined);
     }
 
     /**
-     * @param {CursorSource | undefined} source
+     * @param {CursorOwner | undefined} owner
      */
-    #setActiveSource(source) {
-        if (sameSource(this.#activeSource, source)) {
+    #setActiveOwner(owner) {
+        const spec = owner?.getCursorSpec?.();
+        if (this.#activeOwner === owner && this.#activeSpec === spec) {
             this.#applyActiveCursor();
             return;
         }
 
-        this.#disposeActiveSource?.();
-        this.#disposeActiveSource = undefined;
-        this.#activeSource = source;
+        this.#disposeActiveOwner?.();
+        this.#disposeActiveOwner = undefined;
+        this.#activeOwner = owner;
+        this.#activeSpec = spec;
 
-        source?.watch(
+        owner?.watchCursor?.(
+            () => this.#applyActiveCursor(),
             (dispose) => {
-                this.#disposeActiveSource = dispose;
-            },
-            () => this.#applyActiveCursor()
+                this.#disposeActiveOwner = dispose;
+            }
         );
 
         this.#applyActiveCursor();
     }
 
     #applyActiveCursor() {
-        const cursor = this.#activeSource?.evaluate();
+        const cursor = this.#activeOwner?.getCursor();
         this.#canvas.style.cursor = typeof cursor === "string" ? cursor : "";
     }
 }
 
 /**
- * @typedef {{
- *   owner: object,
- *   raw: unknown,
- *   evaluate: () => string | undefined,
- *   watch: (registerDisposer: (dispose: () => void) => void, listener: () => void) => void,
- * }} CursorSource
- */
-
-/**
  * @param {CursorView | undefined} target
  * @param {{ mark?: CursorOwner } | undefined} hover
- * @returns {CursorSource | undefined}
+ * @returns {CursorOwner | undefined}
  */
-export function resolveCursorSource(target, hover) {
+export function resolveCursorOwner(target, hover) {
     const mark = hover?.mark;
     const markCursor = mark?.getCursorSpec?.();
     if (markCursor !== undefined) {
-        return {
-            owner: mark,
-            raw: markCursor,
-            evaluate: () => mark.getCursor(),
-            watch: (registerDisposer, listener) =>
-                mark.watchCursor?.(listener, registerDisposer),
-        };
+        return mark;
     }
 
     for (const view of target?.getLayoutAncestors() ?? []) {
         const cursor = view.getCursorSpec?.();
         if (cursor !== undefined) {
-            return {
-                owner: view,
-                raw: cursor,
-                evaluate: () => view.getCursor(),
-                watch: (registerDisposer, listener) =>
-                    view.watchCursor?.(listener, registerDisposer),
-            };
+            return view;
         }
     }
-}
-
-/**
- * @param {CursorSource | undefined} a
- * @param {CursorSource | undefined} b
- */
-function sameSource(a, b) {
-    if (!a || !b) {
-        return a === b;
-    }
-
-    return a.owner === b.owner && a.raw === b.raw;
 }

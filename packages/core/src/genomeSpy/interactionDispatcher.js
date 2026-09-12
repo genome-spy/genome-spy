@@ -84,7 +84,12 @@ export default class InteractionDispatcher {
             uiEvent,
             "mouseleave"
         );
-        this.#dispatchLeaveEvents(interaction, this.#previousViews, undefined);
+        this.#dispatchTransitionEvents(
+            interaction,
+            this.#previousViews,
+            "mouseleave",
+            undefined
+        );
         this.#previousViews = [];
         this.#previousViewSet.clear();
         this.#lastTarget = undefined;
@@ -117,17 +122,19 @@ export default class InteractionDispatcher {
         );
 
         if (leavingViews.length > 0) {
-            this.#dispatchLeaveEvents(
+            this.#dispatchTransitionEvents(
                 interaction,
                 leavingViews,
+                "mouseleave",
                 currentViews.at(-1)
             );
         }
 
         if (enteringViews.length > 0) {
-            this.#dispatchEnterEvents(
+            this.#dispatchTransitionEvents(
                 interaction,
                 enteringViews,
+                "mouseenter",
                 this.#previousViews.at(-1)
             );
         }
@@ -138,39 +145,19 @@ export default class InteractionDispatcher {
 
     /**
      * @param {Interaction} baseInteraction
-     * @param {import("../view/view.js").default[]} leavingViews
+     * @param {import("../view/view.js").default[]} views
+     * @param {"mouseenter" | "mouseleave"} type
      * @param {import("../view/view.js").default | undefined} relatedTarget
      */
-    #dispatchLeaveEvents(baseInteraction, leavingViews, relatedTarget) {
-        for (let i = leavingViews.length - 1; i >= 0; i--) {
+    #dispatchTransitionEvents(baseInteraction, views, type, relatedTarget) {
+        // Enter from the root inward; leave from the deepest view outward.
+        for (let i = 0; i < views.length; i++) {
+            const view =
+                views[type === "mouseleave" ? views.length - 1 - i : i];
             const interaction = new Interaction(
                 baseInteraction.point,
                 baseInteraction.uiEvent,
-                "mouseleave"
-            );
-            const view = leavingViews[i];
-            interaction.target = view;
-            interaction.currentTarget = view;
-            interaction.relatedTarget = relatedTarget;
-            this.#dispatchDirect(view, interaction);
-
-            if (interaction.stopped) {
-                return;
-            }
-        }
-    }
-
-    /**
-     * @param {Interaction} baseInteraction
-     * @param {import("../view/view.js").default[]} enteringViews
-     * @param {import("../view/view.js").default | undefined} relatedTarget
-     */
-    #dispatchEnterEvents(baseInteraction, enteringViews, relatedTarget) {
-        for (const view of enteringViews) {
-            const interaction = new Interaction(
-                baseInteraction.point,
-                baseInteraction.uiEvent,
-                "mouseenter"
+                type
             );
             interaction.target = view;
             interaction.currentTarget = view;
