@@ -83,36 +83,15 @@ const rows = /** @type {HTMLTableSectionElement} */ (
 const status = /** @type {HTMLParagraphElement} */ (
     document.getElementById("annotation-status")
 );
-const hoverStatus = /** @type {HTMLParagraphElement} */ (
-    document.getElementById("annotation-hover")
-);
-const clickStatus = /** @type {HTMLParagraphElement} */ (
-    document.getElementById("annotation-click")
-);
 
 const api = await embed(container, spec);
 const brush = /** @type {IntervalSelectionApi} */ (
     api.params.getSelection("brush")
 );
 const track = api.views.get({ scope: [], view: "signal-track" });
-const marks = api.views.get({ scope: [], view: "annotations" }).marks;
 
 /** @type {IntervalSnapshot | undefined} */
 let pendingSelection;
-
-marks.subscribe("click", ({ hit }) => {
-    if ("start" in hit.datum) {
-        clickStatus.textContent = `Annotation clicked: ${hit.datum.name}`;
-    }
-});
-
-marks.observeHover((hit) => {
-    if (hit && "start" in hit.datum) {
-        hoverStatus.textContent = `Annotation hovered: ${hit.datum.name}`;
-    } else {
-        hoverStatus.textContent = "";
-    }
-});
 
 function renderRows() {
     rows.replaceChildren(
