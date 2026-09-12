@@ -98,8 +98,9 @@ if (tracks.isAlive()) {
 Each handle exposes `marks` for interaction with marks in that view's subtree.
 Mark events pick the event coordinates before invoking the listener. GPU-backed
 readback can make delivery asynchronous, and the callback is skipped if the
-scene or owning view/embed is invalidated before the pick completes. Browser
-default cancellation must happen synchronously through `api.events`.
+scene or owning view/embed is invalidated before the pick completes. See
+[Interaction events](./instance.md#interaction-events) for native canvas input
+and browser default cancellation.
 
 ```js
 const track = api.views.get({ scope: [], view: "track" });
@@ -152,38 +153,19 @@ if (brush.type === "interval" && brush.contains({ x: 120, y: 80 })) {
 }
 ```
 
-Selection snapshots are detached plain objects. Interval snapshots contain
-numeric domain ranges and `null` for unset channels. Point snapshots contain
-zero or more detached row objects. `active` means the selection is nonempty.
-Subscriptions are future-only and default to `delivery: "change"`; committed
-interval delivery fires after a completed brush or changed programmatic write.
-Cancellation and disposal do not create a commit. Call `clear()` to cancel an
-active brush and publish the cleared state once when it changed.
+See [Parameters](runtime-state.md#parameters) for selection snapshot shape,
+subscription delivery, and clearing behavior.
 
 For a runnable browser form and notebook bridge, see the `annotationEditor` and
 `selectionForm` pages in the [embed examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples).
 
 ## Updating named data
 
-Use `api.datasets` for declarations in the top-level input specification. For a
-declaration in a nested or imported view, resolve the exact declaring view:
-
-```js
-const owner = api.views.get({
-  scope: ["translationA"],
-  view: "translationA",
-});
-
-owner.datasets.set("geneticCode", rows);
-owner.datasets.reset("geneticCode");
-```
-
-Descendants can reference the declaration, but updates do not search ancestors.
-Use the declaring view's handle so that repeated imports and nested subtrees
-remain independent.
-
-See [Runtime State](runtime-state.md#named-data) for declarations, initial data,
-and migration from the deprecated global APIs.
+Use `api.datasets` for declarations in the top-level specification and
+`ViewHandle.datasets` for declarations owned by nested views. The exact-owner
+rule means updates do not search ancestors or descendants. See
+[Runtime State](runtime-state.md#named-data) for declarations, loading, reset,
+initial data, and migration from the deprecated global APIs.
 
 ## Reading layout bounds
 
