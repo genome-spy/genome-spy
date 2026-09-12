@@ -50,6 +50,9 @@ export interface InteractionApi {
 /** Interaction host registered for an interval selection declaration. */
 export interface IntervalSelectionControllerApi {
     contains: (point: { x: number; y: number }) => boolean;
+    getComplexIntervals: (
+        intervals: IntervalSelection["intervals"]
+    ) => import("./embedApi.js").ComplexIntervals;
     subscribeCommit: (
         listener: (selection: IntervalSelection) => void
     ) => () => void;

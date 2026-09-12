@@ -130,7 +130,7 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
 
         getValue() {
             ensureParamApiIsLive(lifecycle);
-            return copySelection(valueRuntime.getValue(name));
+            return copySelection(valueRuntime.getValue(name), controller);
         },
 
         subscribe(
@@ -142,7 +142,7 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
                 return registerParamDisposer(
                     lifecycle,
                     controller.subscribeCommit((selection) =>
-                        listener(copySelection(selection))
+                        listener(copySelection(selection, controller))
                     )
                 );
             }
@@ -153,7 +153,7 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
                 () => {
                     callEmbedListener(
                         listener,
-                        copySelection(valueRuntime.getValue(name))
+                        copySelection(valueRuntime.getValue(name), controller)
                     );
                 },
                 lifecycle
@@ -184,10 +184,17 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
 
 /**
  * @param {import("../types/selectionTypes.js").Selection} selection
+ * @param {import("../types/interactionApi.d.ts").IntervalSelectionControllerApi} [intervalController]
  * @returns {import("../types/embedApi.js").SelectionSnapshot}
  */
-function copySelection(selection) {
+function copySelection(selection, intervalController) {
     if (isIntervalSelection(selection)) {
+        if (!intervalController) {
+            throw new Error(
+                "Interval selection has no interaction controller."
+            );
+        }
+
         return {
             type: "interval",
             active: Object.values(selection.intervals).some(
@@ -202,6 +209,9 @@ function copySelection(selection) {
                             : null,
                     ]
                 )
+            ),
+            complexIntervals: intervalController.getComplexIntervals(
+                selection.intervals
             ),
         };
     }

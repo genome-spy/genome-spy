@@ -115,11 +115,33 @@ export interface ParamApi<T = ParamValue> {
     subscribe: (listener: (value: T) => void) => () => void;
 }
 
+/** A genomic endpoint in an interval snapshot. */
+export interface ComplexLocusEndpoint {
+    /** Chromosome or contig name. */
+    readonly chrom: string;
+
+    /** Zero-based position inside the chromosome or contig. */
+    readonly pos: number;
+}
+
+/** An endpoint in an interval snapshot, numeric or genomic. */
+export type IntervalEndpoint = number | ComplexLocusEndpoint;
+
+/** A pair of interval endpoints in numeric or genomic coordinates. */
+export type ComplexInterval = readonly [IntervalEndpoint, IntervalEndpoint];
+
+/** Complex interval values keyed by positional channel, or `null` when clear. */
+export type ComplexIntervals = Partial<
+    Record<"x" | "y", ComplexInterval | null>
+>;
+
 /**
  * Detached value of an interval selection.
  *
  * An interval is active when at least one configured channel has a range. The
- * ranges are expressed in data-domain values, not canvas coordinates.
+ * numeric ranges are expressed in data-domain values, not canvas coordinates.
+ * `complexIntervals` uses genomic `{ chrom, pos }` endpoints for locus
+ * channels, while numeric channels retain numeric endpoints.
  */
 export interface IntervalSnapshot {
     /** Discriminator for interval selection snapshots. */
@@ -130,6 +152,12 @@ export interface IntervalSnapshot {
 
     /** Selected range for each configured positional channel, or `null`. */
     intervals: Partial<Record<"x" | "y", readonly [number, number] | null>>;
+
+    /**
+     * The same ranges with locus channels converted to `{ chrom, pos }`
+     * endpoints. Numeric channels remain numeric and cleared channels are null.
+     */
+    complexIntervals: ComplexIntervals;
 }
 
 /**

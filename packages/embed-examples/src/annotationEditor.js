@@ -5,8 +5,10 @@ import "@genome-spy/core/rendering/webgl.js";
 /** @typedef {import("@genome-spy/core/types/embedApi.js").IntervalSnapshot} IntervalSnapshot */
 /** @typedef {import("@genome-spy/core/spec/root.js").RootSpec} RootSpec */
 
+const startPos = 134_567_890;
 const trackData = Array.from({ length: 101 }, (_, x) => ({
-    x,
+    chrom: "chr3",
+    pos: startPos + x,
     y: Math.sin(x / 8) * 18 + 50,
 }));
 
@@ -15,6 +17,7 @@ let annotations = [];
 
 /** @type {RootSpec} */
 const spec = {
+    assembly: "hg38",
     params: [
         {
             name: "brush",
@@ -30,9 +33,15 @@ const spec = {
             mark: { type: "point", size: 32 },
             encoding: {
                 x: {
-                    field: "x",
-                    type: "quantitative",
-                    scale: { domain: [0, 100] },
+                    chrom: "chrom",
+                    pos: "pos",
+                    type: "locus",
+                    scale: {
+                        domain: [
+                            { chrom: "chr3", pos: startPos },
+                            { chrom: "chr3", pos: startPos + 100 },
+                        ],
+                    },
                 },
                 y: { field: "y", type: "quantitative", axis: null },
             },
@@ -40,15 +49,19 @@ const spec = {
         {
             name: "reference-track",
             data: {
-                values: trackData.map(({ x, y }) => ({ x, y: y / 2 + 35 })),
+                values: trackData.map(({ chrom, pos, y }) => ({
+                    chrom,
+                    pos,
+                    y: y / 2 + 35,
+                })),
             },
             height: 80,
             mark: { type: "rule", size: 2 },
             encoding: {
                 x: {
-                    field: "x",
-                    type: "quantitative",
-                    scale: { domain: [0, 100] },
+                    chrom: "chrom",
+                    pos: "pos",
+                    type: "locus",
                 },
                 y: { field: "y", type: "quantitative", axis: null },
             },
@@ -60,7 +73,7 @@ const spec = {
             data: { name: "annotations" },
             mark: { type: "rect", fill: "#f59e0b", fillOpacity: 0.35 },
             encoding: {
-                x: { field: "start", type: "quantitative" },
+                x: { field: "start", type: "locus" },
                 x2: { field: "end" },
             },
         },
@@ -98,7 +111,7 @@ function renderRows() {
         ...annotations.map((annotation) => {
             const row = document.createElement("tr");
             for (const value of [
-                `${annotation.start}–${annotation.end}`,
+                `${formatCoordinate(annotation.start)}–${formatCoordinate(annotation.end)}`,
                 annotation.name,
                 annotation.description,
             ]) {
@@ -108,6 +121,19 @@ function renderRows() {
             return row;
         })
     );
+}
+
+/** @param {unknown} value */
+function formatCoordinate(value) {
+    if (
+        typeof value === "object" &&
+        value !== null &&
+        "chrom" in value &&
+        "pos" in value
+    ) {
+        return `${String(value.chrom)}:${String(value.pos)}`;
+    }
+    return String(value);
 }
 
 function closeMenu() {
@@ -138,7 +164,7 @@ async function openContextMenu(sourceEvent, point) {
     }
 
     pendingSelection = brush.getValue();
-    if (!pendingSelection.active || !pendingSelection.intervals.x) {
+    if (!pendingSelection.active || !pendingSelection.complexIntervals.x) {
         return;
     }
 
@@ -151,7 +177,7 @@ async function openContextMenu(sourceEvent, point) {
 
 form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const interval = pendingSelection?.intervals.x;
+    const interval = pendingSelection?.complexIntervals.x;
     if (!interval) {
         return;
     }

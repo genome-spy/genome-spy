@@ -282,6 +282,11 @@ const brush = api.getParam("brush");
 brush.setValue(intervalSelection({ x: [10, 20] }));
 ```
 
+Interval selection snapshots keep these numeric ranges in `intervals`. They
+also expose `complexIntervals`: locus channels use `{ chrom, pos }` endpoints,
+numeric channels remain numeric, and cleared channels are `null`. The same
+snapshot shape is returned by `getValue()` and passed to subscriptions.
+
 Current limitations:
 
 - Parameters are addressed by name only. If the name resolves to multiple

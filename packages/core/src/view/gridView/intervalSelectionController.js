@@ -92,6 +92,9 @@ export class IntervalSelectionController {
     /** @type {import("../../paramRuntime/viewParamRuntime.js").default} */
     #selectionRuntime;
 
+    /** @type {Record<import("../../spec/channel.js").PrimaryPositionalChannel, import("../../scales/scaleResolution.js").default>} */
+    #scaleResolutions;
+
     /** @type {Set<{ listener: (selection: import("../../types/selectionTypes.js").IntervalSelection) => void }>} */
     #commitListeners = new Set();
 
@@ -138,6 +141,36 @@ export class IntervalSelectionController {
     }
 
     /**
+     * Converts selection intervals using the scales that own the selection.
+     *
+     * @param {import("../../types/selectionTypes.js").IntervalSelection["intervals"]} intervals
+     * @returns {import("../../types/embedApi.js").ComplexIntervals}
+     */
+    getComplexIntervals(intervals) {
+        return Object.fromEntries(
+            Object.entries(intervals).map(([channel, interval]) => {
+                const primaryChannel =
+                    /** @type {import("../../spec/channel.js").PrimaryPositionalChannel} */ (
+                        channel
+                    );
+                return [
+                    primaryChannel,
+                    interval
+                        ? [
+                              this.#scaleResolutions[primaryChannel].toComplex(
+                                  interval[0]
+                              ),
+                              this.#scaleResolutions[primaryChannel].toComplex(
+                                  interval[1]
+                              ),
+                          ]
+                        : null,
+                ];
+            })
+        );
+    }
+
+    /**
      * @param {(selection: import("../../types/selectionTypes.js").IntervalSelection) => void} listener
      * @returns {() => void}
      */
@@ -180,6 +213,10 @@ export class IntervalSelectionController {
                 return [channel, resolution];
             })
         );
+        this.#scaleResolutions =
+            /** @type {Record<import("../../spec/channel.js").PrimaryPositionalChannel, import("../../scales/scaleResolution.js").default>} */ (
+                scaleResolutions
+            );
 
         const requiresShiftToBrush = channels.some((channel) =>
             scaleResolutions[channel].isZoomable()

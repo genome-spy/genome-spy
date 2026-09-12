@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
+import GenomeStore from "../genome/genomeStore.js";
 import {
     createEmbedParamNamespace,
     resolveEmbedParam,
@@ -8,6 +9,8 @@ import {
     resolveScopedEmbedParam,
 } from "./embedParamApi.js";
 import { intervalSelection } from "../selection/index.js";
+
+/** @typedef {import("../types/embedApi.js").IntervalSnapshot} IntervalSnapshot */
 
 /**
  * @param {string} name
@@ -193,6 +196,7 @@ describe("embed param API", () => {
             type: "interval",
             active: false,
             intervals: { x: null },
+            complexIntervals: { x: null },
         });
 
         param.setValue(intervalSelection({ x: [1, 2] }));
@@ -201,6 +205,7 @@ describe("embed param API", () => {
             type: "interval",
             active: true,
             intervals: { x: [1, 2] },
+            complexIntervals: { x: [1, 2] },
         });
 
         /** @type {any} */ (snapshot.intervals.x)[0] = 99;
@@ -209,7 +214,148 @@ describe("embed param API", () => {
         ]);
 
         selection.clear();
-        expect(selection.getValue().active).toBe(false);
+        expect(selection.getValue()).toEqual({
+            type: "interval",
+            active: false,
+            intervals: { x: null },
+            complexIntervals: { x: null },
+        });
+    });
+
+    test("returns genomic intervals in snapshots and subscriptions", async () => {
+        const genomeStore = new GenomeStore(".");
+        await genomeStore.initialize({
+            name: "test",
+            contigs: [
+                { name: "chr1", size: 100 },
+                { name: "chr2", size: 50 },
+            ],
+        });
+        const { view: root } = await createHeadlessEngine(
+            {
+                assembly: "test",
+                params: [
+                    {
+                        name: "brush",
+                        select: { type: "interval", encodings: ["x"] },
+                    },
+                ],
+                vconcat: [
+                    {
+                        data: {
+                            values: [{ chrom: "chr1", pos: 10, y: 2 }],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                chrom: "chrom",
+                                pos: "pos",
+                                type: "locus",
+                                scale: {
+                                    domain: [
+                                        { chrom: "chr1", pos: 0 },
+                                        { chrom: "chr2", pos: 50 },
+                                    ],
+                                },
+                            },
+                            y: { field: "y", type: "quantitative" },
+                        },
+                    },
+                ],
+            },
+            { contextOptions: { genomeStore } }
+        );
+
+        const selection = resolveEmbedSelection(root, "brush");
+        /** @type {IntervalSnapshot[]} */
+        const snapshots = [];
+        selection.subscribe((snapshot) => {
+            if (snapshot.type !== "interval") {
+                throw new Error("Expected an interval snapshot.");
+            }
+            snapshots.push(snapshot);
+        });
+        resolveScopedEmbedParam(root, "brush").setValue(
+            intervalSelection({ x: [10, 25] })
+        );
+        await root.paramRuntime.whenPropagated();
+
+        const expected = {
+            type: "interval",
+            active: true,
+            intervals: { x: [10, 25] },
+            complexIntervals: {
+                x: [
+                    { chrom: "chr1", pos: 10 },
+                    { chrom: "chr1", pos: 25 },
+                ],
+            },
+        };
+        expect(selection.getValue()).toEqual(expected);
+        expect(snapshots).toContainEqual(expected);
+    });
+
+    test("keeps genomic interval endpoints at chromosome boundaries", async () => {
+        const genomeStore = new GenomeStore(".");
+        await genomeStore.initialize({
+            name: "test",
+            contigs: [
+                { name: "chr1", size: 100 },
+                { name: "chr2", size: 50 },
+            ],
+        });
+        const { view: root } = await createHeadlessEngine(
+            {
+                assembly: "test",
+                params: [
+                    {
+                        name: "brush",
+                        select: { type: "interval", encodings: ["x"] },
+                    },
+                ],
+                vconcat: [
+                    {
+                        data: { values: [{ chrom: "chr1", pos: 10 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                chrom: "chrom",
+                                pos: "pos",
+                                type: "locus",
+                                scale: {
+                                    domain: [
+                                        { chrom: "chr1", pos: 0 },
+                                        { chrom: "chr2", pos: 50 },
+                                    ],
+                                },
+                            },
+                        },
+                    },
+                ],
+            },
+            { contextOptions: { genomeStore } }
+        );
+
+        const selection = resolveEmbedSelection(root, "brush");
+        resolveScopedEmbedParam(root, "brush").setValue(
+            intervalSelection({ x: [90, 100] })
+        );
+
+        expect(
+            /** @type {IntervalSnapshot} */ (selection.getValue())
+                .complexIntervals
+        ).toEqual({
+            x: [
+                { chrom: "chr1", pos: 90 },
+                { chrom: "chr2", pos: 0 },
+            ],
+        });
+
+        selection.clear();
+        expect(
+            /** @type {IntervalSnapshot} */ (selection.getValue())
+                .complexIntervals
+        ).toEqual({ x: null });
     });
 
     test("delivers interval commits after programmatic writes", async () => {
@@ -251,6 +397,8 @@ describe("embed param API", () => {
         expect(commits[0]).toMatchObject({
             type: "interval",
             active: true,
+            intervals: { x: [1, 2] },
+            complexIntervals: { x: [1, 2] },
         });
     });
 
