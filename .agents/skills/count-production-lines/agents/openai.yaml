@@ -1,0 +1,4 @@
+interface:
+  display_name: "Count production lines"
+  short_description: "Measure non-comment production line changes"
+  default_prompt: "Use $count-production-lines to calculate the exact non-comment production line delta for this branch."
