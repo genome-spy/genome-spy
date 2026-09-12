@@ -1166,6 +1166,8 @@ export default class InteractionController {
         ) {
             return;
         }
+        // TODO: Consider comparing previous and next hits within each listener's
+        // scope, so hover changes entirely outside it do not emit undefined again.
         for (const entry of [...this.#hoverListeners]) {
             try {
                 entry.listener(this.#getScopedHover(entry.view));
