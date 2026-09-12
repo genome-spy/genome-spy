@@ -1,4 +1,5 @@
 import { isContinuous } from "vega-scale";
+import { clampRange } from "vega-util";
 import { createPrimitiveEventProxy } from "../../utils/interactionEvent.js";
 import { createEventPredicate } from "../../utils/interactionConfig.js";
 import { startDocumentDrag } from "../../utils/documentDrag.js";
@@ -362,25 +363,24 @@ export class IntervalSelectionController {
             const { intervals } = selection;
             const projectionCoords = this.host.getProjectionCoords(channels[0]);
 
-            const mapCorner = (
-                /** @type {number} */ xVal,
-                /** @type {number} */ yVal,
-                /** @type {number} */ i
-            ) => {
+            const mapCorner = (/** @type {number} */ i) => {
                 const getCoord = (
-                    /** @type {import("../../spec/channel.js").PrimaryPositionalChannel} */ channel,
-                    /** @type {number} */ val
+                    /** @type {import("../../spec/channel.js").PrimaryPositionalChannel} */ channel
                 ) => {
-                    if (val == null) return null;
-                    return scaleResolutions[channel].getScale()(val);
+                    const value = intervals[channel]?.[i];
+                    return value == null
+                        ? i
+                        : scaleResolutions[channel].getScale()(value);
                 };
-                const px = getCoord("x", xVal) ?? i;
-                const py = getCoord("y", yVal) ?? i;
-                return projectionCoords.denormalizePoint(px, py, true);
+                return projectionCoords.denormalizePoint(
+                    getCoord("x"),
+                    getCoord("y"),
+                    true
+                );
             };
 
-            const a = mapCorner(intervals.x?.[0], intervals.y?.[0], 0);
-            const b = mapCorner(intervals.x?.[1], intervals.y?.[1], 1);
+            const a = mapCorner(0);
+            const b = mapCorner(1);
 
             return Rectangle.create(a.x, a.y, b.x - a.x, b.y - a.y);
         };
@@ -479,38 +479,19 @@ export class IntervalSelectionController {
                 for (const channel of channels) {
                     const scaleResolution = scaleResolutions[channel];
                     const { zoomExtent } = scaleResolution;
-                    const interval = intervals[channel];
-
-                    if (brush.translatedRectangle) {
-                        // When dragging, clamp the interval so that the size stays the same and the interval doesn't exceed zoomExtent
-                        const size = interval[1] - interval[0];
-                        const min = zoomExtent[0];
-                        const max = zoomExtent[1];
-
-                        // Clamp the start and end so the interval stays within bounds
-                        // Note: Only works reliably with linear scales. TODO: Handle other scales.
-                        if (interval[0] < min) {
-                            interval[0] = min;
-                            interval[1] = min + size;
-                        }
-                        if (interval[1] > max) {
-                            interval[1] = max;
-                            interval[0] = max - size;
-                        }
-                    }
-
-                    const normalized = normalizeIntervalForChannel(
+                    // Translation preserves span before normalization clips and rounds.
+                    // As before, span preservation is in domain units (linear scales).
+                    const interval = brush.translatedRectangle
+                        ? clampRange(
+                              intervals[channel],
+                              zoomExtent[0],
+                              zoomExtent[1]
+                          )
+                        : intervals[channel];
+                    intervals[channel] = normalizeIntervalForChannel(
                         scaleResolution,
-                        interval
-                    );
-
-                    if (!normalized) {
-                        interval[0] = zoomExtent[0];
-                        interval[1] = zoomExtent[0];
-                    } else {
-                        interval[0] = normalized[0];
-                        interval[1] = normalized[1];
-                    }
+                        /** @type {[number, number]} */ (interval)
+                    ) ?? [zoomExtent[0], zoomExtent[0]];
                 }
 
                 setter({ type: "interval", intervals });

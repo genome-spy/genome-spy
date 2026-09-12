@@ -2671,9 +2671,22 @@ describe("GridView wheel zoom", () => {
         }
     });
 
-    test.each(/** @type {const} */ (["vconcat", "hconcat"]))(
-        "%s container interval selection translates a programmatic update without pointer warmup",
-        async (direction) => {
+    test.each([
+        {
+            direction: "vconcat",
+            extent: [-Infinity, Infinity],
+            expected: undefined,
+        },
+        {
+            direction: "hconcat",
+            extent: [-Infinity, Infinity],
+            expected: undefined,
+        },
+        { direction: "vconcat", extent: [0, 1], expected: [0, 1] },
+        { direction: "vconcat", extent: [0, 3], expected: [1.4, 3] },
+    ])(
+        "$direction brush translates without pointer warmup within $extent",
+        async ({ direction, extent, expected }) => {
             const environment = installDocumentDragTestEnvironment();
             const listeners = environment.installDocument();
 
@@ -2682,7 +2695,7 @@ describe("GridView wheel zoom", () => {
                 const initialInterval =
                     direction === "vconcat" ? [1.2, 2.8] : [2.2, 4.8];
                 const { concatView, point } = await createGapHarness(
-                    direction,
+                    /** @type {"vconcat" | "hconcat"} */ (direction),
                     {
                         params: [
                             {
@@ -2695,6 +2708,11 @@ describe("GridView wheel zoom", () => {
                             },
                         ],
                     }
+                );
+                // Constrain translation independently of the visible mapping.
+                const resolution = concatView.getScaleResolution(channel);
+                vi.spyOn(resolution, "zoomExtent", "get").mockReturnValue(
+                    extent
                 );
                 concatView.paramRuntime.setValue("brush", {
                     type: "interval",
@@ -2717,7 +2735,8 @@ describe("GridView wheel zoom", () => {
                         )
                     )
                 );
-                const delta = direction === "vconcat" ? 15 : 0;
+                const delta =
+                    direction === "vconcat" ? (expected ? 1000 : 15) : 0;
                 const deltaY = direction === "hconcat" ? 15 : 0;
                 listeners.mousemove?.(
                     new FakeMouseEvent("mousemove", {
@@ -2730,6 +2749,14 @@ describe("GridView wheel zoom", () => {
                 expect(after.intervals[channel]).not.toEqual(
                     before.intervals[channel]
                 );
+                if (expected) {
+                    expect(after.intervals[channel][0]).toBeCloseTo(
+                        expected[0]
+                    );
+                    expect(after.intervals[channel][1]).toBeCloseTo(
+                        expected[1]
+                    );
+                }
                 expect(
                     concatView.getScaleResolution(channel)?.getDomain()
                 ).toEqual(beforeDomain);
