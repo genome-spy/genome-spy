@@ -163,6 +163,47 @@ describe("InteractionDispatcher", () => {
         ]);
     });
 
+    it.each(["mouseenter", "mouseleave"])(
+        "honors capture stops during %s transitions",
+        (type) => {
+            const root = createMockView("root", undefined, []);
+            const child = createMockView("child", root, []);
+            const rootHandler = vi.spyOn(root, "handleInteraction");
+            const childHandler = vi.spyOn(child, "handleInteraction");
+            const dispatcher = new InteractionDispatcher({
+                viewRoot: /** @type {any} */ ({
+                    propagateInteraction(/** @type {any} */ event) {
+                        event.target = child;
+                    },
+                }),
+            });
+            const move = () =>
+                dispatcher.dispatch(
+                    new Point(1, 1),
+                    /** @type {any} */ ({ type: "mousemove" })
+                );
+            if (type === "mouseleave") {
+                move();
+                rootHandler.mockClear();
+                childHandler.mockClear();
+            }
+
+            const first = type === "mouseenter" ? rootHandler : childHandler;
+            const next = type === "mouseenter" ? childHandler : rootHandler;
+            first.mockImplementation((event) => event.stopPropagation());
+            if (type === "mouseenter") {
+                move();
+            } else {
+                dispatcher.handlePointerLeave(
+                    /** @type {any} */ ({ type: "mouseout" })
+                );
+            }
+            expect(first).toHaveBeenCalledTimes(1);
+            expect(first.mock.calls[0][1]).toBe(true);
+            expect(next).not.toHaveBeenCalled();
+        }
+    );
+
     it("tracks parallel pointed branches independently of the target", () => {
         /** @type {Array<{ view: string, type: string, relatedTarget?: string, capturing: boolean }>} */
         const calls = [];

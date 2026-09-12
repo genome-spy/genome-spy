@@ -48,6 +48,25 @@ describe("CursorManager", () => {
         expect(canvas.style.cursor).toBe("grabbing");
     });
 
+    it("rebinds only when the cursor owner or its specification changes", () => {
+        const manager = new CursorManager({ canvas: createCanvas() });
+        const owner = createReactiveView("root", undefined, "move");
+        let spec = { expr: "first" };
+        owner.getCursorSpec = () => spec;
+        const watch = vi.spyOn(owner, "watchCursor");
+
+        manager.update({ target: owner, hover: undefined });
+        manager.update({ target: owner, hover: undefined });
+        expect(watch).toHaveBeenCalledTimes(1);
+        expect(owner.dispose).not.toHaveBeenCalled();
+
+        // The same owner can replace the expression that supplies its cursor.
+        spec = { expr: "second" };
+        manager.update({ target: owner, hover: undefined });
+        expect(watch).toHaveBeenCalledTimes(2);
+        expect(owner.dispose).toHaveBeenCalledTimes(1);
+    });
+
     it("clears the cursor and disposes the active watcher", () => {
         const canvas = createCanvas();
         const manager = new CursorManager({ canvas });

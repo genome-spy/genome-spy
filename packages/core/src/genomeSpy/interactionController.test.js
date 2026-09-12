@@ -90,6 +90,77 @@ function createMinimalInteractionController({
     };
 }
 
+/**
+ * @param {object} [options]
+ * @param {boolean} [options.supportsPicking]
+ * @param {(x: number, y: number) => number | null | Promise<number | null>} [options.reader]
+ * @param {() => void} [options.render]
+ * @param {() => boolean} [options.canPick]
+ */
+function createPickingHarness({
+    supportsPicking = true,
+    reader = readPickingId,
+    render = vi.fn(),
+    canPick,
+} = {}) {
+    const canvas = new CanvasStub();
+    const scope = /** @type {any} */ ({ name: "scope" });
+    const otherScope = /** @type {any} */ ({ name: "other" });
+    const datum = { label: "picked" };
+    const updateWithDatum = vi.fn();
+    const mark = /** @type {any} */ ({
+        isPickingParticipant: () => true,
+        properties: { tooltip: /** @type {null} */ (null) },
+        unitView: {
+            getLayoutAncestors: () => [scope],
+        },
+    });
+    const pickerUnitView = Object.create(UnitView.prototype);
+    pickerUnitView.mark = mark;
+    pickerUnitView.facetCoords = new Map([
+        ["facet", { containsPoint: () => true }],
+    ]);
+    pickerUnitView.getLayoutAncestors = () => [scope];
+    pickerUnitView.getCollector = () => ({
+        findDatumByUniqueId: (/** @type {number} */ uniqueId) =>
+            uniqueId === 1 ? datum : undefined,
+    });
+    const controller = new InteractionController({
+        viewRoot: /** @type {any} */ ({
+            visit(/** @type {(view: UnitView) => any} */ visitor) {
+                return visitor(pickerUnitView);
+            },
+            propagateInteraction() {},
+        }),
+        canvas: /** @type {any} */ (canvas),
+        tooltip: /** @type {any} */ ({
+            clear() {},
+            containsEvent: () => false,
+            handleMouseMove() {},
+            pushEnabledState() {},
+            popEnabledState() {},
+            updateWithDatum,
+            visible: false,
+            sticky: false,
+        }),
+        animator: /** @type {any} */ ({ requestRender() {} }),
+        emitEvent() {},
+        tooltipHandlers: {},
+        renderPickingFramebuffer: render,
+        readPickingId: supportsPicking ? reader : undefined,
+        canPick,
+    });
+
+    return {
+        canvas,
+        controller,
+        datum,
+        otherScope,
+        scope,
+        updateWithDatum,
+    };
+}
+
 describe("InteractionController", () => {
     beforeEach(() => {
         readPickingId.mockReset();
@@ -118,7 +189,7 @@ describe("InteractionController", () => {
         }
     });
 
-    it("refreshes the cursor after dblclick changes the hovered mark", () => {
+    it("refreshes the cursor after an asynchronous post-render pick", async () => {
         vi.spyOn(performance, "now")
             .mockReturnValueOnce(0)
             .mockReturnValue(1_000);
@@ -268,7 +339,10 @@ describe("InteractionController", () => {
         controller.registerInteractionEvents();
 
         let pickingUniqueId = 1;
-        readPickingId.mockImplementation(() => pickingUniqueId);
+        let asyncRead = false;
+        readPickingId.mockImplementation(() =>
+            asyncRead ? Promise.resolve(pickingUniqueId) : pickingUniqueId
+        );
 
         canvas.dispatchEvent(
             new MouseEvent("mousemove", { clientX: 20, clientY: 30 })
@@ -280,6 +354,7 @@ describe("InteractionController", () => {
         );
         expect(canvas.style.cursor).toBe("move");
 
+        asyncRead = true;
         while (animationFrameQueue.length) {
             const callback = animationFrameQueue.shift();
             if (!callback) {
@@ -288,6 +363,7 @@ describe("InteractionController", () => {
             callback(0);
         }
 
+        await Promise.resolve();
         expect(canvas.style.cursor).toBe("");
     });
 
@@ -387,6 +463,7 @@ describe("InteractionController", () => {
             renderPickingFramebuffer() {},
             readPickingId,
         });
+        const visit = vi.spyOn(viewRoot, "visit");
         controller.registerInteractionEvents();
 
         canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 10 }));
@@ -413,6 +490,9 @@ describe("InteractionController", () => {
         expect(pending).toHaveLength(5);
         expect(emitted).toHaveLength(0);
         expect(dispatched).toHaveLength(0);
+
+        // A superseded hover read must not traverse the view tree for a hit.
+        expect(visit).not.toHaveBeenCalled();
 
         pending[1](1);
         await Promise.resolve();
@@ -640,7 +720,7 @@ describe("InteractionController", () => {
         expect(canvas.style.cursor).toBe("move");
     });
 
-    it("preserves the active cursor when hover tracking is suspended", () => {
+    it("preserves a suspended cursor and refreshes it on resume", async () => {
         vi.spyOn(performance, "now")
             .mockReturnValueOnce(0)
             .mockReturnValue(1_000);
@@ -784,6 +864,45 @@ describe("InteractionController", () => {
             })
         );
         expect(canvas.style.cursor).toBe("grabbing");
+
+        /** @type {(value: number) => void} */
+        let resolvePick;
+        readPickingId.mockReturnValue(
+            new Promise((resolve) => {
+                resolvePick = resolve;
+            })
+        );
+        controller.resumeHoverTracking(
+            new MouseEvent("mouseup", { clientX: 21, clientY: 31 })
+        );
+
+        expect(canvas.style.cursor).toBe("grabbing");
+
+        controller.suspendHoverTracking();
+        resolvePick(0);
+        await Promise.resolve();
+
+        expect(canvas.style.cursor).toBe("grabbing");
+
+        readPickingId.mockResolvedValue(0);
+        controller.resumeHoverTracking(
+            new MouseEvent("mouseup", { clientX: 21, clientY: 31 })
+        );
+        await Promise.resolve();
+
+        expect(canvas.style.cursor).toBe("");
+
+        readPickingId.mockReturnValue(1);
+        canvas.dispatchEvent(
+            new MouseEvent("mousemove", { clientX: 21, clientY: 31 })
+        );
+        expect(canvas.style.cursor).toBe("grabbing");
+
+        controller.suspendHoverTracking();
+        controller.resumeHoverTracking(
+            new MouseEvent("mouseup", { clientX: 101, clientY: 31 })
+        );
+        expect(canvas.style.cursor).toBe("");
     });
 
     it("does not clear a visible tooltip immediately when long press starts", () => {
@@ -1318,12 +1437,16 @@ describe("InteractionController", () => {
         });
 
         const read = vi.fn(() => 1);
+        /** @type {string[]} */
+        const order = [];
         const controller = new InteractionController({
             viewRoot: /** @type {any} */ ({
                 visit(/** @type {(view: UnitView) => any} */ visitor) {
                     return visitor(pickerUnitView);
                 },
-                propagateInteraction() {},
+                propagateInteraction(/** @type {any} */ interaction) {
+                    order.push("routed " + interaction.type);
+                },
             }),
             canvas: /** @type {any} */ (canvas),
             tooltip: /** @type {any} */ ({
@@ -1334,7 +1457,9 @@ describe("InteractionController", () => {
                 sticky: false,
             }),
             animator: /** @type {any} */ ({ requestRender() {} }),
-            emitEvent() {},
+            emitEvent(/** @type {string} */ type) {
+                order.push("generic " + type);
+            },
             tooltipHandlers: {},
             readPickingId: read,
         });
@@ -1342,7 +1467,9 @@ describe("InteractionController", () => {
         const events = [];
         for (const type of ["click", "dblclick", "contextmenu"]) {
             controller.subscribeMarkEvent(scope, type, (event) => {
+                order.push("mark " + event.sourceEvent.type);
                 events.push(event);
+                return type === "click" ? new Promise(() => {}) : undefined;
             });
         }
         controller.registerInteractionEvents();
@@ -1364,6 +1491,15 @@ describe("InteractionController", () => {
             [14, 25],
             [15, 26],
             [16, 27],
+        ]);
+        expect(order).toEqual([
+            "mark click",
+            "generic click",
+            "routed click",
+            "mark dblclick",
+            "routed dblclick",
+            "mark contextmenu",
+            "routed contextmenu",
         ]);
     });
 
@@ -1665,13 +1801,164 @@ describe("InteractionController", () => {
         );
     });
 
-    it("validates pick points before checking renderer availability", async () => {
-        const { controller } = createMinimalInteractionController({
-            canPick: () => false,
+    it.each([
+        { x: Number.NaN, y: 0 },
+        { x: 0, y: Number.NaN },
+        { x: Infinity, y: 0 },
+        { x: 0, y: -Infinity },
+        { x: 101, y: 0 },
+    ])(
+        "validates pick point $x,$y before scene availability",
+        async (point) => {
+            const canPick = vi.fn(() => false);
+            const { controller } = createMinimalInteractionController({
+                canPick,
+            });
+
+            await expect(controller.pick(point)).rejects.toThrow(
+                "Pick point must be inside the canvas."
+            );
+            expect(canPick).not.toHaveBeenCalled();
+        }
+    );
+
+    describe("explicit picking", () => {
+        it("checks support before validating coordinates", async () => {
+            const canPick = vi.fn(() => false);
+            const { controller } = createPickingHarness({
+                supportsPicking: false,
+                canPick,
+            });
+
+            await expect(
+                controller.pick({ x: Number.NaN, y: 0 })
+            ).rejects.toThrow(
+                "Explicit picking is not supported by this renderer."
+            );
+            expect(canPick).not.toHaveBeenCalled();
         });
 
-        await expect(controller.pick({ x: Number.NaN, y: 0 })).rejects.toThrow(
-            "Pick point must be finite and inside the canvas."
+        it("returns invalidated before rendering when the scene is unavailable", async () => {
+            const render = vi.fn();
+            const reader = vi.fn(() => 1);
+            const { controller } = createPickingHarness({
+                render,
+                reader,
+                canPick: () => false,
+            });
+
+            await expect(controller.pick({ x: 10, y: 20 })).resolves.toEqual({
+                status: "invalidated",
+            });
+            expect(render).not.toHaveBeenCalled();
+            expect(reader).not.toHaveBeenCalled();
+        });
+
+        it("resolves scoped hits without publishing hover or tooltips", async () => {
+            /** @type {string[]} */
+            const order = [];
+            const reader = vi.fn(() => {
+                order.push("read");
+                return 1;
+            });
+            const { controller, datum, otherScope, scope, updateWithDatum } =
+                createPickingHarness({
+                    reader,
+                    render: () => order.push("render"),
+                });
+            const hover = vi.fn();
+            controller.subscribeHover(scope, hover);
+
+            const hit = await controller.pick({ x: 10, y: 20 }, scope);
+            const outsideScope = await controller.pick(
+                { x: 10, y: 20 },
+                otherScope
+            );
+
+            expect(hit).toMatchObject({ status: "hit", hit: { datum } });
+            expect(outsideScope).toEqual({ status: "empty" });
+            expect(order).toEqual(["render", "read", "render", "read"]);
+            expect(controller.getCurrentHover()).toBeUndefined();
+            expect(hover).toHaveBeenCalledOnce();
+            expect(hover).toHaveBeenCalledWith(undefined);
+            expect(updateWithDatum).not.toHaveBeenCalled();
+        });
+
+        it("reports empty reads", async () => {
+            const { controller } = createPickingHarness({
+                reader: () => null,
+            });
+
+            await expect(controller.pick({ x: 10, y: 20 })).resolves.toEqual({
+                status: "empty",
+            });
+        });
+
+        it("invalidates delayed reads", async () => {
+            /** @type {(uniqueId: number) => void} */
+            let resolve;
+            const { controller } = createPickingHarness({
+                reader: () =>
+                    new Promise((pendingResolve) => {
+                        resolve = pendingResolve;
+                    }),
+            });
+
+            const result = controller.pick({ x: 10, y: 20 });
+            controller.invalidatePendingPicks();
+            resolve(1);
+
+            await expect(result).resolves.toEqual({ status: "invalidated" });
+        });
+
+        it("rejects synchronous and asynchronous read failures", async () => {
+            const synchronous = new Error("sync read failed");
+            const asynchronous = new Error("async read failed");
+            const syncHarness = createPickingHarness({
+                reader: () => {
+                    throw synchronous;
+                },
+            });
+            const asyncHarness = createPickingHarness({
+                reader: () => Promise.reject(asynchronous),
+            });
+
+            await expect(
+                syncHarness.controller.pick({ x: 10, y: 20 })
+            ).rejects.toBe(synchronous);
+            await expect(
+                asyncHarness.controller.pick({ x: 10, y: 20 })
+            ).rejects.toBe(asynchronous);
+        });
+    });
+
+    it("logs asynchronous internal picking failures without dispatching", async () => {
+        installEventTargetDocument();
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (
+                class MouseEvent extends Event {
+                    buttons = 0;
+                    clientX = 10;
+                    clientY = 20;
+                }
+            )
         );
+        const error = new Error("read failed");
+        const consoleError = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
+        const reader = vi.fn(() => Promise.reject(error));
+        const { canvas, controller } = createPickingHarness({
+            reader,
+        });
+        controller.registerInteractionEvents();
+
+        canvas.dispatchEvent(new MouseEvent("click"));
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(reader).toHaveBeenCalledOnce();
+        expect(consoleError).toHaveBeenCalledWith("Picking failed.", error);
+        expect(controller.getCurrentHover()).toBeUndefined();
     });
 });

@@ -735,6 +735,7 @@ describe("GridChild interval selection interactions", () => {
         setValue.mockImplementation(() => {});
         listeners.get("mousedown")[0](
             createInteractionEvent({
+                point: new Point(90, 50),
                 proxiedMouseEvent: /** @type {any} */ ({ shiftKey: false }),
             })
         );

@@ -165,12 +165,8 @@ export default class InteractionController {
             );
         }
         const canvasPoint = new Point(point.x, point.y);
-        if (
-            !Number.isFinite(point.x) ||
-            !Number.isFinite(point.y) ||
-            !this.#isInsideCanvas(canvasPoint)
-        ) {
-            throw new Error("Pick point must be finite and inside the canvas.");
+        if (!this.#isInsideCanvas(canvasPoint)) {
+            throw new Error("Pick point must be inside the canvas.");
         }
         if (!this.#canPick()) {
             return { status: "invalidated" };
@@ -226,8 +222,7 @@ export default class InteractionController {
         }
 
         this.#clearHover();
-        this.#tooltip.clear();
-        this.#tooltipUpdateRequested = false;
+        this.#clearTooltip();
     }
 
     /**
@@ -243,8 +238,7 @@ export default class InteractionController {
             return;
         }
 
-        this.#tooltip.clear();
-        this.#tooltipUpdateRequested = false;
+        this.#clearTooltip();
 
         if (this.#isInteractionFrozen()) {
             return;
@@ -254,11 +248,7 @@ export default class InteractionController {
             const point = this.#toCanvasPoint(mouseEvent);
             this.#lastPointerPoint = point;
             if (this.#isInsideCanvas(point)) {
-                this.#refreshHover(point);
-                this.#cursorManager.update({
-                    target: this.#interactionDispatcher.getCurrentTarget(),
-                    hover: this.#currentHover,
-                });
+                this.#refreshHoverAndCursor(point);
                 return;
             }
 
@@ -267,11 +257,7 @@ export default class InteractionController {
             this.#lastPointerPoint &&
             this.#isInsideCanvas(this.#lastPointerPoint)
         ) {
-            this.#refreshHover(this.#lastPointerPoint);
-            this.#cursorManager.update({
-                target: this.#interactionDispatcher.getCurrentTarget(),
-                hover: this.#currentHover,
-            });
+            this.#refreshHoverAndCursor(this.#lastPointerPoint);
             return;
         }
 
@@ -342,10 +328,7 @@ export default class InteractionController {
                 uiEvent.type !== "mouseout" &&
                 this.#hoverTrackingSuspensionCount === 0
             ) {
-                this.#cursorManager.update({
-                    target: interaction.target,
-                    hover: this.#currentHover,
-                });
+                this.#updateCursor(interaction.target);
             }
 
             return interaction;
@@ -369,7 +352,6 @@ export default class InteractionController {
         const startHoverPick = (point, event) => {
             const request = {};
             activeHoverPick = request;
-            this.#renderPickingFramebuffer();
             const promise = this.#handlePicking(
                 point.x,
                 point.y,
@@ -423,7 +405,6 @@ export default class InteractionController {
                 /** @type {Promise<boolean> | undefined} */
                 let markPickPromise;
                 if (["click", "dblclick", "contextmenu"].includes(event.type)) {
-                    this.#renderPickingFramebuffer();
                     markPickPromise = this.#handlePicking(
                         point.x,
                         point.y,
@@ -676,8 +657,7 @@ export default class InteractionController {
                         clearTooltipOnMove &&
                         this.#hoverTrackingSuspensionCount > 0
                     ) {
-                        this.#tooltip.clear();
-                        this.#tooltipUpdateRequested = false;
+                        this.#clearTooltip();
                     }
                 };
                 document.addEventListener("mouseup", () => clear(false), {
@@ -705,14 +685,6 @@ export default class InteractionController {
          * @param {number} clientX
          * @param {number} clientY
          */
-        const toCanvasPoint = (clientX, clientY) => {
-            const rect = canvas.getBoundingClientRect();
-            return new Point(
-                clientX - rect.left - canvas.clientLeft,
-                clientY - rect.top - canvas.clientTop
-            );
-        };
-
         /**
          * @param {TouchList} touches
          */
@@ -759,7 +731,7 @@ export default class InteractionController {
             yDelta,
             zDelta
         ) => {
-            const point = toCanvasPoint(x, y);
+            const point = toCanvasPoint(canvas, x, y);
             dispatchInteraction(point, {
                 type: "touchgesture",
                 phase,
@@ -868,8 +840,7 @@ export default class InteractionController {
             }
 
             if (this.#hoverTrackingSuspensionCount > 0) {
-                this.#tooltip.clear();
-                this.#tooltipUpdateRequested = false;
+                this.#clearTooltip();
                 return;
             }
 
@@ -879,6 +850,7 @@ export default class InteractionController {
             this.#cursorManager.clear();
             this.#tooltip.clear();
             this.#clearHover();
+            this.#lastPointerPoint = undefined;
             activeHoverPick = undefined;
             queuedMouseMove = undefined;
         });
@@ -897,12 +869,7 @@ export default class InteractionController {
      * @param {MouseEvent} event
      */
     #toCanvasPoint(event) {
-        const canvas = this.#canvas;
-        const rect = canvas.getBoundingClientRect();
-        return new Point(
-            event.clientX - rect.left - canvas.clientLeft,
-            event.clientY - rect.top - canvas.clientTop
-        );
+        return toCanvasPoint(this.#canvas, event.clientX, event.clientY);
     }
 
     /**
@@ -916,16 +883,6 @@ export default class InteractionController {
             point.x <= canvas.clientWidth &&
             point.y <= canvas.clientHeight
         );
-    }
-
-    /**
-     * @param {Point} point
-     */
-    #refreshHover(point) {
-        if (!isStillZooming()) {
-            this.#renderPickingFramebuffer();
-            this.#handlePicking(point.x, point.y);
-        }
     }
 
     #scheduleHoverRefreshAfterRender() {
@@ -952,14 +909,44 @@ export default class InteractionController {
                 return;
             }
 
-            this.#tooltip.clear();
-            this.#tooltipUpdateRequested = false;
-            this.#refreshHover(point);
-            this.#cursorManager.update({
-                target: this.#interactionDispatcher.getCurrentTarget(),
-                hover: this.#currentHover,
-            });
+            this.#clearTooltip();
+            this.#refreshHoverAndCursor(point);
         });
+    }
+
+    #refreshHoverAndCursor(/** @type {Point} */ point) {
+        if (!isStillZooming()) {
+            this.#handlePicking(
+                point.x,
+                point.y,
+                () =>
+                    this.#hoverTrackingSuspensionCount === 0 &&
+                    !this.#isInteractionFrozen() &&
+                    this.#lastPointerPoint === point,
+                () =>
+                    this.#updateCursor(
+                        this.#interactionDispatcher.getCurrentTarget()
+                    )
+            );
+            return;
+        }
+
+        this.#updateCursor(this.#interactionDispatcher.getCurrentTarget());
+    }
+
+    /**
+     * @param {import("../view/view.js").default | undefined} target
+     */
+    #updateCursor(target) {
+        this.#cursorManager.update({
+            target,
+            hover: this.#currentHover,
+        });
+    }
+
+    #clearTooltip() {
+        this.#tooltip.clear();
+        this.#tooltipUpdateRequested = false;
     }
 
     #isInteractionFrozen() {
@@ -979,13 +966,12 @@ export default class InteractionController {
      */
     #handlePicking(x, y, shouldApply = () => true, onApplied) {
         const requestId = this.#pickingRequestId;
+        this.#renderPickingFramebuffer();
         const result = this.#readPickingId?.(x, y) ?? 0;
 
         /** @param {number | null} uniqueId */
         const applyResult = (uniqueId) => {
-            const applied =
-                requestId == this.#pickingRequestId && shouldApply();
-            if (!applied) {
+            if (requestId !== this.#pickingRequestId || !shouldApply()) {
                 return false;
             }
 
@@ -997,13 +983,10 @@ export default class InteractionController {
         };
 
         if (result instanceof Promise) {
-            return result.then(
-                (uniqueId) => applyResult(uniqueId),
-                (error) => {
-                    console.error("Picking failed.", error);
-                    return false;
-                }
-            );
+            return result.then(applyResult, (error) => {
+                console.error("Picking failed.", error);
+                return false;
+            });
         }
         applyResult(result);
     }
@@ -1192,6 +1175,19 @@ function getClientDistance(a, b) {
     const dx = b.clientX - a.clientX;
     const dy = b.clientY - a.clientY;
     return Math.hypot(dx, dy);
+}
+
+/**
+ * @param {HTMLCanvasElement} canvas
+ * @param {number} clientX
+ * @param {number} clientY
+ */
+function toCanvasPoint(canvas, clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    return new Point(
+        clientX - rect.left - canvas.clientLeft,
+        clientY - rect.top - canvas.clientTop
+    );
 }
 
 /**

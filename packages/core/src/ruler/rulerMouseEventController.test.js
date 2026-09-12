@@ -315,6 +315,30 @@ describe("RulerMouseEventController", () => {
             },
         });
     });
+
+    test("disposal cancels a drag without applying mouseup clearing", () => {
+        const { controller, listeners, documentListeners, setValue } =
+            createController(
+                { encodings: ["x"], on: "mousedown", clear: "mouseup" },
+                { x: createScaleResolution("linear") }
+            );
+        installMockDocument(documentListeners);
+
+        listeners.get("mousedown")({
+            point: { x: 50, y: 25 },
+            mouseEvent: createMouseEvent({ button: 0 }),
+            proxiedMouseEvent: createMouseEvent(),
+            stopPropagation: () => {},
+        });
+        setValue.mockClear();
+
+        controller.dispose();
+        globalThis.document = undefined;
+
+        expect(controller.dragging).toBe(false);
+        expect(documentListeners.size).toBe(0);
+        expect(setValue).not.toHaveBeenCalled();
+    });
 });
 
 test("disabling ignores active drag updates and releases its subscription on disposal", async () => {

@@ -10,6 +10,7 @@
 import { makeLerpSmoother } from "../utils/animator.js";
 import RingBuffer from "../utils/ringBuffer.js";
 import { isTouchGestureEvent } from "../utils/interactionEvent.js";
+import { startDocumentDrag } from "../utils/documentDrag.js";
 import Point from "./layout/point.js";
 
 /**
@@ -59,6 +60,7 @@ function recordTimeStamp(fn) {
  * @param {(zoomEvent: ZoomEvent) => boolean | void} handleZoom
  * @param {import("../types/viewContext.js").Hover} [hover]
  * @param {import("../utils/animator.js").default} [animator]
+ * @returns {(() => boolean) | undefined}
  */
 export function interactionToZoom(event, coords, handleZoom, hover, animator) {
     handleZoom = recordTimeStamp(handleZoom);
@@ -146,8 +148,6 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
 
         const mouseEvent = event.mouseEvent;
         mouseEvent.preventDefault();
-        event.target?.context.suspendHoverTracking();
-
         let prevPoint = Point.fromMouseEvent(mouseEvent);
 
         const onMousemove = /** @param {MouseEvent} moveEvent */ (
@@ -169,22 +169,19 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
             prevPoint = point;
         };
 
-        const onMouseup = (/** @type {MouseEvent} */ upEvent) => {
-            document.removeEventListener("mousemove", onMousemove);
-            document.removeEventListener("mouseup", onMouseup);
-            event.target?.context.resumeHoverTracking(upEvent);
-            startPanInertia(
-                interactionState,
-                eventBuffer,
-                prevPoint,
-                handleZoom,
-                animator,
-                { minSampleCount: 5 }
-            );
-        };
-
-        document.addEventListener("mouseup", onMouseup, false);
-        document.addEventListener("mousemove", onMousemove, false);
+        return startDocumentDrag({
+            onMove: onMousemove,
+            hoverContext: event.target?.context,
+            onRelease: () =>
+                startPanInertia(
+                    interactionState,
+                    eventBuffer,
+                    prevPoint,
+                    handleZoom,
+                    animator,
+                    { minSampleCount: 5 }
+                ),
+        });
     } else if (event.type == "touchgesture") {
         if (!isTouchGestureEvent(event.uiEvent)) {
             return;

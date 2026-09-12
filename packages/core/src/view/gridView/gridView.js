@@ -211,6 +211,9 @@ export default class GridView extends ContainerView {
     /** @type {KeyboardZoomController | null} */
     #keyboardZoomController = null;
 
+    /** @type {() => boolean} */
+    #cancelActivePan = () => false;
+
     /** @type {{ overlay: import("./generatedChromeOverlay.js").GeneratedChromeOverlay, order: number, channel: import("../../spec/channel.js").PrimaryPositionalChannel, controller?: IntervalSelectionController }[]} */
     #containerOverlays = [];
 
@@ -1847,6 +1850,7 @@ export default class GridView extends ContainerView {
     }
 
     dispose() {
+        this.#cancelActivePan();
         for (const { controller } of this.#containerOverlays) {
             controller?.dispose();
         }
@@ -2027,7 +2031,7 @@ export default class GridView extends ContainerView {
      */
     #propagateZoomInteraction(event, coords, zoomableResolutions) {
         event.target ??= this;
-        interactionToZoom(
+        const cancelPan = interactionToZoom(
             event,
             coords,
             (zoomEvent) =>
@@ -2040,6 +2044,10 @@ export default class GridView extends ContainerView {
             this.context.getCurrentHover(),
             this.context.animator
         );
+        if (cancelPan) {
+            this.#cancelActivePan();
+            this.#cancelActivePan = cancelPan;
+        }
     }
 
     /**

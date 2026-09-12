@@ -9,6 +9,7 @@ import { getRulerProjectionCoords } from "../view/scaleProjection.js";
 import { ViewInteractionListenerTracker } from "../view/viewInteractionListenerTracker.js";
 import { createRulerValue } from "./rulerValue.js";
 import { normalizeRulerCoordinate } from "./rulerCoordinate.js";
+import { startDocumentDrag } from "../utils/documentDrag.js";
 
 /**
  * Handles pointer-driven ruler updates for a single rendered view.
@@ -75,6 +76,9 @@ export class RulerMouseEventController {
 
     dragging = false;
 
+    /** @type {() => boolean} */
+    #cancelActiveDrag = () => false;
+
     /**
      * @param {string} type
      * @param {import("../view/view.js").InteractionListener} listener
@@ -91,6 +95,7 @@ export class RulerMouseEventController {
     }
 
     dispose() {
+        this.#cancelActiveDrag();
         this.disposeDisabled();
         this.#viewListeners.dispose();
     }
@@ -143,18 +148,17 @@ export class RulerMouseEventController {
                 this.#setValue(this.#pointToRulerValue(point));
             };
 
-            const mouseUpListener = () => {
-                document.removeEventListener("mousemove", mouseMoveListener);
-                document.removeEventListener("mouseup", mouseUpListener);
-                this.dragging = false;
-
-                if (this.clear === "mouseup") {
-                    this.#setValue(createRulerValue(this.channels));
-                }
-            };
-
-            document.addEventListener("mousemove", mouseMoveListener);
-            document.addEventListener("mouseup", mouseUpListener);
+            this.#cancelActiveDrag = startDocumentDrag({
+                onMove: mouseMoveListener,
+                onFinish: () => {
+                    this.dragging = false;
+                },
+                onRelease: () => {
+                    if (this.clear === "mouseup") {
+                        this.#setValue(createRulerValue(this.channels));
+                    }
+                },
+            });
         });
 
         if (this.clear === "mouseleave") {

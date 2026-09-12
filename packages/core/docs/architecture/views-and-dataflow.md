@@ -164,6 +164,15 @@ the grow-only extent. The deprecated public `isDomainInitialized()` query retain
 its historical placeholder heuristic for embedding compatibility; it is not used
 as an internal readiness or axis-measurement condition.
 
+## Interaction gesture ownership
+
+Document-level mouse drags use `startDocumentDrag`, which owns temporary DOM
+listeners and balanced hover suspension. The initiating controller or view owns
+the returned cancellation function and invokes it on disposal. Cancellation
+cleans up without applying release-only effects such as selection commits,
+pan inertia, or ruler clearing. Callers retain coordinate mapping and gesture
+state; the routing `GridView` owns pan sessions across child and gap surfaces.
+
 ## Dynamic view lifecycle
 
 - Prefer `ViewFactory.createOrImportView`; some App views are still constructed
