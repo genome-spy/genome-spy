@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="stylesheet" href="selectionForm.scss" />
+        <title>Selection-driven form</title>
+    </head>
+
+    <body>
+        <h1>Selection-driven annotation form</h1>
+        <p>
+            Hold Shift while dragging to brush a region, or click a point. A
+            committed brush enables the form; the optional marimo bridge
+            exchanges JSON-safe state with Python on
+            <code>http://127.0.0.1:8765</code>.
+        </p>
+        <p>
+            The page listens to the named interval and point selections, then
+            writes saved annotations back to the embed's named dataset. Add
+            <code>?bridge=1</code> to connect this page to the notebook example
+            while keeping the browser UI in control.
+        </p>
+
+        <div id="selection-plot"></div>
+        <p id="selection-status" role="status"></p>
+
+        <form id="selection-form" disabled>
+            <label>
+                Name
+                <input name="name" required disabled />
+            </label>
+            <label>
+                Description
+                <textarea name="description" rows="2" disabled></textarea>
+            </label>
+            <button type="submit" disabled>Save annotation</button>
+        </form>
+
+        <p id="selection-summary"></p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Region</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody id="selection-rows"></tbody>
+        </table>
+
+        <script type="module" src="/selectionForm.js"></script>
+    </body>
+</html>

@@ -2,10 +2,7 @@ import { isObject, isString } from "vega-util";
 
 import GenomeSpy from "@genome-spy/core/genomeSpy.js";
 import { loadSpec } from "@genome-spy/core/index.js";
-import {
-    createTopLevelDatasetApi,
-    createViewMutationApi,
-} from "@genome-spy/core/view/viewMutationApi.js";
+import { createEmbedResult } from "@genome-spy/core/embedApi.js";
 import App from "./app.js";
 import icon from "@genome-spy/core/img/bowtie.svg";
 import { html } from "lit";
@@ -17,9 +14,6 @@ export { BaseDialog, showDialog, showMessageDialog } from "./dialog/index.js";
 
 /**
  * Embeds GenomeSpy App into the DOM.
- *
- * This is largely copy-paste from `genome-spy/src/index.js`
- * TODO: Consolidate
  *
  * @type {import("./embedTypes.js").AppEmbedFunction}
  */
@@ -75,12 +69,10 @@ export async function embed(el, spec, options = {}) {
         console.error(e);
     }
 
-    return {
-        views: createViewMutationApi(genomeSpy, isActive),
-        datasets: createTopLevelDatasetApi(genomeSpy, isActive),
-
+    return createEmbedResult({
+        genomeSpy,
+        isActive,
         debug: app.debug,
-
         finalize() {
             active = false;
             const disposers = pluginDisposers;
@@ -92,36 +84,9 @@ export async function embed(el, spec, options = {}) {
             app?.finalize();
             genomeSpy?.destroy();
             genomeSpy = undefined;
-            while (element.firstChild) {
-                element.firstChild.remove();
-            }
+            element.replaceChildren();
         },
-
-        addEventListener(type, listener) {
-            genomeSpy.addEventListener(type, listener);
-        },
-
-        removeEventListener(type, listener) {
-            genomeSpy.removeEventListener(type, listener);
-        },
-
-        getScaleResolutionByName(name) {
-            return genomeSpy.getNamedScaleResolutions().get(name);
-        },
-
-        getParam: genomeSpy.getParam.bind(genomeSpy),
-
-        awaitVisibleLazyData: genomeSpy.awaitVisibleLazyData.bind(genomeSpy),
-        getRenderedBounds: genomeSpy.getRenderedBounds.bind(genomeSpy),
-        updateNamedData: genomeSpy.updateNamedData.bind(genomeSpy),
-        getLogicalCanvasSize: genomeSpy.getLogicalCanvasSize.bind(genomeSpy),
-        exportCanvas: genomeSpy.exportCanvas.bind(genomeSpy),
-        imageExport: {
-            raster: genomeSpy.exportRaster.bind(genomeSpy),
-            svg: genomeSpy.exportSvg.bind(genomeSpy),
-            analyzeSvg: genomeSpy.analyzeSvgExport.bind(genomeSpy),
-        },
-    };
+    });
 }
 
 /**

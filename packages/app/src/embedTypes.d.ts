@@ -6,4 +6,4 @@ export type AppEmbedFunction = (
     el: HTMLElement | string,
     spec: import("./spec/appSpec.js").AppRootSpec | string,
     options?: AppEmbedOptions
-) => EmbedResult;
+) => Promise<EmbedResult>;

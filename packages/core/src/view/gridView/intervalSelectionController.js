@@ -54,6 +54,8 @@ export class IntervalSelectionController {
         selectionRect
     ) {
         this.host = host;
+        this.#selectionName = name;
+        this.#selectionRuntime = paramRuntime;
         this.#viewListeners = new ViewInteractionListenerTracker(host.view);
 
         this.#setup(
@@ -64,6 +66,9 @@ export class IntervalSelectionController {
             renderOverlay,
             selectionRect
         );
+
+        this.#unregisterSelectionController =
+            paramRuntime.registerSelectionController(name, this);
     }
 
     /** @type {IntervalSelectionHost} */
@@ -74,6 +79,24 @@ export class IntervalSelectionController {
 
     /** @type {() => boolean} */
     #disposeActiveDrag = () => false;
+
+    /** @type {(point: Point) => boolean} */
+    #containsPoint = () => false;
+
+    /** @type {() => void} */
+    #unregisterSelectionController = () => {};
+
+    /** @type {string} */
+    #selectionName;
+
+    /** @type {import("../../paramRuntime/viewParamRuntime.js").default} */
+    #selectionRuntime;
+
+    /** @type {Record<import("../../spec/channel.js").PrimaryPositionalChannel, import("../../scales/scaleResolution.js").default>} */
+    #scaleResolutions;
+
+    /** @type {Set<{ listener: (selection: import("../../types/selectionTypes.js").IntervalSelection) => void }>} */
+    #commitListeners = new Set();
 
     /**
      * @param {string} type
@@ -88,13 +111,81 @@ export class IntervalSelectionController {
         this.#viewListeners.add(type, listener, capture);
     }
 
-    dispose() {
+    /**
+     * @param {MouseEvent} [mouseEvent]
+     * @returns {boolean}
+     */
+    #endDrag(mouseEvent) {
         const wasDragging = this.#disposeActiveDrag();
         this.#disposeActiveDrag = () => false;
-        if (wasDragging) {
-            this.host.context.resumeHoverTracking();
-        }
+        if (wasDragging) this.host.context.resumeHoverTracking(mouseEvent);
+        return wasDragging;
+    }
+
+    dispose() {
+        this.#endDrag();
+        this.#unregisterSelectionController();
         this.#viewListeners.dispose();
+        this.#commitListeners.clear();
+    }
+
+    /**
+     * Tests a canvas point against this controller's actual interaction host,
+     * ownership, and current domain selection.
+     *
+     * @param {{ x: number, y: number }} point
+     * @returns {boolean}
+     */
+    contains(point) {
+        return this.#containsPoint(/** @type {Point} */ (point));
+    }
+
+    /**
+     * Converts selection intervals using the scales that own the selection.
+     *
+     * @param {import("../../types/selectionTypes.js").IntervalSelection["intervals"]} intervals
+     * @returns {import("../../types/embedApi.js").ComplexIntervals}
+     */
+    getComplexIntervals(intervals) {
+        return Object.fromEntries(
+            Object.entries(intervals).map(([channel, interval]) => {
+                const primaryChannel =
+                    /** @type {import("../../spec/channel.js").PrimaryPositionalChannel} */ (
+                        channel
+                    );
+                return [
+                    primaryChannel,
+                    interval
+                        ? [
+                              this.#scaleResolutions[primaryChannel].toComplex(
+                                  interval[0]
+                              ),
+                              this.#scaleResolutions[primaryChannel].toComplex(
+                                  interval[1]
+                              ),
+                          ]
+                        : null,
+                ];
+            })
+        );
+    }
+
+    /**
+     * @param {(selection: import("../../types/selectionTypes.js").IntervalSelection) => void} listener
+     * @returns {() => void}
+     */
+    subscribeCommit(listener) {
+        const entry = { listener };
+        this.#commitListeners.add(entry);
+        return () => this.#commitListeners.delete(entry);
+    }
+
+    /**
+     * Cancels an active gesture and clears a changed selection.
+     */
+    clear() {
+        this.#endDrag();
+        this.#clearSelection();
     }
 
     /**
@@ -122,6 +213,10 @@ export class IntervalSelectionController {
                 return [channel, resolution];
             })
         );
+        this.#scaleResolutions =
+            /** @type {Record<import("../../spec/channel.js").PrimaryPositionalChannel, import("../../scales/scaleResolution.js").default>} */ (
+                scaleResolutions
+            );
 
         const requiresShiftToBrush = channels.some((channel) =>
             scaleResolutions[channel].isZoomable()
@@ -201,8 +296,11 @@ export class IntervalSelectionController {
         }
 
         const clearSelection = () => {
-            setter(createIntervalSelection(channels));
+            if (isActiveIntervalSelection(selectionExpr())) {
+                setter(createIntervalSelection(channels));
+            }
         };
+        this.#clearSelection = clearSelection;
 
         const isInsideHost = (/** @type {Point} */ point) =>
             this.host.getInteractionCoords()?.containsPoint(point.x, point.y) ??
@@ -318,6 +416,7 @@ export class IntervalSelectionController {
             if (translatedRectangle) {
                 // Started dragging an existing selection
                 setIntervalDragActive(true);
+                nowBrushing = true;
                 // Start of dragging should prevent click propagation so that
                 // no other selections or events are triggered.
                 preventNextClickPropagation = true;
@@ -333,8 +432,8 @@ export class IntervalSelectionController {
                 const startSelection = eventPredicate(event.proxiedMouseEvent);
 
                 if (startSelection) {
-                    clearSelection();
                     nowBrushing = true;
+                    clearSelection();
                 } else if (
                     clearEventConfig &&
                     isActiveIntervalSelection(selectionExpr())
@@ -441,9 +540,10 @@ export class IntervalSelectionController {
             };
 
             const mouseUpListener = (/** @type {MouseEvent} */ upEvent) => {
-                this.#disposeActiveDrag();
-                this.#disposeActiveDrag = () => false;
-                view.context.resumeHoverTracking(upEvent);
+                const wasDragging = this.#endDrag(upEvent);
+                if (wasDragging) {
+                    this.#notifyCommit();
+                }
             };
             this.#disposeActiveDrag = () => {
                 document.removeEventListener("mousemove", mouseMoveListener);
@@ -473,6 +573,12 @@ export class IntervalSelectionController {
 
         const isPointInsideSelection = (/** @type {Point} */ point) =>
             selectionContainsPoint(selectionExpr(), invertPoint(point));
+
+        this.#containsPoint = (point) =>
+            isInsideHost(point) &&
+            ownsInteraction(point) &&
+            isActiveIntervalSelection(selectionExpr()) &&
+            isPointInsideSelection(point);
 
         if (clearEventConfig) {
             this.#addViewInteractionListener(
@@ -585,6 +691,31 @@ export class IntervalSelectionController {
                 mouseOver = false;
             }
         });
+
+        // Setup has already initialized and read the selection expression.
+        const selectionRef = paramRuntime.getParamRef(name);
+
+        this.host.view.registerDisposer(
+            paramRuntime.effect([selectionRef], () => {
+                if (!nowBrushing) {
+                    this.#notifyCommit();
+                }
+            })
+        );
+    }
+
+    /** @type {() => void} */
+    #clearSelection = () => {};
+
+    #notifyCommit() {
+        const selection = this.#selectionRuntime.getValue(this.#selectionName);
+        for (const entry of [...this.#commitListeners]) {
+            try {
+                entry.listener(selection);
+            } catch (error) {
+                console.error(error);
+            }
+        }
     }
 }
 

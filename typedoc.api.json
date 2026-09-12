@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/typedoc-plugin-markdown/typedoc-plugin-markdown.schema.json",
+  "entryPoints": ["scripts/api-docs-entry.d.ts"],
+  "entryPointStrategy": "resolve",
+  "tsconfig": "scripts/tsconfig.api-docs.json",
+  "name": "GenomeSpy Core API",
+  "plugin": ["typedoc-plugin-markdown"],
+  "out": "docs/api/reference",
+  "router": "member",
+  "entryFileName": "index",
+  "alwaysCreateEntryPointModule": false,
+  "readme": "none",
+  "cleanOutputDir": true,
+  "excludeExternals": true,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "disableSources": true,
+  "hideGenerator": true,
+  "hidePageHeader": true,
+  "parametersFormat": "table",
+  "strikeDeprecatedPageTitles": false,
+  "sort": ["source-order"]
+}

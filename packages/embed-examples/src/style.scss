@@ -3,3 +3,15 @@ body {
     padding: 0;
     font-family: sans-serif;
 }
+
+table {
+    border-collapse: collapse;
+    margin-top: 1em;
+}
+
+th,
+td {
+    padding: 0.35em 0.75em;
+    border: 1px solid #ccc;
+    text-align: left;
+}

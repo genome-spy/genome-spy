@@ -7,6 +7,11 @@ import createTooltipContext from "../tooltip/tooltipContext.js";
 import { FREEZE_INTERACTION_CLASS_NAME } from "../utils/ui/tooltip.js";
 import InteractionDispatcher from "./interactionDispatcher.js";
 import CursorManager from "./cursorManager.js";
+import EventListenerRegistry from "./eventListenerRegistry.js";
+
+/** @typedef {import("../types/interactionApi.d.ts").InternalMarkHit} InternalMarkHit */
+/** @typedef {import("../types/interactionApi.d.ts").MarkInteractionEvent} MarkInteractionEvent */
+/** @typedef {import("../types/interactionApi.d.ts").NativeInteractionEvent} NativeInteractionEvent */
 
 export default class InteractionController {
     /** @type {import("../view/view.js").default} */
@@ -17,7 +22,7 @@ export default class InteractionController {
     #tooltip;
     /** @type {import("../utils/animator.js").default} */
     #animator;
-    /** @type {(type: string, event: any) => void} */
+    /** @type {(type: string, event: object) => void} */
     #emitEvent;
     /** @type {Record<string, import("../tooltip/tooltipHandler.js").TooltipHandler>} */
     #tooltipHandlers;
@@ -29,9 +34,7 @@ export default class InteractionController {
     #interactionDispatcher;
     /** @type {CursorManager} */
     #cursorManager;
-    /**
-     * @type {{ mark: import("../marks/mark.js").default, datum: import("../data/flowNode.js").Datum, uniqueId: number }}
-     */
+    /** @type {InternalMarkHit | null | undefined} */
     #currentHover;
     /** @type {Inertia} */
     #wheelInertia;
@@ -45,6 +48,18 @@ export default class InteractionController {
     #hoverTrackingSuspensionCount = 0;
     #postRenderHoverRefreshRequested = false;
     #pickingRequestId = 0;
+    /** @type {EventListenerRegistry<NativeInteractionEvent>} */
+    #nativeEventListeners = new EventListenerRegistry();
+    /** @type {Set<{ view: import("../view/view.js").default, type: string, listener: (event: MarkInteractionEvent) => void | Promise<void> }>} */
+    #markEventListeners = new Set();
+    /** @type {Set<{ view: import("../view/view.js").default, listener: (hit: InternalMarkHit | undefined) => void }>} */
+    #hoverListeners = new Set();
+    /** @type {number | undefined} */
+    #currentHoverRequestId;
+    /** @type {(error: unknown) => void} */
+    #reportError = (error) => console.error(error);
+    /** @type {() => boolean} */
+    #canPick = () => true;
 
     #dismissStickyTooltip() {
         this.#tooltip.sticky = false;
@@ -58,10 +73,12 @@ export default class InteractionController {
      * @param {HTMLCanvasElement} options.canvas
      * @param {import("../utils/ui/tooltip.js").default} options.tooltip
      * @param {import("../utils/animator.js").default} options.animator
-     * @param {(type: string, event: any) => void} options.emitEvent
+     * @param {(type: string, event: object) => void} options.emitEvent
      * @param {Record<string, import("../tooltip/tooltipHandler.js").TooltipHandler>} options.tooltipHandlers
      * @param {() => void} [options.renderPickingFramebuffer]
      * @param {(x: number, y: number) => number | null | Promise<number | null>} [options.readPickingId]
+     * @param {(error: unknown) => void} [options.reportError]
+     * @param {() => boolean} [options.canPick]
      */
     constructor({
         viewRoot,
@@ -72,6 +89,8 @@ export default class InteractionController {
         tooltipHandlers,
         renderPickingFramebuffer,
         readPickingId,
+        reportError,
+        canPick,
     }) {
         this.#viewRoot = viewRoot;
         this.#canvas = canvas;
@@ -81,13 +100,12 @@ export default class InteractionController {
         this.#tooltipHandlers = tooltipHandlers;
         this.#renderPickingFramebuffer = renderPickingFramebuffer ?? (() => {});
         this.#readPickingId = readPickingId;
+        this.#reportError = reportError ?? this.#reportError;
+        this.#canPick = canPick ?? this.#canPick;
         this.#interactionDispatcher = new InteractionDispatcher({ viewRoot });
         this.#cursorManager = new CursorManager({ canvas });
 
-        /**
-         * Currently hovered mark and datum
-         * @type {{ mark: import("../marks/mark.js").default, datum: import("../data/flowNode.js").Datum, uniqueId: number }}
-         */
+        /** Currently hovered mark and datum. */
         this.#currentHover = undefined;
 
         this.#wheelInertia = new Inertia(this.#animator);
@@ -101,12 +119,113 @@ export default class InteractionController {
         return this.#currentHover;
     }
 
+    /**
+     * @param {import("../view/view.js").default} view
+     * @param {string} type
+     * @param {(event: MarkInteractionEvent) => void | Promise<void>} listener
+     * @returns {() => void}
+     */
+    subscribeMarkEvent(view, type, listener) {
+        if (!["click", "dblclick", "contextmenu"].includes(type)) {
+            throw new Error(`Unsupported mark event type: ${type}`);
+        }
+
+        const entry = { view, type, listener };
+        this.#markEventListeners.add(entry);
+        return () => this.#markEventListeners.delete(entry);
+    }
+
+    /**
+     * @param {import("../view/view.js").default} view
+     * @param {(hit: InternalMarkHit | undefined) => void} listener
+     * @returns {() => void}
+     */
+    subscribeHover(view, listener) {
+        const entry = { view, listener };
+        this.#hoverListeners.add(entry);
+        try {
+            listener(this.#getScopedHover(view));
+        } catch (error) {
+            this.#reportError(error);
+        }
+        return () => this.#hoverListeners.delete(entry);
+    }
+
+    /**
+     * Explicitly queries the latest completed picking frame.
+     *
+     * @param {{ x: number, y: number }} point
+     * @param {import("../view/view.js").default} [scopeView]
+     * @returns {Promise<{ status: "hit", hit: InternalMarkHit } | { status: "empty" } | { status: "invalidated" }>}
+     */
+    async pick(point, scopeView) {
+        if (!this.#readPickingId) {
+            throw new Error(
+                "Explicit picking is not supported by this renderer."
+            );
+        }
+        const canvasPoint = new Point(point.x, point.y);
+        if (
+            !Number.isFinite(point.x) ||
+            !Number.isFinite(point.y) ||
+            !this.#isInsideCanvas(canvasPoint)
+        ) {
+            throw new Error("Pick point must be finite and inside the canvas.");
+        }
+        if (!this.#canPick()) {
+            return { status: "invalidated" };
+        }
+
+        const requestId = this.#pickingRequestId;
+        this.#renderPickingFramebuffer();
+        const result = this.#readPickingId(point.x, point.y);
+        const uniqueId = await result;
+        if (requestId !== this.#pickingRequestId) {
+            return { status: "invalidated" };
+        }
+
+        const hit = this.#findHit(point.x, point.y, uniqueId ?? 0, scopeView);
+        return hit ? { status: "hit", hit } : { status: "empty" };
+    }
+
+    invalidatePendingPicks() {
+        this.#pickingRequestId++;
+    }
+
+    /**
+     * Subscribes to native canvas input before Core routes the event.
+     *
+     * @param {string} type
+     * @param {(event: NativeInteractionEvent) => void} listener
+     * @returns {() => void}
+     */
+    subscribeNativeEvent(type, listener) {
+        const supported = [
+            "click",
+            "dblclick",
+            "contextmenu",
+            "mousedown",
+            "mouseup",
+            "mousemove",
+            "mouseenter",
+            "mouseleave",
+            "wheel",
+        ];
+        if (!supported.includes(type)) {
+            throw new Error(`Unsupported native event type: ${type}`);
+        }
+
+        this.#nativeEventListeners.add(type, listener);
+        return () => this.#nativeEventListeners.remove(type, listener);
+    }
+
     suspendHoverTracking() {
         this.#hoverTrackingSuspensionCount++;
         if (this.#longPressPending) {
             return;
         }
 
+        this.#clearHover();
         this.#tooltip.clear();
         this.#tooltipUpdateRequested = false;
     }
@@ -156,7 +275,7 @@ export default class InteractionController {
             return;
         }
 
-        this.#currentHover = null;
+        this.#clearHover();
         this.#cursorManager.clear();
     }
 
@@ -218,7 +337,11 @@ export default class InteractionController {
                 this.#tooltip.clear();
             }
 
-            if (uiEvent instanceof MouseEvent && uiEvent.type !== "mouseout") {
+            if (
+                uiEvent instanceof MouseEvent &&
+                uiEvent.type !== "mouseout" &&
+                this.#hoverTrackingSuspensionCount === 0
+            ) {
                 this.#cursorManager.update({
                     target: interaction.target,
                     hover: this.#currentHover,
@@ -280,6 +403,35 @@ export default class InteractionController {
             const wheeling = now - lastWheelEvent < 200;
 
             if (event instanceof MouseEvent) {
+                const point = this.#toCanvasPoint(event);
+                let viewDefaultPrevented = false;
+                this.#nativeEventListeners.emit(
+                    event.type,
+                    {
+                        sourceEvent: event,
+                        point,
+                        preventViewDefault: () => {
+                            viewDefaultPrevented = true;
+                        },
+                    },
+                    this.#reportError
+                );
+                if (viewDefaultPrevented) {
+                    return;
+                }
+
+                /** @type {Promise<boolean> | undefined} */
+                let markPickPromise;
+                if (["click", "dblclick", "contextmenu"].includes(event.type)) {
+                    this.#renderPickingFramebuffer();
+                    markPickPromise = this.#handlePicking(
+                        point.x,
+                        point.y,
+                        undefined,
+                        (hit) => this.#emitMarkEvent(event, point, hit)
+                    );
+                }
+
                 if (
                     event.type !== "contextmenu" &&
                     this.#isInteractionFrozen()
@@ -287,7 +439,6 @@ export default class InteractionController {
                     return;
                 }
 
-                const point = this.#toCanvasPoint(event);
                 this.#lastPointerPoint = point;
 
                 let hoverPickHandled = false;
@@ -359,7 +510,7 @@ export default class InteractionController {
                         // doesn't work incorrectly when zooming in/out.
 
                         // TODO: More robust solution (handle at higher level such as ScaleResolution's zoom method)
-                        this.#currentHover = null;
+                        this.#clearHover();
 
                         this.#wheelInertia.cancel();
                     } else {
@@ -438,17 +589,8 @@ export default class InteractionController {
                         }
                     };
 
-                    // Resolve the datum from this click's coordinates instead
-                    // of cached hover state. Once received, a click remains
-                    // valid even if the pointer leaves before GPU readback.
-                    const promise = this.#handlePicking(
-                        point.x,
-                        point.y,
-                        undefined,
-                        false
-                    );
-                    if (promise) {
-                        void promise.then((applied) => {
+                    if (markPickPromise) {
+                        void markPickPromise.then((applied) => {
                             if (applied) {
                                 dispatchClick();
                             }
@@ -555,6 +697,8 @@ export default class InteractionController {
             "mousemove",
             "contextmenu",
             "dblclick",
+            "mouseenter",
+            "mouseleave",
         ].forEach((type) => addListener(canvas, type, listener));
 
         /**
@@ -734,8 +878,7 @@ export default class InteractionController {
             );
             this.#cursorManager.clear();
             this.#tooltip.clear();
-            this.#currentHover = null;
-            this.#pickingRequestId++;
+            this.#clearHover();
             activeHoverPick = undefined;
             queuedMouseMove = undefined;
         });
@@ -744,6 +887,9 @@ export default class InteractionController {
             for (const remove of removers) {
                 remove();
             }
+            this.#nativeEventListeners.clear();
+            this.#markEventListeners.clear();
+            this.#hoverListeners.clear();
         };
     }
 
@@ -801,7 +947,7 @@ export default class InteractionController {
 
             const point = this.#lastPointerPoint;
             if (!point || !this.#isInsideCanvas(point)) {
-                this.#currentHover = null;
+                this.#clearHover();
                 this.#cursorManager.clear();
                 return;
             }
@@ -828,80 +974,47 @@ export default class InteractionController {
      * @param {number} x
      * @param {number} y
      * @param {() => boolean} [shouldApply]
-     * @param {boolean} [invalidateOnLeave]
+     * @param {(hit: InternalMarkHit | undefined) => void} [onApplied]
      * @returns {Promise<boolean> | undefined}
      */
-    #handlePicking(x, y, shouldApply = () => true, invalidateOnLeave = true) {
+    #handlePicking(x, y, shouldApply = () => true, onApplied) {
         const requestId = this.#pickingRequestId;
         const result = this.#readPickingId?.(x, y) ?? 0;
+
+        /** @param {number | null} uniqueId */
+        const applyResult = (uniqueId) => {
+            const applied =
+                requestId == this.#pickingRequestId && shouldApply();
+            if (!applied) {
+                return false;
+            }
+
+            this.#tooltipUpdateRequested = false;
+            const hit = this.#findHit(x, y, uniqueId ?? 0);
+            this.#applyPickingResult(requestId, hit);
+            onApplied?.(hit);
+            return true;
+        };
+
         if (result instanceof Promise) {
             return result.then(
-                (uniqueId) => {
-                    const applied =
-                        (!invalidateOnLeave ||
-                            requestId == this.#pickingRequestId) &&
-                        shouldApply();
-                    if (applied) {
-                        this.#tooltipUpdateRequested = false;
-                        this.#applyPickingResult(x, y, uniqueId ?? 0);
-                    }
-                    return applied;
-                },
+                (uniqueId) => applyResult(uniqueId),
                 (error) => {
                     console.error("Picking failed.", error);
                     return false;
                 }
             );
         }
-        if (shouldApply()) {
-            this.#tooltipUpdateRequested = false;
-            this.#applyPickingResult(x, y, result);
-        }
+        applyResult(result);
     }
 
     /**
-     * @param {number} x
-     * @param {number} y
-     * @param {number} uniqueId
+     * @param {number} requestId
+     * @param {InternalMarkHit | undefined} [hit]
      */
-    #applyPickingResult(x, y, uniqueId) {
-        if (uniqueId == 0) {
-            this.#currentHover = null;
-            return;
-        }
-
-        if (uniqueId !== this.#currentHover?.uniqueId) {
-            this.#currentHover = null;
-        }
-
-        if (!this.#currentHover) {
-            this.#viewRoot.visit((view) => {
-                if (view instanceof UnitView) {
-                    if (
-                        view.mark.isPickingParticipant() &&
-                        [...view.facetCoords.values()].some((coords) =>
-                            coords.containsPoint(x, y)
-                        )
-                    ) {
-                        const collector = view.getCollector();
-                        if (!collector) {
-                            return;
-                        }
-                        const datum = collector.findDatumByUniqueId(uniqueId);
-                        if (datum) {
-                            this.#currentHover = {
-                                mark: view.mark,
-                                datum,
-                                uniqueId,
-                            };
-                        }
-                    }
-                    if (this.#currentHover) {
-                        return VISIT_STOP;
-                    }
-                }
-            });
-        }
+    #applyPickingResult(requestId, hit) {
+        this.#currentHoverRequestId = requestId;
+        this.#replaceHover(hit ?? null);
 
         if (this.#currentHover) {
             const mark = this.#currentHover.mark;
@@ -930,6 +1043,115 @@ export default class InteractionController {
                 }
             });
         }
+    }
+
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {number} uniqueId
+     * @param {import("../view/view.js").default} [scopeView]
+     * @returns {InternalMarkHit | undefined}
+     */
+    #findHit(x, y, uniqueId, scopeView) {
+        if (uniqueId === 0) {
+            return;
+        }
+
+        /** @type {InternalMarkHit | undefined} */
+        let hit;
+        this.#viewRoot.visit((view) => {
+            if (
+                view instanceof UnitView &&
+                view.mark.isPickingParticipant() &&
+                (!scopeView || view.getLayoutAncestors().includes(scopeView)) &&
+                [...view.facetCoords.values()].some((coords) =>
+                    coords.containsPoint(x, y)
+                )
+            ) {
+                const datum = view
+                    .getCollector()
+                    ?.findDatumByUniqueId(uniqueId);
+                if (datum) {
+                    hit = { mark: view.mark, datum, uniqueId };
+                }
+            }
+            if (hit) {
+                return VISIT_STOP;
+            }
+        });
+        return hit;
+    }
+
+    /**
+     * @param {MouseEvent} sourceEvent
+     * @param {Point} point
+     * @param {InternalMarkHit | undefined} hit
+     */
+    #emitMarkEvent(sourceEvent, point, hit) {
+        if (!hit) {
+            return;
+        }
+
+        for (const entry of [...this.#markEventListeners]) {
+            if (
+                entry.type === sourceEvent.type &&
+                hit.mark.unitView.getLayoutAncestors().includes(entry.view)
+            ) {
+                try {
+                    const result = entry.listener({ sourceEvent, point, hit });
+                    if (result instanceof Promise) {
+                        void result.catch(this.#reportError);
+                    }
+                } catch (error) {
+                    this.#reportError(error);
+                }
+            }
+        }
+    }
+
+    /**
+     * @param {import("../view/view.js").default} view
+     * @returns {InternalMarkHit | undefined}
+     */
+    #getScopedHover(view) {
+        const hit = this.#currentHover;
+        return hit &&
+            this.#currentHoverRequestId === this.#pickingRequestId &&
+            hit.mark.isPickingParticipant() &&
+            hit.mark.unitView.getLayoutAncestors().includes(view)
+            ? hit
+            : undefined;
+    }
+
+    /**
+     * @param {InternalMarkHit | null | undefined} hover
+     */
+    #replaceHover(hover) {
+        const previousHover = this.#currentHover;
+        this.#currentHover = hover;
+        if (
+            (!previousHover && !this.#currentHover) ||
+            (previousHover &&
+                this.#currentHover &&
+                previousHover.mark === this.#currentHover.mark &&
+                previousHover.uniqueId === this.#currentHover.uniqueId &&
+                previousHover.datum === this.#currentHover.datum)
+        ) {
+            return;
+        }
+        // TODO: Consider comparing previous and next hits within each listener's
+        // scope, so hover changes entirely outside it do not emit undefined again.
+        for (const entry of [...this.#hoverListeners]) {
+            try {
+                entry.listener(this.#getScopedHover(entry.view));
+            } catch (error) {
+                this.#reportError(error);
+            }
+        }
+    }
+
+    #clearHover() {
+        this.#replaceHover(null);
     }
 
     /**

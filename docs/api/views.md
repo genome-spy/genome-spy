@@ -93,27 +93,79 @@ if (tracks.isAlive()) {
 }
 ```
 
-## Updating named data
+## Marks and scoped interaction
 
-Use `api.datasets` for declarations in the top-level input specification. For a
-declaration in a nested or imported view, resolve the exact declaring view:
+Each handle exposes `marks` for interaction with marks in that view's subtree.
+Mark events pick the event coordinates before invoking the listener. GPU-backed
+readback can make delivery asynchronous, and the callback is skipped if the
+scene or owning view/embed is invalidated before the pick completes. See
+[Interaction events](./instance.md#interaction-events) for native canvas input
+and browser default cancellation.
 
 ```js
-const owner = api.views.get({
-  scope: ["translationA"],
-  view: "translationA",
+const track = api.views.get({ scope: [], view: "track" });
+
+const stopHover = track.marks.observeHover((hit) => {
+  inspector.textContent = hit ? JSON.stringify(hit.datum) : "No mark";
 });
 
-owner.datasets.set("geneticCode", rows);
-owner.datasets.reset("geneticCode");
+const stopClick = track.marks.subscribe("click", async ({ hit }) => {
+  inspect(hit.view, hit.datum);
+});
+
+api.events.subscribe("contextmenu", (event) => {
+  event.sourceEvent.preventDefault();
+  event.preventViewDefault();
+  void openContextMenu(event.sourceEvent, event.point);
+});
+
+async function openContextMenu(sourceEvent, point) {
+  const result = await track.marks.pick(point);
+  if (result.status !== "hit") {
+    return;
+  }
+  inspect(result.hit.view, result.hit.datum);
+  showMenuAt(sourceEvent.clientX, sourceEvent.clientY);
+}
 ```
 
-Descendants can reference the declaration, but updates do not search ancestors.
-Use the declaring view's handle so that repeated imports and nested subtrees
-remain independent.
+`pick()` returns `hit`, `empty`, or `invalidated`. A query is invalidated when
+the scene changes or the embed is finalized while it is pending. `MarkHit.view`
+identifies the unit view that owns the mark, `uniqueId` identifies the mark in
+the rendered scene, and `datum` is a detached shallow copy without the internal
+ID. Nested datum values are not deep-cloned.
 
-See [Runtime State](runtime-state.md#named-data) for declarations, initial data,
-and migration from the deprecated global APIs.
+## Parameters and selections
+
+`api.params` starts at the authored top-level specification, while
+`view.params` starts at that view's lexical scope. Both expose the nearest
+declaration and distinguish a child selection that writes to an outer value
+from the outer declaration itself.
+
+```js
+const brush = track.params.getSelection("brush");
+const stopBrush = brush.subscribe((snapshot) => updateForm(snapshot), {
+  delivery: "commit",
+});
+
+if (brush.type === "interval" && brush.contains({ x: 120, y: 80 })) {
+  brush.clear();
+}
+```
+
+See [Parameters](runtime-state.md#parameters) for selection snapshot shape,
+subscription delivery, and clearing behavior.
+
+For a runnable browser form and notebook bridge, see the `annotationEditor` and
+`selectionForm` pages in the [embed examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples).
+
+## Updating named data
+
+Use `api.datasets` for declarations in the top-level specification and
+`ViewHandle.datasets` for declarations owned by nested views. The exact-owner
+rule means updates do not search ancestors or descendants. See
+[Runtime State](runtime-state.md#named-data) for declarations, loading, reset,
+initial data, and migration from the deprecated global APIs.
 
 ## Reading layout bounds
 

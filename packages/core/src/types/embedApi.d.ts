@@ -18,7 +18,7 @@ export type EmbedFunction = (
     el: HTMLElement | string,
     spec: RootSpec | string,
     options?: EmbedOptions
-) => EmbedResult;
+) => Promise<EmbedResult>;
 
 export interface EmbedOptions {
     /**
@@ -89,9 +89,8 @@ export interface EmbedOptions {
  * - Parameters are addressed by name only. Independent same-name parameters
  *   throw an ambiguity error.
  * - Computed `expr` parameters are readable but cannot be written.
- * - Point selections are readable as runtime values but are not supported for
- *   writes through the initial API because valid values require
- *   GenomeSpy-generated datum ids.
+ * - Point selections are exposed through `ParamNamespace.getSelection()`;
+ *   they are not writable through the generic parameter API.
  * - Projected selections are not supported.
  */
 export type ParamValue = Scalar | null | undefined | IntervalSelection;
@@ -116,12 +115,303 @@ export interface ParamApi<T = ParamValue> {
     subscribe: (listener: (value: T) => void) => () => void;
 }
 
+/** A genomic endpoint in an interval snapshot. */
+export interface ComplexLocusEndpoint {
+    /** Chromosome or contig name. */
+    readonly chrom: string;
+
+    /** Zero-based position inside the chromosome or contig. */
+    readonly pos: number;
+}
+
+/** An endpoint in an interval snapshot, numeric or genomic. */
+export type IntervalEndpoint = number | ComplexLocusEndpoint;
+
+/** A pair of interval endpoints in numeric or genomic coordinates. */
+export type ComplexInterval = readonly [IntervalEndpoint, IntervalEndpoint];
+
+/** Complex interval values keyed by positional channel, or `null` when clear. */
+export type ComplexIntervals = Partial<
+    Record<"x" | "y", ComplexInterval | null>
+>;
+
+/**
+ * Detached value of an interval selection.
+ *
+ * An interval is active when at least one configured channel has a range. The
+ * numeric ranges are expressed in data-domain values, not canvas coordinates.
+ * `complexIntervals` uses genomic `{ chrom, pos }` endpoints for locus
+ * channels, while numeric channels retain numeric endpoints.
+ */
+export interface IntervalSnapshot {
+    /** Discriminator for interval selection snapshots. */
+    type: "interval";
+
+    /** Whether at least one interval is currently set. */
+    active: boolean;
+
+    /** Selected range for each configured positional channel, or `null`. */
+    intervals: Partial<Record<"x" | "y", readonly [number, number] | null>>;
+
+    /**
+     * The same ranges with locus channels converted to `{ chrom, pos }`
+     * endpoints. Numeric channels remain numeric and cleared channels are null.
+     */
+    complexIntervals: ComplexIntervals;
+}
+
+/**
+ * Detached value of a point selection.
+ *
+ * Each row in `data` is a shallow copy of the selected datum without
+ * GenomeSpy's internal picking identifier.
+ */
+export interface PointSnapshot {
+    /** Discriminator for point selection snapshots. */
+    type: "point";
+
+    /** Whether at least one row is currently selected. */
+    active: boolean;
+
+    /** Selected data rows, in selection order. */
+    data: ReadonlyArray<Readonly<Record<string, unknown>>>;
+}
+
+/** A detached snapshot of either an interval or point selection. */
+export type SelectionSnapshot = IntervalSnapshot | PointSnapshot;
+
+/**
+ * Capability for reading and clearing a row-backed point selection.
+ *
+ * Point selections are exposed as detached snapshots. Use `clear()` to empty
+ * the selection; writes through this capability are not supported.
+ *
+ * `"commit"` is accepted for future gesture-based point selections, such as a
+ * lasso. For the current point-selection implementation, it has the same
+ * delivery behavior as `"change"`.
+ */
+export interface PointSelectionApi {
+    /** Discriminator for this selection capability. */
+    readonly type: "point";
+
+    /** Returns the current detached selection snapshot. */
+    getValue: () => PointSnapshot;
+
+    /**
+     * Subscribes to future selection updates and returns an unsubscribe
+     * function. Delivery defaults to every change; `"commit"` is accepted for
+     * symmetry with interval selections and follows the point selection's
+     * normal update delivery.
+     */
+    subscribe: (
+        listener: (value: PointSnapshot) => void,
+        options?: { delivery?: "change" | "commit" }
+    ) => () => void;
+
+    /** Clears the selection and publishes the cleared state when it changed. */
+    clear: () => void;
+}
+
+/**
+ * Capability for reading, clearing, and testing membership in an interval
+ * selection.
+ */
+export interface IntervalSelectionApi {
+    /** Discriminator for this selection capability. */
+    readonly type: "interval";
+
+    /** Returns the current detached selection snapshot. */
+    getValue: () => IntervalSnapshot;
+
+    /**
+     * Subscribes to future selection updates and returns an unsubscribe
+     * function. Delivery defaults to every change; `"commit"` reports a
+     * completed brush or a committed programmatic update.
+     */
+    subscribe: (
+        listener: (value: IntervalSnapshot) => void,
+        options?: { delivery?: "change" | "commit" }
+    ) => () => void;
+
+    /** Clears the selection and publishes the cleared state when it changed. */
+    clear: () => void;
+
+    /**
+     * Tests whether a canvas point is inside the current interval selection.
+     * Coordinates are CSS pixels relative to the embedded GenomeSpy canvas.
+     */
+    contains: (point: { x: number; y: number }) => boolean;
+}
+
+/** A public capability for either a point or interval selection. */
+export type SelectionApi = PointSelectionApi | IntervalSelectionApi;
+
+/**
+ * Parameters and selections resolved from one view's lexical scope.
+ *
+ * A scoped namespace resolves the nearest declaration in that view and its
+ * ancestors. Use `EmbedResult.params` for the authored top-level scope or a
+ * `ViewHandle.params` namespace for a particular view. Handles returned from
+ * this namespace are live capabilities: operations fail after finalization or,
+ * for a view-scoped namespace, after that view is removed.
+ */
+export interface ParamNamespace {
+    /**
+     * Returns a handle for a parameter declared in this scope or an ancestor.
+     * Use a generic type argument when the parameter contains an object or
+     * array value.
+     */
+    get: <T = ParamValue>(name: string) => ParamApi<T>;
+
+    /**
+     * Returns a capability for a named point or interval selection.
+     *
+     * Throws when the name is not declared as a supported selection in this
+     * scope.
+     */
+    getSelection: (name: string) => SelectionApi;
+}
+
+/**
+ * Native input delivered before GenomeSpy handles an event. The listener is
+ * synchronous; call `sourceEvent.preventDefault()` here when browser-level
+ * cancellation is required. Use mark subscriptions for work that may await
+ * picking.
+ *
+ * The point uses CSS-pixel coordinates relative to the embedded canvas. Calling
+ * `preventViewDefault()` vetoes Core's default interaction while leaving
+ * browser-level cancellation to `sourceEvent.preventDefault()`. Use this API
+ * for input at the canvas level; use `ViewHandle.marks` for interactions tied
+ * to a picked mark.
+ */
+export interface NativeEvent {
+    /** Browser event that triggered the input. */
+    readonly sourceEvent: Event;
+
+    /** Canvas-relative CSS-pixel coordinates of the input event. */
+    readonly point: { readonly x: number; readonly y: number };
+
+    /** Prevents GenomeSpy's default handling of this input event. */
+    preventViewDefault: () => void;
+}
+
+/** Event names supported by `EmbedEventApi.subscribe()`. */
+export type NativeEventType =
+    | "click"
+    | "dblclick"
+    | "contextmenu"
+    | "mousedown"
+    | "mouseup"
+    | "mousemove"
+    | "mouseenter"
+    | "mouseleave"
+    | "wheel";
+
+/** Subscriptions for native input on the embedded GenomeSpy canvas. */
+export interface EmbedEventApi {
+    /**
+     * Subscribes synchronously before Core handles the event and returns an
+     * unsubscribe function.
+     */
+    subscribe: (
+        type: NativeEventType,
+        listener: (event: NativeEvent) => void
+    ) => () => void;
+}
+
+/**
+ * A mark hit from the current rendered scene.
+ *
+ * The datum is a detached shallow copy. Nested values are not cloned.
+ */
+export interface MarkHit {
+    /** Handle for the unit view that owns the mark. */
+    readonly view: ViewHandle;
+
+    /** Picking identifier for the mark in the current rendered scene. */
+    readonly uniqueId: number;
+
+    /** Data row associated with the mark, without the internal picking id. */
+    readonly datum: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * A mark interaction event scoped to a `ViewHandle` subtree.
+ *
+ * Mark activation performs picking at the event coordinates before invoking
+ * the listener. GPU-backed picking can make delivery asynchronous, and the
+ * callback is skipped when the scene or its owning view/embed is invalidated
+ * before the pick completes. Marks configured with `tooltip: null` are not
+ * pickable unless their view declares a point selection, which overrides that
+ * opt-out; use `tooltip: false` to suppress tooltips while keeping a mark
+ * interactive.
+ */
+export interface MarkEvent {
+    /** Browser event that triggered the mark interaction. */
+    readonly sourceEvent: MouseEvent;
+
+    /** Canvas-relative CSS-pixel coordinates of the interaction. */
+    readonly point: { readonly x: number; readonly y: number };
+
+    /** Mark and datum confirmed by the renderer's picking state. */
+    readonly hit: MarkHit;
+}
+
+/**
+ * Mark interaction subscriptions and explicit picking for one view subtree.
+ *
+ * Subscriptions belong to the view handle that created them and are disposed
+ * automatically when that view is removed or the embed is finalized.
+ */
+export interface MarksApi {
+    /**
+     * Subscribes to a mark event and returns an unsubscribe function.
+     *
+     * The event coordinates are picked before the listener is called. The
+     * listener may therefore run asynchronously when the active renderer uses
+     * asynchronous readback. Browser-level cancellation must happen
+     * synchronously through `EmbedEventApi.subscribe()`.
+     */
+    subscribe: (
+        type: "click" | "dblclick" | "contextmenu",
+        listener: (event: MarkEvent) => void | Promise<void>
+    ) => () => void;
+
+    /**
+     * Subscribes to changes in the current hovered mark and returns an
+     * unsubscribe function. The listener is called once immediately with the
+     * current hit, or `undefined` when no mark is hovered.
+     */
+    observeHover: (listener: (hit: MarkHit | undefined) => void) => () => void;
+
+    /**
+     * Explicitly queries the latest completed picking frame at a canvas point.
+     *
+     * This is the reliable choice for handling a native click at its exact
+     * coordinates; it does not depend on a previous hover result.
+     *
+     * The promise resolves with `"hit"`, `"empty"`, or `"invalidated"` when
+     * the scene changed or the embed was finalized before the query completed.
+     * It rejects when the active renderer does not support picking.
+     */
+    pick: (point: {
+        x: number;
+        y: number;
+    }) => Promise<
+        | { status: "hit"; hit: MarkHit }
+        | { status: "empty" }
+        | { status: "invalidated" }
+    >;
+}
+
 /**
  * Address of a view in the live layout hierarchy.
  *
- * Use a `ViewSelector` for durable references to named views within import or
- * insertion scopes. Use a `ViewHandle` for views returned by this API,
- * including anonymous views. Use `"root"` to address the root view.
+ * Use a `ViewSelector` to resolve an authored, named view within import or
+ * insertion scopes. Selectors cannot reliably identify anonymous views,
+ * repeated instances, or one particular dynamically inserted instance. Use a
+ * `ViewHandle` for the exact live view returned by this API, including those
+ * cases. Use `"root"` to address the root view.
  */
 export type ViewAddress = ViewHandle | ViewSelector | "root";
 
@@ -237,10 +527,9 @@ export interface DatasetApi {
 
 // Design intent: "Opaque" below means that callers cannot access the internal
 // View representation; it does not mean that this is an inert address.
-// ViewHandle is a capability-bearing reference. Operations inherently scoped
-// to one view belong here under resource namespaces (such as datasets and,
-// eventually, params), while hierarchy-wide lookup and structural mutations
-// remain on ViewApi. Namespaces avoid accumulating unrelated flat methods.
+// ViewHandle is a capability-bearing reference. Operations scoped to one view
+// belong here under resource namespaces, while hierarchy-wide lookup and
+// structural mutations remain on ViewApi.
 
 /**
  * Live handle to a view in the embedded GenomeSpy instance.
@@ -251,9 +540,10 @@ export interface DatasetApi {
  * GenomeSpy may add an implicit root layout container, for example when a
  * root unit view needs space for axes, titles, or other guides.
  *
- * Handles are opaque public references. They do not expose internal `View`
- * objects, and callers should check `isAlive()` before reusing a handle after
- * mutations that may have removed its subtree.
+ * Handles are opaque public references to one concrete view instance. They do
+ * not expose internal `View` objects, are not bookmark or serialization
+ * formats, and should not be reused after `isAlive()` becomes false. Methods
+ * on a stale handle also fail rather than silently operating on another view.
  */
 export interface ViewHandle {
     /**
@@ -298,6 +588,12 @@ export interface ViewHandle {
      * Updates datasets declared by this exact view.
      */
     readonly datasets: DatasetApi;
+
+    /** Parameters and selections resolved from this view's lexical scope. */
+    readonly params: ParamNamespace;
+
+    /** Mark interaction and picking scoped to this view's subtree. */
+    readonly marks: MarksApi;
 }
 
 /**
@@ -326,16 +622,17 @@ export interface ViewApi {
     /**
      * Resolves an address to a live view handle.
      *
-     * Returns `undefined` when the address cannot be resolved or when a handle
-     * no longer refers to a live view.
+     * Selectors resolve the current matching authored view. A selector that is
+     * missing or ambiguous, or a handle that no longer refers to a live view,
+     * returns `undefined`.
      */
     resolve: (address: ViewAddress) => ViewHandle | undefined;
 
     /**
      * Resolves an address to a live view handle.
      *
-     * Throws if the address cannot be resolved or if a handle no longer refers
-     * to a live view.
+     * Throws if the address cannot be resolved, is ambiguous, or if a handle no
+     * longer refers to a live view.
      */
     get: (address: ViewAddress) => ViewHandle;
 
@@ -382,8 +679,7 @@ export interface ViewApi {
      * `options.index` is the destination index after temporarily removing the
      * target from its current position.
      *
-     * Moving a view to another branch of the hierarchy is not supported by the
-     * initial API.
+     * Moving a view to another branch of the hierarchy is not supported.
      */
     move: (
         target: ViewAddress,
@@ -577,6 +873,12 @@ export interface EmbedResult {
      */
     readonly datasets: DatasetApi;
 
+    /** Synchronous native input subscriptions for the embedded canvas. */
+    readonly events: EmbedEventApi;
+
+    /** Parameters and selections resolved from the authored top-level scope. */
+    readonly params: ParamNamespace;
+
     /**
      * Exports the current visualization as raster or vector images.
      */
@@ -593,6 +895,9 @@ export interface EmbedResult {
     finalize: () => void;
 
     /**
+     * @deprecated Use `EmbedResult.events.subscribe()` and its returned cleanup
+     * function.
+     *
      * Adds an event listener, which is called when the user interacts with a mark
      * instance. Currently, only `"click"` events are supported. The callback receives
      * an event object as its first (and only) parameter. Its `datum` property
@@ -601,6 +906,9 @@ export interface EmbedResult {
     addEventListener: (type: string, listener: (event: any) => void) => void;
 
     /**
+     * @deprecated Use the cleanup function returned by
+     * `EmbedResult.events.subscribe()`.
+     *
      * Removes a registered event listener.
      */
     removeEventListener: (type: string, listener: (event: any) => void) => void;

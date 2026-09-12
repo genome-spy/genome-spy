@@ -18,15 +18,36 @@ api.finalize();
 
 ## Interaction events
 
+An embed exposes native canvas input through `events.subscribe()`. The listener
+runs synchronously before Core's default action and receives canvas CSS-pixel
+coordinates. Call `preventViewDefault()` during the callback to veto that
+action; browser cancellation still belongs to `sourceEvent`. Call
+`sourceEvent.preventDefault()` before any asynchronous work.
+
+```js
+const stopContextMenu = api.events.subscribe("contextmenu", (event) => {
+  if (brush.contains(event.point)) {
+    event.sourceEvent.preventDefault();
+    event.preventViewDefault();
+  }
+});
+```
+
+The supported native event names are `click`, `dblclick`, `contextmenu`,
+`mousedown`, `mouseup`, `mousemove`, `mouseenter`, `mouseleave`, and `wheel`.
+Unsubscribe when the host no longer needs the listener. Mark-scoped activation,
+hover, and explicit picking are available on `ViewHandle.marks`; see
+[View hierarchy](./views.md#marks-and-scoped-interaction).
+
 `addEventListener()` and `removeEventListener()` attach listeners for
 interaction events emitted by GenomeSpy. Currently, only `"click"` events are
 supported. The event object includes `datum`, the underlying datum for the
 clicked mark instance.
 
-!!! warning "Legacy API"
+!!! warning "Deprecated API"
 
-    The instance-level interaction event API is legacy and will be removed in a
-    future version. Avoid using it in new code.
+    The instance-level interaction event API is deprecated and will be removed
+    in a future version. Use `api.events.subscribe()` or `ViewHandle.marks`.
 
 ```js
 const listener = (event) => {

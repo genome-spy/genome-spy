@@ -1410,6 +1410,30 @@ describe("ViewMutationApi", () => {
         expect(listener).toHaveBeenCalledTimes(1);
     });
 
+    test("disposes mark subscriptions when their view is disposed", async () => {
+        const { view } = await createHeadlessEngine(makeUnitSpec("track"));
+        const unsubscribeMark = vi.fn();
+        const unsubscribeHover = vi.fn();
+        const api = createViewMutationApi({
+            viewRoot: view,
+            subscribeNativeEvent: vi.fn(),
+            subscribeMarkEvent: vi.fn(() => unsubscribeMark),
+            subscribeHover: vi.fn(() => unsubscribeHover),
+            pick: vi.fn(async () => ({
+                status: /** @type {const} */ ("empty"),
+            })),
+        });
+        const handle = api.root();
+
+        handle.marks.subscribe("click", () => {});
+        handle.marks.observeHover(() => {});
+
+        view.dispose();
+
+        expect(unsubscribeMark).toHaveBeenCalledOnce();
+        expect(unsubscribeHover).toHaveBeenCalledOnce();
+    });
+
     test("defers layout reflow until the outer transaction completes", async () => {
         const requestLayoutReflow = vi.fn();
         const { view } = await createHeadlessEngine(

@@ -1,5 +1,6 @@
+/** @template TEvent */
 export default class EventListenerRegistry {
-    /** @type {Map<string, Set<(event: any) => void>>} */
+    /** @type {Map<string, Set<(event: TEvent) => void>>} */
     #listeners;
 
     constructor() {
@@ -8,7 +9,7 @@ export default class EventListenerRegistry {
 
     /**
      * @param {string} type
-     * @param {(event: any) => void} listener
+     * @param {(event: TEvent) => void} listener
      */
     add(type, listener) {
         let listeners = this.#listeners.get(type);
@@ -22,7 +23,7 @@ export default class EventListenerRegistry {
 
     /**
      * @param {string} type
-     * @param {(event: any) => void} listener
+     * @param {(event: TEvent) => void} listener
      */
     remove(type, listener) {
         this.#listeners.get(type)?.delete(listener);
@@ -30,9 +31,25 @@ export default class EventListenerRegistry {
 
     /**
      * @param {string} type
-     * @param {any} event
+     * @param {TEvent} event
+     * @param {(error: unknown) => void} [onError]
      */
-    emit(type, event) {
-        this.#listeners.get(type)?.forEach((listener) => listener(event));
+    emit(type, event, onError) {
+        if (!onError) {
+            this.#listeners.get(type)?.forEach((listener) => listener(event));
+            return;
+        }
+
+        this.#listeners.get(type)?.forEach((listener) => {
+            try {
+                listener(event);
+            } catch (error) {
+                onError(error);
+            }
+        });
+    }
+
+    clear() {
+        this.#listeners.clear();
     }
 }

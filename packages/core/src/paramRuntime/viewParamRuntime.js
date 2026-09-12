@@ -85,6 +85,9 @@ export default class ViewParamRuntime {
     /** @type {Map<string, Parameter>} */
     #paramConfigs = new Map();
 
+    /** @type {Map<string, Set<import("../types/interactionApi.d.ts").IntervalSelectionControllerApi>>} */
+    #selectionControllers = new Map();
+
     /** @type {Map<string, TransitionState>} */
     #transitionStates = new Map();
 
@@ -396,6 +399,26 @@ export default class ViewParamRuntime {
     }
 
     /**
+     * Returns the graph reference for a parameter resolved from this scope.
+     * This is intended for internal graph effects that observe settled values.
+     *
+     * @param {string} paramName
+     * @returns {import("./types.js").ParamRef<any> | undefined}
+     */
+    getParamRef(paramName) {
+        validateParameterName(paramName);
+        const runtime = this.findRuntimeForParam(paramName);
+        if (!runtime) {
+            return;
+        }
+
+        if (!runtime.#localRefs.has(paramName)) {
+            runtime.#runtime.resolve(runtime.#scopeId, paramName);
+        }
+        return runtime.#localRefs.get(paramName);
+    }
+
+    /**
      * Gets the target value for a local parameter. Non-transitioned parameters
      * use their current value as the target.
      *
@@ -419,17 +442,9 @@ export default class ViewParamRuntime {
      * @returns {() => void}
      */
     subscribe(paramName, listener) {
-        validateParameterName(paramName);
-        const runtime = this.findRuntimeForParam(paramName);
-        if (!runtime) {
-            throw new Error("Parameter not found: " + paramName);
-        }
-
-        const ref = runtime.#runtime.resolve(runtime.#scopeId, paramName);
+        const ref = this.getParamRef(paramName);
         if (!ref) {
-            throw new Error(
-                "Parameter found without local reference: " + paramName
-            );
+            throw new Error("Parameter not found: " + paramName);
         }
 
         return ref.subscribe(listener);
@@ -522,6 +537,66 @@ export default class ViewParamRuntime {
         } else {
             return this.#parentFinder()?.findRuntimeForParam(paramName);
         }
+    }
+
+    /**
+     * Finds the nearest authored declaration, including declarations that
+     * write to an outer value through `push: "outer"`.
+     *
+     * @param {string} paramName
+     * @returns {{ runtime: ViewParamRuntime, config: Parameter } | undefined}
+     */
+    findConfiguredParam(paramName) {
+        const config = this.#paramConfigs.get(paramName);
+        if (config) {
+            return { runtime: this, config };
+        }
+
+        return this.#parentFinder()?.findConfiguredParam(paramName);
+    }
+
+    /**
+     * Registers the interaction host that owns a selection declaration.
+     * Selection controllers remain the source of geometry and lifecycle state.
+     *
+     * @param {string} paramName
+     * @param {import("../types/interactionApi.d.ts").IntervalSelectionControllerApi} controller
+     * @returns {() => void}
+     */
+    registerSelectionController(paramName, controller) {
+        let controllers = this.#selectionControllers.get(paramName);
+        if (!controllers) {
+            controllers = new Set();
+            this.#selectionControllers.set(paramName, controllers);
+        }
+        controllers.add(controller);
+
+        return () => {
+            controllers.delete(controller);
+            if (controllers.size === 0) {
+                this.#selectionControllers.delete(paramName);
+            }
+        };
+    }
+
+    /**
+     * Returns the interaction host for a local selection declaration.
+     *
+     * @param {string} paramName
+     * @returns {import("../types/interactionApi.d.ts").IntervalSelectionControllerApi | undefined}
+     */
+    getSelectionController(paramName) {
+        const controllers = this.#selectionControllers.get(paramName);
+        // Unregistering the last controller removes the map entry.
+        if (!controllers) {
+            return;
+        }
+        if (controllers.size > 1) {
+            throw new Error(
+                `Selection "${paramName}" has ambiguous interaction ownership.`
+            );
+        }
+        return controllers.values().next().value;
     }
 
     /**
@@ -854,6 +929,7 @@ export default class ViewParamRuntime {
         this.#allocatedSetters.clear();
         this.#localRefs.clear();
         this.#paramConfigs.clear();
+        this.#selectionControllers.clear();
         this.#transitionStates.clear();
     }
 

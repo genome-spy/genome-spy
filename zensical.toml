@@ -4,7 +4,7 @@ site_url = "https://genomespy.app/docs/"
 repo_url = "https://github.com/genome-spy/genome-spy"
 edit_uri = "edit/master/docs/"
 extra_javascript = [{ path = "app/index.js", type = "module" }]
-extra_css = ["stylesheets/extra.css"]
+extra_css = ["stylesheets/extra.css", "stylesheets/api-reference.css"]
 nav = [
     "index.md",
     "getting-started.md",
@@ -86,6 +86,7 @@ nav = [
     ] },
     { "JavaScript API" = [
         "api/index.md",
+        { "API Reference" = "api/reference/index.md" },
         "api/embedding.md",
         "api/views.md",
         "api/runtime-state.md",

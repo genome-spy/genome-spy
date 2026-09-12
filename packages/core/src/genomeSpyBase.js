@@ -93,7 +93,9 @@ export default class GenomeSpy {
     #reportedErrors = new Set();
 
     #keyboardListenerManager = new KeyboardListenerManager();
+    /** @type {EventListenerRegistry<object>} */
     #eventListeners = new EventListenerRegistry();
+    /** @type {EventListenerRegistry<import("./view/view.js").BroadcastMessage>} */
     #extraBroadcastListeners = new EventListenerRegistry();
 
     /**
@@ -233,7 +235,7 @@ export default class GenomeSpy {
 
     /**
      * @param {string} type
-     * @param {(event: any) => void} listener
+     * @param {(event: object) => void} listener
      */
     addEventListener(type, listener) {
         this.#eventListeners.add(type, listener);
@@ -241,7 +243,7 @@ export default class GenomeSpy {
 
     /**
      * @param {string} type
-     * @param {(event: any) => void} listener
+     * @param {(event: object) => void} listener
      */
     removeEventListener(type, listener) {
         this.#eventListeners.remove(type, listener);
@@ -351,6 +353,7 @@ export default class GenomeSpy {
             return;
         }
         this.#destroyed = true;
+        this.#interactionController?.invalidatePendingPicks();
         this.animator.finalize();
 
         const canvasWrapper = this.#canvasWrapper;
@@ -584,6 +587,8 @@ export default class GenomeSpy {
                 ? this.renderPickingFramebuffer.bind(this)
                 : undefined,
             readPickingId: this.#renderingBackend.readPickingId,
+            reportError: this.#reportRuntimeError.bind(this),
+            canPick: () => Boolean(this.viewRoot?.hasRendered()),
         });
     }
 
@@ -717,6 +722,48 @@ export default class GenomeSpy {
      */
     updateTooltip(datum, converter) {
         this.#interactionController.updateTooltip(datum, converter);
+    }
+
+    /**
+     * Subscribes to native canvas input before Core routes the event.
+     *
+     * @param {string} type
+     * @param {(event: import("./types/interactionApi.d.ts").NativeInteractionEvent) => void} listener
+     * @returns {() => void}
+     */
+    subscribeNativeEvent(type, listener) {
+        return this.#interactionController.subscribeNativeEvent(type, listener);
+    }
+
+    /**
+     * @param {import("./view/view.js").default} view
+     * @param {string} type
+     * @param {(event: import("./types/interactionApi.d.ts").MarkInteractionEvent) => void | Promise<void>} listener
+     * @returns {() => void}
+     */
+    subscribeMarkEvent(view, type, listener) {
+        return this.#interactionController.subscribeMarkEvent(
+            view,
+            type,
+            listener
+        );
+    }
+
+    /**
+     * @param {import("./view/view.js").default} view
+     * @param {(hit: import("./types/interactionApi.d.ts").InternalMarkHit | undefined) => void} listener
+     * @returns {() => void}
+     */
+    subscribeHover(view, listener) {
+        return this.#interactionController.subscribeHover(view, listener);
+    }
+
+    /**
+     * @param {{ x: number, y: number }} point
+     * @param {import("./view/view.js").default} [scopeView]
+     */
+    pick(point, scopeView) {
+        return this.#interactionController.pick(point, scopeView);
     }
 
     /**
@@ -878,6 +925,7 @@ export default class GenomeSpy {
     }
 
     renderAll() {
+        this.#interactionController?.invalidatePendingPicks();
         this.#renderCoordinator.renderAll();
     }
 

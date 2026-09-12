@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="stylesheet" href="annotationEditor.scss" />
+        <title>Annotation editor</title>
+    </head>
+
+    <body>
+        <h1>Annotation editor</h1>
+        <p>
+            Hold Shift while dragging to brush a region, then right-click inside
+            it to add an annotation. The form and table belong to the embedding
+            page.
+        </p>
+        <p>
+            The named <code>brush</code> selection provides the interval, and
+            saving publishes the updated rows to the named
+            <code>annotations</code> dataset.
+        </p>
+        <p>
+            The browser context menu is canceled synchronously, then the signal
+            track is picked asynchronously before the form is shown.
+        </p>
+
+        <div id="annotation-plot"></div>
+        <p id="annotation-status" role="status"></p>
+
+        <div id="annotation-menu" hidden>
+            <strong>Add annotation</strong>
+            <form id="annotation-form">
+                <label>
+                    Name
+                    <input name="name" required />
+                </label>
+                <label>
+                    Description
+                    <textarea name="description" rows="3"></textarea>
+                </label>
+                <div>
+                    <button type="submit">Save</button>
+                    <button type="button" id="annotation-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Region</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody id="annotation-rows"></tbody>
+        </table>
+
+        <script type="module" src="/annotationEditor.js"></script>
+    </body>
+</html>

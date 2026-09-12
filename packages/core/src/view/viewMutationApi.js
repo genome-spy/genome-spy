@@ -14,6 +14,9 @@ import {
 import { getViewIdentityRegistry } from "./viewIdentityRegistry.js";
 import { getTopLevelSpecView } from "./viewFactory.js";
 import { readBinaryData } from "../data/formats/readBinary.js";
+import { createEmbedParamNamespace } from "../paramRuntime/embedParamApi.js";
+import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
+import { bindDisposer } from "../utils/bindDisposer.js";
 
 /**
  * Error thrown by the public view mutation API.
@@ -215,11 +218,11 @@ function updateNamedDataBinding(view, binding, data) {
 /**
  * Creates the public view hierarchy API for a GenomeSpy instance.
  *
- * @param {{ viewRoot: import("./view.js").default }} genomeSpy
+ * @param {{ viewRoot: import("./view.js").default } & Partial<import("../types/interactionApi.d.ts").InteractionApi>} genomeSpy
  * @param {() => boolean} [isActive]
  * @returns {import("../types/embedApi.js").ViewApi}
  */
-export function createViewMutationApi(genomeSpy, isActive) {
+export function createViewMutationApi(genomeSpy, isActive = () => true) {
     /**
      * @typedef {import("../types/embedApi.js").ViewAddress} ViewAddress
      * @typedef {import("../types/embedApi.js").ViewHandle} ViewHandle
@@ -231,6 +234,11 @@ export function createViewMutationApi(genomeSpy, isActive) {
 
     /** @type {WeakMap<import("../types/embedApi.js").ViewHandle, import("./view.js").default>} */
     const viewsByHandle = new WeakMap();
+
+    const interactionApi =
+        /** @type {import("../types/interactionApi.d.ts").InteractionApi} */ (
+            /** @type {unknown} */ (genomeSpy)
+        );
 
     let queue = Promise.resolve();
 
@@ -325,11 +333,108 @@ export function createViewMutationApi(genomeSpy, isActive) {
             },
 
             datasets: createViewDatasetApi(() => view, getRootView, isActive),
+
+            params: createEmbedParamNamespace(view, {
+                isActive,
+                isLive: () => isLiveView(view, getRootView),
+                registerDisposer: (disposer) => view.registerDisposer(disposer),
+            }),
+
+            marks: createViewMarksApi(view),
         };
 
         handlesByView.set(view, handle);
         viewsByHandle.set(handle, view);
         return handle;
+    }
+
+    /**
+     * @param {import("./view.js").default} view
+     * @returns {import("../types/embedApi.js").MarksApi}
+     */
+    function createViewMarksApi(view) {
+        return {
+            subscribe(type, listener) {
+                ensureEmbedIsActive(isActive);
+                ensureViewIsLive(view);
+                return bindDisposer(
+                    (disposer) => view.registerDisposer(disposer),
+                    interactionApi.subscribeMarkEvent(view, type, (event) =>
+                        listener({
+                            sourceEvent: event.sourceEvent,
+                            point: toPublicPoint(event.point),
+                            hit: toPublicMarkHit(event.hit),
+                        })
+                    )
+                );
+            },
+
+            observeHover(listener) {
+                ensureEmbedIsActive(isActive);
+                ensureViewIsLive(view);
+                return bindDisposer(
+                    (disposer) => view.registerDisposer(disposer),
+                    interactionApi.subscribeHover(view, (hit) =>
+                        listener(hit ? toPublicMarkHit(hit) : undefined)
+                    )
+                );
+            },
+
+            pick(point) {
+                ensureEmbedIsActive(isActive);
+                ensureViewIsLive(view);
+                return interactionApi.pick(point, view).then((result) =>
+                    result.status === "hit"
+                        ? {
+                              status: "hit",
+                              hit: toPublicMarkHit(result.hit),
+                          }
+                        : result
+                );
+            },
+        };
+    }
+
+    /**
+     * @param {{ mark: { unitView: import("./view.js").default }, datum: Record<string, unknown>, uniqueId: number }} hit
+     * @returns {import("../types/embedApi.js").MarkHit}
+     */
+    function toPublicMarkHit(hit) {
+        const datum = { ...hit.datum };
+        delete datum[UNIQUE_ID_KEY];
+        return {
+            view: getHandle(hit.mark.unitView),
+            uniqueId: hit.uniqueId,
+            datum,
+        };
+    }
+
+    /**
+     * @param {import("../view/layout/point.js").default} point
+     * @returns {{ readonly x: number, readonly y: number }}
+     */
+    function toPublicPoint(point) {
+        return Object.freeze({ x: point.x, y: point.y });
+    }
+
+    /** @param {() => boolean} isActive */
+    function ensureEmbedIsActive(isActive) {
+        if (!isActive()) {
+            throw new ViewMutationError(
+                "staleEmbed",
+                "Cannot use an API handle after the embed was finalized."
+            );
+        }
+    }
+
+    /** @param {import("./view.js").default} view */
+    function ensureViewIsLive(view) {
+        if (!isLiveView(view, getRootView)) {
+            throw new ViewMutationError(
+                "staleHandle",
+                "Cannot use a mark API handle for a removed view."
+            );
+        }
     }
 
     /**

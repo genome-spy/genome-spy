@@ -1,11 +1,10 @@
 import { ComplexDomain, NumericDomain } from "../spec/scale.js";
-import ScaleResolution from "../scales/scaleResolution.js";
 
 export type ScaleResolutionEventType = "domain" | "range";
 export interface ScaleResolutionEvent {
     type: ScaleResolutionEventType;
 
-    scaleResolution: ScaleResolution;
+    scaleResolution: ScaleResolutionApi;
 }
 
 export type ScaleResolutionListener = (event: ScaleResolutionEvent) => void;
