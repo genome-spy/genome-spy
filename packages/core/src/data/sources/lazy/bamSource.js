@@ -6,7 +6,7 @@ import { getUrlDescriptorExpressions } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
 
-/** @extends {UrlDescriptorWindowedSource<BamHandle>} */
+/** @extends {UrlDescriptorWindowedSource<BamHandle, import("../../flowNode.js").Datum[][]>} */
 export default class BamSource extends UrlDescriptorWindowedSource {
     /**
      * @typedef {object} BamHandle
@@ -96,28 +96,32 @@ export default class BamSource extends UrlDescriptorWindowedSource {
 
     /**
      * @param {number[]} interval linearized domain
+     * @param {BamHandle[]} handles
+     * @param {AbortSignal} signal
+     * @returns {Promise<{interval: number[], data: import("../../flowNode.js").Datum[][]}>}
      */
-    async loadInterval(interval) {
-        const handles = await this.getActiveUrlHandles(interval);
-        if (!handles) return;
+    async loadIntervalData(interval, handles, signal) {
         const handle = handles[0];
-        await this.discretizeAndLoad(
+        return {
             interval,
-            async (d, signal) =>
-                handle.bam
-                    .getRecordsForRange(
-                        handle.fixChrPrefix(d.chrom),
-                        d.startPos,
-                        d.endPos,
-                        { signal }
-                    )
-                    .then((records) =>
-                        records.map((record) =>
-                            createBamReadDatum(d.chrom, record)
+            data: await this.discretizeAndLoad(
+                interval,
+                async (d, signal) =>
+                    handle.bam
+                        .getRecordsForRange(
+                            handle.fixChrPrefix(d.chrom),
+                            d.startPos,
+                            d.endPos,
+                            { signal }
                         )
-                    ),
-            (chunks) => this.publishData(chunks, interval)
-        );
+                        .then((records) =>
+                            records.map((record) =>
+                                createBamReadDatum(d.chrom, record)
+                            )
+                        ),
+                signal
+            ),
+        };
     }
 }
 

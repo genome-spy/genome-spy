@@ -11,6 +11,8 @@ const featuresByUrl = new Map();
 const requestedIntervals = [];
 /** @type {Set<string>} */
 const failingHeaderUrls = new Set();
+/** @type {Map<number, Promise<{ start: number, end: number, rest: string }[]>>} */
+const pendingFeatures = new Map();
 
 vi.mock("generic-filehandle2", () => ({
     RemoteFile: class RemoteFile {
@@ -58,7 +60,9 @@ vi.mock("@gmod/bbi", () => ({
          */
         async getFeatures(chrom, start, end) {
             requestedIntervals.push({ chrom, start, end });
-            return featuresByUrl.get(this.url) ?? [];
+            return (
+                pendingFeatures.get(start) ?? featuresByUrl.get(this.url) ?? []
+            );
         }
     },
 }));
@@ -135,6 +139,7 @@ describe("BigBedSource", () => {
         openedUrls.length = 0;
         requestedIntervals.length = 0;
         failingHeaderUrls.clear();
+        pendingFeatures.clear();
         featuresByUrl.clear();
         featuresByUrl.set("https://example.org/spec/features/A.bb", [
             { start: 1, end: 2, rest: "feature A" },
@@ -152,7 +157,7 @@ describe("BigBedSource", () => {
         vi.unstubAllGlobals();
     });
 
-    it("opens a single normalized URL", async () => {
+    it("opens a single normalized URL only when requested", async () => {
         const source = new BigBedSource(
             {
                 type: "bigbed",
@@ -161,7 +166,8 @@ describe("BigBedSource", () => {
             /** @type {any} */ (createViewStub())
         );
 
-        await /** @type {any} */ (source).initializedPromise;
+        expect(openedUrls).toEqual([]);
+        await source.loadInterval([0, 100]);
 
         expect(openedUrls).toEqual(["https://example.org/spec/features.bb"]);
     });
@@ -192,7 +198,6 @@ describe("BigBedSource", () => {
             )
         );
 
-        await /** @type {any} */ (source).initializedPromise;
         await source.loadInterval([0, 100]);
 
         expect(openedUrls).toEqual([
@@ -240,7 +245,6 @@ describe("BigBedSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await /** @type {any} */ (source).initializedPromise;
         await source.loadInterval([0, 100]);
 
         expect(openedUrls).toEqual([
@@ -262,6 +266,50 @@ describe("BigBedSource", () => {
             ),
             expect.any(Error)
         );
+
+        failingHeaderUrls.clear();
+        await source.loadInterval([100, 200]);
+        expect(
+            openedUrls.filter((url) => url.endsWith("missing.bb"))
+        ).toHaveLength(2);
+    });
+
+    it("does not publish a superseded interval", async () => {
+        /** @type {(features: { start: number, end: number, rest: string }[]) => void} */
+        let resolveFirst = () => undefined;
+        pendingFeatures.set(
+            0,
+            new Promise((resolve) => {
+                resolveFirst = resolve;
+            })
+        );
+        const view = createViewStub(["A"]);
+        const source = new BigBedSource(
+            { type: "bigbed", debounceMode: "domain", url: "features/A.bb" },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        const first = source.loadInterval([0, 10]);
+        await vi.waitFor(() => expect(requestedIntervals).toHaveLength(1));
+        await source.loadInterval([20, 30]);
+        resolveFirst([{ start: 7, end: 8, rest: "stale" }]);
+        await first;
+
+        expect([...collector.getData()]).toEqual([
+            {
+                chrom: "chr1",
+                chromStart: 1,
+                chromEnd: 2,
+                name: "feature A",
+            },
+        ]);
+        expect(source.getLoadedDomain()).toEqual([20, 30]);
+        expect(view.loadingStatuses.at(-1)).toEqual({
+            status: "complete",
+            detail: undefined,
+        });
     });
 
     it("reloads when restored URL values are cached but not loaded for the current domain", async () => {
@@ -287,7 +335,6 @@ describe("BigBedSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await /** @type {any} */ (source).initializedPromise;
         await source.loadInterval([0, 100]);
 
         expect(openedUrls).toEqual([
@@ -297,28 +344,26 @@ describe("BigBedSource", () => {
         expect(requestedIntervals).toHaveLength(2);
 
         view.setVisibleSamples(["B", "A"]);
-        await /** @type {any} */ (source).initializedPromise;
         await vi.runAllTimersAsync();
 
         expect(openedUrls).toEqual([
             "https://example.org/spec/features/A.bb",
             "https://example.org/spec/features/B.bb",
         ]);
-        expect(requestedIntervals).toHaveLength(2);
+        expect(requestedIntervals).toHaveLength(4);
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
 
         view.setVisibleSamples(["A"]);
-        await /** @type {any} */ (source).initializedPromise;
         await vi.runAllTimersAsync();
 
-        expect(requestedIntervals).toHaveLength(2);
+        expect(requestedIntervals).toHaveLength(5);
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
 
         const domainChangePromise = source.onDomainChanged([100, 200]);
         await vi.runAllTimersAsync();
         await domainChangePromise;
 
-        expect(requestedIntervals).toHaveLength(3);
+        expect(requestedIntervals).toHaveLength(5);
         expect([...collector.getData()]).toEqual([
             {
                 sample: "A",
@@ -330,14 +375,13 @@ describe("BigBedSource", () => {
         ]);
 
         view.setVisibleSamples(["A", "B"]);
-        await /** @type {any} */ (source).initializedPromise;
         await vi.runAllTimersAsync();
 
         expect(openedUrls).toEqual([
             "https://example.org/spec/features/A.bb",
             "https://example.org/spec/features/B.bb",
         ]);
-        expect(requestedIntervals).toHaveLength(5);
+        expect(requestedIntervals).toHaveLength(7);
         expect([...collector.getData()]).toEqual([
             {
                 sample: "A",
@@ -356,7 +400,6 @@ describe("BigBedSource", () => {
         ]);
 
         view.setVisibleSamples(["A", "C"]);
-        await /** @type {any} */ (source).initializedPromise;
         await vi.runAllTimersAsync();
 
         expect(openedUrls).toEqual([
@@ -364,7 +407,7 @@ describe("BigBedSource", () => {
             "https://example.org/spec/features/B.bb",
             "https://example.org/spec/features/C.bb",
         ]);
-        expect(requestedIntervals).toHaveLength(7);
+        expect(requestedIntervals).toHaveLength(9);
         expect([...collector.getData()]).toEqual([
             {
                 sample: "A",
@@ -401,7 +444,7 @@ describe("BigBedSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await /** @type {any} */ (source).initializedPromise;
+        await source.loadInterval([0, 100]);
 
         expect(openedUrls).toEqual([]);
         expect(view.loadingStatuses.at(-1)).toEqual({ status: "complete" });

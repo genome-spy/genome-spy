@@ -56,6 +56,7 @@ vi.mock("@gmod/bbi", () => ({
  */
 function createViewStub(initialVisibleSamples = ["A", "B"]) {
     let domain = [0, 100];
+    let axisLength = 100;
     /** @type {{ status: import("../../../types/viewContext.js").DataLoadingStatus, detail?: string }[]} */
     const loadingStatuses = [];
 
@@ -91,7 +92,7 @@ function createViewStub(initialVisibleSamples = ["A", "B"]) {
 
     scaleResolution = {
         addEventListener: /** @returns {undefined} */ () => undefined,
-        getAxisLength: () => 100,
+        getAxisLength: () => axisLength,
         getDomain: () => domain,
         getScale: () => scale,
     };
@@ -102,6 +103,9 @@ function createViewStub(initialVisibleSamples = ["A", "B"]) {
         loadingStatuses,
         setDomain: (/** @type {number[]} */ value) => {
             domain = value;
+        },
+        setAxisLength: (/** @type {number} */ value) => {
+            axisLength = value;
         },
         view: {
             paramRuntime,
@@ -147,7 +151,7 @@ describe("BigWigSource", () => {
         collector.observe(() =>
             readiness.push(isDataReady(collector, { x: [200, 300] }))
         );
-        await source.onDomainChanged([200, 300]);
+        await source.loadInterval([200, 300]);
         expect(Array.from(collector.getData())).toEqual([]);
         expect(readiness.at(-1)).toBe(true);
         expect(source.getLoadedDomain()).toEqual([200, 300]);
@@ -184,16 +188,29 @@ describe("BigWigSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await /** @type {any} */ (source).initializedPromise;
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(false);
 
-        await source.loadInterval([0, 100], [1, 1]);
+        await source.loadInterval([0, 100]);
 
         expect([...collector.getData()]).toEqual([
             { sample: "A", chrom: "chr1", start: 1, end: 2, score: 3 },
             { sample: "B", chrom: "chr1", start: 4, end: 5, score: 6 },
         ]);
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
+    });
+
+    it("reloads when layout changes the effective window size", async () => {
+        const { view, setAxisLength } = createViewStub(["A"]);
+        const source = new BigWigSource(
+            { type: "bigwig", debounceMode: "domain", url: "signals/A.bw" },
+            /** @type {any} */ (view)
+        );
+
+        await source.loadInterval([0, 100_000]);
+        setAxisLength(1000);
+        await source.loadInterval([0, 100_000]);
+
+        expect(requestedIntervals).toHaveLength(2);
     });
 
     it("reloads the current scale domain when URL values change before the first domain event", async () => {
@@ -221,10 +238,7 @@ describe("BigWigSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await /** @type {any} */ (source).initializedPromise;
-
         setVisibleSamples(["A"]);
-        await /** @type {any} */ (source).initializedPromise;
         await vi.runAllTimersAsync();
 
         expect(requestedIntervals.at(-1)).toEqual({
@@ -260,50 +274,45 @@ describe("BigWigSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await /** @type {any} */ (source).initializedPromise;
-        await source.loadInterval([0, 100], [1, 1]);
+        await source.loadInterval([0, 100]);
 
         expect(openedUrls).toEqual(["signals/A.bw", "signals/B.bw"]);
         expect(requestedIntervals).toHaveLength(2);
 
         setVisibleSamples(["B", "A"]);
-        await /** @type {any} */ (source).initializedPromise;
         await vi.runAllTimersAsync();
 
         expect(openedUrls).toEqual(["signals/A.bw", "signals/B.bw"]);
-        expect(requestedIntervals).toHaveLength(2);
+        expect(requestedIntervals).toHaveLength(4);
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
 
         setVisibleSamples(["A"]);
-        await /** @type {any} */ (source).initializedPromise;
         await vi.runAllTimersAsync();
 
         expect(openedUrls).toEqual(["signals/A.bw", "signals/B.bw"]);
-        expect(requestedIntervals).toHaveLength(2);
+        expect(requestedIntervals).toHaveLength(5);
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
 
         const domainChangePromise = source.onDomainChanged([100, 200]);
         await vi.runAllTimersAsync();
         await domainChangePromise;
 
-        expect(requestedIntervals).toHaveLength(3);
+        expect(requestedIntervals).toHaveLength(5);
         expect([...collector.getData()]).toEqual([
             { sample: "A", chrom: "chr1", start: 1, end: 2, score: 3 },
         ]);
 
         setVisibleSamples(["A", "B"]);
-        await /** @type {any} */ (source).initializedPromise;
         await vi.runAllTimersAsync();
 
         expect(openedUrls).toEqual(["signals/A.bw", "signals/B.bw"]);
-        expect(requestedIntervals).toHaveLength(5);
+        expect(requestedIntervals).toHaveLength(7);
         expect([...collector.getData()]).toEqual([
             { sample: "A", chrom: "chr1", start: 1, end: 2, score: 3 },
             { sample: "B", chrom: "chr1", start: 4, end: 5, score: 6 },
         ]);
 
         setVisibleSamples(["A", "C"]);
-        await /** @type {any} */ (source).initializedPromise;
         await vi.runAllTimersAsync();
 
         expect(openedUrls).toEqual([
@@ -311,7 +320,7 @@ describe("BigWigSource", () => {
             "signals/B.bw",
             "signals/C.bw",
         ]);
-        expect(requestedIntervals).toHaveLength(7);
+        expect(requestedIntervals).toHaveLength(9);
         expect([...collector.getData()]).toEqual([
             { sample: "A", chrom: "chr1", start: 1, end: 2, score: 3 },
             { sample: "C", chrom: "chr1", start: 7, end: 8, score: 9 },
@@ -338,8 +347,7 @@ describe("BigWigSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await /** @type {any} */ (source).initializedPromise;
-        await source.loadInterval([0, 100], [1, 1]);
+        await source.loadInterval([0, 100]);
 
         expect(openedUrls).toEqual(["signals/A.bw"]);
         expect([...collector.getData()]).toEqual([
@@ -347,7 +355,12 @@ describe("BigWigSource", () => {
         ]);
 
         setVisibleSamples(["A", "B"]);
-        await /** @type {any} */ (source).initializedPromise;
+        expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(false);
+        expect(loadingStatuses.at(-1)).toEqual({
+            status: "loading",
+            detail: undefined,
+        });
+        await source.loadInterval([0, 100]);
 
         expect(openedUrls).toEqual(["signals/A.bw"]);
         expect(loadingStatuses.at(-1)).toEqual({ status: "complete" });
@@ -377,8 +390,7 @@ describe("BigWigSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await /** @type {any} */ (source).initializedPromise;
-        await source.loadInterval([0, 100], [1]);
+        await source.loadInterval([0, 100]);
 
         expect(openedUrls).toEqual(["signals/A.bw", "signals/missing.bw"]);
         expect(loadingStatuses.at(-1)).toEqual({ status: "complete" });

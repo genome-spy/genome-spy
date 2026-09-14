@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { registerLazyDataSource } from "../data/sources/dataSourceFactory.js";
-import SingleAxisWindowedSource from "../data/sources/lazy/singleAxisWindowedSource.js";
+import UrlDescriptorWindowedSource from "../data/sources/lazy/urlDescriptorWindowedSource.js";
 import GenomeSpy from "../genomeSpyBase.js";
 import Animator from "../utils/animator.js";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
@@ -34,13 +34,21 @@ afterEach(() => {
  * Real lazy publication with test-controlled completion order, without timers
  * or remote data. The inherited startup load still emits its dummy completion.
  */
-class ControlledSource extends SingleAxisWindowedSource {
+/** @extends {UrlDescriptorWindowedSource<object, import("../data/flowNode.js").Datum[][]>} */
+class ControlledSource extends UrlDescriptorWindowedSource {
     /**
      * @param {object} params
      * @param {import("../view/view.js").default} view
      */
     constructor(params, view) {
         super(view, "x");
+        this.setupUrlDescriptors(
+            { getUrl: () => "test" },
+            {
+                loadModules: async () => /** @type {undefined} */ (undefined),
+                createHandle: async () => /** @type {object} */ ({}),
+            }
+        );
     }
 
     onDomainChanged() {

@@ -9,7 +9,7 @@ import {
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
 
-/** @extends {UrlDescriptorWindowedSource<BigBedHandle>} */
+/** @extends {UrlDescriptorWindowedSource<BigBedHandle, import("../../flowNode.js").Datum[][]>} */
 export default class BigBedSource extends UrlDescriptorWindowedSource {
     /**
      * @typedef {object} BigBedHandle
@@ -105,32 +105,41 @@ export default class BigBedSource extends UrlDescriptorWindowedSource {
 
     /**
      * @param {number[]} interval linearized domain
+     * @param {BigBedHandle[]} handles
+     * @param {AbortSignal} signal
+     * @returns {Promise<{interval: number[], data: import("../../flowNode.js").Datum[][]}>}
      */
-    async loadInterval(interval) {
-        const handles = await this.getActiveUrlHandles(interval);
-        if (!handles) return;
-        await this.discretizeAndLoad(
+    async loadIntervalData(interval, handles, signal) {
+        return {
             interval,
-            async (d, signal) =>
-                (
-                    await Promise.all(
-                        handles.map((handle) =>
-                            handle.bbi
-                                .getFeatures(d.chrom, d.startPos, d.endPos, {
-                                    signal,
-                                })
-                                .then((features) =>
-                                    features.map((f) =>
-                                        handle.attachFields(
-                                            handle.parseLine(d.chrom, f)
+            data: await this.discretizeAndLoad(
+                interval,
+                async (d, signal) =>
+                    (
+                        await Promise.all(
+                            handles.map((handle) =>
+                                handle.bbi
+                                    .getFeatures(
+                                        d.chrom,
+                                        d.startPos,
+                                        d.endPos,
+                                        {
+                                            signal,
+                                        }
+                                    )
+                                    .then((features) =>
+                                        features.map((f) =>
+                                            handle.attachFields(
+                                                handle.parseLine(d.chrom, f)
+                                            )
                                         )
                                     )
-                                )
+                            )
                         )
-                    )
-                ).flat(),
-            (chunks) => this.publishData(chunks, interval)
-        );
+                    ).flat(),
+                signal
+            ),
+        };
     }
 }
 

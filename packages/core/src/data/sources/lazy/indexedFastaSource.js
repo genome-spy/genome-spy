@@ -6,7 +6,7 @@ import { getUrlDescriptorExpressions } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
 
-/** @extends {UrlDescriptorWindowedSource<import("@gmod/indexedfasta").IndexedFasta>} */
+/** @extends {UrlDescriptorWindowedSource<import("@gmod/indexedfasta").IndexedFasta, import("../../flowNode.js").Datum[][]>} */
 export default class IndexedFastaSource extends UrlDescriptorWindowedSource {
     /**
      * @param {import("../../../spec/data.js").IndexedFastaData} params
@@ -72,12 +72,13 @@ export default class IndexedFastaSource extends UrlDescriptorWindowedSource {
 
     /**
      * @param {number[]} interval linearized domain
+     * @param {import("@gmod/indexedfasta").IndexedFasta[]} handles
+     * @param {AbortSignal} signal
+     * @returns {Promise<{interval: number[], data: import("../../flowNode.js").Datum[][]}>}
      */
-    async loadInterval(interval) {
-        const handles = await this.getActiveUrlHandles(interval);
-        if (!handles) return;
+    async loadIntervalData(interval, handles, signal) {
         const fasta = handles[0];
-        await this.discretizeAndLoad(
+        const features = await this.discretizeAndLoad(
             interval,
             async (d, signal) =>
                 fasta
@@ -98,12 +99,12 @@ export default class IndexedFastaSource extends UrlDescriptorWindowedSource {
                             return undefined;
                         }
                     }),
-            (features) =>
-                this.publishData(
-                    [features.filter((feature) => feature !== undefined)],
-                    interval
-                )
+            signal
         );
+        return {
+            interval,
+            data: [features.filter((feature) => feature !== undefined)],
+        };
     }
 }
 

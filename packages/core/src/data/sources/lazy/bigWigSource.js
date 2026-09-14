@@ -12,7 +12,7 @@ import {
 /**
  *
  */
-/** @extends {UrlDescriptorWindowedSource<BigWigHandle>} */
+/** @extends {UrlDescriptorWindowedSource<BigWigHandle, import("../../flowNode.js").Datum[][]>} */
 export default class BigWigSource extends UrlDescriptorWindowedSource {
     /**
      * @typedef {object} BigWigHandle
@@ -108,10 +108,17 @@ export default class BigWigSource extends UrlDescriptorWindowedSource {
      *
      * @param {number[]} domain Linearized domain
      */
-    async onDomainChanged(domain) {
-        const handles = await this.getActiveUrlHandles(domain);
-        if (!handles) return;
+    onDomainChanged(domain) {
+        this.requestWindow(domain);
+    }
 
+    /**
+     * @param {number[]} domain
+     * @param {BigWigHandle[]} handles
+     * @param {AbortSignal} signal
+     * @returns {Promise<{interval: number[], data: import("../../flowNode.js").Datum[][], windowSize: number} | undefined>}
+     */
+    async loadIntervalData(domain, handles, signal) {
         // TODO: Postpone the initial load until layout is computed and remove 700.
         const length = this.scaleResolution.getAxisLength() || 700;
 
@@ -128,39 +135,32 @@ export default class BigWigSource extends UrlDescriptorWindowedSource {
             5000
         );
 
-        this.callIfWindowsChanged(domain, windowSize, (quantizedInterval) =>
-            this.loadInterval(quantizedInterval, selectedReductionLevels)
-        );
-    }
-
-    /**
-     * @param {number[]} interval linearized domain
-     * @param {number[]} selectedReductionLevels
-     */
-    // @ts-expect-error
-    async loadInterval(interval, selectedReductionLevels) {
-        const handles = this.descriptorState.activeHandles;
-        if (!handles) return;
-        await this.discretizeAndLoad(
+        const interval = this.getChangedWindow(domain, windowSize);
+        if (!interval) return;
+        return {
             interval,
-            {
-                load: (d, signal) =>
-                    this.#loadFeatures(
-                        d,
-                        handles,
-                        selectedReductionLevels,
-                        signal
-                    ),
-                loadBatch: (intervals, signal) =>
-                    this.#loadFeatureBatches(
-                        intervals,
-                        handles,
-                        selectedReductionLevels,
-                        signal
-                    ),
-            },
-            (chunks) => this.publishData(chunks, interval)
-        );
+            windowSize,
+            data: await this.discretizeAndLoad(
+                interval,
+                {
+                    load: (d, signal) =>
+                        this.#loadFeatures(
+                            d,
+                            handles,
+                            selectedReductionLevels,
+                            signal
+                        ),
+                    loadBatch: (intervals, signal) =>
+                        this.#loadFeatureBatches(
+                            intervals,
+                            handles,
+                            selectedReductionLevels,
+                            signal
+                        ),
+                },
+                signal
+            ),
+        };
     }
 
     /**

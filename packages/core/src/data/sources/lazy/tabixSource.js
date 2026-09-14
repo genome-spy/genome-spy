@@ -5,6 +5,7 @@ import {
 import {
     attachDescriptorFieldsToData,
     getUrlDescriptorExpressions,
+    urlDescriptorKey,
 } from "../urlDescriptor.js";
 import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
 
@@ -12,7 +13,7 @@ import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
  * @template T
  * @template P
  * @abstract
- * @extends {UrlDescriptorWindowedSource<TabixHandle>}
+ * @extends {UrlDescriptorWindowedSource<TabixHandle, [TabixHandle, T[]][][]>}
  */
 export default class TabixSource extends UrlDescriptorWindowedSource {
     /**
@@ -71,6 +72,10 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
                 getIndexUrl: () => this.params.indexUrl,
             },
             {
+                cacheKey: (descriptor) =>
+                    urlDescriptorKey(descriptor) +
+                    "\n" +
+                    withoutExprRef(this.params.addChrPrefix),
                 loadModules: async () => {
                     const { TabixIndexedFile, RemoteFile } =
                         await loadTabixModules();
@@ -136,46 +141,57 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
      * Listen to the domain change event and update data when the covered windows change.
      *
      * @param {number[]} interval linearized domain
+     * @param {TabixHandle[]} handles
+     * @param {AbortSignal} signal
+     * @returns {Promise<{interval: number[], data: [TabixHandle, T[]][][]}>}
      */
-    async loadInterval(interval) {
-        await this.initializedPromise;
-        const handles = this.descriptorState.activeHandles;
-        if (!handles) return;
-        await this.discretizeAndLoad(
+    async loadIntervalData(interval, handles, signal) {
+        return {
             interval,
-            async (discreteInterval, signal) =>
-                await Promise.all(
-                    handles.map(async (handle) => {
-                        /** @type {string[]} */
-                        const lines = [];
+            data: await this.discretizeAndLoad(
+                interval,
+                async (discreteInterval, signal) =>
+                    await Promise.all(
+                        handles.map(async (handle) => {
+                            /** @type {string[]} */
+                            const lines = [];
 
-                        await handle.tbiIndex.getLines(
-                            discreteInterval.chrom,
-                            discreteInterval.startPos,
-                            discreteInterval.endPos,
-                            {
-                                lineCallback: (line) => {
-                                    lines.push(line);
-                                },
-                                signal,
-                            }
-                        );
+                            await handle.tbiIndex.getLines(
+                                discreteInterval.chrom,
+                                discreteInterval.startPos,
+                                discreteInterval.endPos,
+                                {
+                                    lineCallback: (line) => {
+                                        lines.push(line);
+                                    },
+                                    signal,
+                                }
+                            );
 
-                        return /** @type {[TabixHandle, T[]]} */ ([
-                            handle,
-                            attachDescriptorFieldsToData(
-                                this._parseFeatures(
-                                    lines,
-                                    handle.parserContext
+                            return /** @type {[TabixHandle, T[]]} */ ([
+                                handle,
+                                attachDescriptorFieldsToData(
+                                    this._parseFeatures(
+                                        lines,
+                                        handle.parserContext
+                                    ),
+                                    handle.fields
                                 ),
-                                handle.fields
-                            ),
-                        ]);
-                    })
-                ),
-            (featureChunksByHandle) =>
-                this.#publishHandleData(handles, featureChunksByHandle)
-        );
+                            ]);
+                        })
+                    ),
+                signal
+            ),
+        };
+    }
+
+    /**
+     * @param {[TabixHandle, T[]][][]} featureChunksByHandle
+     * @param {number[]} interval
+     * @param {TabixHandle[]} handles
+     */
+    publishInterval(featureChunksByHandle, interval, handles) {
+        this.#publishHandleData(handles, featureChunksByHandle);
     }
 
     /**
@@ -243,7 +259,6 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
             }
         }
 
-        this.descriptorState.markLoaded();
         this.complete();
     }
 }

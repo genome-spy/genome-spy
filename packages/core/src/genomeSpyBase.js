@@ -36,7 +36,7 @@ import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
-import SingleAxisWindowedSource from "./data/sources/lazy/singleAxisWindowedSource.js";
+import UrlDescriptorWindowedSource from "./data/sources/lazy/urlDescriptorWindowedSource.js";
 import { ensureAssembliesForView } from "./genome/assemblyPreflight.js";
 import { attachViewLevelScaleProps } from "./scales/viewLevelScaleProps.js";
 import {
@@ -984,7 +984,7 @@ function hasWindowedLazyDataSource(view) {
     return (
         !!collector &&
         iterateDataDependencies(collector).some(
-            (node) => node instanceof SingleAxisWindowedSource
+            (node) => node instanceof UrlDescriptorWindowedSource
         )
     );
 }
