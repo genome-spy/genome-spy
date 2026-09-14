@@ -61,11 +61,10 @@ arrangement.
   prevents publication. Superseded fetched content skips parsing; async parser
   results are checked again before publication. Reset still occurs at load start; this does not introduce
   retained pending data, cancellation, or a shared async scheduler.
-- Descriptor-backed windowed sources share a revisioned handle cache. A URL
-  change synchronously invalidates readiness and aborts interval work before
-  normalization; only the latest initialization and interval revision may
-  publish data or status. BAM and indexed FASTA use the same replacement and
-  current-domain reload lifecycle as BigBed, BigWig, and Tabix.
+- Descriptor-backed windowed sources cache handles independently of requests.
+  A URL change synchronously invalidates readiness, while one request signal
+  guards normalization, handle acquisition, interval loading, publication, and
+  status. Descriptor errors surface when a visible window is requested.
 - `src/data/dataReadiness.js` walks the actual optimized primary path and
   `FlowNode.dataDependencies` side edges. `SideInputBinding` owns observation and
   consumed revisions for declared collectors. It binds during `initializeOnce()`,
@@ -106,8 +105,8 @@ arrangement.
 - Initial contribution readiness requires meaningful publication, including
   empty results. Dummy lazy startup completion is pending. Current viewport
   readiness additionally uses each lazy source's coverage policy. Windowed
-  sources keep fetched coverage separate until publication; Tabix preserves
-  physical file batches while publishing its coverage at the same boundary.
+  sources publish coverage and rows atomically; Tabix preserves physical file
+  batches at that same boundary.
 - Scale initial finalization uses contribution readiness independently of
   effective-domain availability. Partial domains remain available to rendering
   and lazy requests; readiness never gates creation of the scale itself.

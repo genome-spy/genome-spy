@@ -7,10 +7,10 @@ import {
     getUrlDescriptorExpressions,
 } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
-import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
+import IntervalUrlSource from "./intervalUrlSource.js";
 
-/** @extends {UrlDescriptorWindowedSource<BigBedHandle>} */
-export default class BigBedSource extends UrlDescriptorWindowedSource {
+/** @extends {IntervalUrlSource<BigBedHandle, import("../../flowNode.js").Datum[][]>} */
+export default class BigBedSource extends IntervalUrlSource {
     /**
      * @typedef {object} BigBedHandle
      * @prop {(datum: Record<string, any>) => Record<string, any>} attachFields
@@ -54,16 +54,11 @@ export default class BigBedSource extends UrlDescriptorWindowedSource {
             throw new Error("No URL provided for BigBedSource");
         }
 
-        this.setupDebouncing(this.params);
-
-        this.setupUrlDescriptors(
-            { getUrl: () => this.params.url },
-            {
-                loadModules: loadBigBedModules,
-                createHandle: (descriptor, { BigBed, RemoteFile, BED }) =>
-                    this.#createHandle(descriptor, BigBed, RemoteFile, BED),
-            }
-        );
+        this.setupUrlLoading({
+            loadModules: loadBigBedModules,
+            createHandle: (descriptor, { BigBed, RemoteFile, BED }) =>
+                this.#createHandle(descriptor, BigBed, RemoteFile, BED),
+        });
     }
 
     get label() {
@@ -105,36 +100,41 @@ export default class BigBedSource extends UrlDescriptorWindowedSource {
 
     /**
      * @param {number[]} interval linearized domain
+     * @param {BigBedHandle[]} handles
+     * @param {AbortSignal} signal
+     * @returns {Promise<{interval: number[], data: import("../../flowNode.js").Datum[][]}>}
      */
-    async loadInterval(interval) {
-        const handles = await this.getActiveUrlHandles(interval);
-        if (!handles) return;
-        const features = await this.discretizeAndLoad(
+    async loadWindow(interval, handles, signal) {
+        return {
             interval,
-            async (d, signal) =>
-                (
-                    await Promise.all(
-                        handles.map((handle) =>
-                            handle.bbi
-                                .getFeatures(d.chrom, d.startPos, d.endPos, {
-                                    signal,
-                                })
-                                .then((features) =>
-                                    features.map((f) =>
-                                        handle.attachFields(
-                                            handle.parseLine(d.chrom, f)
+            data: await this.discretizeAndLoad(
+                interval,
+                async (d, signal) =>
+                    (
+                        await Promise.all(
+                            handles.map((handle) =>
+                                handle.bbi
+                                    .getFeatures(
+                                        d.chrom,
+                                        d.startPos,
+                                        d.endPos,
+                                        {
+                                            signal,
+                                        }
+                                    )
+                                    .then((features) =>
+                                        features.map((f) =>
+                                            handle.attachFields(
+                                                handle.parseLine(d.chrom, f)
+                                            )
                                         )
                                     )
-                                )
+                            )
                         )
-                    )
-                ).flat()
-        );
-
-        if (features) {
-            this.descriptorState.markLoaded();
-            this.publishData(features);
-        }
+                    ).flat(),
+                signal
+            ),
+        };
     }
 }
 

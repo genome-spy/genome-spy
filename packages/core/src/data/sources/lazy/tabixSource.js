@@ -5,16 +5,17 @@ import {
 import {
     attachDescriptorFieldsToData,
     getUrlDescriptorExpressions,
+    urlDescriptorKey,
 } from "../urlDescriptor.js";
-import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
+import IntervalUrlSource from "./intervalUrlSource.js";
 
 /**
  * @template T
  * @template P
  * @abstract
- * @extends {UrlDescriptorWindowedSource<TabixHandle>}
+ * @extends {IntervalUrlSource<TabixHandle, [TabixHandle, T[]][][]>}
  */
-export default class TabixSource extends UrlDescriptorWindowedSource {
+export default class TabixSource extends IntervalUrlSource {
     /**
      * @typedef {object} TabixHandle
      * @prop {import("@gmod/tabix").TabixIndexedFile} tbiIndex
@@ -63,43 +64,37 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
             throw new Error("No URL provided for TabixSource");
         }
 
-        this.setupDebouncing(this.params);
+        this.setupUrlLoading({
+            cacheKey: (descriptor) =>
+                urlDescriptorKey(descriptor) +
+                "\n" +
+                withoutExprRef(this.params.addChrPrefix),
+            loadModules: async () => {
+                const { TabixIndexedFile, RemoteFile } =
+                    await loadTabixModules();
+                const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
 
-        this.setupUrlDescriptors(
-            {
-                getUrl: () => this.params.url,
-                getIndexUrl: () => this.params.indexUrl,
+                const renameRefSeqs =
+                    addChrPrefix === true
+                        ? (/** @type {string} */ refSeq) => "chr" + refSeq
+                        : addChrPrefix
+                          ? (/** @type {string} */ refSeq) =>
+                                addChrPrefix + refSeq
+                          : undefined;
+
+                return { TabixIndexedFile, RemoteFile, renameRefSeqs };
             },
-            {
-                loadModules: async () => {
-                    const { TabixIndexedFile, RemoteFile } =
-                        await loadTabixModules();
-                    const addChrPrefix = withoutExprRef(
-                        this.params.addChrPrefix
-                    );
-
-                    const renameRefSeqs =
-                        addChrPrefix === true
-                            ? (/** @type {string} */ refSeq) => "chr" + refSeq
-                            : addChrPrefix
-                              ? (/** @type {string} */ refSeq) =>
-                                    addChrPrefix + refSeq
-                              : undefined;
-
-                    return { TabixIndexedFile, RemoteFile, renameRefSeqs };
-                },
-                createHandle: (
+            createHandle: (
+                descriptor,
+                { TabixIndexedFile, RemoteFile, renameRefSeqs }
+            ) =>
+                this.#createHandle(
                     descriptor,
-                    { TabixIndexedFile, RemoteFile, renameRefSeqs }
-                ) =>
-                    this.#createHandle(
-                        descriptor,
-                        TabixIndexedFile,
-                        RemoteFile,
-                        renameRefSeqs
-                    ),
-            }
-        );
+                    TabixIndexedFile,
+                    RemoteFile,
+                    renameRefSeqs
+                ),
+        });
     }
 
     /**
@@ -136,50 +131,57 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
      * Listen to the domain change event and update data when the covered windows change.
      *
      * @param {number[]} interval linearized domain
+     * @param {TabixHandle[]} handles
+     * @param {AbortSignal} signal
+     * @returns {Promise<{interval: number[], data: [TabixHandle, T[]][][]}>}
      */
-    async loadInterval(interval) {
-        await this.initializedPromise;
-        const handles = this.descriptorState.activeHandles;
-        if (!handles) return;
-        const featureChunksByHandle = await this.discretizeAndLoad(
+    async loadWindow(interval, handles, signal) {
+        return {
             interval,
-            async (discreteInterval, signal) =>
-                await Promise.all(
-                    handles.map(async (handle) => {
-                        /** @type {string[]} */
-                        const lines = [];
+            data: await this.discretizeAndLoad(
+                interval,
+                async (discreteInterval, signal) =>
+                    await Promise.all(
+                        handles.map(async (handle) => {
+                            /** @type {string[]} */
+                            const lines = [];
 
-                        await handle.tbiIndex.getLines(
-                            discreteInterval.chrom,
-                            discreteInterval.startPos,
-                            discreteInterval.endPos,
-                            {
-                                lineCallback: (line) => {
-                                    lines.push(line);
-                                },
-                                signal,
-                            }
-                        );
+                            await handle.tbiIndex.getLines(
+                                discreteInterval.chrom,
+                                discreteInterval.startPos,
+                                discreteInterval.endPos,
+                                {
+                                    lineCallback: (line) => {
+                                        lines.push(line);
+                                    },
+                                    signal,
+                                }
+                            );
 
-                        return /** @type {[TabixHandle, T[]]} */ ([
-                            handle,
-                            attachDescriptorFieldsToData(
-                                this._parseFeatures(
-                                    lines,
-                                    handle.parserContext
+                            return /** @type {[TabixHandle, T[]]} */ ([
+                                handle,
+                                attachDescriptorFieldsToData(
+                                    this._parseFeatures(
+                                        lines,
+                                        handle.parserContext
+                                    ),
+                                    handle.fields
                                 ),
-                                handle.fields
-                            ),
-                        ]);
-                    })
-                )
-        );
+                            ]);
+                        })
+                    ),
+                signal
+            ),
+        };
+    }
 
-        if (featureChunksByHandle) {
-            // This source preserves per-file batches instead of publishData().
-            this._lastLoadedDomain = Array.from(interval);
-            this.#publishHandleData(handles, featureChunksByHandle);
-        }
+    /**
+     * @param {[TabixHandle, T[]][][]} featureChunksByHandle
+     * @param {number[]} interval
+     * @param {TabixHandle[]} handles
+     */
+    publishInterval(featureChunksByHandle, interval, handles) {
+        this.#publishHandleData(handles, featureChunksByHandle);
     }
 
     /**
@@ -247,7 +249,6 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
             }
         }
 
-        this.descriptorState.markLoaded();
         this.complete();
     }
 }

@@ -27,12 +27,6 @@ export default class SingleAxisLazySource extends DataSource {
     #fireDomainChanged;
 
     /**
-     * Has to be resolved before any data can be requested upon domain changes.
-     * @protected
-     */
-    initializedPromise = Promise.resolve();
-
-    /**
      * Coverage of the latest published batch, not merely a finished fetch.
      * @type {number[] | undefined}
      * @protected

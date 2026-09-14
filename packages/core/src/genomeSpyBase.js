@@ -36,7 +36,7 @@ import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
-import SingleAxisWindowedSource from "./data/sources/lazy/singleAxisWindowedSource.js";
+import IntervalUrlSource from "./data/sources/lazy/intervalUrlSource.js";
 import { ensureAssembliesForView } from "./genome/assemblyPreflight.js";
 import { attachViewLevelScaleProps } from "./scales/viewLevelScaleProps.js";
 import {
@@ -708,7 +708,7 @@ export default class GenomeSpy {
             undefined,
             signal,
             (view) =>
-                isEffectivelyVisible(view) && hasWindowedLazyDataSource(view)
+                isEffectivelyVisible(view) && hasIntervalLazyDataSource(view)
         );
     }
 
@@ -979,12 +979,12 @@ async function loadSvgRenderer() {
 /**
  * @param {View} view
  */
-function hasWindowedLazyDataSource(view) {
+function hasIntervalLazyDataSource(view) {
     const collector = view.flowHandle?.collector;
     return (
         !!collector &&
         iterateDataDependencies(collector).some(
-            (node) => node instanceof SingleAxisWindowedSource
+            (node) => node instanceof IntervalUrlSource
         )
     );
 }

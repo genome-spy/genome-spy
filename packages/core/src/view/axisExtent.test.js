@@ -14,7 +14,7 @@ import { checkForDuplicateScaleNames } from "./viewUtils.js";
 import { initializeViewData } from "../genomeSpy/viewDataInit.js";
 import { getTextHeight } from "../fonts/textMetrics.js";
 import { registerLazyDataSource } from "../data/sources/dataSourceFactory.js";
-import SingleAxisWindowedSource from "../data/sources/lazy/singleAxisWindowedSource.js";
+import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
 import { isDataReady } from "../data/dataReadiness.js";
 
 /**
@@ -786,7 +786,7 @@ describe("Axis extent measurement", () => {
     );
 
     test("a usable partial shared domain measures labels while a lazy contributor remains pending", async () => {
-        class PendingSource extends SingleAxisWindowedSource {
+        class PendingSource extends SingleAxisLazySource {
             /**
              * @param {object} params
              * @param {import("./view.js").default} view

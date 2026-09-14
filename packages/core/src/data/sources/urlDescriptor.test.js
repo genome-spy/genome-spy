@@ -3,7 +3,6 @@ import {
     createDescriptorFieldAttacher,
     getUrlDescriptorExpressions,
     normalizeUrlDescriptors,
-    normalizeSingleUrlDescriptor,
     UrlLimitExceededError,
 } from "./urlDescriptor.js";
 
@@ -119,17 +118,6 @@ describe("normalizeUrlDescriptors", () => {
                 },
             })
         ).rejects.toThrow(UrlLimitExceededError);
-    });
-
-    it("normalizes a source that expects one resolved descriptor", async () => {
-        await expect(
-            normalizeSingleUrlDescriptor(
-                {
-                    url: ["a.bam", "b.bam"],
-                },
-                "BamSource"
-            )
-        ).rejects.toThrow("BamSource supports exactly one resolved URL.");
     });
 
     it("returns nested template expressions for grouped activation", () => {

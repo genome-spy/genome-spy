@@ -3,7 +3,7 @@ import {
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
-import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
+import IntervalUrlSource from "./intervalUrlSource.js";
 import {
     createDescriptorFieldAttacher,
     getUrlDescriptorExpressions,
@@ -12,8 +12,8 @@ import {
 /**
  *
  */
-/** @extends {UrlDescriptorWindowedSource<BigWigHandle>} */
-export default class BigWigSource extends UrlDescriptorWindowedSource {
+/** @extends {IntervalUrlSource<BigWigHandle, import("../../flowNode.js").Datum[][]>} */
+export default class BigWigSource extends IntervalUrlSource {
     /**
      * @typedef {object} BigWigHandle
      * @prop {import("@gmod/bbi").BigWig} bbi
@@ -57,16 +57,11 @@ export default class BigWigSource extends UrlDescriptorWindowedSource {
             throw new Error("No URL provided for BigWigSource");
         }
 
-        this.setupDebouncing(this.params);
-
-        this.setupUrlDescriptors(
-            { getUrl: () => this.params.url },
-            {
-                loadModules: loadBigWigModules,
-                createHandle: (descriptor, { BigWig, RemoteFile }) =>
-                    this.#createHandle(descriptor, BigWig, RemoteFile),
-            }
-        );
+        this.setupUrlLoading({
+            loadModules: loadBigWigModules,
+            createHandle: (descriptor, { BigWig, RemoteFile }) =>
+                this.#createHandle(descriptor, BigWig, RemoteFile),
+        });
     }
 
     get label() {
@@ -108,10 +103,17 @@ export default class BigWigSource extends UrlDescriptorWindowedSource {
      *
      * @param {number[]} domain Linearized domain
      */
-    async onDomainChanged(domain) {
-        const handles = await this.getActiveUrlHandles(domain);
-        if (!handles) return;
+    onDomainChanged(domain) {
+        this.queueDomain(domain);
+    }
 
+    /**
+     * @param {number[]} domain
+     * @param {BigWigHandle[]} handles
+     * @param {AbortSignal} signal
+     * @returns {Promise<{interval: number[], data: import("../../flowNode.js").Datum[][], windowSize: number} | undefined>}
+     */
+    async loadWindow(domain, handles, signal) {
         // TODO: Postpone the initial load until layout is computed and remove 700.
         const length = this.scaleResolution.getAxisLength() || 700;
 
@@ -128,35 +130,32 @@ export default class BigWigSource extends UrlDescriptorWindowedSource {
             5000
         );
 
-        this.callIfWindowsChanged(domain, windowSize, (quantizedInterval) =>
-            this.loadInterval(quantizedInterval, selectedReductionLevels)
-        );
-    }
-
-    /**
-     * @param {number[]} interval linearized domain
-     * @param {number[]} selectedReductionLevels
-     */
-    // @ts-expect-error
-    async loadInterval(interval, selectedReductionLevels) {
-        const handles = this.descriptorState.activeHandles;
-        if (!handles) return;
-        const featureChunks = await this.discretizeAndLoad(interval, {
-            load: (d, signal) =>
-                this.#loadFeatures(d, handles, selectedReductionLevels, signal),
-            loadBatch: (intervals, signal) =>
-                this.#loadFeatureBatches(
-                    intervals,
-                    handles,
-                    selectedReductionLevels,
-                    signal
-                ),
-        });
-
-        if (featureChunks) {
-            this.descriptorState.markLoaded();
-            this.publishData(featureChunks);
-        }
+        const interval = this.getChangedWindow(domain, windowSize);
+        if (!interval) return;
+        return {
+            interval,
+            windowSize,
+            data: await this.discretizeAndLoad(
+                interval,
+                {
+                    load: (d, signal) =>
+                        this.#loadFeatures(
+                            d,
+                            handles,
+                            selectedReductionLevels,
+                            signal
+                        ),
+                    loadBatch: (intervals, signal) =>
+                        this.#loadFeatureBatches(
+                            intervals,
+                            handles,
+                            selectedReductionLevels,
+                            signal
+                        ),
+                },
+                signal
+            ),
+        };
     }
 
     /**

@@ -170,7 +170,6 @@ describe("BamSource", () => {
             /** @type {any} */ (view)
         );
 
-        await /** @type {any} */ (source).initializedPromise;
         const domainChange = source.onDomainChanged([0, 200]);
         await vi.runAllTimersAsync();
         await domainChange;
@@ -202,7 +201,6 @@ describe("BamSource", () => {
             },
             /** @type {any} */ (view)
         );
-        await /** @type {any} */ (source).initializedPromise;
         openedFiles.length = 0;
 
         view.paramRuntime.runInTransaction(() => {
@@ -210,7 +208,7 @@ describe("BamSource", () => {
             view.setIndexUrl("other.bai");
         });
         await view.paramRuntime.whenPropagated();
-        await /** @type {any} */ (source).initializedPromise;
+        await source.requestInterval([0, 100]);
 
         expect(openedFiles).toEqual([
             {

@@ -50,7 +50,6 @@ describe("IndexedFastaSource", () => {
             },
             /** @type {any} */ (view)
         );
-        await /** @type {any} */ (source).initializedPromise;
         openedFiles.length = 0;
 
         view.paramRuntime.runInTransaction(() => {
@@ -58,7 +57,7 @@ describe("IndexedFastaSource", () => {
             view.setIndexUrl("references/B.fa.fai");
         });
         await view.paramRuntime.whenPropagated();
-        await /** @type {any} */ (source).initializedPromise;
+        await source.requestInterval([0, 100]);
 
         expect(openedFiles).toEqual([
             {

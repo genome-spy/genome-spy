@@ -4,10 +4,10 @@ import {
 } from "../../../paramRuntime/paramUtils.js";
 import { getUrlDescriptorExpressions } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
-import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
+import IntervalUrlSource from "./intervalUrlSource.js";
 
-/** @extends {UrlDescriptorWindowedSource<BamHandle>} */
-export default class BamSource extends UrlDescriptorWindowedSource {
+/** @extends {IntervalUrlSource<BamHandle, import("../../flowNode.js").Datum[][]>} */
+export default class BamSource extends IntervalUrlSource {
     /**
      * @typedef {object} BamHandle
      * @prop {import("@gmod/bam").BamFile} bam
@@ -49,20 +49,12 @@ export default class BamSource extends UrlDescriptorWindowedSource {
             throw new Error("No URL provided for BamSource");
         }
 
-        this.setupDebouncing(this.params);
-
-        this.setupUrlDescriptors(
-            {
-                getUrl: () => this.params.url,
-                getIndexUrl: () => this.params.indexUrl,
-                singleSourceName: "BamSource",
-            },
-            {
-                loadModules: loadBamModules,
-                createHandle: (descriptor, { BamFile, RemoteFile }) =>
-                    this.#createHandle(descriptor, BamFile, RemoteFile),
-            }
-        );
+        this.setupUrlLoading({
+            singleUrl: true,
+            loadModules: loadBamModules,
+            createHandle: (descriptor, { BamFile, RemoteFile }) =>
+                this.#createHandle(descriptor, BamFile, RemoteFile),
+        });
     }
 
     get label() {
@@ -96,32 +88,32 @@ export default class BamSource extends UrlDescriptorWindowedSource {
 
     /**
      * @param {number[]} interval linearized domain
+     * @param {BamHandle[]} handles
+     * @param {AbortSignal} signal
+     * @returns {Promise<{interval: number[], data: import("../../flowNode.js").Datum[][]}>}
      */
-    async loadInterval(interval) {
-        const handles = await this.getActiveUrlHandles(interval);
-        if (!handles) return;
+    async loadWindow(interval, handles, signal) {
         const handle = handles[0];
-        const featureChunks = await this.discretizeAndLoad(
+        return {
             interval,
-            async (d, signal) =>
-                handle.bam
-                    .getRecordsForRange(
-                        handle.fixChrPrefix(d.chrom),
-                        d.startPos,
-                        d.endPos,
-                        { signal }
-                    )
-                    .then((records) =>
-                        records.map((record) =>
-                            createBamReadDatum(d.chrom, record)
+            data: await this.discretizeAndLoad(
+                interval,
+                async (d, signal) =>
+                    handle.bam
+                        .getRecordsForRange(
+                            handle.fixChrPrefix(d.chrom),
+                            d.startPos,
+                            d.endPos,
+                            { signal }
                         )
-                    )
-        );
-
-        if (featureChunks) {
-            this.descriptorState.markLoaded();
-            this.publishData(featureChunks);
-        }
+                        .then((records) =>
+                            records.map((record) =>
+                                createBamReadDatum(d.chrom, record)
+                            )
+                        ),
+                signal
+            ),
+        };
     }
 }
 

@@ -4,10 +4,10 @@ import {
 } from "../../../paramRuntime/paramUtils.js";
 import { getUrlDescriptorExpressions } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
-import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
+import IntervalUrlSource from "./intervalUrlSource.js";
 
-/** @extends {UrlDescriptorWindowedSource<import("@gmod/indexedfasta").IndexedFasta>} */
-export default class IndexedFastaSource extends UrlDescriptorWindowedSource {
+/** @extends {IntervalUrlSource<import("@gmod/indexedfasta").IndexedFasta, import("../../flowNode.js").Datum[][]>} */
+export default class IndexedFastaSource extends IntervalUrlSource {
     /**
      * @param {import("../../../spec/data.js").IndexedFastaData} params
      * @param {import("../../../view/view.js").default} view
@@ -42,28 +42,17 @@ export default class IndexedFastaSource extends UrlDescriptorWindowedSource {
             throw new Error("No URL provided for IndexedFastaSource");
         }
 
-        this.setupDebouncing(this.params);
-
-        this.setupUrlDescriptors(
-            {
-                getUrl: () => this.params.url,
-                getIndexUrl: () => this.params.indexUrl,
-                singleSourceName: "IndexedFastaSource",
-            },
-            {
-                loadModules: loadFastaModules,
-                createHandle: async (
-                    descriptor,
-                    { IndexedFasta, RemoteFile }
-                ) =>
-                    new IndexedFasta({
-                        fasta: new RemoteFile(descriptor.url),
-                        fai: new RemoteFile(
-                            descriptor.indexUrl ?? descriptor.url + ".fai"
-                        ),
-                    }),
-            }
-        );
+        this.setupUrlLoading({
+            singleUrl: true,
+            loadModules: loadFastaModules,
+            createHandle: async (descriptor, { IndexedFasta, RemoteFile }) =>
+                new IndexedFasta({
+                    fasta: new RemoteFile(descriptor.url),
+                    fai: new RemoteFile(
+                        descriptor.indexUrl ?? descriptor.url + ".fai"
+                    ),
+                }),
+        });
     }
 
     get label() {
@@ -72,10 +61,11 @@ export default class IndexedFastaSource extends UrlDescriptorWindowedSource {
 
     /**
      * @param {number[]} interval linearized domain
+     * @param {import("@gmod/indexedfasta").IndexedFasta[]} handles
+     * @param {AbortSignal} signal
+     * @returns {Promise<{interval: number[], data: import("../../flowNode.js").Datum[][]}>}
      */
-    async loadInterval(interval) {
-        const handles = await this.getActiveUrlHandles(interval);
-        if (!handles) return;
+    async loadWindow(interval, handles, signal) {
         const fasta = handles[0];
         const features = await this.discretizeAndLoad(
             interval,
@@ -97,13 +87,13 @@ export default class IndexedFastaSource extends UrlDescriptorWindowedSource {
                             );
                             return undefined;
                         }
-                    })
+                    }),
+            signal
         );
-
-        if (features) {
-            this.descriptorState.markLoaded();
-            this.publishData([features.filter((f) => f !== undefined)]);
-        }
+        return {
+            interval,
+            data: [features.filter((feature) => feature !== undefined)],
+        };
     }
 }
 
