@@ -6,12 +6,12 @@ edit_uri = "edit/master/docs/"
 extra_javascript = [{ path = "app/index.js", type = "module" }]
 extra_css = ["stylesheets/extra.css", "stylesheets/api-reference.css"]
 nav = [
-    "index.md",
-    "getting-started.md",
-    { "Visualization Grammar" = [
-        "grammar/index.md",
+    { "Introduction" = "index.md" },
+    { "Getting Started" = "getting-started.md" },
+    { "Grammar" = [
+        { "Grammar" = "grammar/index.md" },
         { "Data Input" = [
-            "grammar/data/index.md",
+            { "Data Input" = "grammar/data/index.md" },
             "grammar/data/eager.md",
             "grammar/data/lazy.md",
             "grammar/data/multi-url.md",
@@ -64,7 +64,7 @@ nav = [
             { "Multiscale" = "grammar/composition/multiscale.md" },
         ] },
         { "Scales" = "grammar/scale.md" },
-        "grammar/genomic-coordinates.md",
+        { "Genomic Coordinates" = "grammar/genomic-coordinates.md" },
         { "Axes" = "grammar/axis.md" },
         "grammar/title.md",
         { "Legends" = "grammar/legend.md" },
@@ -87,7 +87,7 @@ nav = [
     { "JavaScript API" = [
         "api/index.md",
         { "API Reference" = "api/reference/index.md" },
-        "api/embedding.md",
+        { "Embedding" = "api/embedding.md" },
         "api/views.md",
         "api/runtime-state.md",
         "api/inspector.md",
@@ -102,14 +102,14 @@ nav = [
         "examples/genomic-data/gencode-gff3-gene-annotations.md",
         "examples/genomic-data/ascat.md",
         "examples/genomic-data/ascat-algorithm.md",
-        "examples/genomic-data/hcc1954-sv-cnv.md",
+        { "HCC1954 SV/CNV" = "examples/genomic-data/hcc1954-sv-cnv.md" },
         "examples/genomic-data/tcga-ov-gistic.md",
-        "examples/genomic-data/sashimi-plot.md",
+        { "Sashimi Plot" = "examples/genomic-data/sashimi-plot.md" },
         "examples/genomic-data/pik3ca-tcga-brca-lollipop.md",
         "examples/genomic-data/dynseq-spi1-bqtl.md",
         "examples/genomic-data/clinvar-variants.md",
         "examples/genomic-data/bam-read-alignments.md",
-        "examples/genomic-data/multiple-sequence-alignment.md",
+        { "Multiple Sequence Alignment" = "examples/genomic-data/multiple-sequence-alignment.md" },
         "examples/genomic-data/genome-browser.md",
         "examples/generic/upsetr-mutations.md",
     ] },

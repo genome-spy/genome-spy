@@ -1,3 +1,7 @@
+---
+title: Genomic Data Input and File Formats
+---
+
 # Data Input
 
 Like [Vega-Lite's data model](https://vega.github.io/vega-lite/docs/data.html),

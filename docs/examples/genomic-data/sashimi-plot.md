@@ -1,4 +1,8 @@
-# Sashimi Plot from Splice Junctions
+---
+title: Interactive Sashimi Plot from Splice Junctions
+---
+
+# Sashimi Plot
 
 Sashimi plots, introduced by Katz et al. in [Quantitative visualization of
 alternative exon expression from RNA-seq

@@ -1,3 +1,7 @@
+---
+title: Visualizing Genomic Sample Collections
+---
+
 # Visualizing Sample Collections
 
 !!! note "Developer Documentation"

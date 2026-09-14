@@ -1,3 +1,7 @@
+---
+title: Multiple Sequence Alignment Visualization
+---
+
 # Multiple Sequence Alignment
 
 This example visualizes the `16SRNA_Deino_87seq.aln` nucleotide alignment used

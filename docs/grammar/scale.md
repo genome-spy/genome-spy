@@ -1,4 +1,8 @@
-# Scale
+---
+title: Scales for Genomic Data Visualization
+---
+
+# Scales
 
 Scales are
 [functions](https://observablehq.com/@mkfreeman/animated-scale-diagram) that map

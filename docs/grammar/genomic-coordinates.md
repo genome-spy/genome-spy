@@ -1,3 +1,7 @@
+---
+title: Genomic Coordinates and Genome Assemblies
+---
+
 # Genomic Coordinates
 
 ![Placeholder](../img/coordinate-linearization.svg){ align=right }

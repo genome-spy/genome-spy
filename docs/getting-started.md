@@ -1,3 +1,7 @@
+---
+title: Getting Started with GenomeSpy
+---
+
 # Getting Started
 
 GenomeSpy is a visualization toolkit for genomic data. More specifically, it is

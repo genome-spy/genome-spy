@@ -1,4 +1,8 @@
-# Introduction
+---
+title: Interactive Genomic Visualization with GenomeSpy
+---
+
+# GenomeSpy
 
 ![Logo](./img/do-it-swiftly.svg){ align=right }
 

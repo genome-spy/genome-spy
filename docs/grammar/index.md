@@ -1,3 +1,7 @@
+---
+title: GenomeSpy Visualization Grammar
+---
+
 # Visualization Grammar
 
 Genome browser applications typically couple the visual representations to

@@ -1,4 +1,8 @@
-# Embedding and Entry Points
+---
+title: Embedding GenomeSpy in Web Applications
+---
+
+# Embedding GenomeSpy
 
 ## Embedding
 
