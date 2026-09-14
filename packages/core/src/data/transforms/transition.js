@@ -76,7 +76,6 @@ export default class TransitionTransform extends Transform {
      */
     beginBatch(flowBatch) {
         this.#batchStarts.push({ index: this.#data.length, flowBatch });
-        super.beginBatch(flowBatch);
     }
 
     /**
@@ -139,9 +138,7 @@ export default class TransitionTransform extends Transform {
             this.#targetChangedAt = undefined;
         }
 
-        for (const datum of this.#data) {
-            this._propagate(datum);
-        }
+        this.#propagateBatch();
         super.complete();
 
         if (hasPendingTargets || unsettled) {
@@ -244,6 +241,14 @@ export default class TransitionTransform extends Transform {
             child.reset();
         }
 
+        this.#propagateBatch();
+
+        for (const child of this.children) {
+            child.complete();
+        }
+    }
+
+    #propagateBatch() {
         let batchIndex = 0;
         for (let i = 0; i <= this.#data.length; i++) {
             while (this.#batchStarts[batchIndex]?.index == i) {
@@ -255,10 +260,6 @@ export default class TransitionTransform extends Transform {
             if (i < this.#data.length) {
                 this._propagate(this.#data[i]);
             }
-        }
-
-        for (const child of this.children) {
-            child.complete();
         }
     }
 }

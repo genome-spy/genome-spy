@@ -149,6 +149,17 @@ export function solveDisplacement(
         const minCellY = Math.floor((centerY - height / 2) / cellSize);
         const maxCellY = Math.floor((centerY + height / 2) / cellSize);
 
+        if (
+            !Number.isSafeInteger(minCellX) ||
+            !Number.isSafeInteger(maxCellX) ||
+            !Number.isSafeInteger(minCellY) ||
+            !Number.isSafeInteger(maxCellY)
+        ) {
+            throw new Error(
+                "displace2d geometry exceeded the safe grid coordinate range."
+            );
+        }
+
         for (let cellX = minCellX; cellX <= maxCellX; cellX++) {
             let column = grid.get(cellX);
             if (!column) {
@@ -203,6 +214,17 @@ export function solveDisplacement(
         const maxCellX = Math.floor((candidateX + width / 2) / cellSize);
         const minCellY = Math.floor((candidateY - height / 2) / cellSize);
         const maxCellY = Math.floor((candidateY + height / 2) / cellSize);
+
+        if (
+            !Number.isSafeInteger(minCellX) ||
+            !Number.isSafeInteger(maxCellX) ||
+            !Number.isSafeInteger(minCellY) ||
+            !Number.isSafeInteger(maxCellY)
+        ) {
+            throw new Error(
+                "displace2d geometry exceeded the safe grid coordinate range."
+            );
+        }
 
         for (let cellX = minCellX; cellX <= maxCellX; cellX++) {
             const column = grid.get(cellX);

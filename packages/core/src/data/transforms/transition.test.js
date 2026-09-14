@@ -251,8 +251,24 @@ describe("transition", () => {
         transform.addChild(recorder);
 
         propagateFacets(transform, 0);
+        expect(recorder.events).toEqual([
+            "reset",
+            "batch:a",
+            "row:1",
+            "batch:b",
+            "row:2",
+            "complete",
+        ]);
         recorder.events = [];
         propagateFacets(transform, 8);
+        expect(recorder.events).toEqual([
+            "reset",
+            "batch:a",
+            "row:1",
+            "batch:b",
+            "row:2",
+            "complete",
+        ]);
         recorder.events = [];
         animator.frame(0);
 

@@ -1,6 +1,22 @@
 import { describe, expect, test } from "vitest";
 import { solveDisplacement } from "./displace2dSolver.js";
 
+test("rejects grid coordinates that cannot advance by one cell", () => {
+    for (const coordinate of [1e20, -1e20]) {
+        expect(() => solveDisplacement([coordinate], [0], [1], [1])).toThrow(
+            "safe grid coordinate range"
+        );
+        expect(() =>
+            solveDisplacement([0], [0], [1], [1], undefined, undefined, {
+                x: [0],
+                y: [coordinate],
+                width: [1],
+                height: [1],
+            })
+        ).toThrow("safe grid coordinate range");
+    }
+});
+
 /**
  * @param {number[]} xPositions
  * @param {number[]} yPositions

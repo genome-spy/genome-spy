@@ -37,6 +37,9 @@ export default class Displace2DTransform extends Transform {
     /** @type {import("../flowNode.js").Datum[]} */
     #data = [];
 
+    /** @type {{ index: number, flowBatch: import("../../types/flowBatch.js").FlowBatch }[]} */
+    #batchStarts = [];
+
     /** @type {PlacementProps} */
     #placementProps;
 
@@ -192,7 +195,17 @@ export default class Displace2DTransform extends Transform {
             const scaleChanged = () => this.#scheduleScaleReplay();
             this.#xScaleResolution.addEventListener("domain", scaleChanged);
             this.#yScaleResolution.addEventListener("domain", scaleChanged);
+            this.#xScaleResolution.addEventListener("range", scaleChanged);
+            this.#yScaleResolution.addEventListener("range", scaleChanged);
             this.registerDisposer(() => {
+                this.#xScaleResolution.removeEventListener(
+                    "range",
+                    scaleChanged
+                );
+                this.#yScaleResolution.removeEventListener(
+                    "range",
+                    scaleChanged
+                );
                 this.#xScaleResolution.removeEventListener(
                     "domain",
                     scaleChanged
@@ -216,8 +229,8 @@ export default class Displace2DTransform extends Transform {
             for (const datum of data) {
                 datum[this.as[0]] = 0;
                 datum[this.as[1]] = 0;
-                this._propagate(datum);
             }
+            this.#propagateBatches(false);
             super.complete();
             data.length = 0;
 
@@ -238,13 +251,20 @@ export default class Displace2DTransform extends Transform {
             for (const datum of data) {
                 datum[this.as[0]] = 0;
                 datum[this.as[1]] = 0;
-                this._propagate(datum);
             }
+            this.#propagateBatches(false);
             super.complete();
             data.length = 0;
             return;
         }
 
+        this.#propagateBatches(true);
+        super.complete();
+        data.length = 0;
+    }
+
+    /** @param {import("../flowNode.js").Datum[]} data */
+    #place(data) {
         const count = data.length;
         const xPositions = new Array(count);
         const yPositions = new Array(count);
@@ -311,12 +331,43 @@ export default class Displace2DTransform extends Transform {
             const dy = displacements.y[i];
             datum[this.as[0]] = dx;
             datum[this.as[1]] = dy;
+        }
+    }
 
-            this._propagate(datum);
+    /** @param {boolean} place */
+    #propagateBatches(place) {
+        if (place) {
+            // File boundaries preserve source metadata, not collision groups.
+            let facetStart = 0;
+            for (const { index, flowBatch } of this.#batchStarts) {
+                if (flowBatch.type == "facet") {
+                    if (index > facetStart) {
+                        this.#place(this.#data.slice(facetStart, index));
+                    }
+                    facetStart = index;
+                }
+            }
+            if (facetStart < this.#data.length) {
+                this.#place(
+                    facetStart == 0 ? this.#data : this.#data.slice(facetStart)
+                );
+            }
         }
 
-        super.complete();
-        data.length = 0;
+        let start = 0;
+        const emit = (/** @type {number} */ stop) => {
+            while (start < stop) this._propagate(this.#data[start++]);
+        };
+        for (const { index, flowBatch } of this.#batchStarts) {
+            emit(index);
+            super.beginBatch(flowBatch);
+        }
+        emit(this.#data.length);
+    }
+
+    /** @param {import("../../types/flowBatch.js").FlowBatch} flowBatch */
+    beginBatch(flowBatch) {
+        this.#batchStarts.push({ index: this.#data.length, flowBatch });
     }
 
     #refreshPlacementParameters() {
@@ -384,6 +435,7 @@ export default class Displace2DTransform extends Transform {
     reset() {
         super.reset();
         this.#data.length = 0;
+        this.#batchStarts.length = 0;
     }
 
     /**

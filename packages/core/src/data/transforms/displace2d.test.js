@@ -40,6 +40,150 @@ function createFlow(data, overrides = {}) {
 }
 
 describe("Displace2DTransform", () => {
+    test.each([false, true])(
+        "places across file boundaries and preserves events (faceted: %s)",
+        (faceted) => {
+            const transform = new Displace2DTransform(
+                { type: "displace2d", x: "x", y: "y", width: 10, height: 10 },
+                /** @type {any} */ ({})
+            );
+            const output = new Collector();
+            transform.addChild(output);
+            const batches = vi.spyOn(output, "beginBatch");
+            const rows = vi.spyOn(output, "handle");
+
+            // Files share collision space within a facet, but facets do not.
+            for (const facet of faceted ? ["a", "b"] : [undefined]) {
+                if (faceted) {
+                    transform.beginBatch({ type: "facet", facetId: [facet] });
+                }
+                for (const url of ["first.json", "second.json"]) {
+                    transform.beginBatch({ type: "file", url });
+                    transform.handle({ x: 0, y: 0 });
+                }
+            }
+            transform.complete();
+
+            const offsets = Array.from(output.getData(), (datum) => [
+                datum.xDisplacement,
+                datum.yDisplacement,
+            ]);
+            expect(offsets).toEqual(
+                faceted
+                    ? [
+                          [0, 0],
+                          [0, -10],
+                          [0, 0],
+                          [0, -10],
+                      ]
+                    : [
+                          [0, 0],
+                          [0, -10],
+                      ]
+            );
+
+            const fileCalls = batches.mock.calls.flatMap(([batch], index) =>
+                batch.type == "file"
+                    ? [
+                          {
+                              url: batch.url,
+                              order: batches.mock.invocationCallOrder[index],
+                          },
+                      ]
+                    : []
+            );
+            expect(fileCalls.map(({ url }) => url)).toEqual(
+                faceted
+                    ? ["first.json", "second.json", "first.json", "second.json"]
+                    : ["first.json", "second.json"]
+            );
+            for (let i = 0; i < fileCalls.length; i++) {
+                expect(fileCalls[i].order).toBeLessThan(
+                    rows.mock.invocationCallOrder[i]
+                );
+                if (i > 0) {
+                    expect(rows.mock.invocationCallOrder[i - 1]).toBeLessThan(
+                        fileCalls[i].order
+                    );
+                }
+            }
+        }
+    );
+
+    test("preserves facet membership and places facets independently", () => {
+        const transform = new Displace2DTransform(
+            { type: "displace2d", x: "x", y: "y", width: 10, height: 10 },
+            /** @type {any} */ ({})
+        );
+        const output = new Collector();
+        transform.addChild(output);
+        for (const id of ["a", "b"]) {
+            transform.beginBatch({ type: "facet", facetId: [id] });
+            transform.handle({ id, x: 0, y: 0 });
+        }
+        transform.complete();
+        for (const id of ["a", "b"]) {
+            expect(output.facetBatches.get([id])).toEqual([
+                { id, x: 0, y: 0, xDisplacement: 0, yDisplacement: 0 },
+            ]);
+        }
+    });
+
+    test("recomputes placement after a range-only scale update", async () => {
+        const view = await createAndInitialize(
+            {
+                width: 100,
+                height: 100,
+                data: {
+                    values: [
+                        { x: 0.4, y: 0.5 },
+                        { x: 0.6, y: 0.5 },
+                    ],
+                },
+                transform: [
+                    {
+                        type: "displace2d",
+                        x: "x",
+                        y: "y",
+                        width: 10,
+                        height: 10,
+                        scalePositions: true,
+                    },
+                ],
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { domain: [0, 1] },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { domain: [0, 1] },
+                    },
+                },
+            },
+            UnitView
+        );
+        renderToLayout(view, Rectangle.create(0, 0, 100, 100));
+        view.handleBroadcast({ type: "layoutComputed" });
+        await Promise.resolve();
+        const offsets = () =>
+            Array.from(view.flowHandle.collector.getData(), (datum) => [
+                datum.xDisplacement,
+                datum.yDisplacement,
+            ]);
+        expect(offsets()).toEqual([
+            [0, 0],
+            [0, 0],
+        ]);
+        view.getScaleResolution("x").getScale().range([0, 0.1]);
+        await view.paramRuntime.whenPropagated();
+        await Promise.resolve();
+        expect(offsets()[1][1]).toBe(-10);
+    });
+
     test("restores canonical offsets after intermediate geometry", () => {
         const transform = new Displace2DTransform(
             {
