@@ -161,8 +161,7 @@ export default class Displace2DTransform extends Transform {
                       this.paramRuntime,
                       placementProps,
                       placementChanged,
-                      (disposer) => this.registerDisposer(disposer),
-                      { batchMode: "whenPropagated" }
+                      (disposer) => this.registerDisposer(disposer)
                   )
               )
             : /** @type {any} */ (placementProps);

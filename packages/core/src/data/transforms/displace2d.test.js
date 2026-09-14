@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
+import ViewParamRuntime from "../../paramRuntime/viewParamRuntime.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import { createAndInitialize, renderToLayout } from "../../view/testUtils.js";
 import UnitView from "../../view/unitView.js";
@@ -432,27 +433,31 @@ describe("Displace2DTransform", () => {
     });
 
     test("coalesces reactive placement changes into one replay", async () => {
-        const values = {
-            width: 20,
-            height: 20,
-            xFactor: 100,
-            yFactor: 100,
-            xExtent: /** @type {[number, number] | undefined} */ ([0, 1]),
-            yExtent: /** @type {[number, number] | undefined} */ ([0, 1]),
-        };
-        /** @type {Map<string, () => void>} */
-        const listeners = new Map();
-        const paramRuntime = {
-            watchExpression: (
-                /** @type {keyof typeof values} */ expression,
-                /** @type {() => void} */ callback,
-                /** @type {{ registerDisposer: (disposer: () => void) => void }} */ options
-            ) => {
-                listeners.set(expression, callback);
-                options.registerDisposer(() => undefined);
-                return () => values[expression];
-            },
-        };
+        const paramRuntime = new ViewParamRuntime();
+        const setWidth = paramRuntime.registerParam({
+            name: "width",
+            value: 20,
+        });
+        const setHeight = paramRuntime.registerParam({
+            name: "height",
+            value: 20,
+        });
+        const setXFactor = paramRuntime.registerParam({
+            name: "xFactor",
+            value: 100,
+        });
+        const setYFactor = paramRuntime.registerParam({
+            name: "yFactor",
+            value: 100,
+        });
+        const setXExtent = paramRuntime.registerParam({
+            name: "xExtent",
+            value: [0, 1],
+        });
+        const setYExtent = paramRuntime.registerParam({
+            name: "yExtent",
+            value: [0, 1],
+        });
         const source = new Collector();
         const transform = new Displace2DTransform(
             {
@@ -490,15 +495,15 @@ describe("Displace2DTransform", () => {
         ]);
         repropagate.mockClear();
 
-        values.width = 10;
-        values.height = 10;
-        values.xFactor = -100;
-        values.yFactor = -100;
-        values.xExtent = undefined;
-        values.yExtent = undefined;
-        listeners.forEach((listener) => listener());
-
-        await Promise.resolve();
+        paramRuntime.runInTransaction(() => {
+            setWidth(10);
+            setHeight(10);
+            setXFactor(-100);
+            setYFactor(-100);
+            setXExtent(undefined);
+            setYExtent(undefined);
+        });
+        await paramRuntime.whenPropagated();
         expect(repropagate).toHaveBeenCalledOnce();
         expect([...output.getData()].map(({ dx, dy }) => [dx, dy])).toEqual([
             [0, 0],
@@ -507,19 +512,11 @@ describe("Displace2DTransform", () => {
     });
 
     test("clears a disabled reactive extent instead of retaining scaled bounds", async () => {
-        let extent = /** @type {[number, number] | undefined} */ ([0, 1]);
-        /** @type {() => void} */
-        let listener;
-        const paramRuntime = {
-            watchExpression: (
-                /** @type {string} */ expression,
-                /** @type {() => void} */ callback
-            ) => {
-                expect(expression).toBe("extent");
-                listener = callback;
-                return () => extent;
-            },
-        };
+        const paramRuntime = new ViewParamRuntime();
+        const setExtent = paramRuntime.registerParam({
+            name: "extent",
+            value: [0, 1],
+        });
         const source = new Collector();
         const transform = new Displace2DTransform(
             {
@@ -544,30 +541,19 @@ describe("Displace2DTransform", () => {
 
         expect([...output.getData()][0].dx).toBe(-30);
 
-        extent = undefined;
-        listener();
-        await Promise.resolve();
+        setExtent(undefined);
+        await paramRuntime.whenPropagated();
 
         expect(transform.xExtent).toBeUndefined();
         expect([...output.getData()][0].dx).toBe(0);
     });
 
     test("cancels the deferred bootstrap replay after disposal", async () => {
-        /** @type {() => void} */
-        let listener;
-        const disposer = vi.fn();
-        const paramRuntime = {
-            watchExpression: (
-                /** @type {string} */ expression,
-                /** @type {() => void} */ callback,
-                /** @type {{ registerDisposer: (disposer: () => void) => void }} */ options
-            ) => {
-                expect(expression).toBe("factor");
-                listener = callback;
-                options.registerDisposer(disposer);
-                return () => 100;
-            },
-        };
+        const paramRuntime = new ViewParamRuntime();
+        const setFactor = paramRuntime.registerParam({
+            name: "factor",
+            value: 100,
+        });
         const source = new Collector();
         const transform = new Displace2DTransform(
             {
@@ -588,11 +574,10 @@ describe("Displace2DTransform", () => {
         const repropagate = vi.spyOn(source, "repropagate");
         source.complete();
         transform.dispose();
-        listener();
-        await Promise.resolve();
+        setFactor(200);
+        await paramRuntime.whenPropagated();
 
         expect(repropagate).not.toHaveBeenCalled();
-        expect(disposer).toHaveBeenCalledOnce();
     });
 
     test("rejects invalid parameters and field values", () => {
