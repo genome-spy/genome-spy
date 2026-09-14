@@ -40,6 +40,8 @@ export default class Displace2DTransform extends Transform {
     /** @type {import("../flowNode.js").Datum[]} */
     #data = [];
 
+    // TODO: A shared buffered-transform helper could own datum and batch-marker
+    // capture/replay. TransitionTransform currently implements the same pattern.
     /** @type {{ index: number, flowBatch: import("../../types/flowBatch.js").FlowBatch }[]} */
     #batchStarts = [];
 
@@ -194,7 +196,7 @@ export default class Displace2DTransform extends Transform {
                 datum[this.as[0]] = 0;
                 datum[this.as[1]] = 0;
             }
-            this.#propagateBatches(false);
+            this.#propagateBufferedData();
             super.complete();
             data.length = 0;
 
@@ -208,13 +210,14 @@ export default class Displace2DTransform extends Transform {
                 datum[this.as[0]] = 0;
                 datum[this.as[1]] = 0;
             }
-            this.#propagateBatches(false);
+            this.#propagateBufferedData();
             super.complete();
             data.length = 0;
             return;
         }
 
-        this.#propagateBatches(true);
+        this.#placeFacets();
+        this.#propagateBufferedData();
         super.complete();
         data.length = 0;
     }
@@ -291,35 +294,37 @@ export default class Displace2DTransform extends Transform {
         }
     }
 
-    /** @param {boolean} place */
-    #propagateBatches(place) {
-        if (place) {
-            // File boundaries preserve source metadata, not collision groups.
-            let facetStart = 0;
-            for (const { index, flowBatch } of this.#batchStarts) {
-                if (flowBatch.type == "facet") {
-                    if (index > facetStart) {
-                        this.#place(this.#data.slice(facetStart, index));
-                    }
-                    facetStart = index;
+    #placeFacets() {
+        // TODO: Whole-batch transforms could share facet iteration while keeping
+        // their computation and publication lifecycles transform-specific.
+        // File boundaries preserve source metadata, not collision groups.
+        let facetStart = 0;
+        for (const { index, flowBatch } of this.#batchStarts) {
+            if (flowBatch.type == "facet") {
+                if (index > facetStart) {
+                    this.#place(this.#data.slice(facetStart, index));
                 }
-            }
-            if (facetStart < this.#data.length) {
-                this.#place(
-                    facetStart == 0 ? this.#data : this.#data.slice(facetStart)
-                );
+                facetStart = index;
             }
         }
+        if (facetStart < this.#data.length) {
+            this.#place(
+                facetStart == 0 ? this.#data : this.#data.slice(facetStart)
+            );
+        }
+    }
 
+    #propagateBufferedData() {
         let start = 0;
-        const emit = (/** @type {number} */ stop) => {
-            while (start < stop) this._propagate(this.#data[start++]);
-        };
         for (const { index, flowBatch } of this.#batchStarts) {
-            emit(index);
+            while (start < index) {
+                this._propagate(this.#data[start++]);
+            }
             super.beginBatch(flowBatch);
         }
-        emit(this.#data.length);
+        while (start < this.#data.length) {
+            this._propagate(this.#data[start++]);
+        }
     }
 
     /** @param {import("../../types/flowBatch.js").FlowBatch} flowBatch */
