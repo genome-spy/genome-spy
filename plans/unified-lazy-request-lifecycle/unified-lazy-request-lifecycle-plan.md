@@ -7,21 +7,21 @@ load through three state-owning layers:
 
 - `SingleAxisWindowedSource` owns window quantization, debounce placement,
   interval cancellation, loading status, and fetched-but-unpublished coverage.
-- `IntervalUrlSource` owns descriptor normalization, initialization,
+- `UrlDescriptorWindowedSource` owns descriptor normalization, initialization,
   current-domain reloads, and the bridge between descriptor readiness and
   interval readiness.
 - `UrlDescriptorState` owns descriptor revisions, active handles, active and
   published descriptor keys, and the pending handle cache.
 
 `SingleAxisWindowedSource` has no production subclass other than
-`IntervalUrlSource`. The separation therefore does not currently
+`UrlDescriptorWindowedSource`. The separation therefore does not currently
 support two independent source families. Instead, one request crosses two base
 classes and a state object while using both an abort controller and a revision
 to reject stale work.
 
 The three lifecycle components contain 314 non-comment production JavaScript
 lines at the start of this branch: 124 in `SingleAxisWindowedSource`, 81 in
-`IntervalUrlSource`, and 109 in `UrlDescriptorState`. This excludes
+`UrlDescriptorWindowedSource`, and 109 in `UrlDescriptorState`. This excludes
 the five concrete sources and their repeated handle-selection and publication
 steps.
 
@@ -61,6 +61,29 @@ steps.
 - Do not retain multiple published windows or introduce a tile pyramid.
 - Do not add recovery for unsupported partial states merely to make a general
   request framework.
+
+## Outcome
+
+- Milestone 1 was completed in `c760c116b`: interval publication, coverage,
+  and completion became one atomic boundary with a net production SLOC
+  reduction.
+- Milestone 2 was completed in `3f0362e67`: descriptor acquisition joined the
+  interval request, revisions and initialization state were deleted, and one
+  abort signal became the stale-work boundary.
+- The final source API cleanup was completed in `f3bd9a4a3`: the surviving base
+  became `IntervalUrlSource`, concrete setup boilerplate was removed, and the
+  single-URL policy began using stable source labels.
+- The review gate and acceptance criteria were completed. Focused lifecycle and
+  source suites, the full unit suite, workspace TypeScript checks, lint, and the
+  cumulative SLOC gate passed. The branch removes 133 non-comment production
+  lines against `origin/master`.
+- Representative browser smoke tests passed for BigWig, BigBed, indexed FASTA,
+  and BAM. The remainder of the exhaustive browser matrix is discarded: its
+  format and lifecycle contracts are covered by the full automated suite, and
+  no renderer-specific behavior changed.
+- No supported embed dependency on eager descriptor or header errors was
+  identified. Those errors now intentionally surface on the first loadable
+  interval request.
 
 ## Comparable design
 
@@ -442,7 +465,7 @@ acquisition inside the runner and establishes the single end-to-end request.
 ### Affected areas and downstream consumers
 
 - `packages/core/src/data/sources/lazy/singleAxisWindowedSource.js`
-- `packages/core/src/data/sources/lazy/intervalUrlSource.js`
+- `packages/core/src/data/sources/lazy/urlDescriptorWindowedSource.js`
 - BAM, BigBed, BigWig, indexed FASTA, and Tabix interval loaders
 - loading-status registry
 - collector completion and viewport readiness
