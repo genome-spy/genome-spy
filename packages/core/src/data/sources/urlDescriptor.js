@@ -279,7 +279,7 @@ function expandUrl(urlSpec, options) {
  * @returns {UrlDescriptor[]}
  */
 function expandTemplate(templateSpec, indexUrlSpec, options) {
-    const values = resolveValues(templateSpec.values, options);
+    const values = resolveExprRef(templateSpec.values, options);
     if (!Array.isArray(values)) {
         throw new Error("URL template values must resolve to an array.");
     }
@@ -309,15 +309,6 @@ function expandTemplate(templateSpec, indexUrlSpec, options) {
             onLoadError: templateSpec.onLoadError,
         };
     });
-}
-
-/**
- * @param {UrlTemplate["values"] | unknown} values
- * @param {UrlDescriptorOptions} options
- * @returns {unknown}
- */
-function resolveValues(values, options) {
-    return resolveExprRef(values, options);
 }
 
 /** @param {unknown} value @param {UrlDescriptorOptions} options */

@@ -33,7 +33,7 @@ describe("UrlDescriptorState", () => {
         );
 
         expect(created).toEqual(["a.bw", "b.bw"]);
-        expect(state.handles).toEqual([{ url: "b.bw" }, { url: "a.bw" }]);
+        expect(state.activeHandles).toEqual([{ url: "b.bw" }, { url: "a.bw" }]);
         expect(state.activeSetLoaded).toBe(true);
     });
 
@@ -78,7 +78,7 @@ describe("UrlDescriptorState", () => {
         );
         state.markLoaded();
 
-        expect(state.handles).toEqual([{ url: "a.bw" }]);
+        expect(state.activeHandles).toEqual([{ url: "a.bw" }]);
         expect(state.activeSetLoaded).toBe(true);
     });
 
@@ -101,7 +101,7 @@ describe("UrlDescriptorState", () => {
         await updateA;
 
         expect(state.isCurrent(revisionB)).toBe(true);
-        expect(state.handles).toEqual([{ url: "b.bw" }]);
+        expect(state.activeHandles).toEqual([{ url: "b.bw" }]);
     });
 
     it("shares pending handle creation and retries failures", async () => {
@@ -115,7 +115,7 @@ describe("UrlDescriptorState", () => {
         await Promise.all([first, second]);
 
         expect(create).toHaveBeenCalledOnce();
-        expect(state.handles).toEqual([{ url: "a.bw" }]);
+        expect(state.activeHandles).toEqual([{ url: "a.bw" }]);
 
         const failing = vi
             .fn()
@@ -143,7 +143,7 @@ describe("UrlDescriptorState", () => {
         await update;
 
         expect(state.isCurrent(revision)).toBe(false);
-        expect(state.handles).toEqual([]);
+        expect(state.activeHandles).toBeUndefined();
     });
 
     it("ignores stale initialization errors and status", async () => {
@@ -186,7 +186,7 @@ describe("UrlDescriptorState", () => {
 
         expect(clearData).not.toHaveBeenCalled();
         expect(statuses).toEqual(["loading", "loading", "complete"]);
-        expect(state.handles).toEqual([{ url: "b.bw" }]);
+        expect(state.activeHandles).toEqual([{ url: "b.bw" }]);
     });
 });
 

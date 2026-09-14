@@ -26,10 +26,6 @@ export default class UrlDescriptorState {
     #revision = 0;
     #updating = true;
 
-    get handles() {
-        return this.#handles;
-    }
-
     get activeSetLoaded() {
         return !this.#updating && this.#activeKeys.isSubsetOf(this.#loadedKeys);
     }
