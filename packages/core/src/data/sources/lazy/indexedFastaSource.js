@@ -29,7 +29,7 @@ export default class IndexedFastaSource extends UrlDescriptorWindowedSource {
             paramsWithDefaults,
             (props) => {
                 if (props.has("url") || props.has("indexUrl")) {
-                    this.reloadUrlDescriptors((r) => this.#doInitialize(r));
+                    this.reloadUrlDescriptors();
                 } else if (props.has("windowSize")) {
                     this.reloadLastDomain();
                 }
@@ -50,26 +50,24 @@ export default class IndexedFastaSource extends UrlDescriptorWindowedSource {
                 getIndexUrl: () => this.params.indexUrl,
                 singleSourceName: "IndexedFastaSource",
             },
-            (r) => this.#doInitialize(r)
+            {
+                loadModules: loadFastaModules,
+                createHandle: async (
+                    descriptor,
+                    { IndexedFasta, RemoteFile }
+                ) =>
+                    new IndexedFasta({
+                        fasta: new RemoteFile(descriptor.url),
+                        fai: new RemoteFile(
+                            descriptor.indexUrl ?? descriptor.url + ".fai"
+                        ),
+                    }),
+            }
         );
     }
 
     get label() {
         return "indexedFastaSource";
-    }
-
-    /** @param {number} revision */
-    async #doInitialize(revision) {
-        await this.updateUrlDescriptors(revision, {
-            loadModules: loadFastaModules,
-            createHandle: async (descriptor, { IndexedFasta, RemoteFile }) =>
-                new IndexedFasta({
-                    fasta: new RemoteFile(descriptor.url),
-                    fai: new RemoteFile(
-                        descriptor.indexUrl ?? descriptor.url + ".fai"
-                    ),
-                }),
-        });
     }
 
     /**

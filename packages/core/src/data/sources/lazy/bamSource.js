@@ -36,7 +36,7 @@ export default class BamSource extends UrlDescriptorWindowedSource {
             paramsWithDefaults,
             (props) => {
                 if (props.has("url") || props.has("indexUrl")) {
-                    this.reloadUrlDescriptors((r) => this.#doInitialize(r));
+                    this.reloadUrlDescriptors();
                 } else if (props.has("windowSize")) {
                     this.reloadLastDomain();
                 }
@@ -57,21 +57,16 @@ export default class BamSource extends UrlDescriptorWindowedSource {
                 getIndexUrl: () => this.params.indexUrl,
                 singleSourceName: "BamSource",
             },
-            (r) => this.#doInitialize(r)
+            {
+                loadModules: loadBamModules,
+                createHandle: (descriptor, { BamFile, RemoteFile }) =>
+                    this.#createHandle(descriptor, BamFile, RemoteFile),
+            }
         );
     }
 
     get label() {
         return "bamSource";
-    }
-
-    /** @param {number} revision */
-    async #doInitialize(revision) {
-        await this.updateUrlDescriptors(revision, {
-            loadModules: loadBamModules,
-            createHandle: (descriptor, { BamFile, RemoteFile }) =>
-                this.#createHandle(descriptor, BamFile, RemoteFile),
-        });
     }
 
     /**

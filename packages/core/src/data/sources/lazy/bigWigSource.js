@@ -44,7 +44,7 @@ export default class BigWigSource extends UrlDescriptorWindowedSource {
             paramsWithDefaults,
             (props) => {
                 if (props.has("url")) {
-                    this.reloadUrlDescriptors((r) => this.#doInitialize(r));
+                    this.reloadUrlDescriptors();
                 } else if (props.has("pixelsPerBin")) {
                     this.reloadLastDomain();
                 }
@@ -59,25 +59,18 @@ export default class BigWigSource extends UrlDescriptorWindowedSource {
 
         this.setupDebouncing(this.params);
 
-        this.setupUrlDescriptors({ getUrl: () => this.params.url }, (r) =>
-            this.#doInitialize(r)
+        this.setupUrlDescriptors(
+            { getUrl: () => this.params.url },
+            {
+                loadModules: loadBigWigModules,
+                createHandle: (descriptor, { BigWig, RemoteFile }) =>
+                    this.#createHandle(descriptor, BigWig, RemoteFile),
+            }
         );
     }
 
     get label() {
         return "bigWigSource";
-    }
-
-    /**
-     * @returns {Promise<void>}
-     */
-    /** @param {number} revision */
-    async #doInitialize(revision) {
-        await this.updateUrlDescriptors(revision, {
-            loadModules: loadBigWigModules,
-            createHandle: (descriptor, { BigWig, RemoteFile }) =>
-                this.#createHandle(descriptor, BigWig, RemoteFile),
-        });
     }
 
     /**

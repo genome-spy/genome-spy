@@ -50,7 +50,7 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
                     props.has("indexUrl") ||
                     props.has("addChrPrefix")
                 ) {
-                    this.reloadUrlDescriptors((r) => this.#doInitialize(r));
+                    this.reloadUrlDescriptors();
                 } else if (props.has("windowSize")) {
                     this.reloadLastDomain();
                 }
@@ -70,39 +70,36 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
                 getUrl: () => this.params.url,
                 getIndexUrl: () => this.params.indexUrl,
             },
-            (r) => this.#doInitialize(r)
-        );
-    }
+            {
+                loadModules: async () => {
+                    const { TabixIndexedFile, RemoteFile } =
+                        await loadTabixModules();
+                    const addChrPrefix = withoutExprRef(
+                        this.params.addChrPrefix
+                    );
 
-    /** @param {number} revision */
-    async #doInitialize(revision) {
-        await this.updateUrlDescriptors(revision, {
-            loadModules: async () => {
-                const { TabixIndexedFile, RemoteFile } =
-                    await loadTabixModules();
-                const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
+                    const renameRefSeqs =
+                        addChrPrefix === true
+                            ? (/** @type {string} */ refSeq) => "chr" + refSeq
+                            : addChrPrefix
+                              ? (/** @type {string} */ refSeq) =>
+                                    addChrPrefix + refSeq
+                              : undefined;
 
-                const renameRefSeqs =
-                    addChrPrefix === true
-                        ? (/** @type {string} */ refSeq) => "chr" + refSeq
-                        : addChrPrefix
-                          ? (/** @type {string} */ refSeq) =>
-                                addChrPrefix + refSeq
-                          : undefined;
-
-                return { TabixIndexedFile, RemoteFile, renameRefSeqs };
-            },
-            createHandle: (
-                descriptor,
-                { TabixIndexedFile, RemoteFile, renameRefSeqs }
-            ) =>
-                this.#createHandle(
+                    return { TabixIndexedFile, RemoteFile, renameRefSeqs };
+                },
+                createHandle: (
                     descriptor,
-                    TabixIndexedFile,
-                    RemoteFile,
-                    renameRefSeqs
-                ),
-        });
+                    { TabixIndexedFile, RemoteFile, renameRefSeqs }
+                ) =>
+                    this.#createHandle(
+                        descriptor,
+                        TabixIndexedFile,
+                        RemoteFile,
+                        renameRefSeqs
+                    ),
+            }
+        );
     }
 
     /**

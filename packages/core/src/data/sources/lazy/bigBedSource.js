@@ -41,7 +41,7 @@ export default class BigBedSource extends UrlDescriptorWindowedSource {
             paramsWithDefaults,
             (props) => {
                 if (props.has("url")) {
-                    this.reloadUrlDescriptors((r) => this.#doInitialize(r));
+                    this.reloadUrlDescriptors();
                 } else if (props.has("windowSize")) {
                     this.reloadLastDomain();
                 }
@@ -56,22 +56,18 @@ export default class BigBedSource extends UrlDescriptorWindowedSource {
 
         this.setupDebouncing(this.params);
 
-        this.setupUrlDescriptors({ getUrl: () => this.params.url }, (r) =>
-            this.#doInitialize(r)
+        this.setupUrlDescriptors(
+            { getUrl: () => this.params.url },
+            {
+                loadModules: loadBigBedModules,
+                createHandle: (descriptor, { BigBed, RemoteFile, BED }) =>
+                    this.#createHandle(descriptor, BigBed, RemoteFile, BED),
+            }
         );
     }
 
     get label() {
         return "bigBedSource";
-    }
-
-    /** @param {number} revision */
-    async #doInitialize(revision) {
-        await this.updateUrlDescriptors(revision, {
-            loadModules: loadBigBedModules,
-            createHandle: (descriptor, { BigBed, RemoteFile, BED }) =>
-                this.#createHandle(descriptor, BigBed, RemoteFile, BED),
-        });
     }
 
     /**

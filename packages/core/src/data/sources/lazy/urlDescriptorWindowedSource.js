@@ -19,6 +19,9 @@ export default class UrlDescriptorWindowedSource extends SingleAxisWindowedSourc
     /** @type {{ getUrl: () => unknown, getIndexUrl?: () => unknown, singleSourceName?: string }} */
     #descriptorOptions;
 
+    /** @type {{ loadModules: () => Promise<any>, createHandle: (descriptor: import("../urlDescriptor.js").UrlDescriptor, modules: any) => Promise<T> }} */
+    #handleOptions;
+
     /**
      * @param {import("../../../view/view.js").default} view
      * @param {import("../../../spec/channel.js").PrimaryPositionalChannel} channel
@@ -29,42 +32,23 @@ export default class UrlDescriptorWindowedSource extends SingleAxisWindowedSourc
     }
 
     /**
-     * @param {{ getUrl: () => unknown, getIndexUrl?: () => unknown, singleSourceName?: string }} options
-     * @param {(revision: number) => Promise<void>} initialize
-     * @protected
-     */
-    setupUrlDescriptors(options, initialize) {
-        this.#descriptorOptions = options;
-        this.#initialize(initialize);
-    }
-
-    /**
      * @template M
-     * @param {number} revision
+     * @param {{ getUrl: () => unknown, getIndexUrl?: () => unknown, singleSourceName?: string }} descriptorOptions
      * @param {{
      *     loadModules: () => Promise<M>,
      *     createHandle: (descriptor: import("../urlDescriptor.js").UrlDescriptor, modules: M) => Promise<T>
-     * }} options
+     * }} handleOptions
      * @protected
      */
-    updateUrlDescriptors(revision, options) {
-        return updateUrlDescriptorState({
-            ...options,
-            normalize: () => this.#normalize(),
-            state: this.descriptorState,
-            clearData: () => this.invalidateData(),
-            setLoadingStatus: (status, detail) =>
-                this.setLoadingStatus(status, detail),
-            revision,
-        });
+    setupUrlDescriptors(descriptorOptions, handleOptions) {
+        this.#descriptorOptions = descriptorOptions;
+        this.#handleOptions = handleOptions;
+        this.#initialize();
     }
 
-    /**
-     * @param {(revision: number) => Promise<void>} initialize
-     * @protected
-     */
-    async reloadUrlDescriptors(initialize) {
-        const revision = this.#initialize(initialize);
+    /** @protected */
+    async reloadUrlDescriptors() {
+        const revision = this.#initialize();
         try {
             await this.initializedPromise;
             if (
@@ -97,11 +81,18 @@ export default class UrlDescriptorWindowedSource extends SingleAxisWindowedSourc
         this.publishData([], domain);
     }
 
-    /** @param {(revision: number) => Promise<void>} initialize */
-    #initialize(initialize) {
+    #initialize() {
         this.abortPendingLoad();
         const revision = this.descriptorState.beginUpdate();
-        this.initializedPromise = initialize(revision);
+        this.initializedPromise = updateUrlDescriptorState({
+            ...this.#handleOptions,
+            normalize: () => this.#normalize(),
+            state: this.descriptorState,
+            clearData: () => this.invalidateData(),
+            setLoadingStatus: (status, detail) =>
+                this.setLoadingStatus(status, detail),
+            revision,
+        });
         return revision;
     }
 
