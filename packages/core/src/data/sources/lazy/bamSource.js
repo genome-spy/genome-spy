@@ -4,10 +4,10 @@ import {
 } from "../../../paramRuntime/paramUtils.js";
 import { getUrlDescriptorExpressions } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
-import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
+import IntervalUrlSource from "./intervalUrlSource.js";
 
-/** @extends {UrlDescriptorWindowedSource<BamHandle, import("../../flowNode.js").Datum[][]>} */
-export default class BamSource extends UrlDescriptorWindowedSource {
+/** @extends {IntervalUrlSource<BamHandle, import("../../flowNode.js").Datum[][]>} */
+export default class BamSource extends IntervalUrlSource {
     /**
      * @typedef {object} BamHandle
      * @prop {import("@gmod/bam").BamFile} bam
@@ -49,20 +49,12 @@ export default class BamSource extends UrlDescriptorWindowedSource {
             throw new Error("No URL provided for BamSource");
         }
 
-        this.setupDebouncing(this.params);
-
-        this.setupUrlDescriptors(
-            {
-                getUrl: () => this.params.url,
-                getIndexUrl: () => this.params.indexUrl,
-                singleSourceName: "BamSource",
-            },
-            {
-                loadModules: loadBamModules,
-                createHandle: (descriptor, { BamFile, RemoteFile }) =>
-                    this.#createHandle(descriptor, BamFile, RemoteFile),
-            }
-        );
+        this.setupUrlLoading({
+            singleUrl: true,
+            loadModules: loadBamModules,
+            createHandle: (descriptor, { BamFile, RemoteFile }) =>
+                this.#createHandle(descriptor, BamFile, RemoteFile),
+        });
     }
 
     get label() {
@@ -100,7 +92,7 @@ export default class BamSource extends UrlDescriptorWindowedSource {
      * @param {AbortSignal} signal
      * @returns {Promise<{interval: number[], data: import("../../flowNode.js").Datum[][]}>}
      */
-    async loadIntervalData(interval, handles, signal) {
+    async loadWindow(interval, handles, signal) {
         const handle = handles[0];
         return {
             interval,

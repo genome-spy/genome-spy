@@ -151,7 +151,7 @@ describe("BigWigSource", () => {
         collector.observe(() =>
             readiness.push(isDataReady(collector, { x: [200, 300] }))
         );
-        await source.loadInterval([200, 300]);
+        await source.requestInterval([200, 300]);
         expect(Array.from(collector.getData())).toEqual([]);
         expect(readiness.at(-1)).toBe(true);
         expect(source.getLoadedDomain()).toEqual([200, 300]);
@@ -190,7 +190,7 @@ describe("BigWigSource", () => {
 
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(false);
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect([...collector.getData()]).toEqual([
             { sample: "A", chrom: "chr1", start: 1, end: 2, score: 3 },
@@ -206,9 +206,9 @@ describe("BigWigSource", () => {
             /** @type {any} */ (view)
         );
 
-        await source.loadInterval([0, 100_000]);
+        await source.requestInterval([0, 100_000]);
         setAxisLength(1000);
-        await source.loadInterval([0, 100_000]);
+        await source.requestInterval([0, 100_000]);
 
         expect(requestedIntervals).toHaveLength(2);
     });
@@ -274,7 +274,7 @@ describe("BigWigSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect(openedUrls).toEqual(["signals/A.bw", "signals/B.bw"]);
         expect(requestedIntervals).toHaveLength(2);
@@ -347,7 +347,7 @@ describe("BigWigSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect(openedUrls).toEqual(["signals/A.bw"]);
         expect([...collector.getData()]).toEqual([
@@ -360,7 +360,7 @@ describe("BigWigSource", () => {
             status: "loading",
             detail: undefined,
         });
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect(openedUrls).toEqual(["signals/A.bw"]);
         expect(loadingStatuses.at(-1)).toEqual({ status: "complete" });
@@ -390,7 +390,7 @@ describe("BigWigSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect(openedUrls).toEqual(["signals/A.bw", "signals/missing.bw"]);
         expect(loadingStatuses.at(-1)).toEqual({ status: "complete" });

@@ -7,21 +7,21 @@ load through three state-owning layers:
 
 - `SingleAxisWindowedSource` owns window quantization, debounce placement,
   interval cancellation, loading status, and fetched-but-unpublished coverage.
-- `UrlDescriptorWindowedSource` owns descriptor normalization, initialization,
+- `IntervalUrlSource` owns descriptor normalization, initialization,
   current-domain reloads, and the bridge between descriptor readiness and
   interval readiness.
 - `UrlDescriptorState` owns descriptor revisions, active handles, active and
   published descriptor keys, and the pending handle cache.
 
 `SingleAxisWindowedSource` has no production subclass other than
-`UrlDescriptorWindowedSource`. The separation therefore does not currently
+`IntervalUrlSource`. The separation therefore does not currently
 support two independent source families. Instead, one request crosses two base
 classes and a state object while using both an abort controller and a revision
 to reject stale work.
 
 The three lifecycle components contain 314 non-comment production JavaScript
 lines at the start of this branch: 124 in `SingleAxisWindowedSource`, 81 in
-`UrlDescriptorWindowedSource`, and 109 in `UrlDescriptorState`. This excludes
+`IntervalUrlSource`, and 109 in `UrlDescriptorState`. This excludes
 the five concrete sources and their repeated handle-selection and publication
 steps.
 
@@ -169,7 +169,7 @@ the handle cache.
 ### Keep one windowed base class
 
 Move the required quantization, debounce, request, and descriptor-cache logic
-into `UrlDescriptorWindowedSource`, which will extend `SingleAxisLazySource`
+into `IntervalUrlSource`, which will extend `SingleAxisLazySource`
 directly. Delete `SingleAxisWindowedSource` after migrating its only production
 subclass and tests.
 
@@ -222,7 +222,7 @@ Tabix's per-file batch publication.
 
 ### Make descriptor acquisition demand-driven
 
-`setupUrlDescriptors` stores descriptor accessors and the handle factory but
+`setupUrlLoading` stores descriptor options and the handle factory but
 does not start a parallel initialization promise. The first window request
 normalizes descriptors and acquires handles. Later requests repeat cheap
 normalization and reuse handle-keyed promises.
@@ -396,14 +396,14 @@ concrete-source boilerplate. The implementation target is:
 
 - delete `singleAxisWindowedSource.js`;
 - delete `urlDescriptorState.js`;
-- grow `urlDescriptorWindowedSource.js` only with the behavior that survives;
+- grow `intervalUrlSource.js` only with the behavior that survives;
 - delete `initializedPromise`, fetched-interval handoff, descriptor
   `markLoaded()` calls, and source-local publication guards; and
 - finish at least 80 production lines below the branch base.
 
 The concrete forecast starts with 233 deleted production lines from
 `singleAxisWindowedSource.js` and `urlDescriptorState.js`. The surviving
-`urlDescriptorWindowedSource.js` is expected to absorb 100--130 lines for
+`intervalUrlSource.js` is expected to absorb 100--130 lines for
 quantization, debouncing, request execution, handle caching, and publication.
 Concrete-source cleanup should remove another 15--35 lines. The expected final
 range is therefore roughly -100 to -150 lines; the -80 gate leaves limited room
@@ -442,7 +442,7 @@ acquisition inside the runner and establishes the single end-to-end request.
 ### Affected areas and downstream consumers
 
 - `packages/core/src/data/sources/lazy/singleAxisWindowedSource.js`
-- `packages/core/src/data/sources/lazy/urlDescriptorWindowedSource.js`
+- `packages/core/src/data/sources/lazy/intervalUrlSource.js`
 - BAM, BigBed, BigWig, indexed FASTA, and Tabix interval loaders
 - loading-status registry
 - collector completion and viewport readiness
@@ -487,13 +487,13 @@ of the same request. The request signal is the only stale-work lease.
 `SingleAxisWindowedSource`, `UrlDescriptorState`, descriptor revisions,
 active/loaded descriptor sets, and `initializedPromise` are deleted.
 
-`UrlDescriptorWindowedSource` directly owns the remaining quantization,
+`IntervalUrlSource` directly owns the remaining quantization,
 debouncing, request, and handle-cache behavior while extending
 `SingleAxisLazySource`.
 
 ### Affected areas and downstream consumers
 
-- `packages/core/src/data/sources/lazy/urlDescriptorWindowedSource.js`
+- `packages/core/src/data/sources/lazy/intervalUrlSource.js`
 - `packages/core/src/data/sources/lazy/singleAxisLazySource.js`
 - removal of `singleAxisWindowedSource.js` and `urlDescriptorState.js`
 - `packages/core/src/genomeSpyBase.js` and its windowed-source detection
@@ -566,7 +566,7 @@ retains physical file batches, and BAM/indexed FASTA retain their single-handle
 contracts.
 
 Review every former `SingleAxisWindowedSource` consumer. The production
-`hasWindowedLazyDataSource()` query may test `UrlDescriptorWindowedSource`
+`hasIntervalLazyDataSource()` query may test `IntervalUrlSource`
 directly because it is now the complete production windowed family. Test-only
 generic subclasses should move to the surviving base or to focused lazy-source
 test doubles; do not add a production marker solely for tests.

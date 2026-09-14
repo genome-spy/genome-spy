@@ -2,7 +2,6 @@ import { withoutExprRef } from "../../../paramRuntime/paramUtils.js";
 import { debounce } from "../../../utils/debounce.js";
 import {
     loadUrlDescriptorOrSkip,
-    normalizeSingleUrlDescriptor,
     normalizeUrlDescriptors,
     UrlLimitExceededError,
     urlDescriptorKey,
@@ -29,7 +28,7 @@ import SingleAxisLazySource from "./singleAxisLazySource.js";
  * @template D
  * @abstract
  */
-export default class UrlDescriptorWindowedSource extends SingleAxisLazySource {
+export default class IntervalUrlSource extends SingleAxisLazySource {
     #abortController = new AbortController();
 
     /** @type {Map<string, Promise<H>>} */
@@ -44,17 +43,14 @@ export default class UrlDescriptorWindowedSource extends SingleAxisLazySource {
     #lastDomain;
 
     /** @type {(interval: number[], windowSize?: number) => any} */
-    #requestInterval = (interval, windowSize) =>
-        this.loadInterval(interval, windowSize);
+    #debouncedRequest = (interval, windowSize) =>
+        this.requestInterval(interval, windowSize);
 
     /** @type {any} */
     params;
 
-    /** @type {{ getUrl: () => unknown, getIndexUrl?: () => unknown, singleSourceName?: string }} */
-    #descriptorOptions;
-
-    /** @type {{ loadModules: () => Promise<any>, createHandle: (descriptor: import("../urlDescriptor.js").UrlDescriptor, modules: any) => Promise<H>, cacheKey?: (descriptor: import("../urlDescriptor.js").UrlDescriptor) => string }} */
-    #handleOptions;
+    /** @type {{ loadModules: () => Promise<any>, createHandle: (descriptor: import("../urlDescriptor.js").UrlDescriptor, modules: any) => Promise<H>, cacheKey?: (descriptor: import("../urlDescriptor.js").UrlDescriptor) => string, singleUrl?: boolean }} */
+    #options;
 
     /**
      * @param {import("../../../view/view.js").default} view
@@ -70,26 +66,19 @@ export default class UrlDescriptorWindowedSource extends SingleAxisLazySource {
 
     /**
      * @template M
-     * @param {{ getUrl: () => unknown, getIndexUrl?: () => unknown, singleSourceName?: string }} descriptorOptions
      * @param {{
      *     loadModules: () => Promise<M>,
      *     createHandle: (descriptor: import("../urlDescriptor.js").UrlDescriptor, modules: M) => Promise<H>,
      *     cacheKey?: (descriptor: import("../urlDescriptor.js").UrlDescriptor) => string,
-     * }} handleOptions
+     *     singleUrl?: boolean,
+     * }} options
      * @protected
      */
-    setupUrlDescriptors(descriptorOptions, handleOptions) {
-        this.#descriptorOptions = descriptorOptions;
-        this.#handleOptions = handleOptions;
-    }
+    setupUrlLoading(options) {
+        this.#options = options;
 
-    /**
-     * @param {import("../../../spec/data.js").DebouncedData} debounceParams
-     * @protected
-     */
-    setupDebouncing(debounceParams) {
-        const wait = () => withoutExprRef(debounceParams.debounce);
-        const mode = debounceParams.debounceMode;
+        const wait = () => withoutExprRef(this.params.debounce);
+        const mode = this.params.debounceMode;
         if (mode == "domain") {
             this.onDomainChanged = debounce(
                 this.onDomainChanged.bind(this),
@@ -97,8 +86,8 @@ export default class UrlDescriptorWindowedSource extends SingleAxisLazySource {
                 false
             );
         } else if (mode == "window") {
-            this.#requestInterval = debounce(
-                this.#requestInterval,
+            this.#debouncedRequest = debounce(
+                this.#debouncedRequest,
                 wait,
                 false
             );
@@ -137,10 +126,10 @@ export default class UrlDescriptorWindowedSource extends SingleAxisLazySource {
     /** @param {number[]} domain Linearized domain */
     onDomainChanged(domain) {
         this.#lastDomain = domain;
-        const windowSize = withoutExprRef(this.params?.windowSize) ?? -1;
+        const windowSize = withoutExprRef(this.params.windowSize) ?? -1;
         if (domain[1] - domain[0] <= windowSize) {
             const interval = this.getChangedWindow(domain, windowSize);
-            if (interval) this.#requestInterval(interval, windowSize);
+            if (interval) this.#debouncedRequest(interval, windowSize);
         }
     }
 
@@ -148,16 +137,16 @@ export default class UrlDescriptorWindowedSource extends SingleAxisLazySource {
      * @param {number[]} domain
      * @protected
      */
-    requestWindow(domain) {
+    queueDomain(domain) {
         this.#lastDomain = domain;
-        this.#requestInterval(domain);
+        this.#debouncedRequest(domain);
     }
 
     /**
      * @param {number[]} domain
      * @param {number} [windowSize]
      */
-    async loadInterval(domain, windowSize) {
+    async requestInterval(domain, windowSize) {
         if (this.disposed) return;
 
         this.#abortController.abort();
@@ -173,11 +162,7 @@ export default class UrlDescriptorWindowedSource extends SingleAxisLazySource {
                 const empty = /** @type {D} */ ([]);
                 this.#publishLoaded(empty, domain, handles, windowSize);
             } else {
-                const loaded = await this.loadIntervalData(
-                    domain,
-                    handles,
-                    signal
-                );
+                const loaded = await this.loadWindow(domain, handles, signal);
                 signal.throwIfAborted();
                 if (loaded) {
                     const size = loaded.windowSize ?? windowSize;
@@ -206,7 +191,7 @@ export default class UrlDescriptorWindowedSource extends SingleAxisLazySource {
      * @protected
      * @abstract
      */
-    async loadIntervalData(interval, handles, signal) {
+    async loadWindow(interval, handles, signal) {
         return undefined;
     }
 
@@ -276,7 +261,7 @@ export default class UrlDescriptorWindowedSource extends SingleAxisLazySource {
         signal.throwIfAborted();
         if (!descriptors.length) return [];
 
-        const modules = await this.#handleOptions.loadModules();
+        const modules = await this.#options.loadModules();
         signal.throwIfAborted();
         const handles = await Promise.all(
             descriptors.map((descriptor) =>
@@ -294,37 +279,36 @@ export default class UrlDescriptorWindowedSource extends SingleAxisLazySource {
      */
     #getHandle(descriptor, modules) {
         const key =
-            this.#handleOptions.cacheKey?.(descriptor) ??
+            this.#options.cacheKey?.(descriptor) ??
             urlDescriptorKey(descriptor);
         let promise = this.#handleCache.get(key);
         if (!promise) {
-            promise = this.#handleOptions.createHandle(descriptor, modules);
-            this.#handleCache.set(key, promise);
-            promise.catch(() => {
-                if (this.#handleCache.get(key) === promise) {
+            promise = this.#options
+                .createHandle(descriptor, modules)
+                .catch((error) => {
                     this.#handleCache.delete(key);
-                }
-            });
+                    throw error;
+                });
+            this.#handleCache.set(key, promise);
         }
         return promise;
     }
 
     async #normalize() {
         const options = {
-            url: this.#descriptorOptions.getUrl(),
-            indexUrl: this.#descriptorOptions.getIndexUrl?.(),
+            url: this.params.url,
+            indexUrl: this.params.indexUrl,
             baseUrl: this.view.getBaseUrl(),
             paramRuntime: this.paramRuntime,
         };
         try {
-            return this.#descriptorOptions.singleSourceName
-                ? [
-                      await normalizeSingleUrlDescriptor(
-                          options,
-                          this.#descriptorOptions.singleSourceName
-                      ),
-                  ]
-                : await normalizeUrlDescriptors(options);
+            const descriptors = await normalizeUrlDescriptors(options);
+            if (this.#options.singleUrl && descriptors.length !== 1) {
+                throw new Error(
+                    `Data source "${this.label}" supports exactly one resolved URL.`
+                );
+            }
+            return descriptors;
         } catch (e) {
             if (e instanceof UrlLimitExceededError) return [];
             throw e;

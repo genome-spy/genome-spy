@@ -57,7 +57,7 @@ describe("IndexedFastaSource", () => {
             view.setIndexUrl("references/B.fa.fai");
         });
         await view.paramRuntime.whenPropagated();
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect(openedFiles).toEqual([
             {

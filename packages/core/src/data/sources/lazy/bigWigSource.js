@@ -3,7 +3,7 @@ import {
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
-import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
+import IntervalUrlSource from "./intervalUrlSource.js";
 import {
     createDescriptorFieldAttacher,
     getUrlDescriptorExpressions,
@@ -12,8 +12,8 @@ import {
 /**
  *
  */
-/** @extends {UrlDescriptorWindowedSource<BigWigHandle, import("../../flowNode.js").Datum[][]>} */
-export default class BigWigSource extends UrlDescriptorWindowedSource {
+/** @extends {IntervalUrlSource<BigWigHandle, import("../../flowNode.js").Datum[][]>} */
+export default class BigWigSource extends IntervalUrlSource {
     /**
      * @typedef {object} BigWigHandle
      * @prop {import("@gmod/bbi").BigWig} bbi
@@ -57,16 +57,11 @@ export default class BigWigSource extends UrlDescriptorWindowedSource {
             throw new Error("No URL provided for BigWigSource");
         }
 
-        this.setupDebouncing(this.params);
-
-        this.setupUrlDescriptors(
-            { getUrl: () => this.params.url },
-            {
-                loadModules: loadBigWigModules,
-                createHandle: (descriptor, { BigWig, RemoteFile }) =>
-                    this.#createHandle(descriptor, BigWig, RemoteFile),
-            }
-        );
+        this.setupUrlLoading({
+            loadModules: loadBigWigModules,
+            createHandle: (descriptor, { BigWig, RemoteFile }) =>
+                this.#createHandle(descriptor, BigWig, RemoteFile),
+        });
     }
 
     get label() {
@@ -109,7 +104,7 @@ export default class BigWigSource extends UrlDescriptorWindowedSource {
      * @param {number[]} domain Linearized domain
      */
     onDomainChanged(domain) {
-        this.requestWindow(domain);
+        this.queueDomain(domain);
     }
 
     /**
@@ -118,7 +113,7 @@ export default class BigWigSource extends UrlDescriptorWindowedSource {
      * @param {AbortSignal} signal
      * @returns {Promise<{interval: number[], data: import("../../flowNode.js").Datum[][], windowSize: number} | undefined>}
      */
-    async loadIntervalData(domain, handles, signal) {
+    async loadWindow(domain, handles, signal) {
         // TODO: Postpone the initial load until layout is computed and remove 700.
         const length = this.scaleResolution.getAxisLength() || 700;
 

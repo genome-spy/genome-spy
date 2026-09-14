@@ -89,23 +89,6 @@ export async function normalizeUrlDescriptors(options) {
 }
 
 /**
- * Expands a URL spec that is expected to resolve to exactly one descriptor.
- * Sources that still support only one remote file use this to fail before
- * constructing file handles.
- *
- * @param {UrlDescriptorOptions} options
- * @param {string} sourceName
- * @returns {Promise<UrlDescriptor>}
- */
-export async function normalizeSingleUrlDescriptor(options, sourceName) {
-    const descriptors = await normalizeUrlDescriptors(options);
-    if (descriptors.length !== 1) {
-        throw new Error(`${sourceName} supports exactly one resolved URL.`);
-    }
-    return descriptors[0];
-}
-
-/**
  * Returns nested expressions that affect URL descriptor expansion. Top-level
  * URL and index expressions are already ordinary source properties.
  *

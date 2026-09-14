@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
+import IntervalUrlSource from "./intervalUrlSource.js";
 
-/** @extends {UrlDescriptorWindowedSource<object, import("../../flowNode.js").Datum[][]>} */
-class TestSource extends UrlDescriptorWindowedSource {
+/** @extends {IntervalUrlSource<object, import("../../flowNode.js").Datum[][]>} */
+class TestSource extends IntervalUrlSource {
     /**
      * @param {"domain" | "window"} debounceMode
      * @param {{ modules: () => Promise<undefined>, handles: () => Promise<object>, loads: (interval: number[]) => void }} calls
@@ -10,15 +10,17 @@ class TestSource extends UrlDescriptorWindowedSource {
      */
     constructor(debounceMode, calls, view) {
         super(/** @type {any} */ (view), "x");
-        this.params = { windowSize: 20 };
-        this.setupDebouncing({ debounce: 0, debounceMode });
-        this.setupUrlDescriptors(
-            { getUrl: () => "data" },
-            {
-                loadModules: calls.modules,
-                createHandle: calls.handles,
-            }
-        );
+        this.params = {
+            url: "data",
+            windowSize: 20,
+            debounce: 0,
+            debounceMode,
+        };
+        this.setupUrlLoading({
+            singleUrl: true,
+            loadModules: calls.modules,
+            createHandle: calls.handles,
+        });
         this.calls = calls;
     }
 
@@ -26,7 +28,7 @@ class TestSource extends UrlDescriptorWindowedSource {
      * @param {number[]} interval
      * @returns {Promise<{interval: number[], data: import("../../flowNode.js").Datum[][]}>}
      */
-    async loadIntervalData(interval) {
+    async loadWindow(interval) {
         this.calls.loads(interval);
         return { interval, data: [/** @type {any[]} */ ([])] };
     }
@@ -75,7 +77,7 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe("UrlDescriptorWindowedSource", () => {
+describe("IntervalUrlSource", () => {
     it("defers descriptor and handle work until a window is requested", async () => {
         vi.useFakeTimers();
         vi.stubGlobal("window", { setTimeout, clearTimeout });
@@ -89,6 +91,18 @@ describe("UrlDescriptorWindowedSource", () => {
         expect(calls.modules).toHaveBeenCalledOnce();
         expect(calls.handles).toHaveBeenCalledOnce();
         expect(calls.loads).toHaveBeenCalledWith([0, 20]);
+    });
+
+    it("rejects multiple descriptors from a single-file source", async () => {
+        const calls = createCalls();
+        const view = createViewStub();
+        const source = new TestSource("domain", calls, view);
+        source.params.url = /** @type {any} */ (["a", "b"]);
+
+        await source.requestInterval([0, 10]);
+
+        expect(view.loadingStatuses.at(-1)).toBe("error");
+        expect(calls.modules).not.toHaveBeenCalled();
     });
 
     it.each(/** @type {const} */ (["domain", "window"]))(

@@ -163,7 +163,7 @@ describe("TabixSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect(indexUrlByUrl).toEqual(
             new Map([
@@ -208,7 +208,7 @@ describe("TabixSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect([...collector.getData()]).toEqual([
             {
@@ -245,7 +245,7 @@ describe("TabixSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect(indexUrlByUrl).toEqual(
             new Map([
@@ -304,7 +304,7 @@ describe("TabixSource", () => {
         source.addChild(fold);
         fold.addChild(collector);
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect([...collector.getData()]).toEqual([
             {
@@ -351,7 +351,7 @@ describe("TabixSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect(openedUrls).toEqual([
             "variants/ovarian.vcf.gz",
@@ -388,7 +388,7 @@ describe("TabixSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect(openedUrls).toEqual([]);
         expect(view.loadingStatuses.at(-1)).toEqual({ status: "complete" });
@@ -409,7 +409,7 @@ describe("TabixSource", () => {
             /** @type {any} */ (view)
         );
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
         view.setAddChrPrefix(true);
         await view.paramRuntime.whenPropagated();
         await vi.runAllTimersAsync();

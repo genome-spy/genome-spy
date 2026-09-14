@@ -7,15 +7,15 @@ import {
     getUrlDescriptorExpressions,
     urlDescriptorKey,
 } from "../urlDescriptor.js";
-import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
+import IntervalUrlSource from "./intervalUrlSource.js";
 
 /**
  * @template T
  * @template P
  * @abstract
- * @extends {UrlDescriptorWindowedSource<TabixHandle, [TabixHandle, T[]][][]>}
+ * @extends {IntervalUrlSource<TabixHandle, [TabixHandle, T[]][][]>}
  */
-export default class TabixSource extends UrlDescriptorWindowedSource {
+export default class TabixSource extends IntervalUrlSource {
     /**
      * @typedef {object} TabixHandle
      * @prop {import("@gmod/tabix").TabixIndexedFile} tbiIndex
@@ -64,47 +64,37 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
             throw new Error("No URL provided for TabixSource");
         }
 
-        this.setupDebouncing(this.params);
+        this.setupUrlLoading({
+            cacheKey: (descriptor) =>
+                urlDescriptorKey(descriptor) +
+                "\n" +
+                withoutExprRef(this.params.addChrPrefix),
+            loadModules: async () => {
+                const { TabixIndexedFile, RemoteFile } =
+                    await loadTabixModules();
+                const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
 
-        this.setupUrlDescriptors(
-            {
-                getUrl: () => this.params.url,
-                getIndexUrl: () => this.params.indexUrl,
+                const renameRefSeqs =
+                    addChrPrefix === true
+                        ? (/** @type {string} */ refSeq) => "chr" + refSeq
+                        : addChrPrefix
+                          ? (/** @type {string} */ refSeq) =>
+                                addChrPrefix + refSeq
+                          : undefined;
+
+                return { TabixIndexedFile, RemoteFile, renameRefSeqs };
             },
-            {
-                cacheKey: (descriptor) =>
-                    urlDescriptorKey(descriptor) +
-                    "\n" +
-                    withoutExprRef(this.params.addChrPrefix),
-                loadModules: async () => {
-                    const { TabixIndexedFile, RemoteFile } =
-                        await loadTabixModules();
-                    const addChrPrefix = withoutExprRef(
-                        this.params.addChrPrefix
-                    );
-
-                    const renameRefSeqs =
-                        addChrPrefix === true
-                            ? (/** @type {string} */ refSeq) => "chr" + refSeq
-                            : addChrPrefix
-                              ? (/** @type {string} */ refSeq) =>
-                                    addChrPrefix + refSeq
-                              : undefined;
-
-                    return { TabixIndexedFile, RemoteFile, renameRefSeqs };
-                },
-                createHandle: (
+            createHandle: (
+                descriptor,
+                { TabixIndexedFile, RemoteFile, renameRefSeqs }
+            ) =>
+                this.#createHandle(
                     descriptor,
-                    { TabixIndexedFile, RemoteFile, renameRefSeqs }
-                ) =>
-                    this.#createHandle(
-                        descriptor,
-                        TabixIndexedFile,
-                        RemoteFile,
-                        renameRefSeqs
-                    ),
-            }
-        );
+                    TabixIndexedFile,
+                    RemoteFile,
+                    renameRefSeqs
+                ),
+        });
     }
 
     /**
@@ -145,7 +135,7 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
      * @param {AbortSignal} signal
      * @returns {Promise<{interval: number[], data: [TabixHandle, T[]][][]}>}
      */
-    async loadIntervalData(interval, handles, signal) {
+    async loadWindow(interval, handles, signal) {
         return {
             interval,
             data: await this.discretizeAndLoad(

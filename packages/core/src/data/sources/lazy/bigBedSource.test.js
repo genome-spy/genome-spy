@@ -167,7 +167,7 @@ describe("BigBedSource", () => {
         );
 
         expect(openedUrls).toEqual([]);
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect(openedUrls).toEqual(["https://example.org/spec/features.bb"]);
     });
@@ -198,7 +198,7 @@ describe("BigBedSource", () => {
             )
         );
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect(openedUrls).toEqual([
             "https://example.org/spec/features/A.bb",
@@ -245,7 +245,7 @@ describe("BigBedSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect(openedUrls).toEqual([
             "https://example.org/spec/features/A.bb",
@@ -268,7 +268,7 @@ describe("BigBedSource", () => {
         );
 
         failingHeaderUrls.clear();
-        await source.loadInterval([100, 200]);
+        await source.requestInterval([100, 200]);
         expect(
             openedUrls.filter((url) => url.endsWith("missing.bb"))
         ).toHaveLength(2);
@@ -291,9 +291,9 @@ describe("BigBedSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        const first = source.loadInterval([0, 10]);
+        const first = source.requestInterval([0, 10]);
         await vi.waitFor(() => expect(requestedIntervals).toHaveLength(1));
-        await source.loadInterval([20, 30]);
+        await source.requestInterval([20, 30]);
         resolveFirst([{ start: 7, end: 8, rest: "stale" }]);
         await first;
 
@@ -335,7 +335,7 @@ describe("BigBedSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect(openedUrls).toEqual([
             "https://example.org/spec/features/A.bb",
@@ -444,7 +444,7 @@ describe("BigBedSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await source.loadInterval([0, 100]);
+        await source.requestInterval([0, 100]);
 
         expect(openedUrls).toEqual([]);
         expect(view.loadingStatuses.at(-1)).toEqual({ status: "complete" });
