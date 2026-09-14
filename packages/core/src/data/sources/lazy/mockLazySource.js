@@ -1,8 +1,9 @@
 import SingleAxisLazySource from "./singleAxisLazySource.js";
+import { activateExprRefProps } from "../../../paramRuntime/paramUtils.js";
 import {
     createDescriptorFieldAttacher,
+    getUrlDescriptorExpressions,
     normalizeUrlDescriptors,
-    watchUrlDescriptorExpressions,
 } from "../urlDescriptor.js";
 
 /**
@@ -17,7 +18,16 @@ export default class MockLazySource extends SingleAxisLazySource {
     constructor(params, view) {
         super(view, params.channel ?? "x");
 
-        this.params = params;
+        this.params = activateExprRefProps(
+            view.paramRuntime,
+            params,
+            () => {
+                this.invalidateData();
+                this.onDomainChanged();
+            },
+            (disposer) => this.registerDisposer(disposer),
+            getUrlDescriptorExpressions(params.url)
+        );
         this.delay = params.delay ?? 0;
         /** @type {ReturnType<typeof setTimeout> | undefined} */
         this.pendingTimer = undefined;
@@ -28,18 +38,6 @@ export default class MockLazySource extends SingleAxisLazySource {
                 this.pendingTimer = undefined;
             }
         });
-
-        if (params.url && typeof params.url == "object") {
-            watchUrlDescriptorExpressions({
-                url: params.url,
-                paramRuntime: view.paramRuntime,
-                listener: () => {
-                    this.invalidateData();
-                    this.onDomainChanged();
-                },
-                registerDisposer: (disposer) => this.registerDisposer(disposer),
-            });
-        }
     }
 
     /**

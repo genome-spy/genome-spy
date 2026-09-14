@@ -13,6 +13,7 @@ import {
 import { concatUrl } from "../../utils/url.js";
 import {
     createDescriptorFieldAttacher,
+    getUrlDescriptorExpressions,
     loadUrlDescriptorOrSkip,
     UrlLimitExceededError,
 } from "./urlDescriptor.js";
@@ -43,13 +44,12 @@ export default class UrlSource extends DataSource {
             params,
             () => this.load(),
             (disposer) => this.registerDisposer(disposer),
-            { batchMode: "whenPropagated" }
+            getUrlDescriptorExpressions(params.url)
         );
 
         this.baseUrl = view?.getBaseUrl();
         this.#urlDescriptors = new UrlDescriptorController(this, {
             getUrl: () => this.params.url,
-            onChange: () => this.load(),
         });
     }
 

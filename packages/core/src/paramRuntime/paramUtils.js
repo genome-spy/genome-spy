@@ -11,6 +11,7 @@ import { createRulerValue } from "../ruler/rulerValue.js";
 
 /**
  * @typedef {import("../utils/expression.js").ExpressionFunction & {
+ *   dependencies: import("./types.js").ParamRef<any>[],
  *   subscribe: (listener: () => void) => () => void,
  *   invalidate: () => void,
  *   identifier: () => string
@@ -32,7 +33,16 @@ import { createRulerValue } from "../ruler/rulerValue.js";
  *     listener: () => void,
  *     options?: WatchExpressionOptions
  *   ) => ExprRefFunction,
- *   whenPropagated?: () => Promise<void>
+ *   computed: <T>(
+ *     name: string,
+ *     deps: import("./types.js").ParamRef<any>[],
+ *     fn: () => T,
+ *     options?: { equals?: (a: T, b: T) => boolean }
+ *   ) => import("./types.js").ComputedParamRef<T>,
+ *   effect: (
+ *     deps: import("./types.js").ParamRef<any>[],
+ *     fn: () => void
+ *   ) => () => void
  * }} ExprRefRuntime
  */
 
@@ -176,7 +186,7 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
  * @param {T} props The properties object
  * @param {(props: ReadonlySet<keyof T>) => void} [listener] Listener to be called when any of the expressions change
  * @param {(disposer: () => void) => void} [registerDisposer]
- * @param {{ batchMode?: "microtask" | "whenPropagated" }} [options]
+ * @param {{ key: keyof T, expr: import("../spec/parameter.js").ExprRef }[]} [additionalExpressions]
  * @returns T
  * @template {Record<string, any | import("../spec/parameter.js").ExprRef>} T
  */
@@ -185,112 +195,70 @@ export function activateExprRefProps(
     props,
     listener,
     registerDisposer,
-    options = {}
+    additionalExpressions = []
 ) {
     /** @type {Record<string, any | import("../spec/parameter.js").ExprRef>} */
     const activatedProps = { ...props };
 
-    /** @type {Set<keyof T>} */
-    const alteredProps = new Set();
-
-    let scheduled = false;
-    let cancelled = false;
-    const batchMode = options.batchMode ?? "microtask";
-
-    const cancel = () => {
-        cancelled = true;
-        alteredProps.clear();
-        scheduled = false;
-    };
-
-    registerDisposer?.(cancel);
-
-    const flushChanges = () => {
-        if (cancelled) {
-            return;
-        }
-
-        if (!listener || alteredProps.size === 0) {
-            scheduled = false;
-            return;
-        }
-
-        const changedProps = new Set(alteredProps);
-        alteredProps.clear();
-        scheduled = false;
-        listener(changedProps);
-    };
-
-    const batchPropertyChange = (/** @type {keyof T} */ prop) => {
-        if (cancelled) {
-            return;
-        }
-
-        alteredProps.add(prop);
-        if (!scheduled) {
-            scheduled = true;
-            queueMicrotask(() => {
-                if (cancelled) {
-                    return;
-                }
-
-                if (
-                    batchMode == "whenPropagated" &&
-                    paramRuntime.whenPropagated
-                ) {
-                    paramRuntime
-                        .whenPropagated()
-                        .then(flushChanges)
-                        .catch(() => {
-                            flushChanges();
-                        });
-                } else {
-                    flushChanges();
-                }
-            });
-        }
-    };
-
+    /** @type {{ key: keyof T, fn: ExprRefFunction }[]} */
+    const bindings = [];
     for (const [key, value] of Object.entries(props)) {
         if (isExprRef(value)) {
-            if (listener) {
-                const expressionListener = () => batchPropertyChange(key);
-                const fn = paramRuntime.watchExpression
-                    ? paramRuntime.watchExpression(
-                          value.expr,
-                          expressionListener,
-                          {
-                              scopeOwned: !registerDisposer,
-                              registerDisposer,
-                          }
-                      )
-                    : paramRuntime.createExpression(value.expr);
-                if (!paramRuntime.watchExpression) {
-                    const unsubscribe = fn.subscribe(expressionListener);
-                    registerDisposer?.(unsubscribe);
-                }
-
-                Object.defineProperty(activatedProps, key, {
-                    enumerable: true,
-                    get() {
-                        return fn();
-                    },
-                });
-            } else {
-                const fn = paramRuntime.createExpression(value.expr);
-                Object.defineProperty(activatedProps, key, {
-                    enumerable: true,
-                    get() {
-                        return fn();
-                    },
-                });
-            }
+            const fn = paramRuntime.createExpression(value.expr);
+            const index = bindings.push({ key, fn }) - 1;
+            Object.defineProperty(activatedProps, key, {
+                enumerable: true,
+                get: listener ? () => values.get()[index] : () => fn(null),
+            });
         } else {
             activatedProps[key] = value;
         }
     }
 
+    if (!listener) {
+        return /** @type {T} */ (activatedProps);
+    }
+
+    for (const { key, expr } of additionalExpressions) {
+        bindings.push({ key, fn: paramRuntime.createExpression(expr.expr) });
+    }
+    if (!bindings.length) {
+        return /** @type {T} */ (activatedProps);
+    }
+
+    const dependencies = Array.from(
+        new Set(bindings.flatMap(({ fn }) => fn.dependencies))
+    );
+    const values = paramRuntime.computed(
+        "expression properties",
+        dependencies,
+        () => bindings.map(({ fn }) => fn(null)),
+        { equals: shallowArrayEquals }
+    );
+    let previous = values.get();
+    const disposeEffect = paramRuntime.effect([values], () => {
+        const next = values.get();
+        const changed = new Set(
+            bindings
+                .filter((_, i) => previous[i] !== next[i])
+                .map(({ key }) => key)
+        );
+        previous = next;
+        listener(changed);
+    });
+
+    registerDisposer?.(values.dispose);
+    registerDisposer?.(disposeEffect);
+
     return /** @type {T} */ (activatedProps);
+}
+
+/**
+ * @param {unknown[]} a
+ * @param {unknown[]} b
+ */
+function shallowArrayEquals(a, b) {
+    return a.every((value, i) => value === b[i]);
 }
 
 /**
@@ -342,6 +310,7 @@ export function resolveInitOnlyExprRef(
  */
 export function makeConstantExprRef(value) {
     return Object.assign(() => value, {
+        dependencies: [],
         subscribe: () => () => /** @type {void} */ (undefined),
         invalidate: () => /** @type {void} */ (undefined),
         identifier: () => "constant",

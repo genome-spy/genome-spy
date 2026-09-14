@@ -140,8 +140,11 @@ than embedding either runtime.
   bind to parameter values.
 - Expression changes may request a render, re-propagate dataflow for transforms
   such as `filter` and `formula`, or reload URL-backed sources.
-- `activateExprRefProps` converts expression-reference properties into getters
-  and batches their updates through microtasks.
+- `activateExprRefProps` evaluates a logical property group through one owned
+  computed and reports settled, changed keys through one graph effect. Nested
+  URL-template expressions join the source's top-level group. Literal-only
+  groups create no graph nodes, and async reload completion remains outside
+  propagation.
 - Scale-dependent parameters reserve scoped names during view construction and
   materialize real derived refs on demand. Pending declarations shadow ancestor
   names without exposing placeholder values.

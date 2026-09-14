@@ -11,7 +11,6 @@ describe("UrlDescriptorController", () => {
                     values: { expr: "visibleSamples" },
                     field: "sample",
                 }),
-                onChange: () => undefined,
             }
         );
 
@@ -22,33 +21,9 @@ describe("UrlDescriptorController", () => {
             },
         ]);
     });
-
-    it("watches nested descriptor expressions but not top-level ExprRefs", () => {
-        /** @type {string[]} */
-        const watched = [];
-        const source = createSource(watched);
-
-        new UrlDescriptorController(/** @type {any} */ (source), {
-            getUrl: () => ({
-                template: "signals/{sample}.bw",
-                values: { expr: "visibleSamples" },
-                field: "sample",
-            }),
-            onChange: () => undefined,
-        });
-        new UrlDescriptorController(/** @type {any} */ (source), {
-            getUrl: () => ({ expr: "urlParam" }),
-            onChange: () => undefined,
-        });
-
-        expect(watched).toEqual(["visibleSamples"]);
-    });
 });
 
-/**
- * @param {string[]} watched
- */
-function createSource(watched = []) {
+function createSource() {
     return {
         view: {
             getBaseUrl: () => "https://example.org/spec/",
@@ -58,11 +33,6 @@ function createSource(watched = []) {
                 return /** @returns {string[] | undefined} */ () =>
                     expr == "visibleSamples" ? ["A"] : undefined;
             },
-            watchExpression: (/** @type {string} */ expr) => {
-                watched.push(expr);
-                return /** @returns {undefined} */ () => undefined;
-            },
         },
-        registerDisposer: /** @returns {undefined} */ () => undefined,
     };
 }

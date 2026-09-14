@@ -3,6 +3,7 @@ import {
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
 import { normalizeSingleUrlDescriptor } from "../urlDescriptor.js";
+import { getUrlDescriptorExpressions } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
@@ -47,7 +48,7 @@ export default class BamSource extends SingleAxisWindowedSource {
                 }
             },
             (disposer) => this.registerDisposer(disposer),
-            { batchMode: "whenPropagated" }
+            getUrlDescriptorExpressions(paramsWithDefaults.url)
         );
 
         if (!this.params.url) {

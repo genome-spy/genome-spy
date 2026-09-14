@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import ViewParamRuntime, {
     activateExprRefProps,
 } from "../paramRuntime/viewParamRuntime.js";
@@ -842,16 +842,13 @@ test("activateExprRefProps", async () => {
 
     fooSetter(8);
 
-    // Let the scheduled microtask call the listener
-    await Promise.resolve();
-
     expect(altered).toEqual(new Set(["b"]));
 
-    fooSetter(1);
-    barSetter(2);
-
-    // Let the scheduled microtask call the listener
-    await Promise.resolve();
+    pm.runInTransaction(() => {
+        fooSetter(1);
+        barSetter(2);
+    });
+    await pm.whenPropagated();
 
     expect(altered).toEqual(new Set(["b", "c"]));
 
@@ -913,65 +910,16 @@ test("activateExprRefProps does not notify after disposer before flush", async (
         (disposer) => disposers.push(disposer)
     );
 
-    fooSetter(2);
-    disposers.forEach((dispose) => dispose());
+    pm.runInTransaction(() => {
+        fooSetter(2);
+        disposers.forEach((dispose) => dispose());
+    });
     await Promise.resolve();
 
     expect(calls).toBe(0);
 });
 
-test("activateExprRefProps falls back to flush when whenPropagated rejects", async () => {
-    /** @type {Set<() => void>} */
-    const listeners = new Set();
-
-    /** @type {import("../paramRuntime/types.js").ExprRefFunction} */
-    const expression = Object.assign(() => 1, {
-        subscribe: (
-            /** @type {() => void} */
-            listener
-        ) => {
-            listeners.add(listener);
-            return () => listeners.delete(listener);
-        },
-        invalidate: () => /** @type {void} */ (undefined),
-        identifier: () => "expr",
-        dependencies: [],
-        fields: [],
-        globals: [],
-        code: "expr",
-    });
-
-    /** @type {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction, whenPropagated: () => Promise<void> }} */
-    const runtime = {
-        createExpression: () => expression,
-        whenPropagated: () => Promise.reject(new Error("boom")),
-    };
-
-    let calls = 0;
-    /** @type {Set<string>} */
-    let altered = new Set();
-
-    activateExprRefProps(
-        runtime,
-        {
-            value: { expr: "foo" },
-        },
-        (props) => {
-            calls += 1;
-            altered = new Set(props);
-        },
-        undefined,
-        { batchMode: "whenPropagated" }
-    );
-
-    listeners.forEach((listener) => listener());
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(calls).toBe(1);
-    expect(altered).toEqual(new Set(["value"]));
-});
-
-test("activateExprRefProps supports propagated batching and deduped keys", async () => {
+test("activateExprRefProps batches transactions and deduplicates keys", async () => {
     const pm = new ViewParamRuntime();
     const fooSetter = pm.registerParam({ name: "foo", value: 1 });
     const barSetter = pm.registerParam({ name: "bar", value: 1 });
@@ -989,9 +937,7 @@ test("activateExprRefProps supports propagated batching and deduped keys", async
         (props) => {
             calls += 1;
             altered = new Set(props);
-        },
-        undefined,
-        { batchMode: "whenPropagated" }
+        }
     );
 
     pm.runInTransaction(() => {
@@ -1005,6 +951,109 @@ test("activateExprRefProps supports propagated batching and deduped keys", async
 
     expect(calls).toBe(1);
     expect(altered).toEqual(new Set(["a", "b"]));
+});
+
+test("activateExprRefProps groups nested expressions under a top-level key", async () => {
+    const pm = new ViewParamRuntime();
+    const urlSetter = pm.registerParam({ name: "url", value: "a.bw" });
+    const valuesSetter = pm.registerParam({ name: "values", value: ["A"] });
+    const changes = vi.fn();
+
+    const props = activateExprRefProps(
+        pm,
+        { url: { expr: "url" } },
+        changes,
+        undefined,
+        [{ key: "url", expr: { expr: "values" } }]
+    );
+
+    pm.runInTransaction(() => {
+        urlSetter("b.bw");
+        valuesSetter(["B"]);
+    });
+    await pm.whenPropagated();
+
+    expect(props.url).toBe("b.bw");
+    expect(changes).toHaveBeenCalledOnce();
+    expect(changes).toHaveBeenCalledWith(new Set(["url"]));
+});
+
+test("activateExprRefProps suppresses unchanged effective values", () => {
+    const pm = new ViewParamRuntime();
+    const setter = pm.registerParam({ name: "value", value: 1 });
+    const listener = vi.fn();
+
+    activateExprRefProps(pm, { positive: { expr: "value > 0" } }, listener);
+    setter(2);
+
+    expect(listener).not.toHaveBeenCalled();
+});
+
+test("activateExprRefProps creates no graph nodes for literal props", () => {
+    const fail = () => {
+        throw new Error("Unexpected graph node");
+    };
+    const props = activateExprRefProps(
+        /** @type {any} */ ({
+            createExpression: fail,
+            computed: fail,
+            effect: fail,
+        }),
+        { value: 1 },
+        fail
+    );
+
+    expect(props).toEqual({ value: 1 });
+});
+
+test("activateExprRefProps retains changes after an upstream failure", () => {
+    const pm = new ViewParamRuntime();
+    const input = pm.signal("input", 1);
+    const upstream = pm.computed("upstream", [input], () => {
+        if (input.get() == 2) {
+            throw new Error("boom");
+        }
+        return input.get();
+    });
+    const expression = /** @type {any} */ (
+        Object.assign(() => upstream.get(), { dependencies: [upstream] })
+    );
+    const listener = vi.fn();
+
+    activateExprRefProps(
+        /** @type {any} */ ({
+            createExpression: () => expression,
+            computed: pm.computed.bind(pm),
+            effect: pm.effect.bind(pm),
+        }),
+        { value: { expr: "input" } },
+        listener
+    );
+
+    input.set(2);
+    expect(() => pm.flushNow()).toThrow("boom");
+    expect(listener).not.toHaveBeenCalled();
+
+    input.set(3);
+    pm.flushNow();
+    expect(listener).toHaveBeenCalledOnce();
+});
+
+test("activateExprRefProps does not retry a failed listener", () => {
+    const pm = new ViewParamRuntime();
+    const setter = pm.registerParam({ name: "value", value: 1 });
+    const listener = vi.fn(() => {
+        throw new Error("boom");
+    });
+
+    activateExprRefProps(pm, { value: { expr: "value" } }, listener);
+
+    expect(() => setter(2)).toThrow("boom");
+    expect(() => pm.flushNow()).not.toThrow();
+    expect(listener).toHaveBeenCalledOnce();
+
+    expect(() => setter(3)).toThrow("boom");
+    expect(listener).toHaveBeenCalledTimes(2);
 });
 
 /**

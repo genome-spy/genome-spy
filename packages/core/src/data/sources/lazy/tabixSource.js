@@ -2,7 +2,10 @@ import {
     activateExprRefProps,
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
-import { attachDescriptorFieldsToData } from "../urlDescriptor.js";
+import {
+    attachDescriptorFieldsToData,
+    getUrlDescriptorExpressions,
+} from "../urlDescriptor.js";
 import UrlDescriptorController from "../urlDescriptorController.js";
 import UrlDescriptorState, {
     updateUrlDescriptorState,
@@ -62,13 +65,12 @@ export default class TabixSource extends SingleAxisWindowedSource {
                 }
             },
             (disposer) => this.registerDisposer(disposer),
-            { batchMode: "whenPropagated" }
+            getUrlDescriptorExpressions(paramsWithDefaults.url)
         );
 
         this.#urlDescriptors = new UrlDescriptorController(this, {
             getUrl: () => this.params.url,
             getIndexUrl: () => this.params.indexUrl,
-            onChange: () => this.#reloadIfCurrentDomainNeedsData(),
         });
 
         if (!withoutExprRef(this.params.url)) {

@@ -2,7 +2,10 @@ import {
     activateExprRefProps,
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
-import { createDescriptorFieldAttacher } from "../urlDescriptor.js";
+import {
+    createDescriptorFieldAttacher,
+    getUrlDescriptorExpressions,
+} from "../urlDescriptor.js";
 import UrlDescriptorController from "../urlDescriptorController.js";
 import UrlDescriptorState, {
     updateUrlDescriptorState,
@@ -53,12 +56,11 @@ export default class BigBedSource extends SingleAxisWindowedSource {
                 }
             },
             (disposer) => this.registerDisposer(disposer),
-            { batchMode: "whenPropagated" }
+            getUrlDescriptorExpressions(paramsWithDefaults.url)
         );
 
         this.#urlDescriptors = new UrlDescriptorController(this, {
             getUrl: () => this.params.url,
-            onChange: () => this.#reloadIfCurrentDomainNeedsData(),
         });
 
         if (!this.params.url) {
