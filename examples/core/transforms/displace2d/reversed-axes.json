@@ -57,7 +57,7 @@
         },
         {
           "type": "formula",
-          "expr": "datum.labelWidth + 10",
+          "expr": "datum.labelWidth + 6",
           "as": "collisionWidth"
         },
         {
@@ -65,33 +65,13 @@
           "sort": { "field": "priority", "order": "ascending" }
         },
         {
-          "type": "formula",
-          "expr": "datum.x >= min(domain('x')[0], domain('x')[1]) && datum.x <= max(domain('x')[0], domain('x')[1]) && datum.y >= min(domain('y')[0], domain('y')[1]) && datum.y <= max(domain('y')[0], domain('y')[1])",
-          "as": "inViewport"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.inViewport ? datum.collisionWidth : 0",
-          "as": "activeCollisionWidth"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.inViewport ? 20 : 0",
-          "as": "activeCollisionHeight"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.inViewport ? 10 : 0",
-          "as": "activeAnchorSize"
-        },
-        {
           "type": "displace2d",
           "x": "x",
           "y": "y",
-          "width": "activeCollisionWidth",
-          "height": "activeCollisionHeight",
-          "anchorWidth": "activeAnchorSize",
-          "anchorHeight": "activeAnchorSize",
+          "width": "collisionWidth",
+          "height": 16,
+          "anchorWidth": 12,
+          "anchorHeight": 12,
           "scalePositions": true,
           "as": ["labelTargetDx", "labelTargetDy"]
         },
@@ -100,8 +80,7 @@
           "key": "priority",
           "fields": ["labelTargetDx", "labelTargetDy"],
           "as": ["labelDx", "labelDy"]
-        },
-        { "type": "filter", "expr": "datum.inViewport" }
+        }
       ],
       "encoding": {
         "x": { "field": "x", "type": "quantitative" },
