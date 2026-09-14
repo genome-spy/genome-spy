@@ -142,9 +142,8 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
      */
     async loadInterval(interval) {
         await this.initializedPromise;
-        const revision = this.descriptorState.activeRevision;
-        if (revision === undefined) return;
-        const handles = this.descriptorState.handles;
+        const handles = this.descriptorState.activeHandles;
+        if (!handles) return;
         const featureChunksByHandle = await this.discretizeAndLoad(
             interval,
             async (discreteInterval, signal) =>
@@ -179,10 +178,10 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
                 )
         );
 
-        if (featureChunksByHandle && this.descriptorState.isCurrent(revision)) {
+        if (featureChunksByHandle) {
             // This source preserves per-file batches instead of publishData().
             this._lastLoadedDomain = Array.from(interval);
-            this.#publishHandleData(handles, featureChunksByHandle, revision);
+            this.#publishHandleData(handles, featureChunksByHandle);
         }
     }
 
@@ -230,9 +229,8 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
     /**
      * @param {TabixHandle[]} handles
      * @param {[TabixHandle, T[]][][]} featureChunksByHandle
-     * @param {number} revision
      */
-    #publishHandleData(handles, featureChunksByHandle, revision) {
+    #publishHandleData(handles, featureChunksByHandle) {
         this.reset();
 
         for (const [handleIndex, handle] of handles.entries()) {
@@ -252,7 +250,7 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
             }
         }
 
-        this.descriptorState.markLoaded(revision);
+        this.descriptorState.markLoaded();
         this.complete();
     }
 }

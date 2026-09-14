@@ -111,9 +111,8 @@ export default class BigBedSource extends UrlDescriptorWindowedSource {
      * @param {number[]} interval linearized domain
      */
     async loadInterval(interval) {
-        const revision = this.descriptorState.activeRevision;
-        if (revision === undefined) return;
-        const handles = this.descriptorState.handles;
+        const handles = await this.getActiveUrlHandles(interval);
+        if (!handles) return;
         const features = await this.discretizeAndLoad(
             interval,
             async (d, signal) =>
@@ -136,8 +135,8 @@ export default class BigBedSource extends UrlDescriptorWindowedSource {
                 ).flat()
         );
 
-        if (features && this.descriptorState.isCurrent(revision)) {
-            this.descriptorState.markLoaded(revision);
+        if (features) {
+            this.descriptorState.markLoaded();
             this.publishData(features);
         }
     }

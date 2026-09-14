@@ -103,15 +103,9 @@ export default class BamSource extends UrlDescriptorWindowedSource {
      * @param {number[]} interval linearized domain
      */
     async loadInterval(interval) {
-        await this.initializedPromise;
-        const revision = this.descriptorState.activeRevision;
-        if (revision === undefined) return;
-        const handle = this.descriptorState.handles[0];
-        if (!handle) {
-            this.descriptorState.markLoaded(revision);
-            this.publishData([], interval);
-            return;
-        }
+        const handles = await this.getActiveUrlHandles(interval);
+        if (!handles) return;
+        const handle = handles[0];
         const featureChunks = await this.discretizeAndLoad(
             interval,
             async (d, signal) =>
@@ -129,8 +123,8 @@ export default class BamSource extends UrlDescriptorWindowedSource {
                     )
         );
 
-        if (featureChunks && this.descriptorState.isCurrent(revision)) {
-            this.descriptorState.markLoaded(revision);
+        if (featureChunks) {
+            this.descriptorState.markLoaded();
             this.publishData(featureChunks);
         }
     }

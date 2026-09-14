@@ -76,15 +76,9 @@ export default class IndexedFastaSource extends UrlDescriptorWindowedSource {
      * @param {number[]} interval linearized domain
      */
     async loadInterval(interval) {
-        await this.initializedPromise;
-        const revision = this.descriptorState.activeRevision;
-        if (revision === undefined) return;
-        const fasta = this.descriptorState.handles[0];
-        if (!fasta) {
-            this.descriptorState.markLoaded(revision);
-            this.publishData([], interval);
-            return;
-        }
+        const handles = await this.getActiveUrlHandles(interval);
+        if (!handles) return;
+        const fasta = handles[0];
         const features = await this.discretizeAndLoad(
             interval,
             async (d, signal) =>
@@ -108,8 +102,8 @@ export default class IndexedFastaSource extends UrlDescriptorWindowedSource {
                     })
         );
 
-        if (features && this.descriptorState.isCurrent(revision)) {
-            this.descriptorState.markLoaded(revision);
+        if (features) {
+            this.descriptorState.markLoaded();
             this.publishData([features.filter((f) => f !== undefined)]);
         }
     }

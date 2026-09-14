@@ -116,16 +116,8 @@ export default class BigWigSource extends UrlDescriptorWindowedSource {
      * @param {number[]} domain Linearized domain
      */
     async onDomainChanged(domain) {
-        await this.initializedPromise;
-
-        const revision = this.descriptorState.activeRevision;
-        if (revision === undefined) return;
-        const handles = this.descriptorState.handles;
-        if (!handles.length) {
-            this.descriptorState.markLoaded(revision);
-            this.publishData([], domain);
-            return;
-        }
+        const handles = await this.getActiveUrlHandles(domain);
+        if (!handles) return;
 
         // TODO: Postpone the initial load until layout is computed and remove 700.
         const length = this.scaleResolution.getAxisLength() || 700;
@@ -154,9 +146,8 @@ export default class BigWigSource extends UrlDescriptorWindowedSource {
      */
     // @ts-expect-error
     async loadInterval(interval, selectedReductionLevels) {
-        const revision = this.descriptorState.activeRevision;
-        if (revision === undefined) return;
-        const handles = this.descriptorState.handles;
+        const handles = this.descriptorState.activeHandles;
+        if (!handles) return;
         const featureChunks = await this.discretizeAndLoad(interval, {
             load: (d, signal) =>
                 this.#loadFeatures(d, handles, selectedReductionLevels, signal),
@@ -169,8 +160,8 @@ export default class BigWigSource extends UrlDescriptorWindowedSource {
                 ),
         });
 
-        if (featureChunks && this.descriptorState.isCurrent(revision)) {
-            this.descriptorState.markLoaded(revision);
+        if (featureChunks) {
+            this.descriptorState.markLoaded();
             this.publishData(featureChunks);
         }
     }

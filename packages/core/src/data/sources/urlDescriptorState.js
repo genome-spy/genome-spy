@@ -34,8 +34,8 @@ export default class UrlDescriptorState {
         return !this.#updating && this.#activeKeys.isSubsetOf(this.#loadedKeys);
     }
 
-    get activeRevision() {
-        return this.#updating ? undefined : this.#revision;
+    get activeHandles() {
+        return this.#updating ? undefined : this.#handles;
     }
 
     beginUpdate() {
@@ -52,12 +52,11 @@ export default class UrlDescriptorState {
 
     /** @param {number} revision */
     isCurrent(revision) {
-        return revision === this.activeRevision;
+        return !this.#updating && revision === this.#revision;
     }
 
-    /** @param {number} [revision] */
-    markLoaded(revision = this.activeRevision) {
-        if (this.isCurrent(revision)) {
+    markLoaded() {
+        if (!this.#updating) {
             this.#loadedKeys = new Set(this.#activeKeys);
         }
     }

@@ -80,6 +80,23 @@ export default class UrlDescriptorWindowedSource extends SingleAxisWindowedSourc
         }
     }
 
+    /**
+     * Waits for descriptor initialization and returns the active handle set.
+     * Completes and publishes an empty batch when no handles are active.
+     *
+     * @param {number[]} domain
+     * @returns {Promise<T[] | undefined>}
+     * @protected
+     */
+    async getActiveUrlHandles(domain) {
+        await this.initializedPromise;
+        const handles = this.descriptorState.activeHandles;
+        if (!handles) return;
+        if (handles.length) return handles;
+        this.descriptorState.markLoaded();
+        this.publishData([], domain);
+    }
+
     /** @param {(revision: number) => Promise<void>} initialize */
     #initialize(initialize) {
         this.abortPendingLoad();

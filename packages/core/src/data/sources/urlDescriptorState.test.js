@@ -100,7 +100,7 @@ describe("UrlDescriptorState", () => {
         a.resolve({ url: "a.bw" });
         await updateA;
 
-        expect(state.activeRevision).toBe(revisionB);
+        expect(state.isCurrent(revisionB)).toBe(true);
         expect(state.handles).toEqual([{ url: "b.bw" }]);
     });
 
@@ -131,13 +131,18 @@ describe("UrlDescriptorState", () => {
     it("invalidates pending updates on disposal", async () => {
         const state = new UrlDescriptorState();
         const pending = deferred();
-        const update = state.update([{ url: "a.bw" }], () => pending.promise);
+        const revision = state.beginUpdate();
+        const update = state.update(
+            [{ url: "a.bw" }],
+            () => pending.promise,
+            revision
+        );
 
         state.dispose();
         pending.resolve({ url: "a.bw" });
         await update;
 
-        expect(state.activeRevision).toBeUndefined();
+        expect(state.isCurrent(revision)).toBe(false);
         expect(state.handles).toEqual([]);
     });
 
