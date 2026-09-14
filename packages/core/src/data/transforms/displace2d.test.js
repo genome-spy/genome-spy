@@ -831,23 +831,6 @@ describe("Displace2DTransform", () => {
         ).toThrow("cannot be combined");
     });
 
-    test("requires a view for scaled placement", () => {
-        expect(
-            () =>
-                new Displace2DTransform(
-                    {
-                        type: "displace2d",
-                        x: "x",
-                        y: "y",
-                        width: 10,
-                        height: 10,
-                        scalePositions: true,
-                    },
-                    /** @type {any} */ ({})
-                )
-        ).toThrow("requires a view");
-    });
-
     test("is available through the transform factory", () => {
         expect(
             createTransform(

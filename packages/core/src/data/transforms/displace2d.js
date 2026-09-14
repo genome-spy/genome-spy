@@ -28,7 +28,6 @@ export default class Displace2DTransform extends Transform {
     /** @type {ReturnType<typeof setTimeout> | undefined} */
     #replayTimer;
 
-    #replayUpdatePending = false;
     #debouncePending = false;
 
     /** @type {import("../../scales/scaleResolution.js").default} */
@@ -95,11 +94,7 @@ export default class Displace2DTransform extends Transform {
         this.#placementBootstrapped = !hasReactiveProps && !this.scalePositions;
 
         const placementChanged = () => {
-            if (!this.#placementBootstrapped || this.disposed) {
-                return;
-            }
-
-            if (this.completed) {
+            if (this.#placementBootstrapped && this.completed) {
                 this.#scheduleReplay();
             }
         };
@@ -114,35 +109,25 @@ export default class Displace2DTransform extends Transform {
                   )
               )
             : /** @type {any} */ (placementProps);
-
-        this.widthAccessor = createDimensionAccessor(
-            params.width,
-            () => this.#placementProps.width
-        );
-        this.heightAccessor = createDimensionAccessor(
+        const props = this.#placementProps;
+        this.widthAccessor = dimensionAccessor(params.width, () => props.width);
+        this.heightAccessor = dimensionAccessor(
             params.height,
-            () => this.#placementProps.height
+            () => props.height
         );
-        this.anchorWidthAccessor = createDimensionAccessor(
+        this.anchorWidthAccessor = dimensionAccessor(
             params.anchorWidth,
-            () => this.#placementProps.anchorWidth
+            () => props.anchorWidth
         );
-        this.anchorHeightAccessor = createDimensionAccessor(
+        this.anchorHeightAccessor = dimensionAccessor(
             params.anchorHeight,
-            () => this.#placementProps.anchorHeight
+            () => props.anchorHeight
         );
 
         if (this.scalePositions) {
             const view = /** @type {import("../../view/view.js").default} */ (
                 paramRuntimeProvider
             );
-            if (
-                typeof view.getScaleResolution != "function" ||
-                typeof view._addBroadcastHandler != "function"
-            ) {
-                throw new Error("displace2d scalePositions requires a view.");
-            }
-
             this.#xScaleResolution = view.getScaleResolution("x");
             this.#yScaleResolution = view.getScaleResolution("y");
             if (!this.#xScaleResolution || !this.#yScaleResolution) {
@@ -167,15 +152,7 @@ export default class Displace2DTransform extends Transform {
             );
         }
 
-        this.registerDisposer(() => {
-            clearTimeout(this.#replayTimer);
-            this.#replayTimer = undefined;
-            this.#debouncePending = false;
-            if (this.#replayUpdatePending) {
-                this.paramRuntime.cancelUpdate(this.#runScheduledReplay);
-                this.#replayUpdatePending = false;
-            }
-        });
+        this.registerDisposer(() => this.#cancelReplay());
     }
 
     complete() {
@@ -185,41 +162,28 @@ export default class Displace2DTransform extends Transform {
             // An upstream scale-dependent transform may replay while placement
             // is debounced. Keep the previously published rows and offsets
             // intact until the trailing replay recomputes the whole branch.
-            data.length = 0;
-            this.#batchStarts.length = 0;
+            this.#clearBufferedData();
             return;
         }
 
-        if (!this.#placementBootstrapped) {
-            // Establish data-driven scale domains before reading the scales.
+        const bootstrap = !this.#placementBootstrapped;
+        if (bootstrap || (this.scalePositions && !this.#hasScaleLayout())) {
+            // Establish data-driven scale domains before reading the scales,
+            // or publish neutral offsets until layout is available.
             for (const datum of data) {
                 datum[this.as[0]] = 0;
                 datum[this.as[1]] = 0;
             }
-            this.#propagateBufferedData();
-            super.complete();
-            data.length = 0;
-
-            this.#placementBootstrapped = true;
-            this.#scheduleReplay(0);
-            return;
-        }
-
-        if (this.scalePositions && !this.#hasScaleLayout()) {
-            for (const datum of data) {
-                datum[this.as[0]] = 0;
-                datum[this.as[1]] = 0;
+            this.#publishBufferedData();
+            if (bootstrap) {
+                this.#placementBootstrapped = true;
+                this.#scheduleReplay(0);
             }
-            this.#propagateBufferedData();
-            super.complete();
-            data.length = 0;
             return;
         }
 
         this.#placeFacets();
-        this.#propagateBufferedData();
-        super.complete();
-        data.length = 0;
+        this.#publishBufferedData();
     }
 
     /** @param {import("../flowNode.js").Datum[]} data */
@@ -287,10 +251,8 @@ export default class Displace2DTransform extends Transform {
         );
         for (let i = 0; i < count; i++) {
             const datum = data[i];
-            const dx = displacements.x[i];
-            const dy = displacements.y[i];
-            datum[this.as[0]] = dx;
-            datum[this.as[1]] = dy;
+            datum[this.as[0]] = displacements.x[i];
+            datum[this.as[1]] = displacements.y[i];
         }
     }
 
@@ -327,6 +289,17 @@ export default class Displace2DTransform extends Transform {
         }
     }
 
+    #publishBufferedData() {
+        this.#propagateBufferedData();
+        super.complete();
+        this.#clearBufferedData();
+    }
+
+    #clearBufferedData() {
+        this.#data.length = 0;
+        this.#batchStarts.length = 0;
+    }
+
     /** @param {import("../../types/flowBatch.js").FlowBatch} flowBatch */
     beginBatch(flowBatch) {
         this.#batchStarts.push({ index: this.#data.length, flowBatch });
@@ -340,7 +313,6 @@ export default class Displace2DTransform extends Transform {
     }
 
     #runScheduledReplay = () => {
-        this.#replayUpdatePending = false;
         if (this.#isReplayReady()) {
             this.requestRepropagate();
         }
@@ -357,47 +329,35 @@ export default class Displace2DTransform extends Transform {
 
     /** @param {number} [wait] */
     #scheduleReplay(wait = this.debounce) {
+        this.#cancelReplay();
         if (!this.#isReplayReady()) {
-            clearTimeout(this.#replayTimer);
-            this.#replayTimer = undefined;
-            this.#debouncePending = false;
             return;
         }
 
         if (wait > 0) {
-            if (this.#replayUpdatePending) {
-                return;
-            }
             this.#debouncePending = true;
-            clearTimeout(this.#replayTimer);
             this.#replayTimer = setTimeout(() => {
-                this.#replayTimer = undefined;
                 this.#debouncePending = false;
-                this.#queueReplay();
+                this.paramRuntime.requestUpdate(this.#runScheduledReplay);
             }, wait);
         } else {
-            clearTimeout(this.#replayTimer);
-            this.#replayTimer = undefined;
-            this.#debouncePending = false;
-            this.#queueReplay();
+            this.paramRuntime.requestUpdate(this.#runScheduledReplay);
         }
     }
 
-    #queueReplay() {
-        if (!this.#replayUpdatePending) {
-            this.#replayUpdatePending = true;
-            this.paramRuntime.requestUpdate(this.#runScheduledReplay, 0, () => {
-                this.#replayUpdatePending = false;
-            });
-        }
+    #cancelReplay() {
+        clearTimeout(this.#replayTimer);
+        this.#debouncePending = false;
+        this.paramRuntimeProvider?.paramRuntime?.cancelUpdate(
+            this.#runScheduledReplay
+        );
     }
 
     reset() {
         if (!this.#debouncePending) {
             super.reset();
         }
-        this.#data.length = 0;
-        this.#batchStarts.length = 0;
+        this.#clearBufferedData();
     }
 
     /**
@@ -409,11 +369,11 @@ export default class Displace2DTransform extends Transform {
 }
 
 /**
- * @param {number | import("../../spec/channel.js").Field | import("../../spec/parameter.js").ExprRef | undefined} param
- * @param {() => number | import("../../spec/channel.js").Field} getValue
+ * @param {import("../../spec/transform.js").Displace2DParams["anchorWidth"]} param
+ * @param {() => PlacementProps["width"]} getValue
  * @returns {(datum: import("../flowNode.js").Datum) => number}
  */
-function createDimensionAccessor(param, getValue) {
+function dimensionAccessor(param, getValue) {
     return typeof param == "string"
         ? field(param)
         : () => /** @type {number} */ (getValue());
