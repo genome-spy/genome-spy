@@ -326,7 +326,7 @@ describe("Displace2DTransform", () => {
             [0, 0],
             [0, 0],
         ]);
-        expect(zoomedPlacement[2].dx).toBeLessThan(0);
+        expect([zoomedPlacement[2].dx, zoomedPlacement[2].dy]).toEqual([0, 0]);
         expect(zoomedPlacement[0]).not.toBe(initialPlacement[0]);
         await zoomPromise;
     });
@@ -405,7 +405,7 @@ describe("Displace2DTransform", () => {
         ).toBe(true);
     });
 
-    test("respects nonlinear reversed scales", async () => {
+    test("gives off-viewport data zero offsets with nonlinear scales", async () => {
         /** @type {import("../../spec/view.js").UnitSpec} */
         const spec = {
             width: 200,
@@ -444,16 +444,13 @@ describe("Displace2DTransform", () => {
         await Promise.resolve();
 
         const datum = [...view.flowHandle.collector.getData()][0];
-        expect(datum.dx).toBeCloseTo(110);
+        expect(datum.dx).toBe(0);
         expect(datum.dy).toBe(0);
     });
 
-    test.each([
-        [false, 110],
-        [true, -110],
-    ])(
-        "maps reverse=%s y scales to downward screen coordinates",
-        async (reverse, expectedDy) => {
+    test.each([false, true])(
+        "gives off-viewport data zero offsets with reverse=%s y scales",
+        async (reverse) => {
             /** @type {import("../../spec/view.js").UnitSpec} */
             const spec = {
                 width: 200,
@@ -501,7 +498,7 @@ describe("Displace2DTransform", () => {
 
             const datum = [...view.flowHandle.collector.getData()][0];
             expect(datum.dx).toBe(0);
-            expect(datum.dy).toBeCloseTo(expectedDy);
+            expect(datum.dy).toBe(0);
         }
     );
 

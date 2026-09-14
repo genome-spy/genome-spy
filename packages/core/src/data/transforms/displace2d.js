@@ -189,16 +189,16 @@ export default class Displace2DTransform extends Transform {
     /** @param {import("../flowNode.js").Datum[]} data */
     #place(data) {
         const props = this.#placementProps;
-        const count = data.length;
-        const xPositions = new Array(count);
-        const yPositions = new Array(count);
-        const widths = new Array(count);
-        const heights = new Array(count);
+        const placedData = [];
+        const xPositions = [];
+        const yPositions = [];
+        const widths = [];
+        const heights = [];
         const anchorWidths = this.usesAnchorObstacles
-            ? new Array(count)
+            ? /** @type {number[]} */ ([])
             : undefined;
         const anchorHeights = this.usesAnchorObstacles
-            ? new Array(count)
+            ? /** @type {number[]} */ ([])
             : undefined;
         const xScale = this.scalePositions
             ? this.#xScaleResolution.getScale()
@@ -213,20 +213,39 @@ export default class Displace2DTransform extends Transform {
             ? this.#yScaleResolution.getAxisLength()
             : 0;
 
-        for (let i = 0; i < count; i++) {
-            const datum = data[i];
-            xPositions[i] = this.scalePositions
+        for (const datum of data) {
+            const x = this.scalePositions
                 ? xScale(this.xAccessor(datum)) * xAxisLength
                 : this.xAccessor(datum) * props.xPositionFactor;
-            yPositions[i] = this.scalePositions
+            const y = this.scalePositions
                 ? (1 - yScale(this.yAccessor(datum))) * yAxisLength
                 : this.yAccessor(datum) * props.yPositionFactor;
-            widths[i] = this.widthAccessor(datum);
-            heights[i] = this.heightAccessor(datum);
-            if (this.usesAnchorObstacles) {
-                anchorWidths[i] = this.anchorWidthAccessor(datum);
-                anchorHeights[i] = this.anchorHeightAccessor(datum);
+
+            // The solver keeps label boxes inside its extents. Giving it an
+            // off-viewport anchor would therefore pull that label into view.
+            // Exclude the datum and clear offsets left by an earlier scale state.
+            if (
+                this.scalePositions &&
+                !(x >= 0 && x <= xAxisLength && y >= 0 && y <= yAxisLength)
+            ) {
+                datum[this.as[0]] = 0;
+                datum[this.as[1]] = 0;
+                continue;
             }
+
+            placedData.push(datum);
+            xPositions.push(x);
+            yPositions.push(y);
+            widths.push(this.widthAccessor(datum));
+            heights.push(this.heightAccessor(datum));
+            if (this.usesAnchorObstacles) {
+                anchorWidths.push(this.anchorWidthAccessor(datum));
+                anchorHeights.push(this.anchorHeightAccessor(datum));
+            }
+        }
+
+        if (placedData.length == 0) {
+            return;
         }
 
         const displacements = solveDisplacement(
@@ -249,8 +268,8 @@ export default class Displace2DTransform extends Transform {
                   }
                 : undefined
         );
-        for (let i = 0; i < count; i++) {
-            const datum = data[i];
+        for (let i = 0; i < placedData.length; i++) {
+            const datum = placedData[i];
             datum[this.as[0]] = displacements.x[i];
             datum[this.as[1]] = displacements.y[i];
         }
