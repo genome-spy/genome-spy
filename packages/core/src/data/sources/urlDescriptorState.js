@@ -46,13 +46,8 @@ export default class UrlDescriptorState {
     }
 
     /** @param {number} revision */
-    isLatest(revision) {
-        return revision === this.#revision;
-    }
-
-    /** @param {number} revision */
     isCurrent(revision) {
-        return !this.#updating && revision === this.#revision;
+        return revision === this.#revision;
     }
 
     markLoaded() {
@@ -66,12 +61,9 @@ export default class UrlDescriptorState {
         this.#handleCache.clear();
     }
 
-    /** @param {number} revision */
-    clearActive(revision) {
-        if (this.isLatest(revision)) {
-            this.#loadedKeys = new Set();
-            this.#updating = false;
-        }
+    clearActive() {
+        this.#loadedKeys = new Set();
+        this.#updating = false;
     }
 
     /**
@@ -148,9 +140,7 @@ export default class UrlDescriptorState {
  */
 export async function updateUrlDescriptorState(options) {
     try {
-        if (options.state.isLatest(options.revision)) {
-            options.setLoadingStatus("loading");
-        }
+        options.setLoadingStatus("loading");
         const descriptors = await options.normalize();
         const modules = await options.loadModules();
 
@@ -166,12 +156,12 @@ export async function updateUrlDescriptorState(options) {
             options.setLoadingStatus("complete");
         }
     } catch (e) {
-        if (!options.state.isLatest(options.revision)) {
+        if (!options.state.isCurrent(options.revision)) {
             return;
         }
         options.clearData();
         if (e instanceof UrlLimitExceededError) {
-            options.state.clearActive(options.revision);
+            options.state.clearActive();
             options.setLoadingStatus("complete");
         } else {
             options.setLoadingStatus("error", e.message);
