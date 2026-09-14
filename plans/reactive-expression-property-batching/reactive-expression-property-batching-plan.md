@@ -459,11 +459,31 @@ of the updated data must complete without a delayed extra reload or layout pass.
   is assigned synchronously at replacement dispatch, but initialization and
   interval completion remain asynchronous and outside graph settlement.
 
-## Unresolved questions
+## Implementation outcome
 
-- Whether a tiny shared single-descriptor convenience reduces the combined BAM
-  and indexed FASTA implementation. Keep the logic source-local if extracting it
-  does not reduce the final production-line count or obscures handle creation.
+- Milestone 1 is complete. Expression-property groups now use one graph
+  computed and effect, nested URL expressions use that group, and the old
+  microtask, propagation barrier, and direct URL watcher are removed.
+- Milestone 2 is complete. BAM and indexed FASTA now share descriptor
+  replacement, readiness, abort, handle caching, and current-domain reload
+  behavior with BigBed, BigWig, and Tabix.
+- Focused and full unit tests, workspace TypeScript checks, lint, and browser
+  smoke tests passed. The final production count under `packages/core/src` is
+  405 added and 460 deleted non-comment JavaScript lines, net -55.
+- Carrying descriptor revisions into interval loading and `markLoaded` was
+  discarded after implementation. Immediate interval abort and the existing
+  aborted-result guard already prevent stale publication; the revision remains
+  only where overlapping asynchronous descriptor initialization needs it.
+- The shared descriptor-backed windowed-source base was adopted because it
+  removed source-local initialization and reload wrappers while keeping handle
+  construction visible in each source. Subsequent cleanup commits reduced this
+  path by another 22 production lines.
+
+## Resolved questions
+
+- A shared descriptor-backed windowed-source base reduces the combined source
+  implementation and keeps each source's handle factory explicit, so the five
+  descriptor-backed sources use it.
 
 ## Acceptance criteria
 
