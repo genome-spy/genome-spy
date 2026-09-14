@@ -29,12 +29,6 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
     /** @type {number[] | undefined} */
     #lastDomain;
 
-    /**
-     * Interval fetched but not yet published through the dataflow.
-     * @type {number[] | undefined}
-     */
-    #loadedInterval;
-
     #lastWindowSize = 0;
 
     /**
@@ -128,7 +122,6 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
     #reloadDomain(domain) {
         this.#lastQuantizedInterval = [0, 0];
         this._lastLoadedDomain = undefined;
-        this.#loadedInterval = undefined;
 
         this.onDomainChanged(domain);
     }
@@ -144,26 +137,18 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
     }
 
     /**
-     * @param {import("../../flowNode.js").Datum[][]} chunks
-     * @param {number[]} [loadedDomain]
-     * @protected
-     */
-    publishData(chunks, loadedDomain = this.#loadedInterval) {
-        super.publishData(chunks, loadedDomain);
-    }
-
-    /**
      * Splits the interval into discrete chromosomal intervals – one for each chromosome –
      * and loads the data using a batched loader when available. Handles abort signals
      * and errors.
      *
      * @param {number[]} interval
      * @param {DiscreteIntervalLoader<T> | DiscreteIntervalLoaders<T>} loader
-     * @return {Promise<T[]>}
+     * @param {(chunks: T[]) => void} publish
+     * @return {Promise<void>}
      * @template T
      * @protected
      */
-    async discretizeAndLoad(interval, loader) {
+    async discretizeAndLoad(interval, loader, publish) {
         // Abort previous requests
         this.abortPendingLoad();
 
@@ -197,12 +182,15 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
             }
 
             if (!signal.aborted) {
-                this.setLoadingStatus("complete");
-                this.#loadedInterval = Array.from(interval);
-                return resultByChrom;
+                this._lastLoadedDomain = Array.from(interval);
+                publish(resultByChrom);
+                if (!signal.aborted) {
+                    this.setLoadingStatus("complete");
+                }
             }
         } catch (e) {
             if (!signal.aborted) {
+                this._lastLoadedDomain = undefined;
                 // TODO: Nice reporting of errors
                 this.setLoadingStatus("error", e.message);
                 throw e;

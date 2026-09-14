@@ -141,7 +141,7 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
         await this.initializedPromise;
         const handles = this.descriptorState.activeHandles;
         if (!handles) return;
-        const featureChunksByHandle = await this.discretizeAndLoad(
+        await this.discretizeAndLoad(
             interval,
             async (discreteInterval, signal) =>
                 await Promise.all(
@@ -172,14 +172,10 @@ export default class TabixSource extends UrlDescriptorWindowedSource {
                             ),
                         ]);
                     })
-                )
+                ),
+            (featureChunksByHandle) =>
+                this.#publishHandleData(handles, featureChunksByHandle)
         );
-
-        if (featureChunksByHandle) {
-            // This source preserves per-file batches instead of publishData().
-            this._lastLoadedDomain = Array.from(interval);
-            this.#publishHandleData(handles, featureChunksByHandle);
-        }
     }
 
     /**

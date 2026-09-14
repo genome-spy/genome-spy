@@ -141,22 +141,26 @@ export default class BigWigSource extends UrlDescriptorWindowedSource {
     async loadInterval(interval, selectedReductionLevels) {
         const handles = this.descriptorState.activeHandles;
         if (!handles) return;
-        const featureChunks = await this.discretizeAndLoad(interval, {
-            load: (d, signal) =>
-                this.#loadFeatures(d, handles, selectedReductionLevels, signal),
-            loadBatch: (intervals, signal) =>
-                this.#loadFeatureBatches(
-                    intervals,
-                    handles,
-                    selectedReductionLevels,
-                    signal
-                ),
-        });
-
-        if (featureChunks) {
-            this.descriptorState.markLoaded();
-            this.publishData(featureChunks);
-        }
+        await this.discretizeAndLoad(
+            interval,
+            {
+                load: (d, signal) =>
+                    this.#loadFeatures(
+                        d,
+                        handles,
+                        selectedReductionLevels,
+                        signal
+                    ),
+                loadBatch: (intervals, signal) =>
+                    this.#loadFeatureBatches(
+                        intervals,
+                        handles,
+                        selectedReductionLevels,
+                        signal
+                    ),
+            },
+            (chunks) => this.publishData(chunks, interval)
+        );
     }
 
     /**

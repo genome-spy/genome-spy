@@ -20,6 +20,9 @@ const genome = new Genome({
  */
 
 class TestWindowedSource extends SingleAxisWindowedSource {
+    /** @type {unknown[]} */
+    publishedChunks = [];
+
     constructor() {
         super(createViewStub(), "x");
     }
@@ -29,12 +32,10 @@ class TestWindowedSource extends SingleAxisWindowedSource {
      * @param {Parameters<SingleAxisWindowedSource["discretizeAndLoad"]>[1]} loader
      */
     discretize(interval, loader) {
-        return this.discretizeAndLoad(interval, loader);
-    }
-
-    /** @param {import("../../flowNode.js").Datum[][]} chunks */
-    publish(chunks) {
-        this.publishData(chunks);
+        return this.discretizeAndLoad(interval, loader, (chunks) => {
+            this.publishedChunks = chunks;
+            this.publishData(/** @type {any} */ (chunks), interval);
+        });
     }
 }
 
@@ -105,7 +106,7 @@ async function flushPromises() {
 }
 
 describe("SingleAxisWindowedSource", () => {
-    test("fetched coverage becomes ready only when rows are published", async () => {
+    test("publishes rows and coverage atomically", async () => {
         const source = new TestWindowedSource();
         const collector = new Collector();
         source.addChild(collector);
@@ -113,16 +114,10 @@ describe("SingleAxisWindowedSource", () => {
         expect(isDataReady(collector)).toBe(false);
 
         await source.discretize([0, 10], async () => []);
-        expect(isDataReady(collector, { x: [0, 10] })).toBe(false);
-        source.publish([]);
         expect(isDataReady(collector, { x: [0, 10] })).toBe(true);
 
         await source.discretize([20, 30], async () => []);
-        // Previous output is still a real publication, but cannot cover the
-        // freshly fetched interval until its dataflow evaluation completes.
         expect(isDataReady(collector)).toBe(true);
-        expect(isDataReady(collector, { x: [20, 30] })).toBe(false);
-        source.publish([]);
         expect(isDataReady(collector, { x: [20, 30] })).toBe(true);
     });
     test("uses a batched loader when one is provided", async () => {
@@ -138,7 +133,7 @@ describe("SingleAxisWindowedSource", () => {
             }
         );
 
-        const chunks = await source.discretize([5, 35], {
+        await source.discretize([5, 35], {
             load,
             loadBatch,
         });
@@ -150,7 +145,7 @@ describe("SingleAxisWindowedSource", () => {
             { chrom: "chr2", startPos: 0, endPos: 20 },
             { chrom: "chr3", startPos: 0, endPos: 5 },
         ]);
-        expect(chunks).toEqual([["chr1"], ["chr2"], ["chr3"]]);
+        expect(source.publishedChunks).toEqual([["chr1"], ["chr2"], ["chr3"]]);
     });
 
     test("rejects batched results that do not align with intervals", async () => {
@@ -175,7 +170,7 @@ describe("SingleAxisWindowedSource", () => {
             ) => [interval.chrom]
         );
 
-        const chunks = await source.discretize([5, 35], { load });
+        await source.discretize([5, 35], { load });
 
         expect(load).toHaveBeenCalledTimes(3);
         expect(load.mock.calls.map(([interval]) => interval)).toEqual([
@@ -183,7 +178,7 @@ describe("SingleAxisWindowedSource", () => {
             { chrom: "chr2", startPos: 0, endPos: 20 },
             { chrom: "chr3", startPos: 0, endPos: 5 },
         ]);
-        expect(chunks).toEqual([["chr1"], ["chr2"], ["chr3"]]);
+        expect(source.publishedChunks).toEqual([["chr1"], ["chr2"], ["chr3"]]);
     });
 
     test("aborts interval work on disposal", async () => {

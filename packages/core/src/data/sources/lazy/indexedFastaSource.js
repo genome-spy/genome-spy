@@ -77,7 +77,7 @@ export default class IndexedFastaSource extends UrlDescriptorWindowedSource {
         const handles = await this.getActiveUrlHandles(interval);
         if (!handles) return;
         const fasta = handles[0];
-        const features = await this.discretizeAndLoad(
+        await this.discretizeAndLoad(
             interval,
             async (d, signal) =>
                 fasta
@@ -97,13 +97,13 @@ export default class IndexedFastaSource extends UrlDescriptorWindowedSource {
                             );
                             return undefined;
                         }
-                    })
+                    }),
+            (features) =>
+                this.publishData(
+                    [features.filter((feature) => feature !== undefined)],
+                    interval
+                )
         );
-
-        if (features) {
-            this.descriptorState.markLoaded();
-            this.publishData([features.filter((f) => f !== undefined)]);
-        }
     }
 }
 

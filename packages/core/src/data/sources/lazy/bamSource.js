@@ -101,7 +101,7 @@ export default class BamSource extends UrlDescriptorWindowedSource {
         const handles = await this.getActiveUrlHandles(interval);
         if (!handles) return;
         const handle = handles[0];
-        const featureChunks = await this.discretizeAndLoad(
+        await this.discretizeAndLoad(
             interval,
             async (d, signal) =>
                 handle.bam
@@ -115,13 +115,9 @@ export default class BamSource extends UrlDescriptorWindowedSource {
                         records.map((record) =>
                             createBamReadDatum(d.chrom, record)
                         )
-                    )
+                    ),
+            (chunks) => this.publishData(chunks, interval)
         );
-
-        if (featureChunks) {
-            this.descriptorState.markLoaded();
-            this.publishData(featureChunks);
-        }
     }
 }
 

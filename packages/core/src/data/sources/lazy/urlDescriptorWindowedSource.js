@@ -77,8 +77,17 @@ export default class UrlDescriptorWindowedSource extends SingleAxisWindowedSourc
         const handles = this.descriptorState.activeHandles;
         if (!handles) return;
         if (handles.length) return handles;
-        this.descriptorState.markLoaded();
         this.publishData([], domain);
+    }
+
+    /**
+     * @param {import("../../flowNode.js").Datum[][]} chunks
+     * @param {number[]} [loadedDomain]
+     * @protected
+     */
+    publishData(chunks, loadedDomain) {
+        this.descriptorState.markLoaded();
+        super.publishData(chunks, loadedDomain);
     }
 
     #initialize() {
