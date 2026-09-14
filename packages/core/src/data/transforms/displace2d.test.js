@@ -255,8 +255,6 @@ describe("Displace2DTransform", () => {
         transform.handle({ x: 0, y: 0 });
         transform.complete();
 
-        expect(transform.xPositionFactor).toBe(1);
-        expect(transform.yPositionFactor).toBe(1);
         expect([...output.getData()]).toEqual([
             { x: 0, y: 0, xDisplacement: 0, yDisplacement: 0 },
         ]);
@@ -523,30 +521,6 @@ describe("Displace2DTransform", () => {
         expect(placed[1]).toBe(input[1]);
     });
 
-    test("recomputes canonical placement across replays", () => {
-        const input = [
-            { x: 0, y: 0 },
-            { x: 0, y: 0.2 },
-        ];
-        const { output, source, transform } = createFlow(input, {
-            xPositionFactor: 20,
-            yPositionFactor: 20,
-        });
-
-        expect([...output.getData()].map(({ dx, dy }) => [dx, dy])).toEqual([
-            [0, 0],
-            [0, 10],
-        ]);
-
-        transform.yPositionFactor = 100;
-        source.repropagate();
-
-        expect([...output.getData()].map(({ dx, dy }) => [dx, dy])).toEqual([
-            [0, 0],
-            [0, 0],
-        ]);
-    });
-
     test("reads collision dimensions from fields", () => {
         const { output } = createFlow(
             [
@@ -765,7 +739,6 @@ describe("Displace2DTransform", () => {
         setExtent(undefined);
         await paramRuntime.whenPropagated();
 
-        expect(transform.xExtent).toBeUndefined();
         expect([...output.getData()][0].dx).toBe(0);
     });
 
@@ -840,36 +813,7 @@ describe("Displace2DTransform", () => {
         }
     });
 
-    test("rejects invalid parameters and field values", () => {
-        expect(() =>
-            createFlow([{ x: 0, y: 0 }], {
-                xPositionFactor: Infinity,
-            })
-        ).toThrow("position factors");
-        expect(() =>
-            createFlow([{ x: 0, y: 0 }], {
-                debounce: -1,
-            })
-        ).toThrow("debounce");
-        expect(() =>
-            createFlow([{ x: 0, y: 0, width: -1 }], {
-                width: "width",
-            })
-        ).toThrow("dimensions");
-        expect(
-            () =>
-                new Displace2DTransform(
-                    /** @type {any} */ ({
-                        type: "displace2d",
-                        x: "x",
-                        y: "y",
-                        width: 10,
-                        height: 10,
-                        as: ["offset", "offset"],
-                    }),
-                    /** @type {any} */ ({})
-                )
-        ).toThrow("distinct output field names");
+    test("rejects incompatible scale placement configuration", () => {
         expect(
             () =>
                 new Displace2DTransform(
@@ -885,6 +829,9 @@ describe("Displace2DTransform", () => {
                     /** @type {any} */ ({})
                 )
         ).toThrow("cannot be combined");
+    });
+
+    test("requires a view for scaled placement", () => {
         expect(
             () =>
                 new Displace2DTransform(

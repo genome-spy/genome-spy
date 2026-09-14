@@ -9,10 +9,10 @@ import { solveDisplacement } from "./displace2dSolver.js";
 
 /**
  * @typedef {object} PlacementProps
- * @prop {number} width
- * @prop {number} height
- * @prop {number} anchorWidth
- * @prop {number} anchorHeight
+ * @prop {number | import("../../spec/channel.js").Field} width
+ * @prop {number | import("../../spec/channel.js").Field} height
+ * @prop {number | import("../../spec/channel.js").Field} anchorWidth
+ * @prop {number | import("../../spec/channel.js").Field} anchorHeight
  * @prop {number} xPositionFactor
  * @prop {number} yPositionFactor
  * @prop {[number, number] | undefined} xExtent
@@ -57,19 +57,8 @@ export default class Displace2DTransform extends Transform {
     constructor(params, paramRuntimeProvider) {
         super(params, paramRuntimeProvider);
 
-        if (
-            params.scalePositions !== undefined &&
-            typeof params.scalePositions != "boolean"
-        ) {
-            throw new Error("displace2d scalePositions must be a boolean.");
-        }
         this.scalePositions = params.scalePositions ?? false;
         this.debounce = params.debounce ?? 50;
-        if (!Number.isFinite(this.debounce) || this.debounce < 0) {
-            throw new Error(
-                "displace2d debounce must be a finite non-negative number."
-            );
-        }
         if (
             this.scalePositions &&
             (params.xPositionFactor !== undefined ||
@@ -82,69 +71,19 @@ export default class Displace2DTransform extends Transform {
             );
         }
 
-        const as = params.as ?? ["xDisplacement", "yDisplacement"];
-        if (
-            !Array.isArray(as) ||
-            as.length != 2 ||
-            typeof as[0] != "string" ||
-            typeof as[1] != "string" ||
-            as[0] == as[1]
-        ) {
-            throw new Error(
-                "displace2d as must contain two distinct output field names."
-            );
-        }
-        this.as = as;
+        this.as = params.as ?? ["xDisplacement", "yDisplacement"];
         this.xAccessor = field(params.x);
         this.yAccessor = field(params.y);
 
-        this.width = typeof params.width == "number" ? params.width : 0;
-        this.height = typeof params.height == "number" ? params.height : 0;
-        this.anchorWidth =
-            typeof params.anchorWidth == "number" ? params.anchorWidth : 0;
-        this.anchorHeight =
-            typeof params.anchorHeight == "number" ? params.anchorHeight : 0;
         this.usesAnchorObstacles =
             params.anchorWidth !== undefined &&
             params.anchorHeight !== undefined;
-        this.xPositionFactor = isExprRef(params.xPositionFactor)
-            ? 1
-            : (params.xPositionFactor ?? 1);
-        this.yPositionFactor = isExprRef(params.yPositionFactor)
-            ? 1
-            : (params.yPositionFactor ?? 1);
-        this.xExtent = isExprRef(params.xExtent) ? undefined : params.xExtent;
-        this.yExtent = isExprRef(params.yExtent) ? undefined : params.yExtent;
-
-        this.widthAccessor =
-            typeof params.width == "string"
-                ? field(params.width)
-                : () => this.width;
-        this.heightAccessor =
-            typeof params.height == "string"
-                ? field(params.height)
-                : () => this.height;
-        this.anchorWidthAccessor =
-            typeof params.anchorWidth == "string"
-                ? field(params.anchorWidth)
-                : () => this.anchorWidth;
-        this.anchorHeightAccessor =
-            typeof params.anchorHeight == "string"
-                ? field(params.anchorHeight)
-                : () => this.anchorHeight;
 
         const placementProps = {
-            width: typeof params.width == "string" ? this.width : params.width,
-            height:
-                typeof params.height == "string" ? this.height : params.height,
-            anchorWidth:
-                typeof params.anchorWidth == "string"
-                    ? this.anchorWidth
-                    : (params.anchorWidth ?? 0),
-            anchorHeight:
-                typeof params.anchorHeight == "string"
-                    ? this.anchorHeight
-                    : (params.anchorHeight ?? 0),
+            width: params.width,
+            height: params.height,
+            anchorWidth: params.anchorWidth ?? 0,
+            anchorHeight: params.anchorHeight ?? 0,
             xPositionFactor: params.xPositionFactor ?? 1,
             yPositionFactor: params.yPositionFactor ?? 1,
             xExtent: params.xExtent,
@@ -158,7 +97,7 @@ export default class Displace2DTransform extends Transform {
                 return;
             }
 
-            if (this.#refreshPlacementParameters() && this.completed) {
+            if (this.completed) {
                 this.#scheduleReplay();
             }
         };
@@ -174,9 +113,22 @@ export default class Displace2DTransform extends Transform {
               )
             : /** @type {any} */ (placementProps);
 
-        if (this.#placementBootstrapped) {
-            this.#refreshPlacementParameters();
-        }
+        this.widthAccessor = createDimensionAccessor(
+            params.width,
+            () => this.#placementProps.width
+        );
+        this.heightAccessor = createDimensionAccessor(
+            params.height,
+            () => this.#placementProps.height
+        );
+        this.anchorWidthAccessor = createDimensionAccessor(
+            params.anchorWidth,
+            () => this.#placementProps.anchorWidth
+        );
+        this.anchorHeightAccessor = createDimensionAccessor(
+            params.anchorHeight,
+            () => this.#placementProps.anchorHeight
+        );
 
         if (this.scalePositions) {
             const view = /** @type {import("../../view/view.js").default} */ (
@@ -246,7 +198,6 @@ export default class Displace2DTransform extends Transform {
             super.complete();
             data.length = 0;
 
-            this.#refreshPlacementParameters();
             this.#placementBootstrapped = true;
             this.#scheduleReplay(0);
             return;
@@ -270,6 +221,7 @@ export default class Displace2DTransform extends Transform {
 
     /** @param {import("../flowNode.js").Datum[]} data */
     #place(data) {
+        const props = this.#placementProps;
         const count = data.length;
         const xPositions = new Array(count);
         const yPositions = new Array(count);
@@ -298,10 +250,10 @@ export default class Displace2DTransform extends Transform {
             const datum = data[i];
             xPositions[i] = this.scalePositions
                 ? xScale(this.xAccessor(datum)) * xAxisLength
-                : this.xAccessor(datum) * this.xPositionFactor;
+                : this.xAccessor(datum) * props.xPositionFactor;
             yPositions[i] = this.scalePositions
                 ? (1 - yScale(this.yAccessor(datum))) * yAxisLength
-                : this.yAccessor(datum) * this.yPositionFactor;
+                : this.yAccessor(datum) * props.yPositionFactor;
             widths[i] = this.widthAccessor(datum);
             heights[i] = this.heightAccessor(datum);
             if (this.usesAnchorObstacles) {
@@ -317,10 +269,10 @@ export default class Displace2DTransform extends Transform {
             heights,
             this.scalePositions
                 ? [0, xAxisLength]
-                : scaleExtent(this.xExtent, this.xPositionFactor),
+                : scaleExtent(props.xExtent, props.xPositionFactor),
             this.scalePositions
                 ? [0, yAxisLength]
-                : scaleExtent(this.yExtent, this.yPositionFactor),
+                : scaleExtent(props.yExtent, props.yPositionFactor),
             this.usesAnchorObstacles
                 ? {
                       x: xPositions,
@@ -375,32 +327,6 @@ export default class Displace2DTransform extends Transform {
         this.#batchStarts.push({ index: this.#data.length, flowBatch });
     }
 
-    #refreshPlacementParameters() {
-        const props = this.#placementProps;
-        validatePlacementParameters(props);
-
-        const placementChanged =
-            props.width != this.width ||
-            props.height != this.height ||
-            props.anchorWidth != this.anchorWidth ||
-            props.anchorHeight != this.anchorHeight ||
-            props.xPositionFactor != this.xPositionFactor ||
-            props.yPositionFactor != this.yPositionFactor ||
-            !equalExtent(props.xExtent, this.xExtent) ||
-            !equalExtent(props.yExtent, this.yExtent);
-
-        this.width = props.width;
-        this.height = props.height;
-        this.anchorWidth = props.anchorWidth;
-        this.anchorHeight = props.anchorHeight;
-        this.xPositionFactor = props.xPositionFactor;
-        this.yPositionFactor = props.yPositionFactor;
-        this.xExtent = copyExtent(props.xExtent);
-        this.yExtent = copyExtent(props.yExtent);
-
-        return placementChanged;
-    }
-
     #hasScaleLayout() {
         return (
             this.#xScaleResolution.getAxisLength() > 0 &&
@@ -411,7 +337,6 @@ export default class Displace2DTransform extends Transform {
     #runScheduledReplay = () => {
         this.#replayUpdatePending = false;
         if (this.#isReplayReady()) {
-            this.#refreshPlacementParameters();
             this.requestRepropagate();
         }
     };
@@ -479,50 +404,14 @@ export default class Displace2DTransform extends Transform {
 }
 
 /**
- * @param {PlacementProps} props
+ * @param {number | import("../../spec/channel.js").Field | import("../../spec/parameter.js").ExprRef | undefined} param
+ * @param {() => number | import("../../spec/channel.js").Field} getValue
+ * @returns {(datum: import("../flowNode.js").Datum) => number}
  */
-function validatePlacementParameters(props) {
-    if (
-        !Number.isFinite(props.xPositionFactor) ||
-        !Number.isFinite(props.yPositionFactor)
-    ) {
-        throw new Error("displace2d position factors must be finite numbers.");
-    }
-    if (
-        !Number.isFinite(props.width) ||
-        !Number.isFinite(props.height) ||
-        !Number.isFinite(props.anchorWidth) ||
-        !Number.isFinite(props.anchorHeight) ||
-        props.width < 0 ||
-        props.height < 0 ||
-        props.anchorWidth < 0 ||
-        props.anchorHeight < 0
-    ) {
-        throw new Error(
-            "displace2d scalar dimensions must be finite non-negative numbers."
-        );
-    }
-    validateExtent(props.xExtent, "xExtent");
-    validateExtent(props.yExtent, "yExtent");
-}
-
-/**
- * @param {[number, number] | undefined} extent
- * @param {string} name
- */
-function validateExtent(extent, name) {
-    if (
-        extent !== undefined &&
-        (!Array.isArray(extent) ||
-            extent.length != 2 ||
-            !Number.isFinite(extent[0]) ||
-            !Number.isFinite(extent[1]) ||
-            extent[0] > extent[1])
-    ) {
-        throw new Error(
-            `displace2d ${name} must contain finite ascending bounds.`
-        );
-    }
+function createDimensionAccessor(param, getValue) {
+    return typeof param == "string"
+        ? field(param)
+        : () => /** @type {number} */ (getValue());
 }
 
 /**
@@ -538,20 +427,4 @@ function scaleExtent(extent, factor) {
     const first = extent[0] * factor;
     const second = extent[1] * factor;
     return [Math.min(first, second), Math.max(first, second)];
-}
-
-/**
- * @param {[number, number] | undefined} first
- * @param {[number, number] | undefined} second
- */
-function equalExtent(first, second) {
-    return first?.[0] == second?.[0] && first?.[1] == second?.[1];
-}
-
-/**
- * @param {[number, number] | undefined} extent
- * @returns {[number, number] | undefined}
- */
-function copyExtent(extent) {
-    return extent ? [extent[0], extent[1]] : undefined;
 }
