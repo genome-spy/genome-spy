@@ -129,59 +129,79 @@ describe("Displace2DTransform", () => {
         }
     });
 
-    test("recomputes placement after a range-only scale update", async () => {
-        const view = await createAndInitialize(
-            {
-                width: 100,
-                height: 100,
-                data: {
-                    values: [
-                        { x: 0.4, y: 0.5 },
-                        { x: 0.6, y: 0.5 },
+    test("debounces placement across upstream scale-driven replay", async () => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        try {
+            const view = await createAndInitialize(
+                {
+                    width: 100,
+                    height: 100,
+                    data: {
+                        values: [
+                            { x: 0.4, y: 0.5 },
+                            { x: 0.6, y: 0.5 },
+                        ],
+                    },
+                    transform: [
+                        {
+                            type: "formula",
+                            expr: "domain('x')[1]",
+                            as: "domainEnd",
+                        },
+                        {
+                            type: "displace2d",
+                            x: "x",
+                            y: "y",
+                            width: 10,
+                            height: 10,
+                            scalePositions: true,
+                        },
                     ],
-                },
-                transform: [
-                    {
-                        type: "displace2d",
-                        x: "x",
-                        y: "y",
-                        width: 10,
-                        height: 10,
-                        scalePositions: true,
-                    },
-                ],
-                mark: "point",
-                encoding: {
-                    x: {
-                        field: "x",
-                        type: "quantitative",
-                        scale: { domain: [0, 1] },
-                    },
-                    y: {
-                        field: "y",
-                        type: "quantitative",
-                        scale: { domain: [0, 1] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: { domain: [0, 4], zoom: true },
+                        },
+                        y: {
+                            field: "y",
+                            type: "quantitative",
+                            scale: { domain: [0, 1] },
+                        },
                     },
                 },
-            },
-            UnitView
-        );
-        renderToLayout(view, Rectangle.create(0, 0, 100, 100));
-        view.handleBroadcast({ type: "layoutComputed" });
-        await Promise.resolve();
-        const offsets = () =>
-            Array.from(view.flowHandle.collector.getData(), (datum) => [
-                datum.xDisplacement,
-                datum.yDisplacement,
+                UnitView
+            );
+            renderToLayout(view, Rectangle.create(0, 0, 100, 100));
+            view.handleBroadcast({ type: "layoutComputed" });
+            await view.paramRuntime.whenPropagated();
+            const offsets = () =>
+                Array.from(view.flowHandle.collector.getData(), (datum) => [
+                    datum.xDisplacement,
+                    datum.yDisplacement,
+                ]);
+            const initialOffsets = offsets();
+            expect(initialOffsets.some(([dx, dy]) => dx != 0 || dy != 0)).toBe(
+                true
+            );
+
+            const resolution = view.getScaleResolution("x");
+            await resolution.zoomTo([0, 2], false);
+            await vi.advanceTimersByTimeAsync(25);
+            await resolution.zoomTo([0, 1], false);
+            await vi.advanceTimersByTimeAsync(49);
+            expect(offsets()).toEqual(initialOffsets);
+
+            await vi.advanceTimersByTimeAsync(1);
+            await view.paramRuntime.whenPropagated();
+            expect(offsets()).toEqual([
+                [0, 0],
+                [0, 0],
             ]);
-        expect(offsets()).toEqual([
-            [0, 0],
-            [0, 0],
-        ]);
-        view.getScaleResolution("x").getScale().range([0, 0.1]);
-        await view.paramRuntime.whenPropagated();
-        await Promise.resolve();
-        expect(offsets()[1][1]).toBe(-10);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     test("restores canonical offsets after intermediate geometry", () => {
@@ -266,6 +286,7 @@ describe("Displace2DTransform", () => {
                     width: 20,
                     height: 20,
                     scalePositions: true,
+                    debounce: 0,
                     as: ["dx", "dy"],
                 },
             ],
@@ -331,6 +352,7 @@ describe("Displace2DTransform", () => {
                     width: 10,
                     height: 10,
                     scalePositions: true,
+                    debounce: 0,
                     as: ["dx", "dy"],
                 },
             ],
@@ -614,6 +636,7 @@ describe("Displace2DTransform", () => {
                 yPositionFactor: { expr: "yFactor" },
                 xExtent: { expr: "xExtent" },
                 yExtent: { expr: "yExtent" },
+                debounce: 0,
                 as: ["dx", "dy"],
             },
             /** @type {any} */ ({ paramRuntime })
@@ -655,6 +678,59 @@ describe("Displace2DTransform", () => {
         ]);
     });
 
+    test("debounces reactive placement changes", async () => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        try {
+            const paramRuntime = new ViewParamRuntime();
+            const setHeight = paramRuntime.registerParam({
+                name: "height",
+                value: 20,
+            });
+            const source = new Collector();
+            const transform = new Displace2DTransform(
+                {
+                    type: "displace2d",
+                    x: "x",
+                    y: "y",
+                    width: 20,
+                    height: { expr: "height" },
+                    as: ["dx", "dy"],
+                },
+                /** @type {any} */ ({ paramRuntime })
+            );
+            const output = new Collector();
+            source.addChild(transform);
+            transform.addChild(output);
+            source.handle({ x: 0, y: 0 });
+            source.handle({ x: 0, y: 0 });
+            source.complete();
+            await paramRuntime.whenPropagated();
+
+            const offsets = () =>
+                Array.from(output.getData(), ({ dx, dy }) => [dx, dy]);
+            expect(offsets()).toEqual([
+                [0, 0],
+                [0, -20],
+            ]);
+
+            setHeight(10);
+            await vi.advanceTimersByTimeAsync(49);
+            expect(offsets()).toEqual([
+                [0, 0],
+                [0, -20],
+            ]);
+
+            await vi.advanceTimersByTimeAsync(1);
+            await paramRuntime.whenPropagated();
+            expect(offsets()).toEqual([
+                [0, 0],
+                [0, -10],
+            ]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     test("clears a disabled reactive extent instead of retaining scaled bounds", async () => {
         const paramRuntime = new ViewParamRuntime();
         const setExtent = paramRuntime.registerParam({
@@ -672,6 +748,7 @@ describe("Displace2DTransform", () => {
                 xPositionFactor: 100,
                 yPositionFactor: 100,
                 xExtent: { expr: "extent" },
+                debounce: 0,
                 as: ["dx", "dy"],
             },
             /** @type {any} */ ({ paramRuntime })
@@ -724,12 +801,56 @@ describe("Displace2DTransform", () => {
         expect(repropagate).not.toHaveBeenCalled();
     });
 
+    test("cancels a pending debounced replay after disposal", async () => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        try {
+            const paramRuntime = new ViewParamRuntime();
+            const setHeight = paramRuntime.registerParam({
+                name: "height",
+                value: 20,
+            });
+            const source = new Collector();
+            const transform = new Displace2DTransform(
+                {
+                    type: "displace2d",
+                    x: "x",
+                    y: "y",
+                    width: 20,
+                    height: { expr: "height" },
+                },
+                /** @type {any} */ ({ paramRuntime })
+            );
+            const output = new Collector();
+            source.addChild(transform);
+            transform.addChild(output);
+            source.handle({ x: 0, y: 0 });
+
+            const repropagate = vi.spyOn(source, "repropagate");
+            source.complete();
+            await paramRuntime.whenPropagated();
+            repropagate.mockClear();
+
+            setHeight(10);
+            transform.dispose();
+            await vi.advanceTimersByTimeAsync(50);
+
+            expect(repropagate).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     test("rejects invalid parameters and field values", () => {
         expect(() =>
             createFlow([{ x: 0, y: 0 }], {
                 xPositionFactor: Infinity,
             })
         ).toThrow("position factors");
+        expect(() =>
+            createFlow([{ x: 0, y: 0 }], {
+                debounce: -1,
+            })
+        ).toThrow("debounce");
         expect(() =>
             createFlow([{ x: 0, y: 0, width: -1 }], {
                 width: "width",

@@ -1167,6 +1167,16 @@ export interface Displace2DParams extends TransformParamsBase {
     scalePositions?: boolean;
 
     /**
+     * Trailing debounce time for re-running placement after reactive scale or
+     * property changes. During continuous zooming, the previous transform output
+     * remains in use until scale updates pause. Set to `0` to update immediately.
+     * Initial and layout-triggered placement are not delayed.
+     *
+     * __Default value:__ `50`
+     */
+    debounce?: number;
+
+    /**
      * Multiplier that converts horizontal positions to logical pixels. An
      * expression can react to scale or layout changes. Negative factors are
      * valid. Nonlinear scales require pixel positions derived upstream.

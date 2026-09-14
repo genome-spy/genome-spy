@@ -24,9 +24,12 @@ import { solveDisplacement } from "./displace2dSolver.js";
  */
 export default class Displace2DTransform extends Transform {
     #placementBootstrapped = false;
-    #bootstrapReplayPending = false;
-    #scaleReplayPending = false;
-    #repropagating = false;
+
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    #replayTimer;
+
+    #replayUpdatePending = false;
+    #debouncePending = false;
 
     /** @type {import("../../scales/scaleResolution.js").default} */
     #xScaleResolution;
@@ -61,6 +64,12 @@ export default class Displace2DTransform extends Transform {
             throw new Error("displace2d scalePositions must be a boolean.");
         }
         this.scalePositions = params.scalePositions ?? false;
+        this.debounce = params.debounce ?? 50;
+        if (!Number.isFinite(this.debounce) || this.debounce < 0) {
+            throw new Error(
+                "displace2d debounce must be a finite non-negative number."
+            );
+        }
         if (
             this.scalePositions &&
             (params.xPositionFactor !== undefined ||
@@ -149,12 +158,8 @@ export default class Displace2DTransform extends Transform {
                 return;
             }
 
-            if (
-                this.#refreshPlacementParameters() &&
-                this.completed &&
-                !this.#bootstrapReplayPending
-            ) {
-                this.#repropagateIfReady();
+            if (this.#refreshPlacementParameters() && this.completed) {
+                this.#scheduleReplay();
             }
         };
 
@@ -192,37 +197,44 @@ export default class Displace2DTransform extends Transform {
                 );
             }
 
-            const scaleChanged = () => this.#scheduleScaleReplay();
-            this.#xScaleResolution.addEventListener("domain", scaleChanged);
-            this.#yScaleResolution.addEventListener("domain", scaleChanged);
-            this.#xScaleResolution.addEventListener("range", scaleChanged);
-            this.#yScaleResolution.addEventListener("range", scaleChanged);
-            this.registerDisposer(() => {
-                this.#xScaleResolution.removeEventListener(
-                    "range",
-                    scaleChanged
+            const scaleChanged = () => this.#scheduleReplay();
+            for (const resolution of [
+                this.#xScaleResolution,
+                this.#yScaleResolution,
+            ]) {
+                this.registerDisposer(
+                    resolution.getMappingRef().subscribe(scaleChanged)
                 );
-                this.#yScaleResolution.removeEventListener(
-                    "range",
-                    scaleChanged
-                );
-                this.#xScaleResolution.removeEventListener(
-                    "domain",
-                    scaleChanged
-                );
-                this.#yScaleResolution.removeEventListener(
-                    "domain",
-                    scaleChanged
-                );
-            });
+            }
             this.registerDisposer(
-                view._addBroadcastHandler("layoutComputed", scaleChanged)
+                view._addBroadcastHandler("layoutComputed", () =>
+                    this.#scheduleReplay(0)
+                )
             );
         }
+
+        this.registerDisposer(() => {
+            clearTimeout(this.#replayTimer);
+            this.#replayTimer = undefined;
+            this.#debouncePending = false;
+            if (this.#replayUpdatePending) {
+                this.paramRuntime.cancelUpdate(this.#runScheduledReplay);
+                this.#replayUpdatePending = false;
+            }
+        });
     }
 
     complete() {
         const data = this.#data;
+
+        if (this.#debouncePending) {
+            // An upstream scale-dependent transform may replay while placement
+            // is debounced. Keep the previously published rows and offsets
+            // intact until the trailing replay recomputes the whole branch.
+            data.length = 0;
+            this.#batchStarts.length = 0;
+            return;
+        }
 
         if (!this.#placementBootstrapped) {
             // Establish data-driven scale domains before reading the scales.
@@ -236,14 +248,7 @@ export default class Displace2DTransform extends Transform {
 
             this.#refreshPlacementParameters();
             this.#placementBootstrapped = true;
-            this.#bootstrapReplayPending = true;
-            queueMicrotask(() => {
-                this.#bootstrapReplayPending = false;
-                if (!this.disposed) {
-                    this.#refreshPlacementParameters();
-                    this.#repropagateIfReady();
-                }
-            });
+            this.#scheduleReplay(0);
             return;
         }
 
@@ -403,37 +408,64 @@ export default class Displace2DTransform extends Transform {
         );
     }
 
-    #repropagateIfReady() {
-        if (
+    #runScheduledReplay = () => {
+        this.#replayUpdatePending = false;
+        if (this.#isReplayReady()) {
+            this.#refreshPlacementParameters();
+            this.requestRepropagate();
+        }
+    };
+
+    #isReplayReady() {
+        return (
             this.#placementBootstrapped &&
-            !this.#bootstrapReplayPending &&
             !this.disposed &&
             this.completed &&
             (!this.scalePositions || this.#hasScaleLayout())
-        ) {
-            this.#repropagating = true;
-            try {
-                this.repropagate();
-            } finally {
-                this.#repropagating = false;
+        );
+    }
+
+    /** @param {number} [wait] */
+    #scheduleReplay(wait = this.debounce) {
+        if (!this.#isReplayReady()) {
+            clearTimeout(this.#replayTimer);
+            this.#replayTimer = undefined;
+            this.#debouncePending = false;
+            return;
+        }
+
+        if (wait > 0) {
+            if (this.#replayUpdatePending) {
+                return;
             }
+            this.#debouncePending = true;
+            clearTimeout(this.#replayTimer);
+            this.#replayTimer = setTimeout(() => {
+                this.#replayTimer = undefined;
+                this.#debouncePending = false;
+                this.#queueReplay();
+            }, wait);
+        } else {
+            clearTimeout(this.#replayTimer);
+            this.#replayTimer = undefined;
+            this.#debouncePending = false;
+            this.#queueReplay();
         }
     }
 
-    #scheduleScaleReplay() {
-        // Domain publication during our own replay is not a new scale change.
-        // Coalesce external x/y domain and layout changes into one later replay.
-        if (!this.#repropagating && !this.#scaleReplayPending) {
-            this.#scaleReplayPending = true;
-            queueMicrotask(() => {
-                this.#scaleReplayPending = false;
-                this.#repropagateIfReady();
+    #queueReplay() {
+        if (!this.#replayUpdatePending) {
+            this.#replayUpdatePending = true;
+            this.paramRuntime.requestUpdate(this.#runScheduledReplay, 0, () => {
+                this.#replayUpdatePending = false;
             });
         }
     }
 
     reset() {
-        super.reset();
+        if (!this.#debouncePending) {
+            super.reset();
+        }
         this.#data.length = 0;
         this.#batchStarts.length = 0;
     }
