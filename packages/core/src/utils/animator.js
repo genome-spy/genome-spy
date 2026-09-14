@@ -119,6 +119,8 @@ export default class Animator {
  * Moves a scalar towards a target using frame-rate-independent exponential
  * smoothing.
  *
+ * Based on: https://twitter.com/FreyaHolmer/status/1757836988495847568
+ *
  * @param {number} current
  * @param {number} target
  * @param {number} elapsed Time since the previous update, in milliseconds
