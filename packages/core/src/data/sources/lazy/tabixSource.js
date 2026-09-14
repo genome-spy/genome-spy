@@ -2,19 +2,19 @@ import {
     activateExprRefProps,
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
-import { attachDescriptorFieldsToData } from "../urlDescriptor.js";
-import UrlDescriptorController from "../urlDescriptorController.js";
-import UrlDescriptorState, {
-    updateUrlDescriptorState,
-} from "../urlDescriptorState.js";
-import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
+import {
+    attachDescriptorFieldsToData,
+    getUrlDescriptorExpressions,
+} from "../urlDescriptor.js";
+import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
 
 /**
  * @template T
  * @template P
  * @abstract
+ * @extends {UrlDescriptorWindowedSource<TabixHandle>}
  */
-export default class TabixSource extends SingleAxisWindowedSource {
+export default class TabixSource extends UrlDescriptorWindowedSource {
     /**
      * @typedef {object} TabixHandle
      * @prop {import("@gmod/tabix").TabixIndexedFile} tbiIndex
@@ -22,12 +22,6 @@ export default class TabixSource extends SingleAxisWindowedSource {
      * @prop {P} parserContext
      * @prop {string} url
      */
-
-    /** @type {UrlDescriptorState<TabixHandle>} */
-    #descriptorState = new UrlDescriptorState();
-
-    /** @type {UrlDescriptorController} */
-    #urlDescriptors;
 
     /**
      * @param {import("../../../spec/data.js").TabixData} params
@@ -56,20 +50,14 @@ export default class TabixSource extends SingleAxisWindowedSource {
                     props.has("indexUrl") ||
                     props.has("addChrPrefix")
                 ) {
-                    this.#reloadIfCurrentDomainNeedsData();
+                    this.reloadUrlDescriptors();
                 } else if (props.has("windowSize")) {
                     this.reloadLastDomain();
                 }
             },
             (disposer) => this.registerDisposer(disposer),
-            { batchMode: "whenPropagated" }
+            getUrlDescriptorExpressions(paramsWithDefaults.url)
         );
-
-        this.#urlDescriptors = new UrlDescriptorController(this, {
-            getUrl: () => this.params.url,
-            getIndexUrl: () => this.params.indexUrl,
-            onChange: () => this.#reloadIfCurrentDomainNeedsData(),
-        });
 
         if (!withoutExprRef(this.params.url)) {
             throw new Error("No URL provided for TabixSource");
@@ -77,67 +65,41 @@ export default class TabixSource extends SingleAxisWindowedSource {
 
         this.setupDebouncing(this.params);
 
-        this.#initialize();
-    }
-
-    #initialize() {
-        this.initializedPromise = this.#doInitialize();
-        return this.initializedPromise;
-    }
-
-    /**
-     * Refreshes active descriptors and reloads the current domain only if the
-     * current loaded data does not cover the new active descriptor set.
-     */
-    async #reloadIfCurrentDomainNeedsData() {
-        try {
-            await this.#initialize();
-
-            if (
-                !this.isDataReadyForDomain({
-                    [this.channel]: this.scaleResolution.getDomain(),
-                })
-            ) {
-                this.reloadLastDomain();
-            }
-        } catch {
-            // Initialization has already updated the loading status.
-        }
-    }
-
-    async #doInitialize() {
-        await updateUrlDescriptorState({
-            controller: this.#urlDescriptors,
-            state: this.#descriptorState,
-            clearData: () => this.invalidateData(),
-            setLoadingStatus: (status, detail) =>
-                this.setLoadingStatus(status, detail),
-            loadModules: async () => {
-                const { TabixIndexedFile, RemoteFile } =
-                    await loadTabixModules();
-                const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
-
-                const renameRefSeqs =
-                    addChrPrefix === true
-                        ? (/** @type {string} */ refSeq) => "chr" + refSeq
-                        : addChrPrefix
-                          ? (/** @type {string} */ refSeq) =>
-                                addChrPrefix + refSeq
-                          : undefined;
-
-                return { TabixIndexedFile, RemoteFile, renameRefSeqs };
+        this.setupUrlDescriptors(
+            {
+                getUrl: () => this.params.url,
+                getIndexUrl: () => this.params.indexUrl,
             },
-            createHandle: (
-                descriptor,
-                { TabixIndexedFile, RemoteFile, renameRefSeqs }
-            ) =>
-                this.#createHandle(
+            {
+                loadModules: async () => {
+                    const { TabixIndexedFile, RemoteFile } =
+                        await loadTabixModules();
+                    const addChrPrefix = withoutExprRef(
+                        this.params.addChrPrefix
+                    );
+
+                    const renameRefSeqs =
+                        addChrPrefix === true
+                            ? (/** @type {string} */ refSeq) => "chr" + refSeq
+                            : addChrPrefix
+                              ? (/** @type {string} */ refSeq) =>
+                                    addChrPrefix + refSeq
+                              : undefined;
+
+                    return { TabixIndexedFile, RemoteFile, renameRefSeqs };
+                },
+                createHandle: (
                     descriptor,
-                    TabixIndexedFile,
-                    RemoteFile,
-                    renameRefSeqs
-                ),
-        });
+                    { TabixIndexedFile, RemoteFile, renameRefSeqs }
+                ) =>
+                    this.#createHandle(
+                        descriptor,
+                        TabixIndexedFile,
+                        RemoteFile,
+                        renameRefSeqs
+                    ),
+            }
+        );
     }
 
     /**
@@ -177,7 +139,8 @@ export default class TabixSource extends SingleAxisWindowedSource {
      */
     async loadInterval(interval) {
         await this.initializedPromise;
-        const handles = this.#descriptorState.handles;
+        const handles = this.descriptorState.activeHandles;
+        if (!handles) return;
         const featureChunksByHandle = await this.discretizeAndLoad(
             interval,
             async (discreteInterval, signal) =>
@@ -284,19 +247,8 @@ export default class TabixSource extends SingleAxisWindowedSource {
             }
         }
 
-        this.#descriptorState.markLoaded();
+        this.descriptorState.markLoaded();
         this.complete();
-    }
-
-    /**
-     * @param {import("./singleAxisLazySource.js").DataReadinessRequest} request
-     * @returns {boolean}
-     */
-    isDataReadyForDomain(request) {
-        return (
-            this.#descriptorState.activeSetLoaded &&
-            super.isDataReadyForDomain(request)
-        );
     }
 }
 

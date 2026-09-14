@@ -3,17 +3,17 @@ import {
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
-import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
-import { createDescriptorFieldAttacher } from "../urlDescriptor.js";
-import UrlDescriptorController from "../urlDescriptorController.js";
-import UrlDescriptorState, {
-    updateUrlDescriptorState,
-} from "../urlDescriptorState.js";
+import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
+import {
+    createDescriptorFieldAttacher,
+    getUrlDescriptorExpressions,
+} from "../urlDescriptor.js";
 
 /**
  *
  */
-export default class BigWigSource extends SingleAxisWindowedSource {
+/** @extends {UrlDescriptorWindowedSource<BigWigHandle>} */
+export default class BigWigSource extends UrlDescriptorWindowedSource {
     /**
      * @typedef {object} BigWigHandle
      * @prop {import("@gmod/bbi").BigWig} bbi
@@ -21,12 +21,6 @@ export default class BigWigSource extends SingleAxisWindowedSource {
      * @prop {number[]} reductionLevels
      * @prop {string} url
      */
-
-    /** @type {UrlDescriptorState<BigWigHandle>} */
-    #descriptorState = new UrlDescriptorState();
-
-    /** @type {UrlDescriptorController} */
-    #urlDescriptors;
 
     /**
      * @param {import("../../../spec/data.js").BigWigData} params
@@ -50,19 +44,14 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             paramsWithDefaults,
             (props) => {
                 if (props.has("url")) {
-                    this.#reloadIfCurrentDomainNeedsData();
+                    this.reloadUrlDescriptors();
                 } else if (props.has("pixelsPerBin")) {
                     this.reloadLastDomain();
                 }
             },
             (disposer) => this.registerDisposer(disposer),
-            { batchMode: "whenPropagated" }
+            getUrlDescriptorExpressions(paramsWithDefaults.url)
         );
-
-        this.#urlDescriptors = new UrlDescriptorController(this, {
-            getUrl: () => this.params.url,
-            onChange: () => this.#reloadIfCurrentDomainNeedsData(),
-        });
 
         if (!this.params.url) {
             throw new Error("No URL provided for BigWigSource");
@@ -70,56 +59,18 @@ export default class BigWigSource extends SingleAxisWindowedSource {
 
         this.setupDebouncing(this.params);
 
-        this.#initialize();
+        this.setupUrlDescriptors(
+            { getUrl: () => this.params.url },
+            {
+                loadModules: loadBigWigModules,
+                createHandle: (descriptor, { BigWig, RemoteFile }) =>
+                    this.#createHandle(descriptor, BigWig, RemoteFile),
+            }
+        );
     }
 
     get label() {
         return "bigWigSource";
-    }
-
-    /**
-     * @returns {Promise<void>}
-     */
-    #initialize() {
-        const initializePromise = this.#doInitialize();
-        this.initializedPromise = initializePromise;
-        return initializePromise;
-    }
-
-    /**
-     * Refreshes active descriptors and reloads the current domain only if the
-     * current loaded data does not cover the new active descriptor set.
-     */
-    async #reloadIfCurrentDomainNeedsData() {
-        try {
-            await this.#initialize();
-
-            if (
-                !this.isDataReadyForDomain({
-                    [this.channel]: this.scaleResolution.getDomain(),
-                })
-            ) {
-                this.reloadLastDomain();
-            }
-        } catch {
-            // Initialization has already updated the loading status.
-        }
-    }
-
-    /**
-     * @returns {Promise<void>}
-     */
-    async #doInitialize() {
-        await updateUrlDescriptorState({
-            controller: this.#urlDescriptors,
-            state: this.#descriptorState,
-            clearData: () => this.invalidateData(),
-            setLoadingStatus: (status, detail) =>
-                this.setLoadingStatus(status, detail),
-            loadModules: loadBigWigModules,
-            createHandle: (descriptor, { BigWig, RemoteFile }) =>
-                this.#createHandle(descriptor, BigWig, RemoteFile),
-        });
     }
 
     /**
@@ -158,14 +109,8 @@ export default class BigWigSource extends SingleAxisWindowedSource {
      * @param {number[]} domain Linearized domain
      */
     async onDomainChanged(domain) {
-        await this.initializedPromise;
-
-        const handles = this.#descriptorState.handles;
-        if (!handles.length) {
-            this.#descriptorState.markLoaded();
-            this.publishData([], domain);
-            return;
-        }
+        const handles = await this.getActiveUrlHandles(domain);
+        if (!handles) return;
 
         // TODO: Postpone the initial load until layout is computed and remove 700.
         const length = this.scaleResolution.getAxisLength() || 700;
@@ -194,7 +139,8 @@ export default class BigWigSource extends SingleAxisWindowedSource {
      */
     // @ts-expect-error
     async loadInterval(interval, selectedReductionLevels) {
-        const handles = this.#descriptorState.handles;
+        const handles = this.descriptorState.activeHandles;
+        if (!handles) return;
         const featureChunks = await this.discretizeAndLoad(interval, {
             load: (d, signal) =>
                 this.#loadFeatures(d, handles, selectedReductionLevels, signal),
@@ -208,7 +154,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         });
 
         if (featureChunks) {
-            this.#descriptorState.markLoaded();
+            this.descriptorState.markLoaded();
             this.publishData(featureChunks);
         }
     }
@@ -292,17 +238,6 @@ export default class BigWigSource extends SingleAxisWindowedSource {
 
         return intervals.map((_, intervalIndex) =>
             chunksByHandle.flatMap((chunks) => chunks[intervalIndex])
-        );
-    }
-
-    /**
-     * @param {import("./singleAxisLazySource.js").DataReadinessRequest} request
-     * @returns {boolean}
-     */
-    isDataReadyForDomain(request) {
-        return (
-            this.#descriptorState.activeSetLoaded &&
-            super.isDataReadyForDomain(request)
         );
     }
 }

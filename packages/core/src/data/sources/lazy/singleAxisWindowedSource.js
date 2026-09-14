@@ -38,6 +38,20 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
     #lastWindowSize = 0;
 
     /**
+     * @param {import("../../../view/view.js").default} view
+     * @param {import("../../../spec/channel.js").PrimaryPositionalChannel} channel
+     */
+    constructor(view, channel) {
+        super(view, channel);
+        this.registerDisposer(() => this.#abortController.abort());
+    }
+
+    /** @protected */
+    abortPendingLoad() {
+        this.#abortController.abort();
+    }
+
+    /**
      * @type {{windowSize?: number | import("../../../spec/parameter.js").ExprRef}}
      * @protected
      */
@@ -151,7 +165,7 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
      */
     async discretizeAndLoad(interval, loader) {
         // Abort previous requests
-        this.#abortController.abort();
+        this.abortPendingLoad();
 
         this.setLoadingStatus("loading");
 

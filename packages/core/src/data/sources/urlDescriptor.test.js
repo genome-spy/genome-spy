@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
     createDescriptorFieldAttacher,
+    getUrlDescriptorExpressions,
     normalizeUrlDescriptors,
     normalizeSingleUrlDescriptor,
     UrlLimitExceededError,
-    watchUrlDescriptorExpressions,
 } from "./urlDescriptor.js";
 
 /**
@@ -99,6 +99,15 @@ describe("normalizeUrlDescriptors", () => {
         ]);
     });
 
+    it("pairs a direct URL with its separate index URL", async () => {
+        await expect(
+            normalizeUrlDescriptors({
+                url: "reads.bam",
+                indexUrl: "reads.bai",
+            })
+        ).resolves.toEqual([{ url: "reads.bam", indexUrl: "reads.bai" }]);
+    });
+
     it("throws a typed error when maxValues is exceeded", async () => {
         await expect(
             normalizeUrlDescriptors({
@@ -123,32 +132,15 @@ describe("normalizeUrlDescriptors", () => {
         ).rejects.toThrow("BamSource supports exactly one resolved URL.");
     });
 
-    it("watches nested template value expressions", () => {
-        /** @type {string[]} */
-        const watched = [];
-        watchUrlDescriptorExpressions({
-            url: {
+    it("returns nested template expressions for grouped activation", () => {
+        expect(
+            getUrlDescriptorExpressions({
                 template: "coverage/{sample}.bw",
                 values: { expr: "visibleSamples" },
                 field: "sample",
-            },
-            paramRuntime: {
-                watchExpression: (/** @type {string} */ expr) => {
-                    watched.push(expr);
-                    return /** @returns {any[]} */ function unsubscribe() {
-                        return [];
-                    };
-                },
-                createExpression: /** @returns {any} */ () => {
-                    return /** @returns {undefined} */ function expr() {
-                        return undefined;
-                    };
-                },
-            },
-            listener: () => undefined,
-        });
-
-        expect(watched).toEqual(["visibleSamples"]);
+            })
+        ).toEqual([{ key: "url", expr: { expr: "visibleSamples" } }]);
+        expect(getUrlDescriptorExpressions({ expr: "urlParam" })).toEqual([]);
     });
 });
 

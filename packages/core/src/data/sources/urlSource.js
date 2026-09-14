@@ -13,10 +13,11 @@ import {
 import { concatUrl } from "../../utils/url.js";
 import {
     createDescriptorFieldAttacher,
+    getUrlDescriptorExpressions,
     loadUrlDescriptorOrSkip,
+    normalizeUrlDescriptors,
     UrlLimitExceededError,
 } from "./urlDescriptor.js";
-import UrlDescriptorController from "./urlDescriptorController.js";
 
 const gzipMimeTypes = new Set(["application/gzip", "application/x-gzip"]);
 const textDecoder = new TextDecoder();
@@ -26,9 +27,6 @@ const textDecoder = new TextDecoder();
  * payloads before handing them to the registered format reader.
  */
 export default class UrlSource extends DataSource {
-    /** @type {UrlDescriptorController} */
-    #urlDescriptors;
-
     #loadId = 0;
 
     /**
@@ -43,14 +41,10 @@ export default class UrlSource extends DataSource {
             params,
             () => this.load(),
             (disposer) => this.registerDisposer(disposer),
-            { batchMode: "whenPropagated" }
+            getUrlDescriptorExpressions(params.url)
         );
 
         this.baseUrl = view?.getBaseUrl();
-        this.#urlDescriptors = new UrlDescriptorController(this, {
-            getUrl: () => this.params.url,
-            onChange: () => this.load(),
-        });
     }
 
     get identifier() {
@@ -109,7 +103,11 @@ export default class UrlSource extends DataSource {
                     ? (await this.#loadUrlsFromFile(url)).map((url) => ({
                           url,
                       }))
-                    : await this.#urlDescriptors.normalize();
+                    : await normalizeUrlDescriptors({
+                          url: this.params.url,
+                          baseUrl: this.baseUrl,
+                          paramRuntime: this.paramRuntime,
+                      });
 
             if (!isCurrent()) return;
 

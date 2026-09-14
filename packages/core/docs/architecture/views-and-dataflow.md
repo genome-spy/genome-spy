@@ -61,6 +61,11 @@ arrangement.
   prevents publication. Superseded fetched content skips parsing; async parser
   results are checked again before publication. Reset still occurs at load start; this does not introduce
   retained pending data, cancellation, or a shared async scheduler.
+- Descriptor-backed windowed sources share a revisioned handle cache. A URL
+  change synchronously invalidates readiness and aborts interval work before
+  normalization; only the latest initialization and interval revision may
+  publish data or status. BAM and indexed FASTA use the same replacement and
+  current-domain reload lifecycle as BigBed, BigWig, and Tabix.
 - `src/data/dataReadiness.js` walks the actual optimized primary path and
   `FlowNode.dataDependencies` side edges. `SideInputBinding` owns observation and
   consumed revisions for declared collectors. It binds during `initializeOnce()`,

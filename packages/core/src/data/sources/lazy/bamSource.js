@@ -2,24 +2,17 @@ import {
     activateExprRefProps,
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
-import { normalizeSingleUrlDescriptor } from "../urlDescriptor.js";
+import { getUrlDescriptorExpressions } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
-import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
+import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
 
-export default class BamSource extends SingleAxisWindowedSource {
-    /** @type {import("@gmod/bam").BamFile} */
-    #bam;
-
+/** @extends {UrlDescriptorWindowedSource<BamHandle>} */
+export default class BamSource extends UrlDescriptorWindowedSource {
     /**
-     * Some BAM files lack the "chr" prefix on their reference names. For example:
-     * http://genome.ucsc.edu/goldenPath/help/examples/bamExample.bam
-     *
-     * N.B. @SN AN records in SAM header may have alternative names for chromosomes.
-     * TODO: Explore their usage
-     *
-     * @type {(chr: string) => string}
+     * @typedef {object} BamHandle
+     * @prop {import("@gmod/bam").BamFile} bam
+     * @prop {(chr: string) => string} fixChrPrefix
      */
-    chrPrefixFixer = (chr) => chr;
 
     /**
      * @param {import("../../../spec/data.js").BamData} params
@@ -42,12 +35,14 @@ export default class BamSource extends SingleAxisWindowedSource {
             view.paramRuntime,
             paramsWithDefaults,
             (props) => {
-                if (props.has("windowSize")) {
+                if (props.has("url") || props.has("indexUrl")) {
+                    this.reloadUrlDescriptors();
+                } else if (props.has("windowSize")) {
                     this.reloadLastDomain();
                 }
             },
             (disposer) => this.registerDisposer(disposer),
-            { batchMode: "whenPropagated" }
+            getUrlDescriptorExpressions(paramsWithDefaults.url)
         );
 
         if (!this.params.url) {
@@ -56,60 +51,62 @@ export default class BamSource extends SingleAxisWindowedSource {
 
         this.setupDebouncing(this.params);
 
-        this.#initialize();
+        this.setupUrlDescriptors(
+            {
+                getUrl: () => this.params.url,
+                getIndexUrl: () => this.params.indexUrl,
+                singleSourceName: "BamSource",
+            },
+            {
+                loadModules: loadBamModules,
+                createHandle: (descriptor, { BamFile, RemoteFile }) =>
+                    this.#createHandle(descriptor, BamFile, RemoteFile),
+            }
+        );
     }
 
     get label() {
         return "bamSource";
     }
 
-    #initialize() {
-        this.initializedPromise = this.#doInitialize();
-        return this.initializedPromise;
-    }
-
-    async #doInitialize() {
-        const descriptor = await normalizeSingleUrlDescriptor(
-            {
-                url: this.params.url,
-                indexUrl: this.params.indexUrl,
-                baseUrl: this.view.getBaseUrl(),
-                paramRuntime: this.paramRuntime,
-            },
-            "BamSource"
-        );
-        const [{ BamFile }, { RemoteFile }] = await Promise.all([
-            import("@gmod/bam"),
-            import("generic-filehandle2"),
-        ]);
-
-        this.#bam = new BamFile({
+    /**
+     * @param {import("../urlDescriptor.js").UrlDescriptor} descriptor
+     * @param {typeof import("@gmod/bam").BamFile} BamFile
+     * @param {typeof import("generic-filehandle2").RemoteFile} RemoteFile
+     */
+    async #createHandle(descriptor, BamFile, RemoteFile) {
+        const bam = new BamFile({
             bamFilehandle: new RemoteFile(descriptor.url),
             baiFilehandle: new RemoteFile(
                 descriptor.indexUrl ?? descriptor.url + ".bai"
             ),
         });
 
-        await this.#bam.getHeader();
+        await bam.getHeader();
         const g = this.genome.hasChrPrefix();
-        const b = this.#bam.indexToChr?.[0]?.refName.startsWith("chr");
-        if (g && !b) {
-            this.chrPrefixFixer = (chr) => chr.replace("chr", "");
-        } else if (!g && b) {
-            this.chrPrefixFixer = (chr) => "chr" + chr;
-        }
+        const b = bam.indexToChr?.[0]?.refName.startsWith("chr");
+        const fixChrPrefix =
+            g && !b
+                ? (/** @type {string} */ chr) => chr.replace("chr", "")
+                : !g && b
+                  ? (/** @type {string} */ chr) => "chr" + chr
+                  : (/** @type {string} */ chr) => chr;
+        return { bam, fixChrPrefix };
     }
 
     /**
      * @param {number[]} interval linearized domain
      */
     async loadInterval(interval) {
+        const handles = await this.getActiveUrlHandles(interval);
+        if (!handles) return;
+        const handle = handles[0];
         const featureChunks = await this.discretizeAndLoad(
             interval,
             async (d, signal) =>
-                this.#bam
+                handle.bam
                     .getRecordsForRange(
-                        this.chrPrefixFixer(d.chrom),
+                        handle.fixChrPrefix(d.chrom),
                         d.startPos,
                         d.endPos,
                         { signal }
@@ -122,9 +119,18 @@ export default class BamSource extends SingleAxisWindowedSource {
         );
 
         if (featureChunks) {
+            this.descriptorState.markLoaded();
             this.publishData(featureChunks);
         }
     }
+}
+
+async function loadBamModules() {
+    const [{ BamFile }, { RemoteFile }] = await Promise.all([
+        import("@gmod/bam"),
+        import("generic-filehandle2"),
+    ]);
+    return { BamFile, RemoteFile };
 }
 
 /**

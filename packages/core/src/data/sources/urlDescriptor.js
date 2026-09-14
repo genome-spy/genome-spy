@@ -22,18 +22,8 @@ import { concatUrl } from "../../utils/url.js";
  * @typedef {import("../../spec/data.js").UrlTemplate} UrlTemplate
  * @typedef {import("../../spec/data.js").IndexUrlTemplate} IndexUrlTemplate
  * @typedef {import("../../spec/parameter.js").ExprRef} ExprRef
- * @typedef {() => unknown} ExpressionFunction
- * @typedef {ExpressionFunction & { subscribe?: (listener: () => void) => () => void }} SubscribableExpressionFunction
  * @typedef {{
- *     createExpression: (expr: string) => SubscribableExpressionFunction,
- *     watchExpression?: (
- *         expr: string,
- *         listener: () => void,
- *         options?: {
- *             scopeOwned?: boolean,
- *             registerDisposer?: (disposer: () => void) => void
- *         }
- *     ) => SubscribableExpressionFunction,
+ *     createExpression: (expr: string) => () => unknown,
  * }} UrlExpressionRuntime
  */
 
@@ -116,32 +106,16 @@ export async function normalizeSingleUrlDescriptor(options, sourceName) {
 }
 
 /**
- * Subscribes to expressions that affect URL expansion. Sources call this in
- * addition to `activateExprRefProps` because template values are nested under
- * `url.values` and therefore are not top-level data source properties.
+ * Returns nested expressions that affect URL descriptor expansion. Top-level
+ * URL and index expressions are already ordinary source properties.
  *
- * @param {{
- *   url: UrlSourceRef | SingleUrlSourceRef | MultiUrlSourceRef | unknown,
- *   indexUrl?: IndexUrlSourceRef | unknown,
- *   paramRuntime: UrlExpressionRuntime,
- *   listener: () => void,
- *   registerDisposer?: (disposer: () => void) => void,
- * }} options
+ * @param {UrlSourceRef | SingleUrlSourceRef | MultiUrlSourceRef | unknown} url
+ * @returns {{ key: "url", expr: ExprRef }[]}
  */
-export function watchUrlDescriptorExpressions(options) {
-    const expressions = collectUrlExpressions(options.url, options.indexUrl);
-    for (const expr of expressions) {
-        const fn = options.paramRuntime.watchExpression
-            ? options.paramRuntime.watchExpression(expr, options.listener, {
-                  scopeOwned: !options.registerDisposer,
-                  registerDisposer: options.registerDisposer,
-              })
-            : options.paramRuntime.createExpression(expr);
-        if (!options.paramRuntime.watchExpression && fn.subscribe) {
-            const unsubscribe = fn.subscribe(options.listener);
-            options.registerDisposer?.(unsubscribe);
-        }
-    }
+export function getUrlDescriptorExpressions(url) {
+    return isUrlTemplate(url) && isExprRef(url.values)
+        ? [{ key: "url", expr: url.values }]
+        : [];
 }
 
 /**
@@ -283,11 +257,15 @@ function expandUrl(urlSpec, options) {
         return expandTemplate(urlSpec, options.indexUrl, options);
     }
 
-    const value = isExprRef(urlSpec)
-        ? requireParamRuntime(options).createExpression(urlSpec.expr)()
-        : urlSpec;
+    const value = resolveExprRef(urlSpec, options);
+    const indexUrl = resolveExprRef(options.indexUrl, options);
     const values = Array.isArray(value) ? value : [value];
-    return values.map(normalizeDescriptor);
+    return values.map((value) => {
+        const descriptor = normalizeDescriptor(value);
+        return typeof indexUrl == "string" && !descriptor.indexUrl
+            ? { ...descriptor, indexUrl }
+            : descriptor;
+    });
 }
 
 /**
@@ -301,7 +279,7 @@ function expandUrl(urlSpec, options) {
  * @returns {UrlDescriptor[]}
  */
 function expandTemplate(templateSpec, indexUrlSpec, options) {
-    const values = resolveValues(templateSpec.values, options);
+    const values = resolveExprRef(templateSpec.values, options);
     if (!Array.isArray(values)) {
         throw new Error("URL template values must resolve to an array.");
     }
@@ -333,15 +311,11 @@ function expandTemplate(templateSpec, indexUrlSpec, options) {
     });
 }
 
-/**
- * @param {UrlTemplate["values"] | unknown} values
- * @param {UrlDescriptorOptions} options
- * @returns {unknown}
- */
-function resolveValues(values, options) {
-    return isExprRef(values)
-        ? requireParamRuntime(options).createExpression(values.expr)()
-        : values;
+/** @param {unknown} value @param {UrlDescriptorOptions} options */
+function resolveExprRef(value, options) {
+    return isExprRef(value)
+        ? requireParamRuntime(options).createExpression(value.expr)()
+        : value;
 }
 
 /**
@@ -447,27 +421,4 @@ function requireParamRuntime(options) {
         throw new Error("URL ExprRef evaluation requires a parameter runtime.");
     }
     return options.paramRuntime;
-}
-
-/**
- * URL expansion only watches expressions that can change the set of resolved
- * descriptors. Expressions in other source properties are handled by the
- * source-specific `activateExprRefProps` wiring.
- *
- * @param {UrlSourceRef | SingleUrlSourceRef | MultiUrlSourceRef | unknown} url
- * @param {IndexUrlSourceRef | unknown} indexUrl
- * @returns {string[]}
- */
-function collectUrlExpressions(url, indexUrl) {
-    const expressions = [];
-    if (isExprRef(url)) {
-        expressions.push(url.expr);
-    }
-    if (isUrlTemplate(url) && isExprRef(url.values)) {
-        expressions.push(url.values.expr);
-    }
-    if (isExprRef(indexUrl)) {
-        expressions.push(indexUrl.expr);
-    }
-    return expressions;
 }

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import Collector from "../collector.js";
 import SequenceSource from "./sequenceSource.js";
 import { makeParamRuntimeProvider } from "../flowTestUtils.js";
@@ -66,6 +66,67 @@ describe("SequenceSource", () => {
             )
             // TODO: Test that the sequence is regenerated when the parameters change
         ).resolves.toEqual([{ x: 0 }, { x: 1 }, { x: 2 }]));
+
+    test("reloads once with final values from a transaction", async () => {
+        const view = /** @type {any} */ (makeParamRuntimeProvider());
+        const setStart = view.paramRuntime.registerParam({
+            name: "start",
+            value: 0,
+        });
+        const setStop = view.paramRuntime.registerParam({
+            name: "stop",
+            value: 4,
+        });
+        const setStep = view.paramRuntime.registerParam({
+            name: "step",
+            value: 1,
+        });
+        const source = new SequenceSource(
+            {
+                sequence: {
+                    start: { expr: "start" },
+                    stop: { expr: "stop" },
+                    step: { expr: "step" },
+                },
+            },
+            view
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+        source.loadSynchronously();
+        const load = vi.spyOn(source, "loadSynchronously");
+
+        view.paramRuntime.runInTransaction(() => {
+            setStart(2);
+            setStop(9);
+            setStep(3);
+        });
+        await view.paramRuntime.whenPropagated();
+
+        expect(load).toHaveBeenCalledOnce();
+        expect(collector.getData()).toEqual([
+            { data: 2 },
+            { data: 5 },
+            { data: 8 },
+        ]);
+    });
+
+    test("does not reload when the effective value is unchanged", () => {
+        const view = /** @type {any} */ (makeParamRuntimeProvider());
+        const setStop = view.paramRuntime.registerParam({
+            name: "stop",
+            value: 3.1,
+        });
+        const source = new SequenceSource(
+            { sequence: { start: 0, stop: { expr: "floor(stop)" } } },
+            view
+        );
+        const load = vi.spyOn(source, "loadSynchronously");
+
+        setStop(3.2);
+
+        expect(load).not.toHaveBeenCalled();
+    });
 
     test("throws on missing 'start' parameter", () =>
         expect(

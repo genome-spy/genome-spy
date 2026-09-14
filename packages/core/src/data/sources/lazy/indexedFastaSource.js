@@ -1,8 +1,13 @@
-import { normalizeSingleUrlDescriptor } from "../urlDescriptor.js";
+import {
+    activateExprRefProps,
+    withoutExprRef,
+} from "../../../paramRuntime/paramUtils.js";
+import { getUrlDescriptorExpressions } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
-import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
+import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
 
-export default class IndexedFastaSource extends SingleAxisWindowedSource {
+/** @extends {UrlDescriptorWindowedSource<import("@gmod/indexedfasta").IndexedFasta>} */
+export default class IndexedFastaSource extends UrlDescriptorWindowedSource {
     /**
      * @param {import("../../../spec/data.js").IndexedFastaData} params
      * @param {import("../../../view/view.js").default} view
@@ -17,9 +22,21 @@ export default class IndexedFastaSource extends SingleAxisWindowedSource {
             ...params,
         };
 
-        super(view, paramsWithDefaults.channel);
+        super(view, withoutExprRef(paramsWithDefaults.channel));
 
-        this.params = paramsWithDefaults;
+        this.params = activateExprRefProps(
+            view.paramRuntime,
+            paramsWithDefaults,
+            (props) => {
+                if (props.has("url") || props.has("indexUrl")) {
+                    this.reloadUrlDescriptors();
+                } else if (props.has("windowSize")) {
+                    this.reloadLastDomain();
+                }
+            },
+            (disposer) => this.registerDisposer(disposer),
+            getUrlDescriptorExpressions(paramsWithDefaults.url)
+        );
 
         if (!this.params.url) {
             throw new Error("No URL provided for IndexedFastaSource");
@@ -27,47 +44,43 @@ export default class IndexedFastaSource extends SingleAxisWindowedSource {
 
         this.setupDebouncing(this.params);
 
-        this.#initialize();
+        this.setupUrlDescriptors(
+            {
+                getUrl: () => this.params.url,
+                getIndexUrl: () => this.params.indexUrl,
+                singleSourceName: "IndexedFastaSource",
+            },
+            {
+                loadModules: loadFastaModules,
+                createHandle: async (
+                    descriptor,
+                    { IndexedFasta, RemoteFile }
+                ) =>
+                    new IndexedFasta({
+                        fasta: new RemoteFile(descriptor.url),
+                        fai: new RemoteFile(
+                            descriptor.indexUrl ?? descriptor.url + ".fai"
+                        ),
+                    }),
+            }
+        );
     }
 
     get label() {
-        return "bigWigSource";
-    }
-
-    #initialize() {
-        this.initializedPromise = this.#doInitialize();
-        return this.initializedPromise;
-    }
-
-    async #doInitialize() {
-        const descriptor = await normalizeSingleUrlDescriptor(
-            {
-                url: this.params.url,
-                indexUrl: this.params.indexUrl,
-                baseUrl: this.view.getBaseUrl(),
-                paramRuntime: this.paramRuntime,
-            },
-            "IndexedFastaSource"
-        );
-        const [{ IndexedFasta }, { RemoteFile }] = await Promise.all([
-            import("@gmod/indexedfasta"),
-            import("generic-filehandle2"),
-        ]);
-
-        this.fasta = new IndexedFasta({
-            fasta: new RemoteFile(descriptor.url),
-            fai: new RemoteFile(descriptor.indexUrl ?? descriptor.url + ".fai"),
-        });
+        return "indexedFastaSource";
     }
 
     /**
      * @param {number[]} interval linearized domain
      */
     async loadInterval(interval) {
+        const handles = await this.getActiveUrlHandles(interval);
+        if (!handles) return;
+        const fasta = handles[0];
         const features = await this.discretizeAndLoad(
             interval,
             async (d, signal) =>
-                this.fasta
+                fasta
                     .getSequence(d.chrom, d.startPos, d.endPos, {
                         signal,
                     })
@@ -87,8 +100,19 @@ export default class IndexedFastaSource extends SingleAxisWindowedSource {
                     })
         );
 
-        this.publishData([features.filter((f) => f !== undefined)]);
+        if (features) {
+            this.descriptorState.markLoaded();
+            this.publishData([features.filter((f) => f !== undefined)]);
+        }
     }
+}
+
+async function loadFastaModules() {
+    const [{ IndexedFasta }, { RemoteFile }] = await Promise.all([
+        import("@gmod/indexedfasta"),
+        import("generic-filehandle2"),
+    ]);
+    return { IndexedFasta, RemoteFile };
 }
 
 /**
