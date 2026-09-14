@@ -80,11 +80,18 @@
           "as": "activeCollisionHeight"
         },
         {
+          "type": "formula",
+          "expr": "datum.inViewport ? 10 : 0",
+          "as": "activeAnchorSize"
+        },
+        {
           "type": "displace2d",
           "x": "x",
           "y": "y",
           "width": "activeCollisionWidth",
           "height": "activeCollisionHeight",
+          "anchorWidth": "activeAnchorSize",
+          "anchorHeight": "activeAnchorSize",
           "scalePositions": true,
           "as": ["labelTargetDx", "labelTargetDy"]
         },
