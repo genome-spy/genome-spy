@@ -11,7 +11,7 @@ import {
  * @template T
  */
 export default class UrlDescriptorState {
-    /** @type {Map<string, T>} */
+    /** @type {Map<string, Promise<T | undefined>>} */
     #handleCache = new Map();
 
     /** @type {T[]} */
@@ -23,22 +23,56 @@ export default class UrlDescriptorState {
     /** @type {Set<string>} */
     #loadedKeys = new Set();
 
+    #revision = 0;
+    #updating = true;
+
     get handles() {
         return this.#handles;
     }
 
     get activeSetLoaded() {
-        return this.#activeKeys.isSubsetOf(this.#loadedKeys);
+        return !this.#updating && this.#activeKeys.isSubsetOf(this.#loadedKeys);
     }
 
-    markLoaded() {
-        this.#loadedKeys = new Set(this.#activeKeys);
+    get activeRevision() {
+        return this.#updating ? undefined : this.#revision;
     }
 
-    clearActive() {
+    beginUpdate() {
         this.#handles = [];
         this.#activeKeys = new Set();
-        this.#loadedKeys = new Set();
+        this.#updating = true;
+        return ++this.#revision;
+    }
+
+    /** @param {number} revision */
+    isLatest(revision) {
+        return revision === this.#revision;
+    }
+
+    /** @param {number} revision */
+    isCurrent(revision) {
+        return revision === this.activeRevision;
+    }
+
+    /** @param {number} [revision] */
+    markLoaded(revision = this.activeRevision) {
+        if (this.isCurrent(revision)) {
+            this.#loadedKeys = new Set(this.#activeKeys);
+        }
+    }
+
+    dispose() {
+        this.beginUpdate();
+        this.#handleCache.clear();
+    }
+
+    /** @param {number} revision */
+    clearActive(revision) {
+        if (this.isLatest(revision)) {
+            this.#loadedKeys = new Set();
+            this.#updating = false;
+        }
     }
 
     /**
@@ -46,8 +80,9 @@ export default class UrlDescriptorState {
      *
      * @param {import("./urlDescriptor.js").UrlDescriptor[]} descriptors
      * @param {(descriptor: import("./urlDescriptor.js").UrlDescriptor, descriptorKey: string) => Promise<T | undefined>} createHandle
+     * @param {number} revision
      */
-    async update(descriptors, createHandle) {
+    async update(descriptors, createHandle, revision = this.beginUpdate()) {
         const descriptorKeys = descriptors.map(urlDescriptorKey);
         const entries = await Promise.all(
             descriptors.map((descriptor, i) =>
@@ -58,6 +93,9 @@ export default class UrlDescriptorState {
                 )
             )
         );
+        if (revision !== this.#revision) {
+            return;
+        }
         this.#handles = entries
             .filter((entry) => entry.handle)
             .map((entry) => /** @type {T} */ (entry.handle));
@@ -66,6 +104,7 @@ export default class UrlDescriptorState {
                 .filter((entry) => entry.handle)
                 .map((entry) => entry.descriptorKey)
         );
+        this.#updating = false;
     }
 
     /**
@@ -75,16 +114,19 @@ export default class UrlDescriptorState {
      * @returns {Promise<{ descriptorKey: string, handle: T | undefined }>}
      */
     async #getOrCreateHandle(descriptor, descriptorKey, createHandle) {
-        const cachedHandle = this.#handleCache.get(descriptorKey);
-        if (cachedHandle) {
-            return { descriptorKey, handle: cachedHandle };
+        let handlePromise = this.#handleCache.get(descriptorKey);
+        if (!handlePromise) {
+            handlePromise = createHandle(descriptor, descriptorKey);
+            this.#handleCache.set(descriptorKey, handlePromise);
+            const forget = () => {
+                if (this.#handleCache.get(descriptorKey) === handlePromise) {
+                    this.#handleCache.delete(descriptorKey);
+                }
+            };
+            handlePromise.then((handle) => !handle && forget(), forget);
         }
 
-        const handle = await createHandle(descriptor, descriptorKey);
-        if (handle) {
-            this.#handleCache.set(descriptorKey, handle);
-        }
-        return { descriptorKey, handle };
+        return { descriptorKey, handle: await handlePromise };
     }
 }
 
@@ -96,30 +138,41 @@ export default class UrlDescriptorState {
  * @template T
  * @template M
  * @param {{
- *     controller: { normalize: () => Promise<import("./urlDescriptor.js").UrlDescriptor[]> },
+ *     normalize: () => Promise<import("./urlDescriptor.js").UrlDescriptor[]>,
  *     state: UrlDescriptorState<T>,
  *     clearData: () => void,
  *     setLoadingStatus: (status: import("../../types/viewContext.js").DataLoadingStatus, detail?: string) => void,
  *     loadModules: () => Promise<M>,
  *     createHandle: (descriptor: import("./urlDescriptor.js").UrlDescriptor, modules: M) => Promise<T>,
+ *     revision: number,
  * }} options
  */
 export async function updateUrlDescriptorState(options) {
     try {
-        const descriptors = await options.controller.normalize();
+        if (options.state.isLatest(options.revision)) {
+            options.setLoadingStatus("loading");
+        }
+        const descriptors = await options.normalize();
         const modules = await options.loadModules();
 
-        options.setLoadingStatus("loading");
-        await options.state.update(descriptors, (descriptor) =>
-            loadUrlDescriptorOrSkip(descriptor, () =>
-                options.createHandle(descriptor, modules)
-            )
+        await options.state.update(
+            descriptors,
+            (descriptor) =>
+                loadUrlDescriptorOrSkip(descriptor, () =>
+                    options.createHandle(descriptor, modules)
+                ),
+            options.revision
         );
-        options.setLoadingStatus("complete");
+        if (options.state.isCurrent(options.revision)) {
+            options.setLoadingStatus("complete");
+        }
     } catch (e) {
+        if (!options.state.isLatest(options.revision)) {
+            return;
+        }
         options.clearData();
         if (e instanceof UrlLimitExceededError) {
-            options.state.clearActive();
+            options.state.clearActive(options.revision);
             options.setLoadingStatus("complete");
         } else {
             options.setLoadingStatus("error", e.message);

@@ -99,6 +99,15 @@ describe("normalizeUrlDescriptors", () => {
         ]);
     });
 
+    it("pairs a direct URL with its separate index URL", async () => {
+        await expect(
+            normalizeUrlDescriptors({
+                url: "reads.bam",
+                indexUrl: "reads.bai",
+            })
+        ).resolves.toEqual([{ url: "reads.bam", indexUrl: "reads.bai" }]);
+    });
+
     it("throws a typed error when maxValues is exceeded", async () => {
         await expect(
             normalizeUrlDescriptors({

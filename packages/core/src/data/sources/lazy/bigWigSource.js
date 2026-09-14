@@ -3,20 +3,17 @@ import {
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
-import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
+import UrlDescriptorWindowedSource from "./urlDescriptorWindowedSource.js";
 import {
     createDescriptorFieldAttacher,
     getUrlDescriptorExpressions,
 } from "../urlDescriptor.js";
-import UrlDescriptorController from "../urlDescriptorController.js";
-import UrlDescriptorState, {
-    updateUrlDescriptorState,
-} from "../urlDescriptorState.js";
 
 /**
  *
  */
-export default class BigWigSource extends SingleAxisWindowedSource {
+/** @extends {UrlDescriptorWindowedSource<BigWigHandle>} */
+export default class BigWigSource extends UrlDescriptorWindowedSource {
     /**
      * @typedef {object} BigWigHandle
      * @prop {import("@gmod/bbi").BigWig} bbi
@@ -24,12 +21,6 @@ export default class BigWigSource extends SingleAxisWindowedSource {
      * @prop {number[]} reductionLevels
      * @prop {string} url
      */
-
-    /** @type {UrlDescriptorState<BigWigHandle>} */
-    #descriptorState = new UrlDescriptorState();
-
-    /** @type {UrlDescriptorController} */
-    #urlDescriptors;
 
     /**
      * @param {import("../../../spec/data.js").BigWigData} params
@@ -53,7 +44,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             paramsWithDefaults,
             (props) => {
                 if (props.has("url")) {
-                    this.#reloadIfCurrentDomainNeedsData();
+                    this.reloadUrlDescriptors((r) => this.#doInitialize(r));
                 } else if (props.has("pixelsPerBin")) {
                     this.reloadLastDomain();
                 }
@@ -62,17 +53,15 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             getUrlDescriptorExpressions(paramsWithDefaults.url)
         );
 
-        this.#urlDescriptors = new UrlDescriptorController(this, {
-            getUrl: () => this.params.url,
-        });
-
         if (!this.params.url) {
             throw new Error("No URL provided for BigWigSource");
         }
 
         this.setupDebouncing(this.params);
 
-        this.#initialize();
+        this.setupUrlDescriptors({ getUrl: () => this.params.url }, (r) =>
+            this.#doInitialize(r)
+        );
     }
 
     get label() {
@@ -82,42 +71,9 @@ export default class BigWigSource extends SingleAxisWindowedSource {
     /**
      * @returns {Promise<void>}
      */
-    #initialize() {
-        const initializePromise = this.#doInitialize();
-        this.initializedPromise = initializePromise;
-        return initializePromise;
-    }
-
-    /**
-     * Refreshes active descriptors and reloads the current domain only if the
-     * current loaded data does not cover the new active descriptor set.
-     */
-    async #reloadIfCurrentDomainNeedsData() {
-        try {
-            await this.#initialize();
-
-            if (
-                !this.isDataReadyForDomain({
-                    [this.channel]: this.scaleResolution.getDomain(),
-                })
-            ) {
-                this.reloadLastDomain();
-            }
-        } catch {
-            // Initialization has already updated the loading status.
-        }
-    }
-
-    /**
-     * @returns {Promise<void>}
-     */
-    async #doInitialize() {
-        await updateUrlDescriptorState({
-            controller: this.#urlDescriptors,
-            state: this.#descriptorState,
-            clearData: () => this.invalidateData(),
-            setLoadingStatus: (status, detail) =>
-                this.setLoadingStatus(status, detail),
+    /** @param {number} revision */
+    async #doInitialize(revision) {
+        await this.updateUrlDescriptors(revision, {
             loadModules: loadBigWigModules,
             createHandle: (descriptor, { BigWig, RemoteFile }) =>
                 this.#createHandle(descriptor, BigWig, RemoteFile),
@@ -162,9 +118,11 @@ export default class BigWigSource extends SingleAxisWindowedSource {
     async onDomainChanged(domain) {
         await this.initializedPromise;
 
-        const handles = this.#descriptorState.handles;
+        const revision = this.descriptorState.activeRevision;
+        if (revision === undefined) return;
+        const handles = this.descriptorState.handles;
         if (!handles.length) {
-            this.#descriptorState.markLoaded();
+            this.descriptorState.markLoaded(revision);
             this.publishData([], domain);
             return;
         }
@@ -196,7 +154,9 @@ export default class BigWigSource extends SingleAxisWindowedSource {
      */
     // @ts-expect-error
     async loadInterval(interval, selectedReductionLevels) {
-        const handles = this.#descriptorState.handles;
+        const revision = this.descriptorState.activeRevision;
+        if (revision === undefined) return;
+        const handles = this.descriptorState.handles;
         const featureChunks = await this.discretizeAndLoad(interval, {
             load: (d, signal) =>
                 this.#loadFeatures(d, handles, selectedReductionLevels, signal),
@@ -209,8 +169,8 @@ export default class BigWigSource extends SingleAxisWindowedSource {
                 ),
         });
 
-        if (featureChunks) {
-            this.#descriptorState.markLoaded();
+        if (featureChunks && this.descriptorState.isCurrent(revision)) {
+            this.descriptorState.markLoaded(revision);
             this.publishData(featureChunks);
         }
     }
@@ -294,17 +254,6 @@ export default class BigWigSource extends SingleAxisWindowedSource {
 
         return intervals.map((_, intervalIndex) =>
             chunksByHandle.flatMap((chunks) => chunks[intervalIndex])
-        );
-    }
-
-    /**
-     * @param {import("./singleAxisLazySource.js").DataReadinessRequest} request
-     * @returns {boolean}
-     */
-    isDataReadyForDomain(request) {
-        return (
-            this.#descriptorState.activeSetLoaded &&
-            super.isDataReadyForDomain(request)
         );
     }
 }

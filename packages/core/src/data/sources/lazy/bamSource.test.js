@@ -4,6 +4,8 @@ import BamSource, { createBamReadDatum } from "./bamSource.js";
 
 /** @type {{ chrom: string, start: number, end: number }[]} */
 const requestedIntervals = [];
+/** @type {{ bam: string, bai: string }[]} */
+const openedFiles = [];
 
 vi.mock("generic-filehandle2", () => ({
     RemoteFile: class RemoteFile {
@@ -17,6 +19,14 @@ vi.mock("generic-filehandle2", () => ({
 vi.mock("@gmod/bam", () => ({
     BamFile: class BamFile {
         indexToChr = [{ refName: "chr1" }];
+
+        /** @param {{ bamFilehandle: { url: string }, baiFilehandle: { url: string } }} options */
+        constructor(options) {
+            openedFiles.push({
+                bam: options.bamFilehandle.url,
+                bai: options.baiFilehandle.url,
+            });
+        }
 
         async getHeader() {
             return {};
@@ -82,6 +92,8 @@ function createViewStub(initialWindowSize = 300) {
         "windowSize",
         initialWindowSize
     );
+    const setUrl = paramRuntime.allocateSetter("bamUrl", "reads.bam");
+    const setIndexUrl = paramRuntime.allocateSetter("baiUrl", "reads.bai");
 
     const scale = /** @type {any} */ (
         /** @returns {undefined} */ () => undefined
@@ -111,6 +123,8 @@ function createViewStub(initialWindowSize = 300) {
     return {
         paramRuntime,
         setWindowSize,
+        setUrl,
+        setIndexUrl,
         getBaseUrl: () => "https://example.org/spec/",
         getScaleResolution: () => scaleResolution,
         isVisible: () => true,
@@ -130,6 +144,7 @@ function createViewStub(initialWindowSize = 300) {
 describe("BamSource", () => {
     beforeEach(() => {
         requestedIntervals.length = 0;
+        openedFiles.length = 0;
     });
 
     afterEach(() => {
@@ -171,6 +186,37 @@ describe("BamSource", () => {
 
         expect(requestedIntervals).toEqual([
             { chrom: "chr1", start: 0, end: 300 },
+        ]);
+    });
+
+    test("replaces the handle once with a grouped URL pair", async () => {
+        const view = createViewStub();
+        const source = new BamSource(
+            {
+                type: "bam",
+                url: { expr: "bamUrl" },
+                indexUrl: { expr: "baiUrl" },
+                debounce: 0,
+                debounceMode: "window",
+                windowSize: 100,
+            },
+            /** @type {any} */ (view)
+        );
+        await /** @type {any} */ (source).initializedPromise;
+        openedFiles.length = 0;
+
+        view.paramRuntime.runInTransaction(() => {
+            view.setUrl("other.bam");
+            view.setIndexUrl("other.bai");
+        });
+        await view.paramRuntime.whenPropagated();
+        await /** @type {any} */ (source).initializedPromise;
+
+        expect(openedFiles).toEqual([
+            {
+                bam: "https://example.org/spec/other.bam",
+                bai: "https://example.org/spec/other.bai",
+            },
         ]);
     });
 

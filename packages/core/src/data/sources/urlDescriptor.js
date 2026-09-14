@@ -257,11 +257,15 @@ function expandUrl(urlSpec, options) {
         return expandTemplate(urlSpec, options.indexUrl, options);
     }
 
-    const value = isExprRef(urlSpec)
-        ? requireParamRuntime(options).createExpression(urlSpec.expr)()
-        : urlSpec;
+    const value = resolveExprRef(urlSpec, options);
+    const indexUrl = resolveExprRef(options.indexUrl, options);
     const values = Array.isArray(value) ? value : [value];
-    return values.map(normalizeDescriptor);
+    return values.map((value) => {
+        const descriptor = normalizeDescriptor(value);
+        return typeof indexUrl == "string" && !descriptor.indexUrl
+            ? { ...descriptor, indexUrl }
+            : descriptor;
+    });
 }
 
 /**
@@ -313,9 +317,14 @@ function expandTemplate(templateSpec, indexUrlSpec, options) {
  * @returns {unknown}
  */
 function resolveValues(values, options) {
-    return isExprRef(values)
-        ? requireParamRuntime(options).createExpression(values.expr)()
-        : values;
+    return resolveExprRef(values, options);
+}
+
+/** @param {unknown} value @param {UrlDescriptorOptions} options */
+function resolveExprRef(value, options) {
+    return isExprRef(value)
+        ? requireParamRuntime(options).createExpression(value.expr)()
+        : value;
 }
 
 /**

@@ -186,6 +186,25 @@ describe("SingleAxisWindowedSource", () => {
         expect(chunks).toEqual([["chr1"], ["chr2"], ["chr3"]]);
     });
 
+    test("aborts interval work on disposal", async () => {
+        const source = new TestWindowedSource();
+        /** @type {AbortSignal | undefined} */
+        let loadSignal;
+        const load = source.discretize([0, 10], async (_interval, signal) => {
+            loadSignal = signal;
+            await new Promise((resolve) => {
+                signal.addEventListener("abort", () => resolve(undefined));
+            });
+            return [];
+        });
+        await Promise.resolve();
+
+        source.dispose();
+        expect(loadSignal?.aborted).toBe(true);
+
+        await expect(load).resolves.toBeUndefined();
+    });
+
     test("reloads the current window when asked to repropagate", async () => {
         const view = createViewStub();
         const source = new RepropagatingWindowedSource(view);
