@@ -160,6 +160,14 @@ the input and reverses by Unicode code point rather than UTF-16 code unit.
 These helpers are analogous to Vega's scale helper functions, but GenomeSpy
 resolves scales by channel instead of by named scale.
 
+They are available in `formula` and `filter` transforms, in dynamic expression
+properties, and in scale `ExprRef` properties. They are reactive: when a
+referenced scale changes, dependent expressions update.
+
+When a helper is used in a scale `ExprRef`, it resolves from the view that owns
+the scale resolution. For a shared scale, declare the expression in
+`scales.<channel>` on the composed view that owns the resolution.
+
 <a name="scale" href="#scale">#</a>
 <b>scale</b>(<i>channel</i>, <i>value</i>)<br/>
 Maps a value through the scale for the given channel, such as `"x"`, `"y"`,
@@ -192,7 +200,8 @@ the result by `width` or `height` to convert it to pixels.
 Returns the geometric zoom level of the zoomable x and y scales that are
 resolvable from the expression scope. A missing or non-zoomable axis contributes
 `1`, so the result is `sqrt(xZoom * yZoom)` and is `1` when neither axis is
-zoomable.
+zoomable. The function discovers the resolvable x and y scales when the
+expression is bound.
 
 <a name="zoomLevel-channel" href="#zoomLevel-channel">#</a>
 <b>zoomLevel</b>(<i>channel</i>)<br/>
@@ -204,15 +213,6 @@ Compose separate calls when a formula needs multiple explicit scales. For
 example, `sqrt(zoomLevel("x") * zoomLevel("y"))` is the explicit equivalent of
 the automatic two-dimensional metric. Other formulas can use `min`, `max`, or
 ordinary arithmetic.
-
-Scale helpers in a scale expression resolve from the view that owns the scale
-resolution. For a shared scale, declare the expression in `scales.<channel>` on
-the composed view that owns the resolution. `zoomLevel()` binds the positional
-resolutions available when the expression is bound.
-
-These helpers are available in `formula` and `filter` transforms, in dynamic
-expression properties, and in scale `ExprRef` properties. They are reactive:
-when the referenced scale changes, dependent expressions update.
 
 A scale domain (including its initial domain), zoom extent, or zoom
 configuration cannot read that same scale's zoom level. Cross-scale dependency
