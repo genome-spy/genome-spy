@@ -205,9 +205,19 @@ example, `sqrt(zoomLevel("x") * zoomLevel("y"))` is the explicit equivalent of
 the automatic two-dimensional metric. Other formulas can use `min`, `max`, or
 ordinary arithmetic.
 
+Scale helpers in a scale expression resolve from the view that owns the scale
+resolution. For a shared scale, declare the expression in `scales.<channel>` on
+the composed view that owns the resolution. `zoomLevel()` binds the positional
+resolutions available when the expression is bound.
+
 These helpers are available in `formula` and `filter` transforms, in dynamic
 expression properties, and in scale `ExprRef` properties. They are reactive:
 when the referenced scale changes, dependent expressions update.
+
+A scale domain (including its initial domain), zoom extent, or zoom
+configuration cannot read that same scale's zoom level. Cross-scale dependency
+cycles are also rejected. A scale range may read its own zoom level because
+range changes do not determine magnification.
 
 ### Other functions
 

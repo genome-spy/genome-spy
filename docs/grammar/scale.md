@@ -423,30 +423,6 @@ transition frames. Expression-driven domains do not start a separate transition
 by default. Set `zero` and `nice` to `false` when the calibrated bounds must be
 preserved exactly. Dependencies must be acyclic.
 
-#### Zoom-driven domains and ranges
-
-Use [`zoomLevel("channel")`](./expressions.md#zoomLevel-channel) when a scale
-property should react to the magnification of one scale. The helper returns the
-reference-domain span divided by the displayed-domain span. Use
-[`zoomLevel()`](./expressions.md#zoomLevel) to automatically combine resolvable,
-zoomable x and y scales as `sqrt(xZoom * yZoom)`.
-
-Scale helpers resolve from the view that owns the scale expression. For a
-shared scale, place the expression in `scales.<channel>` on the composed view
-that owns the resolution. `zoomLevel()` binds the positional resolutions that
-are available when the expression is bound; their zoom levels and effective
-zoomability remain reactive.
-
-The example below makes a shared y domain respond to x zoom. The y scale itself
-is not zoomable, so the dependency is acyclic.
-
-EXAMPLE examples/docs/grammar/scale/zoom-driven-shared-domain.json height=210
-
-A scale domain, initial domain, zoom extent, or zoom configuration cannot read
-that same scale's zoom level. Cross-scale dependency cycles are also rejected.
-A scale range may read its own zoom level because range changes do not determine
-magnification.
-
 ### Domain from Selection Parameters
 
 A scale domain can link directly to an interval selection parameter. The named
