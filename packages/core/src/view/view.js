@@ -251,6 +251,8 @@ export default class View {
         );
 
         if ("mark" in spec) {
+            // TODO(v2.0): Remove this alias and its lazy-name plumbing after
+            // bare zoomLevel compatibility ends.
             this.paramRuntime.registerLazyExpression(
                 "zoomLevel",
                 "zoomLevel()",

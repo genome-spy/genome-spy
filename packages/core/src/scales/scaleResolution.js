@@ -295,6 +295,8 @@ export default class ScaleResolution {
         }
     }
 
+    // TODO: Replace this scale-specific traversal with generic graph cycle
+    // validation if zoom publication becomes an ordinary graph dependency.
     /**
      * @param {ScaleResolution} target
      * @returns {boolean}
@@ -1598,6 +1600,8 @@ export default class ScaleResolution {
      */
     getZoomLevelRef() {
         if (!this.#zoomLevelRef) {
+            // TODO: Replace this revision bridge with a DomainRuntime zoom ref
+            // if the complete zoom state becomes graph-native.
             this.#zoomRevisionRef = this.#runtime.signal(
                 "zoom publication revision",
                 0
