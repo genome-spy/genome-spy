@@ -297,19 +297,14 @@ export default class ScaleResolution {
 
     /**
      * @param {ScaleResolution} target
-     * @param {Set<ScaleResolution>} visited
      * @returns {boolean}
      */
-    #hasZoomInputPathTo(target, visited) {
+    #hasZoomInputPathTo(target) {
         if (this === target) {
             return true;
         }
-        if (visited.has(this)) {
-            return false;
-        }
-        visited.add(this);
         return Array.from(this.#domainInputs?.zoomLevelResolutions ?? []).some(
-            (dependency) => dependency.#hasZoomInputPathTo(target, visited)
+            (dependency) => dependency.#hasZoomInputPathTo(target)
         );
     }
 
@@ -996,7 +991,7 @@ export default class ScaleResolution {
             lastVisible,
         });
         const cycle = Array.from(inputs.zoomLevelResolutions).find(
-            (dependency) => dependency.#hasZoomInputPathTo(this, new Set())
+            (dependency) => dependency.#hasZoomInputPathTo(this)
         );
         if (cycle) {
             inputs.dispose();

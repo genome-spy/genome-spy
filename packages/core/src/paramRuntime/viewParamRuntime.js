@@ -204,18 +204,6 @@ export default class ViewParamRuntime {
      * @param {() => void} [onMaterialize]
      */
     registerLazyExpression(name, expr, onMaterialize) {
-        validateParameterName(name);
-        if (
-            this.#paramConfigs.has(name) ||
-            this.#lazyExpressionNames.has(name) ||
-            this.#localRefs.has(name)
-        ) {
-            throw new Error(
-                'Parameter "' + name + '" already registered in this scope.'
-            );
-        }
-
-        this.#lazyExpressionNames.add(name);
         this.#runtime.registerInitializer(this.#scopeId, name, () => {
             onMaterialize?.();
             const ref = this.#runtime.registerDerived(
@@ -226,6 +214,7 @@ export default class ViewParamRuntime {
             );
             this.#localRefs.set(name, ref);
         });
+        this.#lazyExpressionNames.add(name);
     }
 
     /**
@@ -244,10 +233,7 @@ export default class ViewParamRuntime {
                 "Scoped expressions must share a parameter runtime."
             );
         }
-        if (
-            this.#paramConfigs.has(name) ||
-            this.#lazyExpressionNames.has(name)
-        ) {
+        if (this.#paramConfigs.has(name)) {
             throw new Error(
                 'Parameter "' + name + '" already registered in this scope.'
             );
