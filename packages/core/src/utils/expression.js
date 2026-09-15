@@ -170,16 +170,13 @@ function buildFunctions(codegen, context) {
         "range",
         "bandwidth",
         "linearize",
+        "zoomLevel",
     ])) {
         fn[kind] = (
             /** @type {any[]} */
             args
         ) => buildScaleHelperCall(codegen, context, kind, args);
     }
-    fn.zoomLevel = (
-        /** @type {any[]} */
-        args
-    ) => buildZoomLevelCall(codegen, context, args);
 
     return fn;
 }
@@ -214,6 +211,22 @@ function buildFunctions(codegen, context) {
  * @returns {string}
  */
 function buildScaleHelperCall(codegen, context, kind, args) {
+    if (kind === "zoomLevel" && args.length === 0) {
+        const calls = [];
+        for (const channel of /** @type {const} */ (["x", "y"])) {
+            const resolution = context.resolveScaleResolution?.(channel);
+            if (resolution) {
+                const helper = context.getScaleHelper(
+                    kind,
+                    channel,
+                    resolution
+                );
+                calls.push(`${context.globalvar}["${helper.codeName}"]()`);
+            }
+        }
+        return `Math.sqrt(${calls.join("*") || "1"})`;
+    }
+
     if (args.length === 0) {
         throw new Error(
             `Scale helper "${kind}" requires a literal channel name.`
@@ -226,6 +239,12 @@ function buildScaleHelperCall(codegen, context, kind, args) {
     ) {
         throw new Error(
             `Scale helper "${kind}" requires a channel name and a value.`
+        );
+    }
+
+    if (kind === "zoomLevel" && args.length > 1) {
+        throw new Error(
+            'Scale helper "zoomLevel" accepts zero arguments or one literal channel name.'
         );
     }
 
@@ -249,38 +268,6 @@ function buildScaleHelperCall(codegen, context, kind, args) {
         .map((arg) => codegen(arg))
         .join(",");
     return `${context.globalvar}["${helper.codeName}"](${remainingArgs})`;
-}
-
-/**
- * @param {typeof codegenExpression} codegen
- * @param {ScaleHelperCompileContext} context
- * @param {any[]} args
- * @returns {string}
- */
-function buildZoomLevelCall(codegen, context, args) {
-    if (args.length > 1) {
-        throw new Error(
-            'Scale helper "zoomLevel" accepts zero arguments or one literal channel name.'
-        );
-    }
-
-    if (args.length === 1) {
-        return buildScaleHelperCall(codegen, context, "zoomLevel", args);
-    }
-
-    const calls = [];
-    for (const channel of /** @type {const} */ (["x", "y"])) {
-        const resolution = context.resolveScaleResolution?.(channel);
-        if (resolution) {
-            const helper = context.getScaleHelper(
-                "zoomLevel",
-                channel,
-                resolution
-            );
-            calls.push(`${context.globalvar}["${helper.codeName}"]()`);
-        }
-    }
-    return `Math.sqrt(${calls.join("*") || "1"})`;
 }
 
 /**

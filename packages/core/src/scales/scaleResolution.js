@@ -295,20 +295,6 @@ export default class ScaleResolution {
         }
     }
 
-    /** @param {Set<ScaleResolution>} dependencies */
-    #assertNoZoomInputCycle(dependencies) {
-        for (const dependency of dependencies) {
-            if (
-                dependency === this ||
-                dependency.#hasZoomInputPathTo(this, new Set())
-            ) {
-                throw new Error(
-                    `Scale zoom dependency cycle: ${this.channel} domain reads the zoom level of ${dependency.channel}.`
-                );
-            }
-        }
-    }
-
     /**
      * @param {ScaleResolution} target
      * @param {Set<ScaleResolution>} visited
@@ -1009,13 +995,16 @@ export default class ScaleResolution {
             ignoreSelectionInitial: this.#ignoreSelectionInitial,
             lastVisible,
         });
-        try {
-            this.#assertNoZoomInputCycle(inputs.zoomLevelResolutions);
-            this.#domainInputs = inputs;
-        } catch (error) {
+        const cycle = Array.from(inputs.zoomLevelResolutions).find(
+            (dependency) => dependency.#hasZoomInputPathTo(this, new Set())
+        );
+        if (cycle) {
             inputs.dispose();
-            throw error;
+            throw new Error(
+                `Scale zoom dependency cycle: ${this.channel} domain reads the zoom level of ${cycle.channel}.`
+            );
         }
+        this.#domainInputs = inputs;
     }
 
     /**

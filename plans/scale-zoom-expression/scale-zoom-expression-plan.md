@@ -522,7 +522,7 @@ expression and domain bindings.
   inserted into or removed from a mutable empty container. Normal resolution
   rebinding still discovers current scales.
 
-This removed 180 source lines from the implementation compared with milestone
+This removed 203 source lines from the implementation compared with milestone
 2 while retaining the grammar, compatibility alias, and tested cycle behavior.
 
 ## Final integration verification
