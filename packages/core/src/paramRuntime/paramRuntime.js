@@ -150,7 +150,7 @@ export default class ParamRuntime {
      * @param {ScopeId} scope
      * @param {string} name
      * @param {string} expr
-     * @param {{ expressionScope?: ScopeId, resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined, resolveAutoZoomLevelRef?: () => import("./types.js").ParamRef<number> }} [options]
+     * @param {{ expressionScope?: ScopeId, resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined }} [options]
      * @returns {import("./types.js").ParamRef<T>}
      */
     registerDerived(scope, name, expr, options) {
@@ -180,7 +180,7 @@ export default class ParamRuntime {
      *
      * @param {ScopeId} scope
      * @param {string} expr
-     * @param {{ resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined, resolveAutoZoomLevelRef?: () => import("./types.js").ParamRef<number> }} [options]
+     * @param {{ resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined }} [options]
      * @returns {import("./types.js").ExprRefFunction}
      */
     createExpression(scope, expr, options) {

@@ -186,15 +186,11 @@ mode. An explicit call names exactly one resolution; authors compose multiple
 calls when they need a custom multi-resolution metric.
 
 Auto-discovery happens when the expression binds, after resolution planning has
-established effective scale configuration. Each expression scope lazily owns a
-stable auto-zoom operation ref. The operation binds to the currently resolvable
-x/y zoom refs and is rebound when scale resolution registration or effective
-zoom configuration changes. Rebinding keeps consumer identity stable, replaces
-the dependency set atomically, and first updates and validates the
-resolution-level zoom-input graph described below. Graph-runtime validation
-then guards the operation-ref structure; it is not a second source of truth for
-scale dependency cycles. If an owning scale expression is itself rebound
-because membership changes, it resolves the same stable auto-zoom ref.
+established the resolvable x/y scales. The compiler binds those resolution refs
+directly and emits the geometric aggregate in the expression. Their zoom levels
+and effective zoomability remain reactive. Rebinding an owning scale expression
+after membership changes discovers the then-current resolutions; an already
+bound expression does not maintain a separate live topology watcher.
 
 ### Reject feedback through the same resolution
 
@@ -204,14 +200,12 @@ same applies when `zoomLevel()` auto-discovers the consuming scale. A range or
 other mapping expression may use that scale's zoom level because it does not
 feed the zoom computation.
 
-Before committing expressions for properties that feed zoom computation,
-maintain the single resolution-level zoom-input dependency graph whose edge A
-to B means A's zoom inputs read B's zoom level. Add all explicit or
-auto-discovered edges in an atomic preflight step and reject the binding if any
-edge closes a cycle; do not rely on either operation-ref validation or the
-queued domain-publication path to discover it later. Remove or replace edges
-when a resolution rebinds or is disposed. This rejects both a direct x-to-x
-dependency and longer cycles such as x reading y while y reads x.
+Before installing a domain binding, inspect its compiled zoom-level dependencies
+and walk the dependencies exposed by already installed domain bindings. Reject
+the candidate if it closes a cycle. Binding replacement and disposal then drop
+edges naturally, without a persistent reverse graph or rollback snapshots. This
+rejects both a direct x-to-x dependency and longer cycles such as x reading y
+while y reads x.
 
 A non-zoomable y domain using `zoomLevel()` can depend on a zoomable x
 resolution, as in OCAC. If y is also zoomable, the author must use
@@ -321,12 +315,12 @@ channel-specific zoom level through stable reactive resolution dependencies.
   domain runtime's zoom-publication revision and effective scale configuration.
 - Return the existing `ScaleResolution.getZoomLevel()` value so programmatic and
   declarative consumers share one definition.
-- Add resolution-level zoom-input dependency preflight so same-resolution and
-  cross-resolution cycles fail before any live scale state is exposed, while
-  acyclic range expressions remain legal.
+- Derive zoom-input cycle preflight from compiled and installed domain bindings
+  so same-resolution and cross-resolution cycles fail while acyclic range
+  expressions remain legal.
 - Dispose the ref and its dependencies with the resolution.
-- Add a lazy stable auto-zoom operation ref to expression scopes and rebind it
-  when scale registration or effective zoomability changes.
+- Bind zero-argument calls directly to the resolvable x/y zoom refs and keep
+  effective zoomability reactive through those refs.
 - Replace `UnitView`'s eager `allocateSetter("zoomLevel", 1)` and positional
   subscriptions with a deferred compatibility alias backed by `zoomLevel()`.
 - Reserve the compatibility name before authored parameter analysis, include it
@@ -362,9 +356,8 @@ the shared expression runtime.
   that case with `zoomLevel("x")`, and reject an x domain driven by
   `zoomLevel("x")`. They also accept an x range driven by `zoomLevel("x")` and
   reject a two-resolution domain dependency cycle.
-- Dynamic insertion/removal and zoomability-configuration tests verify that the
-  auto ref rebinds atomically, keeps stable identity, and does not retain
-  removed views.
+- Zoomability-configuration tests verify that an existing helper binding reacts
+  when a scale becomes zoomable or non-zoomable.
 - Allocation tests verify that a unit with no consumer creates no zoom-level ref
   or subscriptions, a legacy `params[].expr` consumer is deferred correctly,
   the first bare-parameter read materializes one shared alias, an authored
@@ -392,8 +385,8 @@ Do not change any specification under `examples/` until this gate passes. Keep
 the implementation and focused tests reviewable independently from the
 migration.
 
-- Confirm the helper, producer ref, auto-ref rebinding, and resolution-level
-  cycle preflight pass their focused suites.
+- Confirm the helper, producer refs, binding-time auto-discovery, and
+  resolution-level cycle preflight pass their focused suites.
 - Confirm unchanged legacy expressions using bare `zoomLevel` still produce the
   same x-only, y-only, and anisotropic x/y values through the lazy alias.
 - Confirm an unchanged existing browser example still renders and responds to
@@ -401,10 +394,10 @@ migration.
 - Confirm unused units allocate neither the alias nor its zoom subscriptions.
 - Confirm `git diff -- examples/` is empty when recording that the gate passed.
 
-Review the architecture at this point. Confirm that the resolution-level
-zoom-input graph is the single preflight source of truth, operation refs use the
-ordinary reactive graph, no second imperative notification path is created,
-and same-scale feedback fails deterministically.
+Review the architecture at this point. Confirm that domain bindings expose the
+zoom-input dependencies used by cycle preflight, ordinary reactive refs carry
+updates, no second imperative notification path is created, and same-scale
+feedback fails deterministically.
 
 Gate evidence:
 
@@ -412,8 +405,8 @@ Gate evidence:
 - Core TypeScript checks and repository lint passed.
 - The unchanged geometric zoom example rendered and responded to wheel zoom in
   a browser, and materializing its bare alias emitted the deprecation warning.
-- Focused tests cover lazy alias allocation, warning behavior, stable auto-ref
-  rebinding, effective zoomability changes, and direct plus cross-scale cycles.
+- Focused tests cover lazy alias allocation, warning behavior, automatic x/y
+  binding, effective zoomability changes, and direct plus cross-scale cycles.
 - `git diff -- examples/` was empty when this gate was recorded.
 
 ## Milestone 2: Migrate examples, documentation, and OCAC
@@ -479,8 +472,8 @@ covered by focused test fixtures rather than public examples.
   composed `sqrt`, `min`, and `max` examples.
 - Update `docs/grammar/parameters.md` with the deprecated bare alias, lazy
   resolution, warning timing, reserved-name behavior, and direct migration.
-- Update `docs/grammar/scale.md` with expression scope, auto-discovery,
-  topology behavior, cross-scale use, and cycle restrictions.
+- Update `docs/grammar/scale.md` with expression scope, binding-time
+  auto-discovery, cross-scale use, and cycle restrictions.
 - Update `docs/grammar/mark/point.md` so it no longer presents the bare
   parameter as the primary form.
 - Update the `packages/core/src/spec/scale.d.ts` JSDoc and regenerate schema and
@@ -509,6 +502,28 @@ Milestone evidence:
 - The focused Core contract suite passed 244 tests, and Core TypeScript checks,
   lint, documentation type synchronization, and the full documentation build
   passed.
+
+## Milestone 3: Simplify reactive plumbing
+
+Status: Complete (2026-09-15)
+
+The first implementation maintained an expression-scope auto-zoom operation,
+view-tree topology notifications, and a persistent bidirectional scale
+dependency graph. Those mechanisms duplicated lifecycle already owned by
+expression and domain bindings.
+
+- Bind `zoomLevel()` directly to the x/y resolutions available when the
+  expression is compiled.
+- Keep zoom values and effective zoomability reactive through each resolution's
+  lazy zoom-level ref.
+- Derive cycle edges from the candidate and installed domain bindings instead
+  of maintaining forward, reverse, rollback, and disposal state separately.
+- Drop the special contract for an already-bound expression to discover scales
+  inserted into or removed from a mutable empty container. Normal resolution
+  rebinding still discovers current scales.
+
+This removed 180 source lines from the implementation compared with milestone
+2 while retaining the grammar, compatibility alias, and tested cycle behavior.
 
 ## Final integration verification
 
@@ -550,9 +565,8 @@ case before implementation is accepted.
 ### Feedback across scales
 
 Cross-scale dependencies can form longer cycles, such as x zoom driving y while
-y state drives x. The resolution-level zoom-input graph must be updated
-atomically with expression rebinding and disposal so stale edges neither hide a
-cycle nor reject a later valid configuration.
+y state drives x. Cycle preflight must inspect the candidate and currently
+installed domain bindings so replacement and disposal cannot leave stale edges.
 
 ### High-frequency updates
 

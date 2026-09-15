@@ -433,8 +433,9 @@ zoomable x and y scales as `sqrt(xZoom * yZoom)`.
 
 Scale helpers resolve from the view that owns the scale expression. For a
 shared scale, place the expression in `scales.<channel>` on the composed view
-that owns the resolution. The helper follows scale resolutions added or removed
-from that scope.
+that owns the resolution. `zoomLevel()` binds the positional resolutions that
+are available when the expression is bound; their zoom levels and effective
+zoomability remain reactive.
 
 The example below makes a shared y domain respond to x zoom. The y scale itself
 is not zoomable, so the dependency is acyclic.

@@ -173,12 +173,6 @@ export default class ScaleResolution {
     /** @type {import("../paramRuntime/types.js").ComputedParamRef<number> | undefined} */
     #zoomLevelRef;
 
-    /** @type {Set<ScaleResolution>} */
-    #zoomInputDependencies = new Set();
-
-    /** @type {Set<ScaleResolution>} */
-    #zoomInputDependents = new Set();
-
     get #runtime() {
         return (this.#paramRuntime ??= new ViewParamRuntime(
             () => this.#resolutionView.paramRuntime
@@ -301,25 +295,8 @@ export default class ScaleResolution {
         }
     }
 
-    /**
-     * Validates and publishes the scale resolutions whose zoom levels feed
-     * this resolution's configured domain.
-     *
-     * @param {import("../paramRuntime/types.js").ExprRefFunction[]} expressions
-     */
-    #setZoomInputDependencies(expressions) {
-        const dependencies = new Set(
-            expressions.flatMap((expression) =>
-                (expression.scaleHelperDependencies ?? [])
-                    .filter(
-                        (dependency) =>
-                            dependency.kind === "zoomLevel" &&
-                            dependency.resolution.isZoomable()
-                    )
-                    .map((dependency) => dependency.resolution)
-            )
-        );
-
+    /** @param {Set<ScaleResolution>} dependencies */
+    #assertNoZoomInputCycle(dependencies) {
         for (const dependency of dependencies) {
             if (
                 dependency === this ||
@@ -330,8 +307,6 @@ export default class ScaleResolution {
                 );
             }
         }
-
-        this.#replaceZoomInputDependencies(dependencies);
     }
 
     /**
@@ -347,20 +322,9 @@ export default class ScaleResolution {
             return false;
         }
         visited.add(this);
-        return Array.from(this.#zoomInputDependencies).some((dependency) =>
-            dependency.#hasZoomInputPathTo(target, visited)
+        return Array.from(this.#domainInputs?.zoomLevelResolutions ?? []).some(
+            (dependency) => dependency.#hasZoomInputPathTo(target, visited)
         );
-    }
-
-    /** @param {Set<ScaleResolution>} dependencies */
-    #replaceZoomInputDependencies(dependencies) {
-        for (const dependency of this.#zoomInputDependencies) {
-            dependency.#zoomInputDependents.delete(this);
-        }
-        this.#zoomInputDependencies = new Set(dependencies);
-        for (const dependency of dependencies) {
-            dependency.#zoomInputDependents.add(this);
-        }
     }
 
     /**
@@ -543,24 +507,16 @@ export default class ScaleResolution {
      * @returns {any[]}
      */
     #getConfiguredOrDefaultDomain(locusAssembly) {
-        /** @type {import("../paramRuntime/types.js").ExprRefFunction[]} */
-        const expressions = [];
-        const domain = resolveConfiguredDomain(
-            this.#getActiveMembers(),
-            this.#getViewLevelDomainSource(),
-            (expr) => {
-                const expression = this.#createExpression(expr);
-                expressions.push(expression);
-                return expression;
-            },
-            (param, encoding) => this.#resolveSelectionBinding(param, encoding),
-            this.fromComplexInterval.bind(this),
-            this.#shouldIncludeSelectionInitial()
-        ).domain;
-        this.#setZoomInputDependencies(expressions);
-
         return (
-            domain ??
+            resolveConfiguredDomain(
+                this.#getActiveMembers(),
+                this.#getViewLevelDomainSource(),
+                (expr) => this.#createExpression(expr),
+                (param, encoding) =>
+                    this.#resolveSelectionBinding(param, encoding),
+                this.fromComplexInterval.bind(this),
+                this.#shouldIncludeSelectionInitial()
+            ).domain ??
             resolveDefaultDomain(
                 this.type,
                 (assembly) => this.#getLocusExtent(assembly),
@@ -743,7 +699,6 @@ export default class ScaleResolution {
             resolution,
             members: new Set(resolution.#members),
             dataDomainMembers: new Set(resolution.#dataDomainMembers),
-            zoomInputDependencies: new Set(resolution.#zoomInputDependencies),
             type: resolution.type,
             name: resolution.name,
         }));
@@ -771,9 +726,6 @@ export default class ScaleResolution {
                 const resolution = snapshot.resolution;
                 resolution.#members = snapshot.members;
                 resolution.#dataDomainMembers = snapshot.dataDomainMembers;
-                resolution.#replaceZoomInputDependencies(
-                    snapshot.zoomInputDependencies
-                );
                 resolution.type = snapshot.type;
                 resolution.name = snapshot.name;
                 resolution.#registeringMembers = false;
@@ -985,11 +937,6 @@ export default class ScaleResolution {
 
     dispose() {
         this.#domainInputs?.dispose();
-        this.#replaceZoomInputDependencies(new Set());
-        for (const dependent of this.#zoomInputDependents) {
-            dependent.#zoomInputDependencies.delete(this);
-        }
-        this.#zoomInputDependents.clear();
         this.#zoomExtentListeners.clear();
         this.#listeners.domain.clear();
         this.#listeners.range.clear();
@@ -1038,7 +985,7 @@ export default class ScaleResolution {
         // Pass resolved participants/configuration and scope-aware readers into
         // one replaceable binding. It derives source snapshots for the owner;
         // creating it does not itself request an initial source publication.
-        this.#domainInputs = createDomainInputs({
+        const inputs = createDomainInputs({
             owner: this.#domainRuntime,
             manager: this.#scaleManager,
             props,
@@ -1048,8 +995,6 @@ export default class ScaleResolution {
             dataMembers,
             viewLevelDomain: this.#getViewLevelDomainSource(),
             createExpression: (expr) => this.#createExpression(expr),
-            setZoomInputDependencies: (expressions) =>
-                this.#setZoomInputDependencies(expressions),
             resolveSelectionBinding: (param, encoding) =>
                 this.#resolveSelectionBinding(param, encoding),
             fromComplexInterval: this.fromComplexInterval.bind(this),
@@ -1064,6 +1009,13 @@ export default class ScaleResolution {
             ignoreSelectionInitial: this.#ignoreSelectionInitial,
             lastVisible,
         });
+        try {
+            this.#assertNoZoomInputCycle(inputs.zoomLevelResolutions);
+            this.#domainInputs = inputs;
+        } catch (error) {
+            inputs.dispose();
+            throw error;
+        }
     }
 
     /**

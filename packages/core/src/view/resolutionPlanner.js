@@ -314,7 +314,6 @@ const registerLegendResolutionMembers = (view, legendMembers) => {
  * @param {ScaleResolutionMemberMap} scaleMembersByResolution
  */
 const registerScaleResolutionMembers = (view, scaleMembersByResolution) => {
-    const resolutionViews = new Set();
     ScaleResolution.registerInBatch(scaleMembersByResolution.keys(), () => {
         for (const [resolution, members] of scaleMembersByResolution) {
             for (const {
@@ -329,8 +328,6 @@ const registerScaleResolutionMembers = (view, scaleMembersByResolution) => {
                     );
 
                 const contributesToDomain = !view.isDomainInert();
-                resolutionViews.add(resolutionView);
-
                 const unregister = resolution.registerMember({
                     view,
                     channel:
@@ -348,15 +345,11 @@ const registerScaleResolutionMembers = (view, scaleMembersByResolution) => {
                     ) {
                         resolution.dispose();
                         delete resolutionView.resolutions.scale[scaleChannel];
-                        resolutionView.notifyScaleResolutionChange();
                     }
                 });
             }
         }
     });
-    for (const resolutionView of resolutionViews) {
-        resolutionView.notifyScaleResolutionChange();
-    }
 };
 
 /**

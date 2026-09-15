@@ -1305,19 +1305,6 @@ export default class View {
     }
 
     /**
-     * Rebinds initialized automatic zoom expressions in data descendants after
-     * a positional scale resolution is added or removed.
-     * @internal
-     */
-    notifyScaleResolutionChange() {
-        this.visit((view) => {
-            if (view.getDataAncestors().includes(this)) {
-                view.paramRuntime.refreshScaleResolutionBindings();
-            }
-        });
-    }
-
-    /**
      * @param {import("../spec/channel.js").PositionalChannel} channel
      */
     getAxisResolution(channel) {

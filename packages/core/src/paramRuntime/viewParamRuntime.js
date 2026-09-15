@@ -88,9 +88,6 @@ export default class ViewParamRuntime {
     /** @type {Set<string>} */
     #lazyExpressionNames = new Set();
 
-    /** @type {import("./types.js").OperationRef<number> | undefined} */
-    #autoZoomLevelRef;
-
     /** @type {Map<string, Set<import("../types/interactionApi.d.ts").IntervalSelectionControllerApi>>} */
     #selectionControllers = new Map();
 
@@ -151,7 +148,6 @@ export default class ViewParamRuntime {
     get #expressionOptions() {
         return {
             resolveScaleResolution: this.#scaleResolutionResolver,
-            resolveAutoZoomLevelRef: () => this.getAutoZoomLevelRef(),
         };
     }
 
@@ -686,51 +682,10 @@ export default class ViewParamRuntime {
      * @param {string} expr
      */
     createExpression(expr) {
-        return this.#runtime.createExpression(this.#scopeId, expr, {
-            ...this.#expressionOptions,
-        });
-    }
-
-    /**
-     * Returns the stable aggregate used by zero-argument `zoomLevel()` calls.
-     * Its x/y dependencies are rebound when scale resolution topology changes.
-     *
-     * @returns {import("./types.js").ParamRef<number>}
-     */
-    getAutoZoomLevelRef() {
-        if (!this.#autoZoomLevelRef) {
-            const dependencies = this.#getAutoZoomDependencies();
-            this.#autoZoomLevelRef = this.operation(
-                "automatic zoom level",
-                dependencies,
-                () => calculateAutoZoomLevel(dependencies),
-                () => undefined
-            );
-        }
-        return this.#autoZoomLevelRef;
-    }
-
-    /** Rebinds an initialized automatic zoom aggregate after topology changes. */
-    refreshScaleResolutionBindings() {
-        if (!this.#autoZoomLevelRef) {
-            return;
-        }
-        const dependencies = this.#getAutoZoomDependencies();
-        this.#autoZoomLevelRef.rebind(dependencies, () =>
-            calculateAutoZoomLevel(dependencies)
-        );
-        this.#runtime.flushNow({ afterTransaction: true });
-    }
-
-    /** @returns {import("./types.js").ParamRef<number>[]} */
-    #getAutoZoomDependencies() {
-        return Array.from(
-            new Set(
-                ["x", "y"]
-                    .map((channel) => this.#scaleResolutionResolver(channel))
-                    .filter((resolution) => resolution !== undefined)
-                    .map((resolution) => resolution.getZoomLevelRef())
-            )
+        return this.#runtime.createExpression(
+            this.#scopeId,
+            expr,
+            this.#expressionOptions
         );
     }
 
@@ -1024,7 +979,6 @@ export default class ViewParamRuntime {
         this.#localRefs.clear();
         this.#paramConfigs.clear();
         this.#lazyExpressionNames.clear();
-        this.#autoZoomLevelRef = undefined;
         this.#selectionControllers.clear();
         this.#transitionStates.clear();
     }
@@ -1073,16 +1027,6 @@ function getParamKind(config) {
     } else {
         return "base";
     }
-}
-
-/**
- * @param {import("./types.js").ParamRef<number>[]} dependencies
- * @returns {number}
- */
-function calculateAutoZoomLevel(dependencies) {
-    return Math.sqrt(
-        dependencies.reduce((level, dependency) => level * dependency.get(), 1)
-    );
 }
 
 /**
